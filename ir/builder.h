@@ -500,12 +500,24 @@ struct Builder {
   // field requested. For variants, `VariantType` computes the location where
   // the type is stored and `VariantValue` accesses the location where the
   // value is stored.
-  type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const* t, int64_t n);
-  type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const* t, int64_t n);
+  type::Typed<Reg> FieldRef(RegOr<Addr> r, type::Struct const* t, int64_t n);
+  type::Typed<Reg> FieldRef(RegOr<Addr> r, type::Tuple const* t, int64_t n);
+
+  type::Typed<Value> FieldValue(RegOr<Addr> r, type::Struct const* t,
+                                int64_t n) {
+    auto typed_reg = FieldRef(r, t, n);
+    return type::Typed<Value>(Value(PtrFix(*typed_reg, typed_reg.type())),
+                              typed_reg.type());
+  }
+  type::Typed<Value> FieldValue(RegOr<Addr> r, type::Tuple const* t,
+                                int64_t n) {
+    auto typed_reg = FieldRef(r, t, n);
+    return type::Typed<Value>(Value(PtrFix(*typed_reg, typed_reg.type())),
+                              typed_reg.type());
+  }
 
   Reg PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Pointer const* t);
-  // TODO should this be unsigned?
-  RegOr<int64_t> ByteViewLength(RegOr<ir::String> val);
+  RegOr<uint64_t> ByteViewLength(RegOr<ir::String> val);
   RegOr<Addr> ByteViewData(RegOr<ir::String> val);
 
   // Type construction commands

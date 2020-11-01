@@ -58,7 +58,7 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   // them. Must references be computed first?
   for (auto const *l : node->lhs()) {
     lhs_refs.push_back(type::Typed<ir::RegOr<ir::Addr>>(
-        EmitRef(l), type::Ptr(ASSERT_NOT_NULL(context().qual_type(l))->type())));
+        EmitRef(l), ASSERT_NOT_NULL(context().qual_type(l))->type()));
   }
 
   auto ref_iter = lhs_refs.begin();
@@ -147,7 +147,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
     auto t = context().qual_type(node)->type();
     auto a = context().addr(node);
     if (node->IsCustomInitialized()) {
-      auto to = type::Typed<ir::RegOr<ir::Addr>>(a, type::Ptr(t));
+      auto to = type::Typed<ir::RegOr<ir::Addr>>(a, t);
       EmitMoveInit(node->init_val(), absl::MakeConstSpan(&to, 1));
     } else {
       if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
@@ -162,9 +162,9 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
 ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
   auto t           = type_of(node);
   auto alloc       = builder().TmpAlloca(t);
-  auto typed_alloc = type::Typed<ir::RegOr<ir::Addr>>(
-      ir::RegOr<ir::Addr>(alloc), type::Ptr(t));
-  EmitMoveInit(node, {typed_alloc});
+  auto typed_alloc =
+      type::Typed<ir::RegOr<ir::Addr>>(ir::RegOr<ir::Addr>(alloc), t);
+  EmitMoveInit(node, absl::MakeConstSpan(&typed_alloc, 1));
   return ir::Value(alloc);
 }
 
@@ -189,11 +189,11 @@ void Compiler::EmitMoveInit(
     }
 
     {
-      auto reg = builder().Field(to[0]->reg(), &struct_type, i).get();
+      auto field_reg = builder().FieldRef(to[0]->reg(), &struct_type, i);
       if (field.initial_value.empty()) {
-        EmitDefaultInit(type::Typed<ir::Reg>(reg, field.type));
+        EmitDefaultInit(field_reg);
       } else {
-        EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(reg, field.type),
+        EmitCopyAssign(field_reg,
                        type::Typed<ir::Value>(field.initial_value, field.type));
       }
     }
@@ -207,9 +207,9 @@ void Compiler::EmitMoveInit(
     auto const &id     = assignment->lhs()[0]->as<ast::Identifier>();
     auto const *f      = struct_type.field(id.name());
     size_t field_index = struct_type.index(f->name);
-    auto typed_reg = builder().Field(to[0]->reg(), &struct_type, field_index);
-    type::Typed<ir::RegOr<ir::Addr>> lhs(*typed_reg, typed_reg.type());
-    EmitMoveInit(assignment->rhs()[0], absl::MakeConstSpan(&lhs, 1));
+    type::Typed<ir::RegOr<ir::Addr>> field_reg =
+        builder().FieldRef(to[0]->reg(), &struct_type, field_index);
+    EmitMoveInit(assignment->rhs()[0], absl::MakeConstSpan(&field_reg, 1));
   }
 }
 
@@ -234,11 +234,11 @@ void Compiler::EmitCopyInit(
     }
 
     {
-      auto reg = builder().Field(to[0]->reg(), &struct_type, i).get();
+      auto field_reg = builder().FieldRef(to[0]->reg(), &struct_type, i);
       if (field.initial_value.empty()) {
-        EmitDefaultInit(type::Typed<ir::Reg>(reg, field.type));
+        EmitDefaultInit(field_reg);
       } else {
-        EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(reg, field.type),
+        EmitCopyAssign(field_reg,
                        type::Typed<ir::Value>(field.initial_value, field.type));
       }
     }
@@ -252,8 +252,9 @@ void Compiler::EmitCopyInit(
     auto const &id     = assignment->lhs()[0]->as<ast::Identifier>();
     auto const *f      = struct_type.field(id.name());
     size_t field_index = struct_type.index(f->name);
-    auto typed_reg = builder().Field(to[0]->reg(), &struct_type, field_index);
-    type::Typed<ir::RegOr<ir::Addr>> lhs(*typed_reg, typed_reg.type());
+    auto field_reg =
+        builder().FieldRef(to[0]->reg(), &struct_type, field_index);
+    type::Typed<ir::RegOr<ir::Addr>> lhs(*field_reg, field_reg.type());
     EmitCopyInit(assignment->rhs()[0], absl::MakeConstSpan(&lhs, 1));
   }
 }
@@ -428,8 +429,7 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
     type::Type ret_type  = fn_type.output()[i];
     if (ret_type->is_big()) {
       type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
-          ir::RegOr<ir::Addr>(builder().GetRet(i, ret_type)),
-          type::Ptr(ret_type));
+          ir::RegOr<ir::Addr>(builder().GetRet(i, ret_type)), ret_type);
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       builder().SetRet(i, type::Typed<ir::Value>(EmitValue(expr), ret_type));

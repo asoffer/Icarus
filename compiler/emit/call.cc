@@ -220,10 +220,8 @@ void Compiler::EmitMoveInit(
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(this, b, node->args());
     if (result.empty()) return;
-    EmitCopyAssign(
-        type::Typed<ir::RegOr<ir::Addr>>(
-            *to[0], to[0].type()->as<type::Pointer>().pointee()),
-        type::Typed<ir::Value>(result, context().qual_type(node)->type()));
+    EmitCopyAssign(to[0], type::Typed<ir::Value>(
+                              result, context().qual_type(node)->type()));
   }
 
   auto args = node->args().Transform([this](ast::Expression const *expr) {
@@ -242,10 +240,8 @@ void Compiler::EmitCopyInit(
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(this, b, node->args());
     if (result.empty()) return;
-    EmitCopyAssign(
-        type::Typed<ir::RegOr<ir::Addr>>(
-            *to[0], to[0].type()->as<type::Pointer>().pointee()),
-        type::Typed<ir::Value>(result, context().qual_type(node)->type()));
+    EmitCopyAssign(to[0], type::Typed<ir::Value>(
+                              result, context().qual_type(node)->type()));
   }
 
   auto args = node->args().Transform([this](ast::Expression const *expr) {
@@ -264,10 +260,8 @@ void Compiler::EmitAssign(
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(this, b, node->args());
     if (result.empty()) return;
-    EmitCopyAssign(
-        type::Typed<ir::RegOr<ir::Addr>>(
-            *to[0], to[0].type()->as<type::Pointer>().pointee()),
-        type::Typed<ir::Value>(result, context().qual_type(node)->type()));
+    EmitCopyAssign(to[0], type::Typed<ir::Value>(
+                              result, context().qual_type(node)->type()));
   }
 
   auto args = node->args().Transform([this](ast::Expression const *expr) {

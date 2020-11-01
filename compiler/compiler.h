@@ -512,22 +512,16 @@ struct Compiler
 
   void EmitMoveInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var) {
-    auto to_type = to_var.type()->as<type::Pointer>().pointee();
     // TODO Optimize once you understand the semantics better.
-    if (to_type->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
-
-    EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(to_var.get(), to_type),
-                   from_val);
+    if (to_var.type()->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
+    EmitMoveAssign(to_var, from_val);
   }
 
   void EmitCopyInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var) {
-    auto to_type = to_var.type()->as<type::Pointer>().pointee();
     // TODO Optimize once you understand the semantics better.
-    if (to_type->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
-
-    EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(to_var.get(), to_type),
-                   from_val);
+    if (to_var.type()->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
+    EmitCopyAssign(to_var, from_val);
   }
 
   type::QualType VerifyBinaryOverload(std::string_view symbol,

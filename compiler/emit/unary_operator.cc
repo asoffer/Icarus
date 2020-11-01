@@ -14,7 +14,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       auto reg = builder().TmpAlloca(operand_type);
       EmitCopyInit(
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type),
-          type::Typed<ir::Reg>(reg, type::Ptr(operand_type)));
+          type::Typed<ir::Reg>(reg, operand_type));
       return ir::Value(builder().PtrFix(reg, operand_type));
     } break;
     case ast::UnaryOperator::Kind::Init:
@@ -25,7 +25,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       auto reg = builder().TmpAlloca(operand_type);
       EmitMoveInit(
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type),
-          type::Typed<ir::Reg>(reg, type::Ptr(operand_type)));
+          type::Typed<ir::Reg>(reg, operand_type));
       return ir::Value(builder().PtrFix(reg, operand_type));
     } break;
     case ast::UnaryOperator::Kind::BufferPointer:
@@ -104,9 +104,7 @@ void Compiler::EmitCopyInit(
       auto from_val = EmitValue(node);
       auto from_qt  = *context().qual_type(node);
       if (to.size() == 1) {
-        EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(
-                           *to[0], to[0].type()->as<type::Pointer>().pointee()),
-                       type::Typed<ir::Value>(from_val, from_qt.type()));
+        EmitCopyAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
       } else {
         NOT_YET();
       }
@@ -131,9 +129,7 @@ void Compiler::EmitMoveInit(
       auto from_val = EmitValue(node);
       auto from_qt  = *context().qual_type(node);
       if (to.size() == 1) {
-        EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(
-                           *to[0], to[0].type()->as<type::Pointer>().pointee()),
-                       type::Typed<ir::Value>(from_val, from_qt.type()));
+        EmitMoveAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
       } else {
         NOT_YET();
       }
@@ -167,9 +163,7 @@ void Compiler::EmitAssign(
       auto from_val = EmitValue(node);
       auto from_qt  = *context().qual_type(node);
       if (to.size() == 1) {
-        EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(
-                           *to[0], to[0].type()->as<type::Pointer>().pointee()),
-                       type::Typed<ir::Value>(from_val, from_qt.type()));
+        EmitMoveAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
       } else {
         NOT_YET();
       }

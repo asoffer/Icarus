@@ -331,7 +331,7 @@ type::QualType Compiler::VerifyType(ast::Access const *node) {
     if (base_type == type::ByteView) {
       if (node->member_name() == "length") {
         return context().set_qual_type(
-            node, type::QualType(type::Int64, quals | type::Quals::Const()));
+            node, type::QualType(type::Nat64, quals & type::Quals::Const()));
       } else {
         diag().Consume(MissingMember{
             .expr_range   = node->operand()->range(),

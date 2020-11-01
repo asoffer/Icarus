@@ -237,16 +237,17 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
       for (size_t i = 0; i < r.type()->fields().size(); ++i) {
         auto &field = r.type()->fields()[i];
         if (not field.initial_value.empty()) {
+          // TODO: Support other initial value types.
           if (field.type == type::Int64) {
             EmitCopyInit(
                 type::Typed<ir::Value>(field.initial_value, field.type),
-                builder().Field(var, r.type(), i));
+                builder().FieldRef(var, r.type(), i));
           } else {
             NOT_YET();
           }
         } else {
-          EmitDefaultInit(type::Typed<ir::Reg>(
-              builder().Field(var, r.type(), i).get(), field.type));
+          EmitDefaultInit(
+              type::Typed<ir::Reg>(builder().FieldRef(var, r.type(), i)));
         }
       }
 
@@ -268,9 +269,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Struct> const &r) {
       auto var                 = ir::Reg::Arg(0);
 
       for (size_t i = 0; i < r.type()->fields().size(); ++i) {
-        EmitDestroy(
-            type::Typed<ir::Reg>(builder().Field(var, r.type(), i).get(),
-                                 r.type()->fields()[i].type));
+        EmitDestroy(type::Typed<ir::Reg>(builder().FieldRef(var, r.type(), i)));
       }
 
       builder().ReturnJump();
@@ -290,8 +289,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Tuple> const &r) {
 
       for (size_t i = 0; i < r.type()->size(); ++i) {
         EmitDefaultInit(type::Typed<ir::Reg>(
-            builder().Field(ir::Reg::Arg(0), r.type(), i).get(),
-            r.type()->entries()[i]));
+            builder().FieldRef(ir::Reg::Arg(0), r.type(), i)));
       }
 
       builder().ReturnJump();
@@ -310,8 +308,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> const &r) {
 
       for (size_t i = 0; i < r.type()->size(); ++i) {
         EmitDestroy(type::Typed<ir::Reg>(
-            builder().Field(ir::Reg::Arg(0), r.type(), i).get(),
-            r.type()->entries()[i]));
+            builder().FieldRef(ir::Reg::Arg(0), r.type(), i)));
       }
 
       builder().ReturnJump();
@@ -333,14 +330,8 @@ void Compiler::EmitMoveAssign(
       auto var                 = ir::Reg::Arg(1);
 
       for (size_t i = 0; i < to.type()->size(); ++i) {
-        auto entry = to.type()->entries()[i];
-        EmitMoveAssign(
-            type::Typed<ir::RegOr<ir::Addr>>(
-                builder().Field(var, to.type(), i).get(), entry),
-            type::Typed<ir::Value>(
-                ir::Value(builder().PtrFix(
-                    builder().Field(val, to.type(), i).get(), entry)),
-                entry));
+        EmitMoveAssign(builder().FieldRef(var, to.type(), i),
+                       builder().FieldValue(val, to.type(), i));
       }
 
       builder().ReturnJump();
@@ -363,14 +354,8 @@ void Compiler::EmitCopyAssign(
       auto var                 = ir::Reg::Arg(1);
 
       for (size_t i = 0; i < to.type()->size(); ++i) {
-        auto entry = to.type()->entries()[i];
-        EmitCopyAssign(
-            type::Typed<ir::RegOr<ir::Addr>>(
-                builder().Field(var, to.type(), i).get(), entry),
-            type::Typed<ir::Value>(
-                ir::Value(builder().PtrFix(
-                    builder().Field(val, to.type(), i).get(), entry)),
-                entry));
+        EmitCopyAssign(builder().FieldRef(var, to.type(), i),
+                       builder().FieldValue(val, to.type(), i));
       }
 
       builder().ReturnJump();
@@ -409,13 +394,8 @@ void Compiler::EmitCopyAssign(
       auto var                 = ir::Reg::Arg(1);
 
       for (size_t i = 0; i < s->fields().size(); ++i) {
-        auto field_type = s->fields()[i].type;
-        auto from       = ir::Value(
-            builder().PtrFix(builder().Field(val, s, i).get(), field_type));
-        auto to = builder().Field(var, s, i).get();
-
-        EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(to, field_type),
-                       type::Typed<ir::Value>(from, field_type));
+        EmitCopyAssign(builder().FieldRef(var, s, i),
+                       builder().FieldValue(val, s, i));
       }
 
       builder().ReturnJump();
@@ -440,13 +420,8 @@ void Compiler::EmitMoveAssign(
       auto var                 = ir::Reg::Arg(1);
 
       for (size_t i = 0; i < s->fields().size(); ++i) {
-        auto field_type = s->fields()[i].type;
-        auto from       = ir::Value(
-            builder().PtrFix(builder().Field(val, s, i).get(), field_type));
-        auto to = builder().Field(var, s, i).get();
-
-        EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(to, field_type),
-                       type::Typed<ir::Value>(from, field_type));
+        EmitMoveAssign(builder().FieldRef(var, s, i),
+                       builder().FieldValue(val, s, i));
       }
 
       builder().ReturnJump();

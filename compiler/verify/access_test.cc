@@ -9,6 +9,7 @@ namespace {
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
+using ::testing::Pointee;
 
 TEST(Access, EnumSuccess) {
   test::TestModule mod;
@@ -112,6 +113,33 @@ TEST(Access, NoFieldInStruct) {
   s: S
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(s.x)");
+  auto const *qt   = mod.context().qual_type(expr);
+  EXPECT_EQ(qt, nullptr);
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "missing-member")));
+}
+
+TEST(Access, ConstantByteViewLength) {
+  test::TestModule mod;
+  auto const *expr = mod.Append<ast::Expression>(R"("abc".length)");
+  auto const *qt   = mod.context().qual_type(expr);
+  EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Nat64)));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(Access, NonConstantByteViewLength) {
+  test::TestModule mod;
+  mod.AppendCode(R"(s := "abc")");
+  auto const *expr = mod.Append<ast::Expression>(R"(s.length)");
+  auto const *qt   = mod.context().qual_type(expr);
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Nat64)));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(Access, ByteViewInvalidMember) {
+  test::TestModule mod;
+  mod.AppendCode(R"(s := "abc")");
+  auto const *expr = mod.Append<ast::Expression>(R"(s.size)");
   auto const *qt   = mod.context().qual_type(expr);
   EXPECT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),

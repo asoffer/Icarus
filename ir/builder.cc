@@ -56,7 +56,6 @@ ir::OutParams Builder::OutParams(absl::Span<type::Type const> types) {
 ir::OutParams Builder::OutParamsMoveInit(
     absl::Span<type::Type const> types,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  LOG("", "%p", CurrentGroup());
   std::vector<Reg> regs;
   regs.reserve(types.size());
   for (size_t i = 0; i < types.size(); ++i) {
@@ -165,25 +164,24 @@ void Builder::Copy(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from) {
 }
 
 type::Typed<Reg> Builder::LoadSymbol(String name, type::Type type) {
-  LoadSymbolInstruction inst{.name = name, .type = type};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return type::Typed<Reg>(result, type);
+  return type::Typed<Reg>(
+      CurrentBlock()->Append(LoadSymbolInstruction{
+          .name = name, .type = type, .result = CurrentGroup()->Reserve()}),
+      type);
 }
 
 Reg Builder::Align(RegOr<type::Type> r) {
-  TypeInfoInstruction inst{.kind = TypeInfoInstruction::Kind::Alignment,
-                           .type = r};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
+  return CurrentBlock()->Append(
+      TypeInfoInstruction{.kind   = TypeInfoInstruction::Kind::Alignment,
+                          .type   = r,
+                          .result = CurrentGroup()->Reserve()});
 }
 
 Reg Builder::Bytes(RegOr<type::Type> r) {
-  TypeInfoInstruction inst{.kind = TypeInfoInstruction::Kind::Bytes, .type = r};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
+  return CurrentBlock()->Append(
+      TypeInfoInstruction{.kind   = TypeInfoInstruction::Kind::Bytes,
+                          .type   = r,
+                          .result = CurrentGroup()->Reserve()});
 }
 
 Reg Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
@@ -192,54 +190,48 @@ Reg Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
   if (auto result = cache.get(ptr, inc, OffsetCache::Kind::Passed)) {
     return *result;
   }
-  PtrIncrInstruction inst{.addr = ptr, .index = inc, .ptr = t};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
+  Reg result = CurrentGroup()->Reserve();
   cache.set(ptr, inc, OffsetCache::Kind::Passed, result);
-  return result;
+  return CurrentBlock()->Append(PtrIncrInstruction{
+      .addr = ptr, .index = inc, .ptr = t, .result = result});
 }
 
-RegOr<int64_t> Builder::ByteViewLength(RegOr<ir::String> val) {
+RegOr<uint64_t> Builder::ByteViewLength(RegOr<ir::String> val) {
   if (not val.is_reg()) { return val.value().get().size(); }
-  ByteViewLengthInstruction inst{.reg = val.reg()};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
+  return CurrentBlock()->Append(ByteViewLengthInstruction{
+      .reg = val.reg(), .result = CurrentGroup()->Reserve()});
 }
 
 RegOr<Addr> Builder::ByteViewData(RegOr<ir::String> val) {
   if (not val.is_reg()) { return val.value().addr(); }
-  ByteViewDataInstruction inst{.reg = val.reg()};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
+  return CurrentBlock()->Append(ByteViewDataInstruction{
+      .reg = val.reg(), .result = CurrentGroup()->Reserve()});
 }
 
-type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Tuple const *t,
-                                int64_t n) {
+type::Typed<Reg> Builder::FieldRef(RegOr<Addr> r, type::Tuple const *t,
+                                   int64_t n) {
   auto &cache = CurrentBlock()->offset_cache();
   if (auto result = cache.get(r, n, OffsetCache::Kind::Into)) {
-    return type::Typed<Reg>(*result, type::Ptr(t->entries_.at(n)));
+    return type::Typed<Reg>(*result, t->entries()[n]);
   }
-
-  TupleIndexInstruction inst{.addr = r, .index = n, .tuple = t};
-  auto result = inst.result = CurrentGroup()->Reserve();
+  Reg result = CurrentGroup()->Reserve();
   cache.set(r, n, OffsetCache::Kind::Into, result);
-  CurrentBlock()->Append(std::move(inst));
-  return type::Typed<Reg>(result, type::Ptr(t->entries_.at(n)));
+  CurrentBlock()->Append(TupleIndexInstruction{
+      .addr = r, .index = n, .tuple = t, .result = result});
+  return type::Typed<Reg>(result, t->entries()[n]);
 }
 
-type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
-                                int64_t n) {
+type::Typed<Reg> Builder::FieldRef(RegOr<Addr> r, type::Struct const *t,
+                                   int64_t n) {
   auto &cache = CurrentBlock()->offset_cache();
   if (auto result = cache.get(r, n, OffsetCache::Kind::Into)) {
-    return type::Typed<Reg>(*result, type::Ptr(t->fields()[n].type));
+    return type::Typed<Reg>(*result, t->fields()[n].type);
   }
-  StructIndexInstruction inst{.addr = r, .index = n, .struct_type = t};
-  auto result = inst.result = CurrentGroup()->Reserve();
+  Reg result = CurrentGroup()->Reserve();
   cache.set(r, n, OffsetCache::Kind::Into, result);
-  CurrentBlock()->Append(std::move(inst));
-  return type::Typed<Reg>(result, type::Ptr(t->fields()[n].type));
+  CurrentBlock()->Append(StructIndexInstruction{
+      .addr = r, .index = n, .struct_type = t, .result = result});
+  return type::Typed<Reg>(result, t->fields()[n].type);
 }
 
 Reg Builder::MakeBlock(Block block, std::vector<RegOr<Fn>> befores,

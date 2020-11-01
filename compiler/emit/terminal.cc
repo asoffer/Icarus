@@ -13,9 +13,7 @@ void Compiler::EmitAssign(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   auto t = context().qual_type(node)->type();
   ASSERT(to.size() == 1u);
-  EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(
-                     *to[0], to[0].type()->as<type::Pointer>().pointee()),
-                 type::Typed<ir::Value>(EmitValue(node), t));
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 // TODO: Unit tests

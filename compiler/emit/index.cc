@@ -65,7 +65,7 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
         builder()
             .CastTo<int64_t>(type::Typed<ir::Value>(maybe_val, rhs_type))
             .value();
-    return builder().Field(EmitRef(node->lhs()), tup, index).get();
+    return builder().FieldRef(EmitRef(node->lhs()), tup, index).get();
   }
   UNREACHABLE(*this, lhs_type->to_string());
 }

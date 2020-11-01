@@ -42,39 +42,59 @@ TEST_P(AccessTest, Access) {
 INSTANTIATE_TEST_SUITE_P(All, AccessTest,
                          testing::ValuesIn({
                              TestCase{.expr     = R"((() -> int64 {
-                                s: S
-                                s.n = 3
-                                return s.n
+                               s: S
+                               s.n = 3
+                               return s.n
                              })()
                              )",
                                       .expected = ir::Value(int64_t{3})},
                              TestCase{.expr     = R"((() -> int64 {
-                                s: S
-                                s.n = 3
-                                s.p = &s.n
-                                return @s.p
+                               s: S
+                               s.n = 3
+                               s.p = &s.n
+                               return @s.p
                              })()
                              )",
                                       .expected = ir::Value(int64_t{3})},
                              TestCase{.expr     = R"((() -> int64 {
-                                s: S
-                                s.n = 3
-                                s.p = &s.n
-                                s.sp = &s
-                                return s.sp.n
+                               s: S
+                               s.n = 3
+                               s.p = &s.n
+                               s.sp = &s
+                               return s.sp.n
                              })()
                              )",
                                       .expected = ir::Value(int64_t{3})},
                              TestCase{.expr     = R"((() -> int64 {
-                                s: S
-                                ptr := &s
-                                ptr.n = 3
-                                ptr.p = &ptr.n
-                                ptr.sp = &s
-                                return ptr.sp.n
+                               s: S
+                               ptr := &s
+                               ptr.n = 3
+                               ptr.p = &ptr.n
+                               ptr.sp = &s
+                               return ptr.sp.n
                              })()
                              )",
                                       .expected = ir::Value(int64_t{3})},
+                             TestCase{.expr     = R"((() -> nat64 {
+                               return "abc".length
+                             })()
+                             )",
+                                      .expected = ir::Value(uint64_t{3})},
+                             TestCase{.expr     = R"((() -> int64 {
+                               s := S.{n = 3}
+                               x := copy s.n
+                               return x
+                             })()
+                             )",
+                                      .expected = ir::Value(int64_t{3})},
+                             TestCase{.expr     = R"((() -> int64 {
+                               s := S.{n = 3}
+                               x := move s.n
+                               return x
+                             })()
+                             )",
+                                      .expected = ir::Value(int64_t{3})},
+
                          }));
 
 // TODO: Add a test that covers pointer parameters.
