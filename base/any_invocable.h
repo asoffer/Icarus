@@ -1,9 +1,11 @@
 #ifndef ICARUS_BASE_ANY_INVOCABLE_H
 #define ICARUS_BASE_ANY_INVOCABLE_H
 
+#include <concepts>
 #include <utility>
 
 namespace base {
+namespace internal_any_invocable {
 
 template <typename R, typename... Args>
 struct AnyInvocableVTable {
@@ -27,24 +29,30 @@ inline constexpr auto AnyInvocableVTableFor = AnyInvocableVTable<R, Args...>{
     .destroy = [](void* self) { delete reinterpret_cast<F*>(self); },
 };
 
-template <typename F>
+}  // namespace internal_any_invocable
+
+template <typename>
 struct any_invocable;
 
 template <typename R, typename... Args>
 struct any_invocable<R(Args...)> {
  public:
   any_invocable(std::nullptr_t = nullptr) noexcept
-      : data_(nullptr), vtable_(&DefaultAnyInvocableVTable<R, Args...>) {}
+      : data_(nullptr),
+        vtable_(
+            &internal_any_invocable::DefaultAnyInvocableVTable<R, Args...>) {}
 
-  template <typename F>
+  template <std::invocable<Args...> F>
   any_invocable(F&& f) noexcept
       : data_(new std::decay_t<F>(std::forward<F>(f))),
-        vtable_(&AnyInvocableVTableFor<std::decay_t<F>, R, Args...>) {}
+        vtable_(&internal_any_invocable::AnyInvocableVTableFor<std::decay_t<F>,
+                                                               R, Args...>) {}
 
   any_invocable(any_invocable&& f) noexcept
       : data_(std::exchange(f.data_, nullptr)),
-        vtable_(
-            std::exchange(f.vtable_, &DefaultAnyInvocableVTable<R, Args...>)) {}
+        vtable_(std::exchange(
+            f.vtable_,
+            &internal_any_invocable::DefaultAnyInvocableVTable<R, Args...>)) {}
 
   ~any_invocable() { vtable_->destroy(data_); }
 
@@ -55,17 +63,17 @@ struct any_invocable<R(Args...)> {
     return *this;
   }
 
-
   any_invocable& operator=(std::nullptr_t) noexcept {
     vtable_->destroy(data_);
-    vtable_ = &DefaultAnyInvocableVTable<R, Args...>;
+    vtable_ = &internal_any_invocable::DefaultAnyInvocableVTable<R, Args...>;
     data_   = nullptr;
     return *this;
   }
-  template <typename F>
+  template <std::invocable<Args...> F>
   any_invocable& operator=(F&& f) noexcept {
     vtable_->destroy(data_);
-    vtable_ = &AnyInvocableVTableFor<std::decay_t<F>, R, Args...>;
+    vtable_ = &internal_any_invocable::AnyInvocableVTableFor<std::decay_t<F>, R,
+                                                             Args...>;
     data_   = new std::decay_t<F>(std::forward<F>(f));
     return *this;
   }
@@ -93,7 +101,7 @@ struct any_invocable<R(Args...)> {
  private:
   // TODO: Implement SBO
   void* data_;
-  AnyInvocableVTable<R, Args...> const* vtable_;
+  internal_any_invocable::AnyInvocableVTable<R, Args...> const* vtable_;
 };
 
 }  // namespace base
