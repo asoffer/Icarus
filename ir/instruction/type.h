@@ -239,10 +239,8 @@ struct StructInstruction
     std::vector<type::Struct::Field> struct_fields;
     struct_fields.reserve(fields.size());
     for (auto const& field : fields) {
-      std::vector<ast::Hashtag> tags;
-      if (field.exported()) {
-        tags.emplace_back(ast::Hashtag::Builtin::Export);
-      }
+      absl::flat_hash_set<ir::Hashtag> tags;
+      if (field.exported()) { tags.insert(ir::Hashtag::Export); }
 
       if (ir::Value const* init_val = field.initial_value()) {
         type::Type t = ctx.resolve(field.type());
@@ -250,14 +248,14 @@ struct StructInstruction
             .name          = std::string(field.name()),
             .type          = t,
             .initial_value = *init_val,
-            .hashtags_     = std::move(tags),
+            .hashtags      = std::move(tags),
         });
       } else {
         struct_fields.push_back(type::Struct::Field{
             .name          = std::string(field.name()),
             .type          = ctx.resolve(field.type()),
             .initial_value = ir::Value(),
-            .hashtags_     = std::move(tags),
+            .hashtags      = std::move(tags),
         });
       }
     }

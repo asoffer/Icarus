@@ -7,11 +7,12 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/types/span.h"
-#include "ast/hashtag.h"
 #include "ast/scope/scope.h"
 #include "base/lazy.h"
 #include "ir/value/fn.h"
+#include "ir/value/hashtag.h"
 #include "ir/value/native_fn.h"
 #include "ir/value/value.h"
 #include "type/type.h"
@@ -26,17 +27,10 @@ struct Struct : public LegacyType {
   struct Field {
     // TODO make a string_view but deal with trickiness of moving
 
-    bool contains_hashtag(ast::Hashtag const &h) const {
-      for (auto const &tag : hashtags_) {
-        if (h == tag) { return true; }
-      }
-      return false;
-    }
-
     std::string name;
     Type type = nullptr;
     ir::Value initial_value;
-    std::vector<ast::Hashtag> hashtags_;
+    absl::flat_hash_set<ir::Hashtag> hashtags;
   };
 
   struct Options {
@@ -79,12 +73,10 @@ struct Struct : public LegacyType {
   absl::Span<Field const> fields() const { return fields_; }
   size_t index(std::string_view name) const;
 
-  bool contains_hashtag(ast::Hashtag needle) const;
-
   module::BasicModule const *mod_ = nullptr;
   Completeness completeness_      = Completeness::Incomplete;
 
-  std::vector<ast::Hashtag> hashtags_;
+  std::vector<ir::Hashtag> hashtags;
   std::vector<Field> fields_;
   std::optional<ir::Fn> init_, user_dtor_, dtor_, copy_assign_, move_assign_;
   absl::flat_hash_map<std::string_view, size_t> field_indices_;

@@ -2,7 +2,9 @@
 #define ICARUS_FRONTEND_LEX_TAGGED_NODE_H
 
 #include <memory>
+#include <utility>
 
+#include "base/meta.h"
 #include "frontend/lex/lexeme.h"
 #include "frontend/lex/tag.h"
 #include "frontend/lex/token.h"
@@ -20,30 +22,16 @@ struct TaggedNode {
     auto range = l.range();
     std::visit(
         [&](auto &&x) {
-          using T = std::decay_t<decltype(x)>;
-          if constexpr (std::is_same_v<T, Syntax>) {
+          constexpr auto type = base::meta<std::decay_t<decltype(x)>>;
+          if constexpr (type == base::meta<Syntax>) {
             node_ = std::make_unique<Token>(range, stringify(x), false);
-          } else if constexpr (std::is_same_v<T, Operator>) {
+          } else if constexpr (type == base::meta<Operator>) {
             node_ = std::make_unique<Token>(range, stringify(x), false);
-          } else if constexpr (std::is_same_v<T, std::unique_ptr<ast::Node>>) {
+          } else if constexpr (type == base::meta<std::unique_ptr<ast::Node>>) {
             node_ = std::move(x);
           } else {
-            std::string token;
-            switch (x.kind()) {
-              case ast::Hashtag::Builtin::Export: token = "{export}"; break;
-              case ast::Hashtag::Builtin::NoDefault:
-                token = "{no_default}";
-                break;
-              case ast::Hashtag::Builtin::Uncopyable:
-                token = "{uncopyable}";
-                break;
-              case ast::Hashtag::Builtin::Immovable:
-                token = "{immovable}";
-                break;
-              case ast::Hashtag::Builtin::Inline: token = "{inline}"; break;
-              case ast::Hashtag::Builtin::User: token = x.user_tag(); break;
-            }
-            node_ = std::make_unique<Token>(range, token, true);
+            node_ = std::make_unique<Token>(
+                range, std::string(ir::ToStringView(x)), true);
           }
         },
         std::move(l).get());

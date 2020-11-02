@@ -384,9 +384,8 @@ base::expected<Lexeme, HashtagError> NextHashtag(SourceCursor *cursor,
     cursor->remove_prefix(1);
     span = span.expanded(Offset(1));
 
-    if (auto iter = BuiltinHashtagMap->find(token);
-        iter != BuiltinHashtagMap->end()) {
-      return Lexeme(ast::Hashtag{iter->second}, span);
+    for (auto [name, tag] : ir::BuiltinHashtagsByName) {
+      if (token == name) { return Lexeme(tag, span); }
     }
 
     return HashtagError::kUnrecognizedHashtag;

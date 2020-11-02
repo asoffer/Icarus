@@ -217,8 +217,7 @@ type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
 
   // Struct field members need to be exported in addition to the struct itself.
   if (&c->context().module() != s->defining_module() and
-      not member->contains_hashtag(
-          ast::Hashtag(ast::Hashtag::Builtin::Export))) {
+      not member->hashtags.contains(ir::Hashtag::Export)) {
     c->diag().Consume(NonExportedMember{
         .member = std::string{node->member_name()},
         .type   = s,

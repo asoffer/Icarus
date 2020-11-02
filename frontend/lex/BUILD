@@ -9,11 +9,11 @@ cc_library(
         ":lexeme",
         ":numbers",
         "//ast:ast",
-        "//ast:hashtag",
         "//base:global",
         "//diagnostic/consumer",
         "//frontend/source:cursor",
         "//ir/value:builtin_fn",
+        "//ir/value:hashtag",
         "//ir/value:string",
         "//type:primitive",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -86,7 +86,11 @@ cc_library(
 cc_library(
     name = "tagged_node",
     hdrs = ["tagged_node.h"],
-    deps = [":tag", ":lexeme"],
+    deps = [
+        ":tag",
+        ":lexeme",
+        "//base:meta",
+    ],
 )
 
 cc_library(

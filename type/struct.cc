@@ -1,8 +1,8 @@
 #include "type/struct.h"
 
-#include "ast/hashtag.h"
 #include "base/guarded.h"
 #include "core/arch.h"
+#include "ir/value/hashtag.h"
 #include "module/module.h"
 #include "type/function.h"
 #include "type/pointer.h"
@@ -86,13 +86,6 @@ Struct::Field const *Struct::field(std::string_view name) const {
 void Struct::WriteTo(std::string *result) const {
   result->append("struct.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
-}
-
-bool Struct::contains_hashtag(ast::Hashtag needle) const {
-  for (auto const &tag : hashtags_) {
-    if (tag == needle) { return true; }
-  }
-  return false;
 }
 
 core::Bytes Struct::bytes(core::Arch const &a) const {

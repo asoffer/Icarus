@@ -83,7 +83,11 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       // that module. They must be at the root of the binding tree map,
       // otherwise they would be local to some function/jump/etc. and not be
       // exported.
-      return node->module()->as<CompiledModule>().context().Constant(node)->value;
+      return node->module()
+          ->as<CompiledModule>()
+          .context()
+          .Constant(node)
+          ->value;
     }
 
     if (node->flags() & ast::Declaration::f_IsFnParam) {
@@ -160,8 +164,8 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
-  auto t           = type_of(node);
-  auto alloc       = builder().TmpAlloca(t);
+  auto t     = type_of(node);
+  auto alloc = builder().TmpAlloca(t);
   auto typed_alloc =
       type::Typed<ir::RegOr<ir::Addr>>(ir::RegOr<ir::Addr>(alloc), t);
   EmitMoveInit(node, absl::MakeConstSpan(&typed_alloc, 1));
@@ -434,8 +438,8 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
       node->exprs().size() ==
       fn_type.output().size());  // TODO: For now, assume no actual expansion.
   for (size_t i = 0; i < node->exprs().size(); ++i) {
-    auto const *expr     = node->exprs()[i];
-    type::Type ret_type  = fn_type.output()[i];
+    auto const *expr    = node->exprs()[i];
+    type::Type ret_type = fn_type.output()[i];
     if (ret_type->is_big()) {
       type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
           ir::RegOr<ir::Addr>(builder().GetRet(i, ret_type)), ret_type);
@@ -561,7 +565,8 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
     bool has_field_needing_destruction = false;
     std::optional<ir::Fn> user_dtor, move_assign;
     for (auto const &field : node->fields()) {
-      // TODO: Decide whether to support all hashtags. For now just covering export.
+      // TODO: Decide whether to support all hashtags. For now just covering
+      // export.
       if (field.id() == "destroy") {
         // TODO: handle potential errors here.
         user_dtor = EmitValue(field.init_val()).get<ir::Fn>();
@@ -578,14 +583,14 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
         if (auto *init_val = field.init_val()) {
           // TODO init_val type may not be the same.
           field_type = qual_type_of(init_val)->type();
-          fields.emplace_back(field.id(), field_type, EmitValue(init_val))
-              .set_export(field.contains_hashtag(
-                  ast::Hashtag(ast::Hashtag::Builtin::Export)));
+          fields.emplace_back(field.id(), field_type, EmitValue(init_val));
+          fields.back().set_export(
+              field.hashtags.contains(ir::Hashtag::Export));
         } else {
           field_type = EmitValue(field.type_expr()).get<type::Type>();
-          fields.emplace_back(field.id(), field_type)
-              .set_export(field.contains_hashtag(
-                  ast::Hashtag(ast::Hashtag::Builtin::Export)));
+          fields.emplace_back(field.id(), field_type);
+          fields.back().set_export(
+              field.hashtags.contains(ir::Hashtag::Export));
         }
         has_field_needing_destruction =
             has_field_needing_destruction or field_type->HasDestructor();
@@ -644,10 +649,8 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   type::Struct *s = type::Allocate<type::Struct>(
       &context().module(),
       type::Struct::Options{
-          .is_copyable = not node->contains_hashtag(
-              ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
-          .is_movable = not node->contains_hashtag(
-              ast::Hashtag(ast::Hashtag::Builtin::Immovable)),
+          .is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
+          .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),
       });
 
   LOG("struct", "Allocating a new struct %p for %p", s, node);

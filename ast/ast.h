@@ -10,7 +10,6 @@
 #include "absl/types/span.h"
 #include "ast/build_param_dependency_graph.h"
 #include "ast/expression.h"
-#include "ast/hashtag.h"
 #include "ast/jump_options.h"
 #include "ast/node.h"
 #include "ast/scope/decl.h"

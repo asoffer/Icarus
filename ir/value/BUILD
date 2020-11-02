@@ -131,6 +131,11 @@ cc_test(
 )
 
 cc_library(
+    name = "hashtag",
+    hdrs = ["hashtag.h"],
+)
+
+cc_library(
     name = "jump",
     hdrs = ["jump.h"],
 )
@@ -272,12 +277,13 @@ cc_library(
         ":addr",
         ":block",
         ":enum_and_flags",
+        ":hashtag",
         ":jump",
         ":label",
         ":module_id",
+        ":reg_or",
         ":scope",
         ":string",
-        ":reg_or",
         "//base:guarded",
         "//base:meta",
         "//core:fn_args",

@@ -51,8 +51,8 @@ cc_library(
     name = "expression",
     hdrs = ["expression.h"],
     deps = [
-        ":hashtag",
         ":node",
+        "//ir/value:hashtag",
     ],
 )
 
@@ -73,12 +73,6 @@ cc_library(
         "//base:cast",
         "//frontend/source:range",
     ],
-)
-
-cc_library(
-    name = "hashtag",
-    hdrs = ["hashtag.h"],
-    deps = ["//base:debug"],
 )
 
 cc_library(

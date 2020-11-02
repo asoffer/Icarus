@@ -333,15 +333,19 @@ std::unique_ptr<ast::Node> AddHashtag(
     diagnostic::DiagnosticConsumer &diag) {
   auto expr              = move_as<ast::Expression>(nodes.back());
   std::string_view token = nodes.front()->as<Token>().token;
-  if (auto iter = BuiltinHashtagMap->find(token);
-      iter != BuiltinHashtagMap->end()) {
-    expr->hashtags_.emplace_back(iter->second);
-  } else if (token.front() == '{' or token.back() == '}') {
+
+  for (auto [name, tag] : ir::BuiltinHashtagsByName) {
+    if (token == name) {
+      expr->hashtags.insert(tag);
+      return expr;
+    }
+  }
+
+  if (token.front() == '{' or token.back() == '}') {
     diag.Consume(UnknownBuiltinHashtag{.token = std::string{token},
                                        .range = nodes.front()->range()});
   } else {
-    // User-defined hashtag.
-    expr->hashtags_.emplace_back(std::string{token});
+    // TODO: User-defined hashtag.
   }
   return expr;
 }

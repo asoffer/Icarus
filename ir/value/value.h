@@ -9,6 +9,7 @@
 #include "ir/value/addr.h"
 #include "ir/value/block.h"
 #include "ir/value/enum_and_flags.h"
+#include "ir/value/hashtag.h"
 #include "ir/value/jump.h"
 #include "ir/value/label.h"
 #include "ir/value/module_id.h"
@@ -44,7 +45,7 @@ struct Value {
       base::type_list<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                       uint16_t, uint32_t, uint64_t, float, double, type::Type,
                       Reg, Addr, String, FlagsVal, EnumVal, ModuleId, Fn,
-                      GenericFn, Jump, Block, Scope, Label, Empty>;
+                      GenericFn, Jump, Block, Hashtag, Scope, Label, Empty>;
 
   static constexpr size_t value_size_v = std::max(
       {sizeof(bool),     sizeof(int8_t),   sizeof(int16_t),  sizeof(int32_t),
@@ -52,7 +53,7 @@ struct Value {
        sizeof(uint64_t), sizeof(float),    sizeof(double),   sizeof(type::Type),
        sizeof(Reg),      sizeof(Addr),     sizeof(String),   sizeof(FlagsVal),
        sizeof(EnumVal),  sizeof(ModuleId), sizeof(Jump),     sizeof(Block),
-       sizeof(Scope),    sizeof(Label),    sizeof(Empty)});
+       sizeof(Hashtag),  sizeof(Scope),    sizeof(Label),    sizeof(Empty)});
   // The above happen to cover the alignment of Fn, GenericFn, but we have
   // layering issues here and those are incomplete when this line is processed.
 
@@ -64,8 +65,8 @@ struct Value {
                 alignof(float),    alignof(double),   alignof(type::Type),
                 alignof(Reg),      alignof(Addr),     alignof(String),
                 alignof(FlagsVal), alignof(EnumVal),  alignof(ModuleId),
-                alignof(Jump),     alignof(Block),    alignof(Scope),
-                alignof(Label),    alignof(Empty)});
+                alignof(Jump),     alignof(Block),    alignof(Hashtag),
+                alignof(Scope),    alignof(Label),    alignof(Empty)});
   // The above happen to cover the alignment of Fn, GenericFn, but we have
   // layering issues here and those are incomplete when this line is processed.
 
@@ -142,8 +143,8 @@ struct Value {
   friend H AbslHashValue(H h, Value const& v) {
     v.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                  uint32_t, uint64_t, float, double, type::Type, Addr,
-                 /*String, */ EnumVal, FlagsVal, /* Fn, GenericFn, */ Jump, Reg,
-                 ModuleId, Empty>(
+                 /*String, */ EnumVal, FlagsVal, /* Fn, GenericFn, */ Hashtag,
+                 Jump, Reg, ModuleId, Empty>(
         [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
     return h;
   }
@@ -172,7 +173,7 @@ struct Value {
     bool eq;
     lhs.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                    uint32_t, uint64_t, float, double, type::Type, Reg, Addr,
-                   String, EnumVal, FlagsVal, ModuleId, Empty>(
+                   Hashtag, String, EnumVal, FlagsVal, ModuleId, Empty>(
         [&rhs, &eq](auto x) {
           eq = (x == rhs.get<std::decay_t<decltype(x)>>());
         });
@@ -188,8 +189,8 @@ struct Value {
     if (value.type_ == base::meta<Fn>) { return os << "fn"; }
     value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                      uint32_t, uint64_t, float, double, type::Type, Reg, Addr,
-                     String, FlagsVal, EnumVal, ModuleId, Jump, Block, Scope,
-                     Empty>([&os](auto x) { os << x; });
+                     String, FlagsVal, EnumVal, ModuleId, Hashtag, Jump, Block,
+                     Scope, Empty>([&os](auto x) { os << x; });
     return os;
   }
 

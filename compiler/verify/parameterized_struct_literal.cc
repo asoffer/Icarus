@@ -26,10 +26,8 @@ type::QualType Compiler::VerifyType(
     if (inserted) {
       type::Struct *s = new type::Struct(
           &c.context().module(),
-          {.is_copyable = not node->contains_hashtag(
-               ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
-           .is_movable = not node->contains_hashtag(
-               ast::Hashtag(ast::Hashtag::Builtin::Immovable))});
+          {.is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
+           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable)});
 
       LOG("struct", "Allocating a new (parameterized) struct %p for %p", s,
           node);

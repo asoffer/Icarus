@@ -17,7 +17,7 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
     if (not decl) { continue; }
 
     // TODO: This presumes we don't have conditional exports.
-    if (decl->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Export))) {
+    if (decl->hashtags.contains(ir::Hashtag::Export)) {
       exported_declarations_[decl->id()].push_back(decl);
     }
   }

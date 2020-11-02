@@ -2,6 +2,7 @@
 #define ICARUS_FRONTEND_LEX_LEXEME_H
 
 #include <iostream>
+#include <memory>
 
 #include "ast/ast.h"
 #include "ast/node.h"
@@ -9,6 +10,7 @@
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
 #include "frontend/lex/tag.h"
+#include "ir/value/hashtag.h"
 
 namespace frontend {
 
@@ -22,12 +24,12 @@ struct Lexeme {
       : value_(op), range_(range) {}
   explicit Lexeme(Syntax s, SourceRange const& range)
       : value_(s), range_(range) {}
-  explicit Lexeme(ast::Hashtag h, SourceRange const& range)
+  explicit Lexeme(ir::Hashtag h, SourceRange const& range)
       : value_(h), range_(range) {}
 
   constexpr Operator op() const { return std::get<Operator>(value_); }
 
-  std::variant<std::unique_ptr<ast::Node>, Operator, Syntax, ast::Hashtag>
+  std::variant<std::unique_ptr<ast::Node>, Operator, Syntax, ir::Hashtag>
   get() && {
     return std::move(value_);
   }
@@ -40,18 +42,19 @@ struct Lexeme {
   constexpr Tag tag() const {
     return std::visit(
         [](auto&& x) {
-          using T = std::decay_t<decltype(x)>;
-          if constexpr (std::is_same_v<T, Syntax>) {
+          using T   = std::decay_t<decltype(x)>;
+          constexpr auto type = base::meta<T>;
+          if constexpr (type == base::meta<Syntax>) {
             return TagFrom(x);
-          } else if constexpr (std::is_same_v<T, Operator>) {
+          } else if constexpr (type == base::meta<Operator>) {
             return TagFrom(x);
-          } else if constexpr (std::is_same_v<T, std::unique_ptr<ast::Node>>) {
+          } else if constexpr (type == base::meta<std::unique_ptr<ast::Node>>) {
             if (x->template is<ast::Label>()) {
               return label;
             } else {
               return expr;
             }
-          } else if constexpr (std::is_same_v<T, ast::Hashtag>) {
+          } else if constexpr (type == base::meta<ir::Hashtag>) {
             return hashtag;
           } else {
             static_assert(base::always_false<T>());
@@ -63,7 +66,7 @@ struct Lexeme {
   SourceRange range() const { return range_; }
 
  private:
-  std::variant<std::unique_ptr<ast::Node>, Operator, Syntax, ast::Hashtag>
+  std::variant<std::unique_ptr<ast::Node>, Operator, Syntax, ir::Hashtag>
       value_;
   SourceRange range_;
 };

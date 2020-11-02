@@ -1,9 +1,10 @@
 #ifndef ICARUS_AST_EXPRESSION_H
 #define ICARUS_AST_EXPRESSION_H
 
-#include "ast/hashtag.h"
+#include "absl/container/flat_hash_set.h"
 #include "ast/node.h"
 #include "ast/scope/scope.h"
+#include "ir/value/hashtag.h"
 
 namespace ast {
 
@@ -18,15 +19,9 @@ struct Expression : public Node {
 
   virtual ~Expression() {}
 
-  std::vector<Hashtag> hashtags_;
   bool parenthesized_ = false;
 
-  bool contains_hashtag(Hashtag const &h) const {
-    for (auto const &tag : hashtags_) {
-      if (tag == h) { return true; }
-    }
-    return false;
-  }
+  absl::flat_hash_set<ir::Hashtag> hashtags;
 };
 
 }  // namespace ast
