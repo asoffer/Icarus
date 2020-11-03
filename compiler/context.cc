@@ -137,12 +137,14 @@ type::Struct *Context::get_struct(ast::StructLiteral const *s) const {
 
 void Context::set_struct(ast::StructLiteral const *sl, type::Struct *s) {
   structs_.emplace(sl, s);
+  reverse_structs_.emplace(s, sl);
 }
 
 type::Struct *Context::get_struct(
     ast::ParameterizedStructLiteral const *s) const {
-  auto iter = param_structs_.find(s);
-  if (iter != param_structs_.end()) { return iter->second; }
+  if (auto iter = param_structs_.find(s); iter != param_structs_.end()) {
+    return iter->second;
+  }
   if (not parent()) { return nullptr; }
   return parent()->get_struct(s);
 }
@@ -150,6 +152,15 @@ type::Struct *Context::get_struct(
 void Context::set_struct(ast::ParameterizedStructLiteral const *sl,
                          type::Struct *s) {
   param_structs_.emplace(sl, s);
+  reverse_structs_.emplace(s, sl);
+}
+
+ast::Expression const *Context::ast_struct(type::Struct const *s) const {
+  if (auto iter = reverse_structs_.find(s); iter != reverse_structs_.end()) {
+    return iter->second;
+  }
+  if (not parent()) { return nullptr; }
+  return parent()->ast_struct(s);
 }
 
 bool Context::ShouldVerifyBody(ast::Node const *node) {

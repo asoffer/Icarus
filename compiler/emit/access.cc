@@ -36,10 +36,18 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
   auto op_qt         = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
+  // TODO: This trick is good except that parameters look like references when
+  // really they're by value for small types.
   size_t deref_count = (op_qt.quals() >= type::Quals::Ref())
                            ? size_t{0}
                            : static_cast<size_t>(-1);
-  auto t         = op_qt.type();
+  auto t = op_qt.type();
+
+  auto ref = EmitRef(node->operand());
+  if (ref.is_reg() and ref.reg().is_arg() and not t->is_big()) {
+    --deref_count;
+  }
+
   auto const *tp = t->if_as<type::Pointer>();
   while (tp) {
     t  = tp->pointee();
@@ -48,7 +56,7 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
   }
 
   ir::Value reg = (op_qt.quals() >= type::Quals::Ref())
-                      ? ir::Value(EmitRef(node->operand()))
+                      ? ir::Value(ref)
                       : EmitValue(node->operand());
   for (size_t i = 0; i < deref_count; ++i) {
     reg = ir::Value(builder().Load<ir::Addr>(reg.get<ir::RegOr<ir::Addr>>()));

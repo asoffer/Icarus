@@ -3,7 +3,7 @@
 // example hard-code malloc's parameter to nat64 when in reality it is
 // `std::size_t` which may be 32-bits on some platforms.
 malloc ::= foreign("malloc", nat64 -> [*]nat8)
-free   ::= foreign("free", [*]nat8 -> ())
+free   ::= foreign("free", ([*]nat8) -> ())
 memset ::= foreign("memset", ([*]nat8, int32, nat64) -> [*]nat8)
 memcpy ::= foreign("memcpy", ([*]nat8, [*]nat8, nat64) -> [*]nat8)
 
@@ -15,11 +15,8 @@ string ::= struct {
   _data:     [*]nat8
   _length:   nat64
 
-  destroy ::= (self: *string) -> () {
-    // TODO: Correctly order destruction code emission so it only runs after the
-    // data has been completed. Until then we're just leaking all the memory.
-    // free(self._data)
-  }
+  // TODO: Copy/move assignment/construction are currently incorrect.
+  destroy ::= (self: *string) -> () { free(self._data) }
 }
 
 #{export}

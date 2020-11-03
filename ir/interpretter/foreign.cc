@@ -82,8 +82,9 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     // elements are stable.
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
-      ir::Addr addr = arguments.get<ir::Addr>(kMaxSize * i++);
-      LOG("CallFn", "Pushing pointer addr = %s", addr);
+      ir::Addr addr = arguments.get<ir::Addr>(kMaxSize * i);
+      LOG("CallFn", "Pushing pointer addr = %s stored in argument %u", addr, i);
+      ++i;
       switch (addr.kind()) {
         case ir::Addr::Kind::Heap: {
           pointer_values.push_back(addr.heap());

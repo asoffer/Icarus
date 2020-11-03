@@ -518,11 +518,11 @@ struct Compiler
   std::optional<core::Params<type::QualType>> VerifyParams(
       core::Params<std::unique_ptr<ast::Declaration>> const &params);
 
- private:
   friend struct WorkItem;
 
   WorkItem::Result CompleteStruct(ast::StructLiteral const *node);
 
+ private:
   std::optional<core::FnArgs<type::Typed<ir::Value>>> VerifyFnArgs(
       core::FnArgs<ast::Expression const *> const &args);
 

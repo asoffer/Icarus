@@ -260,9 +260,9 @@ struct Context {
 
   type::Struct *get_struct(ast::StructLiteral const *s) const;
   void set_struct(ast::StructLiteral const *sl, type::Struct *s);
-
   type::Struct *get_struct(ast::ParameterizedStructLiteral const *s) const;
   void set_struct(ast::ParameterizedStructLiteral const *sl, type::Struct *s);
+  ast::Expression const *ast_struct(type::Struct const *s) const;
 
   bool ShouldVerifyBody(ast::Node const *node);
   void ClearVerifyBody(ast::Node const *node);
@@ -408,10 +408,12 @@ struct Context {
   absl::flat_hash_map<ast::StructLiteral const *, type::Struct *> structs_;
   absl::flat_hash_map<ast::ParameterizedStructLiteral const *, type::Struct *>
       param_structs_;
+  absl::flat_hash_map<type::Struct *, ast::Expression const *> reverse_structs_;
 
   // Colleciton of modules imported by this one.
   absl::flat_hash_map<ast::Import const *, ir::ModuleId> imported_modules_;
 
+  // TODO: I'm not sure anymore if this is necessary/what we want.
   absl::flat_hash_set<ast::Node const *> body_verification_complete_;
 
   // Overloads for a callable expression, including overloads that are not
