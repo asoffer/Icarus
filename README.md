@@ -10,7 +10,7 @@ fast to compile, fast to run, and easy to migrate.
 Compiling from source requires one of the following compilers:
 
 * g++ version >= 8.3.0
-* clang++ version >= 9.0.0
+* clang++ version >= 10.0.0
 
 You will also need [Bazel](http://bazel.build) version >= 2.0.0.
 
@@ -22,8 +22,7 @@ $ cd Icarus
 $ bazel build -c opt :icarus
 ```
 
-## Design Philosophy
-Coming soon...
+## Language Documentation
 
-## Tutorial
-Coming soon...
+ * [Design Philosophy](docs/index.md)
+ * [Tour of Icarus](docs/tour.md)
