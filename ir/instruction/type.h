@@ -261,7 +261,7 @@ struct StructInstruction
     }
 
     struct_->AppendFields(std::move(struct_fields));
-    if (move_assign) { struct_->SetMoveAssignment(*move_assign); }
+    struct_->SetAssignments(std::move(assignments));
     if (dtor) { struct_->SetDestructor(*dtor); }
     ctx.current_frame().regs_.set(result, type::Type(struct_));
   }
@@ -273,7 +273,7 @@ struct StructInstruction
 
   type::Struct* struct_;
   std::vector<StructField> fields;
-  std::optional<ir::Fn> move_assign;
+  std::vector<ir::Fn> assignments;
   std::optional<ir::Fn> dtor;
   Reg result;
 };

@@ -43,12 +43,8 @@ struct Struct : public LegacyType {
   void SetDestructor(ir::Fn dtor);
   ir::Fn Destructor() const;
 
-  void SetMoveAssignment(ir::Fn move_assign);
-  ir::Fn MoveAssignment() const;
-
-  void SetCopyAssignment(ir::Fn copy_assign);
-  ir::Fn CopyAssignment() const;
-
+  void SetAssignments(absl::Span<ir::Fn const> assignments);
+  ir::Fn const* Assignment(type::Type from_type) const;
 
   bool is_big() const override { return true; }
 
@@ -76,9 +72,13 @@ struct Struct : public LegacyType {
   module::BasicModule const *mod_ = nullptr;
   Completeness completeness_      = Completeness::Incomplete;
 
+  // TODO: Make these private.
   std::vector<ir::Hashtag> hashtags;
   std::vector<Field> fields_;
-  std::optional<ir::Fn> init_, user_dtor_, dtor_, copy_assign_, move_assign_;
+  std::optional<ir::Fn> init_, user_dtor_, dtor_;
+
+ private:
+  absl::flat_hash_map<type::Type, ir::Fn> assignments_;
   absl::flat_hash_map<std::string_view, size_t> field_indices_;
 };
 

@@ -44,24 +44,18 @@ ir::Fn Struct::Destructor() const {
   return *dtor_;
 }
 
-void Struct::SetMoveAssignment(ir::Fn move_assign) {
-  flags_.is_movable = true;
-  move_assign_ = move_assign;
+void Struct::SetAssignments(absl::Span<ir::Fn const> assignments) {
+  for (ir::Fn assignment : assignments) {
+    core::Params<QualType> const &params = assignment.type()->params();
+    ASSERT(params.size() == 2u);
+    assignments_.emplace(params[1].value.type(), assignment);
+  }
 }
 
-ir::Fn Struct::MoveAssignment() const {
-  ASSERT(move_assign_.has_value() == true);
-  return *move_assign_;
-}
-
-void Struct::SetCopyAssignment(ir::Fn copy_assign) {
-  flags_.is_copyable = true;
-  copy_assign_ = copy_assign;
-}
-
-ir::Fn Struct::CopyAssignment() const {
-  ASSERT(copy_assign_.has_value() == true);
-  return *copy_assign_;
+ir::Fn const *Struct::Assignment(type::Type from_type) const {
+  auto iter = assignments_.find(from_type);
+  if (iter == assignments_.end()) { return nullptr; }
+  return &iter->second;
 }
 
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {

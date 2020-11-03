@@ -57,7 +57,13 @@ type::QualType Compiler::VerifyType(
           }
         }
         // TODO destructors and assignment
-        c.builder().Struct(s, std::move(fields), std::nullopt, std::nullopt);
+        c.current_block()->Append(
+            ir::StructInstruction{.struct_     = s,
+                                  .fields      = std::move(fields),
+                                  .assignments = {},
+                                  .dtor        = std::nullopt,
+                                  .result      = c.builder().Reserve()});
+
         c.builder().ReturnJump();
       }
 

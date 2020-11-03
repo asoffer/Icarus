@@ -10,6 +10,7 @@
 #include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/compiled_jump.h"
+#include "ir/instruction/type.h"
 #include "ir/interpretter/evaluate.h"
 #include "ir/interpretter/execution_context.h"
 #include "ir/struct_field.h"
@@ -563,7 +564,8 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
     std::vector<ir::StructField> fields;
 
     bool has_field_needing_destruction = false;
-    std::optional<ir::Fn> user_dtor, move_assign;
+    std::optional<ir::Fn> user_dtor;
+    std::vector<ir::Fn> assignments;
     for (auto const &field : node->fields()) {
       // TODO: Decide whether to support all hashtags. For now just covering
       // export.
@@ -572,12 +574,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
         user_dtor = EmitValue(field.init_val()).get<ir::Fn>();
       } else if (field.id() == "assign") {
         // TODO handle potential errors here.
-        auto assign_value = EmitValue(field.init_val());
-        if (auto const *move_assign_fn = assign_value.get_if<ir::Fn>()) {
-          move_assign = *move_assign_fn;
-        } else {
-          NOT_YET("Log an error");
-        }
+        assignments.push_back(EmitValue(field.init_val()).get<ir::Fn>());
       } else {
         type::Type field_type;
         if (auto *init_val = field.init_val()) {
@@ -625,7 +622,33 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
       if (user_dtor) { dtor = *user_dtor; }
     }
 
-    builder().Struct(s, std::move(fields), move_assign, dtor);
+    // If no assignments are specified, add a compiler-generated default.
+    if (assignments.empty()) {
+      auto [fn, inserted] = context().root().InsertMoveAssign(s, s);
+      if (inserted) {
+        ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
+          builder().CurrentBlock() = fn->entry();
+          auto var                 = ir::Reg::Arg(0);
+          auto val                 = ir::Reg::Arg(1);
+
+          for (size_t i = 0; i < s->fields().size(); ++i) {
+            EmitMoveAssign(builder().FieldRef(var, s, i),
+                           builder().FieldValue(val, s, i));
+          }
+
+          builder().ReturnJump();
+        }
+        fn->WriteByteCode<interpretter::instruction_set_t>();
+      }
+      assignments.push_back(fn);
+    }
+
+    current_block()->Append(
+        ir::StructInstruction{.struct_     = s,
+                              .fields      = std::move(fields),
+                              .assignments = std::move(assignments),
+                              .dtor        = dtor,
+                              .result      = builder().Reserve()});
     builder().ReturnJump();
   }
 

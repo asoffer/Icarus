@@ -278,17 +278,6 @@ Reg Builder::Flags(
   return result;
 }
 
-Reg Builder::Struct(type::Struct *s, std::vector<StructField> fields,
-                    std::optional<ir::Fn> assign, std::optional<ir::Fn> dtor) {
-  StructInstruction inst{.struct_     = s,
-                         .fields      = std::move(fields),
-                         .move_assign = assign,
-                         .dtor        = dtor};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
-}
-
 // TODO: Right now function types can be generic and have parameter names as
 // part of the signature, but we don't actually have any way to emit IR for
 // these.

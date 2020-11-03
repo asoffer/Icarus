@@ -60,6 +60,8 @@ struct Builder {
     return result;
   }
 
+  Reg Reserve() { return CurrentGroup()->Reserve(); }
+
   internal::BlockGroupBase*& CurrentGroup() { return current_.group_; }
   BasicBlock*& CurrentBlock() { return current_.block_; }
 
@@ -532,9 +534,6 @@ struct Builder {
                           RegOr<type::Type> data_type);
 
   Reg OpaqueType(module::BasicModule const* mod);
-
-  Reg Struct(type::Struct* s, std::vector<StructField> fields,
-             std::optional<ir::Fn> assign, std::optional<ir::Fn> dtor);
 
   Reg Enum(type::Enum* e, std::vector<std::string_view> names,
            absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values);

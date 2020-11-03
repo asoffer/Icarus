@@ -366,55 +366,15 @@ void Compiler::EmitCopyAssign(
     type::Typed<ir::Value> const &from) {
   // TODO: Support mixed types and user-defined assignments.
   ASSERT(type::Type(to.type()) == from.type());
-  auto [fn, inserted] =
-      context().root().InsertCopyAssign(to.type(), from.type());
-  if (inserted) {
-    type::Struct const *s = to.type();
-    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
-      builder().CurrentBlock() = fn->entry();
-      auto var                 = ir::Reg::Arg(0);
-      auto val                 = ir::Reg::Arg(1);
-
-      for (size_t i = 0; i < s->fields().size(); ++i) {
-        EmitCopyAssign(builder().FieldRef(var, s, i),
-                       builder().FieldValue(val, s, i));
-      }
-
-      builder().ReturnJump();
-    }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
-    // TODO: Remove this hack.
-    const_cast<type::Struct *>(s)->SetCopyAssignment(fn);
-  }
-  builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
+  current_block()->Append(ir::CopyInstruction{
+      .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
 }
 
 void Compiler::EmitMoveAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Struct> const &to,
     type::Typed<ir::Value> const &from) {
-  // TODO: Support mixed types and user-defined assignments.
-  ASSERT(type::Type(to.type()) == from.type());
-  auto [fn, inserted] =
-      context().root().InsertMoveAssign(to.type(), from.type());
-  if (inserted) {
-    type::Struct const *s = to.type();
-    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
-      builder().CurrentBlock() = fn->entry();
-      auto var                 = ir::Reg::Arg(0);
-      auto val                 = ir::Reg::Arg(1);
-
-      for (size_t i = 0; i < s->fields().size(); ++i) {
-        EmitMoveAssign(builder().FieldRef(var, s, i),
-                       builder().FieldValue(val, s, i));
-      }
-
-      builder().ReturnJump();
-      // TODO: Remove this hack.
-      const_cast<type::Struct *>(s)->SetMoveAssignment(fn);
-    }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
-  }
-  builder().Move(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
+  current_block()->Append(ir::MoveInstruction{
+      .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
 }
 
 }  // namespace compiler
