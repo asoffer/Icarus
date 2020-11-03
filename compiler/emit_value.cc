@@ -13,7 +13,6 @@
 #include "ir/instruction/type.h"
 #include "ir/interpretter/evaluate.h"
 #include "ir/interpretter/execution_context.h"
-#include "ir/struct_field.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/generic_fn.h"
 #include "ir/value/reg.h"
@@ -561,7 +560,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
     // Factor these out together.
     builder().CurrentBlock() = fn.entry();
 
-    std::vector<ir::StructField> fields;
+    std::vector<type::StructInstruction::Field> fields;
 
     bool has_field_needing_destruction = false;
     std::optional<ir::Fn> user_dtor;
@@ -644,11 +643,11 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
     }
 
     current_block()->Append(
-        ir::StructInstruction{.struct_     = s,
-                              .fields      = std::move(fields),
-                              .assignments = std::move(assignments),
-                              .dtor        = dtor,
-                              .result      = builder().Reserve()});
+        type::StructInstruction{.struct_     = s,
+                                .fields      = std::move(fields),
+                                .assignments = std::move(assignments),
+                                .dtor        = dtor,
+                                .result      = builder().Reserve()});
     builder().ReturnJump();
   }
 

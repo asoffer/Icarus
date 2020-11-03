@@ -8,7 +8,6 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "base/meta.h"
-#include "ir/instruction/core.h"
 #include "type/typed_value.h"
 
 namespace ir {

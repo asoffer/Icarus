@@ -74,7 +74,6 @@ cc_library(
     srcs = ["inliner.cc"],
     deps = [
         ":base",
-        ":core",
         "//base:debug",
         "//ir:compiled_jump",
         "//ir:local_block_interpretation",
@@ -173,7 +172,6 @@ cc_library(
     deps = [
         ":inliner",
         "//base:extend",
-        "//ir:struct_field",
         "//type",
         "//type:array",
         "//type:enum",
@@ -181,7 +179,6 @@ cc_library(
         "//type:generic_function",
         "//type:opaque",
         "//type:pointer",
-        "//type:struct",
         "//type:tuple",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/random",

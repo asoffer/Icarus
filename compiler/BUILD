@@ -129,7 +129,6 @@ cc_library(
         "//ir:builder",
         "//ir:compiled_fn",
         "//ir:compiled_jump",
-        "//ir:struct_field",
         "//ir/value:builtin_fn",
         "//ir/value:fn",
         "//ir/value:reg",

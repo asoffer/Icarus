@@ -16,7 +16,6 @@ cc_library(
     srcs = ["builder.cc"],
     deps = [
         ":local_block_interpretation",
-        ":struct_field",
         "//ast:overload_set",
         "//base:debug",
         "//base:scope",
@@ -111,16 +110,5 @@ cc_library(
     deps = [
         "//base:global",
         "//base:untyped_buffer",
-    ],
-)
-
-cc_library(
-    name = "struct_field",
-    hdrs = ["struct_field.h"],
-    deps = [
-        ":byte_code_writer",
-        "//ir/value",
-        "//ir/value:reg_or",
-        "//type",
     ],
 )

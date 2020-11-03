@@ -1,6 +1,5 @@
 #include "type/struct.h"
 
-#include "base/guarded.h"
 #include "core/arch.h"
 #include "ir/value/hashtag.h"
 #include "module/module.h"

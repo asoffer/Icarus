@@ -11,7 +11,6 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
-#include "ir/struct_field.h"
 #include "ir/value/enum_and_flags.h"
 #include "type/array.h"
 #include "type/enum.h"
@@ -19,7 +18,6 @@
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/qual_type.h"
-#include "type/struct.h"
 #include "type/tuple.h"
 #include "type/type.h"
 
@@ -227,54 +225,6 @@ struct BufPtrInstruction
   static type::Type Apply(type::Type operand) { return type::BufPtr(operand); }
 
   RegOr<type::Type> operand;
-  Reg result;
-};
-
-struct StructInstruction
-    : base::Extend<StructInstruction>::With<ByteCodeExtension,
-                                            InlineExtension> {
-  // TODO field.type() can be null. If the field type is inferred from the
-  // initial value.
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    std::vector<type::Struct::Field> struct_fields;
-    struct_fields.reserve(fields.size());
-    for (auto const& field : fields) {
-      absl::flat_hash_set<ir::Hashtag> tags;
-      if (field.exported()) { tags.insert(ir::Hashtag::Export); }
-
-      if (ir::Value const* init_val = field.initial_value()) {
-        type::Type t = ctx.resolve(field.type());
-        struct_fields.push_back(type::Struct::Field{
-            .name          = std::string(field.name()),
-            .type          = t,
-            .initial_value = *init_val,
-            .hashtags      = std::move(tags),
-        });
-      } else {
-        struct_fields.push_back(type::Struct::Field{
-            .name          = std::string(field.name()),
-            .type          = ctx.resolve(field.type()),
-            .initial_value = ir::Value(),
-            .hashtags      = std::move(tags),
-        });
-      }
-    }
-
-    struct_->AppendFields(std::move(struct_fields));
-    struct_->SetAssignments(std::move(assignments));
-    if (dtor) { struct_->SetDestructor(*dtor); }
-    ctx.current_frame().regs_.set(result, type::Type(struct_));
-  }
-
-  std::string to_string() const {
-    // TODO
-    return absl::StrCat(stringify(result), " = struct TODO");
-  }
-
-  type::Struct* struct_;
-  std::vector<StructField> fields;
-  std::vector<ir::Fn> assignments;
-  std::optional<ir::Fn> dtor;
   Reg result;
 };
 

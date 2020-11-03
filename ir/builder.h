@@ -16,7 +16,6 @@
 #include "ir/instruction/instructions.h"
 #include "ir/local_block_interpretation.h"
 #include "ir/out_params.h"
-#include "ir/struct_field.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"

@@ -42,7 +42,7 @@ type::QualType Compiler::VerifyType(
         // FunctionLiteral::EmitValue Factor these out together.
         c.builder().CurrentBlock() = fn.entry();
 
-        std::vector<ir::StructField> fields;
+        std::vector<type::StructInstruction::Field> fields;
         fields.reserve(node->fields().size());
 
         for (auto const &field : node->fields()) {
@@ -58,11 +58,11 @@ type::QualType Compiler::VerifyType(
         }
         // TODO destructors and assignment
         c.current_block()->Append(
-            ir::StructInstruction{.struct_     = s,
-                                  .fields      = std::move(fields),
-                                  .assignments = {},
-                                  .dtor        = std::nullopt,
-                                  .result      = c.builder().Reserve()});
+            type::StructInstruction{.struct_     = s,
+                                    .fields      = std::move(fields),
+                                    .assignments = {},
+                                    .dtor        = std::nullopt,
+                                    .result      = c.builder().Reserve()});
 
         c.builder().ReturnJump();
       }
