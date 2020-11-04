@@ -64,6 +64,7 @@ cc_library(
     name = "arguments",
     hdrs = ["arguments.h"],
     deps = [
+        "//base:meta",
         "//base:stringify",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
