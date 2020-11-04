@@ -1,55 +1,47 @@
-io ::= import "examples/lib/io.ic"
+io :: = import "examples/lib/io.ic"
 'main
 
-main ::= () -> () {
-  x: bool | int64 = 999
-  y: bool | int64 = true
+    main ::
+        = ()->(){
+            x : bool | int64 = 999 y : bool | int64 = true
 
-  x = true
-  y = 123
-  foo(x, y)
+            x = true y = 123 foo(x, y)
 
-  x = true
-  y = false
-  foo(x, y)
+                x = true y = false foo(x, y)
 
-  x = 123
-  y = true
-  foo(x, y)
+                    x = 123 y = true foo(x, y)
 
-  x = 456
-  y = 789
-  foo(x, y)
-}
+                        x = 456 y = 789 foo(x, y)
+          }
 
-foo ::= (x: bool, y: bool) -> () {
-  io.Print("foo(x: bool = ")
-  io.Print(x)
-  io.Print(", y: bool = ")
-  io.Print(y)
-  io.Print(")\n")
-}
+          foo ::
+            = (x
+               : bool, y
+               : bool)
+                  ->(){io.Print("foo(x: bool = ") io.Print(x)
+                           io.Print(", y: bool = ") io.Print(y) io.Print(")\n")}
 
-foo ::= (x: bool, y: int64) -> () {
-  io.Print("foo(x: bool = ")
-  io.Print(x)
-  io.Print(", y: int64 = ")
-  io.Print(y)
-  io.Print(")\n")
-}
+              foo ::
+                = (x
+                   : bool, y
+                   : int64)
+                      ->(){io.Print("foo(x: bool = ") io.Print(x)
+                               io.Print(", y: int64 = ") io.Print(y)
+                                   io.Print(")\n")}
 
-foo ::= (x: int64, y: bool) -> () {
-  io.Print("foo(x: int64 = ")
-  io.Print(x)
-  io.Print(", y: bool = ")
-  io.Print(y)
-  io.Print(")\n")
-}
+                  foo ::
+                    = (x
+                       : int64, y
+                       : bool)
+                          ->(){io.Print("foo(x: int64 = ") io.Print(x)
+                                   io.Print(", y: bool = ") io.Print(y)
+                                       io.Print(")\n")}
 
-foo ::= (x: int64, y: int64) -> () {
-  io.Print("foo(x: int64 = ")
-  io.Print(x)
-  io.Print(", y: int64 = ")
-  io.Print(y)
-  io.Print(")\n")
+                      foo ::
+                        = (x
+                           : int64, y
+                           : int64)
+                              ->() {
+  io.Print("foo(x: int64 = ") io.Print(x) io.Print(", y: int64 = ")
+      io.Print(y) io.Print(")\n")
 }

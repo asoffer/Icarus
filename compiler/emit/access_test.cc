@@ -94,13 +94,13 @@ INSTANTIATE_TEST_SUITE_P(All, AccessTest,
                              })()
                              )",
                                       .expected = ir::Value(int64_t{3})},
-                             TestCase{.expr     = R"((() -> int64 {
+                             TestCase{.expr = R"((() -> int64 {
                                s := S.{n = 3}
                                p := &s
                                return p.n * p.n
                              })()
                              )",
-                             // Loading pointer from a parameter
+                                      // Loading pointer from a parameter
                                       .expected = ir::Value(int64_t{9})},
                              TestCase{.expr     = R"((() -> int64 {
                                s := S.{n = 3}

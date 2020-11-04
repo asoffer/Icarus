@@ -34,7 +34,7 @@ type::Type GuessIntendedArrayType(absl::flat_hash_map<type::Type, int>) {
 type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
   if (node->empty()) {
     return context().set_qual_type(node,
-                                type::QualType::Constant(type::EmptyArray));
+                                   type::QualType::Constant(type::EmptyArray));
   }
 
   std::vector<type::QualType> elem_qts;

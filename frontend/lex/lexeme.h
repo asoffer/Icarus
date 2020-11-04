@@ -42,7 +42,7 @@ struct Lexeme {
   constexpr Tag tag() const {
     return std::visit(
         [](auto&& x) {
-          using T   = std::decay_t<decltype(x)>;
+          using T             = std::decay_t<decltype(x)>;
           constexpr auto type = base::meta<T>;
           if constexpr (type == base::meta<Syntax>) {
             return TagFrom(x);

@@ -155,8 +155,8 @@ TEST(FunctionLiteral, MultipleValidReturnTypesInferred) {
 
 TEST(FunctionLiteral, OneParameterNoReturnInferred) {
   test::TestModule mod;
-  auto const *qt =
-      mod.context().qual_type(mod.Append<ast::Expression>(R"((b: bool) -> {})"));
+  auto const *qt = mod.context().qual_type(
+      mod.Append<ast::Expression>(R"((b: bool) -> {})"));
   EXPECT_THAT(
       qt,
       Pointee(type::QualType::Constant(type::Func(

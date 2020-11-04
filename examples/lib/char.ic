@@ -1,25 +1,27 @@
-#{export}
-Ascii ::= struct { _val: nat8 }
-
-#{export}
-ascii ::= (val: nat8) -> Ascii {
-  c: Ascii
-  c._val = val
-  return c
+#{export }
+Ascii :: = struct {
+  _val : nat8
+}
+#{export }
+ascii ::
+    = (val
+       : nat8)
+          ->Ascii {
+c:
+  Ascii c._val = val return c
 }
 
-#{export}
-(print) ::= (c: Ascii) -> {
-  putchar ::= foreign("putchar", nat8 -> int32)
-  putchar(c._val)
+#{export }
+(print):: = (c : Ascii)->{
+  putchar :: = foreign("putchar", nat8->int32) putchar(c._val)
 }
 
-#{export}
-is_eof ::= (c: Ascii) => c._val == 255 as nat8
-
-#{export}
-read ::= () -> Ascii {
-  getchar ::= foreign("getchar", () -> int32)
-  c := ascii(getchar() as nat8)
-  return c
+#{export }
+is_eof :: = (c
+             : Ascii) = > c._val == 255 as nat8
+#{export }
+                                        read ::
+                            = ()->Ascii {
+  getchar :: =
+      foreign("getchar", ()->int32) c : = ascii(getchar() as nat8) return c
 }

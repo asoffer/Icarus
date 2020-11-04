@@ -35,7 +35,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
 }
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
-  auto op_qt         = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
+  auto op_qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
   // TODO: This trick is good except that parameters look like references when
   // really they're by value for small types.
   size_t deref_count = (op_qt.quals() >= type::Quals::Ref())
@@ -128,7 +128,8 @@ void Compiler::EmitMoveInit(
 void Compiler::EmitCopyInit(
     ast::Access const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  type::QualType operand_qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
+  type::QualType operand_qt =
+      *ASSERT_NOT_NULL(context().qual_type(node->operand()));
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
@@ -138,8 +139,9 @@ void Compiler::EmitCopyInit(
       case 0: NOT_YET();
       case 1:
         // TODO: should actually be an initialization, not assignment.
-        EmitMoveAssign(to[0], type::Typed<ir::Value>(
-                                  mod.ExportedValue(decls[0]), operand_qt.type()));
+        EmitMoveAssign(to[0],
+                       type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
+                                              operand_qt.type()));
         return;
       default: NOT_YET();
     }

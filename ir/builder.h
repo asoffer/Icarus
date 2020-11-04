@@ -203,8 +203,8 @@ struct Builder {
   RegOr<bool> Eq(type::Type common_type, ir::Value const& lhs_val,
                  ir::Value const& rhs_val) {
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                             uint16_t, uint32_t, uint64_t, float, double,
-                             ir::EnumVal, ir::FlagsVal>(
+                            uint16_t, uint32_t, uint64_t, float, double,
+                            ir::EnumVal, ir::FlagsVal>(
         common_type, [&]<typename T>() {
           return Eq(lhs_val.get<RegOr<T>>(), rhs_val.get<RegOr<T>>());
         });
@@ -238,7 +238,9 @@ struct Builder {
   // instead of Type), we use Type to ensure that if this gets routed into an
   // ir::Value, it will be tagged correctly.
   RegOr<type::Type> BufPtr(RegOr<type::Type> const& val) {
-    if (not val.is_reg()) { return type::Type(BufPtrInstruction::Apply(val.value())); }
+    if (not val.is_reg()) {
+      return type::Type(BufPtrInstruction::Apply(val.value()));
+    }
     return CurrentBlock()->Append(
         BufPtrInstruction{.operand = val, .result = CurrentGroup()->Reserve()});
   }
@@ -247,7 +249,9 @@ struct Builder {
   // Type), we use Type to ensure that if this gets routed into an ir::Value, it
   // will be tagged correctly.
   RegOr<type::Type> Ptr(RegOr<type::Type> const& val) {
-    if (not val.is_reg()) { return type::Type(PtrInstruction::Apply(val.value())); }
+    if (not val.is_reg()) {
+      return type::Type(PtrInstruction::Apply(val.value()));
+    }
     return CurrentBlock()->Append(
         PtrInstruction{.operand = val, .result = CurrentGroup()->Reserve()});
   }
@@ -424,8 +428,8 @@ struct Builder {
     LOG("Load", "Calling Load(%s, %s)", r, t->to_string());
     if (t->is<type::Function>()) { return Value(Load<Fn>(r)); }
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                             uint16_t, uint32_t, uint64_t, float, double,
-                             type::Type, EnumVal, FlagsVal, Addr, String, Fn>(
+                            uint16_t, uint32_t, uint64_t, float, double,
+                            type::Type, EnumVal, FlagsVal, Addr, String, Fn>(
         t, [&]<typename T>() { return Value(Load<T>(r)); });
   }
 

@@ -5,8 +5,8 @@
 
 #include "compiler/compiler.h"
 #include "compiler/library_module.h"
-#include "core/call.h"
 #include "core/arguments.h"
+#include "core/call.h"
 #include "ir/value/value.h"
 #include "type/callable.h"
 #include "type/overload_set.h"
@@ -282,7 +282,8 @@ std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
   return type_params;
 }
 
-std::optional<core::Arguments<type::Typed<ir::Value>>> Compiler::VerifyArguments(
+std::optional<core::Arguments<type::Typed<ir::Value>>>
+Compiler::VerifyArguments(
     core::Arguments<ast::Expression const *> const &args) {
   bool err      = false;
   auto arg_vals = args.Transform([&](ast::Expression const *expr) {
@@ -319,10 +320,11 @@ type::QualType Compiler::VerifyUnaryOverload(
   if (member_types.empty()) { return type::QualType::Error(); }
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(operand);
-  return type::QualType(type::MakeOverloadSet(std::move(member_types))
-                            ->return_types(core::Arguments<type::Typed<ir::Value>>(
-                                std::move(pos_args), {})),
-                        type::Quals::Unqualified());
+  return type::QualType(
+      type::MakeOverloadSet(std::move(member_types))
+          ->return_types(
+              core::Arguments<type::Typed<ir::Value>>(std::move(pos_args), {})),
+      type::Quals::Unqualified());
 }
 
 // TODO: Replace `symbol` with an enum.

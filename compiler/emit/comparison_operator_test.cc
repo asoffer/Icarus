@@ -82,7 +82,8 @@ INSTANTIATE_TEST_SUITE_P(
             .expr = R"(((x: int64, y: int64, z: int64) => x < y < z)(1, 2, 1))",
             .expected = ir::Value(false)},
         TestCase{
-            .expr = R"(((x: int64, y: int64, z: int64) => x < y <= z)(1, 2, 2))",
+            .expr =
+                R"(((x: int64, y: int64, z: int64) => x < y <= z)(1, 2, 2))",
             .expected = ir::Value(true)},
         TestCase{
             .expr = R"(((x: int64, y: int64, z: int64) => x < y > z)(2, 3, 1))",

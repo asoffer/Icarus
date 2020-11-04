@@ -159,7 +159,8 @@ bool VerifyDone(diagnostic::DiagnosticConsumer &diag,
 type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
   LOG("ScopeLiteral", "Verifying body of %p: %s", node, node->DebugString());
 
-  auto qt = context().set_qual_type(node, type::QualType::Constant(type::Scope));
+  auto qt =
+      context().set_qual_type(node, type::QualType::Constant(type::Scope));
 
   type::Type state_type = nullptr;
   if (node->state_type()) {

@@ -69,7 +69,8 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   if (context().cyclic_error(node)) { return type::QualType::Error(); }
 
   // Dependency pushed until `token` is destroyed.
-  auto token = cylcic_dependency_tracker_.PushDependency(node, context(), diag());
+  auto token =
+      cylcic_dependency_tracker_.PushDependency(node, context(), diag());
   if (not token) { return type::QualType::Error(); }
 
   // TODO: In what circumstances could this have been seen more than once?

@@ -6,8 +6,9 @@ namespace compiler {
 ir::Value Compiler::EmitValue(ast::Index const *node) {
   auto const *qt = context().qual_type(node->lhs());
   if (qt->quals() >= type::Quals::Ref()) {
-    return ir::Value(builder().PtrFix(
-        EmitRef(node).reg(), ASSERT_NOT_NULL(context().qual_type(node))->type()));
+    return ir::Value(
+        builder().PtrFix(EmitRef(node).reg(),
+                         ASSERT_NOT_NULL(context().qual_type(node))->type()));
   }
 
   if (qt->type() == type::ByteView) {

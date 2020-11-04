@@ -6,17 +6,17 @@ namespace compiler {
 void Compiler::EmitMoveInit(
     ast::Identifier const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  EmitMoveInit(
-      type::Typed<ir::Value>(EmitValue(node), context().qual_type(node)->type()),
-      type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
+  EmitMoveInit(type::Typed<ir::Value>(EmitValue(node),
+                                      context().qual_type(node)->type()),
+               type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
 }
 
 void Compiler::EmitCopyInit(
     ast::Identifier const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  EmitCopyInit(
-      type::Typed<ir::Value>(EmitValue(node), context().qual_type(node)->type()),
-      type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
+  EmitCopyInit(type::Typed<ir::Value>(EmitValue(node),
+                                      context().qual_type(node)->type()),
+               type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
 }
 
 ir::Value Compiler::EmitValue(ast::Identifier const *node) {

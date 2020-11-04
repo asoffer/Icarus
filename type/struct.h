@@ -76,7 +76,7 @@ struct Struct : public LegacyType {
   std::vector<Field> fields_;
   std::optional<ir::Fn> init_, user_dtor_, dtor_;
 
-  private:
+ private:
   friend struct StructInstruction;
 
   void AppendFields(std::vector<Field> fields);

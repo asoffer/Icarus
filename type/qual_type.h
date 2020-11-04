@@ -152,13 +152,9 @@ struct QualType {
     }
   }
 
-  static QualType Error() {
-    return QualType(nullptr, Quals::Unqualified());
-  }
+  static QualType Error() { return QualType(nullptr, Quals::Unqualified()); }
 
-  static QualType Constant(Type t) {
-    return QualType(t, Quals::Const());
-  }
+  static QualType Constant(Type t) { return QualType(t, Quals::Const()); }
 
   static QualType NonConstant(Type t) {
     return QualType(t, Quals::Unqualified());

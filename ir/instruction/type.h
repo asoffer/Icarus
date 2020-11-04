@@ -232,7 +232,7 @@ struct ArrayInstruction
     : base::Extend<ArrayInstruction>::With<ByteCodeExtension, InlineExtension,
                                            DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = array %1$s %2$s";
-  using length_t = int64_t;
+  using length_t                                 = int64_t;
 
   void Apply(interpretter::ExecutionContext& ctx) const {
     ctx.current_frame().regs_.set(

@@ -108,7 +108,8 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
     type::Typed<ir::Value> const &from) {
-  auto [fn, inserted] = context().root().InsertCopyAssign(to.type(), from.type());
+  auto [fn, inserted] =
+      context().root().InsertCopyAssign(to.type(), from.type());
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       ASSERT(from.type().is<type::Array>() == true);
@@ -123,7 +124,8 @@ void Compiler::EmitCopyAssign(
 void Compiler::EmitMoveAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
     type::Typed<ir::Value> const &from) {
-  auto [fn, inserted] = context().root().InsertMoveAssign(to.type(), from.type());
+  auto [fn, inserted] =
+      context().root().InsertMoveAssign(to.type(), from.type());
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       ASSERT(from.type().is<type::Array>() == true);

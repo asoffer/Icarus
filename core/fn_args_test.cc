@@ -60,9 +60,8 @@ TEST(ArgumentsTest, Transform) {
 
 TEST(ArgumentsTest, Apply) {
   int total = 0;
-  Arguments<int>({1, 2, 3}, {{"hello", -3}, {"world", -5}}).Apply([&total](int n) {
-    total += n;
-  });
+  Arguments<int>({1, 2, 3}, {{"hello", -3}, {"world", -5}})
+      .Apply([&total](int n) { total += n; });
   EXPECT_EQ(total, -2);
 }
 

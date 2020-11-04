@@ -146,9 +146,9 @@ void Builder::CondJump(RegOr<bool> cond, BasicBlock *true_block,
   }
 }
 
-void Builder::ChooseJump(std::vector<std::string_view> names,
-                         std::vector<BasicBlock *> blocks,
-                         std::vector<core::Arguments<type::Typed<Value>>> args) {
+void Builder::ChooseJump(
+    std::vector<std::string_view> names, std::vector<BasicBlock *> blocks,
+    std::vector<core::Arguments<type::Typed<Value>>> args) {
   CurrentBlock()->set_jump(
       JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args)));
 }

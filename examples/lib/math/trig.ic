@@ -1,64 +1,61 @@
-#{export}
-angle ::= struct {
-  _val: float64 // in radians 
+#{export }
+angle :: = struct {
+  _val : float64  // in radians
+}
+#{export }
+radians ::
+    = (x
+       : float64)
+          ->(a
+             : angle){a._val = x return a}
+
+      pi ::
+        = 3.141592653589
+
+#{export }
+    degrees ::
+        = (x
+           : float64)
+              ->(a
+                 : angle) {
+  a._val = pi * x / 180. return a
 }
 
-#{export}
-radians ::= (x: float64) -> (a: angle) {
-  a._val = x
-  return a
+#{export }
+(+):: = (a : angle, b : angle)->angle {
+result:
+  angle result._val = a._val + b._val return result
 }
 
-pi ::= 3.141592653589
-
-#{export}
-degrees ::= (x: float64) -> (a: angle) {
-  a._val = pi * x / 180.
-  return a
+#{export }
+(-):: = (a : angle, b : angle)->(result : angle) {
+  result._val -= b._val return result
 }
 
-#{export}
-(+) ::= (a: angle, b: angle) -> angle {
-  result: angle
-  result._val = a._val + b._val
-  return result
+#{export }
+(-):: = (a : angle)->(result : angle) { result._val = -a._val return result }
+
+#{export }
+(*):: = (a : angle, x : float64)->(result : angle) {
+  result._val *= x return result
 }
 
-#{export}
-(-) ::= (a: angle, b: angle) -> (result: angle) {
-  result._val -= b._val
-  return result
+#{export }
+(/):: = (a : angle, x : float64)->(result : angle) {
+  result._val /= x return result
 }
 
-#{export}
-(-) ::= (a: angle) -> (result: angle) {
-  result._val = -a._val
-  return result
-}
+#{export }(print)::=(a : angle)->{print a._val, " radians" }
 
-#{export}
-(*) ::= (a: angle, x: float64) -> (result: angle) {
-  result._val *= x
-  return result
-}
+#{export } AsDegrees ::=(a : angle) => a._val * 180. / pi
+#{export } AsRadians ::=(a : angle) => a._val
 
-#{export}
-(/) ::= (a: angle, x: float64) -> (result: angle) {
-  result._val /= x
-  return result
-}
-
-#{export} (print) ::= (a: angle) -> { print a._val, " radians" }
-
-#{export} AsDegrees ::= (a: angle) => a._val * 180. / pi
-#{export} AsRadians ::= (a: angle) => a._val
-
-#{export}  sin ::= (a: angle) => foreign("sin", float64 -> float64)(a._val)
-#{export}  cos ::= (a: angle) => foreign("cos", float64 -> float64)(a._val)
-#{export}  tan ::= (a: angle) => foreign("tan", float64 -> float64)(a._val)
-#{export} asin ::= (x: float64) => foreign("asin", float64 -> float64)(x)'radians
-#{export} acos ::= (x: float64) => foreign("acos", float64 -> float64)(x)'radians
-#{export} atan ::= (x: float64) => foreign("atan", float64 -> float64)(x)'radians
-#{export} atan2 ::= (x: float64, y: float64) -> angle {
-  return foreign("atan2", (float64, float64) -> float64)(x, y)'radians
+#{export } sin ::=(a : angle) => foreign("sin", float64->float64)(a._val)
+#{export } cos ::=(a : angle) => foreign("cos", float64->float64)(a._val)
+#{export } tan ::=(a : angle) => foreign("tan", float64->float64)(a._val)
+#{export } asin ::=(x : float64) => foreign("asin", float64->float64)(x)'radians
+#{export } acos ::=(x : float64) => foreign("acos", float64->float64)(x)'radians
+#{export } atan ::=(x : float64) => foreign("atan", float64->float64)(x)'radians
+#{export } atan2 ::              =(x : float64, y : float64)->angle {
+return foreign("atan2", (float64, float64)->float64)(x, y)'radians
 }

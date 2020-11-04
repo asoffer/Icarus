@@ -324,7 +324,8 @@ struct Context {
                        type::Typed<ast::Declaration const *>(nullptr, t))}));
     return std::pair<ir::NativeFn, bool>(iter->second, inserted);
   }
-  std::pair<ir::NativeFn, bool> InsertCopyAssign(type::Type to, type::Type from) {
+  std::pair<ir::NativeFn, bool> InsertCopyAssign(type::Type to,
+                                                 type::Type from) {
     auto [iter, inserted] = copy_assign_.emplace(
         std::make_pair(to, from),
         ir::NativeFn(
@@ -343,7 +344,8 @@ struct Context {
                     type::Typed<ast::Declaration const *>(nullptr, from))}));
     return std::pair<ir::NativeFn, bool>(iter->second, inserted);
   }
-  std::pair<ir::NativeFn, bool> InsertMoveAssign(type::Type to, type::Type from) {
+  std::pair<ir::NativeFn, bool> InsertMoveAssign(type::Type to,
+                                                 type::Type from) {
     auto [iter, inserted] = move_assign_.emplace(
         std::make_pair(to, from),
         ir::NativeFn(

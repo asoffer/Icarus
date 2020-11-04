@@ -187,7 +187,8 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
-        output_type_vec[i] = ASSERT_NOT_NULL(c.context().qual_type(decl))->type();
+        output_type_vec[i] =
+            ASSERT_NOT_NULL(c.context().qual_type(decl))->type();
       } else if (auto maybe_type =
                      c.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i])) {
         output_type_vec[i] = *maybe_type;
@@ -228,7 +229,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
               .importer            = instantiation_compiler.importer(),
           });
       compiler.builder().CurrentGroup() = cg;
-      auto qt   = VerifyConcrete(compiler, node);
+      auto qt                           = VerifyConcrete(compiler, node);
       auto outs = qt.type()->as<type::Function>().output();
       rets_ref.assign(outs.begin(), outs.end());
 
@@ -269,7 +270,9 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
 // generic bits.
 WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   // TODO: Move this check out to the ProcessOneItem code?
-  if (not context().ShouldVerifyBody(node)) { return WorkItem::Result::Success; }
+  if (not context().ShouldVerifyBody(node)) {
+    return WorkItem::Result::Success;
+  }
 
   LOG("function", "function-literal body verification: %s %p",
       node->DebugString(), &context());

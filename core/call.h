@@ -6,8 +6,8 @@
 
 #include "absl/types/span.h"
 #include "base/log.h"
-#include "core/dependency_node.h"
 #include "core/arguments.h"
+#include "core/dependency_node.h"
 #include "core/params.h"
 #include "core/params_ref.h"
 
@@ -140,7 +140,8 @@ void FillMissingArgs(ParamsRef<P> params, Arguments<A>* args, Fn fn,
 // Returns true if and only if a callable with `params` can be called with
 // `args`.
 template <typename T, typename U, typename ConvertibleFn>
-bool IsCallable(ParamsRef<T> params, Arguments<U> const& args, ConvertibleFn fn) {
+bool IsCallable(ParamsRef<T> params, Arguments<U> const& args,
+                ConvertibleFn fn) {
   if (params.size() < args.size()) {
     LOG("core::IsCallable",
         "IsCallable = false due to size mismatch (%u vs %u)", params.size(),

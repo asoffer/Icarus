@@ -543,7 +543,7 @@ struct Compiler
 
   PersistentResources resources_;
   TransientState state_;
-    ir::Builder builder_;
+  ir::Builder builder_;
 
   // TODO: Should be persistent, but also needs on some local context
   // (Context).

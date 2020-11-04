@@ -23,8 +23,8 @@ ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
     afters.push_back(EmitValue(decl).get<ir::RegOr<ir::Jump>>());
   }
 
-  return ir::Value(builder().MakeBlock(context().add_block(), std::move(befores),
-                                       std::move(afters)));
+  return ir::Value(builder().MakeBlock(context().add_block(),
+                                       std::move(befores), std::move(afters)));
 }
 
 }  // namespace compiler

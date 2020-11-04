@@ -23,7 +23,7 @@ struct Uncopyable {
   explicit Uncopyable(int n) : n_(n) {}
 
   Uncopyable(Uncopyable const &) = delete;
-  Uncopyable(Uncopyable &&) = default;
+  Uncopyable(Uncopyable &&)      = default;
 
   Uncopyable &operator=(Uncopyable const &) = delete;
   Uncopyable &operator=(Uncopyable &&) = default;

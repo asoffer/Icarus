@@ -427,8 +427,8 @@ std::unique_ptr<ast::Node> BuildCallImpl(
     std::unique_ptr<ast::Expression> args_expr,
     diagnostic::DiagnosticConsumer &diag) {
   if (not args_expr) {
-    return std::make_unique<ast::Call>(range, std::move(callee),
-                                       core::OrderedArguments<ast::Expression>{});
+    return std::make_unique<ast::Call>(
+        range, std::move(callee), core::OrderedArguments<ast::Expression>{});
   }
 
   std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
@@ -1035,8 +1035,9 @@ std::unique_ptr<ast::Node> BuildScopeNode(
       std::move(nodes[0]->as<ast::Call>()).extract();
   std::vector<ast::BlockNode> blocks;
   blocks.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
-  return std::make_unique<ast::ScopeNode>(
-      range, std::move(callee), std::move(ordered_arguments), std::move(blocks));
+  return std::make_unique<ast::ScopeNode>(range, std::move(callee),
+                                          std::move(ordered_arguments),
+                                          std::move(blocks));
 }
 
 std::unique_ptr<ast::Node> BuildBlockNode(
@@ -1088,8 +1089,7 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
   block_stmt_nodes.push_back(std::move(nodes[2]));
 
   nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
-      ast::BlockNode(range,
-                     std::string{nodes[1]->as<ast::Identifier>().name()},
+      ast::BlockNode(range, std::string{nodes[1]->as<ast::Identifier>().name()},
                      std::move(block_stmt_nodes)),
       updated_last_scope_node);
   return std::move(nodes[0]);

@@ -127,7 +127,6 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
   }
 }
 
-
 // TODO: Checking if an AST node is a builtin is problematic because something
 // as simple as
 // ```
@@ -136,8 +135,9 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
 // ```
 // breaks.
 //
-ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
-                          core::Arguments<ast::Expression const *> const &args) {
+ir::Value EmitBuiltinCall(
+    Compiler *c, ast::BuiltinFn const *callee,
+    core::Arguments<ast::Expression const *> const &args) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
       auto maybe_name         = c->EvaluateOrDiagnoseAs<ir::String>(args[0]);

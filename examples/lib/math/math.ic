@@ -1,23 +1,32 @@
-core ::= import "examples/lib/core.ic"
-
-#{export}
-Max ::= (lhs: $lhs, rhs: $lhs) -> $lhs {
-  core.if (lhs > rhs) then { return lhs } else { return rhs }
+core :: = import "examples/lib/core.ic"
+#{export }
+    Max ::
+        = (lhs
+           : $lhs, rhs
+           : $lhs)
+              ->$lhs {
+  core.if (lhs > rhs) then { return lhs }
+  else {
+    return rhs
+  }
 }
 
-#{export}
-Min ::= (lhs: $lhs, rhs: $lhs) -> $lhs {
-  core.if (lhs > rhs) then { return rhs } else { return lhs }
+#{export }
+Min :: = (lhs : $lhs, rhs : $lhs)->$lhs {
+  core.if (lhs > rhs) then { return rhs }
+  else {
+    return lhs
+  }
 }
 
-#{export} Phi ::= 1.618033988749895
-#{export} E   ::= 2.718281828459045
-#{export} Pi  ::= 3.141592653589793
+#{export } Phi ::= 1.618033988749895
+#{export } E ::  = 2.718281828459045
+#{export } Pi :: = 3.141592653589793
 
-#{export} Exp        ::= foreign("exp", float64 -> float64)
-#{export} Log        ::= foreign("log", float64 -> float64)
-#{export} Power      ::= foreign("pow", (float64, float64) -> float64)
-#{export} SquareRoot ::= foreign("sqrt", float64 -> float64)
-#{export} CubedRoot  ::= foreign("cbrt", float64 -> float64)
-#{export} Ceiling    ::= foreign("ceil", float64 -> float64)
-#{export} Floor      ::= foreign("floor", float64 -> float64)
+#{export } Exp ::       = foreign("exp", float64->float64)
+#{export } Log ::       = foreign("log", float64->float64)
+#{export } Power ::     = foreign("pow", (float64, float64)->float64)
+#{export } SquareRoot ::= foreign("sqrt", float64->float64)
+#{export } CubedRoot :: = foreign("cbrt", float64->float64)
+#{export } Ceiling ::   = foreign("ceil", float64->float64)
+#{export } Floor ::     = foreign("floor", float64->float64)

@@ -48,7 +48,8 @@ struct GenericFunction : Callable {
 
  private:
   // TODO: Eventually we will want a serializable version of this.
-  base::any_invocable<Function const *(core::Arguments<Typed<ir::Value>> const &)>
+  base::any_invocable<Function const *(
+      core::Arguments<Typed<ir::Value>> const &)>
       gen_fn_;
 
   // TODO: Shouldn't use space for the empty struct.

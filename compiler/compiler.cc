@@ -73,7 +73,7 @@ type::Type Compiler::type_of(ast::Expression const *expr) const {
 void Compiler::CompleteDeferredBodies() {
   while (true) {
     if (state_.deferred_work.empty()) { return; }
-    for (auto &work : state_.deferred_work) { std::move(*work)(); }
+    for (auto &work : state_.deferred_work) { std::move (*work)(); }
   }
 }
 
@@ -130,7 +130,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
 
 base::expected<ir::Value, interpretter::EvaluationFailure> Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr, bool must_complete) {
-  Compiler c = MakeChild(resources_);
+  Compiler c             = MakeChild(resources_);
   c.state_.must_complete = must_complete;
   auto result = interpretter::Evaluate(MakeThunk(c, *expr, expr.type()));
   if (not result) { return result; }

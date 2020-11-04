@@ -105,7 +105,8 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
   } else if (lhs_qual_type.type()->is<type::Flags>() and
              rhs_qual_type.type()->is<type::Flags>()) {
     if (lhs_qual_type.type() == rhs_qual_type.type()) {
-      return c->context().set_qual_type(node, type::QualType(return_type, quals));
+      return c->context().set_qual_type(node,
+                                        type::QualType(return_type, quals));
     } else {
       c->diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qual_type.type(),
@@ -153,7 +154,8 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
   } else if (type::IsNumeric(lhs_qual_type.type()) and
              type::IsNumeric(rhs_qual_type.type())) {
     if (lhs_qual_type.type() == rhs_qual_type.type()) {
-      return c->context().set_qual_type(node, type::QualType(return_type, quals));
+      return c->context().set_qual_type(node,
+                                        type::QualType(return_type, quals));
     } else {
       c->diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qual_type.type(),

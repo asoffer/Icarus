@@ -8,8 +8,8 @@ namespace {
 
 using ::testing::IsEmpty;
 using ::testing::Pair;
-using ::testing::UnorderedElementsAre;
 using ::testing::Pointee;
+using ::testing::UnorderedElementsAre;
 
 TEST(Access, EnumSuccess) {
   test::TestModule mod;

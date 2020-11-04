@@ -66,7 +66,8 @@ void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
   for (auto *decl : ordered_decls) {
     type::Type t = compiler.type_of(decl);
     if (not t->HasDestructor()) { continue; }
-    compiler.EmitDestroy(type::Typed<ir::Reg>(compiler.context().addr(decl), t));
+    compiler.EmitDestroy(
+        type::Typed<ir::Reg>(compiler.context().addr(decl), t));
   }
 }
 
@@ -96,7 +97,8 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
-  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->context().FindNativeFn(node));
+  ir::NativeFn ir_func =
+      *ASSERT_NOT_NULL(compiler->context().FindNativeFn(node));
 
   auto &bldr = compiler->builder();
   ICARUS_SCOPE(ir::SetCurrent(ir_func, bldr)) {
@@ -141,7 +143,8 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
-  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->context().FindNativeFn(node));
+  ir::NativeFn ir_func =
+      *ASSERT_NOT_NULL(compiler->context().FindNativeFn(node));
 
   auto &bldr = compiler->builder();
   ICARUS_SCOPE(ir::SetCurrent(ir_func, bldr)) {

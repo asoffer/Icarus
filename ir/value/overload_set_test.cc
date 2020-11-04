@@ -34,12 +34,14 @@ TEST(OverloadSet, Construction) {
     EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn1));
   }
   {
-    core::Arguments<type::QualType> a{{type::QualType::Constant(type::Int64)}, {}};
+    core::Arguments<type::QualType> a{{type::QualType::Constant(type::Int64)},
+                                      {}};
     ASSIGN_OR(FAIL(), auto fn, os.Lookup(a));
     EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn2));
   }
   {
-    core::Arguments<type::QualType> a{{type::QualType::Constant(type::Bool)}, {}};
+    core::Arguments<type::QualType> a{{type::QualType::Constant(type::Bool)},
+                                      {}};
     ASSIGN_OR(FAIL(), auto fn, os.Lookup(a));
     EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn3));
   }

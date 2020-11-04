@@ -541,7 +541,9 @@ struct Call : Expression {
                 core::OrderedArguments<Expression> args)
       : Expression(range), callee_(std::move(callee)), args_(std::move(args)) {}
   Expression const *callee() const { return callee_.get(); }
-  core::Arguments<Expression const *> const &args() const { return args_.args(); }
+  core::Arguments<Expression const *> const &args() const {
+    return args_.args();
+  }
 
   auto extract() && { return std::pair{std::move(callee_), std::move(args_)}; }
 
@@ -879,7 +881,6 @@ struct ParameterizedStructLiteral : ParameterizedExpression,
       : ParameterizedExpression(range, std::move(params)),
         fields_(std::move(fields)) {}
 
-
   absl::Span<Declaration const> fields() const { return fields_; }
 
   ParameterizedStructLiteral &operator        =(
@@ -973,14 +974,17 @@ struct ScopeLiteral : Expression, WithScope<ScopeLitScope> {
 struct ScopeNode : Expression {
   ScopeNode(frontend::SourceRange const &range,
             std::unique_ptr<Expression> name,
-            core::OrderedArguments<Expression> args, std::vector<BlockNode> blocks)
+            core::OrderedArguments<Expression> args,
+            std::vector<BlockNode> blocks)
       : Expression(range),
         name_(std::move(name)),
         args_(std::move(args)),
         blocks_(std::move(blocks)) {}
 
   Expression const *name() const { return name_.get(); }
-  core::Arguments<Expression const *> const &args() const { return args_.args(); }
+  core::Arguments<Expression const *> const &args() const {
+    return args_.args();
+  }
 
   template <typename Fn>
   void Apply(Fn &&fn) const {

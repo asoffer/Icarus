@@ -70,7 +70,7 @@ void Joiner(T &&node, std::string *out, size_t indent) {
 
 template <typename EPtr, typename StrType>
 void DumpArguments(std::string *out, size_t indent,
-                core::Arguments<EPtr, StrType> const &fnargs) {
+                   core::Arguments<EPtr, StrType> const &fnargs) {
   char const *sep = "";
   fnargs.ApplyWithIndex([&](auto &&index, EPtr const &expr) {
     absl::StrAppend(out, sep);

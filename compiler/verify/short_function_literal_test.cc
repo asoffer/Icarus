@@ -15,7 +15,8 @@ using ::testing::UnorderedElementsAre;
 
 TEST(ShortFunctionLiteral, OneValidReturnType) {
   test::TestModule mod;
-  auto const *qt = mod.context().qual_type(mod.Append<ast::Expression>("() => 3"));
+  auto const *qt =
+      mod.context().qual_type(mod.Append<ast::Expression>("() => 3"));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func({}, {type::Int64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
