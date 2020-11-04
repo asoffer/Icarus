@@ -10,13 +10,13 @@ namespace ir {
 namespace {
 
 base::Global<std::vector<
-    base::any_invocable<NativeFn(core::FnArgs<type::Typed<Value>> const &)>>>
+    base::any_invocable<NativeFn(core::Arguments<type::Typed<Value>> const &)>>>
     gen_fns;
 
 }  // namespace
 
 GenericFn::GenericFn(
-    base::any_invocable<NativeFn(core::FnArgs<type::Typed<Value>> const &)>
+    base::any_invocable<NativeFn(core::Arguments<type::Typed<Value>> const &)>
         gen) {
   auto handle = gen_fns.lock();
   id_         = handle->size();
@@ -24,7 +24,7 @@ GenericFn::GenericFn(
 }
 
 NativeFn GenericFn::concrete(
-    core::FnArgs<type::Typed<Value>> const &args) const {
+    core::Arguments<type::Typed<Value>> const &args) const {
   auto handle = gen_fns.lock();
   return (*handle)[id_](args);
 }

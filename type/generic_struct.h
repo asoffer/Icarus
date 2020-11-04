@@ -6,7 +6,7 @@
 #include "ast/scope/module.h"
 #include "ast/scope/scope.h"
 #include "base/any_invocable.h"
-#include "core/fn_args.h"
+#include "core/arguments.h"
 #include "module/module.h"
 #include "type/callable.h"
 #include "type/struct.h"
@@ -17,7 +17,7 @@ namespace type {
 struct GenericStruct : Callable {
   explicit GenericStruct(
       base::any_invocable<std::pair<core::Params<QualType>, Struct const *>(
-          core::FnArgs<Typed<ir::Value>> const &)>
+          core::Arguments<Typed<ir::Value>> const &)>
           fn)
       : gen_(std::move(fn)) {}
   void WriteTo(std::string *result) const override {
@@ -32,11 +32,11 @@ struct GenericStruct : Callable {
 
   // TODO: Callable sholudn't necessarily mean we need to return something.
   std::vector<type::Type> return_types(
-      core::FnArgs<type::Typed<ir::Value>> const &args) const override {
+      core::Arguments<type::Typed<ir::Value>> const &args) const override {
     return {};
   }
 
-  auto Instantiate(core::FnArgs<Typed<ir::Value>> const &args) const {
+  auto Instantiate(core::Arguments<Typed<ir::Value>> const &args) const {
     return gen_(args);
   }
 
@@ -50,7 +50,7 @@ struct GenericStruct : Callable {
  private:
   // TODO: Eventually we will want a serializable version of this.
   base::any_invocable<std::pair<core::Params<QualType>, Struct const *>(
-      core::FnArgs<Typed<ir::Value>> const &)>
+      core::Arguments<Typed<ir::Value>> const &)>
       gen_;
 };
 

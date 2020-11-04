@@ -34,10 +34,10 @@ cc_library(
         "//ast/scope:scope_lit",
         "//base:graph",
         "//base:ptr_span",
-        "//core:fn_args",
+        "//core:arguments",
         "//core:dependency_node",
         "//core:params_ref",
-        "//core:ordered_fn_args",
+        "//core:ordered_arguments",
         "//frontend/lex:operators",
         "//ir/value:addr",
         "//ir/value:builtin_fn",
@@ -61,7 +61,7 @@ cc_library(
     hdrs = ["jump_options.h"],
     deps = [
         ":expression",
-        "//core:fn_args",
+        "//core:arguments",
     ],
 )
 

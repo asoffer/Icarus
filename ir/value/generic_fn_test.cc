@@ -6,10 +6,10 @@
 namespace {
 
 TEST(GenericFn, Equality) {
-  ir::GenericFn f1([](core::FnArgs<type::Typed<ir::Value>> const&) {
+  ir::GenericFn f1([](core::Arguments<type::Typed<ir::Value>> const&) {
     return ir::NativeFn(nullptr);
   });
-  ir::GenericFn f2([](core::FnArgs<type::Typed<ir::Value>> const&) {
+  ir::GenericFn f2([](core::Arguments<type::Typed<ir::Value>> const&) {
     return ir::NativeFn(nullptr);
   });
   EXPECT_EQ(f1, f1);

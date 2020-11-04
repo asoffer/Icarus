@@ -56,7 +56,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
 
 std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     Compiler &compiler, ast::Expression const *fn, type::QualType qt,
-    const core::FnArgs<type::Typed<ir::Value>> &args) {
+    const core::Arguments<type::Typed<ir::Value>> &args) {
   if (auto const *gf_type = qt.type()->if_as<type::GenericFunction>()) {
     ir::GenericFn gen_fn =
         compiler.EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
@@ -85,7 +85,7 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
 
 template <typename Tag>
 void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
-              core::FnArgs<type::Typed<ir::Value>> args,
+              core::Arguments<type::Typed<ir::Value>> args,
               absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   auto callee_qual_type = compiler.qual_type_of(callee);
   ASSERT(callee_qual_type.has_value() == true);
@@ -137,7 +137,7 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
 // breaks.
 //
 ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
-                          core::FnArgs<ast::Expression const *> const &args) {
+                          core::Arguments<ast::Expression const *> const &args) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
       auto maybe_name         = c->EvaluateOrDiagnoseAs<ir::String>(args[0]);

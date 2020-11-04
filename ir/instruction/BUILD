@@ -137,7 +137,7 @@ cc_library(
     deps = [
         "//base:meta",
         "//base:stringify",
-        "//core:fn_args",
+        "//core:arguments",
         "//ir/value",
         "//ir/value:reg",
         "//type:typed_value",

@@ -6,7 +6,7 @@
 #include "compiler/compiler.h"
 #include "compiler/library_module.h"
 #include "core/call.h"
-#include "core/fn_args.h"
+#include "core/arguments.h"
 #include "ir/value/value.h"
 #include "type/callable.h"
 #include "type/overload_set.h"
@@ -34,7 +34,7 @@ type::Typed<ir::Value> EvaluateIfConstant(Compiler &c,
 template <typename Ignored>
 std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
     core::Params<Ignored> const &params,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::Value>> const &args) {
   if (args.size() > params.size()) {
     return Compiler::CallError::TooManyArguments{
         .num_provided     = args.size(),
@@ -79,7 +79,7 @@ std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
 
 void ExtractParams(
     ast::Expression const *callee, type::Callable const *callable,
-    core::FnArgs<type::Typed<ir::Value>> const &args,
+    core::Arguments<type::Typed<ir::Value>> const &args,
     std::vector<std::tuple<ast::Expression const *, type::Callable const *,
                            core::Params<type::QualType>>> &overload_params,
     Compiler::CallError &errors) {
@@ -119,9 +119,9 @@ void ExtractParams(
 
 template <typename IndexT>
 void AddType(IndexT &&index, type::Type t,
-             std::vector<core::FnArgs<type::Type>> *args) {
+             std::vector<core::Arguments<type::Type>> *args) {
   std::for_each(
-      args->begin(), args->end(), [&](core::FnArgs<type::Type> &fnargs) {
+      args->begin(), args->end(), [&](core::Arguments<type::Type> &fnargs) {
         if constexpr (base::meta<std::decay_t<IndexT>> == base::meta<size_t>) {
           fnargs.pos_emplace(t);
         } else {
@@ -133,10 +133,10 @@ void AddType(IndexT &&index, type::Type t,
 // TODO: Ideally we wouldn't create these all at once but rather iterate through
 // the possibilities. Doing this the right way involves having sum and product
 // iterators.
-std::vector<core::FnArgs<type::Type>> ExpandedFnArgs(
-    core::FnArgs<type::QualType> const &fn_args) {
-  std::vector<core::FnArgs<type::Type>> all_expanded_options(1);
-  fn_args.ApplyWithIndex([&](auto &&index, type::QualType r) {
+std::vector<core::Arguments<type::Type>> ExpandedArguments(
+    core::Arguments<type::QualType> const &arguments) {
+  std::vector<core::Arguments<type::Type>> all_expanded_options(1);
+  arguments.ApplyWithIndex([&](auto &&index, type::QualType r) {
     // TODO: also maybe need the expression this came from to see if it needs
     // to be expanded.
     AddType(index, r.type(), &all_expanded_options);
@@ -152,7 +152,7 @@ std::vector<core::FnArgs<type::Type>> ExpandedFnArgs(
 core::Params<std::pair<ir::Value, type::QualType>>
 Compiler::ComputeParamsFromArgs(
     ast::ParameterizedExpression const *node,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::Value>> const &args) {
   LOG("generic-fn", "Creating a concrete implementation with %s",
       args.Transform([](auto const &a) { return a.type()->to_string(); }));
 
@@ -282,17 +282,17 @@ std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
   return type_params;
 }
 
-std::optional<core::FnArgs<type::Typed<ir::Value>>> Compiler::VerifyFnArgs(
-    core::FnArgs<ast::Expression const *> const &args) {
+std::optional<core::Arguments<type::Typed<ir::Value>>> Compiler::VerifyArguments(
+    core::Arguments<ast::Expression const *> const &args) {
   bool err      = false;
   auto arg_vals = args.Transform([&](ast::Expression const *expr) {
     auto expr_qual_type = VerifyType(expr);
     err |= not expr_qual_type.ok();
     if (err) {
-      LOG("VerifyFnArgs", "Error with: %s", expr->DebugString());
+      LOG("VerifyArguments", "Error with: %s", expr->DebugString());
       return type::Typed<ir::Value>(ir::Value(), nullptr);
     }
-    LOG("VerifyFnArgs", "constant: %s", expr->DebugString());
+    LOG("VerifyArguments", "constant: %s", expr->DebugString());
     return EvaluateIfConstant(*this, expr, expr_qual_type);
   });
 
@@ -320,7 +320,7 @@ type::QualType Compiler::VerifyUnaryOverload(
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(operand);
   return type::QualType(type::MakeOverloadSet(std::move(member_types))
-                            ->return_types(core::FnArgs<type::Typed<ir::Value>>(
+                            ->return_types(core::Arguments<type::Typed<ir::Value>>(
                                 std::move(pos_args), {})),
                         type::Quals::Unqualified());
 }
@@ -348,7 +348,7 @@ type::QualType Compiler::VerifyBinaryOverload(
   return context().set_qual_type(
       node,
       type::QualType(type::MakeOverloadSet(std::move(member_types))
-                         ->return_types(core::FnArgs<type::Typed<ir::Value>>(
+                         ->return_types(core::Arguments<type::Typed<ir::Value>>(
                              std::move(pos_args), {})),
                      type::Quals::Unqualified()));
 }
@@ -356,7 +356,7 @@ type::QualType Compiler::VerifyBinaryOverload(
 std::pair<type::QualType,
           absl::flat_hash_map<ast::Expression const *, type::Callable const *>>
 Compiler::VerifyCallee(ast::Expression const *callee,
-                       core::FnArgs<type::Typed<ir::Value>> const &args) {
+                       core::Arguments<type::Typed<ir::Value>> const &args) {
   using return_type =
       std::pair<type::QualType, absl::flat_hash_map<ast::Expression const *,
                                                     type::Callable const *>>;
@@ -379,7 +379,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
     ast::Call const *call_expr,
     absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
         &overload_map,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::Value>> const &args) {
   LOG("VerifyCall", "%s", call_expr->DebugString());
   CallError errors;
   std::vector<std::tuple<ast::Expression const *, type::Callable const *,
@@ -409,7 +409,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   });
 
   ast::OverloadSet os;
-  for (auto const &expansion : ExpandedFnArgs(args_qt)) {
+  for (auto const &expansion : ExpandedArguments(args_qt)) {
     for (auto const &[callee, callable_type, params] : overload_params) {
       // TODO: Assuming this is unambiguously callable is a bit of a stretch.
 

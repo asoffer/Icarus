@@ -258,7 +258,7 @@ struct Compiler
 
   core::Params<std::pair<ir::Value, type::QualType>> ComputeParamsFromArgs(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<ir::Value>> const &args);
+      core::Arguments<type::Typed<ir::Value>> const &args);
 
   // Given arguments `args` for a function-call with parameters `params`, emits
   // the necessary code to prepare the arguments for being called (without
@@ -288,18 +288,18 @@ struct Compiler
   // fill the arguments before calling this function.
   std::vector<ir::Value> PrepareCallArguments(
       type::Type state_ptr_type, core::Params<type::QualType> const &params,
-      core::FnArgs<type::Typed<ir::Value>> const &args);
+      core::Arguments<type::Typed<ir::Value>> const &args);
 
   // Attemnts to instantiate `node` with `args`, possibly creating a new
   // instantiation as a subcontext of `this->context()` if needed.
   Context::InsertSubcontextResult Instantiate(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<ir::Value>> const &args);
+      core::Arguments<type::Typed<ir::Value>> const &args);
   // Finds an already existing instantiation of `node` with `args` as a
   // subcontext of `this->context()`. Behavior is undefined if none exists.
   Context::FindSubcontextResult FindInstantiation(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<ir::Value>> const &args);
+      core::Arguments<type::Typed<ir::Value>> const &args);
 
   std::optional<type::QualType> qual_type_of(ast::Expression const *expr) const;
   type::Type type_of(ast::Expression const *expr) const;
@@ -523,8 +523,8 @@ struct Compiler
   WorkItem::Result CompleteStruct(ast::StructLiteral const *node);
 
  private:
-  std::optional<core::FnArgs<type::Typed<ir::Value>>> VerifyFnArgs(
-      core::FnArgs<ast::Expression const *> const &args);
+  std::optional<core::Arguments<type::Typed<ir::Value>>> VerifyArguments(
+      core::Arguments<ast::Expression const *> const &args);
 
   type::QualType VerifyUnaryOverload(char const *symbol,
                                      ast::Expression const *node,
@@ -534,12 +534,12 @@ struct Compiler
       ast::Call const *call_expr,
       absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
           &overload_map,
-      core::FnArgs<type::Typed<ir::Value>> const &args);
+      core::Arguments<type::Typed<ir::Value>> const &args);
 
   std::pair<type::QualType, absl::flat_hash_map<ast::Expression const *,
                                                 type::Callable const *>>
   VerifyCallee(ast::Expression const *callee,
-               core::FnArgs<type::Typed<ir::Value>> const &args);
+               core::Arguments<type::Typed<ir::Value>> const &args);
 
   PersistentResources resources_;
   TransientState state_;

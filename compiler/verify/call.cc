@@ -118,7 +118,7 @@ struct UncallableWithArguments {
 
 type::QualType VerifyForeignCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::FnArgs<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
     c->diag().Consume(BuiltinError{
@@ -192,7 +192,7 @@ type::QualType VerifyForeignCall(
 
 type::QualType VerifyOpaqueCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::FnArgs<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
   type::QualType qt =
       type::QualType::Constant(ir::BuiltinFn::Opaque().type()->output()[0]);
   if (not arg_vals.empty()) {
@@ -206,7 +206,7 @@ type::QualType VerifyOpaqueCall(
 
 type::QualType VerifyBytesCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::FnArgs<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
   auto qt =
       type::QualType::Constant(ir::BuiltinFn::Bytes().type()->output()[0]);
 
@@ -242,7 +242,7 @@ type::QualType VerifyBytesCall(
 
 type::QualType VerifyAlignmentCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::FnArgs<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
   auto qt =
       type::QualType::Constant(ir::BuiltinFn::Alignment().type()->output()[0]);
 
@@ -280,7 +280,7 @@ type::QualType VerifyAlignmentCall(
 
 type::QualType Compiler::VerifyType(ast::Call const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto arg_vals, VerifyFnArgs(node->args()));
+                   auto arg_vals, VerifyArguments(node->args()));
   // TODO: consider having `foreign` be a generic type. This would allow for the
   // possibility of overlading builtins. That's a dangerous yet principled idea.
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {

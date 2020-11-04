@@ -1,36 +1,36 @@
-#ifndef ICARUS_CORE_ORDERED_FN_ARGS_H
-#define ICARUS_CORE_ORDERED_FN_ARGS_H
+#ifndef ICARUS_CORE_ORDERED_ARGUMENTS_H
+#define ICARUS_CORE_ORDERED_ARGUMENTS_H
 
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "core/fn_args.h"
+#include "core/arguments.h"
 
 namespace core {
 template <typename T>
-struct OrderedFnArgs {
+struct OrderedArguments {
  public:
-  explicit OrderedFnArgs() {}
-  explicit OrderedFnArgs(
+  explicit OrderedArguments() {}
+  explicit OrderedArguments(
       std::vector<std::pair<std::string, std::unique_ptr<T>>> args)
       : ordered_args_(std::move(args)) {
     for (auto const &[name, arg] : ordered_args_) {
       if (name.empty()) {
-        fn_args_.pos_emplace(arg.get());
+        arguments_.pos_emplace(arg.get());
       } else {
-        fn_args_.named_emplace(name, arg.get());
+        arguments_.named_emplace(name, arg.get());
       }
     }
   }
 
-  size_t size() const { return fn_args_.size(); }
-  bool empty() const { return fn_args_.empty(); }
+  size_t size() const { return arguments_.size(); }
+  bool empty() const { return arguments_.empty(); }
 
-  absl::Span<T const *const> pos() const & { return fn_args_.pos(); }
+  absl::Span<T const *const> pos() const & { return arguments_.pos(); }
   absl::flat_hash_map<std::string, T const *> const &named() const & {
-    return fn_args_.named();
+    return arguments_.named();
   }
-  FnArgs<T const *, std::string> const &args() const { return fn_args_; }
+  Arguments<T const *, std::string> const &args() const { return arguments_; }
 
   // TODO test
   template <typename Fn>
@@ -43,8 +43,8 @@ struct OrderedFnArgs {
     return ordered_args_;
   }
 
-  FnArgs<std::unique_ptr<T>> DropOrder() && {
-    FnArgs<std::unique_ptr<T>> args;
+  Arguments<std::unique_ptr<T>> DropOrder() && {
+    Arguments<std::unique_ptr<T>> args;
     for (auto &[name, arg] : ordered_args_) {
       if (name.empty()) {
         args.pos_emplace(std::move(arg));
@@ -56,9 +56,9 @@ struct OrderedFnArgs {
   }
 
  private:
-  FnArgs<T const *, std::string> fn_args_;
+  Arguments<T const *, std::string> arguments_;
   std::vector<std::pair<std::string, std::unique_ptr<T>>> ordered_args_;
 };
 }  // namespace core
 
-#endif  // ICARUS_CORE_ORDERED_FN_ARGS_H
+#endif  // ICARUS_CORE_ORDERED_ARGUMENTS_H

@@ -1,7 +1,7 @@
 #include <vector>
 
 #include "compiler/compiler.h"
-#include "core/fn_args.h"
+#include "core/arguments.h"
 #include "core/params.h"
 #include "ir/value/value.h"
 #include "type/qual_type.h"
@@ -29,7 +29,7 @@ ir::Value PrepareOneArg(Compiler &c, type::Typed<ir::Value> const &arg,
 
 std::vector<ir::Value> Compiler::PrepareCallArguments(
     type::Type state_ptr_type, core::Params<type::QualType> const &params,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::Value>> const &args) {
   std::vector<ir::Value> arg_values;
   arg_values.reserve(params.size());
 

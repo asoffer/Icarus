@@ -18,7 +18,7 @@ WorkItem::Result Compiler::VerifyBody(
 type::QualType Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
   auto gen = [node, c = Compiler(resources())](
-                 core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+                 core::Arguments<type::Typed<ir::Value>> const &args) mutable
       -> std::pair<core::Params<type::QualType>, type::Struct const *> {
     // TODO: Need a version of MakeConcrete that doesn't generate return types
     // because those only make sense for functions.

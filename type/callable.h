@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "core/fn_args.h"
+#include "core/arguments.h"
 #include "ir/value/value.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -18,7 +18,7 @@ struct Callable : LegacyType {
                                      .has_destructor           = 0}) {}
 
   virtual std::vector<type::Type> return_types(
-      core::FnArgs<type::Typed<ir::Value>> const& args) const = 0;
+      core::Arguments<type::Typed<ir::Value>> const& args) const = 0;
 };
 
 }  // namespace type

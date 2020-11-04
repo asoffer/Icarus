@@ -17,7 +17,7 @@ namespace {
 // TODO: I don't think we need to return the arguments anymore.
 absl::flat_hash_map<
     std::string_view,
-    std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
+    std::pair<ir::BasicBlock *, core::Arguments<type::Typed<ir::Value>>>>
 InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
                       absl::Span<ir::Value const> arguments,
                       ir::LocalBlockInterpretation const &block_interp) {

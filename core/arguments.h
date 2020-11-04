@@ -1,31 +1,36 @@
-#ifndef ICARUS_CORE_FN_ARGS_H
-#define ICARUS_CORE_FN_ARGS_H
+#ifndef ICARUS_CORE_ARGUMENTS_H
+#define ICARUS_CORE_ARGUMENTS_H
 
+#include <concepts>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
+#include "base/meta.h"
 #include "base/stringify.h"
 
 namespace core {
-// FnArgs represent arguments passed in to a function or other callable object.
-// They contain a collection of positional arguments as well as a collection of
-// named arguments which are keyed with a std::string or std::string_view.
+template <typename T>
+concept StringLike = (base::meta<T> == base::meta<std::string> or
+                      base::meta<T> == base::meta<std::string_view>);
+
+// Arguments represent arguments passed in to a function or other callable
+// object. They contain a collection of positional arguments as well as a
+// collection of named arguments which are keyed with a std::string or
+// std::string_view.
 //
-// Note that FnArgs do not remember ordering; the named arguments are stored in
-// a container that does not guarantee any consistent ordering. For this reason,
-// this struct alone is unsuitable for use in situations where text-based
-// user-input must be preserved. In those situations, something like
-// OrderedFnArgs is usually more appropriate.
-template <typename T, typename StringType = std::string,
-          typename std::enable_if_t<
-              std::is_same_v<StringType, std::string> or
-              std::is_same_v<StringType, std::string_view>> * = nullptr>
-struct FnArgs {
-  FnArgs() = default;
-  FnArgs(std::vector<T> pos, absl::flat_hash_map<StringType, T> named)
+// Note that Arguments do not remember ordering; the named arguments are stored
+// in a container that does not guarantee any consistent ordering. For this
+// reason, this struct alone is unsuitable for use in situations where
+// text-based user-input must be preserved. In those situations, something like
+// OrderedArguments is usually more appropriate.
+template <typename T, StringLike StringType = std::string>
+struct Arguments {
+  Arguments() = default;
+  Arguments(std::vector<T> pos, absl::flat_hash_map<StringType, T> named)
       : pos_(std::move(pos)), named_(std::move(named)) {}
 
   absl::Span<T const> pos() const & { return pos_; }
@@ -100,7 +105,7 @@ struct FnArgs {
     absl::flat_hash_map<StringType, out_t> named;
     for (auto &&val : pos_) { pos.push_back(fn(val)); }
     for (auto &&[key, val] : named_) { named.emplace(key, fn(val)); }
-    return FnArgs<out_t, StringType>(std::move(pos), std::move(named));
+    return Arguments<out_t, StringType>(std::move(pos), std::move(named));
   }
 
   struct const_iterator {
@@ -150,23 +155,23 @@ struct FnArgs {
     }
 
    private:
-    friend struct FnArgs<T>;
-    static const_iterator MakeBegin(FnArgs<T> const *data) {
+    friend struct Arguments<T>;
+    static const_iterator MakeBegin(Arguments<T> const *data) {
       if (data->pos_.empty()) {
         return const_iterator(data, data->named_.begin());
       } else {
         return const_iterator(data, data->pos_.begin());
       }
     }
-    static const_iterator MakeEnd(FnArgs<T> const *data) {
+    static const_iterator MakeEnd(Arguments<T> const *data) {
       return const_iterator(data, data->named_.end());
     }
 
-    const_iterator(FnArgs<T> const *data,
+    const_iterator(Arguments<T> const *data,
                    std::variant<pos_iter_type, named_iter_type> iter)
         : data_(data), iter_(iter) {}
 
-    FnArgs<T> const *data_;
+    Arguments<T> const *data_;
     std::variant<pos_iter_type, named_iter_type> iter_;
   };
 
@@ -182,7 +187,7 @@ struct FnArgs {
 };
 
 template <typename T>
-bool operator==(FnArgs<T> const &lhs, FnArgs<T> const &rhs) {
+bool operator==(Arguments<T> const &lhs, Arguments<T> const &rhs) {
   if (lhs.pos() != rhs.pos()) { return false; }
   if (lhs.named().size() != rhs.named().size()) { return false; }
   auto const &rhs_named = rhs.named();
@@ -196,10 +201,10 @@ bool operator==(FnArgs<T> const &lhs, FnArgs<T> const &rhs) {
 }
 
 template <typename T>
-bool operator!=(FnArgs<T> const &lhs, FnArgs<T> const &rhs) {
+bool operator!=(Arguments<T> const &lhs, Arguments<T> const &rhs) {
   return not(lhs == rhs);
 }
 
 }  // namespace core
 
-#endif  // ICARUS_CORE_FN_ARGS_H
+#endif  // ICARUS_CORE_ARGUMENTS_H

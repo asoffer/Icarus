@@ -56,7 +56,7 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   // should not have early-exists.
 
   ASSIGN_OR(return type::QualType::Error(),  //
-                   std::ignore, VerifyFnArgs(node->args()));
+                   std::ignore, VerifyArguments(node->args()));
 
   ASSIGN_OR(return type::QualType::Error(),  //
                    std::ignore, VerifyType(node->name()));

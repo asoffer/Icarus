@@ -5,7 +5,7 @@
 #include <string_view>
 
 #include "ast/expression.h"
-#include "core/fn_args.h"
+#include "core/arguments.h"
 
 namespace ast {
 // A jump option is a collection of blocks that may be jumped to and the
@@ -16,7 +16,7 @@ namespace ast {
 // container is chosen.
 struct JumpOption {
   explicit JumpOption(std::string name,
-                      core::FnArgs<std::unique_ptr<Expression>> a)
+                      core::Arguments<std::unique_ptr<Expression>> a)
       : block_(std::move(name)), args_(std::move(a)) {}
   JumpOption(JumpOption const &)     = default;
   JumpOption(JumpOption &&) noexcept = default;
@@ -24,7 +24,7 @@ struct JumpOption {
   JumpOption &operator=(JumpOption &&) noexcept = default;
 
   std::string_view block() const { return block_; }
-  core::FnArgs<std::unique_ptr<Expression>> const &args() const {
+  core::Arguments<std::unique_ptr<Expression>> const &args() const {
     return args_;
   }
 
@@ -32,7 +32,7 @@ struct JumpOption {
   friend struct UnconditionalGoto;
   friend struct ConditionalGoto;
   std::string block_;
-  core::FnArgs<std::unique_ptr<Expression>> args_;
+  core::Arguments<std::unique_ptr<Expression>> args_;
 };
 
 }  // namespace ast

@@ -428,7 +428,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
     diagnostic::DiagnosticConsumer &diag) {
   if (not args_expr) {
     return std::make_unique<ast::Call>(range, std::move(callee),
-                                       core::OrderedFnArgs<ast::Expression>{});
+                                       core::OrderedArguments<ast::Expression>{});
   }
 
   std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
@@ -475,7 +475,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
 
   return std::make_unique<ast::Call>(
       range, std::move(callee),
-      core::OrderedFnArgs<ast::Expression>(std::move(args)));
+      core::OrderedArguments<ast::Expression>(std::move(args)));
 }
 
 std::unique_ptr<ast::Node> BuildCall(
@@ -1031,12 +1031,12 @@ std::unique_ptr<ast::Node> BuildScopeNode(
     diagnostic::DiagnosticConsumer &diag) {
   SourceRange range(nodes.front()->range().begin(),
                     nodes.back()->range().end());
-  auto [callee, ordered_fn_args] =
+  auto [callee, ordered_arguments] =
       std::move(nodes[0]->as<ast::Call>()).extract();
   std::vector<ast::BlockNode> blocks;
   blocks.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
   return std::make_unique<ast::ScopeNode>(
-      range, std::move(callee), std::move(ordered_fn_args), std::move(blocks));
+      range, std::move(callee), std::move(ordered_arguments), std::move(blocks));
 }
 
 std::unique_ptr<ast::Node> BuildBlockNode(
@@ -1439,7 +1439,7 @@ std::unique_ptr<ast::Node> BuildEmptyParen(
   }
   SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
   return std::make_unique<ast::Call>(range, move_as<ast::Expression>(nodes[0]),
-                                     core::OrderedFnArgs<ast::Expression>{});
+                                     core::OrderedArguments<ast::Expression>{});
 }
 
 template <size_t N>

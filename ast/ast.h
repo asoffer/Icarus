@@ -19,8 +19,8 @@
 #include "ast/scope/scope_lit.h"
 #include "ast/visitor_base.h"
 #include "base/ptr_span.h"
-#include "core/fn_args.h"
-#include "core/ordered_fn_args.h"
+#include "core/arguments.h"
+#include "core/ordered_arguments.h"
 #include "core/params.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/addr.h"
@@ -488,7 +488,7 @@ struct BlockLiteral : Expression, WithScope<DeclScope> {
 //
 // Note: Today blocks have names and statements but cannot take any arguments.
 // This will likely change in the future so that blocks can take arguments
-// (likely in the form of `core::FnArgs<std::unique_ptr<ast::Expression>>`).
+// (likely in the form of `core::Arguments<std::unique_ptr<ast::Expression>>`).
 struct BlockNode : ParameterizedExpression, WithScope<ExecScope> {
   explicit BlockNode(frontend::SourceRange const &range, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)
@@ -538,10 +538,10 @@ struct BuiltinFn : Expression {
 struct Call : Expression {
   explicit Call(frontend::SourceRange const &range,
                 std::unique_ptr<Expression> callee,
-                core::OrderedFnArgs<Expression> args)
+                core::OrderedArguments<Expression> args)
       : Expression(range), callee_(std::move(callee)), args_(std::move(args)) {}
   Expression const *callee() const { return callee_.get(); }
-  core::FnArgs<Expression const *> const &args() const { return args_.args(); }
+  core::Arguments<Expression const *> const &args() const { return args_.args(); }
 
   auto extract() && { return std::pair{std::move(callee_), std::move(args_)}; }
 
@@ -549,7 +549,7 @@ struct Call : Expression {
 
  private:
   std::unique_ptr<Expression> callee_;
-  core::OrderedFnArgs<Expression> args_;
+  core::OrderedArguments<Expression> args_;
 };
 
 // Cast:
@@ -973,14 +973,14 @@ struct ScopeLiteral : Expression, WithScope<ScopeLitScope> {
 struct ScopeNode : Expression {
   ScopeNode(frontend::SourceRange const &range,
             std::unique_ptr<Expression> name,
-            core::OrderedFnArgs<Expression> args, std::vector<BlockNode> blocks)
+            core::OrderedArguments<Expression> args, std::vector<BlockNode> blocks)
       : Expression(range),
         name_(std::move(name)),
         args_(std::move(args)),
         blocks_(std::move(blocks)) {}
 
   Expression const *name() const { return name_.get(); }
-  core::FnArgs<Expression const *> const &args() const { return args_.args(); }
+  core::Arguments<Expression const *> const &args() const { return args_.args(); }
 
   template <typename Fn>
   void Apply(Fn &&fn) const {
@@ -1007,7 +1007,7 @@ struct ScopeNode : Expression {
  private:
   std::optional<Label> label_;
   std::unique_ptr<Expression> name_;
-  core::OrderedFnArgs<Expression> args_;
+  core::OrderedArguments<Expression> args_;
   std::vector<BlockNode> blocks_;
   ScopeNode *last_scope_node_ = nullptr;
 };

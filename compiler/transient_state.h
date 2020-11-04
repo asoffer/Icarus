@@ -70,7 +70,7 @@ struct TransientState {
   WorkQueue work_queue;
 
   struct YieldedArguments {
-    core::FnArgs<std::pair<ir::Value, type::QualType>> vals;
+    core::Arguments<std::pair<ir::Value, type::QualType>> vals;
     ir::Label label;
   };
   std::vector<YieldedArguments> yields;

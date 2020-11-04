@@ -40,7 +40,7 @@ struct InstructionInliner {
 
   absl::flat_hash_map<
       std::string_view,
-      std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
+      std::pair<BasicBlock *, core::Arguments<type::Typed<ir::Value>>>>
   ExtractNamedBlockMapping() && {
     return std::move(named_blocks_);
   }
@@ -62,7 +62,7 @@ struct InstructionInliner {
 
   absl::flat_hash_map<
       std::string_view,
-      std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
+      std::pair<BasicBlock *, core::Arguments<type::Typed<ir::Value>>>>
       named_blocks_;
   LocalBlockInterpretation block_interp_;
 };

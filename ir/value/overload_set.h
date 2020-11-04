@@ -38,7 +38,7 @@ namespace ir {
 // For this reason, an overload set may grow over time as new instantiations of
 // a generic function are requested.
 struct OverloadSet {
-  static std::optional<Fn> Closed(core::FnArgs<type::QualType> const &) {
+  static std::optional<Fn> Closed(core::Arguments<type::QualType> const &) {
     return std::nullopt;
   }
 
@@ -47,13 +47,13 @@ struct OverloadSet {
   // to handle generics.
   explicit OverloadSet(
       std::vector<Fn> fns = {},
-      std::function<std::optional<Fn>(core::FnArgs<type::QualType> const &)>
+      std::function<std::optional<Fn>(core::Arguments<type::QualType> const &)>
           create = Closed)
       : fns_(std::move(fns)), create_(std::move(create)) {}
 
   // Finds a `Fn` in this overload set which can be called with the `args`. This
   // `Fn` may be an instantiation of a generic function.
-  std::optional<Fn> Lookup(core::FnArgs<type::QualType> const &args) {
+  std::optional<Fn> Lookup(core::Arguments<type::QualType> const &args) {
     // TODO search doesn't need to be linear.
     for (auto const &[cached_args, index] : cache_) {
       if (args != cached_args) { continue; }
@@ -83,8 +83,8 @@ struct OverloadSet {
 
  private:
   std::vector<Fn> fns_;
-  std::vector<std::pair<core::FnArgs<type::QualType>, size_t>> cache_;
-  std::function<std::optional<Fn>(core::FnArgs<type::QualType> const &)>
+  std::vector<std::pair<core::Arguments<type::QualType>, size_t>> cache_;
+  std::function<std::optional<Fn>(core::Arguments<type::QualType> const &)>
       create_;
 };
 

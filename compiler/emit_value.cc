@@ -307,7 +307,7 @@ ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
 template <typename NodeType>
 ir::NativeFn MakeConcreteFromGeneric(
     Compiler *compiler, NodeType const *node,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::Value>> const &args) {
   ASSERT(node->is_generic() == true);
 
   // Note: Cannot use structured bindings because the bindings need to be
@@ -335,7 +335,7 @@ ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
         [c = this->WithPersistent(),
-         node](core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+         node](core::Arguments<type::Typed<ir::Value>> const &args) mutable
         -> ir::NativeFn { return MakeConcreteFromGeneric(&c, node, args); });
     return ir::Value(gen_fn);
   }
@@ -358,7 +358,7 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
         [c = this->WithPersistent(),
-         node](core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+         node](core::Arguments<type::Typed<ir::Value>> const &args) mutable
         -> ir::NativeFn { return MakeConcreteFromGeneric(&c, node, args); });
     return ir::Value(gen_fn);
   }

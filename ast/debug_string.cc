@@ -69,8 +69,8 @@ void Joiner(T &&node, std::string *out, size_t indent) {
 }
 
 template <typename EPtr, typename StrType>
-void DumpFnArgs(std::string *out, size_t indent,
-                core::FnArgs<EPtr, StrType> const &fnargs) {
+void DumpArguments(std::string *out, size_t indent,
+                core::Arguments<EPtr, StrType> const &fnargs) {
   char const *sep = "";
   fnargs.ApplyWithIndex([&](auto &&index, EPtr const &expr) {
     absl::StrAppend(out, sep);
@@ -199,7 +199,7 @@ void BuiltinFn::DebugStrAppend(std::string *out, size_t indent) const {
 void Call::DebugStrAppend(std::string *out, size_t indent) const {
   callee()->DebugStrAppend(out, indent);
   absl::StrAppend(out, "(");
-  DumpFnArgs(out, indent, args());
+  DumpArguments(out, indent, args());
   absl::StrAppend(out, ")");
 }
 
@@ -334,13 +334,13 @@ void ConditionalGoto::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, ", ");
   for (auto const &opt : true_options()) {
     absl::StrAppend(out, opt.block(), "(");
-    DumpFnArgs(out, indent, opt.args());
+    DumpArguments(out, indent, opt.args());
     absl::StrAppend(out, ")");
   }
   absl::StrAppend(out, ", ");
   for (auto const &opt : false_options()) {
     absl::StrAppend(out, opt.block(), "(");
-    DumpFnArgs(out, indent, opt.args());
+    DumpArguments(out, indent, opt.args());
     absl::StrAppend(out, ")");
   }
 }
@@ -349,7 +349,7 @@ void UnconditionalGoto::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "goto ");
   for (auto const &opt : options()) {
     absl::StrAppend(out, opt.block(), "(");
-    DumpFnArgs(out, indent, opt.args());
+    DumpArguments(out, indent, opt.args());
     absl::StrAppend(out, ")");
   }
 }
@@ -390,7 +390,7 @@ void ScopeNode::DebugStrAppend(std::string *out, size_t indent) const {
 
   if (not args().empty()) {
     absl::StrAppend(out, "(");
-    DumpFnArgs(out, indent, args());
+    DumpArguments(out, indent, args());
     absl::StrAppend(out, ")");
   }
   for (auto const &block : blocks()) { block.DebugStrAppend(out, indent); }

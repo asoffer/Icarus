@@ -28,7 +28,7 @@ std::unique_ptr<T> ParseAs(
   return std::unique_ptr<T>(cast_ptr);
 }
 
-core::OrderedFnArgs<ast::Expression> MakeFnArgs(
+core::OrderedArguments<ast::Expression> MakeArguments(
     std::vector<std::string> pos_args,
     absl::flat_hash_map<std::string, std::string> named_args) {
   std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> vec;
@@ -43,7 +43,7 @@ core::OrderedFnArgs<ast::Expression> MakeFnArgs(
                      ParseAs<ast::Expression>(std::move(arg), line_num));
     ++line_num;
   }
-  return core::OrderedFnArgs<ast::Expression>(std::move(vec));
+  return core::OrderedArguments<ast::Expression>(std::move(vec));
 }
 
 }  // namespace test

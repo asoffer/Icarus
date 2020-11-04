@@ -35,7 +35,7 @@ cc_library(
     hdrs = ["call.h"],
     deps = [
         ":dependency_node",
-        ":fn_args",
+        ":arguments",
         ":params",
         ":params_ref",
         "//base:log",
@@ -61,8 +61,8 @@ cc_library(
 # TODO dependency_node_test
 
 cc_library(
-    name = "fn_args",
-    hdrs = ["fn_args.h"],
+    name = "arguments",
+    hdrs = ["arguments.h"],
     deps = [
         "//base:stringify",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -70,10 +70,10 @@ cc_library(
 )
 
 cc_test(
-    name = "fn_args_test",
-    srcs = ["fn_args_test.cc"],
+    name = "arguments_test",
+    srcs = ["arguments_test.cc"],
     deps = [
-        ":fn_args",
+        ":arguments",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -82,7 +82,7 @@ cc_library(
     name = "params",
     hdrs = ["params.h"],
     deps = [
-        ":fn_args",
+        ":arguments",
         "//base:debug",
         "//base:lazy_convert",
         "//base:macros",
@@ -104,7 +104,7 @@ cc_library(
     hdrs = ["params_ref.h"],
     deps = [
         ":params",
-        ":fn_args",
+        ":arguments",
     ],
 )
 
@@ -118,10 +118,10 @@ cc_test(
 )
 
 cc_library(
-    name = "ordered_fn_args",
-    hdrs = ["ordered_fn_args.h"],
+    name = "ordered_arguments",
+    hdrs = ["ordered_arguments.h"],
     deps = [
-        ":fn_args",
+        ":arguments",
         "//base:stringify",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/types:span",
@@ -129,10 +129,10 @@ cc_library(
 )
 
 cc_test(
-    name = "ordered_fn_args_test",
-    srcs = ["ordered_fn_args_test.cc"],
+    name = "ordered_arguments_test",
+    srcs = ["ordered_arguments_test.cc"],
     deps = [
-        ":ordered_fn_args",
+        ":ordered_arguments",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -188,7 +188,7 @@ cc_library(
         "//compiler:context",
         "//compiler:library_module",
         "//core:dependency_node",
-        "//core:fn_args",
+        "//core:arguments",
         "//ir/value",
         "//type:callable",
         "//type:overload_set",

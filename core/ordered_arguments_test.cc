@@ -1,4 +1,4 @@
-#include "core/ordered_fn_args.h"
+#include "core/ordered_arguments.h"
 
 #include <memory>
 
@@ -7,9 +7,9 @@
 namespace core {
 namespace {
 
-TEST(OrderedFnArgs, construction) {
+TEST(OrderedArguments, construction) {
   std::vector<std::pair<std::string, std::unique_ptr<int>>> v;
-  auto args = OrderedFnArgs<int>{std::move(v)};
+  auto args = OrderedArguments<int>{std::move(v)};
   EXPECT_EQ(args.size(), 0);
   EXPECT_TRUE(args.empty());
 
@@ -17,7 +17,7 @@ TEST(OrderedFnArgs, construction) {
     std::vector<std::pair<std::string, std::unique_ptr<int>>> v;
     v.emplace_back("hello", std::make_unique<int>(3));
     v.emplace_back("world", std::make_unique<int>(4));
-    auto args = OrderedFnArgs<int>{std::move(v)};
+    auto args = OrderedArguments<int>{std::move(v)};
     EXPECT_EQ(args.size(), 2);
     EXPECT_FALSE(args.empty());
     EXPECT_EQ(args.pos().size(), 0);
@@ -34,7 +34,7 @@ TEST(OrderedFnArgs, construction) {
     v.emplace_back("", std::make_unique<int>(2));
     v.emplace_back("hello", std::make_unique<int>(3));
     v.emplace_back("world", std::make_unique<int>(4));
-    auto args = OrderedFnArgs<int>{std::move(v)};
+    auto args = OrderedArguments<int>{std::move(v)};
     EXPECT_EQ(args.size(), 3);
     EXPECT_EQ(args.pos().size(), 1);
     EXPECT_EQ(*args.pos().at(0), 2);
@@ -50,12 +50,12 @@ TEST(OrderedFnArgs, construction) {
   }
 }
 
-TEST(OrderedFnArgs, DropOrder) {
+TEST(OrderedArguments, DropOrder) {
   std::vector<std::pair<std::string, std::unique_ptr<int>>> v;
   v.emplace_back("", std::make_unique<int>(2));
   v.emplace_back("hello", std::make_unique<int>(3));
   v.emplace_back("world", std::make_unique<int>(4));
-  auto args = OrderedFnArgs<int>{std::move(v)}.DropOrder();
+  auto args = OrderedArguments<int>{std::move(v)}.DropOrder();
 
   EXPECT_EQ(args.size(), 3);
   EXPECT_EQ(args.pos().size(), 1);

@@ -6,7 +6,7 @@
 
 #include "base/any_invocable.h"
 #include "core/arch.h"
-#include "core/fn_args.h"
+#include "core/arguments.h"
 #include "ir/value/value.h"
 #include "type/callable.h"
 #include "type/function.h"
@@ -20,7 +20,7 @@ struct GenericFunction : Callable {
 
   explicit GenericFunction(core::Params<EmptyStruct> params,
                            base::any_invocable<Function const *(
-                               core::FnArgs<Typed<ir::Value>> const &)>
+                               core::Arguments<Typed<ir::Value>> const &)>
                                fn)
       : gen_fn_(std::move(fn)), params_(std::move(params)) {}
 
@@ -30,10 +30,10 @@ struct GenericFunction : Callable {
 
   bool is_big() const override { return false; }
 
-  Function const *concrete(core::FnArgs<Typed<ir::Value>> const &) const;
+  Function const *concrete(core::Arguments<Typed<ir::Value>> const &) const;
 
   std::vector<type::Type> return_types(
-      core::FnArgs<type::Typed<ir::Value>> const &args) const override;
+      core::Arguments<type::Typed<ir::Value>> const &args) const override;
 
   core::Params<EmptyStruct> const &params() const { return params_; }
 
@@ -48,7 +48,7 @@ struct GenericFunction : Callable {
 
  private:
   // TODO: Eventually we will want a serializable version of this.
-  base::any_invocable<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
+  base::any_invocable<Function const *(core::Arguments<Typed<ir::Value>> const &)>
       gen_fn_;
 
   // TODO: Shouldn't use space for the empty struct.

@@ -12,7 +12,7 @@
 
 #include "base/meta.h"
 #include "base/stringify.h"
-#include "core/fn_args.h"
+#include "core/arguments.h"
 #include "ir/value/reg.h"
 #include "ir/value/value.h"
 #include "type/typed_value.h"
@@ -31,7 +31,7 @@ struct JumpCmd {
   }
   static JumpCmd Choose(std::vector<std::string_view> names,
                         std::vector<BasicBlock*> blocks,
-                        std::vector<core::FnArgs<type::Typed<Value>>> args) {
+                        std::vector<core::Arguments<type::Typed<Value>>> args) {
     return JumpCmd(
         ChooseJump(std::move(names), std::move(blocks), std::move(args)));
   }
@@ -55,7 +55,7 @@ struct JumpCmd {
   struct ChooseJump {
     explicit ChooseJump(std::vector<std::string_view> names,
                         std::vector<BasicBlock*> blocks,
-                        std::vector<core::FnArgs<type::Typed<Value>>> args)
+                        std::vector<core::Arguments<type::Typed<Value>>> args)
         : names_(std::move(names)),
           blocks_(std::move(blocks)),
           args_(std::move(args)) {}
@@ -63,14 +63,14 @@ struct JumpCmd {
     size_t size() const { return names_.size(); }
     absl::Span<std::string_view const> names() const { return names_; }
     absl::Span<BasicBlock* const> blocks() const { return blocks_; }
-    absl::Span<core::FnArgs<type::Typed<Value>> const> args() const {
+    absl::Span<core::Arguments<type::Typed<Value>> const> args() const {
       return args_;
     }
 
    private:
     std::vector<std::string_view> names_;
     std::vector<BasicBlock*> blocks_;
-    std::vector<core::FnArgs<type::Typed<Value>>> args_;
+    std::vector<core::Arguments<type::Typed<Value>>> args_;
   };
 
   enum class Kind { Unreachable, Return, Uncond, Cond, Choose };

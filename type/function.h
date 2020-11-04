@@ -26,7 +26,7 @@ struct Function : public Callable {
   }
 
   std::vector<type::Type> return_types(
-      core::FnArgs<type::Typed<ir::Value>> const &args) const override {
+      core::Arguments<type::Typed<ir::Value>> const &args) const override {
     return output_;
   }
 

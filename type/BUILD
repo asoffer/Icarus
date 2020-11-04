@@ -67,7 +67,7 @@ cc_library(
     deps = [
         ":type",
         ":typed_value",
-        "//core:fn_args",
+        "//core:arguments",
         "//ir/value",
     ],
 )
@@ -148,7 +148,7 @@ cc_library(
         ":typed_value",
         "//base:any_invocable",
         "//core:arch",
-        "//core:fn_args",
+        "//core:arguments",
         "//ir/value",
     ],
 )
@@ -163,7 +163,7 @@ cc_library(
         "//ast/scope",
         "//ast/scope:module",
         "//base:any_invocable",
-        "//core:fn_args",
+        "//core:arguments",
         "//module",
     ],
 )

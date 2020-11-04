@@ -18,7 +18,7 @@ type::QualType VerifyGeneric(Compiler &c,
                              ast::ShortFunctionLiteral const *node) {
   auto *diag_consumer = &c.diag();
   auto gen            = [node, c = Compiler(c.resources())](
-                 core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+                 core::Arguments<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
     // TODO handle compilation failures.
     auto [params, rets, context, inserted] = c.Instantiate(node, args);

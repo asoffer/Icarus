@@ -7,7 +7,7 @@
 #include "absl/types/span.h"
 #include "base/log.h"
 #include "core/dependency_node.h"
-#include "core/fn_args.h"
+#include "core/arguments.h"
 #include "core/params.h"
 #include "core/params_ref.h"
 
@@ -125,7 +125,7 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
 //
 // TODO this offset is a hack to get scope state working. Simplify.
 template <typename P, typename A, typename Fn>
-void FillMissingArgs(ParamsRef<P> params, FnArgs<A>* args, Fn fn,
+void FillMissingArgs(ParamsRef<P> params, Arguments<A>* args, Fn fn,
                      size_t offset = 0) {
   for (size_t i = args->pos().size(); i < params.size(); ++i) {
     ASSERT(i + offset < params.size());
@@ -140,7 +140,7 @@ void FillMissingArgs(ParamsRef<P> params, FnArgs<A>* args, Fn fn,
 // Returns true if and only if a callable with `params` can be called with
 // `args`.
 template <typename T, typename U, typename ConvertibleFn>
-bool IsCallable(ParamsRef<T> params, FnArgs<U> const& args, ConvertibleFn fn) {
+bool IsCallable(ParamsRef<T> params, Arguments<U> const& args, ConvertibleFn fn) {
   if (params.size() < args.size()) {
     LOG("core::IsCallable",
         "IsCallable = false due to size mismatch (%u vs %u)", params.size(),

@@ -66,7 +66,7 @@ ast::Call const* MakeCall(
     TestModule* module) {
   auto call_expr = std::make_unique<ast::Call>(
       frontend::SourceRange{}, ParseAs<ast::Expression>(std::move(fn)),
-      MakeFnArgs(std::move(pos_args), std::move(named_args)));
+      MakeArguments(std::move(pos_args), std::move(named_args)));
   auto* expr = call_expr.get();
   module->AppendNode(std::move(call_expr), module->consumer);
   return expr;

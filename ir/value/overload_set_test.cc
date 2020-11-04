@@ -29,17 +29,17 @@ TEST(OverloadSet, Construction) {
                                {}))});
 
   {
-    core::FnArgs<type::QualType> a;
+    core::Arguments<type::QualType> a;
     ASSIGN_OR(FAIL(), auto fn, os.Lookup(a));
     EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn1));
   }
   {
-    core::FnArgs<type::QualType> a{{type::QualType::Constant(type::Int64)}, {}};
+    core::Arguments<type::QualType> a{{type::QualType::Constant(type::Int64)}, {}};
     ASSIGN_OR(FAIL(), auto fn, os.Lookup(a));
     EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn2));
   }
   {
-    core::FnArgs<type::QualType> a{{type::QualType::Constant(type::Bool)}, {}};
+    core::Arguments<type::QualType> a{{type::QualType::Constant(type::Bool)}, {}};
     ASSIGN_OR(FAIL(), auto fn, os.Lookup(a));
     EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn3));
   }
@@ -49,8 +49,8 @@ TEST(OverloadSet, FailsToConstruct) {
   ir::OverloadSet os(std::vector<ir::Fn>{});
 
   // Check twice because `Lookup()` caches state.
-  EXPECT_FALSE(os.Lookup(core::FnArgs<type::QualType>()).has_value());
-  EXPECT_FALSE(os.Lookup(core::FnArgs<type::QualType>()).has_value());
+  EXPECT_FALSE(os.Lookup(core::Arguments<type::QualType>()).has_value());
+  EXPECT_FALSE(os.Lookup(core::Arguments<type::QualType>()).has_value());
 }
 
 }  // namespace

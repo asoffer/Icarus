@@ -19,10 +19,10 @@ struct CompiledJump : BlockGroup<type::Jump> {
       : BlockGroup(jump_type, std::move(p), jump_type->state() ? 1 : 0) {}
 
   absl::flat_hash_map<std::string_view,
-                      std::vector<core::FnArgs<type::QualType>>>
+                      std::vector<core::Arguments<type::QualType>>>
   ExtractExitPaths() const {
     absl::flat_hash_map<std::string_view,
-                        std::vector<core::FnArgs<type::QualType>>>
+                        std::vector<core::Arguments<type::QualType>>>
         result;
     if (work_item and *work_item) {
       std::move (*work_item)();

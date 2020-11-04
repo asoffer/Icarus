@@ -149,7 +149,7 @@ ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
 
 Context::InsertSubcontextResult Compiler::Instantiate(
     ast::ParameterizedExpression const *node,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::Value>> const &args) {
   Context scratchpad = context().ScratchpadSubcontext();
   Compiler c({
       .data                = scratchpad,
@@ -162,7 +162,7 @@ Context::InsertSubcontextResult Compiler::Instantiate(
 
 Context::FindSubcontextResult Compiler::FindInstantiation(
     ast::ParameterizedExpression const *node,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::Value>> const &args) {
   Context scratchpad = context().ScratchpadSubcontext();
   Compiler c({
       .data                = scratchpad,

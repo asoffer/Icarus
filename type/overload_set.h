@@ -27,7 +27,7 @@ struct OverloadSet : Callable {
   Completeness completeness() const override { return Completeness::Complete; }
 
   std::vector<type::Type> return_types(
-      core::FnArgs<type::Typed<ir::Value>> const &args) const override;
+      core::Arguments<type::Typed<ir::Value>> const &args) const override;
 
   // Not considered big because it only makes sense to pass around at
   // compile-time anyway.

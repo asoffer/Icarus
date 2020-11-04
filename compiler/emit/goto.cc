@@ -11,7 +11,7 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
   std::vector<ir::BasicBlock *> blocks;
   blocks.reserve(options.size());
 
-  std::vector<core::FnArgs<type::Typed<ir::Value>>> args;
+  std::vector<core::Arguments<type::Typed<ir::Value>>> args;
   args.reserve(options.size());
 
   auto current_block = c.builder().CurrentBlock();
