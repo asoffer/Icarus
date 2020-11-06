@@ -37,7 +37,7 @@ cc_library(
         ":dependency_node",
         ":arguments",
         ":params",
-        ":params_ref",
+        "//base:lazy",
         "//base:log",
         "@com_google_absl//absl/types:span",
     ],
@@ -96,24 +96,6 @@ cc_test(
     srcs = ["params_test.cc"],
     deps = [
         ":params",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "params_ref",
-    hdrs = ["params_ref.h"],
-    deps = [
-        ":params",
-        ":arguments",
-    ],
-)
-
-cc_test(
-    name = "params_ref_test",
-    srcs = ["params_ref_test.cc"],
-    deps = [
-        ":params_ref",
         "@com_google_googletest//:gtest_main",
     ],
 )

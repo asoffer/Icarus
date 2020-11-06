@@ -72,7 +72,6 @@ cc_library(
         "//core:alignment",
         "//core:bytes",
         "//core:params",
-        "//core:params_ref",
         "//type:pointer",
         "//type:type_fwd",
         "//type:typed_value",

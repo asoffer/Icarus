@@ -36,7 +36,6 @@ cc_library(
         "//base:ptr_span",
         "//core:arguments",
         "//core:dependency_node",
-        "//core:params_ref",
         "//core:ordered_arguments",
         "//frontend/lex:operators",
         "//ir/value:addr",

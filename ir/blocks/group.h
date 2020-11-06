@@ -12,7 +12,6 @@
 #include "core/alignment.h"
 #include "core/bytes.h"
 #include "core/params.h"
-#include "core/params_ref.h"
 #include "ir/blocks/basic.h"
 #include "ir/blocks/register_allocator.h"
 #include "ir/value/reg.h"

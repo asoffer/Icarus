@@ -71,52 +71,48 @@ TEST(IsCallable, EmptyParams) {
   auto convertible = [](int from, int to) { return from == to; };
 
   Params<int> p;
-  ParamsRef<int> p_ref = p;
-  EXPECT_TRUE(IsCallable(p_ref, Arguments<int>{}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{3}, {}}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{}, {{"a", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{3}, {{"a", 4}}}, convertible));
+  EXPECT_TRUE(IsCallable(p, Arguments<int>{}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{3}, {}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{}, {{"a", 4}}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{3}, {{"a", 4}}}, convertible));
 }
 
 TEST(IsCallable, OneParamWithoutDefault) {
   auto convertible = [](int from, int to) { return from == to; };
   Params<int> p{Param<int>{"a", 4}};
-  ParamsRef<int> p_ref = p;
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{3}, {}}, convertible));
-  EXPECT_TRUE(IsCallable(p_ref, Arguments<int>{{4}, {}}, convertible));
-  EXPECT_TRUE(IsCallable(p_ref, Arguments<int>{{}, {{"a", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{}, {{"b", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{4}, {{"a", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{4}, {{"a", 5}}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{3}, {}}, convertible));
+  EXPECT_TRUE(IsCallable(p, Arguments<int>{{4}, {}}, convertible));
+  EXPECT_TRUE(IsCallable(p, Arguments<int>{{}, {{"a", 4}}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{}, {{"b", 4}}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{4}, {{"a", 4}}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{4}, {{"a", 5}}}, convertible));
 }
 
 TEST(IsCallable, OneParamWithDefault) {
   auto convertible = [](int from, int to) { return from == to; };
   Params<int> p{Param<int>{"a", 4, HAS_DEFAULT}};
-  ParamsRef<int> p_ref = p;
-  EXPECT_TRUE(IsCallable(p_ref, Arguments<int>{}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{3}, {}}, convertible));
-  EXPECT_TRUE(IsCallable(p_ref, Arguments<int>{{4}, {}}, convertible));
-  EXPECT_TRUE(IsCallable(p_ref, Arguments<int>{{}, {{"a", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{}, {{"b", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{4}, {{"a", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{4}, {{"a", 5}}}, convertible));
+  EXPECT_TRUE(IsCallable(p, Arguments<int>{}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{3}, {}}, convertible));
+  EXPECT_TRUE(IsCallable(p, Arguments<int>{{4}, {}}, convertible));
+  EXPECT_TRUE(IsCallable(p, Arguments<int>{{}, {{"a", 4}}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{}, {{"b", 4}}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{4}, {{"a", 4}}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{4}, {{"a", 5}}}, convertible));
 }
 
 TEST(IsCallable, MultipleParamsWithNonTrailingDefault) {
   auto convertible = [](int from, int to) { return from == to; };
 
   Params<int> p{Param<int>{"a", 4, HAS_DEFAULT}, Param<int>{"b", 7}};
-  ParamsRef<int> p_ref = p;
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{3}, {}}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{4}, {}}, convertible));
-  EXPECT_TRUE(IsCallable(p_ref, Arguments<int>{{4, 7}, {}}, convertible));
-  EXPECT_FALSE(IsCallable(p_ref, Arguments<int>{{}, {{"a", 4}}}, convertible));
-  EXPECT_TRUE(IsCallable(p_ref, Arguments<int>{{4}, {{"b", 7}}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{3}, {}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{4}, {}}, convertible));
+  EXPECT_TRUE(IsCallable(p, Arguments<int>{{4, 7}, {}}, convertible));
+  EXPECT_FALSE(IsCallable(p, Arguments<int>{{}, {{"a", 4}}}, convertible));
+  EXPECT_TRUE(IsCallable(p, Arguments<int>{{4}, {{"b", 7}}}, convertible));
   EXPECT_TRUE(
-      IsCallable(p_ref, Arguments<int>{{}, {{"a", 4}, {"b", 7}}}, convertible));
+      IsCallable(p, Arguments<int>{{}, {{"a", 4}, {"b", 7}}}, convertible));
 }
 
 // TODO tests for transform

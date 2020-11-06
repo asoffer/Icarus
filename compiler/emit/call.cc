@@ -103,8 +103,7 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
     switch (callee_fn.value().kind()) {
       case ir::Fn::Kind::Native: {
         core::FillMissingArgs(
-            core::ParamsRef(callee_fn.value().native()->params()), &args,
-            [&c](auto const &p) {
+            callee_fn.value().native()->params(), &args, [&c](auto const &p) {
               return type::Typed<ir::Value>(
                   c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type());
             });

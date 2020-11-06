@@ -7,7 +7,6 @@
 
 #include "absl/types/span.h"
 #include "core/call.h"
-#include "core/params_ref.h"
 #include "ir/value/fn.h"
 #include "type/cast.h"
 #include "type/function.h"
@@ -63,7 +62,7 @@ struct OverloadSet {
 
     size_t i = 0;
     for (Fn const &fn : fns_) {
-      if (core::IsCallable(core::ParamsRef(fn.type()->params()), args,
+      if (core::IsCallable(fn.type()->params(), args,
                            [](type::QualType a, type::QualType p) {
                              return type::CanCast(p.type(), a.type());
                            })) {
