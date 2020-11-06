@@ -9,6 +9,7 @@
 #include "core/arguments.h"
 #include "module/module.h"
 #include "type/callable.h"
+#include "type/primitive.h"
 #include "type/struct.h"
 #include "type/type.h"
 
@@ -30,10 +31,9 @@ struct GenericStruct : Callable {
     return Completeness::Incomplete;
   }
 
-  // TODO: Callable sholudn't necessarily mean we need to return something.
   std::vector<type::Type> return_types(
       core::Arguments<type::Typed<ir::Value>> const &args) const override {
-    return {};
+    return {Type(Type_)};
   }
 
   auto Instantiate(core::Arguments<Typed<ir::Value>> const &args) const {

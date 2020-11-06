@@ -176,7 +176,6 @@ type::QualType VerifyDeclarationType(Compiler &compiler,
                                      ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto type_expr_qt, compiler.VerifyType(node->type_expr()));
-
   if (type_expr_qt.type() != type::Type_) {
     compiler.diag().Consume(NotAType{
         .range = node->type_expr()->range(),

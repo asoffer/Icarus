@@ -17,30 +17,44 @@ WorkItem::Result Compiler::VerifyBody(
 
 type::QualType Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
-  auto gen = [node, c = Compiler(resources())](
+  auto gen = [node, instantiation_compiler = Compiler(resources()),
+              cg = builder().CurrentGroup()](
                  core::Arguments<type::Typed<ir::Value>> const &args) mutable
-      -> std::pair<core::Params<type::QualType>, type::Struct const *> {
-    // TODO: Need a version of MakeConcrete that doesn't generate return types
-    // because those only make sense for functions.
-    auto [params, rets, data, inserted] = c.Instantiate(node, args);
-    if (inserted) {
-      type::Struct *s = new type::Struct(
-          &c.context().module(),
-          {.is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
-           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable)});
+      -> std::pair<core::Params<type::QualType>, type::Struct *>
 
-      LOG("struct", "Allocating a new (parameterized) struct %p for %p", s,
-          node);
-      c.context().set_struct(node, s);
-      for (auto const &field : node->fields()) { c.VerifyType(&field); }
+  {
+    auto [params, rets_ref, context, inserted] =
+        instantiation_compiler.Instantiate(node, args);
+
+    if (inserted) {
+      LOG("FunctionLiteral", "inserted! %s", node->DebugString());
+      auto compiler =
+          instantiation_compiler.MakeChild(Compiler::PersistentResources{
+              .data                = context,
+              .diagnostic_consumer = instantiation_compiler.diag(),
+              .importer            = instantiation_compiler.importer(),
+          });
+      compiler.builder().CurrentGroup() = cg;
+
+      type::Struct *s = type::Allocate<type::Struct>(
+          &compiler.context().module(),
+          type::Struct::Options{.is_copyable = not node->hashtags.contains(
+                                    ir::Hashtag::Uncopyable),
+                                .is_movable = not node->hashtags.contains(
+                                    ir::Hashtag::Immovable)});
+
+      LOG("ParameterizedStructLiteral",
+          "Allocating a new (parameterized) struct %p for %p", s, node);
+      compiler.context().set_struct(node, s);
+      for (auto const &field : node->fields()) { compiler.VerifyType(&field); }
 
       // TODO: This should actually be behind a must_complete work queue item.
       ir::CompiledFn fn(type::Func({}, {}),
                         core::Params<type::Typed<ast::Declaration const *>>{});
-      ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+      ICARUS_SCOPE(ir::SetCurrent(fn, compiler.builder())) {
         // TODO: this is essentially a copy of the body of
         // FunctionLiteral::EmitValue Factor these out together.
-        c.builder().CurrentBlock() = fn.entry();
+        compiler.builder().CurrentBlock() = fn.entry();
 
         std::vector<type::StructInstruction::Field> fields;
         fields.reserve(node->fields().size());
@@ -49,34 +63,39 @@ type::QualType Compiler::VerifyType(
           // TODO hashtags, special members.
           if (auto *init_val = field.init_val()) {
             // TODO init_val type may not be the same.
-            type::Type t = c.qual_type_of(init_val)->type();
-            fields.emplace_back(field.id(), t, c.EmitValue(init_val));
+            type::Type t = compiler.qual_type_of(init_val)->type();
+            fields.emplace_back(field.id(), t, compiler.EmitValue(init_val));
           } else {
             fields.emplace_back(
-                field.id(), c.EmitValue(field.type_expr()).get<type::Type>());
+                field.id(), compiler.EmitValue(field.type_expr()).get<type::Type>());
           }
         }
         // TODO destructors and assignment
-        c.current_block()->Append(
+        compiler.current_block()->Append(
             type::StructInstruction{.struct_     = s,
                                     .fields      = std::move(fields),
                                     .assignments = {},
                                     .dtor        = std::nullopt,
-                                    .result      = c.builder().Reserve()});
+                                    .result      = compiler.builder().Reserve()});
 
-        c.builder().ReturnJump();
+        compiler.builder().ReturnJump();
       }
 
       // TODO: What if execution fails.
       fn.WriteByteCode<interpretter::instruction_set_t>();
       interpretter::Execute(std::move(fn));
-      LOG("struct",
+      LOG("ParameterizedStructLiteral",
           "Completed %s which is a (parameterized) struct %s with %u field(s).",
           node->DebugString(), *s, s->fields().size());
-      return std::make_pair(core::Params<type::QualType>{}, s);
+      // TODO: Hack just assuming parameterized structs are parameterized on
+      // exactly one type which is anonymous.
+      return std::make_pair(core::Params<type::QualType>{core::AnonymousParam(
+                                type::QualType::Constant(type::Type_))},
+                            s);
     } else {
-      return std::make_pair(core::Params<type::QualType>{},
-                            data.get_struct(node));
+      return std::make_pair(core::Params<type::QualType>{core::AnonymousParam(
+                                type::QualType::Constant(type::Type_))},
+                            context.get_struct(node));
     }
   };
 

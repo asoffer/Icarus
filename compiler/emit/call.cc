@@ -75,6 +75,21 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     return std::make_tuple(ir::Fn(gen_fn.concrete(args)),
                            find_subcontext_result.fn_type,
                            &find_subcontext_result.context);
+  } else if (auto const *gs_type = qt.type()->if_as<type::GenericStruct>()) {
+    type::GenericStruct const &gs = compiler.EmitValue(fn)
+                                        .get<ir::RegOr<type::Type>>()
+                                        .value()
+                                        ->as<type::GenericStruct>();
+
+    auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
+
+    auto find_subcontext_result =
+        compiler.FindInstantiation(parameterized_expr, args);
+    UNREACHABLE(fn->DebugString(), "\n", qt.type()->to_string());
+    // return std::make_tuple(ir::Fn(gs.concrete(args)),
+    //                        find_subcontext_result.fn_type,
+    //                        &find_subcontext_result.context);
+
   } else if (auto const *f_type = qt.type()->if_as<type::Function>()) {
     return std::make_tuple(ComputeConcreteFn(&compiler, fn, f_type, qt.quals()),
                            f_type, nullptr);
@@ -90,11 +105,11 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
   auto callee_qual_type = compiler.qual_type_of(callee);
   ASSERT(callee_qual_type.has_value() == true);
 
-  auto [callee_fn, overload_type, dependent_data] =
+  auto [callee_fn, overload_type, context] =
       EmitCallee(compiler, callee, *callee_qual_type, args);
 
   Compiler c = compiler.MakeChild(Compiler::PersistentResources{
-      .data = dependent_data ? *dependent_data : compiler.context(),
+      .data = context? *context : compiler.context(),
       .diagnostic_consumer = compiler.diag(),
       .importer            = compiler.importer(),
   });

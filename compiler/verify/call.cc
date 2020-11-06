@@ -279,6 +279,7 @@ type::QualType VerifyAlignmentCall(
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::Call const *node) {
+  LOG("Call", "Verifying %s", node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto arg_vals, VerifyArguments(node->args()));
   // TODO: consider having `foreign` be a generic type. This would allow for the
@@ -310,11 +311,10 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
   }
 
   auto [callee_qt, overload_map] = VerifyCallee(node->callee(), arg_vals);
+  LOG("Call", "Callee's qual-type is %s", callee_qt);
   if (not callee_qt.ok()) { return type::QualType::Error(); }
 
   if (auto const *c = callee_qt.type()->if_as<type::Callable>()) {
-    LOG("Call.VerifyType", "Callee's (%s) qual-type: %s",
-        node->callee()->DebugString(), callee_qt);
     auto result = VerifyCall(node, overload_map, arg_vals);
     if (not result) {
       diag().Consume(UncallableWithArguments{
@@ -326,11 +326,6 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     // TODO: under what circumstances can we prove that the implementation
     // doesn't need to be run at runtime?
     return context().set_qual_type(node, *result);
-  } else if (auto const *gen_struct =
-                 callee_qt.type()->if_as<type::GenericStruct>()) {
-    // TODO: Not always a constant
-    // TODO: Isn't this also callable?
-    return context().set_qual_type(node, type::QualType::Constant(type::Type_));
   } else {
     diag().Consume(UncallableExpression{.range = node->callee()->range()});
     return type::QualType::Error();

@@ -404,10 +404,13 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   std::vector<std::vector<type::Type>> return_types;
 
   // TODO: Take a type::Typed<ir::Value> instead.
-  auto args_qt = args.Transform([](auto const &typed_value) {
-    return typed_value->empty()
-               ? type::QualType::NonConstant(typed_value.type())
-               : type::QualType::Constant(typed_value.type());
+  type::Quals quals = type::Quals::Const();
+  auto args_qt      = args.Transform([&](auto const &typed_value) {
+    auto qt = typed_value->empty()
+                  ? type::QualType::NonConstant(typed_value.type())
+                  : type::QualType::Constant(typed_value.type());
+    quals &= qt.quals();
+    return qt;
   });
 
   ast::OverloadSet os;
@@ -418,7 +421,11 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
       // TODO: `core::IsCallable` already does this but doesn't give us access
       // to writing errors. Rewriting it here and then we'll look at how to
       // combine it later.
+
+      ASSERT(expansion.pos().size() <= params.size());
       for (size_t i = 0; i < expansion.pos().size(); ++i) {
+        LOG("VerifyCall", "Comparing %s with %s", expansion[i]->to_string(),
+            params[i].value.type()->to_string());
         if (not type::CanCastImplicitly(expansion[i], params[i].value.type())) {
           // TODO: Currently as soon as we find an error with a call we move on.
           // It'd be nice to extract all the error information for each.
@@ -453,7 +460,10 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
       }
 
       os.insert(callee);
-
+      LOG("VerifyCall", "Inserting, %s", callable_type->return_types(args));
+      if (not callable_type->is<type::GenericStruct>()) {
+        quals &= ~type::Quals::Const();
+      }
       return_types.push_back(callable_type->return_types(args));
       goto next_expansion;
     next_overload:;
@@ -466,7 +476,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   context().SetViableOverloads(call_expr->callee(), std::move(os));
 
   ASSERT(return_types.size() == 1u);
-  return type::QualType(return_types.front(), type::Quals::Unqualified());
+  return type::QualType(return_types.front(), quals);
 }
 
 }  // namespace compiler
