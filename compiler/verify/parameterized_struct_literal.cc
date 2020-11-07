@@ -20,14 +20,12 @@ type::QualType Compiler::VerifyType(
   auto gen = [node, instantiation_compiler = Compiler(resources()),
               cg = builder().CurrentGroup()](
                  core::Arguments<type::Typed<ir::Value>> const &args) mutable
-      -> std::pair<core::Params<type::QualType>, type::Struct *>
-
-  {
+      -> std::pair<core::Params<type::QualType>, type::Struct *> {
     auto [params, rets_ref, context, inserted] =
         instantiation_compiler.Instantiate(node, args);
 
     if (inserted) {
-      LOG("FunctionLiteral", "inserted! %s", node->DebugString());
+      LOG("ParameterizedStructLiteral", "inserted! %s", node->DebugString());
       auto compiler =
           instantiation_compiler.MakeChild(Compiler::PersistentResources{
               .data                = context,

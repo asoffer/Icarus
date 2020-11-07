@@ -5,6 +5,7 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::Access const *node) {
+  LOG("Access", "Emitting value for %s", node->DebugString());
   type::QualType operand_qt =
       *ASSERT_NOT_NULL(context().qual_type(node->operand()));
   ASSERT(operand_qt.ok() == true);

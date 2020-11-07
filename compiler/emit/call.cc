@@ -75,21 +75,6 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     return std::make_tuple(ir::Fn(gen_fn.concrete(args)),
                            find_subcontext_result.fn_type,
                            &find_subcontext_result.context);
-  } else if (auto const *gs_type = qt.type()->if_as<type::GenericStruct>()) {
-    type::GenericStruct const &gs = compiler.EmitValue(fn)
-                                        .get<ir::RegOr<type::Type>>()
-                                        .value()
-                                        ->as<type::GenericStruct>();
-
-    auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
-
-    auto find_subcontext_result =
-        compiler.FindInstantiation(parameterized_expr, args);
-    UNREACHABLE(fn->DebugString(), "\n", qt.type()->to_string());
-    // return std::make_tuple(ir::Fn(gs.concrete(args)),
-    //                        find_subcontext_result.fn_type,
-    //                        &find_subcontext_result.context);
-
   } else if (auto const *f_type = qt.type()->if_as<type::Function>()) {
     return std::make_tuple(ComputeConcreteFn(&compiler, fn, f_type, qt.quals()),
                            f_type, nullptr);
@@ -207,7 +192,14 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
                                   context().qual_type(expr)->type());
   });
 
-  // TODO: Support generic structs.
+  // TODO: Support mixed overloads
+  if (auto const *gs_type = context()
+                                .qual_type(node->callee())
+                                ->type()
+                                ->if_as<type::GenericStruct>()) {
+    return ir::Value(type::Type(gs_type->Instantiate(args).second));
+  }
+
   auto qt = *ASSERT_NOT_NULL(context().qual_type(node));
 
   auto const &os = context().ViableOverloads(node->callee());
@@ -243,6 +235,18 @@ void Compiler::EmitMoveInit(
                                   context().qual_type(expr)->type());
   });
 
+  // TODO: Support mixed overloads
+  if (auto const *gs_type = context()
+                                .qual_type(node->callee())
+                                ->type()
+                                ->if_as<type::GenericStruct>()) {
+    EmitCopyAssign(to[0],
+                   type::Typed<ir::Value>(
+                       ir::Value(type::Type(gs_type->Instantiate(args).second)),
+                       type::Type_));
+    return;
+  }
+
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   EmitCall(MoveInitTag{}, *this, os.members().front(), args, to);
@@ -263,6 +267,18 @@ void Compiler::EmitCopyInit(
                                   context().qual_type(expr)->type());
   });
 
+  // TODO: Support mixed overloads
+  if (auto const *gs_type = context()
+                                .qual_type(node->callee())
+                                ->type()
+                                ->if_as<type::GenericStruct>()) {
+    EmitCopyAssign(to[0],
+                   type::Typed<ir::Value>(
+                       ir::Value(type::Type(gs_type->Instantiate(args).second)),
+                       type::Type_));
+    return;
+  }
+
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   return EmitCall(CopyInitTag{}, *this, os.members().front(), args, to);
@@ -278,10 +294,22 @@ void Compiler::EmitAssign(
                               result, context().qual_type(node)->type()));
   }
 
+
   auto args = node->args().Transform([this](ast::Expression const *expr) {
     return type::Typed<ir::Value>(EmitValue(expr),
                                   context().qual_type(expr)->type());
   });
+
+  // TODO: Support mixed overloads
+  if (auto const *gs_type = context()
+                                .qual_type(node->callee())
+                                ->type()
+                                ->if_as<type::GenericStruct>()) {
+    EmitCopyAssign(to[0],
+                   type::Typed<ir::Value>(
+                       ir::Value(type::Type(gs_type->Instantiate(args).second)),
+                       type::Type_));
+  }
 
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.

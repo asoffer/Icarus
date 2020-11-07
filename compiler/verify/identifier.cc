@@ -176,6 +176,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   }
 
   ASSERT(qt.type().valid() == true);
+  LOG("Identifier", "setting %s: %s", node->name(), qt);
   return context().set_qual_type(node, qt);
 }
 

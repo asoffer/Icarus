@@ -315,17 +315,18 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
   if (not callee_qt.ok()) { return type::QualType::Error(); }
 
   if (auto const *c = callee_qt.type()->if_as<type::Callable>()) {
-    auto result = VerifyCall(node, overload_map, arg_vals);
-    if (not result) {
+    auto qual_type = VerifyCall(node, overload_map, arg_vals);
+    LOG("Call", "Call qual-type is %s", qual_type);
+    if (not qual_type) {
       diag().Consume(UncallableWithArguments{
-          .error = std::move(result).error(),
+          .error = std::move(qual_type).error(),
           .range = node->callee()->range(),
       });
       return type::QualType::Error();
     }
     // TODO: under what circumstances can we prove that the implementation
     // doesn't need to be run at runtime?
-    return context().set_qual_type(node, *result);
+    return context().set_qual_type(node, *qual_type);
   } else {
     diag().Consume(UncallableExpression{.range = node->callee()->range()});
     return type::QualType::Error();
