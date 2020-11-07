@@ -19,7 +19,7 @@ struct ReturningNonType {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expected a type for the function's return-type but "
                          "found an expression of type `%s`",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -50,7 +50,7 @@ struct ReturnTypeMismatch {
         diagnostic::Text(
             "Returning an expression of type `%s` from a function which "
             "returns `%s`.",
-            actual->to_string(), expected->to_string()),
+            actual.to_string(), expected.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -230,7 +230,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
           });
       compiler.builder().CurrentGroup() = cg;
       auto qt                           = VerifyConcrete(compiler, node);
-      auto outs = qt.type()->as<type::Function>().output();
+      auto outs = qt.type().as<type::Function>().output();
       rets_ref.assign(outs.begin(), outs.end());
 
       // TODO: Provide a mechanism by which this can fail.
@@ -239,7 +239,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
       // TODO: We shouldn't have a queue per compiler. We may not be able to
       // verify these yet.
       compiler.CompleteWorkQueue();
-      return &qt.type()->as<type::Function>();
+      return &qt.type().as<type::Function>();
     }
 
     type::Function const *ft = type::Func(
@@ -277,7 +277,7 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   LOG("function", "function-literal body verification: %s %p",
       node->DebugString(), &context());
   auto const &fn_type =
-      ASSERT_NOT_NULL(context().qual_type(node))->type()->as<type::Function>();
+      ASSERT_NOT_NULL(context().qual_type(node))->type().as<type::Function>();
   // TODO: Get the params and check them for completeness, deferring if they're
   // not yet complete.
 

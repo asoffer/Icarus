@@ -51,7 +51,7 @@ struct NonCallableInOverloadSet {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "NonCallable type `%s` in overload set requested here:",
-            decl_type->to_string()),
+            decl_type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(
             id, diagnostic::Style::ErrorText()),
         diagnostic::Text("Declaration here:"),
@@ -120,7 +120,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         }
 
         if (not qt.constant()) {
-          if (qt.type()->is<type::Array>() or qt.type() == type::ByteView) {
+          if (qt.type().is<type::Array>() or qt.type() == type::ByteView) {
             qt = type::QualType(qt.type(), qt.quals() | type::Quals::Buf());
           }
 
@@ -129,7 +129,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         }
       }
 
-      if (qt.type()->is<type::Callable>()) {
+      if (qt.type().is<type::Callable>()) {
         context().SetAllOverloads(node, ast::OverloadSet(potential_decls));
       }
 
@@ -152,7 +152,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         qt = qual_type_of(decl).value();
         if (not qt.ok()) { return type::QualType::Error(); }
 
-        if (auto *c = qt.type()->if_as<type::Callable>()) {
+        if (auto *c = qt.type().if_as<type::Callable>()) {
           quals &= qt.quals();
           member_types.insert(c);
         } else {

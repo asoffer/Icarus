@@ -24,7 +24,7 @@ struct NonIntegralEnumerator {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Values for enumerators must be integers, but we "
                          "found an enumerator of type `%s`.",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

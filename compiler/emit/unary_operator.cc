@@ -39,7 +39,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       } else {
         return ir::Value(builder().XorFlags(
             EmitValue(node->operand()).get<ir::RegOr<ir::FlagsVal>>(),
-            ir::FlagsVal{t->as<type::Flags>().All}));
+            ir::FlagsVal{t.as<type::Flags>().All}));
       }
     } break;
     case ast::UnaryOperator::Kind::Negate: {

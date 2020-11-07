@@ -17,7 +17,7 @@ struct NotAType {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expression was expected to be a type, but instead "
                          "was of type `%s`.",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -31,8 +31,8 @@ struct InvalidCast {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("No viable cast from `%s` to `%s`.", from->to_string(),
-                         to->to_string()),
+        diagnostic::Text("No viable cast from `%s` to `%s`.", from.to_string(),
+                         to.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -51,7 +51,7 @@ struct AssigningToConstant {
         diagnostic::Text(
             "It is not allowed to assign to a constant expression. In this "
             "case, the left-hand side of the assignment has type `%s`",
-            to->to_string()),
+            to.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -66,7 +66,7 @@ struct ImmovableType {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Attempting to move an immovable type `%s`.",
-                         from->to_string()),
+                         from.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

@@ -140,7 +140,6 @@ cc_library(
         "//type:generic_struct",
         "//type:jump",
         "//type:overload_set",
-        "//type:parameter_pack",
         "//type:pointer",
         "//type:qual_type",
         "//type:struct",

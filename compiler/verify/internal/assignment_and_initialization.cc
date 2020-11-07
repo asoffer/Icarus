@@ -79,7 +79,7 @@ bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
 
   if constexpr (not IsInit) {
     // Initializations do not care about movability.
-    if (not from_type->IsMovable()) {
+    if (not from_type.get()->IsMovable()) {
       diag.Consume(ImmovableType{.from = from_type, .range = range});
       return false;
     }

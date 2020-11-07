@@ -295,7 +295,7 @@ struct Builder {
       return Cast<float, ToType>(v->get<RegOr<float>>());
     } else if (v.type() == type::Float64) {
       return Cast<double, ToType>(v->get<RegOr<double>>());
-    } else if (v.type()->is<type::Enum>()) {
+    } else if (v.type().is<type::Enum>()) {
       auto result = CurrentGroup()->Reserve();
       CurrentBlock()->Append(UnwrapEnumInstruction{
           .value = v->get<ir::RegOr<ir::EnumVal>>(), .result = result});
@@ -305,7 +305,7 @@ struct Builder {
       } else {
         return Cast<ir::EnumVal::underlying_type, ToType>(result);
       }
-    } else if (v.type()->is<type::Flags>()) {
+    } else if (v.type().is<type::Flags>()) {
       auto result = CurrentGroup()->Reserve();
       CurrentBlock()->Append(UnwrapFlagsInstruction{
           .value = v->get<ir::RegOr<ir::FlagsVal>>(), .result = result});
@@ -398,7 +398,7 @@ struct Builder {
 
   Reg PtrFix(Reg r, type::Type desired_type) {
     // TODO must this be a register if it's loaded?
-    return desired_type->is_big() ? r : Load(r, desired_type).get<Reg>();
+    return desired_type.get()->is_big() ? r : Load(r, desired_type).get<Reg>();
   }
 
   template <typename T>
@@ -425,8 +425,8 @@ struct Builder {
 
   Value Load(RegOr<Addr> r, type::Type t) {
     using base::stringify;
-    LOG("Load", "Calling Load(%s, %s)", r, t->to_string());
-    if (t->is<type::Function>()) { return Value(Load<Fn>(r)); }
+    LOG("Load", "Calling Load(%s, %s)", r, t.to_string());
+    if (t.is<type::Function>()) { return Value(Load<Fn>(r)); }
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                             uint16_t, uint32_t, uint64_t, float, double,
                             type::Type, EnumVal, FlagsVal, Addr, String, Fn>(
@@ -454,7 +454,7 @@ struct Builder {
 
   Reg Index(type::Pointer const* t, Reg array_ptr, RegOr<int64_t> offset) {
     return PtrIncr(array_ptr, offset,
-                   type::Ptr(t->pointee()->as<type::Array>().data_type()));
+                   type::Ptr(t->pointee().as<type::Array>().data_type()));
   }
 
   // Emits a function-call instruction, calling `fn` of type `f` with the given
@@ -599,7 +599,7 @@ struct Builder {
   }
 
   void SetRet(uint16_t n, type::Typed<Value> const& r) {
-    ASSERT(r.type()->is_big() == false);
+    ASSERT(r.type().get()->is_big() == false);
     type::Apply(r.type(), [&]<typename T>() { SetRet(n, r->get<RegOr<T>>()); });
   }
 

@@ -27,7 +27,7 @@ BufferPointer const *BufPtr(Type t) {
 void static WriteStr(char const *ptr_str, Pointer const *ptr,
                      std::string *result) {
   result->append(ptr_str);
-  ptr->pointee()->WriteTo(result);
+  ptr->pointee().get()->WriteTo(result);
   result->append(")");
 }
 

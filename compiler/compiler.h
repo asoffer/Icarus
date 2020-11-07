@@ -37,7 +37,6 @@
 #include "type/generic_struct.h"
 #include "type/jump.h"
 #include "type/opaque.h"
-#include "type/parameter_pack.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
@@ -462,14 +461,14 @@ struct Compiler
   void EmitMoveInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var) {
     // TODO Optimize once you understand the semantics better.
-    if (to_var.type()->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
+    if (to_var.type().get()->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
     EmitMoveAssign(to_var, from_val);
   }
 
   void EmitCopyInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var) {
     // TODO Optimize once you understand the semantics better.
-    if (to_var.type()->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
+    if (to_var.type().get()->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
     EmitCopyAssign(to_var, from_val);
   }
 

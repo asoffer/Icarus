@@ -28,7 +28,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
 
         return ir::Value(builder().Phi<bool>(
             std::move(phi_blocks), {true, rhs_ir.get<ir::RegOr<bool>>()}));
-      } else if (t->is<type::Flags>()) {
+      } else if (t.is<type::Flags>()) {
         // `|` is not overloadable, and blocks piped together must be done
         // syntactically in a `goto` node and are handled by the parser.
         return ir::Value(
@@ -45,7 +45,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       if (t == type::Bool) {
         return ir::Value(builder().Ne(lhs_ir.get<ir::RegOr<bool>>(),
                                       rhs_ir.get<ir::RegOr<bool>>()));
-      } else if (t->is<type::Flags>()) {
+      } else if (t.is<type::Flags>()) {
         return ir::Value(
             builder().XorFlags(lhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
                                rhs_ir.get<ir::RegOr<ir::FlagsVal>>()));
@@ -76,7 +76,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
 
         return ir::Value(builder().Phi<bool>(
             std::move(phi_blocks), {false, rhs_ir.get<ir::RegOr<bool>>()}));
-      } else if (t->is<type::Flags>()) {
+      } else if (t.is<type::Flags>()) {
         // `|` is not overloadable, and blocks piped together must be done
         // syntactically in a `goto` node and are handled by the parser.
         return ir::Value(
@@ -161,21 +161,21 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
         builder().Store(builder().Phi<bool>({lhs_end_block, rhs_end_block},
                                             {ir::RegOr<bool>(true), rhs_val}),
                         lhs_lval);
-      } else if (this_type->is<type::Flags>()) {
+      } else if (this_type.is<type::Flags>()) {
         builder().Store(
             builder().OrFlags(
                 builder().Load<ir::FlagsVal>(lhs_lval),
                 EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>()),
             lhs_lval);
       } else {
-        UNREACHABLE(this_type->to_string());
+        UNREACHABLE(this_type.to_string());
       }
       return ir::Value();
     } break;
     case frontend::Operator::AndEq: {
       auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
       auto lhs_lval  = EmitRef(node->lhs());
-      if (this_type->is<type::Flags>()) {
+      if (this_type.is<type::Flags>()) {
         builder().Store(
             builder().AndFlags(
                 builder().Load<ir::FlagsVal>(lhs_lval),
@@ -199,14 +199,14 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                                             {ir::RegOr<bool>(false), rhs_val}),
                         lhs_lval);
       } else {
-        UNREACHABLE(this_type->to_string());
+        UNREACHABLE(this_type.to_string());
       }
       return ir::Value();
     } break;
     case frontend::Operator::XorEq: {
       auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
       auto lhs_lval  = EmitRef(node->lhs());
-      if (this_type->is<type::Flags>()) {
+      if (this_type.is<type::Flags>()) {
         auto rhs_ir = EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>();
         builder().Store(
             builder().XorFlags(builder().Load<ir::FlagsVal>(lhs_lval), rhs_ir),
@@ -216,7 +216,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
         builder().Store(builder().Ne(builder().Load<bool>(lhs_lval), rhs_ir),
                         lhs_lval);
       } else {
-        UNREACHABLE(this_type->to_string());
+        UNREACHABLE(this_type.to_string());
       }
       return ir::Value();
     } break;

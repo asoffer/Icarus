@@ -18,15 +18,15 @@ struct StateTypeMismatch {
         return diagnostic::DiagnosticMessage(
             diagnostic::Text("Jump state expected to be a pointer to `%s`, but "
                              "encountered a `%s`.",
-                             expected_type->to_string(),
-                             actual_type->to_string()),
+                             expected_type.to_string(),
+                             actual_type.to_string()),
             diagnostic::SourceQuote(src).Highlighted(range,
                                                      diagnostic::Style{}));
       } else {
         return diagnostic::DiagnosticMessage(
             diagnostic::Text("Jump state expected to be a pointer to `%s`, but "
                              "is stateless.",
-                             expected_type->to_string()),
+                             expected_type.to_string()),
             diagnostic::SourceQuote(src).Highlighted(range,
                                                      diagnostic::Style{}));
       }
@@ -34,7 +34,7 @@ struct StateTypeMismatch {
       return diagnostic::DiagnosticMessage(
           diagnostic::Text(
               "Jump expected to be stateless, but has state of type `%s`.",
-              actual_type->to_string()),
+              actual_type.to_string()),
           diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
     }
   }
@@ -52,7 +52,7 @@ struct NonJumpInit {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Scope `enter` must have a `jump` type, but here it "
                          "was defined to have type `%s`.",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -68,7 +68,7 @@ struct NonCallableDone {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Scope `exit` must have a callable type but here it "
                          "was defined to have type `%s`.",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -83,7 +83,7 @@ struct NonTypeScopeState {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Scope state must be a type, but encountered a `%s`.",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -120,7 +120,7 @@ struct NonConstantScopeStateType {
 bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
                 ast::Declaration const *decl, type::Type decl_type,
                 type::Pointer const *state_type_ptr) {
-  auto *jump_type = decl_type->if_as<type::Jump>();
+  auto *jump_type = decl_type.if_as<type::Jump>();
   if (not jump_type) {
     diag.Consume(NonJumpInit{
         .type  = decl_type,
@@ -142,7 +142,7 @@ bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
 
 bool VerifyDone(diagnostic::DiagnosticConsumer &diag,
                 ast::Declaration const *decl, type::Type decl_type) {
-  auto const *callable = decl_type->if_as<type::Callable>();
+  auto const *callable = decl_type.if_as<type::Callable>();
   if (not callable) {
     diag.Consume(NonCallableDone{
         .type  = decl_type,

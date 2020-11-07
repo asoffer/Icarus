@@ -30,7 +30,7 @@ struct InvalidImport {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot import a module from a value of type `%s`.",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

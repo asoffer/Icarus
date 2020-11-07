@@ -71,7 +71,7 @@ struct RegisterAllocator {
   friend std::ostream& operator<<(std::ostream& os,
                                   RegisterAllocator const& a) {
     for (auto const& [t, reg] : a.allocs_) {
-      os << "  " << stringify(reg) << ": " << t->to_string() << "\n";
+      os << "  " << stringify(reg) << ": " << t << "\n";
     }
     return os;
   }

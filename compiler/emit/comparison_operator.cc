@@ -10,9 +10,9 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
   auto &bldr = compiler.builder();
   auto op    = node->ops()[index];
 
-  if (lhs.type()->is<type::Array>() and rhs.type()->is<type::Array>()) {
+  if (lhs.type().is<type::Array>() and rhs.type().is<type::Array>()) {
     NOT_YET();
-  } else if (lhs.type()->is<type::Struct>() or rhs.type()->is<type::Struct>()) {
+  } else if (lhs.type().is<type::Struct>() or rhs.type().is<type::Struct>()) {
     NOT_YET();
 
   } else {

@@ -87,7 +87,7 @@ struct Type {
   Type(LegacyType const *t = nullptr)
       : kind_(Kind::Legacy), data_(reinterpret_cast<uintptr_t>(t)) {}
 
-  LegacyType const *operator->() const { return ASSERT_NOT_NULL(get()); }
+  LegacyType *get() { return reinterpret_cast<LegacyType *>(data_); }
   LegacyType const *get() const {
     return reinterpret_cast<LegacyType const *>(data_);
   }
@@ -108,7 +108,14 @@ struct Type {
   }
   friend bool operator!=(Type lhs, Type rhs) { return not(lhs == rhs); }
 
-  std::string to_string() const { return get()->to_string(); }
+  core::Bytes bytes(core::Arch arch) const { return get()->bytes(arch); }
+  core::Alignment alignment(core::Arch arch) const {
+    return get()->alignment(arch);
+  }
+
+  std::string to_string() const {
+    return get()->to_string();
+  }
 
   template <typename T>
   auto *if_as() {
@@ -132,7 +139,7 @@ struct Type {
   }
 
   friend std::ostream &operator<<(std::ostream &os, Type t) {
-    return os << t->to_string();
+    return os << t.get()->to_string();
   }
 
  private:

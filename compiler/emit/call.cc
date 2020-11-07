@@ -13,7 +13,7 @@ template <typename Tag>
 ir::OutParams SetReturns(
     Tag, ir::Builder &bldr, type::Type type,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  if (auto *fn_type = type->if_as<type::Function>()) {
+  if (auto *fn_type = type.if_as<type::Function>()) {
     if constexpr (base::meta<Tag> == base::meta<MoveInitTag>) {
       return bldr.OutParamsMoveInit(fn_type->output(), to);
     } else if constexpr (base::meta<Tag> == base::meta<CopyInitTag>) {
@@ -23,10 +23,10 @@ ir::OutParams SetReturns(
     } else {
       static_assert(base::always_false<Tag>());
     }
-  } else if (type->is<type::GenericFunction>()) {
-    NOT_YET(type->to_string());
+  } else if (type.is<type::GenericFunction>()) {
+    NOT_YET(type.to_string());
   } else {
-    NOT_YET(type->to_string());
+    NOT_YET(type.to_string());
   }
 }
 
@@ -57,7 +57,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
 std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     Compiler &compiler, ast::Expression const *fn, type::QualType qt,
     const core::Arguments<type::Typed<ir::Value>> &args) {
-  if (auto const *gf_type = qt.type()->if_as<type::GenericFunction>()) {
+  if (auto const *gf_type = qt.type().if_as<type::GenericFunction>()) {
     ir::GenericFn gen_fn =
         compiler.EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
 
@@ -75,11 +75,11 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     return std::make_tuple(ir::Fn(gen_fn.concrete(args)),
                            find_subcontext_result.fn_type,
                            &find_subcontext_result.context);
-  } else if (auto const *f_type = qt.type()->if_as<type::Function>()) {
+  } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
     return std::make_tuple(ComputeConcreteFn(&compiler, fn, f_type, qt.quals()),
                            f_type, nullptr);
   } else {
-    UNREACHABLE(fn->DebugString(), "\n", qt.type()->to_string());
+    UNREACHABLE(fn->DebugString(), "\n", qt.type().to_string());
   }
 }
 
@@ -120,7 +120,7 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
   int i = -1;
   for (auto t : overload_type->output()) {
     ++i;
-    if (t->is_big()) continue;
+    if (t.get()->is_big()) { continue; }
     c.EmitCopyAssign(to[i],
                      type::Typed<ir::Value>(ir::Value(out_params[i]), t));
   }
@@ -196,7 +196,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   if (auto const *gs_type = context()
                                 .qual_type(node->callee())
                                 ->type()
-                                ->if_as<type::GenericStruct>()) {
+                                .if_as<type::GenericStruct>()) {
     return ir::Value(type::Type(gs_type->Instantiate(args).second));
   }
 
@@ -239,7 +239,7 @@ void Compiler::EmitMoveInit(
   if (auto const *gs_type = context()
                                 .qual_type(node->callee())
                                 ->type()
-                                ->if_as<type::GenericStruct>()) {
+                                .if_as<type::GenericStruct>()) {
     EmitCopyAssign(to[0],
                    type::Typed<ir::Value>(
                        ir::Value(type::Type(gs_type->Instantiate(args).second)),
@@ -271,7 +271,7 @@ void Compiler::EmitCopyInit(
   if (auto const *gs_type = context()
                                 .qual_type(node->callee())
                                 ->type()
-                                ->if_as<type::GenericStruct>()) {
+                                .if_as<type::GenericStruct>()) {
     EmitCopyAssign(to[0],
                    type::Typed<ir::Value>(
                        ir::Value(type::Type(gs_type->Instantiate(args).second)),
@@ -304,7 +304,7 @@ void Compiler::EmitAssign(
   if (auto const *gs_type = context()
                                 .qual_type(node->callee())
                                 ->type()
-                                ->if_as<type::GenericStruct>()) {
+                                .if_as<type::GenericStruct>()) {
     EmitCopyAssign(to[0],
                    type::Typed<ir::Value>(
                        ir::Value(type::Type(gs_type->Instantiate(args).second)),

@@ -65,7 +65,7 @@ void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
 
   for (auto *decl : ordered_decls) {
     type::Type t = compiler.type_of(decl);
-    if (not t->HasDestructor()) { continue; }
+    if (not t.get()->HasDestructor()) { continue; }
     compiler.EmitDestroy(
         type::Typed<ir::Reg>(compiler.context().addr(decl), t));
   }
@@ -113,7 +113,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
     MakeAllStackAllocations(*compiler, node->body_scope());
 
     type::Type ret_type = t->output()[0];
-    if (ret_type->is_big()) {
+    if (ret_type.get()->is_big()) {
       type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
           ir::RegOr<ir::Addr>(compiler->builder().GetRet(0, ret_type)),
           type::Ptr(ret_type));
@@ -126,7 +126,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
     }
 
     bldr.FinishTemporariesWith([compiler](type::Typed<ir::Reg> r) {
-      if (r.type()->HasDestructor()) { compiler->EmitDestroy(r); }
+      if (r.type().get()->HasDestructor()) { compiler->EmitDestroy(r); }
     });
 
     MakeAllDestructions(*compiler, node->body_scope());
@@ -162,8 +162,9 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
         auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
         if (not out_decl) { continue; }
         type::Type out_decl_type = compiler->type_of(out_decl);
-        auto alloc = out_decl_type->is_big() ? bldr.GetRet(i, out_decl_type)
-                                             : bldr.Alloca(out_decl_type);
+        auto alloc               = out_decl_type.get()->is_big()
+                         ? bldr.GetRet(i, out_decl_type)
+                         : bldr.Alloca(out_decl_type);
 
         compiler->context().set_addr(out_decl, alloc);
         if (out_decl->IsDefaultInitialized()) {

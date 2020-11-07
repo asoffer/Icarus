@@ -30,7 +30,7 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
     auto t      = type_of(node);
     ir::Reg reg = context().addr(decl_span[0]);
     return (decl_span[0]->flags() & ast::Declaration::f_IsOutput) and
-                   not t->is_big()
+                   not t.get()->is_big()
                ? builder().Load(reg, t)
                : ir::Value(reg);
   } else {

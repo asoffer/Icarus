@@ -47,8 +47,8 @@ ir::OutParams Builder::OutParams(absl::Span<type::Type const> types) {
   std::vector<Reg> regs;
   regs.reserve(types.size());
   for (type::Type type : types) {
-    regs.push_back(type->is_big() ? TmpAlloca(type)
-                                  : CurrentGroup()->Reserve());
+    regs.push_back(type.get()->is_big() ? TmpAlloca(type)
+                                        : CurrentGroup()->Reserve());
   }
   return ir::OutParams(std::move(regs));
 }
@@ -59,8 +59,8 @@ ir::OutParams Builder::OutParamsMoveInit(
   std::vector<Reg> regs;
   regs.reserve(types.size());
   for (size_t i = 0; i < types.size(); ++i) {
-    regs.push_back(types[i]->is_big() ? to[i]->reg()
-                                      : CurrentGroup()->Reserve());
+    regs.push_back(types[i].get()->is_big() ? to[i]->reg()
+                                            : CurrentGroup()->Reserve());
   }
   return ir::OutParams(std::move(regs));
 }
@@ -71,8 +71,8 @@ ir::OutParams Builder::OutParamsCopyInit(
   std::vector<Reg> regs;
   regs.reserve(types.size());
   for (size_t i = 0; i < types.size(); ++i) {
-    regs.push_back(types[i]->is_big() ? to[i]->reg()
-                                      : CurrentGroup()->Reserve());
+    regs.push_back(types[i].get()->is_big() ? to[i]->reg()
+                                            : CurrentGroup()->Reserve());
   }
   return ir::OutParams(std::move(regs));
 }
@@ -83,8 +83,8 @@ ir::OutParams Builder::OutParamsAssign(
   std::vector<Reg> regs;
   regs.reserve(types.size());
   for (size_t i = 0; i < types.size(); ++i) {
-    regs.push_back(types[i]->is_big() ? to[i]->reg()
-                                      : CurrentGroup()->Reserve());
+    regs.push_back(types[i].get()->is_big() ? to[i]->reg()
+                                            : CurrentGroup()->Reserve());
   }
   return ir::OutParams(std::move(regs));
 }
@@ -94,8 +94,8 @@ void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
   // TODO: this call should return the constructed registers rather than forcing
   // the caller to do it.
   for (auto const &p : f->params()) {
-    if (auto const ptr = p.value.type()->if_as<type::Pointer>()) {
-      if (auto const *prim = ptr->pointee()->if_as<type::Primitive>()) {
+    if (auto const ptr = p.value.type().if_as<type::Pointer>()) {
+      if (auto const *prim = ptr->pointee().if_as<type::Primitive>()) {
         CurrentBlock()->load_store_cache().clear(prim->meta());
       } else {
         CurrentBlock()->load_store_cache().clear();

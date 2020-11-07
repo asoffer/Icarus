@@ -165,32 +165,32 @@ template <char Op, typename T>
 TestData MakeTestData(T lhs, T rhs) {
   if constexpr (Op == '+') {
     return {
-        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>()->to_string()),
-        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>()->to_string()),
+        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>().to_string()),
+        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>().to_string()),
         .expected = ir::Value(static_cast<T>(lhs + rhs)),
     };
   } else if constexpr (Op == '-') {
     return {
-        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>()->to_string()),
-        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>()->to_string()),
+        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>().to_string()),
+        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>().to_string()),
         .expected = ir::Value(static_cast<T>(lhs - rhs)),
     };
   } else if constexpr (Op == '*') {
     return {
-        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>()->to_string()),
-        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>()->to_string()),
+        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>().to_string()),
+        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>().to_string()),
         .expected = ir::Value(static_cast<T>(lhs * rhs)),
     };
   } else if constexpr (Op == '/') {
     return {
-        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>()->to_string()),
-        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>()->to_string()),
+        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>().to_string()),
+        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>().to_string()),
         .expected = ir::Value(static_cast<T>(lhs / rhs)),
     };
   } else if constexpr (Op == '%') {
     return {
-        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>()->to_string()),
-        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>()->to_string()),
+        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>().to_string()),
+        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>().to_string()),
         .expected = ir::Value(static_cast<T>(lhs % rhs)),
     };
   }

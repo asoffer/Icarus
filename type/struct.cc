@@ -23,10 +23,10 @@ void Struct::AppendFields(std::vector<Struct::Field> fields) {
     ASSERT(field.type.valid() == true);
     field_indices_.emplace(field.name, i++);
     flags_.is_default_initializable &=
-        field.type->IsDefaultInitializable() or not field.initial_value.empty();
-    flags_.is_copyable &= field.type->IsCopyable();
-    flags_.is_movable &= field.type->IsMovable();
-    flags_.has_destructor |= field.type->HasDestructor();
+        field.type.get()->IsDefaultInitializable() or not field.initial_value.empty();
+    flags_.is_copyable &= field.type.get()->IsCopyable();
+    flags_.is_movable &= field.type.get()->IsMovable();
+    flags_.has_destructor |= field.type.get()->HasDestructor();
   }
   // TODO HasDestructor is also dependent on the existence of it as a
   // free-function?
@@ -60,8 +60,8 @@ ir::Fn const *Struct::Assignment(type::Type from_type) const {
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
   auto offset = core::Bytes{0};
   for (size_t i = 0; i < field_num; ++i) {
-    offset += fields_.at(i).type->bytes(a);
-    offset = core::FwdAlign(offset, fields_.at(i + 1).type->alignment(a));
+    offset += fields_.at(i).type.bytes(a);
+    offset = core::FwdAlign(offset, fields_.at(i + 1).type.alignment(a));
   }
   return offset;
 }
@@ -85,10 +85,10 @@ core::Bytes Struct::bytes(core::Arch const &a) const {
   ASSERT(completeness_ >= Completeness::DataComplete);
   auto num_bytes = core::Bytes{0};
   for (auto const &field : fields_) {
-    num_bytes += field.type->bytes(a);
+    num_bytes += field.type.bytes(a);
     // TODO it'd be in the (common, I think) case where you want both, it would
     // be faster to compute bytes and alignment simultaneously.
-    num_bytes = core::FwdAlign(num_bytes, field.type->alignment(a));
+    num_bytes = core::FwdAlign(num_bytes, field.type.alignment(a));
   }
 
   return num_bytes;
@@ -98,7 +98,7 @@ core::Alignment Struct::alignment(core::Arch const &a) const {
   ASSERT(completeness_ >= Completeness::DataComplete);
   auto align = core::Alignment{1};
   for (auto const &field : fields_) {
-    align = std::max(align, field.type->alignment(a));
+    align = std::max(align, field.type.alignment(a));
   }
   return align;
 }

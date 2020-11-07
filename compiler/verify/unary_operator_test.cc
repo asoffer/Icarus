@@ -442,7 +442,7 @@ TEST(Not, Flags) {
     auto const *expr = mod.Append<ast::UnaryOperator>("!f");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_TRUE(qt->type()->is<type::Flags>());
+    EXPECT_TRUE(qt->type().is<type::Flags>());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -455,7 +455,7 @@ TEST(Not, Flags) {
     auto const *expr = mod.Append<ast::UnaryOperator>("!f");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_TRUE(qt->type()->is<type::Flags>());
+    EXPECT_TRUE(qt->type().is<type::Flags>());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }

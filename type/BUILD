@@ -53,7 +53,6 @@ CONCRETE_TYPES = [
     ":function",
     ":jump",
     ":opaque",
-    ":parameter_pack",
     ":pointer",
     ":primitive",
     ":struct",
@@ -230,17 +229,6 @@ cc_test(
         ":fake",
         ":pointer",
         "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "parameter_pack",
-    hdrs = ["parameter_pack.h"],
-    srcs = ["parameter_pack.cc"],
-    deps = [
-        ":type",
-        "//base:global",
-        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

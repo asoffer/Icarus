@@ -18,7 +18,7 @@ struct ComparingIncomparables {
         diagnostic::Text(
             "Values of type `%s` and `%s` are being compared but no such "
             "comparison is allowed:",
-            lhs->to_string(), rhs->to_string()),
+            lhs.to_string(), rhs.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -50,7 +50,7 @@ struct NoMatchingComparisonOperator {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No matching comparison operator for types %s and %s.",
-                         lhs->to_string(), rhs->to_string()),
+                         lhs.to_string(), rhs.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -81,26 +81,26 @@ ComparisonKind MinComparisonKind(TypeContainer const &c) {
 
 ComparisonKind Comparator(type::Type t) {
   using cmp_t = std::underlying_type_t<ComparisonKind>;
-  if (auto const *p = t->if_as<type::BufferPointer>()) {
+  if (auto const *p = t.if_as<type::BufferPointer>()) {
     return ComparisonKind::Order;
   }
 
-  if (auto const *p = t->if_as<type::Pointer>()) {
+  if (auto const *p = t.if_as<type::Pointer>()) {
     return ComparisonKind::Equality;
   }
-  if (auto const *tup = t->if_as<type::Tuple>()) {
+  if (auto const *tup = t.if_as<type::Tuple>()) {
     return MinComparisonKind(tup->entries_);
   }
-  if (auto const *a = t->if_as<type::Array>()) {
+  if (auto const *a = t.if_as<type::Array>()) {
     return static_cast<ComparisonKind>(
         std::min(static_cast<cmp_t>(Comparator(a->data_type())),
                  static_cast<cmp_t>(ComparisonKind::Equality)));
-  } else if (auto *p = t->if_as<type::Primitive>()) {
+  } else if (auto *p = t.if_as<type::Primitive>()) {
     return type::IsNumeric(p) ? ComparisonKind::Order
                               : ComparisonKind::Equality;
-  } else if (t->is<type::Flags>() or t->is<type::BufferPointer>()) {
+  } else if (t.is<type::Flags>() or t.is<type::BufferPointer>()) {
     return ComparisonKind::Order;
-  } else if (t->is<type::Enum>() or t->is<type::Pointer>()) {
+  } else if (t.is<type::Enum>() or t.is<type::Pointer>()) {
     return ComparisonKind::Equality;
   } else {
     return ComparisonKind::None;
@@ -137,8 +137,8 @@ type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
     type::QualType const &rhs_qual_type = *rhs_iter;
     auto op                             = *op_iter;
 
-    if (lhs_qual_type.type()->is<type::Struct>() or
-        lhs_qual_type.type()->is<type::Struct>()) {
+    if (lhs_qual_type.type().is<type::Struct>() or
+        lhs_qual_type.type().is<type::Struct>()) {
       // TODO: struct is wrong. generally user-defined (could be array of
       // struct too, or perhaps a variant containing a struct?) need to
       // figure out the details here.

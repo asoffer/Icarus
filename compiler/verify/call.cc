@@ -82,7 +82,7 @@ struct UncallableWithArguments {
               items.push_back(absl::StrFormat(
                   "%s -- Parameter %s cannot accept an argument of type `%s`",
                   callable_type->to_string(), param_str,
-                  err.argument_type->to_string()));
+                  err.argument_type.to_string()));
             } else if constexpr (type ==
                                  base::meta<call_error::NoParameterNamed>) {
               items.push_back(absl::StrFormat("%s -- No parameter named `%s`.",
@@ -147,7 +147,7 @@ type::QualType VerifyForeignCall(
         .range   = range,
         .message = absl::StrCat("First argument to `foreign` must be a "
                                 "byte-view (You provided a(n) ",
-                                arg_vals[0].type()->to_string(), ")."),
+                                arg_vals[0].type().to_string(), ")."),
     });
     error = true;
   }
@@ -164,7 +164,7 @@ type::QualType VerifyForeignCall(
         .range   = range,
         .message = absl::StrCat(
             "Second argument to `foreign` must be a type (You provided a(n) ",
-            arg_vals[0].type()->to_string(), ").")});
+            arg_vals[0].type().to_string(), ").")});
     error = true;
   }
 
@@ -178,8 +178,8 @@ type::QualType VerifyForeignCall(
   if (error) { return type::QualType::Error(); }
 
   auto const *foreign_type = arg_vals[1]->get_if<type::Type>();
-  if (not foreign_type or not((*foreign_type)->is<type::Function>() or
-                              (*foreign_type)->is<type::Pointer>())) {
+  if (not foreign_type or not(foreign_type->is<type::Function>() or
+                              foreign_type->is<type::Pointer>())) {
     c->diag().Consume(BuiltinError{
         .range   = range,
         .message = "Builtin `foreign` may only be called when the second "
@@ -232,7 +232,7 @@ type::QualType VerifyBytesCall(
           .message =
               absl::StrCat("Built-in function `bytes` must take a single "
                            "argument of type `type` (You provided a(n) ",
-                           arg_vals[0].type()->to_string(), ").")});
+                           arg_vals[0].type().to_string(), ").")});
       qt.MarkError();
     }
   }
@@ -268,7 +268,7 @@ type::QualType VerifyAlignmentCall(
           .message =
               absl::StrCat("Built-in function `alignment` must take a single "
                            "argument of type `type` (You provided a(n) ",
-                           arg_vals[0].type()->to_string(), ").")});
+                           arg_vals[0].type().to_string(), ").")});
       qt.MarkError();
     }
   }
@@ -314,7 +314,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
   LOG("Call", "Callee's qual-type is %s", callee_qt);
   if (not callee_qt.ok()) { return type::QualType::Error(); }
 
-  if (auto const *c = callee_qt.type()->if_as<type::Callable>()) {
+  if (auto const *c = callee_qt.type().if_as<type::Callable>()) {
     auto qual_type = VerifyCall(node, overload_map, arg_vals);
     LOG("Call", "Call qual-type is %s", qual_type);
     if (not qual_type) {

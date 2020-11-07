@@ -16,7 +16,7 @@ struct DeclaringHoleAsNonModule {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Declaring `--` as non-module type `%s`.",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -47,7 +47,7 @@ struct NoDefaultValue {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("There is no default value for the type `%s`.",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -126,14 +126,14 @@ struct UninferrableType {
 UninferrableType::Reason Inferrable(type::Type t) {
   if (t == type::NullPtr) { return UninferrableType::Reason::kNullPtr; }
   if (t == type::EmptyArray) { return UninferrableType::Reason::kEmptyArray; }
-  if (auto *a = t->if_as<type::Array>()) { return Inferrable(a->data_type()); }
-  if (auto *p = t->if_as<type::Pointer>()) { return Inferrable(p->pointee()); }
-  if (auto *tup = t->if_as<type::Tuple>()) {
+  if (auto *a = t.if_as<type::Array>()) { return Inferrable(a->data_type()); }
+  if (auto *p = t.if_as<type::Pointer>()) { return Inferrable(p->pointee()); }
+  if (auto *tup = t.if_as<type::Tuple>()) {
     for (auto entry : tup->entries_) {
       auto reason = Inferrable(entry);
       if (reason != UninferrableType::Reason::kInferrable) { return reason; }
     }
-  } else if (auto *f = t->if_as<type::Function>()) {
+  } else if (auto *f = t.if_as<type::Function>()) {
     for (auto const &param : f->params()) {
       auto reason = Inferrable(param.value.type());
       if (reason != UninferrableType::Reason::kInferrable) { return reason; }
@@ -152,8 +152,8 @@ UninferrableType::Reason Inferrable(type::Type t) {
 // Or when you import two modules verifying that symbols don't conflict.
 bool Shadow(type::Typed<ast::Declaration const *> decl1,
             type::Typed<ast::Declaration const *> decl2) {
-  type::Type callable1 = decl1.type()->if_as<type::Callable>();
-  type::Type callable2 = decl2.type()->if_as<type::Callable>();
+  type::Callable const *callable1 = decl1.type().if_as<type::Callable>();
+  type::Callable const *callable2 = decl2.type().if_as<type::Callable>();
   if (not callable1 or not callable2) { return true; }
 
   // TODO: Don't worry about generic shadowing? It'll be checked later?
@@ -208,7 +208,7 @@ type::QualType VerifyDefaultInitialization(Compiler &compiler,
                    VerifyDeclarationType(compiler, node));
 
   if (not(node->flags() & ast::Declaration::f_IsFnParam) and
-      not qt.type()->IsDefaultInitializable()) {
+      not qt.type().get()->IsDefaultInitializable()) {
     compiler.diag().Consume(NoDefaultValue{
         .type  = qt.type(),
         .range = node->range(),

@@ -23,7 +23,7 @@ struct IncompleteTypeMemberAccess {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot access a member of an incomplete type `%s`.",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(
             member_range, diagnostic::Style::ErrorText()));
   }
@@ -39,7 +39,7 @@ struct MissingMember {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expressions of type `%s` have no member named `%s`.",
-                         type->to_string(), member),
+                         type.to_string(), member),
         diagnostic::SourceQuote(src)
             .Highlighted(expr_range, diagnostic::Style{})
             .Highlighted(member_range, diagnostic::Style::ErrorText()));
@@ -85,7 +85,7 @@ struct NonExportedMember {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Expressions of type `%s` do not export the member `%s`.",
-            type->to_string(), member),
+            type.to_string(), member),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -127,7 +127,7 @@ struct UndeclaredIdentifierInModule {
 // dereferences requried.
 std::pair<type::Type, int> DereferenceAll(type::Type t) {
   int num_derefs = 0;
-  while (auto *p = t->if_as<type::Pointer>()) {
+  while (auto *p = t.if_as<type::Pointer>()) {
     t = p->pointee();
     ++num_derefs;
   }
@@ -152,7 +152,7 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
   // For enums and flags, regardless of whether we can get the value, it's
   // clear that node is supposed to be a member so we should emit an error but
   // carry on assuming that node is an element of that enum type.
-  if (auto *e = evaled_type->if_as<type::Enum>()) {
+  if (auto *e = evaled_type.if_as<type::Enum>()) {
     if (not e->Get(node->member_name()).has_value()) {
       c->diag().Consume(MissingMember{
           .expr_range   = node->operand()->range(),
@@ -168,7 +168,7 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
     return c->context().set_qual_type(node, qt);
   }
 
-  if (auto *f = evaled_type->if_as<type::Flags>()) {
+  if (auto *f = evaled_type.if_as<type::Flags>()) {
     if (not f->Get(node->member_name()).has_value()) {
       c->diag().Consume(MissingMember{
           .expr_range   = node->operand()->range(),
@@ -316,7 +316,7 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
           return type::QualType::Error();
         }
 
-        if (auto *callable = qt->type()->if_as<type::Callable>()) {
+        if (auto *callable = qt->type().if_as<type::Callable>()) {
           quals &= qt->quals();
           member_types.insert(callable);
         } else {
@@ -365,7 +365,7 @@ type::QualType Compiler::VerifyType(ast::Access const *node) {
         });
         return type::QualType::Error();
       }
-    } else if (auto *s = base_type->if_as<type::Struct>()) {
+    } else if (auto *s = base_type.if_as<type::Struct>()) {
       return AccessStructMember(this, node, s, quals);
     } else {
       // TODO: Improve this error message. It's not just that the member is

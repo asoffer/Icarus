@@ -44,14 +44,14 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
     }
   } else if (from_type == type::NullPtr) {
     return ir::Value(ir::Addr::Null());
-  } else if (auto const *enum_type = from_type->if_as<type::Enum>()) {
+  } else if (auto const *enum_type = from_type.if_as<type::Enum>()) {
     return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                             uint16_t, uint32_t, uint64_t>(
         to_type, [&]<typename T>() {
           return ir::Value(
               builder().CastTo<T>(type::Typed<ir::Value>(values, enum_type)));
         });
-  } else if (auto const *flags_type = from_type->if_as<type::Flags>()) {
+  } else if (auto const *flags_type = from_type.if_as<type::Flags>()) {
     return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                             uint16_t, uint32_t, uint64_t>(
         to_type, [&]<typename T>() {

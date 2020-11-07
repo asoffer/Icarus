@@ -50,7 +50,7 @@ struct NonStructDesignatedInitializer {
         diagnostic::Text(
             "Designated initializers can only be used with structs, but you "
             "provided a `%s`",
-            type->to_string()),
+            type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -68,7 +68,7 @@ struct InvalidInitializerType {
             "Designated initializer field encountered an unexpected type:\n"
             "  Expected: A type convertible to `%s`\n"
             "  Actual:   `%s`",
-            expected->to_string(), actual->to_string()),
+            expected.to_string(), actual.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -130,7 +130,7 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
   ASSIGN_OR(return type::QualType::Error(), type::Type t,
                    EvaluateOrDiagnoseAs<type::Type>(node->type()));
 
-  auto *struct_type = t->if_as<type::Struct>();
+  auto *struct_type = t.if_as<type::Struct>();
   if (not struct_type) {
     diag().Consume(NonStructDesignatedInitializer{
         .type  = t,

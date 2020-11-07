@@ -39,7 +39,7 @@ base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
                           base::meta<ast::FunctionLiteral> or
                       base::meta<NodeType> ==
                           base::meta<ast::ShortFunctionLiteral>) {
-          CompleteBody(&c, node, &t->as<type::Function>());
+          CompleteBody(&c, node, &t.as<type::Function>());
         } else {
           static_cast<void>(t);
           CompleteBody(&c, node);
@@ -129,7 +129,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
 
         // TODO: This is a struct-speficic hack.
         if (type::Type *type_val = maybe_val->get_if<type::Type>()) {
-          if (auto const *struct_type = (*type_val)->if_as<type::Struct>()) {
+          if (auto const *struct_type = type_val->if_as<type::Struct>()) {
             if (struct_type->completeness() != type::Completeness::Complete) {
               return *maybe_val;
             }
@@ -187,7 +187,7 @@ void Compiler::EmitMoveInit(
   ASSERT(to.size() == 1u);
   // TODO actual initialization with these field members.
   auto t             = type_of(node);
-  auto &struct_type  = t->as<type::Struct>();
+  auto &struct_type  = t.as<type::Struct>();
   auto const &fields = struct_type.fields();
   for (size_t i = 0; i < fields.size(); ++i) {
     auto const &field = fields[i];
@@ -232,7 +232,7 @@ void Compiler::EmitCopyInit(
   ASSERT(to.size() == 1u);
   // TODO actual initialization with these field members.
   auto t             = type_of(node);
-  auto &struct_type  = t->as<type::Struct>();
+  auto &struct_type  = t.as<type::Struct>();
   auto const &fields = struct_type.fields();
   for (size_t i = 0; i < fields.size(); ++i) {
     auto const &field = fields[i];
@@ -341,7 +341,7 @@ ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
   }
 
   ir::NativeFn ir_func = context().EmplaceNativeFn(node, [&] {
-    auto *fn_type = &type_of(node)->as<type::Function>();
+    auto *fn_type = &type_of(node).as<type::Function>();
     auto f        = AddFunc(
         fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
@@ -368,7 +368,7 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
 
   // TODO Use correct constants
   ir::NativeFn ir_func = context().EmplaceNativeFn(node, [&] {
-    auto *fn_type = &type_of(node)->as<type::Function>();
+    auto *fn_type = &type_of(node).as<type::Function>();
     auto f        = AddFunc(
         fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
@@ -401,7 +401,7 @@ ir::Value Compiler::EmitValue(ast::Jump const *node) {
   if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   return ir::Value(context().add_jump(node, [this, node] {
-    auto *jmp_type     = &type_of(node)->as<type::Jump>();
+    auto *jmp_type     = &type_of(node).as<type::Jump>();
     auto work_item_ptr = DeferBody(resources_, state(), node, jmp_type);
 
     size_t i    = 0;
@@ -429,7 +429,7 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   auto const &fn_scope =
       *ASSERT_NOT_NULL(node->scope()->Containing<ast::FnScope>());
   auto const &fn_lit  = *ASSERT_NOT_NULL(fn_scope.fn_lit_);
-  auto const &fn_type = type_of(&fn_lit)->as<type::Function>();
+  auto const &fn_type = type_of(&fn_lit).as<type::Function>();
 
   // TODO: It's tricky... on a single expression that gets expanded, we could
   // have both small and big types and we would need to handle both setting
@@ -440,7 +440,7 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   for (size_t i = 0; i < node->exprs().size(); ++i) {
     auto const *expr    = node->exprs()[i];
     type::Type ret_type = fn_type.output()[i];
-    if (ret_type->is_big()) {
+    if (ret_type.get()->is_big()) {
       type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
           ir::RegOr<ir::Addr>(builder().GetRet(i, ret_type)), ret_type);
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
@@ -546,7 +546,8 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   bool field_error = false;
   for (auto const &field : node->fields()) {
     auto const *qt = context().qual_type(&field);
-    if (not qt or qt->type()->completeness() != type::Completeness::Complete) {
+    if (not qt or
+        qt->type().get()->completeness() != type::Completeness::Complete) {
       diag().Consume(IncompleteField{.range = field.range()});
       field_error = true;
     }
@@ -589,7 +590,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
               field.hashtags.contains(ir::Hashtag::Export));
         }
         has_field_needing_destruction =
-            has_field_needing_destruction or field_type->HasDestructor();
+            has_field_needing_destruction or field_type.get()->HasDestructor();
       }
     }
 

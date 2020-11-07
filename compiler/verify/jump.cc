@@ -46,7 +46,7 @@ struct NonPointerJumpState {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "The state in a `jump` must be a pointer, but I found a `%s`.",
-            type->to_string()),
+            type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(
             range, diagnostic::Style::ErrorText()));
   }
@@ -89,14 +89,14 @@ type::QualType Compiler::VerifyType(ast::Jump const *node) {
         diag().Consume(ConstantJumpState{.range = node->state()->range()});
       }
 
-      if (not state_qual_type.type()->is<type::Pointer>()) {
+      if (not state_qual_type.type().is<type::Pointer>()) {
         diag().Consume(NonPointerJumpState{
             .range = node->state()->range(),
             .type  = state,
         });
         err = true;
       } else if (auto const *buf_ptr =
-                     state_qual_type.type()->if_as<type::BufferPointer>()) {
+                     state_qual_type.type().if_as<type::BufferPointer>()) {
         // Intentionally not setting `err` because there is an obvious recovery
         // mechanism (drop the buffer-ness of the pointer type).
         diag().Consume(BufferPointerJumpState{.range = node->state()->range()});

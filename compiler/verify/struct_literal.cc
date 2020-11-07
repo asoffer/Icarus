@@ -13,7 +13,7 @@ WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
     auto field_qt = VerifyType(&field);
     if (not field_qt.ok()) {
       error = true;
-    } else if (field_qt.type()->completeness() ==
+    } else if (field_qt.type().get()->completeness() ==
                type::Completeness::Incomplete) {
       LOG("StructLiteral",
           "Setting error due to incomplete field. Diagnostics should have "

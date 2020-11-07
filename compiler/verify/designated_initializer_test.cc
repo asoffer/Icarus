@@ -103,7 +103,7 @@ TEST(DesignatedInitializer, NonMember) {
   )");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Struct>());
+  EXPECT_TRUE(qt->type().is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-struct-field")));
@@ -124,7 +124,7 @@ TEST(DesignatedInitializer, MemberInvalidConversion) {
   )");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Struct>());
+  EXPECT_TRUE(qt->type().is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -146,7 +146,7 @@ TEST(DesignatedInitializer, Valid) {
   )");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Struct>());
+  EXPECT_TRUE(qt->type().is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Const());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -168,7 +168,7 @@ TEST(DesignatedInitializer, MultipleMemberAssignments) {
   )");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Struct>());
+  EXPECT_TRUE(qt->type().is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -190,7 +190,7 @@ TEST(DesignatedInitializer, MultipleMemberInvalidAssignments) {
   )");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Struct>());
+  EXPECT_TRUE(qt->type().is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -214,7 +214,7 @@ TEST(DesignatedInitializer, MemberValidConversion) {
   )");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Struct>());
+  EXPECT_TRUE(qt->type().is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -235,7 +235,7 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
   )");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Struct>());
+  EXPECT_TRUE(qt->type().is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(

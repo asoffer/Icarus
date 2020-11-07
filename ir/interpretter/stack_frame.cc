@@ -15,9 +15,9 @@ StackFrame::StackFrame(ir::NativeFn fn, base::untyped_buffer arguments,
   core::Bytes next_reg_loc = core::Bytes(stack->size());
   fn->for_each_alloc([&](type::Type t, ir::Reg r) {
     ASSERT(t.valid() == true);
-    next_reg_loc = core::FwdAlign(next_reg_loc, t->alignment(kArchitecture));
+    next_reg_loc = core::FwdAlign(next_reg_loc, t.alignment(kArchitecture));
     regs_.set(r, ir::Addr::Stack(next_reg_loc.value()));
-    next_reg_loc += t->bytes(kArchitecture);
+    next_reg_loc += t.bytes(kArchitecture);
   });
   stack->append_bytes(next_reg_loc.value() - stack->size());
 }
@@ -30,9 +30,9 @@ StackFrame::StackFrame(ir::NativeFn fn, base::untyped_buffer *stack)
   core::Bytes next_reg_loc = core::Bytes(stack->size());
   fn->for_each_alloc([&](type::Type t, ir::Reg r) {
     ASSERT(t.valid() == true);
-    next_reg_loc = core::FwdAlign(next_reg_loc, t->alignment(kArchitecture));
+    next_reg_loc = core::FwdAlign(next_reg_loc, t.alignment(kArchitecture));
     regs_.set(r, ir::Addr::Stack(next_reg_loc.value()));
-    next_reg_loc += t->bytes(kArchitecture);
+    next_reg_loc += t.bytes(kArchitecture);
   });
   stack->append_bytes(next_reg_loc.value() - stack->size());
 }

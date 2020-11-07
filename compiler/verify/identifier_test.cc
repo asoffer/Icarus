@@ -44,7 +44,7 @@ TEST(Identifier, OverloadSetSuccess) {
   auto const *id = mod.Append<ast::Identifier>("f");
   auto const *qt = mod.context().qual_type(id);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::OverloadSet>());
+  EXPECT_TRUE(qt->type().is<type::OverloadSet>());
   EXPECT_THAT(mod.context().decls(id), SizeIs(2));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }

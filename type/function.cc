@@ -30,7 +30,7 @@ void Function::WriteTo(std::string *result) const {
       absl::StrAppend(result, param.name,
                       param.value.constant() ? " :: " : ": ");
     }
-    param.value.type()->WriteTo(result);
+    param.value.type().get()->WriteTo(result);
     sep = ", ";
   }
   result->append(") -> (");
@@ -38,7 +38,7 @@ void Function::WriteTo(std::string *result) const {
   sep = "";
   for (Type out : output()) {
     result->append(sep);
-    out->WriteTo(result);
+    out.get()->WriteTo(result);
     sep = ", ";
   }
   result->append(")");

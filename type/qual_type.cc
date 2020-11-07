@@ -24,10 +24,10 @@ std::ostream &operator<<(std::ostream &os, QualType q) {
   if (not q) { return os << "error"; }
   return os << q.quals() << "("
             << (q.expansion_size() == 1
-                    ? q.type()->to_string()
+                    ? q.type().to_string()
                     : absl::StrJoin(q.expanded(), ", ",
                                     [](std::string *out, type::Type t) {
-                                      out->append(t->to_string());
+                                      out->append(t.to_string());
                                     }))
             << ")";
 }

@@ -17,7 +17,7 @@ struct UncopyableType {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Attempting to copy an uncopyable type `%s`.",
-                         from->to_string()),
+                         from.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -47,7 +47,7 @@ struct InvalidUnaryOperatorCall {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Invalid call to unary operator (%s) with argument type `%s`", op,
-            type->to_string()),
+            type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -64,7 +64,7 @@ struct NegatingUnsignedInteger {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to negate an unsigned integer of type `%s`.",
-            type->to_string()),
+            type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -106,7 +106,7 @@ struct DereferencingNonPointer {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Attempting to dereference an object of type `%s` "
                          "which is not a pointer",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -125,7 +125,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
 
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Copy: {
-      if (not operand_type->IsCopyable()) {
+      if (not operand_type.get()->IsCopyable()) {
         diag().Consume(UncopyableType{
             .from  = operand_type,
             .range = node->range(),
@@ -140,7 +140,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
                           operand_qt.quals() & ~type::Quals::Buf());
     } break;
     case ast::UnaryOperator::Kind::Move: {
-      if (not operand_type->IsMovable()) {
+      if (not operand_type.get()->IsMovable()) {
         diag().Consume(ImmovableType{
             .from  = operand_type,
             .range = node->range(),
@@ -174,9 +174,9 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       }
     } break;
     case ast::UnaryOperator::Kind::At: {
-      if (auto const *ptr_type = operand_type->if_as<type::BufferPointer>()) {
+      if (auto const *ptr_type = operand_type.if_as<type::BufferPointer>()) {
         qt = type::QualType(ptr_type->pointee(), type::Quals::Buf());
-      } else if (auto const *ptr_type = operand_type->if_as<type::Pointer>()) {
+      } else if (auto const *ptr_type = operand_type.if_as<type::Pointer>()) {
         qt = type::QualType(ptr_type->pointee(), type::Quals::Ref());
       } else {
         diag().Consume(DereferencingNonPointer{
@@ -220,7 +220,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
             .range = node->range(),
         });
         return type::QualType::Error();
-      } else if (operand_type->is<type::Struct>()) {
+      } else if (operand_type.is<type::Struct>()) {
         // TODO: support calling with constant arguments.
         qt = VerifyUnaryOverload(
             "-", node, type::Typed<ir::Value>(ir::Value(), operand_qt.type()));
@@ -241,10 +241,10 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       }
     } break;
     case ast::UnaryOperator::Kind::Not: {
-      if (operand_type == type::Bool or operand_type->is<type::Flags>()) {
+      if (operand_type == type::Bool or operand_type.is<type::Flags>()) {
         qt = type::QualType(operand_type,
                             operand_qt.quals() & type::Quals::Const());
-      } else if (operand_type->is<type::Struct>()) {
+      } else if (operand_type.is<type::Struct>()) {
         // TODO: support calling with constant arguments.
         qt = VerifyUnaryOverload(
             "!", node, type::Typed<ir::Value>(ir::Value(), operand_qt.type()));

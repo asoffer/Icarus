@@ -16,7 +16,7 @@ struct InvalidIndexType {
         diagnostic::Text("Attempting to index a value of type `%s` with a "
                          "non-integral index. Indices must be integers, but "
                          "you provided an index of type `%s`.",
-                         type->to_string(), index_type->to_string()),
+                         type.to_string(), index_type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -127,7 +127,7 @@ struct InvalidIndexing {
         diagnostic::Text(
             "Cannot index into a non-array, non-buffer type. Indexed type is "
             "a `%s`.",
-            type->to_string()),
+            type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -305,13 +305,13 @@ type::QualType Compiler::VerifyType(ast::Index const *node) {
 
   if (lhs_qt.type() == type::ByteView) {
     return VerifyByteViewIndex(this, node, lhs_qt.quals(), index_qt);
-  } else if (auto const *array_type = lhs_qt.type()->if_as<type::Array>()) {
+  } else if (auto const *array_type = lhs_qt.type().if_as<type::Array>()) {
     return VerifyArrayIndex(this, node, array_type, lhs_qt.quals(), index_qt);
   } else if (auto const *buf_ptr_type =
-                 lhs_qt.type()->if_as<type::BufferPointer>()) {
+                 lhs_qt.type().if_as<type::BufferPointer>()) {
     return VerifyBufferPointerIndex(this, node, buf_ptr_type, lhs_qt.quals(),
                                     index_qt);
-  } else if (auto const *tuple_type = lhs_qt.type()->if_as<type::Tuple>()) {
+  } else if (auto const *tuple_type = lhs_qt.type().if_as<type::Tuple>()) {
     return VerifyTupleIndex(this, node, tuple_type, lhs_qt.quals(), index_qt);
   } else {
     diag().Consume(InvalidIndexing{

@@ -18,7 +18,7 @@ void Compiler::EmitCopyInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   type::Array const &array_type =
-      ASSERT_NOT_NULL(context().qual_type(node))->type()->as<type::Array>();
+      ASSERT_NOT_NULL(context().qual_type(node))->type().as<type::Array>();
   auto const *data_type_ptr = type::Ptr(array_type.data_type());
   auto elem = builder().Index(type::Ptr(&array_type), to[0]->reg(), 0);
   // Skip the last entry so we don't increment past the end of the array.
@@ -37,7 +37,7 @@ void Compiler::EmitMoveInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   type::Array const &array_type =
-      ASSERT_NOT_NULL(context().qual_type(node))->type()->as<type::Array>();
+      ASSERT_NOT_NULL(context().qual_type(node))->type().as<type::Array>();
   auto *data_type_ptr = type::Ptr(array_type.data_type());
   auto elem = builder().Index(type::Ptr(&array_type), to[0]->reg(), 0);
   // Skip the last entry so we don't increment past the end of the array.
@@ -56,7 +56,7 @@ void Compiler::EmitAssign(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   type::Array const &array_type =
-      ASSERT_NOT_NULL(context().qual_type(node))->type()->as<type::Array>();
+      ASSERT_NOT_NULL(context().qual_type(node))->type().as<type::Array>();
   auto *data_type_ptr = type::Ptr(array_type.data_type());
   auto elem = builder().Index(type::Ptr(&array_type), to[0]->reg(), 0);
   // Skip the last entry so we don't increment past the end of the array.

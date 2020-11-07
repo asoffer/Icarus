@@ -67,7 +67,7 @@ struct BinaryOperatorTypeMismatch {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Mismatched types `%s` and `%s` in binary operator.",
-                         lhs_type->to_string(), rhs_type->to_string()),
+                         lhs_type.to_string(), rhs_type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -83,7 +83,7 @@ struct NoMatchingBinaryOperator {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No matching binary operator for types %s and %s.",
-                         lhs_type->to_string(), rhs_type->to_string()),
+                         lhs_type.to_string(), rhs_type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -102,8 +102,8 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
   if (lhs_qual_type.type() == type::Bool and
       rhs_qual_type.type() == type::Bool) {
     return c->context().set_qual_type(node, type::QualType(return_type, quals));
-  } else if (lhs_qual_type.type()->is<type::Flags>() and
-             rhs_qual_type.type()->is<type::Flags>()) {
+  } else if (lhs_qual_type.type().is<type::Flags>() and
+             rhs_qual_type.type().is<type::Flags>()) {
     if (lhs_qual_type.type() == rhs_qual_type.type()) {
       return c->context().set_qual_type(node,
                                         type::QualType(return_type, quals));
@@ -137,8 +137,8 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
                                         type::Type return_type) {
   auto quals =
       (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
-  bool check_user_overload = not lhs_qual_type.type()->is<type::Primitive>() or
-                             not rhs_qual_type.type()->is<type::Primitive>();
+  bool check_user_overload = not lhs_qual_type.type().is<type::Primitive>() or
+                             not rhs_qual_type.type().is<type::Primitive>();
   if (check_user_overload) {
     // TODO: Calling with constants?
     auto qt = c->VerifyBinaryOverload(
@@ -211,7 +211,7 @@ type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
       }
       if (lhs_qual_type.type() == rhs_qual_type.type() and
           (lhs_qual_type.type() == type::Bool or
-           lhs_qual_type.type()->is<type::Flags>())) {
+           lhs_qual_type.type().is<type::Flags>())) {
         return context().set_qual_type(node, lhs_qual_type);
       } else {
         diag().Consume(LogicalAssignmentNeedsBoolOrFlags{

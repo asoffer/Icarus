@@ -121,19 +121,19 @@ struct InitInstruction
   static constexpr std::string_view kDebugFormat = "init %2$s";
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
-    if (auto* s = type->if_as<type::Struct>()) {
+    if (auto* s = type.if_as<type::Struct>()) {
       ir::Fn f   = *s->init_;
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
 
-    } else if (auto* tup = type->if_as<type::Tuple>()) {
+    } else if (auto* tup = type.if_as<type::Tuple>()) {
       ir::Fn f   = tup->init_func_.get();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
 
-    } else if (auto* a = type->if_as<type::Array>()) {
+    } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f   = *s->init_;
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
@@ -154,20 +154,20 @@ struct DestroyInstruction
   static constexpr std::string_view kDebugFormat = "destroy %2$s";
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
-    if (auto* s = type->if_as<type::Struct>()) {
+    if (auto* s = type.if_as<type::Struct>()) {
       ASSERT(s->dtor_.has_value() == true);
       ir::Fn f   = *s->dtor_;
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
 
-    } else if (auto* tup = type->if_as<type::Tuple>()) {
+    } else if (auto* tup = type.if_as<type::Tuple>()) {
       ir::Fn f   = tup->destroy_func_.get();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
 
-    } else if (auto* a = type->if_as<type::Array>()) {
+    } else if (auto* a = type.if_as<type::Array>()) {
       NOT_YET();  // f = a->destroy_func_.get();
     } else {
       NOT_YET();
@@ -184,7 +184,7 @@ struct CopyInstruction
   static constexpr std::string_view kDebugFormat = "copy %2$s to %3$s";
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
-    if (auto* s = type->if_as<type::Struct>()) {
+    if (auto* s = type.if_as<type::Struct>()) {
       // TODO: This copy/move are currently indistinguishable.
       ir::Fn f = *ASSERT_NOT_NULL(s->Assignment(s));
       // TODO: No reason this has to be native.
@@ -208,7 +208,7 @@ struct MoveInstruction
   static constexpr std::string_view kDebugFormat = "move %2$s to %3$s";
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
-    if (auto* s = type->if_as<type::Struct>()) {
+    if (auto* s = type.if_as<type::Struct>()) {
       // TODO: This copy/move are currently indistinguishable.
       ir::Fn f = *ASSERT_NOT_NULL(s->Assignment(s));
       // TODO: No reason this has to be native.
@@ -249,17 +249,17 @@ struct LoadSymbolInstruction
     // TODO: We could probably extract this into two separate instructions (one
     // for functions and one for pointers) so that we can surface errors during
     // code-gen without the UNREACHABLE.
-    if (auto* fn_type = type->if_as<type::Function>()) {
+    if (auto* fn_type = type.if_as<type::Function>()) {
       ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
                 void (*sym)(), interpretter::LoadFunctionSymbol(name.get()));
       ctx.current_frame().regs_.set(result,
                                     ir::Fn(ir::ForeignFn(sym, fn_type)));
-    } else if (type->is<type::Pointer>()) {
+    } else if (type.is<type::Pointer>()) {
       ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
                 void* sym, interpretter::LoadDataSymbol(name.get()));
       ctx.current_frame().regs_.set(result, ir::Addr::Heap(sym));
     } else {
-      UNREACHABLE(type->to_string());
+      UNREACHABLE(type.to_string());
     }
   }
 
@@ -278,7 +278,7 @@ struct TypeInfoInstruction
     return absl::StrCat(
         stringify(result),
         kind == Kind::Alignment ? " = alignment " : " = bytes ",
-        type.is_reg() ? stringify(type.reg()) : type.value()->to_string());
+        type.is_reg() ? stringify(type.reg()) : type.value().to_string());
   }
 
   void Apply(interpretter::ExecutionContext& ctx) const {
@@ -286,12 +286,12 @@ struct TypeInfoInstruction
       case Kind::Alignment:
         ctx.current_frame().regs_.set(
             result,
-            ctx.resolve(type)->alignment(interpretter::kArchitecture).value());
+            ctx.resolve(type).alignment(interpretter::kArchitecture).value());
         break;
       case Kind::Bytes:
         ctx.current_frame().regs_.set(
             result,
-            ctx.resolve(type)->bytes(interpretter::kArchitecture).value());
+            ctx.resolve(type).bytes(interpretter::kArchitecture).value());
         break;
     }
   }
@@ -401,12 +401,11 @@ struct PtrIncrInstruction
 
   void Apply(interpretter::ExecutionContext& ctx) const {
     ctx.current_frame().regs_.set(
-        result,
-        ctx.resolve(addr) +
-            core::FwdAlign(
-                ptr->pointee()->bytes(interpretter::kArchitecture),
-                ptr->pointee()->alignment(interpretter::kArchitecture)) *
-                ctx.resolve(index));
+        result, ctx.resolve(addr) +
+                    core::FwdAlign(
+                        ptr->pointee().bytes(interpretter::kArchitecture),
+                        ptr->pointee().alignment(interpretter::kArchitecture)) *
+                        ctx.resolve(index));
   }
 
   RegOr<Addr> addr;

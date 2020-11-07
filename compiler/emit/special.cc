@@ -114,7 +114,7 @@ void Compiler::EmitCopyAssign(
     ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       ASSERT(from.type().is<type::Array>() == true);
       EmitArrayAssignment<Copy>(*this, to.type(),
-                                &from.type()->as<type::Array>());
+                                &from.type().as<type::Array>());
     }
     fn->WriteByteCode<interpretter::instruction_set_t>();
   }
@@ -130,7 +130,7 @@ void Compiler::EmitMoveAssign(
     ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       ASSERT(from.type().is<type::Array>() == true);
       EmitArrayAssignment<Move>(*this, to.type(),
-                                &from.type()->as<type::Array>());
+                                &from.type().as<type::Array>());
     }
     fn->WriteByteCode<interpretter::instruction_set_t>();
   }

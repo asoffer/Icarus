@@ -154,7 +154,7 @@ Compiler::ComputeParamsFromArgs(
     ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::Value>> const &args) {
   LOG("generic-fn", "Creating a concrete implementation with %s",
-      args.Transform([](auto const &a) { return a.type()->to_string(); }));
+      args.Transform([](auto const &a) { return a.type().to_string(); }));
 
   core::Params<std::pair<ir::Value, type::QualType>> parameters(
       node->params().size());
@@ -195,7 +195,7 @@ Compiler::ComputeParamsFromArgs(
           auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
           arg_type       = VerifyType(init_val).type();
         }
-        LOG("generic-fn", "... %s", arg_type->to_string());
+        LOG("generic-fn", "... %s", arg_type.to_string());
         context().set_arg_type(dep_node.node()->id(), arg_type);
       } break;
       case core::DependencyNodeKind::ParamType: {
@@ -235,7 +235,7 @@ Compiler::ComputeParamsFromArgs(
         type::Typed<ir::Value> arg;
         if (index < args.pos().size()) {
           arg = args[index];
-          LOG("generic-fn", "%s %s", *arg, arg.type()->to_string());
+          LOG("generic-fn", "%s %s", *arg, arg.type().to_string());
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
         } else {
@@ -312,7 +312,7 @@ type::QualType Compiler::VerifyUnaryOverload(
         ASSIGN_OR(return false, auto qt, qual_type_of(expr));
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
-        auto &c = qt.type()->as<type::Callable>();
+        auto &c = qt.type().as<type::Callable>();
         member_types.insert(&c);
         return true;
       });
@@ -338,7 +338,7 @@ type::QualType Compiler::VerifyBinaryOverload(
         ASSIGN_OR(return false, auto qt, qual_type_of(expr));
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
-        auto &c = qt.type()->as<type::Callable>();
+        auto &c = qt.type().as<type::Callable>();
         member_types.insert(&c);
         return true;
       });
@@ -366,13 +366,13 @@ Compiler::VerifyCallee(ast::Expression const *callee,
                    auto qt, VerifyType(callee));
 
   ASSIGN_OR(return return_type(qt, {}),  //
-                   auto const &callable, qt.type()->if_as<type::Callable>());
+                   auto const &callable, qt.type().if_as<type::Callable>());
 
   absl::flat_hash_map<ast::Expression const *, type::Callable const *>
       overload_map;
   for (auto const *overload : context().AllOverloads(callee).members()) {
     overload_map.emplace(
-        overload, &qual_type_of(overload).value().type()->as<type::Callable>());
+        overload, &qual_type_of(overload).value().type().as<type::Callable>());
   }
   return return_type(qt, std::move(overload_map));
 }
@@ -396,7 +396,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   for (auto const *callee :
        context().AllOverloads(call_expr->callee()).members()) {
     auto maybe_qt = qual_type_of(callee);
-    ExtractParams(callee, &maybe_qt.value().type()->as<type::Callable>(), args,
+    ExtractParams(callee, &maybe_qt.value().type().as<type::Callable>(), args,
                   overload_params, errors);
   }
 
@@ -424,8 +424,8 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
 
       ASSERT(expansion.pos().size() <= params.size());
       for (size_t i = 0; i < expansion.pos().size(); ++i) {
-        LOG("VerifyCall", "Comparing %s with %s", expansion[i]->to_string(),
-            params[i].value.type()->to_string());
+        LOG("VerifyCall", "Comparing %s with %s", expansion[i].to_string(),
+            params[i].value.type().to_string());
         if (not type::CanCastImplicitly(expansion[i], params[i].value.type())) {
           // TODO: Currently as soon as we find an error with a call we move on.
           // It'd be nice to extract all the error information for each.

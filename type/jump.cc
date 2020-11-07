@@ -16,7 +16,7 @@ Jump const *Jmp(Type state, core::Params<Type> const &params) {
 void Jump::WriteTo(std::string *r) const {
   if (state_) {
     absl::StrAppend(r, "jump [");
-    state_->WriteTo(r);
+    state_.get()->WriteTo(r);
     absl::StrAppend(r, "] (");
   } else {
     absl::StrAppend(r, "jump (");
@@ -29,7 +29,7 @@ void Jump::WriteTo(std::string *r) const {
                                     out->append(p.name);
                                     out->append(": ");
                                   }
-                                  p.value->WriteTo(out);
+                                  p.value.get()->WriteTo(out);
                                 }),
                   ")");
 }

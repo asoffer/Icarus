@@ -13,7 +13,7 @@ struct NonBooleanConditionalGoto {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Condition in a `goto` expression must be a boolean, "
                          "but encountered a %s",
-                         type->to_string()),
+                         type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(
             range, diagnostic::Style::ErrorText()));
   }

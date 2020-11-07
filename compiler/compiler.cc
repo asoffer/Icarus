@@ -95,7 +95,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     auto val = c.EmitValue(expr);
     // TODO wrap this up into SetRet(vector)
     std::vector<type::Type> extracted_types;
-    if (auto *tup = type->if_as<type::Tuple>()) {
+    if (auto *tup = type.if_as<type::Tuple>()) {
       extracted_types = tup->entries_;
     } else {
       extracted_types = {type};
@@ -105,8 +105,8 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     // TODO is_big()?
 
     type::Type t = extracted_types[0];
-    LOG("MakeThunk", "%s %s", t, t->is_big() ? "true" : "false");
-    if (t->is_big()) {
+    LOG("MakeThunk", "%s %s", t, t.get()->is_big() ? "true" : "false");
+    if (t.get()->is_big()) {
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision
 
@@ -114,7 +114,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
           type::Typed<ir::Value>(val, t),
           type::Typed<ir::Reg>(c.builder().GetRet(0, t), type::Ptr(t)));
 
-    } else if (auto const *gs = t->if_as<type::GenericStruct>()) {
+    } else if (auto const *gs = t.if_as<type::GenericStruct>()) {
       c.builder().SetRet(0, gs);
     } else {
       c.builder().SetRet(0, type::Typed<ir::Value>(val, t));

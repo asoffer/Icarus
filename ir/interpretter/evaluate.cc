@@ -25,12 +25,12 @@ static void CallFn(ir::BuiltinFn fn, base::untyped_buffer_view arguments,
     case ir::BuiltinFn::Which::Alignment: {
       type::Type type = arguments.get<type::Type>(0);
       *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
-          type->alignment(kArchitecture).value();
+          type.alignment(kArchitecture).value();
     } break;
     case ir::BuiltinFn::Which::Bytes: {
       type::Type type = arguments.get<type::Type>(0);
       *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
-          type->bytes(kArchitecture).value();
+          type.bytes(kArchitecture).value();
     } break;
     default: NOT_YET();
   }
@@ -157,7 +157,7 @@ constexpr exec_t GetInstruction() {
 
         } else {
           type::Type t = fn_type->params()[i].value.type();
-          if (t->is_big()) {
+          if (t.get()->is_big()) {
             NOT_YET();
           } else {
             if (frame) {
@@ -165,7 +165,7 @@ constexpr exec_t GetInstruction() {
             }
             std::memcpy(call_buf.raw((num_regs + i) * kMaxSize), iter->raw(),
                         kMaxSize);
-            iter->skip(t->bytes(interpretter::kArchitecture).value());
+            iter->skip(t.bytes(interpretter::kArchitecture).value());
           }
         }
       }
@@ -181,7 +181,7 @@ constexpr exec_t GetInstruction() {
         // registers since they are both void* and are used identically in the
         // interpretter.
         ir::Addr addr =
-            (fn_type->output()[i]->is_big())
+            (fn_type->output()[i].get()->is_big())
                 ? ctx.resolve<ir::Addr>(reg)
                 : ir::Addr::Heap(ctx.current_frame().regs_.raw(reg));
 
@@ -319,7 +319,7 @@ void Execute(ir::CompiledFn &&fn) {
 
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   ASSERT(fn.type()->output().size() != 0u);
-  core::Bytes required = fn.type()->output()[0]->bytes(kArchitecture);
+  core::Bytes required = fn.type()->output()[0].bytes(kArchitecture);
   auto ret_buf         = base::untyped_buffer::MakeFull(required.value());
   std::vector<ir::Addr> ret_slots;
 
@@ -344,7 +344,7 @@ base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
 
   auto iter = buf.begin();
   for (type::Type t : fn.type()->output()) {
-    if (t->is<type::GenericStruct>()) {
+    if (t.is<type::GenericStruct>()) {
       values.push_back(ir::Value(t));
     } else {
       type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,

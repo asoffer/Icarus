@@ -17,7 +17,7 @@ TEST(Access, EnumSuccess) {
   auto const *enumerator = mod.Append<ast::Expression>(R"(E.A)");
   auto const *qt         = mod.context().qual_type(enumerator);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Enum>());
+  EXPECT_TRUE(qt->type().is<type::Enum>());
   EXPECT_EQ(qt->quals(), type::Quals::Const());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -28,7 +28,7 @@ TEST(Access, EnumMisnamed) {
   auto const *enumerator = mod.Append<ast::Expression>(R"(E.D)");
   auto const *qt         = mod.context().qual_type(enumerator);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Enum>());
+  EXPECT_TRUE(qt->type().is<type::Enum>());
   EXPECT_EQ(qt->quals(), type::Quals::Const());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-member")));
@@ -40,7 +40,7 @@ TEST(Access, FlagsSuccess) {
   auto const *flag = mod.Append<ast::Expression>(R"(F.A)");
   auto const *qt   = mod.context().qual_type(flag);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Flags>());
+  EXPECT_TRUE(qt->type().is<type::Flags>());
   EXPECT_EQ(qt->quals(), type::Quals::Const());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -51,7 +51,7 @@ TEST(Access, FlagsMisnamed) {
   auto const *flag = mod.Append<ast::Expression>(R"(F.D)");
   auto const *qt   = mod.context().qual_type(flag);
   ASSERT_NE(qt, nullptr);
-  EXPECT_TRUE(qt->type()->is<type::Flags>());
+  EXPECT_TRUE(qt->type().is<type::Flags>());
   EXPECT_EQ(qt->quals(), type::Quals::Const());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-member")));

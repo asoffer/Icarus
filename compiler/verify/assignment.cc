@@ -17,7 +17,7 @@ struct TypeMismatch {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Cannot assign a value of type `%s` to a reference of type `%s`:",
-            lhs_type->to_string(), rhs_type->to_string()),
+            lhs_type.to_string(), rhs_type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(
             range, diagnostic::Style::ErrorText()));
   }

@@ -46,7 +46,7 @@ ffi_type *ToFfiType(type::Type t) {
   if (t == type::Nat64) { return &ffi_type_uint64; }
   if (t == type::Float32) { return &ffi_type_float; }
   if (t == type::Float64) { return &ffi_type_double; }
-  if (t->is<type::Pointer>()) { return &ffi_type_pointer; }
+  if (t.is<type::Pointer>()) { return &ffi_type_pointer; }
   UNREACHABLE();
 }
 }  // namespace
@@ -141,7 +141,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     ExtractReturnValue<float>(&ret, return_slots[0]);
   } else if (out_type == type::Float64) {
     ExtractReturnValue<double>(&ret, return_slots[0]);
-  } else if (out_type->is<type::Pointer>()) {
+  } else if (out_type.is<type::Pointer>()) {
     char *ptr;
     std::memcpy(&ptr, &ret, sizeof(ptr));
     ir::Addr addr;
