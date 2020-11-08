@@ -1,6 +1,7 @@
 #ifndef ICARUS_BASE_META_H
 #define ICARUS_BASE_META_H
 
+#include <concepts>
 #include <cstdint>
 #include <type_traits>
 #include <typeinfo>
@@ -184,6 +185,9 @@ constexpr auto Length(type_list<Ts...>) {
   return sizeof...(Ts);
 }
 constexpr void Length(void*) {}
+
+template <typename T, typename U>
+concept different_from = not std::same_as<T, U>;
 
 }  // namespace base
 

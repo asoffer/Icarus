@@ -121,12 +121,6 @@ cc_library(
 )
 
 cc_library(
-    name = "lazy_convert",
-    hdrs = ["lazy_convert.h"],
-    deps = [],
-)
-
-cc_library(
     name = "log",
     hdrs = ["log.h"],
     srcs = ["log.cc"],

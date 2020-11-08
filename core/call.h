@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "base/lazy_convert.h"
 #include "base/log.h"
 #include "core/arguments.h"
 #include "core/dependency_node.h"
@@ -117,24 +116,6 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
   }
 
   return false;
-}
-
-// For each parameter in `params` for which `args` has chosen to use the default
-// value, update `args` to contain the appropriate default value, as chosen by
-// `fn(param.value)`.
-//
-// TODO this offset is a hack to get scope state working. Simplify.
-template <typename P, typename A, typename Fn>
-void FillMissingArgs(Params<P> const& params, Arguments<A>* args, Fn fn,
-                     size_t offset = 0) {
-  for (size_t i = args->pos().size(); i < params.size(); ++i) {
-    ASSERT(i + offset < params.size());
-    auto const& p = params[i + offset];
-    if (p.name.empty()) { continue; }
-    LOG("fill-missing-args", "For named-parameter %s inserting.", p.name);
-    args->named_emplace(p.name,
-                        base::lazy_convert{[&]() { return fn(p.value); }});
-  }
 }
 
 // Returns true if and only if a callable with `params` can be called with

@@ -32,11 +32,6 @@ struct CompiledModule : module::BasicModule {
   }
   Context &context() { return data_; }
 
-  template <typename Fn>
-  void ForEachCompiledFn(Fn &&f) const {
-    for (auto const &native_fn : data_.fns_.fns) { f(native_fn.get()); }
-  }
-
  protected:
   // Child classes must call this when compilation of this module is complete
   // to notify other modules which may be waiting on data for their own

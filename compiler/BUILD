@@ -203,7 +203,6 @@ cc_library(
     deps = [
         "//ast:ast",
         "//base:guarded",
-        "//base:lazy_convert",
         "//ir:builder",
         "//ir:compiled_block",
         "//ir:compiled_fn",

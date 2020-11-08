@@ -312,10 +312,6 @@ struct Compiler
   void pop_scope_landing() { state_.scope_landings.pop_back(); }
   TransientState &state() { return state_; }
 
-  ir::NativeFn AddFunc(
-      type::Function const *fn_type,
-      core::Params<type::Typed<ast::Declaration const *>> params);
-
   void CompleteDeferredBodies();
 
 #define ICARUS_AST_NODE_X(name)                                                \

@@ -84,7 +84,7 @@ int CompileToObjectFile(ExecutableModule const &module,
   // emit instructions. Doing so might end up calling functions, so first
   // emiting declarations guarantees they're already available.
   absl::flat_hash_map<ir::CompiledFn const *, llvm::Function *> llvm_fn_map;
-  module.ForEachCompiledFn([&](ir::CompiledFn const *fn) {
+  module.context().ForEachCompiledFn([&](ir::CompiledFn const *fn) {
     llvm_fn_map.emplace(fn,
                         backend::DeclareLlvmFunction(*fn, module, llvm_module));
   });
@@ -96,7 +96,7 @@ int CompileToObjectFile(ExecutableModule const &module,
           llvm::Function::ExternalLinkage, "main", &llvm_module));
 
   llvm::IRBuilder<> builder(context);
-  module.ForEachCompiledFn([&](ir::CompiledFn const *fn) {
+  module.context().ForEachCompiledFn([&](ir::CompiledFn const *fn) {
     backend::EmitLlvmFunction(builder, context, *fn, *llvm_fn_map.at(fn));
   });
   backend::EmitLlvmFunction(builder, context, module.main(),

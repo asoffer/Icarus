@@ -102,11 +102,18 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
   if (not callee_fn.is_reg()) {
     switch (callee_fn.value().kind()) {
       case ir::Fn::Kind::Native: {
-        core::FillMissingArgs(
-            callee_fn.value().native()->params(), &args, [&c](auto const &p) {
-              return type::Typed<ir::Value>(
-                  c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type());
-            });
+        // Fill in the missing arguments with defaults.
+        auto const &params = callee_fn.value().native()->params();
+        for (size_t i = args.pos().size(); i < params.size(); ++i) {
+          auto const &p = params[i];
+          if (p.name.empty()) { continue; }
+          if (args.at_or_null(p.name)) { continue; }
+          args.named_emplace(
+              p.name,
+              type::Typed<ir::Value>(
+                  c.EmitValue(ASSERT_NOT_NULL(p.value.get()->init_val())),
+                  p.value.type()));
+        }
       } break;
       default: break;
     }

@@ -316,19 +316,14 @@ ir::NativeFn MakeConcreteFromGeneric(
   auto const *fn_type         = find_subcontext_result.fn_type;
   auto &context               = find_subcontext_result.context;
 
-  return context.EmplaceNativeFn(node, [&]() {
-    ir::NativeFn f(
-        &context.fns_, fn_type,
-        node->params().Transform([fn_type, i = 0](auto const &d) mutable {
-          return type::Typed<ast::Declaration const *>(
-              d.get(), fn_type->params()[i++].value.type());
-        }));
+  auto [f, inserted] = context.add_func(node);
+  if (inserted) {
     f->work_item = DeferBody({.data                = context,
                               .diagnostic_consumer = compiler->diag(),
                               .importer            = compiler->importer()},
-                             compiler->state(), node, fn_type);
-    return f;
-  });
+                             compiler->state(), node, f.type());
+  }
+  return f;
 }
 
 ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
@@ -340,18 +335,11 @@ ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
     return ir::Value(gen_fn);
   }
 
-  ir::NativeFn ir_func = context().EmplaceNativeFn(node, [&] {
-    auto *fn_type = &type_of(node).as<type::Function>();
-    auto f        = AddFunc(
-        fn_type,
-        node->params().Transform([fn_type, i = 0](auto const &d) mutable {
-          return type::Typed<ast::Declaration const *>(
-              d.get(), fn_type->params()[i++].value.type());
-        }));
-    f->work_item = DeferBody(resources_, state_, node, fn_type);
-    return f;
-  });
-  return ir::Value(ir::Fn{ir_func});
+  auto [f, inserted] = context().add_func(node);
+  if (inserted) {
+    f->work_item = DeferBody(resources_, state_, node, f.type());
+  }
+  return ir::Value(ir::Fn{f});
 }
 
 ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
@@ -367,18 +355,11 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
   if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   // TODO Use correct constants
-  ir::NativeFn ir_func = context().EmplaceNativeFn(node, [&] {
-    auto *fn_type = &type_of(node).as<type::Function>();
-    auto f        = AddFunc(
-        fn_type,
-        node->params().Transform([fn_type, i = 0](auto const &d) mutable {
-          return type::Typed<ast::Declaration const *>(
-              d.get(), fn_type->params()[i++].value.type());
-        }));
-    f->work_item = DeferBody(resources_, state_, node, fn_type);
-    return f;
-  });
-  return ir::Value(ir::Fn{ir_func});
+  auto [f, inserted] = context().add_func(node);
+  if (inserted) {
+    f->work_item = DeferBody(resources_, state_, node, f.type());
+  }
+  return ir::Value(ir::Fn{f});
 }
 
 ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
@@ -400,21 +381,12 @@ ir::Value Compiler::EmitValue(ast::Jump const *node) {
   // TODO: Check the result of body verification.
   if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
-  return ir::Value(context().add_jump(node, [this, node] {
-    auto *jmp_type     = &type_of(node).as<type::Jump>();
-    auto work_item_ptr = DeferBody(resources_, state(), node, jmp_type);
-
-    size_t i    = 0;
-    auto params = node->params().Transform([&](auto const &decl) {
-      return type::Typed<ast::Declaration const *>(
-          decl.get(), jmp_type->params()[i++].value);
-    });
-
-    LOG("Jump", "Jump type = %s", jmp_type->to_string());
-    ir::CompiledJump jmp(jmp_type, std::move(params));
-    if (work_item_ptr) { jmp.work_item = work_item_ptr; }
-    return jmp;
-  }));
+  auto [jmp, inserted] = context().add_jump(node);
+  if (inserted) {
+    auto j       = ir::CompiledJump::From(jmp);
+    j->work_item = DeferBody(resources_, state(), node, j->type());
+  }
+  return ir::Value(jmp);
 }
 
 static std::vector<std::pair<ast::Expression const *, ir::Value>>

@@ -77,12 +77,6 @@ void Compiler::CompleteDeferredBodies() {
   }
 }
 
-ir::NativeFn Compiler::AddFunc(
-    type::Function const *fn_type,
-    core::Params<type::Typed<ast::Declaration const *>> params) {
-  return ir::NativeFn(&context().fns_, fn_type, std::move(params));
-}
-
 static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
                                 type::Type type) {
   ir::CompiledFn fn(type::Func({}, {type}),

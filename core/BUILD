@@ -85,7 +85,6 @@ cc_library(
     deps = [
         ":arguments",
         "//base:debug",
-        "//base:lazy_convert",
         "//base:macros",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
