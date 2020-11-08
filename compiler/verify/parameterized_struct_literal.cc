@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "compiler/library_module.h"
 #include "compiler/verify/common.h"
 #include "type/generic_struct.h"
@@ -46,41 +47,12 @@ type::QualType Compiler::VerifyType(
       compiler.context().set_struct(node, s);
       for (auto const &field : node->fields()) { compiler.VerifyType(&field); }
 
-      // TODO: This should actually be behind a must_complete work queue item.
-      ir::CompiledFn fn(type::Func({}, {}),
-                        core::Params<type::Typed<ast::Declaration const *>>{});
-      ICARUS_SCOPE(ir::SetCurrent(fn, compiler.builder())) {
-        // TODO: this is essentially a copy of the body of
-        // FunctionLiteral::EmitValue Factor these out together.
-        compiler.builder().CurrentBlock() = fn.entry();
-
-        std::vector<type::StructInstruction::Field> fields;
-        fields.reserve(node->fields().size());
-
-        for (auto const &field : node->fields()) {
-          // TODO hashtags, special members.
-          if (auto *init_val = field.init_val()) {
-            // TODO init_val type may not be the same.
-            type::Type t = compiler.qual_type_of(init_val)->type();
-            fields.emplace_back(field.id(), t, compiler.EmitValue(init_val));
-          } else {
-            fields.emplace_back(
-                field.id(), compiler.EmitValue(field.type_expr()).get<type::Type>());
-          }
-        }
-        // TODO destructors and assignment
-        compiler.current_block()->Append(
-            type::StructInstruction{.struct_     = s,
-                                    .fields      = std::move(fields),
-                                    .assignments = {},
-                                    .dtor        = std::nullopt,
-                                    .result      = compiler.builder().Reserve()});
-
-        compiler.builder().ReturnJump();
-      }
+      auto maybe_fn = StructCompletionFn(compiler, s, node->fields());
+      // TODO: Deal with error-case.
+      ASSERT(maybe_fn.has_value() == true);
+      auto fn = *std::move(maybe_fn);
 
       // TODO: What if execution fails.
-      fn.WriteByteCode<interpretter::instruction_set_t>();
       interpretter::Execute(std::move(fn));
       LOG("ParameterizedStructLiteral",
           "Completed %s which is a (parameterized) struct %s with %u field(s).",

@@ -4,6 +4,7 @@
 #include "ast/scope/exec.h"
 #include "base/defer.h"
 #include "base/guarded.h"
+#include "compiler/emit/common.h"
 #include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/executable_module.h"
 #include "diagnostic/consumer/trivial.h"
@@ -491,20 +492,6 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
                                        std::move(blocks)));
 }
 
-struct IncompleteField {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "incomplete-field";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Struct field has incomplete type."),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
-  }
-
-  frontend::SourceRange range;
-};
-
 WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
       node, state_.must_complete ? "true" : "false");
@@ -515,117 +502,9 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
     return WorkItem::Result::Success;
   }
 
-  bool field_error = false;
-  for (auto const &field : node->fields()) {
-    auto const *qt = context().qual_type(&field);
-    if (not qt or
-        qt->type().get()->completeness() != type::Completeness::Complete) {
-      diag().Consume(IncompleteField{.range = field.range()});
-      field_error = true;
-    }
-  }
-  if (field_error) { return WorkItem::Result::Failure; }
-
-  ir::CompiledFn fn(type::Func({}, {}),
-                    core::Params<type::Typed<ast::Declaration const *>>{});
-  ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
-    // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
-    // Factor these out together.
-    builder().CurrentBlock() = fn.entry();
-
-    std::vector<type::StructInstruction::Field> fields;
-
-    bool has_field_needing_destruction = false;
-    std::optional<ir::Fn> user_dtor;
-    std::vector<ir::Fn> assignments;
-    for (auto const &field : node->fields()) {
-      // TODO: Decide whether to support all hashtags. For now just covering
-      // export.
-      if (field.id() == "destroy") {
-        // TODO: handle potential errors here.
-        user_dtor = EmitValue(field.init_val()).get<ir::Fn>();
-      } else if (field.id() == "assign") {
-        // TODO handle potential errors here.
-        assignments.push_back(EmitValue(field.init_val()).get<ir::Fn>());
-      } else {
-        type::Type field_type;
-        if (auto *init_val = field.init_val()) {
-          // TODO init_val type may not be the same.
-          field_type = qual_type_of(init_val)->type();
-          fields.emplace_back(field.id(), field_type, EmitValue(init_val));
-          fields.back().set_export(
-              field.hashtags.contains(ir::Hashtag::Export));
-        } else {
-          field_type = EmitValue(field.type_expr()).get<type::Type>();
-          fields.emplace_back(field.id(), field_type);
-          fields.back().set_export(
-              field.hashtags.contains(ir::Hashtag::Export));
-        }
-        has_field_needing_destruction =
-            has_field_needing_destruction or field_type.get()->HasDestructor();
-      }
-    }
-
-    std::optional<ir::Fn> dtor;
-    if (has_field_needing_destruction) {
-      auto [full_dtor, inserted] = context().InsertDestroy(s);
-      if (inserted) {
-        ICARUS_SCOPE(ir::SetCurrent(full_dtor, builder())) {
-          builder().CurrentBlock() = builder().CurrentGroup()->entry();
-          auto var                 = ir::Reg::Arg(0);
-          if (user_dtor) {
-            // TODO: Should probably force-inline this.
-            builder().Call(*user_dtor, full_dtor.type(), {ir::Value(var)},
-                           ir::OutParams());
-          }
-          for (int i = fields.size() - 1; i >= 0; --i) {
-            // TODO: Avoid emitting IR if the type doesn't need to be
-            // destroyed.
-            EmitDestroy(type::Typed<ir::Reg>(builder().FieldRef(var, s, i)));
-          }
-
-          builder().ReturnJump();
-          full_dtor->WriteByteCode<interpretter::instruction_set_t>();
-
-          dtor = full_dtor;
-        }
-      }
-    } else {
-      if (user_dtor) { dtor = *user_dtor; }
-    }
-
-    // If no assignments are specified, add a compiler-generated default.
-    if (assignments.empty()) {
-      auto [fn, inserted] = context().root().InsertMoveAssign(s, s);
-      if (inserted) {
-        ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
-          builder().CurrentBlock() = fn->entry();
-          auto var                 = ir::Reg::Arg(0);
-          auto val                 = ir::Reg::Arg(1);
-
-          for (size_t i = 0; i < s->fields().size(); ++i) {
-            EmitMoveAssign(builder().FieldRef(var, s, i),
-                           builder().FieldValue(val, s, i));
-          }
-
-          builder().ReturnJump();
-        }
-        fn->WriteByteCode<interpretter::instruction_set_t>();
-      }
-      assignments.push_back(fn);
-    }
-
-    current_block()->Append(
-        type::StructInstruction{.struct_     = s,
-                                .fields      = std::move(fields),
-                                .assignments = std::move(assignments),
-                                .dtor        = dtor,
-                                .result      = builder().Reserve()});
-    builder().ReturnJump();
-  }
-
+  ASSIGN_OR(return WorkItem::Result::Failure,  //
+                   auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
-  fn.WriteByteCode<interpretter::instruction_set_t>();
   interpretter::Execute(std::move(fn));
   s->complete();
   LOG("struct", "Completed %s which is a struct %s with %u field(s).",

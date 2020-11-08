@@ -470,6 +470,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:library_module",
+        "//compiler/emit:common",
         "//type:qual_type",
         "//type:typed_value",
     ],

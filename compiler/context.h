@@ -156,6 +156,19 @@ struct Context {
   // expression.
   type::QualType set_qual_type(ast::Expression const *expr, type::QualType qt);
 
+  ir::Reg addr(ast::Declaration const *decl) const {
+    auto iter = addr_.find(decl);
+    if (iter != addr_.end()) { return iter->second; }
+    if (parent()) { return parent()->addr(decl); }
+    UNREACHABLE("Failed to find address for decl", decl->DebugString());
+  }
+  void set_addr(ast::Declaration const *decl, ir::Reg addr) {
+    addr_.emplace(decl, addr);
+  }
+
+  ir::ModuleId imported_module(ast::Import const *node);
+  void set_imported_module(ast::Import const *node, ir::ModuleId module_id);
+
   ir::Scope add_scope(type::Type state_type) {
     return ir::Scope(&scopes_.emplace_front(state_type));
   }
@@ -173,13 +186,6 @@ struct Context {
               d.get(), fn_type->params()[i++].value.type());
         }));
     return std::pair<ir::NativeFn, bool>(iter->second, inserted);
-  }
-
-  ir::Reg addr(ast::Declaration const *decl) const {
-    auto iter = addr_.find(decl);
-    if (iter != addr_.end()) { return iter->second; }
-    if (parent()) { return parent()->addr(decl); }
-    UNREACHABLE("Failed to find address for decl", decl->DebugString());
   }
 
   // If an `ir::CompiledJump` corresponding to the compilation of `expr` already
@@ -202,13 +208,6 @@ struct Context {
   ir::CompiledJump *jump(ast::Jump const *expr);
 
   void CompleteType(ast::Expression const *expr, bool success);
-
-  void set_addr(ast::Declaration const *decl, ir::Reg addr) {
-    addr_.emplace(decl, addr);
-  }
-
-  ir::ModuleId imported_module(ast::Import const *node);
-  void set_imported_module(ast::Import const *node, ir::ModuleId module_id);
 
   ir::Value LoadConstant(ast::Declaration const *decl) const {
     if (auto iter = constants_.find(decl); iter != constants_.end()) {

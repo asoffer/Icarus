@@ -189,12 +189,11 @@ struct StructInstruction
     struct_->AppendFields(std::move(struct_fields));
     struct_->SetAssignments(std::move(assignments));
     if (dtor) { struct_->SetDestructor(*dtor); }
-    ctx.current_frame().regs_.set(result, Type(struct_));
   }
 
   std::string to_string() const {
     // TODO
-    return absl::StrCat(stringify(result), " = struct TODO");
+    return "struct TODO";
   }
 
   // TODO: Store a special type indicating that the struct is incomplete.
@@ -202,7 +201,6 @@ struct StructInstruction
   std::vector<Field> fields;
   std::vector<ir::Fn> assignments;
   std::optional<ir::Fn> dtor;
-  ir::Reg result;
 };
 
 }  // namespace type
