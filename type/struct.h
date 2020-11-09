@@ -84,7 +84,7 @@ struct Struct : public LegacyType {
   void SetAssignments(absl::Span<ir::Fn const> assignments);
 
   absl::flat_hash_map<type::Type, ir::Fn> assignments_;
-  absl::flat_hash_map<std::string_view, size_t> field_indices_;
+  absl::flat_hash_map<std::string, size_t> field_indices_;
 };
 
 // When compiling a struct definition, we build up a function to be

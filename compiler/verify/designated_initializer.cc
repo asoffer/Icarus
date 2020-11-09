@@ -139,6 +139,8 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
     return type::QualType::Error();
   }
 
+  ASSERT(struct_type->completeness() >= type::Completeness::DataComplete);
+
   bool recovered_error  = false;
   type::Quals quals     = type::Quals::Const();
   auto initializer_iter = initializer_qts.begin();

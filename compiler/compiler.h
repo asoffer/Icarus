@@ -515,7 +515,11 @@ struct Compiler
 
   friend struct WorkItem;
 
+  // TODO: The implementation here has some overlap with CompleteStruct.
+  WorkItem::Result EnsureDataCompleteness(type::Struct *s);
+
   WorkItem::Result CompleteStruct(ast::StructLiteral const *node);
+  WorkItem::Result CompleteStruct(ast::ParameterizedStructLiteral const *node);
 
  private:
   std::optional<core::Arguments<type::Typed<ir::Value>>> VerifyArguments(

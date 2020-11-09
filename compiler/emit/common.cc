@@ -183,4 +183,52 @@ std::optional<ir::CompiledFn> StructCompletionFn(
   return fn;
 }
 
+WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
+  if (s->completeness() >= type::Completeness::DataComplete) {
+    return WorkItem::Result::Success;
+  }
+
+  ast::Expression const &expr = *ASSERT_NOT_NULL(context().ast_struct(s));
+  // TODO: Deal with repetition between ast::StructLiteral and
+  // ast::ParameterizedStructLiteral
+  if (auto const *node = expr.if_as<ast::StructLiteral>()) {
+    if (auto result = VerifyBody(node); result != WorkItem::Result::Success) {
+      return result;
+    }
+    EmitValue(node);
+
+    LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
+        node, state_.must_complete ? "true" : "false");
+
+    ASSIGN_OR(return WorkItem::Result::Failure,  //
+                     auto fn, StructCompletionFn(*this, s, node->fields()));
+    // TODO: What if execution fails.
+    interpretter::Execute(std::move(fn));
+    s->complete();
+    LOG("struct", "Completed %s which is a struct %s with %u field(s).",
+        node->DebugString(), *s, s->fields().size());
+    return WorkItem::Result::Success;
+  } else if (auto const *node = expr.if_as<ast::ParameterizedStructLiteral>()) {
+    if (auto result = VerifyBody(node); result != WorkItem::Result::Success) {
+      return result;
+    }
+    EmitValue(node);
+
+    LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
+        node, state_.must_complete ? "true" : "false");
+
+    ASSIGN_OR(return WorkItem::Result::Failure,  //
+                     auto fn, StructCompletionFn(*this, s, node->fields()));
+    // TODO: What if execution fails.
+    interpretter::Execute(std::move(fn));
+    s->complete();
+    LOG("struct", "Completed %s which is a struct %s with %u field(s).",
+        node->DebugString(), *s, s->fields().size());
+    return WorkItem::Result::Success;
+  } else {
+    // TODO Should we encode that it's one of these two in the type?
+    NOT_YET();
+  }
+}
+
 }  // namespace compiler

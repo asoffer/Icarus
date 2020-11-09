@@ -195,7 +195,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
       }
     }
 
-    LOG("compile-work-queue", "Request work fn-lit: %p", node);
+    LOG("FunctionLiteral", "Request work fn-lit: %p", node);
     c.Enqueue({.kind     = WorkItem::Kind::VerifyFunctionBody,
                .node     = node,
                .context  = c.context(),
@@ -269,13 +269,16 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
 // TODO: Nothing about this has been comprehensively tested. Especially the
 // generic bits.
 WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
+  LOG("FunctionLiteral", "function-literal body verification: %s %p",
+      node->DebugString(), &context());
+
   // TODO: Move this check out to the ProcessOneItem code?
   if (not context().ShouldVerifyBody(node)) {
+    LOG("FunctionLiteral", "Ignoring subsequent verification of %s",
+        node->DebugString());
     return WorkItem::Result::Success;
   }
 
-  LOG("function", "function-literal body verification: %s %p",
-      node->DebugString(), &context());
   auto const &fn_type =
       ASSERT_NOT_NULL(context().qual_type(node))->type().as<type::Function>();
   // TODO: Get the params and check them for completeness, deferring if they're

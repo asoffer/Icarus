@@ -194,39 +194,19 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
 // different module.
 type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
-  if (s->completeness() < type::Completeness::DataComplete) {
-    ast::Expression const &expr = *ASSERT_NOT_NULL(c->context().ast_struct(s));
-    if (auto const *sl = expr.if_as<ast::StructLiteral>()) {
-      switch (c->VerifyBody(sl)) {
-        case WorkItem::Result::Success: break;
-        case WorkItem::Result::Deferred:
-          c->diag().Consume(IncompleteTypeMemberAccess{
-              .member_range = node->member_range(),
-              .type         = s,
-          });
-          [[fallthrough]];
-        case WorkItem::Result::Failure: return type::QualType::Error();
-      }
-      c->EmitValue(sl);
-      switch (c->CompleteStruct(sl)) {
-        case WorkItem::Result::Success: break;
-        case WorkItem::Result::Deferred:
-          c->diag().Consume(IncompleteTypeMemberAccess{
-              .member_range = node->member_range(),
-              .type         = s,
-          });
-          [[fallthrough]];
-        case WorkItem::Result::Failure: return type::QualType::Error();
-      }
-    } else if (expr.if_as<ast::ParameterizedStructLiteral>()) {
-      NOT_YET();
-    } else {
-      // TODO Should we encode that it's one of these two in the type?
-      NOT_YET();
-    }
+  // TODO: Figure out how to remove const_cast here.
+  switch (c->EnsureDataCompleteness(const_cast<type::Struct *>(s))) {
+    case WorkItem::Result::Success: break;
+    case WorkItem::Result::Deferred:
+      c->diag().Consume(IncompleteTypeMemberAccess{
+          .member_range = node->member_range(),
+          .type         = s,
+      });
+      [[fallthrough]];
+    case WorkItem::Result::Failure: return type::QualType::Error();
   }
-
   ASSERT(s->completeness() >= type::Completeness::DataComplete);
+
   auto const *member = s->field(node->member_name());
   if (member == nullptr) {
     c->diag().Consume(MissingMember{

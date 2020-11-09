@@ -111,7 +111,8 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
         }
         return constant_value->value;
       }
-      auto t = type_of(node);
+
+      auto t = ASSERT_NOT_NULL(context().qual_type(node))->type();
 
       if (node->IsCustomInitialized()) {
         LOG("EmitValueDeclaration", "Computing slot with %s",
@@ -353,7 +354,9 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
   }
 
   // TODO: Check the result of body verification.
-  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
+  // TODO: Check for whether or not we actually need to do the verification is
+  // handled inside VerifyBody, at least for now.
+  VerifyBody(node);
 
   // TODO Use correct constants
   auto [f, inserted] = context().add_func(node);
@@ -490,6 +493,27 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
   return ir::Value(builder().MakeScope(context().add_scope(state_type),
                                        std::move(inits), std::move(dones),
                                        std::move(blocks)));
+}
+
+WorkItem::Result Compiler::CompleteStruct(
+    ast::ParameterizedStructLiteral const *node) {
+  LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
+      node, state_.must_complete ? "true" : "false");
+
+  type::Struct *s = context().get_struct(node);
+  if (s->completeness() == type::Completeness::Complete) {
+    LOG("struct", "Already complete, exiting: %p", node);
+    return WorkItem::Result::Success;
+  }
+
+  ASSIGN_OR(return WorkItem::Result::Failure,  //
+                   auto fn, StructCompletionFn(*this, s, node->fields()));
+  // TODO: What if execution fails.
+  interpretter::Execute(std::move(fn));
+  s->complete();
+  LOG("struct", "Completed %s which is a struct %s with %u field(s).",
+      node->DebugString(), *s, s->fields().size());
+  return WorkItem::Result::Success;
 }
 
 WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {

@@ -79,6 +79,7 @@ void Compiler::CompleteDeferredBodies() {
 
 static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
                                 type::Type type) {
+  LOG("MakeThunk", "Thunk for %s: %s", expr->DebugString(), type.to_string());
   ir::CompiledFn fn(type::Func({}, {type}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
   ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {

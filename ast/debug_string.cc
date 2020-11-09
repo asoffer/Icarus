@@ -444,9 +444,10 @@ void UnaryOperator::DebugStrAppend(std::string *out, size_t indent) const {
     absl::StrAppend(out, "(");
     operand()->DebugStrAppend(out, indent);
     absl::StrAppend(out, "):?");
+  } else {
+    absl::StrAppend(out, OpStr(kind()));
+    operand()->DebugStrAppend(out, indent);
   }
-  absl::StrAppend(out, OpStr(kind()));
-  operand()->DebugStrAppend(out, indent);
 }
 
 }  // namespace ast

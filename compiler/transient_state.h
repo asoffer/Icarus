@@ -55,6 +55,7 @@ struct TransientState {
   TransientState(TransientState &&) = default;
   TransientState &operator=(TransientState &&) = default;
   ~TransientState() {
+    while (not work_queue.empty()) { work_queue.ProcessOneItem(); }
     for (auto &work : deferred_work) {
       if (work and *work) { std::move (*work)(); }
     }
