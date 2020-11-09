@@ -30,8 +30,17 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     return ir::Value(builder().ByteViewLength(
         EmitValue(node->operand()).get<ir::RegOr<ir::String>>()));
   } else {
-    // TODO: Can this be an address?
-    return ir::Value(builder().PtrFix(EmitRef(node).reg(), node_qt.type()));
+    if (operand_qt.quals() >= type::Quals::Ref()) {
+      // TODO: Can this be an address?
+      return ir::Value(builder().PtrFix(EmitRef(node).reg(), node_qt.type()));
+    } else {
+      type::Typed<ir::RegOr<ir::Addr>> temp(
+          builder().TmpAlloca(operand_qt.type()), operand_qt.type());
+      EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
+      auto const &struct_type = operand_qt.type().as<type::Struct>();
+      return *builder().FieldValue(*temp, &struct_type,
+                                   struct_type.index(node->member_name()));
+    }
   }
 }
 
@@ -64,10 +73,8 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
   }
 
   auto const &struct_type = t.as<type::Struct>();
-  return builder()
-      .FieldRef(reg.get<ir::RegOr<ir::Addr>>(), &struct_type,
-                struct_type.index(node->member_name()))
-      .get();
+  return *builder().FieldRef(reg.get<ir::RegOr<ir::Addr>>(), &struct_type,
+                             struct_type.index(node->member_name()));
 }
 
 // TODO: Unit tests
@@ -118,10 +125,22 @@ void Compiler::EmitMoveInit(
             type::Nat64));
   } else {
     // TODO: should actually be an initialization, not assignment.
-    EmitMoveAssign(
-        to[0], type::Typed<ir::Value>(ir::Value(builder().PtrFix(
-                                          EmitRef(node).reg(), node_qt.type())),
-                                      node_qt.type()));
+    if (operand_qt.quals() >= type::Quals::Ref()) {
+      EmitMoveAssign(
+          to[0],
+          type::Typed<ir::Value>(
+              ir::Value(builder().PtrFix(EmitRef(node).reg(), node_qt.type())),
+              node_qt.type()));
+
+    } else {
+      type::Typed<ir::RegOr<ir::Addr>> temp(
+          builder().TmpAlloca(operand_qt.type()), operand_qt.type());
+      EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
+      auto const &struct_type = operand_qt.type().as<type::Struct>();
+      EmitMoveAssign(
+          to[0], builder().FieldValue(*temp, &struct_type,
+                                      struct_type.index(node->member_name())));
+    }
   }
 }
 
@@ -171,11 +190,22 @@ void Compiler::EmitCopyInit(
                 EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
             type::Nat64));
   } else {
-    // TODO: should actually be an initialization, not assignment.
-    EmitCopyAssign(
-        to[0], type::Typed<ir::Value>(ir::Value(builder().PtrFix(
-                                          EmitRef(node).reg(), node_qt.type())),
-                                      node_qt.type()));
+    if (operand_qt.quals() >= type::Quals::Ref()) {
+      EmitCopyAssign(
+          to[0],
+          type::Typed<ir::Value>(
+              ir::Value(builder().PtrFix(EmitRef(node).reg(), node_qt.type())),
+              node_qt.type()));
+
+    } else {
+      type::Typed<ir::RegOr<ir::Addr>> temp(
+          builder().TmpAlloca(operand_qt.type()), operand_qt.type());
+      EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
+      auto const &struct_type = operand_qt.type().as<type::Struct>();
+      EmitMoveAssign(
+          to[0], builder().FieldValue(*temp, &struct_type,
+                                      struct_type.index(node->member_name())));
+    }
   }
 }
 
@@ -221,10 +251,20 @@ void Compiler::EmitAssign(
                 EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
             type::Nat64));
   } else {
+    if (operand_qt.quals() >= type::Quals::Ref()) {
     type::Type t = context().qual_type(node)->type();
     EmitMoveAssign(to[0],
                    type::Typed<ir::Value>(
                        ir::Value(builder().PtrFix(EmitRef(node).reg(), t)), t));
+    } else {
+      type::Typed<ir::RegOr<ir::Addr>> temp(
+          builder().TmpAlloca(operand_qt.type()), operand_qt.type());
+      EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
+      auto const &struct_type = operand_qt.type().as<type::Struct>();
+      EmitMoveAssign(
+          to[0], builder().FieldValue(*temp, &struct_type,
+                                      struct_type.index(node->member_name())));
+    }
   }
 }
 

@@ -176,6 +176,32 @@ cc_library(
 )
 
 cc_library(
+    name = "designated_initializer",
+    srcs = ["designated_initializer.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//ir:builder",
+        "//ir/value",
+        "//ir/value:addr",
+        "//ir/value:reg_or",
+        "//type:typed_value",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "designated_initializer_test",
+    srcs = ["designated_initializer_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+
+cc_library(
     name = "goto",
     srcs = ["goto.cc"],
     deps = [

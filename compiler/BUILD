@@ -111,6 +111,7 @@ cc_library(
         "//compiler/emit:cast",
         "//compiler/emit:comparison_operator",
         "//compiler/emit:common",
+        "//compiler/emit:designated_initializer",
         "//compiler/emit:goto",
         "//compiler/emit:identifier",
         "//compiler/emit:index",

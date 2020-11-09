@@ -125,6 +125,8 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
 
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Copy: {
+      ASSERT(operand_type.get()->completeness() ==
+             type::Completeness::Complete);
       if (not operand_type.get()->IsCopyable()) {
         diag().Consume(UncopyableType{
             .from  = operand_type,
@@ -140,6 +142,8 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
                           operand_qt.quals() & ~type::Quals::Buf());
     } break;
     case ast::UnaryOperator::Kind::Move: {
+      ASSERT(operand_type.get()->completeness() ==
+             type::Completeness::Complete);
       if (not operand_type.get()->IsMovable()) {
         diag().Consume(ImmovableType{
             .from  = operand_type,
