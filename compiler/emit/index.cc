@@ -23,7 +23,7 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
         EmitValue(node->rhs()), context().qual_type(node->rhs())->type()));
 
     return ir::Value(builder().PtrFix(
-        builder().Index(type::Ptr(type_of(node->lhs())),
+        builder().Index(type::Ptr(context().qual_type(node->lhs())->type()),
                         EmitValue(node->lhs()).get<ir::Reg>(), index),
         array_type->data_type()));
   } else {
@@ -32,8 +32,8 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
 }
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
-  type::Type lhs_type = type_of(node->lhs());
-  type::Type rhs_type = type_of(node->rhs());
+  type::Type lhs_type = context().qual_type(node->lhs())->type();
+  type::Type rhs_type = context().qual_type(node->rhs())->type();
 
   if (lhs_type.is<type::Array>()) {
     auto index = builder().CastTo<int64_t>(
@@ -41,7 +41,8 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
 
     auto lval = EmitRef(node->lhs());
     ASSERT(lval.is_reg() == true);
-    return builder().Index(type::Ptr(type_of(node->lhs())), lval.reg(), index);
+    return builder().Index(type::Ptr(context().qual_type(node->lhs())->type()),
+                           lval.reg(), index);
   } else if (auto *buf_ptr_type = lhs_type.if_as<type::BufferPointer>()) {
     auto index = builder().CastTo<int64_t>(
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));

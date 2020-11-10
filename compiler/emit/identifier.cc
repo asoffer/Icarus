@@ -27,14 +27,14 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
     return EmitValue(decl_span[0]);
   }
   if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
-    auto t      = type_of(node);
+    auto t      = context().qual_type(node)->type();
     ir::Reg reg = context().addr(decl_span[0]);
     return (decl_span[0]->flags() & ast::Declaration::f_IsOutput) and
                    not t.get()->is_big()
                ? builder().Load(reg, t)
                : ir::Value(reg);
   } else {
-    type::Type t = type_of(node);
+    type::Type t = context().qual_type(node)->type();
     auto lval    = EmitRef(node);
     if (not lval.is_reg()) { NOT_YET(); }
     return ir::Value(builder().PtrFix(lval.reg(), t));

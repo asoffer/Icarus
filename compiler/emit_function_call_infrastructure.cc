@@ -40,7 +40,8 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
         LOG("MakeAllStackAllocations", "allocating %s", decl->id());
 
         compiler.context().set_addr(
-            decl, compiler.builder().Alloca(compiler.type_of(decl)));
+            decl, compiler.builder().Alloca(
+                      compiler.context().qual_type(decl)->type()));
       }
     }
   }
@@ -64,7 +65,7 @@ void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
   });
 
   for (auto *decl : ordered_decls) {
-    type::Type t = compiler.type_of(decl);
+    type::Type t = compiler.context().qual_type(decl)->type();
     if (not t.get()->HasDestructor()) { continue; }
     compiler.EmitDestroy(
         type::Typed<ir::Reg>(compiler.context().addr(decl), t));
@@ -161,7 +162,8 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
       for (size_t i = 0; i < outputs->size(); ++i) {
         auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
         if (not out_decl) { continue; }
-        type::Type out_decl_type = compiler->type_of(out_decl);
+        type::Type out_decl_type =
+            compiler->context().qual_type(out_decl)->type();
         auto alloc               = out_decl_type.get()->is_big()
                          ? bldr.GetRet(i, out_decl_type)
                          : bldr.Alloca(out_decl_type);

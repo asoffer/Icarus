@@ -40,36 +40,6 @@ Compiler::Compiler(PersistentResources const &resources)
     : resources_(resources) {}
 Compiler Compiler::WithPersistent() const { return Compiler(resources_); }
 
-std::optional<type::QualType> Compiler::qual_type_of(
-    ast::Expression const *expr) const {
-  if (auto *decl = expr->if_as<ast::Declaration>()) {
-    // If the declarations module is the same as this one, we haven't completed
-    // compiling it yet and so we need to access it through the compiler.
-    // Otherwise, we have finished compiling, so we access it through the
-    // module.
-    //
-    // TODO This could be a TestModule which doesn't have a .type_of(). we
-    // really shouldn't need to pay for the check here.
-    if (auto const *mod =
-            &ASSERT_NOT_NULL(decl->module())->as<CompiledModule>()) {
-      if (mod != &context().module()) {
-        auto *qt = mod->context().qual_type(decl);
-        return qt ? std::optional(*qt) : std::nullopt;
-      }
-      if (auto *qt = context().qual_type(decl)) { return *qt; }
-    }
-  }
-
-  if (auto *qt = context().qual_type(expr)) { return *qt; }
-
-  // TODO embedded modules?
-  return std::nullopt;
-}
-
-type::Type Compiler::type_of(ast::Expression const *expr) const {
-  return qual_type_of(expr).value_or(type::QualType{}).type();
-}
-
 void Compiler::CompleteDeferredBodies() {
   while (true) {
     if (state_.deferred_work.empty()) { return; }

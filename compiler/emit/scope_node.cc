@@ -111,7 +111,8 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   }
 
   auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed<ir::Value>(EmitValue(expr), type_of(expr));
+    return type::Typed<ir::Value>(EmitValue(expr),
+                                  context().qual_type(expr)->type());
   });
 
   auto arg_values = PrepareCallArguments(

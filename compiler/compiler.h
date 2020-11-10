@@ -300,9 +300,6 @@ struct Compiler
       ast::ParameterizedExpression const *node,
       core::Arguments<type::Typed<ir::Value>> const &args);
 
-  std::optional<type::QualType> qual_type_of(ast::Expression const *expr) const;
-  type::Type type_of(ast::Expression const *expr) const;
-
   absl::Span<TransientState::ScopeLandingState const> scope_landings() const {
     return state_.scope_landings;
   }

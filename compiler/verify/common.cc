@@ -239,7 +239,7 @@ Compiler::ComputeParamsFromArgs(
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
         } else {
-          auto t         = type_of(dep_node.node());
+          auto t         = context().qual_type(dep_node.node())->type();
           auto maybe_val = Evaluate(type::Typed<ast::Expression const *>(
               ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
           if (not maybe_val) { diag().Consume(maybe_val.error()); }
@@ -309,7 +309,7 @@ type::QualType Compiler::VerifyUnaryOverload(
 
   module::ForEachDeclTowardsRoot(
       node->scope(), symbol, [&](ast::Expression const *expr) {
-        ASSIGN_OR(return false, auto qt, qual_type_of(expr));
+        ASSIGN_OR(return false, auto qt, context().qual_type(expr));
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
         auto &c = qt.type().as<type::Callable>();
@@ -335,7 +335,7 @@ type::QualType Compiler::VerifyBinaryOverload(
 
   module::ForEachDeclTowardsRoot(
       node->scope(), symbol, [&](ast::Expression const *expr) {
-        ASSIGN_OR(return false, auto qt, qual_type_of(expr));
+        ASSIGN_OR(return false, auto qt, context().qual_type(expr));
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
         auto &c = qt.type().as<type::Callable>();
@@ -372,7 +372,7 @@ Compiler::VerifyCallee(ast::Expression const *callee,
       overload_map;
   for (auto const *overload : context().AllOverloads(callee).members()) {
     overload_map.emplace(
-        overload, &qual_type_of(overload).value().type().as<type::Callable>());
+        overload, &context().qual_type(overload)->type().as<type::Callable>());
   }
   return return_type(qt, std::move(overload_map));
 }
@@ -395,8 +395,8 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   // indirection in the overload set. Do we really want to rely on this?!
   for (auto const *callee :
        context().AllOverloads(call_expr->callee()).members()) {
-    auto maybe_qt = qual_type_of(callee);
-    ExtractParams(callee, &maybe_qt.value().type().as<type::Callable>(), args,
+    auto maybe_qt = *ASSERT_NOT_NULL(context().qual_type(callee));
+    ExtractParams(callee, &maybe_qt.type().as<type::Callable>(), args,
                   overload_params, errors);
   }
 

@@ -87,14 +87,14 @@ template <typename Tag>
 void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
               core::Arguments<type::Typed<ir::Value>> args,
               absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  auto callee_qual_type = compiler.qual_type_of(callee);
-  ASSERT(callee_qual_type.has_value() == true);
+  auto callee_qual_type =
+      *ASSERT_NOT_NULL(compiler.context().qual_type(callee));
 
   auto [callee_fn, overload_type, context] =
-      EmitCallee(compiler, callee, *callee_qual_type, args);
+      EmitCallee(compiler, callee, callee_qual_type, args);
 
   Compiler c = compiler.MakeChild(Compiler::PersistentResources{
-      .data = context? *context : compiler.context(),
+      .data                = context ? *context : compiler.context(),
       .diagnostic_consumer = compiler.diag(),
       .importer            = compiler.importer(),
   });

@@ -30,7 +30,7 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
 
     args.push_back(opt.args().Transform([&c](auto const &expr) {
       return type::Typed<ir::Value>(c.EmitValue(expr.get()),
-                                    c.type_of(expr.get()));
+                                    c.context().qual_type(expr.get())->type());
     }));
   }
 

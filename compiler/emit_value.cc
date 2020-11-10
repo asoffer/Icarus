@@ -295,8 +295,9 @@ EmitValueWithExpand(Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
 ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   auto const &fn_scope =
       *ASSERT_NOT_NULL(node->scope()->Containing<ast::FnScope>());
-  auto const &fn_lit  = *ASSERT_NOT_NULL(fn_scope.fn_lit_);
-  auto const &fn_type = type_of(&fn_lit).as<type::Function>();
+  auto const &fn_lit = *ASSERT_NOT_NULL(fn_scope.fn_lit_);
+  auto const &fn_type =
+      context().qual_type(&fn_lit)->type().as<type::Function>();
 
   // TODO: It's tricky... on a single expression that gets expanded, we could
   // have both small and big types and we would need to handle both setting
@@ -346,8 +347,7 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
   // things or at least make them not compile if the `after` function takes
   // a compile-time constant argument.
   for (size_t i = 0; i < arg_vals.size(); ++i) {
-    auto qt = qual_type_of(node->exprs()[i]);
-    ASSERT(qt.has_value() == true);
+    auto qt = *ASSERT_NOT_NULL(context().qual_type(node->exprs()[i]));
     yielded_args.vals.pos_emplace(arg_vals[i].second, *qt);
   }
   yielded_args.label = node->label() ? node->label()->value() : ir::Label{};

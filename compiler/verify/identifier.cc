@@ -149,7 +149,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       bool error = false;
 
       for (auto const *decl : potential_decls) {
-        qt = qual_type_of(decl).value();
+        qt = *context().qual_type(decl);
         if (not qt.ok()) { return type::QualType::Error(); }
 
         if (auto *c = qt.type().if_as<type::Callable>()) {

@@ -391,7 +391,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   for (auto const *decl :
        module::AllAccessibleDecls(node->scope(), node->id())) {
     if (decl == node) { continue; }
-    ASSIGN_OR(continue, type::QualType q, qual_type_of(decl));
+    ASSIGN_OR(continue, type::QualType q, context().qual_type(decl));
     if (Shadow(typed_node_decl,
                type::Typed<ast::Declaration const *>(decl, q.type()))) {
       diag().Consume(ShadowingDeclaration{
