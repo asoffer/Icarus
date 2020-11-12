@@ -1,15 +1,17 @@
-num : = 0 while (num <= 10) do {io.Print("fib(") io.Print(num)
-                                    io.Print(") = ") io.Print(fibonacci(num))
-                                        io.Print("\n") num += 1}
+num := 0
+while (num <= 10) do {
+  io.Print("fib(")
+  io.Print(num)
+  io.Print(") = ")
+  io.Print(fibonacci(num))
+  io.Print("\n")
+  num += 1
+}
 
-      fibonacci ::
-          = (n
-             : int64)
-                ->int64 {
-  if (n < 2) then {
-      return n
-    }
+fibonacci ::= (n: int64) -> int64 {
+  if (n < 2) then { return n }
   return fibonacci(n - 1) + fibonacci(n - 2)
 }
 
---:: = import "examples/lib/core.ic" io :: = import "examples/lib/io.ic"
+-- ::= import "examples/lib/core.ic"
+io ::= import "examples/lib/io.ic"

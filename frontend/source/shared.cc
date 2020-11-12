@@ -7,6 +7,7 @@ namespace {
 struct SharedSourceType : Source {
   SourceChunk ReadUntil(char delim) override { UNREACHABLE(); }
   std::vector<std::string> LoadLines() const override { UNREACHABLE(); }
+  std::string FileName() const override { UNREACHABLE(); }
 };
 
 }  // namespace

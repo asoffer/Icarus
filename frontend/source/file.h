@@ -60,6 +60,8 @@ struct FileSource : public Source {
     }
   }
 
+  std::string FileName() const override { return std::string(name_.name()); }
+
  private:
   FileSource(CanonicalFileName name, file_handle_t f)
       : name_(std::move(name)), f_(std::move(f)) {}
