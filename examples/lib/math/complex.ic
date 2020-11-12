@@ -1,30 +1,37 @@
-#{export } complex ::= struct {
-#{export } _re : float64
-#{export } _im : float64
+#{export} complex ::= struct {
+  #{export} _re: float64
+  #{export} _im: float64
 }
 
-#{export }(+)::=(lhs : complex, rhs : complex)->complex {
-lhs._re += rhs._re lhs._im += rhs._im return lhs
+#{export} (+) ::= (lhs: complex, rhs: complex) -> complex {
+  lhs._re += rhs._re
+  lhs._im += rhs._im
+  return lhs
 }
 
-#{export }(+)::=(lhs : complex, rhs : float64)->complex {
-lhs._re += rhs return lhs
+#{export} (+) ::= (lhs: complex, rhs: float64) -> complex {
+  lhs._re += rhs
+  return lhs
 }
 // (+) ::= (lhs: float64, rhs: complex) => rhs + lhs
 
-#{export }(-)::=(lhs : complex, rhs : complex)->complex {
-lhs._re -= rhs._re lhs._im -= rhs._im return lhs
+#{export}  (-) ::= (lhs: complex, rhs: complex) -> complex {
+  lhs._re -= rhs._re
+  lhs._im -= rhs._im
+  return lhs
 }
 
-#{export }(-)::=(lhs : complex, rhs : float64)->complex {
-lhs._re -= rhs return lhs
+#{export} (-) ::= (lhs: complex, rhs: float64) -> complex {
+  lhs._re -= rhs
+  return lhs
 }
 // (-) ::= (lhs: float64, rhs: complex) => -(rhs - lhs)
 
-#{export }(*)::=(lhs : complex, rhs : complex)->complex {
-result : complex result._re =
-    lhs._re* rhs._re - lhs._im* rhs._im result._im =
-        lhs._re * rhs._im + lhs._im * rhs._re return result
+#{export} (*) ::= (lhs: complex, rhs: complex) -> complex {
+  result: complex
+  result._re = lhs._re * rhs._re - lhs._im * rhs._im
+  result._im = lhs._re * rhs._im + lhs._im * rhs._re
+  return result
 }
 
 // (*) ::= (lhs: complex, rhs: float64) -> complex {
@@ -43,30 +50,34 @@ result : complex result._re =
 // }
 // (/) ::= (lhs: float64, rhs: complex) => lhs * rhs'conjugate / rhs'square_norm
 
-#{export } conjugate ::=(z : complex)->complex {
-z._im *= -1.0 return z
+#{export} conjugate ::= (z: complex) -> complex {
+  z._im *= -1.0
+  return z
 }
 
-#{export } square_norm ::=(z : complex) => z._re * z._re + z._im * z._im
-#{export } norm ::=(z : complex) => foreign("sqrt", float64->float64)(z'square_norm)
+#{export} square_norm ::= (z: complex) => z._re * z._re + z._im * z._im
+#{export} norm ::= (z: complex) => \
+  foreign("sqrt", float64 -> float64)(z'square_norm)
 
-#{export }(==)::                 =(lhs : complex,                              \
-                  rhs : complex) => lhs._re == rhs._re & lhs._im == rhs._im
-#{export }(!=)::=(lhs : complex, rhs : complex) => !(lhs == rhs)
+#{export} (==) ::= (lhs: complex, rhs: complex) => lhs._re == rhs._re & lhs._im == rhs._im
+#{export} (!=) ::= (lhs: complex, rhs: complex) => !(lhs == rhs)
 
 // TODO move this inside print.
---::               = import "examples/lib/core.ic"
-#{export }(print)::=(z : complex)->() {
-    if (z._re != 0.0) then {
-  print z._re if (z._im > 0.0) then {
-    print " + " if (z._im != 1.0) then{print z._im} print "i"
-  }
-  else if (z._im < 0.0) then {
-    print " - " if (z._im != -1.0) then{print - z._im} print "i"
-  }
-}
-else if (z._im == 0.0) then {
-  print 0.0
-}
-else if (z._im != 1.0) then{print z._im} print "i"
+-- ::= import "examples/lib/core.ic"
+#{export} (print) ::= (z: complex) -> () {
+  if (z._re != 0.0) then {
+    print z._re
+    if (z._im > 0.0) then {
+      print " + "
+      if (z._im != 1.0) then { print z._im }
+      print "i"
+    } else if (z._im < 0.0) then {
+      print " - "
+      if (z._im != -1.0) then { print  -z._im }
+      print "i"
+    }
+  } else if (z._im == 0.0) then {
+    print 0.0
+  } else if (z._im != 1.0) then { print z._im  }
+  print "i"
 }

@@ -14,7 +14,7 @@ Compiling from source requires one of the following compilers:
 
 You will also need [Bazel](http://bazel.build) version >= 2.0.0.
 
-To compile, this project from source,
+To compile this project from source:
 
 ```
 $ git clone https://github.com/asoffer/Icarus.git
