@@ -47,6 +47,8 @@ struct Source : frontend::Source {
 
   std::vector<std::string> LoadLines() const override { return lines_; }
 
+  std::string FileName() const override { return "repl"; }
+
   std::istream& input_;
   std::ostream& output_;
   std::vector<std::string> lines_;
