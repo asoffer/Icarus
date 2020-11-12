@@ -12,7 +12,7 @@ struct InvalidBinaryOperatorOverload {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("No valid operator overload for (%s)"),
+        diagnostic::Text("No valid operator overload for (%s)", op),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
