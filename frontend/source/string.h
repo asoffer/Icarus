@@ -47,6 +47,8 @@ struct StringSource : public Source {
     return lines;
   }
 
+  std::string FileName() const override { return "<string>"; }
+
  private:
   std::string src_;
   std::string_view view_;

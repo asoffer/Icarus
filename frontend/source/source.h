@@ -27,6 +27,8 @@ struct Source : base::Cast<Source> {
   virtual SourceChunk ReadUntil(char delim) = 0;
 
   virtual std::vector<std::string> LoadLines() const = 0;
+
+  virtual std::string FileName() const = 0;
 };
 
 }  // namespace frontend

@@ -149,8 +149,8 @@ struct UnknownParseError {
       quote.Highlighted(range, diagnostic::Style{});
     }
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text(
-            "Parse errors found in \"<SOME FILE>\" on the following lines:"),
+        diagnostic::Text("Parse errors found in \"%s\" on the following lines:",
+                         src->FileName()),
         std::move(quote));
   }
 
