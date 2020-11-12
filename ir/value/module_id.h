@@ -41,7 +41,7 @@ struct ModuleId {
       inserted = true;
       handle->modules.push_back(std::make_unique<ModuleType>());
     }
-    ASSERT(id + 1 == handle->modules.size());
+    ASSERT(id < handle->modules.size());
     return std::tuple(ModuleId(id), handle->modules.back().get(), inserted);
   }
 
