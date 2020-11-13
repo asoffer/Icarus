@@ -111,7 +111,6 @@ struct DebugIrInstruction
 
   void Apply(interpretter::ExecutionContext& ctx) const {
     std::cerr << *ctx.current_frame().fn_.get();
-    std::cerr << ctx.current_frame().fn_->byte_code().to_string();
   }
 };
 

@@ -149,7 +149,21 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
     builder().UncondJump(b);
 
     builder().CurrentBlock() = b;
+    builder().block_termination_state() =
+        ir::Builder::BlockTerminationState::kMoreStatements;
     EmitValue(&block_node);
+    switch (builder().block_termination_state()) {
+      case ir::Builder::BlockTerminationState::kMoreStatements:
+        // TODO: This should be unreachable, as we've hit the end of a block,
+        // but it doesn't seem to be the case. Investigate.
+        break;
+      case ir::Builder::BlockTerminationState::kNoTerminator: break;
+      case ir::Builder::BlockTerminationState::kReturn:
+        builder().ReturnJump();
+        continue;
+      case ir::Builder::BlockTerminationState::kLabeledYield:
+      case ir::Builder::BlockTerminationState::kYield: NOT_YET();
+    }
 
     // TODO: Get yielded arguments.
     auto const *scope_block =

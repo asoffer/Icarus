@@ -317,6 +317,9 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
     }
   }
 
+  builder().FinishTemporariesWith(
+      [this](type::Typed<ir::Reg> r) { EmitDestroy(r); });
+
   // Rather than doing this on each block it'd be better to have each
   // scope's destructors jump you to the correct next block for destruction.
   auto *scope = node->scope();

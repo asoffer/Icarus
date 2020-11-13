@@ -240,6 +240,7 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
 
 ir::Value Compiler::EmitValue(ast::BlockNode const *node) {
   LOG("BlockNode", "EmitValue for block node named %s", node->name());
+  // TODO: Lift this into a scope.
   ICARUS_SCOPE(PushVec(&state_.yields)) {
     EmitIrForStatements(*this, node->stmts());
     MakeAllDestructions(*this, node->body_scope());

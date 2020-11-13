@@ -120,6 +120,43 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
                              )",
                                  .expected = ir::Value(int64_t{1001}),
                              },
+
+                             // Early return
+                             TestCase{
+                                 .expr     = R"((() -> int64 {
+  if ::= scope {
+    enter ::= jump(condition: bool) { goto condition, then(), else() | done() }
+    then ::= block {
+      before ::= () -> () {}
+      after ::= jump() { goto done()  }
+    }
+    else ::= block {
+      before ::= () -> () {}
+      after ::= jump() { goto done()  }
+    }
+    exit ::= () -> () {}
+  }
+
+  func ::= (b: bool, n: *int64) -> int64 {
+    if (b) then {
+      @n = 1
+      return 0
+    } else {
+      @n = 2
+    }
+    @n = 3
+    return 0
+  }
+
+  a := 0
+  b := 0
+  func(true, &a)
+  func(false, &b)
+  return 10 * b + a
+})()
+                             )",
+                                 .expected = ir::Value(int64_t{31}),
+                             },
                          }));
 
 // TODO: Stateful scopes
