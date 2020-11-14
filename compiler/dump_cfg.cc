@@ -29,30 +29,15 @@
 namespace {
 bool optimize_ir = false;
 
-int DumpControlFlowGraph(frontend::FileName const &file_name,
-                         std::ostream &output) {
-  diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
-  auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
-  auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
-  if (not maybe_file_src) {
-    diag.Consume(frontend::MissingModule{
-        .source    = canonical_file_name,
-        .requestor = "",
-    });
-    return 1;
-  }
-
-  auto *src = &*maybe_file_src;
-  diag      = diagnostic::StreamingConsumer(stderr, src);
-  compiler::ExecutableModule exec_mod;
-  exec_mod.AppendNodes(frontend::Parse(*src, diag), diag);
-  if (diag.num_consumed() != 0) { return 1; }
-  auto &main_fn = exec_mod.main();
-
-  if (optimize_ir) { opt::RunAllOptimizations(&main_fn); }
-
+void DumpControlFlowGraph(ir::CompiledFn const *fn, std::ostream &output) {
+  absl::Format(&output,
+               "  subgraph cluster_fn%u {\n"
+               "  fontname = monospace\n"
+               "  label = \"NativeFn(fn = 0x%x)\";\n",
+               reinterpret_cast<uintptr_t>(fn),
+               reinterpret_cast<uintptr_t>(fn));
   absl::flat_hash_map<uintptr_t, std::vector<ir::BasicBlock const *>> clusters;
-  for (auto const *block : main_fn.blocks()) {
+  for (auto const *block : fn->blocks()) {
     clusters[block->debug().cluster_index].push_back(block);
   }
 
@@ -65,12 +50,13 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
     }
   };
 
-  output << "digraph {\n"
-            "  node [shape=record];\n";
+  output << "    node [shape=record];\n";
   for (auto const &[index, cluster] : clusters) {
     if (index != 0) {
-      output << "subgraph cluster_" << index << " {\n"
-             << "style=filled;\ncolor=lightgray;\n";
+      absl::Format(&output,
+                   "  subgraph cluster_%d {\n"
+                   "  label = \"\";\n"
+                   "  style=filled;\ncolor=lightgray;\n", index);
     }
 
     for (auto const *block : cluster) {
@@ -96,7 +82,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
     if (index != 0) { output << "}\n\n"; }
   }
 
-  for (auto const *block : main_fn.blocks()) {
+  for (auto const *block : fn->blocks()) {
     block->jump().Visit([&](auto j) {
       constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
       if constexpr (type == base::meta<ir::JumpCmd::UncondJump>) {
@@ -109,6 +95,36 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
       }
     });
   }
+
+  output << "}\n";
+}
+
+int DumpControlFlowGraph(frontend::FileName const &file_name,
+                         std::ostream &output) {
+  diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
+  auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
+  auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
+  if (not maybe_file_src) {
+    diag.Consume(frontend::MissingModule{
+        .source    = canonical_file_name,
+        .requestor = "",
+    });
+    return 1;
+  }
+
+  auto *src = &*maybe_file_src;
+  diag      = diagnostic::StreamingConsumer(stderr, src);
+  compiler::ExecutableModule exec_mod;
+  exec_mod.AppendNodes(frontend::Parse(*src, diag), diag);
+  if (diag.num_consumed() != 0) { return 1; }
+  auto &main_fn = exec_mod.main();
+
+  if (optimize_ir) { opt::RunAllOptimizations(&main_fn); }
+
+  output << "digraph {\n";
+  DumpControlFlowGraph(&main_fn, output);
+  exec_mod.context().ForEachCompiledFn(
+      [&](ir::CompiledFn const *f) { DumpControlFlowGraph(f, output); });
   output << "}";
 
   return 0;

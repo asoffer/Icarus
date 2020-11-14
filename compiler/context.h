@@ -174,6 +174,10 @@ struct Context {
   }
   ir::Block add_block() { return ir::Block(&blocks_.emplace_front()); }
 
+  void ForEachCompiledFn(std::invocable<ir::CompiledFn const *> auto f) {
+    for (auto [expr, native_fn] : ir_funcs_) { f(native_fn.get()); }
+  }
+
   // TODO Audit everything below here
   std::pair<ir::NativeFn, bool> add_func(
       ast::ParameterizedExpression const *expr) {
