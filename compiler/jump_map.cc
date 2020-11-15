@@ -1,17 +1,14 @@
-#include "compiler/extract_jumps.h"
-
-#include <vector>
-
-#include "ast/ast.h"
+#include "compiler/jump_map.h"
+#include "ast/visitor.h"
 #include "base/scope.h"
 
 namespace compiler {
 namespace {
 
 template <typename T>
-struct SaveVar : public base::UseWithScope {
-  template <typename U>
-  constexpr SaveVar(std::vector<T> &stack, U new_val) : stack_(stack) {
+struct SaveVar : base::UseWithScope {
+  constexpr SaveVar(std::vector<T> &stack, std::convertible_to<T> auto new_val)
+      : stack_(stack) {
     stack_.push_back(std::move(new_val));
   }
   ~SaveVar() { stack_.pop_back(); }
@@ -19,7 +16,11 @@ struct SaveVar : public base::UseWithScope {
   std::vector<T> &stack_;
 };
 
-struct Extractor : ast::Visitor<void()> {
+}  // namespace
+
+struct JumpMap::NodeExtractor : ast::Visitor<void()> {
+  explicit NodeExtractor(JumpMap *jumps) : jumps_(jumps) {}
+
   void Visit(ast::Node const *node) { ast::Visitor<void()>::Visit(node); }
 
   void Visit(ast::Access const *node) final { Visit(node->operand()); }
@@ -51,7 +52,13 @@ struct Extractor : ast::Visitor<void()> {
   }
 
   void Visit(ast::BlockNode const *node) final {
-    for (auto const *stmt : node->stmts()) { Visit(stmt); }
+    // Even if this function literal has no return statements, We want to track
+    // the fact that we've seen this node.
+    if (not jumps_->yields_.try_emplace(node).second) { return; }
+
+    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
+      for (auto const *stmt : node->stmts()) { Visit(stmt); }
+    }
   }
 
   void Visit(ast::BuiltinFn const *node) final {}
@@ -92,12 +99,16 @@ struct Extractor : ast::Visitor<void()> {
 
   void Visit(ast::FunctionLiteral const *node) final {
     for (auto const &param : node->params()) { Visit(param.value.get()); }
-    auto outputs = node->outputs();
+    if (auto outputs = node->outputs(); outputs) {
+      for (auto *out : *outputs) { Visit(out); }
+    }
+
+    // Even if this function literal has no return statements, We want to track
+    // the fact that we've seen this node.
+    if (not jumps_->returns_.try_emplace(node).second) { return; }
+
     ICARUS_SCOPE(SaveVar(node_stack_, node)) {
-      if (outputs) {
-        for (auto *out : *outputs) { Visit(out); }
-      }
-      for (auto *stmt : node->stmts()) { Visit(stmt); }
+      for (auto const *stmt : node->stmts()) { Visit(stmt); }
     }
   }
 
@@ -130,7 +141,7 @@ struct Extractor : ast::Visitor<void()> {
         Visit(expr.get());
       }
     }
-    (*jumps_)[node_stack_.back()].push_back(node);
+    jumps_->Insert(&node_stack_.back()->as<ast::Jump>(), node);
   }
 
   void Visit(ast::UnconditionalGoto const *node) final {
@@ -140,7 +151,7 @@ struct Extractor : ast::Visitor<void()> {
         Visit(expr.get());
       }
     }
-    (*jumps_)[node_stack_.back()].push_back(node);
+    jumps_->Insert(&node_stack_.back()->as<ast::Jump>(), node);
   }
 
   void Visit(ast::Label const *node) final {}
@@ -156,8 +167,8 @@ struct Extractor : ast::Visitor<void()> {
   void Visit(ast::ReturnStmt const *node) final {
     for (auto *expr : node->exprs()) { Visit(expr); }
     for (auto iter = node_stack_.rbegin(); iter != node_stack_.rend(); ++iter) {
-      if ((*iter)->is<ast::FunctionLiteral>()) {
-        (*jumps_)[*iter].push_back(node);
+      if (auto const *fn_lit = (*iter)->if_as<ast::FunctionLiteral>()) {
+        jumps_->Insert(fn_lit, node);
         return;
       }
     }
@@ -175,18 +186,13 @@ struct Extractor : ast::Visitor<void()> {
         auto *scope_node_label = scope_node->label();
         if (not scope_node_label) { continue; }
         if (label->value() == yield_label_val) {
-          (*jumps_)[scope_node].push_back(node);
+          jumps_->Insert(scope_node, node);
           return;
         }
       }
     } else {
-      for (auto iter = node_stack_.rbegin(); iter != node_stack_.rend();
-           ++iter) {
-        auto *scope_node = (*iter)->if_as<ast::ScopeNode>();
-        if (not scope_node) { continue; }
-        (*jumps_)[scope_node].push_back(node);
-        return;
-      }
+      jumps_->Insert(&node_stack_.back()->as<ast::BlockNode>(), node);
+      return;
     }
     UNREACHABLE();
   }
@@ -206,6 +212,13 @@ struct Extractor : ast::Visitor<void()> {
 
   void Visit(ast::ShortFunctionLiteral const *node) final {
     for (auto const &param : node->params()) { Visit(param.value.get()); }
+    // Even if this function literal has no return statements, We want to track
+    // the fact that we've seen this node.
+    if (not jumps_->returns_.try_emplace(node).second) { return; }
+
+    // TODO: We won't find a return statement here in general despite the
+    // primary body expression being the return. Figure out what to do about
+    // that. (That being said, returns are possible from inside scopes).
     ICARUS_SCOPE(SaveVar(node_stack_, node)) { Visit(node->body()); }
   }
 
@@ -223,19 +236,11 @@ struct Extractor : ast::Visitor<void()> {
   void Visit(ast::UnaryOperator const *node) final { Visit(node->operand()); }
 
   std::vector<ast::Node const *> node_stack_;
-  absl::flat_hash_map</* to = */ ast::Node const *,
-                      /* from = */ std::vector<ast::Node const *>> *jumps_;
+  JumpMap *jumps_;
 };
 
-}  // namespace
-
-void ExtractJumps(
-    absl::flat_hash_map</* to = */ ast::Node const *,
-                        /* from = */ std::vector<ast::Node const *>> *map,
-    ast::Node const *node) {
-  Extractor e;
-  e.jumps_ = map;
-  e.Visit(node);
+void JumpMap::TrackJumps(ast::Node const *p) {
+  JumpMap::NodeExtractor(this).Visit(p);
 }
 
 }  // namespace compiler

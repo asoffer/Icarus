@@ -17,6 +17,8 @@ struct Callable : LegacyType {
                                      .is_movable               = 1,
                                      .has_destructor           = 0}) {}
 
+  // TODO: Make Jumps callable too, requiring that we change this as they don't
+  // have return types.
   virtual std::vector<type::Type> return_types(
       core::Arguments<type::Typed<ir::Value>> const& args) const = 0;
 };

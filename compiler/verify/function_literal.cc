@@ -1,6 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/extract_jumps.h"
+#include "compiler/context.h"
 #include "compiler/transient_state.h"
 #include "compiler/verify/common.h"
 #include "type/cast.h"
@@ -91,12 +91,7 @@ InferReturnTypes(Compiler &c, ast::FunctionLiteral const *node) {
   // syntax tree will be insufficient here.
   absl::flat_hash_map<ast::ReturnStmt const *, std::vector<type::Type>> result;
 
-  // TODO: You shouldn't need to call `ExtractJumps`. They should already have
-  // been extracted. Likely the problem is you created some dependent context.
-  ExtractJumps(&c.context().extraction_map_, node);
-
-  for (auto const *n : c.context().extraction_map_[node]) {
-    auto const *ret_node = n->if_as<ast::ReturnStmt>();
+  for (ast::ReturnStmt const *ret_node : c.context().ReturnsTo(node)) {
     if (not ret_node) { continue; }
     std::vector<type::Type> ret_types;
     for (auto const *expr : ret_node->exprs()) {
@@ -148,6 +143,7 @@ std::optional<std::vector<type::Type>> JoinReturnTypes(
 // * From Compiler::VerifyType if the return types are inferred.
 std::optional<std::vector<type::Type>> VerifyBodyOnly(
     Compiler &c, ast::FunctionLiteral const *node) {
+  c.context().TrackJumps(node);
   bool found_error = false;
   for (auto *stmt : node->stmts()) {
     found_error = (c.VerifyType(stmt) == type::QualType::Error());

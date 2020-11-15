@@ -30,6 +30,29 @@ cc_library(
 
 # TODO: block_literal_test
 
+cc_library(
+    name = "block_node",
+    srcs = ["block_node.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//type:primitive",
+        "//type:qual_type",
+    ],
+)
+
+cc_test(
+    name = "block_node_test",
+    srcs = ["block_node_test.cc"],
+    deps = [
+        "//compiler",
+        "//core:arguments",
+        "//test:module",
+        "//type:primitive",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_test(
     name = "access_test",
     srcs = ["access_test.cc"],
@@ -300,7 +323,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//compiler:extract_jumps",
         "//compiler/verify:common",
         "//type:cast",
         "//type:qual_type",

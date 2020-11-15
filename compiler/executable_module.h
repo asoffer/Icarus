@@ -3,7 +3,6 @@
 
 #include "compiler/compiler.h"
 #include "compiler/emit_function_call_infrastructure.h"
-#include "compiler/extract_jumps.h"
 #include "compiler/library_module.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
@@ -29,10 +28,11 @@ struct ExecutableModule : CompiledModule {
         .importer            = importer,
     });
 
-    for (ast::Node const *node : nodes) {
-      ExtractJumps(&c.context().extraction_map_, node);
-    }
-
+    // TODO: It's conceivable that there's an early return from the implicit
+    // main, so it'd be nice to have some mechanism for handling this. That
+    // being said, we don't want to add a fake ast node for the implicit main
+    // because it's not actually present.
+    for (ast::Node const *node : nodes) { context().TrackJumps(node); }
     c.VerifyAll(nodes);
     if (diag.num_consumed() > 0) { return; }
 

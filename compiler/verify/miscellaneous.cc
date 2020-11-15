@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/context.h"
 
 namespace compiler {
 namespace {
@@ -40,14 +41,6 @@ type::QualType Compiler::VerifyType(ast::YieldStmt const *node) {
   return type::QualType(type::Void(), quals);
 }
 
-type::QualType Compiler::VerifyType(ast::BlockNode const *node) {
-  for (auto &param : node->params()) { VerifyType(param.value.get()); }
-  for (auto *stmt : node->stmts()) { VerifyType(stmt); }
-  // TODO: Determine the type of the block (i.e., what type might be yielded out
-  // of it?
-  return context().set_qual_type(node, type::QualType::Constant(type::Block));
-}
-
 type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   LOG("ScopeNode", "Verifying ScopeNode named `%s` at %d:%d",
       node->name()->DebugString(), node->name()->range().begin().line_num.value,
@@ -60,8 +53,13 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
 
   ASSIGN_OR(return type::QualType::Error(),  //
                    std::ignore, VerifyType(node->name()));
-  for (auto const &block : node->blocks()) { VerifyType(&block); }
-  // TODO hack. Set this for real.
+
+  context().TrackJumps(node);
+
+  for (auto const &block : node->blocks()) {
+    VerifyType(&block);
+    // TODO: Look at context().yield_types(&block);
+  }
   return context().set_qual_type(node,
                                  type::QualType::NonConstant(type::Void()));
 }

@@ -72,7 +72,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   }
 
   // Arguments to the scope's start must be re-evaluated on each call to `goto
-  // start()`, so weneed  a block to which we can jump for this purpose.
+  // start()`, so we need a block to which we can jump for this purpose.
   auto *args_block =
       builder().AddBlock(absl::StrFormat("args block for scope %p", node));
   auto *landing_block =

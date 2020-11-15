@@ -4,7 +4,6 @@
 #include <thread>
 
 #include "compiler/compiler.h"
-#include "compiler/extract_jumps.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "ir/value/module_id.h"
@@ -27,9 +26,6 @@ struct LibraryModule : CompiledModule {
         .importer            = importer,
     });
 
-    for (ast::Node const *node : nodes) {
-      ExtractJumps(&c.context().extraction_map_, node);
-    }
     c.VerifyAll(nodes);
     if (c.diag().num_consumed() > 0) { return; }
 

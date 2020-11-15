@@ -10,8 +10,8 @@
 #include "absl/container/node_hash_map.h"
 #include "absl/hash/hash.h"
 #include "ast/ast.h"
-#include "ast/ast_fwd.h"
 #include "base/guarded.h"
+#include "compiler/jump_map.h"
 #include "ir/builder.h"
 #include "ir/compiled_block.h"
 #include "ir/compiled_fn.h"
@@ -156,6 +156,18 @@ struct Context {
   // expression.
   type::QualType set_qual_type(ast::Expression const *expr, type::QualType qt);
 
+  absl::Span<core::Arguments<type::Type> const> yield_types(
+      ast::BlockNode const *node) {
+    return block_yield_types_.at(node);
+  }
+
+  void set_yield_types(ast::BlockNode const *node,
+                       std::vector<core::Arguments<type::Type>> arg_types) {
+    [[maybe_unused]] auto [iter, inserted] =
+        block_yield_types_.emplace(node, std::move(arg_types));
+    ASSERT(inserted == true);
+  }
+
   ir::Reg addr(ast::Declaration const *decl) const {
     auto iter = addr_.find(decl);
     if (iter != addr_.end()) { return iter->second; }
@@ -198,7 +210,7 @@ struct Context {
   std::pair<ir::Jump, bool> add_jump(ast::Jump const *expr) {
     type::Jump const *jump_type =
         &ASSERT_NOT_NULL(qual_type(expr))->type().as<type::Jump>();
-    auto [iter, inserted] = jumps_.try_emplace(
+    auto [iter, inserted] = ir_jumps_.try_emplace(
         expr, jump_type,
         expr->params().Transform([jump_type, i = 0](auto const &decl) mutable {
           return type::Typed<ast::Declaration const *>(
@@ -307,75 +319,21 @@ struct Context {
     for (auto const &native_fn : fns_.fns) { f(native_fn.get()); }
   }
 
-  absl::flat_hash_map</* to = */ ast::Node const *,
-                      /* from = */ std::vector<ast::Node const *>>
-      extraction_map_;
-
-  std::pair<ir::NativeFn, bool> InsertInit(type::Type t) {
-    auto [iter, inserted] = init_.emplace(
-        t, ir::NativeFn(
-               &fns_,
-               type::Func(core::Params<type::QualType>{core::AnonymousParam(
-                              type::QualType::NonConstant(type::Ptr(t)))},
-                          {}),
-               core::Params<type::Typed<ast::Declaration const *>>{
-                   core::AnonymousParam(
-                       type::Typed<ast::Declaration const *>(nullptr, t))}));
-    return std::pair<ir::NativeFn, bool>(iter->second, inserted);
-  }
-
-  std::pair<ir::NativeFn, bool> InsertDestroy(type::Type t) {
-    auto [iter, inserted] = destroy_.emplace(
-        t, ir::NativeFn(
-               &fns_,
-               type::Func(core::Params<type::QualType>{core::AnonymousParam(
-                              type::QualType::NonConstant(type::Ptr(t)))},
-                          {}),
-               core::Params<type::Typed<ast::Declaration const *>>{
-                   core::AnonymousParam(
-                       type::Typed<ast::Declaration const *>(nullptr, t))}));
-    return std::pair<ir::NativeFn, bool>(iter->second, inserted);
-  }
+  std::pair<ir::NativeFn, bool> InsertInit(type::Type t);
+  std::pair<ir::NativeFn, bool> InsertDestroy(type::Type t);
   std::pair<ir::NativeFn, bool> InsertCopyAssign(type::Type to,
-                                                 type::Type from) {
-    auto [iter, inserted] = copy_assign_.emplace(
-        std::make_pair(to, from),
-        ir::NativeFn(
-            &fns_,
-            type::Func(
-                core::Params<type::QualType>{
-                    core::AnonymousParam(
-                        type::QualType::NonConstant(type::Ptr(to))),
-                    core::AnonymousParam(
-                        type::QualType::NonConstant(type::Ptr(from)))},
-                {}),
-            core::Params<type::Typed<ast::Declaration const *>>{
-                core::AnonymousParam(
-                    type::Typed<ast::Declaration const *>(nullptr, to)),
-                core::AnonymousParam(
-                    type::Typed<ast::Declaration const *>(nullptr, from))}));
-    return std::pair<ir::NativeFn, bool>(iter->second, inserted);
-  }
+                                                 type::Type from);
   std::pair<ir::NativeFn, bool> InsertMoveAssign(type::Type to,
-                                                 type::Type from) {
-    auto [iter, inserted] = move_assign_.emplace(
-        std::make_pair(to, from),
-        ir::NativeFn(
-            &fns_,
-            type::Func(
-                core::Params<type::QualType>{
-                    core::AnonymousParam(
-                        type::QualType::NonConstant(type::Ptr(to))),
-                    core::AnonymousParam(
-                        type::QualType::NonConstant(type::Ptr(from)))},
-                {}),
-            core::Params<type::Typed<ast::Declaration const *>>{
-                core::AnonymousParam(
-                    type::Typed<ast::Declaration const *>(nullptr, to)),
-                core::AnonymousParam(
-                    type::Typed<ast::Declaration const *>(nullptr, from))}));
-    return std::pair<ir::NativeFn, bool>(iter->second, inserted);
-  }
+                                                 type::Type from);
+
+  void TrackJumps(ast::Node const *p) { jumps_.TrackJumps(p); }
+  // TODO: It will be useful to have a common base for these two classes.
+  absl::Span<ast::ReturnStmt const *const> ReturnsTo(
+      ast::FunctionLiteral const *node);
+  absl::Span<ast::ReturnStmt const *const> ReturnsTo(
+      ast::ShortFunctionLiteral const *node);
+  absl::Span<ast::YieldStmt const *const> YieldsTo(ast::BlockNode const *node);
+  absl::Span<ast::YieldStmt const *const> YieldsTo(ast::ScopeNode const *node);
 
  private:
   explicit Context(CompiledModule *mod, Context *parent);
@@ -446,7 +404,7 @@ struct Context {
   absl::node_hash_map<ast::ParameterizedExpression const *, ir::NativeFn>
       ir_funcs_;
   // All jumps, whether they're directly compiled or generated by a generic.
-  absl::node_hash_map<ast::Jump const *, ir::CompiledJump> jumps_;
+  absl::node_hash_map<ast::Jump const *, ir::CompiledJump> ir_jumps_;
 
   // This forward_list is never iterated over, we only require pointer
   // stability.
@@ -456,6 +414,17 @@ struct Context {
   absl::flat_hash_map<type::Type, ir::NativeFn> init_, destroy_;
   absl::flat_hash_map<std::pair<type::Type, type::Type>, ir::NativeFn>
       copy_assign_, move_assign_;
+
+  // Provides a mapping from a given AST node to the collection of all nodes
+  // that might jump to it. For example, a function literal will be mapped to
+  // all return statements from that function.
+  JumpMap jumps_;
+
+  // For each block node, types of all the values that may be yielded to it via
+  // YieldStmts.
+  absl::flat_hash_map<ast::BlockNode const *,
+                      std::vector<core::Arguments<type::Type>>>
+      block_yield_types_;
 };
 
 }  // namespace compiler

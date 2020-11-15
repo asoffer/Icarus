@@ -32,7 +32,6 @@ cc_library(
     srcs = ["emit_function_call_infrastructure.cc"],
     deps = [
         ":compiler_header",
-        ":extract_jumps",
         "//base:ptr_span",
         "//ast/scope:exec",
         "//ast/scope:fn"
@@ -58,6 +57,7 @@ TYPE_VERIFICATION = [
     "//compiler/verify:assignment",
     "//compiler/verify:binary_operator",
     "//compiler/verify:block_literal",
+    "//compiler/verify:block_node",
     "//compiler/verify:call",
     "//compiler/verify:cast",
     "//compiler/verify:common",
@@ -202,6 +202,7 @@ cc_library(
     hdrs = ["context.h"],
     srcs = ["context.cc"],
     deps = [
+        ":jump_map",
         "//ast:ast",
         "//base:guarded",
         "//ir:builder",
@@ -215,13 +216,15 @@ cc_library(
 )
 
 cc_library(
-    name = "extract_jumps",
-    hdrs = ["extract_jumps.h"],
-    srcs = ["extract_jumps.cc"],
+    name = "jump_map",
+    hdrs = ["jump_map.h"],
+    srcs = ["jump_map.cc"],
     deps = [
+        "//ast",
         "//ast:visitor",
-        "//ast:ast",
         "//base:scope",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -246,7 +249,6 @@ cc_library(
     hdrs = ["library_module.h"],
     deps = [
         ":compiler_header",
-        ":extract_jumps",
         ":module",
         "//diagnostic/consumer",
         "//module:importer",
@@ -259,7 +261,6 @@ cc_library(
     deps = [
         ":compiler_header",
         ":emit_function_call_infrastructure",
-        ":extract_jumps",
         ":library_module",
         ":module",
         "//diagnostic/consumer",

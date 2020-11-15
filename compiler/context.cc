@@ -65,8 +65,8 @@ Context::FindSubcontextResult Context::FindSubcontext(
 }
 
 ir::CompiledJump *Context::jump(ast::Jump const *expr) {
-  auto iter = jumps_.find(expr);
-  return iter == jumps_.end() ? nullptr : &iter->second;
+  auto iter = ir_jumps_.find(expr);
+  return iter == ir_jumps_.end() ? nullptr : &iter->second;
 }
 
 type::QualType const *Context::qual_type(ast::Expression const *expr) const {
@@ -208,4 +208,97 @@ ast::OverloadSet const &Context::AllOverloads(
     return iter->second;
   }
 }
+
+std::pair<ir::NativeFn, bool> Context::InsertInit(type::Type t) {
+  auto [iter, inserted] = init_.emplace(
+      t, ir::NativeFn(
+             &fns_,
+             type::Func(core::Params<type::QualType>{core::AnonymousParam(
+                            type::QualType::NonConstant(type::Ptr(t)))},
+                        {}),
+             core::Params<type::Typed<ast::Declaration const *>>{
+                 core::AnonymousParam(
+                     type::Typed<ast::Declaration const *>(nullptr, t))}));
+  return std::pair<ir::NativeFn, bool>(iter->second, inserted);
+}
+
+std::pair<ir::NativeFn, bool> Context::InsertDestroy(type::Type t) {
+  auto [iter, inserted] = destroy_.emplace(
+      t, ir::NativeFn(
+             &fns_,
+             type::Func(core::Params<type::QualType>{core::AnonymousParam(
+                            type::QualType::NonConstant(type::Ptr(t)))},
+                        {}),
+             core::Params<type::Typed<ast::Declaration const *>>{
+                 core::AnonymousParam(
+                     type::Typed<ast::Declaration const *>(nullptr, t))}));
+  return std::pair<ir::NativeFn, bool>(iter->second, inserted);
+}
+
+std::pair<ir::NativeFn, bool> Context::InsertCopyAssign(type::Type to,
+                                                        type::Type from) {
+  auto [iter, inserted] = copy_assign_.emplace(
+      std::make_pair(to, from),
+      ir::NativeFn(
+          &fns_,
+          type::Func(
+              core::Params<type::QualType>{
+                  core::AnonymousParam(
+                      type::QualType::NonConstant(type::Ptr(to))),
+                  core::AnonymousParam(
+                      type::QualType::NonConstant(type::Ptr(from)))},
+              {}),
+          core::Params<type::Typed<ast::Declaration const *>>{
+              core::AnonymousParam(
+                  type::Typed<ast::Declaration const *>(nullptr, to)),
+              core::AnonymousParam(
+                  type::Typed<ast::Declaration const *>(nullptr, from))}));
+  return std::pair<ir::NativeFn, bool>(iter->second, inserted);
+}
+
+std::pair<ir::NativeFn, bool> Context::InsertMoveAssign(type::Type to,
+                                                        type::Type from) {
+  auto [iter, inserted] = move_assign_.emplace(
+      std::make_pair(to, from),
+      ir::NativeFn(
+          &fns_,
+          type::Func(
+              core::Params<type::QualType>{
+                  core::AnonymousParam(
+                      type::QualType::NonConstant(type::Ptr(to))),
+                  core::AnonymousParam(
+                      type::QualType::NonConstant(type::Ptr(from)))},
+              {}),
+          core::Params<type::Typed<ast::Declaration const *>>{
+              core::AnonymousParam(
+                  type::Typed<ast::Declaration const *>(nullptr, to)),
+              core::AnonymousParam(
+                  type::Typed<ast::Declaration const *>(nullptr, from))}));
+  return std::pair<ir::NativeFn, bool>(iter->second, inserted);
+}
+
+absl::Span<ast::ReturnStmt const *const> Context::ReturnsTo(
+    ast::FunctionLiteral const *node) {
+  auto const *v = jumps_[node];
+  return v ? *v : ASSERT_NOT_NULL(parent())->ReturnsTo(node);
+}
+
+absl::Span<ast::ReturnStmt const *const> Context::ReturnsTo(
+    ast::ShortFunctionLiteral const *node) {
+  auto const *v = jumps_[node];
+  return v ? *v : ASSERT_NOT_NULL(parent())->ReturnsTo(node);
+}
+
+absl::Span<ast::YieldStmt const *const> Context::YieldsTo(
+    ast::BlockNode const *node) {
+  auto const *v = jumps_[node];
+  return v ? *v : ASSERT_NOT_NULL(parent())->YieldsTo(node);
+}
+
+absl::Span<ast::YieldStmt const *const> Context::YieldsTo(
+    ast::ScopeNode const *node) {
+  auto const *v = jumps_[node];
+  return v ? *v : ASSERT_NOT_NULL(parent())->YieldsTo(node);
+}
+
 }  // namespace compiler
