@@ -277,7 +277,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   // TODO: Consider first checking if it's a constant because we only need to do
   // this lookup in that case. Not sure how much performance that might win.
   if (auto const *qt = context().qual_type(node)) { return *qt; }
-  LOG("Declaration", "Verifying %s", node->id());
+  LOG("Declaration", "Verifying '%s'", node->id());
 
   // TODO: If we don't already have type-checked this but it's an error, we'll
   // type-check this node again because we don't save errors. Maybe we should
@@ -334,15 +334,14 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
         node->scope()->embedded_modules_.insert(
             maybe_mod->get<LibraryModule>());
       }
-      return node_qual_type;
     } else {
       diag().Consume(DeclaringHoleAsNonModule{
           .type  = node_qual_type.type(),
           .range = node->range(),
       });
       node_qual_type.MarkError();
-      return node_qual_type;
     }
+    return node_qual_type;
   }
 
   // Gather all declarations with the same identifer that are visible in this

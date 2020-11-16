@@ -1,11 +1,11 @@
+#include <string>
+#include <utility>
+
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/library_module.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"
-
-#include <string>
-#include <utility>
 
 namespace compiler {
 namespace {
@@ -70,8 +70,9 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
   auto canonical_file_name =
       frontend::CanonicalFileName::Make(frontend::FileName(maybe_src->get()));
   ir::ModuleId mod_id = importer().Import(canonical_file_name);
-  if (mod_id != ir::ModuleId::Invalid()) {
+  if (mod_id == ir::ModuleId::Invalid()) {
     qt.MarkError();
+  } else {
     context().set_imported_module(node, mod_id);
   }
   return context().set_qual_type(node, qt);
