@@ -37,6 +37,7 @@ struct FileImporter : Importer {
       diag.Consume(frontend::MissingModule{
           .source    = id.template filename<ModuleType>(),
           .requestor = "",
+          .reason    = stringify(maybe_file_src),
       });
       return ir::ModuleId::Invalid();
     }

@@ -130,8 +130,11 @@ int Compile(frontend::FileName const &file_name) {
   auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
   auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
   if (not maybe_file_src) {
-    diag.Consume(frontend::MissingModule{.source    = canonical_file_name,
-                                         .requestor = ""});
+    diag.Consume(frontend::MissingModule{
+        .source    = canonical_file_name,
+        .requestor = "",
+        .reason    = stringify(maybe_file_src),
+    });
     return 1;
   }
 
