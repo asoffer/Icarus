@@ -34,6 +34,7 @@ cc_library(
     name = "block_node",
     srcs = ["block_node.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//type:primitive",
@@ -45,6 +46,7 @@ cc_test(
     name = "block_node_test",
     srcs = ["block_node_test.cc"],
     deps = [
+        ":common",
         "//compiler",
         "//core:arguments",
         "//test:module",
@@ -473,6 +475,7 @@ cc_library(
     name = "miscellaneous",
     srcs = ["miscellaneous.cc"],
     deps = [
+        ":common",
         "//ast",
         "//base:defer",
         "//compiler:compiler_header",

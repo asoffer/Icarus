@@ -1,4 +1,5 @@
 #include "compiler/compiler.h"
+#include "compiler/verify/common.h"
 #include "core/arguments.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -26,7 +27,7 @@ TEST(BlockNode, NoJumps) {
   auto const &block = blocks[0];
   EXPECT_THAT(mod.context().qual_type(&block),
               Pointee(type::QualType::Constant(type::Block)));
-  EXPECT_THAT(mod.context().yield_types(&block), IsEmpty());
+  EXPECT_THAT(YieldArgumentTypes(mod.context(), &block), IsEmpty());
 }
 
 TEST(BlockNode, HasJump) {
@@ -37,14 +38,18 @@ TEST(BlockNode, HasJump) {
   }
   )");
   absl::Span<ast::BlockNode const> blocks =
-      mod.Append<ast::ScopeNode>(R"(s () b { << true })")->blocks();
+      mod.Append<ast::ScopeNode>(R"(s () b {
+        value := true
+        << value
+      }
+      )")->blocks();
   ASSERT_THAT(blocks, SizeIs(1));
   auto const &block = blocks[0];
   EXPECT_THAT(mod.context().qual_type(&block),
               Pointee(type::QualType::Constant(type::Block)));
-  EXPECT_THAT(
-      mod.context().yield_types(&block),
-      UnorderedElementsAre(core::Arguments<type::Type>({type::Bool}, {})));
+  EXPECT_THAT(YieldArgumentTypes(mod.context(), &block),
+              UnorderedElementsAre(core::Arguments<type::QualType>(
+                  {type::QualType(type::Bool, type::Quals::Ref())}, {})));
 }
 
 TEST(BlockNode, LabeledJumpSkipBlock) {
@@ -52,6 +57,7 @@ TEST(BlockNode, LabeledJumpSkipBlock) {
   mod.AppendCode(R"(
   s ::= scope (int64) {
     b ::= block {}
+    exit ::= (b: bool) -> () {}
   }
   )");
   absl::Span<ast::BlockNode const> blocks =
@@ -61,9 +67,12 @@ TEST(BlockNode, LabeledJumpSkipBlock) {
   auto const &block = blocks[0];
   EXPECT_THAT(mod.context().qual_type(&block),
               Pointee(type::QualType::Constant(type::Block)));
-  EXPECT_THAT(mod.context().yield_types(&block), IsEmpty());
+  EXPECT_THAT(YieldArgumentTypes(mod.context(), &block), IsEmpty());
 }
 
+// TODO:
+// * Case where `done` is generic.
+// * Case where `done` doesn't match arguments provided.
 
 }  // namespace
 }  // namespace compiler

@@ -74,4 +74,11 @@ struct ImmovableType {
   frontend::SourceRange range;
 };
 
+// TODO: Having PtrUnion would mean we only have one overload here at no runtime
+// cost.
+std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
+    Context const &context, ast::BlockNode const *node);
+std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
+    Context const &context, ast::ScopeNode const *node);
+
 }  // namespace compiler

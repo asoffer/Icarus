@@ -62,9 +62,8 @@ InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
 ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
 
-  ASSIGN_OR(return ir::Value(),  //
-                   auto scope, EvaluateOrDiagnoseAs<ir::Scope>(node->name()));
-  auto const *compiled_scope = ir::CompiledScope::From(scope);
+  auto const *compiled_scope =
+      ir::CompiledScope::From(*EvaluateAs<ir::Scope>(node->name()));
   // Stateful scopes need to have their state initialized.
   std::optional<ir::Reg> state_ptr;
   if (auto state_type = compiled_scope->state_type()) {
@@ -161,7 +160,23 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
       case ir::Builder::BlockTerminationState::kReturn:
         builder().ReturnJump();
         continue;
-      case ir::Builder::BlockTerminationState::kLabeledYield:
+      case ir::Builder::BlockTerminationState::kLabeledYield: {
+        auto *compiled_scope =
+            ir::CompiledScope::From(*EvaluateAs<ir::Scope>(node->name()));
+        ir::OverloadSet &exit_overload_set = compiled_scope->exit();
+        // TODO: Call early exit for all scopes you skip over along the way.
+        ASSERT(state().yields.size() > 0u);
+        std::vector<ir::Value> arguments =
+            state()
+                .yields.back()
+                .vals.Transform([](auto const &p) { return p.first; })
+                .pos();
+        ir::Fn f = compiled_scope->exit()
+                       .Lookup(state().yields.back().vals.Transform(
+                           [](auto const &p) { return p.second; }))
+                       .value();
+        builder().Call(f, f.type(), arguments, ir::OutParams{});
+      } break;
       case ir::Builder::BlockTerminationState::kYield: NOT_YET();
     }
 

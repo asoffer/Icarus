@@ -479,4 +479,39 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   return type::QualType(return_types.front(), quals);
 }
 
+std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
+    Context const &context, ast::BlockNode const *node) {
+  absl::Span<ast::YieldStmt const *const> yields = context.YieldsTo(node);
+
+  std::vector<core::Arguments<type::QualType>> yield_types;
+  yield_types.reserve(yields.size());
+
+  for (auto const *yield_stmt : yields) {
+    auto &yielded = yield_types.emplace_back();
+    for (const auto *expr : yield_stmt->exprs()) {
+      // TODO: Determine whether or not you want to support named yields. If
+      // not, reduce this to a vector or some other positional arguments type.
+      yielded.pos_emplace(*ASSERT_NOT_NULL(context.qual_type(expr)));
+    }
+  }
+  return yield_types;
+}
+
+std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
+    Context const &context, ast::ScopeNode const *node) {
+  std::vector<core::Arguments<type::QualType>> yield_types;
+  absl::Span<ast::YieldStmt const *const> yields = context.YieldsTo(node);
+  yield_types.reserve(yields.size());
+
+  for (auto const *yield_stmt : yields) {
+    auto &yielded = yield_types.emplace_back();
+    for (const auto *expr : yield_stmt->exprs()) {
+      // TODO: Determine whether or not you want to support named yields. If
+      // not, reduce this to a vector or some other positional arguments type.
+      yielded.pos_emplace(*ASSERT_NOT_NULL(context.qual_type(expr)));
+    }
+  }
+  return yield_types;
+}
+
 }  // namespace compiler

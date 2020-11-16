@@ -25,6 +25,7 @@ struct Function : public Callable {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  absl::Span<type::Type const> return_types() const { return output_; }
   std::vector<type::Type> return_types(
       core::Arguments<type::Typed<ir::Value>> const &args) const override {
     return output_;

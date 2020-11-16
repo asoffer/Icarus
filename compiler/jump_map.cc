@@ -56,6 +56,8 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
     // the fact that we've seen this node.
     if (not jumps_->yields_.try_emplace(node).second) { return; }
 
+    LOG("JumpMap", "Visiting %s", node->DebugString());
+
     ICARUS_SCOPE(SaveVar(node_stack_, node)) {
       for (auto const *stmt : node->stmts()) { Visit(stmt); }
     }
@@ -179,18 +181,28 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
     for (auto *expr : node->exprs()) { Visit(expr); }
     if (auto *label = node->label()) {
       ir::Label yield_label_val = label->value();
+      LOG("JumpMap", "Labeled yield: %s", label->DebugString());
       for (auto iter = node_stack_.rbegin(); iter != node_stack_.rend();
            ++iter) {
         auto *scope_node = (*iter)->if_as<ast::ScopeNode>();
-        if (not scope_node) { continue; }
+        if (not scope_node) {
+          LOG("JumpMap", "Ignoring %s", (*iter)->DebugString());
+          continue;
+        }
         auto *scope_node_label = scope_node->label();
-        if (not scope_node_label) { continue; }
+        if (not scope_node_label) {
+          LOG("JumpMap", "Ignoring unlabeled %s", scope_node->DebugString());
+          continue;
+        }
         if (label->value() == yield_label_val) {
+          LOG("JumpMap", "Matching labeled yield to scope node %s",
+              scope_node->DebugString());
           jumps_->Insert(scope_node, node);
           return;
         }
       }
     } else {
+      LOG("JumpMap", "Unlabeled yield");
       jumps_->Insert(&node_stack_.back()->as<ast::BlockNode>(), node);
       return;
     }
@@ -202,6 +214,9 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
   }
 
   void Visit(ast::ScopeNode const *node) final {
+    if (not jumps_->yields_.try_emplace(node).second) { return; }
+
+    LOG("JumpMap", "Visiting %s", node->DebugString());
     Visit(node->name());
     for (auto const *expr : node->args()) { Visit(expr); }
 

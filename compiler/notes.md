@@ -24,3 +24,7 @@
   I think once we have interfaces We can require that `$x` is constrained to be
   initializable from `0`.
 * For specified values on flags, should those be bit positions or the actual flag values?
+* Should yields be allowed to have named arguments? It kinda makes sense because
+  you're calling a jump handler which has parameters with names, but also if you
+  yield a value out of a scope, the name goes to some intermediate thing that users don't
+  really see so it feels weird.

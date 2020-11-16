@@ -156,18 +156,6 @@ struct Context {
   // expression.
   type::QualType set_qual_type(ast::Expression const *expr, type::QualType qt);
 
-  absl::Span<core::Arguments<type::Type> const> yield_types(
-      ast::BlockNode const *node) {
-    return block_yield_types_.at(node);
-  }
-
-  void set_yield_types(ast::BlockNode const *node,
-                       std::vector<core::Arguments<type::Type>> arg_types) {
-    [[maybe_unused]] auto [iter, inserted] =
-        block_yield_types_.emplace(node, std::move(arg_types));
-    ASSERT(inserted == true);
-  }
-
   ir::Reg addr(ast::Declaration const *decl) const {
     auto iter = addr_.find(decl);
     if (iter != addr_.end()) { return iter->second; }
@@ -329,11 +317,13 @@ struct Context {
   void TrackJumps(ast::Node const *p) { jumps_.TrackJumps(p); }
   // TODO: It will be useful to have a common base for these two classes.
   absl::Span<ast::ReturnStmt const *const> ReturnsTo(
-      ast::FunctionLiteral const *node);
+      ast::FunctionLiteral const *node) const;
   absl::Span<ast::ReturnStmt const *const> ReturnsTo(
-      ast::ShortFunctionLiteral const *node);
-  absl::Span<ast::YieldStmt const *const> YieldsTo(ast::BlockNode const *node);
-  absl::Span<ast::YieldStmt const *const> YieldsTo(ast::ScopeNode const *node);
+      ast::ShortFunctionLiteral const *node) const;
+  absl::Span<ast::YieldStmt const *const> YieldsTo(
+      ast::BlockNode const *node) const;
+  absl::Span<ast::YieldStmt const *const> YieldsTo(
+      ast::ScopeNode const *node) const;
 
  private:
   explicit Context(CompiledModule *mod, Context *parent);
@@ -419,12 +409,6 @@ struct Context {
   // that might jump to it. For example, a function literal will be mapped to
   // all return statements from that function.
   JumpMap jumps_;
-
-  // For each block node, types of all the values that may be yielded to it via
-  // YieldStmts.
-  absl::flat_hash_map<ast::BlockNode const *,
-                      std::vector<core::Arguments<type::Type>>>
-      block_yield_types_;
 };
 
 }  // namespace compiler

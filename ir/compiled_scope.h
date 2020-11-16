@@ -32,6 +32,8 @@ struct CompiledScope {
   type::Type state_type() const { return state_; }
 
   absl::flat_hash_set<Jump> const &inits() const { return init_; }
+  OverloadSet const &exit() const { return exit_; }
+  OverloadSet &exit() { return exit_; }
 
  private:
   type::Type state_ = nullptr;
