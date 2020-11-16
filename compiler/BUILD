@@ -223,6 +223,7 @@ cc_library(
         "//ast",
         "//ast:visitor",
         "//base:scope",
+        "//base:ptr_union",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/types:span",
     ],

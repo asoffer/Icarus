@@ -189,6 +189,12 @@ constexpr void Length(void*) {}
 template <typename T, typename U>
 concept different_from = not std::same_as<T, U>;
 
+template <typename T, typename... Ts>
+concept one_of = (std::same_as<T, Ts> or ...);
+
+template <typename T, typename... Ts>
+concept convertible_to_exactly_one_of = (((std::convertible_to<T, Ts> ? 1 : 0) +
+                                          ...) == 1);
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H

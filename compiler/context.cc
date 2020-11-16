@@ -278,25 +278,14 @@ std::pair<ir::NativeFn, bool> Context::InsertMoveAssign(type::Type to,
 }
 
 absl::Span<ast::ReturnStmt const *const> Context::ReturnsTo(
-    ast::FunctionLiteral const *node) const {
-  auto const *v = jumps_[node];
-  return v ? *v : ASSERT_NOT_NULL(parent())->ReturnsTo(node);
-}
-
-absl::Span<ast::ReturnStmt const *const> Context::ReturnsTo(
-    ast::ShortFunctionLiteral const *node) const {
+    base::PtrUnion<ast::FunctionLiteral const, ast::ShortFunctionLiteral const>
+        node) const {
   auto const *v = jumps_[node];
   return v ? *v : ASSERT_NOT_NULL(parent())->ReturnsTo(node);
 }
 
 absl::Span<ast::YieldStmt const *const> Context::YieldsTo(
-    ast::BlockNode const *node) const {
-  auto const *v = jumps_[node];
-  return v ? *v : ASSERT_NOT_NULL(parent())->YieldsTo(node);
-}
-
-absl::Span<ast::YieldStmt const *const> Context::YieldsTo(
-    ast::ScopeNode const *node) const {
+    base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node) const {
   auto const *v = jumps_[node];
   return v ? *v : ASSERT_NOT_NULL(parent())->YieldsTo(node);
 }

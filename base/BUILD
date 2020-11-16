@@ -320,3 +320,21 @@ cc_library(
     hdrs = ["ptr_span.h"],
     deps = [],
 )
+
+cc_library(
+    name = "ptr_union",
+    hdrs = ["ptr_union.h"],
+    deps = [
+        ":debug",
+        ":meta",
+    ],
+)
+
+cc_test(
+    name = "ptr_union_test",
+    srcs = ["ptr_union_test.cc"],
+    deps = [
+        ":ptr_union",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

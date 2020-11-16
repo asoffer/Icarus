@@ -315,15 +315,13 @@ struct Context {
                                                  type::Type from);
 
   void TrackJumps(ast::Node const *p) { jumps_.TrackJumps(p); }
-  // TODO: It will be useful to have a common base for these two classes.
+
   absl::Span<ast::ReturnStmt const *const> ReturnsTo(
-      ast::FunctionLiteral const *node) const;
-  absl::Span<ast::ReturnStmt const *const> ReturnsTo(
-      ast::ShortFunctionLiteral const *node) const;
+      base::PtrUnion<ast::FunctionLiteral const,
+                     ast::ShortFunctionLiteral const>
+          node) const;
   absl::Span<ast::YieldStmt const *const> YieldsTo(
-      ast::BlockNode const *node) const;
-  absl::Span<ast::YieldStmt const *const> YieldsTo(
-      ast::ScopeNode const *node) const;
+      base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node) const;
 
  private:
   explicit Context(CompiledModule *mod, Context *parent);
