@@ -24,7 +24,7 @@ extern absl::flat_hash_map<std::string, ::cli::internal::Handler *>
 
 struct Handler {
   template <typename... Args>
-  Handler(Args &&... args) : call_once_(true) {
+  Handler(Args &&...args) : call_once_(true) {
     (all_handlers.emplace(std::forward<Args>(args), this), ...);
   }
 
@@ -71,7 +71,7 @@ struct Handler {
         if (call_once_ and called_already) {
           return ::cli::internal::Result::AlreadyCalled;
         }
-
+        if (cstr == nullptr) { return ::cli::internal::Result::ParseError; }
         f(cstr);
         return ::cli::internal::Result::Ok;
       };
@@ -99,14 +99,14 @@ struct Handler {
 
 struct Flag : public Handler {
   template <typename... Args>
-  Flag(Args &&... args) : Handler(std::forward<Args>(args)...) {}
+  Flag(Args &&...args) : Handler(std::forward<Args>(args)...) {}
 
   bool called_ = false;
 };
 }  // namespace internal
 
 template <typename... Args>
-::cli::internal::Handler &Flag(Args &&... args) {
+::cli::internal::Handler &Flag(Args &&...args) {
   return *::cli::internal::owned_handlers.emplace_back(
       std::make_unique<::cli::internal::Handler>(std::forward<Args>(args)...));
 }

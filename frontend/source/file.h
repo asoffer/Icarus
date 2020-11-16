@@ -19,13 +19,16 @@ struct MissingModule {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(diagnostic::Text(
-        "Could not find module named \"%s\" requested from %s", source.name(),
+        "Could not find module named \"%s\" requested from %s:\n%s",
+        source.name(),
         requestor.empty() ? "command line"
-                          : absl::StrCat("\"", requestor, "\".")));
+                          : absl::StrCat("\"", requestor, "\""),
+        reason));
   }
 
   CanonicalFileName source;
   std::string requestor;
+  std::string reason;
 };
 
 struct FileSource : public Source {

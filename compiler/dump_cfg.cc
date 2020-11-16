@@ -1,4 +1,5 @@
 #include <dlfcn.h>
+
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -108,6 +109,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
     diag.Consume(frontend::MissingModule{
         .source    = canonical_file_name,
         .requestor = "",
+        .reason    = stringify(maybe_file_src),
     });
     return 1;
   }
