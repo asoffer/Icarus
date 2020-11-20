@@ -113,8 +113,7 @@ inline std::ostream &operator<<(std::ostream &os, Quals quals) {
   for (auto [q, s] : kPrintData) {
     if (quals >= q) {
       quals = (quals & ~q);
-      os << sep << s;
-      sep = ",";
+      os << std::exchange(sep, ", ") << s;
     }
   }
   return os << "]";
@@ -181,8 +180,8 @@ struct QualType {
   //  It is clear that `my_suit` has type `Suit`, but the enumerator chosen is
   //  mispelled so while it is safe to proceed with type-checking,
   //  code-generation must not happen.
-  constexpr void MarkError() {}                          // TODO: Implement me
-  constexpr bool HasErrorMark() const { return false; }  // TODO: Implement me
+  constexpr void MarkError() { error_ = 1; }
+  constexpr bool HasErrorMark() const { return error_; }
 
   constexpr Quals quals() const { return Quals(data_ & 0x7); }
 
@@ -240,8 +239,9 @@ struct QualType {
   }
 
  private:
-  uintptr_t data_ = 0;
-  uintptr_t num_  = 1;
+  uintptr_t data_                                     = 0;
+  uintptr_t num_ : (sizeof(uintptr_t) * CHAR_BIT - 1) = 1;
+  uintptr_t error_ : 1                                = 0;
 };
 
 }  // namespace type

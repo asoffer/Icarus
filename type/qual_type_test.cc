@@ -144,4 +144,14 @@ TEST(QualType, EmptyVector) {
   EXPECT_TRUE(qt.ok());
 }
 
+TEST(QualType, Error) {
+  type::QualType qt(type::Int32, type::Quals::All());
+  EXPECT_FALSE(qt.HasErrorMark());
+  qt.MarkError();
+  EXPECT_TRUE(qt.HasErrorMark());
+
+  auto copy = qt;
+  EXPECT_TRUE(qt.HasErrorMark());
+}
+
 }  // namespace
