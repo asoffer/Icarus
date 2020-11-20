@@ -535,8 +535,7 @@ struct Compiler
   TransientState state_;
   ir::Builder builder_;
 
-  // TODO: Should be persistent, but also needs on some local context
-  // (Context).
+  // TODO: Should be persistent, but also needs on some local context.
   CyclicDependencyTracker cylcic_dependency_tracker_;
 };
 

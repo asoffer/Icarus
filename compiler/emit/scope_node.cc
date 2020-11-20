@@ -79,8 +79,6 @@ BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node,
       ir::Builder::BlockTerminationState::kMoreStatements;
   c.EmitValue(node);
 
-  // TODO: kMoreStatements should never be possible. It indicates we exited but
-  // forgot to set the appropriate value to kNoTerminator. Clean this up.
   return BlockNodeResult{.start       = start,
                          .body        = body,
                          .termination = bldr.block_termination_state()};
@@ -213,10 +211,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
         ir::CompiledBlock::From(compiled_scope->block(block_node.name()));
 
     switch (termination) {
-      case ir::Builder::BlockTerminationState::kMoreStatements:
-        // TODO: This should be unreachable, as we've hit the end of a block,
-        // but it doesn't seem to be the case. Investigate.
-        [[fallthrough]];
+      case ir::Builder::BlockTerminationState::kMoreStatements: UNREACHABLE();
       case ir::Builder::BlockTerminationState::kNoTerminator: {
         auto const &afters = scope_block->after();
         // TODO: Choose the right jump.
