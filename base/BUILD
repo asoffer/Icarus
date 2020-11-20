@@ -253,12 +253,6 @@ cc_library(
 )
 
 cc_library(
-    name = "tag",
-    hdrs = ["tag.h"],
-    deps = [],
-)
-
-cc_library(
     name = "unaligned_ref",
     hdrs = ["unaligned_ref.h"],
     deps = [],

@@ -2,7 +2,6 @@
 #define ICARUS_TYPE_UTIL_H
 // TODO this file is terribly named.
 
-#include "base/tag.h"
 #include "ir/value/addr.h"
 #include "ir/value/block.h"
 #include "ir/value/enum_and_flags.h"

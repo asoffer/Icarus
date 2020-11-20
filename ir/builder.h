@@ -8,7 +8,6 @@
 #include "base/debug.h"
 #include "base/meta.h"
 #include "base/scope.h"
-#include "base/tag.h"
 #include "base/untyped_buffer.h"
 #include "ir/blocks/basic.h"
 #include "ir/blocks/group.h"
@@ -71,10 +70,6 @@ struct Builder {
   template <typename T>
   struct reduced_type<RegOr<T>> {
     using type = T;
-  };
-  template <typename Tag>
-  struct reduced_type<base::Tagged<Tag, Reg>> {
-    using type = Tag;
   };
 
   template <typename T>
@@ -590,9 +585,6 @@ struct Builder {
     if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
       SetReturnInstruction<typename T::type> inst{.index = n, .value = val};
       CurrentBlock()->Append(std::move(inst));
-    } else if constexpr (base::IsTaggedV<T>) {
-      static_assert(base::meta<typename T::base_type> == base::meta<Reg>);
-      SetRet(n, RegOr<typename T::tag_type>(val));
     } else {
       SetRet(n, RegOr<T>(val));
     }

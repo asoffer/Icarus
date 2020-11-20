@@ -101,7 +101,6 @@ cc_library(
         "//base:guarded",
         "//base:move_func",
         "//base:permutation",
-        "//base:tag",
         "//compiler/emit:access",
         "//compiler/emit:array_literal",
         "//compiler/emit:array_type",
