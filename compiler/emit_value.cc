@@ -299,6 +299,14 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   auto const &fn_type =
       context().qual_type(&fn_lit)->type().as<type::Function>();
 
+  // TODO: Reduce code-size by sharing these sequences whenever they share a
+  // suffix.
+  for (auto iter = state().scope_landings.rbegin();
+       iter != state().scope_landings.rend(); ++iter) {
+    // TODO: Emit all destructions on this scope.
+    // TODO: Call the quick-exit for this scope.
+  }
+
   // TODO: It's tricky... on a single expression that gets expanded, we could
   // have both small and big types and we would need to handle both setting
   // registers for small types and writing through them for big ones.
@@ -335,29 +343,75 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
 
 ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
   auto arg_vals = EmitValueWithExpand(this, node->exprs());
-  // TODO store this as an exec_scope.
+
+  // TODO: store this as an exec_scope.
   MakeAllDestructions(*this, &node->scope()->as<ast::ExecScope>());
-  // TODO pretty sure this is all wrong.
 
-  // Can't return these because we need to pass them up at least through the
-  // containing statements this and maybe further if we allow labelling
-  // scopes to be yielded to.
-  auto &yielded_args = state_.yields.back();
+  if (ast::Label const *lbl = node->label()) {
+    auto iter = state().scope_landings.rbegin();
+    for (; iter->label == lbl->value(); ++iter) {
+      // TODO: Emit all destructions on this scope.
+      // TODO: Call the quick-exit for this scope.
+    }
+    // TODO: Call `before` with arguments.
+    ir::CompiledScope *compiled_scope = ir::CompiledScope::From(iter->scope);
 
-  // TODO one problem with this setup is that we look things up in a context
-  // after returning, so the `after` method has access to a different
-  // (smaller) collection of bound constants. This can change the meaning of
-  // things or at least make them not compile if the `after` function takes
-  // a compile-time constant argument.
-  for (size_t i = 0; i < arg_vals.size(); ++i) {
-    auto qt = *ASSERT_NOT_NULL(context().qual_type(node->exprs()[i]));
-    yielded_args.vals.pos_emplace(arg_vals[i].second, *qt);
+    core::Arguments<type::QualType> yield_arg_types;
+    core::Arguments<type::Typed<ir::Value>> yield_arg_typed_values;
+    for (size_t i = 0; i < arg_vals.size(); ++i) {
+      type::QualType const *qt = context().qual_type(arg_vals[i].first);
+      yield_arg_types.pos_emplace(*qt);
+      yield_arg_typed_values.pos_emplace(arg_vals[i].second, qt->type());
+      // TODO: Determine if you are going to support named yields.
+    }
+
+    ir::OverloadSet &exit = compiled_scope->exit();
+    ir::Fn exit_fn        = exit.Lookup(yield_arg_types).value();
+
+    type::Type t;
+    if (iter->result_type.expansion_size() == 1) {
+      t = iter->result_type.type();
+    }
+    absl::Span<type::Type const> result_types =
+        iter->result_type.expansion_size() == 1
+            ? absl::Span<type::Type const>(&t, 1)
+            : iter->result_type.expanded();
+    auto out_params = builder().OutParams(result_types);
+
+    auto inst_iter = iter->block->instructions().begin();
+    auto out_iter  = out_params.regs().begin();
+    for (type::Type const &result_type : result_types) {
+      // TODO: Support all types
+      type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                       uint16_t, uint32_t, uint64_t, float, double, ir::EnumVal,
+                       ir::FlagsVal>(result_type, [&]<typename T>() {
+        ASSERT(inst_iter != iter->block->instructions().end());
+        ASSERT(static_cast<bool>(*inst_iter) == true);
+        ASSERT(out_iter != out_params.regs().end());
+        auto &phi = inst_iter->template as<ir::PhiInstruction<T>>();
+        phi.blocks.push_back(builder().CurrentBlock());
+        phi.values.push_back(*out_iter);
+        ++inst_iter;
+        ++out_iter;
+      });
+    }
+
+    builder().Call(
+        exit_fn, exit_fn.type(),
+        PrepareCallArguments(compiled_scope->state_type(),
+                             exit_fn.type()->params(), yield_arg_typed_values),
+        std::move(out_params));
+
+    builder().UncondJump(iter->block);
+
+    // TODO: Wire up phi node.
+    builder().block_termination_state() =
+        ir::Builder::BlockTerminationState::kLabeledYield;
+  } else {
+    builder().block_termination_state() =
+        ir::Builder::BlockTerminationState::kYield;
   }
-  yielded_args.label = node->label() ? node->label()->value() : ir::Label{};
 
-  builder().block_termination_state() =
-      node->label() ? ir::Builder::BlockTerminationState::kLabeledYield
-                    : ir::Builder::BlockTerminationState::kYield;
   return ir::Value();
 }
 

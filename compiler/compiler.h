@@ -300,13 +300,6 @@ struct Compiler
       ast::ParameterizedExpression const *node,
       core::Arguments<type::Typed<ir::Value>> const &args);
 
-  absl::Span<TransientState::ScopeLandingState const> scope_landings() const {
-    return state_.scope_landings;
-  }
-  void add_scope_landing(TransientState::ScopeLandingState state) {
-    state_.scope_landings.push_back(std::move(state));
-  }
-  void pop_scope_landing() { state_.scope_landings.pop_back(); }
   TransientState &state() { return state_; }
 
   void CompleteDeferredBodies();
@@ -447,6 +440,7 @@ struct Compiler
   DEFINE_EMIT(ast::DesignatedInitializer)
   DEFINE_EMIT(ast::Identifier)
   DEFINE_EMIT(ast::Index)
+  DEFINE_EMIT(ast::ScopeNode)
   DEFINE_EMIT(ast::Terminal)
   DEFINE_EMIT(ast::UnaryOperator)
 #undef DEFINE_EMIT

@@ -63,19 +63,16 @@ struct TransientState {
 
   struct ScopeLandingState {
     ir::Label label;
+    ir::Scope scope;
+    type::QualType result_type;
     ir::BasicBlock *block;
-    ir::PhiInstruction<int64_t> *phi;
   };
   std::vector<ScopeLandingState> scope_landings;
 
   WorkQueue work_queue;
 
-  struct YieldedArguments {
-    core::Arguments<std::pair<ir::Value, type::QualType>> vals;
-    ir::Label label;
-  };
-  std::vector<YieldedArguments> yields;
-
+  absl::flat_hash_map<ast::YieldStmt const *, core::Arguments<ir::Value>>
+      yields;
   bool must_complete = true;
 
   std::vector<std::unique_ptr<base::move_func<void()>>> deferred_work;

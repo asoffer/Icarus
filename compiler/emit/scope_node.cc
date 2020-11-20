@@ -6,6 +6,7 @@
 #include "base/defer.h"
 #include "compiler/compiler.h"
 #include "ir/compiled_scope.h"
+#include "ir/instruction/core.h"
 #include "ir/instruction/inliner.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
@@ -57,33 +58,124 @@ InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
   return std::move(inl).ExtractNamedBlockMapping();
 }
 
+struct BlockNodeResult {
+  ir::BasicBlock * start;
+  ir::BasicBlock *body;
+  ir::Builder::BlockTerminationState termination;
+};
+
+BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node,
+                                   ir::LocalBlockInterpretation const &interp) {
+  auto &bldr          = c.builder();
+  auto *start         = interp[node];
+  bldr.CurrentBlock() = start;
+  auto *body =
+      bldr.AddBlock(absl::StrFormat("body block for `%s`.", node->name()));
+  bldr.UncondJump(body);
+
+  bldr.CurrentBlock() = body;
+
+  bldr.block_termination_state() =
+      ir::Builder::BlockTerminationState::kMoreStatements;
+  c.EmitValue(node);
+
+  // TODO: kMoreStatements should never be possible. It indicates we exited but
+  // forgot to set the appropriate value to kNoTerminator. Clean this up.
+  return BlockNodeResult{.start       = start,
+                         .body        = body,
+                         .termination = bldr.block_termination_state()};
+}
+
+std::optional<ir::Reg> InitializeScopeState(Compiler &c,
+                                            ir::CompiledScope const &scope) {
+  if (type::Type state_type = scope.state_type()) {
+    ir::Reg state_ptr = c.builder().Alloca(state_type);
+    c.EmitDefaultInit(type::Typed<ir::Reg>(state_ptr, state_type));
+    return state_ptr;
+  }
+  return std::nullopt;
+}
+
+std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
+    Compiler &c, 
+    core::Arguments<ast::Expression const *> const& args,
+    ir::CompiledScope const &scope) {
+  // TODO: Support dynamic dispatch.
+  auto const &inits = scope.inits();
+  ASSERT(inits.size() == 1u);
+  auto &init = *inits.begin();
+  // TODO: I'd rather assert that this is true.
+  if (ir::CompiledJump::From(init)->work_item) {
+    auto f = std::move(*ir::CompiledJump::From(init)->work_item);
+    if (f) { std::move(f)(); }
+  }
+
+  auto arg_vals = args.Transform([&c](ast::Expression const *expr) {
+    return type::Typed<ir::Value>(c.EmitValue(expr),
+                                  c.context().qual_type(expr)->type());
+  });
+  return std::make_pair(
+      init,
+      c.PrepareCallArguments(
+          ir::CompiledJump::From(init)->type()->state(),
+          ir::CompiledJump::From(init)->params().Transform([](auto const &p) {
+            return type::QualType::NonConstant(p.type());
+          }),
+          arg_vals));
+}
+
 }  // namespace
 
 ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
+  ir::Scope scope            = *EvaluateAs<ir::Scope>(node->name());
+  auto const *compiled_scope = ir::CompiledScope::From(scope);
 
-  auto const *compiled_scope =
-      ir::CompiledScope::From(*EvaluateAs<ir::Scope>(node->name()));
-  // Stateful scopes need to have their state initialized.
-  std::optional<ir::Reg> state_ptr;
-  if (auto state_type = compiled_scope->state_type()) {
-    state_ptr = builder().Alloca(state_type);
-  }
+  // If the scope is stateful, stack-allocate space for the state and
+  // default-initialize it.
+  //
+  // TODO: This interface isn't great beacuse it requires default-initializable
+  // state and no way to call any other initializer.
+  std::optional<ir::Reg> state_ptr =
+      InitializeScopeState(*this, *compiled_scope);
 
   // Arguments to the scope's start must be re-evaluated on each call to `goto
   // start()`, so we need a block to which we can jump for this purpose.
   auto *args_block =
       builder().AddBlock(absl::StrFormat("args block for scope %p", node));
+
+  // If a scope has a path that exits normally along some path (a call to exit
+  // rather than a return or labelled yield), then this is the block on which we land.
   auto *landing_block =
       builder().AddBlock(absl::StrFormat("landing block for scope %p", node));
 
-  // TODO: Support blocks evaluating to values.
-  add_scope_landing(TransientState::ScopeLandingState{
-      .label = node->label() ? node->label()->value() : ir::Label(),
-      .block = landing_block,
-      .phi   = nullptr,
+  // Insert empty phi-instructions for each return type. Any labeled yields will
+  // inject their result values here.
+  // TODO: Support more than one return type.
+  // TODO: Support all types
+  type::QualType const *qt = ASSERT_NOT_NULL(context().qual_type(node));
+  std::optional<ir::Reg> result;
+  if (qt->type() != type::Void()) {
+    type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                     uint32_t, uint64_t, float, double, ir::EnumVal,
+                     ir::FlagsVal>(qt->type(), [&]<typename T>() {
+      ir::PhiInstruction<T> phi;
+      phi.result = builder().CurrentGroup()->Reserve();
+      result     = phi.result;
+      landing_block->Append(std::move(phi));
+    });
+  }
+
+  // Push the scope landing state onto the the vector. Any nested scopes will be
+  // able to lookup the label in this vector to determine where they should jump
+  // to.
+  state().scope_landings.push_back(TransientState::ScopeLandingState{
+      .label       = node->label() ? node->label()->value() : ir::Label(),
+      .scope       = scope,
+      .result_type = *qt,
+      .block       = landing_block,
   });
-  base::defer d = [&] { pop_scope_landing(); };
+  base::defer d = [&] { state().scope_landings.pop_back(); };
 
   // Add new blocks
   absl::flat_hash_map<ast::BlockNode const *, ir::BasicBlock *> interp_map;
@@ -95,109 +187,56 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   ir::LocalBlockInterpretation local_interp(std::move(interp_map), args_block,
                                             landing_block);
 
-  // Evaluate the arguments on the initial `args_block`.
+
   builder().UncondJump(args_block);
   builder().CurrentBlock() = args_block;
 
-  // TODO: Support dynamic dispatch.
-  auto const &inits = compiled_scope->inits();
-  ASSERT(inits.size() == 1u);
-  auto &init = *inits.begin();
-  // TODO: I'd rather assert that this is true.
-  if (ir::CompiledJump::From(init)->work_item) {
-    auto f = std::move(*ir::CompiledJump::From(init)->work_item);
-    if (f) { std::move(f)(); }
-  }
-
-  auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed<ir::Value>(EmitValue(expr),
-                                  context().qual_type(expr)->type());
-  });
-
-  auto arg_values = PrepareCallArguments(
-      ir::CompiledJump::From(init)->type()->state(),
-      ir::CompiledJump::From(init)->params().Transform(
-          [](auto const &p) { return type::QualType::NonConstant(p.type()); }),
-      args);
-
-  auto block_map =
-      InlineJumpIntoCurrent(builder(), init, arg_values, local_interp);
-
+  // Rather than wiring blocks together immediately when they have been created,
+  // we gather all the necessary data and wire blocks together at the end. This
+  // allows us to gather a collection (the mapped value) of all blocks that jump
+  // to a given block by name (the map key).
   absl::flat_hash_map<std::string_view, std::vector<ir::BasicBlock *>>
       blocks_to_wire;
-  for (auto const &[name, block_and_args] : block_map) {
+
+  auto [init, args] =
+      EmitIrForJumpArguments(*this, node->args(), *compiled_scope);
+  auto init_block_map = InlineJumpIntoCurrent(builder(), init, args, local_interp);
+  for (auto const &[name, block_and_args] : init_block_map) {
     blocks_to_wire[name].push_back(block_and_args.first);
   }
 
   for (auto const &block_node : node->blocks()) {
-    // It's possible that a block nodes is provably inaccessible. In such cases
-    // we do not emit basic blocks for it in `InlineJumpIntoCurrent` and do not
-    // need to wire anything up here either.
-    auto iter = block_map.find(block_node.name());
-    if (iter == block_map.end()) { continue; }
+    auto [start_block, body_block, termination] =
+        EmitIrForBlockNode(*this, &block_node, local_interp);
 
-    auto const &[block, args] = iter->second;
-    builder().CurrentBlock()  = block;
-
-    auto *start = local_interp[block_node.name()];
-    builder().UncondJump(start);
-
-    builder().CurrentBlock() = start;
-    auto *b                  = builder().AddBlock(
-        absl::StrFormat("body block for `%s`.", block_node.name()));
-    builder().UncondJump(b);
-
-    builder().CurrentBlock() = b;
-    builder().block_termination_state() =
-        ir::Builder::BlockTerminationState::kMoreStatements;
-    EmitValue(&block_node);
-    switch (builder().block_termination_state()) {
-      case ir::Builder::BlockTerminationState::kMoreStatements:
-        // TODO: This should be unreachable, as we've hit the end of a block,
-        // but it doesn't seem to be the case. Investigate.
-        break;
-      case ir::Builder::BlockTerminationState::kNoTerminator: break;
-      case ir::Builder::BlockTerminationState::kReturn:
-        builder().ReturnJump();
-        continue;
-      case ir::Builder::BlockTerminationState::kLabeledYield: {
-        auto *compiled_scope =
-            ir::CompiledScope::From(*EvaluateAs<ir::Scope>(node->name()));
-        ir::OverloadSet &exit_overload_set = compiled_scope->exit();
-        // TODO: Call early exit for all scopes you skip over along the way.
-        ASSERT(state().yields.size() > 0u);
-        std::vector<ir::Value> arguments =
-            state()
-                .yields.back()
-                .vals.Transform([](auto const &p) { return p.first; })
-                .pos();
-        ir::Fn f = compiled_scope->exit()
-                       .Lookup(state().yields.back().vals.Transform(
-                           [](auto const &p) { return p.second; }))
-                       .value();
-        builder().Call(f, f.type(), arguments, ir::OutParams{});
-      } break;
-      case ir::Builder::BlockTerminationState::kYield: NOT_YET();
-    }
-
-    // TODO: Get yielded arguments.
     auto const *scope_block =
         ir::CompiledBlock::From(compiled_scope->block(block_node.name()));
 
-    auto const &afters = scope_block->after();
-    // TODO: Choose the right jump.
-    ASSERT(afters.size() == 1u);
-    auto &after = *afters.begin();
-    // TODO: I'd rather assert that this is true.
-    if (ir::CompiledJump::From(after)->work_item) {
-      auto f = std::move(*ir::CompiledJump::From(after)->work_item);
-      if (f) { std::move(f)(); }
-    }
+    switch (termination) {
+      case ir::Builder::BlockTerminationState::kMoreStatements:
+        // TODO: This should be unreachable, as we've hit the end of a block,
+        // but it doesn't seem to be the case. Investigate.
+        [[fallthrough]];
+      case ir::Builder::BlockTerminationState::kNoTerminator: {
+        auto const &afters = scope_block->after();
+        // TODO: Choose the right jump.
+        ASSERT(afters.size() == 1u);
+        auto &after = *afters.begin();
+        // TODO: I'd rather assert that this is true.
+        if (ir::CompiledJump::From(after)->work_item) {
+          auto f = std::move(*ir::CompiledJump::From(after)->work_item);
+          if (f) { std::move(f)(); }
+        }
 
-    auto landing_block_map =
-        InlineJumpIntoCurrent(builder(), after, {}, local_interp);
-    for (auto const &[name, block_and_args] : landing_block_map) {
-      blocks_to_wire[name].push_back(block_and_args.first);
+        auto landing_block_map =
+            InlineJumpIntoCurrent(builder(), after, {}, local_interp);
+        for (auto const &[name, block_and_args] : landing_block_map) {
+          blocks_to_wire[name].push_back(block_and_args.first);
+        }
+      } break;
+      case ir::Builder::BlockTerminationState::kReturn: 
+      case ir::Builder::BlockTerminationState::kLabeledYield:
+      case ir::Builder::BlockTerminationState::kYield: continue;
     }
   }
 
@@ -207,11 +246,36 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
     for (auto *block : blocks) {
       builder().CurrentBlock() = block;
       builder().UncondJump(landing);
+      // TODO: Phi nodes.
     }
   }
 
   builder().CurrentBlock() = landing_block;
-  return ir::Value();
+  builder().block_termination_state() =
+      ir::Builder::BlockTerminationState::kMoreStatements;
+  return result ? ir::Value(*result) : ir::Value();
+}
+
+void Compiler::EmitCopyInit(
+    ast::ScopeNode const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  // TODO: Implement this properly.
+  EmitAssign(node, to);
+}
+
+void Compiler::EmitMoveInit(
+    ast::ScopeNode const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  // TODO: Implement this properly.
+  EmitAssign(node, to);
+}
+void Compiler::EmitAssign(
+    ast::ScopeNode const *node,
+   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  // TODO: Implement this properly.
+  auto t = context().qual_type(node)->type();
+  ASSERT(to.size() == 1u);
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 }  // namespace compiler

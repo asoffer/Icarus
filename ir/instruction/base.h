@@ -163,6 +163,18 @@ struct Inst {
     }
   }
 
+  template <typename T>
+  T& as() {
+    ASSERT(vtable_ == &InstructionVTableFor<T>);
+    return *reinterpret_cast<T*>(data_);
+  }
+
+  template <typename T>
+  T const& as() const {
+    ASSERT(vtable_ == &InstructionVTableFor<T>);
+    return *reinterpret_cast<T const*>(data_);
+  }
+
   ~Inst() { vtable_->destroy(data_); }
 
   void WriteByteCode(ByteCodeWriter* writer) const {

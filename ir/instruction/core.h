@@ -93,13 +93,7 @@ struct PhiInstruction {
   void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write<uint16_t>(values.size());
     for (auto block : blocks) { writer->Write(block); }
-    internal_core::WriteBits<uint16_t, RegOr<T>>(
-        writer, values, [](RegOr<T> const& r) { return r.is_reg(); });
-
-    absl::c_for_each(values, [&](RegOr<T> const& x) {
-      x.apply([&](auto v) { writer->Write(v); });
-    });
-
+    for (auto value : values) { writer->Write(value); }
     writer->Write(result);
   }
 

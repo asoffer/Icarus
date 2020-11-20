@@ -52,6 +52,7 @@ std::vector<ir::Value> Compiler::PrepareCallArguments(
   if (state_ptr_type) {
     arg_values.push_back(PrepareOneArg(*this, args[i++], state_ptr_type));
   }
+
   while (i < args.pos().size()) {
     arg_values.push_back(
         PrepareOneArg(*this, args[i++], params[j++].value.type()));

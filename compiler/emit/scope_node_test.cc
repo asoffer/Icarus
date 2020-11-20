@@ -157,13 +157,31 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
                              )",
                                  .expected = ir::Value(int64_t{31}),
                              },
+                             TestCase{
+                                 .expr     = R"((() -> int64 {
+  s ::= scope {
+    enter ::= jump() { goto do() }
+    do ::= block {
+      before ::= () -> () {}
+      after ::= jump() { goto done()  }
+    }
+    exit ::= (n: int64) => n
+  }
+
+  return #.l s () do {
+    #.l << 3
+  }
+})()
+                             )",
+                                 .expected = ir::Value(int64_t{3}),
+                             },
+
                          }));
 
 // TODO: Stateful scopes
 // TODO: Ensure `before()` gets called.
 // TODO: Ensure destructors run
 // TODO: Quick exiting.
-// TODO: Yield statements.
 // TODO: Nested yields.
 // TODO: Parameters and arguments.
 

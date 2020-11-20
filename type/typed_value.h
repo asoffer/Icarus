@@ -67,7 +67,13 @@ struct Typed {
   friend std::string stringify(Typed const& t) {
     using base::stringify;
     ASSERT(Type(t.type()).valid() == true);
-    return absl::StrCat(stringify(t.get()), ": ", t.type()->to_string());
+    std::string type_string;
+    if constexpr (base::meta<type_t> == base::meta<Type>) {
+      type_string = t.type().to_string();
+    } else {
+      type_string = t.type()->to_string();
+    }
+    return absl::StrCat(stringify(t.get()), ": ", type_string);
   }
 
  private:

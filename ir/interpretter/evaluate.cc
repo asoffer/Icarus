@@ -51,61 +51,6 @@ void Execute(ExecutionContext &ctx, ir::Fn fn, base::untyped_buffer arguments,
 // Maximum size of any primitive type we may write
 inline constexpr size_t kMaxSize = ir::Value::value_size_v;
 
-constexpr uint8_t ReverseByte(uint8_t byte) {
-  byte = ((byte & 0b11110000) >> 4) | ((byte & 0b00001111) << 4);
-  byte = ((byte & 0b11001100) >> 2) | ((byte & 0b00110011) << 2);
-  byte = ((byte & 0b10101010) >> 1) | ((byte & 0b01010101) << 1);
-  return byte;
-}
-
-template <typename SizeType, typename Iter>
-std::vector<bool> ReadBits(Iter *iter) {
-  static_assert(std::disjunction_v<
-                std::is_same<Iter, base::untyped_buffer::iterator>,
-                std::is_same<Iter, base::untyped_buffer::const_iterator>>);
-  SizeType num = iter->template read<SizeType>();
-
-  uint8_t current = 0;
-
-  std::vector<bool> bits;
-  bits.reserve(num);
-  for (SizeType i = 0; i < num; ++i) {
-    if (i % 8 == 0) { current = ReverseByte(iter->template read<uint8_t>()); }
-    bits.push_back(current & 1);
-    current >>= 1;
-  }
-  return bits;
-}
-
-template <typename SizeType, typename T, typename Iter, typename Fn>
-auto Deserialize(Iter *iter, Fn &&fn) {
-  static_assert(std::disjunction_v<
-                std::is_same<Iter, base::untyped_buffer::iterator>,
-                std::is_same<Iter, base::untyped_buffer::const_iterator>>);
-  auto bits = ReadBits<SizeType>(iter);
-
-  using result_type =
-      std::decay_t<decltype(fn(std::declval<base::unaligned_ref<ir::Reg>>()))>;
-  if constexpr (std::is_void_v<result_type>) {
-    for (bool b : bits) {
-      if (b) {
-        fn(iter->template read<ir::Reg>());
-      } else {
-        iter->template read<T>();
-      }
-    }
-    return;
-  } else {
-    std::vector<result_type> vals;
-    vals.reserve(bits.size());
-    for (bool b : bits) {
-      vals.push_back(b ? fn(iter->template read<ir::Reg>())
-                       : static_cast<T>(iter->template read<T>()));
-    }
-    return vals;
-  }
-}
-
 using exec_t = void (*)(base::untyped_buffer::const_iterator *,
                         interpretter::ExecutionContext &,
                         absl::Span<ir::Addr const>);
@@ -205,10 +150,17 @@ constexpr exec_t GetInstruction() {
       ASSERT(index != std::numeric_limits<uint64_t>::max());
 
       using type                = typename Inst::type;
-      std::vector<type> results = Deserialize<uint16_t, type>(
-          iter, [ctx](ir::Reg reg) { return ctx.resolve<type>(reg); });
-      ctx.current_frame().regs_.set(iter->read<ir::Reg>(),
-                                    type{results[index]});
+
+      type result;
+      for (uint16_t i = 0; i < num; ++i) {
+        if (i == index) {
+          result = ctx.resolve(iter->read<ir::RegOr<type>>().get());
+        } else {
+          iter->read<ir::RegOr<type>>();
+        }
+      }
+
+      ctx.current_frame().regs_.set(iter->read<ir::Reg>(), result);
     } else if constexpr (
         base::meta<Inst>.template is_a<ir::SetReturnInstruction>()) {
       using type = typename Inst::type;

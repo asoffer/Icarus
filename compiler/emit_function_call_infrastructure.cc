@@ -8,22 +8,6 @@
 namespace compiler {
 namespace {
 
-template <typename T>
-struct PushVec : public base::UseWithScope {
-  template <typename... Args>
-  PushVec(std::vector<T> *vec, Args &&... args) : vec_(vec) {
-    vec_->emplace_back(std::forward<Args>(args)...);
-  }
-
-  ~PushVec() { vec_->pop_back(); }
-
- private:
-  std::vector<T> *vec_;
-};
-
-template <typename T, typename... Args>
-PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
-
 void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->descendants()) {
     if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
@@ -240,11 +224,8 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
 
 ir::Value Compiler::EmitValue(ast::BlockNode const *node) {
   LOG("BlockNode", "EmitValue for block node named %s", node->name());
-  // TODO: Lift this into a scope.
-  ICARUS_SCOPE(PushVec(&state_.yields)) {
-    EmitIrForStatements(*this, node->stmts());
-    MakeAllDestructions(*this, node->body_scope());
-  }
+  EmitIrForStatements(*this, node->stmts());
+  MakeAllDestructions(*this, node->body_scope());
   return ir::Value();
 }
 
