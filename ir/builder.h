@@ -11,8 +11,13 @@
 #include "base/untyped_buffer.h"
 #include "ir/blocks/basic.h"
 #include "ir/blocks/group.h"
+#include "ir/instruction/arithmetic.h"
+#include "ir/instruction/byte_view.h"
+#include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
+#include "ir/instruction/flags.h"
 #include "ir/instruction/instructions.h"
+#include "ir/instruction/type.h"
 #include "ir/local_block_interpretation.h"
 #include "ir/out_params.h"
 #include "ir/value/addr.h"
@@ -24,6 +29,11 @@
 #include "type/util.h"
 
 namespace ir {
+
+// TODO: Remove as much as possible from ir::Builder. I'm not exactly sure what
+// I want to do with this, but we should really limit it only to core
+// instructions and/or instructions that can only be optimized in the streaming
+// approach by carrying around extra state (like loads/store-caching).
 
 struct Builder {
   BasicBlock* AddBlock();
@@ -76,36 +86,6 @@ struct Builder {
   using reduced_type_t = typename reduced_type<T>::type;
 
   // INSTRUCTIONS
-
-  template <typename Lhs, typename Rhs>
-  RegOr<reduced_type_t<Lhs>> Add(Lhs const& lhs, Rhs const& rhs) {
-    return CurrentBlock()->Append(AddInstruction<reduced_type_t<Lhs>>{
-        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-  }
-
-  template <typename Lhs, typename Rhs>
-  RegOr<reduced_type_t<Lhs>> Sub(Lhs const& lhs, Rhs const& rhs) {
-    return CurrentBlock()->Append(SubInstruction<reduced_type_t<Lhs>>{
-        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-  }
-
-  template <typename Lhs, typename Rhs>
-  RegOr<reduced_type_t<Lhs>> Mul(Lhs const& lhs, Rhs const& rhs) {
-    return CurrentBlock()->Append(MulInstruction<reduced_type_t<Lhs>>{
-        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-  }
-
-  template <typename Lhs, typename Rhs>
-  RegOr<reduced_type_t<Lhs>> Div(Lhs const& lhs, Rhs const& rhs) {
-    return CurrentBlock()->Append(DivInstruction<reduced_type_t<Lhs>>{
-        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-  }
-
-  template <typename Lhs, typename Rhs>
-  RegOr<reduced_type_t<Lhs>> Mod(Lhs const& lhs, Rhs const& rhs) {
-    return CurrentBlock()->Append(ModInstruction<reduced_type_t<Lhs>>{
-        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-  }
 
   template <typename Lhs, typename Rhs>
   RegOr<bool> Lt(Lhs const& lhs, Rhs const& rhs) {

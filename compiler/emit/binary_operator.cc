@@ -93,8 +93,10 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                               uint16_t, uint32_t, uint64_t, float, double>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&]<typename T>() {
-            return ir::Value(builder().Add(lhs_ir.get<ir::RegOr<T>>(),
-                                           rhs_ir.get<ir::RegOr<T>>()));
+            return ir::Value(current_block()->Append(ir::AddInstruction<T>{
+                .lhs    = lhs_ir.get<ir::RegOr<T>>(),
+                .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
     case frontend::Operator::Sub: {
@@ -104,8 +106,10 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                               uint16_t, uint32_t, uint64_t, float, double>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&]<typename T>() {
-            return ir::Value(builder().Sub(lhs_ir.get<ir::RegOr<T>>(),
-                                           rhs_ir.get<ir::RegOr<T>>()));
+            return ir::Value(current_block()->Append(ir::SubInstruction<T>{
+                .lhs    = lhs_ir.get<ir::RegOr<T>>(),
+                .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
     case frontend::Operator::Mul: {
@@ -115,8 +119,10 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                               uint16_t, uint32_t, uint64_t, float, double>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&]<typename T>() {
-            return ir::Value(builder().Mul(lhs_ir.get<ir::RegOr<T>>(),
-                                           rhs_ir.get<ir::RegOr<T>>()));
+            return ir::Value(current_block()->Append(ir::MulInstruction<T>{
+                .lhs    = lhs_ir.get<ir::RegOr<T>>(),
+                .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
     case frontend::Operator::Div: {
@@ -126,8 +132,10 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                               uint16_t, uint32_t, uint64_t, float, double>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&]<typename T>() {
-            return ir::Value(builder().Div(lhs_ir.get<ir::RegOr<T>>(),
-                                           rhs_ir.get<ir::RegOr<T>>()));
+            return ir::Value(current_block()->Append(ir::DivInstruction<T>{
+                .lhs    = lhs_ir.get<ir::RegOr<T>>(),
+                .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
     case frontend::Operator::Mod: {
@@ -137,8 +145,10 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                               uint16_t, uint32_t, uint64_t>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&]<typename T>() {
-            return ir::Value(builder().Mod(lhs_ir.get<ir::RegOr<T>>(),
-                                           rhs_ir.get<ir::RegOr<T>>()));
+            return ir::Value(current_block()->Append(ir::ModInstruction<T>{
+                .lhs    = lhs_ir.get<ir::RegOr<T>>(),
+                .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
     case frontend::Operator::OrEq: {
@@ -227,9 +237,12 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                        uint32_t, uint64_t, float, double>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&]<typename T>() {
-            builder().Store(builder().Add(builder().Load<T>(lhs_lval),
-                                          rhs_ir.get<ir::RegOr<T>>()),
-                            lhs_lval);
+            builder().Store<ir::RegOr<T>>(
+                current_block()->Append(ir::AddInstruction<T>{
+                    .lhs    = builder().Load<T>(lhs_lval),
+                    .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                    .result = builder().CurrentGroup()->Reserve()}),
+                lhs_lval);
           });
       return ir::Value();
     } break;
@@ -240,9 +253,12 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                        uint32_t, uint64_t, float, double>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&]<typename T>() {
-            builder().Store(builder().Sub(builder().Load<T>(lhs_lval),
-                                          rhs_ir.get<ir::RegOr<T>>()),
-                            lhs_lval);
+            builder().Store<ir::RegOr<T>>(
+                current_block()->Append(ir::SubInstruction<T>{
+                    .lhs    = builder().Load<T>(lhs_lval),
+                    .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                    .result = builder().CurrentGroup()->Reserve()}),
+                lhs_lval);
           });
       return ir::Value();
     } break;
@@ -253,9 +269,12 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                        uint32_t, uint64_t, float, double>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&]<typename T>() {
-            builder().Store(builder().Mul(builder().Load<T>(lhs_lval),
-                                          rhs_ir.get<ir::RegOr<T>>()),
-                            lhs_lval);
+            builder().Store<ir::RegOr<T>>(
+                current_block()->Append(ir::MulInstruction<T>{
+                    .lhs    = builder().Load<T>(lhs_lval),
+                    .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                    .result = builder().CurrentGroup()->Reserve()}),
+                lhs_lval);
           });
       return ir::Value();
     } break;
@@ -266,9 +285,12 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                        uint32_t, uint64_t, float, double>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&]<typename T>() {
-            builder().Store(builder().Div(builder().Load<T>(lhs_lval),
-                                          rhs_ir.get<ir::RegOr<T>>()),
-                            lhs_lval);
+            builder().Store<ir::RegOr<T>>(
+                current_block()->Append(ir::DivInstruction<T>{
+                    .lhs    = builder().Load<T>(lhs_lval),
+                    .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                    .result = builder().CurrentGroup()->Reserve()}),
+                lhs_lval);
           });
       return ir::Value();
     } break;
@@ -279,9 +301,12 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                        uint32_t, uint64_t>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&]<typename T>() {
-            builder().Store(builder().Mod(builder().Load<T>(lhs_lval),
-                                          rhs_ir.get<ir::RegOr<T>>()),
-                            lhs_lval);
+            builder().Store<ir::RegOr<T>>(
+                current_block()->Append(ir::ModInstruction<T>{
+                    .lhs    = builder().Load<T>(lhs_lval),
+                    .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                    .result = builder().CurrentGroup()->Reserve()}),
+                lhs_lval);
           });
       return ir::Value();
     } break;

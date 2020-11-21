@@ -8,6 +8,7 @@
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
+#include "ir/instruction/arithmetic.h"
 #include "type/function.h"
 #include "type/jump.h"
 #include "type/type.h"
@@ -19,10 +20,13 @@ void InitBlockGroupsForTest(ir::CompiledFn *f, ir::CompiledJump *j) {
   ir::Builder bldr;
   bldr.CurrentGroup() = f;
   bldr.CurrentBlock() = f->entry();
-  bldr.Add(ir::RegOr<int64_t>(ir::Reg::Arg(0)), 1);
-  bldr.Add(ir::RegOr<int64_t>(ir::Reg::Arg(0)), 1);
-  bldr.Add(ir::RegOr<int64_t>(ir::Reg::Arg(0)), 1);
-  bldr.Add(ir::RegOr<int64_t>(ir::Reg::Arg(0)), 1);
+  for (int i = 0; i < 4; ++i) {
+    bldr.CurrentBlock()->Append(ir::AddInstruction<int64_t>{
+        .lhs    = ir::Reg::Arg(0),
+        .rhs    = 1,
+        .result = bldr.CurrentGroup()->Reserve(),
+    });
+  }
 }
 
 TEST(InstructionInliner, Reg) {

@@ -91,6 +91,7 @@ cc_test(
     name = "inliner_test",
     srcs = ["inliner_test.cc"],
     deps = [
+        ":arithmetic",
         ":inliner",
         "//ir:builder",
         "//ir:compiled_fn",
@@ -106,15 +107,9 @@ cc_library(
     name = "instruction",
     hdrs = ["instructions.h"],
     deps = [
-        ":arithmetic",
         ":base",
-        ":compare",
-        ":byte_view",
         ":debug",
-        ":flags",
         ":inliner",
-        ":op_codes",
-        ":type",
         "//ast/scope",
         "//base:extend",
         "//ir:compiled_block",
