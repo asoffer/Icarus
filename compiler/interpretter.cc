@@ -1,10 +1,13 @@
 #include <dlfcn.h>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
 #include "absl/strings/str_split.h"
 #include "base/expected.h"
 #include "base/log.h"
@@ -22,6 +25,9 @@
 #include "ir/interpretter/evaluate.h"
 #include "module/module.h"
 #include "opt/opt.h"
+
+ABSL_FLAG(std::vector<std::string>, log, {},
+          "Comma-separated list of log keys");
 
 namespace debug {
 extern bool parser;
@@ -66,9 +72,6 @@ void cli::Usage() {
   static base::NoDestructor<frontend::FileName> file;
   execute = [] { return compiler::Interpret(*file); };
 
-  Flag("help") << "Show usage information."
-               << []() { execute = cli::ShowUsage; };
-
 #if defined(ICARUS_DEBUG)
   Flag("debug-parser") << "Step through the parser step-by-step for debugging."
                        << [](bool b = false) { debug::parser = b; };
@@ -76,12 +79,6 @@ void cli::Usage() {
   Flag("opt-ir") << "Opmitize intermediate representation"
                  << [](bool b = false) { compiler::optimize_ir = b; };
 #endif  // defined(ICARUS_DEBUG)
-
-  Flag("log") << "Comma-separated list of log keys" << [](char const *keys) {
-    for (std::string_view key : absl::StrSplit(keys, ',')) {
-      base::EnableLogging(key);
-    }
-  };
 
   Flag("link") << "Library to be dynamically loaded by the compiler to be used "
                   "at compile-time. Libraries will not be unloaded."
@@ -93,8 +90,13 @@ void cli::Usage() {
 }
 
 int main(int argc, char *argv[]) {
-  absl::InitializeSymbolizer(argv[0]);
+  std::vector<char*> args = absl::ParseCommandLine(argc, argv);
+  absl::InitializeSymbolizer(args[0]);
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
-  return cli::ParseAndRun(argc, argv);
+
+  for (absl::string_view key : absl::GetFlag(FLAGS_log)) {
+    base::EnableLogging(key);
+  }
+  return cli::ParseAndRun(args.size(), &args[0]);
 }
