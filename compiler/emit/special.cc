@@ -84,6 +84,8 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
       builder().ReturnJump();
     }
     fn->WriteByteCode<interpretter::instruction_set_t>();
+    // TODO: Remove const_cast.
+    const_cast<type::Array *>(r.type())->SetInitializer(fn);
   }
 
   current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
@@ -101,6 +103,8 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
       builder().ReturnJump();
     }
     fn->WriteByteCode<interpretter::instruction_set_t>();
+    // TODO: Remove const_cast.
+    const_cast<type::Array *>(r.type())->SetDestructor(fn);
   }
   current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }

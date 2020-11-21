@@ -127,7 +127,7 @@ struct InitInstruction
       return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
-      ir::Fn f   = *s->init_;
+      ir::Fn f   = a->Initializer();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
@@ -161,7 +161,11 @@ struct DestroyInstruction
       return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
-      NOT_YET();  // f = a->destroy_func_.get();
+      ir::Fn f   = a->Destructor();
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
+      return frame;
+
     } else {
       NOT_YET();
     }

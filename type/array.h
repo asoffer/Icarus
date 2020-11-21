@@ -2,9 +2,13 @@
 #define ICARUS_TYPE_ARRAY_H
 
 #include "absl/container/node_hash_set.h"
-#include "base/lazy.h"
+#include "base/extend.h"
 #include "core/arch.h"
-#include "ir/value/native_fn.h"
+#include "ir/instruction/base.h"
+#include "ir/instruction/debug.h"
+#include "ir/instruction/inliner.h"
+#include "ir/interpretter/execution_context.h"
+#include "ir/value/fn.h"
 #include "type/type.h"
 
 namespace type {
@@ -46,15 +50,48 @@ struct Array : LegacyType {
     return not(lhs == rhs);
   }
 
+  void SetInitializer(ir::Fn f) {
+    ASSERT(init_.has_value() == false);
+    init_.emplace(f);
+  }
+
+  void SetDestructor(ir::Fn f) {
+    ASSERT(dtor_.has_value() == false);
+    dtor_.emplace(f);
+  }
+
+  ir::Fn Initializer() const { return init_.value(); }
+  ir::Fn Destructor() const { return dtor_.value(); }
+
  private:
   explicit Array(size_t l, Type t)
       : LegacyType(t.get()->flags()), len_(l), data_type_(t) {}
 
   size_t len_;
   Type data_type_;
+  // TODO: These should either be both present or both missing, but we set them
+  // separately so that invariant doesn't always hold.
+  std::optional<ir::Fn> init_, dtor_;
 };
 
 Array const *Arr(size_t len, Type t);
+
+struct ArrayInstruction
+    : base::Extend<ArrayInstruction>::With<ir::ByteCodeExtension,
+                                           ir::InlineExtension,
+                                           ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%3$s = array %1$s %2$s";
+  using length_t                                 = int64_t;
+
+  void Apply(interpretter::ExecutionContext &ctx) const {
+    ctx.current_frame().regs_.set(
+        result, Type(Arr(ctx.resolve(length), ctx.resolve(data_type))));
+  }
+
+  ir::RegOr<length_t> length;
+  ir::RegOr<Type> data_type;
+  ir::Reg result;
+};
 
 }  // namespace type
 #endif  // ICARUS_TYPE_ARRAY_H

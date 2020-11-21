@@ -228,23 +228,6 @@ struct BufPtrInstruction
   Reg result;
 };
 
-struct ArrayInstruction
-    : base::Extend<ArrayInstruction>::With<ByteCodeExtension, InlineExtension,
-                                           DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "%3$s = array %1$s %2$s";
-  using length_t                                 = int64_t;
-
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(
-        result,
-        type::Type(type::Arr(ctx.resolve(length), ctx.resolve(data_type))));
-  }
-
-  RegOr<length_t> length;
-  RegOr<type::Type> data_type;
-  Reg result;
-};
-
 }  // namespace ir
 
 #endif  // ICARUS_IR_INSTRUCTION_TYPE_H

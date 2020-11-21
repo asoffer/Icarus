@@ -12,7 +12,6 @@ ir::Value Compiler::EmitValue(ast::ArrayLiteral const *node) {
   return ir::Value(alloc);
 }
 
-// TODO: Unit tests
 void Compiler::EmitCopyInit(
     ast::ArrayLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
@@ -31,7 +30,6 @@ void Compiler::EmitCopyInit(
   EmitCopyInit(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
 }
 
-// TODO: Unit tests
 void Compiler::EmitMoveInit(
     ast::ArrayLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
@@ -50,7 +48,6 @@ void Compiler::EmitMoveInit(
   EmitMoveInit(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
 }
 
-// TODO: Unit tests
 void Compiler::EmitAssign(
     ast::ArrayLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {

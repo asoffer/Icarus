@@ -508,7 +508,7 @@ struct Builder {
   RegOr<type::Type> Arrow(std::vector<RegOr<type::Type>> const& ins,
                           std::vector<RegOr<type::Type>> const& outs);
 
-  RegOr<type::Type> Array(RegOr<ArrayInstruction::length_t> len,
+  RegOr<type::Type> Array(RegOr<type::ArrayInstruction::length_t> len,
                           RegOr<type::Type> data_type);
 
   Reg OpaqueType(module::BasicModule const* mod);

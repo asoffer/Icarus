@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "type/array.h"
 #include "absl/strings/str_cat.h"
 #include "ir/blocks/group.h"
 
@@ -311,16 +312,16 @@ Reg Builder::OpaqueType(module::BasicModule const *mod) {
   return result;
 }
 
-RegOr<type::Type> Builder::Array(RegOr<ArrayInstruction::length_t> len,
+RegOr<type::Type> Builder::Array(RegOr<type::ArrayInstruction::length_t> len,
                                  RegOr<type::Type> data_type) {
   if (not len.is_reg() and not data_type.is_reg()) {
     return type::Type(type::Arr(len.value(), data_type.value()));
   }
 
-  ArrayInstruction inst{.length = len, .data_type = data_type};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
+  return CurrentBlock()->Append(
+      type::ArrayInstruction{.length    = len,
+                             .data_type = data_type,
+                             .result    = CurrentGroup()->Reserve()});
 }
 
 }  // namespace ir

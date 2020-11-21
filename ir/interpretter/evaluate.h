@@ -17,6 +17,7 @@
 #include "ir/instruction/type.h"
 #include "ir/interpretter/evaluation_failure.h"
 #include "ir/value/value.h"
+#include "type/array.h"
 #include "type/struct.h"
 
 namespace interpretter {
@@ -146,7 +147,7 @@ struct instruction_set_t
           ir::XorFlagsInstruction, ir::AndFlagsInstruction,
           ir::OrFlagsInstruction, ir::PtrInstruction, ir::BufPtrInstruction,
           ir::OpaqueTypeInstruction, ir::ArrowInstruction,
-          ir::LoadSymbolInstruction, ir::ArrayInstruction,
+          ir::LoadSymbolInstruction, type::ArrayInstruction,
           type::StructInstruction, ir::MakeBlockInstruction,
           ir::MakeScopeInstruction, ir::StructIndexInstruction,
           ir::TupleIndexInstruction, ir::PtrIncrInstruction,

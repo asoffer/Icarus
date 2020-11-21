@@ -83,6 +83,13 @@ INSTANTIATE_TEST_SUITE_P(
                                  )",
                  .expected = ir::Value(4.4)},
         TestCase{.expr     = R"(((f: float64) -> float64 {
+                                   a: [3; float64]
+                                   a = [1.0, f, 9.9]
+                                   return a[1]
+                                 })(4.4)
+                                 )",
+                 .expected = ir::Value(4.4)},
+        TestCase{.expr     = R"(((f: float64) -> float64 {
                                    a := move [1.0, f, 9.9]
                                    return a[1]
                                  })(4.4)
