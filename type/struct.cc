@@ -52,7 +52,7 @@ void Struct::SetAssignments(absl::Span<ir::Fn const> assignments) {
 }
 
 ir::Fn const *Struct::Assignment(type::Type from_type) const {
-  auto iter = assignments_.find(from_type);
+  auto iter = assignments_.find(type::Ptr(from_type));
   if (iter == assignments_.end()) { return nullptr; }
   return &iter->second;
 }

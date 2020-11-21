@@ -159,9 +159,25 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           auto var                   = ir::Reg::Arg(0);
           auto val                   = ir::Reg::Arg(1);
 
-          for (size_t i = 0; i < s->fields().size(); ++i) {
-            c.EmitMoveAssign(c.builder().FieldRef(var, s, i),
-                             c.builder().FieldValue(val, s, i));
+          for (size_t i = 0; i < ir_fields.size(); ++i) {
+            ir::Reg to_ref =
+                c.current_block()->Append(ir::StructIndexInstruction{
+                    .addr        = var,
+                    .index       = i,
+                    .struct_type = s,
+                    .result      = c.builder().CurrentGroup()->Reserve()});
+            ir::Reg from_ref =
+                c.current_block()->Append(ir::StructIndexInstruction{
+                    .addr        = val,
+                    .index       = i,
+                    .struct_type = s,
+                    .result      = c.builder().CurrentGroup()->Reserve()});
+            c.EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(
+                                 to_ref, ir_fields[i].type().value()),
+                             type::Typed<ir::Value>(
+                                 ir::Value(c.builder().PtrFix(
+                                     from_ref, ir_fields[i].type().value())),
+                                 ir_fields[i].type().value()));
           }
 
           c.builder().ReturnJump();
