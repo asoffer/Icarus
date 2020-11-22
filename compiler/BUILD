@@ -336,7 +336,6 @@ cc_binary(
         "//diagnostic/consumer:streaming",
         "//frontend/source:file_name",
         "//frontend/source:shared",
-        "//init:cli",
         "//ir/interpretter:evaluate",
         "//ir:compiled_fn",
         "//module",

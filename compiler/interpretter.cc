@@ -8,6 +8,7 @@
 #include "absl/debugging/symbolize.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
 #include "absl/strings/str_split.h"
 #include "base/expected.h"
 #include "base/log.h"
@@ -20,7 +21,6 @@
 #include "frontend/parse.h"
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
-#include "init/cli.h"
 #include "ir/compiled_fn.h"
 #include "ir/interpretter/evaluate.h"
 #include "module/module.h"
@@ -28,6 +28,14 @@
 
 ABSL_FLAG(std::vector<std::string>, log, {},
           "Comma-separated list of log keys");
+ABSL_FLAG(std::string, link, "",
+          "Library to be dynamically loaded by the compiler to be used "
+          "at compile-time. Libraries will not be unloaded.");
+#if defined(ICARUS_DEBUG)
+ABSL_FLAG(bool, debug_parser, false,
+          "Step through the parser step-by-step for debugging.");
+ABSL_FLAG(bool, opt_ir, false, "Opmitize intermediate representation.");
+#endif  // defined(ICARUS_DEBUG)
 
 namespace debug {
 extern bool parser;
@@ -36,7 +44,6 @@ extern bool validation;
 
 namespace compiler {
 namespace {
-bool optimize_ir = false;
 
 int Interpret(frontend::FileName const &file_name) {
   diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
@@ -57,7 +64,7 @@ int Interpret(frontend::FileName const &file_name) {
   auto &main_fn = exec_mod.main();
 
   // TODO All the functions? In all the modules?
-  if (optimize_ir) { opt::RunAllOptimizations(&main_fn); }
+  if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
   main_fn.WriteByteCode<interpretter::instruction_set_t>();
   interpretter::Execute(
       &main_fn, base::untyped_buffer::MakeFull(main_fn.num_regs() * 16), {});
@@ -68,29 +75,9 @@ int Interpret(frontend::FileName const &file_name) {
 }  // namespace
 }  // namespace compiler
 
-void cli::Usage() {
-  static base::NoDestructor<frontend::FileName> file;
-  execute = [] { return compiler::Interpret(*file); };
-
-#if defined(ICARUS_DEBUG)
-  Flag("debug-parser") << "Step through the parser step-by-step for debugging."
-                       << [](bool b = false) { debug::parser = b; };
-
-  Flag("opt-ir") << "Opmitize intermediate representation"
-                 << [](bool b = false) { compiler::optimize_ir = b; };
-#endif  // defined(ICARUS_DEBUG)
-
-  Flag("link") << "Library to be dynamically loaded by the compiler to be used "
-                  "at compile-time. Libraries will not be unloaded."
-               << [](char const *lib) {
-                    static_cast<void>(ASSERT_NOT_NULL(dlopen(lib, RTLD_LAZY)));
-                  };
-
-  HandleOther = [](char const *arg) { *file = frontend::FileName(arg); };
-}
-
 int main(int argc, char *argv[]) {
-  std::vector<char*> args = absl::ParseCommandLine(argc, argv);
+  absl::SetProgramUsageMessage("Icarus interpreter");
+  std::vector<char *> args = absl::ParseCommandLine(argc, argv);
   absl::InitializeSymbolizer(args[0]);
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
@@ -98,5 +85,19 @@ int main(int argc, char *argv[]) {
   for (absl::string_view key : absl::GetFlag(FLAGS_log)) {
     base::EnableLogging(key);
   }
-  return cli::ParseAndRun(args.size(), &args[0]);
+  if (std::string lib = absl::GetFlag(FLAGS_link); not lib.empty()) {
+    ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
+  }
+  debug::parser = absl::GetFlag(FLAGS_debug_parser);
+
+  if (args.size() < 2) {
+    std::cerr << "Missing required positional argument: source file"
+              << std::endl;
+    return 1;
+  }
+  if (args.size() > 2) {
+    std::cerr << "Too many positional arguments." << std::endl;
+    return 1;
+  }
+  return compiler::Interpret(frontend::FileName(args[1]));
 }
