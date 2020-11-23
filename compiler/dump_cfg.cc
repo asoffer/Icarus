@@ -34,9 +34,7 @@ ABSL_FLAG(std::vector<std::string>, log, {},
 ABSL_FLAG(std::string, link, "",
           "Library to be dynamically loaded by the compiler to be used "
           "at compile-time. Libraries will not be unloaded.");
-#if defined(ICARUS_DEBUG)
 ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
-#endif  // defined(ICARUS_DEBUG)
 
 namespace {
 
