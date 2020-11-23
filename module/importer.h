@@ -14,12 +14,14 @@ namespace module {
 // `Importer` is responsible for scheduling any imports requested from an
 // `import` expression.
 struct Importer {
-  virtual ir::ModuleId Import(frontend::CanonicalFileName const& filename) = 0;
+  virtual ir::ModuleId Import(std::string_view module_locator) = 0;
 };
 
 template <typename ModuleType>
 struct FileImporter : Importer {
-  ir::ModuleId Import(frontend::CanonicalFileName const& file_name) override {
+  ir::ModuleId Import(std::string_view module_locator) override {
+    auto file_name = frontend::CanonicalFileName::Make(
+        frontend::FileName(std::string(module_locator)));
     auto [id, mod, inserted] = ir::ModuleId::FromFile<ModuleType>(file_name);
     if (not inserted) { return id; }
 

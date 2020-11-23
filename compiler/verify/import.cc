@@ -67,9 +67,7 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
     return context().set_qual_type(node, qt);
   }
 
-  auto canonical_file_name =
-      frontend::CanonicalFileName::Make(frontend::FileName(maybe_src->get()));
-  ir::ModuleId mod_id = importer().Import(canonical_file_name);
+  ir::ModuleId mod_id = importer().Import(maybe_src->get());
   if (mod_id == ir::ModuleId::Invalid()) {
     qt.MarkError();
   } else {
