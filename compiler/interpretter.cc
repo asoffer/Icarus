@@ -9,6 +9,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/flags/usage.h"
+#include "absl/flags/usage_config.h"
 #include "absl/strings/str_split.h"
 #include "base/expected.h"
 #include "base/log.h"
@@ -34,7 +35,7 @@ ABSL_FLAG(std::string, link, "",
 #if defined(ICARUS_DEBUG)
 ABSL_FLAG(bool, debug_parser, false,
           "Step through the parser step-by-step for debugging.");
-ABSL_FLAG(bool, opt_ir, false, "Opmitize intermediate representation.");
+ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
 #endif  // defined(ICARUS_DEBUG)
 
 namespace debug {
@@ -75,7 +76,15 @@ int Interpret(frontend::FileName const &file_name) {
 }  // namespace
 }  // namespace compiler
 
+bool HelpFilter(absl::string_view module) {
+  return absl::EndsWith(module, "interpretter.cc");
+}
+
 int main(int argc, char *argv[]) {
+  absl::FlagsUsageConfig flag_config;
+  flag_config.contains_helpshort_flags = &HelpFilter;
+  flag_config.contains_help_flags      = &HelpFilter;
+  absl::SetFlagsUsageConfig(flag_config);
   absl::SetProgramUsageMessage("Icarus interpreter");
   std::vector<char *> args = absl::ParseCommandLine(argc, argv);
   absl::InitializeSymbolizer(args[0]);

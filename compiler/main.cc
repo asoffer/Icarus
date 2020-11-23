@@ -5,6 +5,10 @@
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
+#include "absl/flags/usage_config.h"
 #include "absl/strings/str_split.h"
 #include "backend/function.h"
 #include "backend/type.h"
@@ -19,7 +23,6 @@
 #include "frontend/parse.h"
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
-#include "init/cli.h"
 #include "ir/compiled_fn.h"
 #include "ir/interpretter/execution_context.h"
 #include "llvm/ADT/Optional.h"
@@ -36,6 +39,17 @@
 #include "llvm/Target/TargetOptions.h"
 #include "module/module.h"
 #include "opt/opt.h"
+
+ABSL_FLAG(std::vector<std::string>, log, {},
+          "Comma-separated list of log keys");
+ABSL_FLAG(std::string, link, "",
+          "Library to be dynamically loaded by the compiler to be used "
+          "at compile-time. Libraries will not be unloaded.");
+#if defined(ICARUS_DEBUG)
+ABSL_FLAG(bool, debug_parser, false,
+          "Step through the parser step-by-step for debugging.");
+ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
+#endif  // defined(ICARUS_DEBUG)
 
 namespace debug {
 extern bool parser;
@@ -157,39 +171,38 @@ int Compile(frontend::FileName const &file_name) {
 }  // namespace
 }  // namespace compiler
 
-void cli::Usage() {
-  static base::NoDestructor<frontend::FileName> file;
-  execute = [] { return compiler::Compile(*file); };
-
-  Flag("help") << "Show usage information."
-               << []() { execute = cli::ShowUsage; };
-
-#if defined(ICARUS_DEBUG)
-  Flag("debug-parser") << "Step through the parser step-by-step for debugging."
-                       << [](bool b = false) { debug::parser = b; };
-
-  Flag("opt-ir") << "Opmitize intermediate representation"
-                 << [](bool b = false) { debug::optimize_ir = b; };
-
-  Flag("log") << "Comma-separated list of log keys" << [](char const *keys) {
-    for (std::string_view key : absl::StrSplit(keys, ',')) {
-      base::EnableLogging(key);
-    }
-  };
-#endif  // defined(ICARUS_DEBUG)
-
-  Flag("link") << "Library to be dynamically loaded by the compiler to be used "
-                  "at compile-time. Libraries will not be unloaded."
-               << [](char const *lib) {
-                    static_cast<void>(ASSERT_NOT_NULL(dlopen(lib, RTLD_LAZY)));
-                  };
-
-  HandleOther = [](char const *arg) { *file = frontend::FileName(arg); };
+bool HelpFilter(absl::string_view module) {
+  return absl::EndsWith(module, "main.cc");
 }
 
 int main(int argc, char *argv[]) {
-  absl::InitializeSymbolizer(argv[0]);
+  absl::FlagsUsageConfig flag_config;
+  flag_config.contains_helpshort_flags = &HelpFilter;
+  flag_config.contains_help_flags      = &HelpFilter;
+  absl::SetFlagsUsageConfig(flag_config);
+  absl::SetProgramUsageMessage("Icarus compiler");
+  std::vector<char *> args = absl::ParseCommandLine(argc, argv);
+  absl::InitializeSymbolizer(args[0]);
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
-  return cli::ParseAndRun(argc, argv);
+
+  for (absl::string_view key : absl::GetFlag(FLAGS_log)) {
+    base::EnableLogging(key);
+  }
+  if (std::string lib = absl::GetFlag(FLAGS_link); not lib.empty()) {
+    ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
+  }
+  debug::parser      = absl::GetFlag(FLAGS_debug_parser);
+  debug::optimize_ir = absl::GetFlag(FLAGS_opt_ir);
+
+  if (args.size() < 2) {
+    std::cerr << "Missing required positional argument: source file"
+              << std::endl;
+    return 1;
+  }
+  int return_code = 0;
+  for (int i = 1; i < args.size(); ++i) {
+    return_code += compiler::Compile(frontend::FileName(args[i]));
+  }
+  return return_code;
 }
