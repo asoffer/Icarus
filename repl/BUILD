@@ -21,9 +21,10 @@ cc_binary(
         ":source",
         "//ast:ast",
         "//diagnostic/consumer:streaming",
-        "//init:cli",
         "@com_google_absl//absl/debugging:failure_signal_handler",
         "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/strings",
     ],
 )

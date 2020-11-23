@@ -6,10 +6,13 @@
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
-#include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
 #include "base/expected.h"
 #include "base/log.h"
 #include "base/no_destructor.h"
@@ -21,14 +24,19 @@
 #include "frontend/parse.h"
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
-#include "init/cli.h"
 #include "ir/compiled_fn.h"
 #include "ir/interpretter/execution_context.h"
 #include "module/module.h"
 #include "opt/opt.h"
 
+ABSL_FLAG(std::vector<std::string>, log, {},
+          "Comma-separated list of log keys");
+ABSL_FLAG(std::string, link, "",
+          "Library to be dynamically loaded by the compiler to be used "
+          "at compile-time. Libraries will not be unloaded.");
+ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
+
 namespace {
-bool optimize_ir = false;
 
 void DumpControlFlowGraph(ir::CompiledFn const *fn, std::ostream &output) {
   absl::Format(&output,
@@ -57,7 +65,8 @@ void DumpControlFlowGraph(ir::CompiledFn const *fn, std::ostream &output) {
       absl::Format(&output,
                    "  subgraph cluster_%d {\n"
                    "  label = \"\";\n"
-                   "  style=filled;\ncolor=lightgray;\n", index);
+                   "  style=filled;\ncolor=lightgray;\n",
+                   index);
     }
 
     for (auto const *block : cluster) {
@@ -121,7 +130,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
   if (diag.num_consumed() != 0) { return 1; }
   auto &main_fn = exec_mod.main();
 
-  if (optimize_ir) { opt::RunAllOptimizations(&main_fn); }
+  if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
 
   output << "digraph {\n";
   DumpControlFlowGraph(&main_fn, output);
@@ -134,36 +143,28 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
 
 }  // namespace
 
-void cli::Usage() {
-  static base::NoDestructor<frontend::FileName> file;
-  execute = [] { return DumpControlFlowGraph(*file, std::cout); };
-
-  Flag("help") << "Show usage information."
-               << []() { execute = cli::ShowUsage; };
-
-  Flag("opt-ir") << "Opmitize intermediate representation"
-                 << [](bool b = false) { optimize_ir = b; };
-
-#if defined(ICARUS_DEBUG)
-  Flag("log") << "Comma-separated list of log keys" << [](char const *keys) {
-    for (std::string_view key : absl::StrSplit(keys, ',')) {
-      base::EnableLogging(key);
-    }
-  };
-#endif  // defined(ICARUS_DEBUG)
-
-  Flag("link") << "Library to be dynamically loaded by the compiler to be used "
-                  "at compile-time. Libraries will not be unloaded."
-               << [](char const *lib) {
-                    static_cast<void>(ASSERT_NOT_NULL(dlopen(lib, RTLD_LAZY)));
-                  };
-
-  HandleOther = [](char const *arg) { *file = frontend::FileName(arg); };
-}
-
 int main(int argc, char *argv[]) {
-  absl::InitializeSymbolizer(argv[0]);
+  absl::SetProgramUsageMessage("the Icarus control flow graph dumper.");
+  std::vector<char *> args = absl::ParseCommandLine(argc, argv);
+  absl::InitializeSymbolizer(args[0]);
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
-  return cli::ParseAndRun(argc, argv);
+
+  for (absl::string_view key : absl::GetFlag(FLAGS_log)) {
+    base::EnableLogging(key);
+  }
+  if (std::string lib = absl::GetFlag(FLAGS_link); not lib.empty()) {
+    ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
+  }
+
+  if (args.size() < 2) {
+    std::cerr << "Missing required positional argument: source file"
+              << std::endl;
+    return 1;
+  }
+  if (args.size() > 2) {
+    std::cerr << "Too many positional arguments." << std::endl;
+    return 1;
+  }
+  return DumpControlFlowGraph(frontend::FileName(args[1]), std::cout);
 }
