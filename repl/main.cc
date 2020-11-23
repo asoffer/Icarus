@@ -1,51 +1,60 @@
 #include <dlfcn.h>
+
 #include <memory>
 #include <vector>
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
+#include "absl/flags/usage_config.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
 #include "base/log.h"
 #include "diagnostic/consumer/streaming.h"
-#include "init/cli.h"
 #include "repl/module.h"
 #include "repl/source.h"
 
-void cli::Usage() {
-  execute = [] {
-    std::puts("Icarus REPL");
-    repl::Source source(&std::cin, &std::cout);
-    diagnostic::StreamingConsumer diag(stderr, &source);
+ABSL_FLAG(std::vector<std::string>, log, {},
+          "Comma-separated list of log keys");
+ABSL_FLAG(std::string, link, "",
+          "Library to be dynamically loaded by the compiler to be used "
+          "at compile-time. Libraries will not be unloaded.");
 
-    repl::Module mod;
-    // TODO: Handle parse failures
-    while (true) { mod.AppendNodes(frontend::Parse(source, diag), diag); }
-    return 0;
-  };
-
-  Flag("help") << "Show usage information."
-               << []() { execute = cli::ShowUsage; };
-
-#if defined(ICARUS_DEBUG)
-  Flag("log") << "Comma-separated list of log keys" << [](char const *keys) {
-    for (std::string_view key : absl::StrSplit(keys, ',')) {
-      base::EnableLogging(key);
-    }
-  };
-#endif  // defined(ICARUS_DEBUG)
-
-  Flag("link") << "Library to be dynamically loaded by the compiler to be used "
-                  "at compile-time. Libraries will not be unloaded."
-               << [](char const *lib) {
-                    static_cast<void>(ASSERT_NOT_NULL(dlopen(lib, RTLD_LAZY)));
-                  };
-
-  HandleOther = [](char const *arg) {};
+bool HelpFilter(absl::string_view module) {
+  return absl::EndsWith(module, "/main.cc");
 }
 
 int main(int argc, char *argv[]) {
-  absl::InitializeSymbolizer(argv[0]);
+  absl::FlagsUsageConfig flag_config;
+  flag_config.contains_helpshort_flags = &HelpFilter;
+  flag_config.contains_help_flags      = &HelpFilter;
+  absl::SetFlagsUsageConfig(flag_config);
+  absl::SetProgramUsageMessage("the Icarus read-eval-print loop.");
+  std::vector<char *> args = absl::ParseCommandLine(argc, argv);
+  absl::InitializeSymbolizer(args[0]);
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
-  return cli::ParseAndRun(argc, argv);
+
+  for (absl::string_view key : absl::GetFlag(FLAGS_log)) {
+    base::EnableLogging(key);
+  }
+  if (std::string lib = absl::GetFlag(FLAGS_link); not lib.empty()) {
+    ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
+  }
+
+  if (args.size() != 1) {
+    std::cerr << "Positional arguments are not supported." << std::endl;
+    return 1;
+  }
+  std::puts("Icarus REPL");
+  repl::Source source(&std::cin, &std::cout);
+  diagnostic::StreamingConsumer diag(stderr, &source);
+
+  repl::Module mod;
+  // TODO: Handle parse failures
+  while (true) { mod.AppendNodes(frontend::Parse(source, diag), diag); }
+  return 0;
 }

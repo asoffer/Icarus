@@ -10,7 +10,8 @@
 #include "absl/flags/parse.h"
 #include "absl/flags/usage.h"
 #include "absl/flags/usage_config.h"
-#include "absl/strings/str_split.h"
+#include "absl/strings/match.h"
+#include "absl/strings/string_view.h"
 #include "base/expected.h"
 #include "base/log.h"
 #include "base/no_destructor.h"
@@ -77,7 +78,7 @@ int Interpret(frontend::FileName const &file_name) {
 }  // namespace compiler
 
 bool HelpFilter(absl::string_view module) {
-  return absl::EndsWith(module, "interpretter.cc");
+  return absl::EndsWith(module, "/interpretter.cc");
 }
 
 int main(int argc, char *argv[]) {
@@ -85,7 +86,7 @@ int main(int argc, char *argv[]) {
   flag_config.contains_helpshort_flags = &HelpFilter;
   flag_config.contains_help_flags      = &HelpFilter;
   absl::SetFlagsUsageConfig(flag_config);
-  absl::SetProgramUsageMessage("Icarus interpreter");
+  absl::SetProgramUsageMessage("the Icarus interpreter.");
   std::vector<char *> args = absl::ParseCommandLine(argc, argv);
   absl::InitializeSymbolizer(args[0]);
   absl::FailureSignalHandlerOptions opts;

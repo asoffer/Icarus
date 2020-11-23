@@ -12,7 +12,7 @@
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
-#include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
 #include "base/expected.h"
 #include "base/log.h"
 #include "base/no_destructor.h"
@@ -146,7 +146,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
 }  // namespace
 
 int main(int argc, char *argv[]) {
-  absl::SetProgramUsageMessage("Icarus control flow graph dumper");
+  absl::SetProgramUsageMessage("the Icarus control flow graph dumper.");
   std::vector<char *> args = absl::ParseCommandLine(argc, argv);
   absl::InitializeSymbolizer(args[0]);
   absl::FailureSignalHandlerOptions opts;
