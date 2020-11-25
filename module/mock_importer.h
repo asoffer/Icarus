@@ -1,7 +1,8 @@
 #ifndef ICARUS_MODULE_MOCK_IMPORTER_H
 #define ICARUS_MODULE_MOCK_IMPORTER_H
 
-#include "frontend/source/file_name.h"
+#include <string_view>
+
 #include "gmock/gmock.h"
 #include "ir/value/module_id.h"
 #include "module/importer.h"
@@ -9,8 +10,8 @@
 namespace module {
 
 struct MockImporter : Importer {
-  MOCK_METHOD(ir::ModuleId, Import,
-              (frontend::CanonicalFileName const& filename), (override));
+  MOCK_METHOD(ir::ModuleId, Import, (std::string_view module_locator),
+              (override));
 };
 
 }  // namespace module

@@ -1,6 +1,7 @@
 #ifndef ICARUS_MODULE_IMPORTER_H
 #define ICARUS_MODULE_IMPORTER_H
 
+#include <string_view>
 #include <thread>
 
 #include "diagnostic/consumer/streaming.h"
