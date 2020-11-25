@@ -50,10 +50,9 @@ TEST(Import, NonConstantAndInvalidType) {
 }
 
 TEST(Import, ByteViewLiteral) {
+  constexpr std::string_view kModule = "some-module";
   test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import(frontend::CanonicalFileName::Make(
-                                frontend::FileName("some-module"))))
-      .WillOnce(Return(ir::ModuleId(7)));
+  EXPECT_CALL(mod.importer, Import(kModule)).WillOnce(Return(ir::ModuleId(7)));
   auto const *import = mod.Append<ast::Expression>(R"(import "some-module")");
   auto const *qt     = mod.context().qual_type(import);
   ASSERT_NE(qt, nullptr);
@@ -62,10 +61,9 @@ TEST(Import, ByteViewLiteral) {
 }
 
 TEST(Import, ConstantByteView) {
+  constexpr std::string_view kModule = "some-module";
   test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import(frontend::CanonicalFileName::Make(
-                                frontend::FileName("some-module"))))
-      .WillOnce(Return(ir::ModuleId(7)));
+  EXPECT_CALL(mod.importer, Import(kModule)).WillOnce(Return(ir::ModuleId(7)));
   mod.AppendCode(R"(str ::= "some-module")");
   auto const *import = mod.Append<ast::Expression>(R"(import str)");
   auto const *qt     = mod.context().qual_type(import);
