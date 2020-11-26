@@ -2,7 +2,7 @@
 
 ## Style
 
-_Below are the rules and guidelines dictacting the style in which code is written in the Icarus codebase. The reasons for these rules vary from performance to readability to consistency with already existing code. We believe that reasonable people can disagree on nearly all of the choices here, but that differing opinions is not reason enough to deviate from these guidelines
+_Below are the rules and guidelines dictacting the style in which code is written in the Icarus codebase. The reasons for these rules vary from performance to readability to consistency with already existing code. We believe that reasonable people can disagree on nearly all of the choices here, but that differing opinions is not reason enough to deviate from these guidelines._
 
 We use C++20 and a style that is largely based on the [Google Style Guide](https://google.github.io/styleguide/). In particular, we do not use exceptions. We also make the following additions and changes:
 
