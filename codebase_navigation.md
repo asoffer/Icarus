@@ -41,4 +41,21 @@ This section describes the design of the Icarus codebase, in its current state, 
 
 ### Expected directory structure changes
 
-TODO: Explain changes we expect to come to the interpretter and the type system.
+#### Interpretter changes
+As a long-term goal, we want to make the IR interpretter highly extensible, by having the interpretter templated on the set of instructions available. The interpretter will come with several core instructions (phi-nodes, loads, stores, function calls, and jumps). All other instructions will depend on the interpretter infrastructure and must themselves describe how to be executed. To achieve this goal we intend to move most instructions that out of `//ir/instruction` and closer to their use. For example, `ArrayInstruction` which constructs an array type from a type and a length has been moved already to `//type:array`, adjacent to the `type::Array` struct.
+
+There are several benefits to this extensibility, even if the interpretter is only ever used for the Icarus language.
+* Long-term changes to the language are made easier.
+* We can add mock/fake instructions to be used during testing to inspect the IR.
+* We can more easily add compile-time-only instructions (for example, baking in a debugger to the interpretter that executes code at compile-time.
+
+#### Type system changes
+One oddity you may have noticed in the layering described above is that `//ir` is allowed to depend on `//base`, `//core`, and also one particular target in the `//type` package (the one defining the struct `type::Type`. We would like this rule to be clearer by removing this one exception. To do this, we will move `type::Type` into `//core`. This makes sense because `type::Type` (to be renamed to `core::Type`) is a type-erased container for any type used in the language. Instructions and IR values in general need to know about types but not about any specific kind of types so the type-erased wrapper makes sense here. This migration has been started but is far from finished. We used to have all types represented by a pointer (now named `type::LegacyType*`). One of the changes that needs to be made is to remove the inheritance hierarchy of types, replacing them simply with a type-erasure mechanism, none of which has been started yet.
+
+#### Compilation changes
+Currently `//compiler/verify` has one build target for each AST node's type verification code. We wish to do the same thing for code generation in `//compiler/emit`. There are still some parts of this migration that are not yet complete. In particular, some code generating functions are still in `//compiler/emit_value.cc` and `//compiler/emit_function_call_infrastructure.cc`.
+
+#### Frontend changes
+Parsing and lexing should be made more general and specified by the compiler binary rather than hard-coded. Even if the infrastructure is only ever used for Icarus, this is beneficial because it allows us to inject annotations for the purposes of testing or add special nodes so that AST matchers can be specified in a language similar to the source (rather than a DSL as is done with `clang::ast_matchers`).
+
+Likely the simplest way to do this is to have each AST node come with a description of how it should be parsed and have the parser dependent on a list of AST nodes it knows how to generate. This work has not been started at all and probably requires significant thought and design before doing so.
