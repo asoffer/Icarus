@@ -2,7 +2,6 @@
 
 #include <dlfcn.h>
 #include <ffi.h>
-#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -10,7 +9,6 @@
 #include "ir/read_only_data.h"
 #include "ir/value/value.h"
 #include "type/function.h"
-#include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/tuple.h"
 
@@ -46,8 +44,10 @@ ffi_type *ToFfiType(type::Type t) {
   if (t == type::Nat64) { return &ffi_type_uint64; }
   if (t == type::Float32) { return &ffi_type_float; }
   if (t == type::Float64) { return &ffi_type_double; }
-  if (t.is<type::Pointer>()) { return &ffi_type_pointer; }
-  UNREACHABLE();
+  // TODO: Only other type to support is a pointer but we should still (at least
+  // in debug builds) check that we have a pointer type. We're not doing that
+  // now to avoid dependency cycle issues.
+  return &ffi_type_pointer;
 }
 }  // namespace
 
@@ -141,7 +141,10 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     ExtractReturnValue<float>(&ret, return_slots[0]);
   } else if (out_type == type::Float64) {
     ExtractReturnValue<double>(&ret, return_slots[0]);
-  } else if (out_type.is<type::Pointer>()) {
+  } else {
+    // TODO: Must all other cases be pointers? We're relying on this to avoid
+    // spelling out `Pointer` which is necessarily an incomplete type at this
+    // point.
     char *ptr;
     std::memcpy(&ptr, &ret, sizeof(ptr));
     ir::Addr addr;
@@ -156,9 +159,6 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
       addr = ir::Addr::Heap(ptr);
     }
     std::memcpy(return_slots[0].heap(), &addr, sizeof(addr));
-
-  } else {
-    NOT_YET();
   }
 done:;
 }

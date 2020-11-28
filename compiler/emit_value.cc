@@ -11,12 +11,13 @@
 #include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/compiled_jump.h"
-#include "ir/instruction/type.h"
 #include "ir/interpretter/evaluate.h"
 #include "ir/interpretter/execution_context.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/generic_fn.h"
 #include "ir/value/reg.h"
+#include "type/enum.h"
+#include "type/flags.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"
 #include "type/type.h"
@@ -186,12 +187,18 @@ ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
   // TODO: allocate the type upfront so it can be used in incomplete contexts.
   switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum: {
-      auto *e = type::Allocate<type::Enum>(&context().module());
-      return ir::Value(builder().Enum(e, names, specified_values));
+      return ir::Value(current_block()->Append(type::EnumInstruction{
+          .type              = type::Allocate<type::Enum>(&context().module()),
+          .names_            = std::move(names),
+          .specified_values_ = std::move(specified_values),
+          .result            = builder().CurrentGroup()->Reserve()}));
     } break;
     case ast::EnumLiteral::Kind::Flags: {
-      auto *f = type::Allocate<type::Flags>(&context().module());
-      return ir::Value(builder().Flags(f, names, specified_values));
+      return ir::Value(current_block()->Append(type::FlagsInstruction{
+          .type              = type::Allocate<type::Flags>(&context().module()),
+          .names_            = std::move(names),
+          .specified_values_ = std::move(specified_values),
+          .result            = builder().CurrentGroup()->Reserve()}));
     } break;
     default: UNREACHABLE();
   }

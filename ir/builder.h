@@ -15,9 +15,7 @@
 #include "ir/instruction/byte_view.h"
 #include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
-#include "ir/instruction/flags.h"
 #include "ir/instruction/instructions.h"
-#include "ir/instruction/type.h"
 #include "ir/local_block_interpretation.h"
 #include "ir/out_params.h"
 #include "ir/value/addr.h"
@@ -129,34 +127,6 @@ struct Builder {
     return Le(rhs, lhs);
   }
 
-  // Flags operators
-  RegOr<FlagsVal> XorFlags(RegOr<FlagsVal> const& lhs,
-                           RegOr<FlagsVal> const& rhs) {
-    if (not lhs.is_reg() and not rhs.is_reg()) {
-      return XorFlagsInstruction::Apply(lhs.value(), rhs.value());
-    }
-    return CurrentBlock()->Append(XorFlagsInstruction{
-        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-  }
-
-  RegOr<FlagsVal> AndFlags(RegOr<FlagsVal> const& lhs,
-                           RegOr<FlagsVal> const& rhs) {
-    if (not lhs.is_reg() and not rhs.is_reg()) {
-      return AndFlagsInstruction::Apply(lhs.value(), rhs.value());
-    }
-    return CurrentBlock()->Append(AndFlagsInstruction{
-        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-  }
-
-  RegOr<FlagsVal> OrFlags(RegOr<FlagsVal> const& lhs,
-                          RegOr<FlagsVal> const& rhs) {
-    if (not lhs.is_reg() and not rhs.is_reg()) {
-      return OrFlagsInstruction::Apply(lhs.value(), rhs.value());
-    }
-    return CurrentBlock()->Append(OrFlagsInstruction{
-        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-  }
-
   // Comparison
   template <typename Lhs, typename Rhs>
   RegOr<bool> Eq(Lhs const& lhs, Rhs const& rhs) {
@@ -209,38 +179,10 @@ struct Builder {
         .operand = val, .result = CurrentGroup()->Reserve()});
   }
 
-  // Note: Even though this must return a more specific type (BufferPointer
-  // instead of Type), we use Type to ensure that if this gets routed into an
-  // ir::Value, it will be tagged correctly.
-  RegOr<type::Type> BufPtr(RegOr<type::Type> const& val) {
-    if (not val.is_reg()) {
-      return type::Type(BufPtrInstruction::Apply(val.value()));
-    }
-    return CurrentBlock()->Append(
-        BufPtrInstruction{.operand = val, .result = CurrentGroup()->Reserve()});
-  }
-
-  // Note: Even though this must return a more specific type (Pointer instead of
-  // Type), we use Type to ensure that if this gets routed into an ir::Value, it
-  // will be tagged correctly.
-  RegOr<type::Type> Ptr(RegOr<type::Type> const& val) {
-    if (not val.is_reg()) {
-      return type::Type(PtrInstruction::Apply(val.value()));
-    }
-    return CurrentBlock()->Append(
-        PtrInstruction{.operand = val, .result = CurrentGroup()->Reserve()});
-  }
-
   RegOr<bool> Not(RegOr<bool> const& val) {
     if (not val.is_reg()) { return NotInstruction::Apply(val.value()); }
     return CurrentBlock()->Append(
         NotInstruction{.operand = val, .result = CurrentGroup()->Reserve()});
-  }
-
-  RegOr<type::Type> Tup(std::vector<RegOr<type::Type>> types) {
-    // TODO constant-folding
-    return CurrentBlock()->Append(TupleInstruction{
-        .values = std::move(types), .result = CurrentGroup()->Reserve()});
   }
 
   template <typename ToType>
@@ -510,13 +452,6 @@ struct Builder {
 
   RegOr<type::Type> Array(RegOr<type::ArrayInstruction::length_t> len,
                           RegOr<type::Type> data_type);
-
-  Reg OpaqueType(module::BasicModule const* mod);
-
-  Reg Enum(type::Enum* e, std::vector<std::string_view> names,
-           absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values);
-  Reg Flags(type::Flags* f, std::vector<std::string_view> names,
-            absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values);
 
   type::Typed<Reg> LoadSymbol(String name, type::Type type);
 

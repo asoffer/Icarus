@@ -11,13 +11,15 @@
 #include "ir/instruction/byte_view.h"
 #include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
-#include "ir/instruction/flags.h"
 #include "ir/instruction/instructions.h"
 #include "ir/instruction/set.h"
-#include "ir/instruction/type.h"
 #include "ir/interpretter/evaluation_failure.h"
 #include "ir/value/value.h"
 #include "type/array.h"
+#include "type/enum.h"
+#include "type/flags.h"
+#include "type/opaque.h"
+#include "type/pointer.h"
 #include "type/struct.h"
 
 namespace interpretter {
@@ -144,14 +146,14 @@ struct instruction_set_t
           ir::CastInstruction<double, int64_t>,
           ir::CastInstruction<double, float>, ir::UnwrapEnumInstruction,
           ir::UnwrapFlagsInstruction, ir::NotInstruction,
-          ir::XorFlagsInstruction, ir::AndFlagsInstruction,
-          ir::OrFlagsInstruction, ir::PtrInstruction, ir::BufPtrInstruction,
-          ir::OpaqueTypeInstruction, ir::ArrowInstruction,
+          type::XorFlagsInstruction, type::AndFlagsInstruction,
+          type::OrFlagsInstruction, type::PtrInstruction, type::BufPtrInstruction,
+          type::OpaqueTypeInstruction, ir::ArrowInstruction,
           ir::LoadSymbolInstruction, type::ArrayInstruction,
           type::StructInstruction, ir::MakeBlockInstruction,
           ir::MakeScopeInstruction, ir::StructIndexInstruction,
           ir::TupleIndexInstruction, ir::PtrIncrInstruction,
-          ir::TupleInstruction, ir::EnumInstruction, ir::FlagsInstruction,
+          type::EnumInstruction, type::FlagsInstruction,
           ir::TypeInfoInstruction, ir::InitInstruction, ir::DestroyInstruction,
           ir::MoveInstruction, ir::CopyInstruction,
           ir::ByteViewLengthInstruction, ir::ByteViewDataInstruction,

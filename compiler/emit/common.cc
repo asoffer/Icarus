@@ -111,7 +111,9 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           ir_fields.back().set_export(
               field.hashtags.contains(ir::Hashtag::Export));
         } else {
-          field_type = c.EmitValue(field.type_expr()).get<type::Type>();
+          // TODO: Failed evaluation
+          field_type =
+              c.EvaluateOrDiagnoseAs<type::Type>(field.type_expr()).value();
           ir_fields.emplace_back(field.id(), field_type);
           ir_fields.back().set_export(
               field.hashtags.contains(ir::Hashtag::Export));

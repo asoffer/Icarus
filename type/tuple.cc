@@ -4,8 +4,6 @@
 
 #include "base/global.h"
 #include "core/arch.h"
-#include "type/function.h"
-#include "type/pointer.h"
 
 // TODO Currently order of init/move/copy/destroy is entirely randomized. This
 // may not be a good design.

@@ -155,7 +155,10 @@ ir::Value EmitBuiltinCall(
     } break;
 
     case ir::BuiltinFn::Which::Opaque:
-      return ir::Value(c->builder().OpaqueType(&c->context().module()));
+      return ir::Value(c->current_block()->Append(type::OpaqueTypeInstruction{
+          .mod    = &c->context().module(),
+          .result = c->builder().CurrentGroup()->Reserve()}));
+
     case ir::BuiltinFn::Which::Bytes: {
       auto const &fn_type = *ir::BuiltinFn::Bytes().type();
       ir::OutParams outs  = c->builder().OutParams(fn_type.output());

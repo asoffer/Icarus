@@ -1,7 +1,9 @@
 #include "ast/ast.h"
+#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/value.h"
+#include "type/pointer.h"
 
 namespace compiler {
 
@@ -28,18 +30,27 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
           type::Typed<ir::Reg>(reg, operand_type));
       return ir::Value(builder().PtrFix(reg, operand_type));
     } break;
-    case ast::UnaryOperator::Kind::BufferPointer:
-      return ir::Value(builder().BufPtr(
-          EmitValue(node->operand()).get<ir::RegOr<type::Type>>()));
+    case ast::UnaryOperator::Kind::BufferPointer: {
+      base::defer d = [b = state_.must_complete, this] {
+        state_.must_complete = b;
+      };
+      state_.must_complete = false;
+
+      return ir::Value(current_block()->Append(type::BufPtrInstruction{
+          .operand = EmitValue(node->operand()).get<ir::RegOr<type::Type>>(),
+          .result  = builder().CurrentGroup()->Reserve(),
+      }));
+    } break;
     case ast::UnaryOperator::Kind::Not: {
       auto t = ASSERT_NOT_NULL(context().qual_type(node->operand()))->type();
       if (t == type::Bool) {
         return ir::Value(
             builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
       } else {
-        return ir::Value(builder().XorFlags(
-            EmitValue(node->operand()).get<ir::RegOr<ir::FlagsVal>>(),
-            ir::FlagsVal{t.as<type::Flags>().All}));
+        return ir::Value(current_block()->Append(type::XorFlagsInstruction{
+            .lhs    = EmitValue(node->operand()).get<ir::RegOr<ir::FlagsVal>>(),
+            .rhs    = ir::FlagsVal{t.as<type::Flags>().All},
+            .result = builder().CurrentGroup()->Reserve()}));
       }
     } break;
     case ast::UnaryOperator::Kind::Negate: {
@@ -67,14 +78,15 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
           ASSERT_NOT_NULL(context().qual_type(node->operand()))->type()));
     }
     case ast::UnaryOperator::Kind::Pointer: {
+      base::defer d = [b = state_.must_complete, this] {
+        state_.must_complete = b;
+      };
       state_.must_complete = false;
 
-      ir::Value value(builder().Ptr(
-          EmitValue(node->operand()).get<ir::RegOr<type::Type>>()));
-
-      state_.must_complete = true;
-
-      return value;
+      return ir::Value(current_block()->Append(type::PtrInstruction{
+          .operand = EmitValue(node->operand()).get<ir::RegOr<type::Type>>(),
+          .result  = builder().CurrentGroup()->Reserve(),
+      }));
     } break;
     case ast::UnaryOperator::Kind::At: {
       return builder().Load(

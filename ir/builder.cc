@@ -257,28 +257,6 @@ Reg Builder::MakeScope(Scope scope, std::vector<RegOr<Jump>> inits,
   return result;
 }
 
-Reg Builder::Enum(
-    type::Enum *e, std::vector<std::string_view> names,
-    absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values) {
-  EnumInstruction inst{.type              = e,
-                       .names_            = std::move(names),
-                       .specified_values_ = std::move(specified_values)};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
-}
-
-Reg Builder::Flags(
-    type::Flags *f, std::vector<std::string_view> names,
-    absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values) {
-  FlagsInstruction inst{.type              = f,
-                        .names_            = std::move(names),
-                        .specified_values_ = std::move(specified_values)};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
-}
-
 // TODO: Right now function types can be generic and have parameter names as
 // part of the signature, but we don't actually have any way to emit IR for
 // these.
@@ -301,13 +279,6 @@ RegOr<type::Type> Builder::Arrow(std::vector<RegOr<type::Type>> const &ins,
   }
   ArrowInstruction inst{.lhs = std::move(ins), .rhs = std::move(outs)};
   auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
-}
-
-Reg Builder::OpaqueType(module::BasicModule const *mod) {
-  OpaqueTypeInstruction inst{.mod = mod, .result = CurrentGroup()->Reserve()};
-  auto result = inst.result;
   CurrentBlock()->Append(std::move(inst));
   return result;
 }

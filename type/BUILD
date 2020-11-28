@@ -105,9 +105,16 @@ cc_library(
     deps = [
         ":type",
         ":typed_value",
+        "//base:extend",
+        "//ir/instruction:base",
+        "//ir/instruction:debug",
+        "//ir/instruction:inliner",
+        "//ir/interpretter:execution_context",
         "//ir/value:enum_and_flags",
         "//module",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/random",
+        "@com_google_absl//absl/random:distributions",
     ],
 )
 
@@ -118,6 +125,11 @@ cc_library(
     deps = [
         ":type",
         ":typed_value",
+        "//base:extend",
+        "//ir/instruction:base",
+        "//ir/instruction:debug",
+        "//ir/instruction:inliner",
+        "//ir/interpretter:execution_context",
         "//ir/value:enum_and_flags",
         "//module",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -201,6 +213,9 @@ cc_library(
     deps = [
         ":type",
         "//base:debug",
+        "//ir/instruction:base",
+        "//ir/instruction:inliner",
+        "//ir/interpretter:execution_context",
         "//module",
     ],
 )
@@ -222,6 +237,10 @@ cc_library(
     deps = [
         ":type",
         "//base:global",
+        "//ir/instruction:base",
+        "//ir/instruction:debug",
+        "//ir/instruction:inliner",
+        "//ir/interpretter:execution_context",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -300,8 +319,6 @@ cc_library(
     hdrs = ["tuple.h"],
     srcs = ["tuple.cc"],
     deps = [
-        ":function",
-        ":pointer",
         ":type",
         "//base:lazy",
         "//base:global",

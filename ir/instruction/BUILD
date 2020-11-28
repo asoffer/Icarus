@@ -60,15 +60,6 @@ cc_library(
 )
 
 cc_library(
-    name = "flags",
-    hdrs = ["flags.h"],
-    deps = [
-        ":inliner",
-        "//base:extend",
-    ],
-)
-
-cc_library(
     name = "inliner",
     hdrs = ["inliner.h"],
     srcs = ["inliner.cc"],
@@ -158,25 +149,6 @@ cc_library(
         "//ir/value:reg_or",
         "//type:util",
         "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "type",
-    hdrs = ["type.h"],
-    deps = [
-        ":inliner",
-        "//base:extend",
-        "//type",
-        "//type:array",
-        "//type:enum",
-        "//type:flags",
-        "//type:generic_function",
-        "//type:opaque",
-        "//type:pointer",
-        "//type:tuple",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/random",
     ],
 )
 

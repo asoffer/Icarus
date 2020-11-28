@@ -331,6 +331,7 @@ cc_library(
     srcs = ["unary_operator.cc"],
     deps = [
         "//ast",
+        "//base:defer",
         "//frontend/lex:operators",
         "//compiler:compiler_header",
     ],

@@ -1,6 +1,11 @@
 #ifndef ICARUS_TYPE_POINTER_H
 #define ICARUS_TYPE_POINTER_H
 
+#include "base/extend.h"
+#include "ir/instruction/base.h"
+#include "ir/instruction/debug.h"
+#include "ir/instruction/inliner.h"
+#include "ir/interpretter/execution_context.h"
 #include "type/type.h"
 
 namespace type {
@@ -55,6 +60,36 @@ struct BufferPointer : Pointer {
 
 Pointer const *Ptr(Type t);
 BufferPointer const *BufPtr(Type t);
+
+struct PtrInstruction
+    : base::Extend<PtrInstruction>::With<ir::ByteCodeExtension,
+                                         ir::InlineExtension,
+                                         ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = ptr %1$s";
+
+  void Apply(interpretter::ExecutionContext &ctx) const {
+    ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
+  }
+  static type::Type Apply(type::Type operand) { return type::Ptr(operand); }
+
+  ir::RegOr<type::Type> operand;
+  ir::Reg result;
+};
+
+struct BufPtrInstruction
+    : base::Extend<BufPtrInstruction>::With<ir::ByteCodeExtension,
+                                            ir::InlineExtension,
+                                            ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = buf-ptr %1$s";
+
+  void Apply(interpretter::ExecutionContext &ctx) const {
+    ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
+  }
+  static type::Type Apply(type::Type operand) { return type::BufPtr(operand); }
+
+  ir::RegOr<type::Type> operand;
+  ir::Reg result;
+};
 
 }  // namespace type
 

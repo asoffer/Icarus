@@ -411,6 +411,46 @@ struct PtrIncrInstruction
   Reg result;
 };
 
+struct ArrowInstruction
+    : base::Extend<ArrowInstruction>::With<ByteCodeExtension, InlineExtension> {
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    core::Params<type::QualType> params;
+    params.reserve(lhs.size());
+    for (const auto& t : lhs) {
+      // TODO: push qualtype into `Apply` parameters
+      params.append(
+          core::AnonymousParam(type::QualType::NonConstant(ctx.resolve(t))));
+    }
+
+    std::vector<type::Type> rhs_types;
+    rhs_types.reserve(rhs.size());
+    for (auto const& t : rhs) { rhs_types.push_back(ctx.resolve(t)); }
+
+    ctx.current_frame().regs_.set(
+        result,
+        type::Type(type::Func(std::move(params), std::move(rhs_types))));
+  }
+
+  std::string to_string() const {
+    using base::stringify;
+    return absl::StrCat(
+        stringify(result), " = (",
+        absl::StrJoin(lhs, ", ",
+                      [](std::string* out, RegOr<type::Type> const& r) {
+                        out->append(stringify(r));
+                      }),
+        ") -> (",
+        absl::StrJoin(rhs, ", ",
+                      [](std::string* out, RegOr<type::Type> const& r) {
+                        out->append(stringify(r));
+                      }),
+        ")");
+  }
+
+  std::vector<RegOr<type::Type>> lhs, rhs;
+  Reg result;
+};
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_INSTRUCTION_INSTRUCTIONS_H

@@ -2,6 +2,11 @@
 #define ICARUS_TYPE_OPAQUE_H
 
 #include "base/debug.h"
+#include "base/extend.h"
+#include "ir/instruction/base.h"
+#include "ir/instruction/debug.h"
+#include "ir/instruction/inliner.h"
+#include "ir/interpretter/execution_context.h"
 #include "module/module.h"
 #include "type/type.h"
 
@@ -35,6 +40,21 @@ struct Opaque : public LegacyType {
 
   // TODO is this right?
   bool IsDefaultInitializable() const { return false; }
+};
+
+struct OpaqueTypeInstruction
+    : base::Extend<OpaqueTypeInstruction>::With<ir::ByteCodeExtension,
+                                                ir::InlineExtension,
+                                                ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = opaque %1$s";
+
+  void Apply(interpretter::ExecutionContext &ctx) const {
+    ctx.current_frame().regs_.set(
+        result, type::Type(type::Allocate<type::Opaque>(mod)));
+  }
+
+  module::BasicModule const *mod;
+  ir::Reg result;
 };
 
 }  // namespace type

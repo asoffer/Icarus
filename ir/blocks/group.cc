@@ -2,7 +2,6 @@
 
 #include "ast/ast.h"
 #include "core/arch.h"
-#include "type/pointer.h"
 
 namespace ir::internal {
 
