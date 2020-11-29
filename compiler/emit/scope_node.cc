@@ -155,13 +155,13 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   std::optional<ir::Reg> result;
   if (qt->type() != type::Void()) {
     type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                     uint32_t, uint64_t, float, double, ir::EnumVal,
-                     ir::FlagsVal>(qt->type(), [&]<typename T>() {
-      ir::PhiInstruction<T> phi;
-      phi.result = builder().CurrentGroup()->Reserve();
-      result     = phi.result;
-      landing_block->Append(std::move(phi));
-    });
+                     uint32_t, uint64_t, float, double>(
+        qt->type(), [&]<typename T>() {
+          ir::PhiInstruction<T> phi;
+          phi.result = builder().CurrentGroup()->Reserve();
+          result     = phi.result;
+          landing_block->Append(std::move(phi));
+        });
   }
 
   // Push the scope landing state onto the the vector. Any nested scopes will be

@@ -92,9 +92,8 @@ using CoreInstructionsImpl = InstructionSet<
     SetReturnInstruction<type::GenericStruct const *>>;
 using CoreInstructions =
     CoreInstructionsImpl<bool, uint8_t, int8_t, uint16_t, int16_t, uint32_t,
-                         int32_t, uint64_t, int64_t, float, double, FlagsVal,
-                         type::Type, Addr, EnumVal, String, Fn, Block, Scope,
-                         Jump, ModuleId>;
+                         int32_t, uint64_t, int64_t, float, double, type::Type,
+                         Addr, String, Fn, Block, Scope, Jump, ModuleId>;
 
 }  // namespace ir
 

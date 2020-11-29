@@ -32,8 +32,8 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
         // `|` is not overloadable, and blocks piped together must be done
         // syntactically in a `goto` node and are handled by the parser.
         return ir::Value(current_block()->Append(type::OrFlagsInstruction{
-            .lhs    = lhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
-            .rhs    = rhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
+            .lhs    = lhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
+            .rhs    = rhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
             .result = builder().CurrentGroup()->Reserve()}));
       } else {
         UNREACHABLE();
@@ -48,8 +48,8 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                                       rhs_ir.get<ir::RegOr<bool>>()));
       } else if (t.is<type::Flags>()) {
         return ir::Value(current_block()->Append(type::XorFlagsInstruction{
-            .lhs    = lhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
-            .rhs    = rhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
+            .lhs    = lhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
+            .rhs    = rhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
             .result = builder().CurrentGroup()->Reserve()}));
       } else {
         UNREACHABLE();
@@ -82,8 +82,8 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
         // `|` is not overloadable, and blocks piped together must be done
         // syntactically in a `goto` node and are handled by the parser.
         return ir::Value(current_block()->Append(type::AndFlagsInstruction{
-            .lhs    = lhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
-            .rhs    = rhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
+            .lhs    = lhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
+            .rhs    = rhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
             .result = builder().CurrentGroup()->Reserve()}));
       } else {
         UNREACHABLE();
@@ -175,10 +175,11 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                                             {ir::RegOr<bool>(true), rhs_val}),
                         lhs_lval);
       } else if (this_type.is<type::Flags>()) {
-        builder().Store<ir::RegOr<ir::FlagsVal>>(
+        builder().Store<ir::RegOr<type::Flags::underlying_type>>(
             current_block()->Append(type::OrFlagsInstruction{
-                .lhs    = builder().Load<ir::FlagsVal>(lhs_lval),
-                .rhs    = EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>(),
+                .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
+                .rhs = EmitValue(node->rhs())
+                           .get<ir::RegOr<type::Flags::underlying_type>>(),
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else {
@@ -190,10 +191,11 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
       auto lhs_lval  = EmitRef(node->lhs());
       if (this_type.is<type::Flags>()) {
-        builder().Store<ir::RegOr<ir::FlagsVal>>(
+        builder().Store<ir::RegOr<type::Flags::underlying_type>>(
             current_block()->Append(type::AndFlagsInstruction{
-                .lhs    = builder().Load<ir::FlagsVal>(lhs_lval),
-                .rhs    = EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>(),
+                .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
+                .rhs = EmitValue(node->rhs())
+                           .get<ir::RegOr<type::Flags::underlying_type>>(),
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else if (this_type == type::Bool) {
@@ -222,11 +224,12 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
       auto lhs_lval  = EmitRef(node->lhs());
       if (this_type.is<type::Flags>()) {
-        auto rhs_ir = EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>();
-        builder().Store<ir::RegOr<ir::FlagsVal>>(
+        auto rhs_ir = EmitValue(node->rhs())
+                          .get<ir::RegOr<type::Flags::underlying_type>>();
+        builder().Store<ir::RegOr<type::Flags::underlying_type>>(
             current_block()->Append(type::XorFlagsInstruction{
-                .lhs    = builder().Load<ir::FlagsVal>(lhs_lval),
-                .rhs    = rhs_ir,
+                .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
+                .rhs = rhs_ir,
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else if (this_type == type::Bool) {

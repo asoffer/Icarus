@@ -48,8 +48,9 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
             builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
       } else {
         return ir::Value(current_block()->Append(type::XorFlagsInstruction{
-            .lhs    = EmitValue(node->operand()).get<ir::RegOr<ir::FlagsVal>>(),
-            .rhs    = ir::FlagsVal{t.as<type::Flags>().All},
+            .lhs = EmitValue(node->operand())
+                       .get<ir::RegOr<type::Flags::underlying_type>>(),
+            .rhs    = t.as<type::Flags>().All,
             .result = builder().CurrentGroup()->Reserve()}));
       }
     } break;

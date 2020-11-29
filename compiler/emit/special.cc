@@ -145,7 +145,7 @@ void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Enum> const &to,
     type::Typed<ir::Value> const &from) {
   ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<ir::EnumVal>>(), *to);
+  builder().Store(from->get<ir::RegOr<type::Enum::underlying_type>>(), *to);
 }
 
 void Compiler::EmitMoveAssign(
@@ -155,14 +155,14 @@ void Compiler::EmitMoveAssign(
 }
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Flags> const &r) {
-  builder().Store(ir::FlagsVal{0}, *r);
+  builder().Store(type::Flags::underlying_type{0}, *r);
 }
 
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Flags> const &to,
     type::Typed<ir::Value> const &from) {
   ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<ir::FlagsVal>>(), *to);
+  builder().Store(from->get<ir::RegOr<type::Flags::underlying_type>>(), *to);
 }
 
 void Compiler::EmitMoveAssign(

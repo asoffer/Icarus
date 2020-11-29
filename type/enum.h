@@ -14,13 +14,14 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/interpretter/execution_context.h"
-#include "ir/value/enum_and_flags.h"
 #include "module/module.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
 namespace type {
 struct Enum : type::LegacyType {
+  using underlying_type = uint64_t;
+
   explicit Enum(module::BasicModule const *mod)
       : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 1,
@@ -28,7 +29,7 @@ struct Enum : type::LegacyType {
                                      .has_destructor           = 0}),
         mod_(mod) {}
 
-  void SetMembers(absl::flat_hash_map<std::string, ir::EnumVal> vals) {
+  void SetMembers(absl::flat_hash_map<std::string, underlying_type> vals) {
     vals_ = std::move(vals);
     for (auto &[name, val] : vals_) { members_.emplace(val, name); }
   }
@@ -46,10 +47,10 @@ struct Enum : type::LegacyType {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  std::optional<ir::EnumVal> Get(std::string_view name) const;
-  Typed<ir::EnumVal, Enum> EmitLiteral(std::string_view member_name) const;
+  std::optional<underlying_type> Get(std::string_view name) const;
+  Typed<underlying_type, Enum> EmitLiteral(std::string_view member_name) const;
 
-  std::optional<std::string_view> name(ir::EnumVal v) const {
+  std::optional<std::string_view> name(underlying_type v) const {
     auto it = members_.find(v);
     if (it == members_.end()) return std::nullopt;
     return it->second;
@@ -59,17 +60,15 @@ struct Enum : type::LegacyType {
   // TODO: Use module or drop it.
   [[maybe_unused]] module::BasicModule const *mod_;
   Completeness completeness_;
-  absl::flat_hash_map<std::string, ir::EnumVal> vals_;
-  absl::flat_hash_map<ir::EnumVal, std::string_view> members_;
+  absl::flat_hash_map<std::string, underlying_type> vals_;
+  absl::flat_hash_map<underlying_type, std::string_view> members_;
 };
 
 struct EnumInstruction
     : base::Extend<EnumInstruction>::With<ir::ByteCodeExtension,
                                           ir::InlineExtension> {
   void Apply(interpretter::ExecutionContext &ctx) const {
-    using enum_t = ir::EnumVal::underlying_type;
-
-    absl::flat_hash_set<enum_t> used_vals;
+    absl::flat_hash_set<Enum::underlying_type> used_vals;
 
     for (auto const &[index, reg_or_value] : specified_values_) {
       used_vals.insert(ctx.resolve(reg_or_value));
@@ -77,7 +76,7 @@ struct EnumInstruction
 
     absl::BitGen gen;
 
-    absl::flat_hash_map<std::string, ir::EnumVal> mapping;
+    absl::flat_hash_map<std::string, Enum::underlying_type> mapping;
 
     for (size_t i = 0; i < names_.size(); ++i) {
       auto iter = specified_values_.find(i);
@@ -87,9 +86,9 @@ struct EnumInstruction
       }
 
       bool success;
-      enum_t proposed_value;
+      Enum::underlying_type proposed_value;
       do {
-        proposed_value = absl::Uniform<enum_t>(gen);
+        proposed_value = absl::Uniform<Enum::underlying_type>(gen);
         success        = used_vals.insert(proposed_value).second;
       } while (not success);
       mapping.try_emplace(std::string(names_[i]), proposed_value);

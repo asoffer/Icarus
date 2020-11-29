@@ -148,8 +148,7 @@ struct Builder {
   RegOr<bool> Eq(type::Type common_type, ir::Value const& lhs_val,
                  ir::Value const& rhs_val) {
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                            uint16_t, uint32_t, uint64_t, float, double,
-                            ir::EnumVal, ir::FlagsVal>(
+                            uint16_t, uint32_t, uint64_t, float, double>(
         common_type, [&]<typename T>() {
           return Eq(lhs_val.get<RegOr<T>>(), rhs_val.get<RegOr<T>>());
         });
@@ -187,11 +186,6 @@ struct Builder {
 
   template <typename ToType>
   RegOr<ToType> CastTo(type::Typed<ir::Value> v) {
-    if constexpr (base::meta<ToType> != base::meta<ir::EnumVal> and
-                  base::meta<ToType> != base::meta<ir::FlagsVal>) {
-      if (v.type() == type::Get<ToType>()) { return v->get<RegOr<ToType>>(); }
-    }
-
     if (v.type() == type::Int8) {
       return Cast<int8_t, ToType>(v->get<RegOr<int8_t>>());
     } else if (v.type() == type::Nat8) {
@@ -213,24 +207,20 @@ struct Builder {
     } else if (v.type() == type::Float64) {
       return Cast<double, ToType>(v->get<RegOr<double>>());
     } else if (v.type().is<type::Enum>()) {
-      auto result = CurrentGroup()->Reserve();
-      CurrentBlock()->Append(UnwrapEnumInstruction{
-          .value = v->get<ir::RegOr<ir::EnumVal>>(), .result = result});
       if constexpr (base::meta<ToType> ==
-                    base::meta<ir::EnumVal::underlying_type>) {
-        return result;
+                    base::meta<type::Enum::underlying_type>) {
+        return v->get<ir::RegOr<type::Enum::underlying_type>>();
       } else {
-        return Cast<ir::EnumVal::underlying_type, ToType>(result);
+        return Cast<type::Enum::underlying_type, ToType>(
+            v->get<type::Enum::underlying_type>());
       }
     } else if (v.type().is<type::Flags>()) {
-      auto result = CurrentGroup()->Reserve();
-      CurrentBlock()->Append(UnwrapFlagsInstruction{
-          .value = v->get<ir::RegOr<ir::FlagsVal>>(), .result = result});
       if constexpr (base::meta<ToType> ==
-                    base::meta<ir::FlagsVal::underlying_type>) {
-        return result;
+                    base::meta<type::Flags::underlying_type>) {
+        return v->get<ir::RegOr<type::Flags::underlying_type>>();
       } else {
-        return Cast<ir::FlagsVal::underlying_type, ToType>(result);
+        return Cast<type::Flags::underlying_type, ToType>(
+            v->get<type::Flags::underlying_type>());
       }
     } else {
       UNREACHABLE(base::meta<ToType>, ", ", v.type());
@@ -346,7 +336,7 @@ struct Builder {
     if (t.is<type::Function>()) { return Value(Load<Fn>(r)); }
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                             uint16_t, uint32_t, uint64_t, float, double,
-                            type::Type, EnumVal, FlagsVal, Addr, String, Fn>(
+                            type::Type, Addr, String, Fn>(
         t, [&]<typename T>() { return Value(Load<T>(r)); });
   }
 

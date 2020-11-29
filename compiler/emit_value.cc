@@ -170,17 +170,18 @@ ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
   // TODO: Check the result of body verification.
   if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
-  using enum_t = ir::EnumVal::underlying_type;
   std::vector<std::string_view> names(node->enumerators().begin(),
                                       node->enumerators().end());
-  absl::flat_hash_map<uint64_t, ir::RegOr<enum_t>> specified_values;
+  absl::flat_hash_map<uint64_t, ir::RegOr<type::Enum::underlying_type>>
+      specified_values;
 
   uint64_t i = 0;
   for (uint64_t i = 0; i < names.size(); ++i) {
     if (auto iter = node->specified_values().find(names[i]);
         iter != node->specified_values().end()) {
       specified_values.emplace(
-          i, EmitValue(iter->second.get()).get<ir::RegOr<enum_t>>());
+          i, EmitValue(iter->second.get())
+                 .get<ir::RegOr<type::Enum::underlying_type>>());
     }
   }
 
@@ -390,17 +391,17 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
     for (type::Type const &result_type : result_types) {
       // TODO: Support all types
       type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                       uint16_t, uint32_t, uint64_t, float, double, ir::EnumVal,
-                       ir::FlagsVal>(result_type, [&]<typename T>() {
-        ASSERT(inst_iter != iter->block->instructions().end());
-        ASSERT(static_cast<bool>(*inst_iter) == true);
-        ASSERT(out_iter != out_params.regs().end());
-        auto &phi = inst_iter->template as<ir::PhiInstruction<T>>();
-        phi.blocks.push_back(builder().CurrentBlock());
-        phi.values.push_back(*out_iter);
-        ++inst_iter;
-        ++out_iter;
-      });
+                       uint16_t, uint32_t, uint64_t, float, double>(
+          result_type, [&]<typename T>() {
+            ASSERT(inst_iter != iter->block->instructions().end());
+            ASSERT(static_cast<bool>(*inst_iter) == true);
+            ASSERT(out_iter != out_params.regs().end());
+            auto &phi = inst_iter->template as<ir::PhiInstruction<T>>();
+            phi.blocks.push_back(builder().CurrentBlock());
+            phi.values.push_back(*out_iter);
+            ++inst_iter;
+            ++out_iter;
+          });
     }
 
     builder().Call(

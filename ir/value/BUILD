@@ -47,23 +47,6 @@ cc_test(
 )
 
 cc_library(
-    name = "enum_and_flags",
-    hdrs = ["enum_and_flags.h"],
-    deps = [
-        "//base:strong_types",
-    ],
-)
-
-cc_test(
-    name = "enum_and_flags_test",
-    srcs = ["enum_and_flags_test.cc"],
-    deps = [
-        ":enum_and_flags",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "fn",
     hdrs = ["fn.h"],
     deps = [
@@ -275,7 +258,6 @@ cc_library(
     deps = [
         ":addr",
         ":block",
-        ":enum_and_flags",
         ":hashtag",
         ":jump",
         ":label",

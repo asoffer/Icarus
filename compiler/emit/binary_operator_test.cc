@@ -139,27 +139,30 @@ INSTANTIATE_TEST_SUITE_P(
 
 INSTANTIATE_TEST_SUITE_P(
     FlagsOr, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "|", .type = "Color"}}),
-                     testing::ValuesIn({TestData{
-                         .lhs      = "Color.RED",
-                         .rhs      = "Color.BLUE",
-                         .expected = ir::Value(ir::FlagsVal(5))}})));
+    testing::Combine(
+        testing::ValuesIn({TestCase{.op = "|", .type = "Color"}}),
+        testing::ValuesIn({TestData{
+            .lhs      = "Color.RED",
+            .rhs      = "Color.BLUE",
+            .expected = ir::Value(type::Flags::underlying_type(5))}})));
 
 INSTANTIATE_TEST_SUITE_P(
     FlagsAnd, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "&", .type = "Color"}}),
-                     testing::ValuesIn({TestData{
-                         .lhs      = "Color.RED | Color.GREEN",
-                         .rhs      = "Color.BLUE | Color.GREEN",
-                         .expected = ir::Value(ir::FlagsVal(2))}})));
+    testing::Combine(
+        testing::ValuesIn({TestCase{.op = "&", .type = "Color"}}),
+        testing::ValuesIn({TestData{
+            .lhs      = "Color.RED | Color.GREEN",
+            .rhs      = "Color.BLUE | Color.GREEN",
+            .expected = ir::Value(type::Flags::underlying_type(2))}})));
 
 INSTANTIATE_TEST_SUITE_P(
     FlagsXor, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "^", .type = "Color"}}),
-                     testing::ValuesIn({TestData{
-                         .lhs      = "Color.RED | Color.GREEN",
-                         .rhs      = "Color.BLUE | Color.GREEN",
-                         .expected = ir::Value(ir::FlagsVal(5))}})));
+    testing::Combine(
+        testing::ValuesIn({TestCase{.op = "^", .type = "Color"}}),
+        testing::ValuesIn({TestData{
+            .lhs      = "Color.RED | Color.GREEN",
+            .rhs      = "Color.BLUE | Color.GREEN",
+            .expected = ir::Value(type::Flags::underlying_type(5))}})));
 
 template <char Op, typename T>
 TestData MakeTestData(T lhs, T rhs) {

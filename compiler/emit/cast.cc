@@ -30,8 +30,7 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
   if (type::IsNumeric(from_type)) {
     if (type::IsIntegral(from_type)) {
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                              uint16_t, uint32_t, uint64_t, float, double,
-                              ir::EnumVal, ir::FlagsVal>(
+                              uint16_t, uint32_t, uint64_t, float, double>(
           to_type, [&]<typename T>() {
             return ir::Value(
                 builder().CastTo<T>(type::Typed<ir::Value>(values, from_type)));

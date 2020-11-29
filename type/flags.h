@@ -14,13 +14,14 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/interpretter/execution_context.h"
-#include "ir/value/enum_and_flags.h"
 #include "module/module.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
 namespace type {
 struct Flags : public type::LegacyType {
+  using underlying_type = uint64_t;
+
   TYPE_FNS(Flags);
 
   Flags(module::BasicModule const *mod)
@@ -30,11 +31,11 @@ struct Flags : public type::LegacyType {
                                      .has_destructor           = 0}),
         mod_(mod) {}
 
-  void SetMembers(absl::flat_hash_map<std::string, ir::FlagsVal> vals) {
+  void SetMembers(absl::flat_hash_map<std::string, underlying_type> vals) {
     vals_ = std::move(vals);
-    for (auto &[name, val] : vals_) {
-      All |= val.value;
-      members_.emplace(val, name);
+    for (auto &[name, value] : vals_) {
+      All |= value;
+      members_.emplace(value, name);
     }
   }
 
@@ -47,11 +48,10 @@ struct Flags : public type::LegacyType {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  std::optional<ir::FlagsVal> Get(std::string_view name) const;
-  Typed<ir::FlagsVal, Flags> EmitLiteral(std::string_view member_name) const;
+  std::optional<underlying_type> Get(std::string_view name) const;
+  Typed<underlying_type, Flags> EmitLiteral(std::string_view member_name) const;
 
-  std::optional<std::string_view> name(ir::FlagsVal v) const {
-    LOG("flags", "%s", v);
+  std::optional<std::string_view> name(underlying_type v) const {
     auto it = members_.find(v);
     if (it == members_.end()) return std::nullopt;
     return it->second;
@@ -59,24 +59,22 @@ struct Flags : public type::LegacyType {
 
   bool IsDefaultInitializable() const { return false; }
 
-  uint64_t All = 0;
+  underlying_type All = 0;
 
   Completeness completeness_;
   module::BasicModule const *mod_;
 
   ICARUS_PRIVATE
   // TODO combine these into a single bidirectional map?
-  absl::flat_hash_map<std::string, ir::FlagsVal> vals_;
-  absl::flat_hash_map<ir::FlagsVal, std::string> members_;
+  absl::flat_hash_map<std::string, underlying_type> vals_;
+  absl::flat_hash_map<underlying_type, std::string> members_;
 };
 
 struct FlagsInstruction
     : base::Extend<FlagsInstruction>::With<ir::ByteCodeExtension,
                                            ir::InlineExtension> {
   void Apply(interpretter::ExecutionContext &ctx) const {
-    using flags_t = ir::FlagsVal::underlying_type;
-
-    absl::flat_hash_set<flags_t> used_vals;
+    absl::flat_hash_set<Flags::underlying_type> used_vals;
 
     for (auto const &[index, reg_or_value] : specified_values_) {
       used_vals.insert(ctx.resolve(reg_or_value));
@@ -84,7 +82,7 @@ struct FlagsInstruction
 
     absl::BitGen gen;
 
-    absl::flat_hash_map<std::string, ir::FlagsVal> mapping;
+    absl::flat_hash_map<std::string, Flags::underlying_type> mapping;
 
     for (size_t i = 0; i < names_.size(); ++i) {
       auto iter = specified_values_.find(i);
@@ -94,11 +92,12 @@ struct FlagsInstruction
       }
 
       bool success;
-      flags_t proposed_value;
+      Flags::underlying_type proposed_value;
       do {
-        proposed_value = flags_t{1} << absl::Uniform<flags_t>(
-                             absl::IntervalClosedOpen, gen, 0,
-                             std::numeric_limits<flags_t>::digits);
+        proposed_value =
+            Flags::underlying_type{1} << absl::Uniform<Flags::underlying_type>(
+                absl::IntervalClosedOpen, gen, 0,
+                std::numeric_limits<Flags::underlying_type>::digits);
         success = used_vals.insert(proposed_value).second;
       } while (not success);
       mapping.try_emplace(std::string(names_[i]), proposed_value);
@@ -131,12 +130,13 @@ struct XorFlagsInstruction
     ctx.current_frame().regs_.set(result,
                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
   }
-  static ir::FlagsVal Apply(ir::FlagsVal lhs, ir::FlagsVal rhs) {
+  static Flags::underlying_type Apply(Flags::underlying_type lhs,
+                                      Flags::underlying_type rhs) {
     return lhs ^ rhs;
   }
 
-  ir::RegOr<ir::FlagsVal> lhs;
-  ir::RegOr<ir::FlagsVal> rhs;
+  ir::RegOr<Flags::underlying_type> lhs;
+  ir::RegOr<Flags::underlying_type> rhs;
   ir::Reg result;
 };
 
@@ -150,12 +150,13 @@ struct AndFlagsInstruction
     ctx.current_frame().regs_.set(result,
                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
   }
-  static ir::FlagsVal Apply(ir::FlagsVal lhs, ir::FlagsVal rhs) {
+  static Flags::underlying_type Apply(Flags::underlying_type lhs,
+                                      Flags::underlying_type rhs) {
     return lhs & rhs;
   }
 
-  ir::RegOr<ir::FlagsVal> lhs;
-  ir::RegOr<ir::FlagsVal> rhs;
+  ir::RegOr<Flags::underlying_type> lhs;
+  ir::RegOr<Flags::underlying_type> rhs;
   ir::Reg result;
 };
 
@@ -169,12 +170,13 @@ struct OrFlagsInstruction
     ctx.current_frame().regs_.set(result,
                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
   }
-  static ir::FlagsVal Apply(ir::FlagsVal lhs, ir::FlagsVal rhs) {
+  static Flags::underlying_type Apply(Flags::underlying_type lhs,
+                                      Flags::underlying_type rhs) {
     return lhs | rhs;
   }
 
-  ir::RegOr<ir::FlagsVal> lhs;
-  ir::RegOr<ir::FlagsVal> rhs;
+  ir::RegOr<Flags::underlying_type> lhs;
+  ir::RegOr<Flags::underlying_type> rhs;
   ir::Reg result;
 };
 

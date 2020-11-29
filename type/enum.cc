@@ -4,15 +4,16 @@
 
 namespace type {
 
-std::optional<ir::EnumVal> Enum::Get(std::string_view name) const {
+std::optional<Enum::underlying_type> Enum::Get(std::string_view name) const {
   if (auto iter = vals_.find(name); iter != vals_.end()) {
     return iter->second;
   }
   return std::nullopt;
 }
 
-Typed<ir::EnumVal, Enum> Enum::EmitLiteral(std::string_view member_name) const {
-  return Typed<ir::EnumVal, Enum>(vals_.at(member_name), this);
+Typed<Enum::underlying_type, Enum> Enum::EmitLiteral(
+    std::string_view member_name) const {
+  return Typed<underlying_type, Enum>(vals_.at(member_name), this);
 }
 
 void Enum::WriteTo(std::string *result) const {
@@ -21,11 +22,13 @@ void Enum::WriteTo(std::string *result) const {
 }
 
 // TODO make this the smallest size that fits.
-core::Bytes Enum::bytes(core::Arch const &a) const { return core::Bytes{8}; }
+core::Bytes Enum::bytes(core::Arch const &a) const {
+  return core::Bytes::Get<underlying_type>();
+}
 
 // TODO make this the smallest size that fits.
 core::Alignment Enum::alignment(core::Arch const &a) const {
-  return core::Alignment{8};
+  return core::Alignment::Get<underlying_type>();
 }
 
 }  // namespace type

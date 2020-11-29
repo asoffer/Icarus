@@ -4,7 +4,6 @@
 
 #include "ir/value/addr.h"
 #include "ir/value/block.h"
-#include "ir/value/enum_and_flags.h"
 #include "ir/value/module_id.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
@@ -25,7 +24,6 @@
 #include "type/typed_value.h"
 
 namespace ir {
-struct FlagsVal;
 struct Jump;
 struct Fn;
 }  // namespace ir
@@ -76,6 +74,14 @@ type::Type Get() {
 
 template <typename T>
 bool Compare(::type::Type t) {
+  if constexpr (base::meta<T> == base::meta<type::Enum::underlying_type>) {
+    if (t.is<type::Enum>()) { return true; }
+  }
+
+  if constexpr (base::meta<T> == base::meta<type::Flags::underlying_type>) {
+    if (t.is<type::Flags>()) { return true; }
+  }
+
   if constexpr (base::meta<T> == base::meta<bool>) {
     return t == ::type::Bool;
   } else if constexpr (base::meta<T> == base::meta<int8_t>) {
@@ -105,10 +111,6 @@ bool Compare(::type::Type t) {
   } else if constexpr (base::meta<T> == base::meta<std::string_view> or
                        base::meta<T> == base::meta<ir::String>) {
     return t == type::ByteView;
-  } else if constexpr (base::meta<T> == base::meta<ir::EnumVal>) {
-    return t.is<::type::Enum>();
-  } else if constexpr (base::meta<T> == base::meta<ir::FlagsVal>) {
-    return t.is<::type::Flags>();
   } else if constexpr (base::meta<T> == base::meta<ir::Addr>) {
     return t.is<::type::Pointer>() or t == type::NullPtr;
   } else if constexpr (base::meta<T> == base::meta<ir::Scope>) {
@@ -158,10 +160,9 @@ auto ApplyTypes(Type t, Fn &&fn) {
 template <typename Fn>
 auto Apply(Type t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                    uint32_t, uint64_t, float, double, type::Type, ir::EnumVal,
-                    ir::FlagsVal, ir::Addr, ir::String, ir::ModuleId, ir::Scope,
-                    ir::Fn, ir::Jump, ir::Block, ir::GenericFn>(
-      t, std::forward<Fn>(fn));
+                    uint32_t, uint64_t, float, double, type::Type, ir::Addr,
+                    ir::String, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
+                    ir::Block, ir::GenericFn>(t, std::forward<Fn>(fn));
 }
 
 }  // namespace type
