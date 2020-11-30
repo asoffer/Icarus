@@ -20,4 +20,4 @@ syntax match Identifier "#\.[a-zA-Z_0-9]\+"
 syntax match Comment "\/\/.*$"
 syntax region MultiLineComment start=/\/\*/ skip=/\\./ end=/\*\// contains=MultiLineComment
 hi link MultiLineComment Comment
-let b:curretn_syntax = "icarus"
+let b:current_syntax = "icarus"
