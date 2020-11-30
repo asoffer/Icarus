@@ -31,6 +31,7 @@ cc_library(
 cc_library(
     name = "importer",
     hdrs = ["importer.h"],
+    srcs = ["importer.cc"],
     deps = [
         ":module",
         "//frontend/source:file_name",
