@@ -1,7 +1,9 @@
+#include <cstdlib>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
@@ -9,6 +11,7 @@
 #include "absl/flags/parse.h"
 #include "absl/flags/usage.h"
 #include "absl/flags/usage_config.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
 #include "backend/function.h"
 #include "backend/type.h"
@@ -48,6 +51,9 @@ ABSL_FLAG(std::string, link, "",
 ABSL_FLAG(bool, debug_parser, false,
           "Step through the parser step-by-step for debugging.");
 ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
+ABSL_FLAG(std::vector<std::string>, module_paths, {},
+          "Comma-separated list of paths to search when importing modules. "
+          "Defaults to $ICARUS_MODULE_PATH.");
 
 namespace debug {
 extern bool parser;
@@ -175,6 +181,10 @@ bool HelpFilter(absl::string_view module) {
 }
 
 int main(int argc, char *argv[]) {
+  // Provide a new default for --module_paths.
+  if (char *const env_str = std::getenv("ICARUS_MODULE_PATH")) {
+    absl::SetFlag(&FLAGS_module_paths, absl::StrSplit(env_str, ':'));
+  }
   absl::FlagsUsageConfig flag_config;
   flag_config.contains_helpshort_flags = &HelpFilter;
   flag_config.contains_help_flags      = &HelpFilter;
