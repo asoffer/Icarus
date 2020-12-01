@@ -20,8 +20,8 @@ struct ExecutableModule : CompiledModule {
 
  protected:
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
-                    diagnostic::DiagnosticConsumer &diag) override {
-    module::FileImporter<LibraryModule> importer;
+                    diagnostic::DiagnosticConsumer &diag,
+                    module::Importer &importer) override {
     Compiler c({
         .data                = context(),
         .diagnostic_consumer = diag,

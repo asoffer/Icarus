@@ -1,4 +1,5 @@
 #include "repl/module.h"
+
 #include "absl/strings/str_format.h"
 #include "ast/ast.h"
 #include "ast/expression.h"
@@ -32,7 +33,8 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
 }  // namespace
 
 void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
-                          diagnostic::DiagnosticConsumer &diag) {
+                          diagnostic::DiagnosticConsumer &diag,
+                          module::Importer &importer) {
   compiler::Compiler c({
       .data                = context(),
       .diagnostic_consumer = diag,

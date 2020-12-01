@@ -68,7 +68,7 @@ ast::Call const* MakeCall(
       frontend::SourceRange{}, ParseAs<ast::Expression>(std::move(fn)),
       MakeArguments(std::move(pos_args), std::move(named_args)));
   auto* expr = call_expr.get();
-  module->AppendNode(std::move(call_expr), module->consumer);
+  module->AppendNode(std::move(call_expr), module->consumer, module->importer);
   return expr;
 }
 

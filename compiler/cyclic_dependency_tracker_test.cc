@@ -17,7 +17,8 @@ using ::testing::Pair;
 struct TestModule : CompiledModule {
   ~TestModule() override { CompilationComplete(); }
   void ProcessNodes(base::PtrSpan<ast::Node const>,
-                    diagnostic::DiagnosticConsumer&) override {}
+                    diagnostic::DiagnosticConsumer&,
+                    module::Importer&) override {}
 };
 
 TEST(CyclicDependencyTracker, NoErrors) {

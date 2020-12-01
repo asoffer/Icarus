@@ -26,17 +26,19 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
 void BasicModule::ExportsComplete() { exports_complete_.Notify(); }
 
 void BasicModule::AppendNode(std::unique_ptr<ast::Node> node,
-                             diagnostic::DiagnosticConsumer &diag) {
+                             diagnostic::DiagnosticConsumer &diag,
+                             Importer &importer) {
   InitializeNodes(base::PtrSpan<ast::Node>(&node, 1));
-  ProcessNodes(base::PtrSpan<ast::Node const>(&node, 1), diag);
+  ProcessNodes(base::PtrSpan<ast::Node const>(&node, 1), diag, importer);
   nodes_.push_back(std::move(node));
 }
 
 // TODO not sure this is necessary.
 void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
-                              diagnostic::DiagnosticConsumer &diag) {
+                              diagnostic::DiagnosticConsumer &diag,
+                              Importer &importer) {
   InitializeNodes(nodes);
-  ProcessNodes(nodes, diag);
+  ProcessNodes(nodes, diag, importer);
   nodes_.insert(nodes_.end(), std::make_move_iterator(nodes.begin()),
                 std::make_move_iterator(nodes.end()));
 }

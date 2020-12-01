@@ -12,9 +12,8 @@ struct Module : compiler::CompiledModule {
   ~Module() override {}
 
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
-                    diagnostic::DiagnosticConsumer &diag) override;
-
-  module::FileImporter<compiler::LibraryModule> importer;
+                    diagnostic::DiagnosticConsumer &diag,
+                    module::Importer &importer) override;
 };
 
 }  // namespace repl
