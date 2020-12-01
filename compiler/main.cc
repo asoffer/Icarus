@@ -184,9 +184,9 @@ int main(int argc, char *argv[]) {
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
 
-  for (absl::string_view key : absl::GetFlag(FLAGS_log)) {
-    base::EnableLogging(key);
-  }
+  std::vector<std::string> log_keys = absl::GetFlag(FLAGS_log);
+  for (absl::string_view key : log_keys) { base::EnableLogging(key); }
+
   if (std::string lib = absl::GetFlag(FLAGS_link); not lib.empty()) {
     ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
   }
