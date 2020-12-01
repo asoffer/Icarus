@@ -29,6 +29,7 @@ template <typename T>
 struct ExtendedModule;
 
 // Forward-declare to break the dependency cycle.
+// TODO: Fix this!
 struct Importer;
 
 // BasicModule:

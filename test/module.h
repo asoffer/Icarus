@@ -32,7 +32,8 @@ struct TestModule : compiler::CompiledModule {
   void AppendCode(std::string code) {
     code.push_back('\n');
     frontend::StringSource source(std::move(code));
-    AppendNodes(frontend::Parse(source, consumer, next_line_num), consumer);
+    AppendNodes(frontend::Parse(source, consumer, next_line_num), consumer,
+                importer);
     next_line_num += 100;
   }
 
@@ -41,7 +42,7 @@ struct TestModule : compiler::CompiledModule {
     auto node       = test::ParseAs<NodeType>(std::move(code), next_line_num);
     auto const* ptr = ASSERT_NOT_NULL(node.get());
     next_line_num += 100;
-    AppendNode(std::move(node), consumer);
+    AppendNode(std::move(node), consumer, importer);
     return ptr;
   }
 
@@ -51,7 +52,8 @@ struct TestModule : compiler::CompiledModule {
 
  protected:
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
-                    diagnostic::DiagnosticConsumer& diag) override {
+                    diagnostic::DiagnosticConsumer& diag,
+                    module::Importer&) override {
     compiler.VerifyAll(nodes);
     compiler.CompleteDeferredBodies();
   }
