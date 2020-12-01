@@ -27,7 +27,7 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
     compiler->builder().ReturnJump();
   }
 
-  interpretter::Execute(&fn, base::untyped_buffer(0), {});
+  interpreter::Execute(&fn, base::untyped_buffer(0), {});
 }
 
 }  // namespace

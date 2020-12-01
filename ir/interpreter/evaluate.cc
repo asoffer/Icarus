@@ -1,11 +1,11 @@
-#include "ir/interpretter/evaluate.h"
+#include "ir/interpreter/evaluate.h"
 
 #include "ast/expression.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
-#include "ir/interpretter/architecture.h"
-#include "ir/interpretter/execution_context.h"
-#include "ir/interpretter/foreign.h"
+#include "ir/interpreter/architecture.h"
+#include "ir/interpreter/execution_context.h"
+#include "ir/interpreter/foreign.h"
 #include "ir/value/generic_fn.h"
 #include "ir/value/value.h"
 #include "type/function.h"
@@ -13,7 +13,7 @@
 #include "type/generic_struct.h"
 #include "type/util.h"
 
-namespace interpretter {
+namespace interpreter {
 
 template <typename InstSet>
 static void CallFn(ir::NativeFn fn, StackFrame *frame,
@@ -73,13 +73,13 @@ void Execute(ExecutionContext &ctx, ir::Fn fn, base::untyped_buffer arguments,
 inline constexpr size_t kMaxSize = ir::Value::value_size_v;
 
 using exec_t = void (*)(base::untyped_buffer::const_iterator *,
-                        interpretter::ExecutionContext &,
+                        interpreter::ExecutionContext &,
                         absl::Span<ir::Addr const>);
 
 template <typename InstSet, typename Inst>
 constexpr exec_t GetInstruction() {
   return [](base::untyped_buffer::const_iterator *iter,
-            interpretter::ExecutionContext &ctx,
+            interpreter::ExecutionContext &ctx,
             absl::Span<ir::Addr const> ret_slots) {
     if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
       ir::Fn f = ctx.resolve(iter->read<ir::RegOr<ir::Fn>>().get());
@@ -88,7 +88,7 @@ constexpr exec_t GetInstruction() {
       type::Function const *fn_type = f.type();
       LOG("call", "%s: %s", f, fn_type->to_string());
 
-      // TODO you probably want interpretter::Arguments or something.
+      // TODO you probably want interpreter::Arguments or something.
       size_t num_inputs = fn_type->params().size();
       size_t num_regs   = 0;
       if (f.kind() == ir::Fn::Kind::Native) {
@@ -102,7 +102,7 @@ constexpr exec_t GetInstruction() {
 
       // TODO not actually optional once we handle foreign functions, we just
       // need deferred construction?
-      std::optional<interpretter::StackFrame> frame;
+      std::optional<interpreter::StackFrame> frame;
       if (f.kind() == ir::Fn::Kind::Native) {
         frame = ctx.MakeStackFrame(f.native());
       }
@@ -131,7 +131,7 @@ constexpr exec_t GetInstruction() {
             }
             std::memcpy(call_buf.raw((num_regs + i) * kMaxSize), iter->raw(),
                         kMaxSize);
-            iter->skip(t.bytes(interpretter::kArchitecture).value());
+            iter->skip(t.bytes(interpreter::kArchitecture).value());
           }
         }
       }
@@ -145,7 +145,7 @@ constexpr exec_t GetInstruction() {
         ir::Reg reg = iter->read<ir::Reg>();
         // NOTE: This is a hack using heap address slots to represent
         // registers since they are both void* and are used identically in the
-        // interpretter.
+        // interpreter.
         ir::Addr addr =
             (fn_type->output()[i].get()->is_big())
                 ? ctx.resolve<ir::Addr>(reg)
@@ -365,4 +365,4 @@ static void CallFn(ir::NativeFn fn, StackFrame *frame,
   ExecuteBlocks<InstSet>(ctx, ret_slots);
 }
 
-}  // namespace interpretter
+}  // namespace interpreter

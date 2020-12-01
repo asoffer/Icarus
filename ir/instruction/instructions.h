@@ -15,10 +15,10 @@
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
-#include "ir/interpretter/architecture.h"
-#include "ir/interpretter/execution_context.h"
-#include "ir/interpretter/foreign.h"
-#include "ir/interpretter/stack_frame.h"
+#include "ir/interpreter/architecture.h"
+#include "ir/interpreter/execution_context.h"
+#include "ir/interpreter/foreign.h"
+#include "ir/interpreter/stack_frame.h"
 #include "ir/out_params.h"
 #include "ir/value/block.h"
 #include "ir/value/fn.h"
@@ -59,13 +59,13 @@ struct NotInstruction
   Reg result;
 };
 
-// TODO Morph this into interpretter break-point instructions.
+// TODO Morph this into interpreter break-point instructions.
 struct DebugIrInstruction
     : base::Extend<DebugIrInstruction>::With<ByteCodeExtension, InlineExtension,
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "debug-ir";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
+  void Apply(interpreter::ExecutionContext& ctx) const {
     std::cerr << *ctx.current_frame().fn_.get();
   }
 };
@@ -75,7 +75,7 @@ struct InitInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "init %2$s";
 
-  interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       ir::Fn f   = *s->init_;
       auto frame = ctx.MakeStackFrame(f.native());
@@ -108,7 +108,7 @@ struct DestroyInstruction
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "destroy %2$s";
 
-  interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       ASSERT(s->dtor_.has_value() == true);
       ir::Fn f   = *s->dtor_;
@@ -142,7 +142,7 @@ struct CopyInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "copy %2$s to %3$s";
 
-  interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       // TODO: This copy/move are currently indistinguishable.
       ir::Fn f = *ASSERT_NOT_NULL(s->Assignment(s));
@@ -166,7 +166,7 @@ struct MoveInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "move %2$s to %3$s";
 
-  interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       // TODO: This copy/move are currently indistinguishable.
       ir::Fn f = *ASSERT_NOT_NULL(s->Assignment(s));
@@ -185,12 +185,12 @@ struct MoveInstruction
   ir::RegOr<ir::Addr> to;
 };
 
-[[noreturn]] inline void FatalInterpretterError(std::string_view err_msg) {
+[[noreturn]] inline void FatalInterpreterError(std::string_view err_msg) {
   // TODO: Add a diagnostic explaining the failure.
   absl::FPrintF(stderr,
                 R"(
   ----------------------------------------
-  Fatal interpretter failure:
+  Fatal interpreter failure:
     %s
   ----------------------------------------)"
                 "\n",
@@ -204,18 +204,18 @@ struct LoadSymbolInstruction
   static constexpr std::string_view kDebugFormat =
       "%3$s = load-symbol %1$s: %2$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
+  void Apply(interpreter::ExecutionContext& ctx) const {
     // TODO: We could probably extract this into two separate instructions (one
     // for functions and one for pointers) so that we can surface errors during
     // code-gen without the UNREACHABLE.
     if (auto* fn_type = type.if_as<type::Function>()) {
-      ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
-                void (*sym)(), interpretter::LoadFunctionSymbol(name.get()));
+      ASSIGN_OR(FatalInterpreterError(_.error().to_string()),  //
+                void (*sym)(), interpreter::LoadFunctionSymbol(name.get()));
       ctx.current_frame().regs_.set(result,
                                     ir::Fn(ir::ForeignFn(sym, fn_type)));
     } else if (type.is<type::Pointer>()) {
-      ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
-                void* sym, interpretter::LoadDataSymbol(name.get()));
+      ASSIGN_OR(FatalInterpreterError(_.error().to_string()),  //
+                void* sym, interpreter::LoadDataSymbol(name.get()));
       ctx.current_frame().regs_.set(result, ir::Addr::Heap(sym));
     } else {
       UNREACHABLE(type.to_string());
@@ -243,9 +243,9 @@ struct TypeInfoInstruction
   uint64_t Resolve() const {
     switch (kind) {
       case Kind::Alignment:
-        return type.value().alignment(interpretter::kArchitecture).value();
+        return type.value().alignment(interpreter::kArchitecture).value();
       case Kind::Bytes:
-        return type.value().bytes(interpretter::kArchitecture).value();
+        return type.value().bytes(interpreter::kArchitecture).value();
     }
   }
 
@@ -315,7 +315,7 @@ struct StructIndexInstruction
 
   Addr Resolve() const {
     return addr.value() +
-           struct_type->offset(index.value(), interpretter::kArchitecture);
+           struct_type->offset(index.value(), interpreter::kArchitecture);
   }
 
   RegOr<Addr> addr;
@@ -332,7 +332,7 @@ struct TupleIndexInstruction
 
   Addr Resolve() const {
     return addr.value() +
-           tuple->offset(index.value(), interpretter::kArchitecture);
+           tuple->offset(index.value(), interpreter::kArchitecture);
   }
 
   RegOr<Addr> addr;
@@ -350,8 +350,8 @@ struct PtrIncrInstruction
   Addr Resolve() const {
     return addr.value() +
            core::FwdAlign(
-               ptr->pointee().bytes(interpretter::kArchitecture),
-               ptr->pointee().alignment(interpretter::kArchitecture)) *
+               ptr->pointee().bytes(interpreter::kArchitecture),
+               ptr->pointee().alignment(interpreter::kArchitecture)) *
                index.value();
   }
 

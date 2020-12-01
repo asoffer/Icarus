@@ -26,7 +26,7 @@
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
 #include "ir/compiled_fn.h"
-#include "ir/interpretter/evaluate.h"
+#include "ir/interpreter/evaluate.h"
 #include "module/module.h"
 #include "opt/opt.h"
 
@@ -72,8 +72,8 @@ int Interpret(frontend::FileName const &file_name) {
 
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
-  main_fn.WriteByteCode<interpretter::instruction_set_t>();
-  interpretter::Execute(
+  main_fn.WriteByteCode<interpreter::instruction_set_t>();
+  interpreter::Execute(
       &main_fn, base::untyped_buffer::MakeFull(main_fn.num_regs() * 16), {});
 
   return 0;
@@ -83,7 +83,7 @@ int Interpret(frontend::FileName const &file_name) {
 }  // namespace compiler
 
 bool HelpFilter(std::string_view module) {
-  return absl::EndsWith(module, "/interpretter.cc");
+  return absl::EndsWith(module, "/interpreter.cc");
 }
 
 int main(int argc, char *argv[]) {

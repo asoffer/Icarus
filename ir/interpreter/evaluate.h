@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_INTERPRETTER_EVALUATE_H
-#define ICARUS_IR_INTERPRETTER_EVALUATE_H
+#ifndef ICARUS_IR_INTERPRETER_EVALUATE_H
+#define ICARUS_IR_INTERPRETER_EVALUATE_H
 
 #include <type_traits>
 
@@ -13,7 +13,7 @@
 #include "ir/instruction/core.h"
 #include "ir/instruction/instructions.h"
 #include "ir/instruction/set.h"
-#include "ir/interpretter/evaluation_failure.h"
+#include "ir/interpreter/evaluation_failure.h"
 #include "ir/value/value.h"
 #include "type/array.h"
 #include "type/enum.h"
@@ -22,7 +22,7 @@
 #include "type/pointer.h"
 #include "type/struct.h"
 
-namespace interpretter {
+namespace interpreter {
 
 // TODO: Include ModInstruction, but only for non-floating-point types.
 template <typename... Ts>
@@ -177,6 +177,6 @@ T EvaluateAs(ir::CompiledFn &&fn) {
   return result_buf.get<T>(0);
 }
 
-}  // namespace interpretter
+}  // namespace interpreter
 
-#endif  // ICARUS_IR_INTERPRETTER_EVALUATE_H
+#endif  // ICARUS_IR_INTERPRETER_EVALUATE_H

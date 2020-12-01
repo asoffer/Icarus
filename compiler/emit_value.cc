@@ -11,8 +11,8 @@
 #include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/compiled_jump.h"
-#include "ir/interpretter/evaluate.h"
-#include "ir/interpretter/execution_context.h"
+#include "ir/interpreter/evaluate.h"
+#include "ir/interpreter/execution_context.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/generic_fn.h"
 #include "ir/value/reg.h"
@@ -464,7 +464,7 @@ WorkItem::Result Compiler::CompleteStruct(
   ASSIGN_OR(return WorkItem::Result::Failure,  //
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
-  interpretter::Execute(std::move(fn));
+  interpreter::Execute(std::move(fn));
   s->complete();
   LOG("struct", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());
@@ -484,7 +484,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   ASSIGN_OR(return WorkItem::Result::Failure,  //
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
-  interpretter::Execute(std::move(fn));
+  interpreter::Execute(std::move(fn));
   s->complete();
   LOG("struct", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());

@@ -143,7 +143,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           }
 
           c.builder().ReturnJump();
-          full_dtor->WriteByteCode<interpretter::instruction_set_t>();
+          full_dtor->WriteByteCode<interpreter::instruction_set_t>();
 
           dtor = full_dtor;
         }
@@ -184,7 +184,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 
           c.builder().ReturnJump();
         }
-        fn->WriteByteCode<interpretter::instruction_set_t>();
+        fn->WriteByteCode<interpreter::instruction_set_t>();
       }
       assignments.push_back(fn);
     }
@@ -197,7 +197,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     c.builder().ReturnJump();
   }
 
-  fn.WriteByteCode<interpretter::instruction_set_t>();
+  fn.WriteByteCode<interpreter::instruction_set_t>();
 
   return fn;
 }
@@ -222,7 +222,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     ASSIGN_OR(return WorkItem::Result::Failure,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
-    interpretter::Execute(std::move(fn));
+    interpreter::Execute(std::move(fn));
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());
@@ -239,7 +239,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     ASSIGN_OR(return WorkItem::Result::Failure,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
-    interpretter::Execute(std::move(fn));
+    interpreter::Execute(std::move(fn));
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());

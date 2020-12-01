@@ -27,7 +27,7 @@
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
 #include "ir/compiled_fn.h"
-#include "ir/interpretter/execution_context.h"
+#include "ir/interpreter/execution_context.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"

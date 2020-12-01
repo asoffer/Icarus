@@ -1,11 +1,11 @@
-#ifndef ICARUS_IR_INTERPRETTER_REGISTER_ARRAY_H
-#define ICARUS_IR_INTERPRETTER_REGISTER_ARRAY_H
+#ifndef ICARUS_IR_INTERPRETER_REGISTER_ARRAY_H
+#define ICARUS_IR_INTERPRETER_REGISTER_ARRAY_H
 
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
 #include "ir/value/reg.h"
 
-namespace interpretter {
+namespace interpreter {
 
 // Represents a a collection of registers available within a given stack frame.
 struct RegisterArray {
@@ -75,6 +75,6 @@ struct RegisterArray {
   base::untyped_buffer data_;
 };
 
-}  // namespace interpretter
+}  // namespace interpreter
 
-#endif  // ICARUS_IR_INTERPRETTER_REGISTER_ARRAY_H
+#endif  // ICARUS_IR_INTERPRETER_REGISTER_ARRAY_H

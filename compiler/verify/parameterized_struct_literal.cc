@@ -53,7 +53,7 @@ type::QualType Compiler::VerifyType(
       auto fn = *std::move(maybe_fn);
 
       // TODO: What if execution fails.
-      interpretter::Execute(std::move(fn));
+      interpreter::Execute(std::move(fn));
       LOG("ParameterizedStructLiteral",
           "Completed %s which is a (parameterized) struct %s with %u field(s).",
           node->DebugString(), *s, s->fields().size());

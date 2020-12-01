@@ -25,7 +25,7 @@ Icarus depends on the C++ standard library, Abseil, LLVM, and GoogleTest. Other 
 
 ## High-level design philosophy
 
-The Icarus project intends to build high-quality libraries and executables for working with the Icarus programming language. This includes an interpretter, compiler, REPL, code formatter, syntax-tree matching library, and several other language extension mechanisms. We wish for the codebase to be strongly modular. Each binary should only require the components it needs. For example, the code formatter may rely the syntax tree, but should not require any type-checking facilities.
+The Icarus project intends to build high-quality libraries and executables for working with the Icarus programming language. This includes an interpreter, compiler, REPL, code formatter, syntax-tree matching library, and several other language extension mechanisms. We wish for the codebase to be strongly modular. Each binary should only require the components it needs. For example, the code formatter may rely the syntax tree, but should not require any type-checking facilities.
 
 ## Layout of source code
 
@@ -37,20 +37,20 @@ This section describes the design of the Icarus codebase, both in its current st
 * `//core` -- Common utilities that are specific to programming language infrastructure. This includes things like strong-types for type sizes and alignment, function parameters and arguments, etc. `//core` may only depend on itself and `//base`.
 * `//type` -- Holds everything corresponding to the Icarus type system.
 * `//ast` -- Holds the entirety of the abstract syntaxt tree.
-* `//ir` -- Holds everything needed for the intermediate representation (values in `//ir/value`, instructions in `//ir/instruction`, basic blocks and functions in `//ir/blocks`, and an interpretter in `//ir/interpretter`). Ideally, nothing in `//ir` would depend on anything outside `//base`, `//core`, other than `type::Type`.
+* `//ir` -- Holds everything needed for the intermediate representation (values in `//ir/value`, instructions in `//ir/instruction`, basic blocks and functions in `//ir/blocks`, and an interpreter in `//ir/interpreter`). Ideally, nothing in `//ir` would depend on anything outside `//base`, `//core`, other than `type::Type`.
 * `//frontend` -- All lexing and parsing.
 
 ### Expected directory structure changes
 
-#### Interpretter changes
+#### Interpreter changes
 
-As a long-term goal, we want to make the IR interpretter highly extensible, by having the interpretter templated on the set of instructions available. The interpretter will come with several core instructions (phi-nodes, loads, stores, function calls, and jumps). All other instructions will depend on the interpretter infrastructure and must themselves describe how to be executed. To achieve this goal we intend to move most instructions out of `//ir/instruction` and closer to their use. For example, `ArrayInstruction` which constructs an array type from a type and a length has been moved already to `//type:array`, adjacent to the `type::Array` struct.
+As a long-term goal, we want to make the IR interpreter highly extensible, by having the interpreter templated on the set of instructions available. The interpreter will come with several core instructions (phi-nodes, loads, stores, function calls, and jumps). All other instructions will depend on the interpreter infrastructure and must themselves describe how to be executed. To achieve this goal we intend to move most instructions out of `//ir/instruction` and closer to their use. For example, `ArrayInstruction` which constructs an array type from a type and a length has been moved already to `//type:array`, adjacent to the `type::Array` struct.
 
-There are several benefits to this extensibility, even if the interpretter is only ever used for the Icarus language:
+There are several benefits to this extensibility, even if the interpreter is only ever used for the Icarus language:
 
 * Long-term changes to the language are made easier.
 * We can add mock/fake instructions to be used during testing to inspect the IR.
-* We can more easily add compile-time-only instructions (for example, baking in a debugger to the interpretter that executes code at compile-time).
+* We can more easily add compile-time-only instructions (for example, baking in a debugger to the interpreter that executes code at compile-time).
 
 #### Type system changes
 

@@ -12,7 +12,7 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
-#include "ir/interpretter/execution_context.h"
+#include "ir/interpreter/execution_context.h"
 #include "ir/out_params.h"
 #include "ir/value/generic_fn.h"
 #include "ir/value/jump.h"
@@ -148,7 +148,7 @@ struct StoreInstruction
   static constexpr std::string_view kDebugFormat = "store %1$s into [%2$s]";
   using type                                     = T;
 
-  void Apply(interpretter::ExecutionContext& ctx) {
+  void Apply(interpreter::ExecutionContext& ctx) {
     ctx.Store(ctx.resolve(location), ctx.resolve(value));
   }
 
@@ -234,7 +234,7 @@ struct CommentInstruction
     return {};
   }
   void WriteByteCode(ByteCodeWriter*) const {}
-  void Apply(interpretter::ExecutionContext&) const {}
+  void Apply(interpreter::ExecutionContext&) const {}
 
   std::string comment;
 };

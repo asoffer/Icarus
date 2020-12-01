@@ -21,7 +21,7 @@ namespace ir {
 //
 // TODO It would be nice if this class also tracked lifetimes of stack
 // allocations (maybe by also accepting scopes to which the allocations are
-// tied) so that the interpretter could reuse stack space for allocations with
+// tied) so that the interpreter could reuse stack space for allocations with
 // non-overlapping lifetimes.
 struct RegisterAllocator {
   // Constructs a register allocatior to be used with a group that has

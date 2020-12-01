@@ -83,7 +83,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
       });
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
+    fn->WriteByteCode<interpreter::instruction_set_t>();
     // TODO: Remove const_cast.
     const_cast<type::Array *>(r.type())->SetInitializer(fn);
   }
@@ -102,7 +102,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
       });
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
+    fn->WriteByteCode<interpreter::instruction_set_t>();
     // TODO: Remove const_cast.
     const_cast<type::Array *>(r.type())->SetDestructor(fn);
   }
@@ -120,7 +120,7 @@ void Compiler::EmitCopyAssign(
       EmitArrayAssignment<Copy>(*this, to.type(),
                                 &from.type().as<type::Array>());
     }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
+    fn->WriteByteCode<interpreter::instruction_set_t>();
   }
   builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
 }
@@ -136,7 +136,7 @@ void Compiler::EmitMoveAssign(
       EmitArrayAssignment<Move>(*this, to.type(),
                                 &from.type().as<type::Array>());
     }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
+    fn->WriteByteCode<interpreter::instruction_set_t>();
   }
   builder().Move(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
 }
@@ -261,7 +261,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
     }
     // TODO: Remove this hack.
     const_cast<type::Struct *>(r.type())->init_ = fn;
-    fn->WriteByteCode<interpretter::instruction_set_t>();
+    fn->WriteByteCode<interpreter::instruction_set_t>();
   }
   current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
 }
@@ -284,7 +284,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Tuple> const &r) {
 
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
+    fn->WriteByteCode<interpreter::instruction_set_t>();
   }
   current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
 }
@@ -303,7 +303,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> const &r) {
 
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
+    fn->WriteByteCode<interpreter::instruction_set_t>();
   }
   current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
@@ -325,7 +325,7 @@ void Compiler::EmitMoveAssign(
 
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
+    fn->WriteByteCode<interpreter::instruction_set_t>();
   }
 
   builder().Move(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
@@ -348,7 +348,7 @@ void Compiler::EmitCopyAssign(
 
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
+    fn->WriteByteCode<interpreter::instruction_set_t>();
   }
 
   builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));

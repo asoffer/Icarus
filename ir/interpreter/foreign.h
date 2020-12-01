@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_INTERPRETTER_FOREIGN_H
-#define ICARUS_IR_INTERPRETTER_FOREIGN_H
+#ifndef ICARUS_IR_INTERPRETER_FOREIGN_H
+#define ICARUS_IR_INTERPRETER_FOREIGN_H
 
 #include <string_view>
 
@@ -10,7 +10,7 @@
 #include "ir/value/addr.h"
 #include "ir/value/foreign_fn.h"
 
-namespace interpretter {
+namespace interpreter {
 
 base::expected<void *> LoadDataSymbol(std::string_view name);
 base::expected<void (*)()> LoadFunctionSymbol(std::string_view name);
@@ -20,6 +20,6 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
             absl::Span<ir::Addr const> return_slots,
             base::untyped_buffer_view stack);
 
-}  // namespace interpretter
+}  // namespace interpreter
 
-#endif  // ICARUS_IR_INTERPRETTER_FOREIGN_H
+#endif  // ICARUS_IR_INTERPRETER_FOREIGN_H

@@ -1,4 +1,4 @@
-#include "ir/interpretter/foreign.h"
+#include "ir/interpreter/foreign.h"
 
 #include <dlfcn.h>
 #include <ffi.h>
@@ -12,7 +12,7 @@
 #include "type/primitive.h"
 #include "type/tuple.h"
 
-namespace interpretter {
+namespace interpreter {
 using void_fn_ptr = void (*)();
 
 constexpr int kMaxSize = ir::Value::value_size_v;
@@ -180,4 +180,4 @@ base::expected<void_fn_ptr> LoadFunctionSymbol(std::string_view name) {
   return base::unexpected(err);
 }
 
-}  // namespace interpretter
+}  // namespace interpreter

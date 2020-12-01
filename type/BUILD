@@ -298,7 +298,7 @@ cc_library(
         "//ir:compiled_fn",
         "//ir/instruction:base",
         "//ir/instruction:inliner",
-        "//ir/interpretter:execution_context",
+        "//ir/interpreter:execution_context",
         "//ir/value",
         "//ir/value:fn",
         "//ir/value:hashtag",

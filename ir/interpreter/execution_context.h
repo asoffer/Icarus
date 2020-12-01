@@ -1,19 +1,19 @@
-#ifndef ICARUS_IR_INTERPRETTER_EXECUTION_CONETXT_H
-#define ICARUS_IR_INTERPRETTER_EXECUTION_CONETXT_H
+#ifndef ICARUS_IR_INTERPRETER_EXECUTION_CONETXT_H
+#define ICARUS_IR_INTERPRETER_EXECUTION_CONETXT_H
 
 #include <cstdlib>
 #include <vector>
 
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
-#include "ir/interpretter/stack_frame.h"
+#include "ir/interpreter/stack_frame.h"
 #include "ir/read_only_data.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/value.h"
 
-namespace interpretter {
+namespace interpreter {
 
 // An ExecutionContext holds all the required state needed during the execution
 // of an `ir::Fn`. This includes references to stack frames, the state of all
@@ -107,6 +107,6 @@ struct ExecutionContext {
   StackFrame *current_frame_ = nullptr;
 };
 
-}  // namespace interpretter
+}  // namespace interpreter
 
-#endif  // ICARUS_IR_INTERPRETTER_EXECUTION_CONETXT_H
+#endif  // ICARUS_IR_INTERPRETER_EXECUTION_CONETXT_H

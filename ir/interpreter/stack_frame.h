@@ -1,12 +1,12 @@
-#ifndef ICARUS_IR_INTERPRETTER_STACK_FRAME_H
-#define ICARUS_IR_INTERPRETTER_STACK_FRAME_H
+#ifndef ICARUS_IR_INTERPRETER_STACK_FRAME_H
+#define ICARUS_IR_INTERPRETER_STACK_FRAME_H
 
 #include "base/untyped_buffer_view.h"
 #include "ir/blocks/basic.h"
-#include "ir/interpretter/register_array.h"
+#include "ir/interpreter/register_array.h"
 #include "ir/value/native_fn.h"
 
-namespace interpretter {
+namespace interpreter {
 
 struct StackFrame {
   StackFrame() = delete;
@@ -33,6 +33,6 @@ struct StackFrame {
   RegisterArray regs_;
 };
 
-}  // namespace interpretter
+}  // namespace interpreter
 
-#endif  // ICARUS_IR_INTERPRETTER_STACK_FRAME_H
+#endif  // ICARUS_IR_INTERPRETER_STACK_FRAME_H

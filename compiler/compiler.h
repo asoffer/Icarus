@@ -22,7 +22,7 @@
 #include "frontend/source/source.h"
 #include "ir/builder.h"
 #include "ir/instruction/set.h"
-#include "ir/interpretter/evaluate.h"
+#include "ir/interpreter/evaluate.h"
 #include "ir/value/addr.h"
 #include "ir/value/module_id.h"
 #include "ir/value/native_fn.h"
@@ -214,7 +214,7 @@ struct Compiler
   module::Importer &importer() const { return resources_.importer; }
 
   template <typename T>
-  base::expected<T, interpretter::EvaluationFailure> EvaluateAs(
+  base::expected<T, interpreter::EvaluationFailure> EvaluateAs(
       ast::Expression const *expr) {
     ASSIGN_OR(return _.error(), auto val,
                      Evaluate(type::Typed<ast::Expression const *>(
@@ -246,7 +246,7 @@ struct Compiler
     }
   }
 
-  base::expected<ir::Value, interpretter::EvaluationFailure> Evaluate(
+  base::expected<ir::Value, interpreter::EvaluationFailure> Evaluate(
       type::Typed<ast::Expression const *> expr, bool must_complete = true);
 
   core::Params<std::pair<ir::Value, type::QualType>> ComputeParamsFromArgs(

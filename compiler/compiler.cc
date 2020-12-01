@@ -10,7 +10,7 @@
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
-#include "ir/interpretter/evaluate.h"
+#include "ir/interpreter/evaluate.h"
 #include "ir/value/value.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"
@@ -83,16 +83,16 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
   }
 
   ASSERT(fn.work_item == nullptr);
-  fn.WriteByteCode<interpretter::instruction_set_t>();
+  fn.WriteByteCode<interpreter::instruction_set_t>();
 
   return fn;
 }
 
-base::expected<ir::Value, interpretter::EvaluationFailure> Compiler::Evaluate(
+base::expected<ir::Value, interpreter::EvaluationFailure> Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr, bool must_complete) {
   Compiler c             = MakeChild(resources_);
   c.state_.must_complete = must_complete;
-  auto result = interpretter::Evaluate(MakeThunk(c, *expr, expr.type()));
+  auto result = interpreter::Evaluate(MakeThunk(c, *expr, expr.type()));
   if (not result) { return result; }
   c.CompleteWorkQueue();
   return result;

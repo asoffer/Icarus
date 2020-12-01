@@ -119,7 +119,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
   }
 
   ir_func->work_item = nullptr;
-  ir_func->WriteByteCode<interpretter::instruction_set_t>();
+  ir_func->WriteByteCode<interpreter::instruction_set_t>();
 }
 
 void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
@@ -170,7 +170,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
   }
 
   ir_func->work_item = nullptr;
-  ir_func->WriteByteCode<interpretter::instruction_set_t>();
+  ir_func->WriteByteCode<interpreter::instruction_set_t>();
 }
 
 void CompleteBody(Compiler *compiler,
@@ -203,7 +203,7 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
     // it'll never be executed.
     MakeAllDestructions(*compiler, node->body_scope());
   }
-  jmp.WriteByteCode<interpretter::instruction_set_t>();
+  jmp.WriteByteCode<interpreter::instruction_set_t>();
   jmp.work_item = nullptr;
 }
 

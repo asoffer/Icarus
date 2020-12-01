@@ -13,7 +13,7 @@
 #include "base/extend.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/inliner.h"
-#include "ir/interpretter/execution_context.h"
+#include "ir/interpreter/execution_context.h"
 #include "ir/value/fn.h"
 #include "ir/value/hashtag.h"
 #include "ir/value/native_fn.h"
@@ -165,7 +165,7 @@ struct StructInstruction
 
   // TODO field.type() can be null. If the field type is inferred from the
   // initial value.
-  void Apply(interpretter::ExecutionContext &ctx) const {
+  void Apply(interpreter::ExecutionContext &ctx) const {
     std::vector<Struct::Field> struct_fields;
     struct_fields.reserve(fields.size());
     for (auto const &field : fields) {

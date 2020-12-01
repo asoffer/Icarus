@@ -1,10 +1,10 @@
-#include "ir/interpretter/stack_frame.h"
+#include "ir/interpreter/stack_frame.h"
 
-#include "ir/interpretter/architecture.h"
+#include "ir/interpreter/architecture.h"
 #include "type/function.h"
 #include "type/type.h"
 
-namespace interpretter {
+namespace interpreter {
 
 StackFrame::StackFrame(ir::NativeFn fn, base::untyped_buffer arguments,
                        base::untyped_buffer *stack)
@@ -37,4 +37,4 @@ StackFrame::StackFrame(ir::NativeFn fn, base::untyped_buffer *stack)
   stack->append_bytes(next_reg_loc.value() - stack->size());
 }
 
-}  // namespace interpretter
+}  // namespace interpreter
