@@ -1,7 +1,9 @@
 #include <dlfcn.h>
 
+#include <cstdlib>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "absl/debugging/failure_signal_handler.h"
@@ -11,7 +13,7 @@
 #include "absl/flags/usage.h"
 #include "absl/flags/usage_config.h"
 #include "absl/strings/match.h"
-#include "absl/strings/string_view.h"
+#include "absl/strings/str_split.h"
 #include "base/expected.h"
 #include "base/log.h"
 #include "base/no_destructor.h"
@@ -36,6 +38,9 @@ ABSL_FLAG(std::string, link, "",
 ABSL_FLAG(bool, debug_parser, false,
           "Step through the parser step-by-step for debugging.");
 ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
+ABSL_FLAG(std::vector<std::string>, module_paths, {},
+          "Comma-separated list of paths to search when importing modules. "
+          "Defaults to $ICARUS_MODULE_PATH.");
 
 namespace debug {
 extern bool parser;
@@ -59,6 +64,7 @@ int Interpret(frontend::FileName const &file_name) {
   auto *src = &*maybe_file_src;
   diag      = diagnostic::StreamingConsumer(stderr, src);
   module::FileImporter<LibraryModule> importer;
+  importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
   compiler::ExecutableModule exec_mod;
   exec_mod.AppendNodes(frontend::Parse(*src, diag), diag, importer);
   if (diag.num_consumed() != 0) { return 1; }
@@ -76,11 +82,15 @@ int Interpret(frontend::FileName const &file_name) {
 }  // namespace
 }  // namespace compiler
 
-bool HelpFilter(absl::string_view module) {
+bool HelpFilter(std::string_view module) {
   return absl::EndsWith(module, "/interpretter.cc");
 }
 
 int main(int argc, char *argv[]) {
+  // Provide a new default for --module_paths.
+  if (char *const env_str = std::getenv("ICARUS_MODULE_PATH")) {
+    absl::SetFlag(&FLAGS_module_paths, absl::StrSplit(env_str, ':'));
+  }
   absl::FlagsUsageConfig flag_config;
   flag_config.contains_helpshort_flags = &HelpFilter;
   flag_config.contains_help_flags      = &HelpFilter;
@@ -92,7 +102,7 @@ int main(int argc, char *argv[]) {
   absl::InstallFailureSignalHandler(opts);
 
   std::vector<std::string> log_keys = absl::GetFlag(FLAGS_log);
-  for (absl::string_view key : log_keys) { base::EnableLogging(key); }
+  for (std::string_view key : log_keys) { base::EnableLogging(key); }
 
   if (std::string lib = absl::GetFlag(FLAGS_link); not lib.empty()) {
     ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));

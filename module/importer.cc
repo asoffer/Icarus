@@ -1,11 +1,12 @@
 #include "module/importer.h"
 
 #include <cstdio>
-#include <cstdlib>
+#include <string>
 #include <string_view>
+#include <vector>
 
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/str_split.h"
 #include "frontend/source/file_name.h"
 
 namespace module {
@@ -22,16 +23,15 @@ bool FileExists(std::string const& path) {
 }  // namespace
 
 frontend::CanonicalFileName ResolveModulePath(
-    frontend::CanonicalFileName const& module_path) {
+    frontend::CanonicalFileName const& module_path,
+    std::vector<std::string> const& lookup_paths) {
   // Respect absolute paths.
   if (absl::StartsWith(module_path.name(), "/")) { return module_path; }
-  // Walk the entries in $ICARUS_MODULE_PATH to find a valid source file.
-  if (char* const lookup_paths = std::getenv("ICARUS_MODULE_PATH")) {
-    for (std::string_view base_path : absl::StrSplit(lookup_paths, ':')) {
-      std::string path = absl::StrCat(base_path, "/", module_path.name());
-      if (FileExists(path)) {
-        return frontend::CanonicalFileName::Make(frontend::FileName(path));
-      }
+  // Check for the module relative to the given lookup paths.
+  for (std::string_view base_path : lookup_paths) {
+    std::string path = absl::StrCat(base_path, "/", module_path.name());
+    if (FileExists(path)) {
+      return frontend::CanonicalFileName::Make(frontend::FileName(path));
     }
   }
   // Fall back to using the given path as-is, relative to $PWD.
