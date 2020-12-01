@@ -6,7 +6,6 @@ cc_library(
     deps = [
         ":inliner",
         "//base:extend",
-        "//ir/interpretter:execution_context",
     ],
 )
 
@@ -36,7 +35,6 @@ cc_library(
     deps = [
         ":inliner",
         "//base:extend",
-        "//ir/interpretter:execution_context",
     ],
 )
 

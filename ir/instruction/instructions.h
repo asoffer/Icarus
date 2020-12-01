@@ -41,10 +41,7 @@ struct CastInstruction
   using to_type                                  = ToType;
   static constexpr std::string_view kDebugFormat = "%2$s = cast %1$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(result,
-                                  static_cast<ToType>(ctx.resolve(value)));
-  }
+  ToType Resolve() const { return value.value(); }
 
   RegOr<FromType> value;
   Reg result;
@@ -55,9 +52,7 @@ struct NotInstruction
                                          DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = not %1$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(result, not ctx.resolve(operand));
-  }
+  bool Resolve() const { return Apply(operand.value()); }
   static bool Apply(bool operand) { return not operand; }
 
   RegOr<bool> operand;
@@ -245,18 +240,12 @@ struct TypeInfoInstruction
         type.is_reg() ? stringify(type.reg()) : type.value().to_string());
   }
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
+  uint64_t Resolve() const {
     switch (kind) {
       case Kind::Alignment:
-        ctx.current_frame().regs_.set(
-            result,
-            ctx.resolve(type).alignment(interpretter::kArchitecture).value());
-        break;
+        return type.value().alignment(interpretter::kArchitecture).value();
       case Kind::Bytes:
-        ctx.current_frame().regs_.set(
-            result,
-            ctx.resolve(type).bytes(interpretter::kArchitecture).value());
-        break;
+        return type.value().bytes(interpretter::kArchitecture).value();
     }
   }
 
@@ -270,21 +259,19 @@ struct MakeBlockInstruction
                                                InlineExtension> {
   std::string to_string() const { return "make-block"; }  // TODO
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
+  Block Resolve() const {
     std::vector<ir::Fn> resolved_befores;
     resolved_befores.reserve(befores.size());
-    for (auto const& fn : befores) {
-      resolved_befores.push_back(ctx.resolve(fn));
-    }
+    for (auto const& fn : befores) { resolved_befores.push_back(fn.value()); }
 
     absl::flat_hash_set<ir::Jump> resolved_afters;
     resolved_afters.reserve(afters.size());
-    for (auto const& jmp : afters) { resolved_afters.insert(ctx.resolve(jmp)); }
+    for (auto const& jmp : afters) { resolved_afters.insert(jmp.value()); }
 
     *CompiledBlock::From(block) = CompiledBlock(
         OverloadSet(std::move(resolved_befores)), std::move(resolved_afters));
 
-    ctx.current_frame().regs_.set(result, block);
+    return block;
   }
 
   Block block;
@@ -298,19 +285,19 @@ struct MakeScopeInstruction
                                                InlineExtension> {
   std::string to_string() const { return "make-scope"; }  // TODO
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
+  Scope Resolve() const {
     absl::flat_hash_set<ir::Jump> resolved_inits;
     resolved_inits.reserve(inits.size());
-    for (auto const& init : inits) { resolved_inits.insert(ctx.resolve(init)); }
+    for (auto const& init : inits) { resolved_inits.insert(init.value()); }
 
     std::vector<ir::Fn> resolved_dones;
     resolved_dones.reserve(dones.size());
-    for (auto const& fn : dones) { resolved_dones.push_back(ctx.resolve(fn)); }
+    for (auto const& fn : dones) { resolved_dones.push_back(fn.value()); }
 
     CompiledScope::From(scope)->Initialize(
         std::move(resolved_inits), OverloadSet(std::move(resolved_dones)),
         blocks);
-    ctx.current_frame().regs_.set(result, scope);
+    return scope;
   }
 
   Scope scope;
@@ -326,11 +313,9 @@ struct StructIndexInstruction
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (struct %3$s)";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(
-        result,
-        ctx.resolve(addr) + struct_type->offset(ctx.resolve(index),
-                                                interpretter::kArchitecture));
+  Addr Resolve() const {
+    return addr.value() +
+           struct_type->offset(index.value(), interpretter::kArchitecture);
   }
 
   RegOr<Addr> addr;
@@ -345,10 +330,9 @@ struct TupleIndexInstruction
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (tuple %3$s)";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(
-        result, ctx.resolve(addr) + tuple->offset(ctx.resolve(index),
-                                                  interpretter::kArchitecture));
+  Addr Resolve() const {
+    return addr.value() +
+           tuple->offset(index.value(), interpretter::kArchitecture);
   }
 
   RegOr<Addr> addr;
@@ -363,13 +347,12 @@ struct PtrIncrInstruction
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (pointer %3$s)";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(
-        result, ctx.resolve(addr) +
-                    core::FwdAlign(
-                        ptr->pointee().bytes(interpretter::kArchitecture),
-                        ptr->pointee().alignment(interpretter::kArchitecture)) *
-                        ctx.resolve(index));
+  Addr Resolve() const {
+    return addr.value() +
+           core::FwdAlign(
+               ptr->pointee().bytes(interpretter::kArchitecture),
+               ptr->pointee().alignment(interpretter::kArchitecture)) *
+               index.value();
   }
 
   RegOr<Addr> addr;
@@ -380,22 +363,19 @@ struct PtrIncrInstruction
 
 struct ArrowInstruction
     : base::Extend<ArrowInstruction>::With<ByteCodeExtension, InlineExtension> {
-  void Apply(interpretter::ExecutionContext& ctx) const {
+  type::Type Resolve() const {
     core::Params<type::QualType> params;
     params.reserve(lhs.size());
     for (const auto& t : lhs) {
-      // TODO: push qualtype into `Apply` parameters
       params.append(
-          core::AnonymousParam(type::QualType::NonConstant(ctx.resolve(t))));
+          core::AnonymousParam(type::QualType::NonConstant(t.value())));
     }
 
     std::vector<type::Type> rhs_types;
     rhs_types.reserve(rhs.size());
-    for (auto const& t : rhs) { rhs_types.push_back(ctx.resolve(t)); }
+    for (auto const& t : rhs) { rhs_types.push_back(t.value()); }
 
-    ctx.current_frame().regs_.set(
-        result,
-        type::Type(type::Func(std::move(params), std::move(rhs_types))));
+    return type::Func(std::move(params), std::move(rhs_types));
   }
 
   std::string to_string() const {

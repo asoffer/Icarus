@@ -6,14 +6,11 @@
 #include <string_view>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/random/distributions.h"
-#include "absl/random/random.h"
 #include "base/debug.h"
 #include "base/extend.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
-#include "ir/interpretter/execution_context.h"
 #include "module/module.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -67,37 +64,7 @@ struct Enum : type::LegacyType {
 struct EnumInstruction
     : base::Extend<EnumInstruction>::With<ir::ByteCodeExtension,
                                           ir::InlineExtension> {
-  void Apply(interpretter::ExecutionContext &ctx) const {
-    absl::flat_hash_set<Enum::underlying_type> used_vals;
-
-    for (auto const &[index, reg_or_value] : specified_values_) {
-      used_vals.insert(ctx.resolve(reg_or_value));
-    }
-
-    absl::BitGen gen;
-
-    absl::flat_hash_map<std::string, Enum::underlying_type> mapping;
-
-    for (size_t i = 0; i < names_.size(); ++i) {
-      auto iter = specified_values_.find(i);
-      if (iter != specified_values_.end()) {
-        mapping.emplace(names_[i], ctx.resolve(iter->second));
-        continue;
-      }
-
-      bool success;
-      Enum::underlying_type proposed_value;
-      do {
-        proposed_value = absl::Uniform<Enum::underlying_type>(gen);
-        success        = used_vals.insert(proposed_value).second;
-      } while (not success);
-      mapping.try_emplace(std::string(names_[i]), proposed_value);
-    }
-
-    type->SetMembers(std::move(mapping));
-    type->complete();
-    ctx.current_frame().regs_.set(result, type::Type(type));
-  }
+  Type Resolve() const;
 
   std::string to_string() const {
     using base::stringify;

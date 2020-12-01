@@ -7,20 +7,31 @@
 #include "ir/byte_code_writer.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
-#include "ir/instruction/op_codes.h"
-#include "ir/interpretter/execution_context.h"
 
 namespace ir {
 
-template <typename NumType>
+// TODO: Support all flavors of overflow behavior.
+struct OverflowBehavior {
+  enum Type { Undefined, Abort, Saturate, Wrap };
+};
+
+template <typename NumType,
+          OverflowBehavior::Type Behavior = OverflowBehavior::Undefined>
 struct AddInstruction
     : base::Extend<AddInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = add %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(
-        result, static_cast<NumType>(ctx.resolve(lhs) + ctx.resolve(rhs)));
+  NumType Resolve() const {
+    if constexpr (Behavior == OverflowBehavior::Undefined) {
+      return lhs.value() + rhs.value();
+    } else if constexpr (Behavior == OverflowBehavior::Abort) {
+      NOT_YET();
+    } else if constexpr (Behavior == OverflowBehavior::Saturate) {
+      NOT_YET();
+    } else if constexpr (Behavior == OverflowBehavior::Wrap) {
+      NOT_YET();
+    }
   }
 
   RegOr<NumType> lhs;
@@ -28,31 +39,46 @@ struct AddInstruction
   Reg result;
 };
 
-template <typename NumType>
+template <typename NumType,
+          OverflowBehavior::Type Behavior = OverflowBehavior::Undefined>
 struct SubInstruction
     : base::Extend<SubInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = sub %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(
-        result, static_cast<NumType>(ctx.resolve(lhs) - ctx.resolve(rhs)));
+  NumType Resolve() const {
+    if constexpr (Behavior == OverflowBehavior::Undefined) {
+      return lhs.value() - rhs.value();
+    } else if constexpr (Behavior == OverflowBehavior::Abort) {
+      NOT_YET();
+    } else if constexpr (Behavior == OverflowBehavior::Saturate) {
+      NOT_YET();
+    } else if constexpr (Behavior == OverflowBehavior::Wrap) {
+      NOT_YET();
+    }
   }
-
   RegOr<NumType> lhs;
   RegOr<NumType> rhs;
   Reg result;
 };
 
-template <typename NumType>
+template <typename NumType,
+          OverflowBehavior::Type Behavior = OverflowBehavior::Undefined>
 struct MulInstruction
     : base::Extend<MulInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = mul %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(
-        result, static_cast<NumType>(ctx.resolve(lhs) * ctx.resolve(rhs)));
+  NumType Resolve() const {
+    if constexpr (Behavior == OverflowBehavior::Undefined) {
+      return lhs.value() * rhs.value();
+    } else if constexpr (Behavior == OverflowBehavior::Abort) {
+      NOT_YET();
+    } else if constexpr (Behavior == OverflowBehavior::Saturate) {
+      NOT_YET();
+    } else if constexpr (Behavior == OverflowBehavior::Wrap) {
+      NOT_YET();
+    }
   }
 
   RegOr<NumType> lhs;
@@ -66,10 +92,7 @@ struct DivInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = div %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(
-        result, static_cast<NumType>(ctx.resolve(lhs) / ctx.resolve(rhs)));
-  }
+  NumType Resolve() const { return lhs.value() / rhs.value(); }
 
   RegOr<NumType> lhs;
   RegOr<NumType> rhs;
@@ -82,10 +105,7 @@ struct ModInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = mod %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(
-        result, static_cast<NumType>(ctx.resolve(lhs) % ctx.resolve(rhs)));
-  }
+  NumType Resolve() const { return lhs.value() % rhs.value(); }
 
   RegOr<NumType> lhs;
   RegOr<NumType> rhs;
@@ -98,9 +118,7 @@ struct NegInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
-  }
+  NumType Resolve() const { return Apply(operand.value()); }
   static NumType Apply(NumType operand) { return -operand; }
 
   RegOr<NumType> operand;

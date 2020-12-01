@@ -33,7 +33,6 @@ cc_library(
         "//ir/instruction:base",
         "//ir/instruction:debug",
         "//ir/instruction:inliner",
-        "//ir/interpretter:execution_context",
         "//ir/value:fn",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings:str_format",
@@ -109,7 +108,6 @@ cc_library(
         "//ir/instruction:base",
         "//ir/instruction:debug",
         "//ir/instruction:inliner",
-        "//ir/interpretter:execution_context",
         "//module",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/random",
@@ -128,7 +126,6 @@ cc_library(
         "//ir/instruction:base",
         "//ir/instruction:debug",
         "//ir/instruction:inliner",
-        "//ir/interpretter:execution_context",
         "//module",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/random",
@@ -145,8 +142,8 @@ cc_library(
         ":qual_type",
         ":type",
         ":typed_value",
-        "//core:params",
         "//base:global",
+        "//core:params",
     ],
 )
 
@@ -213,7 +210,6 @@ cc_library(
         "//base:debug",
         "//ir/instruction:base",
         "//ir/instruction:inliner",
-        "//ir/interpretter:execution_context",
         "//module",
     ],
 )
@@ -238,7 +234,6 @@ cc_library(
         "//ir/instruction:base",
         "//ir/instruction:debug",
         "//ir/instruction:inliner",
-        "//ir/interpretter:execution_context",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

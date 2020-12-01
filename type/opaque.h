@@ -6,7 +6,6 @@
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
-#include "ir/interpretter/execution_context.h"
 #include "module/module.h"
 #include "type/type.h"
 
@@ -48,10 +47,7 @@ struct OpaqueTypeInstruction
                                                 ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = opaque %1$s";
 
-  void Apply(interpretter::ExecutionContext &ctx) const {
-    ctx.current_frame().regs_.set(
-        result, type::Type(type::Allocate<type::Opaque>(mod)));
-  }
+  Type Resolve() const { return type::Allocate<type::Opaque>(mod); }
 
   module::BasicModule const *mod;
   ir::Reg result;

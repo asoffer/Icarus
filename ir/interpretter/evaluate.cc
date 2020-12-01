@@ -44,6 +44,27 @@ static void CallFn(ir::BuiltinFn fn, base::untyped_buffer_view arguments,
 
 namespace {
 
+// clang-format off
+template <typename T>
+concept HasResolveMemberFunction = requires(T t){
+  // TODO: Check that the type is supported in ir::Value::supported_types
+  { (void)t.Resolve() } -> std::same_as<void>;
+};
+
+// clang-format on
+
+template <typename T>
+void ResolveField(ExecutionContext &ctx, T &field) {
+  if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
+    field = ctx.resolve(field);
+  } else if constexpr (base::meta<T>.template is_a<std::vector>() or
+                       base::meta<T>.template is_a<absl::flat_hash_set>()) {
+    for (auto &f : field) { ResolveField(ctx, f); }
+  } else if constexpr (base::meta<T>.template is_a<absl::flat_hash_map>()) {
+    for (auto &[k, v] : field) { ResolveField(ctx, v); }
+  }
+}
+
 template <typename InstSet>
 void Execute(ExecutionContext &ctx, ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots);
@@ -170,6 +191,13 @@ constexpr exec_t GetInstruction() {
       type val          = ctx.resolve(iter->read<ir::RegOr<type>>().get());
       ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
       *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
+
+    } else if constexpr (HasResolveMemberFunction<Inst>) {
+      auto inst = Inst::ReadFromByteCode(iter);
+      std::apply([&](auto &... fields) { (ResolveField(ctx, fields), ...); },
+                 inst.field_refs());
+
+      ctx.current_frame().regs_.set(inst.result, inst.Resolve());
 
     } else if constexpr (base::meta<decltype(std::declval<Inst>().Apply(
                              ctx))> == base::meta<void>) {

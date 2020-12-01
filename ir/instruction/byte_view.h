@@ -7,8 +7,6 @@
 #include "ir/byte_code_writer.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
-#include "ir/instruction/op_codes.h"
-#include "ir/interpretter/execution_context.h"
 
 namespace ir {
 
@@ -18,12 +16,9 @@ struct ByteViewLengthInstruction
   static constexpr std::string_view kDebugFormat =
       "%2$s = byte-view length %1$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) {
-    ctx.current_frame().regs_.set(result,
-                                  ctx.resolve<ir::String>(reg).get().size());
-  }
+  uint64_t Resolve() const { return reg.value().get().size(); }
 
-  Reg reg;
+  RegOr<String> reg;
   Reg result;
 };
 
@@ -32,11 +27,9 @@ struct ByteViewDataInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = byte-view data %1$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) {
-    ctx.current_frame().regs_.set(result, ctx.resolve<ir::String>(reg).addr());
-  }
+  ir::Addr Resolve() const { return reg.value().addr(); }
 
-  Reg reg;
+  RegOr<String> reg;
   Reg result;
 };
 

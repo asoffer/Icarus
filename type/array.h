@@ -7,7 +7,6 @@
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
-#include "ir/interpretter/execution_context.h"
 #include "ir/value/fn.h"
 #include "type/type.h"
 
@@ -56,8 +55,8 @@ struct Array : LegacyType {
   }
 
   void SetDestructor(ir::Fn f) {
-    ASSERT(dtor_.has_value() == false);
-    dtor_.emplace(f);
+    ASSERT(init_.has_value() == false);
+    init_.emplace(f);
   }
 
   ir::Fn Initializer() const { return init_.value(); }
@@ -83,10 +82,7 @@ struct ArrayInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = array %1$s %2$s";
   using length_t                                 = int64_t;
 
-  void Apply(interpretter::ExecutionContext &ctx) const {
-    ctx.current_frame().regs_.set(
-        result, Type(Arr(ctx.resolve(length), ctx.resolve(data_type))));
-  }
+  Type Resolve() const { return Arr(length.value(), data_type.value()); }
 
   ir::RegOr<length_t> length;
   ir::RegOr<Type> data_type;

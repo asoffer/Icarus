@@ -6,14 +6,11 @@
 #include <string_view>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/random/distributions.h"
-#include "absl/random/random.h"
 #include "base/debug.h"
 #include "base/extend.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
-#include "ir/interpretter/execution_context.h"
 #include "module/module.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -64,7 +61,7 @@ struct Flags : public type::LegacyType {
   Completeness completeness_;
   module::BasicModule const *mod_;
 
-  ICARUS_PRIVATE
+ private:
   // TODO combine these into a single bidirectional map?
   absl::flat_hash_map<std::string, underlying_type> vals_;
   absl::flat_hash_map<underlying_type, std::string> members_;
@@ -73,40 +70,7 @@ struct Flags : public type::LegacyType {
 struct FlagsInstruction
     : base::Extend<FlagsInstruction>::With<ir::ByteCodeExtension,
                                            ir::InlineExtension> {
-  void Apply(interpretter::ExecutionContext &ctx) const {
-    absl::flat_hash_set<Flags::underlying_type> used_vals;
-
-    for (auto const &[index, reg_or_value] : specified_values_) {
-      used_vals.insert(ctx.resolve(reg_or_value));
-    }
-
-    absl::BitGen gen;
-
-    absl::flat_hash_map<std::string, Flags::underlying_type> mapping;
-
-    for (size_t i = 0; i < names_.size(); ++i) {
-      auto iter = specified_values_.find(i);
-      if (iter != specified_values_.end()) {
-        mapping.emplace(names_[i], ctx.resolve(iter->second));
-        continue;
-      }
-
-      bool success;
-      Flags::underlying_type proposed_value;
-      do {
-        proposed_value =
-            Flags::underlying_type{1} << absl::Uniform<Flags::underlying_type>(
-                absl::IntervalClosedOpen, gen, 0,
-                std::numeric_limits<Flags::underlying_type>::digits);
-        success = used_vals.insert(proposed_value).second;
-      } while (not success);
-      mapping.try_emplace(std::string(names_[i]), proposed_value);
-    }
-
-    type->SetMembers(std::move(mapping));
-    type->complete();
-    ctx.current_frame().regs_.set(result, type::Type(type));
-  }
+  Type Resolve() const;
 
   std::string to_string() const {
     using base::stringify;
@@ -126,9 +90,8 @@ struct XorFlagsInstruction
                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = xor-flags %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext &ctx) const {
-    ctx.current_frame().regs_.set(result,
-                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+  Flags::underlying_type Resolve() const {
+    return Apply(lhs.value(), rhs.value());
   }
   static Flags::underlying_type Apply(Flags::underlying_type lhs,
                                       Flags::underlying_type rhs) {
@@ -146,9 +109,8 @@ struct AndFlagsInstruction
                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = and-flags %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext &ctx) const {
-    ctx.current_frame().regs_.set(result,
-                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+  Flags::underlying_type Resolve() const {
+    return Apply(lhs.value(), rhs.value());
   }
   static Flags::underlying_type Apply(Flags::underlying_type lhs,
                                       Flags::underlying_type rhs) {
@@ -166,9 +128,8 @@ struct OrFlagsInstruction
                                              ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = or-flags %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext &ctx) const {
-    ctx.current_frame().regs_.set(result,
-                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+  Flags::underlying_type Resolve() const {
+    return Apply(lhs.value(), rhs.value());
   }
   static Flags::underlying_type Apply(Flags::underlying_type lhs,
                                       Flags::underlying_type rhs) {

@@ -5,7 +5,6 @@
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
-#include "ir/interpretter/execution_context.h"
 #include "type/type.h"
 
 namespace type {
@@ -67,9 +66,7 @@ struct PtrInstruction
                                          ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = ptr %1$s";
 
-  void Apply(interpretter::ExecutionContext &ctx) const {
-    ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
-  }
+  Type Resolve() const { return Apply(operand.value()); }
   static type::Type Apply(type::Type operand) { return type::Ptr(operand); }
 
   ir::RegOr<type::Type> operand;
@@ -82,9 +79,7 @@ struct BufPtrInstruction
                                             ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = buf-ptr %1$s";
 
-  void Apply(interpretter::ExecutionContext &ctx) const {
-    ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
-  }
+  Type Resolve() const { return Apply(operand.value()); }
   static type::Type Apply(type::Type operand) { return type::BufPtr(operand); }
 
   ir::RegOr<type::Type> operand;

@@ -7,7 +7,6 @@
 #include "ir/byte_code_writer.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
-#include "ir/instruction/op_codes.h"
 
 namespace ir {
 
@@ -17,11 +16,7 @@ struct EqInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = eq %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(result,
-                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
-  }
-
+  bool Resolve() const { return Apply(lhs.value(), rhs.value()); }
   static bool Apply(NumType lhs, NumType rhs) { return lhs == rhs; }
 
   RegOr<NumType> lhs;
@@ -35,11 +30,7 @@ struct NeInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = ne %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(result,
-                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
-  }
-
+  bool Resolve() const { return Apply(lhs.value(), rhs.value()); }
   static bool Apply(NumType lhs, NumType rhs) { return lhs != rhs; }
 
   RegOr<NumType> lhs;
@@ -53,11 +44,7 @@ struct LtInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = lt %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(result,
-                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
-  }
-
+  bool Resolve() const { return Apply(lhs.value(), rhs.value()); }
   static bool Apply(NumType lhs, NumType rhs) { return lhs < rhs; }
 
   RegOr<NumType> lhs;
@@ -71,11 +58,7 @@ struct LeInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = le %1$s %2$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(result,
-                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
-  }
-
+  bool Resolve() const { return Apply(lhs.value(), rhs.value()); }
   static bool Apply(NumType lhs, NumType rhs) { return lhs <= rhs; }
 
   RegOr<NumType> lhs;

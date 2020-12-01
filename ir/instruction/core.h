@@ -123,9 +123,7 @@ struct RegisterInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = %1$s";
 
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
-  }
+  T Resolve() const { return Apply(operand.value()); }
   static T Apply(T val) { return val; }
 
   RegOr<T> operand;
@@ -236,7 +234,7 @@ struct CommentInstruction
     return {};
   }
   void WriteByteCode(ByteCodeWriter*) const {}
-  void Apply(interpretter::ExecutionContext& ctx) const {}
+  void Apply(interpretter::ExecutionContext&) const {}
 
   std::string comment;
 };
