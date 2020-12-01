@@ -1,12 +1,13 @@
+#include <utility>
+
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/context.h"
+#include "compiler/resources.h"
 #include "compiler/transient_state.h"
 #include "compiler/verify/common.h"
 #include "type/cast.h"
 #include "type/function.h"
-
-#include <utility>
 
 namespace compiler {
 namespace {
@@ -192,10 +193,9 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
     }
 
     LOG("FunctionLiteral", "Request work fn-lit: %p", node);
-    c.Enqueue({.kind     = WorkItem::Kind::VerifyFunctionBody,
-               .node     = node,
-               .context  = c.context(),
-               .consumer = c.diag()});
+    c.Enqueue({.kind      = WorkItem::Kind::VerifyFunctionBody,
+               .node      = node,
+               .resources = c.resources()});
     return type::QualType::Constant(
         type::Func(std::move(params), std::move(output_type_vec)));
   } else {
@@ -218,12 +218,11 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
-      auto compiler =
-          instantiation_compiler.MakeChild(Compiler::PersistentResources{
-              .data                = context,
-              .diagnostic_consumer = instantiation_compiler.diag(),
-              .importer            = instantiation_compiler.importer(),
-          });
+      auto compiler = instantiation_compiler.MakeChild(PersistentResources{
+          .data                = context,
+          .diagnostic_consumer = instantiation_compiler.diag(),
+          .importer            = instantiation_compiler.importer(),
+      });
       compiler.builder().CurrentGroup() = cg;
       auto qt                           = VerifyConcrete(compiler, node);
       auto outs = qt.type().as<type::Function>().output();

@@ -2,6 +2,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/library_module.h"
+#include "compiler/resources.h"
 #include "compiler/verify/common.h"
 #include "type/generic_struct.h"
 #include "type/qual_type.h"
@@ -27,12 +28,11 @@ type::QualType Compiler::VerifyType(
 
     if (inserted) {
       LOG("ParameterizedStructLiteral", "inserted! %s", node->DebugString());
-      auto compiler =
-          instantiation_compiler.MakeChild(Compiler::PersistentResources{
-              .data                = context,
-              .diagnostic_consumer = instantiation_compiler.diag(),
-              .importer            = instantiation_compiler.importer(),
-          });
+      auto compiler = instantiation_compiler.MakeChild(PersistentResources{
+          .data                = context,
+          .diagnostic_consumer = instantiation_compiler.diag(),
+          .importer            = instantiation_compiler.importer(),
+      });
       compiler.builder().CurrentGroup() = cg;
 
       type::Struct *s = type::Allocate<type::Struct>(

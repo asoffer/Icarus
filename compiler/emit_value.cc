@@ -1,12 +1,12 @@
-#include "compiler/compiler.h"
-
 #include "ast/ast.h"
 #include "ast/scope/exec.h"
 #include "base/defer.h"
 #include "base/guarded.h"
+#include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/executable_module.h"
+#include "compiler/resources.h"
 #include "diagnostic/consumer/trivial.h"
 #include "frontend/parse.h"
 #include "ir/builder.h"
@@ -31,7 +31,7 @@ namespace compiler {
 namespace {
 
 template <typename NodeType>
-base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
+base::move_func<void()> *DeferBody(PersistentResources resources,
                                    TransientState &state, NodeType const *node,
                                    type::Type t) {
   LOG("DeferBody", "Deferring body of %s", node->DebugString());
@@ -103,10 +103,9 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
           if (not constant_value->complete and state_.must_complete) {
             LOG("compile-work-queue", "Request work complete-struct: %p", node);
             state_.work_queue.Enqueue({
-                .kind     = WorkItem::Kind::CompleteStructMembers,
-                .node     = node->init_val(),
-                .context  = context(),
-                .consumer = diag(),
+                .kind      = WorkItem::Kind::CompleteStructMembers,
+                .node      = node->init_val(),
+                .resources = resources_,
             });
           }
         }
@@ -530,10 +529,9 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   if (state_.must_complete) {
     LOG("compile-work-queue", "Request work complete struct: %p", node);
     state_.work_queue.Enqueue({
-        .kind     = WorkItem::Kind::CompleteStructMembers,
-        .node     = node,
-        .context  = context(),
-        .consumer = diag(),
+        .kind      = WorkItem::Kind::CompleteStructMembers,
+        .node      = node,
+        .resources = resources_,
     });
   }
   return ir::Value(static_cast<type::Type>(s));

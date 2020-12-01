@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/resources.h"
 #include "compiler/verify/common.h"
 
 namespace compiler {
@@ -26,12 +27,11 @@ type::QualType VerifyGeneric(Compiler &c,
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
-      auto compiler =
-          instantiation_compiler.MakeChild(Compiler::PersistentResources{
-              .data                = context,
-              .diagnostic_consumer = instantiation_compiler.diag(),
-              .importer            = instantiation_compiler.importer(),
-          });
+      auto compiler = instantiation_compiler.MakeChild(PersistentResources{
+          .data                = context,
+          .diagnostic_consumer = instantiation_compiler.diag(),
+          .importer            = instantiation_compiler.importer(),
+      });
       compiler.builder().CurrentGroup() = cg;
       auto qt                           = VerifyConcrete(compiler, node);
       auto outs = qt.type().as<type::Function>().output();

@@ -104,6 +104,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:resources",
         "//compiler/emit:common",
         "//ir/value",
     ],

@@ -39,9 +39,20 @@ cc_library(
 )
 
 cc_library(
+    name = "resources",
+    hdrs = ["resources.h"],
+    deps = [
+        ":context",
+        "//diagnostic/consumer",
+        "//module:importer",
+    ],
+)
+
+cc_library(
     name = "transient_state",
     hdrs = ["transient_state.h"],
     deps = [
+        ":resources",
         "//ast",
         "//ir/blocks:basic",
         "//ir/instruction:core",
@@ -93,6 +104,7 @@ cc_library(
         ":executable_module",
         ":library_module",
         ":module",
+        ":resources",
         "//ast:ast",
         "//ast:overload_set",
         "//ast:visitor",
@@ -187,6 +199,7 @@ cc_library(
     srcs = ["compiler.cc"],
     deps = [
         ":compiler_header",
+        ":resources",
         ":verify_type",
         ":visitors",
         "//base:defer",
