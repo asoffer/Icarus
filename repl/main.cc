@@ -53,8 +53,11 @@ int main(int argc, char *argv[]) {
   repl::Source source(&std::cin, &std::cout);
   diagnostic::StreamingConsumer diag(stderr, &source);
 
+  module::FileImporter<LibraryModule> importer;
   repl::Module mod;
   // TODO: Handle parse failures
-  while (true) { mod.AppendNodes(frontend::Parse(source, diag), diag); }
+  while (true) {
+    mod.AppendNodes(frontend::Parse(source, diag), diag, importer);
+  }
   return 0;
 }

@@ -28,6 +28,9 @@ namespace module {
 template <typename T>
 struct ExtendedModule;
 
+// Forward-declare to break the dependency cycle.
+struct Importer;
+
 // BasicModule:
 //
 // Represents a unit of compilation, beyond which all intercommunication must be
@@ -48,9 +51,9 @@ struct BasicModule : base::Cast<BasicModule> {
   BasicModule &operator=(BasicModule const &) = delete;
 
   void AppendNode(std::unique_ptr<ast::Node> node,
-                  diagnostic::DiagnosticConsumer &diag);
+                  diagnostic::DiagnosticConsumer &diag, Importer &importer);
   void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
-                   diagnostic::DiagnosticConsumer &diag);
+                   diagnostic::DiagnosticConsumer &diag, Importer &importer);
 
   absl::Span<ast::Declaration const *const> ExportedDeclarations(
       std::string_view name) const;
@@ -59,7 +62,7 @@ struct BasicModule : base::Cast<BasicModule> {
 
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
-                            diagnostic::DiagnosticConsumer &) = 0;
+                            diagnostic::DiagnosticConsumer &, Importer &) = 0;
 
   // Child classes must call this when they no longer append nodes to the syntax
   // tree. This notifies users of the module that it is safe to consume the

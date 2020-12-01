@@ -35,9 +35,9 @@ struct FileImporter : Importer {
     if (auto maybe_file_src =
             frontend::FileSource::Make(ResolveModulePath(module_path))) {
       std::thread t(
-          [mod = mod, file_src = std::move(*maybe_file_src)]() mutable {
+          [this, mod = mod, file_src = std::move(*maybe_file_src)]() mutable {
             diagnostic::StreamingConsumer diag(stderr, &file_src);
-            mod->AppendNodes(frontend::Parse(file_src, diag), diag);
+            mod->AppendNodes(frontend::Parse(file_src, diag), diag, *this);
           });
       t.detach();
       return id;
