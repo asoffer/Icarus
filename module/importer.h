@@ -1,8 +1,10 @@
 #ifndef ICARUS_MODULE_IMPORTER_H
 #define ICARUS_MODULE_IMPORTER_H
 
+#include <string>
 #include <string_view>
 #include <thread>
+#include <vector>
 
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
@@ -20,7 +22,8 @@ struct Importer {
 
 // Looks up the given module path to retrieve an absolute path to the module.
 frontend::CanonicalFileName ResolveModulePath(
-    frontend::CanonicalFileName const& module_path);
+    frontend::CanonicalFileName const& module_path,
+    std::vector<std::string> const& lookup_paths);
 
 template <typename ModuleType>
 struct FileImporter : Importer {
@@ -32,8 +35,8 @@ struct FileImporter : Importer {
 
     frontend::CanonicalFileName const& module_path =
         id.template filename<ModuleType>();
-    if (auto maybe_file_src =
-            frontend::FileSource::Make(ResolveModulePath(module_path))) {
+    if (auto maybe_file_src = frontend::FileSource::Make(
+            ResolveModulePath(module_path, module_lookup_paths))) {
       std::thread t(
           [this, mod = mod, file_src = std::move(*maybe_file_src)]() mutable {
             diagnostic::StreamingConsumer diag(stderr, &file_src);
@@ -51,6 +54,8 @@ struct FileImporter : Importer {
       return ir::ModuleId::Invalid();
     }
   }
+
+  std::vector<std::string> module_lookup_paths;
 };
 
 }  // namespace module

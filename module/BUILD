@@ -36,6 +36,7 @@ cc_library(
         ":module",
         "//frontend/source:file_name",
         "//ir/value:module_id",
+        "@com_google_absl//absl/strings",
     ],
 )
 
