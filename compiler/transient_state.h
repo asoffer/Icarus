@@ -7,6 +7,7 @@
 
 #include "absl/types/span.h"
 #include "ast/ast.h"
+#include "compiler/resources.h"
 #include "ir/blocks/basic.h"
 #include "ir/instruction/core.h"
 #include "ir/value/label.h"
@@ -26,9 +27,7 @@ struct WorkItem {
 
   Kind kind;
   ast::Node const *node;
-  // TODO: Should we just store PersistentResources directly?
-  Context &context;
-  diagnostic::DiagnosticConsumer &consumer;
+  PersistentResources &resources;
 };
 
 struct WorkQueue {

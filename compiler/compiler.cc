@@ -18,12 +18,7 @@
 namespace compiler {
 
 WorkItem::Result WorkItem::Process() const {
-  module::FileImporter<LibraryModule> importer;
-  Compiler c({
-      .data                = context,
-      .diagnostic_consumer = consumer,
-      .importer            = importer,
-  });
+  Compiler c(resources);
   switch (kind) {
     case Kind::VerifyEnumBody:
       return c.VerifyBody(&node->as<ast::EnumLiteral>());

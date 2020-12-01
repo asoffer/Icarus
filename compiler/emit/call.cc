@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "base/meta.h"
 #include "compiler/compiler.h"
+#include "compiler/resources.h"
 
 namespace compiler {
 namespace {
@@ -93,7 +94,7 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
   auto [callee_fn, overload_type, context] =
       EmitCallee(compiler, callee, callee_qual_type, args);
 
-  Compiler c = compiler.MakeChild(Compiler::PersistentResources{
+  Compiler c = compiler.MakeChild(PersistentResources{
       .data                = context ? *context : compiler.context(),
       .diagnostic_consumer = compiler.diag(),
       .importer            = compiler.importer(),
@@ -303,7 +304,6 @@ void Compiler::EmitAssign(
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
                               result, context().qual_type(node)->type()));
   }
-
 
   auto args = node->args().Transform([this](ast::Expression const *expr) {
     return type::Typed<ir::Value>(EmitValue(expr),

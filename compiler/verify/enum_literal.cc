@@ -54,10 +54,9 @@ WorkItem::Result Compiler::VerifyBody(ast::EnumLiteral const *node) {
 type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
   LOG("compile-work-queue", "Request work enum: %p", node);
   state_.work_queue.Enqueue({
-      .kind     = WorkItem::Kind::VerifyEnumBody,
-      .node     = node,
-      .context  = context(),
-      .consumer = diag(),
+      .kind      = WorkItem::Kind::VerifyEnumBody,
+      .node      = node,
+      .resources = resources_,
   });
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
