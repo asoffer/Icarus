@@ -503,11 +503,15 @@ struct Builder {
  private:
   template <typename FromType, typename ToType>
   RegOr<ToType> Cast(RegOr<FromType> r) {
-    if (r.is_reg()) {
-      return CurrentBlock()->Append(CastInstruction<ToType, FromType>{
-          .value = r.reg(), .result = CurrentGroup()->Reserve()});
+    if constexpr (base::meta<ToType> == base::meta<FromType>) {
+      return r;
     } else {
-      return static_cast<ToType>(r.value());
+      if (r.is_reg()) {
+        return CurrentBlock()->Append(CastInstruction<ToType, FromType>{
+            .value = r.reg(), .result = CurrentGroup()->Reserve()});
+      } else {
+        return static_cast<ToType>(r.value());
+      }
     }
   }
 
