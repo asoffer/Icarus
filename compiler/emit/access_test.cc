@@ -39,24 +39,25 @@ TEST_P(AccessTest, Access) {
 // to a function call. The former helps cover the constant-folding mechanisms
 // built in to the ir::Builder. The latter helps cover the common case for code
 // emission.
-INSTANTIATE_TEST_SUITE_P(All, AccessTest,
-                         testing::ValuesIn({
-                             TestCase{.expr     = R"((() -> int64 {
+INSTANTIATE_TEST_SUITE_P(
+    All, AccessTest,
+    testing::ValuesIn({
+        TestCase{.expr     = R"((() -> int64 {
                                s: S
                                s.n = 3
                                return s.n
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{3})},
-                             TestCase{.expr     = R"((() -> int64 {
+                 .expected = ir::Value(int64_t{3})},
+        TestCase{.expr     = R"((() -> int64 {
                                s: S
                                s.n = 3
                                s.p = &s.n
                                return @s.p
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{3})},
-                             TestCase{.expr     = R"((() -> int64 {
+                 .expected = ir::Value(int64_t{3})},
+        TestCase{.expr     = R"((() -> int64 {
                                s: S
                                s.n = 3
                                s.p = &s.n
@@ -64,8 +65,8 @@ INSTANTIATE_TEST_SUITE_P(All, AccessTest,
                                return s.sp.n
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{3})},
-                             TestCase{.expr     = R"((() -> int64 {
+                 .expected = ir::Value(int64_t{3})},
+        TestCase{.expr     = R"((() -> int64 {
                                s: S
                                ptr := &s
                                ptr.n = 3
@@ -74,43 +75,47 @@ INSTANTIATE_TEST_SUITE_P(All, AccessTest,
                                return ptr.sp.n
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{3})},
-                             TestCase{.expr     = R"((() -> nat64 {
+                 .expected = ir::Value(int64_t{3})},
+        TestCase{.expr     = R"((() -> nat64 {
                                return "abc".length
                              })()
                              )",
-                                      .expected = ir::Value(uint64_t{3})},
-                             TestCase{.expr     = R"((() -> int64 {
+                 .expected = ir::Value(uint64_t{3})},
+        TestCase{.expr     = R"((() -> int64 {
                                s := S.{n = 3}
                                x := copy s.n
                                return x
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{3})},
-                             TestCase{.expr     = R"((() -> int64 {
+                 .expected = ir::Value(int64_t{3})},
+        TestCase{.expr     = R"((() -> int64 {
                                s := S.{n = 3}
                                x := move s.n
                                return x
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{3})},
-                             TestCase{.expr = R"((() -> int64 {
+                 .expected = ir::Value(int64_t{3})},
+        TestCase{.expr = R"((() -> int64 {
                                s := S.{n = 3}
                                p := &s
                                return p.n * p.n
                              })()
                              )",
-                                      // Loading pointer from a parameter
-                                      .expected = ir::Value(int64_t{9})},
-                             TestCase{.expr     = R"((() -> int64 {
+                 // Loading pointer from a parameter
+                 .expected = ir::Value(int64_t{9})},
+        TestCase{.expr     = R"((() -> int64 {
                                s := S.{n = 3}
                                f ::= (p: *S) => p.n * p.n
                                return f(&s)
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{9})},
+                 .expected = ir::Value(int64_t{9})},
+        TestCase{.expr     = R"([3; int64].length)",
+                 .expected = ir::Value(type::Array::length_t{3})},
+        TestCase{.expr     = R"([4, 3; int64].length)",
+                 .expected = ir::Value(type::Array::length_t{4})},
 
-                         }));
+    }));
 
 // TODO: Add a test that covers pointer parameters.
 

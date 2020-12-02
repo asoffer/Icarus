@@ -29,6 +29,17 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     ASSERT(node->member_name() == "length");
     return ir::Value(builder().ByteViewLength(
         EmitValue(node->operand()).get<ir::RegOr<ir::String>>()));
+  } else if (operand_qt == type::QualType::Constant(type::Type_)) {
+    if (auto t = EvaluateOrDiagnoseAs<type::Type>(node->operand())) {
+      if (type::Array const * a = t->if_as<type::Array>()) {
+        ASSERT(node->member_name() == "length");
+        return ir::Value(a->length());
+      } else {
+        UNREACHABLE(*t);
+      }
+    } else {
+      UNREACHABLE(node->DebugString());
+    }
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
       // TODO: Can this be an address?

@@ -6,7 +6,7 @@
 namespace type {
 
 static base::Global<absl::node_hash_set<Array>> cache;
-Array const *Arr(size_t len, Type t) {
+Array const *Arr(Array::length_t len, Type t) {
   ASSERT(t.valid() == true);
   return &*cache.lock()->insert(Array(len, t)).first;
 }

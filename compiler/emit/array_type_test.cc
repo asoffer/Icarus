@@ -26,10 +26,6 @@ TEST_P(ArrayTypeTest, ArrayLiteral) {
   EXPECT_EQ(*result, expected);
 }
 
-// Note: We test both with literals and with a unary-operator applied directly
-// to a function call. The former helps cover the constant-folding mechanisms
-// built in to the ir::Builder. The latter helps cover the common case for code
-// emission.
 INSTANTIATE_TEST_SUITE_P(
     All, ArrayTypeTest,
     testing::ValuesIn({
@@ -55,6 +51,9 @@ INSTANTIATE_TEST_SUITE_P(
         )",
                  .expected = ir::Value(static_cast<type::Type>(
                      type::Arr(3, type::Arr(9, type::Float32))))},
+        TestCase{.expr     = R"([1 as nat8, 2 as int64; bool])",
+                 .expected = ir::Value(static_cast<type::Type>(
+                     type::Arr(1, type::Arr(2, type::Bool))))},
         TestCase{.expr     = R"(((n: int64, t: type) -> type {
           T := move [n, n * n; t]
           return T

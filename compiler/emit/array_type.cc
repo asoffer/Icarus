@@ -8,8 +8,11 @@ ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
-    value = builder().Array(
-        EmitValue(node->length(i)).get<ir::RegOr<int64_t>>(), value);
+    ir::Value len = EmitValue(node->length(i));
+    value         = builder().Array(
+        builder().CastTo<type::Array::length_t>(type::Typed<ir::Value>(
+            len, context().qual_type(node->length(i))->type())),
+        value);
   }
   return ir::Value(value);
 }

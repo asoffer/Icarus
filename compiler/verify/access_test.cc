@@ -146,6 +146,36 @@ TEST(Access, ByteViewInvalidMember) {
               UnorderedElementsAre(Pair("type-error", "missing-member")));
 }
 
+TEST(Access, ArrayLength) {
+  test::TestModule mod;
+  auto const *expr = mod.Append<ast::Expression>(R"([3; int64].length)");
+  auto const *qt   = mod.context().qual_type(expr);
+  EXPECT_THAT(
+      qt,
+      Pointee(type::QualType::Constant(type::Get<type::Array::length_t>())));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(Access, MultidimensionalArrayLength) {
+  test::TestModule mod;
+  auto const *expr = mod.Append<ast::Expression>(R"([3, 2; int64].length)");
+  auto const *qt   = mod.context().qual_type(expr);
+  EXPECT_THAT(
+      qt,
+      Pointee(type::QualType::Constant(type::Get<type::Array::length_t>())));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(Access, ArrayInvalidMember) {
+  test::TestModule mod;
+  auto const *expr = mod.Append<ast::Expression>(R"([3; int64].size)");
+  auto const *qt   = mod.context().qual_type(expr);
+  EXPECT_EQ(qt, nullptr);
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "missing-member")));
+}
+
+
 // TODO: Field not exported from another module.
 // TODO: Non-constant module
 // TODO: Module evaluation failure
