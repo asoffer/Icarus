@@ -1,0 +1,7 @@
+// This module provides an interface to functions in the <stdio.h> C-header file.
+
+#{export} File   ::= 'opaque
+#{export} fopen  ::= foreign("fopen", (*nat8, *nat8) -> *File)
+#{export} fscanf ::= foreign("fscanf", (*File, *nat8, *int64) -> int32)
+#{export} fclose ::= foreign("fclose", *File -> int32)
+#{export} eof    ::= 4294967295 as int32
