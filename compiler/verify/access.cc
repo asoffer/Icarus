@@ -274,6 +274,10 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
   auto const *mod = mod_id.get<LibraryModule>();
   ASSERT(mod != &c->context().module());
 
+  // Note: for any declarations read across module boundaries, we set the
+  // QualType of the imported declaration on the importing module context. This
+  // makes it findable when it's called via an overload set as is type-checked
+  // in VerifyCallee.
   auto decls = mod->ExportedDeclarations(node->member_name());
   switch (decls.size()) {
     case 0: {
@@ -295,6 +299,7 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
         return type::QualType::Error();
       } else {
         c->context().SetAllOverloads(node, ast::OverloadSet(decls));
+        c->context().set_qual_type(decls[0], *qt);
         return c->context().set_qual_type(node, *qt);
       }
     } break;
@@ -302,9 +307,9 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
       // TODO: these may also be an overload set of scopes
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Callable const *> member_types;
-      auto const &data = mod->context();
+      auto const &ctx = mod->context();
       for (auto const *decl : decls) {
-        auto *qt = data.qual_type(decl);
+        auto *qt = ctx.qual_type(decl);
         if (qt == nullptr or not qt->ok()) {
           LOG("AccessModuleMember",
               "Found member in a different module that is missing a type. "
@@ -316,6 +321,7 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
         if (auto *callable = qt->type().if_as<type::Callable>()) {
           quals &= qt->quals();
           member_types.insert(callable);
+          c->context().set_qual_type(decl, *qt);
         } else {
           LOG("AccessModuleMember",
               "Non-callable found in an overload set across module boundaries. "

@@ -371,8 +371,11 @@ Compiler::VerifyCallee(ast::Expression const *callee,
   absl::flat_hash_map<ast::Expression const *, type::Callable const *>
       overload_map;
   for (auto const *overload : context().AllOverloads(callee).members()) {
-    overload_map.emplace(
-        overload, &context().qual_type(overload)->type().as<type::Callable>());
+    LOG("VerifyCallee", "Callee: %p %s", overload, overload->DebugString());
+    overload_map.emplace(overload,
+                         &ASSERT_NOT_NULL(context().qual_type(overload))
+                              ->type()
+                              .as<type::Callable>());
   }
   return return_type(qt, std::move(overload_map));
 }
