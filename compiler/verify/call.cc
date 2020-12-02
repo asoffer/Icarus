@@ -303,7 +303,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
         // This is for debugging the compiler only, so there's no need to write
         // decent errors here.
         ASSERT(arg_vals.size() == 0u);
-        qt = type::QualType::Constant(type::Void());
+        qt = type::QualType::Constant(type::Void);
       }
     }
     if (qt) { context().set_qual_type(node, qt); }

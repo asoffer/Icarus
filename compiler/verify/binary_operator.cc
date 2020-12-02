@@ -185,7 +185,7 @@ type::QualType VerifyArithmeticAssignmentOperator(
     });
   }
   return VerifyArithmeticOperator(c, op, node, lhs_qual_type, rhs_qual_type,
-                                  type::Void());
+                                  type::Void);
 }
 
 }  // namespace
@@ -251,19 +251,19 @@ type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
                                       rhs_qual_type, lhs_qual_type.type());
     case Operator::AddEq:
       return VerifyArithmeticAssignmentOperator(this, "+", node, lhs_qual_type,
-                                                rhs_qual_type, type::Void());
+                                                rhs_qual_type, type::Void);
     case Operator::SubEq:
       return VerifyArithmeticAssignmentOperator(this, "-", node, lhs_qual_type,
-                                                rhs_qual_type, type::Void());
+                                                rhs_qual_type, type::Void);
     case Operator::MulEq:
       return VerifyArithmeticAssignmentOperator(this, "*", node, lhs_qual_type,
-                                                rhs_qual_type, type::Void());
+                                                rhs_qual_type, type::Void);
     case Operator::DivEq:
       return VerifyArithmeticAssignmentOperator(this, "/", node, lhs_qual_type,
-                                                rhs_qual_type, type::Void());
+                                                rhs_qual_type, type::Void);
     case Operator::ModEq:
       return VerifyArithmeticAssignmentOperator(this, "%", node, lhs_qual_type,
-                                                rhs_qual_type, type::Void());
+                                                rhs_qual_type, type::Void);
 
     default: UNREACHABLE();
   }

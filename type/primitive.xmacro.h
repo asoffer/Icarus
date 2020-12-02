@@ -1,3 +1,4 @@
+PRIMITIVE_MACRO(Void, "()")
 PRIMITIVE_MACRO(Bool, "bool")
 PRIMITIVE_MACRO(Int8, "int8")
 PRIMITIVE_MACRO(Int16, "int16")

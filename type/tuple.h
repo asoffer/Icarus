@@ -40,8 +40,6 @@ struct Tuple : public LegacyType {
 
 Type Tup(std::vector<Type> entries);
 
-Type Void();
-
 }  // namespace type
 
 #endif  // ICARUS_TYPE_TUPLE_H

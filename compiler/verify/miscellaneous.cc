@@ -33,13 +33,13 @@ type::QualType Compiler::VerifyType(ast::BuiltinFn const *node) {
 type::QualType Compiler::VerifyType(ast::ReturnStmt const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto quals, VerifyAndGetQuals(this, node->exprs()));
-  return type::QualType(type::Void(), quals);
+  return type::QualType(type::Void, quals);
 }
 
 type::QualType Compiler::VerifyType(ast::YieldStmt const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto quals, VerifyAndGetQuals(this, node->exprs()));
-  return type::QualType(type::Void(), quals);
+  return type::QualType(type::Void, quals);
 }
 
 type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
@@ -84,7 +84,7 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   switch (return_types.size()) {
     case 0:
       return context().set_qual_type(node,
-                                     type::QualType::NonConstant(type::Void()));
+                                     type::QualType::NonConstant(type::Void));
     case 1:
       return context().set_qual_type(
           node,

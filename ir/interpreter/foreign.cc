@@ -9,8 +9,8 @@
 #include "ir/read_only_data.h"
 #include "ir/value/value.h"
 #include "type/function.h"
+#include "type/pointer.h"
 #include "type/primitive.h"
-#include "type/tuple.h"
 
 namespace interpreter {
 using void_fn_ptr = void (*)();
@@ -33,7 +33,7 @@ void ExtractReturnValue(ffi_arg *ret, ir::Addr ret_addr) {
 }
 
 ffi_type *ToFfiType(type::Type t) {
-  if (t == type::Void()) { return &ffi_type_void; }
+  if (t == type::Void) { return &ffi_type_void; }
   if (t == type::Int8) { return &ffi_type_sint8; }
   if (t == type::Int16) { return &ffi_type_sint16; }
   if (t == type::Int32) { return &ffi_type_sint32; }
@@ -44,10 +44,8 @@ ffi_type *ToFfiType(type::Type t) {
   if (t == type::Nat64) { return &ffi_type_uint64; }
   if (t == type::Float32) { return &ffi_type_float; }
   if (t == type::Float64) { return &ffi_type_double; }
-  // TODO: Only other type to support is a pointer but we should still (at least
-  // in debug builds) check that we have a pointer type. We're not doing that
-  // now to avoid dependency cycle issues.
-  return &ffi_type_pointer;
+  if (t.is<type::Pointer>()) { return &ffi_type_pointer; }
+  UNREACHABLE(t);
 }
 }  // namespace
 
@@ -106,7 +104,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   ASSERT(fn_type->output().size() <= 1u);
 
   auto out_type =
-      fn_type->output().empty() ? type::Void() : fn_type->output()[0];
+      fn_type->output().empty() ? type::Void : fn_type->output()[0];
 
   ffi_cif cif;
   ffi_arg ret;
@@ -119,7 +117,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   ffi_call(&cif, f.get(), &ret, arg_vals.data());
   LOG("foreign-errno", "after: %d", errno);
 
-  if (out_type == type::Void()) {
+  if (out_type == type::Void) {
     goto done;
   } else if (out_type == type::Int8) {
     ExtractReturnValue<int8_t>(&ret, return_slots[0]);

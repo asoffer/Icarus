@@ -44,7 +44,6 @@ ABSL_FLAG(std::vector<std::string>, module_paths, {},
 
 namespace debug {
 extern bool parser;
-extern bool validation;
 }  // namespace debug
 
 namespace compiler {

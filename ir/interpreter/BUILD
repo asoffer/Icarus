@@ -112,8 +112,8 @@ cc_library(
         "//ir/value:addr",
         "//ir/value:foreign_fn",
         "//type:function",
+        "//type:pointer",
         "//type:primitive",
-        "//type:tuple",
         "@com_google_absl//absl/types:span",
     ],
 )

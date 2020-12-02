@@ -41,14 +41,14 @@ type::QualType Compiler::VerifyType(ast::ConditionalGoto const *node) {
     for (auto const &expr : option.args()) { VerifyType(expr.get()); }
   }
 
-  return type::QualType::Constant(type::Void());
+  return type::QualType::Constant(type::Void);
 }
 
 type::QualType Compiler::VerifyType(ast::UnconditionalGoto const *node) {
   for (auto const &option : node->options()) {
     for (auto const &expr : option.args()) { VerifyType(expr.get()); }
   }
-  return type::QualType::Constant(type::Void());
+  return type::QualType::Constant(type::Void);
 }
 
 }  // namespace compiler

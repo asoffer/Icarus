@@ -9,7 +9,6 @@
 // may not be a good design.
 
 namespace type {
-Type Void() { return Tup({}); }
 
 static base::Global<absl::node_hash_map<std::vector<Type>, Tuple const>> tups_;
 Type Tup(std::vector<Type> entries) {

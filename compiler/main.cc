@@ -57,8 +57,6 @@ ABSL_FLAG(std::vector<std::string>, module_paths, {},
 
 namespace debug {
 extern bool parser;
-extern bool validation;
-extern bool optimize_ir;
 }  // namespace debug
 
 namespace compiler {
@@ -103,6 +101,8 @@ int CompileToObjectFile(ExecutableModule const &module,
   // emiting declarations guarantees they're already available.
   absl::flat_hash_map<ir::CompiledFn const *, llvm::Function *> llvm_fn_map;
   module.context().ForEachCompiledFn([&](ir::CompiledFn const *fn) {
+    // TODO: Add optimization passes. Currently ignoring --opt_ir flag entirely.
+
     llvm_fn_map.emplace(fn,
                         backend::DeclareLlvmFunction(*fn, module, llvm_module));
   });
@@ -202,7 +202,6 @@ int main(int argc, char *argv[]) {
     ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
   }
   debug::parser      = absl::GetFlag(FLAGS_debug_parser);
-  debug::optimize_ir = absl::GetFlag(FLAGS_opt_ir);
 
   if (args.size() < 2) {
     std::cerr << "Missing required positional argument: source file"

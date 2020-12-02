@@ -4,12 +4,6 @@
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 
-#if defined(ICARUS_DEBUG)
-namespace debug {
-bool optimize_ir = true;
-}  // namespace debug
-#endif  // defined(ICARUS_DEBUG)
-
 namespace opt {
 
 static void DeleteBlocks(absl::flat_hash_set<ir::BasicBlock*> const& to_delete,
@@ -117,10 +111,6 @@ void ReduceEmptyBlocks(ir::CompiledFn* fn) {
 }
 
 void CombineBlocks(ir::CompiledFn* fn) {
-#if defined(ICARUS_DEBUG)
-  if (not debug::optimize_ir) return;
-#endif  // defined(ICARUS_DEBUG)
-
   std::queue<ir::BasicBlock*> dead_sources;
 
   // TODO use something like a base::bag

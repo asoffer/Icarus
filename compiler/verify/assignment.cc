@@ -105,7 +105,7 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
     ++rhs_iter;
   }
 
-  return type::QualType::Constant(type::Void());
+  return type::QualType::Constant(type::Void);
 }
 
 }  // namespace compiler

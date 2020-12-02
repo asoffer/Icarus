@@ -153,7 +153,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   // TODO: Support all types
   type::QualType const *qt = ASSERT_NOT_NULL(context().qual_type(node));
   std::optional<ir::Reg> result;
-  if (qt->type() != type::Void()) {
+  if (qt->type() != type::Void) {
     type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                      uint32_t, uint64_t, float, double>(
         qt->type(), [&]<typename T>() {

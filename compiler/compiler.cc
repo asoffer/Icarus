@@ -61,7 +61,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
       extracted_types = {type};
     }
 
-    if (type != type::Void()) { ASSERT(val.empty() == false); }
+    if (type != type::Void) { ASSERT(val.empty() == false); }
     // TODO is_big()?
 
     type::Type t = extracted_types[0];

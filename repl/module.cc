@@ -23,7 +23,7 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
     if (compiler->diag().num_consumed() != 0) { return; }
     // TODO compiler->CompleteDeferredBodies();
     auto expr_type = compiler->context().qual_type(expr)->type();
-    if (expr_type != type::Void()) { NOT_YET(); }
+    if (expr_type != type::Void) { NOT_YET(); }
     compiler->builder().ReturnJump();
   }
 
