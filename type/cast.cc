@@ -50,21 +50,22 @@ bool CanCast(Type from, Type to) {
                        [](Type t) { return t == Type_; });
   }
 
-  // TODO other integer types.
-  if (from == Int32 and (to.is<Enum>() or to.is<Flags>())) { return true; }
+  // TODO other integer types. This set of rules is weird and obviously wrong.
+   if (from == Int32 and (to.is<Enum>() or to.is<Flags>())) { return true; }
+   if ((from.is<Enum>() or from.is<Flags>()) and to == Nat64) { return true; }
 
-  if (auto *from_tup = from.if_as<Tuple>()) {
-    if (auto *to_tup = to.if_as<Tuple>()) {
-      if (from_tup->size() != to_tup->size()) { return false; }
-      for (size_t i = 0; i < from_tup->size(); ++i) {
-        if (not CanCast(from_tup->entries_[i], to_tup->entries_[i])) {
-          return false;
-        }
-      }
-      return true;
-    } else {
-      return false;
-    }
+   if (auto *from_tup = from.if_as<Tuple>()) {
+     if (auto *to_tup = to.if_as<Tuple>()) {
+       if (from_tup->size() != to_tup->size()) { return false; }
+       for (size_t i = 0; i < from_tup->size(); ++i) {
+         if (not CanCast(from_tup->entries_[i], to_tup->entries_[i])) {
+           return false;
+         }
+       }
+       return true;
+     } else {
+       return false;
+     }
   }
 
   if (from == NullPtr) {

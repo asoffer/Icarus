@@ -35,6 +35,13 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
   }
 
   c.builder().CurrentBlock() = current_block;
+
+  // TODO: MakeAllDestructions
+  c.builder().FinishTemporariesWith(
+      [&c](type::Typed<ir::Reg> r) { c.EmitDestroy(r); });
+
+  c.builder().block_termination_state() =
+      ir::Builder::BlockTerminationState::kReturn;
   c.builder().ChooseJump(std::move(names), std::move(blocks), std::move(args));
 }
 

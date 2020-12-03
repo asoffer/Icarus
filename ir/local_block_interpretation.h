@@ -21,6 +21,7 @@ struct LocalBlockInterpretation {
     for (auto [block_node, _] : data_) {
       name_to_node_.emplace(block_node->name(), block_node);
     }
+    LOG("LocalBlockInterpretation", "name_to_node = %s", name_to_node_);
   }
   BasicBlock *operator[](std::string_view name) const {
     if (name == "done") { return exit_; }

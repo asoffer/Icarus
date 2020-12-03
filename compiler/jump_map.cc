@@ -153,7 +153,16 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
         Visit(expr.get());
       }
     }
-    jumps_->Insert(&node_stack_.back()->as<ast::Jump>(), node);
+
+    auto iter = node_stack_.rbegin();
+    while (iter != node_stack_.rend() and not(**iter).is<ast::Jump>()) {
+      ++iter;
+    }
+    // TODO: Determine if this is possible and needs to be handled, or if it's
+    // already been resolved as part of an earlier type-checking phase.
+    ASSERT(iter != node_stack_.rend());
+
+    jumps_->Insert(&(*iter)->as<ast::Jump>(), node);
   }
 
   void Visit(ast::Label const *node) final {}

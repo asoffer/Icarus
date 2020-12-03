@@ -427,7 +427,7 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
   type::Type state_type = nullptr;
   if (node->state_type()) {
     ASSIGN_OR(return ir::Value(),  //
-                     type::Type state_type,
+                     state_type,
                      EvaluateOrDiagnoseAs<type::Type>(node->state_type()));
   }
 

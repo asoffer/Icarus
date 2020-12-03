@@ -475,6 +475,7 @@ struct Builder {
     kMoreStatements,  // Not at the end of the block yet
     kNoTerminator,    // Block complete; no `return` or `<<`
     kReturn,          // Block completed with `return`
+    kGoto,            // Block completed with `goto`
     kLabeledYield,    // Block completed with `#.my_label << `
     kYield,           // Block completed with `<<`
   };

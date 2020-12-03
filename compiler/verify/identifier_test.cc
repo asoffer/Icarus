@@ -63,9 +63,7 @@ TEST(Identifier, NonCallableOverloads) {
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "shadowing-declaration"),
                            Pair("type-error", "shadowing-declaration"),
-                           Pair("type-error", "shadowing-declaration"),
-                           Pair("type-error", "non-callable-in-overload-set"),
-                           Pair("type-error", "non-callable-in-overload-set")));
+                           Pair("type-error", "shadowing-declaration")));
 }
 
 TEST(Identifier, CyclicDependency) {
