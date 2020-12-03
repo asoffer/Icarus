@@ -7,10 +7,10 @@
 namespace compiler {
 namespace {
 
+using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::SizeIs;
-using ::testing::UnorderedElementsAre;
 
 TEST(Identifier, Success) {
   test::TestModule mod;
@@ -32,7 +32,7 @@ TEST(Identifier, Undeclared) {
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(
       mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "undeclared-identifier")));
+      ElementsAre(Pair("type-error", "undeclared-identifier")));
 }
 
 TEST(Identifier, OverloadSetSuccess) {
@@ -52,18 +52,14 @@ TEST(Identifier, OverloadSetSuccess) {
 TEST(Identifier, NonCallableOverloads) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  f := 3
   f ::= (b: bool) => 4
-  f := true
+  f := 3
   )");
   auto const *id = mod.Append<ast::Identifier>("f");
   auto const *qt = mod.context().qual_type(id);
   ASSERT_EQ(qt, nullptr);
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "shadowing-declaration"),
-                           Pair("type-error", "shadowing-declaration"),
-                           Pair("type-error", "shadowing-declaration")));
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              ElementsAre(Pair("type-error", "shadowing-declaration")));
 }
 
 TEST(Identifier, CyclicDependency) {
@@ -77,7 +73,7 @@ TEST(Identifier, CyclicDependency) {
   ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("y")), nullptr);
   ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("z")), nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "cyclic-dependency")));
+              ElementsAre(Pair("type-error", "cyclic-dependency")));
 }
 
 }  // namespace
