@@ -50,7 +50,7 @@ struct NonCallableInOverloadSet {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
-            "NonCallable type `%s` in overload set requested here:",
+            "Non-callable type `%s` in overload set requested here:",
             decl_type.to_string()),
         diagnostic::SourceQuote(src).Highlighted(
             id, diagnostic::Style::ErrorText()),
@@ -147,6 +147,13 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Callable const *> member_types;
       bool error = false;
+
+      for (auto const *decl : potential_decls) {
+        qt = *context().qual_type(decl);
+        if (not qt.ok() or qt.HasErrorMark()) {
+          return type::QualType::Error();
+        }
+      }
 
       for (auto const *decl : potential_decls) {
         qt = *context().qual_type(decl);

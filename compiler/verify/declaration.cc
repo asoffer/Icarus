@@ -316,23 +316,20 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     default: UNREACHABLE(node->DebugString());
   }
 
-  context().set_qual_type(node, node_qual_type);
-
   if (node->id().empty()) {
     if (node_qual_type.type() == type::Module) {
       // TODO: check if it's constant?
       // TODO: check shadowing against other modules?
       // TODO: what if no init val is provded? what if not constant?
 
-      auto maybe_mod = EvaluateAs<ir::ModuleId>(node->init_val());
-      if (not maybe_mod) {
-        diag().Consume(maybe_mod.error());
-        node_qual_type.MarkError();
-      } else {
+      if (auto maybe_mod = EvaluateAs<ir::ModuleId>(node->init_val())) {
         // TODO: In generic contexts it doesn't make sense to place this on the
         // AST.
         node->scope()->embedded_modules_.insert(
             maybe_mod->get<LibraryModule>());
+      } else {
+        diag().Consume(maybe_mod.error());
+        node_qual_type.MarkError();
       }
     } else {
       diag().Consume(DeclaringHoleAsNonModule{
@@ -341,6 +338,8 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       });
       node_qual_type.MarkError();
     }
+
+    context().set_qual_type(node, node_qual_type);
     return node_qual_type;
   }
 
@@ -393,6 +392,9 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     ASSIGN_OR(continue, type::QualType q, context().qual_type(decl));
     if (Shadow(typed_node_decl,
                type::Typed<ast::Declaration const *>(decl, q.type()))) {
+      // TODO: If one of these declarations shadows the other
+      node_qual_type.MarkError();
+
       diag().Consume(ShadowingDeclaration{
           .range1 = node->range(),
           .range2 = decl->range(),
@@ -401,7 +403,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   }
 
   // TODO: verify special function signatures (copy, move, etc).
-  return node_qual_type;
+  return context().set_qual_type(node, node_qual_type);
 }
 
 }  // namespace compiler
