@@ -209,15 +209,23 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
 
 void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
                            ir::CompiledFn *main_fn) {
-  ASSERT(nodes.size() > 0);
-  ast::ModuleScope *mod_scope = &nodes.front()->scope()->as<ast::ModuleScope>();
-  ICARUS_SCOPE(ir::SetCurrent(*main_fn, c->builder())) {
-    MakeAllStackAllocations(*c, mod_scope);
-    EmitIrForStatements(*c, nodes);
-    MakeAllDestructions(*c, mod_scope);
-    // TODO determine under which scenarios destructors can be skipped.
+  if (nodes.empty()) {
+    ICARUS_SCOPE(ir::SetCurrent(*main_fn, c->builder())) {
+      EmitIrForStatements(*c, nodes);
+      c->builder().ReturnJump();
+    }
+  } else {
+    ICARUS_SCOPE(ir::SetCurrent(*main_fn, c->builder())) {
+      ast::ModuleScope *mod_scope =
+          &nodes.front()->scope()->as<ast::ModuleScope>();
 
-    c->builder().ReturnJump();
+      MakeAllStackAllocations(*c, mod_scope);
+      EmitIrForStatements(*c, nodes);
+      MakeAllDestructions(*c, mod_scope);
+      // TODO determine under which scenarios destructors can be skipped.
+
+      c->builder().ReturnJump();
+    }
   }
   c->CompleteDeferredBodies();
 }
