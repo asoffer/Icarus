@@ -76,5 +76,15 @@ TEST(Identifier, CyclicDependency) {
               ElementsAre(Pair("type-error", "cyclic-dependency")));
 }
 
+TEST(Identifier, InaccessibleDeclaration) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  n := 0
+  f ::= () => n
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              ElementsAre(Pair("type-error", "undeclared-identifier")));
+}
+
 }  // namespace
 }  // namespace compiler

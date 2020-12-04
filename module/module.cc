@@ -63,6 +63,10 @@ std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
   return decls;
 }
 
+// TODO: Add a version of this function that also gives the declarations that
+// are inaccessible. Particularly interesting would be the case of an overlaod
+// set mixing constant and non-constants. It should also be an error to
+// reference that when you're only able to see some of the name.
 std::vector<ast::Declaration const *> AllVisibleDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id) {
   std::vector<ast::Declaration const *> decls;
@@ -77,7 +81,6 @@ std::vector<ast::Declaration const *> AllVisibleDeclsTowardsRoot(
           decls.push_back(decl);
         }
       }
-      if (scope_ptr->is<ast::FnScope>()) { only_constants = true; }
     }
 
     for (auto const *mod : scope_ptr->embedded_modules_) {
@@ -87,6 +90,8 @@ std::vector<ast::Declaration const *> AllVisibleDeclsTowardsRoot(
         }
       }
     }
+
+    if (scope_ptr->is<ast::FnScope>()) { only_constants = true; }
   }
   return decls;
 }
