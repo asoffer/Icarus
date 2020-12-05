@@ -26,6 +26,9 @@ struct JumpCmd {
   static JumpCmd Uncond(BasicBlock* block) {
     return JumpCmd(UncondJump{block});
   }
+  static JumpCmd JumpExit(std::string_view name) {
+    return JumpCmd(JumpExitJump{name});
+  }
   static JumpCmd Cond(Reg r, BasicBlock* true_block, BasicBlock* false_block) {
     return JumpCmd(CondJump{r, true_block, false_block});
   }
@@ -52,6 +55,9 @@ struct JumpCmd {
     BasicBlock* true_block;
     BasicBlock* false_block;
   };
+  struct JumpExitJump {
+    std::string_view name;
+  };
   struct ChooseJump {
     explicit ChooseJump(std::vector<std::string_view> names,
                         std::vector<BasicBlock*> blocks,
@@ -73,7 +79,7 @@ struct JumpCmd {
     std::vector<core::Arguments<type::Typed<Value>>> args_;
   };
 
-  enum class Kind { Unreachable, Return, Uncond, Cond, Choose };
+  enum class Kind { Unreachable, Return, Uncond, Cond, JumpExit, Choose };
   Kind kind() const { return static_cast<Kind>(jump_.index()); }
 
   template <typename Fn>
@@ -84,7 +90,8 @@ struct JumpCmd {
       case Kind::Return: return fn(std::get<1>(jump_));
       case Kind::Uncond: return fn(std::get<2>(jump_));
       case Kind::Cond: return fn(std::get<3>(jump_));
-      case Kind::Choose: return fn(std::get<4>(jump_));
+      case Kind::JumpExit: return fn(std::get<4>(jump_));
+      case Kind::Choose: return fn(std::get<5>(jump_));
     }
     UNREACHABLE();
   }
@@ -97,7 +104,8 @@ struct JumpCmd {
       case Kind::Return: return fn(std::get<1>(jump_));
       case Kind::Uncond: return fn(std::get<2>(jump_));
       case Kind::Cond: return fn(std::get<3>(jump_));
-      case Kind::Choose: return fn(std::get<4>(jump_));
+      case Kind::JumpExit: return fn(std::get<4>(jump_));
+      case Kind::Choose: return fn(std::get<5>(jump_));
     }
     UNREACHABLE();
   }
@@ -137,6 +145,8 @@ struct JumpCmd {
         return absl::StrCat("cond ", stringify(j.reg),
                             " false: ", stringify(j.false_block),
                             ", true: ", stringify(j.true_block));
+      } else if constexpr (std::is_same_v<type, JumpExitJump>) {
+        return absl::StrCat("jump-exit ", j.name);
       } else if constexpr (std::is_same_v<type, ChooseJump>) {
         std::string out = "choose( ";
         for (std::string_view name : j.names()) {
@@ -154,7 +164,8 @@ struct JumpCmd {
   template <typename T>
   explicit JumpCmd(T&& val) : jump_(std::forward<T>(val)) {}
 
-  std::variant<UnreachableJump, RetJump, UncondJump, CondJump, ChooseJump>
+  std::variant<UnreachableJump, RetJump, UncondJump, CondJump, JumpExitJump,
+               ChooseJump>
       jump_;
 };
 

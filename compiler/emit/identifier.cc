@@ -29,7 +29,8 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
   if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
     auto t      = context().qual_type(node)->type();
     ir::Reg reg = context().addr(decl_span[0]);
-    return (decl_span[0]->flags() & ast::Declaration::f_IsOutput) and
+    return (decl_span[0]->flags() & (ast::Declaration::f_IsBlockParam |
+                                     ast::Declaration::f_IsOutput)) and
                    not t.get()->is_big()
                ? builder().Load(reg, t)
                : ir::Value(reg);

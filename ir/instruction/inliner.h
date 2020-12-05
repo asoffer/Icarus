@@ -38,16 +38,14 @@ struct InstructionInliner {
 
   BasicBlock *InlineAllBlocks();
 
-  absl::flat_hash_map<
-      std::string_view,
-      std::pair<BasicBlock *, core::Arguments<type::Typed<ir::Value>>>>
-  ExtractNamedBlockMapping() && {
-    return std::move(named_blocks_);
-  }
-
   template <typename T>
   void Inline(std::vector<RegOr<T>> &rs) const {
     for (auto &r : rs) { Inline(r); }
+  }
+
+  absl::flat_hash_map<std::string, core::Arguments<type::Typed<Value>>>
+  ArgumentsByName() && {
+    return std::move(arguments_by_name_);
   }
 
  private:
@@ -59,11 +57,9 @@ struct InstructionInliner {
   internal::BlockGroupBase *into_;
   int register_offset_;
   absl::flat_hash_map<BasicBlock const *, BasicBlock *> blocks_;
+  absl::flat_hash_map<std::string, core::Arguments<type::Typed<Value>>>
+      arguments_by_name_;
 
-  absl::flat_hash_map<
-      std::string_view,
-      std::pair<BasicBlock *, core::Arguments<type::Typed<ir::Value>>>>
-      named_blocks_;
   LocalBlockInterpretation block_interp_;
 };
 

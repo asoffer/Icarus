@@ -36,7 +36,10 @@ InstructionInliner::InstructionInliner(
     if (not inserted) { continue; }
     block->jump_.Visit([&](auto& j) {
       constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
-      if constexpr (type == base::meta<JumpCmd::UncondJump>) {
+      if constexpr (type == base::meta<JumpCmd::RetJump> or
+                    type == base::meta<JumpCmd::JumpExitJump>) {
+        // Nothing to do.
+      } else if constexpr (type == base::meta<JumpCmd::UncondJump>) {
         to_visit.push(j.block);
       } else if constexpr (type == base::meta<JumpCmd::CondJump>) {
         to_visit.push(j.true_block);
@@ -53,16 +56,7 @@ InstructionInliner::InstructionInliner(
           ++i;
         }
         ASSERT(next_name != "");
-
-        // TODO: Rather than create a new block here, make sure choose jumps are
-        // wired to their children so we can follow potentially many more such
-        // blocks.
-        auto& [next_block, args] = named_blocks_[next_name];
-        if (next_block == nullptr) {
-          next_block = into->AppendBlock(BasicBlock::DebugInfo{
-              .header        = absl::StrCat("Landing to start ", next_name),
-              .cluster_index = index});
-        }
+        to_visit.push(j.blocks()[i]);
       } else {
         UNREACHABLE(*block);
       }
@@ -111,9 +105,13 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
   block->jump_.Visit([&](auto& j) {
     constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
     if constexpr (type == base::meta<JumpCmd::UnreachableJump>) {
-      // Nothing to do
+      UNREACHABLE(*block);
     } else if constexpr (type == base::meta<JumpCmd::RetJump>) {
       UNREACHABLE(*block);
+    } else if constexpr (type == base::meta<JumpCmd::JumpExitJump>) {
+      LOG("InlineJump", "%s", j.name);
+      BasicBlock* b = block_interp_[j.name];
+      block->jump_  = JumpCmd::Uncond(b);
     } else if constexpr (type == base::meta<JumpCmd::UncondJump>) {
       Inline(j.block, block);
     } else if constexpr (type == base::meta<JumpCmd::CondJump>) {
@@ -133,14 +131,17 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
         ++i;
       }
       ASSERT(next_name != "");
-      auto& [next_block, args] = named_blocks_[next_name];
-      ASSERT(next_block != nullptr);
-      args = j.args()[i].Transform([&](::type::Typed<Value> const& r) {
-        auto copy = r;
-        Inline(copy.get());
-        return copy;
-      });
-      next_block->insert_incoming(block);
+      ASSERT(j.blocks().size() > i);
+      ASSERT(j.args().size() > i);
+      arguments_by_name_.emplace(
+          next_name, j.args()[i].Transform([&](::type::Typed<Value> const& r) {
+            auto copy = r;
+            Inline(copy.get());
+            return copy;
+          }));
+
+      block->jump_ = JumpCmd::Uncond(j.blocks()[i]);
+      InlineJump(block);
     } else {
       static_assert(base::always_false<type>());
     }

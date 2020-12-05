@@ -232,15 +232,6 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
 
 ir::Value Compiler::EmitValue(ast::BlockNode const *node) {
   LOG("BlockNode", "EmitValue for block node named %s", node->name());
-  // TODO: Are these necessary addressable?
-  std::vector<ir::Reg> block_params;
-  block_params.reserve(node->params().size());
-  for (auto const &param : node->params()) {
-    block_params.push_back(
-        builder().Alloca(context().qual_type(param.value.get())->type()));
-    context().set_addr(param.value.get(), block_params.back());
-  }
-
   EmitIrForStatements(*this, node->stmts());
   MakeAllDestructions(*this, node->body_scope());
   auto &termination = builder().block_termination_state();

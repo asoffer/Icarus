@@ -34,6 +34,7 @@ struct CompiledBlock {
       : before_(std::move(os)), after_(std::move(after)) {}
 
   OverloadSet const &before() const { return before_; }
+  OverloadSet &before() { return before_; }
   absl::flat_hash_set<Jump> const &after() const { return after_; }
 
  private:

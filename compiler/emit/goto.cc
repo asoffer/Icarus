@@ -32,6 +32,7 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
       return type::Typed<ir::Value>(c.EmitValue(expr.get()),
                                     c.context().qual_type(expr.get())->type());
     }));
+    c.builder().JumpExitJump(opt.block());
   }
 
   c.builder().CurrentBlock() = current_block;

@@ -1,44 +1,27 @@
-errno ::= import "examples/lib/errno.ic"
+errno  ::= import "errno.ic"
+cstdio ::= import "cstdio.ic"
 
 #{export}
-CFile ::= 'opaque
-
-#{export}
-ReadChar ::= (f: *CFile) -> int32 {
-  fgetc ::= foreign("fgetc", *CFile -> int32)
-  n := fgetc(f)
-
-  return n
-}
-
-#{export}
-File ::= scope(*CFile) {
-  init ::= jump [state: **CFile] (name: *nat8) {
-    fopen ::= foreign("fopen", (*nat8, *nat8) -> *CFile)
-    @state = fopen(name, &"r"[0])
+File ::= scope(*cstdio.File) {
+  enter ::= jump [f: **cstdio.File] (name: byte_view) {
+    @f = cstdio.fopen(&name[0], &"r"[0])
 
     e := errno.get()
-    switch {
-      goto open(@state)      when e == errno.error.SUCCESS
-      goto error(e) | exit() when e != errno.error.SUCCESS
-    }
+    goto e == errno.error.SUCCESS, open(@f), error(e) | done()
   }
 
   open ::= block {
-    before ::= (f: *CFile) -> *CFile { return f }
-    after ::= jump [state: **CFile] () {
-      fclose ::= foreign("fclose", *CFile -> int32)
-      fclose(@state)
-      goto exit() 
+    before ::= (f: *cstdio.File) => f
+    after ::= jump [f: **cstdio.File] () {
+      cstdio.fclose(@f)
+      goto done() 
     }
   }
 
   error ::= block {
-    before ::= (e: errno.error) -> errno.error { return e }
-    after ::= jump [state: **CFile] () {
-      goto exit()
-    }
+    before ::= (e: errno.error) => e
+    after ::= jump [f: **cstdio.File] () { goto done() }
   }
 
-  done ::= () -> () {}
+  exit ::= () -> () {}
 }

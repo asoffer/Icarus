@@ -154,6 +154,10 @@ void Builder::ChooseJump(
       JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args)));
 }
 
+void Builder::JumpExitJump(std::string_view name) {
+  CurrentBlock()->set_jump(JumpCmd::JumpExit(name));
+}
+
 void Builder::Move(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from) {
   CurrentBlock()->Append(
       ir::MoveInstruction{.type = to.type(), .from = *from, .to = *to});

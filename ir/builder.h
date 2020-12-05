@@ -374,14 +374,15 @@ struct Builder {
   // handle control-flow, indicating which basic block control should be
   // transferred to next.
   //
-  // `UncondJump`: Transfers control to `block`.
-  // `CondJump`:   Transfers control to one of two blocks depending on a
-  //               run-time boolean value.
-  // `ReturnJump`: Transfers control back to the calling function.
-  //
-  // `ChooseJump`: Transfers control to the appropriate block-handler. Note that
-  //               this is highly specific to the current scope-definine
-  //               language constructs which are likely to change.
+  // `UncondJump`:   Transfers control to `block`.
+  // `CondJump`:     Transfers control to one of two blocks depending on a
+  //                 run-time boolean value.
+  // `ReturnJump`:   Transfers control back to the calling function.
+  // `ChooseJump`:   Transfers control to the appropriate block-handler. Note
+  //                 that this is highly specific to the current scope-definine
+  //                 language constructs which are likely to change.
+  // `JumpExitJump`: Transfers control to the calling jump/function, specifying
+  //                 the block it came from.
   void UncondJump(BasicBlock* block);
   void CondJump(RegOr<bool> cond, BasicBlock* true_block,
                 BasicBlock* false_block);
@@ -390,6 +391,7 @@ struct Builder {
   void ChooseJump(std::vector<std::string_view> names,
                   std::vector<BasicBlock*> blocks,
                   std::vector<core::Arguments<type::Typed<Value>>> args);
+  void JumpExitJump(std::string_view name);
 
   template <bool B>
   BasicBlock* EarlyExitOn(BasicBlock* exit_block, RegOr<bool> cond) {

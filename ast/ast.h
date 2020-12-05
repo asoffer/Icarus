@@ -254,11 +254,12 @@ struct BinaryOperator : Expression {
 //                                parmaeter
 //
 struct Declaration : Expression {
-  using Flags                         = uint8_t;
-  static constexpr Flags f_IsFnParam  = 0x01;
-  static constexpr Flags f_IsOutput   = 0x02;
-  static constexpr Flags f_IsConst    = 0x04;
-  static constexpr Flags f_InitIsHole = 0x08;
+  using Flags                           = uint8_t;
+  static constexpr Flags f_IsFnParam    = 0x01;
+  static constexpr Flags f_IsOutput     = 0x02;
+  static constexpr Flags f_IsConst      = 0x04;
+  static constexpr Flags f_InitIsHole   = 0x08;
+  static constexpr Flags f_IsBlockParam = 0x10;
 
   explicit Declaration(frontend::SourceRange const &range, std::string id,
                        frontend::SourceRange const &id_range,
@@ -500,7 +501,15 @@ struct BlockNode : ParameterizedExpression, WithScope<ExecScope> {
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(range, std::move(params)),
         name_(std::move(name)),
-        stmts_(std::move(stmts)) {}
+        stmts_(std::move(stmts)) {
+    // TODO: We only track that this is a block parameter because arguments
+    // bound to these parameters end up being stored on the stack and we need to
+    // make sure we insert the correct load instructions. There should be a more
+    // cohesive way to handle this and function parameters simultaneously.
+    for (auto &param : params_) {
+      param.value->flags() |= Declaration::f_IsBlockParam;
+    }
+  }
   BlockNode(BlockNode &&) noexcept = default;
   BlockNode &operator=(BlockNode &&) noexcept = default;
 
