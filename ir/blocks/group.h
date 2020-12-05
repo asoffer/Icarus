@@ -101,7 +101,7 @@ struct BlockGroup : internal::BlockGroupBase {
   BlockGroup(T const *t,
              core::Params<type::Typed<ast::Declaration const *>> params,
              size_t num_state_args = 0)
-      : internal::BlockGroupBase(std::move(params)), type_(t) {}
+      : internal::BlockGroupBase(std::move(params), num_state_args), type_(t) {}
 
   T const *type() const { return type_; }
 

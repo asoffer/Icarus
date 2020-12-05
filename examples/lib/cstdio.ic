@@ -2,7 +2,6 @@
 
 #{export} File   ::= 'opaque
 #{export} fopen  ::= foreign("fopen", (*nat8, *nat8) -> *File)
-#{export} fscanf ::= foreign("fscanf", (*File, *nat8, *int64) -> int32)
 #{export} fclose ::= foreign("fclose", *File -> int32)
 #{export} fgets  ::= foreign("fgets", (*nat8, int32, *File) -> *nat8)
 #{export} fgetc  ::= foreign("fgetc", (*File) -> int32)

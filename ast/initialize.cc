@@ -201,7 +201,7 @@ void UnconditionalGoto::Initialize(Scope *scope) {
 void Jump::Initialize(Scope *scope) {
   scope_ = scope;
   set_body_with_parent(scope);
-  if (state_.get()) { state_->Initialize(scope); }
+  if (state_.get()) { state_->Initialize(body_scope()); }
   for (auto &param : params_) { param.value->Initialize(body_scope()); }
   SetAllScopes(&stmts_, body_scope());
 }

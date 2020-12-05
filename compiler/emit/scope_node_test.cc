@@ -175,10 +175,64 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
                              )",
                                  .expected = ir::Value(int64_t{3}),
                              },
+                             TestCase{
+                                 .expr     = R"((() -> int64 {
+  repeat ::= scope (int64) {
+    enter ::= jump [state: *int64] (n: int64) {
+      @state = n
+      goto @state == 0, done(), do() 
+    }
+  
+    do ::= block {
+      before ::= () -> () {}
+      after ::= jump [state: *int64] () { 
+        @state -= 1
+        goto @state == 0, done(), do()
+      }
+    }
+  
+    exit ::= () -> () {}
+  }
 
+  num := 1
+  repeat (10) do { num *= 2 }
+  return num
+})()
+                             )",
+                                 .expected = ir::Value(int64_t{1024}),
+                             },
+
+                             TestCase{
+                                 .expr     = R"((() -> int64 {
+  repeat ::= scope (int64) {
+    enter ::= jump [state: *int64] (n: int64) {
+      @state = n
+      goto @state == 0, done(), do() 
+    }
+  
+    do ::= block {
+      before ::= () -> () {}
+      after ::= jump [state: *int64] () { 
+        @state -= 1
+        goto @state == 0, done(), do()
+      }
+    }
+  
+    exit ::= () -> () {}
+  }
+
+  num := 1
+  repeat (10) do {
+    num *= 2 
+    return num
+  }
+  return num
+})()
+                             )",
+                                 .expected = ir::Value(int64_t{2}),
+                             },
                          }));
 
-// TODO: Stateful scopes
 // TODO: Ensure `before()` gets called.
 // TODO: Ensure destructors run
 // TODO: Quick exiting.

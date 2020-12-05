@@ -21,8 +21,7 @@ absl::flat_hash_map<
     std::pair<ir::BasicBlock *, core::Arguments<type::Typed<ir::Value>>>>
 InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
                       absl::Span<ir::Value const> arguments,
-                      ir::LocalBlockInterpretation const &block_interp,
-                      std::optional<ir::Reg> state_ptr) {
+                      ir::LocalBlockInterpretation const &block_interp) {
   auto const *jump           = ir::CompiledJump::From(to_be_inlined);
   auto *start_block          = bldr.CurrentBlock();
   size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
@@ -31,17 +30,16 @@ InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
   ir::InstructionInliner inl(jump, into, block_interp);
 
   bldr.CurrentBlock() = start_block;
+  size_t i = 0;
   if (auto state_type = jump->type()->state()) {
-    ASSERT(state_ptr.has_value() == true);
     type::Apply(state_type, [&]<typename T>() {
       bldr.CurrentBlock()->Append(ir::RegisterInstruction<T>{
-          .operand = *state_ptr,
+          .operand = arguments[i++].get<ir::Reg>(),
           .result  = bldr.CurrentGroup()->Reserve(),
       });
     });
   }
 
-  size_t i = 0;
   for (auto const &p : jump->type()->params()) {
     type::Apply(p.value, [&]<typename T>() {
       bldr.CurrentBlock()->Append(ir::RegisterInstruction<T>{
@@ -200,8 +198,9 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
 
   auto [init, args] =
       EmitIrForJumpArguments(*this, node->args(), *compiled_scope);
+  if (state_ptr) { args.emplace(args.begin(), *state_ptr); }
   auto init_block_map =
-      InlineJumpIntoCurrent(builder(), init, args, local_interp, state_ptr);
+      InlineJumpIntoCurrent(builder(), init, args, local_interp);
   for (auto const &[name, block_and_args] : init_block_map) {
     blocks_to_wire[name].push_back(block_and_args.first);
   }
@@ -226,8 +225,10 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
           if (f) { std::move(f)(); }
         }
 
-        auto landing_block_map = InlineJumpIntoCurrent(builder(), after, {},
-                                                       local_interp, state_ptr);
+        std::vector<ir::Value> after_args;
+        if (state_ptr) { after_args.emplace(after_args.begin(), *state_ptr); }
+        auto landing_block_map =
+            InlineJumpIntoCurrent(builder(), after, after_args, local_interp);
         for (auto const &[name, block_and_args] : landing_block_map) {
           blocks_to_wire[name].push_back(block_and_args.first);
         }

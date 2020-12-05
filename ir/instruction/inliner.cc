@@ -103,7 +103,7 @@ void InstructionInliner::Inline(Reg& r) const {
   if (r.is_arg()) {
     r = Reg(r.arg_value() + register_offset_);
   } else {
-    r = Reg(r.value() + register_offset_);
+    r = Reg(r.value() + register_offset_ + to_be_inlined_->num_args());
   }
 }
 

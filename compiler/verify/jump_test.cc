@@ -113,11 +113,11 @@ TEST(Jump, InitialValue) {
 TEST(Jump, InitialValueInferred) {
   test::TestModule mod;
   mod.AppendCode(R"(
+    ptr ::= null as *int64
     b ::= block {}
-    n := 3
   )");
   auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
-    jump [p := &n] () { goto b() }
+    jump [p := ptr] () { goto b() }
   )"));
 
   ASSERT_NE(qt, nullptr);

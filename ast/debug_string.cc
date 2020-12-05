@@ -177,12 +177,14 @@ void BlockNode::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void Jump::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, "jump(",
-                  absl::StrJoin(params(), ", ",
-                                [&](std::string *out, auto const &p) {
-                                  p.value->DebugStrAppend(out, indent);
-                                }),
-                  ") {");
+  absl::StrAppend(
+      out, "jump",
+      state() ? absl::StrCat(" [", state()->DebugString(), "] ") : " ", "(",
+      absl::StrJoin(params(), ", ",
+                    [&](std::string *out, auto const &p) {
+                      p.value->DebugStrAppend(out, indent);
+                    }),
+      ") {");
 
   for (auto *stmt : stmts()) {
     absl::StrAppend(out, "\n", indentation(indent + 1));

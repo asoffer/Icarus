@@ -31,7 +31,7 @@ while ::= scope {
 repeat ::= scope (int64) {
   enter ::= jump [state: *int64] (n: int64) {
     @state = n
-    goto do() 
+    goto @state == 0, done(), do() 
   }
 
   do ::= block {

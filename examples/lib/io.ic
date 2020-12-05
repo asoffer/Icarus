@@ -1,4 +1,4 @@
-core ::= import "examples/lib/core.ic"
+core ::= import "core.ic"
 
 #{export} Print ::= (n: int8) -> () { Print(n as int64) }
 #{export} Print ::= (n: int16) -> () { Print(n as int64) }

@@ -10,7 +10,7 @@ namespace ast {
 // contrast to declarative scopes which are essentially just collections of
 // declarations.
 struct ExecScope : public Scope {
-  ExecScope(Scope *parent);
+  explicit ExecScope(Scope *parent);
   ~ExecScope() override {}
 };
 
