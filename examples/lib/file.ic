@@ -14,7 +14,7 @@ File ::= scope(*cstdio.File) {
     before ::= (f: *cstdio.File) => f
     after ::= jump [f: **cstdio.File] () {
       cstdio.fclose(@f)
-      goto done() 
+      goto done()
     }
   }
 
