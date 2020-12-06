@@ -121,6 +121,8 @@ void Compiler::EmitCopyAssign(
                                 &from.type().as<type::Array>());
     }
     fn->WriteByteCode<interpreter::instruction_set_t>();
+    // TODO: Remove const_cast.
+    const_cast<type::Array *>(to.type())->SetCopyAssign(fn);
   }
   builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
 }
@@ -137,6 +139,8 @@ void Compiler::EmitMoveAssign(
                                 &from.type().as<type::Array>());
     }
     fn->WriteByteCode<interpreter::instruction_set_t>();
+    // TODO: Remove const_cast.
+    const_cast<type::Array *>(to.type())->SetMoveAssign(fn);
   }
   builder().Move(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
 }

@@ -151,6 +151,13 @@ struct CopyInstruction
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
       frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
       return frame;
+    } else if (auto *a = type.if_as<type::Array>()) {
+      ir::Fn f = a->CopyAssign();
+      // TODO: No reason this has to be native.
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
+      frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+      return frame;
     } else {
       NOT_YET();
     }
@@ -170,6 +177,13 @@ struct MoveInstruction
     if (auto* s = type.if_as<type::Struct>()) {
       // TODO: This copy/move are currently indistinguishable.
       ir::Fn f = *ASSERT_NOT_NULL(s->Assignment(s));
+      // TODO: No reason this has to be native.
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
+      frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+      return frame;
+    } else if (auto *a = type.if_as<type::Array>()) {
+      ir::Fn f = a->MoveAssign();
       // TODO: No reason this has to be native.
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));

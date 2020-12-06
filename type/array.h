@@ -60,8 +60,21 @@ struct Array : LegacyType {
     init_.emplace(f);
   }
 
+  void SetCopyAssign(ir::Fn f) {
+    ASSERT(copy_assign_.has_value() == false);
+    copy_assign_.emplace(f);
+  }
+
+  void SetMoveAssign(ir::Fn f) {
+    ASSERT(move_assign_.has_value() == false);
+    move_assign_.emplace(f);
+  }
+
+
   ir::Fn Initializer() const { return init_.value(); }
   ir::Fn Destructor() const { return dtor_.value(); }
+  ir::Fn CopyAssign() const { return copy_assign_.value(); }
+  ir::Fn MoveAssign() const { return move_assign_.value(); }
 
  private:
   explicit Array(length_t l, Type t)
@@ -71,7 +84,7 @@ struct Array : LegacyType {
   Type data_type_;
   // TODO: These should either be both present or both missing, but we set them
   // separately so that invariant doesn't always hold.
-  std::optional<ir::Fn> init_, dtor_;
+  std::optional<ir::Fn> init_, dtor_, copy_assign_, move_assign_;
 };
 
 Array const *Arr(Array::length_t len, Type t);
