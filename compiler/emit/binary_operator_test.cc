@@ -575,6 +575,43 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "nat64"}}),
                      testing::ValuesIn(MakeModTestDataSet<uint64_t>())));
 
+struct BufferPointerTestData {
+  std::string expr;
+  int64_t expected_result;
+};
+using BufferPointerTest = testing::TestWithParam<BufferPointerTestData>;
+TEST_P(BufferPointerTest, Arithmetic) {
+  auto const &[expr, expected_result] = GetParam();
+  test::TestModule mod;
+  // TODO: We can't use `s` as the field member because the compiler thinks
+  // there's an ambiguity (there isn't).
+  auto const *e  = mod.Append<ast::Expression>(absl::StrFormat(
+      R"((() -> int64 {
+        a := [1, 2, 3]
+        p: [*]int64 = &a[1]
+        return %s
+      })()
+      )", expr));
+  auto const *qt = mod.context().qual_type(e);
+  ASSERT_NE(qt, nullptr) << "No QualType for " << e->DebugString();
+  auto t = qt->type();
+  ASSERT_TRUE(t.valid());
+  auto result =
+      mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
+  ASSERT_TRUE(result);
+  EXPECT_EQ(*result, ir::Value(expected_result));
+}
+INSTANTIATE_TEST_SUITE_P(
+    Arithmetic, BufferPointerTest,
+    testing::ValuesIn({
+        BufferPointerTestData{.expr = "@(p - 1)", .expected_result = 1},
+        BufferPointerTestData{.expr = "@(p + 0)", .expected_result = 2},
+        BufferPointerTestData{.expr = "@(p + 1)", .expected_result = 3},
+        BufferPointerTestData{.expr = "@(p - 1 as nat8)", .expected_result = 1},
+        BufferPointerTestData{.expr = "@(p + 0 as nat8)", .expected_result = 2},
+        BufferPointerTestData{.expr = "@(p + 1 as nat8)", .expected_result = 3},
+    }));
+
 // TODO: Floating point tests.
 
 }  // namespace

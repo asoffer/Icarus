@@ -376,6 +376,40 @@ INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
                          testing::ValuesIn({"+", "-", "*", "/", "%", "^", "&",
                                             "|"}));
 
+TEST(BufferPointerArithmetic, Success) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+    p: [*]int64
+    p += 1 as nat8
+    p += 1
+    p -= 1
+    p -= 1 as nat32
+    p = p - 1
+    p = p + 1
+    p = 1 + p
+    n: int64 = p - p
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(BufferPointerArithmetic, Failure) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+    p: [*]int64
+    q: [*]nat64
+    p + p
+    p += 1.2
+    p = 1 - p
+    q - p
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(
+                  Pair("type-error", "no-matching-binary-operator"),
+                  Pair("type-error", "no-matching-binary-operator"),
+                  Pair("type-error", "no-matching-binary-operator"),
+                  Pair("type-error", "no-matching-binary-operator")));
+}
+
 // TODO: Assignment operator overloading tests.
 
 }  // namespace

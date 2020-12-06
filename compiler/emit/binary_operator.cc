@@ -90,8 +90,24 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       }
     } break;
     case frontend::Operator::Add: {
-      auto lhs_ir = EmitValue(node->lhs());
-      auto rhs_ir = EmitValue(node->rhs());
+      auto lhs_ir         = EmitValue(node->lhs());
+      auto rhs_ir         = EmitValue(node->rhs());
+      type::Type lhs_type = context().qual_type(node->lhs())->type();
+      type::Type rhs_type = context().qual_type(node->rhs())->type();
+      if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
+          lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+        return ir::Value(builder().PtrIncr(
+            lhs_ir.get<ir::RegOr<ir::Addr>>(),
+            builder().CastTo<int64_t>(type::Typed<ir::Value>(rhs_ir, rhs_type)),
+            lhs_buf_ptr_type));
+      } else if (auto const *rhs_buf_ptr_type =
+                     rhs_type.if_as<type::BufferPointer>();
+                 rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
+        return ir::Value(builder().PtrIncr(
+            rhs_ir.get<ir::RegOr<ir::Addr>>(),
+            builder().CastTo<int64_t>(type::Typed<ir::Value>(lhs_ir, lhs_type)),
+            rhs_buf_ptr_type));
+      }
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
@@ -105,6 +121,27 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
     case frontend::Operator::Sub: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
+      type::Type lhs_type = context().qual_type(node->lhs())->type();
+      type::Type rhs_type = context().qual_type(node->rhs())->type();
+      if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
+          lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+        return ir::Value(
+            builder().PtrIncr(lhs_ir.get<ir::RegOr<ir::Addr>>(),
+                              builder().Neg(builder().CastTo<int64_t>(
+                                  type::Typed<ir::Value>(rhs_ir, rhs_type))),
+                              lhs_buf_ptr_type));
+      } else if (auto const *rhs_buf_ptr_type =
+                     rhs_type.if_as<type::BufferPointer>();
+                 rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
+        return ir::Value(
+            builder().PtrIncr(rhs_ir.get<ir::RegOr<ir::Addr>>(),
+                              builder().Neg(builder().CastTo<int64_t>(
+                                  type::Typed<ir::Value>(lhs_ir, lhs_type))),
+                              rhs_buf_ptr_type));
+      } else if (auto const *buf_ptr = lhs_type.if_as<type::BufferPointer>();
+                 lhs_type == rhs_type and buf_ptr) {
+        NOT_YET("Subtracting two pointers is not yet implemented.");
+      }
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
           ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
@@ -244,33 +281,57 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
     case frontend::Operator::AddEq: {
       auto lhs_lval = EmitRef(node->lhs());
       auto rhs_ir   = EmitValue(node->rhs());
-      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                       uint32_t, uint64_t, float, double>(
-          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
-          [&]<typename T>() {
-            builder().Store<ir::RegOr<T>>(
-                current_block()->Append(ir::AddInstruction<T>{
-                    .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = rhs_ir.get<ir::RegOr<T>>(),
-                    .result = builder().CurrentGroup()->Reserve()}),
-                lhs_lval);
-          });
+      type::Type lhs_type = context().qual_type(node->lhs())->type();
+      type::Type rhs_type = context().qual_type(node->rhs())->type();
+      if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
+          lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+        builder().Store<ir::RegOr<ir::Addr>>(
+            builder().PtrIncr(builder().Load<ir::Addr>(lhs_lval),
+                              builder().CastTo<int64_t>(
+                                  type::Typed<ir::Value>(rhs_ir, rhs_type)),
+                              lhs_buf_ptr_type),
+            lhs_lval);
+      } else {
+        type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                         uint32_t, uint64_t, float, double>(
+            ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
+            [&]<typename T>() {
+              builder().Store<ir::RegOr<T>>(
+                  current_block()->Append(ir::AddInstruction<T>{
+                      .lhs    = builder().Load<T>(lhs_lval),
+                      .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                      .result = builder().CurrentGroup()->Reserve()}),
+                  lhs_lval);
+            });
+      }
       return ir::Value();
     } break;
     case frontend::Operator::SubEq: {
       auto lhs_lval = EmitRef(node->lhs());
       auto rhs_ir   = EmitValue(node->rhs());
-      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                       uint32_t, uint64_t, float, double>(
-          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
-          [&]<typename T>() {
-            builder().Store<ir::RegOr<T>>(
-                current_block()->Append(ir::SubInstruction<T>{
-                    .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = rhs_ir.get<ir::RegOr<T>>(),
-                    .result = builder().CurrentGroup()->Reserve()}),
-                lhs_lval);
-          });
+      type::Type lhs_type = context().qual_type(node->lhs())->type();
+      type::Type rhs_type = context().qual_type(node->rhs())->type();
+      if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
+          lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+        builder().Store<ir::RegOr<ir::Addr>>(
+            builder().PtrIncr(builder().Load<ir::Addr>(lhs_lval),
+                              builder().Neg(builder().CastTo<int64_t>(
+                                  type::Typed<ir::Value>(rhs_ir, rhs_type))),
+                              lhs_buf_ptr_type),
+            lhs_lval);
+      } else {
+        type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                         uint32_t, uint64_t, float, double>(
+            ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
+            [&]<typename T>() {
+              builder().Store<ir::RegOr<T>>(
+                  current_block()->Append(ir::SubInstruction<T>{
+                      .lhs    = builder().Load<T>(lhs_lval),
+                      .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                      .result = builder().CurrentGroup()->Reserve()}),
+                  lhs_lval);
+            });
+      }
       return ir::Value();
     } break;
     case frontend::Operator::MulEq: {

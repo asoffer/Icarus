@@ -137,8 +137,10 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
                                         type::Type return_type) {
   auto quals =
       (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
-  bool check_user_overload = not lhs_qual_type.type().is<type::Primitive>() or
-                             not rhs_qual_type.type().is<type::Primitive>();
+  bool check_user_overload = not(lhs_qual_type.type().is<type::Primitive>() or
+                                 lhs_qual_type.type().is<type::Pointer>()) or
+                             not(rhs_qual_type.type().is<type::Primitive>() or
+                                 rhs_qual_type.type().is<type::Pointer>());
   if (check_user_overload) {
     // TODO: Calling with constants?
     auto qt = c->VerifyBinaryOverload(
@@ -164,6 +166,22 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
       });
       return type::QualType::Error();
     }
+  } else if (op == "+" and (lhs_qual_type.type().is<type::BufferPointer>() and
+                            type::IsIntegral(rhs_qual_type.type()))) {
+    return c->context().set_qual_type(node, lhs_qual_type);
+  } else if (op == "+" and (rhs_qual_type.type().is<type::BufferPointer>() and
+                            type::IsIntegral(lhs_qual_type.type()))) {
+    // TODO: This one isn't actually allowed if the operator is +=. This
+    // code-reuse only makes sense for operators that work symmetrically on the
+    // types.
+    return c->context().set_qual_type(node, rhs_qual_type);
+  } else if (op == "-" and lhs_qual_type.type().is<type::BufferPointer>() and
+             type::IsIntegral(rhs_qual_type.type())) {
+    return c->context().set_qual_type(node, lhs_qual_type);
+  } else if (op == "-" and lhs_qual_type.type().is<type::BufferPointer>() and
+             lhs_qual_type.type() == rhs_qual_type.type()) {
+    return c->context().set_qual_type(node, type::QualType(type::Int64, quals));
+
   } else {
     c->diag().Consume(NoMatchingBinaryOperator{
         .lhs_type = lhs_qual_type.type(),
