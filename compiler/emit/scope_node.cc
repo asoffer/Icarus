@@ -15,7 +15,25 @@
 namespace compiler {
 namespace {
 
-absl::flat_hash_map<std::string, core::Arguments<type::Typed<ir::Value>>>
+// Many different gotos may end up at the same block node, some from the same
+// jump, some from different jumps. They may end up calling different overloads
+// of the before/entry function. BeforeBlock describes one such possible entry
+// path.
+struct BeforeBlock {
+  ast::BlockNode const *block;
+  ir::Fn fn;
+  template <typename H>
+  friend H AbslHashValue(H h, BeforeBlock const &b) {
+    return H::combine(std::move(h), b.block, b.fn);
+  }
+
+  bool operator==(BeforeBlock const &) const & = default;
+  bool operator!=(BeforeBlock const &) const & = default;
+};
+
+absl::flat_hash_map<
+    std::string, std::vector<std::pair<core::Arguments<type::Typed<ir::Value>>,
+                                       ir::BasicBlock *>>>
 InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
                       absl::Span<ir::Value const> arguments,
                       ir::LocalBlockInterpretation const &block_interp) {
@@ -55,28 +73,28 @@ InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
 }
 
 struct BlockNodeResult {
-  ir::BasicBlock * start;
   ir::BasicBlock *body;
   ir::Builder::BlockTerminationState termination;
 };
 
-BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node,
-                                   ir::LocalBlockInterpretation const &interp) {
-  auto &bldr          = c.builder();
-  auto *start         = interp[node];
-  bldr.CurrentBlock() = start;
+BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node) {
+  auto &bldr = c.builder();
   auto *body =
       bldr.AddBlock(absl::StrFormat("body block for `%s`.", node->name()));
-  bldr.UncondJump(body);
 
   bldr.CurrentBlock() = body;
+
+  for (auto const &decl : node->params()) {
+    auto const *param = decl.value.get();
+    auto addr = c.builder().Alloca(c.context().qual_type(param)->type());
+    c.context().set_addr(param, addr);
+  }
 
   bldr.block_termination_state() =
       ir::Builder::BlockTerminationState::kMoreStatements;
   c.EmitValue(node);
 
-  return BlockNodeResult{.start       = start,
-                         .body        = body,
+  return BlockNodeResult{.body        = body,
                          .termination = bldr.block_termination_state()};
 }
 
@@ -117,6 +135,49 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
           }),
           arg_vals));
 }
+
+struct BlockAndPhis {
+  ir::BasicBlock *block;
+  std::vector<ir::Value> phis;
+};
+void SetBeforeBlockPhi(
+    Compiler &c, absl::flat_hash_map<BeforeBlock, BlockAndPhis> &before_blocks,
+    ast::BlockNode const *block_node, ir::Fn before_fn,
+    ir::BasicBlock *incoming_block,
+    core::Arguments<type::Typed<ir::Value>> const &args) {
+  LOG("SetBeforeBlockPhi", "SetBeforeBlockPhi: %s", block_node->name());
+
+  decltype(before_blocks.begin()) iter;
+  bool inserted;
+  std::tie(iter, inserted) = before_blocks.try_emplace(
+      BeforeBlock{.block = block_node, .fn = before_fn});
+  auto const &before_block = iter->first;
+  auto before_args =
+      c.PrepareCallArguments(nullptr, before_block.fn.type()->params(), args);
+  auto &phis = iter->second.phis;
+  if (inserted) {
+    iter->second.block = c.builder().AddBlock(
+        absl::StrFormat("Before block for `%s`", block_node->name()));
+  }
+
+  size_t i = 0;
+  for (auto const &param : before_block.fn.type()->params()) {
+    type::Apply(before_block.fn.type()->params()[i].value.type(),
+                [&]<typename T>() {
+                  ir::PhiInstruction<T> *phi =
+                      inserted ? c.builder().PhiInst<T>()
+                               : &c.builder()
+                                      .CurrentBlock()
+                                      ->instructions()[i]
+                                      .template as<ir::PhiInstruction<T>>();
+                  if (inserted) { phis.push_back(ir::Value(phi->result)); }
+                  phi->add(incoming_block, before_args[i].get<ir::RegOr<T>>());
+                });
+    ++i;
+  }
+
+  c.builder().UncondJump(iter->second.block);
+};
 
 }  // namespace
 
@@ -178,55 +239,45 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
                                    "Start of block `", block.name(), "`.")));
   }
 
+  absl::flat_hash_map<BeforeBlock, BlockAndPhis> before_blocks;
+
   ir::LocalBlockInterpretation local_interp(std::move(interp_map), args_block,
                                             landing_block);
-
 
   builder().UncondJump(args_block);
   builder().CurrentBlock() = args_block;
 
   auto [init, args] =
       EmitIrForJumpArguments(*this, node->args(), *compiled_scope);
+  auto from_block = builder().CurrentBlock();
   if (state_ptr) { args.emplace(args.begin(), *state_ptr); }
   auto args_by_name =
       InlineJumpIntoCurrent(builder(), init, args, local_interp);
-  for (auto const &[name, args] : args_by_name) {
-    // TODO: Handle arguments for start/done blocks.
-    if (name == "done" or name == "start") { continue; }
-    builder().CurrentBlock() = local_interp[name];
-    ast::BlockNode const *block_node = local_interp.block_node(name);
+  for (auto const &[name, args_and_incoming] : args_by_name) {
+    for (auto const &[args, incoming_block] : args_and_incoming) {
+      // TODO: Handle arguments for start/done blocks.
+      if (name == "done" or name == "start") { continue; }
+      builder().CurrentBlock()         = local_interp[name];
+      ast::BlockNode const *block_node = local_interp.block_node(name);
 
-    auto *scope_block = ir::CompiledBlock::From(compiled_scope->block(name));
-    ir::OverloadSet &before = scope_block->before();
-    auto arg_types   = args.Transform([](type::Typed<ir::Value> const &v) {
-      return type::QualType::NonConstant(v.type());
-    });
-    ir::Fn before_fn = before.Lookup(arg_types).value();
-    LOG("ScopeNode", "%s: before %s", name, before_fn.type()->to_string());
-    auto out_params = builder().OutParams(before_fn.type()->return_types());
-    builder().Call(
-        before_fn, before_fn.type(),
-        PrepareCallArguments(nullptr, before_fn.type()->params(), args),
-        out_params);
-    ASSERT(out_params.size() == block_node->params().size());
-    // TODO: This is probably incorrect.
-    for (size_t i = 0; i < out_params.size(); ++i) {
-      auto const *param = block_node->params()[i].value.get();
-      auto addr         = builder().Alloca(context().qual_type(param)->type());
-      context().set_addr(param, addr);
-      type::Apply(before_fn.type()->params()[i].value.type(),
-                  [&]<typename T>() {
-                    builder().Store(ir::RegOr<T>(out_params[i]), addr);
-                  });
+      auto *scope_block = ir::CompiledBlock::From(compiled_scope->block(name));
+      ir::OverloadSet &before = scope_block->before();
+      auto arg_types   = args.Transform([](type::Typed<ir::Value> const &v) {
+        return type::QualType::NonConstant(v.type());
+      });
+      ir::Fn before_fn = before.Lookup(arg_types).value();
+      SetBeforeBlockPhi(*this, before_blocks, block_node, before_fn,
+                        incoming_block, args);
     }
   }
 
+  absl::flat_hash_map<ast::BlockNode const *, ir::BasicBlock *> bodies;
   for (auto const &block_node : node->blocks()) {
     auto const *scope_block =
         ir::CompiledBlock::From(compiled_scope->block(block_node.name()));
 
-    auto [start_block, body_block, termination] =
-        EmitIrForBlockNode(*this, &block_node, local_interp);
+    auto [body_block, termination] = EmitIrForBlockNode(*this, &block_node);
+    bodies.emplace(&block_node, body_block);
 
     switch (termination) {
       case ir::Builder::BlockTerminationState::kMoreStatements: UNREACHABLE();
@@ -245,37 +296,23 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
         if (state_ptr) { after_args.emplace(after_args.begin(), *state_ptr); }
         auto args_by_name =
             InlineJumpIntoCurrent(builder(), after, after_args, local_interp);
-        for (auto const &[name, args] : args_by_name) {
-          // TODO: Handle arguments for start/done blocks.
-          if (name == "done" or name == "start") { continue; }
-          builder().CurrentBlock() = local_interp[name];
-          ast::BlockNode const *block_node = local_interp.block_node(name);
+        for (auto const &[name, args_and_incoming] : args_by_name) {
+          for (auto const &[args, incoming_block] : args_and_incoming) {
+            // TODO: Handle arguments for start/done blocks.
+            if (name == "done" or name == "start") { continue; }
+            builder().CurrentBlock()         = local_interp[name];
+            ast::BlockNode const *block_node = local_interp.block_node(name);
 
-          auto *scope_block =
-              ir::CompiledBlock::From(compiled_scope->block(name));
-          ir::OverloadSet &before = scope_block->before();
-          auto arg_types = args.Transform([](type::Typed<ir::Value> const &v) {
-            return type::QualType::NonConstant(v.type());
-          });
-          ir::Fn before_fn = before.Lookup(arg_types).value();
-          LOG("ScopeNode", "%s: before %s", name,
-              before_fn.type()->to_string());
-          auto out_params =
-              builder().OutParams(before_fn.type()->return_types());
-          builder().Call(
-              before_fn, before_fn.type(),
-              PrepareCallArguments(nullptr, before_fn.type()->params(), args),
-              out_params);
-          ASSERT(out_params.size() == block_node->params().size());
-          // TODO: This is probably incorrect.
-          for (size_t i = 0; i < out_params.size(); ++i) {
-            auto const *param = block_node->params()[i].value.get();
-            auto addr = builder().Alloca(context().qual_type(param)->type());
-            context().set_addr(param, addr);
-            type::Apply(before_fn.type()->params()[i].value.type(),
-                        [&]<typename T>() {
-                          builder().Store(ir::RegOr<T>(out_params[i]), addr);
-                        });
+            auto *scope_block =
+                ir::CompiledBlock::From(compiled_scope->block(name));
+            ir::OverloadSet &before = scope_block->before();
+            auto arg_types =
+                args.Transform([](type::Typed<ir::Value> const &v) {
+                  return type::QualType::NonConstant(v.type());
+                });
+            ir::Fn before_fn = before.Lookup(arg_types).value();
+            SetBeforeBlockPhi(*this, before_blocks, block_node, before_fn,
+                              incoming_block, args);
           }
         }
 
@@ -285,6 +322,28 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
       case ir::Builder::BlockTerminationState::kLabeledYield:
       case ir::Builder::BlockTerminationState::kYield: continue;
     }
+  }
+
+  for (auto const &[before_block, block_and_phis] : before_blocks) {
+    auto const &[block, phis] = block_and_phis;
+    builder().CurrentBlock()  = block;
+    LOG("ScopeNode", "%s: before %s", before_block.block->name(),
+        before_block.fn.type()->to_string());
+
+    auto out_params =
+        builder().OutParams(before_block.fn.type()->return_types());
+    builder().Call(before_block.fn, before_block.fn.type(), phis, out_params);
+    ASSERT(out_params.size() == before_block.block->params().size());
+
+    // TODO: This is probably incorrect.
+    for (size_t i = 0; i < out_params.size(); ++i) {
+      auto const *param = before_block.block->params()[i].value.get();
+      type::Apply(
+          before_block.fn.type()->params()[i].value.type(), [&]<typename T>() {
+            builder().Store(ir::RegOr<T>(out_params[i]), context().addr(param));
+          });
+    }
+    builder().UncondJump(bodies.at(before_block.block));
   }
 
   builder().CurrentBlock() = landing_block;

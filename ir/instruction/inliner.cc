@@ -56,6 +56,8 @@ InstructionInliner::InstructionInliner(
           ++i;
         }
         ASSERT(next_name != "");
+        choose_argument_cache_.emplace(block, j.args()[i]);
+
         to_visit.push(j.blocks()[i]);
       } else {
         UNREACHABLE(*block);
@@ -109,7 +111,18 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
     } else if constexpr (type == base::meta<JumpCmd::RetJump>) {
       UNREACHABLE(*block);
     } else if constexpr (type == base::meta<JumpCmd::JumpExitJump>) {
-      LOG("InlineJump", "%s", j.name);
+      LOG("InlineJump", "%s %p %p", j.name, j.choose_block,
+          blocks_.at(j.choose_block));
+
+      arguments_by_name_[j.name].emplace_back(
+          choose_argument_cache_.at(j.choose_block)
+              .Transform([&](::type::Typed<Value> const& r) {
+                auto copy = r;
+                Inline(copy.get());
+                return copy;
+              }),
+          block);
+
       BasicBlock* b = block_interp_[j.name];
       block->jump_  = JumpCmd::Uncond(b);
     } else if constexpr (type == base::meta<JumpCmd::UncondJump>) {
@@ -133,13 +146,8 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
       ASSERT(next_name != "");
       ASSERT(j.blocks().size() > i);
       ASSERT(j.args().size() > i);
-      arguments_by_name_.emplace(
-          next_name, j.args()[i].Transform([&](::type::Typed<Value> const& r) {
-            auto copy = r;
-            Inline(copy.get());
-            return copy;
-          }));
 
+      LOG("InlineJump", "%p", block);
       block->jump_ = JumpCmd::Uncond(j.blocks()[i]);
       InlineJump(block);
     } else {

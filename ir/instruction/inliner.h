@@ -43,7 +43,9 @@ struct InstructionInliner {
     for (auto &r : rs) { Inline(r); }
   }
 
-  absl::flat_hash_map<std::string, core::Arguments<type::Typed<Value>>>
+  absl::flat_hash_map<
+      std::string,
+      std::vector<std::pair<core::Arguments<type::Typed<Value>>, BasicBlock *>>>
   ArgumentsByName() && {
     return std::move(arguments_by_name_);
   }
@@ -57,9 +59,12 @@ struct InstructionInliner {
   internal::BlockGroupBase *into_;
   int register_offset_;
   absl::flat_hash_map<BasicBlock const *, BasicBlock *> blocks_;
-  absl::flat_hash_map<std::string, core::Arguments<type::Typed<Value>>>
+  absl::flat_hash_map<
+      std::string,
+      std::vector<std::pair<core::Arguments<type::Typed<Value>>, BasicBlock *>>>
       arguments_by_name_;
-
+  absl::flat_hash_map<BasicBlock const *, core::Arguments<type::Typed<Value>>>
+      choose_argument_cache_;
   LocalBlockInterpretation block_interp_;
 };
 

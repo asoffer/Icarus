@@ -287,6 +287,13 @@ struct CommaList : ast::Expression {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  void DebugStrAppend(std::string *out, size_t indent) const override {
+    absl::StrAppend(
+        out, absl::StrJoin(exprs_, ", ", [](std::string *out, auto const &e) {
+          absl::StrAppend(out, e->DebugString());
+        }));
+  }
+
   std::vector<std::unique_ptr<ast::Expression>> &&extract() && {
     return std::move(exprs_);
   }
@@ -1280,7 +1287,7 @@ std::unique_ptr<ast::Node> BuildStatefulJump(
                     nodes.back()->range().end());
   std::vector<std::unique_ptr<ast::Declaration>> params;
   if (nodes.size() == 6) {
-    if (nodes[2]->is<CommaList>()) {
+    if (nodes[3]->is<CommaList>()) {
       for (auto &expr : nodes[3]->as<CommaList>().exprs_) {
         ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO: handle failure
         auto decl = move_as<ast::Declaration>(expr);

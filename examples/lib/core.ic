@@ -44,3 +44,30 @@ repeat ::= scope (int64) {
 
   exit ::= () -> () {}
 }
+
+// TODO: We shouldn't need to export any of this.
+#{export}
+range ::= struct {
+  #{export}
+  current: int64
+  #{export}
+  end: int64
+}
+
+#{export}
+for ::= scope (range) {
+  enter ::= jump [state: *range] (begin: int64, end: int64) {
+    @state = range.{ current = begin \\ end = end }
+    goto state.current >= state.end, done(), do(state.current)
+  }
+
+  do ::= block {
+    before ::= (n: int64) => n
+    after ::= jump [state: *range] () { 
+      state.current += 1 
+      goto state.current >= state.end, done(), do(state.current)
+    }
+  }
+
+  exit ::= () -> () {}
+}

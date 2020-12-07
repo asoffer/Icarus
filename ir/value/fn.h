@@ -88,6 +88,14 @@ struct Fn {
     return BuiltinFn(static_cast<BuiltinFn::Which>(data_ >> 2));
   }
 
+  template <typename H>
+  friend H AbslHashValue(H h, Fn f) {
+    return H::combine(std::move(h), f.data_);
+  }
+
+  friend bool operator==(Fn lhs, Fn rhs) { return lhs.data_ == rhs.data_; }
+  friend bool operator!=(Fn lhs, Fn rhs) { return not(lhs == rhs); }
+
  private:
   underlying_type data_;
 };

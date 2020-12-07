@@ -154,8 +154,8 @@ void Builder::ChooseJump(
       JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args)));
 }
 
-void Builder::JumpExitJump(std::string_view name) {
-  CurrentBlock()->set_jump(JumpCmd::JumpExit(name));
+void Builder::JumpExitJump(std::string name, BasicBlock *choose_block) {
+  CurrentBlock()->set_jump(JumpCmd::JumpExit(std::move(name), choose_block));
 }
 
 void Builder::Move(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from) {

@@ -391,7 +391,7 @@ struct Builder {
   void ChooseJump(std::vector<std::string_view> names,
                   std::vector<BasicBlock*> blocks,
                   std::vector<core::Arguments<type::Typed<Value>>> args);
-  void JumpExitJump(std::string_view name);
+  void JumpExitJump(std::string name, BasicBlock* choose_block);
 
   template <bool B>
   BasicBlock* EarlyExitOn(BasicBlock* exit_block, RegOr<bool> cond) {

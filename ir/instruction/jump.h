@@ -26,8 +26,8 @@ struct JumpCmd {
   static JumpCmd Uncond(BasicBlock* block) {
     return JumpCmd(UncondJump{block});
   }
-  static JumpCmd JumpExit(std::string_view name) {
-    return JumpCmd(JumpExitJump{name});
+  static JumpCmd JumpExit(std::string name, BasicBlock* choose_block) {
+    return JumpCmd(JumpExitJump{std::move(name), choose_block});
   }
   static JumpCmd Cond(Reg r, BasicBlock* true_block, BasicBlock* false_block) {
     return JumpCmd(CondJump{r, true_block, false_block});
@@ -56,7 +56,8 @@ struct JumpCmd {
     BasicBlock* false_block;
   };
   struct JumpExitJump {
-    std::string_view name;
+    std::string name;
+    BasicBlock* choose_block;
   };
   struct ChooseJump {
     explicit ChooseJump(std::vector<std::string_view> names,
