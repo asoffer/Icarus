@@ -1,4 +1,4 @@
-io ::= import "examples/lib/io.ic"
+io ::= import "io.ic"
 
 foo () ping {
   io.Print("sending...")
@@ -7,7 +7,7 @@ foo () ping {
 }
 
 foo ::= scope {
-  init ::= jump() { goto ping() }
+  enter ::= jump() { goto ping() }
   ping ::= block {
     before ::= () -> {}
     after ::= jump() { goto pong() }
@@ -16,5 +16,5 @@ foo ::= scope {
     before ::= () -> {}
     after ::= jump() { goto ping() }
   }
-  done ::= () -> {}
+  exit ::= () -> {}
 }

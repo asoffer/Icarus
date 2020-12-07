@@ -20,5 +20,6 @@ file.File ("examples/file.ic") open [f: *cstdio.File] {
     }
   }
 } error [e: errno.error] {
-  io.Print("error")
+  // TODO: support enum printing
+  io.Print("error\n")
 }

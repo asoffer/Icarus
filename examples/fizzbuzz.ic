@@ -1,8 +1,7 @@
--- ::= import "examples/lib/core.ic"
-io ::= import "examples/lib/io.ic"
+-- ::= import "core.ic"
+io ::= import "io.ic"
 
-i := 0
-while (i < 100) do {
+for (0, 100) do [i: int64] {
   if (i % 15 == 0) then {
     io.Print("FizzBuzz\n")
   } else if (i % 3 == 0) then {
@@ -13,6 +12,4 @@ while (i < 100) do {
     io.Print(i)
     io.Print("\n")
   }
-  i += 1
 }
-io.Print("\n")

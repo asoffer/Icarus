@@ -31,12 +31,12 @@ while ::= scope {
 repeat ::= scope (int64) {
   enter ::= jump [state: *int64] (n: int64) {
     @state = n
-    goto @state == 0, done(), do() 
+    goto @state == 0, done(), do()
   }
 
   do ::= block {
     before ::= () -> () {}
-    after ::= jump [state: *int64] () { 
+    after ::= jump [state: *int64] () {
       @state -= 1
       goto @state == 0, done(), do()
     }
@@ -63,8 +63,8 @@ for ::= scope (range) {
 
   do ::= block {
     before ::= (n: int64) => n
-    after ::= jump [state: *range] () { 
-      state.current += 1 
+    after ::= jump [state: *range] () {
+      state.current += 1
       goto state.current >= state.end, done(), do(state.current)
     }
   }

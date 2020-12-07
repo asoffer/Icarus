@@ -1,19 +1,19 @@
 vec ::= import "examples/lib/vec.ic"
--- ::= import "examples/lib/core.ic"
+-- ::= import "core.ic"
+io ::= import "io.ic"
 
-main ::= () -> () {
-  v := vec.make(int)
-  i := 0
-  while (i < 30) {
-    vec.append(int, i, &v)
-    vec.dump(v)
-    print "\n"
-    i += 1
-  }
-
-  print vec.remove(int, &v)
-  print "\n"
-
+v := vec.make(int64)
+i := 0
+while (i < 30) do {
+  vec.append(int64, i, &v)
   vec.dump(v)
-  print "\n"
+  io.Print("\n")
+  i += 1
 }
+
+io.Print(vec.remove(int64, &v))
+io.Print("\n")
+
+vec.dump(v)
+io.Print("\n")
+
