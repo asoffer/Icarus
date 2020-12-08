@@ -28,6 +28,7 @@ WorkItem::Result WorkItem::Process() const {
       return c.VerifyBody(&node->as<ast::StructLiteral>());
     case Kind::CompleteStructMembers:
       return c.CompleteStruct(&node->as<ast::StructLiteral>());
+    case Kind::EmitJumpBody: return c.EmitJumpBody(&node->as<ast::Jump>());
   }
 }
 

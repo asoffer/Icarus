@@ -21,6 +21,7 @@ struct WorkItem {
     VerifyFunctionBody,
     VerifyStructBody,
     CompleteStructMembers,
+    EmitJumpBody,
   };
 
   Result Process() const;

@@ -512,6 +512,7 @@ struct Compiler
 
   WorkItem::Result CompleteStruct(ast::StructLiteral const *node);
   WorkItem::Result CompleteStruct(ast::ParameterizedStructLiteral const *node);
+  WorkItem::Result EmitJumpBody(ast::Jump const *node);
 
  private:
   std::optional<core::Arguments<type::Typed<ir::Value>>> VerifyArguments(

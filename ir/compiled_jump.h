@@ -26,10 +26,6 @@ struct CompiledJump : BlockGroup<type::Jump> {
     absl::flat_hash_map<std::string_view,
                         std::vector<core::Arguments<type::QualType>>>
         result;
-    if (work_item and *work_item) {
-      std::move (*work_item)();
-      work_item = nullptr;
-    }
     // TODO no reason to repeat this work multiple times.
     for (auto const *block : blocks()) {
       if (auto const *j = block->jump().IfAsChooseJump()) {
