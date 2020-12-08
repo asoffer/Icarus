@@ -2,7 +2,6 @@
 #define ICARUS_COMPILER_EXECUTABLE_MODULE_H
 
 #include "compiler/compiler.h"
-#include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/library_module.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
@@ -36,7 +35,7 @@ struct ExecutableModule : CompiledModule {
     c.VerifyAll(nodes);
     if (diag.num_consumed() > 0) { return; }
 
-    ProcessExecutableBody(&c, nodes, &main());
+    c.ProcessExecutableBody(nodes, &main());
   }
 
  private:

@@ -250,4 +250,27 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
   }
 }
 
+void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
+  // TODO store these in the appropriate order so we don't have to compute this?
+  // Will this be faster?
+  std::vector<ast::Declaration *> ordered_decls;
+  LOG("MakeAllDestructions", "decls in this scope:");
+  for (auto &[name, decls] : exec_scope->decls_) {
+    LOG("MakeAllDestructions", "... %s", name);
+    ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
+  }
+
+  // TODO eek, don't use line number to determine destruction order!
+  absl::c_sort(ordered_decls, [](ast::Declaration *lhs, ast::Declaration *rhs) {
+    return (lhs->range().begin() > rhs->range().begin());
+  });
+
+  for (auto *decl : ordered_decls) {
+    type::Type t = compiler.context().qual_type(decl)->type();
+    if (not t.get()->HasDestructor()) { continue; }
+    compiler.EmitDestroy(
+        type::Typed<ir::Reg>(compiler.context().addr(decl), t));
+  }
+}
+
 }  // namespace compiler

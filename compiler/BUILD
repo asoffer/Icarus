@@ -27,18 +27,6 @@ cc_test(
 )
 
 cc_library(
-    name = "emit_function_call_infrastructure",
-    hdrs = ["emit_function_call_infrastructure.h"],
-    srcs = ["emit_function_call_infrastructure.cc"],
-    deps = [
-        ":compiler_header",
-        "//base:ptr_span",
-        "//ast/scope:exec",
-        "//ast/scope:fn"
-    ],
-)
-
-cc_library(
     name = "resources",
     hdrs = ["resources.h"],
     deps = [
@@ -100,13 +88,14 @@ cc_library(
     deps = [
         ":compiler_header",
         ":context",
-        ":emit_function_call_infrastructure",
         ":executable_module",
         ":library_module",
         ":module",
         ":resources",
         "//ast:ast",
         "//ast:overload_set",
+        "//ast/scope:exec",
+        "//ast/scope:fn",
         "//ast:visitor",
         "//base:debug",
         "//base:defer",
@@ -123,10 +112,12 @@ cc_library(
         "//compiler/emit:comparison_operator",
         "//compiler/emit:common",
         "//compiler/emit:designated_initializer",
+        "//compiler/emit:function_type",
         "//compiler/emit:goto",
         "//compiler/emit:identifier",
         "//compiler/emit:index",
         "//compiler/emit:miscellaneous",
+        "//compiler/emit:scope_literal",
         "//compiler/emit:scope_node",
         "//compiler/emit:special",
         "//compiler/emit:terminal",
@@ -273,9 +264,10 @@ cc_library(
     hdrs = ["executable_module.h"],
     deps = [
         ":compiler_header",
-        ":emit_function_call_infrastructure",
         ":library_module",
         ":module",
+        "//ast/scope:exec",
+        "//ast/scope:fn",
         "//diagnostic/consumer",
         "//ir:compiled_fn",
         "//module:importer",

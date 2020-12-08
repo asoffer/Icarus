@@ -103,6 +103,9 @@ struct Compiler
     return c;
   }
 
+  void ProcessExecutableBody(base::PtrSpan<ast::Node const> nodes,
+                             ir::CompiledFn *main_fn);
+
   void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
     for (ast::Node const *node : nodes) {
       if (auto const *decl = node->if_as<ast::Declaration>()) {

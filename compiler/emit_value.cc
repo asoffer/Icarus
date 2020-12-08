@@ -4,7 +4,6 @@
 #include "base/guarded.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
-#include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/executable_module.h"
 #include "compiler/resources.h"
 #include "diagnostic/consumer/trivial.h"
@@ -48,6 +47,50 @@ base::move_func<void()> *DeferBody(PersistentResources resources,
         }
       }));
   return state.deferred_work.back().get();
+}
+
+void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
+  for (auto *scope : fn_scope->descendants()) {
+    if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
+    for (const auto &[key, val] : scope->decls_) {
+      LOG("MakeAllStackAllocations", "%s", key);
+      for (auto *decl : val) {
+        if (decl->flags() &
+            (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
+          LOG("MakeAllStackAllocations", "skipping constant/param decl %s",
+              decl->id());
+          continue;
+        }
+
+        LOG("MakeAllStackAllocations", "allocating %s", decl->id());
+
+        compiler.context().set_addr(
+            decl, compiler.builder().Alloca(
+                      compiler.context().qual_type(decl)->type()));
+      }
+    }
+  }
+}
+
+// TODO One problem with this setup is that we don't end up calling destructors
+// if we exit early, so those need to be handled externally.
+void EmitIrForStatements(Compiler &compiler,
+                         base::PtrSpan<ast::Node const> span) {
+  ICARUS_SCOPE(ir::SetTemporaries(compiler.builder())) {
+    for (auto *stmt : span) {
+      LOG("EmitIrForStatements", "%s", stmt->DebugString());
+      compiler.EmitValue(stmt);
+      compiler.builder().FinishTemporariesWith(
+          [&compiler](type::Typed<ir::Reg> r) { compiler.EmitDestroy(r); });
+      LOG("EmitIrForStatements", "%p %s", compiler.builder().CurrentBlock(),
+          *compiler.builder().CurrentGroup());
+
+      if (compiler.builder().block_termination_state() !=
+          ir::Builder::BlockTerminationState::kMoreStatements) {
+        break;
+      }
+    }
+  }
 }
 
 }  // namespace
@@ -264,20 +307,6 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
   return ir::Value(ir::Fn{f});
 }
 
-ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
-  std::vector<ir::RegOr<type::Type>> param_vals, out_vals;
-  param_vals.reserve(node->params().size());
-  out_vals.reserve(node->outputs().size());
-  for (auto const *p : node->params()) {
-    param_vals.push_back(EmitValue(p).get<ir::RegOr<type::Type>>());
-  }
-  for (auto const *o : node->outputs()) {
-    out_vals.push_back(EmitValue(o).get<ir::RegOr<type::Type>>());
-  }
-
-  return ir::Value(builder().Arrow(std::move(param_vals), std::move(out_vals)));
-}
-
 ir::Value Compiler::EmitValue(ast::Jump const *node) {
   LOG("Jump", "Emit %s", node->DebugString());
   // TODO: Check the result of body verification.
@@ -422,34 +451,6 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
   return ir::Value();
 }
 
-ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
-  LOG("ScopeLiteral", "State type = %p", node->state_type());
-  type::Type state_type = nullptr;
-  if (node->state_type()) {
-    ASSIGN_OR(return ir::Value(),  //
-                     state_type,
-                     EvaluateOrDiagnoseAs<type::Type>(node->state_type()));
-  }
-
-  absl::flat_hash_map<std::string_view, ir::Block> blocks;
-  std::vector<ir::RegOr<ir::Jump>> inits;
-  std::vector<ir::RegOr<ir::Fn>> dones;
-  for (auto const &decl : node->decls()) {
-    if (decl.id() == "enter") {
-      inits.push_back(EmitValue(&decl).get<ir::RegOr<ir::Jump>>());
-    } else if (decl.id() == "exit") {
-      dones.push_back(EmitValue(&decl).get<ir::RegOr<ir::Fn>>());
-    } else {
-      blocks.emplace(decl.id(),
-                     EmitValue(&decl).get<ir::RegOr<ir::Block>>().value());
-    }
-  }
-
-  return ir::Value(builder().MakeScope(context().add_scope(state_type),
-                                       std::move(inits), std::move(dones),
-                                       std::move(blocks)));
-}
-
 WorkItem::Result Compiler::CompleteStruct(
     ast::ParameterizedStructLiteral const *node) {
   LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
@@ -544,6 +545,170 @@ ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
       [c = this->WithPersistent(),
        node](core::Arguments<type::Typed<ir::Value>> const &args) mutable
       -> ir::NativeFn { return MakeConcreteFromGeneric(&c, node, args); }));
+}
+
+void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
+                  type::Function const *t) {
+  // TODO have validate return a bool distinguishing if there are errors and
+  // whether or not we can proceed.
+
+  ir::NativeFn ir_func =
+      *ASSERT_NOT_NULL(compiler->context().FindNativeFn(node));
+
+  auto &bldr = compiler->builder();
+  ICARUS_SCOPE(ir::SetCurrent(ir_func, bldr)) {
+    bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
+
+    // TODO arguments should be renumbered to not waste space on const values
+    size_t i = 0;
+    for (auto const &param : node->params()) {
+      compiler->context().set_addr(param.value.get(), ir::Reg::Arg(i++));
+    }
+
+    MakeAllStackAllocations(*compiler, node->body_scope());
+
+    type::Type ret_type = t->output()[0];
+    if (ret_type.get()->is_big()) {
+      type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
+          ir::RegOr<ir::Addr>(compiler->builder().GetRet(0, ret_type)),
+          type::Ptr(ret_type));
+      compiler->EmitMoveInit(node->body(),
+                             absl::MakeConstSpan(&typed_alloc, 1));
+    } else {
+      compiler->builder().SetRet(
+          0,
+          type::Typed<ir::Value>(compiler->EmitValue(node->body()), ret_type));
+    }
+
+    bldr.FinishTemporariesWith([compiler](type::Typed<ir::Reg> r) {
+      if (r.type().get()->HasDestructor()) { compiler->EmitDestroy(r); }
+    });
+
+    MakeAllDestructions(*compiler, node->body_scope());
+    bldr.ReturnJump();
+  }
+
+  ir_func->work_item = nullptr;
+  ir_func->WriteByteCode<interpreter::instruction_set_t>();
+}
+
+void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
+                  type::Function const *t) {
+  LOG("CompleteBody", "%s", node->DebugString());
+  // TODO have validate return a bool distinguishing if there are errors and
+  // whether or not we can proceed.
+
+  ir::NativeFn ir_func =
+      *ASSERT_NOT_NULL(compiler->context().FindNativeFn(node));
+
+  auto &bldr = compiler->builder();
+  ICARUS_SCOPE(ir::SetCurrent(ir_func, bldr)) {
+    bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
+
+    // TODO arguments should be renumbered to not waste space on const values
+    size_t i = 0;
+    for (auto const &param : node->params()) {
+      compiler->context().set_addr(param.value.get(), ir::Reg::Arg(i++));
+    }
+
+    MakeAllStackAllocations(*compiler, node->body_scope());
+    if (auto outputs = node->outputs()) {
+      for (size_t i = 0; i < outputs->size(); ++i) {
+        auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
+        if (not out_decl) { continue; }
+        type::Type out_decl_type =
+            compiler->context().qual_type(out_decl)->type();
+        auto alloc = out_decl_type.get()->is_big()
+                         ? bldr.GetRet(i, out_decl_type)
+                         : bldr.Alloca(out_decl_type);
+
+        compiler->context().set_addr(out_decl, alloc);
+        if (out_decl->IsDefaultInitialized()) {
+          compiler->EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
+        } else {
+          compiler->EmitCopyAssign(
+              type::Typed<ir::RegOr<ir::Addr>>(alloc, out_decl_type),
+              type::Typed<ir::Value>(compiler->EmitValue(out_decl->init_val()),
+                                     out_decl_type));
+        }
+      }
+    }
+
+    EmitIrForStatements(*compiler, node->stmts());
+    MakeAllDestructions(*compiler, node->body_scope());
+    bldr.ReturnJump();
+  }
+
+  ir_func->work_item = nullptr;
+  ir_func->WriteByteCode<interpreter::instruction_set_t>();
+}
+
+void CompleteBody(Compiler *compiler,
+                  ast::ParameterizedStructLiteral const *node) {
+  NOT_YET();
+}
+
+void CompleteBody(Compiler *compiler, ast::Jump const *node) {
+  LOG("CompleteBody", "Jump %s", node->DebugString());
+  ir::CompiledJump &jmp = *ASSERT_NOT_NULL(compiler->context().jump(node));
+
+  ICARUS_SCOPE(ir::SetCurrent(jmp, compiler->builder())) {
+    ASSERT(compiler != nullptr);
+    compiler->builder().CurrentBlock() = jmp.entry();
+    // TODO arguments should be renumbered to not waste space on const
+    // values
+    int32_t i = 0;
+    if (node->state()) {
+      compiler->context().set_addr(node->state(), ir::Reg::Arg(i++));
+    }
+    for (auto const &param : node->params()) {
+      compiler->context().set_addr(param.value.get(), ir::Reg::Arg(i++));
+    }
+
+    MakeAllStackAllocations(*compiler, node->body_scope());
+
+    EmitIrForStatements(*compiler, node->stmts());
+
+    // TODO: it seems like this will be appended after ChooseJump, which means
+    // it'll never be executed.
+    MakeAllDestructions(*compiler, node->body_scope());
+  }
+  jmp.WriteByteCode<interpreter::instruction_set_t>();
+  jmp.work_item = nullptr;
+}
+
+ir::Value Compiler::EmitValue(ast::BlockNode const *node) {
+  LOG("BlockNode", "EmitValue for block node named %s", node->name());
+  EmitIrForStatements(*this, node->stmts());
+  MakeAllDestructions(*this, node->body_scope());
+  auto &termination = builder().block_termination_state();
+  if (termination == ir::Builder::BlockTerminationState::kMoreStatements) {
+    termination = ir::Builder::BlockTerminationState::kNoTerminator;
+  }
+  return ir::Value();
+}
+
+void Compiler::ProcessExecutableBody(base::PtrSpan<ast::Node const> nodes,
+                                     ir::CompiledFn *main_fn) {
+  if (nodes.empty()) {
+    ICARUS_SCOPE(ir::SetCurrent(*main_fn, builder())) {
+      EmitIrForStatements(*this, nodes);
+      builder().ReturnJump();
+    }
+  } else {
+    ICARUS_SCOPE(ir::SetCurrent(*main_fn, builder())) {
+      ast::ModuleScope *mod_scope =
+          &nodes.front()->scope()->as<ast::ModuleScope>();
+
+      MakeAllStackAllocations(*this, mod_scope);
+      EmitIrForStatements(*this, nodes);
+      MakeAllDestructions(*this, mod_scope);
+      // TODO determine under which scenarios destructors can be skipped.
+
+      builder().ReturnJump();
+    }
+  }
+  CompleteDeferredBodies();
 }
 
 }  // namespace compiler

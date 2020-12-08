@@ -16,6 +16,8 @@ namespace compiler {
 std::optional<ir::CompiledFn> StructCompletionFn(
     Compiler &c, type::Struct *s, absl::Span<ast::Declaration const> fields);
 
+void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope);
+
 }  // namespace compiler
 
 #endif  // ICARUS_IR_EMIT_COMMON_H

@@ -201,6 +201,20 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "function_type",
+    srcs = ["function_type.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//ir:builder",
+        "//ir/value",
+        "//ir/value:reg_or",
+        "//type",
+    ],
+)
+
+# TODO: FunctionType
 
 cc_library(
     name = "goto",
@@ -263,6 +277,20 @@ cc_library(
 )
 
 # TODO: Miscellaneous test
+
+cc_library(
+    name = "scope_literal",
+    srcs = ["scope_literal.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//ir/value",
+        "//ir/value:reg_or",
+        "//type",
+    ],
+)
+
+# TOOD: ScopeLiteral test
 
 cc_library(
     name = "scope_node",
