@@ -63,7 +63,7 @@
 #{export} (!=) ::= (lhs: complex, rhs: complex) => !(lhs == rhs)
 
 // TODO move this inside print.
--- ::= import "examples/lib/core.ic"
+-- ::= import "core.ic"
 #{export} (print) ::= (z: complex) -> () {
   if (z._re != 0.0) then {
     print z._re

@@ -1,5 +1,5 @@
--- ::= import "examples/lib/core.ic"
-io ::= import "examples/lib/io.ic"
+-- ::= import "core.ic"
+io ::= import "io.ic"
 
 num := 0
 upper ::= 2_000_000

@@ -1,4 +1,4 @@
-core ::= import "examples/lib/core.ic"
+core ::= import "core.ic"
 
 #{export}
 Max ::= (lhs: $lhs, rhs: $lhs) -> $lhs {

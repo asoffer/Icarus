@@ -1,4 +1,4 @@
-io ::= import "examples/lib/io.ic"
+io ::= import "io.ic"
 
 // The purpose of this example is to show all the ways in which functions can
 // be called. This includes things like default arguments, named arguments,

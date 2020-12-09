@@ -1,5 +1,5 @@
--- ::= import "examples/lib/core.ic"
-io ::= import "examples/lib/io.ic"
+-- ::= import "core.ic"
+io ::= import "io.ic"
 
 io.Print("Basic enums:\n")
 // Enums are defined by simply listing the values without commas, one per

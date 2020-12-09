@@ -205,7 +205,7 @@ Icarus modules are the primary unit of encapsulation. The importer of a module
 gets to choose the name associated to that module.
 
 ```
-math ::= import "examples/lib/math.ic"
+math ::= import "examples/lib/math/math.ic"
 math.sqrt(9.0) // Evaluates to 3.0.
 ```
 
@@ -213,7 +213,7 @@ Modules can also be assigned to `--`, which makes their contents available
 directly without using module's name as a prefix.
 
 ```
--- ::= import "examples/lib/math.ic"
+-- ::= import "examples/lib/math/math.ic"
 sqrt(9.0) // Evaluates to 3.0.
 ```
 
@@ -236,8 +236,8 @@ neither `if` statements nor `while` loops. It turns out that both of these are
 definable in libraries via user-defined scopes.
 
 ```
--- ::= import "examples/lib/core.ic"
-io ::= import "examples/lib/io.ic"
+-- ::= import "core.ic"
+io ::= import "io.ic"
 
 // Prints "01234five6789"
 i := 0
