@@ -107,9 +107,9 @@ struct UncallableWithArguments {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Expression cannot be called with the given arguments."),
-        diagnostic::List(std::move(items)),
         diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+            range, diagnostic::Style::ErrorText()),
+        diagnostic::List(std::move(items)));
   }
 
   Compiler::CallError error;
