@@ -47,6 +47,23 @@ struct CastInstruction
   Reg result;
 };
 
+struct PtrDiffInstruction
+    : base::Extend<PtrDiffInstruction>::With<ByteCodeExtension, InlineExtension,
+                                             DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%3$s = ptrdiff %1$s %2$s";
+
+  void Apply(interpreter::ExecutionContext& ctx) const {
+    ctx.current_frame().regs_.set(
+        result, (ctx.resolve(lhs) - ctx.resolve(rhs)) /
+                    pointee_type.bytes(interpreter::kArchitecture));
+  }
+
+  RegOr<Addr> lhs;
+  RegOr<Addr> rhs;
+  type::Type pointee_type;
+  Reg result;
+};
+
 struct NotInstruction
     : base::Extend<NotInstruction>::With<ByteCodeExtension, InlineExtension,
                                          DebugFormatExtension> {

@@ -204,9 +204,10 @@ struct CallInstruction {
 
     outs_.WriteByteCode(writer);
 
-    writer->buf_->set(bytes_written_slot,
-                      core::Bytes{writer->buf_->size() - bytes_written_slot -
-                                  sizeof(core::Bytes)});
+    writer->buf_->set(
+        bytes_written_slot,
+        core::Bytes{static_cast<int64_t>(
+            writer->buf_->size() - bytes_written_slot - sizeof(core::Bytes))});
   }
 
   RegOr<Fn> func() const { return fn_; }

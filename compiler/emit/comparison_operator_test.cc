@@ -96,7 +96,7 @@ INSTANTIATE_TEST_SUITE_P(
             .expected = ir::Value(false)},
     }));
 
-// TODO: Add a test that covers pointer parameters.
+// TODO: Add a test that covers buffer pointer comparisons.
 
 }  // namespace
 }  // namespace compiler

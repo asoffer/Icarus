@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include "base/log.h"
 #include "core/bytes.h"
 
 namespace ir {
@@ -40,6 +41,17 @@ struct Addr {
     return lhs.data_ == rhs.data_;
   }
 
+  friend bool operator<(Addr lhs, Addr rhs) { return lhs.data_ < rhs.data_; }
+  friend bool operator<=(Addr lhs, Addr rhs) { return lhs.data_ <= rhs.data_; }
+  friend bool operator>(Addr lhs, Addr rhs) { return lhs.data_ > rhs.data_; }
+  friend bool operator>=(Addr lhs, Addr rhs) { return lhs.data_ >= rhs.data_; }
+  friend bool operator!=(Addr lhs, Addr rhs) { return not(lhs == rhs); }
+
+  friend core::Bytes operator-(Addr lhs, Addr rhs) {
+    return core::Bytes(((lhs.data_ >> 2) | (lhs.data_ & 0b11) << 62) -
+                       ((rhs.data_ >> 2) | (rhs.data_ & 0b11) << 62));
+  }
+
   template <typename H>
   friend H AbslHashValue(H h, Addr a) {
     return H::combine(std::move(h), a.data_);
@@ -63,7 +75,6 @@ struct Addr {
 inline Addr operator+(Addr a, core::Bytes b) { return a += b; }
 inline Addr operator+(core::Bytes b, Addr a) { return a += b; }
 
-constexpr inline bool operator!=(Addr lhs, Addr rhs) { return not(lhs == rhs); }
 
 std::string stringify(Addr::Kind k);
 

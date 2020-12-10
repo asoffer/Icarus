@@ -5,6 +5,7 @@ cc_library(
     hdrs = ["addr.h"],
     srcs = ["addr.cc"],
     deps = [
+        "//base:log",
         "//core:bytes",
         "//base:debug",
     ],

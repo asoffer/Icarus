@@ -28,7 +28,9 @@ struct Arch {
 inline constexpr Arch Host = Arch::Get<void *, void (*)()>();
 
 constexpr Bytes FwdAlign(Bytes b, Alignment a) {
-  return Bytes{((b.value() - 1u) | (a.value() - 1u)) + 1u};
+  return Bytes{static_cast<int64_t>(static_cast<uint64_t>(b.value() - 1) |
+                                    (a.value() - 1)) +
+               1u};
 }
 
 }  // namespace core

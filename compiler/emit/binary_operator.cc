@@ -140,7 +140,11 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                               rhs_buf_ptr_type));
       } else if (auto const *buf_ptr = lhs_type.if_as<type::BufferPointer>();
                  lhs_type == rhs_type and buf_ptr) {
-        NOT_YET("Subtracting two pointers is not yet implemented.");
+        return ir::Value(current_block()->Append(ir::PtrDiffInstruction{
+            .lhs          = lhs_ir.get<ir::RegOr<ir::Addr>>(),
+            .rhs          = rhs_ir.get<ir::RegOr<ir::Addr>>(),
+            .pointee_type = buf_ptr->pointee(),
+            .result       = builder().CurrentGroup()->Reserve()}));
       }
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(

@@ -67,18 +67,6 @@ enum class ComparisonKind {
   None       // No comparison is allowed.
 };
 
-ComparisonKind Comparator(type::Type t);
-
-template <typename TypeContainer>
-ComparisonKind MinComparisonKind(TypeContainer const &c) {
-  using cmp_t = std::underlying_type_t<ComparisonKind>;
-  return static_cast<ComparisonKind>(absl::c_accumulate(
-      c, static_cast<cmp_t>(ComparisonKind::Equality),
-      [](cmp_t val, type::Type t) {
-        return std::min(val, static_cast<cmp_t>(Comparator(t)));
-      }));
-}
-
 ComparisonKind Comparator(type::Type t) {
   using cmp_t = std::underlying_type_t<ComparisonKind>;
   if (auto const *p = t.if_as<type::BufferPointer>()) {
@@ -89,7 +77,12 @@ ComparisonKind Comparator(type::Type t) {
     return ComparisonKind::Equality;
   }
   if (auto const *tup = t.if_as<type::Tuple>()) {
-    return MinComparisonKind(tup->entries_);
+    using cmp_t = std::underlying_type_t<ComparisonKind>;
+    return static_cast<ComparisonKind>(absl::c_accumulate(
+        tup->entries_, static_cast<cmp_t>(ComparisonKind::Equality),
+        [](cmp_t val, type::Type t) {
+          return std::min(val, static_cast<cmp_t>(Comparator(t)));
+        }));
   }
   if (auto const *a = t.if_as<type::Array>()) {
     return static_cast<ComparisonKind>(
