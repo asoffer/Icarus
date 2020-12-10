@@ -133,7 +133,7 @@ void Compiler::EmitMoveInit(
         type::Typed<ir::Value>(
             ir::Value(builder().ByteViewLength(
                 EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
-            type::Nat64));
+            type::U64));
   } else {
     // TODO: should actually be an initialization, not assignment.
     if (operand_qt.quals() >= type::Quals::Ref()) {
@@ -199,7 +199,7 @@ void Compiler::EmitCopyInit(
         type::Typed<ir::Value>(
             ir::Value(builder().ByteViewLength(
                 EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
-            type::Nat64));
+            type::U64));
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
       EmitCopyAssign(
@@ -260,7 +260,7 @@ void Compiler::EmitAssign(
         type::Typed<ir::Value>(
             ir::Value(builder().ByteViewLength(
                 EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
-            type::Nat64));
+            type::U64));
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
     type::Type t = context().qual_type(node)->type();

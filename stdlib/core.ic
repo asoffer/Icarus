@@ -28,15 +28,15 @@ while ::= scope {
 }
 
 #{export}
-repeat ::= scope (int64) {
-  enter ::= jump [state: *int64] (n: int64) {
+repeat ::= scope (i64) {
+  enter ::= jump [state: *i64] (n: i64) {
     @state = n
     goto @state == 0, done(), do()
   }
 
   do ::= block {
     before ::= () -> () {}
-    after ::= jump [state: *int64] () {
+    after ::= jump [state: *i64] () {
       @state -= 1
       goto @state == 0, done(), do()
     }
@@ -49,20 +49,20 @@ repeat ::= scope (int64) {
 #{export}
 range ::= struct {
   #{export}
-  current: int64
+  current: i64
   #{export}
-  end: int64
+  end: i64
 }
 
 #{export}
 for ::= scope (range) {
-  enter ::= jump [state: *range] (begin: int64, end: int64) {
+  enter ::= jump [state: *range] (begin: i64, end: i64) {
     @state = range.{ current = begin \\ end = end }
     goto state.current >= state.end, done(), do(state.current)
   }
 
   do ::= block {
-    before ::= (n: int64) => n
+    before ::= (n: i64) => n
     after ::= jump [state: *range] () {
       state.current += 1
       goto state.current >= state.end, done(), do(state.current)

@@ -11,7 +11,7 @@ void TestFn2() {}
 
 TEST(ForeignFn, Equality) {
   auto *fn_type = type::Func(core::Params<type::QualType>{core::AnonymousParam(
-                                 type::QualType::NonConstant(type::Int64))},
+                                 type::QualType::NonConstant(type::I64))},
                              {});
 
   ir::ForeignFn f1(TestFn1, fn_type);
@@ -19,7 +19,7 @@ TEST(ForeignFn, Equality) {
 
   ir::ForeignFn f3(
       TestFn1, type::Func(core::Params<type::QualType>{core::Param(
-                              "abc", type::QualType::NonConstant(type::Int64))},
+                              "abc", type::QualType::NonConstant(type::I64))},
                           {}));
 
   ir::ForeignFn f4(TestFn2, fn_type);
@@ -30,7 +30,7 @@ TEST(ForeignFn, Equality) {
 
 TEST(ForeignFn, Value) {
   auto *fn_type = type::Func(core::Params<type::QualType>{core::AnonymousParam(
-                                 type::QualType::NonConstant(type::Int64))},
+                                 type::QualType::NonConstant(type::I64))},
                              {});
 
   ir::ForeignFn f(TestFn1, fn_type);

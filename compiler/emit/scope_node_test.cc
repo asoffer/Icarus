@@ -35,7 +35,7 @@ TEST_P(ScopeNodeTest, ScopeNode) {
 INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
                          testing::ValuesIn({
                              TestCase{
-                                 .expr     = R"((() -> int64 {
+                                 .expr     = R"((() -> i64 {
   n := 0
   ignore ::= scope {
     enter ::= jump() { goto done() }
@@ -52,7 +52,7 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
                                  .expected = ir::Value(int64_t{0}),
                              },
                              TestCase{
-                                 .expr     = R"((() -> int64 {
+                                 .expr     = R"((() -> i64 {
   just ::= scope {
     enter ::= jump() { goto do() }
     do ::= block {
@@ -72,7 +72,7 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
                                  .expected = ir::Value(int64_t{1}),
                              },
                              TestCase{
-                                 .expr     = R"((() -> int64 {
+                                 .expr     = R"((() -> i64 {
   while ::= scope {
     enter ::= jump(b: bool) { goto b, do(), done() }
     do ::= block {
@@ -93,7 +93,7 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
                              },
 
                              TestCase{
-                                 .expr     = R"((() -> int64 {
+                                 .expr     = R"((() -> i64 {
   if ::= scope {
     enter ::= jump(condition: bool) { goto condition, then(), else() | done() }
     then ::= block {
@@ -123,7 +123,7 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
 
                              // Early return
                              TestCase{
-                                 .expr     = R"((() -> int64 {
+                                 .expr     = R"((() -> i64 {
   if ::= scope {
     enter ::= jump(condition: bool) { goto condition, then(), else() | done() }
     then ::= block {
@@ -137,7 +137,7 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
     exit ::= () -> () {}
   }
 
-  func ::= (b: bool, n: *int64) -> int64 {
+  func ::= (b: bool, n: *i64) -> i64 {
     if (b) then {
       @n = 1
       return 0
@@ -158,14 +158,14 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
                                  .expected = ir::Value(int64_t{31}),
                              },
                              TestCase{
-                                 .expr     = R"((() -> int64 {
+                                 .expr     = R"((() -> i64 {
   s ::= scope {
     enter ::= jump() { goto do() }
     do ::= block {
       before ::= () -> () {}
       after ::= jump() { goto done()  }
     }
-    exit ::= (n: int64) => n
+    exit ::= (n: i64) => n
   }
 
   return #.l s () do {
@@ -176,16 +176,16 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
                                  .expected = ir::Value(int64_t{3}),
                              },
                              TestCase{
-                                 .expr     = R"((() -> int64 {
-  repeat ::= scope (int64) {
-    enter ::= jump [state: *int64] (n: int64) {
+                                 .expr     = R"((() -> i64 {
+  repeat ::= scope (i64) {
+    enter ::= jump [state: *i64] (n: i64) {
       @state = n
       goto @state == 0, done(), do() 
     }
   
     do ::= block {
       before ::= () -> () {}
-      after ::= jump [state: *int64] () { 
+      after ::= jump [state: *i64] () { 
         @state -= 1
         goto @state == 0, done(), do()
       }
@@ -203,16 +203,16 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
                              },
 
                              TestCase{
-                                 .expr     = R"((() -> int64 {
-  repeat ::= scope (int64) {
-    enter ::= jump [state: *int64] (n: int64) {
+                                 .expr     = R"((() -> i64 {
+  repeat ::= scope (i64) {
+    enter ::= jump [state: *i64] (n: i64) {
       @state = n
       goto @state == 0, done(), do() 
     }
   
     do ::= block {
       before ::= () -> () {}
-      after ::= jump [state: *int64] () { 
+      after ::= jump [state: *i64] () { 
         @state -= 1
         goto @state == 0, done(), do()
       }

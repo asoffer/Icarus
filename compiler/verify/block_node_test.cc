@@ -17,7 +17,7 @@ using ::testing::UnorderedElementsAre;
 TEST(BlockNode, NoJumps) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  s ::= scope (int64) {
+  s ::= scope (i64) {
     b ::= block {}
   }
   )");
@@ -33,7 +33,7 @@ TEST(BlockNode, NoJumps) {
 TEST(BlockNode, HasJump) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  s ::= scope (int64) {
+  s ::= scope (i64) {
     b ::= block {}
   }
   )");
@@ -55,7 +55,7 @@ TEST(BlockNode, HasJump) {
 TEST(BlockNode, LabeledJumpSkipBlock) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  s ::= scope (int64) {
+  s ::= scope (i64) {
     b ::= block {}
     exit ::= (b: bool) -> () {}
   }

@@ -36,8 +36,8 @@ struct LoadStoreCache {
   // a non-void type is specified, the cache is cleared only for that type. This
   // is useful primarily within the same block-group.
   //
-  // A store to a stack-allocation of type `int64` can only invalidate load
-  // caches of the type `int64`. Note that this fact is somewhat subtle. If
+  // A store to a stack-allocation of type `i64` can only invalidate load
+  // caches of the type `i64`. Note that this fact is somewhat subtle. If
   // stack allocations for differing types did not overlap it would be clear: A
   // store should not invalidate stores which we can guarantee it does not
   // overwirte.

@@ -22,15 +22,15 @@ namespace ir {
 // identifier as in this example:
 //
 // ```
-// square ::= (n: int64) => n * n
-// square ::= (x: float64) => x * x
+// square ::= (n: i64) => n * n
+// square ::= (x: f64) => x * x
 // ```
 //
 // However, members of the overload set can be generic functions:
 //
 // ```
-// square ::= (x: float32) => x * x
-// square ::= (x: float64) => x * x
+// square ::= (x: f32) => x * x
+// square ::= (x: f64) => x * x
 // square ::= (n: $'integral) => n * n
 // ```
 //

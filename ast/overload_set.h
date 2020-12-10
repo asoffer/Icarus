@@ -16,7 +16,7 @@ namespace ast {
 // defining two functions with the same name (but different types:
 //
 // ```
-// f ::= (n: int32) -> int32 { ... }
+// f ::= (n: i32) -> i32 { ... }
 // f ::= (b: bool) -> bool { ... }
 // ```
 //

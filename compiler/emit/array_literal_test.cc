@@ -33,63 +33,63 @@ TEST_P(ArrayLiteralTest, ArrayLiteral) {
 INSTANTIATE_TEST_SUITE_P(
     All, ArrayLiteralTest,
     testing::ValuesIn({
-        TestCase{.expr     = R"((() -> int64 { return [3][0] })())",
+        TestCase{.expr     = R"((() -> i64 { return [3][0] })())",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = R"((() -> int64 { return [1, 4, 9][2] })())",
+        TestCase{.expr     = R"((() -> i64 { return [1, 4, 9][2] })())",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr = R"((() -> float64 { return [1.0, 4.4, 9.9][1] })())",
+        TestCase{.expr = R"((() -> f64 { return [1.0, 4.4, 9.9][1] })())",
                  .expected = ir::Value(4.4)},
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                    a := [3]
                                    return a[0]
                                  })()
                                  )",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                    a := [1, 4, 9]
                                    return a[2]
                                  })()
                                  )",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"((() -> float64 {
+        TestCase{.expr     = R"((() -> f64 {
                                    a := [1.0, 4.4, 9.9]
                                    return a[1]
                                  })()
                                  )",
                  .expected = ir::Value(4.4)},
 
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                    a := [3]
                                    return a[0]
                                  })()
                                  )",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                    a := [1, 4, 9]
                                    return a[2]
                                  })()
                                  )",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"(((f: float64) -> float64 {
+        TestCase{.expr     = R"(((f: f64) -> f64 {
                                    a := [1.0, f, 9.9]
                                    return a[1]
                                  })(4.4)
                                  )",
                  .expected = ir::Value(4.4)},
-        TestCase{.expr     = R"(((f: float64) -> float64 {
+        TestCase{.expr     = R"(((f: f64) -> f64 {
                                    a := copy [1.0, f, 9.9]
                                    return a[1]
                                  })(4.4)
                                  )",
                  .expected = ir::Value(4.4)},
-        TestCase{.expr     = R"(((f: float64) -> float64 {
-                                   a: [3; float64]
+        TestCase{.expr     = R"(((f: f64) -> f64 {
+                                   a: [3; f64]
                                    a = [1.0, f, 9.9]
                                    return a[1]
                                  })(4.4)
                                  )",
                  .expected = ir::Value(4.4)},
-        TestCase{.expr     = R"(((f: float64) -> float64 {
+        TestCase{.expr     = R"(((f: f64) -> f64 {
                                    a := move [1.0, f, 9.9]
                                    return a[1]
                                  })(4.4)

@@ -16,17 +16,17 @@ namespace {
 // following:
 //
 // ```
-// foreign("malloc", (num_bytes: nat64) -> [*]int64)
-// foreign("malloc", (bytes_to_alloc: nat64) -> [*]int64)
-// foreign("malloc", nat64 -> [*]int64)
+// foreign("malloc", (num_bytes: u64) -> [*]i64)
+// foreign("malloc", (bytes_to_alloc: u64) -> [*]i64)
+// foreign("malloc", u64 -> [*]i64)
 // ```
 //
 // Second, in generic contexts, the return type may be different:
 //
 // ```
-// allocate ::= (T :: type, num: int32) -> [*]T {
-//   malloc ::= foreign("malloc", nat64 -> [*]T)
-//   return malloc(T'bytes * (num as nat64))
+// allocate ::= (T :: type, num: i32) -> [*]T {
+//   malloc ::= foreign("malloc", u64 -> [*]T)
+//   return malloc(T'bytes * (num as u64))
 // }
 // ```
 //

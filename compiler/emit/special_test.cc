@@ -20,7 +20,7 @@ TEST_P(SpecialTest, Special) {
   mod.AppendCode(R"(
   S ::= struct {
     n := 3
-    p: *int64
+    p: *i64
   }
   )");
   auto const *e  = mod.Append<ast::Expression>(expr);
@@ -47,59 +47,59 @@ INSTANTIATE_TEST_SUITE_P(All, SpecialTest,
                              )",
                                       .expected = ir::Value(false)},
                              TestCase{.expr     = R"((() -> {
-                               n: nat8
+                               n: u8
                                return n
                              })()
                              )",
                                       .expected = ir::Value(uint8_t{0})},
                              TestCase{.expr     = R"((() -> {
-                               n: nat16
+                               n: u16
                                return n
                              })()
                              )",
                                       .expected = ir::Value(uint16_t{0})},
 
                              TestCase{.expr     = R"((() -> {
-                               n: nat32
+                               n: u32
                                return n
                              })()
                              )",
                                       .expected = ir::Value(uint32_t{0})},
 
                              TestCase{.expr     = R"((() -> {
-                               n: nat64
+                               n: u64
                                return n
                              })()
                              )",
                                       .expected = ir::Value(uint64_t{0})},
                              TestCase{.expr     = R"((() -> {
-                               n: int8
+                               n: i8
                                return n
                              })()
                              )",
                                       .expected = ir::Value(int8_t{0})},
                              TestCase{.expr     = R"((() -> {
-                               n: int16
+                               n: i16
                                return n
                              })()
                              )",
                                       .expected = ir::Value(int16_t{0})},
 
                              TestCase{.expr     = R"((() -> {
-                               n: int32
+                               n: i32
                                return n
                              })()
                              )",
                                       .expected = ir::Value(int32_t{0})},
 
                              TestCase{.expr     = R"((() -> {
-                               n: int64
+                               n: i64
                                return n
                              })()
                              )",
                                       .expected = ir::Value(int64_t{0})},
                              TestCase{.expr     = R"((() -> {
-                               p: *int64
+                               p: *i64
                                return p
                              })()
                              )",

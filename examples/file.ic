@@ -11,11 +11,11 @@ io     ::= import "io.ic"
 file.File ("examples/file.ic") open [f: *cstdio.File] {
 
   // Iterate through all the characters and call putchar on each
-  c := 0 as int32
-  while (c >= 0 as int32) do {
+  c := 0 as i32
+  while (c >= 0 as i32) do {
     c = cstdio.fgetc(f)
-    if (c > 0 as int32) then {
-      putchar ::= foreign("putchar", int32 -> int32)
+    if (c > 0 as i32) then {
+      putchar ::= foreign("putchar", i32 -> i32)
       putchar(c)
     }
   }

@@ -12,7 +12,7 @@ TEST(BlockLiteral, Basic) {
   test::TestModule mod;
   auto const *e  = mod.Append<ast::Expression>(R"(block {
     before ::= () -> () {}
-    after ::= jump (n: int64) { goto done() }
+    after ::= jump (n: i64) { goto done() }
     after ::= jump() { goto done() }
   }
   )");

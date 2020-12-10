@@ -2,8 +2,8 @@ io ::= import "io.ic"
 'main
 
 main ::= () -> () {
-  x: bool | int64 = 999
-  y: bool | int64 = true
+  x: bool | i64 = 999
+  y: bool | i64 = true
 
   x = true
   y = 123
@@ -30,26 +30,26 @@ foo ::= (x: bool, y: bool) -> () {
   io.Print(")\n")
 }
 
-foo ::= (x: bool, y: int64) -> () {
+foo ::= (x: bool, y: i64) -> () {
   io.Print("foo(x: bool = ")
   io.Print(x)
-  io.Print(", y: int64 = ")
+  io.Print(", y: i64 = ")
   io.Print(y)
   io.Print(")\n")
 }
 
-foo ::= (x: int64, y: bool) -> () {
-  io.Print("foo(x: int64 = ")
+foo ::= (x: i64, y: bool) -> () {
+  io.Print("foo(x: i64 = ")
   io.Print(x)
   io.Print(", y: bool = ")
   io.Print(y)
   io.Print(")\n")
 }
 
-foo ::= (x: int64, y: int64) -> () {
-  io.Print("foo(x: int64 = ")
+foo ::= (x: i64, y: i64) -> () {
+  io.Print("foo(x: i64 = ")
   io.Print(x)
-  io.Print(", y: int64 = ")
+  io.Print(", y: i64 = ")
   io.Print(y)
   io.Print(")\n")
 }

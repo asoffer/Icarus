@@ -17,10 +17,10 @@ TEST_P(DesignatedInitializerTest, DesignatedInitializer) {
   test::TestModule mod;
   mod.AppendCode(R"(
   Int ::= struct { n := 3 }
-  Pair ::= struct { a: int64 \\ b: bool }
-  Wrap ::= struct (T ::= int64) { x: T }
+  Pair ::= struct { a: i64 \\ b: bool }
+  Wrap ::= struct (T ::= i64) { x: T }
 
-  f ::= () -> (int64, bool) { return 3, true }
+  f ::= () -> (i64, bool) { return 3, true }
   )");
   auto const *e  = mod.Append<ast::Expression>(expr);
   auto const *qt = mod.context().qual_type(e);
@@ -54,16 +54,16 @@ INSTANTIATE_TEST_SUITE_P(
                  .expected = ir::Value(int64_t{3})},
         TestCase{.expr     = R"(Pair.{a = 3 \\ b = true}.b)",
                  .expected = ir::Value(true)},
-        TestCase{.expr     = R"(Wrap(int64).{}.x)",
+        TestCase{.expr     = R"(Wrap(i64).{}.x)",
                  .expected = ir::Value(int64_t{0})},
-        TestCase{.expr     = R"(Wrap(int64).{x = 3}.x)",
+        TestCase{.expr     = R"(Wrap(i64).{x = 3}.x)",
                  .expected = ir::Value(int64_t{3})},
         TestCase{.expr = R"(Wrap(bool).{}.x)", .expected = ir::Value(false)},
         TestCase{.expr     = R"(Wrap(bool).{x = true}.x)",
                  .expected = ir::Value(true)},
-        TestCase{.expr     = R"(Wrap(float64).{}.x)",
+        TestCase{.expr     = R"(Wrap(f64).{}.x)",
                  .expected = ir::Value(double{0})},
-        TestCase{.expr     = R"(Wrap(float64).{x = 3.1}.x)",
+        TestCase{.expr     = R"(Wrap(f64).{x = 3.1}.x)",
                  .expected = ir::Value(3.1)},
 
         // TODO: Enable these tests once you allow simultaneous assignments.

@@ -29,38 +29,38 @@ TEST_P(ArrayTypeTest, ArrayLiteral) {
 INSTANTIATE_TEST_SUITE_P(
     All, ArrayTypeTest,
     testing::ValuesIn({
-        TestCase{.expr     = R"([3; int32])",
+        TestCase{.expr     = R"([3; i32])",
                  .expected = ir::Value(
-                     static_cast<type::Type>(type::Arr(3, type::Int32)))},
+                     static_cast<type::Type>(type::Arr(3, type::I32)))},
         TestCase{.expr     = R"([1; [2; [3; bool]]])",
                  .expected = ir::Value(static_cast<type::Type>(
                      type::Arr(1, type::Arr(2, type::Arr(3, type::Bool)))))},
-        TestCase{.expr     = R"([1, 2, 3; int32])",
+        TestCase{.expr     = R"([1, 2, 3; i32])",
                  .expected = ir::Value(static_cast<type::Type>(
-                     type::Arr(1, type::Arr(2, type::Arr(3, type::Int32)))))},
-        TestCase{.expr     = R"(((n: int64, t: type) -> type {
+                     type::Arr(1, type::Arr(2, type::Arr(3, type::I32)))))},
+        TestCase{.expr     = R"(((n: i64, t: type) -> type {
           return [n, n * n; t]
-        })(3, float32)
+        })(3, f32)
         )",
                  .expected = ir::Value(static_cast<type::Type>(
-                     type::Arr(3, type::Arr(9, type::Float32))))},
-        TestCase{.expr     = R"(((n: int64, t: type) -> type {
+                     type::Arr(3, type::Arr(9, type::F32))))},
+        TestCase{.expr     = R"(((n: i64, t: type) -> type {
           T := copy [n, n * n; t]
           return T
-        })(3, float32)
+        })(3, f32)
         )",
                  .expected = ir::Value(static_cast<type::Type>(
-                     type::Arr(3, type::Arr(9, type::Float32))))},
-        TestCase{.expr     = R"([1 as nat8, 2 as int64; bool])",
+                     type::Arr(3, type::Arr(9, type::F32))))},
+        TestCase{.expr     = R"([1 as u8, 2 as i64; bool])",
                  .expected = ir::Value(static_cast<type::Type>(
                      type::Arr(1, type::Arr(2, type::Bool))))},
-        TestCase{.expr     = R"(((n: int64, t: type) -> type {
+        TestCase{.expr     = R"(((n: i64, t: type) -> type {
           T := move [n, n * n; t]
           return T
-        })(3, float32)
+        })(3, f32)
         )",
                  .expected = ir::Value(static_cast<type::Type>(
-                     type::Arr(3, type::Arr(9, type::Float32))))},
+                     type::Arr(3, type::Arr(9, type::F32))))},
 
     }));
 

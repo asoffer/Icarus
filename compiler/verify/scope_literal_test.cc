@@ -56,7 +56,7 @@ TEST(ScopeLiteral, StatelessMemberTypes) {
 TEST(ScopeLiteral, StatelessInitIsStateful) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {
-    enter ::= jump [state: *int64] () {}
+    enter ::= jump [state: *i64] () {}
   }
   )");
   auto const *qt = mod.context().qual_type(s);
@@ -80,8 +80,8 @@ TEST(ScopeLiteral, SuccessStateful) {
 
 TEST(ScopeLiteral, StatefulNonConstantMember) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (int64) {
-    enter := jump [state: *int64] () {}
+  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (i64) {
+    enter := jump [state: *i64] () {}
   }
   )");
   auto const *qt = mod.context().qual_type(s);
@@ -95,7 +95,7 @@ TEST(ScopeLiteral, StatefulNonConstantMember) {
 
 TEST(ScopeLiteral, StatefulMemberTypes) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (int64) {
+  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (i64) {
     enter ::= 3
     exit ::= 3
   }
@@ -111,7 +111,7 @@ TEST(ScopeLiteral, StatefulMemberTypes) {
 
 TEST(ScopeLiteral, StatefulInitIsStateless) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (int64) {
+  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (i64) {
     enter ::= jump () {}
   }
   )");

@@ -56,43 +56,43 @@ INSTANTIATE_TEST_SUITE_P(
             .expected = type::QualType::Constant(type::NullPtr),
         },
         TestCase{
-            .terminal = "nat8",
+            .terminal = "u8",
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
-            .terminal = "nat16",
+            .terminal = "u16",
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
-            .terminal = "nat32",
+            .terminal = "u32",
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
-            .terminal = "nat64",
+            .terminal = "u64",
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
-            .terminal = "int8",
+            .terminal = "i8",
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
-            .terminal = "int16",
+            .terminal = "i16",
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
-            .terminal = "int32",
+            .terminal = "i32",
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
-            .terminal = "int64",
+            .terminal = "i64",
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
-            .terminal = "float32",
+            .terminal = "f32",
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
-            .terminal = "float64",
+            .terminal = "f64",
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
@@ -115,7 +115,7 @@ INSTANTIATE_TEST_SUITE_P(
         // TODO: Integers and their edge cases. Especially INT_MIN.
         // TODO: Floating point edge cases.
         // TODO: Determine how you will be allowed to specify arithmetic
-        // literals other than int64 or float64.
+        // literals other than i64 or f64.
     }));
 
 }  // namespace

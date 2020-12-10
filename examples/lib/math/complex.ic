@@ -1,6 +1,6 @@
 #{export} complex ::= struct {
-  #{export} _re: float64
-  #{export} _im: float64
+  #{export} _re: f64
+  #{export} _im: f64
 }
 
 #{export} (+) ::= (lhs: complex, rhs: complex) -> complex {
@@ -9,11 +9,11 @@
   return lhs
 }
 
-#{export} (+) ::= (lhs: complex, rhs: float64) -> complex {
+#{export} (+) ::= (lhs: complex, rhs: f64) -> complex {
   lhs._re += rhs
   return lhs
 }
-// (+) ::= (lhs: float64, rhs: complex) => rhs + lhs
+// (+) ::= (lhs: f64, rhs: complex) => rhs + lhs
 
 #{export}  (-) ::= (lhs: complex, rhs: complex) -> complex {
   lhs._re -= rhs._re
@@ -21,11 +21,11 @@
   return lhs
 }
 
-#{export} (-) ::= (lhs: complex, rhs: float64) -> complex {
+#{export} (-) ::= (lhs: complex, rhs: f64) -> complex {
   lhs._re -= rhs
   return lhs
 }
-// (-) ::= (lhs: float64, rhs: complex) => -(rhs - lhs)
+// (-) ::= (lhs: f64, rhs: complex) => -(rhs - lhs)
 
 #{export} (*) ::= (lhs: complex, rhs: complex) -> complex {
   result: complex
@@ -34,21 +34,21 @@
   return result
 }
 
-// (*) ::= (lhs: complex, rhs: float64) -> complex {
+// (*) ::= (lhs: complex, rhs: f64) -> complex {
 //   lhs._re *= rhs
 //   lhs._im *= rhs
 //   return lhs
 // }
-// (*) ::= (lhs: float64, rhs: complex) => rhs * lhs
+// (*) ::= (lhs: f64, rhs: complex) => rhs * lhs
 
 // TODO: Ensure square_norm returns a non-zero value.
 // (/) ::= (lhs: complex, rhs: complex) => lhs * rhs'conjugate / rhs'square_norm
-// (/) ::= (lhs: complex, rhs: float64) -> complex {
+// (/) ::= (lhs: complex, rhs: f64) -> complex {
 //   lhs._re /= rhs
 //   lhs._im /= rhs
 //   return lhs
 // }
-// (/) ::= (lhs: float64, rhs: complex) => lhs * rhs'conjugate / rhs'square_norm
+// (/) ::= (lhs: f64, rhs: complex) => lhs * rhs'conjugate / rhs'square_norm
 
 #{export} conjugate ::= (z: complex) -> complex {
   z._im *= -1.0
@@ -57,7 +57,7 @@
 
 #{export} square_norm ::= (z: complex) => z._re * z._re + z._im * z._im
 #{export} norm ::= (z: complex) => \
-  foreign("sqrt", float64 -> float64)(z'square_norm)
+  foreign("sqrt", f64 -> f64)(z'square_norm)
 
 #{export} (==) ::= (lhs: complex, rhs: complex) => lhs._re == rhs._re & lhs._im == rhs._im
 #{export} (!=) ::= (lhs: complex, rhs: complex) => !(lhs == rhs)

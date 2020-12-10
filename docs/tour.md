@@ -25,10 +25,10 @@ This means zero for numeric types and `false` for booleans.
 
 ```
 // Initialize a 64-bit integer named `x` to zero.
-x: int64
+x: i64
 
 // Initialize a 64-bit floating-point number named `pi` to 3.14.
-pi: float64 = 3.14
+pi: f64 = 3.14
 ```
 
 Types can often be deduced from the values that initialize them. To deduce the
@@ -45,7 +45,7 @@ variables uninitialized. Assigning the special value `--` denotes this.
 
 ```
 // An uninitialized 32-bit integer
-x: int32 = --
+x: i32 = --
 ```
 
 ## Constants
@@ -55,7 +55,7 @@ These look like normal variable declarations,
 replacing `:` with `::`.
 
 ```
-days_per_week :: int64 = 7
+days_per_week :: i64 = 7
 // Type deduction works for constants, too.
 pi ::= 3.14
 ```
@@ -69,7 +69,7 @@ Functions in Icarus take the form
 
 ```
 // Define a squaring function.
-square ::= (n: int64) -> int64 {
+square ::= (n: i64) -> i64 {
   return n * n
 }
 
@@ -94,7 +94,7 @@ square(n = 3)  // Icarus also supports named arguments...
 Icarus functions can have arguments with default values.
 
 ```
-half ::= (x: float64 = 1.0) -> float64 { return x / 2.0 }
+half ::= (x: f64 = 1.0) -> f64 { return x / 2.0 }
 
 half(3.0) // Evaluates to 1.5.
 half()    // Use the default. Evaluates to 0.5.
@@ -107,7 +107,7 @@ function body.
 The return type is deduced.
 
 ```
-square ::= (n: int64) => n * n
+square ::= (n: i64) => n * n
 half   ::= (x := 1.0) => x / 2.0
 ```
 
@@ -120,7 +120,7 @@ Arrays can be constructed with a comma-separated list of values
 surrounded by square brackets.
 
 ```
-a: [3; int64] = [1, 4, 9]
+a: [3; i64] = [1, 4, 9]
 b := [2, 4, 6]
 ```
 
@@ -138,8 +138,8 @@ Note that the type returned from `which` is not a compile-time constant,
 so it cannot be used in a variable declaration.
 
 ```
-v: int64 | bool = 3
-which v // Evaluates to int64.
+v: i64 | bool = 3
+which v // Evaluates to i64.
 v = true
 which v // Evaluates to bool.
 ```
@@ -183,9 +183,9 @@ Users can define their own types with the `struct` keyword.
 
 ```
 Point ::= struct {
-  x: float64
-  y: float64
-  z: float64
+  x: f64
+  y: f64
+  z: f64
 }
 ```
 
@@ -223,10 +223,10 @@ To make a declaration visible, mark it with `#{export}` tag.
 ```
 // Possible implementation in math.ic.
 #{export}
-sqrt ::= (x: float64) => sqrt_impl(x)
+sqrt ::= (x: f64) => sqrt_impl(x)
 
 // Not exported. Users of this module cannot see this.
-sqrt_impl ::= (x: float64) -> float64 { ... }
+sqrt_impl ::= (x: f64) -> f64 { ... }
 ```
 
 # Control Flow
@@ -294,9 +294,9 @@ This means types can be passed into and out of functions, used in expressions, e
 ```
 get_int ::= (signed: bool) -> type {
   if (signed) then {
-    return int64
+    return i64
   } else {
-    return nat64
+    return u64
   }
 }
 
@@ -334,9 +334,9 @@ square(1.1) // Evaluates to 1.21
 ```
 
 In this example, when the argument `3` is bound to the parameter `x`, we deduce
-that `$x` must be `int64`, the type of `3`. From there the entire function must
-have type `int64 -> int64`. Similarly, when `1.1` is bound, `$x` is deduced as
-`float64` meaning the entire function type is deduced as `float64 -> float64`.
+that `$x` must be `i64`, the type of `3`. From there the entire function must
+have type `i64 -> i64`. Similarly, when `1.1` is bound, `$x` is deduced as
+`f64` meaning the entire function type is deduced as `f64 -> f64`.
 
 This can be used in a variety of ways. Below we show the same generic function
 five times implemented with slightly different deduction semantics.

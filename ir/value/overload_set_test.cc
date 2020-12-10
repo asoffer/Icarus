@@ -21,7 +21,7 @@ TEST(OverloadSet, Construction) {
       ir::ForeignFn(TestFn1, type::Func({}, {})),
       ir::ForeignFn(TestFn2,
                     type::Func({core::AnonymousParam(
-                                   type::QualType::NonConstant(type::Int64))},
+                                   type::QualType::NonConstant(type::I64))},
                                {})),
       ir::ForeignFn(TestFn3,
                     type::Func({core::AnonymousParam(
@@ -34,7 +34,7 @@ TEST(OverloadSet, Construction) {
     EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn1));
   }
   {
-    core::Arguments<type::QualType> a{{type::QualType::Constant(type::Int64)},
+    core::Arguments<type::QualType> a{{type::QualType::Constant(type::I64)},
                                       {}};
     ASSIGN_OR(FAIL(), auto fn, os.Lookup(a));
     EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn2));

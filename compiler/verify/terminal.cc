@@ -11,27 +11,27 @@ type::QualType Compiler::VerifyType(ast::Terminal const *node) {
   type::Type t;
   base::MetaValue mv = node->value().type();
   if (mv == base::meta<int8_t>) {
-    t = type::Int8;
+    t = type::I8;
   } else if (mv == base::meta<int16_t>) {
-    t = type::Int16;
+    t = type::I16;
   } else if (mv == base::meta<int32_t>) {
-    t = type::Int32;
+    t = type::I32;
   } else if (mv == base::meta<int64_t>) {
-    t = type::Int64;
+    t = type::I64;
   } else if (mv == base::meta<uint8_t>) {
-    t = type::Nat8;
+    t = type::U8;
   } else if (mv == base::meta<uint16_t>) {
-    t = type::Nat16;
+    t = type::U16;
   } else if (mv == base::meta<uint32_t>) {
-    t = type::Nat32;
+    t = type::U32;
   } else if (mv == base::meta<uint64_t>) {
-    t = type::Nat64;
+    t = type::U64;
   } else if (mv == base::meta<bool>) {
     t = type::Bool;
   } else if (mv == base::meta<float>) {
-    t = type::Float32;
+    t = type::F32;
   } else if (mv == base::meta<double>) {
-    t = type::Float64;
+    t = type::F64;
   } else if (mv == base::meta<ir::Addr>) {
     t = type::NullPtr;
   } else if (mv == base::meta<ir::String>) {

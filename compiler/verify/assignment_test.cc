@@ -13,7 +13,7 @@ using ::testing::UnorderedElementsAre;
 TEST(Assignment, SimpleSuccess) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  n: int64
+  n: i64
   n = 0
   )");
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());

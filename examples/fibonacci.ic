@@ -1,5 +1,5 @@
 
-for (0, 11) do [num: int64] {
+for (0, 11) do [num: i64] {
   io.Print("fib(")
   io.Print(num)
   io.Print(") = ")
@@ -8,7 +8,7 @@ for (0, 11) do [num: int64] {
 }
 
 // Functions can appear after they're referenced.
-fibonacci ::= (n: int64) -> int64 {
+fibonacci ::= (n: i64) -> i64 {
   if (n < 2) then { return n }
   return fibonacci(n - 1) + fibonacci(n - 2)
 }

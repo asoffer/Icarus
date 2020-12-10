@@ -1,7 +1,7 @@
 -- ::= import "core.ic"
 io ::= import "io.ic"
 
-double ::= (n: int64) => 2 * n
+double ::= (n: i64) => 2 * n
 
 vec ::= (T: type,
          resize_by ::= double) => struct {

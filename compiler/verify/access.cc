@@ -149,7 +149,7 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
                    c->EvaluateOrDiagnoseAs<type::Type>(node->operand()));
   auto qt = type::QualType::Constant(evaled_type);
 
-  // TODO: Choosing the type here to be int64 to match the length type for
+  // TODO: Choosing the type here to be i64 to match the length type for
   // arrays but that should maybe be unsigned as well.
   if (type::Array const *a = evaled_type.if_as<type::Array>()) {
     if (node->member_name() == "length") {
@@ -358,7 +358,7 @@ type::QualType Compiler::VerifyType(ast::Access const *node) {
     if (base_type == type::ByteView) {
       if (node->member_name() == "length") {
         return context().set_qual_type(
-            node, type::QualType(type::Nat64, quals & type::Quals::Const()));
+            node, type::QualType(type::U64, quals & type::Quals::Const()));
       } else {
         diag().Consume(MissingMember{
             .expr_range   = node->operand()->range(),

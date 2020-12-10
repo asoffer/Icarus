@@ -34,16 +34,16 @@ void ExtractReturnValue(ffi_arg *ret, ir::Addr ret_addr) {
 
 ffi_type *ToFfiType(type::Type t) {
   if (t == type::Void) { return &ffi_type_void; }
-  if (t == type::Int8) { return &ffi_type_sint8; }
-  if (t == type::Int16) { return &ffi_type_sint16; }
-  if (t == type::Int32) { return &ffi_type_sint32; }
-  if (t == type::Int64) { return &ffi_type_sint64; }
-  if (t == type::Nat8) { return &ffi_type_uint8; }
-  if (t == type::Nat16) { return &ffi_type_uint16; }
-  if (t == type::Nat32) { return &ffi_type_uint32; }
-  if (t == type::Nat64) { return &ffi_type_uint64; }
-  if (t == type::Float32) { return &ffi_type_float; }
-  if (t == type::Float64) { return &ffi_type_double; }
+  if (t == type::I8) { return &ffi_type_sint8; }
+  if (t == type::I16) { return &ffi_type_sint16; }
+  if (t == type::I32) { return &ffi_type_sint32; }
+  if (t == type::I64) { return &ffi_type_sint64; }
+  if (t == type::U8) { return &ffi_type_uint8; }
+  if (t == type::U16) { return &ffi_type_uint16; }
+  if (t == type::U32) { return &ffi_type_uint32; }
+  if (t == type::U64) { return &ffi_type_uint64; }
+  if (t == type::F32) { return &ffi_type_float; }
+  if (t == type::F64) { return &ffi_type_double; }
   if (t.is<type::Pointer>()) { return &ffi_type_pointer; }
   UNREACHABLE(t);
 }
@@ -119,25 +119,25 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
 
   if (out_type == type::Void) {
     goto done;
-  } else if (out_type == type::Int8) {
+  } else if (out_type == type::I8) {
     ExtractReturnValue<int8_t>(&ret, return_slots[0]);
-  } else if (out_type == type::Int16) {
+  } else if (out_type == type::I16) {
     ExtractReturnValue<int16_t>(&ret, return_slots[0]);
-  } else if (out_type == type::Int32) {
+  } else if (out_type == type::I32) {
     ExtractReturnValue<int32_t>(&ret, return_slots[0]);
-  } else if (out_type == type::Int64) {
+  } else if (out_type == type::I64) {
     ExtractReturnValue<int64_t>(&ret, return_slots[0]);
-  } else if (out_type == type::Nat8) {
+  } else if (out_type == type::U8) {
     ExtractReturnValue<uint8_t>(&ret, return_slots[0]);
-  } else if (out_type == type::Nat16) {
+  } else if (out_type == type::U16) {
     ExtractReturnValue<uint16_t>(&ret, return_slots[0]);
-  } else if (out_type == type::Nat32) {
+  } else if (out_type == type::U32) {
     ExtractReturnValue<uint32_t>(&ret, return_slots[0]);
-  } else if (out_type == type::Nat64) {
+  } else if (out_type == type::U64) {
     ExtractReturnValue<uint64_t>(&ret, return_slots[0]);
-  } else if (out_type == type::Float32) {
+  } else if (out_type == type::F32) {
     ExtractReturnValue<float>(&ret, return_slots[0]);
-  } else if (out_type == type::Float64) {
+  } else if (out_type == type::F64) {
     ExtractReturnValue<double>(&ret, return_slots[0]);
   } else {
     // TODO: Must all other cases be pointers? We're relying on this to avoid

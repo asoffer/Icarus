@@ -9,7 +9,7 @@
 * Determine if we want to support default return values.
 * Determine if we want named return values to be specifiable at the return site as in
   ```
-  f ::= () -> (x: int64, y: bool) {
+  f ::= () -> (x: i64, y: bool) {
     return y = true, x = 3
   }
   ```

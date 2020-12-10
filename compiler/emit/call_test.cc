@@ -34,10 +34,10 @@ TEST_P(CallTest, Call) {
 INSTANTIATE_TEST_SUITE_P(
     All, CallTest,
     testing::ValuesIn({
-        TestCase{.expr     = R"(bytes(int64)
+        TestCase{.expr     = R"(bytes(i64)
                              )",
                  .expected = ir::Value(uint64_t{sizeof(int64_t)})},
-        TestCase{.expr     = R"(alignment(int64)
+        TestCase{.expr     = R"(alignment(i64)
                              )",
                  .expected = ir::Value(uint64_t{alignof(int64_t)})},
 
@@ -47,10 +47,10 @@ INSTANTIATE_TEST_SUITE_P(
                              )",
                  .expected = ir::Value(int64_t{3})},
 
-        TestCase{.expr     = R"(((n: int64) => n * n)(3)
+        TestCase{.expr     = R"(((n: i64) => n * n)(3)
                              )",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"(((n: int64) => n * n)(n = 3)
+        TestCase{.expr     = R"(((n: i64) => n * n)(n = 3)
                              )",
                  .expected = ir::Value(int64_t{9})},
         TestCase{.expr     = R"(((n := 2) => n * n)(3)
@@ -63,10 +63,10 @@ INSTANTIATE_TEST_SUITE_P(
                              )",
                  .expected = ir::Value(int64_t{4})},
 
-        TestCase{.expr     = R"(((n :: int64) => n * n)(3)
+        TestCase{.expr     = R"(((n :: i64) => n * n)(3)
                              )",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"(((n :: int64) => n * n)(n = 3)
+        TestCase{.expr     = R"(((n :: i64) => n * n)(n = 3)
                              )",
                  .expected = ir::Value(int64_t{9})},
         TestCase{.expr     = R"(((n ::= 2) => n * n)(3)
@@ -79,13 +79,13 @@ INSTANTIATE_TEST_SUITE_P(
         //                      )",
         //          .expected = ir::Value(int64_t{4})},
 
-        TestCase{.expr     = R"(((a: int64, b: int64) => a + 2 * b)(1, 2)
+        TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(1, 2)
                              )",
                  .expected = ir::Value(int64_t{5})},
-        TestCase{.expr = R"(((a: int64, b: int64) => a + 2 * b)(a = 1, b = 2)
+        TestCase{.expr = R"(((a: i64, b: i64) => a + 2 * b)(a = 1, b = 2)
                              )",
                  .expected = ir::Value(int64_t{5})},
-        TestCase{.expr = R"(((a: int64, b: int64) => a + 2 * b)(b = 1, a = 2)
+        TestCase{.expr = R"(((a: i64, b: i64) => a + 2 * b)(b = 1, a = 2)
                              )",
                  .expected = ir::Value(int64_t{4})},
 
@@ -114,7 +114,7 @@ INSTANTIATE_TEST_SUITE_P(
         // try this with non-zero values. For now this test is at least
         // verifying that we can instantiate both versions without crashing.
         TestCase{.description = "Instantiate the same generic more than once.",
-                 .expr        = R"((identity(0) as float64) + identity(0.0)
+                 .expr        = R"((identity(0) as f64) + identity(0.0)
                              )",
                  .expected    = ir::Value(double{0})},
     }));

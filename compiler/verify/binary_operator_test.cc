@@ -52,7 +52,7 @@ TEST_P(BoolLogicalOperatorEq, Constant) {
 TEST_P(BoolLogicalOperatorEq, InvalidLhsType) {
   test::TestModule mod;
   mod.AppendCode(absl::StrFormat(R"(
-    n: int64
+    n: i64
     n %s true
     )",
                                  GetParam()));
@@ -121,7 +121,7 @@ TEST_P(FlagsLogicalOperatorEq, InvalidLhsType) {
   test::TestModule mod;
   mod.AppendCode(absl::StrFormat(R"(
     F ::= flags { A \\ B \\ C }
-    n: int64
+    n: i64
     n %s F.A
     )",
                                  GetParam()));
@@ -219,8 +219,8 @@ TEST_P(IntegerArithmeticOperatorEq, InvalidRhsType) {
 }
 INSTANTIATE_TEST_SUITE_P(
     All, IntegerArithmeticOperatorEq,
-    testing::Combine(testing::ValuesIn({"int8", "int16", "int32", "int64",
-                                        "nat8", "nat16", "nat32", "nat64"}),
+    testing::Combine(testing::ValuesIn({"i8", "i16", "i32", "i64",
+                                        "u8", "u16", "u32", "u64"}),
                      testing::ValuesIn({"+=", "-=", "*=", "/=", "%="})));
 
 using FloatingPointArithmeticOperatorEq =
@@ -295,7 +295,7 @@ TEST_P(FloatingPointArithmeticOperatorEq, InvalidRhsType) {
 }
 INSTANTIATE_TEST_SUITE_P(
     All, FloatingPointArithmeticOperatorEq,
-    testing::Combine(testing::ValuesIn({"float32", "float64"}),
+    testing::Combine(testing::ValuesIn({"f32", "f64"}),
                      testing::ValuesIn({"+=", "-=", "*=", "/="})));
 
 using BinaryOperator =
@@ -330,12 +330,12 @@ TEST_P(BinaryOperator, Success) {
 
 INSTANTIATE_TEST_SUITE_P(
     Integers, BinaryOperator,
-    testing::Combine(testing::ValuesIn({"int8", "int16", "int32", "int64",
-                                        "nat8", "nat16", "nat32", "nat64"}),
+    testing::Combine(testing::ValuesIn({"i8", "i16", "i32", "i64",
+                                        "u8", "u16", "u32", "u64"}),
                      testing::ValuesIn({"+", "-", "*", "/", "%"})));
 INSTANTIATE_TEST_SUITE_P(
     FloatingPoint, BinaryOperator,
-    testing::Combine(testing::ValuesIn({"float32", "float64"}),
+    testing::Combine(testing::ValuesIn({"f32", "f64"}),
                      testing::ValuesIn({"+", "-", "*", "/"})));
 INSTANTIATE_TEST_SUITE_P(LogicalOperator, BinaryOperator,
                          testing::Combine(testing::ValuesIn({"bool",
@@ -347,14 +347,14 @@ TEST_P(OperatorOverload, Overloads) {
   test::TestModule mod;
   mod.AppendCode(absl::StrFormat(
       R"(S ::= struct {}
-         (%s) ::= (lhs: S, rhs: S) -> int64 { return 0 }
+         (%s) ::= (lhs: S, rhs: S) -> i64 { return 0 }
       )",
       GetParam()));
   auto const *expr = mod.Append<ast::BinaryOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
   auto const *qt = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+  EXPECT_EQ(*qt, type::QualType::NonConstant(type::I64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -379,15 +379,15 @@ INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
 TEST(BufferPointerArithmetic, Success) {
   test::TestModule mod;
   mod.AppendCode(R"(
-    p: [*]int64
-    p += 1 as nat8
+    p: [*]i64
+    p += 1 as u8
     p += 1
     p -= 1
-    p -= 1 as nat32
+    p -= 1 as u32
     p = p - 1
     p = p + 1
     p = 1 + p
-    n: int64 = p - p
+    n: i64 = p - p
   )");
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -395,8 +395,8 @@ TEST(BufferPointerArithmetic, Success) {
 TEST(BufferPointerArithmetic, Failure) {
   test::TestModule mod;
   mod.AppendCode(R"(
-    p: [*]int64
-    q: [*]nat64
+    p: [*]i64
+    q: [*]u64
     p + p
     p += 1.2
     p = 1 - p

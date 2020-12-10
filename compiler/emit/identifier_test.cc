@@ -28,25 +28,25 @@ TEST_P(IdentifierTest, Identifier) {
 
 INSTANTIATE_TEST_SUITE_P(
     All, IdentifierTest,
-    testing::ValuesIn({TestCase{.expr     = R"((() -> int64 {
+    testing::ValuesIn({TestCase{.expr     = R"((() -> i64 {
                                               a ::= 1
                                               return a
                                             })()
                                             )",
                                 .expected = ir::Value(int64_t{1})},
-                       TestCase{.expr     = R"(((n :: int64) -> int64 {
+                       TestCase{.expr     = R"(((n :: i64) -> i64 {
                                               'debug_ir
                                               return n
                                             })(2)
                                             )",
                                 .expected = ir::Value(int64_t{2})},
-                       TestCase{.expr     = R"((() -> int64 {
+                       TestCase{.expr     = R"((() -> i64 {
                                               a := 3
                                               return a
                                             })()
                                             )",
                                 .expected = ir::Value(int64_t{3})},
-                       TestCase{.expr     = R"(((n: int64) -> int64 {
+                       TestCase{.expr     = R"(((n: i64) -> i64 {
                                               return n
                                             })(4)
                                             )",

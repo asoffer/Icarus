@@ -36,7 +36,7 @@ namespace type {
 // For example,
 //
 // ```
-// add_two ::= (n: int64) -> int64 {
+// add_two ::= (n: i64) -> i64 {
 //  TWO ::= 2
 //  return n + TWO
 // }
@@ -56,7 +56,7 @@ namespace type {
 // expansion-size of zero, which is distinct from returning a unit-type.
 //
 // ```
-// f ::= () -> (int64, bool) { return 3, true }
+// f ::= () -> (i64, bool) { return 3, true }
 // (n, b) := f()
 // ```
 struct Quals {

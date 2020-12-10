@@ -35,25 +35,25 @@ type::Type Get() {
   if constexpr (base::meta<T> == base::meta<bool>) {
     return type::Bool;
   } else if constexpr (base::meta<T> == base::meta<int8_t>) {
-    return type::Int8;
+    return type::I8;
   } else if constexpr (base::meta<T> == base::meta<int16_t>) {
-    return type::Int16;
+    return type::I16;
   } else if constexpr (base::meta<T> == base::meta<int32_t>) {
-    return type::Int32;
+    return type::I32;
   } else if constexpr (base::meta<T> == base::meta<int64_t>) {
-    return type::Int64;
+    return type::I64;
   } else if constexpr (base::meta<T> == base::meta<uint8_t>) {
-    return type::Nat8;
+    return type::U8;
   } else if constexpr (base::meta<T> == base::meta<uint16_t>) {
-    return type::Nat16;
+    return type::U16;
   } else if constexpr (base::meta<T> == base::meta<uint32_t>) {
-    return type::Nat32;
+    return type::U32;
   } else if constexpr (base::meta<T> == base::meta<uint64_t>) {
-    return type::Nat64;
+    return type::U64;
   } else if constexpr (base::meta<T> == base::meta<float>) {
-    return type::Float32;
+    return type::F32;
   } else if constexpr (base::meta<T> == base::meta<double>) {
-    return type::Float64;
+    return type::F64;
   } else if constexpr (base::meta<T> == base::meta<std::string_view> or
                        base::meta<T> == base::meta<ir::String>) {
     return type::ByteView;
@@ -85,25 +85,25 @@ bool Compare(::type::Type t) {
   if constexpr (base::meta<T> == base::meta<bool>) {
     return t == ::type::Bool;
   } else if constexpr (base::meta<T> == base::meta<int8_t>) {
-    return t == ::type::Int8;
+    return t == ::type::I8;
   } else if constexpr (base::meta<T> == base::meta<int16_t>) {
-    return t == ::type::Int16;
+    return t == ::type::I16;
   } else if constexpr (base::meta<T> == base::meta<int32_t>) {
-    return t == ::type::Int32;
+    return t == ::type::I32;
   } else if constexpr (base::meta<T> == base::meta<int64_t>) {
-    return t == ::type::Int64;
+    return t == ::type::I64;
   } else if constexpr (base::meta<T> == base::meta<uint8_t>) {
-    return t == ::type::Nat8;
+    return t == ::type::U8;
   } else if constexpr (base::meta<T> == base::meta<uint16_t>) {
-    return t == ::type::Nat16;
+    return t == ::type::U16;
   } else if constexpr (base::meta<T> == base::meta<uint32_t>) {
-    return t == ::type::Nat32;
+    return t == ::type::U32;
   } else if constexpr (base::meta<T> == base::meta<uint64_t>) {
-    return t == ::type::Nat64;
+    return t == ::type::U64;
   } else if constexpr (base::meta<T> == base::meta<float>) {
-    return t == ::type::Float32;
+    return t == ::type::F32;
   } else if constexpr (base::meta<T> == base::meta<double>) {
-    return t == ::type::Float64;
+    return t == ::type::F64;
   } else if constexpr (base::meta<T> == base::meta<::type::Type>) {
     return t == ::type::Type_;
   } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {

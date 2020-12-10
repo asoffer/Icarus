@@ -61,7 +61,7 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
     //  register, we use the function types return value. Otherwise, we use
     //  output parameter pointers.
     //
-    //  TODO: We could maybe do better than this by packing two `int32`s into a
+    //  TODO: We could maybe do better than this by packing two `i32`s into a
     //  single register on 64-bit architectures. We could also try to pick one
     //  return type that does fit in a rgeister and use that.
     auto const output_span = t->output();

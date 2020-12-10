@@ -246,13 +246,13 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
 // passed to an `ir::Value`, the write type tag is deduced.
 static base::Global kReservedTypes =
     absl::flat_hash_map<std::string_view, type::Type>{
-        {"bool", type::Bool},       {"int8", type::Int8},
-        {"int16", type::Int16},     {"int32", type::Int32},
-        {"int64", type::Int64},     {"nat8", type::Nat8},
-        {"nat16", type::Nat16},     {"nat32", type::Nat32},
-        {"nat64", type::Nat64},     {"float32", type::Float32},
-        {"float64", type::Float64}, {"type", type::Type_},
-        {"module", type::Module},   {"byte_view", type::ByteView}};
+        {"bool", type::Bool},     {"i8", type::I8},
+        {"i16", type::I16},       {"i32", type::I32},
+        {"i64", type::I64},       {"u8", type::U8},
+        {"u16", type::U16},       {"u32", type::U32},
+        {"u64", type::U64},       {"f32", type::F32},
+        {"f64", type::F64},       {"type", type::Type_},
+        {"module", type::Module}, {"byte_view", type::ByteView}};
 
 Lexeme NextWord(SourceCursor *cursor, Source *src) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*

@@ -15,13 +15,13 @@ using ::testing::SizeIs;
 TEST(Identifier, Success) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  n: int64
+  n: i64
   )");
   auto const *id = mod.Append<ast::Identifier>("n");
   auto const *qt = mod.context().qual_type(id);
   ASSERT_NE(qt, nullptr);
   EXPECT_THAT(mod.context().decls(id), SizeIs(1));
-  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 

@@ -25,7 +25,7 @@ TEST(StructLiteral, SuccessEmpty) {
 TEST(StructLiteral, SuccessNonEmpty) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::StructLiteral>(R"(struct {
-    n: int64
+    n: i64
     b := true
   }
   )");
@@ -53,7 +53,7 @@ TEST(StructLiteral, SelfReferential) {
   test::TestModule mod;
   mod.AppendCode(R"(
   list ::= struct {
-    data: int64
+    data: i64
     next: *list
   }
   l: list
@@ -72,7 +72,7 @@ TEST(StructLiteral, SelfReferentialError) {
   test::TestModule mod;
   mod.AppendCode(R"(
   list ::= struct {
-    data: int64
+    data: i64
     next: list
   }
   )");

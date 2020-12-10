@@ -14,27 +14,27 @@ TEST(ArrayType, Correct) {
   test::TestModule mod;
 
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([3; int64])");
+    auto const *expr = mod.Append<ast::Expression>(R"([3; i64])");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
   }
 
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([2; [3; int64]])");
+    auto const *expr = mod.Append<ast::Expression>(R"([2; [3; i64]])");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
   }
 
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3; int64])");
+    auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3; i64])");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
   }
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([1 as int8; int64])");
+    auto const *expr = mod.Append<ast::Expression>(R"([1 as i8; i64])");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
@@ -46,7 +46,7 @@ TEST(ArrayType, Correct) {
 TEST(ArrayType, NonConstantType) {
   test::TestModule mod;
 
-  mod.AppendCode(R"(T := int64)");
+  mod.AppendCode(R"(T := i64)");
   auto const *expr = mod.Append<ast::Expression>(R"([3; T])");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
@@ -71,7 +71,7 @@ TEST(ArrayType, NonTypeElement) {
 TEST(ArrayType, NonConstantLength) {
   test::TestModule mod;
   mod.AppendCode(R"(n := 3)");
-  auto const *expr = mod.Append<ast::Expression>(R"([3, n, 2; int64])");
+  auto const *expr = mod.Append<ast::Expression>(R"([3, n, 2; i64])");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::NonConstant(type::Type_));
@@ -81,7 +81,7 @@ TEST(ArrayType, NonConstantLength) {
 
 TEST(ArrayType, NonIntegerLength) {
   test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([3.0; int64])");
+  auto const *expr = mod.Append<ast::Expression>(R"([3.0; i64])");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
@@ -94,7 +94,7 @@ TEST(ArrayType, NonIntegerLength) {
 TEST(ArrayType, NonIntegerNonConstant) {
   test::TestModule mod;
   mod.AppendCode(R"(x := 3.0)");
-  auto const *expr = mod.Append<ast::Expression>(R"([x; int64])");
+  auto const *expr = mod.Append<ast::Expression>(R"([x; i64])");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::NonConstant(type::Type_));

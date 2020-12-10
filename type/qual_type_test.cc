@@ -13,33 +13,33 @@ using ::testing::MockFunction;
 TEST(QualType, Regularity) {
   EXPECT_EQ(type::QualType::Error(), type::QualType::Error());
 
-  EXPECT_EQ(type::QualType::Constant(type::Int32),
-            type::QualType::Constant(type::Int32));
-  EXPECT_NE(type::QualType::Constant(type::Int32),
-            type::QualType::Constant(type::Int64));
+  EXPECT_EQ(type::QualType::Constant(type::I32),
+            type::QualType::Constant(type::I32));
+  EXPECT_NE(type::QualType::Constant(type::I32),
+            type::QualType::Constant(type::I64));
 
-  EXPECT_EQ(type::QualType::NonConstant(type::Int32),
-            type::QualType::NonConstant(type::Int32));
-  EXPECT_NE(type::QualType::NonConstant(type::Int32),
-            type::QualType::Constant(type::Int32));
-  EXPECT_NE(type::QualType::NonConstant(type::Int32),
-            type::QualType::NonConstant(type::Int64));
+  EXPECT_EQ(type::QualType::NonConstant(type::I32),
+            type::QualType::NonConstant(type::I32));
+  EXPECT_NE(type::QualType::NonConstant(type::I32),
+            type::QualType::Constant(type::I32));
+  EXPECT_NE(type::QualType::NonConstant(type::I32),
+            type::QualType::NonConstant(type::I64));
 
-  EXPECT_EQ(type::QualType::NonConstant(type::Int32),
-            type::QualType({type::Int32}, type::Quals::Unqualified()));
+  EXPECT_EQ(type::QualType::NonConstant(type::I32),
+            type::QualType({type::I32}, type::Quals::Unqualified()));
 
-  EXPECT_EQ(type::QualType::Constant(type::Int32),
-            type::QualType({type::Int32}, type::Quals::Const()));
+  EXPECT_EQ(type::QualType::Constant(type::I32),
+            type::QualType({type::I32}, type::Quals::Const()));
 
-  EXPECT_EQ(type::QualType({type::Int32, type::Bool}, type::Quals::Const()),
-            type::QualType({type::Int32, type::Bool}, type::Quals::Const()));
+  EXPECT_EQ(type::QualType({type::I32, type::Bool}, type::Quals::Const()),
+            type::QualType({type::I32, type::Bool}, type::Quals::Const()));
   EXPECT_NE(
-      type::QualType({type::Int32, type::Bool}, type::Quals::Unqualified()),
-      type::QualType({type::Int32, type::Bool}, type::Quals::Const()));
+      type::QualType({type::I32, type::Bool}, type::Quals::Unqualified()),
+      type::QualType({type::I32, type::Bool}, type::Quals::Const()));
 
-  auto q = type::QualType::Constant(type::Int64);
+  auto q = type::QualType::Constant(type::I64);
 
-  EXPECT_EQ(q, type::QualType::Constant(type::Int64));
+  EXPECT_EQ(q, type::QualType::Constant(type::I64));
 
   EXPECT_NE(q, type::QualType::Constant(type::Bool));
   q = type::QualType::Constant(type::Bool);
@@ -47,9 +47,9 @@ TEST(QualType, Regularity) {
 }
 
 TEST(QualType, Access) {
-  auto q = type::QualType::Constant(type::Int32);
+  auto q = type::QualType::Constant(type::I32);
   EXPECT_TRUE(q.constant());
-  EXPECT_EQ(q.type(), type::Int32);
+  EXPECT_EQ(q.type(), type::I32);
 
   auto q2 = type::QualType::NonConstant(type::Bool);
   EXPECT_FALSE(q2.constant());
@@ -59,9 +59,9 @@ TEST(QualType, Access) {
 TEST(QualType, Streaming) {
   {
     std::stringstream ss;
-    auto q = type::QualType::Constant(type::Int32);
+    auto q = type::QualType::Constant(type::I32);
     ss << q;
-    EXPECT_EQ(ss.str(), "[const](int32)");
+    EXPECT_EQ(ss.str(), "[const](i32)");
   }
 
   {
@@ -73,9 +73,9 @@ TEST(QualType, Streaming) {
 
   {
     std::stringstream ss;
-    auto q = type::QualType({type::Int64, type::Bool}, type::Quals::Const());
+    auto q = type::QualType({type::I64, type::Bool}, type::Quals::Const());
     ss << q;
-    EXPECT_EQ(ss.str(), "[const](int64, bool)");
+    EXPECT_EQ(ss.str(), "[const](i64, bool)");
   }
 }
 
@@ -87,14 +87,14 @@ TEST(QualType, Ok) {
 }
 
 TEST(QualType, ExpansionSize) {
-  EXPECT_EQ(type::QualType::Constant(type::Int32).expansion_size(), 1);
+  EXPECT_EQ(type::QualType::Constant(type::I32).expansion_size(), 1);
   EXPECT_EQ(
-      type::QualType({type::Int32}, type::Quals::Const()).expansion_size(), 1);
+      type::QualType({type::I32}, type::Quals::Const()).expansion_size(), 1);
 
   EXPECT_EQ(type::QualType(absl::Span<type::Type const>{}, type::Quals::Const())
                 .expansion_size(),
             0);
-  EXPECT_EQ(type::QualType({type::Int32, type::Bool}, type::Quals::Const())
+  EXPECT_EQ(type::QualType({type::I32, type::Bool}, type::Quals::Const())
                 .expansion_size(),
             2);
 }
@@ -109,15 +109,15 @@ TEST(QualType, ForEach) {
   {
     MockFunction<void(type::Type)> mock_fn;
     EXPECT_CALL(mock_fn, Call(type::Bool)).Times(1);
-    EXPECT_CALL(mock_fn, Call(type::Int64)).Times(1);
-    type::QualType({type::Bool, type::Int64}, type::Quals::Const())
+    EXPECT_CALL(mock_fn, Call(type::I64)).Times(1);
+    type::QualType({type::Bool, type::I64}, type::Quals::Const())
         .ForEach(mock_fn.AsStdFunction());
   }
 }
 
 TEST(QualType, RemoveConstant) {
   {
-    type::QualType qt(type::Int32, type::Quals::All());
+    type::QualType qt(type::I32, type::Quals::All());
     qt.remove_constant();
     EXPECT_NE(qt, type::QualType::Error());
     EXPECT_EQ(qt.quals(), type::Quals::All() & ~type::Quals::Const());
@@ -128,7 +128,7 @@ TEST(QualType, RemoveConstant) {
   }
 
   {
-    type::QualType qt(type::Int32, type::Quals::Const());
+    type::QualType qt(type::I32, type::Quals::Const());
     qt.remove_constant();
     EXPECT_NE(qt, type::QualType::Error());
     EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
@@ -145,7 +145,7 @@ TEST(QualType, EmptyVector) {
 }
 
 TEST(QualType, Error) {
-  type::QualType qt(type::Int32, type::Quals::All());
+  type::QualType qt(type::I32, type::Quals::All());
   EXPECT_FALSE(qt.HasErrorMark());
   qt.MarkError();
   EXPECT_TRUE(qt.HasErrorMark());

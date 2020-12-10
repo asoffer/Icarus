@@ -19,8 +19,8 @@ TEST_P(AccessTest, Access) {
   // there's an ambiguity (there isn't).
   mod.AppendCode(R"(
   S ::= struct {
-    n: int64
-    p: *int64
+    n: i64
+    p: *i64
     sp: *S
   }
   )");
@@ -42,14 +42,14 @@ TEST_P(AccessTest, Access) {
 INSTANTIATE_TEST_SUITE_P(
     All, AccessTest,
     testing::ValuesIn({
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                s: S
                                s.n = 3
                                return s.n
                              })()
                              )",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                s: S
                                s.n = 3
                                s.p = &s.n
@@ -57,7 +57,7 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                s: S
                                s.n = 3
                                s.p = &s.n
@@ -66,7 +66,7 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                s: S
                                ptr := &s
                                ptr.n = 3
@@ -76,26 +76,26 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = R"((() -> nat64 {
+        TestCase{.expr     = R"((() -> u64 {
                                return "abc".length
                              })()
                              )",
                  .expected = ir::Value(uint64_t{3})},
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                s := S.{n = 3}
                                x := copy s.n
                                return x
                              })()
                              )",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                s := S.{n = 3}
                                x := move s.n
                                return x
                              })()
                              )",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr = R"((() -> int64 {
+        TestCase{.expr = R"((() -> i64 {
                                s := S.{n = 3}
                                p := &s
                                return p.n * p.n
@@ -103,16 +103,16 @@ INSTANTIATE_TEST_SUITE_P(
                              )",
                  // Loading pointer from a parameter
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
                                s := S.{n = 3}
                                f ::= (p: *S) => p.n * p.n
                                return f(&s)
                              })()
                              )",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"([3; int64].length)",
+        TestCase{.expr     = R"([3; i64].length)",
                  .expected = ir::Value(type::Array::length_t{3})},
-        TestCase{.expr     = R"([4, 3; int64].length)",
+        TestCase{.expr     = R"([4, 3; i64].length)",
                  .expected = ir::Value(type::Array::length_t{4})},
 
     }));

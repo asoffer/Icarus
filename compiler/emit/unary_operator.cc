@@ -72,7 +72,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       // should not execute it more than once. For example, if it was used in a
       // context where evaluation was implicit.
       // ```
-      // n: `int64
+      // n: `i64
       // ```
       return EvaluateOrDiagnose(type::Typed<ast::Expression const *>(
           node->operand(),

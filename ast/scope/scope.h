@@ -35,7 +35,7 @@ struct Scope : public base::Cast<Scope> {
   // boundary. In this example,
   //
   // ```
-  // f ::= (n: int64) -> () {
+  // f ::= (n: i64) -> () {
   //   m := 1
   //   while (m != 10) do {
   //     m := "hello"

@@ -14,22 +14,22 @@ TEST(Declaration, DefaultInitSuccess) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n: int64
+    n: i64
     )");
     auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
+    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n :: int64
+    n :: i64
     )");
     auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
+    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -58,7 +58,7 @@ TEST(Declaration, DefaultInitNonConstantType) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    T := int64
+    T := i64
     n: T 
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -69,7 +69,7 @@ TEST(Declaration, DefaultInitNonConstantType) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    T := int64
+    T := i64
     n :: T
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -89,7 +89,7 @@ TEST(Declaration, InferredSuccess) {
     )");
     auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
+    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -100,7 +100,7 @@ TEST(Declaration, InferredSuccess) {
     )");
     auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
+    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -151,22 +151,22 @@ TEST(Declaration, CustomInitSuccess) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n: int64 = 3
+    n: i64 = 3
     )");
     auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
+    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n :: int64 = 3
+    n :: i64 = 3
     )");
     auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
+    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -195,7 +195,7 @@ TEST(Declaration, CustomInitNonConstantType) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    T := int64
+    T := i64
     n: T = 3
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -206,7 +206,7 @@ TEST(Declaration, CustomInitNonConstantType) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    T := int64
+    T := i64
     n :: T = 3
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -219,24 +219,24 @@ TEST(Declaration, CustomInitAllowsConversions) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n: [0; int64] = []
+    n: [0; i64] = []
     )");
     auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt,
-              type::QualType(type::Arr(0, type::Int64), type::Quals::Buf()));
+              type::QualType(type::Arr(0, type::I64), type::Quals::Buf()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n :: [0; int64] = []
+    n :: [0; i64] = []
     )");
     auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt,
-              type::QualType(type::Arr(0, type::Int64), type::Quals::Const()));
+              type::QualType(type::Arr(0, type::I64), type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -245,22 +245,22 @@ TEST(Declaration, UninitializedSuccess) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n: int64 = --
+    n: i64 = --
     )");
     auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
+    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n :: int64 = --
+    n :: i64 = --
     )");
     auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
+    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Const()));
     EXPECT_THAT(
         mod.consumer.diagnostics(),
         UnorderedElementsAre(Pair("type-error", "uninitialized-constant")));
@@ -293,7 +293,7 @@ TEST(Declaration, UninitializedNonConstantType) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    T := int64
+    T := i64
     n: T = --
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -304,7 +304,7 @@ TEST(Declaration, UninitializedNonConstantType) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    T := int64
+    T := i64
     n :: T = --
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -372,7 +372,7 @@ TEST(Declaration, Shadowing) {
 TEST(Declaration, FunctionsCanShadow) {
   test::TestModule mod;
   mod.AppendCode(R"(
-    f ::= (n: int64) => n
+    f ::= (n: i64) => n
     f ::= (b: bool) => b
     )");
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -392,7 +392,7 @@ TEST(Declaration, AmbiguouslyCallableFunctionsCannotShadow) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    f ::= (n: [0; int64]) => 0
+    f ::= (n: [0; i64]) => 0
     f ::= (b: [0; bool]) => 0
     )");
     EXPECT_THAT(

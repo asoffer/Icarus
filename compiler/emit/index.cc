@@ -16,8 +16,8 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
         EmitValue(node->lhs()).get<ir::RegOr<ir::String>>());
     auto addr = builder().PtrIncr(
         data, EmitValue(node->rhs()).get<ir::RegOr<int64_t>>(),
-        type::Ptr(type::Nat8));
-    return builder().Load(addr, type::Nat8);
+        type::Ptr(type::U8));
+    return builder().Load(addr, type::U8);
   } else if (auto const *array_type = qt->type().if_as<type::Array>()) {
     auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
         EmitValue(node->rhs()), context().qual_type(node->rhs())->type()));
@@ -54,10 +54,10 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
     auto str = EmitValue(node->lhs()).get<ir::RegOr<ir::String>>();
     if (str.is_reg()) {
-      return builder().PtrIncr(str.reg(), index, type::Ptr(type::Nat8));
+      return builder().PtrIncr(str.reg(), index, type::Ptr(type::U8));
     } else {
       return builder().PtrIncr(str.value().addr(), index,
-                               type::Ptr(type::Nat8));
+                               type::Ptr(type::U8));
     }
   } else if (auto *tup = lhs_type.if_as<type::Tuple>()) {
     auto maybe_val = EvaluateOrDiagnose(

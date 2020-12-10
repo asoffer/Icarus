@@ -41,7 +41,7 @@ struct BuiltinFn {
       case Which::Alignment:
         return type::Func(
             {core::AnonymousParam(type::QualType::Constant(type::Type_))},
-            {type::Nat64});
+            {type::U64});
       case Which::Opaque: return type::Func({}, {type::Type_});
       case Which::Foreign:
         // Note: We do not allow passing `foreign` around as a function object.

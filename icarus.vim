@@ -12,7 +12,7 @@ syntax match Operator ":*=*"
 syntax match Operator "[,'$]"
 syntax match Operator "[`+*\-/%<>&|!]=\?"
 syntax region String start=/\v"/ skip=/\v\\./ end=/\v"/
-syntax keyword Constant true false bool int8 int16 int32 int64 nat8 nat16 nat32 nat64 float32 float64 type module null
+syntax keyword Constant true false bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 type module null
 syntax match Constant "\<\d+\(\.\d*\)\?"
 syntax match Identifier "#[a-zA-Z_=0-9()"]\+"
 syntax match Identifier "#{[a-zA-Z_=0-9 ()"]\+}"

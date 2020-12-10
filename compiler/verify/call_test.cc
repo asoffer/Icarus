@@ -13,38 +13,38 @@ using ::testing::UnorderedElementsAre;
 TEST(BuiltinForeign, FunctionSuccess) {
   test::TestModule mod;
   auto const *call =
-      mod.Append<ast::Call>(R"(foreign("my_function", int64 -> bool))");
+      mod.Append<ast::Call>(R"(foreign("my_function", i64 -> bool))");
   auto const *qt = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(
       *qt, type::QualType::NonConstant(type::Func(
-               {core::AnonymousParam(type::QualType::NonConstant(type::Int64))},
+               {core::AnonymousParam(type::QualType::NonConstant(type::I64))},
                {type::Bool})));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinForeign, PointerSuccess) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(foreign("my_ptr", *int64))");
+  auto const *call = mod.Append<ast::Call>(R"(foreign("my_ptr", *i64))");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Ptr(type::Int64)));
+  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Ptr(type::I64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinForeign, BufferPointerSuccess) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(foreign("my_array", [*]int64))");
+  auto const *call = mod.Append<ast::Call>(R"(foreign("my_array", [*]i64))");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::BufPtr(type::Int64)));
+  EXPECT_EQ(*qt, type::QualType::NonConstant(type::BufPtr(type::I64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinForeign, NamedArgs) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>(R"(
-      foreign(name = "my_function", foreign_type = int64 -> bool)
+      foreign(name = "my_function", foreign_type = i64 -> bool)
       )");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_EQ(qt, nullptr);
@@ -81,7 +81,7 @@ TEST(BuiltinForeign, TooManyArgs) {
 
 TEST(BuiltinForeign, FirstParameterByteView) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(foreign(123, *int64))");
+  auto const *call = mod.Append<ast::Call>(R"(foreign(123, *i64))");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
@@ -133,7 +133,7 @@ TEST(BuiltinBytes, Success) {
   auto const *call = mod.Append<ast::Call>("bytes(bool)");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -142,27 +142,27 @@ TEST(BuiltinBytes, NoArguments) {
   auto const *call = mod.Append<ast::Call>("bytes()");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinBytes, TooManyArguments) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("bytes(int32, nat8)");
+  auto const *call = mod.Append<ast::Call>("bytes(i32, u8)");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinBytes, NamedArgument) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("bytes(T = int32)");
+  auto const *call = mod.Append<ast::Call>("bytes(T = i32)");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -172,7 +172,7 @@ TEST(BuiltinBytes, WrongType) {
   auto const *call = mod.Append<ast::Call>("bytes(3)");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -182,7 +182,7 @@ TEST(BuiltinAlignment, Success) {
   auto const *call = mod.Append<ast::Call>("alignment(bool)");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -191,27 +191,27 @@ TEST(BuiltinAlignment, NoArguments) {
   auto const *call = mod.Append<ast::Call>("alignment()");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinAlignment, TooManyArguments) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("alignment(int32, nat8)");
+  auto const *call = mod.Append<ast::Call>("alignment(i32, u8)");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinAlignment, NamedArgument) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("alignment(T = int32)");
+  auto const *call = mod.Append<ast::Call>("alignment(T = i32)");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -221,7 +221,7 @@ TEST(BuiltinAlignment, WrongType) {
   auto const *call = mod.Append<ast::Call>("alignment(3)");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -269,7 +269,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{
             .context            = "f ::= () => 3",
             .expr               = "f()",
-            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+            .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         TestCase{
             .context              = "f ::= () => 3",
@@ -278,134 +278,134 @@ INSTANTIATE_TEST_SUITE_P(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context            = "f ::= (n: int64) => n",
+            .context            = "f ::= (n: i64) => n",
             .expr               = "f(4)",
-            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+            .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         TestCase{
-            .context            = "f ::= (n: int64) => n",
+            .context            = "f ::= (n: i64) => n",
             .expr               = "f(n = 4)",
-            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+            .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         TestCase{
-            .context              = "f ::= (n: int64) => 3",
+            .context              = "f ::= (n: i64) => 3",
             .expr                 = "f()",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context              = "f ::= (n: int64) => 3",
+            .context              = "f ::= (n: i64) => 3",
             .expr                 = "f(b = 0)",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context              = "f ::= (n: int64) => 3",
+            .context              = "f ::= (n: i64) => 3",
             .expr                 = "f(0, n = 0)",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context            = "f ::= (n: int64 = 0) => n",
+            .context            = "f ::= (n: i64 = 0) => n",
             .expr               = "f()",
-            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+            .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         TestCase{
-            .context            = "f ::= (n: int64 = 0) => n",
+            .context            = "f ::= (n: i64 = 0) => n",
             .expr               = "f(4)",
-            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+            .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         TestCase{
-            .context            = "f ::= (n: int64 = 0) => n",
+            .context            = "f ::= (n: i64 = 0) => n",
             .expr               = "f(n = 4)",
-            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+            .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         TestCase{
-            .context              = "f ::= (n: int64 = 0) => 3",
+            .context              = "f ::= (n: i64 = 0) => 3",
             .expr                 = "f(b = 0)",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context              = "f ::= (n: int64 = 0) => 3",
+            .context              = "f ::= (n: i64 = 0) => 3",
             .expr                 = "f(0, n = 0)",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context            = "f ::= (n: int64, b: bool) => b",
+            .context            = "f ::= (n: i64, b: bool) => b",
             .expr               = "f(4, true)",
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
         },
         TestCase{
-            .context              = "f ::= (n: int64, b: bool) => 3",
+            .context              = "f ::= (n: i64, b: bool) => 3",
             .expr                 = "f()",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context              = "f ::= (n: int64, b: bool) => 3",
+            .context              = "f ::= (n: i64, b: bool) => 3",
             .expr                 = "f(0)",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context              = "f ::= (n: int64, b: bool) => 3",
+            .context              = "f ::= (n: i64, b: bool) => 3",
             .expr                 = "f(true)",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context              = "f ::= (n: int64, b: bool) => 3",
+            .context              = "f ::= (n: i64, b: bool) => 3",
             .expr                 = "f(n = 0)",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context              = "f ::= (n: int64, b: bool) => 3",
+            .context              = "f ::= (n: i64, b: bool) => 3",
             .expr                 = "f(b = true)",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context              = "f ::= (n: int64, b: bool) => 3",
+            .context              = "f ::= (n: i64, b: bool) => 3",
             .expr                 = "f(0, n = 0)",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context            = "f ::= (n: int64 = 3, b: bool = true) => b",
+            .context            = "f ::= (n: i64 = 3, b: bool = true) => b",
             .expr               = "f(4, true)",
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
         },
         TestCase{
-            .context            = "f ::= (n: int64 = 3, b: bool = true) => b",
+            .context            = "f ::= (n: i64 = 3, b: bool = true) => b",
             .expr               = "f(4)",
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
         },
         TestCase{
-            .context              = "f ::= (n: int64 = 3, b: bool = true) => 3",
+            .context              = "f ::= (n: i64 = 3, b: bool = true) => 3",
             .expr                 = "f(0, n = 0)",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
         TestCase{
-            .context            = "f ::= (n: int64 = 3, b: bool = true) => b",
+            .context            = "f ::= (n: i64 = 3, b: bool = true) => b",
             .expr               = "f(n = 4)",
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
         },
         TestCase{
-            .context            = "f ::= (n: int64 = 3, b: bool = true) => b",
+            .context            = "f ::= (n: i64 = 3, b: bool = true) => b",
             .expr               = "f(b = true)",
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
         },
         TestCase{
-            .context            = "f ::= (n: int64 = 3, b: bool = true) => b",
+            .context            = "f ::= (n: i64 = 3, b: bool = true) => b",
             .expr               = "f(b = true, n = 4)",
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
         },
         TestCase{
-            .context            = "f ::= (n: int64 = 3, b: bool = true) => b",
+            .context            = "f ::= (n: i64 = 3, b: bool = true) => b",
             .expr               = "f()",
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
         },
@@ -413,15 +413,15 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{
             .context            = R"(
             f ::= () => true
-            f ::= (n: int64) => n
+            f ::= (n: i64) => n
             )",
             .expr               = "f(0)",
-            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+            .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         TestCase{
             .context            = R"(
             f ::= () => true
-            f ::= (n: int64) => n
+            f ::= (n: i64) => n
             )",
             .expr               = "f()",
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
@@ -429,16 +429,16 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{
             .context            = R"(
             f ::= (b: bool) => true
-            f ::= (n: int64) => n
+            f ::= (n: i64) => n
             )",
             .expr               = "f(n = 0)",
-            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+            .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         // Generic functions
         TestCase{
             .context            = "f ::= (x: $x) => x",
             .expr               = "f(3)",
-            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+            .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         TestCase{
             .context            = "f ::= (x: $x) => x",

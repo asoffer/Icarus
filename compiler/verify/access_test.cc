@@ -59,7 +59,7 @@ TEST(Access, FlagsMisnamed) {
 
 TEST(Access, NonConstantType) {
   test::TestModule mod;
-  mod.Append<ast::Node>(R"(T := int64)");
+  mod.Append<ast::Node>(R"(T := i64)");
   auto const *expr = mod.Append<ast::Expression>(R"(T.something)");
   auto const *qt   = mod.context().qual_type(expr);
   EXPECT_EQ(qt, nullptr);
@@ -72,7 +72,7 @@ TEST(Access, NonConstantType) {
 
 TEST(Access, TypeHasNoMembers) {
   test::TestModule mod;
-  mod.Append<ast::Node>(R"(T ::= int64)");
+  mod.Append<ast::Node>(R"(T ::= i64)");
   auto const *expr = mod.Append<ast::Expression>(R"(T.something)");
   auto const *qt   = mod.context().qual_type(expr);
   EXPECT_EQ(qt, nullptr);
@@ -84,7 +84,7 @@ TEST(Access, AccessStructField) {
   test::TestModule mod;
   mod.AppendCode(R"(
   S ::= struct {
-    n: int64
+    n: i64
     b: bool
   }
   non_constant: S
@@ -96,18 +96,18 @@ TEST(Access, AccessStructField) {
   auto const *constant_qt     = mod.context().qual_type(constant);
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   ASSERT_NE(non_constant_qt, nullptr);
-  EXPECT_EQ(*non_constant_qt, type::QualType(type::Int64, type::Quals::Ref()));
+  EXPECT_EQ(*non_constant_qt, type::QualType(type::I64, type::Quals::Ref()));
   ASSERT_NE(constant_qt, nullptr);
   EXPECT_EQ(
       *constant_qt,
-      type::QualType(type::Int64, type::Quals::Ref() | type::Quals::Const()));
+      type::QualType(type::I64, type::Quals::Ref() | type::Quals::Const()));
 }
 
 TEST(Access, NoFieldInStruct) {
   test::TestModule mod;
   mod.AppendCode(R"(
   S ::= struct {
-    n: int64
+    n: i64
     b: bool
   }
   s: S
@@ -123,7 +123,7 @@ TEST(Access, ConstantByteViewLength) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"("abc".length)");
   auto const *qt   = mod.context().qual_type(expr);
-  EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Nat64)));
+  EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::U64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -132,7 +132,7 @@ TEST(Access, NonConstantByteViewLength) {
   mod.AppendCode(R"(s := "abc")");
   auto const *expr = mod.Append<ast::Expression>(R"(s.length)");
   auto const *qt   = mod.context().qual_type(expr);
-  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Nat64)));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::U64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -148,7 +148,7 @@ TEST(Access, ByteViewInvalidMember) {
 
 TEST(Access, ArrayLength) {
   test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([3; int64].length)");
+  auto const *expr = mod.Append<ast::Expression>(R"([3; i64].length)");
   auto const *qt   = mod.context().qual_type(expr);
   EXPECT_THAT(
       qt,
@@ -158,7 +158,7 @@ TEST(Access, ArrayLength) {
 
 TEST(Access, MultidimensionalArrayLength) {
   test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([3, 2; int64].length)");
+  auto const *expr = mod.Append<ast::Expression>(R"([3, 2; i64].length)");
   auto const *qt   = mod.context().qual_type(expr);
   EXPECT_THAT(
       qt,
@@ -168,7 +168,7 @@ TEST(Access, MultidimensionalArrayLength) {
 
 TEST(Access, ArrayInvalidMember) {
   test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([3; int64].size)");
+  auto const *expr = mod.Append<ast::Expression>(R"([3; i64].size)");
   auto const *qt   = mod.context().qual_type(expr);
   EXPECT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),

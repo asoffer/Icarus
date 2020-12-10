@@ -232,8 +232,8 @@ struct BracedShortFunctionLiteral {
             .Highlighted(close_brace, diagnostic::Style::ErrorText()),
         diagnostic::Text(
             "Short function literals do not use braces in Icarus. Rather than "
-            "writing `(n: int64) => { n * n }`, remove the braces and write "
-            "`(n: int64) => n * n`."));
+            "writing `(n: i64) => { n * n }`, remove the braces and write "
+            "`(n: i64) => n * n`."));
   }
 
   SourceRange open_brace, close_brace;
@@ -813,7 +813,7 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
 // The only valid expressions of this form are designated initializers, where
 // `expr` is the type being initialized and the infix operator is `.`. However,
 // we should not assume that designated initializers are the intent here. For
-// example, The sequence `(n: int64) => { n * n }` would trigger this rule and
+// example, The sequence `(n: i64) => { n * n }` would trigger this rule and
 // more clearly shows that the user likely expected a short-function literal.
 //
 // Currently, we use the operator as the signal about user intent.

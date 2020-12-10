@@ -171,14 +171,14 @@ struct Assignment : Expression {
 // expressions.
 //
 // Examples:
-//  * `[5; int32]`     ... Represnts the type of an array that can hold five
+//  * `[5; i32]`     ... Represnts the type of an array that can hold five
 //                         32-bit integers
 //  * `[0; bool]`      ... Represents the type of an array that can hold zero
 //                         booleans.
-//  * `[3; [2; int8]]` ... Represents the type of an array that can hold three
+//  * `[3; [2; i8]]` ... Represents the type of an array that can hold three
 //                         elements, each of which is an array that can hold two
 //                         8-bit integers.
-//  * `[3, 2; int8]`   ... A shorthand syntax for `[3; [2; int8]]`
+//  * `[3, 2; i8]`   ... A shorthand syntax for `[3; [2; i8]]`
 struct ArrayType : Expression {
   explicit ArrayType(frontend::SourceRange const &range,
                      std::unique_ptr<Expression> length,
@@ -243,11 +243,11 @@ struct BinaryOperator : Expression {
 // parameter. It may be const or metable.
 //
 // Examples:
-//  * `a: int32`
+//  * `a: i32`
 //  * `b: bool = true`
 //  * `c := 17`
-//  * `d: float32 = --`
-//  * `DAYS_PER_WEEK :: int32 = 7`
+//  * `d: f32 = --`
+//  * `DAYS_PER_WEEK :: i32 = 7`
 //  * `HOURS_PER_DAY ::= 24`
 //  * `some_constant :: bool` ... This approach only makes sense when
 //                                `some_constant` is a (generic) function
@@ -570,8 +570,8 @@ struct Call : Expression {
 // `<expr> as <type-expr>`.
 //
 // Examples:
-//  * `3 as nat32`
-//  * `null as *int64`
+//  * `3 as u32`
+//  * `null as *i64`
 struct Cast : Expression {
   explicit Cast(frontend::SourceRange const &range,
                 std::unique_ptr<Expression> expr,
@@ -693,9 +693,9 @@ struct EnumLiteral : Expression, WithScope<DeclScope> {
 // output is deduced. Functions may be generic.
 //
 // Examples:
-// * `(n: int32) -> () { print n }`
-// * `() -> int32 { return 3 }`
-// * `(n: int32, m: int32) => n * m`
+// * `(n: i32) -> () { print n }`
+// * `() -> i32 { return 3 }`
+// * `(n: i32, m: i32) => n * m`
 // * `(T :: type, val: T) => val`
 //
 struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
@@ -731,9 +731,9 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
 // parameters are not declarations.
 //
 // Examples:
-// * `int64 -> bool`
+// * `i64 -> bool`
 // * `(b: bool) -> ()`
-// * `(n: int64, b: bool) -> (float32, float32)
+// * `(n: i64, b: bool) -> (f32, f32)
 //
 struct FunctionType : Expression {
   FunctionType(frontend::SourceRange const &range,
@@ -877,8 +877,8 @@ struct Jump : ParameterizedExpression, WithScope<FnScope> {
 //   ptr: *T
 // }
 //
-// struct (N: int64) {
-//   val: int64 = N
+// struct (N: i64) {
+//   val: i64 = N
 //   square ::= N * N
 // }
 // ```
@@ -1032,7 +1032,7 @@ struct ScopeNode : Expression {
 // expression.
 //
 // Examples:
-// * `(n: int32, m: int32) => n * m`
+// * `(n: i32, m: i32) => n * m`
 // * `(T :: type, val: T) => val`
 // * `(x: $x) => x`
 //
@@ -1059,8 +1059,8 @@ struct ShortFunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
 // Examples:
 // ```
 // struct {
-//   x: float64
-//   y: float64
+//   x: f64
+//   y: f64
 // }
 //
 // struct {}

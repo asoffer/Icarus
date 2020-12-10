@@ -186,25 +186,25 @@ struct Builder {
 
   template <typename ToType>
   RegOr<ToType> CastTo(type::Typed<ir::Value> v) {
-    if (v.type() == type::Int8) {
+    if (v.type() == type::I8) {
       return Cast<int8_t, ToType>(v->get<RegOr<int8_t>>());
-    } else if (v.type() == type::Nat8) {
+    } else if (v.type() == type::U8) {
       return Cast<uint8_t, ToType>(v->get<RegOr<uint8_t>>());
-    } else if (v.type() == type::Int16) {
+    } else if (v.type() == type::I16) {
       return Cast<int16_t, ToType>(v->get<RegOr<int16_t>>());
-    } else if (v.type() == type::Nat16) {
+    } else if (v.type() == type::U16) {
       return Cast<uint16_t, ToType>(v->get<RegOr<uint16_t>>());
-    } else if (v.type() == type::Int32) {
+    } else if (v.type() == type::I32) {
       return Cast<int32_t, ToType>(v->get<RegOr<int32_t>>());
-    } else if (v.type() == type::Nat32) {
+    } else if (v.type() == type::U32) {
       return Cast<uint32_t, ToType>(v->get<RegOr<uint32_t>>());
-    } else if (v.type() == type::Int64) {
+    } else if (v.type() == type::I64) {
       return Cast<int64_t, ToType>(v->get<RegOr<int64_t>>());
-    } else if (v.type() == type::Nat64) {
+    } else if (v.type() == type::U64) {
       return Cast<uint64_t, ToType>(v->get<RegOr<uint64_t>>());
-    } else if (v.type() == type::Float32) {
+    } else if (v.type() == type::F32) {
       return Cast<float, ToType>(v->get<RegOr<float>>());
-    } else if (v.type() == type::Float64) {
+    } else if (v.type() == type::F64) {
       return Cast<double, ToType>(v->get<RegOr<double>>());
     } else if (v.type().is<type::Enum>()) {
       if constexpr (base::meta<ToType> ==

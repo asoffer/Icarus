@@ -19,8 +19,8 @@ TEST_P(ComparisonOperatorTest, Access) {
   // there's an ambiguity (there isn't).
   mod.AppendCode(R"(
   S ::= struct {
-    n: int64
-    p: *int64
+    n: i64
+    p: *i64
     sp: *S
   }
   )");
@@ -42,57 +42,57 @@ TEST_P(ComparisonOperatorTest, Access) {
 INSTANTIATE_TEST_SUITE_P(
     All, ComparisonOperatorTest,
     testing::ValuesIn({
-        TestCase{.expr     = R"(((x: int64, y: int64) => x < y)(1, 2))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x < y)(1, 2))",
                  .expected = ir::Value(true)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x < y)(1, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x < y)(1, 1))",
                  .expected = ir::Value(false)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x < y)(2, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x < y)(2, 1))",
                  .expected = ir::Value(false)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x <= y)(1, 2))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x <= y)(1, 2))",
                  .expected = ir::Value(true)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x <= y)(1, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x <= y)(1, 1))",
                  .expected = ir::Value(true)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x <= y)(2, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x <= y)(2, 1))",
                  .expected = ir::Value(false)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x == y)(1, 2))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x == y)(1, 2))",
                  .expected = ir::Value(false)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x == y)(1, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x == y)(1, 1))",
                  .expected = ir::Value(true)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x != y)(2, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x != y)(2, 1))",
                  .expected = ir::Value(true)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x != y)(1, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x != y)(1, 1))",
                  .expected = ir::Value(false)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x > y)(1, 2))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x > y)(1, 2))",
                  .expected = ir::Value(false)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x > y)(1, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x > y)(1, 1))",
                  .expected = ir::Value(false)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x > y)(2, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x > y)(2, 1))",
                  .expected = ir::Value(true)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x >= y)(1, 2))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x >= y)(1, 2))",
                  .expected = ir::Value(false)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x >= y)(1, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x >= y)(1, 1))",
                  .expected = ir::Value(true)},
-        TestCase{.expr     = R"(((x: int64, y: int64) => x >= y)(2, 1))",
+        TestCase{.expr     = R"(((x: i64, y: i64) => x >= y)(2, 1))",
                  .expected = ir::Value(true)},
 
         TestCase{
-            .expr = R"(((x: int64, y: int64, z: int64) => x < y < z)(1, 2, 3))",
+            .expr = R"(((x: i64, y: i64, z: i64) => x < y < z)(1, 2, 3))",
             .expected = ir::Value(true)},
         TestCase{
-            .expr = R"(((x: int64, y: int64, z: int64) => x < y < z)(1, 2, 1))",
+            .expr = R"(((x: i64, y: i64, z: i64) => x < y < z)(1, 2, 1))",
             .expected = ir::Value(false)},
         TestCase{
             .expr =
-                R"(((x: int64, y: int64, z: int64) => x < y <= z)(1, 2, 2))",
+                R"(((x: i64, y: i64, z: i64) => x < y <= z)(1, 2, 2))",
             .expected = ir::Value(true)},
         TestCase{
-            .expr = R"(((x: int64, y: int64, z: int64) => x < y > z)(2, 3, 1))",
+            .expr = R"(((x: i64, y: i64, z: i64) => x < y > z)(2, 3, 1))",
             .expected = ir::Value(true)},
         TestCase{
-            .expr = R"(((x: int64, y: int64, z: int64) => x < y > z)(1, 2, 1))",
+            .expr = R"(((x: i64, y: i64, z: i64) => x < y > z)(1, 2, 1))",
             .expected = ir::Value(true)},
         TestCase{
-            .expr = R"(((x: int64, y: int64, z: int64) => x < y > z)(2, 3, 4))",
+            .expr = R"(((x: i64, y: i64, z: i64) => x < y > z)(2, 3, 4))",
             .expected = ir::Value(false)},
     }));
 

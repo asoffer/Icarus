@@ -35,16 +35,16 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{.terminal = R"("ab\n\r\t\v\\c")",
                  .expected = ir::Value(ir::String("ab\n\r\t\v\\c"))},
         TestCase{.terminal = "null", .expected = ir::Value(ir::Addr::Null())},
-        TestCase{.terminal = "nat8", .expected = ir::Value(type::Nat8)},
-        TestCase{.terminal = "nat16", .expected = ir::Value(type::Nat16)},
-        TestCase{.terminal = "nat32", .expected = ir::Value(type::Nat32)},
-        TestCase{.terminal = "nat64", .expected = ir::Value(type::Nat64)},
-        TestCase{.terminal = "int8", .expected = ir::Value(type::Int8)},
-        TestCase{.terminal = "int16", .expected = ir::Value(type::Int16)},
-        TestCase{.terminal = "int32", .expected = ir::Value(type::Int32)},
-        TestCase{.terminal = "int64", .expected = ir::Value(type::Int64)},
-        TestCase{.terminal = "float32", .expected = ir::Value(type::Float32)},
-        TestCase{.terminal = "float64", .expected = ir::Value(type::Float64)},
+        TestCase{.terminal = "u8", .expected = ir::Value(type::U8)},
+        TestCase{.terminal = "u16", .expected = ir::Value(type::U16)},
+        TestCase{.terminal = "u32", .expected = ir::Value(type::U32)},
+        TestCase{.terminal = "u64", .expected = ir::Value(type::U64)},
+        TestCase{.terminal = "i8", .expected = ir::Value(type::I8)},
+        TestCase{.terminal = "i16", .expected = ir::Value(type::I16)},
+        TestCase{.terminal = "i32", .expected = ir::Value(type::I32)},
+        TestCase{.terminal = "i64", .expected = ir::Value(type::I64)},
+        TestCase{.terminal = "f32", .expected = ir::Value(type::F32)},
+        TestCase{.terminal = "f64", .expected = ir::Value(type::F64)},
         TestCase{.terminal = "bool", .expected = ir::Value(type::Bool)},
         TestCase{.terminal = "type", .expected = ir::Value(type::Type_)},
         TestCase{.terminal = "module", .expected = ir::Value(type::Module)},
@@ -54,7 +54,7 @@ INSTANTIATE_TEST_SUITE_P(
         // TODO: Integers and their edge cases. Especially INT_MIN.
         // TODO: Floating point edge cases.
         // TODO: Determine how you will be allowed to specify arithmetic
-        // literals other than int64 or float64.
+        // literals other than i64 or f64.
     }));
 
 }  // namespace

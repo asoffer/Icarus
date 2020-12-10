@@ -19,7 +19,7 @@ TEST(Copy, Success) {
     auto const *expr = mod.Append<ast::UnaryOperator>("copy [1, 2, 3]");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(3, type::Int64)));
+    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(3, type::I64)));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -31,7 +31,7 @@ TEST(Copy, Success) {
     auto const *expr = mod.Append<ast::UnaryOperator>("copy a");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Arr(3, type::Int64)));
+    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Arr(3, type::I64)));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -42,7 +42,7 @@ TEST(Init, Success) {
     auto const *expr = mod.Append<ast::UnaryOperator>("init [1, 2, 3]");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(3, type::Int64)));
+    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(3, type::I64)));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -54,7 +54,7 @@ TEST(Init, Success) {
     auto const *expr = mod.Append<ast::UnaryOperator>("init a");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Arr(3, type::Int64)));
+    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Arr(3, type::I64)));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -83,7 +83,7 @@ TEST(Move, Success) {
     auto const *expr = mod.Append<ast::UnaryOperator>("move [1, 2, 3]");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(3, type::Int64)));
+    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(3, type::I64)));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -95,7 +95,7 @@ TEST(Move, Success) {
     auto const *expr = mod.Append<ast::UnaryOperator>("move a");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Arr(3, type::Int64)));
+    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Arr(3, type::I64)));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -121,7 +121,7 @@ TEST(Move, Immovable) {
 TEST(BufferPointer, Success) {
   {
     test::TestModule mod;
-    auto const *expr = mod.Append<ast::UnaryOperator>("[*]int64");
+    auto const *expr = mod.Append<ast::UnaryOperator>("[*]i64");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
@@ -131,7 +131,7 @@ TEST(BufferPointer, Success) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    T := int64
+    T := i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("[*]T");
     auto const *qt   = mod.context().qual_type(expr);
@@ -164,7 +164,7 @@ TEST(Eval, Success) {
   auto const *expr = mod.Append<ast::UnaryOperator>("`3");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Int64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::I64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -176,7 +176,7 @@ TEST(Eval, NonConstant) {
   auto const *expr = mod.Append<ast::UnaryOperator>("`n");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Int64));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::I64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("evaluation-error", "non-constant-evaluation")));
@@ -185,31 +185,31 @@ TEST(Eval, NonConstant) {
 TEST(At, Pointer) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  p: *int64
+  p: *i64
   )");
   auto const *expr = mod.Append<ast::UnaryOperator>("@p");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(At, BufferPointer) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  p: [*]int64
+  p: [*]i64
   )");
   auto const *expr = mod.Append<ast::UnaryOperator>("@p");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Buf()));
+  EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(At, NonPointer) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  p: int64
+  p: i64
   )");
   auto const *expr = mod.Append<ast::UnaryOperator>("@p");
   auto const *qt   = mod.context().qual_type(expr);
@@ -222,12 +222,12 @@ TEST(At, NonPointer) {
 TEST(And, Success) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  n: int64
+  n: i64
   )");
   auto const *expr = mod.Append<ast::UnaryOperator>("&n");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Ptr(type::Int64)));
+  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Ptr(type::I64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -244,7 +244,7 @@ TEST(And, NonReference) {
 TEST(Pointer, Success) {
   {
     test::TestModule mod;
-    auto const *expr = mod.Append<ast::UnaryOperator>("*int64");
+    auto const *expr = mod.Append<ast::UnaryOperator>("*i64");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
@@ -253,7 +253,7 @@ TEST(Pointer, Success) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    T := int64
+    T := i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("*T");
     auto const *qt   = mod.context().qual_type(expr);
@@ -276,24 +276,24 @@ TEST(Negate, SignedInteger) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n: int64
+    n: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+    EXPECT_EQ(*qt, type::QualType::NonConstant(type::I64));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n :: int64
+    n :: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Int64));
+    EXPECT_EQ(*qt, type::QualType::Constant(type::I64));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -302,24 +302,24 @@ TEST(Negate, FloatingPoint) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    x: float64
+    x: f64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-x");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Float64));
+    EXPECT_EQ(*qt, type::QualType::NonConstant(type::F64));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    x :: float64
+    x :: f64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-x");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Float64));
+    EXPECT_EQ(*qt, type::QualType::Constant(type::F64));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -328,7 +328,7 @@ TEST(Negate, UnsignedInteger) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n: nat64
+    n: u64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
     auto const *qt   = mod.context().qual_type(expr);
@@ -341,7 +341,7 @@ TEST(Negate, UnsignedInteger) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n :: nat64
+    n :: u64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
     auto const *qt   = mod.context().qual_type(expr);
@@ -384,12 +384,12 @@ TEST(Negate, Overload) {
   test::TestModule mod;
   mod.AppendCode(R"(
     S ::= struct {}
-    (-) ::= (s: S) -> int64 { return 0 }
+    (-) ::= (s: S) -> i64 { return 0 }
     )");
   auto const *expr = mod.Append<ast::UnaryOperator>("-S.{}");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+  EXPECT_EQ(*qt, type::QualType::NonConstant(type::I64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -464,7 +464,7 @@ TEST(Not, InvalidType) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n: int64
+    n: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("!n");
     auto const *qt   = mod.context().qual_type(expr);
@@ -477,7 +477,7 @@ TEST(Not, InvalidType) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n :: int64
+    n :: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("!n");
     auto const *qt   = mod.context().qual_type(expr);
@@ -492,12 +492,12 @@ TEST(Not, Overload) {
   test::TestModule mod;
   mod.AppendCode(R"(
     S ::= struct {}
-    (!) ::= (s: S) -> int64 { return 0 }
+    (!) ::= (s: S) -> i64 { return 0 }
     )");
   auto const *expr = mod.Append<ast::UnaryOperator>("!S.{}");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+  EXPECT_EQ(*qt, type::QualType::NonConstant(type::I64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 

@@ -265,15 +265,15 @@ struct Compiler
   // is called for each particular overload. So for example,
   //
   // ```
-  // f ::= (n: int64) -> () {}
+  // f ::= (n: i64) -> () {}
   // f ::= (b: bool) -> () {}
   //
-  // x := int64 | bool = true
+  // x := i64 | bool = true
   // f(x)
   // ```
   //
-  // For each overload of `f`, the argument will be have type `int64 | bool`,
-  // even though for each overload (one with `int64`, and one with `bool`), the
+  // For each overload of `f`, the argument will be have type `i64 | bool`,
+  // even though for each overload (one with `i64`, and one with `bool`), the
   // call cannot be made directly. In such cases it is assumed that the variant
   // holds a value correctly bindable to the parameters. It is the
   // responsibility of the caller of this function to ensure that code has

@@ -18,14 +18,14 @@ void Primitive::WriteTo(std::string *result) const {
 
 bool Primitive::is_integral() const {
   switch (type_) {
-    case BasicType::Int8:
-    case BasicType::Int16:
-    case BasicType::Int32:
-    case BasicType::Int64:
-    case BasicType::Nat8:
-    case BasicType::Nat16:
-    case BasicType::Nat32:
-    case BasicType::Nat64: return true;
+    case BasicType::I8:
+    case BasicType::I16:
+    case BasicType::I32:
+    case BasicType::I64:
+    case BasicType::U8:
+    case BasicType::U16:
+    case BasicType::U32:
+    case BasicType::U64: return true;
     default: return false;
   }
 }
@@ -39,16 +39,16 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
     case BasicType::NullPtr: return a.pointer().bytes();
     case BasicType::EmptyArray: return core::Bytes{0};
     case BasicType::Bool: return core::Bytes{1};
-    case BasicType::Int8: return core::Bytes{1};
-    case BasicType::Int16: return core::Bytes{2};
-    case BasicType::Int32: return core::Bytes{4};
-    case BasicType::Int64: return core::Bytes{8};
-    case BasicType::Nat8: return core::Bytes{1};
-    case BasicType::Nat16: return core::Bytes{2};
-    case BasicType::Nat32: return core::Bytes{4};
-    case BasicType::Nat64: return core::Bytes{8};
-    case BasicType::Float32: return core::Bytes{4};
-    case BasicType::Float64: return core::Bytes{8};
+    case BasicType::I8: return core::Bytes{1};
+    case BasicType::I16: return core::Bytes{2};
+    case BasicType::I32: return core::Bytes{4};
+    case BasicType::I64: return core::Bytes{8};
+    case BasicType::U8: return core::Bytes{1};
+    case BasicType::U16: return core::Bytes{2};
+    case BasicType::U32: return core::Bytes{4};
+    case BasicType::U64: return core::Bytes{8};
+    case BasicType::F32: return core::Bytes{4};
+    case BasicType::F64: return core::Bytes{8};
     case BasicType::Module: return core::Host.pointer().bytes();
     case BasicType::Scope: return core::Host.pointer().bytes();
     case BasicType::Block: return core::Host.pointer().bytes();
@@ -70,16 +70,16 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     case BasicType::NullPtr: return a.pointer().alignment();
     case BasicType::EmptyArray: return core::Alignment{1};
     case BasicType::Bool: return core::Alignment{1};
-    case BasicType::Int8: return core::Alignment{1};
-    case BasicType::Int16: return core::Alignment{2};
-    case BasicType::Int32: return core::Alignment{4};
-    case BasicType::Int64: return core::Alignment{8};
-    case BasicType::Nat8: return core::Alignment{1};
-    case BasicType::Nat16: return core::Alignment{2};
-    case BasicType::Nat32: return core::Alignment{4};
-    case BasicType::Nat64: return core::Alignment{8};
-    case BasicType::Float32: return core::Alignment{4};
-    case BasicType::Float64: return core::Alignment{8};
+    case BasicType::I8: return core::Alignment{1};
+    case BasicType::I16: return core::Alignment{2};
+    case BasicType::I32: return core::Alignment{4};
+    case BasicType::I64: return core::Alignment{8};
+    case BasicType::U8: return core::Alignment{1};
+    case BasicType::U16: return core::Alignment{2};
+    case BasicType::U32: return core::Alignment{4};
+    case BasicType::U64: return core::Alignment{8};
+    case BasicType::F32: return core::Alignment{4};
+    case BasicType::F64: return core::Alignment{8};
     case BasicType::Module: return core::Host.pointer().alignment();
     case BasicType::Scope: return core::Host.pointer().alignment();
     case BasicType::Block: return core::Host.pointer().alignment();

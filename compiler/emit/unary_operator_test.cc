@@ -44,9 +44,9 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{.context  = "f ::= () => 3",
                  .expr     = "copy f()",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = "[*]int32",
+        TestCase{.expr     = "[*]i32",
                  .expected = ir::Value(
-                     static_cast<type::Type>(type::BufPtr(type::Int32)))},
+                     static_cast<type::Type>(type::BufPtr(type::I32)))},
         TestCase{.context  = "f ::= () => bool",
                  .expr     = "[*]f()",
                  .expected = ir::Value(
@@ -58,33 +58,33 @@ INSTANTIATE_TEST_SUITE_P(
         // TODO: Test flag negation. The problem is is we randomize the flag
         // values so we need a way to extract specific values. Perhaps this is
         // better done outside this parameterized test.
-        TestCase{.expr = "-(3 as int8)", .expected = ir::Value(int8_t{-3})},
-        TestCase{.context  = "f ::= () => 3 as int8",
+        TestCase{.expr = "-(3 as i8)", .expected = ir::Value(int8_t{-3})},
+        TestCase{.context  = "f ::= () => 3 as i8",
                  .expr     = "-f()",
                  .expected = ir::Value(int8_t{-3})},
-        TestCase{.expr = "-(3 as int16)", .expected = ir::Value(int16_t{-3})},
-        TestCase{.context  = "f ::= () => 3 as int16",
+        TestCase{.expr = "-(3 as i16)", .expected = ir::Value(int16_t{-3})},
+        TestCase{.context  = "f ::= () => 3 as i16",
                  .expr     = "-f()",
                  .expected = ir::Value(int16_t{-3})},
-        TestCase{.expr = "-(3 as int32)", .expected = ir::Value(int32_t{-3})},
-        TestCase{.context  = "f ::= () => 3 as int32",
+        TestCase{.expr = "-(3 as i32)", .expected = ir::Value(int32_t{-3})},
+        TestCase{.context  = "f ::= () => 3 as i32",
                  .expr     = "-f()",
                  .expected = ir::Value(int32_t{-3})},
-        TestCase{.expr = "-(3 as int64)", .expected = ir::Value(int64_t{-3})},
-        TestCase{.context  = "f ::= () => 3 as int64",
+        TestCase{.expr = "-(3 as i64)", .expected = ir::Value(int64_t{-3})},
+        TestCase{.context  = "f ::= () => 3 as i64",
                  .expr     = "-f()",
                  .expected = ir::Value(int64_t{-3})},
-        TestCase{.expr = "-(3.0 as float32)", .expected = ir::Value(float{-3})},
-        TestCase{.context  = "f ::= () => 3 as float32",
+        TestCase{.expr = "-(3.0 as f32)", .expected = ir::Value(float{-3})},
+        TestCase{.context  = "f ::= () => 3 as f32",
                  .expr     = "-f()",
                  .expected = ir::Value(float{-3})},
-        TestCase{.expr = "-(3.0 as float32)", .expected = ir::Value(float{-3})},
-        TestCase{.context  = "f ::= () => 3 as float32",
+        TestCase{.expr = "-(3.0 as f32)", .expected = ir::Value(float{-3})},
+        TestCase{.context  = "f ::= () => 3 as f32",
                  .expr     = "-f()",
                  .expected = ir::Value(float{-3})},
-        TestCase{.expr     = "-(3.0 as float64)",
+        TestCase{.expr     = "-(3.0 as f64)",
                  .expected = ir::Value(double{-3})},
-        TestCase{.context  = "f ::= () => 3 as float64",
+        TestCase{.context  = "f ::= () => 3 as f64",
                  .expr     = "-f()",
                  .expected = ir::Value(double{-3})},
         TestCase{.expr     = "true:?",
@@ -92,16 +92,16 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{.context  = "f ::= () => true",
                  .expr     = "f():?",
                  .expected = ir::Value(static_cast<type::Type>(type::Bool))},
-        TestCase{.expr     = "*int32",
+        TestCase{.expr     = "*i32",
                  .expected = ir::Value(
-                     static_cast<type::Type>(type::Ptr(type::Int32)))},
-        TestCase{.context  = "f ::= () => int32",
+                     static_cast<type::Type>(type::Ptr(type::I32)))},
+        TestCase{.context  = "f ::= () => i32",
                  .expr     = "*f()",
                  .expected = ir::Value(
-                     static_cast<type::Type>(type::Ptr(type::Int32)))},
+                     static_cast<type::Type>(type::Ptr(type::I32)))},
         TestCase{.context  = R"(
-               f ::= () -> int64 {
-                 n: int64
+               f ::= () -> i64 {
+                 n: i64
                  np := &n
                  n = 3
                  return @np

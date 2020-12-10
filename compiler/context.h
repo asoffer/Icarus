@@ -38,7 +38,7 @@ struct CompiledModule;
 //
 // For instance, the program
 // ```
-// f ::= (n :: int64) -> () {
+// f ::= (n :: i64) -> () {
 //   size ::= n * n
 //   array: [size; bool]
 //   ...
@@ -53,15 +53,15 @@ struct CompiledModule;
 // 1 and one where `n` is 2. Note that the type of `array` is not available at
 // the root node as it's type is dependent on `n`. Rather, on the two child
 // nodes it has type `[1; bool]` and `[4; bool]` respectively.  Moreover, even
-// the type of `size` (despite always being `int64` is not available on the root
+// the type of `size` (despite always being `i64` is not available on the root
 // node. Instead, it is available on all child nodes with the same value of
-// `int64`.
+// `i64`.
 //
 // Though there is nothing special about recursive instantiations, it's worth
 // describing an example as well:
 //
 // ```
-// pow2 ::= (n :: int64) -> int64 {
+// pow2 ::= (n :: i64) -> i64 {
 //   if (n == 0) then {
 //     return 1
 //   } else {

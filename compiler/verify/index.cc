@@ -177,7 +177,7 @@ std::optional<uint64_t> IntegralToUint64(ir::Value const &value) {
 type::QualType VerifyByteViewIndex(Compiler *c, ast::Index const *node,
                                    type::Quals quals, type::QualType index_qt) {
   quals = (quals & index_qt.quals()) | type::Quals::Buf();
-  type::QualType qt(type::Nat8, quals);
+  type::QualType qt(type::U8, quals);
   if (not ValidIndexType(c, node, type::ByteView, index_qt)) {
     qt.MarkError();
     return c->context().set_qual_type(node, qt);

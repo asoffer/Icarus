@@ -14,7 +14,7 @@ TEST(DesignatedInitializer, NonConstantType) {
   test::TestModule mod;
   mod.AppendCode(R"(
   S := struct {
-    n: int64
+    n: i64
   }
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{})");
@@ -41,7 +41,7 @@ TEST(DesignatedInitializer, NonType) {
 TEST(DesignatedInitializer, NonConstantNonType) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  NotAType: int64
+  NotAType: i64
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAType.{})");
   auto const *qt   = mod.context().qual_type(expr);
@@ -58,7 +58,7 @@ TEST(DesignatedInitializer, NonConstantNonType) {
 TEST(DesignatedInitializer, NonStrucType) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  NotAStruct ::= int64
+  NotAStruct ::= i64
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAStruct.{})");
   auto const *qt   = mod.context().qual_type(expr);
@@ -73,7 +73,7 @@ TEST(DesignatedInitializer, FieldErrorsAndStructErrors) {
   // struct type.
   test::TestModule mod;
   mod.AppendCode(R"(
-  NotAStruct ::= int64
+  NotAStruct ::= i64
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAStruct.{
     field = NotAStruct.{}
@@ -94,7 +94,7 @@ TEST(DesignatedInitializer, NonMember) {
   test::TestModule mod;
   mod.AppendCode(R"(
   S ::= struct {
-    n: int64
+    n: i64
   }
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{
@@ -115,7 +115,7 @@ TEST(DesignatedInitializer, MemberInvalidConversion) {
   test::TestModule mod;
   mod.AppendCode(R"(
   S ::= struct {
-    n: int64
+    n: i64
   }
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{
@@ -137,7 +137,7 @@ TEST(DesignatedInitializer, Valid) {
   test::TestModule mod;
   mod.AppendCode(R"(
   S ::= struct {
-    n: int64
+    n: i64
   }
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{
@@ -156,9 +156,9 @@ TEST(DesignatedInitializer, MultipleMemberAssignments) {
   // struct type.
   test::TestModule mod;
   mod.AppendCode(R"(
-  f ::= () -> (int64, bool) { return 3, true }
+  f ::= () -> (i64, bool) { return 3, true }
   S ::= struct {
-    n: int64
+    n: i64
     b: bool
   }
   )");
@@ -178,9 +178,9 @@ TEST(DesignatedInitializer, MultipleMemberInvalidAssignments) {
   // struct type.
   test::TestModule mod;
   mod.AppendCode(R"(
-  f ::= () -> (int64, int64) { return 3, 4 }
+  f ::= () -> (i64, i64) { return 3, 4 }
   S ::= struct {
-    n: int64
+    n: i64
     b: bool
   }
   )");
@@ -202,10 +202,10 @@ TEST(DesignatedInitializer, MemberValidConversion) {
   // struct type.
   test::TestModule mod;
   mod.AppendCode(R"(
-  buffer_pointer: [*]int64
+  buffer_pointer: [*]i64
 
   S ::= struct {
-    pointer: *int64
+    pointer: *i64
   }
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{
@@ -226,7 +226,7 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
   mod.AppendCode(R"(
   NotAType ::= 0
   S ::= struct {
-    n: int64
+    n: i64
   }
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{

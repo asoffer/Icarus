@@ -35,9 +35,9 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn({
         TestCase{.expr = R"("abc"[0])", .expected = ir::Value(uint8_t{'a'})},
         TestCase{.expr = R"([1, 2, 3][0])", .expected = ir::Value(int64_t{1})},
-        TestCase{.expr     = R"((() -> int64 {
+        TestCase{.expr     = R"((() -> i64 {
         a := [1, 2, 3]
-        p: [*]int64 = &a[1]
+        p: [*]i64 = &a[1]
         return p[1]
         })()
         )",

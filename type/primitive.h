@@ -55,16 +55,16 @@ struct Primitive : public LegacyType {
 namespace internal {
 
 inline base::Global kPrimitiveArray = std::array{
-    Primitive(Primitive::BasicType::Nat8),
-    Primitive(Primitive::BasicType::Nat16),
-    Primitive(Primitive::BasicType::Nat32),
-    Primitive(Primitive::BasicType::Nat64),
-    Primitive(Primitive::BasicType::Int8),
-    Primitive(Primitive::BasicType::Int16),
-    Primitive(Primitive::BasicType::Int32),
-    Primitive(Primitive::BasicType::Int64),
-    Primitive(Primitive::BasicType::Float32),
-    Primitive(Primitive::BasicType::Float64),
+    Primitive(Primitive::BasicType::U8),
+    Primitive(Primitive::BasicType::U16),
+    Primitive(Primitive::BasicType::U32),
+    Primitive(Primitive::BasicType::U64),
+    Primitive(Primitive::BasicType::I8),
+    Primitive(Primitive::BasicType::I16),
+    Primitive(Primitive::BasicType::I32),
+    Primitive(Primitive::BasicType::I64),
+    Primitive(Primitive::BasicType::F32),
+    Primitive(Primitive::BasicType::F64),
     Primitive(Primitive::BasicType::Bool),
     Primitive(Primitive::BasicType::Type_),
     Primitive(Primitive::BasicType::NullPtr),
@@ -93,16 +93,16 @@ Primitive::ApplyImpl(Fn &&fn) const {
   })...}[index]();
 }
 
-inline Type Nat8       = &(*internal::kPrimitiveArray)[0];
-inline Type Nat16      = &(*internal::kPrimitiveArray)[1];
-inline Type Nat32      = &(*internal::kPrimitiveArray)[2];
-inline Type Nat64      = &(*internal::kPrimitiveArray)[3];
-inline Type Int8       = &(*internal::kPrimitiveArray)[4];
-inline Type Int16      = &(*internal::kPrimitiveArray)[5];
-inline Type Int32      = &(*internal::kPrimitiveArray)[6];
-inline Type Int64      = &(*internal::kPrimitiveArray)[7];
-inline Type Float32    = &(*internal::kPrimitiveArray)[8];
-inline Type Float64    = &(*internal::kPrimitiveArray)[9];
+inline Type U8       = &(*internal::kPrimitiveArray)[0];
+inline Type U16      = &(*internal::kPrimitiveArray)[1];
+inline Type U32      = &(*internal::kPrimitiveArray)[2];
+inline Type U64      = &(*internal::kPrimitiveArray)[3];
+inline Type I8       = &(*internal::kPrimitiveArray)[4];
+inline Type I16      = &(*internal::kPrimitiveArray)[5];
+inline Type I32      = &(*internal::kPrimitiveArray)[6];
+inline Type I64      = &(*internal::kPrimitiveArray)[7];
+inline Type F32    = &(*internal::kPrimitiveArray)[8];
+inline Type F64    = &(*internal::kPrimitiveArray)[9];
 inline Type Bool       = &(*internal::kPrimitiveArray)[10];
 inline Type Type_      = &(*internal::kPrimitiveArray)[11];
 inline Type NullPtr    = &(*internal::kPrimitiveArray)[12];
@@ -115,19 +115,19 @@ inline Type Label      = &(*internal::kPrimitiveArray)[18];
 inline Type Void       = &(*internal::kPrimitiveArray)[19];
 
 inline bool IsNumeric(Type t) {
-  return t.get() >= Nat8.get() and t.get() <= Float64.get();
+  return t.get() >= U8.get() and t.get() <= F64.get();
 }
 inline bool IsIntegral(Type t) {
-  return t.get() >= Nat8.get() and t.get() <= Int64.get();
+  return t.get() >= U8.get() and t.get() <= I64.get();
 }
 inline bool IsUnsignedNumeric(Type t) {
-  return t.get() >= Nat8.get() and t.get() <= Nat64.get();
+  return t.get() >= U8.get() and t.get() <= U64.get();
 }
 inline bool IsSignedNumeric(Type t) {
-  return t.get() >= Int8.get() and t.get() <= Float64.get();
+  return t.get() >= I8.get() and t.get() <= F64.get();
 }
 inline bool IsFloatingPoint(Type t) {
-  return t.get() >= Float32.get() and t.get() <= Float64.get();
+  return t.get() >= F32.get() and t.get() <= F64.get();
 }
 
 }  // namespace type

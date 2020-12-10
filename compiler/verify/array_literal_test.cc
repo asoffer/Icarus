@@ -25,7 +25,7 @@ TEST(ArrayLiteral, OneElement) {
     auto const *expr = mod.Append<ast::Expression>(R"([0])");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(1, type::Int64)));
+    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(1, type::I64)));
   }
   {
     auto const *expr = mod.Append<ast::Expression>(R"([true])");
@@ -55,7 +55,7 @@ TEST(ArrayLiteral, MultipleMatchingElements) {
     auto const *expr = mod.Append<ast::Expression>(R"([0, 0])");
     auto const *qt   = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(2, type::Int64)));
+    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(2, type::I64)));
   }
   {
     auto const *expr = mod.Append<ast::Expression>(R"([true, false])");

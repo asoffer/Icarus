@@ -1,18 +1,18 @@
 core ::= import "core.ic"
 
-#{export} Print ::= (n: int8) -> () { Print(n as int64) }
-#{export} Print ::= (n: int16) -> () { Print(n as int64) }
-#{export} Print ::= (n: int32) -> () { Print(n as int64) }
-#{export} Print ::= (n: int64) -> () {
-  printf ::= foreign("printf", (*nat8, int64) -> int32)
+#{export} Print ::= (n: i8) -> () { Print(n as i64) }
+#{export} Print ::= (n: i16) -> () { Print(n as i64) }
+#{export} Print ::= (n: i32) -> () { Print(n as i64) }
+#{export} Print ::= (n: i64) -> () {
+  printf ::= foreign("printf", (*u8, i64) -> i32)
   printf(&"%lld"[0], n)
 }
 
-#{export} Print ::= (n: nat8) -> () { Print(n as nat64) }
-#{export} Print ::= (n: nat16) -> () { Print(n as nat64) }
-#{export} Print ::= (n: nat32) -> () { Print(n as nat64) }
-#{export} Print ::= (n: nat64) -> () {
-  printf ::= foreign("printf", (*nat8, nat64) -> int32)
+#{export} Print ::= (n: u8) -> () { Print(n as u64) }
+#{export} Print ::= (n: u16) -> () { Print(n as u64) }
+#{export} Print ::= (n: u32) -> () { Print(n as u64) }
+#{export} Print ::= (n: u64) -> () {
+  printf ::= foreign("printf", (*u8, u64) -> i32)
   printf(&"%llu"[0], n)
 }
 
@@ -21,13 +21,13 @@ core ::= import "core.ic"
 }
 
 #{export} Print ::= (s: byte_view) -> () {
-  printf ::= foreign("printf", (*nat8, *nat8) -> int32)
+  printf ::= foreign("printf", (*u8, *u8) -> i32)
   printf(&"%s"[0], &s[0])
 }
 
-#{export} Print ::= (f: float32) -> () { Print(f as float64) }
+#{export} Print ::= (f: f32) -> () { Print(f as f64) }
 
-#{export} Print ::= (f: float64) -> () {
-  printf ::= foreign("printf", (*nat8, float64) -> int32)
+#{export} Print ::= (f: f64) -> () {
+  printf ::= foreign("printf", (*u8, f64) -> i32)
   printf(&"%f"[0], f)
 }

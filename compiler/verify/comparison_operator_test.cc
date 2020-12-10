@@ -71,7 +71,7 @@ TEST(ComparisonOperator, UnorderedPointers) {
 TEST(ComparisonOperator, BufferPointerOrder) {
   test::TestModule mod;
   mod.AppendCode(
-      R"(p: [*]int64
+      R"(p: [*]i64
       )");
   auto const *expr = mod.Append<ast::ComparisonOperator>("p < p == p >= p");
   auto const *qt   = mod.context().qual_type(expr);

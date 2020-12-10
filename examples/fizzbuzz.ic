@@ -1,7 +1,7 @@
 -- ::= import "core.ic"
 io ::= import "io.ic"
 
-for (0, 100) do [i: int64] {
+for (0, 100) do [i: i64] {
   if (i % 15 == 0) then {
     io.Print("FizzBuzz\n")
   } else if (i % 3 == 0) then {

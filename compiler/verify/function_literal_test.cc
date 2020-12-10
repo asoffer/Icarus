@@ -24,9 +24,9 @@ TEST(FunctionLiteral, Trivial) {
 TEST(FunctionLiteral, OneValidReturnType) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(
-      mod.Append<ast::Expression>(R"(() -> int64 { return 3 })"));
+      mod.Append<ast::Expression>(R"(() -> i64 { return 3 })"));
   EXPECT_THAT(qt,
-              Pointee(type::QualType::Constant(type::Func({}, {type::Int64}))));
+              Pointee(type::QualType::Constant(type::Func({}, {type::I64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -42,9 +42,9 @@ TEST(FunctionLiteral, InvalidReturnType) {
 TEST(FunctionLiteral, MultipleValidReturnTypes) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(
-      mod.Append<ast::Expression>(R"(() -> (int64, bool) { return 3, true })"));
+      mod.Append<ast::Expression>(R"(() -> (i64, bool) { return 3, true })"));
   EXPECT_THAT(qt, Pointee(type::QualType::Constant(
-                      type::Func({}, {type::Int64, type::Bool}))));
+                      type::Func({}, {type::I64, type::Bool}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -62,22 +62,22 @@ TEST(FunctionLiteral, OneParameterNoReturn) {
 TEST(FunctionLiteral, OneParameterOneReturnType) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(
-      mod.Append<ast::Expression>(R"((b: bool) -> int64 { return 3 })"));
+      mod.Append<ast::Expression>(R"((b: bool) -> i64 { return 3 })"));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool))},
-                  {type::Int64}))));
+                  {type::I64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(FunctionLiteral, MultipleParametersNoReturn) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(
-      mod.Append<ast::Expression>(R"((b: bool, n: int64) -> () {})"));
+      mod.Append<ast::Expression>(R"((b: bool, n: i64) -> () {})"));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool)),
-                   core::Param("n", type::QualType::NonConstant(type::Int64))},
+                   core::Param("n", type::QualType::NonConstant(type::I64))},
                   {}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -85,21 +85,21 @@ TEST(FunctionLiteral, MultipleParametersNoReturn) {
 TEST(FunctionLiteral, MultipleParametersOneReturnType) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(mod.Append<ast::Expression>(
-      R"((b: bool, n: int64) -> int64 { return 3 })"));
+      R"((b: bool, n: i64) -> i64 { return 3 })"));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool)),
-                   core::Param("n", type::QualType::NonConstant(type::Int64))},
-                  {type::Int64}))));
+                   core::Param("n", type::QualType::NonConstant(type::I64))},
+                  {type::I64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(FunctionLiteral, ReturnTypeButNoReturnStatement) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(mod.Append<ast::Expression>(
-      R"(() -> int64 {})"));
+      R"(() -> i64 {})"));
   EXPECT_THAT(qt,
-              Pointee(type::QualType::Constant(type::Func({}, {type::Int64}))));
+              Pointee(type::QualType::Constant(type::Func({}, {type::I64}))));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "returning-wrong-number")));
@@ -108,9 +108,9 @@ TEST(FunctionLiteral, ReturnTypeButNoReturnStatement) {
 TEST(FunctionLiteral, ReturnTypeWithIncorrectReturnStatement) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(mod.Append<ast::Expression>(
-      R"(() -> (int64, bool, int64) { return true, 3, 4 })"));
+      R"(() -> (i64, bool, i64) { return true, 3, 4 })"));
   EXPECT_THAT(qt, Pointee(type::QualType::Constant(
-                      type::Func({}, {type::Int64, type::Bool, type::Int64}))));
+                      type::Func({}, {type::I64, type::Bool, type::I64}))));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "return-type-mismatch"),
                                    Pair("type-error", "return-type-mismatch")));
@@ -119,11 +119,11 @@ TEST(FunctionLiteral, ReturnTypeWithIncorrectReturnStatement) {
 TEST(FunctionLiteral, ReturnTypeAllowsCasting) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(mod.Append<ast::Expression>(
-      R"((p: [*]int64) -> *int64 { return p })"));
+      R"((p: [*]i64) -> *i64 { return p })"));
   EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Func(
                       {core::Param("p", type::QualType::NonConstant(
-                                            type::BufPtr(type::Int64)))},
-                      {type::Ptr(type::Int64)}))));
+                                            type::BufPtr(type::I64)))},
+                      {type::Ptr(type::I64)}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -140,7 +140,7 @@ TEST(FunctionLiteral, OneValidReturnTypeInferred) {
   auto const *qt = mod.context().qual_type(
       mod.Append<ast::Expression>(R"(() -> { return 3 })"));
   EXPECT_THAT(qt,
-              Pointee(type::QualType::Constant(type::Func({}, {type::Int64}))));
+              Pointee(type::QualType::Constant(type::Func({}, {type::I64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -149,7 +149,7 @@ TEST(FunctionLiteral, MultipleValidReturnTypesInferred) {
   auto const *qt = mod.context().qual_type(
       mod.Append<ast::Expression>(R"(() -> { return 3, true })"));
   EXPECT_THAT(qt, Pointee(type::QualType::Constant(
-                      type::Func({}, {type::Int64, type::Bool}))));
+                      type::Func({}, {type::I64, type::Bool}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -171,18 +171,18 @@ TEST(FunctionLiteral, OneParameterOneReturnTypeInferred) {
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool))},
-                  {type::Int64}))));
+                  {type::I64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(FunctionLiteral, MultipleParametersNoReturnInferred) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(
-      mod.Append<ast::Expression>(R"((b: bool, n: int64) -> {})"));
+      mod.Append<ast::Expression>(R"((b: bool, n: i64) -> {})"));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool)),
-                   core::Param("n", type::QualType::NonConstant(type::Int64))},
+                   core::Param("n", type::QualType::NonConstant(type::I64))},
                   {}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -190,19 +190,19 @@ TEST(FunctionLiteral, MultipleParametersNoReturnInferred) {
 TEST(FunctionLiteral, MultipleParametersOneReturnTypeInferred) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(mod.Append<ast::Expression>(
-      R"((b: bool, n: int64) -> { return 3 })"));
+      R"((b: bool, n: i64) -> { return 3 })"));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool)),
-                   core::Param("n", type::QualType::NonConstant(type::Int64))},
-                  {type::Int64}))));
+                   core::Param("n", type::QualType::NonConstant(type::I64))},
+                  {type::I64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(FunctionLiteral, ConstantParameter) {
   test::TestModule mod;
   auto const *qt = mod.context().qual_type(
-      mod.Append<ast::Expression>(R"((n :: int64) -> () {})"));
+      mod.Append<ast::Expression>(R"((n :: i64) -> () {})"));
   ASSERT_NE(qt, nullptr);
   EXPECT_GE(qt->quals(), type::Quals::Const());
   EXPECT_TRUE(qt->type().is<type::GenericFunction>());

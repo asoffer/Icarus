@@ -180,7 +180,7 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
     return c->context().set_qual_type(node, lhs_qual_type);
   } else if (op == "-" and lhs_qual_type.type().is<type::BufferPointer>() and
              lhs_qual_type.type() == rhs_qual_type.type()) {
-    return c->context().set_qual_type(node, type::QualType(type::Int64, quals));
+    return c->context().set_qual_type(node, type::QualType(type::I64, quals));
 
   } else {
     c->diag().Consume(NoMatchingBinaryOperator{

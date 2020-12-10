@@ -19,40 +19,40 @@ namespace {
 TEST(ToLlvm, Primitive) {
   llvm::LLVMContext context;
   EXPECT_EQ(ToLlvmType(type::Bool, context), llvm::Type::getInt1Ty(context));
-  EXPECT_EQ(ToLlvmType(type::Int8, context), llvm::Type::getInt8Ty(context));
-  EXPECT_EQ(ToLlvmType(type::Nat8, context), llvm::Type::getInt8Ty(context));
-  EXPECT_EQ(ToLlvmType(type::Int16, context), llvm::Type::getInt16Ty(context));
-  EXPECT_EQ(ToLlvmType(type::Nat16, context), llvm::Type::getInt16Ty(context));
-  EXPECT_EQ(ToLlvmType(type::Int32, context), llvm::Type::getInt32Ty(context));
-  EXPECT_EQ(ToLlvmType(type::Nat32, context), llvm::Type::getInt32Ty(context));
-  EXPECT_EQ(ToLlvmType(type::Int64, context), llvm::Type::getInt64Ty(context));
-  EXPECT_EQ(ToLlvmType(type::Nat64, context), llvm::Type::getInt64Ty(context));
-  EXPECT_EQ(ToLlvmType(type::Float32, context),
+  EXPECT_EQ(ToLlvmType(type::I8, context), llvm::Type::getInt8Ty(context));
+  EXPECT_EQ(ToLlvmType(type::U8, context), llvm::Type::getInt8Ty(context));
+  EXPECT_EQ(ToLlvmType(type::I16, context), llvm::Type::getInt16Ty(context));
+  EXPECT_EQ(ToLlvmType(type::U16, context), llvm::Type::getInt16Ty(context));
+  EXPECT_EQ(ToLlvmType(type::I32, context), llvm::Type::getInt32Ty(context));
+  EXPECT_EQ(ToLlvmType(type::U32, context), llvm::Type::getInt32Ty(context));
+  EXPECT_EQ(ToLlvmType(type::I64, context), llvm::Type::getInt64Ty(context));
+  EXPECT_EQ(ToLlvmType(type::U64, context), llvm::Type::getInt64Ty(context));
+  EXPECT_EQ(ToLlvmType(type::F32, context),
             llvm::Type::getFloatTy(context));
-  EXPECT_EQ(ToLlvmType(type::Float64, context),
+  EXPECT_EQ(ToLlvmType(type::F64, context),
             llvm::Type::getDoubleTy(context));
   // TODO: Test for `type`, and `byte_view`
 }
 
 TEST(ToLlvm, Pointer) {
   llvm::LLVMContext context;
-  EXPECT_EQ(ToLlvmType(type::Ptr(type::Int32), context),
+  EXPECT_EQ(ToLlvmType(type::Ptr(type::I32), context),
             llvm::Type::getInt32Ty(context)->getPointerTo());
   EXPECT_EQ(ToLlvmType(type::Ptr(type::Bool), context),
             llvm::Type::getInt1Ty(context)->getPointerTo());
 
-  EXPECT_EQ(ToLlvmType(type::BufPtr(type::Int32), context),
+  EXPECT_EQ(ToLlvmType(type::BufPtr(type::I32), context),
             llvm::Type::getInt32Ty(context)->getPointerTo());
   EXPECT_EQ(ToLlvmType(type::BufPtr(type::Bool), context),
             llvm::Type::getInt1Ty(context)->getPointerTo());
 
-  EXPECT_EQ(ToLlvmType(type::Ptr(type::Ptr(type::Int32)), context),
+  EXPECT_EQ(ToLlvmType(type::Ptr(type::Ptr(type::I32)), context),
             llvm::Type::getInt32Ty(context)->getPointerTo()->getPointerTo());
-  EXPECT_EQ(ToLlvmType(type::BufPtr(type::Ptr(type::Int32)), context),
+  EXPECT_EQ(ToLlvmType(type::BufPtr(type::Ptr(type::I32)), context),
             llvm::Type::getInt32Ty(context)->getPointerTo()->getPointerTo());
-  EXPECT_EQ(ToLlvmType(type::Ptr(type::BufPtr(type::Int32)), context),
+  EXPECT_EQ(ToLlvmType(type::Ptr(type::BufPtr(type::I32)), context),
             llvm::Type::getInt32Ty(context)->getPointerTo()->getPointerTo());
-  EXPECT_EQ(ToLlvmType(type::BufPtr(type::BufPtr(type::Int32)), context),
+  EXPECT_EQ(ToLlvmType(type::BufPtr(type::BufPtr(type::I32)), context),
             llvm::Type::getInt32Ty(context)->getPointerTo()->getPointerTo());
 }
 
@@ -71,14 +71,14 @@ TEST(ToLlvm, Flags) {
 TEST(ToLlvm, Array) {
   llvm::LLVMContext context;
 
-  EXPECT_EQ(ToLlvmType(type::Arr(3, type::Int64), context),
+  EXPECT_EQ(ToLlvmType(type::Arr(3, type::I64), context),
             llvm::ArrayType::get(llvm::Type::getInt64Ty(context), 3));
 
   EXPECT_EQ(ToLlvmType(type::Arr(3, type::Arr(4, type::Bool)), context),
             llvm::ArrayType::get(
                 llvm::ArrayType::get(llvm::Type::getInt1Ty(context), 4), 3));
 
-  EXPECT_EQ(ToLlvmType(type::Arr(0, type::Int64), context),
+  EXPECT_EQ(ToLlvmType(type::Arr(0, type::I64), context),
             llvm::ArrayType::get(llvm::Type::getInt64Ty(context), 0));
 }
 
@@ -104,7 +104,7 @@ TEST(ToLlvm, FunctionNoReturn) {
   EXPECT_EQ(
       ToLlvmType(
           type::Func(
-              {core::AnonymousParam(type::QualType::NonConstant(type::Int64)),
+              {core::AnonymousParam(type::QualType::NonConstant(type::I64)),
                core::AnonymousParam(type::QualType::NonConstant(type::Bool))},
               {}),
           context),
@@ -118,12 +118,12 @@ TEST(ToLlvm, FunctionOneRegisterSizedReturn) {
   llvm::LLVMContext context;
 
   EXPECT_EQ(
-      ToLlvmType(type::Func({}, {type::Int32}), context),
+      ToLlvmType(type::Func({}, {type::I32}), context),
       llvm::FunctionType::get(llvm::Type::getInt32Ty(context), {}, false));
 
   EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParam(
                                       type::QualType::NonConstant(type::Bool))},
-                                  {type::Int32}),
+                                  {type::I32}),
                        context),
             llvm::FunctionType::get(llvm::Type::getInt32Ty(context),
                                     {llvm::Type::getInt1Ty(context)}, false));
@@ -131,16 +131,16 @@ TEST(ToLlvm, FunctionOneRegisterSizedReturn) {
   EXPECT_EQ(
       ToLlvmType(type::Func({core::AnonymousParam(
                                 type::QualType::Constant(type::Bool))},
-                            {type::Int32}),
+                            {type::I32}),
                  context),
       llvm::FunctionType::get(llvm::Type::getInt32Ty(context), {}, false));
 
   EXPECT_EQ(
       ToLlvmType(
           type::Func(
-              {core::AnonymousParam(type::QualType::NonConstant(type::Int64)),
+              {core::AnonymousParam(type::QualType::NonConstant(type::I64)),
                core::AnonymousParam(type::QualType::NonConstant(type::Bool))},
-              {type::Int32}),
+              {type::I32}),
           context),
       llvm::FunctionType::get(
           llvm::Type::getInt32Ty(context),
@@ -151,7 +151,7 @@ TEST(ToLlvm, FunctionOneRegisterSizedReturn) {
 TEST(ToLlvm, FunctionOneLargeReturn) {
   llvm::LLVMContext context;
 
-  EXPECT_EQ(ToLlvmType(type::Func({}, {type::Arr(100, type::Int32)}), context),
+  EXPECT_EQ(ToLlvmType(type::Func({}, {type::Arr(100, type::I32)}), context),
             llvm::FunctionType::get(
                 llvm::Type::getVoidTy(context),
                 {llvm::ArrayType::get(llvm::Type::getInt32Ty(context), 100)
@@ -160,7 +160,7 @@ TEST(ToLlvm, FunctionOneLargeReturn) {
 
   EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParam(
                                       type::QualType::NonConstant(type::Bool))},
-                                  {type::Arr(100, type::Int32)}),
+                                  {type::Arr(100, type::I32)}),
                        context),
             llvm::FunctionType::get(
                 llvm::Type::getVoidTy(context),
@@ -171,7 +171,7 @@ TEST(ToLlvm, FunctionOneLargeReturn) {
 
   EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParam(
                                       type::QualType::Constant(type::Bool))},
-                                  {type::Arr(100, type::Int32)}),
+                                  {type::Arr(100, type::I32)}),
                        context),
             llvm::FunctionType::get(
                 llvm::Type::getVoidTy(context),
@@ -182,9 +182,9 @@ TEST(ToLlvm, FunctionOneLargeReturn) {
   EXPECT_EQ(
       ToLlvmType(
           type::Func(
-              {core::AnonymousParam(type::QualType::NonConstant(type::Int64)),
+              {core::AnonymousParam(type::QualType::NonConstant(type::I64)),
                core::AnonymousParam(type::QualType::NonConstant(type::Bool))},
-              {type::Arr(100, type::Int32)}),
+              {type::Arr(100, type::I32)}),
           context),
       llvm::FunctionType::get(
           llvm::Type::getVoidTy(context),
@@ -198,7 +198,7 @@ TEST(ToLlvm, FunctionMultipleReturns) {
   llvm::LLVMContext context;
 
   EXPECT_EQ(
-      ToLlvmType(type::Func({}, {type::Bool, type::Int8}), context),
+      ToLlvmType(type::Func({}, {type::Bool, type::I8}), context),
       llvm::FunctionType::get(llvm::Type::getVoidTy(context),
                               {llvm::Type::getInt1Ty(context)->getPointerTo(),
                                llvm::Type::getInt8Ty(context)->getPointerTo()},
@@ -207,7 +207,7 @@ TEST(ToLlvm, FunctionMultipleReturns) {
   EXPECT_EQ(
       ToLlvmType(type::Func({core::AnonymousParam(
                                 type::QualType::NonConstant(type::Bool))},
-                            {type::Bool, type::Int8}),
+                            {type::Bool, type::I8}),
                  context),
       llvm::FunctionType::get(llvm::Type::getVoidTy(context),
                               {llvm::Type::getInt1Ty(context),
@@ -218,7 +218,7 @@ TEST(ToLlvm, FunctionMultipleReturns) {
   EXPECT_EQ(
       ToLlvmType(type::Func({core::AnonymousParam(
                                 type::QualType::Constant(type::Bool))},
-                            {type::Bool, type::Int8}),
+                            {type::Bool, type::I8}),
                  context),
       llvm::FunctionType::get(llvm::Type::getVoidTy(context),
                               {llvm::Type::getInt1Ty(context)->getPointerTo(),
@@ -228,9 +228,9 @@ TEST(ToLlvm, FunctionMultipleReturns) {
   EXPECT_EQ(
       ToLlvmType(
           type::Func(
-              {core::AnonymousParam(type::QualType::NonConstant(type::Int64)),
+              {core::AnonymousParam(type::QualType::NonConstant(type::I64)),
                core::AnonymousParam(type::QualType::NonConstant(type::Bool))},
-              {type::Bool, type::Int8}),
+              {type::Bool, type::I8}),
           context),
       llvm::FunctionType::get(
           llvm::Type::getVoidTy(context),

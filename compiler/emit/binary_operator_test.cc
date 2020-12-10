@@ -21,9 +21,9 @@ struct TestData {
 
 constexpr char const *kCommonDefinitions = R"(
   Color ::= flags {
-    RED   ::= 1 as nat64 
-    GREEN ::= 2 as nat64
-    BLUE  ::= 4 as nat64
+    RED   ::= 1 as u64 
+    GREEN ::= 2 as u64
+    BLUE  ::= 4 as u64
   }
 )";
 
@@ -237,37 +237,37 @@ std::vector<TestData> MakeAddTestDataSet() {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Int8Add, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "int8"}}),
+    I8Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "i8"}}),
                      testing::ValuesIn(MakeAddTestDataSet<int8_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int16Add, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "int16"}}),
+    I16Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "i16"}}),
                      testing::ValuesIn(MakeAddTestDataSet<int16_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int32Add, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "int32"}}),
+    I32Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "i32"}}),
                      testing::ValuesIn(MakeAddTestDataSet<int32_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int64Add, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "int64"}}),
+    I64Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "i64"}}),
                      testing::ValuesIn(MakeAddTestDataSet<int64_t>())));
 
 INSTANTIATE_TEST_SUITE_P(
-    Nat8Add, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "nat8"}}),
+    U8Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "u8"}}),
                      testing::ValuesIn(MakeAddTestDataSet<uint8_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat16Add, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "nat16"}}),
+    U16Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "u16"}}),
                      testing::ValuesIn(MakeAddTestDataSet<uint16_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat32Add, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "nat32"}}),
+    U32Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "u32"}}),
                      testing::ValuesIn(MakeAddTestDataSet<uint32_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat64Add, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "nat64"}}),
+    U64Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "u64"}}),
                      testing::ValuesIn(MakeAddTestDataSet<uint64_t>())));
 
 template <typename T>
@@ -297,37 +297,37 @@ std::vector<TestData> MakeSubTestDataSet() {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Int8Sub, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "int8"}}),
+    I8Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "i8"}}),
                      testing::ValuesIn(MakeSubTestDataSet<int8_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int16Sub, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "int16"}}),
+    I16Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "i16"}}),
                      testing::ValuesIn(MakeSubTestDataSet<int16_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int32Sub, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "int32"}}),
+    I32Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "i32"}}),
                      testing::ValuesIn(MakeSubTestDataSet<int32_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int64Sub, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "int64"}}),
+    I64Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "i64"}}),
                      testing::ValuesIn(MakeSubTestDataSet<int64_t>())));
 
 INSTANTIATE_TEST_SUITE_P(
-    Nat8Sub, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "nat8"}}),
+    U8Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "u8"}}),
                      testing::ValuesIn(MakeSubTestDataSet<uint8_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat16Sub, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "nat16"}}),
+    U16Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "u16"}}),
                      testing::ValuesIn(MakeSubTestDataSet<uint16_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat32Sub, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "nat32"}}),
+    U32Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "u32"}}),
                      testing::ValuesIn(MakeSubTestDataSet<uint32_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat64Sub, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "nat64"}}),
+    U64Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "u64"}}),
                      testing::ValuesIn(MakeSubTestDataSet<uint64_t>())));
 
 template <typename T>
@@ -380,37 +380,37 @@ std::vector<TestData> MakeMulTestDataSet() {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Int8Mul, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "int8"}}),
+    I8Mul, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "i8"}}),
                      testing::ValuesIn(MakeMulTestDataSet<int8_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int16Mul, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "int16"}}),
+    I16Mul, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "i16"}}),
                      testing::ValuesIn(MakeMulTestDataSet<int16_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int32Mul, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "int32"}}),
+    I32Mul, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "i32"}}),
                      testing::ValuesIn(MakeMulTestDataSet<int32_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int64Mul, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "int64"}}),
+    I64Mul, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "i64"}}),
                      testing::ValuesIn(MakeMulTestDataSet<int64_t>())));
 
 INSTANTIATE_TEST_SUITE_P(
-    Nat8Mul, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "nat8"}}),
+    U8Mul, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "u8"}}),
                      testing::ValuesIn(MakeMulTestDataSet<uint8_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat16Mul, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "nat16"}}),
+    U16Mul, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "u16"}}),
                      testing::ValuesIn(MakeMulTestDataSet<uint16_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat32Mul, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "nat32"}}),
+    U32Mul, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "u32"}}),
                      testing::ValuesIn(MakeMulTestDataSet<uint32_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat64Mul, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "nat64"}}),
+    U64Mul, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "*", .type = "u64"}}),
                      testing::ValuesIn(MakeMulTestDataSet<uint64_t>())));
 
 template <typename T>
@@ -461,37 +461,37 @@ std::vector<TestData> MakeDivTestDataSet() {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Int8Div, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "int8"}}),
+    I8Div, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "i8"}}),
                      testing::ValuesIn(MakeDivTestDataSet<int8_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int16Div, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "int16"}}),
+    I16Div, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "i16"}}),
                      testing::ValuesIn(MakeDivTestDataSet<int16_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int32Div, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "int32"}}),
+    I32Div, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "i32"}}),
                      testing::ValuesIn(MakeDivTestDataSet<int32_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int64Div, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "int64"}}),
+    I64Div, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "i64"}}),
                      testing::ValuesIn(MakeDivTestDataSet<int64_t>())));
 
 INSTANTIATE_TEST_SUITE_P(
-    Nat8Div, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "nat8"}}),
+    U8Div, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "u8"}}),
                      testing::ValuesIn(MakeDivTestDataSet<uint8_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat16Div, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "nat16"}}),
+    U16Div, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "u16"}}),
                      testing::ValuesIn(MakeDivTestDataSet<uint16_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat32Div, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "nat32"}}),
+    U32Div, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "u32"}}),
                      testing::ValuesIn(MakeDivTestDataSet<uint32_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat64Div, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "nat64"}}),
+    U64Div, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "/", .type = "u64"}}),
                      testing::ValuesIn(MakeDivTestDataSet<uint64_t>())));
 
 template <typename T>
@@ -542,37 +542,37 @@ std::vector<TestData> MakeModTestDataSet() {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Int8Mod, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "int8"}}),
+    I8Mod, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "i8"}}),
                      testing::ValuesIn(MakeModTestDataSet<int8_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int16Mod, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "int16"}}),
+    I16Mod, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "i16"}}),
                      testing::ValuesIn(MakeModTestDataSet<int16_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int32Mod, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "int32"}}),
+    I32Mod, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "i32"}}),
                      testing::ValuesIn(MakeModTestDataSet<int32_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Int64Mod, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "int64"}}),
+    I64Mod, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "i64"}}),
                      testing::ValuesIn(MakeModTestDataSet<int64_t>())));
 
 INSTANTIATE_TEST_SUITE_P(
-    Nat8Mod, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "nat8"}}),
+    U8Mod, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "u8"}}),
                      testing::ValuesIn(MakeModTestDataSet<uint8_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat16Mod, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "nat16"}}),
+    U16Mod, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "u16"}}),
                      testing::ValuesIn(MakeModTestDataSet<uint16_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat32Mod, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "nat32"}}),
+    U32Mod, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "u32"}}),
                      testing::ValuesIn(MakeModTestDataSet<uint32_t>())));
 INSTANTIATE_TEST_SUITE_P(
-    Nat64Mod, BinaryOperatorTest,
-    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "nat64"}}),
+    U64Mod, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "u64"}}),
                      testing::ValuesIn(MakeModTestDataSet<uint64_t>())));
 
 struct BufferPointerTestData {
@@ -586,9 +586,9 @@ TEST_P(BufferPointerTest, Arithmetic) {
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
   auto const *e  = mod.Append<ast::Expression>(absl::StrFormat(
-      R"((() -> int64 {
+      R"((() -> i64 {
         a := [1, 2, 3]
-        p: [*]int64 = &a[1]
+        p: [*]i64 = &a[1]
         return %s
       })()
       )", expr));
@@ -607,9 +607,9 @@ INSTANTIATE_TEST_SUITE_P(
         BufferPointerTestData{.expr = "@(p - 1)", .expected_result = 1},
         BufferPointerTestData{.expr = "@(p + 0)", .expected_result = 2},
         BufferPointerTestData{.expr = "@(p + 1)", .expected_result = 3},
-        BufferPointerTestData{.expr = "@(p - 1 as nat8)", .expected_result = 1},
-        BufferPointerTestData{.expr = "@(p + 0 as nat8)", .expected_result = 2},
-        BufferPointerTestData{.expr = "@(p + 1 as nat8)", .expected_result = 3},
+        BufferPointerTestData{.expr = "@(p - 1 as u8)", .expected_result = 1},
+        BufferPointerTestData{.expr = "@(p + 0 as u8)", .expected_result = 2},
+        BufferPointerTestData{.expr = "@(p + 1 as u8)", .expected_result = 3},
     }));
 
 // TODO: Floating point tests.
