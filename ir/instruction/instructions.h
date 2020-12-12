@@ -33,9 +33,9 @@
 // the common instructions available in the core IR.
 namespace ir {
 
-template <typename FromType, typename ToType>
+template <typename ToType, typename FromType>
 struct CastInstruction
-    : base::Extend<CastInstruction<FromType, ToType>>::template With<
+    : base::Extend<CastInstruction<ToType, FromType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using from_type                                = FromType;
   using to_type                                  = ToType;
