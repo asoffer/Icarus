@@ -162,7 +162,7 @@ struct CopyInstruction
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       // TODO: This copy/move are currently indistinguishable.
-      ir::Fn f = *ASSERT_NOT_NULL(s->Assignment(s));
+      ir::Fn f = *ASSERT_NOT_NULL(s->CopyAssignment(s));
       // TODO: No reason this has to be native.
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
@@ -193,7 +193,7 @@ struct MoveInstruction
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       // TODO: This copy/move are currently indistinguishable.
-      ir::Fn f = *ASSERT_NOT_NULL(s->Assignment(s));
+      ir::Fn f = *ASSERT_NOT_NULL(s->MoveAssignment(s));
       // TODO: No reason this has to be native.
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));

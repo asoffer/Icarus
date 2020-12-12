@@ -295,7 +295,39 @@ void Compiler::EmitCopyInit(
   return EmitCall(CopyInitTag{}, *this, os.members().front(), args, to);
 }
 
-void Compiler::EmitAssign(
+void Compiler::EmitMoveAssign(
+    ast::Call const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
+    auto result = EmitBuiltinCall(this, b, node->args());
+    if (result.empty()) return;
+    EmitMoveAssign(to[0], type::Typed<ir::Value>(
+                              result, context().qual_type(node)->type()));
+  }
+
+  auto args = node->args().Transform([this](ast::Expression const *expr) {
+    return type::Typed<ir::Value>(EmitValue(expr),
+                                  context().qual_type(expr)->type());
+  });
+
+  // TODO: Support mixed overloads
+  if (auto const *gs_type = context()
+                                .qual_type(node->callee())
+                                ->type()
+                                .if_as<type::GenericStruct>()) {
+    EmitMoveAssign(to[0],
+                   type::Typed<ir::Value>(
+                       ir::Value(type::Type(gs_type->Instantiate(args).second)),
+                       type::Type_));
+  }
+
+  auto const &os = context().ViableOverloads(node->callee());
+  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
+
+  return EmitCall(AssignTag{}, *this, os.members().front(), args, to);
+}
+
+void Compiler::EmitCopyAssign(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
@@ -326,5 +358,6 @@ void Compiler::EmitAssign(
 
   return EmitCall(AssignTag{}, *this, os.members().front(), args, to);
 }
+
 
 }  // namespace compiler

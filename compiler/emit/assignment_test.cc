@@ -11,8 +11,8 @@ struct TestCase {
   ir::Value expected;
 };
 
-using AccessTest = testing::TestWithParam<TestCase>;
-TEST_P(AccessTest, Access) {
+using AssignmentTest = testing::TestWithParam<TestCase>;
+TEST_P(AssignmentTest, Assignment) {
   auto const &[expr, expected] = GetParam();
   test::TestModule mod;
   auto const *e  = mod.Append<ast::Expression>(expr);
@@ -31,7 +31,7 @@ TEST_P(AccessTest, Access) {
 // built in to the ir::Builder. The latter helps cover the common case for code
 // emission.
 INSTANTIATE_TEST_SUITE_P(
-    All, AccessTest,
+    All, AssignmentTest,
     testing::ValuesIn({
         TestCase{.expr     = R"(((n: i64) -> i64 {
                                   a: i64
@@ -56,10 +56,38 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                  .expected = ir::Value(int64_t{21})},
+        // Auto-generated assignment
         TestCase{.expr     = R"((() -> i64 {
                                   S ::= struct {
                                     _a: i64
-                                    assign ::= (lhs: *S, rhs: *S) -> () {
+                                  }
+                                  s1 := S.{ _a = 1 }
+                                  s2 := S.{ _a = 2 }
+                                  (s1, s2) = (s2, s1)
+                               return 10 * s1._a + s2._a
+                             })()
+                             )",
+                 .expected = ir::Value(int64_t{21})},
+        // User-specified copy-assign
+        TestCase{.expr     = R"((() -> i64 {
+                                  S ::= struct {
+                                    _a: i64
+                                    (copy) ::= (lhs: *S, rhs: *S) -> () {
+                                      lhs._a = rhs._a
+                                    }
+                                  }
+                                  s1 := S.{ _a = 1 }
+                                  s2 := S.{ _a = 2 }
+                                  (s1, s2) = (s2, s1)
+                               return 10 * s1._a + s2._a
+                             })()
+                             )",
+                 .expected = ir::Value(int64_t{21})},
+        // User-specified move-assign
+        TestCase{.expr     = R"((() -> i64 {
+                                  S ::= struct {
+                                    _a: i64
+                                    (move) ::= (lhs: *S, rhs: *S) -> () {
                                       lhs._a = rhs._a
                                     }
                                   }

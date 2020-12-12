@@ -43,7 +43,8 @@ struct Struct : public LegacyType {
   Struct(module::BasicModule const *mod, Options options);
 
   ir::Fn Destructor() const;
-  ir::Fn const *Assignment(type::Type from_type) const;
+  ir::Fn const *MoveAssignment(type::Type from_type) const;
+  ir::Fn const *CopyAssignment(type::Type from_type) const;
 
   bool is_big() const override { return true; }
 
@@ -81,9 +82,10 @@ struct Struct : public LegacyType {
 
   void AppendFields(std::vector<Field> fields);
   void SetDestructor(ir::Fn dtor);
-  void SetAssignments(absl::Span<ir::Fn const> assignments);
+  void SetAssignments(absl::Span<ir::Fn const> move_assignments,
+                      absl::Span<ir::Fn const> copy_assignments);
 
-  absl::flat_hash_map<type::Type, ir::Fn> assignments_;
+  absl::flat_hash_map<type::Type, ir::Fn> move_assignments_, copy_assignments_;
   absl::flat_hash_map<std::string, size_t> field_indices_;
 };
 
@@ -187,7 +189,7 @@ struct StructInstruction
     }
 
     struct_->AppendFields(std::move(struct_fields));
-    struct_->SetAssignments(std::move(assignments));
+    struct_->SetAssignments(move_assignments, copy_assignments);
     if (dtor) { struct_->SetDestructor(*dtor); }
   }
 
@@ -199,7 +201,7 @@ struct StructInstruction
   // TODO: Store a special type indicating that the struct is incomplete.
   Struct *struct_;
   std::vector<Field> fields;
-  std::vector<ir::Fn> assignments;
+  std::vector<ir::Fn> move_assignments, copy_assignments;
   std::optional<ir::Fn> dtor;
 };
 

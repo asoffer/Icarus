@@ -20,11 +20,20 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
   return ir::Value(alloc);
 }
 
-void Compiler::EmitAssign(
+void Compiler::EmitMoveAssign(
     ast::DesignatedInitializer const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   EmitMoveAssign(to[0],
+                 type::Typed<ir::Value>(EmitValue(node),
+                                        context().qual_type(node)->type()));
+}
+
+void Compiler::EmitCopyAssign(
+    ast::DesignatedInitializer const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  EmitCopyAssign(to[0],
                  type::Typed<ir::Value>(EmitValue(node),
                                         context().qual_type(node)->type()));
 }

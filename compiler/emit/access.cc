@@ -1,8 +1,40 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/library_module.h"
+#include "ir/value/addr.h"
+#include "ir/value/reg_or.h"
+#include "type/enum.h"
+#include "type/flags.h"
+#include "type/typed_value.h"
 
 namespace compiler {
+namespace {
+
+bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
+                                  type::Type t, ir::RegOr<ir::Addr> to) {
+  if (auto const *enum_type = t.if_as<type::Enum>()) {
+    c.builder().Store(ir::RegOr<type::Enum::underlying_type>(
+                          *enum_type->EmitLiteral(node->member_name())),
+                      to);
+    return true;
+  } else if (auto const *flags_type = t.if_as<type::Flags>()) {
+    c.builder().Store(ir::RegOr<type::Flags::underlying_type>(
+                          *flags_type->EmitLiteral(node->member_name())),
+                      to);
+    return true;
+  } else if (t == type::ByteView) {
+    ASSERT(node->member_name() == "length");
+    c.builder().Store(
+        ir::RegOr<uint64_t>(c.builder().ByteViewLength(
+            c.EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
+        to);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+}  // namespace
 
 ir::Value Compiler::EmitValue(ast::Access const *node) {
   LOG("Access", "Emitting value for %s", node->DebugString());
@@ -31,7 +63,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
         EmitValue(node->operand()).get<ir::RegOr<ir::String>>()));
   } else if (operand_qt == type::QualType::Constant(type::Type_)) {
     if (auto t = EvaluateOrDiagnoseAs<type::Type>(node->operand())) {
-      if (type::Array const * a = t->if_as<type::Array>()) {
+      if (type::Array const *a = t->if_as<type::Array>()) {
         ASSERT(node->member_name() == "length");
         return ir::Value(a->length());
       } else {
@@ -221,7 +253,7 @@ void Compiler::EmitCopyInit(
 }
 
 // TODO: Unit tests
-void Compiler::EmitAssign(
+void Compiler::EmitMoveAssign(
     ast::Access const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   type::QualType operand_qt =
@@ -243,34 +275,58 @@ void Compiler::EmitAssign(
     }
   }
 
-  if (auto const *enum_type = operand_qt.type().if_as<type::Enum>()) {
-    EmitMoveAssign(to[0],
-                   type::Typed<ir::Value>(
-                       ir::Value(*enum_type->EmitLiteral(node->member_name())),
-                       enum_type));
-  } else if (auto const *flags_type = operand_qt.type().if_as<type::Flags>()) {
-    EmitMoveAssign(to[0],
-                   type::Typed<ir::Value>(
-                       ir::Value(*flags_type->EmitLiteral(node->member_name())),
-                       flags_type));
-  } else if (operand_qt.type() == type::ByteView) {
-    ASSERT(node->member_name() == "length");
-    EmitMoveAssign(
-        to[0],
-        type::Typed<ir::Value>(
-            ir::Value(builder().ByteViewLength(
-                EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
-            type::U64));
-  } else {
+  if (not EmitAssignForAlwaysCopyTypes(*this, node, operand_qt.type(),
+                                       *to[0])) {
     if (operand_qt.quals() >= type::Quals::Ref()) {
-    type::Type t = context().qual_type(node)->type();
-    EmitMoveAssign(to[0],
-                   type::Typed<ir::Value>(
-                       ir::Value(builder().PtrFix(EmitRef(node).reg(), t)), t));
+      type::Type t = context().qual_type(node)->type();
+      EmitMoveAssign(
+          to[0], type::Typed<ir::Value>(
+                     ir::Value(builder().PtrFix(EmitRef(node).reg(), t)), t));
     } else {
       type::Typed<ir::RegOr<ir::Addr>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
+      auto const &struct_type = operand_qt.type().as<type::Struct>();
+      EmitMoveAssign(
+          to[0], builder().FieldValue(*temp, &struct_type,
+                                      struct_type.index(node->member_name())));
+    }
+  }
+}
+
+void Compiler::EmitCopyAssign(
+    ast::Access const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  type::QualType operand_qt =
+      *ASSERT_NOT_NULL(context().qual_type(node->operand()));
+  ASSERT(operand_qt.ok() == true);
+  if (operand_qt.type() == type::Module) {
+    auto const &mod = *ASSERT_NOT_NULL(
+        EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
+    auto decls = mod.ExportedDeclarations(node->member_name());
+    switch (decls.size()) {
+      case 0: NOT_YET();
+      case 1:
+        // TODO: should actually be an initialization, not assignment.
+        EmitMoveAssign(to[0],
+                       type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
+                                              operand_qt.type()));
+        return;
+      default: NOT_YET();
+    }
+  }
+
+  if (not EmitAssignForAlwaysCopyTypes(*this, node, operand_qt.type(),
+                                       *to[0])) {
+    if (operand_qt.quals() >= type::Quals::Ref()) {
+      type::Type t = context().qual_type(node)->type();
+      EmitMoveAssign(
+          to[0], type::Typed<ir::Value>(
+                     ir::Value(builder().PtrFix(EmitRef(node).reg(), t)), t));
+    } else {
+      type::Typed<ir::RegOr<ir::Addr>> temp(
+          builder().TmpAlloca(operand_qt.type()), operand_qt.type());
+      EmitCopyInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       EmitMoveAssign(
           to[0], builder().FieldValue(*temp, &struct_type,

@@ -356,16 +356,16 @@ void Compiler::EmitCopyInit(
     ast::ScopeNode const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   // TODO: Implement this properly.
-  EmitAssign(node, to);
+  EmitCopyAssign(node, to);
 }
 
 void Compiler::EmitMoveInit(
     ast::ScopeNode const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   // TODO: Implement this properly.
-  EmitAssign(node, to);
+  EmitMoveAssign(node, to);
 }
-void Compiler::EmitAssign(
+void Compiler::EmitCopyAssign(
     ast::ScopeNode const *node,
    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   // TODO: Implement this properly.
@@ -373,5 +373,15 @@ void Compiler::EmitAssign(
   ASSERT(to.size() == 1u);
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
+
+void Compiler::EmitMoveAssign(
+    ast::ScopeNode const *node,
+   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  // TODO: Implement this properly.
+  auto t = context().qual_type(node)->type();
+  ASSERT(to.size() == 1u);
+  EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
+}
+
 
 }  // namespace compiler

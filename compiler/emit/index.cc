@@ -89,12 +89,20 @@ void Compiler::EmitCopyInit(
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
-void Compiler::EmitAssign(
+void Compiler::EmitCopyAssign(
     ast::Index const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_type(node)->type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
+}
+
+void Compiler::EmitMoveAssign(
+    ast::Index const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = context().qual_type(node)->type();
+  EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 }  // namespace compiler

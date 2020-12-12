@@ -43,17 +43,33 @@ ir::Fn Struct::Destructor() const {
   return *dtor_;
 }
 
-void Struct::SetAssignments(absl::Span<ir::Fn const> assignments) {
-  for (ir::Fn assignment : assignments) {
+void Struct::SetAssignments(absl::Span<ir::Fn const> move_assignments,
+                            absl::Span<ir::Fn const> copy_assignments) {
+  for (ir::Fn assignment : move_assignments) {
     core::Params<QualType> const &params = assignment.type()->params();
     ASSERT(params.size() == 2u);
-    assignments_.emplace(params[1].value.type(), assignment);
+    move_assignments_.emplace(params[1].value.type(), assignment);
+  }
+  for (ir::Fn assignment : copy_assignments) {
+    core::Params<QualType> const &params = assignment.type()->params();
+    ASSERT(params.size() == 2u);
+    copy_assignments_.emplace(params[1].value.type(), assignment);
+
+    // If no move is explicitly specified for this assigment type, use the copy
+    // instead.
+    move_assignments_.try_emplace(params[1].value.type(), assignment);
   }
 }
 
-ir::Fn const *Struct::Assignment(type::Type from_type) const {
-  auto iter = assignments_.find(type::Ptr(from_type));
-  if (iter == assignments_.end()) { return nullptr; }
+ir::Fn const *Struct::MoveAssignment(type::Type from_type) const {
+  auto iter = move_assignments_.find(type::Ptr(from_type));
+  if (iter == move_assignments_.end()) { return nullptr; }
+  return &iter->second;
+}
+
+ir::Fn const *Struct::CopyAssignment(type::Type from_type) const {
+  auto iter = copy_assignments_.find(type::Ptr(from_type));
+  if (iter == copy_assignments_.end()) { return nullptr; }
   return &iter->second;
 }
 

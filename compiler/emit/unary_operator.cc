@@ -155,7 +155,38 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::UnaryOperator const *node) {
 }
 
 // TODO: Unit tests
-void Compiler::EmitAssign(
+void Compiler::EmitCopyAssign(
+    ast::UnaryOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  switch (node->kind()) {
+    case ast::UnaryOperator::Kind::Init: {
+      EmitCopyInit(node->operand(), to);
+    } break;
+    case ast::UnaryOperator::Kind::Copy: {
+      auto operand_qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
+      std::vector<type::Typed<ir::RegOr<ir::Addr>>> tmps;
+      operand_qt.ForEach([&](type::Type t) {
+        tmps.emplace_back(ir::RegOr<ir::Addr>(builder().TmpAlloca(t)), t);
+      });
+      NOT_YET();
+    } break;
+    case ast::UnaryOperator::Kind::Move:
+      EmitMoveAssign(node->operand(), to);
+      break;
+    default: {
+      auto from_val = EmitValue(node);
+      auto from_qt  = *context().qual_type(node);
+      if (to.size() == 1) {
+        EmitMoveAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
+      } else {
+        NOT_YET();
+      }
+    } break;
+  }
+}
+
+// TODO: Unit tests
+void Compiler::EmitMoveAssign(
     ast::UnaryOperator const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   switch (node->kind()) {
@@ -170,7 +201,9 @@ void Compiler::EmitAssign(
       });
       NOT_YET();
     } break;
-    case ast::UnaryOperator::Kind::Move: EmitAssign(node->operand(), to); break;
+    case ast::UnaryOperator::Kind::Move:
+      EmitMoveAssign(node->operand(), to);
+      break;
     default: {
       auto from_val = EmitValue(node);
       auto from_qt  = *context().qual_type(node);

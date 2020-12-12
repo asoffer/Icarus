@@ -17,7 +17,14 @@ ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
   return ir::Value(value);
 }
 
-void Compiler::EmitAssign(
+void Compiler::EmitCopyAssign(
+    ast::ArrayType const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
+}
+
+void Compiler::EmitMoveAssign(
     ast::ArrayType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
@@ -27,13 +34,15 @@ void Compiler::EmitAssign(
 void Compiler::EmitCopyInit(
     ast::ArrayType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  EmitAssign(node, to);
+  ASSERT(to.size() == 1u);
+  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
 }
 
 void Compiler::EmitMoveInit(
     ast::ArrayType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  EmitAssign(node, to);
+  ASSERT(to.size() == 1u);
+  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
 }
 
 }  // namespace compiler

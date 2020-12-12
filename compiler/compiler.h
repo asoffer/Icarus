@@ -53,7 +53,6 @@ struct EmitMoveInitTag {};
 struct EmitValueTag {};
 struct VerifyTypeTag {};
 struct VerifyBodyTag {};
-struct EmitAssignTag {};
 struct EmitDestroyTag {};
 struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
@@ -81,7 +80,9 @@ struct Compiler
                    void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
       ast::Visitor<EmitCopyInitTag,
                    void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
-      ast::Visitor<EmitAssignTag,
+      ast::Visitor<EmitMoveAssignTag,
+                   void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
+      ast::Visitor<EmitCopyAssignTag,
                    void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
       ast::Visitor<EmitRefTag, ir::RegOr<ir::Addr>()>,
       ast::Visitor<EmitValueTag, ir::Value()>,
@@ -145,10 +146,18 @@ struct Compiler
     return ast::Visitor<EmitValueTag, ir::Value()>::Visit(node);
   }
 
-  void EmitAssign(ast::Node const *node,
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
+  void EmitMoveAssign(ast::Node const *node,
+                      absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
     ast::Visitor<
-        EmitAssignTag,
+        EmitMoveAssignTag,
+        void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>::Visit(node,
+                                                                         regs);
+  }
+
+  void EmitCopyAssign(ast::Node const *node,
+                      absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
+    ast::Visitor<
+        EmitCopyAssignTag,
         void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>::Visit(node,
                                                                          regs);
   }
@@ -421,12 +430,21 @@ struct Compiler
       override {                                                               \
     return EmitMoveInit(node, regs);                                           \
   }                                                                            \
-  void EmitAssign(node_type const *node,                                       \
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);    \
-  void Visit(EmitAssignTag, node_type const *node,                             \
+  void EmitMoveAssign(                                                         \
+      node_type const *node,                                                   \
+      absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);                \
+  void Visit(EmitMoveAssignTag, node_type const *node,                         \
              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs)          \
       override {                                                               \
-    return EmitAssign(node, regs);                                             \
+    return EmitMoveAssign(node, regs);                                         \
+  }                                                                            \
+  void EmitCopyAssign(                                                         \
+      node_type const *node,                                                   \
+      absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);                \
+  void Visit(EmitCopyAssignTag, node_type const *node,                         \
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs)          \
+      override {                                                               \
+    return EmitCopyAssign(node, regs);                                         \
   }
   DEFINE_EMIT(ast::Access)
   DEFINE_EMIT(ast::ArrayLiteral)

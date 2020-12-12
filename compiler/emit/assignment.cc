@@ -21,7 +21,7 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
     auto const *l = node->lhs()[0];
     type::Typed<ir::RegOr<ir::Addr>> ref(
         EmitRef(l), ASSERT_NOT_NULL(context().qual_type(l))->type());
-    EmitAssign(node->rhs()[0], absl::MakeConstSpan(&ref, 1));
+    EmitMoveAssign(node->rhs()[0], absl::MakeConstSpan(&ref, 1));
     return ir::Value();
   }
 
@@ -45,7 +45,7 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
     size_t expansion_size = from_qt.expansion_size();
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> temp_span(
         &*temp_iter, expansion_size);
-    EmitAssign(r, temp_span);
+    EmitMoveAssign(r, temp_span);
     temp_iter += expansion_size;
   }
 

@@ -39,6 +39,78 @@ ir::Value PrepareOneArg(Compiler &c, type::Typed<ir::Value> const &arg,
   }
 }
 
+ir::Fn InsertGeneratedMoveAssign(
+    Compiler &c, type::Struct *s,
+    absl::Span<type::StructInstruction::Field const> ir_fields) {
+  auto [fn, inserted] = c.context().root().InsertMoveAssign(s, s);
+  if (inserted) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+      c.builder().CurrentBlock() = fn->entry();
+      auto var                   = ir::Reg::Arg(0);
+      auto val                   = ir::Reg::Arg(1);
+
+      for (size_t i = 0; i < ir_fields.size(); ++i) {
+        ir::Reg to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
+            .addr        = var,
+            .index       = i,
+            .struct_type = s,
+            .result      = c.builder().CurrentGroup()->Reserve()});
+        ir::Reg from_ref = c.current_block()->Append(ir::StructIndexInstruction{
+            .addr        = val,
+            .index       = i,
+            .struct_type = s,
+            .result      = c.builder().CurrentGroup()->Reserve()});
+        c.EmitMoveAssign(
+            type::Typed<ir::RegOr<ir::Addr>>(to_ref,
+                                             ir_fields[i].type().value()),
+            type::Typed<ir::Value>(ir::Value(c.builder().PtrFix(
+                                       from_ref, ir_fields[i].type().value())),
+                                   ir_fields[i].type().value()));
+      }
+
+      c.builder().ReturnJump();
+    }
+    fn->WriteByteCode<interpreter::instruction_set_t>();
+  }
+  return fn;
+}
+
+ir::Fn InsertGeneratedCopyAssign(
+    Compiler &c, type::Struct *s,
+    absl::Span<type::StructInstruction::Field const> ir_fields) {
+  auto [fn, inserted] = c.context().root().InsertCopyAssign(s, s);
+  if (inserted) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+      c.builder().CurrentBlock() = fn->entry();
+      auto var                   = ir::Reg::Arg(0);
+      auto val                   = ir::Reg::Arg(1);
+
+      for (size_t i = 0; i < ir_fields.size(); ++i) {
+        ir::Reg to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
+            .addr        = var,
+            .index       = i,
+            .struct_type = s,
+            .result      = c.builder().CurrentGroup()->Reserve()});
+        ir::Reg from_ref = c.current_block()->Append(ir::StructIndexInstruction{
+            .addr        = val,
+            .index       = i,
+            .struct_type = s,
+            .result      = c.builder().CurrentGroup()->Reserve()});
+        c.EmitCopyAssign(
+            type::Typed<ir::RegOr<ir::Addr>>(to_ref,
+                                             ir_fields[i].type().value()),
+            type::Typed<ir::Value>(ir::Value(c.builder().PtrFix(
+                                       from_ref, ir_fields[i].type().value())),
+                                   ir_fields[i].type().value()));
+      }
+
+      c.builder().ReturnJump();
+    }
+    fn->WriteByteCode<interpreter::instruction_set_t>();
+  }
+  return fn;
+}
+
 }  // namespace
 
 std::vector<ir::Value> Compiler::PrepareCallArguments(
@@ -92,16 +164,19 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 
     bool has_field_needing_destruction = false;
     std::optional<ir::Fn> user_dtor;
-    std::vector<ir::Fn> assignments;
+    std::vector<ir::Fn> move_assignments, copy_assignments;
     for (auto const &field : fields) {
       // TODO: Decide whether to support all hashtags. For now just covering
       // export.
       if (field.id() == "destroy") {
         // TODO: handle potential errors here.
         user_dtor = c.EmitValue(field.init_val()).get<ir::Fn>();
-      } else if (field.id() == "assign") {
+      } else if (field.id() == "move") {
         // TODO handle potential errors here.
-        assignments.push_back(c.EmitValue(field.init_val()).get<ir::Fn>());
+        move_assignments.push_back(c.EmitValue(field.init_val()).get<ir::Fn>());
+      } else if (field.id() == "copy") {
+        // TODO handle potential errors here.
+        copy_assignments.push_back(c.EmitValue(field.init_val()).get<ir::Fn>());
       } else {
         type::Type field_type;
         if (auto *init_val = field.init_val()) {
@@ -152,47 +227,16 @@ std::optional<ir::CompiledFn> StructCompletionFn(
       if (user_dtor) { dtor = *user_dtor; }
     }
 
-    // If no assignments are specified, add a compiler-generated default.
-    if (assignments.empty()) {
-      auto [fn, inserted] = c.context().root().InsertMoveAssign(s, s);
-      if (inserted) {
-        ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
-          c.builder().CurrentBlock() = fn->entry();
-          auto var                   = ir::Reg::Arg(0);
-          auto val                   = ir::Reg::Arg(1);
-
-          for (size_t i = 0; i < ir_fields.size(); ++i) {
-            ir::Reg to_ref =
-                c.current_block()->Append(ir::StructIndexInstruction{
-                    .addr        = var,
-                    .index       = i,
-                    .struct_type = s,
-                    .result      = c.builder().CurrentGroup()->Reserve()});
-            ir::Reg from_ref =
-                c.current_block()->Append(ir::StructIndexInstruction{
-                    .addr        = val,
-                    .index       = i,
-                    .struct_type = s,
-                    .result      = c.builder().CurrentGroup()->Reserve()});
-            c.EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(
-                                 to_ref, ir_fields[i].type().value()),
-                             type::Typed<ir::Value>(
-                                 ir::Value(c.builder().PtrFix(
-                                     from_ref, ir_fields[i].type().value())),
-                                 ir_fields[i].type().value()));
-          }
-
-          c.builder().ReturnJump();
-        }
-        fn->WriteByteCode<interpreter::instruction_set_t>();
-      }
-      assignments.push_back(fn);
+    if (move_assignments.empty() and copy_assignments.empty()) {
+      move_assignments.push_back(InsertGeneratedMoveAssign(c, s, ir_fields));
+      copy_assignments.push_back(InsertGeneratedCopyAssign(c, s, ir_fields));
     }
 
     c.current_block()->Append(
         type::StructInstruction{.struct_     = s,
                                 .fields      = std::move(ir_fields),
-                                .assignments = std::move(assignments),
+                                .move_assignments = std::move(move_assignments),
+                                .copy_assignments = std::move(copy_assignments),
                                 .dtor        = dtor});
     c.builder().ReturnJump();
   }

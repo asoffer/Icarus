@@ -409,7 +409,16 @@ void Compiler::EmitMoveInit(
                  type::Typed<ir::Value>(EmitValue(node), t));
 }
 
-void Compiler::EmitAssign(
+void Compiler::EmitMoveAssign(
+    ast::BinaryOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = context().qual_type(node)->type();
+  EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
+                 type::Typed<ir::Value>(EmitValue(node), t));
+}
+
+void Compiler::EmitCopyAssign(
     ast::BinaryOperator const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);

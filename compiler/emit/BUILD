@@ -7,6 +7,11 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:library_module",
+        "//ir/value:addr",
+        "//ir/value:reg_or",
+        "//type:enum",
+        "//type:flags",
+        "//type:typed_value",
     ],
 )
 
