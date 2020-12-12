@@ -177,24 +177,48 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
 }  // namespace
 
 ir::Value Compiler::EmitValue(ast::Assignment const *node) {
+  // This first case would be covered by the general case, but this allows us to
+  // avoid unnecessary temporary allocations when we know they are not
+  // necessary.
+  if (node->lhs().size() == 1) {
+    ASSERT(node->rhs().size() == 1u);
+    auto const *l = node->lhs()[0];
+    type::Typed<ir::RegOr<ir::Addr>> ref(
+        EmitRef(l), ASSERT_NOT_NULL(context().qual_type(l))->type());
+    EmitAssign(node->rhs()[0], absl::MakeConstSpan(&ref, 1));
+    return ir::Value();
+  }
+
   std::vector<type::Typed<ir::RegOr<ir::Addr>>> lhs_refs;
   lhs_refs.reserve(node->lhs().size());
+
+  std::vector<type::Typed<ir::RegOr<ir::Addr>>> temps;
+  temps.reserve(node->lhs().size());
 
   // TODO understand the precise semantics you care about here and document
   // them. Must references be computed first?
   for (auto const *l : node->lhs()) {
-    lhs_refs.push_back(type::Typed<ir::RegOr<ir::Addr>>(
-        EmitRef(l), ASSERT_NOT_NULL(context().qual_type(l))->type()));
+    type::Type t = ASSERT_NOT_NULL(context().qual_type(l))->type();
+    lhs_refs.emplace_back(EmitRef(l), t);
+    temps.emplace_back(builder().TmpAlloca(t), t);
   }
 
-  auto ref_iter = lhs_refs.begin();
+  auto temp_iter = temps.begin();
   for (auto const *r : node->rhs()) {
     auto from_qt          = *ASSERT_NOT_NULL(context().qual_type(r));
     size_t expansion_size = from_qt.expansion_size();
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> ref_span(&*ref_iter,
-                                                                expansion_size);
-    EmitAssign(r, ref_span);
-    ref_iter += expansion_size;
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> temp_span(
+        &*temp_iter, expansion_size);
+    EmitAssign(r, temp_span);
+    temp_iter += expansion_size;
+  }
+
+  for (auto temp_iter = temps.begin(), ref_iter = lhs_refs.begin();
+       temp_iter != temps.end(); ++temp_iter, ++ref_iter) {
+    EmitMoveAssign(
+        *ref_iter,
+        type::Typed<ir::Value>(builder().Load(**temp_iter, temp_iter->type()),
+                               temp_iter->type()));
   }
   return ir::Value();
 }
