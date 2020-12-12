@@ -515,12 +515,15 @@ struct BlockNode : ParameterizedExpression, WithScope<ExecScope> {
 
   std::string_view name() const { return name_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
+  ast::ScopeNode const *parent() const { return parent_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
+  friend struct ScopeNode;
   std::string name_;
   std::vector<std::unique_ptr<Node>> stmts_;
+  ScopeNode *parent_ = nullptr;
 };
 
 // Represents a builtin (possibly generic) function. Examples include `foreign`,
@@ -988,7 +991,7 @@ struct ScopeNode : Expression {
       : Expression(range),
         name_(std::move(name)),
         args_(std::move(args)),
-        blocks_(std::move(blocks)) {}
+        blocks_(WithThisAsParent(std::move(blocks))) {}
 
   Expression const *name() const { return name_.get(); }
   core::Arguments<Expression const *> const &args() const {
@@ -1011,6 +1014,7 @@ struct ScopeNode : Expression {
   void append_block_syntactically(
       BlockNode block, ScopeNode *updated_last_scope_node = nullptr) {
     auto *scope_node = (last_scope_node_ ? last_scope_node_ : this);
+    block.parent_    = scope_node;
     scope_node->blocks_.push_back(std::move(block));
     if (updated_last_scope_node) { last_scope_node_ = updated_last_scope_node; }
   }
@@ -1018,6 +1022,11 @@ struct ScopeNode : Expression {
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
+  std::vector<BlockNode> WithThisAsParent(std::vector<BlockNode> &&blocks) {
+    for (auto &b : blocks) { b.parent_ = this; }
+    return std::move(blocks);
+  }
+
   std::optional<Label> label_;
   std::unique_ptr<Expression> name_;
   core::OrderedArguments<Expression> args_;

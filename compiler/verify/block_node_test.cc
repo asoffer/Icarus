@@ -10,6 +10,7 @@ namespace compiler {
 namespace {
 
 using ::testing::IsEmpty;
+using ::testing::Pair;
 using ::testing::Pointee;
 using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
@@ -42,7 +43,7 @@ TEST(BlockNode, HasJump) {
         value := true
         << value
       }
-      )")->blocks();
+  )")->blocks();
   ASSERT_THAT(blocks, SizeIs(1));
   auto const &block = blocks[0];
   EXPECT_THAT(mod.context().qual_type(&block),
@@ -70,9 +71,21 @@ TEST(BlockNode, LabeledJumpSkipBlock) {
   EXPECT_THAT(YieldArgumentTypes(mod.context(), &block), IsEmpty());
 }
 
+TEST(BlockNode, NoBlock) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  some_scope ::= scope {}
+  some_scope () not_a_block {}
+  )");
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("reference-error", "no-block-with-name")));
+}
+
+
 // TODO:
-// * Case where `done` is generic.
-// * Case where `done` doesn't match arguments provided.
+// * Case where `exit` is generic.
+// * Case where `exit` doesn't match arguments provided.
 
 }  // namespace
 }  // namespace compiler

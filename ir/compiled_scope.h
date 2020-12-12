@@ -27,6 +27,10 @@ struct CompiledScope {
     blocks_ = std::move(blocks);
   }
 
+  Block const *find_block(std::string_view name) const {
+    auto iter = blocks_.find(name);
+    return iter != blocks_.end() ? &iter->second : nullptr;
+  }
   Block block(std::string_view name) const { return blocks_.at(name); }
 
   type::Type state_type() const { return state_; }

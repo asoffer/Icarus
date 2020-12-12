@@ -3,12 +3,64 @@
 #include "compiler/context.h"
 
 namespace compiler {
+namespace {
+
+struct NoBlockWithName {
+  static constexpr std::string_view kCategory = "reference-error";
+  static constexpr std::string_view kName     = "no-block-with-name";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("No block on this scope with the name `%s`.", name),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  std::string name;
+  frontend::SourceRange range;
+};
+
+}  // namespace
 
 type::QualType Compiler::VerifyType(ast::BlockNode const *node) {
-  for (auto &param : node->params()) { VerifyType(param.value.get()); }
-  for (auto *stmt : node->stmts()) { VerifyType(stmt); }
+  LOG("BlockNode", "Verifying %s", node->DebugString());
+  auto qt = type::QualType::Constant(type::Block);
 
-  return context().set_qual_type(node, type::QualType::Constant(type::Block));
+  auto const *scope_node = node->parent();
+  if (not scope_node) {
+    NOT_YET(
+        "Currently blocks must have parents. Decide if this is always going to "
+        "be the case and make it return a const-reference, or support blocks "
+        "without parents.");
+  }
+
+  std::optional<ir::Scope> scope =
+      EvaluateOrDiagnoseAs<ir::Scope>(scope_node->name());
+  if (not scope) {
+    qt.MarkError();
+    return context().set_qual_type(node, qt);
+  }
+  auto const *compiled_scope = ir::CompiledScope::From(*scope);
+
+  if (not compiled_scope->find_block(node->name())) {
+    diag().Consume(NoBlockWithName{
+        .name  = std::string(node->name()),
+        .range = node->range(),
+    });
+    qt.MarkError(); 
+  }
+
+  for (auto &param : node->params()) {
+    if (not VerifyType(param.value.get()).ok()) { qt.MarkError(); }
+  }
+
+  if (not qt.HasErrorMark()) {
+    for (auto *stmt : node->stmts()) {
+      if (not VerifyType(stmt).ok()) { qt.MarkError(); }
+    }
+  }
+
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler
