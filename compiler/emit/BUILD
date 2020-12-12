@@ -126,6 +126,18 @@ cc_test(
 )
 
 cc_library(
+    name = "block_node",
+    srcs = ["block_node.cc"],
+    deps = [
+        ":common",
+        "//ast",
+        "//compiler:compiler_header",
+        "//ir:builder",
+        "//ir/value",
+    ],
+)
+
+cc_library(
     name = "call",
     srcs = ["call.cc"],
     deps = [
@@ -272,6 +284,25 @@ cc_library(
 # TODO: FunctionType
 
 cc_library(
+    name = "function_literal",
+    srcs = ["function_literal.cc"],
+    deps = [
+        ":common",
+        "//ast",
+        "//compiler:compiler_header",
+        "//base:move_func",
+        "//core:arguments",
+        "//ir/value",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:typed_value",
+    ],
+)
+
+# TODO: FunctionLiteral
+
+cc_library(
     name = "goto",
     srcs = ["goto.cc"],
     deps = [
@@ -322,6 +353,25 @@ cc_test(
 )
 
 cc_library(
+    name = "jump",
+    srcs = ["jump.cc"],
+    deps = [
+        ":common",
+        "//ast",
+        "//compiler:compiler_header",
+        "//base:move_func",
+        "//core:arguments",
+        "//ir/value",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:typed_value",
+    ],
+)
+
+# TODO: Jump 
+
+cc_library(
     name = "miscellaneous",
     srcs = ["miscellaneous.cc"],
     deps = [
@@ -332,6 +382,42 @@ cc_library(
 )
 
 # TODO: Miscellaneous test
+
+cc_library(
+    name = "parameterized_struct_literal",
+    srcs = ["parameterized_struct_literal.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//compiler/emit:common",
+        "//ir/value",
+        "//ir/value:addr",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:typed_value",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+# TODO: ParameterizedStructLiteral tests.
+
+cc_library(
+    name = "return_stmt",
+    srcs = ["return_stmt.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//compiler/emit:common",
+        "//ir/value",
+        "//ir/value:addr",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:typed_value",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+# TODO: ReturnStmt tests.
 
 cc_library(
     name = "scope_literal",
@@ -371,6 +457,25 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "short_function_literal",
+    srcs = ["short_function_literal.cc"],
+    deps = [
+        ":common",
+        "//ast",
+        "//compiler:compiler_header",
+        "//base:move_func",
+        "//core:arguments",
+        "//ir/value",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:typed_value",
+    ],
+)
+
+# TODO: ShortFunctionLiteral
 
 cc_library(
     name = "special",
@@ -448,3 +553,21 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "yield_stmt",
+    srcs = ["yield_stmt.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//compiler/emit:common",
+        "//ir/value",
+        "//ir/value:addr",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:typed_value",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+# TODO: yieldStmt tests.

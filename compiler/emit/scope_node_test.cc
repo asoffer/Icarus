@@ -163,7 +163,7 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
     enter ::= jump() { goto do() }
     do ::= block {
       before ::= () -> () {}
-      after ::= jump() { goto done()  }
+      after ::= jump() { goto done() }
     }
     exit ::= (n: i64) => n
   }

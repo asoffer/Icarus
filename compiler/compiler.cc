@@ -3,11 +3,9 @@
 #include "ast/ast.h"
 #include "base/log.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "compiler/executable_module.h"
 #include "compiler/module.h"
-#include "diagnostic/consumer/consumer.h"
-#include "frontend/parse.h"
-#include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
 #include "ir/interpreter/evaluate.h"
@@ -131,6 +129,29 @@ Context::FindSubcontextResult Compiler::FindInstantiation(
       .importer            = importer(),
   });
   return context().FindSubcontext(node, c.ComputeParamsFromArgs(node, args));
+}
+
+void Compiler::ProcessExecutableBody(base::PtrSpan<ast::Node const> nodes,
+                                     ir::CompiledFn *main_fn) {
+  if (nodes.empty()) {
+    ICARUS_SCOPE(ir::SetCurrent(*main_fn, builder())) {
+      EmitIrForStatements(*this, nodes);
+      builder().ReturnJump();
+    }
+  } else {
+    ICARUS_SCOPE(ir::SetCurrent(*main_fn, builder())) {
+      ast::ModuleScope *mod_scope =
+          &nodes.front()->scope()->as<ast::ModuleScope>();
+
+      MakeAllStackAllocations(*this, mod_scope);
+      EmitIrForStatements(*this, nodes);
+      MakeAllDestructions(*this, mod_scope);
+      // TODO determine under which scenarios destructors can be skipped.
+
+      builder().ReturnJump();
+    }
+  }
+  CompleteDeferredBodies();
 }
 
 }  // namespace compiler

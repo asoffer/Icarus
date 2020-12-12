@@ -250,6 +250,29 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
   }
 }
 
+void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
+  for (auto *scope : fn_scope->descendants()) {
+    if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
+    for (const auto &[key, val] : scope->decls_) {
+      LOG("MakeAllStackAllocations", "%s", key);
+      for (auto *decl : val) {
+        if (decl->flags() &
+            (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
+          LOG("MakeAllStackAllocations", "skipping constant/param decl %s",
+              decl->id());
+          continue;
+        }
+
+        LOG("MakeAllStackAllocations", "allocating %s", decl->id());
+
+        compiler.context().set_addr(
+            decl, compiler.builder().Alloca(
+                      compiler.context().qual_type(decl)->type()));
+      }
+    }
+  }
+}
+
 void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
@@ -270,6 +293,27 @@ void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
     if (not t.get()->HasDestructor()) { continue; }
     compiler.EmitDestroy(
         type::Typed<ir::Reg>(compiler.context().addr(decl), t));
+  }
+}
+
+// TODO One problem with this setup is that we don't end up calling destructors
+// if we exit early, so those need to be handled externally.
+void EmitIrForStatements(Compiler &compiler,
+                         base::PtrSpan<ast::Node const> stmts) {
+  ICARUS_SCOPE(ir::SetTemporaries(compiler.builder())) {
+    for (auto *stmt : stmts) {
+      LOG("EmitIrForStatements", "%s", stmt->DebugString());
+      compiler.EmitValue(stmt);
+      compiler.builder().FinishTemporariesWith(
+          [&compiler](type::Typed<ir::Reg> r) { compiler.EmitDestroy(r); });
+      LOG("EmitIrForStatements", "%p %s", compiler.builder().CurrentBlock(),
+          *compiler.builder().CurrentGroup());
+
+      if (compiler.builder().block_termination_state() !=
+          ir::Builder::BlockTerminationState::kMoreStatements) {
+        break;
+      }
+    }
   }
 }
 
