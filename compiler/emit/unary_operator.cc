@@ -163,12 +163,7 @@ void Compiler::EmitCopyAssign(
       EmitCopyInit(node->operand(), to);
     } break;
     case ast::UnaryOperator::Kind::Copy: {
-      auto operand_qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
-      std::vector<type::Typed<ir::RegOr<ir::Addr>>> tmps;
-      operand_qt.ForEach([&](type::Type t) {
-        tmps.emplace_back(ir::RegOr<ir::Addr>(builder().TmpAlloca(t)), t);
-      });
-      NOT_YET();
+      EmitCopyAssign(node->operand(), to);
     } break;
     case ast::UnaryOperator::Kind::Move:
       EmitMoveAssign(node->operand(), to);
@@ -194,12 +189,7 @@ void Compiler::EmitMoveAssign(
       EmitMoveInit(node->operand(), to);
     } break;
     case ast::UnaryOperator::Kind::Copy: {
-      auto operand_qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
-      std::vector<type::Typed<ir::RegOr<ir::Addr>>> tmps;
-      operand_qt.ForEach([&](type::Type t) {
-        tmps.emplace_back(ir::RegOr<ir::Addr>(builder().TmpAlloca(t)), t);
-      });
-      NOT_YET();
+      EmitCopyAssign(node->operand(), to);
     } break;
     case ast::UnaryOperator::Kind::Move:
       EmitMoveAssign(node->operand(), to);
