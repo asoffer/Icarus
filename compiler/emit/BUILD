@@ -59,6 +59,33 @@ cc_test(
 )
 
 cc_library(
+    name = "assignment",
+    srcs = ["assignment.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//ir/value",
+        "//ir/value:addr",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:typed_value",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "assignment_test",
+    srcs = ["assignment_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+
+cc_library(
     name = "binary_operator",
     srcs = ["binary_operator.cc"],
     deps = [
@@ -177,6 +204,23 @@ cc_library(
 )
 
 cc_library(
+    name = "declaration",
+    srcs = ["declaration.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//ir/value",
+        "//ir/value:addr",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:typed_value",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+# TODO: Declaration tests.
+
+cc_library(
     name = "designated_initializer",
     srcs = ["designated_initializer.cc"],
     deps = [
@@ -200,6 +244,17 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "enum_literal",
+    srcs = ["enum_literal.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+# TODO: Enum literal tests
 
 cc_library(
     name = "function_type",
@@ -335,6 +390,24 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "struct_literal",
+    srcs = ["struct_literal.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//compiler/emit:common",
+        "//ir/value",
+        "//ir/value:addr",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:typed_value",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+# TODO: StructLiteral tests.
 
 cc_library(
     name = "terminal",

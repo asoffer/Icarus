@@ -83,7 +83,6 @@ TYPE_VERIFICATION = [
 # TODO split this up and rename the parts.
 cc_library(
     name = "visitors",
-    hdrs = [],
     srcs = ["emit_value.cc"],
     deps = [
         ":compiler_header",
@@ -105,13 +104,16 @@ cc_library(
         "//compiler/emit:access",
         "//compiler/emit:array_literal",
         "//compiler/emit:array_type",
+        "//compiler/emit:assignment",
         "//compiler/emit:binary_operator",
         "//compiler/emit:block_literal",
         "//compiler/emit:call",
         "//compiler/emit:cast",
         "//compiler/emit:comparison_operator",
         "//compiler/emit:common",
+        "//compiler/emit:declaration",
         "//compiler/emit:designated_initializer",
+        "//compiler/emit:enum_literal",
         "//compiler/emit:function_type",
         "//compiler/emit:goto",
         "//compiler/emit:identifier",
@@ -120,6 +122,7 @@ cc_library(
         "//compiler/emit:scope_literal",
         "//compiler/emit:scope_node",
         "//compiler/emit:special",
+        "//compiler/emit:struct_literal",
         "//compiler/emit:terminal",
         "//compiler/emit:unary_operator",
         "//core:call",

@@ -114,7 +114,6 @@ INSTANTIATE_TEST_SUITE_P(
                  .expected = ir::Value(type::Array::length_t{3})},
         TestCase{.expr     = R"([4, 3; i64].length)",
                  .expected = ir::Value(type::Array::length_t{4})},
-
     }));
 
 // TODO: Add a test that covers pointer parameters.

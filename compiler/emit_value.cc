@@ -174,184 +174,6 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
   ir_func->WriteByteCode<interpreter::instruction_set_t>();
 }
 
-}  // namespace
-
-ir::Value Compiler::EmitValue(ast::Assignment const *node) {
-  // This first case would be covered by the general case, but this allows us to
-  // avoid unnecessary temporary allocations when we know they are not
-  // necessary.
-  if (node->lhs().size() == 1) {
-    ASSERT(node->rhs().size() == 1u);
-    auto const *l = node->lhs()[0];
-    type::Typed<ir::RegOr<ir::Addr>> ref(
-        EmitRef(l), ASSERT_NOT_NULL(context().qual_type(l))->type());
-    EmitAssign(node->rhs()[0], absl::MakeConstSpan(&ref, 1));
-    return ir::Value();
-  }
-
-  std::vector<type::Typed<ir::RegOr<ir::Addr>>> lhs_refs;
-  lhs_refs.reserve(node->lhs().size());
-
-  std::vector<type::Typed<ir::RegOr<ir::Addr>>> temps;
-  temps.reserve(node->lhs().size());
-
-  // TODO understand the precise semantics you care about here and document
-  // them. Must references be computed first?
-  for (auto const *l : node->lhs()) {
-    type::Type t = ASSERT_NOT_NULL(context().qual_type(l))->type();
-    lhs_refs.emplace_back(EmitRef(l), t);
-    temps.emplace_back(builder().TmpAlloca(t), t);
-  }
-
-  auto temp_iter = temps.begin();
-  for (auto const *r : node->rhs()) {
-    auto from_qt          = *ASSERT_NOT_NULL(context().qual_type(r));
-    size_t expansion_size = from_qt.expansion_size();
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> temp_span(
-        &*temp_iter, expansion_size);
-    EmitAssign(r, temp_span);
-    temp_iter += expansion_size;
-  }
-
-  for (auto temp_iter = temps.begin(), ref_iter = lhs_refs.begin();
-       temp_iter != temps.end(); ++temp_iter, ++ref_iter) {
-    EmitMoveAssign(
-        *ref_iter,
-        type::Typed<ir::Value>(builder().Load(**temp_iter, temp_iter->type()),
-                               temp_iter->type()));
-  }
-  return ir::Value();
-}
-
-ir::Value Compiler::EmitValue(ast::Declaration const *node) {
-  // TODO: The entirety of constant-caching mechanism here is weird and broken
-  // and needs a cleanup.
-  LOG("EmitValueDeclaration", "%s", node->id());
-  if (node->flags() & ast::Declaration::f_IsConst) {
-    if (node->module() != &context().module()) {
-      // Constant declarations from other modules should already be stored on
-      // that module. They must be at the root of the binding tree map,
-      // otherwise they would be local to some function/jump/etc. and not be
-      // exported.
-      return node->module()
-          ->as<CompiledModule>()
-          .context()
-          .Constant(node)
-          ->value;
-    }
-
-    if (node->flags() & ast::Declaration::f_IsFnParam) {
-      auto val = context().LoadConstantParam(node);
-      LOG("EmitValueDeclaration", "%s", val);
-      return val;
-    } else {
-      if (auto *constant_value = context().Constant(node)) {
-        // TODO: This feels quite hacky.
-        if (node->init_val()->is<ast::StructLiteral>()) {
-          if (not constant_value->complete and state_.must_complete) {
-            LOG("compile-work-queue", "Request work complete-struct: %p", node);
-            state_.work_queue.Enqueue({
-                .kind      = WorkItem::Kind::CompleteStructMembers,
-                .node      = node->init_val(),
-                .resources = resources_,
-            });
-          }
-        }
-        return constant_value->value;
-      }
-
-      auto t = ASSERT_NOT_NULL(context().qual_type(node))->type();
-
-      if (node->IsCustomInitialized()) {
-        LOG("EmitValueDeclaration", "Computing slot with %s",
-            node->init_val()->DebugString());
-        auto maybe_val =
-            Evaluate(type::Typed<ast::Expression const *>(node->init_val(), t),
-                     state_.must_complete);
-        if (not maybe_val) {
-          // TODO we reserved a slot and haven't cleaned it up. Do we care?
-          diag().Consume(maybe_val.error());
-          return ir::Value();
-        }
-
-        LOG("EmitValueDeclaration", "Setting slot = %s", *maybe_val);
-        context().SetConstant(node, *maybe_val);
-
-        // TODO: This is a struct-speficic hack.
-        if (type::Type *type_val = maybe_val->get_if<type::Type>()) {
-          if (auto const *struct_type = type_val->if_as<type::Struct>()) {
-            if (struct_type->completeness() != type::Completeness::Complete) {
-              return *maybe_val;
-            }
-            context().CompleteConstant(node);
-          }
-        }
-
-        return *maybe_val;
-
-      } else if (node->IsDefaultInitialized()) {
-        UNREACHABLE();
-      } else {
-        UNREACHABLE();
-      }
-      UNREACHABLE(node->DebugString());
-    }
-  } else {
-    if (node->IsUninitialized()) { return ir::Value(); }
-    auto t = context().qual_type(node)->type();
-    auto a = context().addr(node);
-    if (node->IsCustomInitialized()) {
-      auto to = type::Typed<ir::RegOr<ir::Addr>>(a, t);
-      EmitMoveInit(node->init_val(), absl::MakeConstSpan(&to, 1));
-    } else {
-      if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
-        EmitDefaultInit(type::Typed<ir::Reg>(a, t));
-      }
-    }
-    return ir::Value(a);
-  }
-  UNREACHABLE();
-}
-
-ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
-  // TODO: Check the result of body verification.
-  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
-
-  std::vector<std::string_view> names(node->enumerators().begin(),
-                                      node->enumerators().end());
-  absl::flat_hash_map<uint64_t, ir::RegOr<type::Enum::underlying_type>>
-      specified_values;
-
-  uint64_t i = 0;
-  for (uint64_t i = 0; i < names.size(); ++i) {
-    if (auto iter = node->specified_values().find(names[i]);
-        iter != node->specified_values().end()) {
-      specified_values.emplace(
-          i, EmitValue(iter->second.get())
-                 .get<ir::RegOr<type::Enum::underlying_type>>());
-    }
-  }
-
-  // TODO: allocate the type upfront so it can be used in incomplete contexts.
-  switch (node->kind()) {
-    case ast::EnumLiteral::Kind::Enum: {
-      return ir::Value(current_block()->Append(type::EnumInstruction{
-          .type              = type::Allocate<type::Enum>(&context().module()),
-          .names_            = std::move(names),
-          .specified_values_ = std::move(specified_values),
-          .result            = builder().CurrentGroup()->Reserve()}));
-    } break;
-    case ast::EnumLiteral::Kind::Flags: {
-      return ir::Value(current_block()->Append(type::FlagsInstruction{
-          .type              = type::Allocate<type::Flags>(&context().module()),
-          .names_            = std::move(names),
-          .specified_values_ = std::move(specified_values),
-          .result            = builder().CurrentGroup()->Reserve()}));
-    } break;
-    default: UNREACHABLE();
-  }
-}
-
 template <typename NodeType>
 ir::NativeFn MakeConcreteFromGeneric(
     Compiler *compiler, NodeType const *node,
@@ -378,6 +200,16 @@ ir::NativeFn MakeConcreteFromGeneric(
   }
   return f;
 }
+
+std::vector<std::pair<ast::Expression const *, ir::Value>> EmitValueWithExpand(
+    Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
+  // TODO expansion
+  std::vector<std::pair<ast::Expression const *, ir::Value>> vals;
+  for (auto *expr : exprs) { vals.emplace_back(expr, c->EmitValue(expr)); }
+  return vals;
+}
+
+}  // namespace
 
 ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
   if (node->is_generic()) {
@@ -444,14 +276,6 @@ ir::Value Compiler::EmitValue(ast::Jump const *node) {
     });
   }
   return ir::Value(jmp);
-}
-
-static std::vector<std::pair<ast::Expression const *, ir::Value>>
-EmitValueWithExpand(Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
-  // TODO expansion
-  std::vector<std::pair<ast::Expression const *, ir::Value>> vals;
-  for (auto *expr : exprs) { vals.emplace_back(expr, c->EmitValue(expr)); }
-  return vals;
 }
 
 ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
@@ -596,72 +420,6 @@ WorkItem::Result Compiler::CompleteStruct(
   LOG("struct", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());
   return WorkItem::Result::Success;
-}
-
-WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
-  LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
-      node, state_.must_complete ? "true" : "false");
-
-  type::Struct *s = context().get_struct(node);
-  if (s->completeness() == type::Completeness::Complete) {
-    LOG("struct", "Already complete, exiting: %p", node);
-    return WorkItem::Result::Success;
-  }
-
-  ASSIGN_OR(return WorkItem::Result::Failure,  //
-                   auto fn, StructCompletionFn(*this, s, node->fields()));
-  // TODO: What if execution fails.
-  interpreter::Execute(std::move(fn));
-  s->complete();
-  LOG("struct", "Completed %s which is a struct %s with %u field(s).",
-      node->DebugString(), *s, s->fields().size());
-  return WorkItem::Result::Success;
-}
-
-ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
-  LOG("struct", "Starting struct-literal emission: %p%s", node,
-      state_.must_complete ? " (must complete)" : " (need not complete)");
-
-  if (type::Struct *s = context().get_struct(node)) {
-    return ir::Value(static_cast<type::Type>(s));
-  }
-
-  type::Struct *s = type::Allocate<type::Struct>(
-      &context().module(),
-      type::Struct::Options{
-          .is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
-          .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),
-      });
-
-  LOG("struct", "Allocating a new struct %p for %p", s, node);
-  context().set_struct(node, s);
-
-  // Note: VerifyBody may end up triggering EmitValue calls for member types
-  // that depend on this incomplete type. For this reason it is important that
-  // we have already allocated the struct so we do not get a double-allocation.
-  //
-  // The process, as you can see above is to
-  // 1. Check if it has already been allocated. Return if it has been.
-  // 2. Allocate ourselves.
-  // 3. Start body verification.
-  // 4. Schedule completion.
-  //
-  // Notably, steps 1 and 2 must not be separated. Moreover, because body
-  // verification could end up calling this function again, we must "set up
-  // guards" (i.e., steps 1 and 2) before step 3 runs.
-  //
-  // TODO: Check the result of body verification.
-  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
-
-  if (state_.must_complete) {
-    LOG("compile-work-queue", "Request work complete struct: %p", node);
-    state_.work_queue.Enqueue({
-        .kind      = WorkItem::Kind::CompleteStructMembers,
-        .node      = node,
-        .resources = resources_,
-    });
-  }
-  return ir::Value(static_cast<type::Type>(s));
 }
 
 ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
