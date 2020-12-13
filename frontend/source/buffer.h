@@ -1,3 +1,6 @@
+#ifndef ICARUS_FRONTEND_SOURCE_BUFFER_H
+#define ICARUS_FRONTEND_SOURCE_BUFFER_H
+
 #include <vector>
 #include <string>
 #include <string_view>
@@ -33,16 +36,21 @@ struct SourceBuffer {
 
   size_t num_chunks() const { return chunks_.size(); }
 
-  // Returns the chunk at the given index (zero-indexed).
+  // Returns the chunk at the given index (zero-indexed). The returned
+  // string_view is valid for the lifetime of this SourceBuffer.
   std::string_view chunk(size_t num) const {
     if (num >= chunks_.size()) { return ""; }
     return chunks_[num];
   }
 
+  // The returned string_view is valid for the lifetime of this SourceBuffer.
+  std::string_view last_chunk() const { return chunks_.back(); }
+
   size_t num_lines() const { return line_start_.size() - 1; }
 
   // Returns a view of the line with the given index as it would show in most
-  // text editors (one-indexed rather than zero-indexed).
+  // text editors (one-indexed rather than zero-indexed).  The returned
+  // string_view is valid for the lifetime of this SourceBuffer.
   std::string_view line(size_t line_num) const {
     ASSERT(line_num > 0);
     ASSERT(line_num < line_start_.size());
@@ -79,3 +87,5 @@ struct SourceBuffer {
 };
 
 }  // namespace frontend
+
+#endif  // ICARUS_FRONTEND_SOURCE_BUFFER_H

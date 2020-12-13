@@ -3,58 +3,45 @@
 
 #include <iostream>
 #include <string_view>
-#include <vector>
 
+#include "frontend/source/buffer.h"
 #include "frontend/source/source.h"
 
 namespace repl {
 
 struct Source : frontend::Source {
   Source(std::istream* input, std::ostream* output)
-      : input_(*ASSERT_NOT_NULL(input)), output_(*ASSERT_NOT_NULL(output)) {}
+      : input_(*ASSERT_NOT_NULL(input)),
+        output_(*ASSERT_NOT_NULL(output)),
+        buffer_("\n") {  // TODO: Determine if this is going to screw up line
+                         // numbers, and if we care for a REPL at all.
+  }
   ~Source() override {}
 
+  // TODO: This is incorrect but effectively unused and will be removed shortly.
   frontend::SourceChunk ReadUntil(char delim) override {
-    if (view_.empty()) {
-      output_ << "\n>> ";
-      std::getline(input_, lines_.emplace_back());
-      lines_.back().push_back('\n');
-      view_ = lines_.back();
-    }
-
-    auto pos = view_.find_first_of(delim);
-    while (pos == std::string_view::npos) {
-      output_ << "\n.. ";
-      // Compute how far `view_` was inside the line, because after we append to
-      // the line we need to reset `view_` appropriately.
-      int dist = view_.data() - lines_.back().data();
-      std::string line;
-      std::getline(input_, line);
-      lines_.back().append(line);
-      view_ = lines_.back();
-      view_.remove_prefix(dist);
-      pos = view_.find_first_of(delim);
-    }
-
-    auto result = view_.substr(0, pos);
-    view_.remove_prefix(pos + 1);
+    ASSERT(delim == '\n');
+    output_ << "\n>> ";
+    std::string line;
+    std::getline(input_, line);
+    line.push_back('\n');
+    buffer_.AppendChunk(std::move(line));
 
     return frontend::SourceChunk{
-        .view         = result,
+        .view         = buffer_.last_chunk(),
         .more_to_read = false,
     };
   }
 
   std::string_view line(size_t line_num) const override {
-    return lines_[line_num - 1];
+    return buffer_.line(line_num);
   }
 
   std::string FileName() const override { return "repl"; }
 
   std::istream& input_;
   std::ostream& output_;
-  std::vector<std::string> lines_;
-  std::string_view view_;
+  frontend::SourceBuffer buffer_;
 };
 
 }  // namespace repl

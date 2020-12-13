@@ -32,5 +32,8 @@ cc_binary(
 cc_library(
     name = "source",
     hdrs = ["source.h"],
-    deps = ["//frontend/source"],
+    deps = [
+        "//frontend/source",
+        "//frontend/source:buffer",
+    ],
 )
