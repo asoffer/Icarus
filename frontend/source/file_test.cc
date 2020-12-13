@@ -24,10 +24,6 @@ TEST(FileSource, OneLine) {
 
   auto chunk = src->ReadUntil('\n');
   EXPECT_EQ(chunk.view, "hello");
-  EXPECT_TRUE(chunk.more_to_read);
-
-  chunk = src->ReadUntil('\n');
-  EXPECT_EQ(chunk.view, "");
   EXPECT_FALSE(chunk.more_to_read);
 }
 
@@ -43,10 +39,6 @@ TEST(FileSource, MultilineFile) {
 
   chunk = src->ReadUntil('\n');
   EXPECT_EQ(chunk.view, "world!");
-  EXPECT_TRUE(chunk.more_to_read);
-
-  chunk = src->ReadUntil('\n');
-  EXPECT_EQ(chunk.view, "");
   EXPECT_FALSE(chunk.more_to_read);
 }
 

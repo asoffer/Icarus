@@ -1,26 +1,28 @@
 #ifndef ICARUS_FRONTEND_STRING_SOURCE_H
 #define ICARUS_FRONTEND_STRING_SOURCE_H
 
+#include "frontend/source/buffer.h"
 #include "frontend/source/source.h"
 
 namespace frontend {
 
 struct StringSource : public Source {
   ~StringSource() override {}
-  StringSource(std::string src) : src_(std::move(src)), view_(src_) {}
+  StringSource(std::string src) : src_(std::move(src)), view_(src_.chunk(0)) {}
 
-  StringSource(StringSource const& s) : src_(s.src_), view_(src_) {}
-  StringSource(StringSource&& s) : src_(std::move(s).src_), view_(src_) {}
+  StringSource(StringSource const& s) : src_(s.src_), view_(src_.chunk(0)) {}
+  StringSource(StringSource&& s)
+      : src_(std::move(s).src_), view_(src_.chunk(0)) {}
 
   StringSource& operator=(StringSource const& s) {
     src_  = s.src_;
-    view_ = src_;
+    view_ = src_.chunk(0);
     return *this;
   }
 
   StringSource& operator=(StringSource&& s) {
     src_  = std::move(s).src_;
-    view_ = src_;
+    view_ = src_.chunk(0);
     return *this;
   }
 
@@ -32,25 +34,14 @@ struct StringSource : public Source {
     return {result, not view_.empty()};
   }
 
-  std::vector<std::string> LoadLines() const override {
-    std::vector<std::string> lines{1};
-
-    std::string_view all{src_};
-    auto pos = all.find_first_of('\n');
-    while (pos != std::string_view::npos) {
-      lines.push_back(std::string{all.substr(0, pos)});
-      all.remove_prefix(pos + 1);
-      pos = all.find_first_of('\n');
-    }
-    lines.push_back(std::string{all});
-
-    return lines;
+  std::string_view line(size_t line_num) const override {
+    return src_.line(line_num);
   }
 
   std::string FileName() const override { return "<string>"; }
 
  private:
-  std::string src_;
+  SourceBuffer src_;
   std::string_view view_;
 };
 

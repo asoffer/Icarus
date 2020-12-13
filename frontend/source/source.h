@@ -26,7 +26,7 @@ struct Source : base::Cast<Source> {
   // the next call to ReadUntil.
   virtual SourceChunk ReadUntil(char delim) = 0;
 
-  virtual std::vector<std::string> LoadLines() const = 0;
+  virtual std::string_view line(size_t line_num) const = 0;
 
   virtual std::string FileName() const = 0;
 };

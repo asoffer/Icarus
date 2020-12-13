@@ -45,7 +45,9 @@ struct Source : frontend::Source {
     };
   }
 
-  std::vector<std::string> LoadLines() const override { return lines_; }
+  std::string_view line(size_t line_num) const override {
+    return lines_[line_num - 1];
+  }
 
   std::string FileName() const override { return "repl"; }
 

@@ -22,20 +22,6 @@ inline int NumDigits(frontend::LineNum line) {
   return counter;
 }
 
-static absl::flat_hash_map<frontend::Source const *, std::vector<std::string>>
-    lines;
-
-std::optional<std::string_view> LoadLine(frontend::Source const *src,
-                                         frontend::LineNum line) {
-  auto iter = lines.find(src);
-  if (iter == lines.end()) {
-    iter = lines.emplace(src, src->LoadLines()).first;
-  }
-
-  if (line.value >= iter->second.size()) { return std::nullopt; }
-  return iter->second[line.value];
-}
-
 }  // namespace
 
 void ConsoleRenderer::Flush() {
@@ -70,8 +56,7 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
       case 0:
       case 1: break;
       case 2: {
-        ASSIGN_OR(std::abort(),  //
-                  auto line_str, LoadLine(source, prev_line_num + 1));
+        std::string_view line_str = source->line((prev_line_num + 1).value);
         absl::FPrintF(out_, "\033[97;1m%*d | \033[0m%s\n", border_alignment,
                       prev_line_num.value + 1, line_str);
       } break;
@@ -96,7 +81,7 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
 
       set_highlight();
 
-      ASSIGN_OR(continue, auto line_str, LoadLine(source, line));
+      std::string_view line_str = source->line(line.value);
 
       if (next_highlight_change and next_highlight_change->line_num > line) {
         absl::FPrintF(out_, "%s", line_str);

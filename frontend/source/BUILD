@@ -1,6 +1,25 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "buffer",
+    hdrs = ["buffer.h"],
+    srcs = ["buffer.cc"],
+    deps = [
+        "//base:debug",
+        "@com_google_absl//absl/container:inlined_vector",
+    ],
+)
+
+cc_test(
+    name = "buffer_test",
+    srcs = ["buffer_test.cc"],
+    deps = [
+        ":buffer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "source",
     hdrs = ["source.h"],
     deps = [
@@ -25,6 +44,7 @@ cc_library(
     deps = [
         ":file_name",
         ":source",
+        ":string",
         "//base:expected",
         "//base:strong_types",
         "//diagnostic:message",
@@ -91,7 +111,10 @@ cc_library(
 cc_library(
     name = "string",
     hdrs = ["string.h"],
-    deps = [":source"],
+    deps = [
+        ":buffer",
+        ":source"
+    ],
 )
 
 cc_test(
