@@ -109,39 +109,40 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
   current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
 
+void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
+  auto [copy_fn, copy_inserted] =
+      c.context().root().InsertCopyAssign(array_type, array_type);
+  auto [move_fn, move_inserted] =
+      c.context().root().InsertMoveAssign(array_type, array_type);
+  ASSERT(copy_inserted == move_inserted);
+  if (copy_inserted) {
+    ICARUS_SCOPE(ir::SetCurrent(copy_fn, c.builder())) {
+      EmitArrayAssignment<Copy>(c, array_type, array_type);
+    }
+    ICARUS_SCOPE(ir::SetCurrent(move_fn, c.builder())) {
+      EmitArrayAssignment<Move>(c, array_type, array_type);
+    }
+
+    copy_fn->WriteByteCode<interpreter::instruction_set_t>();
+    move_fn->WriteByteCode<interpreter::instruction_set_t>();
+    // TODO: Remove const_cast.
+    const_cast<type::Array *>(array_type)->SetAssignments(copy_fn, move_fn);
+  }
+}
+
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
     type::Typed<ir::Value> const &from) {
-  auto [fn, inserted] =
-      context().root().InsertCopyAssign(to.type(), from.type());
-  if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
-      ASSERT(from.type().is<type::Array>() == true);
-      EmitArrayAssignment<Copy>(*this, to.type(),
-                                &from.type().as<type::Array>());
-    }
-    fn->WriteByteCode<interpreter::instruction_set_t>();
-    // TODO: Remove const_cast.
-    const_cast<type::Array *>(to.type())->SetCopyAssign(fn);
-  }
+  ASSERT(type::Type(to.type()) == from.type());
+  SetArrayAssignments(*this, &to.type()->as<type::Array>());
   builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
 }
 
 void Compiler::EmitMoveAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
     type::Typed<ir::Value> const &from) {
-  auto [fn, inserted] =
-      context().root().InsertMoveAssign(to.type(), from.type());
-  if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
-      ASSERT(from.type().is<type::Array>() == true);
-      EmitArrayAssignment<Move>(*this, to.type(),
-                                &from.type().as<type::Array>());
-    }
-    fn->WriteByteCode<interpreter::instruction_set_t>();
-    // TODO: Remove const_cast.
-    const_cast<type::Array *>(to.type())->SetMoveAssign(fn);
-  }
+  ASSERT(type::Type(to.type()) == from.type());
+  SetArrayAssignments(*this, &to.type()->as<type::Array>());
   builder().Move(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
 }
 

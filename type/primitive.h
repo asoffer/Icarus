@@ -16,7 +16,6 @@ struct Primitive : public LegacyType {
 #undef PRIMITIVE_MACRO
   };
 
-  TYPE_FNS(Primitive);
   constexpr Primitive(BasicType pt)
       : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
                                      .is_copyable              = 1,
@@ -40,6 +39,10 @@ struct Primitive : public LegacyType {
   }
 
   Completeness completeness() const override { return Completeness::Complete; }
+
+  void WriteTo(std::string *buf) const override;
+  core::Bytes bytes(core::Arch const &arch) const override;
+  core::Alignment alignment(core::Arch const &arch) const override;
 
   bool is_big() const override { return false; }
   bool is_integral() const;

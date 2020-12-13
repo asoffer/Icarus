@@ -37,8 +37,7 @@ struct Opaque : public LegacyType {
     UNREACHABLE("Must not request the alignment of an opaque type");
   }
 
-  // TODO is this right?
-  bool IsDefaultInitializable() const { return false; }
+  bool IsDefaultInitializable() const { UNREACHABLE(); }
 };
 
 struct OpaqueTypeInstruction

@@ -9,6 +9,7 @@
 #include "ir/value/scope.h"
 #include "ir/value/string.h"
 #include "ir/value/value.h"
+#include "base/no_destructor.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -134,13 +135,12 @@ bool Compare(::type::Type t) {
 
 template <typename... Ts, typename Fn>
 auto ApplyTypes(Type t, Fn &&fn) {
-  // TODO base::NoDestroy would be nice here.
   using return_type = decltype(fn.template operator()<base::first_t<Ts...>>());
 
   // Create a static array of funtions that may be called depending on which
   // type matches.
-  static auto const *kFnToCall =
-      new std::array<return_type (*)(Fn &&), sizeof...(Ts)>{
+  static base::NoDestructor kFnToCall =
+      std::array<return_type (*)(Fn &&), sizeof...(Ts)>{
           [](Fn &&f) { return f.template operator()<Ts>(); }...};
 
   // Using fold expressions, take the disjunction of `type::Compare<T>(t)` over

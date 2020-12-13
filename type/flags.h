@@ -19,8 +19,6 @@ namespace type {
 struct Flags : public type::LegacyType {
   using underlying_type = uint64_t;
 
-  TYPE_FNS(Flags);
-
   Flags(module::BasicModule const *mod)
       : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
                                      .is_copyable              = 1,
@@ -37,6 +35,10 @@ struct Flags : public type::LegacyType {
   }
 
   bool is_big() const override { return false; }
+
+  void WriteTo(std::string *buf) const override;
+  core::Bytes bytes(core::Arch const &arch) const override;
+  core::Alignment alignment(core::Arch const &arch) const override;
 
   Completeness completeness() const override { return completeness_; }
   void complete() { completeness_ = Completeness::Complete; }

@@ -14,8 +14,6 @@ Callable const *MakeOverloadSet(
 Callable const *MakeOverloadSet(absl::flat_hash_set<Callable const *> &&cs);
 
 struct OverloadSet : Callable {
-  TYPE_FNS(OverloadSet);
-
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -25,6 +23,10 @@ struct OverloadSet : Callable {
   }
 
   Completeness completeness() const override { return Completeness::Complete; }
+
+  void WriteTo(std::string *buf) const override;
+  core::Bytes bytes(core::Arch const &arch) const override;
+  core::Alignment alignment(core::Arch const &arch) const override;
 
   std::vector<type::Type> return_types(
       core::Arguments<type::Typed<ir::Value>> const &args) const override;

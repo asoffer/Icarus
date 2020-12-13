@@ -12,7 +12,6 @@
 namespace type {
 
 struct Function : public Callable {
-  TYPE_FNS(Function);
   Function(core::Params<QualType> in, std::vector<Type> out)
       : params_(std::move(in)), output_(std::move(out)) {
 #if defined(ICARUS_DEBUG)
@@ -32,6 +31,10 @@ struct Function : public Callable {
   }
 
   bool is_big() const override { return false; }
+
+  void WriteTo(std::string *buf) const override;
+  core::Bytes bytes(core::Arch const &arch) const override;
+  core::Alignment alignment(core::Arch const &arch) const override;
 
   Completeness completeness() const override { return Completeness::Complete; }
 

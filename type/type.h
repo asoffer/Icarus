@@ -8,11 +8,6 @@
 #include "core/arch.h"
 #include "type/visitor_base.h"
 
-#define TYPE_FNS(name)                                                         \
-  void WriteTo(std::string *buf) const override;                               \
-  core::Bytes bytes(core::Arch const &arch) const override;                    \
-  core::Alignment alignment(core::Arch const &arch) const override
-
 namespace type {
 // `Completeness` is an enum that describes the status of a partially
 // cosntructed type. While this is primarily of interest for user-defined
@@ -84,8 +79,7 @@ struct LegacyType : base::Cast<LegacyType> {
 };
 
 struct Type {
-  Type(LegacyType const *t = nullptr)
-      : kind_(Kind::Legacy), data_(reinterpret_cast<uintptr_t>(t)) {}
+  Type(LegacyType const *t = nullptr) : data_(reinterpret_cast<uintptr_t>(t)) {}
 
   LegacyType *get() { return reinterpret_cast<LegacyType *>(data_); }
   LegacyType const *get() const {
@@ -101,8 +95,7 @@ struct Type {
   bool valid() const { return get(); }
 
   // Template avoids implicit conversions.
-  template <typename T,
-            std::enable_if_t<base::meta<T> == base::meta<Type>, int> = 0>
+  template <std::same_as<Type> T>
   friend bool operator==(T lhs, T rhs) {
     return lhs.data_ == rhs.data_;
   }
@@ -143,7 +136,6 @@ struct Type {
   }
 
  private:
-  enum class Kind { Legacy, Opaque, NonLegacy } kind_;
   uintptr_t data_;
 };
 

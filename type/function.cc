@@ -8,12 +8,7 @@ static base::Global<absl::flat_hash_map<
     core::Params<QualType>, absl::node_hash_map<std::vector<Type>, Function>>>
     funcs_;
 Function const *Func(core::Params<QualType> in, std::vector<Type> out) {
-  // TODO if void is unit in some way we shouldn't do this.
   auto f = Function(in, out);
-
-  // output_span is backed by a vector that doesn't move even when the
-  // containing function does so this is safe to reference even after `f` is
-  // moved.
   auto handle           = funcs_.lock();
   auto &ret_map         = (*handle)[std::move(in)];
   auto [iter, inserted] = ret_map.emplace(out, std::move(f));
