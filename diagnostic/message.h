@@ -39,20 +39,22 @@ struct SourceQuote {
 
   // TODO implement for real.
   SourceQuote& Highlighted(frontend::SourceRange range, Style style) {
-    auto line_interval = range.lines();
-    if (range.lines().begin() >
-        frontend::LineNum(
-            std::numeric_limits<frontend::LineNum::underlying_type>::min())) {
-      range.lines().begin() = range.lines().begin() - 1;
-    }
+    if (source) {
+      auto line_interval = range.lines(source->buffer());
+      if (line_interval.begin() >
+          frontend::LineNum(
+              std::numeric_limits<frontend::LineNum::underlying_type>::min())) {
+        line_interval.begin() = line_interval.begin() - 1;
+      }
 
-    if (range.lines().end() <
-        frontend::LineNum(
-            std::numeric_limits<frontend::LineNum::underlying_type>::max())) {
-      range.lines().end() = range.lines().end() + 1;
-    }
+      if (line_interval.end() <
+          frontend::LineNum(
+              std::numeric_limits<frontend::LineNum::underlying_type>::max())) {
+        line_interval.end() = line_interval.end() + 1;
+      }
 
-    lines.insert(line_interval);
+      lines.insert(line_interval);
+    }
     highlights.emplace_back(range, style);
     return *this;
   }

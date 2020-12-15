@@ -69,5 +69,54 @@ TEST(SourceBuffer, MultipleChunks) {
   EXPECT_EQ(buffer.line(9), "\n");
 }
 
+TEST(SourceBuffer, LineNumberAndOffset) {
+  SourceBuffer buffer("abc\ndef\n\nghi");
+  SourceLoc loc(0, 0);
+  EXPECT_EQ(buffer.line_number(loc), LineNum(1));
+  EXPECT_EQ(buffer.offset_in_line(loc), Offset(0));
+  EXPECT_EQ(buffer.line_and_offset(loc), std::pair(LineNum(1), Offset(0)));
+
+  loc = SourceLoc(0, 1);
+  EXPECT_EQ(buffer.line_number(loc), LineNum(1));
+  EXPECT_EQ(buffer.offset_in_line(loc), Offset(1));
+  EXPECT_EQ(buffer.line_and_offset(loc), std::pair(LineNum(1), Offset(1)));
+
+  loc = SourceLoc(0, 3);
+  EXPECT_EQ(buffer.line_number(loc), LineNum(1));
+  EXPECT_EQ(buffer.offset_in_line(loc), Offset(3));
+  EXPECT_EQ(buffer.line_and_offset(loc), std::pair(LineNum(1), Offset(3)));
+
+  loc = SourceLoc(0, 4);
+  EXPECT_EQ(buffer.line_number(loc), LineNum(2));
+  EXPECT_EQ(buffer.offset_in_line(loc), Offset(0));
+  EXPECT_EQ(buffer.line_and_offset(loc), std::pair(LineNum(2), Offset(0)));
+
+  loc = SourceLoc(0, 7);
+  EXPECT_EQ(buffer.line_number(loc), LineNum(2));
+  EXPECT_EQ(buffer.offset_in_line(loc), Offset(3));
+  EXPECT_EQ(buffer.line_and_offset(loc), std::pair(LineNum(2), Offset(3)));
+
+  loc = SourceLoc(0, 8);
+  EXPECT_EQ(buffer.line_number(loc), LineNum(3));
+  EXPECT_EQ(buffer.offset_in_line(loc), Offset(0));
+  EXPECT_EQ(buffer.line_and_offset(loc), std::pair(LineNum(3), Offset(0)));
+
+  loc = SourceLoc(0, 9);
+  EXPECT_EQ(buffer.line_number(loc), LineNum(4));
+  EXPECT_EQ(buffer.offset_in_line(loc), Offset(0));
+  EXPECT_EQ(buffer.line_and_offset(loc), std::pair(LineNum(4), Offset(0)));
+
+  loc = SourceLoc(0, 10);
+  EXPECT_EQ(buffer.line_number(loc), LineNum(4));
+  EXPECT_EQ(buffer.offset_in_line(loc), Offset(1));
+  EXPECT_EQ(buffer.line_and_offset(loc), std::pair(LineNum(4), Offset(1)));
+}
+
+TEST(SourceBuffer, Range) {
+  SourceBuffer buffer("abc\ndef\n\nghi");
+  SourceRange range(SourceLoc(0, 1), SourceLoc(0, 5));
+  EXPECT_EQ(buffer[range], "bc\nd");
+}
+
 }  // namespace
 }  // namespace frontend

@@ -83,24 +83,26 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
 
       std::string_view line_str = source->line(line.value);
 
-      if (next_highlight_change and next_highlight_change->line_num > line) {
+      if (next_highlight_change and
+          source->buffer().line_number(*next_highlight_change) > line) {
         absl::FPrintF(out_, "%s", line_str);
         continue;
       }
 
       if (next_highlight_change) {
-        ASSERT(next_highlight_change->line_num == line);
+        ASSERT(source->buffer().line_number(*next_highlight_change) == line);
       }
 
       frontend::Offset off{0};
       while (next_highlight_change and
-             next_highlight_change->line_num == line) {
-        absl::FPrintF(
-            out_, "%s",
-            line_str.substr(off.value,
-                            next_highlight_change->offset.value - off.value));
+             source->buffer().line_number(*next_highlight_change) == line) {
+        absl::FPrintF(out_, "%s",
+                      line_str.substr(
+                          off.value,
+                          source->buffer().offset_in_line(*next_highlight_change).value -
+                              off.value));
 
-        off = next_highlight_change->offset;
+        off = source->buffer().offset_in_line(*next_highlight_change);
         if (inside_highlight) {
           inside_highlight = false;
           ++highlight_iter;

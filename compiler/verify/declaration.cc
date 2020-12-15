@@ -32,8 +32,8 @@ struct ShadowingDeclaration {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Ambiguous declarations:"),
         diagnostic::SourceQuote(src)
-            .Line(range1.begin().line_num)
-            .Line(range2.begin().line_num));
+            .Highlighted(range1, diagnostic::Style{})
+            .Highlighted(range1, diagnostic::Style{}));
   }
 
   frontend::SourceRange range1;

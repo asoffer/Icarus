@@ -43,9 +43,8 @@ type::QualType Compiler::VerifyType(ast::YieldStmt const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
-  LOG("ScopeNode", "Verifying ScopeNode named `%s` at %d:%d",
-      node->name()->DebugString(), node->name()->range().begin().line_num.value,
-      node->name()->range().begin().offset.value);
+  LOG("ScopeNode", "Verifying ScopeNode named `%s`",
+      node->name()->DebugString());
   // TODO: The type of the arguments and the scope name are independent and
   // should not have early-exists.
 

@@ -39,6 +39,8 @@ struct Source : frontend::Source {
 
   std::string FileName() const override { return "repl"; }
 
+  frontend::SourceBuffer const& buffer() const override { return buffer_; }
+
   std::istream& input_;
   std::ostream& output_;
   frontend::SourceBuffer buffer_;

@@ -7,6 +7,7 @@
 
 #include "base/cast.h"
 #include "base/expected.h"
+#include "frontend/source/buffer.h"
 
 namespace frontend {
 
@@ -29,6 +30,8 @@ struct Source : base::Cast<Source> {
   virtual std::string_view line(size_t line_num) const = 0;
 
   virtual std::string FileName() const = 0;
+
+  virtual SourceBuffer const& buffer() const = 0;
 };
 
 }  // namespace frontend

@@ -43,6 +43,8 @@ struct FileSource : public Source {
     return src_.line(line_num);
   }
 
+  SourceBuffer const &buffer() const override { return src_.buffer(); }
+
   std::string FileName() const override { return std::string(name_.name()); }
 
  private:

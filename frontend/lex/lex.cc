@@ -231,12 +231,10 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
       return std::nullopt;
     case '=':
       cursor->remove_prefix(1);
-      span.end().line_num = span.begin().line_num;
-      span.end().offset   = span.begin().offset + 2;
+      span.end() = span.begin() + Offset(2);
       return std::pair{span, Operator::DivEq};
     default:
-      span.end().line_num = span.begin().line_num;
-      span.end().offset   = span.begin().offset + 1;
+      span.end() = span.begin() + Offset(1);
       return std::pair{span, Operator::Div};
   }
 }
@@ -449,11 +447,19 @@ restart:
   // Delegate based on the next character in the file stream
   if (state->cursor_.view().empty()) {
     auto chunk = state->src_->ReadUntil('\n');
-    if (chunk.more_to_read) {
-      state->cursor_ =
-          SourceCursor(state->cursor_.loc().next_line(), chunk.view);
-      return Lexeme(Syntax::ImplicitNewline,
-                    state->cursor_.remove_prefix(0).range());
+    if (state->cursor_.loc() != state->src_->buffer().end()) {
+      auto const &buffer = state->src_->buffer();
+      auto loc =
+          buffer.location((buffer.line_number(state->cursor_.loc()) + 1));
+
+      if (loc != state->src_->buffer().end()) {
+        state->cursor_ = SourceCursor(loc, chunk.view);
+        return Lexeme(Syntax::ImplicitNewline,
+                      state->cursor_.remove_prefix(0).range());
+      } else {
+        return Lexeme(Syntax::EndOfFile,
+                      state->cursor_.remove_prefix(0).range());
+      }
     } else {
       return Lexeme(Syntax::EndOfFile, state->cursor_.remove_prefix(0).range());
     }

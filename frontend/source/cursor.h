@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "base/debug.h"
+#include "frontend/source/buffer.h"
 #include "frontend/source/range.h"
 
 namespace frontend {
@@ -30,13 +31,13 @@ struct SourceCursor {
 
     SourceCursor removed(loc_, std::string_view(view_.data(), len));
     view_.remove_prefix(len);
-    loc_.offset += len;
+    loc_ += Offset(len);
     return removed;
   }
 
   constexpr SourceRange range() const {
     auto end = loc_;
-    end.offset += view_.size();
+    end += Offset(view_.size());
     return SourceRange(loc_, end);
   }
 

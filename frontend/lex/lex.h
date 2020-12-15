@@ -16,8 +16,7 @@ struct LexState {
   LexState(Source *src, diagnostic::DiagnosticConsumer &diag,
            LineNum initial_line_num = LineNum(1))
       : src_(src),
-        cursor_(SourceLoc(initial_line_num, Offset(0)),
-                src_->ReadUntil('\n').view),
+        cursor_(SourceLoc(0, 0), src_->ReadUntil('\n').view),
         diag_(diag) {}
 
   char peek() {

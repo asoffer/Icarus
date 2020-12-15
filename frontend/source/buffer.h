@@ -1,14 +1,90 @@
 #ifndef ICARUS_FRONTEND_SOURCE_BUFFER_H
 #define ICARUS_FRONTEND_SOURCE_BUFFER_H
 
-#include <vector>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "absl/container/inlined_vector.h"
 #include "base/debug.h"
+#include "base/interval.h"
+#include "base/strong_types.h"
 
 namespace frontend {
+
+struct SourceBuffer;  // Defined below
+
+ICARUS_BASE_DEFINE_STRONG_TYPE(LineNum, uint32_t{0},  //
+                               base::EnableRawArithmetic,
+                               base::EnableComparisons);
+ICARUS_BASE_DEFINE_STRONG_TYPE(Offset, uint32_t{0},  //
+                               base::EnableRawArithmetic,
+                               base::EnableComparisons);
+
+// Represents a location of source in an implicit SourceBuffer (defined below).
+struct SourceLoc {
+  explicit constexpr SourceLoc(size_t chunk, size_t offset)
+      : chunk_(chunk), offset_(offset) {}
+
+  constexpr SourceLoc &operator+=(Offset offset) {
+    offset_ += offset.value;
+    return *this;
+  }
+
+  constexpr SourceLoc &operator-=(Offset offset) {
+    offset_ -= offset.value;
+    return *this;
+  }
+
+  friend constexpr SourceLoc operator+(SourceLoc loc, Offset offset) {
+    return loc += offset;
+  }
+
+  friend constexpr SourceLoc operator-(SourceLoc loc, Offset offset) {
+    return loc -= offset;
+  }
+
+  constexpr auto operator<=>(SourceLoc const &) const = default;
+
+ private:
+  friend struct SourceBuffer;
+
+  size_t chunk_  = 0;
+  size_t offset_ = 0;
+};
+
+// Represents a half-open range of source in an implicit SourceBuffer (defined
+// below).
+struct SourceRange {
+  constexpr SourceRange() : begin_(0, 0), end_(0, 0) {}
+  explicit constexpr SourceRange(SourceLoc const &b, SourceLoc const &e)
+      : begin_(b), end_(e) {}
+
+  // Constructs a SourceRange. If `n` is positive the range starts at `l` and
+  // has length `n`. If `n` is negative, the range ends at `l` and has length
+  // `n`. In either case, assumes that no newline characters are present inside
+  // the constructed range.
+  explicit constexpr SourceRange(SourceLoc const &l, int n)
+      : SourceRange(l + Offset{std::min(n, 0)}, l + Offset{std::max(n, 0)}) {}
+
+  base::Interval<LineNum> lines(SourceBuffer const &buffer) const;
+
+  constexpr SourceRange expanded(Offset o) {
+    return SourceRange(begin() - o, end() + o);
+  }
+
+  constexpr SourceLoc begin() const { return begin_; }
+  constexpr SourceLoc end() const { return end_; }
+
+  constexpr SourceLoc &begin() { return begin_; }
+  constexpr SourceLoc &end() { return end_; }
+
+ private:
+  friend struct SourceBuffer;
+
+  SourceLoc begin_, end_;
+};
+
 // Represents source code held in memory. There are two common ways a
 // SourceBuffer can be constructed. First, a SourceBuffer can load a static file
 // into memory all at once. This is the common case for compilation. Second, a
@@ -25,14 +101,7 @@ struct SourceBuffer {
   // internal invariant of this type is that all chunks except the last one end
   // with a newline. It is therefore a prerequisite of `AppendChunk` that the
   // last chunk inserted has a newline.
-  void AppendChunk(std::string chunk) {
-    if (not chunks_.empty()) {
-      ASSERT(chunks_.back().size() != 0);
-      ASSERT(chunks_.back().back() == '\n');
-    }
-    IndexLineStarts(chunk, chunks_.size());
-    chunks_.push_back(std::move(chunk));
-  }
+  void AppendChunk(std::string chunk);
 
   size_t num_chunks() const { return chunks_.size(); }
 
@@ -67,6 +136,25 @@ struct SourceBuffer {
       return std::string_view(line.data() + start_offset);
     }
   }
+  std::string_view line(LineNum line_num) const { return line(line_num.value); }
+
+  // Returns the line number of the line containing this source location.
+  LineNum line_number(SourceLoc loc) const;
+
+  // Returns the offset into this line for the given source location.
+  Offset offset_in_line(SourceLoc loc) const;
+
+  // Returns the line number and offset of the source location into this buffer.
+  std::pair<LineNum, Offset> line_and_offset(SourceLoc loc) const;
+
+  // Returns the source location representing the start of the given line number.
+  SourceLoc location(LineNum line_num) const;
+
+  // Returns a string_view of the source code in this buffer in the given range.
+  std::string_view operator[](SourceRange const &range);
+
+  // Returns a SourceLoc referring to one character passed the end of the source buffer.
+  SourceLoc end() const { return line_start_.back(); }
 
  private:
   // Computes and stores the indices for the start location of each line.
@@ -74,16 +162,8 @@ struct SourceBuffer {
 
   absl::InlinedVector<std::string, 1> chunks_;
 
-  // `IndexedOffset` represents an offset into a given chunk in `chunks_`.
-  struct IndexedOffset {
-    size_t chunk     = 0;
-    size_t offset    = 0;
-    auto operator<=>(IndexedOffset const&) const = default;
-   };
-
   // Offsets of lines stored with begin and end sentinels.
-   std::vector<IndexedOffset> line_start_ = {
-       IndexedOffset{.chunk = 0, .offset = 0}};
+  std::vector<SourceLoc> line_start_ = {SourceLoc(0, 0)};
 };
 
 }  // namespace frontend

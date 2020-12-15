@@ -40,6 +40,8 @@ struct StringSource : public Source {
 
   std::string FileName() const override { return "<string>"; }
 
+  SourceBuffer const& buffer() const override { return src_; }
+
  private:
   SourceBuffer src_;
   std::string_view view_;

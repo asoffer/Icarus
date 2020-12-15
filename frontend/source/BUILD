@@ -6,6 +6,8 @@ cc_library(
     srcs = ["buffer.cc"],
     deps = [
         "//base:debug",
+        "//base:interval",
+        "//base:strong_types",
         "@com_google_absl//absl/container:inlined_vector",
     ],
 )
@@ -23,6 +25,7 @@ cc_library(
     name = "source",
     hdrs = ["source.h"],
     deps = [
+        ":buffer",
         "//base:cast",
         "//base:expected",
     ],
@@ -32,6 +35,7 @@ cc_library(
     name = "cursor",
     hdrs = ["cursor.h"],
     deps = [
+        ":buffer",
         ":range",
         "//base:debug",
     ],
@@ -92,9 +96,8 @@ cc_library(
     name = "range",
     hdrs = ["range.h"],
     deps = [
-        "//base:debug",
+        ":buffer",
         "//base:interval",
-        "//base:strong_types",
     ],
 )
 
