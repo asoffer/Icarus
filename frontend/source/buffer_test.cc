@@ -118,5 +118,29 @@ TEST(SourceBuffer, Range) {
   EXPECT_EQ(buffer[range], "bc\nd");
 }
 
+TEST(SourceBuffer, ConsumeChunkWhile) {
+  SourceBuffer buffer("abc\ndef\n\nghi");
+  {
+    SourceLoc loc(0, 0);
+    EXPECT_EQ(buffer.ConsumeChunkWhile(loc, [](char c) { return c != 'e'; }),
+              "abc\nd");
+    EXPECT_EQ(loc, SourceLoc(0, 5));
+  }
+
+  {
+    SourceLoc loc(0, 1);
+    EXPECT_EQ(buffer.ConsumeChunkWhile(loc, [](char) { return false; }), "");
+    EXPECT_EQ(loc, SourceLoc(0, 1));
+  }
+}
+
+TEST(SourceBuffer, Indexing) {
+  SourceBuffer buffer("abc\ndef\n\nghi");
+  EXPECT_EQ(buffer[SourceLoc(0, 1)], 'b');
+  EXPECT_EQ(buffer[SourceLoc(0, 5)], 'e');
+  EXPECT_EQ(buffer[SourceRange(SourceLoc(0, 1), SourceLoc(0, 5))], "bc\nd");
+  EXPECT_EQ(buffer[SourceRange(SourceLoc(0, 1), SourceLoc(0, 1))], "");
+}
+
 }  // namespace
 }  // namespace frontend

@@ -31,6 +31,7 @@ struct Source : base::Cast<Source> {
 
   virtual std::string FileName() const = 0;
 
+  virtual SourceBuffer& buffer()             = 0;
   virtual SourceBuffer const& buffer() const = 0;
 };
 

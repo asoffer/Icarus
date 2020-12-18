@@ -130,6 +130,9 @@ constexpr inline bool IsAlphaNumeric(char c) {
 constexpr inline bool IsWhitespace(char c) {
   return c == ' ' or c == '\t' or c == '\n' or c == '\r';
 }
+constexpr inline bool IsHorizontalWhitespace(char c) {
+  return c == ' ' or c == '\t';
+}
 constexpr inline bool IsAlphaOrUnderscore(char c) {
   return IsAlpha(c) or (c == '_');
 }
@@ -227,7 +230,7 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
   // TODO support multi-line comments?
   switch (cursor->view()[0]) {
     case '/':  // line comment
-      cursor->ConsumeWhile([](char) { return true; });
+      cursor->ConsumeWhile([](char c) { return c != '\n'; });
       return std::nullopt;
     case '=':
       cursor->remove_prefix(1);
@@ -435,9 +438,9 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src,
 }  // namespace
 
 std::vector<Lexeme> Lex(Source &src, diagnostic::DiagnosticConsumer &diag,
-                        LineNum initial_line_num) {
+                        size_t chunk) {
   std::vector<Lexeme> result;
-  LexState state(&src, diag, initial_line_num);
+  LexState state(&src, diag, chunk);
   do { result.push_back(NextToken(&state)); } while (not result.back().eof());
   return result;
 }
@@ -446,23 +449,7 @@ Lexeme NextToken(LexState *state) {
 restart:
   // Delegate based on the next character in the file stream
   if (state->cursor_.view().empty()) {
-    auto chunk = state->src_->ReadUntil('\n');
-    if (state->cursor_.loc() != state->src_->buffer().end()) {
-      auto const &buffer = state->src_->buffer();
-      auto loc =
-          buffer.location((buffer.line_number(state->cursor_.loc()) + 1));
-
-      if (loc != state->src_->buffer().end()) {
-        state->cursor_ = SourceCursor(loc, chunk.view);
-        return Lexeme(Syntax::ImplicitNewline,
-                      state->cursor_.remove_prefix(0).range());
-      } else {
-        return Lexeme(Syntax::EndOfFile,
-                      state->cursor_.remove_prefix(0).range());
-      }
-    } else {
-      return Lexeme(Syntax::EndOfFile, state->cursor_.remove_prefix(0).range());
-    }
+    return Lexeme(Syntax::EndOfFile, state->cursor_.remove_prefix(0).range());
   } else if (IsAlphaOrUnderscore(state->peek())) {
     return NextWord(&state->cursor_, state->src_);
   } else if (IsDigit(state->peek()) or
@@ -472,7 +459,10 @@ restart:
   }
 
   char peek = state->peek();
-  if (static_cast<uint8_t>(peek) >= 0x80 or not std::isprint(peek)) {
+  if (peek == '\n') {
+    return Lexeme(Syntax::ImplicitNewline,
+                  state->cursor_.remove_prefix(1).range());
+  } else if (static_cast<uint8_t>(peek) >= 0x80 or not std::isprint(peek)) {
     auto loc = state->cursor_.loc();
     state->cursor_.remove_prefix(1);
     state->diag_.Consume(UnprintableSourceCharacter{
@@ -529,9 +519,11 @@ restart:
     } break;
     case '\n':
     case '\r':
-    case '\v':
+      return Lexeme(Syntax::ImplicitNewline,
+                    state->cursor_.remove_prefix(1).range());
+    case '\v':  // TODO: Should we disallow out vertical tabs entirely?
     case '\t':
-    case ' ': state->cursor_.ConsumeWhile(IsWhitespace); goto restart;
+    case ' ': state->cursor_.ConsumeWhile(IsHorizontalWhitespace); goto restart;
     case '~':
     case '?': {
       auto loc = state->cursor_.loc();

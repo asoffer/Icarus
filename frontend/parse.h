@@ -11,8 +11,7 @@
 namespace frontend {
 
 std::vector<std::unique_ptr<ast::Node>> Parse(
-    Source& src, diagnostic::DiagnosticConsumer& diag,
-    LineNum initial_line_num = LineNum(1));
+    Source& src, diagnostic::DiagnosticConsumer& diag, size_t chunk = 0);
 }  // namespace frontend
 
 #endif  // ICARUS_FRONTEND_PARSE_H

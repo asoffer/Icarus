@@ -1,8 +1,13 @@
 #include <iterator>
 
+#include "absl/strings/str_cat.h"
 #include "frontend/source/buffer.h"
 
 namespace frontend {
+
+std::string SourceLoc::DebugString() const {
+  return absl::StrCat("<", chunk_, ":", offset_, ">");
+}
 
 base::Interval<LineNum> SourceRange::lines(SourceBuffer const &buffer) const {
   return base::Interval<LineNum>(buffer.line_number(begin()),
@@ -56,7 +61,7 @@ SourceLoc SourceBuffer::location(LineNum line_num) const {
   return line_start_[line_num.value - 1];
 }
 
-std::string_view SourceBuffer::operator[](SourceRange const &range) {
+std::string_view SourceBuffer::operator[](SourceRange const &range) const {
   ASSERT(range.begin().chunk_ == range.end().chunk_);
   return std::string_view(chunks_[range.begin().chunk_])
       .substr(range.begin().offset_,

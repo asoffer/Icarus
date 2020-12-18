@@ -12,11 +12,12 @@
 #include "ast/overload_set.h"
 #include "base/log.h"
 #include "base/ptr_span.h"
+#include "compiler/compiler.h"
+#include "diagnostic/consumer/aborting.h"
 #include "diagnostic/consumer/tracking.h"
 #include "frontend/source/range.h"
 #include "module/mock_importer.h"
 #include "module/module.h"
-#include "test/util.h"
 
 namespace test {
 
@@ -26,24 +27,32 @@ struct TestModule : compiler::CompiledModule {
             .data                = context(),
             .diagnostic_consumer = consumer,
             .importer            = importer,
-        }) {}
+        }),
+        source("\n") {}
   ~TestModule() { compiler.CompleteDeferredBodies(); }
 
   void AppendCode(std::string code) {
     code.push_back('\n');
-    frontend::StringSource source(std::move(code));
-    AppendNodes(frontend::Parse(source, consumer, next_line_num), consumer,
-                importer);
-    next_line_num += 100;
+    source.buffer().AppendChunk(std::move(code));
+    AppendNodes(
+        frontend::Parse(source, consumer, source.buffer().num_chunks() - 1),
+        consumer, importer);
   }
 
   template <typename NodeType>
   NodeType const* Append(std::string code) {
-    auto node       = test::ParseAs<NodeType>(std::move(code), next_line_num);
-    auto const* ptr = ASSERT_NOT_NULL(node.get());
-    next_line_num += 100;
-    AppendNode(std::move(node), consumer, importer);
-    return ptr;
+    code.push_back('\n');
+    source.buffer().AppendChunk(std::move(code));
+
+    diagnostic::AbortingConsumer diag(&source);
+    auto stmts =
+        frontend::Parse(source, diag, source.buffer().num_chunks() - 1);
+    if (auto* ptr = stmts[0]->template if_as<NodeType>()) {
+      AppendNode(std::move(stmts[0]), consumer, importer);
+      return ptr;
+    } else {
+      return nullptr;
+    }
   }
 
   module::MockImporter importer;
@@ -59,20 +68,8 @@ struct TestModule : compiler::CompiledModule {
   }
 
  private:
-  frontend::LineNum next_line_num = frontend::LineNum(1);
+  frontend::StringSource source;
 };
-
-ast::Call const* MakeCall(
-    std::string fn, std::vector<std::string> pos_args,
-    absl::flat_hash_map<std::string, std::string> named_args,
-    TestModule* module) {
-  auto call_expr = std::make_unique<ast::Call>(
-      frontend::SourceRange{}, ParseAs<ast::Expression>(std::move(fn)),
-      MakeArguments(std::move(pos_args), std::move(named_args)));
-  auto* expr = call_expr.get();
-  module->AppendNode(std::move(call_expr), module->consumer, module->importer);
-  return expr;
-}
 
 }  // namespace test
 

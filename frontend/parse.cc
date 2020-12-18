@@ -288,10 +288,12 @@ struct CommaList : ast::Expression {
   }
 
   void DebugStrAppend(std::string *out, size_t indent) const override {
-    absl::StrAppend(
-        out, absl::StrJoin(exprs_, ", ", [](std::string *out, auto const &e) {
-          absl::StrAppend(out, e->DebugString());
-        }));
+    absl::StrAppend(out, "(",
+                    absl::StrJoin(exprs_, ", ",
+                                  [](std::string *out, auto const &e) {
+                                    absl::StrAppend(out, e->DebugString());
+                                  }),
+                    ")");
   }
 
   std::vector<std::unique_ptr<ast::Expression>> &&extract() && {
@@ -1839,9 +1841,8 @@ void CleanUpReduction(ParseState *state) {
 }  // namespace
 
 std::vector<std::unique_ptr<ast::Node>> Parse(
-    Source &src, diagnostic::DiagnosticConsumer &diag,
-    LineNum initial_line_num) {
-  auto nodes = Lex(src, diag, initial_line_num);
+    Source &src, diagnostic::DiagnosticConsumer &diag, size_t chunk) {
+  auto nodes = Lex(src, diag, chunk);
   // TODO: Shouldn't need this protection.
   if (nodes.size() == 1) { return {}; }
   ParseState state(std::move(nodes), diag);

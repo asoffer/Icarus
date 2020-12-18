@@ -46,6 +46,8 @@ struct SourceLoc {
 
   constexpr auto operator<=>(SourceLoc const &) const = default;
 
+  std::string DebugString() const;
+
  private:
   friend struct SourceBuffer;
 
@@ -151,7 +153,31 @@ struct SourceBuffer {
   SourceLoc location(LineNum line_num) const;
 
   // Returns a string_view of the source code in this buffer in the given range.
-  std::string_view operator[](SourceRange const &range);
+  std::string_view operator[](SourceRange const &range) const;
+
+  // Returns the character at the given source location.
+  char operator[](SourceLoc loc) const {
+    return chunks_[loc.chunk_][loc.offset_];
+  }
+
+  // Starting at `loc`, returns a view of the source for each character on which
+  // the predicate `pred` holds, and updates `loc` to refer to the first
+  // location at which `pred` no longer holds. Each predicate must return false
+  // at some point between `loc` and the end of the chunk referenced by `loc`
+  // (behavior is undefined otherwise).
+  template <std::predicate<char> P>
+  std::string_view ConsumeChunkWhile(SourceLoc &loc, P &&pred) const {
+    ASSERT(loc.chunk_ < chunks_.size());
+    std::string_view chunk = chunks_[loc.chunk_];
+    size_t offset          = loc.offset_;
+    while (pred(chunk[offset])) {
+      ++offset;
+      ASSERT(offset < chunk.size());
+    }
+    std::string_view result = chunk.substr(loc.offset_, offset - loc.offset_);
+    loc.offset_             = offset;
+    return result;
+  }
 
   // Returns a SourceLoc referring to one character passed the end of the source buffer.
   SourceLoc end() const { return line_start_.back(); }

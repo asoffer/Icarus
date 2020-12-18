@@ -1,6 +1,7 @@
 #ifndef ICARUS_DIAGNOSTIC_MESSAGE_H
 #define ICARUS_DIAGNOSTIC_MESSAGE_H
 
+#include <algorithm>
 #include <string>
 #include <variant>
 
@@ -37,21 +38,15 @@ struct Highlight {
 struct SourceQuote {
   explicit SourceQuote(frontend::Source const* source) : source(source) {}
 
-  // TODO implement for real.
+  // TODO: implement for real.
   SourceQuote& Highlighted(frontend::SourceRange range, Style style) {
     if (source) {
       auto line_interval = range.lines(source->buffer());
-      if (line_interval.begin() >
-          frontend::LineNum(
-              std::numeric_limits<frontend::LineNum::underlying_type>::min())) {
-        line_interval.begin() = line_interval.begin() - 1;
-      }
-
-      if (line_interval.end() <
-          frontend::LineNum(
-              std::numeric_limits<frontend::LineNum::underlying_type>::max())) {
-        line_interval.end() = line_interval.end() + 1;
-      }
+      line_interval.begin() =
+          std::max(line_interval.begin() - 1, frontend::LineNum(0));
+      line_interval.end() =
+          std::min(line_interval.end() + 1,
+                   frontend::LineNum(source->buffer().num_lines()));
 
       lines.insert(line_interval);
     }
