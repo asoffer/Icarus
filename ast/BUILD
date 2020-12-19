@@ -70,7 +70,7 @@ cc_library(
     deps = [
         ":visitor_base",
         "//base:cast",
-        "//frontend/source:range",
+        "//frontend/source:buffer",
     ],
 )
 

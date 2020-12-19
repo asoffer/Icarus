@@ -6,7 +6,7 @@
 #include <variant>
 
 #include "absl/strings/str_format.h"
-#include "frontend/source/range.h"
+#include "frontend/source/buffer.h"
 #include "frontend/source/source.h"
 
 namespace diagnostic {

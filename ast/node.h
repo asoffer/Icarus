@@ -5,7 +5,7 @@
 
 #include "ast/visitor_base.h"
 #include "base/cast.h"
-#include "frontend/source/range.h"
+#include "frontend/source/buffer.h"
 
 namespace ast {
 struct Scope;

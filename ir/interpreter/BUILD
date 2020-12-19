@@ -61,7 +61,10 @@ cc_library(
     name = "evaluation_failure",
     hdrs = ["evaluation_failure.h"],
     visibility = ["//visibility:public"],
-    deps = ["//diagnostic:message"],
+    deps = [
+        "//diagnostic:message",
+        "//frontend/source:buffer",
+    ],
 )
 
 cc_library(

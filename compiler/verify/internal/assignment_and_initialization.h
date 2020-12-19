@@ -2,7 +2,7 @@
 #define ICARUS_COMPILER_VERIFY_INTERNAL_ASSIGNMENT_AND_INITIALIZATION_H
 
 #include "diagnostic/consumer/consumer.h"
-#include "frontend/source/range.h"
+#include "frontend/source/buffer.h"
 #include "type/qual_type.h"
 
 namespace compiler::internal {

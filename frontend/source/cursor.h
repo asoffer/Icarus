@@ -5,7 +5,6 @@
 
 #include "base/debug.h"
 #include "frontend/source/buffer.h"
-#include "frontend/source/range.h"
 
 namespace frontend {
 struct SourceCursor {

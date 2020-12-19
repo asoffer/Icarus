@@ -5,7 +5,7 @@ cc_library(
     hdrs = ["message.h"],
     deps = [
         "//frontend/source",
-        "//frontend/source:range",
+        "//frontend/source:buffer",
         "@com_google_absl//absl/strings:str_format",
     ],
 )

@@ -5,8 +5,8 @@
 #include "base/global.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/lex/lexeme.h"
+#include "frontend/source/buffer.h"
 #include "frontend/source/cursor.h"
-#include "frontend/source/range.h"
 #include "frontend/source/source.h"
 #include "ir/value/hashtag.h"
 

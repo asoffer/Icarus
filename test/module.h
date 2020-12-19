@@ -15,7 +15,6 @@
 #include "compiler/compiler.h"
 #include "diagnostic/consumer/aborting.h"
 #include "diagnostic/consumer/tracking.h"
-#include "frontend/source/range.h"
 #include "module/mock_importer.h"
 #include "module/module.h"
 

@@ -18,7 +18,6 @@ cc_library(
         "//compiler",
         "//diagnostic/consumer:aborting",
         "//diagnostic/consumer:tracking",
-        "//frontend/source:range",
         "//module:module",
         "//module:mock_importer",
         "@com_google_absl//absl/types:span",

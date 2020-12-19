@@ -7,7 +7,7 @@ cc_library(
     deps = [
         "//compiler/verify:common",
         "//diagnostic/consumer",
-        "//frontend/source:range",
+        "//frontend/source:buffer",
         "//type:cast",
         "//type:qual_type",
     ],

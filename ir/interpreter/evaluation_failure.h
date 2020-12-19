@@ -2,7 +2,7 @@
 #define ICARUS_IR_INTERPRETER_EVALUATION_FAILURE_H
 
 #include "diagnostic/message.h"
-#include "frontend/source/range.h"
+#include "frontend/source/buffer.h"
 
 namespace interpreter {
 

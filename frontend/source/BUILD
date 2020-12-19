@@ -36,7 +36,6 @@ cc_library(
     hdrs = ["cursor.h"],
     deps = [
         ":buffer",
-        ":range",
         "//base:debug",
     ],
 )
@@ -89,15 +88,6 @@ cc_test(
         "testdata/empty_file.txt",
         "testdata/one_line_file.txt",
         "testdata/multi_line_file.txt",
-    ],
-)
-
-cc_library(
-    name = "range",
-    hdrs = ["range.h"],
-    deps = [
-        ":buffer",
-        "//base:interval",
     ],
 )
 
