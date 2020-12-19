@@ -59,11 +59,6 @@ struct type_list_catter<T, Ts...>
 template <typename... TLs>
 using type_list_cat = typename ::base::internal::type_list_catter<TLs...>::type;
 
-template <typename T>
-constexpr bool always_false() {
-  return false;
-}
-
 struct MetaValue {
   explicit constexpr MetaValue() = default;
 
@@ -195,6 +190,17 @@ concept one_of = (std::same_as<T, Ts> or ...);
 template <typename T, typename... Ts>
 concept convertible_to_exactly_one_of = (((std::convertible_to<T, Ts> ? 1 : 0) +
                                           ...) == 1);
+
+template <typename T>
+constexpr bool always_false() {
+  return false;
+}
+
+template <typename T>
+constexpr bool always_false(Meta<T>) {
+  return false;
+}
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H

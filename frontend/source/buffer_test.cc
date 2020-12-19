@@ -123,13 +123,15 @@ TEST(SourceBuffer, ConsumeChunkWhile) {
   {
     SourceLoc loc(0, 0);
     EXPECT_EQ(buffer.ConsumeChunkWhile(loc, [](char c) { return c != 'e'; }),
-              "abc\nd");
+              std::pair(SourceRange(SourceLoc(0, 0), SourceLoc(0, 5)),
+                        std::string_view("abc\nd")));
     EXPECT_EQ(loc, SourceLoc(0, 5));
   }
 
   {
     SourceLoc loc(0, 1);
-    EXPECT_EQ(buffer.ConsumeChunkWhile(loc, [](char) { return false; }), "");
+    EXPECT_EQ(buffer.ConsumeChunkWhile(loc, [](char) { return false; }),
+              std::pair(SourceRange(SourceLoc(0, 1), SourceLoc(0, 1)), std::string_view("")));
     EXPECT_EQ(loc, SourceLoc(0, 1));
   }
 }
@@ -140,6 +142,12 @@ TEST(SourceBuffer, Indexing) {
   EXPECT_EQ(buffer[SourceLoc(0, 5)], 'e');
   EXPECT_EQ(buffer[SourceRange(SourceLoc(0, 1), SourceLoc(0, 5))], "bc\nd");
   EXPECT_EQ(buffer[SourceRange(SourceLoc(0, 1), SourceLoc(0, 1))], "");
+}
+
+TEST(SourceLoc, Offset) {
+  EXPECT_EQ(SourceLoc(0, 5) - SourceLoc(0, 3), Offset(2));
+  EXPECT_EQ(SourceLoc(2, 3) - SourceLoc(2, 3), Offset(0));
+  EXPECT_EQ(SourceLoc(2, 3) - SourceLoc(2, 5), Offset(-2));
 }
 
 }  // namespace

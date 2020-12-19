@@ -17,7 +17,7 @@ struct SourceBuffer;  // Defined below
 ICARUS_BASE_DEFINE_STRONG_TYPE(LineNum, uint32_t{0},  //
                                base::EnableRawArithmetic,
                                base::EnableComparisons);
-ICARUS_BASE_DEFINE_STRONG_TYPE(Offset, uint32_t{0},  //
+ICARUS_BASE_DEFINE_STRONG_TYPE(Offset, int32_t{0},  //
                                base::EnableRawArithmetic,
                                base::EnableComparisons);
 
@@ -44,6 +44,11 @@ struct SourceLoc {
     return loc -= offset;
   }
 
+  friend Offset operator-(SourceLoc lhs, SourceLoc rhs) {
+    ASSERT(lhs.chunk_ == rhs.chunk_);
+    return Offset(lhs.offset_ - rhs.offset_);
+  }
+
   constexpr auto operator<=>(SourceLoc const &) const = default;
 
   std::string DebugString() const;
@@ -51,8 +56,8 @@ struct SourceLoc {
  private:
   friend struct SourceBuffer;
 
-  size_t chunk_  = 0;
-  size_t offset_ = 0;
+  size_t chunk_   = 0;
+  int32_t offset_ = 0;
 };
 
 // Represents a half-open range of source in an implicit SourceBuffer (defined
@@ -80,6 +85,9 @@ struct SourceRange {
 
   constexpr SourceLoc &begin() { return begin_; }
   constexpr SourceLoc &end() { return end_; }
+
+  bool operator==(SourceRange const &) const = default;
+  bool operator!=(SourceRange const &) const = default;
 
  private:
   friend struct SourceBuffer;
@@ -160,13 +168,16 @@ struct SourceBuffer {
     return chunks_[loc.chunk_][loc.offset_];
   }
 
-  // Starting at `loc`, returns a view of the source for each character on which
-  // the predicate `pred` holds, and updates `loc` to refer to the first
-  // location at which `pred` no longer holds. Each predicate must return false
-  // at some point between `loc` and the end of the chunk referenced by `loc`
-  // (behavior is undefined otherwise).
+  // Starting at `loc`, finds the next sequence of characters satisfying the
+  // predicate `pred` and returns the pair of the corresponding SourceRange and
+  // a std::string_view representing that source text. The in-out parameter
+  // `loc` is updated to be the next location at which `pred` no longer holds.
+  // Each predicate must return false at some point between `loc` and the end of
+  // the chunk referenced by `loc` (behavior is undefined otherwise).
   template <std::predicate<char> P>
-  std::string_view ConsumeChunkWhile(SourceLoc &loc, P &&pred) const {
+  std::pair<SourceRange, std::string_view> ConsumeChunkWhile(SourceLoc &loc,
+                                                             P &&pred) const {
+    SourceLoc start_loc = loc;
     ASSERT(loc.chunk_ < chunks_.size());
     std::string_view chunk = chunks_[loc.chunk_];
     size_t offset          = loc.offset_;
@@ -176,7 +187,7 @@ struct SourceBuffer {
     }
     std::string_view result = chunk.substr(loc.offset_, offset - loc.offset_);
     loc.offset_             = offset;
-    return result;
+    return std::make_pair(SourceRange(start_loc, loc), result);
   }
 
   // Returns a SourceLoc referring to one character passed the end of the source buffer.

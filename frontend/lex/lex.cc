@@ -255,35 +255,40 @@ static base::Global kReservedTypes =
         {"f64", type::F64},       {"type", type::Type_},
         {"module", type::Module}, {"byte_view", type::ByteView}};
 
-Lexeme NextWord(SourceCursor *cursor, Source *src) {
-  // Match [a-zA-Z_][a-zA-Z0-9_]*
-  // We have already matched the first character
-  auto word_cursor       = NextSimpleWord(cursor);
-  std::string_view token = word_cursor.view();
-  auto span              = word_cursor.range();
+// Consumes as many alpha-numeric or underscore characters as possible, assuming
+// the character under the cursor is an alpha or underscore character. Returns a
+// Lexeme representing either an identifier or the builtin keyword or value for
+// this word.
+Lexeme ConsumeWord(SourceLoc &cursor, SourceBuffer const &buffer) {
+  ASSERT(IsAlphaOrUnderscore(buffer[cursor]) == true);
 
-  if (token == "true") {
+  // Because we have already verified that the character locateted at `cursor`
+  // is not numeric, it is safe to consume alhpanumeric and underscore
+  // characters.
+  auto [range, word] =
+      buffer.ConsumeChunkWhile(cursor, IsAlphaNumericOrUnderscore);
+
+  if (word == "true") {
+    return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(true)));
+  } else if (word == "false") {
+    return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(false)));
+  } else if (word == "null") {
     return Lexeme(
-        std::make_unique<ast::Terminal>(std::move(span), ir::Value(true)));
-  } else if (token == "false") {
+        std::make_unique<ast::Terminal>(range, ir::Value(ir::Addr::Null())));
+  }
+
+  if (auto iter = kReservedTypes->find(word); iter != kReservedTypes->end()) {
     return Lexeme(
-        std::make_unique<ast::Terminal>(std::move(span), ir::Value(false)));
-  } else if (token == "null") {
-    return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
-                                                  ir::Value(ir::Addr::Null())));
+        std::make_unique<ast::Terminal>(range, ir::Value(iter->second)));
   }
 
-  if (auto iter = kReservedTypes->find(token); iter != kReservedTypes->end()) {
-    return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
-                                                  ir::Value(iter->second)));
+  if (auto maybe_builtin = ir::BuiltinFn::ByName(word)) {
+    return Lexeme(std::make_unique<ast::BuiltinFn>(range, *maybe_builtin));
   }
 
-  if (auto maybe_builtin = ir::BuiltinFn::ByName(token)) {
-    return Lexeme(std::make_unique<ast::BuiltinFn>(span, *maybe_builtin));
-  }
-
-  if (auto iter = kKeywords->find(token); iter != kKeywords->end()) {
-    return std::visit([&](auto x) { return Lexeme(x, span); }, iter->second);
+  if (auto iter = kKeywords->find(word); iter != kKeywords->end()) {
+    return std::visit([r = range](auto x) { return Lexeme(x, r); },
+                      iter->second);
   }
 
   // "block" is special because it is also the name of the type of such a
@@ -296,10 +301,10 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
   // and prefering (B). Users can specifically add parentheses to get (A), but
   // this requires tagging "block" differently from the other block-head
   // keywords.
-  if (token == "block") { return Lexeme(Syntax::Block, span); }
-  if (token == "scope") { return Lexeme(Syntax::Scope, span); }
+  if (word == "block") { return Lexeme(Syntax::Block, range); }
+  if (word == "scope") { return Lexeme(Syntax::Scope, range); }
 
-  return Lexeme(std::make_unique<ast::Identifier>(span, std::string{token}));
+  return Lexeme(std::make_unique<ast::Identifier>(range, std::string{word}));
 }
 
 struct StringLiteralLexResult {
@@ -400,40 +405,39 @@ base::expected<Lexeme, HashtagError> NextHashtag(SourceCursor *cursor,
   }
 }
 
-Lexeme NextNumber(SourceCursor *cursor, Source *src,
-                  diagnostic::DiagnosticConsumer &diag) {
-  // TODO hex-parsing?
-  auto num_cursor = cursor->ConsumeWhile([](char c) {
-    return c == 'b' or c == 'o' or c == 'd' or c == 'd' or c == '_' or
-           c == '.' or IsDigit(c);
+Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
+                     diagnostic::DiagnosticConsumer &diag) {
+  auto [range, number_str] = buffer.ConsumeChunkWhile(cursor, [](char c) {
+    return IsDigit(c)    //
+           or c == 'b'   // For binary
+           or c == 'd'   // For decimal
+           or c == 'o'   // For octal
+           or c == 'x'   // For hexadecimal
+           or c == '.';  // For non-integers
   });
 
-  auto span = num_cursor.range();
   return std::visit(
-      [&](auto num) {
-        using T = std::decay_t<decltype(num)>;
-        if constexpr (std::is_same_v<T, int64_t>) {
-          return Lexeme(
-              std::make_unique<ast::Terminal>(std::move(span), ir::Value(num)));
-        } else if constexpr (std::is_same_v<T, double>) {
-          return Lexeme(
-              std::make_unique<ast::Terminal>(std::move(span), ir::Value(num)));
-        } else if constexpr (std::is_same_v<T, NumberParsingError>) {
+      [&diag, r = range](auto num) {
+        constexpr auto type = base::meta<decltype(num)>;
+        if constexpr (type == base::meta<int64_t>) {
+          return Lexeme(std::make_unique<ast::Terminal>(r, ir::Value(num)));
+        } else if constexpr (type == base::meta<double>) {
+          return Lexeme(std::make_unique<ast::Terminal>(r, ir::Value(num)));
+        } else if constexpr (type == base::meta<NumberParsingError>) {
           // Even though we could try to be helpful by guessing the type, it's
           // unlikely to be useful. The value may also be important if it's used
           // at compile-time (e.g., as an array extent). Generally proceeding
           // further if we can't lex the input is likely not going to be useful.
           diag.Consume(NumberParsingFailure{
               .error = num,
-              .range = span,
+              .range = r,
           });
-          return Lexeme(
-              std::make_unique<ast::Terminal>(std::move(span), ir::Value(0)));
+          return Lexeme(std::make_unique<ast::Terminal>(r, ir::Value(0)));
         } else {
-          static_assert(base::always_false<T>());
+          static_assert(base::always_false(type));
         }
       },
-      ParseNumber(num_cursor.view()));
+      ParseNumber(number_str));
 }
 }  // namespace
 
@@ -448,14 +452,22 @@ std::vector<Lexeme> Lex(Source &src, diagnostic::DiagnosticConsumer &diag,
 Lexeme NextToken(LexState *state) {
 restart:
   // Delegate based on the next character in the file stream
+  SourceLoc loc = state->cursor_.loc();
+  std::string_view v = state->cursor_.view();
   if (state->cursor_.view().empty()) {
     return Lexeme(Syntax::EndOfFile, state->cursor_.remove_prefix(0).range());
   } else if (IsAlphaOrUnderscore(state->peek())) {
-    return NextWord(&state->cursor_, state->src_);
+    auto result = ConsumeWord(loc, state->buffer_);
+    v.remove_prefix((loc - state->cursor_.loc()).value);
+    state->cursor_ = SourceCursor(loc, v);
+    return result;
   } else if (IsDigit(state->peek()) or
              (state->peek() == '.' and state->cursor_.view().size() > 1 and
               IsDigit(state->cursor_.view()[1]))) {
-    return NextNumber(&state->cursor_, state->src_, state->diag_);
+    auto result = ConsumeNumber(loc, state->buffer_, state->diag_);
+    v.remove_prefix((loc - state->cursor_.loc()).value);
+    state->cursor_ = SourceCursor(loc, v);
+    return result;
   }
 
   char peek = state->peek();
