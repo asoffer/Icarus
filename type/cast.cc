@@ -31,7 +31,25 @@ static bool CanCastPointer(Pointer const *from, Pointer const *to) {
 bool CanCastImplicitly(Type from, Type to) {
   if (to == from) { return true; }
   auto const *buf_ptr = from.if_as<BufferPointer>();
+  auto const *to_ptr = to.if_as<Pointer>();
+
   if (buf_ptr and to == Type(Ptr(buf_ptr->pointee()))) { return true; }
+  if (buf_ptr and to_ptr and CanCastPointer(buf_ptr, to_ptr)) { return true; }
+
+  // TODO: Need the full qual-type to handle buffer-reference conversions.
+  if (to_ptr and from == type::NullPtr) { return true; }
+  if (to_ptr and not to.is<BufferPointer>()) {
+    if (from == to_ptr->pointee()) { return true; }
+  }
+
+  if (from == EmptyArray) {
+    if (auto *to_arr = to.if_as<Array>()) {
+      return to_arr->length() == 0;
+    } else {
+      return false;
+    }
+  }
+
   return false;
 }
 

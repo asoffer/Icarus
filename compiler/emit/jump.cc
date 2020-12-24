@@ -31,7 +31,6 @@ WorkItem::Result Compiler::EmitJumpBody(ast::Jump const *node) {
   ir::CompiledJump &jmp = *ASSERT_NOT_NULL(context().jump(node));
 
   ICARUS_SCOPE(ir::SetCurrent(jmp, builder())) {
-    ASSERT(this != nullptr);
     builder().CurrentBlock() = jmp.entry();
     // TODO arguments should be renumbered to not waste space on const
     // values

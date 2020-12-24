@@ -85,8 +85,7 @@ bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
     }
   }
 
-  if (not type::CanCast(from_type, to_type)) {
-    // TODO Really CanCast should be able to log errors.
+  if (not type::CanCastImplicitly(from_type, to_type)) {
     diag.Consume(InvalidCast{.from = from_type, .to = to_type, .range = range});
     return false;
   } else {

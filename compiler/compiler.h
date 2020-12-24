@@ -291,6 +291,8 @@ struct Compiler
   // This function assumes that all arguments are present (i.e., we are not
   // relying on any defaulted parameters). Any such parameter should be used to
   // fill the arguments before calling this function.
+  //
+  // TODO: Deprecate.
   std::vector<ir::Value> PrepareCallArguments(
       type::Type state_ptr_type, core::Params<type::QualType> const &params,
       core::Arguments<type::Typed<ir::Value>> const &args);

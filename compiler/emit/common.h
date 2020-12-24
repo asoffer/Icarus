@@ -58,6 +58,19 @@ ir::NativeFn MakeConcreteFromGeneric(
   return f;
 }
 
+// Given an argument (which may be present in `constant` if it is known at
+// compile-time, or simply the AST `expr`, and the qualified type of the
+// parameter that this argument is being bound to, evaluate the appropriate
+// binding. This involves potentially evaluating `expr` if it is not already a
+// constant and applying some implicit conversions. If the expression is already
+// a reference and is being bound to a pointer to its own type, we emit the
+// reference rather than loading the corresponding value. Moreover non-referenc
+// types get placed in temporary stack allocations in this case.
+ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
+                          ast::Expression const *expr,
+                          type::QualType param_qt);
+
+
 }  // namespace compiler
 
 #endif  // ICARUS_IR_EMIT_COMMON_H

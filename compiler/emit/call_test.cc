@@ -82,10 +82,10 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(1, 2)
                              )",
                  .expected = ir::Value(int64_t{5})},
-        TestCase{.expr = R"(((a: i64, b: i64) => a + 2 * b)(a = 1, b = 2)
+        TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(a = 1, b = 2)
                              )",
                  .expected = ir::Value(int64_t{5})},
-        TestCase{.expr = R"(((a: i64, b: i64) => a + 2 * b)(b = 1, a = 2)
+        TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(b = 1, a = 2)
                              )",
                  .expected = ir::Value(int64_t{4})},
 
@@ -117,6 +117,28 @@ INSTANTIATE_TEST_SUITE_P(
                  .expr        = R"((identity(0) as f64) + identity(0.0)
                              )",
                  .expected    = ir::Value(double{0})},
+
+        // Value to pointer casts
+        TestCase{
+            .expr     = R"(((n: *i64) => @n * @n)(3)
+                         )",
+            .expected = ir::Value(int64_t{9}),
+        },
+        TestCase{
+            .expr     = R"(() -> i64 {
+                             m := 3
+                             return ((n: *i64) => @n * @n)(m)
+                         }())",
+            .expected = ir::Value(int64_t{9}),
+        },
+
+        // TODO: Value to pointer casts with structs and with designated
+        // initializers.
+        TestCase{
+            .expr     = R"(((n: *i64) => @n * @n)(3)
+                         )",
+            .expected = ir::Value(int64_t{9}),
+        },
     }));
 
 }  // namespace

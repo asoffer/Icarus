@@ -146,10 +146,10 @@ cc_library(
     name = "call",
     srcs = ["call.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:resources",
-        "//compiler/emit:common",
         "//ir/value",
     ],
 )

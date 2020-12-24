@@ -30,40 +30,41 @@ TEST(ExpansionSize, Matches) {
                                type::QualType::NonConstant(type::I64),
                                type::QualType::Constant(type::I64)));
 
-  EXPECT_TRUE(VerifyInitialization(
-      diag, frontend::SourceRange{},
-      type::QualType({type::I64, type::F64}, type::Quals::Unqualified()),
-      type::QualType({type::I64, type::I64}, type::Quals::Const())));
-
-  EXPECT_TRUE(VerifyAssignment(
-      diag, frontend::SourceRange{},
-      type::QualType({type::I64, type::F64}, type::Quals::Unqualified()),
-      type::QualType({type::I64, type::I64}, type::Quals::Const())));
-
-  EXPECT_EQ(diag.num_consumed(), 0);
   EXPECT_FALSE(VerifyInitialization(
       diag, frontend::SourceRange{},
       type::QualType({type::I64, type::F64}, type::Quals::Unqualified()),
-      type::QualType({type::I64}, type::Quals::Const())));
+      type::QualType({type::I64, type::I64}, type::Quals::Const())));
   EXPECT_EQ(diag.num_consumed(), 1);
 
   EXPECT_FALSE(VerifyAssignment(
       diag, frontend::SourceRange{},
       type::QualType({type::I64, type::F64}, type::Quals::Unqualified()),
-      type::QualType({type::I64}, type::Quals::Const())));
+      type::QualType({type::I64, type::I64}, type::Quals::Const())));
   EXPECT_EQ(diag.num_consumed(), 2);
+
+  EXPECT_FALSE(VerifyInitialization(
+      diag, frontend::SourceRange{},
+      type::QualType({type::I64, type::F64}, type::Quals::Unqualified()),
+      type::QualType({type::I64}, type::Quals::Const())));
+  EXPECT_EQ(diag.num_consumed(), 3);
+
+  EXPECT_FALSE(VerifyAssignment(
+      diag, frontend::SourceRange{},
+      type::QualType({type::I64, type::F64}, type::Quals::Unqualified()),
+      type::QualType({type::I64}, type::Quals::Const())));
+  EXPECT_EQ(diag.num_consumed(), 4);
 
   EXPECT_FALSE(VerifyInitialization(
       diag, frontend::SourceRange{},
       type::QualType({type::I64}, type::Quals::Unqualified()),
       type::QualType({type::I64, type::I64}, type::Quals::Const())));
-  EXPECT_EQ(diag.num_consumed(), 3);
+  EXPECT_EQ(diag.num_consumed(), 5);
 
   EXPECT_FALSE(VerifyAssignment(
       diag, frontend::SourceRange{},
       type::QualType({type::I64}, type::Quals::Unqualified()),
       type::QualType({type::I64, type::I64}, type::Quals::Const())));
-  EXPECT_EQ(diag.num_consumed(), 4);
+  EXPECT_EQ(diag.num_consumed(), 6);
 }
 
 TEST(Initialization, AllowsConstants) {
@@ -73,9 +74,9 @@ TEST(Initialization, AllowsConstants) {
                                    type::QualType::Constant(type::I64),
                                    type::QualType::Constant(type::I64)));
 
-  EXPECT_TRUE(VerifyInitialization(diag, frontend::SourceRange{},
-                                   type::QualType::Constant(type::F32),
-                                   type::QualType::Constant(type::I64)));
+  EXPECT_FALSE(VerifyInitialization(diag, frontend::SourceRange{},
+                                    type::QualType::Constant(type::F32),
+                                    type::QualType::Constant(type::I64)));
 }
 
 TEST(Assignment, AllowsConstants) {

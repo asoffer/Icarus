@@ -361,4 +361,60 @@ void EmitIrForStatements(Compiler &compiler,
   }
 }
 
+ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
+                          ast::Expression const *expr,
+                          type::QualType param_qt) {
+  type::QualType arg_qt = *compiler.context().qual_type(expr);
+  type::Type arg_type   = arg_qt.type();
+  type::Type param_type = param_qt.type();
+
+  if (constant.empty()) {
+    if (arg_type == param_type) {
+      return compiler.EmitValue(expr);
+    } else if (auto [bufptr_param_type, ptr_arg_type] =
+                   std::make_pair(param_type.if_as<type::BufferPointer>(),
+                                  arg_type.if_as<type::Pointer>());
+               bufptr_param_type and ptr_arg_type and
+               ptr_arg_type->pointee() == bufptr_param_type->pointee()) {
+      return ir::Value(compiler.EmitValue(expr));
+    } else if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
+      if (ptr_param_type->pointee() == arg_type) {
+        if (arg_qt.quals() >= type::Quals::Ref()) {
+          return ir::Value(compiler.EmitRef(expr));
+        } else {
+          auto reg = compiler.builder().TmpAlloca(arg_type);
+          compiler.EmitMoveInit(
+              expr, {type::Typed<ir::RegOr<ir::Addr>>(reg, arg_type)});
+          return ir::Value(reg);
+        }
+      } else {
+        NOT_YET();
+      }
+    } else {
+      NOT_YET();
+    }
+  } else {
+    if (arg_type == param_type) {
+      return constant;
+    } else if (auto [bufptr_param_type, ptr_arg_type] =
+                   std::make_pair(param_type.if_as<type::BufferPointer>(),
+                                  arg_type.if_as<type::Pointer>());
+               bufptr_param_type and ptr_arg_type and
+               ptr_arg_type->pointee() == bufptr_param_type->pointee()) {
+      return constant;
+    } else if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
+      if (ptr_param_type->pointee() == arg_type) {
+        auto reg = compiler.builder().TmpAlloca(arg_type);
+        compiler.EmitMoveInit(type::Typed<ir::Value>(constant, arg_type),
+                              type::Typed<ir::Reg>(reg, arg_type));
+        return ir::Value(reg);
+      } else {
+        NOT_YET();
+      }
+    } else {
+      NOT_YET();
+    }
+  }
+}
+
 }  // namespace compiler
