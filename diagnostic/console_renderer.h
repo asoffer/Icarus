@@ -23,7 +23,7 @@ struct ConsoleRenderer {
   void Flush();
 
  private:
-  void WriteSourceQuote(frontend::Source const* source,
+  void WriteSourceQuote(frontend::Source const& source,
                         SourceQuote const& quote);
 
   bool has_data_ = false;

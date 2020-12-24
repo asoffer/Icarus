@@ -1,5 +1,6 @@
 #include "console_renderer.h"
 
+#include <cstdio>
 #include <optional>
 #include <string_view>
 
@@ -31,14 +32,9 @@ void ConsoleRenderer::Flush() {
   std::fflush(out_);
 }
 
-void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
+void ConsoleRenderer::WriteSourceQuote(frontend::Source const &source,
                                        SourceQuote const &quote) {
-  ASSERT(source != nullptr);
-  if (quote.lines.empty()) {
-    // TODO: Ensure that this is impossible.
-    std::fputs("Internal Error: SourceQuote is empty\n", out_);
-    return;
-  }
+  ASSERT(quote.lines.empty() == false);
 
   auto highlight_iter   = quote.highlights.begin();
   bool inside_highlight = false;
@@ -56,9 +52,9 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
       case 0:
       case 1: break;
       case 2: {
-        std::string_view line_str = source->line((prev_line_num + 1).value);
         absl::FPrintF(out_, "\033[97;1m%*d | \033[0m%s\n", border_alignment,
-                      prev_line_num.value + 1, line_str);
+                      (prev_line_num + 1).value,
+                      source.line(prev_line_num + 1));
       } break;
       default: {
         absl::FPrintF(out_, "\033[97;1m%*s.. | \033[0m\n", border_alignment - 2,
@@ -81,28 +77,28 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
 
       set_highlight();
 
-      std::string_view line_str = source->line(line.value);
+      std::string_view line_str = source.line(line);
 
       if (next_highlight_change and
-          source->buffer().line_number(*next_highlight_change) > line) {
+          source.buffer().line_number(*next_highlight_change) > line) {
         absl::FPrintF(out_, "%s", line_str);
         continue;
       }
 
       if (next_highlight_change) {
-        ASSERT(source->buffer().line_number(*next_highlight_change) == line);
+        ASSERT(source.buffer().line_number(*next_highlight_change) == line);
       }
 
       frontend::Offset off{0};
       while (next_highlight_change and
-             source->buffer().line_number(*next_highlight_change) == line) {
+             source.buffer().line_number(*next_highlight_change) == line) {
         absl::FPrintF(out_, "%s",
                       line_str.substr(
                           off.value,
-                          source->buffer().offset_in_line(*next_highlight_change).value -
+                          source.buffer().offset_in_line(*next_highlight_change).value -
                               off.value));
 
-        off = source->buffer().offset_in_line(*next_highlight_change);
+        off = source.buffer().offset_in_line(*next_highlight_change);
         if (inside_highlight) {
           inside_highlight = false;
           ++highlight_iter;
@@ -130,17 +126,17 @@ void ConsoleRenderer::Add(frontend::Source const *source, Category cat,
                           DiagnosticMessage const &diag) {
   has_data_ = true;
   diag.for_each_component([&](auto const &component) {
-    using T = std::decay_t<decltype(component)>;
-    if constexpr (std::is_same_v<T, Text>) {
+    constexpr auto type = base::meta<std::decay_t<decltype(component)>>;
+    if constexpr (type == base::meta<Text>) {
       std::fputs(component.c_str(), out_);
-    } else if constexpr (std::is_same_v<T, List>) {
+    } else if constexpr (type == base::meta<List>) {
       for (std::string const &item : component.items()) {
         absl::FPrintF(out_, "  * %s\n", item);
       }
-    } else if constexpr (std::is_same_v<T, SourceQuote>) {
-      WriteSourceQuote(source, component);
+    } else if constexpr (type == base::meta<SourceQuote>) {
+      WriteSourceQuote(*source, component);
     } else {
-      static_assert(base::always_false<T>());
+      static_assert(base::always_false(type));
     }
     std::fputs("\n\n", out_);
   });
@@ -149,17 +145,17 @@ void ConsoleRenderer::Add(frontend::Source const *source, Category cat,
 void ConsoleRenderer::Add(Category cat, DiagnosticMessage const &diag) {
   has_data_ = true;
   diag.for_each_component([&](auto const &component) {
-    using T = std::decay_t<decltype(component)>;
-    if constexpr (std::is_same_v<T, Text>) {
+    constexpr auto type = base::meta<std::decay_t<decltype(component)>>;
+    if constexpr (type == base::meta<Text>) {
       std::fputs(component.c_str(), out_);
-    } else if constexpr (std::is_same_v<T, List>) {
+    } else if constexpr (type == base::meta<List>) {
       for (std::string const &item : component.items()) {
         absl::FPrintF(out_, "  * %s", item);
       }
-    } else if constexpr (std::is_same_v<T, SourceQuote>) {
-      WriteSourceQuote(component.source, component);
+    } else if constexpr (type == base::meta<SourceQuote>) {
+      WriteSourceQuote(*component.source, component);
     } else {
-      static_assert(base::always_false<T>());
+      static_assert(base::always_false(type));
     }
     std::fputs("\n\n", out_);
   });

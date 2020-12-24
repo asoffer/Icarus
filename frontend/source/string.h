@@ -34,7 +34,7 @@ struct StringSource : public Source {
     return {result, not view_.empty()};
   }
 
-  std::string_view line(size_t line_num) const override {
+  std::string_view line(LineNum line_num) const override {
     return src_.line(line_num);
   }
 

@@ -33,7 +33,7 @@ struct Source : frontend::Source {
     };
   }
 
-  std::string_view line(size_t line_num) const override {
+  std::string_view line(frontend::LineNum line_num) const override {
     return buffer_.line(line_num);
   }
 

@@ -5,6 +5,7 @@ cc_library(
     hdrs = ["buffer.h"],
     srcs = ["buffer.cc"],
     deps = [
+        ":line",
         "//base:debug",
         "//base:interval",
         "//base:strong_types",
@@ -18,16 +19,6 @@ cc_test(
     deps = [
         ":buffer",
         "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "source",
-    hdrs = ["source.h"],
-    deps = [
-        ":buffer",
-        "//base:cast",
-        "//base:expected",
     ],
 )
 
@@ -92,12 +83,29 @@ cc_test(
 )
 
 cc_library(
+    name = "line",
+    hdrs = ["line.h"],
+    deps = ["//base:strong_types"],
+)
+
+cc_library(
     name = "shared",
     hdrs = ["shared.h"],
     srcs = ["shared.cc"],
     deps = [
         ":source",
         "//base:no_destructor",
+    ],
+)
+
+cc_library(
+    name = "source",
+    hdrs = ["source.h"],
+    deps = [
+        ":line",
+        ":buffer",
+        "//base:cast",
+        "//base:expected",
     ],
 )
 

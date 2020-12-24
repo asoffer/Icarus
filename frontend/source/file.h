@@ -39,7 +39,7 @@ struct FileSource : public Source {
 
   SourceChunk ReadUntil(char delim) override { return src_.ReadUntil(delim); }
 
-  std::string_view line(size_t line_num) const override {
+  std::string_view line(LineNum line_num) const override {
     return src_.line(line_num);
   }
 

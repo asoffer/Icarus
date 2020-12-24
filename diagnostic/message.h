@@ -43,7 +43,7 @@ struct SourceQuote {
     if (source) {
       auto line_interval = range.lines(source->buffer());
       line_interval.begin() =
-          std::max(line_interval.begin() - 1, frontend::LineNum(0));
+          std::max(line_interval.begin() - 1, frontend::LineNum(1));
       line_interval.end() =
           std::min(line_interval.end() + 1,
                    frontend::LineNum(source->buffer().num_lines()));

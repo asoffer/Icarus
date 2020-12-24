@@ -9,14 +9,12 @@
 #include "base/debug.h"
 #include "base/interval.h"
 #include "base/strong_types.h"
+#include "frontend/source/line.h"
 
 namespace frontend {
 
 struct SourceBuffer;  // Defined below
 
-ICARUS_BASE_DEFINE_STRONG_TYPE(LineNum, uint32_t{0},  //
-                               base::EnableRawArithmetic,
-                               base::EnableComparisons);
 ICARUS_BASE_DEFINE_STRONG_TYPE(Offset, int32_t{0},  //
                                base::EnableRawArithmetic,
                                base::EnableComparisons);
@@ -130,7 +128,8 @@ struct SourceBuffer {
   // Returns a view of the line with the given index as it would show in most
   // text editors (one-indexed rather than zero-indexed).  The returned
   // string_view is valid for the lifetime of this SourceBuffer.
-  std::string_view line(size_t line_num) const {
+  std::string_view line(LineNum l) const {
+    size_t line_num = l.value;
     ASSERT(line_num > 0);
     ASSERT(line_num < line_start_.size());
     auto [start_chunk, start_offset] = line_start_[line_num - 1];
@@ -146,7 +145,6 @@ struct SourceBuffer {
       return std::string_view(line.data() + start_offset);
     }
   }
-  std::string_view line(LineNum line_num) const { return line(line_num.value); }
 
   // Returns the line number of the line containing this source location.
   LineNum line_number(SourceLoc loc) const;
