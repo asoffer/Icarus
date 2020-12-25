@@ -32,7 +32,7 @@ void ConsoleRenderer::Flush() {
   std::fflush(out_);
 }
 
-void ConsoleRenderer::WriteSourceQuote(frontend::Source const &source,
+void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
                                        SourceQuote const &quote) {
   ASSERT(quote.lines.empty() == false);
 
@@ -54,7 +54,7 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const &source,
       case 2: {
         absl::FPrintF(out_, "\033[97;1m%*d | \033[0m%s\n", border_alignment,
                       (prev_line_num + 1).value,
-                      source.line(prev_line_num + 1));
+                      buffer.line(prev_line_num + 1));
       } break;
       default: {
         absl::FPrintF(out_, "\033[97;1m%*s.. | \033[0m\n", border_alignment - 2,
@@ -77,28 +77,28 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const &source,
 
       set_highlight();
 
-      std::string_view line_str = source.line(line);
+      std::string_view line_str = buffer.line(line);
 
       if (next_highlight_change and
-          source.buffer().line_number(*next_highlight_change) > line) {
+          buffer.line_number(*next_highlight_change) > line) {
         absl::FPrintF(out_, "%s", line_str);
         continue;
       }
 
       if (next_highlight_change) {
-        ASSERT(source.buffer().line_number(*next_highlight_change) == line);
+        ASSERT(buffer.line_number(*next_highlight_change) == line);
       }
 
       frontend::Offset off{0};
       while (next_highlight_change and
-             source.buffer().line_number(*next_highlight_change) == line) {
-        absl::FPrintF(out_, "%s",
-                      line_str.substr(
-                          off.value,
-                          source.buffer().offset_in_line(*next_highlight_change).value -
-                              off.value));
+             buffer.line_number(*next_highlight_change) == line) {
+        absl::FPrintF(
+            out_, "%s",
+            line_str.substr(
+                off.value, buffer.offset_in_line(*next_highlight_change).value -
+                               off.value));
 
-        off = source.buffer().offset_in_line(*next_highlight_change);
+        off = buffer.offset_in_line(*next_highlight_change);
         if (inside_highlight) {
           inside_highlight = false;
           ++highlight_iter;
@@ -125,40 +125,24 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const &source,
 void ConsoleRenderer::Add(frontend::Source const *source, Category cat,
                           DiagnosticMessage const &diag) {
   has_data_ = true;
+  absl::FPrintF(out_, "\033[31;1mError\033[0m in \033[1m%s\033[0m:\n",
+                source->FileName());
   diag.for_each_component([&](auto const &component) {
     constexpr auto type = base::meta<std::decay_t<decltype(component)>>;
     if constexpr (type == base::meta<Text>) {
       std::fputs(component.c_str(), out_);
+      std::fputs("\n\n", out_);
     } else if constexpr (type == base::meta<List>) {
       for (std::string const &item : component.items()) {
         absl::FPrintF(out_, "  * %s\n", item);
       }
     } else if constexpr (type == base::meta<SourceQuote>) {
-      WriteSourceQuote(*source, component);
+      WriteSourceQuote(source->buffer(), component);
     } else {
       static_assert(base::always_false(type));
     }
-    std::fputs("\n\n", out_);
   });
-}
-
-void ConsoleRenderer::Add(Category cat, DiagnosticMessage const &diag) {
-  has_data_ = true;
-  diag.for_each_component([&](auto const &component) {
-    constexpr auto type = base::meta<std::decay_t<decltype(component)>>;
-    if constexpr (type == base::meta<Text>) {
-      std::fputs(component.c_str(), out_);
-    } else if constexpr (type == base::meta<List>) {
-      for (std::string const &item : component.items()) {
-        absl::FPrintF(out_, "  * %s", item);
-      }
-    } else if constexpr (type == base::meta<SourceQuote>) {
-      WriteSourceQuote(*component.source, component);
-    } else {
-      static_assert(base::always_false(type));
-    }
-    std::fputs("\n\n", out_);
-  });
+  std::fputs("\n", out_);
 }
 
 }  // namespace diagnostic

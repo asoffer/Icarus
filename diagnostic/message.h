@@ -6,8 +6,10 @@
 #include <variant>
 
 #include "absl/strings/str_format.h"
+#include "base/meta.h"
 #include "frontend/source/buffer.h"
 #include "frontend/source/source.h"
+#include "type/type.h"
 
 namespace diagnostic {
 // TODO Do you need `Fatal`?
@@ -40,16 +42,7 @@ struct SourceQuote {
 
   // TODO: implement for real.
   SourceQuote& Highlighted(frontend::SourceRange range, Style style) {
-    if (source) {
-      auto line_interval = range.lines(source->buffer());
-      line_interval.begin() =
-          std::max(line_interval.begin() - 1, frontend::LineNum(1));
-      line_interval.end() =
-          std::min(line_interval.end() + 1,
-                   frontend::LineNum(source->buffer().num_lines()));
-
-      lines.insert(line_interval);
-    }
+    if (source) { lines.insert(range.lines(source->buffer())); }
     highlights.emplace_back(range, style);
     return *this;
   }
@@ -66,15 +59,29 @@ struct SourceQuote {
   std::vector<Highlight> highlights;
 };
 
+namespace internal_text {
+
+template <typename T>
+inline T const& Transform(T const& value) {
+  return value;
+}
+
+std::string Transform(type::Type t);
+
+}  // namespace internal_text
+
 struct Text {
   explicit Text(std::string message) : message_(std::move(message)) {}
   template <typename... Args, std::enable_if_t<sizeof...(Args) != 0>* = nullptr>
-  explicit Text(absl::FormatSpec<Args...> const& format, Args const&... args)
-      : message_(absl::StrFormat(format, args...)) {}
+  explicit Text(absl::FormatSpec<std::decay_t<decltype(internal_text::Transform(
+                    std::declval<Args>()))>...> const& format,
+                Args const&... args)
+      : message_(absl::StrFormat(format, internal_text::Transform(args)...)) {}
 
   char const* c_str() const { return message_.c_str(); }
 
  private:
+
   std::string message_;
 };
 

@@ -68,7 +68,7 @@ struct NonCallableInOverloadSet {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Non-callable type `%s` in overload set requested here:",
-            decl_type.to_string()),
+            decl_type),
         diagnostic::SourceQuote(src).Highlighted(
             id, diagnostic::Style::ErrorText()),
         diagnostic::Text("Declaration here:"),

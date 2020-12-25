@@ -18,7 +18,7 @@ struct ComparingIncomparables {
         diagnostic::Text(
             "Values of type `%s` and `%s` are being compared but no such "
             "comparison is allowed:",
-            lhs.to_string(), rhs.to_string()),
+            lhs, rhs),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -50,7 +50,7 @@ struct NoMatchingComparisonOperator {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No matching comparison operator for types %s and %s.",
-                         lhs.to_string(), rhs.to_string()),
+                         lhs, rhs),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

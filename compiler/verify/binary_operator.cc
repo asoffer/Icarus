@@ -67,7 +67,7 @@ struct BinaryOperatorTypeMismatch {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Mismatched types `%s` and `%s` in binary operator.",
-                         lhs_type.to_string(), rhs_type.to_string()),
+                         lhs_type, rhs_type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -82,8 +82,8 @@ struct NoMatchingBinaryOperator {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("No matching binary operator for types %s and %s.",
-                         lhs_type.to_string(), rhs_type.to_string()),
+        diagnostic::Text("No matching binary operator for types `%s` and `%s`.",
+                         lhs_type, rhs_type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

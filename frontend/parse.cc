@@ -27,7 +27,7 @@ struct TodoDiagnostic {
   static constexpr std::string_view kCategory = "todo";
   static constexpr std::string_view kName     = "todo";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("TODO: Diagnostic emit from %s, line %u.",
                          loc.file_name(), loc.line()));
@@ -55,17 +55,32 @@ struct InheritsFrom : public matcher::UntypedMatcher<InheritsFrom<T>> {
   };
 };
 
+struct DeclaringNonIdentifier {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "declaring-non-identifier";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Encountered a declaration where the expression being "
+                         "declared is not an identifier."),
+        diagnostic::SourceQuote(src).Highlighted(
+            id_range, diagnostic::Style::ErrorText()));
+  }
+
+  SourceRange id_range;
+};
+
 struct AccessRhsNotIdentifier {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "access-rhs-not-identifier";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Right-hand side must be an identifier"),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  SourceRange range;
 };
 
 // TODO: do we want to talk about this as already having a label, or giving it
@@ -75,27 +90,27 @@ struct ScopeNodeAlreadyHasLabel {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "scope-already-has-label";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("This scope already has a label."),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  frontend::SourceRange label_range;
-  frontend::SourceRange range;
+  SourceRange label_range;
+  SourceRange range;
 };
 
 struct ReservedKeyword {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "reserved-keyword";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Identifier `%s` is a reserved keyword.", keyword),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  SourceRange range;
   std::string keyword;
 };
 
@@ -103,47 +118,47 @@ struct CallingDeclaration {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "calling-declaration";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Declarations cannot be called"),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  SourceRange range;
 };
 
 struct IndexingDeclaration {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "indexing-declaration";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Declarations cannot be indexed"),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  SourceRange range;
 };
 
 struct NonDeclarationInStruct {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "non-declaration-in-struct";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Each struct member must be defined using a declaration."),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  SourceRange range;
 };
 
 struct UnknownParseError {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "unknown-parse-error";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     diagnostic::SourceQuote quote(src);
     for (auto const &range : lines) {
       quote.Highlighted(range, diagnostic::Style{});
@@ -154,7 +169,7 @@ struct UnknownParseError {
         std::move(quote));
   }
 
-  std::vector<frontend::SourceRange> lines;
+  std::vector<SourceRange> lines;
 };
 
 struct CommaSeparatedListStatement {
@@ -732,6 +747,11 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   if (nodes[0]->is<ast::Identifier>()) {
     id_range = nodes[0]->range();
     id       = std::string(nodes[0]->as<ast::Identifier>().name());
+  } else {
+    diag.Consume(DeclaringNonIdentifier{
+        .id_range = nodes[0]->range(),
+    });
+    return MakeInvalidNode(nodes[0]->range());
   }
 
   std::unique_ptr<ast::Expression> type_expr, init_val;
@@ -1868,6 +1888,7 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
     case 0: UNREACHABLE();
     case 1:
       // TODO: log an error
+      if (diag.num_consumed() > 0) { return {}; }
       if (state.tag_stack_.back() & (eof | bof)) { return {}; }
       return std::move(move_as<Statements>(state.node_stack_.back())->content_);
 

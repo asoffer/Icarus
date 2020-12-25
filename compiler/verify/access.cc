@@ -23,7 +23,7 @@ struct IncompleteTypeMemberAccess {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot access a member of an incomplete type `%s`.",
-                         type.to_string()),
+                         type),
         diagnostic::SourceQuote(src).Highlighted(
             member_range, diagnostic::Style::ErrorText()));
   }
@@ -39,7 +39,7 @@ struct MissingMember {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expressions of type `%s` have no member named `%s`.",
-                         type.to_string(), member),
+                         type, member),
         diagnostic::SourceQuote(src)
             .Highlighted(expr_range, diagnostic::Style{})
             .Highlighted(member_range, diagnostic::Style::ErrorText()));
@@ -84,8 +84,8 @@ struct NonExportedMember {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
-            "Expressions of type `%s` do not export the member `%s`.",
-            type.to_string(), member),
+            "Expressions of type `%s` do not export the member `%s`.", type,
+            member),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

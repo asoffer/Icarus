@@ -16,8 +16,7 @@ struct UncopyableType {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Attempting to copy an uncopyable type `%s`.",
-                         from.to_string()),
+        diagnostic::Text("Attempting to copy an uncopyable type `%s`.", from),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -47,7 +46,7 @@ struct InvalidUnaryOperatorCall {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Invalid call to unary operator (%s) with argument type `%s`", op,
-            type.to_string()),
+            type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -63,8 +62,7 @@ struct NegatingUnsignedInteger {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
-            "Attempting to negate an unsigned integer of type `%s`.",
-            type.to_string()),
+            "Attempting to negate an unsigned integer of type `%s`.", type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -106,7 +104,7 @@ struct DereferencingNonPointer {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Attempting to dereference an object of type `%s` "
                          "which is not a pointer",
-                         type.to_string()),
+                         type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

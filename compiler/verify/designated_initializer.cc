@@ -50,7 +50,7 @@ struct NonStructDesignatedInitializer {
         diagnostic::Text(
             "Designated initializers can only be used with structs, but you "
             "provided a `%s`",
-            type.to_string()),
+            type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -68,7 +68,7 @@ struct InvalidInitializerType {
             "Designated initializer field encountered an unexpected type:\n"
             "  Expected: A type convertible to `%s`\n"
             "  Actual:   `%s`",
-            expected.to_string(), actual.to_string()),
+            expected, actual),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

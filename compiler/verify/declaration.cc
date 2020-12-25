@@ -15,8 +15,7 @@ struct DeclaringHoleAsNonModule {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Declaring `--` as non-module type `%s`.",
-                         type.to_string()),
+        diagnostic::Text("Declaring `--` as non-module type `%s`.", type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -46,8 +45,7 @@ struct NoDefaultValue {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("There is no default value for the type `%s`.",
-                         type.to_string()),
+        diagnostic::Text("There is no default value for the type `%s`.", type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

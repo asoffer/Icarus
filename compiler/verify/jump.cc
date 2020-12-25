@@ -46,7 +46,7 @@ struct NonPointerJumpState {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "The state in a `jump` must be a pointer, but I found a `%s`.",
-            type.to_string()),
+            type),
         diagnostic::SourceQuote(src).Highlighted(
             range, diagnostic::Style::ErrorText()));
   }

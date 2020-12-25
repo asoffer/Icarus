@@ -16,7 +16,7 @@ struct InvalidIndexType {
         diagnostic::Text("Attempting to index a value of type `%s` with a "
                          "non-integral index. Indices must be integers, but "
                          "you provided an index of type `%s`.",
-                         type.to_string(), index_type.to_string()),
+                         type, index_type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -47,7 +47,7 @@ struct IndexingTupleOutOfBounds {
         diagnostic::Text(
             "Tuple is indexed out of bounds. Tuple of type `%s` has size %u "
             "but you are attempting to access position %d.",
-            tuple->to_string(), tuple->entries_.size(), index),
+            type::Type(tuple), tuple->entries_.size(), index),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -65,7 +65,7 @@ struct IndexingArrayOutOfBounds {
         diagnostic::Text(
             "Array is indexed out of bounds. Array of type `%s` has size %u "
             "but you are attempting to access position %d.",
-            array->to_string(), array->length(), index),
+            type::Type(array), array->length(), index),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -127,7 +127,7 @@ struct InvalidIndexing {
         diagnostic::Text(
             "Cannot index into a non-array, non-buffer type. Indexed type is "
             "a `%s`.",
-            type.to_string()),
+            type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

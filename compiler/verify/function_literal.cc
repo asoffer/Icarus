@@ -20,7 +20,7 @@ struct ReturningNonType {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expected a type for the function's return-type but "
                          "found an expression of type `%s`",
-                         type.to_string()),
+                         type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -51,7 +51,7 @@ struct ReturnTypeMismatch {
         diagnostic::Text(
             "Returning an expression of type `%s` from a function which "
             "returns `%s`.",
-            actual.to_string(), expected.to_string()),
+            actual, expected),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
