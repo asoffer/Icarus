@@ -17,7 +17,8 @@ struct UncopyableType {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Attempting to copy an uncopyable type `%s`.", from),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   type::Type from;
@@ -31,7 +32,8 @@ struct InvalidUnaryOperatorOverload {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No valid operator overload for (%s)", op),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   char const *op;
@@ -47,7 +49,8 @@ struct InvalidUnaryOperatorCall {
         diagnostic::Text(
             "Invalid call to unary operator (%s) with argument type `%s`", op,
             type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   char const *op;
@@ -63,7 +66,8 @@ struct NegatingUnsignedInteger {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to negate an unsigned integer of type `%s`.", type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   type::Type type;
@@ -77,7 +81,8 @@ struct NonConstantEvaluation {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot evaluate a non-constant at compile-time."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   frontend::SourceRange range;
@@ -90,7 +95,8 @@ struct NonAddressableExpression {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expression is not addressable."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   frontend::SourceRange range;
@@ -105,7 +111,8 @@ struct DereferencingNonPointer {
         diagnostic::Text("Attempting to dereference an object of type `%s` "
                          "which is not a pointer",
                          type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   type::Type type;

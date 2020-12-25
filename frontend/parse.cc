@@ -148,7 +148,8 @@ struct NonDeclarationInStruct {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Each struct member must be defined using a declaration."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   SourceRange range;

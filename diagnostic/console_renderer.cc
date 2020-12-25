@@ -92,27 +92,27 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
       frontend::Offset off{0};
       while (next_highlight_change and
              buffer.line_number(*next_highlight_change) == line) {
-        absl::FPrintF(
-            out_, "%s",
-            line_str.substr(
-                off.value, buffer.offset_in_line(*next_highlight_change).value -
-                               off.value));
+        frontend::Offset change_offset =
+            buffer.offset_in_line(*next_highlight_change);
 
-        off = buffer.offset_in_line(*next_highlight_change);
+        absl::FPrintF(out_, "%s",
+                      line_str.substr(off.value, (change_offset - off).value));
+
+        off = change_offset;
         if (inside_highlight) {
           inside_highlight = false;
           ++highlight_iter;
           if (highlight_iter == quote.highlights.end()) {
             next_highlight_change = std::nullopt;
           } else {
-            next_highlight_change = highlight_iter->range.begin();
+            next_highlight_change = highlight_iter->range.end();
           }
         } else {
           inside_highlight = true;
           if (highlight_iter == quote.highlights.end()) {
             next_highlight_change = std::nullopt;
           } else {
-            next_highlight_change = highlight_iter->range.begin();
+            next_highlight_change = highlight_iter->range.end();
           }
         }
         set_highlight();

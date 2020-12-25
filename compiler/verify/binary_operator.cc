@@ -13,7 +13,8 @@ struct InvalidBinaryOperatorOverload {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No valid operator overload for (%s)", op),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   std::string op;
@@ -29,7 +30,8 @@ struct LogicalAssignmentNeedsBoolOrFlags {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Operator '%s' must take boolean or flags arguments.",
                          OperatorToString(op)),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   frontend::Operator op;
@@ -54,7 +56,7 @@ struct InvalidAssignmentOperatorLhsValueCategory {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Lefthand-side of binary logical assignment operator "
                          "must not be constant."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style::ErrorText()));
   }
 
   frontend::SourceRange range;
@@ -68,7 +70,8 @@ struct BinaryOperatorTypeMismatch {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Mismatched types `%s` and `%s` in binary operator.",
                          lhs_type, rhs_type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   type::Type lhs_type;
@@ -84,7 +87,8 @@ struct NoMatchingBinaryOperator {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No matching binary operator for types `%s` and `%s`.",
                          lhs_type, rhs_type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   type::Type lhs_type;
@@ -111,7 +115,8 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
       c->diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qual_type.type(),
           .rhs_type = rhs_qual_type.type(),
-          .range    = node->range(),
+          .range    = frontend::SourceRange(node->lhs()->range().end(),
+                                         node->rhs()->range().begin()),
       });
       return type::QualType::Error();
     }
@@ -123,7 +128,8 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
     if (not qt.ok()) {
       c->diag().Consume(InvalidBinaryOperatorOverload{
           .op    = std::string(op),
-          .range = node->range(),
+          .range = frontend::SourceRange(node->lhs()->range().end(),
+                                         node->rhs()->range().begin()),
       });
     }
     return qt;
@@ -149,7 +155,8 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
     if (not qt.ok()) {
       c->diag().Consume(InvalidBinaryOperatorOverload{
           .op    = std::string(op),
-          .range = node->range(),
+          .range = frontend::SourceRange(node->lhs()->range().end(),
+                                         node->rhs()->range().begin()),
       });
     }
     return qt;
@@ -162,7 +169,8 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
       c->diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qual_type.type(),
           .rhs_type = rhs_qual_type.type(),
-          .range    = node->range(),
+          .range    = frontend::SourceRange(node->lhs()->range().end(),
+                                         node->rhs()->range().begin()),
       });
       return type::QualType::Error();
     }
@@ -186,7 +194,8 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
     c->diag().Consume(NoMatchingBinaryOperator{
         .lhs_type = lhs_qual_type.type(),
         .rhs_type = rhs_qual_type.type(),
-        .range    = node->range(),
+        .range    = frontend::SourceRange(node->lhs()->range().end(),
+                                       node->rhs()->range().begin()),
     });
     return type::QualType::Error();
   }
@@ -234,7 +243,8 @@ type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
       } else {
         diag().Consume(LogicalAssignmentNeedsBoolOrFlags{
             .op    = node->op(),
-            .range = node->range(),
+            .range = frontend::SourceRange(node->lhs()->range().end(),
+                                           node->rhs()->range().begin()),
         });
         return type::QualType::Error();
       }

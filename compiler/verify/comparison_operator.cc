@@ -19,7 +19,8 @@ struct ComparingIncomparables {
             "Values of type `%s` and `%s` are being compared but no such "
             "comparison is allowed:",
             lhs, rhs),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   type::Type lhs;
@@ -36,7 +37,8 @@ struct InvalidComparisonOperatorOverload {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No valid operator overload for (%s)", op),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   std::string op;
@@ -51,7 +53,8 @@ struct NoMatchingComparisonOperator {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No matching comparison operator for types %s and %s.",
                          lhs, rhs),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   type::Type lhs;
