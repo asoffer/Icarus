@@ -42,6 +42,23 @@ struct UndeclaredIdentifier {
   frontend::SourceRange range;
 };
 
+struct UncapturedIdentifier {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "uncaptured-identifier";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Found an identifier '%s' which is not visible in the "
+                         "current scope:",
+                         id),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  std::string_view id;
+  frontend::SourceRange range;
+};
+
 struct NonCallableInOverloadSet {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-callable-in-overload-set";
@@ -137,10 +154,19 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       context().set_decls(node, std::move(potential_decls));
     } break;
     case 0: {
-      diag().Consume(UndeclaredIdentifier{
-          .id    = node->name(),
-          .range = node->range(),
-      });
+      // TODO: Performance. We don't need to look at these, we just need to know
+      // if any exist.
+      if (module::AllDeclsTowardsRoot(node->scope(), node->name()).empty()) {
+        diag().Consume(UndeclaredIdentifier{
+            .id    = node->name(),
+            .range = node->range(),
+        });
+      } else {
+        diag().Consume(UncapturedIdentifier{
+            .id    = node->name(),
+            .range = node->range(),
+        });
+      }
       return type::QualType::Error();
     } break;
     default: {

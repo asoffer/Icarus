@@ -30,9 +30,8 @@ TEST(Identifier, Undeclared) {
   auto const *id = mod.Append<ast::Identifier>("n");
   auto const *qt = mod.context().qual_type(id);
   ASSERT_EQ(qt, nullptr);
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      ElementsAre(Pair("type-error", "undeclared-identifier")));
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              ElementsAre(Pair("type-error", "undeclared-identifier")));
 }
 
 TEST(Identifier, OverloadSetSuccess) {
@@ -83,7 +82,7 @@ TEST(Identifier, InaccessibleDeclaration) {
   f ::= () => n
   )");
   EXPECT_THAT(mod.consumer.diagnostics(),
-              ElementsAre(Pair("type-error", "undeclared-identifier")));
+              ElementsAre(Pair("type-error", "uncaptured-identifier")));
 }
 
 }  // namespace
