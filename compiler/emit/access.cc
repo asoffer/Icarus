@@ -64,8 +64,13 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
   } else if (operand_qt == type::QualType::Constant(type::Type_)) {
     if (auto t = EvaluateOrDiagnoseAs<type::Type>(node->operand())) {
       if (type::Array const *a = t->if_as<type::Array>()) {
-        ASSERT(node->member_name() == "length");
-        return ir::Value(a->length());
+        if (node->member_name() == "length") {
+          return ir::Value(a->length());
+        } else if (node->member_name() == "element_type") {
+          return ir::Value(a->data_type());
+        } else {
+          UNREACHABLE(node->member_name());
+        }
       } else {
         UNREACHABLE(*t);
       }

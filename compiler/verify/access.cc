@@ -70,10 +70,13 @@ struct TypeHasNoMembers {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Cannot access a member of `type`."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::Text("The type `%s` does not have `%s` as a member.", type, member),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
+  type::Type type;
+  std::string member;
   frontend::SourceRange range;
 };
 
@@ -154,7 +157,10 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
   if (type::Array const *a = evaled_type.if_as<type::Array>()) {
     if (node->member_name() == "length") {
       return c->context().set_qual_type(
-          node, type::QualType::Constant(type::Get<type::Array::length_t>()));
+         node, type::QualType::Constant(type::Get<type::Array::length_t>()));
+    } else if (node->member_name() == "element_type") {
+      return c->context().set_qual_type(node,
+                                        type::QualType::Constant(type::Type_));
     } else {
       c->diag().Consume(MissingMember{
           .expr_range   = node->operand()->range(),
@@ -190,7 +196,7 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
       c->diag().Consume(MissingMember{
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
-          .member       = std::string{node->member_name()},
+          .member       = std::string(node->member_name()),
           .type         = evaled_type,
       });
 
@@ -203,7 +209,12 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
 
   // TODO: Determine whether structs are allowed to have constant members
   // accessible through the type-name. At the moment this is not allowed.
-  c->diag().Consume(TypeHasNoMembers{.range = node->range()});
+  c->diag().Consume(TypeHasNoMembers{
+      .type   = evaled_type,
+      .member = std::string(node->member_name()),
+      .range  = frontend::SourceRange(node->operand()->range().end(),
+                                     node->range().end()),
+  });
   return type::QualType::Error();
 }
 

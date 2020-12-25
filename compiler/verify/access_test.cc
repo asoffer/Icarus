@@ -166,6 +166,14 @@ TEST(Access, MultidimensionalArrayLength) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
+TEST(Access, ArrayElementType) {
+  test::TestModule mod;
+  auto const *expr = mod.Append<ast::Expression>(R"([3, 2; i64].element_type)");
+  auto const *qt   = mod.context().qual_type(expr);
+  EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
 TEST(Access, ArrayInvalidMember) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([3; i64].size)");
