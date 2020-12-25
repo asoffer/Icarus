@@ -5,6 +5,7 @@
 #include "ast/ast.h"
 #include "base/defer.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "ir/compiled_scope.h"
 #include "ir/instruction/core.h"
 #include "ir/instruction/inliner.h"
@@ -32,8 +33,9 @@ struct BeforeBlock {
 };
 
 absl::flat_hash_map<
-    std::string, std::vector<std::pair<core::Arguments<type::Typed<ir::Value>>,
-                                       ir::BasicBlock *>>>
+    std::string,
+    std::vector<std::pair<core::Arguments<std::pair<ir::Value, type::QualType>>,
+                          ir::BasicBlock *>>>
 InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
                       absl::Span<ir::Value const> arguments,
                       ir::LocalBlockInterpretation const &block_interp) {
@@ -109,8 +111,10 @@ std::optional<ir::Reg> InitializeScopeState(Compiler &c,
 }
 
 std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
-    Compiler &c, 
-    core::Arguments<ast::Expression const *> const& args,
+    Compiler &c,
+    core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
+    std::optional<ir::Reg> state_ptr,
+    core::Arguments<ast::Expression const *> const &arg_exprs,
     ir::CompiledScope const &scope) {
   // TODO: Support dynamic dispatch.
   auto const &inits = scope.inits();
@@ -122,18 +126,48 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
     if (f) { std::move(f)(); }
   }
 
-  auto arg_vals = args.Transform([&c](ast::Expression const *expr) {
-    return type::Typed<ir::Value>(c.EmitValue(expr),
-                                  c.context().qual_type(expr)->type());
-  });
-  return std::make_pair(
-      init,
-      c.PrepareCallArguments(
-          ir::CompiledJump::From(init)->type()->state(),
-          ir::CompiledJump::From(init)->params().Transform([](auto const &p) {
-            return type::QualType::NonConstant(p.type());
-          }),
-          arg_vals));
+  // Arguments provided to a function call need to be "prepared" in the sense
+  // that they need to be
+  // * Ordered according to the parameters of the function (because named
+  //   arguments may be out of order)
+  // * Have any implicit conversions applied.
+  //
+  // Implicit conversions are tricky because we cannot first compute the values
+  // and then apply conversions to them. This may work for conversions that take
+  // a buffer-pointer and convert it to just a pointer, but some conversions
+  // take values and convert them to pointers/references. If we first compute
+  // the value, we may end up loading the value from memory and no longer having
+  // access to its address. Or worse, we may have a temporary and never have an
+  // allocated address for it.
+  std::vector<ir::Value> prepared_arguments;
+
+  auto const &param_qts = ir::CompiledJump::From(init)->params().Transform(
+      [](auto const &p) { return type::QualType::NonConstant(p.type()); });
+
+  if (state_ptr) { prepared_arguments.emplace_back(*state_ptr); }
+
+  // TODO: With expansions, args_exprs.pos().size() could be wrong.
+  for (size_t i = 0; i < arg_exprs.pos().size(); ++i) {
+    prepared_arguments.push_back(PrepareArgument(
+        c, *constant_arguments[i], arg_exprs[i], param_qts[i].value));
+  }
+
+  for (size_t i = arg_exprs.pos().size(); i < param_qts.size(); ++i) {
+    std::string_view name                = param_qts[i].name;
+    auto const *constant_typed_value     = constant_arguments.at_or_null(name);
+    auto const *expr                     = arg_exprs.at_or_null(name);
+    ast::Expression const *default_value = nullptr;
+
+    if (not expr) {
+      default_value = ASSERT_NOT_NULL(
+          ir::CompiledJump::From(init)->params()[i].value.get()->init_val());
+    }
+
+    prepared_arguments.push_back(PrepareArgument(
+        c, constant_typed_value ? **constant_typed_value : ir::Value(),
+        expr ? *expr : default_value, param_qts[i].value));
+  }
+  return std::make_pair(init, std::move(prepared_arguments));
 }
 
 struct BlockAndPhis {
@@ -144,7 +178,7 @@ void SetBeforeBlockPhi(
     Compiler &c, absl::flat_hash_map<BeforeBlock, BlockAndPhis> &before_blocks,
     ast::BlockNode const *block_node, ir::Fn before_fn,
     ir::BasicBlock *incoming_block,
-    core::Arguments<type::Typed<ir::Value>> const &args) {
+    core::Arguments<std::pair<ir::Value, type::QualType>> const &args) {
   LOG("SetBeforeBlockPhi", "SetBeforeBlockPhi: %s", block_node->name());
 
   decltype(before_blocks.begin()) iter;
@@ -152,8 +186,23 @@ void SetBeforeBlockPhi(
   std::tie(iter, inserted) = before_blocks.try_emplace(
       BeforeBlock{.block = block_node, .fn = before_fn});
   auto const &before_block = iter->first;
-  auto before_args =
-      c.PrepareCallArguments(nullptr, before_block.fn.type()->params(), args);
+  std::vector<ir::Value> prepared_arguments;
+
+  core::Params<type::QualType> const &param_qts =
+      before_block.fn.type()->params();
+
+  for (size_t i = 0; i < args.pos().size(); ++i) {
+    prepared_arguments.push_back(
+        PrepareArgument(c, args[i].first, args[i].second, param_qts[i].value));
+  }
+
+  for (size_t i = args.pos().size(); i < param_qts.size(); ++i) {
+    // TODO: Default values.
+    auto const &[arg_val, arg_qt] = args[param_qts[i].name];
+    prepared_arguments.push_back(
+        PrepareArgument(c, arg_val, arg_qt, param_qts[i].value));
+  }
+
   auto &phis = iter->second.phis;
   if (inserted) {
     iter->second.block = c.builder().AddBlock(
@@ -161,7 +210,7 @@ void SetBeforeBlockPhi(
   }
 
   size_t i = 0;
-  for (auto const &param : before_block.fn.type()->params()) {
+  for (auto const &param : param_qts) {
     type::Apply(before_block.fn.type()->params()[i].value.type(),
                 [&]<typename T>() {
                   ir::PhiInstruction<T> *phi =
@@ -171,7 +220,7 @@ void SetBeforeBlockPhi(
                                       ->instructions()[i]
                                       .template as<ir::PhiInstruction<T>>();
                   if (inserted) { phis.push_back(ir::Value(phi->result)); }
-                  phi->add(incoming_block, before_args[i].get<ir::RegOr<T>>());
+                  phi->add(incoming_block, prepared_arguments[i].get<ir::RegOr<T>>());
                 });
     ++i;
   }
@@ -247,10 +296,15 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   builder().UncondJump(args_block);
   builder().CurrentBlock() = args_block;
 
-  auto [init, args] =
-      EmitIrForJumpArguments(*this, node->args(), *compiled_scope);
+  // Constant arguments need to be computed entirely before being used to
+  // instantiate a generic function.
+  core::Arguments<type::Typed<ir::Value>> constant_arguments =
+      EmitConstantArguments(*this, node->args());
+
+  auto [init, args] = EmitIrForJumpArguments(
+      *this, constant_arguments, state_ptr, node->args(), *compiled_scope);
   auto from_block = builder().CurrentBlock();
-  if (state_ptr) { args.emplace(args.begin(), *state_ptr); }
+
   auto args_by_name =
       InlineJumpIntoCurrent(builder(), init, args, local_interp);
   for (auto const &[name, args_and_incoming] : args_by_name) {
@@ -262,9 +316,10 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
 
       auto *scope_block = ir::CompiledBlock::From(compiled_scope->block(name));
       ir::OverloadSet &before = scope_block->before();
-      auto arg_types   = args.Transform([](type::Typed<ir::Value> const &v) {
-        return type::QualType::NonConstant(v.type());
-      });
+      auto arg_types =
+          args.Transform([](std::pair<ir::Value, type::QualType> const &v) {
+            return v.second;
+          });
       ir::Fn before_fn = before.Lookup(arg_types).value();
       SetBeforeBlockPhi(*this, before_blocks, block_node, before_fn,
                         incoming_block, args);
@@ -306,9 +361,9 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
             auto *scope_block =
                 ir::CompiledBlock::From(compiled_scope->block(name));
             ir::OverloadSet &before = scope_block->before();
-            auto arg_types =
-                args.Transform([](type::Typed<ir::Value> const &v) {
-                  return type::QualType::NonConstant(v.type());
+            auto arg_types          = args.Transform(
+                [](std::pair<ir::Value, type::QualType> const &v) {
+                  return v.second;
                 });
             ir::Fn before_fn = before.Lookup(arg_types).value();
             SetBeforeBlockPhi(*this, before_blocks, block_node, before_fn,

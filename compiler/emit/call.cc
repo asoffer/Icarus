@@ -11,21 +11,6 @@ struct MoveInitTag {};
 struct CopyInitTag {};
 struct AssignTag {};
 
-core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
-    Compiler &c, core::Arguments<ast::Expression const *> const &args) {
-  return args.Transform([&](ast::Expression const *expr) {
-    auto qt = *ASSERT_NOT_NULL(c.context().qual_type(expr));
-    if (qt.constant()) {
-      ir::Value result = c.EvaluateOrDiagnose(
-          type::Typed<ast::Expression const *>(expr, qt.type()));
-      if (result.empty()) { NOT_YET(); }
-      return type::Typed<ir::Value>(result, qt.type());
-    } else {
-      return type::Typed<ir::Value>(ir::Value(), qt.type());
-    }
-  });
-}
-
 template <typename Tag>
 ir::OutParams SetReturns(
     Tag, ir::Builder &bldr, type::Type type,

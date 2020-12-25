@@ -31,9 +31,7 @@ struct CompiledJump : BlockGroup<type::Jump> {
       if (auto const *j = block->jump().IfAsChooseJump()) {
         for (size_t i = 0; i < j->size(); ++i) {
           result[j->names()[i]].push_back(
-              j->args()[i].Transform([](auto const &a) {
-                return type::QualType::NonConstant(a.type());
-              }));
+              j->args()[i].Transform([](auto const &a) { return a.second; }));
         }
       }
     }

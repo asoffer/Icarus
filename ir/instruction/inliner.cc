@@ -8,7 +8,6 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "base/meta.h"
-#include "type/typed_value.h"
 
 namespace ir {
 
@@ -116,9 +115,9 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
 
       arguments_by_name_[j.name].emplace_back(
           choose_argument_cache_.at(j.choose_block)
-              .Transform([&](::type::Typed<Value> const& r) {
+              .Transform([&](std::pair<Value, type::QualType> const& r) {
                 auto copy = r;
-                Inline(copy.get());
+                Inline(copy.first);
                 return copy;
               }),
           block);

@@ -388,9 +388,9 @@ struct Builder {
                 BasicBlock* false_block);
   void ReturnJump();
   // TODO: Probably better to have a data structure for this.
-  void ChooseJump(std::vector<std::string_view> names,
-                  std::vector<BasicBlock*> blocks,
-                  std::vector<core::Arguments<type::Typed<Value>>> args);
+  void ChooseJump(
+      std::vector<std::string_view> names, std::vector<BasicBlock*> blocks,
+      std::vector<core::Arguments<std::pair<Value, type::QualType>>> args);
   void JumpExitJump(std::string name, BasicBlock* choose_block);
 
   template <bool B>

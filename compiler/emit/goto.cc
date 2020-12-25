@@ -11,7 +11,7 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
   std::vector<ir::BasicBlock *> blocks;
   blocks.reserve(options.size());
 
-  std::vector<core::Arguments<type::Typed<ir::Value>>> args;
+  std::vector<core::Arguments<std::pair<ir::Value, type::QualType>>> args;
   args.reserve(options.size());
 
   auto current_block = c.builder().CurrentBlock();
@@ -28,9 +28,19 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
 
     c.builder().CurrentBlock() = block;
 
+    // Note, jumps arguments cannot be completely evaluated with EmitValue
+    // because they eventually need to be "prepared" before being passed to an
+    // overload set on entry into a block node. This requires some implicit
+    // casts which may only want to look at references rather than values, and
+    // an extra load instruction will lose access to the reference we care
+    // about. Thus, rather than emitting the values here, we emit references if
+    // the qualified type is itself a reference and values otherwise.
     args.push_back(opt.args().Transform([&c](auto const &expr) {
-      return type::Typed<ir::Value>(c.EmitValue(expr.get()),
-                                    c.context().qual_type(expr.get())->type());
+      auto qt = *ASSERT_NOT_NULL(c.context().qual_type(expr.get()));
+      return std::pair<ir::Value, type::QualType>(
+          qt.quals() >= type::Quals::Ref() ? ir::Value(c.EmitRef(expr.get()))
+                                           : c.EmitValue(expr.get()),
+          qt);
     }));
     c.builder().JumpExitJump(std::string(opt.block()), current_block);
   }

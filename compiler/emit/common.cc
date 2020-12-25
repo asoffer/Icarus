@@ -25,20 +25,6 @@ struct IncompleteField {
   frontend::SourceRange range;
 };
 
-ir::Value PrepareOneArg(Compiler &c, type::Typed<ir::Value> const &arg,
-                        type::Type param_type) {
-  auto &bldr = c.builder();
-  // TODO: other implicit conversions?
-  auto t = arg.type();
-  if (t.get()->is_big()) {
-    auto r = bldr.TmpAlloca(t);
-    c.EmitMoveInit(arg, type::Typed<ir::Reg>(r, t));
-    return ir::Value(r);
-  } else {
-    return arg.get();
-  }
-}
-
 ir::Fn InsertGeneratedMoveAssign(
     Compiler &c, type::Struct *s,
     absl::Span<type::StructInstruction::Field const> ir_fields) {
@@ -112,31 +98,6 @@ ir::Fn InsertGeneratedCopyAssign(
 }
 
 }  // namespace
-
-std::vector<ir::Value> Compiler::PrepareCallArguments(
-    type::Type state_ptr_type, core::Params<type::QualType> const &params,
-    core::Arguments<type::Typed<ir::Value>> const &args) {
-  std::vector<ir::Value> arg_values;
-  arg_values.reserve(params.size());
-
-  size_t i = 0;
-  size_t j = 0;
-  if (state_ptr_type) {
-    arg_values.push_back(PrepareOneArg(*this, args[i++], state_ptr_type));
-  }
-
-  while (i < args.pos().size()) {
-    arg_values.push_back(
-        PrepareOneArg(*this, args[i++], params[j++].value.type()));
-  }
-
-  for (; i < params.size(); ++i) {
-    arg_values.push_back(
-        PrepareOneArg(*this, args[params[i].name], params[i].value.type()));
-  }
-
-  return arg_values;
-}
 
 std::optional<ir::CompiledFn> StructCompletionFn(
     Compiler &c, type::Struct *s, absl::Span<ast::Declaration const> fields) {
@@ -371,11 +332,11 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
   if (constant.empty()) {
     if (arg_type == param_type) {
       return compiler.EmitValue(expr);
-    } else if (auto [bufptr_param_type, ptr_arg_type] =
-                   std::make_pair(param_type.if_as<type::BufferPointer>(),
-                                  arg_type.if_as<type::Pointer>());
-               bufptr_param_type and ptr_arg_type and
-               ptr_arg_type->pointee() == bufptr_param_type->pointee()) {
+    } else if (auto [bufptr_arg_type, ptr_param_type] =
+                   std::make_pair(arg_type.if_as<type::BufferPointer>(),
+                                  param_type.if_as<type::Pointer>());
+               bufptr_arg_type and ptr_param_type and
+               ptr_param_type->pointee() == bufptr_arg_type->pointee()) {
       return ir::Value(compiler.EmitValue(expr));
     } else if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
       if (ptr_param_type->pointee() == arg_type) {
@@ -388,19 +349,19 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
           return ir::Value(reg);
         }
       } else {
-        NOT_YET();
+        NOT_YET(arg_qt, " vs ", param_qt);
       }
     } else {
-      NOT_YET();
+      NOT_YET(arg_qt, " vs ", param_qt);
     }
   } else {
     if (arg_type == param_type) {
       return constant;
-    } else if (auto [bufptr_param_type, ptr_arg_type] =
-                   std::make_pair(param_type.if_as<type::BufferPointer>(),
-                                  arg_type.if_as<type::Pointer>());
-               bufptr_param_type and ptr_arg_type and
-               ptr_arg_type->pointee() == bufptr_param_type->pointee()) {
+    } else if (auto [bufptr_arg_type, ptr_param_type] =
+                   std::make_pair(arg_type.if_as<type::BufferPointer>(),
+                                  param_type.if_as<type::Pointer>());
+               bufptr_arg_type and ptr_param_type and
+               ptr_param_type->pointee() == bufptr_arg_type->pointee()) {
       return constant;
     } else if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
       if (ptr_param_type->pointee() == arg_type) {
@@ -409,12 +370,60 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
                               type::Typed<ir::Reg>(reg, arg_type));
         return ir::Value(reg);
       } else {
-        NOT_YET();
+        NOT_YET(arg_qt, " vs ", param_qt);
       }
     } else {
-      NOT_YET();
+      NOT_YET(arg_qt, " vs ", param_qt);
     }
   }
+}
+
+// TODO: A good amount of this could probably be reused from the above
+// PrepareArgument overload.
+ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
+                          type::QualType arg_qt, type::QualType param_qt) {
+  type::Type arg_type   = arg_qt.type();
+  type::Type param_type = param_qt.type();
+
+  if (arg_type == param_type) { return arg_value; }
+
+  if (auto [bufptr_arg_type, ptr_param_type] =
+          std::make_pair(arg_type.if_as<type::BufferPointer>(),
+                         param_type.if_as<type::Pointer>());
+      bufptr_arg_type and ptr_param_type and
+      ptr_param_type->pointee() == bufptr_arg_type->pointee()) {
+    return arg_value;
+  }
+
+  if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
+    if (ptr_param_type->pointee() == arg_type) {
+      auto reg = compiler.builder().TmpAlloca(arg_type);
+      // TODO: Once EmitMoveInit is no longer a method on Compiler, we can
+      // reduce the dependency here from being on Compiler to on Builder.
+      compiler.EmitMoveInit(type::Typed<ir::Value>(arg_value, arg_type),
+                            type::Typed<ir::Reg>(reg, arg_type));
+      return ir::Value(reg);
+    } else {
+      NOT_YET(arg_qt, " vs ", param_qt);
+    }
+  } else {
+    NOT_YET(arg_qt, " vs ", param_qt);
+  }
+}
+
+core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
+    Compiler &c, core::Arguments<ast::Expression const *> const &args) {
+  return args.Transform([&](ast::Expression const *expr) {
+    auto qt = *ASSERT_NOT_NULL(c.context().qual_type(expr));
+    if (qt.constant()) {
+      ir::Value result = c.EvaluateOrDiagnose(
+          type::Typed<ast::Expression const *>(expr, qt.type()));
+      if (result.empty()) { NOT_YET(); }
+      return type::Typed<ir::Value>(result, qt.type());
+    } else {
+      return type::Typed<ir::Value>(ir::Value(), qt.type());
+    }
+  });
 }
 
 }  // namespace compiler

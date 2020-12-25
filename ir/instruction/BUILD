@@ -124,7 +124,7 @@ cc_library(
         "//core:arguments",
         "//ir/value",
         "//ir/value:reg",
-        "//type:typed_value",
+        "//type:qual_type",
     ],
 )
 

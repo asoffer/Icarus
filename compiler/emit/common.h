@@ -69,6 +69,17 @@ ir::NativeFn MakeConcreteFromGeneric(
 ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
                           ast::Expression const *expr,
                           type::QualType param_qt);
+// Same as the above overload but rather than emitting the code for expressions
+// on the fly, this overload is to be used when the value has already been
+// computed, but you know the qualified type. In particular arg_value needs to
+// be non-empty when arg_qt is constant. When arg_qt is a reference type,
+// arg_value holds a reference to the relevant value rather than the actual
+// value itself.
+ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
+                          type::QualType arg_qt, type::QualType param_qt);
+
+core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
+    Compiler &c, core::Arguments<ast::Expression const *> const &args);
 
 
 }  // namespace compiler

@@ -45,7 +45,8 @@ struct InstructionInliner {
 
   absl::flat_hash_map<
       std::string,
-      std::vector<std::pair<core::Arguments<type::Typed<Value>>, BasicBlock *>>>
+      std::vector<std::pair<core::Arguments<std::pair<Value, type::QualType>>,
+                            BasicBlock *>>>
   ArgumentsByName() && {
     return std::move(arguments_by_name_);
   }
@@ -61,9 +62,11 @@ struct InstructionInliner {
   absl::flat_hash_map<BasicBlock const *, BasicBlock *> blocks_;
   absl::flat_hash_map<
       std::string,
-      std::vector<std::pair<core::Arguments<type::Typed<Value>>, BasicBlock *>>>
+      std::vector<std::pair<core::Arguments<std::pair<Value, type::QualType>>,
+                            BasicBlock *>>>
       arguments_by_name_;
-  absl::flat_hash_map<BasicBlock const *, core::Arguments<type::Typed<Value>>>
+  absl::flat_hash_map<BasicBlock const *,
+                      core::Arguments<std::pair<Value, type::QualType>>>
       choose_argument_cache_;
   LocalBlockInterpretation block_interp_;
 };

@@ -13,14 +13,24 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
-  std::vector<std::pair<ast::Expression const *, ir::Value>> arg_vals;
-  arg_vals.reserve(node->exprs().size());
-  for (auto *expr : node->exprs()) {
-    arg_vals.emplace_back(expr, EmitValue(expr));
-  }
+  // Note: yields do not allow passing named arguments, so there's no need for a
+  // full `core::Arguments` here. We can proceed direclty to a vector of the
+  // positional arguments.
 
-  // TODO: store this as an exec_scope.
-  MakeAllDestructions(*this, &node->scope()->as<ast::ExecScope>());
+  core::Arguments<type::QualType> yield_arg_types;
+  std::vector<type::Typed<ir::Value>> constant_arguments;
+  for (auto const *expr : node->exprs()) {
+    auto qt = *ASSERT_NOT_NULL(context().qual_type(expr));
+    yield_arg_types.pos_emplace(qt);
+    if (qt.constant()) {
+      ir::Value result = EvaluateOrDiagnose(
+          type::Typed<ast::Expression const *>(expr, qt.type()));
+      if (result.empty()) { NOT_YET(); }
+      constant_arguments.emplace_back(result, qt.type());
+    } else {
+      constant_arguments.emplace_back(ir::Value(), qt.type());
+    }
+  }
 
   if (ast::Label const *lbl = node->label()) {
     auto iter = state().scope_landings.rbegin();
@@ -28,19 +38,8 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
       // TODO: Emit all destructions on this scope.
       // TODO: Call the quick-exit for this scope.
     }
-    // TODO: Call `before` with arguments.
-    ir::CompiledScope *compiled_scope = ir::CompiledScope::From(iter->scope);
 
-    core::Arguments<type::QualType> yield_arg_types;
-    core::Arguments<type::Typed<ir::Value>> yield_arg_typed_values;
-    for (auto const &[expr, value] : arg_vals) {
-      type::QualType const *qt = context().qual_type(expr);
-      yield_arg_types.pos_emplace(*qt);
-      yield_arg_typed_values.pos_emplace(value, qt->type());
-      // TODO: Determine if you are going to support named yields.
-    }
-
-    ir::OverloadSet &exit = compiled_scope->exit();
+    ir::OverloadSet &exit = ir::CompiledScope::From(iter->scope)->exit();
     ir::Fn exit_fn        = exit.Lookup(yield_arg_types).value();
 
     type::Type t;
@@ -71,11 +70,18 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
           });
     }
 
-    builder().Call(
-        exit_fn, exit_fn.type(),
-        PrepareCallArguments(compiled_scope->state_type(),
-                             exit_fn.type()->params(), yield_arg_typed_values),
-        std::move(out_params));
+    std::vector<ir::Value> prepared_arguments;
+    prepared_arguments.reserve(yield_arg_types.size());
+    size_t i = 0;
+    for (auto const *expr : node->exprs()) {
+      prepared_arguments.push_back(
+          PrepareArgument(*this, *constant_arguments[i], expr,
+                          exit_fn.type()->params()[i].value));
+      ++i;
+    }
+
+    builder().Call(exit_fn, exit_fn.type(), std::move(prepared_arguments),
+                   std::move(out_params));
 
     builder().UncondJump(iter->block);
 
@@ -86,6 +92,9 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
     builder().block_termination_state() =
         ir::Builder::BlockTerminationState::kYield;
   }
+
+  // TODO: store this as an exec_scope.
+  MakeAllDestructions(*this, &node->scope()->as<ast::ExecScope>());
 
   return ir::Value();
 }

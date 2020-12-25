@@ -436,16 +436,16 @@ cc_library(
     ],
 )
 
-# TOOD: ScopeLiteral test
+# TODO: ScopeLiteral test
 
 cc_library(
     name = "scope_node",
     srcs = ["scope_node.cc"],
     deps = [
+        ":common",
         "//ast",
         "//base:defer",
         "//compiler:compiler_header",
-        "//compiler/emit:common",
         "//ir:compiled_scope",
         "//ir/instruction:inliner",
         "//ir/value:scope",
