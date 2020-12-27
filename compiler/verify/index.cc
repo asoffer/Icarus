@@ -199,7 +199,10 @@ type::QualType VerifyByteViewIndex(Compiler *c, ast::Index const *node,
             .range = node->range(),
         });
         qt.MarkError();
-      } else if (*maybe_index >= maybe_str->get().size()) {
+      } else if (*maybe_index > maybe_str->get().size()) {
+        // Note: We only emit an error if it's beyond a potential
+        // null-terminator, regardless of whether or not we can prove a
+        // null-terminator exists.
         c->diag().Consume(IndexingStringOutOfBounds{
             .range  = node->range(),
             .length = maybe_str->get().size(),

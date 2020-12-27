@@ -1,0 +1,43 @@
+constants ::= import "math/constants.ic"
+
+#{export}
+angle ::= struct {
+  #{export} // TODO: Remove the need for this export.
+  // Represents the value of the angle in radians
+  _val: f64
+}
+
+#{export} radians ::= (x: f64) => angle.{ _val = x }
+
+#{export}
+degrees ::= (x: f64) => angle.{ _val = constants.Pi * x / 180. }
+
+#{export} (+) ::= (a: angle, b: angle) => angle.{ _val = a._val + b._val }
+#{export} (-) ::= (a: angle, b: angle) => angle.{ _val = a._val - b._val }
+#{export} (-) ::= (a: angle) => angle.{ _val = -a._val }
+#{export} (*) ::= (a: angle, x: f64) => angle.{ _val = a._val * x }
+#{export} (*) ::= (x: f64, a: angle) => angle.{ _val = a._val * x }
+
+#{export} Print ::= (a: angle) -> () { 
+  io ::= import "io.ic"
+  io.Print(a._val)
+  io.Print(" radians")
+}
+
+#{export} as_degrees ::= (a: angle) => a._val * 180. / constants.Pi 
+#{export} as_radians ::= (a: angle) => a._val
+
+#{export}    Sin     ::= (a: angle) => foreign("sin", f64 -> f64)(a._val)
+#{export}    Cos     ::= (a: angle) => foreign("cos", f64 -> f64)(a._val)
+#{export}    Tan     ::= (a: angle) => foreign("tan", f64 -> f64)(a._val)
+#{export} ArcSin     ::= (x: f64) => foreign("asin", f64 -> f64)(x)'radians
+#{export} ArcCos     ::= (x: f64) => foreign("acos", f64 -> f64)(x)'radians
+#{export} ArcTan     ::= (x: f64) => foreign("atan", f64 -> f64)(x)'radians
+#{export}    SinH    ::= (a: angle) => foreign("sinh", f64 -> f64)(a._val)
+#{export}    CosH    ::= (a: angle) => foreign("cosh", f64 -> f64)(a._val)
+#{export}    TanH    ::= (a: angle) => foreign("tanh", f64 -> f64)(a._val)
+#{export} ArcSinH    ::= (x: f64) => foreign("asinh", f64 -> f64)(x)'radians
+#{export} ArcCosH    ::= (x: f64) => foreign("acosh", f64 -> f64)(x)'radians
+#{export} ArcTanH    ::= (x: f64) => foreign("atanh", f64 -> f64)(x)'radians
+#{export} Hypotenuse ::= foreign("hypot", (f64, f64) -> f64)
+#{export} Hypotenuse ::= foreign("hypotf", (f32, f32) -> f32)

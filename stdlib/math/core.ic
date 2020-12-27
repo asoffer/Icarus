@@ -1,0 +1,67 @@
+#{export} Abs ::= foreign("fabsf", f32 -> f32)
+#{export} Abs ::= foreign("fabs", f64 -> f64)
+#{export} Abs ::= foreign("abs", i8 -> i8)
+#{export} Abs ::= foreign("abs", i16 -> i16)
+#{export} Abs ::= foreign("abs", i32 -> i32)
+#{export} Abs ::= foreign("abs", i64 -> i64)
+
+#{export} (%) ::= foreign("fmodf", (f32, f32) -> f32)
+#{export} (%) ::= foreign("fmod", (f64, f64) -> f64)
+
+// TODO: Support compile-time rounding enumerator tag.
+#{export} Floor     ::= foreign("floorf",  f32 -> f32)
+#{export} Floor     ::= foreign("floor",   f64 -> f64)
+#{export} Ceiling   ::= foreign("ceilf",   f32 -> f32)
+#{export} Ceiling   ::= foreign("ceil",    f64 -> f64)
+#{export} Truncate  ::= foreign("truncf",  f32 -> f32)
+#{export} Truncate  ::= foreign("trunc",   f64 -> f64)
+
+#{export} Divide ::= (numerator: f32, denominator: f32)  -> (i32, f32) {
+  remquo ::= foreign("remquo", (f32, f32, *i32) -> f32)
+  quotient: i32
+  remainder := remquo(numerator, denominator, &quotient)
+  return quotient, remainder
+}
+
+#{export} Divide ::= (numerator: f64, denominator: f64)  -> (i32, f64) {
+  remquo ::= foreign("remquof", (f64, f64, *i32) -> f64)
+  quotient: i32
+  remainder := remquo(numerator, denominator, &quotient)
+  return quotient, remainder
+}
+
+#{export} SplitIntegral ::= (x: f32) -> (f32, f32) {
+  modf ::= foreign("modff", (f32, *f32) -> f32)
+  ipart: f32
+  fpart: f32
+  modf(x, &ipart)
+  return ipart, fpart
+}
+
+#{export} SplitIntegral ::= (x: f64) -> (f64, f64) {
+  modf ::= foreign("modf", (f64, *f64) -> f64)
+  ipart: f64
+  fpart: f64
+  modf(x, &ipart)
+  return ipart, fpart
+}
+
+#{export} SquareRoot ::= foreign("sqrtf",  f32 -> f32)
+#{export} SquareRoot ::= foreign("sqrt",   f64 -> f64)
+#{export} CubeRoot   ::= foreign("cbrtf",  f32 -> f32)
+#{export} CubeRoot   ::= foreign("cbrt",   f64 -> f64)
+#{export} Exp        ::= foreign("expf",  f32 -> f32)
+#{export} Exp        ::= foreign("exp",  f64 -> f64)
+#{export} Log        ::= foreign("logf", f32 -> f32)
+#{export} Log        ::= foreign("log",  f64 -> f64)
+#{export} Pow        ::= foreign("powf", (f32, f32) -> f32)
+#{export} Pow        ::= foreign("pow",  (f64, f64) -> f64)
+
+#{export} FusedMultiplyAdd ::= foreign("fmaf",  (f32, f32, f32) -> f32)
+#{export} FusedMultiplyAdd ::= foreign("fma",   (f64, f64, f64) -> f64)
+
+#{export} Erf ::= foreign("erff", f32 -> f32)
+#{export} Erf ::= foreign("erf", f64 -> f64)
+
+#{export} Gamma ::= foreign("tgammaf", f32 -> f32)
+#{export} Gamma ::= foreign("tgamma", f64 -> f64)

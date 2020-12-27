@@ -187,7 +187,8 @@ type::QualType VerifyForeignCall(
     });
     return type::QualType::Error();
   }
-  return type::QualType::NonConstant(*foreign_type);
+
+  return type::QualType::Constant(*foreign_type);
 }
 
 type::QualType VerifyOpaqueCall(
@@ -288,6 +289,9 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     type::QualType qt;
     switch (b->value().which()) {
       case ir::BuiltinFn::Which::Foreign: {
+        ast::OverloadSet os;
+        os.insert(node);
+        context().SetAllOverloads(node, std::move(os));
         qt = VerifyForeignCall(this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Opaque: {

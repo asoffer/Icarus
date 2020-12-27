@@ -369,6 +369,8 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
         compiler.EmitMoveInit(type::Typed<ir::Value>(constant, arg_type),
                               type::Typed<ir::Reg>(reg, arg_type));
         return ir::Value(reg);
+      } else if (arg_type == type::NullPtr) {
+        return ir::Value(ir::Addr::Null());
       } else {
         NOT_YET(arg_qt, " vs ", param_qt);
       }
