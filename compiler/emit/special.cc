@@ -322,8 +322,8 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
           // TODO: Support other initial value types.
           if (field.type == type::I64) {
             EmitCopyInit(
-                type::Typed<ir::Value>(field.initial_value, field.type),
-                builder().FieldRef(var, r.type(), i));
+                builder().FieldRef(var, r.type(), i),
+                type::Typed<ir::Value>(field.initial_value, field.type));
           } else {
             NOT_YET();
           }

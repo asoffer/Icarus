@@ -474,26 +474,6 @@ struct Compiler
   DEFINE_EMIT(ast::UnaryOperator)
 #undef DEFINE_EMIT
 
-  // TODO: There is no need for these to be methods of Compiler. They only
-  // actually depend on ir::Builder.
-  void EmitMoveInit(type::Typed<ir::Value> from_val,
-                    type::Typed<ir::Reg> to_var) {
-    // TODO Optimize once you understand the semantics better.
-    if (to_var.type().get()->IsDefaultInitializable()) {
-      EmitDefaultInit(to_var);
-    }
-    EmitMoveAssign(to_var, from_val);
-  }
-
-  void EmitCopyInit(type::Typed<ir::Value> from_val,
-                    type::Typed<ir::Reg> to_var) {
-    // TODO Optimize once you understand the semantics better.
-    if (to_var.type().get()->IsDefaultInitializable()) {
-      EmitDefaultInit(to_var);
-    }
-    EmitCopyAssign(to_var, from_val);
-  }
-
   type::QualType VerifyBinaryOverload(std::string_view symbol,
                                       ast::Expression const *node,
                                       type::Typed<ir::Value> const &lhs,

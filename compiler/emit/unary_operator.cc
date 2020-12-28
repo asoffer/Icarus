@@ -15,8 +15,8 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
           ASSERT_NOT_NULL(context().qual_type(node->operand()))->type();
       auto reg = builder().TmpAlloca(operand_type);
       EmitCopyInit(
-          type::Typed<ir::Value>(EmitValue(node->operand()), operand_type),
-          type::Typed<ir::Reg>(reg, operand_type));
+          type::Typed<ir::Reg>(reg, operand_type),
+          type::Typed<ir::Value>(EmitValue(node->operand()), operand_type));
       return ir::Value(builder().PtrFix(reg, operand_type));
     } break;
     case ast::UnaryOperator::Kind::Init:
@@ -26,8 +26,8 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
           ASSERT_NOT_NULL(context().qual_type(node->operand()))->type();
       auto reg = builder().TmpAlloca(operand_type);
       EmitMoveInit(
-          type::Typed<ir::Value>(EmitValue(node->operand()), operand_type),
-          type::Typed<ir::Reg>(reg, operand_type));
+          type::Typed<ir::Reg>(reg, operand_type),
+          type::Typed<ir::Value>(EmitValue(node->operand()), operand_type));
       return ir::Value(builder().PtrFix(reg, operand_type));
     } break;
     case ast::UnaryOperator::Kind::BufferPointer: {

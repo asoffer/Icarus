@@ -70,8 +70,8 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
       // TODO guaranteed move-elision
 
       c.EmitMoveInit(
-          type::Typed<ir::Value>(val, t),
-          type::Typed<ir::Reg>(c.builder().GetRet(0, t), type::Ptr(t)));
+          type::Typed<ir::Reg>(c.builder().GetRet(0, t), type::Ptr(t)),
+          type::Typed<ir::Value>(val, t));
 
     } else if (auto const *gs = t.if_as<type::GenericStruct>()) {
       c.builder().SetRet(0, gs);

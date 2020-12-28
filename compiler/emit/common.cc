@@ -366,8 +366,8 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
     } else if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
       if (ptr_param_type->pointee() == arg_type) {
         auto reg = compiler.builder().TmpAlloca(arg_type);
-        compiler.EmitMoveInit(type::Typed<ir::Value>(constant, arg_type),
-                              type::Typed<ir::Reg>(reg, arg_type));
+        compiler.EmitMoveInit(type::Typed<ir::Reg>(reg, arg_type),
+                              type::Typed<ir::Value>(constant, arg_type));
         return ir::Value(reg);
       } else if (arg_type == type::NullPtr) {
         return ir::Value(ir::Addr::Null());
@@ -402,8 +402,8 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
       auto reg = compiler.builder().TmpAlloca(arg_type);
       // TODO: Once EmitMoveInit is no longer a method on Compiler, we can
       // reduce the dependency here from being on Compiler to on Builder.
-      compiler.EmitMoveInit(type::Typed<ir::Value>(arg_value, arg_type),
-                            type::Typed<ir::Reg>(reg, arg_type));
+      compiler.EmitMoveInit(type::Typed<ir::Reg>(reg, arg_type),
+                            type::Typed<ir::Value>(arg_value, arg_type));
       return ir::Value(reg);
     } else {
       NOT_YET(arg_qt, " vs ", param_qt);
