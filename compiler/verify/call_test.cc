@@ -17,7 +17,7 @@ TEST(BuiltinForeign, FunctionSuccess) {
   auto const *qt = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(
-      *qt, type::QualType::NonConstant(type::Func(
+      *qt, type::QualType::Constant(type::Func(
                {core::AnonymousParam(type::QualType::NonConstant(type::I64))},
                {type::Bool})));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -28,7 +28,7 @@ TEST(BuiltinForeign, PointerSuccess) {
   auto const *call = mod.Append<ast::Call>(R"(foreign("my_ptr", *i64))");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Ptr(type::I64)));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::Ptr(type::I64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -37,7 +37,7 @@ TEST(BuiltinForeign, BufferPointerSuccess) {
   auto const *call = mod.Append<ast::Call>(R"(foreign("my_array", [*]i64))");
   auto const *qt   = mod.context().qual_type(call);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::BufPtr(type::I64)));
+  EXPECT_EQ(*qt, type::QualType::Constant(type::BufPtr(type::I64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 

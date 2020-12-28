@@ -78,7 +78,7 @@ TEST(Index, ByteViewOutOfBoundsNegative) {
 
 TEST(Index, ByteViewOutOfBoundsLarge) {
   test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"("abc"[3])");
+  auto const *expr = mod.Append<ast::Expression>(R"("abc"[4])");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::U8,
