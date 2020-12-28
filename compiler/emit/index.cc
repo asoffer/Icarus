@@ -6,9 +6,8 @@ namespace compiler {
 ir::Value Compiler::EmitValue(ast::Index const *node) {
   auto const *qt = context().qual_type(node->lhs());
   if (qt->quals() >= type::Quals::Ref()) {
-    return ir::Value(
-        builder().PtrFix(EmitRef(node).reg(),
-                         ASSERT_NOT_NULL(context().qual_type(node))->type()));
+    return ir::Value(builder().PtrFix(
+        EmitRef(node), ASSERT_NOT_NULL(context().qual_type(node))->type()));
   }
 
   if (qt->type() == type::ByteView) {
@@ -31,7 +30,7 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
   }
 }
 
-ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
+ir::Reg Compiler::EmitRef(ast::Index const *node) {
   type::Type lhs_type = context().qual_type(node->lhs())->type();
   type::Type rhs_type = context().qual_type(node->rhs())->type();
 
@@ -40,9 +39,8 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
 
     auto lval = EmitRef(node->lhs());
-    ASSERT(lval.is_reg() == true);
     return builder().Index(type::Ptr(context().qual_type(node->lhs())->type()),
-                           lval.reg(), index);
+                           lval, index);
   } else if (auto *buf_ptr_type = lhs_type.if_as<type::BufferPointer>()) {
     auto index = builder().CastTo<int64_t>(
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
@@ -62,7 +60,7 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
   } else if (auto *tup = lhs_type.if_as<type::Tuple>()) {
     auto maybe_val = EvaluateOrDiagnose(
         type::Typed<ast::Expression const *>(node->rhs(), rhs_type));
-    if (maybe_val.empty()) { return ir::Addr::Null(); }
+    if (maybe_val.empty()) { NOT_YET(); }
     auto index =
         builder()
             .CastTo<int64_t>(type::Typed<ir::Value>(maybe_val, rhs_type))

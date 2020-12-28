@@ -149,7 +149,7 @@ void Compiler::EmitMoveInit(
   }
 }
 
-ir::RegOr<ir::Addr> Compiler::EmitRef(ast::UnaryOperator const *node) {
+ir::Reg Compiler::EmitRef(ast::UnaryOperator const *node) {
   ASSERT(node->kind() == ast::UnaryOperator::Kind::At);
   return EmitValue(node->operand()).get<ir::Reg>();
 }

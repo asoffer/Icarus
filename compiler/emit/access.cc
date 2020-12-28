@@ -79,8 +79,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     }
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      // TODO: Can this be an address?
-      return ir::Value(builder().PtrFix(EmitRef(node).reg(), node_qt.type()));
+      return ir::Value(builder().PtrFix(EmitRef(node), node_qt.type()));
     } else {
       type::Typed<ir::RegOr<ir::Addr>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -92,7 +91,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
   }
 }
 
-ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
+ir::Reg Compiler::EmitRef(ast::Access const *node) {
   auto op_qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
   // TODO: This trick is good except that parameters look like references when
   // really they're by value for small types.
@@ -102,9 +101,7 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
   auto t = op_qt.type();
 
   auto ref = EmitRef(node->operand());
-  if (ref.is_reg() and ref.reg().is_arg() and not t.get()->is_big()) {
-    --deref_count;
-  }
+  if (ref.is_arg() and not t.get()->is_big()) { --deref_count; }
 
   auto const *tp = t.if_as<type::Pointer>();
   while (tp) {
@@ -139,10 +136,10 @@ void Compiler::EmitMoveInit(
     switch (decls.size()) {
       case 0: NOT_YET();
       case 1: {
-        // TODO: should actually be an initialization, not assignment.
         type::QualType node_qt = *ASSERT_NOT_NULL(context().qual_type(node));
-        EmitMoveAssign(to[0], type::Typed<ir::Value>(
-                                  mod.ExportedValue(decls[0]), node_qt.type()));
+        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                     type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
+                                            node_qt.type()));
       }
         return;
       default: NOT_YET();
@@ -151,34 +148,29 @@ void Compiler::EmitMoveInit(
 
   type::QualType node_qt = *ASSERT_NOT_NULL(context().qual_type(node));
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
-    // TODO: should actually be an initialization, not assignment.
-    EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], enum_type),
-                   type::Typed<ir::Value>(
-                       ir::Value(*enum_type->EmitLiteral(node->member_name())),
-                       enum_type));
+    EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), enum_type),
+                 type::Typed<ir::Value>(
+                     ir::Value(*enum_type->EmitLiteral(node->member_name())),
+                     enum_type));
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
-    // TODO: should actually be an initialization, not assignment.
-    EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], flags_type),
-                   type::Typed<ir::Value>(
-                       ir::Value(*flags_type->EmitLiteral(node->member_name())),
-                       flags_type));
+    EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), flags_type),
+                 type::Typed<ir::Value>(
+                     ir::Value(*flags_type->EmitLiteral(node->member_name())),
+                     flags_type));
   } else if (operand_qt.type() == type::ByteView) {
-    // TODO: should actually be an initialization, not assignment.
     ASSERT(node->member_name() == "length");
-    EmitMoveAssign(
-        to[0],
+    EmitMoveInit(
+        type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
         type::Typed<ir::Value>(
             ir::Value(builder().ByteViewLength(
                 EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
             type::U64));
   } else {
-    // TODO: should actually be an initialization, not assignment.
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      EmitMoveAssign(
-          to[0],
-          type::Typed<ir::Value>(
-              ir::Value(builder().PtrFix(EmitRef(node).reg(), node_qt.type())),
-              node_qt.type()));
+      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                   type::Typed<ir::Value>(ir::Value(builder().PtrFix(
+                                              EmitRef(node), node_qt.type())),
+                                          node_qt.type()));
 
     } else {
       type::Typed<ir::RegOr<ir::Addr>> temp(
@@ -206,10 +198,9 @@ void Compiler::EmitCopyInit(
     switch (decls.size()) {
       case 0: NOT_YET();
       case 1:
-        // TODO: should actually be an initialization, not assignment.
-        EmitMoveAssign(to[0],
-                       type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
-                                              operand_qt.type()));
+        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                     type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
+                                            operand_qt.type()));
         return;
       default: NOT_YET();
     }
@@ -217,22 +208,19 @@ void Compiler::EmitCopyInit(
 
   type::QualType node_qt = *ASSERT_NOT_NULL(context().qual_type(node));
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
-    // TODO: should actually be an initialization, not assignment.
-    EmitCopyAssign(to[0],
-                   type::Typed<ir::Value>(
-                       ir::Value(*enum_type->EmitLiteral(node->member_name())),
-                       enum_type));
+    EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                 type::Typed<ir::Value>(
+                     ir::Value(*enum_type->EmitLiteral(node->member_name())),
+                     enum_type));
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
-    // TODO: should actually be an initialization, not assignment.
-    EmitCopyAssign(to[0],
-                   type::Typed<ir::Value>(
-                       ir::Value(*flags_type->EmitLiteral(node->member_name())),
-                       flags_type));
+    EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                 type::Typed<ir::Value>(
+                     ir::Value(*flags_type->EmitLiteral(node->member_name())),
+                     flags_type));
   } else if (operand_qt.type() == type::ByteView) {
-    // TODO: should actually be an initialization, not assignment.
     ASSERT(node->member_name() == "length");
-    EmitCopyAssign(
-        to[0],
+    EmitCopyInit(
+        type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
         type::Typed<ir::Value>(
             ir::Value(builder().ByteViewLength(
                 EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
@@ -240,10 +228,9 @@ void Compiler::EmitCopyInit(
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
       EmitCopyAssign(
-          to[0],
-          type::Typed<ir::Value>(
-              ir::Value(builder().PtrFix(EmitRef(node).reg(), node_qt.type())),
-              node_qt.type()));
+          to[0], type::Typed<ir::Value>(
+                     ir::Value(builder().PtrFix(EmitRef(node), node_qt.type())),
+                     node_qt.type()));
 
     } else {
       type::Typed<ir::RegOr<ir::Addr>> temp(
@@ -271,10 +258,9 @@ void Compiler::EmitMoveAssign(
     switch (decls.size()) {
       case 0: NOT_YET();
       case 1:
-        // TODO: should actually be an initialization, not assignment.
-        EmitMoveAssign(to[0],
-                       type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
-                                              operand_qt.type()));
+        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                     type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
+                                            operand_qt.type()));
         return;
       default: NOT_YET();
     }
@@ -284,9 +270,9 @@ void Compiler::EmitMoveAssign(
                                        *to[0])) {
     if (operand_qt.quals() >= type::Quals::Ref()) {
       type::Type t = context().qual_type(node)->type();
-      EmitMoveAssign(
-          to[0], type::Typed<ir::Value>(
-                     ir::Value(builder().PtrFix(EmitRef(node).reg(), t)), t));
+      EmitMoveAssign(to[0],
+                     type::Typed<ir::Value>(
+                         ir::Value(builder().PtrFix(EmitRef(node), t)), t));
     } else {
       type::Typed<ir::RegOr<ir::Addr>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -312,10 +298,9 @@ void Compiler::EmitCopyAssign(
     switch (decls.size()) {
       case 0: NOT_YET();
       case 1:
-        // TODO: should actually be an initialization, not assignment.
-        EmitMoveAssign(to[0],
-                       type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
-                                              operand_qt.type()));
+        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                     type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
+                                            operand_qt.type()));
         return;
       default: NOT_YET();
     }
@@ -325,9 +310,9 @@ void Compiler::EmitCopyAssign(
                                        *to[0])) {
     if (operand_qt.quals() >= type::Quals::Ref()) {
       type::Type t = context().qual_type(node)->type();
-      EmitMoveAssign(
-          to[0], type::Typed<ir::Value>(
-                     ir::Value(builder().PtrFix(EmitRef(node).reg(), t)), t));
+      EmitMoveAssign(to[0],
+                     type::Typed<ir::Value>(
+                         ir::Value(builder().PtrFix(EmitRef(node), t)), t));
     } else {
       type::Typed<ir::RegOr<ir::Addr>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());

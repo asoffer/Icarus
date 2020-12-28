@@ -37,8 +37,7 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
   } else {
     type::Type t = context().qual_type(node)->type();
     auto lval    = EmitRef(node);
-    if (not lval.is_reg()) { NOT_YET(); }
-    return ir::Value(builder().PtrFix(lval.reg(), t));
+    return ir::Value(builder().PtrFix(lval, t));
   }
 }
 
@@ -58,7 +57,7 @@ void Compiler::EmitMoveAssign(
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
-ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
+ir::Reg Compiler::EmitRef(ast::Identifier const *node) {
   auto decl_span = context().decls(node);
   ASSERT(decl_span.size() == 1u);
   return context().addr(decl_span[0]);

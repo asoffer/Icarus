@@ -130,6 +130,16 @@ void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
   }
 }
 
+void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Array> to,
+                            type::Typed<ir::Value> const &from) {
+  NOT_YET();
+}
+
+void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Array> to,
+                            type::Typed<ir::Value> const &from) {
+  NOT_YET();
+}
+
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
     type::Typed<ir::Value> const &from) {
@@ -144,6 +154,18 @@ void Compiler::EmitMoveAssign(
   ASSERT(type::Type(to.type()) == from.type());
   SetArrayAssignments(*this, &to.type()->as<type::Array>());
   builder().Move(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
+}
+
+void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Enum> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<type::Enum::underlying_type>>(), *to);
+}
+
+void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Enum> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<type::Enum::underlying_type>>(), *to);
 }
 
 void Compiler::EmitCopyAssign(
@@ -163,6 +185,18 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Flags> const &r) {
   builder().Store(type::Flags::underlying_type{0}, *r);
 }
 
+void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Flags> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<type::Flags::underlying_type>>(), *to);
+}
+
+void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Flags> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<type::Flags::underlying_type>>(), *to);
+}
+
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Flags> const &to,
     type::Typed<ir::Value> const &from) {
@@ -173,11 +207,24 @@ void Compiler::EmitCopyAssign(
 void Compiler::EmitMoveAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Flags> const &to,
     type::Typed<ir::Value> const &from) {
-  EmitCopyAssign(to, from);
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<type::Flags::underlying_type>>(), *to);
 }
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Pointer> const &r) {
   builder().Store(ir::Addr::Null(), *r);
+}
+
+void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Pointer> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
+}
+
+void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Pointer> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
 }
 
 void Compiler::EmitCopyAssign(
@@ -203,6 +250,18 @@ void Compiler::EmitDefaultInit(
   EmitDefaultInit(static_cast<type::Typed<ir::Reg, type::Pointer>>(r));
 }
 
+void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::BufferPointer> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
+}
+
+void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::BufferPointer> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
+}
+
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::BufferPointer> const &to,
     type::Typed<ir::Value> const &from) {
@@ -219,6 +278,18 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Primitive> const &r) {
   r.type()->Apply([&]<typename T>() { builder().Store(T{}, *r); });
+}
+
+void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Primitive> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
+}
+
+void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Primitive> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
 }
 
 // TODO: Determine if you want to treat mixed integer assignment as an implicit
@@ -313,6 +384,16 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> const &r) {
   current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
 
+void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Tuple> to,
+                            type::Typed<ir::Value> const &from) {
+  NOT_YET();
+}
+
+void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Tuple> to,
+                            type::Typed<ir::Value> const &from) {
+  NOT_YET();
+}
+
 void Compiler::EmitMoveAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Tuple> const &to,
     type::Typed<ir::Value> const &from) {
@@ -359,6 +440,18 @@ void Compiler::EmitCopyAssign(
   builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
 }
 
+void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Function> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::Fn>>(), *to);
+}
+
+void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Function> to,
+                            type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::Fn>>(), *to);
+}
+
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Function> const &to,
     type::Typed<ir::Value> const &from) {
@@ -370,6 +463,16 @@ void Compiler::EmitMoveAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Function> const &to,
     type::Typed<ir::Value> const &from) {
   EmitCopyAssign(to, from);
+}
+
+void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Struct> to,
+                            type::Typed<ir::Value> const &from) {
+  NOT_YET();
+}
+
+void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Struct> to,
+                            type::Typed<ir::Value> const &from) {
+  NOT_YET();
 }
 
 void Compiler::EmitCopyAssign(
