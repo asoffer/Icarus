@@ -43,6 +43,10 @@ struct Struct : public LegacyType {
   Struct(module::BasicModule const *mod, Options options);
 
   ir::Fn Destructor() const;
+
+  ir::Fn const *MoveInit(type::Type from_type) const;
+  ir::Fn const *CopyInit(type::Type from_type) const;
+
   ir::Fn const *MoveAssignment(type::Type from_type) const;
   ir::Fn const *CopyAssignment(type::Type from_type) const;
 
@@ -82,10 +86,13 @@ struct Struct : public LegacyType {
 
   void AppendFields(std::vector<Field> fields);
   void SetDestructor(ir::Fn dtor);
+  void SetInits(absl::Span<ir::Fn const> move_inits,
+                absl::Span<ir::Fn const> copy_inits);
   void SetAssignments(absl::Span<ir::Fn const> move_assignments,
                       absl::Span<ir::Fn const> copy_assignments);
 
-  absl::flat_hash_map<type::Type, ir::Fn> move_assignments_, copy_assignments_;
+  absl::flat_hash_map<type::Type, ir::Fn> move_inits_, copy_inits_,
+      move_assignments_, copy_assignments_;
   absl::flat_hash_map<std::string, size_t> field_indices_;
 };
 
@@ -165,33 +172,7 @@ struct StructInstruction
     bool export_ = false;
   };
 
-  // TODO field.type() can be null. If the field type is inferred from the
-  // initial value.
-  void Apply(interpreter::ExecutionContext &ctx) const {
-    std::vector<Struct::Field> struct_fields;
-    struct_fields.reserve(fields.size());
-    for (auto const &field : fields) {
-      absl::flat_hash_set<ir::Hashtag> tags;
-      if (field.exported()) { tags.insert(ir::Hashtag::Export); }
-
-      if (ir::Value const *init_val = field.initial_value()) {
-        Type t = ctx.resolve(field.type());
-        struct_fields.push_back(Struct::Field{.name = std::string(field.name()),
-                                              .type = t,
-                                              .initial_value = *init_val,
-                                              .hashtags = std::move(tags)});
-      } else {
-        struct_fields.push_back(Struct::Field{.name = std::string(field.name()),
-                                              .type = ctx.resolve(field.type()),
-                                              .initial_value = ir::Value(),
-                                              .hashtags = std::move(tags)});
-      }
-    }
-
-    struct_->AppendFields(std::move(struct_fields));
-    struct_->SetAssignments(move_assignments, copy_assignments);
-    if (dtor) { struct_->SetDestructor(*dtor); }
-  }
+  void Apply(interpreter::ExecutionContext &ctx) const;
 
   std::string to_string() const {
     // TODO
@@ -201,7 +182,8 @@ struct StructInstruction
   // TODO: Store a special type indicating that the struct is incomplete.
   Struct *struct_;
   std::vector<Field> fields;
-  std::vector<ir::Fn> move_assignments, copy_assignments;
+  std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
+      copy_assignments;
   std::optional<ir::Fn> dtor;
 };
 

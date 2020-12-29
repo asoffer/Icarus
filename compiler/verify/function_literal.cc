@@ -187,7 +187,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
         output_type_vec[i] =
             ASSERT_NOT_NULL(c.context().qual_type(decl))->type();
       } else if (auto maybe_type =
-                     c.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i])) {
+                     c.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i], false)) {
         output_type_vec[i] = *maybe_type;
       }
     }

@@ -25,6 +25,31 @@ struct IncompleteField {
   frontend::SourceRange range;
 };
 
+
+ir::Fn InsertGeneratedMoveInit(
+    Compiler &c, type::Struct *s,
+    absl::Span<type::StructInstruction::Field const> ir_fields) {
+  auto [fn, inserted] = c.context().root().InsertMoveInit(s, s);
+  if (inserted) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {}
+    fn->WriteByteCode<interpreter::instruction_set_t>();
+  }
+  return fn;
+
+}
+
+ir::Fn InsertGeneratedCopyInit(
+    Compiler &c, type::Struct *s,
+    absl::Span<type::StructInstruction::Field const> ir_fields) {
+  auto [fn, inserted] = c.context().root().InsertMoveInit(s, s);
+  if (inserted) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {}
+    fn->WriteByteCode<interpreter::instruction_set_t>();
+  }
+  return fn;
+
+}
+
 ir::Fn InsertGeneratedMoveAssign(
     Compiler &c, type::Struct *s,
     absl::Span<type::StructInstruction::Field const> ir_fields) {
@@ -125,7 +150,8 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 
     bool has_field_needing_destruction = false;
     std::optional<ir::Fn> user_dtor;
-    std::vector<ir::Fn> move_assignments, copy_assignments;
+    std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
+        copy_assignments;
     for (auto const &field : fields) {
       // TODO: Decide whether to support all hashtags. For now just covering
       // export.
@@ -134,10 +160,20 @@ std::optional<ir::CompiledFn> StructCompletionFn(
         user_dtor = c.EmitValue(field.init_val()).get<ir::Fn>();
       } else if (field.id() == "move") {
         // TODO handle potential errors here.
-        move_assignments.push_back(c.EmitValue(field.init_val()).get<ir::Fn>());
+        auto f = c.EmitValue(field.init_val()).get<ir::Fn>();
+        switch (f.type()->params().size()) {
+          case 1: move_inits.push_back(f); break;
+          case 2: move_assignments.push_back(f); break;
+          default: UNREACHABLE();
+        }
       } else if (field.id() == "copy") {
         // TODO handle potential errors here.
-        copy_assignments.push_back(c.EmitValue(field.init_val()).get<ir::Fn>());
+        auto f = c.EmitValue(field.init_val()).get<ir::Fn>();
+        switch (f.type()->params().size()) {
+          case 1: copy_inits.push_back(f); break;
+          case 2: copy_assignments.push_back(f); break;
+          default: UNREACHABLE();
+        }
       } else {
         type::Type field_type;
         if (auto *init_val = field.init_val()) {
@@ -188,17 +224,30 @@ std::optional<ir::CompiledFn> StructCompletionFn(
       if (user_dtor) { dtor = *user_dtor; }
     }
 
+    if (move_inits.empty() and copy_inits.empty()) {
+      move_inits.push_back(InsertGeneratedMoveInit(c, s, ir_fields));
+      copy_inits.push_back(InsertGeneratedCopyInit(c, s, ir_fields));
+    }
+
     if (move_assignments.empty() and copy_assignments.empty()) {
       move_assignments.push_back(InsertGeneratedMoveAssign(c, s, ir_fields));
       copy_assignments.push_back(InsertGeneratedCopyAssign(c, s, ir_fields));
     }
 
+    for (auto x : move_assignments) { ASSERT(x.type()->params().size() == 2); }
+    for (auto x : copy_assignments) { ASSERT(x.type()->params().size() == 2); }
+    for (auto x : move_inits) { ASSERT(x.type()->params().size() == 1); }
+    for (auto x : copy_inits) { ASSERT(x.type()->params().size() == 1); }
+
+
     c.current_block()->Append(
-        type::StructInstruction{.struct_     = s,
-                                .fields      = std::move(ir_fields),
+        type::StructInstruction{.struct_          = s,
+                                .fields           = std::move(ir_fields),
+                                .move_inits       = std::move(move_inits),
+                                .copy_inits       = std::move(copy_inits),
                                 .move_assignments = std::move(move_assignments),
                                 .copy_assignments = std::move(copy_assignments),
-                                .dtor        = dtor});
+                                .dtor             = dtor});
     c.builder().ReturnJump();
   }
 

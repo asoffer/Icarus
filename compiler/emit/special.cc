@@ -467,12 +467,16 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Struct> to,
                             type::Typed<ir::Value> const &from) {
-  NOT_YET();
+  ASSERT(type::Type(to.type()) == from.type());
+  current_block()->Append(ir::MoveInitInstruction{
+      .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Struct> to,
                             type::Typed<ir::Value> const &from) {
-  NOT_YET();
+  ASSERT(type::Type(to.type()) == from.type());
+  current_block()->Append(ir::CopyInitInstruction{
+      .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
 }
 
 void Compiler::EmitCopyAssign(

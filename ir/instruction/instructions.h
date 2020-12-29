@@ -185,6 +185,39 @@ struct CopyInstruction
   ir::RegOr<ir::Addr> to;
 };
 
+struct CopyInitInstruction
+    : base::Extend<CopyInitInstruction>::With<
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "copy-init %2$s to %3$s";
+
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
+    if (auto* s = type.if_as<type::Struct>()) {
+      // TODO: This copy/move are currently indistinguishable.
+      ir::Fn f = *ASSERT_NOT_NULL(s->CopyInit(s));
+      // TODO: No reason this has to be native.
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
+      frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+      return frame;
+    } else if (auto *a = type.if_as<type::Array>()) {
+      NOT_YET();
+      // ir::Fn f = a->CopyInit();
+      // TODO: No reason this has to be native.
+      // auto frame = ctx.MakeStackFrame(f.native());
+      // frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
+      // frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+      // return frame;
+    } else {
+      NOT_YET();
+    }
+  }
+
+  type::Type type;
+  ir::RegOr<ir::Addr> from;
+  ir::RegOr<ir::Addr> to;
+};
+
+
 struct MoveInstruction
     : base::Extend<MoveInstruction>::With<ByteCodeExtension, InlineExtension,
                                           DebugFormatExtension> {
@@ -215,6 +248,39 @@ struct MoveInstruction
   ir::RegOr<ir::Addr> from;
   ir::RegOr<ir::Addr> to;
 };
+
+struct MoveInitInstruction
+    : base::Extend<MoveInitInstruction>::With<
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "move-init %2$s to %3$s";
+
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
+    if (auto* s = type.if_as<type::Struct>()) {
+      // TODO: This copy/move are currently indistinguishable.
+      ir::Fn f = *ASSERT_NOT_NULL(s->MoveInit(s));
+      // TODO: No reason this has to be native.
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
+      frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+      return frame;
+    } else if (auto *a = type.if_as<type::Array>()) {
+      NOT_YET();
+      // ir::Fn f = a->MoveInit();
+      // TODO: No reason this has to be native.
+      // auto frame = ctx.MakeStackFrame(f.native());
+      // frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
+      // frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+      // return frame;
+    } else {
+      NOT_YET();
+    }
+  }
+
+  type::Type type;
+  ir::RegOr<ir::Addr> from;
+  ir::RegOr<ir::Addr> to;
+};
+
 
 [[noreturn]] inline void FatalInterpreterError(std::string_view err_msg) {
   // TODO: Add a diagnostic explaining the failure.

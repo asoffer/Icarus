@@ -313,6 +313,8 @@ struct Context {
                                                  type::Type from);
   std::pair<ir::NativeFn, bool> InsertMoveAssign(type::Type to,
                                                  type::Type from);
+  std::pair<ir::NativeFn, bool> InsertCopyInit(type::Type to, type::Type from);
+  std::pair<ir::NativeFn, bool> InsertMoveInit(type::Type to, type::Type from);
 
   void TrackJumps(ast::Node const *p) { jumps_.TrackJumps(p); }
 
@@ -401,7 +403,7 @@ struct Context {
 
   absl::flat_hash_map<type::Type, ir::NativeFn> init_, destroy_;
   absl::flat_hash_map<std::pair<type::Type, type::Type>, ir::NativeFn>
-      copy_assign_, move_assign_;
+      copy_assign_, move_assign_, copy_init_, move_init_;
 
   // Provides a mapping from a given AST node to the collection of all nodes
   // that might jump to it. For example, a function literal will be mapped to

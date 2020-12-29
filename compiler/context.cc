@@ -277,6 +277,36 @@ std::pair<ir::NativeFn, bool> Context::InsertMoveAssign(type::Type to,
   return std::pair<ir::NativeFn, bool>(iter->second, inserted);
 }
 
+std::pair<ir::NativeFn, bool> Context::InsertMoveInit(type::Type to,
+                                                      type::Type from) {
+  auto [iter, inserted] = move_init_.emplace(
+      std::make_pair(to, from),
+      ir::NativeFn(
+          &fns_,
+          type::Func(core::Params<type::QualType>{core::AnonymousParam(
+                         type::QualType::NonConstant(type::Ptr(from)))},
+                     {to}),
+          core::Params<type::Typed<ast::Declaration const *>>{
+              core::AnonymousParam(
+                  type::Typed<ast::Declaration const *>(nullptr, from))}));
+  return std::pair<ir::NativeFn, bool>(iter->second, inserted);
+}
+
+std::pair<ir::NativeFn, bool> Context::InsertCopyInit(type::Type to,
+                                                      type::Type from) {
+  auto [iter, inserted] = copy_init_.emplace(
+      std::make_pair(to, from),
+      ir::NativeFn(
+          &fns_,
+          type::Func(core::Params<type::QualType>{core::AnonymousParam(
+                         type::QualType::NonConstant(type::Ptr(from)))},
+                     {to}),
+          core::Params<type::Typed<ast::Declaration const *>>{
+              core::AnonymousParam(
+                  type::Typed<ast::Declaration const *>(nullptr, from))}));
+  return std::pair<ir::NativeFn, bool>(iter->second, inserted);
+}
+
 absl::Span<ast::ReturnStmt const *const> Context::ReturnsTo(
     base::PtrUnion<ast::FunctionLiteral const, ast::ShortFunctionLiteral const>
         node) const {

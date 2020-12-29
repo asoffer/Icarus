@@ -257,9 +257,11 @@ struct Compiler
   // failure and returns `nullopt`. If the expresison is no tof type `T`, the
   // behavior is undefined.
   template <typename T>
-  std::optional<T> EvaluateOrDiagnoseAs(ast::Expression const *expr) {
+  std::optional<T> EvaluateOrDiagnoseAs(ast::Expression const *expr,
+                                        bool must_complete = true) {
     auto maybe_value =
-        Evaluate(type::Typed<ast::Expression const *>(expr, type::Get<T>()));
+        Evaluate(type::Typed<ast::Expression const *>(expr, type::Get<T>()),
+                 must_complete);
     if (not maybe_value) {
       diag().Consume(maybe_value.error());
       return std::nullopt;

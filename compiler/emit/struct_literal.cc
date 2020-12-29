@@ -56,7 +56,7 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
         .resources = resources_,
     });
   }
-  return ir::Value(static_cast<type::Type>(s));
+  return ir::Value(type::Type(s));
 }
 
 WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {

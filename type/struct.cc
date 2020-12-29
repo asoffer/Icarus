@@ -28,9 +28,24 @@ void Struct::AppendFields(std::vector<Struct::Field> fields) {
     flags_.is_movable &= field.type.get()->IsMovable();
     flags_.has_destructor |= field.type.get()->HasDestructor();
   }
-  // TODO HasDestructor is also dependent on the existence of it as a
-  // free-function?
-  // TODO
+}
+
+void Struct::SetInits(absl::Span<ir::Fn const> move_inits,
+                      absl::Span<ir::Fn const> copy_inits) {
+  for (ir::Fn init : move_inits) {
+    core::Params<QualType> const &params = init.type()->params();
+    ASSERT(params.size() == 1u);
+    move_inits_.emplace(params[0].value.type(), init);
+  }
+  for (ir::Fn init : copy_inits) {
+    core::Params<QualType> const &params = init.type()->params();
+    ASSERT(params.size() == 1u);
+    copy_inits_.emplace(params[0].value.type(), init);
+
+    // If no move is explicitly specified for this assigment type, use the copy
+    // instead.
+    move_inits_.try_emplace(params[0].value.type(), init);
+  }
 }
 
 void Struct::SetDestructor(ir::Fn dtor) {
@@ -59,6 +74,18 @@ void Struct::SetAssignments(absl::Span<ir::Fn const> move_assignments,
     // instead.
     move_assignments_.try_emplace(params[1].value.type(), assignment);
   }
+}
+
+ir::Fn const *Struct::MoveInit(type::Type from_type) const {
+  auto iter = move_inits_.find(type::Ptr(from_type));
+  if (iter == move_inits_.end()) { return nullptr; }
+  return &iter->second;
+}
+
+ir::Fn const *Struct::CopyInit(type::Type from_type) const {
+  auto iter = copy_inits_.find(type::Ptr(from_type));
+  if (iter == copy_inits_.end()) { return nullptr; }
+  return &iter->second;
 }
 
 ir::Fn const *Struct::MoveAssignment(type::Type from_type) const {
@@ -117,6 +144,35 @@ core::Alignment Struct::alignment(core::Arch const &a) const {
     align = std::max(align, field.type.alignment(a));
   }
   return align;
+}
+
+void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
+  std::vector<Struct::Field> struct_fields;
+  struct_fields.reserve(fields.size());
+  for (auto const &field : fields) {
+    absl::flat_hash_set<ir::Hashtag> tags;
+    if (field.exported()) { tags.insert(ir::Hashtag::Export); }
+
+    if (ir::Value const *init_val = field.initial_value()) {
+      // TODO: field.type() can be null. If the field type is inferred from the
+      // initial value.
+      Type t = ctx.resolve(field.type());
+      struct_fields.push_back(Struct::Field{.name = std::string(field.name()),
+                                            .type = t,
+                                            .initial_value = *init_val,
+                                            .hashtags      = std::move(tags)});
+    } else {
+      struct_fields.push_back(Struct::Field{.name = std::string(field.name()),
+                                            .type = ctx.resolve(field.type()),
+                                            .initial_value = ir::Value(),
+                                            .hashtags      = std::move(tags)});
+    }
+  }
+
+  struct_->AppendFields(std::move(struct_fields));
+  struct_->SetInits(move_inits, copy_inits);
+  struct_->SetAssignments(move_assignments, copy_assignments);
+  if (dtor) { struct_->SetDestructor(*dtor); }
 }
 
 }  // namespace type
