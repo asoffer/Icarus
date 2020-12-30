@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "ast/ast_fwd.h"
-#include "base/move_func.h"
 #include "base/ptr_span.h"
 #include "base/strong_types.h"
 #include "core/alignment.h"

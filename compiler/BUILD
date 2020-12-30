@@ -130,7 +130,6 @@ cc_library(
         "//ast:overload_set",
         "//ast:visitor",
         "//base:debug",
-        "//base:move_func",
         "//diagnostic/consumer",
         "//frontend/source",
         "//ir:builder",

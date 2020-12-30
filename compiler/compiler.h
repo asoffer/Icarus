@@ -12,7 +12,6 @@
 #include "ast/visitor.h"
 #include "base/debug.h"
 #include "base/log.h"
-#include "base/move_func.h"
 #include "compiler/context.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/module.h"

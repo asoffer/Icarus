@@ -162,21 +162,6 @@ cc_test(
 )
 
 cc_library(
-    name = "move_func",
-    hdrs = ["move_func.h"],
-    deps = [":any_invocable"],
-)
-
-cc_test(
-    name = "move_func_test",
-    srcs = ["move_func_test.cc"],
-    deps = [
-        ":move_func",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "no_destructor",
     hdrs = ["no_destructor.h"],
 )

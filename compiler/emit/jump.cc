@@ -1,5 +1,4 @@
 #include "ast/ast.h"
-#include "base/move_func.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "core/arguments.h"

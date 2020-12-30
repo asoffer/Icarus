@@ -66,7 +66,6 @@ cc_library(
         ":basic",
         ":register_allocator",
         "//ast:ast",
-        "//base:move_func",
         "//base:ptr_span",
         "//base:strong_types",
         "//core:alignment",
