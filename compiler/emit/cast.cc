@@ -27,6 +27,9 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
   if (to_type == type::Type_) { return ir::Value(values.get<type::Type>()); }
 
   auto from_type = ASSERT_NOT_NULL(context().qual_type(node->expr()))->type();
+
+  if (to_type == from_type) { return values; }
+
   if (type::IsNumeric(from_type)) {
     if (type::IsIntegral(from_type)) {
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,

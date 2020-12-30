@@ -14,11 +14,12 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
-  LOG("struct", "Starting struct-literal emission: %p%s", node,
+  LOG("StructLiteral", "Starting struct-literal emission: %p%s", node,
       state_.must_complete ? " (must complete)" : " (need not complete)");
 
   if (type::Struct *s = context().get_struct(node)) {
-    return ir::Value(static_cast<type::Type>(s));
+    LOG("StructLiteral", "Early return with possibly incomplete type %p", s);
+    return ir::Value(type::Type(s));
   }
 
   type::Struct *s = type::Allocate<type::Struct>(
@@ -44,9 +45,6 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   // Notably, steps 1 and 2 must not be separated. Moreover, because body
   // verification could end up calling this function again, we must "set up
   // guards" (i.e., steps 1 and 2) before step 3 runs.
-  //
-  // TODO: Check the result of body verification.
-  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   if (state_.must_complete) {
     LOG("compile-work-queue", "Request work complete struct: %p", node);
@@ -60,12 +58,17 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
 }
 
 WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
-  LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
+  LOG("StructLiteral", "Completing struct-literal emission: %p must-complete = %s",
       node, state_.must_complete ? "true" : "false");
+
+  // TODO: Check the result of body verification.
+  if (state_.must_complete and context().ShouldVerifyBody(node)) {
+    VerifyBody(node);
+  }
 
   type::Struct *s = context().get_struct(node);
   if (s->completeness() == type::Completeness::Complete) {
-    LOG("struct", "Already complete, exiting: %p", node);
+    LOG("StructLiteral", "Already complete, exiting: %p", node);
     return WorkItem::Result::Success;
   }
 
@@ -74,7 +77,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   // TODO: What if execution fails.
   interpreter::Execute(std::move(fn));
   s->complete();
-  LOG("struct", "Completed %s which is a struct %s with %u field(s).",
+  LOG("StructLiteral", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());
   return WorkItem::Result::Success;
 }

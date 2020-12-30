@@ -9,6 +9,19 @@ free   ::= foreign("free", ([*]u8) -> ())
 memset ::= foreign("memset", ([*]u8, i32, u64) -> [*]u8)
 memcpy ::= foreign("memcpy", ([*]u8, [*]u8, u64) -> [*]u8)
 
+allocate_and_copy ::= (ptr: [*]u8, len: u64) -> [*]u8 {
+  buffer := malloc(len)
+  memcpy(buffer, ptr, len)
+  return buffer
+}
+
+exchange ::= (x: *$y, y: $y) -> $x {
+  result: y:?
+  result = @x
+  @x = y
+  return result
+}
+
 #{export}
 string ::= struct {
   // TODO: Remove export of _data.
@@ -19,21 +32,34 @@ string ::= struct {
   #{export}
   _capacity: u64
 
+  (move) ::= (to: *string) -> string {
+    return string.{
+      _data     = exchange(to._data, null as [*]u8)
+      _length   = exchange(to._length, 0 as u64)
+      _capacity = exchange(to._capacity, 0 as u64)
+    }
+  }
+
   (move) ::= (to: *string, from: *string) -> () {
     (to._data,     from._data)     = (from._data,     null as [*]u8)
     (to._length,   from._length)   = (from._length,   0 as u64)
     (to._capacity, from._capacity) = (from._capacity, 0 as u64)
   }
 
-  (copy) ::= (to: *string, from: *string) -> () {
-    free(to._data)
-    to._data     = malloc(from._length + 1 as u64)
-    to._length   = from._length
-    to._capacity = from._capacity
-    memcpy(to._data, from._data, from._length)
-    to._data[to._length] = 0 as u8
+  (copy) ::= (to: *string) -> string {
+    return string.{
+      _data     = allocate_and_copy(to._data, to._length + 1 as u64)
+      _length   = to._length
+      _capacity = to._capacity
+    }
   }
 
+  (copy) ::= (to: *string, from: *string) -> () {
+    free(to._data)
+    to._length   = from._length
+    to._capacity = from._capacity
+    to._data     = allocate_and_copy(to._data, to._length + 1 as u64)
+  }
 
   destroy ::= (self: *string) -> () { free(self._data) }
 }
@@ -102,12 +128,8 @@ make_string ::= (fill: u8, len: u64) -> string {
 }
 
 #{export}
-make_string ::= (bv: byte_view) -> string {
-  buffer := malloc(bv.length + 1 as u64)
-  memcpy(buffer, &bv[0], bv.length + 1 as u64)
-  return string.{
-    _data     = buffer 
-    _length   = bv.length
-    _capacity = bv.length
-  }
+make_string ::= (bv: byte_view) => string.{
+  _data     = allocate_and_copy(&bv[0], bv.length + 1 as u64)
+  _length   = bv.length
+  _capacity = bv.length
 }

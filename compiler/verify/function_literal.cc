@@ -144,10 +144,15 @@ std::optional<std::vector<type::Type>> JoinReturnTypes(
 // * From Compiler::VerifyType if the return types are inferred.
 std::optional<std::vector<type::Type>> VerifyBodyOnly(
     Compiler &c, ast::FunctionLiteral const *node) {
+  LOG("FunctionLiteral", "VerifyBodyOnly for %s", node->DebugString());
   c.context().TrackJumps(node);
   bool found_error = false;
   for (auto *stmt : node->stmts()) {
-    found_error = (c.VerifyType(stmt) == type::QualType::Error());
+    bool current_was_error = (c.VerifyType(stmt) == type::QualType::Error());
+    if (current_was_error) {
+      found_error = true;
+      LOG("FunctionLiteral", "Found an error in %s", node->DebugString());
+    }
   }
   if (found_error) { return std::nullopt; }
 
@@ -267,6 +272,20 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "function-literal body verification: %s %p",
       node->DebugString(), &context());
 
+  auto const &fn_type =
+      ASSERT_NOT_NULL(context().qual_type(node))->type().as<type::Function>();
+  for (auto const &param : fn_type.params()) {
+    if (param.value.type().get()->completeness() ==
+        type::Completeness::Incomplete) {
+      return WorkItem::Result::Deferred;
+    }
+  }
+  for (type::Type ret : fn_type.return_types()) {
+    if (ret.get()->completeness() == type::Completeness::Incomplete) {
+      return WorkItem::Result::Deferred;
+    }
+  }
+
   // TODO: Move this check out to the ProcessOneItem code?
   if (not context().ShouldVerifyBody(node)) {
     LOG("FunctionLiteral", "Ignoring subsequent verification of %s",
@@ -274,13 +293,14 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
     return WorkItem::Result::Success;
   }
 
-  auto const &fn_type =
-      ASSERT_NOT_NULL(context().qual_type(node))->type().as<type::Function>();
   // TODO: Get the params and check them for completeness, deferring if they're
   // not yet complete.
 
   auto maybe_return_types = VerifyBodyOnly(*this, node);
-  if (not maybe_return_types) { return WorkItem::Result::Failure; }
+  if (not maybe_return_types) {
+    LOG("FunctionLiteral", "Body verification was a failure.");
+    return WorkItem::Result::Failure;
+  }
   if (maybe_return_types->size() != fn_type.output().size()) {
     diag().Consume(ReturningWrongNumber{
         .actual   = maybe_return_types->size(),
@@ -299,6 +319,7 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
                                         .expected = fn_type.output()[i]});
     }
   }
+
   return error ? WorkItem::Result::Failure : WorkItem::Result::Success;
 }
 

@@ -40,8 +40,8 @@ TEST(StructLiteral, FieldError) {
   auto const *s  = mod.Append<ast::StructLiteral>(R"(struct {
     n: 3
     b := true
-  }
-  )");
+  })");
+  mod.compiler.VerifyBody(s);
   auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
@@ -75,6 +75,7 @@ TEST(StructLiteral, SelfReferentialError) {
     data: i64
     next: list
   }
+  l: list
   )");
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "incomplete-field")));

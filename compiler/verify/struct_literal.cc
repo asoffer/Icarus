@@ -32,11 +32,6 @@ WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
 
 type::QualType Compiler::VerifyType(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Verify type %p %s", node, node->DebugString());
-  state_.work_queue.Enqueue({
-      .kind      = WorkItem::Kind::VerifyStructBody,
-      .node      = node,
-      .resources = resources(),
-  });
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 

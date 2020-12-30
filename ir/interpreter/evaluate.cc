@@ -200,8 +200,8 @@ constexpr exec_t GetInstruction() {
                              ctx))> == base::meta<void>) {
       Inst::ReadFromByteCode(iter).Apply(ctx);
     } else {
-      auto frame = Inst::ReadFromByteCode(iter).Apply(ctx);
-      CallFn<InstSet>(frame.fn_, &frame, {}, ctx);
+      auto [frame, return_slots] = Inst::ReadFromByteCode(iter).Apply(ctx);
+      CallFn<InstSet>(frame.fn_, &frame, return_slots, ctx);
     }
   };
 }

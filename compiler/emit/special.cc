@@ -474,6 +474,7 @@ void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Struct> to,
   ASSERT(type::Type(to.type()) == from.type());
   current_block()->Append(ir::MoveInitInstruction{
       .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
+  current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Struct> to,
@@ -481,6 +482,7 @@ void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Struct> to,
   ASSERT(type::Type(to.type()) == from.type());
   current_block()->Append(ir::CopyInitInstruction{
       .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
+  current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitCopyAssign(
@@ -490,6 +492,7 @@ void Compiler::EmitCopyAssign(
   ASSERT(type::Type(to.type()) == from.type());
   current_block()->Append(ir::CopyInstruction{
       .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
+  current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitMoveAssign(
@@ -497,6 +500,7 @@ void Compiler::EmitMoveAssign(
     type::Typed<ir::Value> const &from) {
   current_block()->Append(ir::MoveInstruction{
       .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
+  current_block()->load_store_cache().clear();
 }
 
 }  // namespace compiler

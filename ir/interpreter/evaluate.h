@@ -154,9 +154,9 @@ struct instruction_set_t
           ir::StructIndexInstruction, ir::TupleIndexInstruction,
           ir::PtrIncrInstruction, type::EnumInstruction, type::FlagsInstruction,
           ir::TypeInfoInstruction, ir::InitInstruction, ir::DestroyInstruction,
-          ir::MoveInstruction, ir::CopyInstruction,
-          ir::ByteViewLengthInstruction, ir::ByteViewDataInstruction,
-          ir::DebugIrInstruction> {};
+          ir::MoveInitInstruction, ir::CopyInitInstruction, ir::MoveInstruction,
+          ir::CopyInstruction, ir::ByteViewLengthInstruction,
+          ir::ByteViewDataInstruction, ir::DebugIrInstruction> {};
 
 void Execute(ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots);

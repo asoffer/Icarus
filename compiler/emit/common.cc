@@ -41,7 +41,7 @@ ir::Fn InsertGeneratedMoveInit(
 ir::Fn InsertGeneratedCopyInit(
     Compiler &c, type::Struct *s,
     absl::Span<type::StructInstruction::Field const> ir_fields) {
-  auto [fn, inserted] = c.context().root().InsertMoveInit(s, s);
+  auto [fn, inserted] = c.context().root().InsertCopyInit(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {}
     fn->WriteByteCode<interpreter::instruction_set_t>();
@@ -233,12 +233,6 @@ std::optional<ir::CompiledFn> StructCompletionFn(
       move_assignments.push_back(InsertGeneratedMoveAssign(c, s, ir_fields));
       copy_assignments.push_back(InsertGeneratedCopyAssign(c, s, ir_fields));
     }
-
-    for (auto x : move_assignments) { ASSERT(x.type()->params().size() == 2); }
-    for (auto x : copy_assignments) { ASSERT(x.type()->params().size() == 2); }
-    for (auto x : move_inits) { ASSERT(x.type()->params().size() == 1); }
-    for (auto x : copy_inits) { ASSERT(x.type()->params().size() == 1); }
-
 
     c.current_block()->Append(
         type::StructInstruction{.struct_          = s,
