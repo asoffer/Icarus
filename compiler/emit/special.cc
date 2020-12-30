@@ -283,13 +283,17 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Primitive> const &r) {
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Primitive> to,
                             type::Typed<ir::Value> const &from) {
   ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
+  to.type()->Apply([&]<typename T>() {
+    builder().Store(from->template get<ir::RegOr<T>>(), *to);
+  });
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Primitive> to,
                             type::Typed<ir::Value> const &from) {
   ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
+  to.type()->Apply([&]<typename T>() {
+    builder().Store(from->template get<ir::RegOr<T>>(), *to);
+  });
 }
 
 // TODO: Determine if you want to treat mixed integer assignment as an implicit

@@ -230,10 +230,6 @@ struct Compiler
   Compiler(Compiler const &) = delete;
   Compiler(Compiler &&)      = default;
 
-  // Returns a new `Compiler` instance which points to the same persistent
-  // resources.
-  Compiler WithPersistent() const;
-
   Context &context() const { return resources_.data; }
   ir::Builder &builder() { return builder_; };
   diagnostic::DiagnosticConsumer &diag() const {
@@ -529,6 +525,7 @@ struct Compiler
   WorkItem::Result CompleteStruct(ast::StructLiteral const *node);
   WorkItem::Result CompleteStruct(ast::ParameterizedStructLiteral const *node);
   WorkItem::Result EmitJumpBody(ast::Jump const *node);
+  WorkItem::Result EmitFunctionBody(ast::FunctionLiteral const *node);
 
  private:
   std::optional<core::Arguments<type::Typed<ir::Value>>> VerifyArguments(

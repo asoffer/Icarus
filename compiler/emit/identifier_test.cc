@@ -35,7 +35,6 @@ INSTANTIATE_TEST_SUITE_P(
                                             )",
                                 .expected = ir::Value(int64_t{1})},
                        TestCase{.expr     = R"(((n :: i64) -> i64 {
-                                              'debug_ir
                                               return n
                                             })(2)
                                             )",

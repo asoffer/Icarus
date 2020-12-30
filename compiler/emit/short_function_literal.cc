@@ -59,7 +59,7 @@ void CompleteBody(Compiler &compiler, ast::ShortFunctionLiteral const *node,
 ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
-        [c = this->WithPersistent(),
+        [c = Compiler(resources()),
          node](core::Arguments<type::Typed<ir::Value>> const &args) mutable
         -> ir::NativeFn {
           return MakeConcreteFromGeneric<ast::ShortFunctionLiteral,

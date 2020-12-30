@@ -27,19 +27,15 @@ WorkItem::Result WorkItem::Process() const {
     case Kind::CompleteStructMembers:
       return c.CompleteStruct(&node->as<ast::StructLiteral>());
     case Kind::EmitJumpBody: return c.EmitJumpBody(&node->as<ast::Jump>());
+    case Kind::EmitFunctionBody:
+      return c.EmitFunctionBody(&node->as<ast::FunctionLiteral>());
   }
 }
 
 Compiler::Compiler(PersistentResources const &resources)
     : resources_(resources) {}
-Compiler Compiler::WithPersistent() const { return Compiler(resources_); }
 
-void Compiler::CompleteDeferredBodies() {
-  while (true) {
-    if (state_.deferred_work.empty()) { return; }
-    for (auto &work : state_.deferred_work) { std::move (*work)(); }
-  }
-}
+void Compiler::CompleteDeferredBodies() { state_.Complete(); }
 
 static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
                                 type::Type type) {
@@ -91,9 +87,11 @@ base::expected<ir::Value, interpreter::EvaluationFailure> Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr, bool must_complete) {
   Compiler c             = MakeChild(resources_);
   c.state_.must_complete = must_complete;
-  auto result = interpreter::Evaluate(MakeThunk(c, *expr, expr.type()));
-  if (not result) { return result; }
+  auto thunk             = MakeThunk(c, *expr, expr.type());
   c.CompleteWorkQueue();
+  c.CompleteDeferredBodies();
+  auto result = interpreter::Evaluate(std::move(thunk));
+  if (not result) { return result; }
   return result;
 }
 

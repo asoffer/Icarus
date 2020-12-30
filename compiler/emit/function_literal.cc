@@ -8,69 +8,32 @@
 #include "type/typed_value.h"
 
 namespace compiler {
-namespace {
-
-void CompleteBody(Compiler &compiler, ast::FunctionLiteral const *node,
-                  type::Function const *t) {
-  LOG("CompleteBody", "%s", node->DebugString());
-  // TODO have validate return a bool distinguishing if there are errors and
-  // whether or not we can proceed.
-
-  ir::NativeFn ir_func =
-      *ASSERT_NOT_NULL(compiler.context().FindNativeFn(node));
-
-  auto &bldr = compiler.builder();
-  ICARUS_SCOPE(ir::SetCurrent(ir_func, bldr)) {
-    bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
-
-    // TODO arguments should be renumbered to not waste space on const values
-    size_t i = 0;
-    for (auto const &param : node->params()) {
-      compiler.context().set_addr(param.value.get(), ir::Reg::Arg(i++));
-    }
-
-    MakeAllStackAllocations(compiler, node->body_scope());
-    if (auto outputs = node->outputs()) {
-      for (size_t i = 0; i < outputs->size(); ++i) {
-        auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
-        if (not out_decl) { continue; }
-        type::Type out_decl_type =
-            compiler.context().qual_type(out_decl)->type();
-        auto alloc = out_decl_type.get()->is_big()
-                         ? bldr.GetRet(i, out_decl_type)
-                         : bldr.Alloca(out_decl_type);
-
-        compiler.context().set_addr(out_decl, alloc);
-        if (out_decl->IsDefaultInitialized()) {
-          compiler.EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
-        } else {
-          compiler.EmitCopyAssign(
-              type::Typed<ir::RegOr<ir::Addr>>(alloc, out_decl_type),
-              type::Typed<ir::Value>(compiler.EmitValue(out_decl->init_val()),
-                                     out_decl_type));
-        }
-      }
-    }
-
-    EmitIrForStatements(compiler, node->stmts());
-    MakeAllDestructions(compiler, node->body_scope());
-    bldr.ReturnJump();
-  }
-
-  ir_func->work_item = nullptr;
-  ir_func->WriteByteCode<interpreter::instruction_set_t>();
-}
-
-}  // namespace
 
 ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
-        [c = this->WithPersistent(),
+        [c = Compiler(resources()),
          node](core::Arguments<type::Typed<ir::Value>> const &args) mutable
         -> ir::NativeFn {
-          return MakeConcreteFromGeneric<ast::FunctionLiteral, CompleteBody>(
-              c, node, args);
+          auto find_subcontext_result = c.FindInstantiation(node, args);
+          auto &context               = find_subcontext_result.context;
+
+          auto [f, inserted] = context.add_func(node);
+          Compiler compiler({
+              .data                = context,
+              .diagnostic_consumer = c.diag(),
+              .importer            = c.importer(),
+          });
+          if (inserted) {
+            compiler.Enqueue({.kind      = WorkItem::Kind::EmitFunctionBody,
+                              .node      = node,
+                              .resources = compiler.resources()});
+          }
+
+          compiler.CompleteWorkQueue();
+          compiler.CompleteDeferredBodies();
+
+          return f;
         });
     return ir::Value(gen_fn);
   }
@@ -83,15 +46,57 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
   // TODO Use correct constants
   auto [f, inserted] = context().add_func(node);
   if (inserted) {
-    f->work_item =
-        state_.deferred_work
-            .emplace_back(std::make_unique<base::move_func<void()>>(
-                [c = Compiler(resources_), node, t = f.type()]() mutable {
-                  CompleteBody(c, node, t);
-                }))
-            .get();
+    Enqueue({.kind      = WorkItem::Kind::EmitFunctionBody,
+             .node      = node,
+             .resources = resources_});
   }
   return ir::Value(ir::Fn{f});
+}
+
+WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
+  LOG("EmitFunctionBody", "%s", node->DebugString());
+
+  ir::NativeFn ir_func = *ASSERT_NOT_NULL(context().FindNativeFn(node));
+
+  auto &bldr = builder();
+  ICARUS_SCOPE(ir::SetCurrent(ir_func, bldr)) {
+    bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
+
+    // TODO arguments should be renumbered to not waste space on const values
+    size_t i = 0;
+    for (auto const &param : node->params()) {
+      context().set_addr(param.value.get(), ir::Reg::Arg(i++));
+    }
+
+    MakeAllStackAllocations(*this, node->body_scope());
+    if (auto outputs = node->outputs()) {
+      for (size_t i = 0; i < outputs->size(); ++i) {
+        auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
+        if (not out_decl) { continue; }
+        type::Type out_decl_type = context().qual_type(out_decl)->type();
+        auto alloc               = out_decl_type.get()->is_big()
+                         ? bldr.GetRet(i, out_decl_type)
+                         : bldr.Alloca(out_decl_type);
+
+        context().set_addr(out_decl, alloc);
+        if (out_decl->IsDefaultInitialized()) {
+          EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
+        } else {
+          EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(alloc, out_decl_type),
+                         type::Typed<ir::Value>(EmitValue(out_decl->init_val()),
+                                                out_decl_type));
+        }
+      }
+    }
+
+    EmitIrForStatements(*this, node->stmts());
+    MakeAllDestructions(*this, node->body_scope());
+    bldr.ReturnJump();
+  }
+
+  ir_func->work_item = nullptr;
+  ir_func->WriteByteCode<interpreter::instruction_set_t>();
+  return WorkItem::Result::Success;
 }
 
 }  // namespace compiler

@@ -21,6 +21,7 @@ struct WorkItem {
     VerifyFunctionBody,
     VerifyStructBody,
     CompleteStructMembers,
+    EmitFunctionBody,
     EmitJumpBody,
   };
 
@@ -54,8 +55,11 @@ struct TransientState {
   TransientState()                  = default;
   TransientState(TransientState &&) = default;
   TransientState &operator=(TransientState &&) = default;
-  ~TransientState() {
+  ~TransientState() { Complete(); }
+
+  void Complete() {
     while (not work_queue.empty()) { work_queue.ProcessOneItem(); }
+
     for (auto &work : deferred_work) {
       if (work and *work) { std::move (*work)(); }
     }
