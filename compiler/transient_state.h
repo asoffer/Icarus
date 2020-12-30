@@ -22,6 +22,7 @@ struct WorkItem {
     VerifyStructBody,
     CompleteStructMembers,
     EmitFunctionBody,
+    EmitShortFunctionBody,
     EmitJumpBody,
   };
 
@@ -59,10 +60,6 @@ struct TransientState {
 
   void Complete() {
     while (not work_queue.empty()) { work_queue.ProcessOneItem(); }
-
-    for (auto &work : deferred_work) {
-      if (work and *work) { std::move (*work)(); }
-    }
   }
 
   struct ScopeLandingState {
@@ -78,8 +75,6 @@ struct TransientState {
   absl::flat_hash_map<ast::YieldStmt const *, core::Arguments<ir::Value>>
       yields;
   bool must_complete = true;
-
-  std::vector<std::unique_ptr<base::move_func<void()>>> deferred_work;
 };
 
 }  // namespace compiler

@@ -31,33 +31,6 @@ void EmitIrForStatements(Compiler &compiler,
 // Inserts all destructor calls in this scope.
 void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope);
 
-template <std::derived_from<ast::Node> NodeType, auto CompletionFn>
-ir::NativeFn MakeConcreteFromGeneric(
-    Compiler &compiler, NodeType const *node,
-    core::Arguments<type::Typed<ir::Value>> const &args) {
-  ASSERT(node->is_generic() == true);
-
-  // Note: Cannot use structured bindings because the bindings need to be
-  // captured in the lambda.
-  auto find_subcontext_result = compiler.FindInstantiation(node, args);
-  auto const *fn_type         = find_subcontext_result.fn_type;
-  auto &context               = find_subcontext_result.context;
-
-  auto [f, inserted] = context.add_func(node);
-  if (inserted) {
-    f->work_item =
-        compiler.state()
-            .deferred_work
-            .emplace_back(std::make_unique<base::move_func<void()>>(
-                [c = Compiler({.data                = context,
-                               .diagnostic_consumer = compiler.diag(),
-                               .importer            = compiler.importer()}),
-                 node, t = f.type()]() mutable { CompletionFn(c, node, t); }))
-            .get();
-  }
-  return f;
-}
-
 // Given an argument (which may be present in `constant` if it is known at
 // compile-time, or simply the AST `expr`, and the qualified type of the
 // parameter that this argument is being bound to, evaluate the appropriate

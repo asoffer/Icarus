@@ -29,6 +29,8 @@ WorkItem::Result WorkItem::Process() const {
     case Kind::EmitJumpBody: return c.EmitJumpBody(&node->as<ast::Jump>());
     case Kind::EmitFunctionBody:
       return c.EmitFunctionBody(&node->as<ast::FunctionLiteral>());
+    case Kind::EmitShortFunctionBody:
+      return c.EmitShortFunctionBody(&node->as<ast::ShortFunctionLiteral>());
   }
 }
 
@@ -77,7 +79,6 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     c.builder().ReturnJump();
   }
 
-  ASSERT(fn.work_item == nullptr);
   fn.WriteByteCode<interpreter::instruction_set_t>();
 
   return fn;

@@ -6,25 +6,13 @@
 #include "type/type.h"
 
 namespace compiler {
-namespace {
-
-void CompleteBody(Compiler &compiler,
-                  ast::ParameterizedStructLiteral const *node, type::Type t) {
-  NOT_YET();
-}
-
-}  // namespace
 
 ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
   // TODO: Check the result of body verification.
   if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
   return ir::Value(ir::GenericFn(
-      [c = Compiler(resources()),
-       node](core::Arguments<type::Typed<ir::Value>> const &args) mutable
-      -> ir::NativeFn {
-        return MakeConcreteFromGeneric<ast::ParameterizedStructLiteral,
-                                       CompleteBody>(c, node, args);
-      }));
+      [](core::Arguments<type::Typed<ir::Value>> const &args) mutable
+      -> ir::NativeFn { NOT_YET(); }));
 }
 
 WorkItem::Result Compiler::CompleteStruct(

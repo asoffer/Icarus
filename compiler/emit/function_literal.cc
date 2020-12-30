@@ -58,9 +58,8 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
 
   ir::NativeFn ir_func = *ASSERT_NOT_NULL(context().FindNativeFn(node));
 
-  auto &bldr = builder();
-  ICARUS_SCOPE(ir::SetCurrent(ir_func, bldr)) {
-    bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
+  ICARUS_SCOPE(ir::SetCurrent(ir_func, builder())) {
+    builder().CurrentBlock() = builder().CurrentGroup()->entry();
 
     // TODO arguments should be renumbered to not waste space on const values
     size_t i = 0;
@@ -75,8 +74,8 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
         if (not out_decl) { continue; }
         type::Type out_decl_type = context().qual_type(out_decl)->type();
         auto alloc               = out_decl_type.get()->is_big()
-                         ? bldr.GetRet(i, out_decl_type)
-                         : bldr.Alloca(out_decl_type);
+                         ? builder().GetRet(i, out_decl_type)
+                         : builder().Alloca(out_decl_type);
 
         context().set_addr(out_decl, alloc);
         if (out_decl->IsDefaultInitialized()) {
@@ -91,10 +90,9 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
 
     EmitIrForStatements(*this, node->stmts());
     MakeAllDestructions(*this, node->body_scope());
-    bldr.ReturnJump();
+    builder().ReturnJump();
   }
 
-  ir_func->work_item = nullptr;
   ir_func->WriteByteCode<interpreter::instruction_set_t>();
   return WorkItem::Result::Success;
 }

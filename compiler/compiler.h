@@ -526,6 +526,7 @@ struct Compiler
   WorkItem::Result CompleteStruct(ast::ParameterizedStructLiteral const *node);
   WorkItem::Result EmitJumpBody(ast::Jump const *node);
   WorkItem::Result EmitFunctionBody(ast::FunctionLiteral const *node);
+  WorkItem::Result EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
 
  private:
   std::optional<core::Arguments<type::Typed<ir::Value>>> VerifyArguments(

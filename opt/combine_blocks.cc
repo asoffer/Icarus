@@ -149,7 +149,6 @@ void RemoveTrivialFunctionCalls(ir::CompiledFn* fn) {
         }
         auto called_fn = call_inst->func().value().native();
         if (called_fn.type() != type::Func({}, {})) { continue; }
-        ASSERT(called_fn->work_item == nullptr);
         // TODO track this as you go.
         for (auto const* called_block : called_fn->blocks()) {
           // What if it's null?

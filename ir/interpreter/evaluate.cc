@@ -92,9 +92,6 @@ constexpr exec_t GetInstruction() {
       size_t num_inputs = fn_type->params().size();
       size_t num_regs   = 0;
       if (f.kind() == ir::Fn::Kind::Native) {
-        if (f.native()->work_item and *f.native()->work_item) {
-          (std::move(*f.native()->work_item))();
-        }
         num_regs = f.native()->num_regs();
       }
       size_t num_entries = num_inputs + num_regs;
@@ -349,18 +346,6 @@ template <typename InstSet>
 static void CallFn(ir::NativeFn fn, StackFrame *frame,
                    absl::Span<ir::Addr const> ret_slots,
                    ExecutionContext &ctx) {
-  // TODO: Understand why and how work-items may not be complete and add an
-  // explanation here. I'm quite confident this is really possible with the
-  // generics model I have, but I can't quite articulate exactly why it only
-  // happens for generics and nothing else.
-  //
-  // Also, we shouldn't pay this lookup cost every time when it's mostly
-  // irrelevant.
-  //
-  // TODO log an error if you're asked to execute a function that had an
-  // error.
-  if (fn->work_item and *fn->work_item) { (std::move(*fn->work_item))(); }
-
   [[maybe_unused]] auto restore_frame_token = ctx.PushFrame(frame);
   ExecuteBlocks<InstSet>(ctx, ret_slots);
 }

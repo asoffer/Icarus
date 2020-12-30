@@ -120,11 +120,6 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
   auto const &inits = scope.inits();
   ASSERT(inits.size() == 1u);
   auto &init = *inits.begin();
-  // TODO: I'd rather assert that this is true.
-  if (ir::CompiledJump::From(init)->work_item) {
-    auto f = std::move(*ir::CompiledJump::From(init)->work_item);
-    if (f) { std::move(f)(); }
-  }
 
   // Arguments provided to a function call need to be "prepared" in the sense
   // that they need to be
@@ -341,11 +336,6 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
         // TODO: Choose the right jump.
         ASSERT(afters.size() == 1u);
         auto &after = *afters.begin();
-        // TODO: I'd rather assert that this is true.
-        if (ir::CompiledJump::From(after)->work_item) {
-          auto f = std::move(*ir::CompiledJump::From(after)->work_item);
-          if (f) { std::move(f)(); }
-        }
 
         std::vector<ir::Value> after_args;
         if (state_ptr) { after_args.emplace(after_args.begin(), *state_ptr); }
