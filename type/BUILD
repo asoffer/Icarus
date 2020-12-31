@@ -287,6 +287,32 @@ cc_test(
 )
 
 cc_library(
+    name = "slice",
+    hdrs = ["slice.h"],
+    srcs = ["slice.cc"],
+    deps = [
+        ":type",
+        "//base:extend",
+        "//base:global",
+        "//base:no_destructor",
+        "//core:arch",
+        "//ir/instruction:base",
+        "//ir/instruction:debug",
+        "//ir/instruction:inliner",
+        "@com_google_absl//absl/container:node_hash_set",
+    ],
+)
+
+cc_test(
+    name = "slice_test",
+    srcs = ["slice_test.cc"],
+    deps = [
+        ":slice",
+        ":fake",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+cc_library(
     name = "struct",
     hdrs = ["struct.h"],
     srcs = ["struct.cc"],
