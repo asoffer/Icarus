@@ -43,7 +43,14 @@ INSTANTIATE_TEST_SUITE_P(
                   .expected = ir::Value(ir::Addr::Null())},
          TestCase{.expr = R"(E.A as i64)", .expected = ir::Value(int64_t{1})},
          TestCase{.expr     = R"((F.A | F.B) as u64)",
-                  .expected = ir::Value(uint64_t{3})}}));
+                  .expected = ir::Value(uint64_t{3})},
+         TestCase{.expr     = R"(65 as u8 as char)",
+                  .expected = ir::Value(ir::Char('A'))},
+         TestCase{.expr = R"("A"[0] as i8)", .expected = ir::Value(int8_t{65})},
+         TestCase{.expr     = R"("A"[0] as u8)",
+                  .expected = ir::Value(uint8_t{65})},
+         TestCase{.expr     = R"("A"[0] as u32)",
+                  .expected = ir::Value(uint32_t{65})}}));
 
 // TODO: Test casting from an integer into the enum/flags
 

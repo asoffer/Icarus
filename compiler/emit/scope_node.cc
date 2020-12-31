@@ -9,6 +9,7 @@
 #include "ir/compiled_scope.h"
 #include "ir/instruction/core.h"
 #include "ir/instruction/inliner.h"
+#include "ir/value/char.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
 #include "ir/value/value.h"
@@ -255,8 +256,8 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   type::QualType const *qt = ASSERT_NOT_NULL(context().qual_type(node));
   std::optional<ir::Reg> result;
   if (qt->type() != type::Void) {
-    type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                     uint32_t, uint64_t, float, double>(
+    type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                     uint16_t, uint32_t, uint64_t, float, double>(
         qt->type(), [&]<typename T>() {
           ir::PhiInstruction<T> phi;
           phi.result = builder().CurrentGroup()->Reserve();

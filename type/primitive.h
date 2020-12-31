@@ -4,6 +4,7 @@
 #include "absl/functional/function_ref.h"
 #include "base/global.h"
 #include "base/meta.h"
+#include "ir/value/char.h"
 #include "type/type.h"
 
 namespace type {
@@ -30,7 +31,7 @@ struct Primitive : public LegacyType {
   template <typename Fn>
   auto Apply(Fn &&fn) const {
     return ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t,
-                     int32_t, int64_t, float, double, bool,
+                     int32_t, int64_t, float, double, bool, ir::Char,
                      Type /* TODO: Other primitives */>(std::forward<Fn>(fn));
   }
 
@@ -69,6 +70,7 @@ inline base::Global kPrimitiveArray = std::array{
     Primitive(Primitive::BasicType::F32),
     Primitive(Primitive::BasicType::F64),
     Primitive(Primitive::BasicType::Bool),
+    Primitive(Primitive::BasicType::Char),
     Primitive(Primitive::BasicType::Type_),
     Primitive(Primitive::BasicType::NullPtr),
     Primitive(Primitive::BasicType::EmptyArray),
@@ -96,26 +98,27 @@ Primitive::ApplyImpl(Fn &&fn) const {
   })...}[index]();
 }
 
-inline Type U8       = &(*internal::kPrimitiveArray)[0];
-inline Type U16      = &(*internal::kPrimitiveArray)[1];
-inline Type U32      = &(*internal::kPrimitiveArray)[2];
-inline Type U64      = &(*internal::kPrimitiveArray)[3];
-inline Type I8       = &(*internal::kPrimitiveArray)[4];
-inline Type I16      = &(*internal::kPrimitiveArray)[5];
-inline Type I32      = &(*internal::kPrimitiveArray)[6];
-inline Type I64      = &(*internal::kPrimitiveArray)[7];
-inline Type F32    = &(*internal::kPrimitiveArray)[8];
-inline Type F64    = &(*internal::kPrimitiveArray)[9];
+inline Type U8         = &(*internal::kPrimitiveArray)[0];
+inline Type U16        = &(*internal::kPrimitiveArray)[1];
+inline Type U32        = &(*internal::kPrimitiveArray)[2];
+inline Type U64        = &(*internal::kPrimitiveArray)[3];
+inline Type I8         = &(*internal::kPrimitiveArray)[4];
+inline Type I16        = &(*internal::kPrimitiveArray)[5];
+inline Type I32        = &(*internal::kPrimitiveArray)[6];
+inline Type I64        = &(*internal::kPrimitiveArray)[7];
+inline Type F32        = &(*internal::kPrimitiveArray)[8];
+inline Type F64        = &(*internal::kPrimitiveArray)[9];
 inline Type Bool       = &(*internal::kPrimitiveArray)[10];
-inline Type Type_      = &(*internal::kPrimitiveArray)[11];
-inline Type NullPtr    = &(*internal::kPrimitiveArray)[12];
-inline Type EmptyArray = &(*internal::kPrimitiveArray)[13];
-inline Type Scope      = &(*internal::kPrimitiveArray)[14];
-inline Type Block      = &(*internal::kPrimitiveArray)[15];
-inline Type Module     = &(*internal::kPrimitiveArray)[16];
-inline Type ByteView   = &(*internal::kPrimitiveArray)[17];
-inline Type Label      = &(*internal::kPrimitiveArray)[18];
-inline Type Void       = &(*internal::kPrimitiveArray)[19];
+inline Type Char       = &(*internal::kPrimitiveArray)[11];
+inline Type Type_      = &(*internal::kPrimitiveArray)[12];
+inline Type NullPtr    = &(*internal::kPrimitiveArray)[13];
+inline Type EmptyArray = &(*internal::kPrimitiveArray)[14];
+inline Type Scope      = &(*internal::kPrimitiveArray)[15];
+inline Type Block      = &(*internal::kPrimitiveArray)[16];
+inline Type Module     = &(*internal::kPrimitiveArray)[17];
+inline Type ByteView   = &(*internal::kPrimitiveArray)[18];
+inline Type Label      = &(*internal::kPrimitiveArray)[19];
+inline Type Void       = &(*internal::kPrimitiveArray)[20];
 
 inline bool IsNumeric(Type t) {
   return t.get() >= U8.get() and t.get() <= F64.get();

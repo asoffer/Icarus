@@ -41,7 +41,17 @@ struct CastInstruction
   using to_type                                  = ToType;
   static constexpr std::string_view kDebugFormat = "%2$s = cast %1$s";
 
-  ToType Resolve() const { return value.value(); }
+  ToType Resolve() const {
+    if constexpr (base::meta<ToType> == base::meta<ir::Char>) {
+      if constexpr (sizeof(FromType) == 1) {
+        return static_cast<uint8_t>(value.value());
+      } else {
+        UNREACHABLE();
+      }
+    } else {
+      return value.value();
+    }
+  }
 
   RegOr<FromType> value;
   Reg result;

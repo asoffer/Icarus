@@ -15,6 +15,7 @@
 #include "ir/read_only_data.h"
 #include "ir/value/addr.h"
 #include "ir/value/block.h"
+#include "ir/value/char.h"
 #include "ir/value/fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
@@ -91,9 +92,10 @@ using CoreInstructionsImpl = InstructionSet<
     SetReturnInstruction<core::Alignment>, SetReturnInstruction<GenericFn>,
     SetReturnInstruction<type::GenericStruct const *>>;
 using CoreInstructions =
-    CoreInstructionsImpl<bool, uint8_t, int8_t, uint16_t, int16_t, uint32_t,
-                         int32_t, uint64_t, int64_t, float, double, type::Type,
-                         Addr, String, Fn, Block, Scope, Jump, ModuleId>;
+    CoreInstructionsImpl<bool, ir::Char, uint8_t, int8_t, uint16_t, int16_t,
+                         uint32_t, int32_t, uint64_t, int64_t, float, double,
+                         type::Type, Addr, String, Fn, Block, Scope, Jump,
+                         ModuleId>;
 
 }  // namespace ir
 

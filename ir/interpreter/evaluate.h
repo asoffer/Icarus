@@ -14,6 +14,7 @@
 #include "ir/instruction/instructions.h"
 #include "ir/instruction/set.h"
 #include "ir/interpreter/evaluation_failure.h"
+#include "ir/value/char.h"
 #include "ir/value/value.h"
 #include "type/array.h"
 #include "type/enum.h"
@@ -50,12 +51,22 @@ struct instruction_set_t
           EqualityComparisonInstructions<
               bool, uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t,
               uint64_t, int64_t, float, double, type::Type, ir::Addr>,
-          OrderedComparisonInstructions<uint8_t, int8_t, uint16_t, int16_t,
-                                        uint32_t, int32_t, uint64_t, int64_t,
-                                        float, double, ir::Addr>,
+          OrderedComparisonInstructions<ir::Char, uint8_t, int8_t, uint16_t,
+                                        int16_t, uint32_t, int32_t, uint64_t,
+                                        int64_t, float, double, ir::Addr>,
           ir::NegInstruction<int8_t>, ir::NegInstruction<int16_t>,
           ir::NegInstruction<int32_t>, ir::NegInstruction<int64_t>,
           ir::NegInstruction<float>, ir::NegInstruction<double>,
+          ir::CastInstruction<ir::Char, uint8_t>,
+          ir::CastInstruction<ir::Char, int8_t>,
+          ir::CastInstruction<int8_t, ir::Char>,
+          ir::CastInstruction<uint8_t, ir::Char>,
+          ir::CastInstruction<int16_t, ir::Char>,
+          ir::CastInstruction<uint16_t, ir::Char>,
+          ir::CastInstruction<int32_t, ir::Char>,
+          ir::CastInstruction<uint32_t, ir::Char>,
+          ir::CastInstruction<int64_t, ir::Char>,
+          ir::CastInstruction<uint64_t, ir::Char>,
           ir::CastInstruction<uint8_t, int8_t>,
           ir::CastInstruction<uint8_t, uint16_t>,
           ir::CastInstruction<uint8_t, int16_t>,

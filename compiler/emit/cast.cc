@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "ir/value/char.h"
 
 namespace compiler {
 
@@ -30,7 +31,19 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
 
   if (to_type == from_type) { return values; }
 
-  if (type::IsNumeric(from_type)) {
+  if (to_type == type::Char) {
+    ASSERT((from_type == type::U8 or from_type == type::I8) == true);
+    return ir::Value(
+        builder().CastTo<ir::Char>(type::Typed<ir::Value>(values, from_type)));
+  } else if (from_type == type::Char) {
+    ASSERT(type::IsIntegral(to_type) == true);
+    return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                            uint16_t, uint32_t, uint64_t>(
+        to_type, [&]<typename T>() {
+          return ir::Value(
+              builder().CastTo<T>(type::Typed<ir::Value>(values, from_type)));
+        });
+  } else if (type::IsNumeric(from_type)) {
     if (type::IsIntegral(from_type)) {
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(

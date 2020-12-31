@@ -39,6 +39,7 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
     case BasicType::NullPtr: return a.pointer().bytes();
     case BasicType::EmptyArray: return core::Bytes{0};
     case BasicType::Bool: return core::Bytes{1};
+    case BasicType::Char: return core::Bytes{1};
     case BasicType::I8: return core::Bytes{1};
     case BasicType::I16: return core::Bytes{2};
     case BasicType::I32: return core::Bytes{4};
@@ -70,6 +71,7 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     case BasicType::NullPtr: return a.pointer().alignment();
     case BasicType::EmptyArray: return core::Alignment{1};
     case BasicType::Bool: return core::Alignment{1};
+    case BasicType::Char: return core::Alignment{1};
     case BasicType::I8: return core::Alignment{1};
     case BasicType::I16: return core::Alignment{2};
     case BasicType::I32: return core::Alignment{4};

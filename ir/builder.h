@@ -19,6 +19,7 @@
 #include "ir/local_block_interpretation.h"
 #include "ir/out_params.h"
 #include "ir/value/addr.h"
+#include "ir/value/char.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
 #include "type/enum.h"
@@ -147,11 +148,11 @@ struct Builder {
 
   RegOr<bool> Eq(type::Type common_type, ir::Value const& lhs_val,
                  ir::Value const& rhs_val) {
-    return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                            uint16_t, uint32_t, uint64_t, float, double>(
-        common_type, [&]<typename T>() {
-          return Eq(lhs_val.get<RegOr<T>>(), rhs_val.get<RegOr<T>>());
-        });
+    return type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
+                            uint8_t, uint16_t, uint32_t, uint64_t, float,
+                            double>(common_type, [&]<typename T>() {
+      return Eq(lhs_val.get<RegOr<T>>(), rhs_val.get<RegOr<T>>());
+    });
   }
 
   template <typename Lhs, typename Rhs>
@@ -206,6 +207,8 @@ struct Builder {
       return Cast<float, ToType>(v->get<RegOr<float>>());
     } else if (v.type() == type::F64) {
       return Cast<double, ToType>(v->get<RegOr<double>>());
+    } else if (v.type() == type::Char) {
+      return Cast<ir::Char, ToType>(v->get<RegOr<ir::Char>>());
     } else if (v.type().is<type::Enum>()) {
       if constexpr (base::meta<ToType> ==
                     base::meta<type::Enum::underlying_type>) {
@@ -334,9 +337,9 @@ struct Builder {
     using base::stringify;
     LOG("Load", "Calling Load(%s, %s)", r, t.to_string());
     if (t.is<type::Function>()) { return Value(Load<Fn>(r)); }
-    return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                            uint16_t, uint32_t, uint64_t, float, double,
-                            type::Type, Addr, String, Fn>(
+    return type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
+                            uint8_t, uint16_t, uint32_t, uint64_t, float,
+                            double, type::Type, Addr, String, Fn>(
         t, [&]<typename T>() { return Value(Load<T>(r)); });
   }
 
@@ -508,13 +511,16 @@ struct Builder {
   RegOr<ToType> Cast(RegOr<FromType> r) {
     if constexpr (base::meta<ToType> == base::meta<FromType>) {
       return r;
-    } else {
+    } else if constexpr (base::meta<FromType>.template converts_to<ToType>()) {
       if (r.is_reg()) {
         return CurrentBlock()->Append(CastInstruction<ToType, FromType>{
             .value = r.reg(), .result = CurrentGroup()->Reserve()});
       } else {
         return static_cast<ToType>(r.value());
       }
+    } else {
+      UNREACHABLE(base::meta<FromType>, " cannot be cast to ",
+                  base::meta<ToType>);
     }
   }
 

@@ -27,6 +27,7 @@ cc_library(
         "//ir/instruction:compare",
         "//ir/instruction:core",
         "//ir/value:addr",
+        "//ir/value:char",
         "//ir/value:reg",
         "//type:typed_value",
         "//type:util",

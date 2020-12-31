@@ -170,6 +170,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//ir/value:char",
     ],
 )
 
@@ -190,6 +191,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//ir/value:char",
     ],
 )
 
@@ -565,6 +567,7 @@ cc_library(
         "//compiler/emit:common",
         "//ir/value",
         "//ir/value:addr",
+        "//ir/value:char",
         "//ir/value:reg_or",
         "//type",
         "//type:typed_value",

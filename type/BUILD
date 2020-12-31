@@ -257,6 +257,7 @@ cc_library(
         ":type",
         "//base:meta",
         "//base:global",
+        "//ir/value:char",
         "//ir/value:string",
         "@com_google_absl//absl/functional:function_ref",
     ],

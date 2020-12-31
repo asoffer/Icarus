@@ -61,6 +61,11 @@ bool CanCast(Type from, Type to) {
   if (IsIntegral(from) and IsNumeric(to)) { return true; }
   if (IsFloatingPoint(from) and IsFloatingPoint(to)) { return true; }
 
+  if (from == type::Char and IsIntegral(to)) { return true; }
+  if ((from == type::I8 or from == type::U8) and to == type::Char) {
+    return true;
+  }
+
   if (from.is<Tuple>() and to == Type_) {
     // TODO remove this hack for expressing the type of tuples
     auto const &entries = from.as<Tuple>().entries_;

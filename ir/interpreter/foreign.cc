@@ -34,6 +34,9 @@ void ExtractReturnValue(ffi_arg *ret, ir::Addr ret_addr) {
 
 ffi_type *ToFfiType(type::Type t) {
   if (t == type::Void) { return &ffi_type_void; }
+  if (t == type::Char) {
+    return std::is_signed_v<char> ? &ffi_type_schar : &ffi_type_uchar;
+  }
   if (t == type::I8) { return &ffi_type_sint8; }
   if (t == type::I16) { return &ffi_type_sint16; }
   if (t == type::I32) { return &ffi_type_sint32; }
@@ -43,6 +46,7 @@ ffi_type *ToFfiType(type::Type t) {
   if (t == type::U32) { return &ffi_type_uint32; }
   if (t == type::U64) { return &ffi_type_uint64; }
   if (t == type::F32) { return &ffi_type_float; }
+  if (t == type::F64) { return &ffi_type_double; }
   if (t == type::F64) { return &ffi_type_double; }
   if (t.is<type::Pointer>()) { return &ffi_type_pointer; }
   UNREACHABLE(t);
@@ -97,6 +101,10 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
       }
       arg_vals.push_back(&pointer_values.back());
     } else {
+      // TODO: This is sufficient for integer types where we've written the
+      // values directly into the buffer. Detetrmine if this is also okay for
+      // ir::Char where we're writing/reading `char` through the `ir::Char`
+      // according to the C++ standard.
       arg_vals.push_back(const_cast<char *>(arguments.raw(kMaxSize * i++)));
     }
   }

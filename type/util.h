@@ -2,14 +2,15 @@
 #define ICARUS_TYPE_UTIL_H
 // TODO this file is terribly named.
 
+#include "base/no_destructor.h"
 #include "ir/value/addr.h"
 #include "ir/value/block.h"
+#include "ir/value/char.h"
 #include "ir/value/module_id.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
 #include "ir/value/string.h"
 #include "ir/value/value.h"
-#include "base/no_destructor.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -35,6 +36,8 @@ template <typename T>
 type::Type Get() {
   if constexpr (base::meta<T> == base::meta<bool>) {
     return type::Bool;
+  } else if constexpr (base::meta<T> == base::meta<ir::Char>) {
+    return type::Char;
   } else if constexpr (base::meta<T> == base::meta<int8_t>) {
     return type::I8;
   } else if constexpr (base::meta<T> == base::meta<int16_t>) {
@@ -85,6 +88,8 @@ bool Compare(::type::Type t) {
 
   if constexpr (base::meta<T> == base::meta<bool>) {
     return t == ::type::Bool;
+  } else if constexpr (base::meta<T> == base::meta<ir::Char>) {
+    return t == ::type::Char;
   } else if constexpr (base::meta<T> == base::meta<int8_t>) {
     return t == ::type::I8;
   } else if constexpr (base::meta<T> == base::meta<int16_t>) {
@@ -159,10 +164,11 @@ auto ApplyTypes(Type t, Fn &&fn) {
 
 template <typename Fn>
 auto Apply(Type t, Fn &&fn) {
-  return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                    uint32_t, uint64_t, float, double, type::Type, ir::Addr,
-                    ir::String, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
-                    ir::Block, ir::GenericFn>(t, std::forward<Fn>(fn));
+  return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                    uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                    ir::Addr, ir::String, ir::ModuleId, ir::Scope, ir::Fn,
+                    ir::Jump, ir::Block, ir::GenericFn>(t,
+                                                        std::forward<Fn>(fn));
 }
 
 }  // namespace type

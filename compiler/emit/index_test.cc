@@ -33,7 +33,7 @@ TEST_P(IndexTest, Index) {
 INSTANTIATE_TEST_SUITE_P(
     All, IndexTest,
     testing::ValuesIn({
-        TestCase{.expr = R"("abc"[0])", .expected = ir::Value(uint8_t{'a'})},
+        TestCase{.expr = R"("abc"[0])", .expected = ir::Value(ir::Char('a'))},
         TestCase{.expr = R"([1, 2, 3][0])", .expected = ir::Value(int64_t{1})},
         TestCase{.expr     = R"((() -> i64 {
         a := [1, 2, 3]

@@ -4,12 +4,12 @@ core ::= import "core.ic"
 // provide some platform-querying capabilities so that we don't need to, for
 // example hard-code malloc's parameter to u64 when in reality it is
 // `std::size_t` which may be 32-bits on some platforms.
-malloc ::= foreign("malloc", u64 -> [*]u8)
-free   ::= foreign("free", ([*]u8) -> ())
-memset ::= foreign("memset", ([*]u8, i32, u64) -> [*]u8)
-memcpy ::= foreign("memcpy", ([*]u8, [*]u8, u64) -> [*]u8)
+malloc ::= foreign("malloc", u64 -> [*]char)
+free   ::= foreign("free", ([*]char) -> ())
+memset ::= foreign("memset", ([*]char, i32, u64) -> [*]char)
+memcpy ::= foreign("memcpy", ([*]char, [*]char, u64) -> [*]char)
 
-allocate_and_copy ::= (ptr: [*]u8, len: u64) -> [*]u8 {
+allocate_and_copy ::= (ptr: [*]char, len: u64) -> [*]char {
   buffer := malloc(len)
   memcpy(buffer, ptr, len)
   return buffer
@@ -26,7 +26,7 @@ exchange ::= (x: *$y, y: $y) -> $x {
 string ::= struct {
   // TODO: Remove export of _data.
   #{export}
-  _data:     [*]u8
+  _data:     [*]char
   #{export}
   _length:   u64
   #{export}
@@ -34,14 +34,14 @@ string ::= struct {
 
   (move) ::= (to: *string) -> string {
     return string.{
-      _data     = exchange(to._data, null as [*]u8)
+      _data     = exchange(to._data, null as [*]char)
       _length   = exchange(to._length, 0 as u64)
       _capacity = exchange(to._capacity, 0 as u64)
     }
   }
 
   (move) ::= (to: *string, from: *string) -> () {
-    (to._data,     from._data)     = (from._data,     null as [*]u8)
+    (to._data,     from._data)     = (from._data,     null as [*]char)
     (to._length,   from._length)   = (from._length,   0 as u64)
     (to._capacity, from._capacity) = (from._capacity, 0 as u64)
   }
@@ -79,14 +79,14 @@ length ::= (s: *string) => s._length
 is_empty ::= (s: *string) => s._length == 0 as u64
 
 #{export}
-append ::= (s: *string, character: u8) -> () {
+append ::= (s: *string, character: char) -> () {
   core.if (s._capacity == s._length) then {
     resize_buffer(s, s._capacity * 2 as u64)
   }
 
   s._data[s._length] = character
   s._length += 1 as u64
-  s._data[s._length] = 0 as u8
+  s._data[s._length] = ""[0]
 }
 
 #{export}
@@ -111,15 +111,15 @@ append ::= (s: *string, from: *string) -> () {
 
 #{export}
 Print ::= (s: *string) -> () {
-  printf ::= foreign("printf", ([*]u8, [*]u8) -> i32)
+  printf ::= foreign("printf", ([*]char, [*]char) -> i32)
   core.if (!s'is_empty) then { printf(&"%s"[0], s._data) }
 }
 
 #{export}
-make_string ::= (fill: u8, len: u64) -> string {
+make_string ::= (fill: char, len: u64) -> string {
   buffer := malloc(len + 1 as u64)
-  memset(buffer, fill as i32, len)
-  buffer[len] = 0 as u8
+  memset(buffer, fill as i8 as i32, len)
+  buffer[len] = ""[0]
   return string.{
     _data     = buffer 
     _length   = len

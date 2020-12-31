@@ -164,6 +164,7 @@ cc_library(
         "//ir:read_only_data",
         "//ir/value:addr",
         "//ir/value:block",
+        "//ir/value:char",
         "//ir/value:foreign_fn",
         "//ir/value:fn",
         "//ir/value:native_fn",

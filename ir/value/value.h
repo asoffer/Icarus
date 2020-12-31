@@ -8,6 +8,7 @@
 #include "base/meta.h"
 #include "ir/value/addr.h"
 #include "ir/value/block.h"
+#include "ir/value/char.h"
 #include "ir/value/hashtag.h"
 #include "ir/value/jump.h"
 #include "ir/value/label.h"
@@ -41,31 +42,31 @@ struct Value {
   explicit Value() : Value(Empty{}) {}
 
   using supported_types =
-      base::type_list<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+      base::type_list<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                       uint16_t, uint32_t, uint64_t, float, double, type::Type,
                       Reg, Addr, String, ModuleId, Fn, GenericFn, Jump, Block,
                       Hashtag, Scope, Label, Empty>;
 
   static constexpr size_t value_size_v = std::max(
-      {sizeof(bool),     sizeof(int8_t),  sizeof(int16_t),  sizeof(int32_t),
-       sizeof(int64_t),  sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
-       sizeof(uint64_t), sizeof(float),   sizeof(double),   sizeof(type::Type),
-       sizeof(Reg),      sizeof(Addr),    sizeof(String),   sizeof(ModuleId),
-       sizeof(Jump),     sizeof(Block),   sizeof(Hashtag),  sizeof(Scope),
-       sizeof(Label),    sizeof(Empty)});
+      {sizeof(bool),       sizeof(Char),     sizeof(int8_t),  sizeof(int16_t),
+       sizeof(int32_t),    sizeof(int64_t),  sizeof(uint8_t), sizeof(uint16_t),
+       sizeof(uint32_t),   sizeof(uint64_t), sizeof(float),   sizeof(double),
+       sizeof(type::Type), sizeof(Reg),      sizeof(Addr),    sizeof(String),
+       sizeof(ModuleId),   sizeof(Jump),     sizeof(Block),   sizeof(Hashtag),
+       sizeof(Scope),      sizeof(Label),    sizeof(Empty)});
   // The above happen to cover the alignment of Fn, GenericFn, but we have
   // layering issues here and those are incomplete when this line is processed.
 
  private:
   static constexpr size_t alignment_v =
-      std::max({alignof(bool),     alignof(int8_t),   alignof(int16_t),
-                alignof(int32_t),  alignof(int64_t),  alignof(uint8_t),
-                alignof(uint16_t), alignof(uint32_t), alignof(uint64_t),
-                alignof(float),    alignof(double),   alignof(type::Type),
-                alignof(Reg),      alignof(Addr),     alignof(String),
-                alignof(ModuleId), alignof(Jump),     alignof(Block),
-                alignof(Hashtag),  alignof(Scope),    alignof(Label),
-                alignof(Empty)});
+      std::max({alignof(bool),       alignof(Char),     alignof(int8_t),
+                alignof(int16_t),    alignof(int32_t),  alignof(int64_t),
+                alignof(uint8_t),    alignof(uint16_t), alignof(uint32_t),
+                alignof(uint64_t),   alignof(float),    alignof(double),
+                alignof(type::Type), alignof(Reg),      alignof(Addr),
+                alignof(String),     alignof(ModuleId), alignof(Jump),
+                alignof(Block),      alignof(Hashtag),  alignof(Scope),
+                alignof(Label),      alignof(Empty)});
   // The above happen to cover the alignment of Fn, GenericFn, but we have
   // layering issues here and those are incomplete when this line is processed.
 
@@ -132,15 +133,15 @@ struct Value {
   // storable by `Value`.
   template <typename F>
   constexpr void apply(F&& f) const {
-    apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+    apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                uint32_t, uint64_t, float, double, type::Type, Addr, String,
                /*Fn, GenericFn,*/ Reg, ModuleId, Empty>(std::forward<F>(f));
   }
 
   template <typename H>
   friend H AbslHashValue(H h, Value const& v) {
-    v.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                 uint32_t, uint64_t, float, double, type::Type, Addr,
+    v.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t, float, double, type::Type, Addr,
                  /*String, */ /* Fn, GenericFn, */ Hashtag, Jump, Reg, ModuleId,
                  Empty>(
         [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
@@ -169,9 +170,9 @@ struct Value {
   friend bool operator==(Value const& lhs, Value const& rhs) {
     if (lhs.type_ != rhs.type_) { return false; }
     bool eq;
-    lhs.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, type::Type, Reg, Addr,
-                   Hashtag, String, ModuleId, Empty>([&rhs, &eq](auto x) {
+    lhs.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                   uint16_t, uint32_t, uint64_t, float, double, type::Type, Reg,
+                   Addr, Hashtag, String, ModuleId, Empty>([&rhs, &eq](auto x) {
       eq = (x == rhs.get<std::decay_t<decltype(x)>>());
     });
     return eq;
@@ -184,10 +185,10 @@ struct Value {
   friend std::ostream& operator<<(std::ostream& os, Value value) {
     // TODO: Hack until we invert the Fn dependency.
     if (value.type_ == base::meta<Fn>) { return os << "fn"; }
-    value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                     uint32_t, uint64_t, float, double, type::Type, Reg, Addr,
-                     String, ModuleId, Hashtag, Jump, Block, Scope, Empty>(
-        [&os](auto x) { os << x; });
+    value.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                     uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                     Reg, Addr, String, ModuleId, Hashtag, Jump, Block, Scope,
+                     Empty>([&os](auto x) { os << x; });
     return os;
   }
 

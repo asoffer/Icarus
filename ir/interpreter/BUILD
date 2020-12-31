@@ -44,6 +44,7 @@ cc_library(
         "//ir/instruction:core",
         "//ir/instruction:set",
         "//ir/value",
+        "//ir/value:char",
         "//ir/value:generic_fn",
         "//type:array",
         "//type:enum",

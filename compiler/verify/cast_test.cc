@@ -48,5 +48,7 @@ TEST(Cast, InvalidType) {
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }
 
+// TODO: Cover all possible cast.
+
 }  // namespace
 }  // namespace compiler

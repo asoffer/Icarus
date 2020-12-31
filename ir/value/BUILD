@@ -48,6 +48,11 @@ cc_test(
 )
 
 cc_library(
+    name = "char",
+    hdrs = ["char.h"],
+)
+
+cc_library(
     name = "fn",
     hdrs = ["fn.h"],
     deps = [
@@ -259,6 +264,7 @@ cc_library(
     deps = [
         ":addr",
         ":block",
+        ":char",
         ":hashtag",
         ":jump",
         ":label",
