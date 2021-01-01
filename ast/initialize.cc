@@ -233,6 +233,11 @@ void ScopeNode::Initialize(Scope *scope) {
   for (auto &block : blocks_) { block.Initialize(scope); }
 }
 
+void SliceType::Initialize(Scope *scope) {
+  scope_ = scope;
+  data_type_->Initialize(scope);
+}
+
 void ShortFunctionLiteral::Initialize(Scope *scope) {
   scope_ = scope;
   set_body_with_parent(scope);

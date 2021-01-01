@@ -95,6 +95,8 @@ void Match::Visit(ast::ScopeLiteral const *node, MatchState *state) {}
 
 void Match::Visit(ast::ScopeNode const *node, MatchState *state) {}
 
+void Match::Visit(ast::SliceType const *node, MatchState *state) {}
+
 void Match::Visit(ast::StructLiteral const *node, MatchState *state) {}
 
 void Match::Visit(ast::ParameterizedStructLiteral const *node,

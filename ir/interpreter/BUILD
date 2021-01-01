@@ -52,6 +52,7 @@ cc_library(
         "//type:function",
         "//type:opaque",
         "//type:pointer",
+        "//type:slice",
         "//type:struct",
         "//type:generic_struct",
         "//type:generic_function",

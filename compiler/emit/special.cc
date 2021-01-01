@@ -503,4 +503,30 @@ void Compiler::EmitMoveAssign(
   current_block()->load_store_cache().clear();
 }
 
+void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Slice> to,
+                            type::Typed<ir::Value> const &from) {
+  // TODO: Implement
+  current_block()->load_store_cache().clear();
+}
+
+void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Slice> to,
+                            type::Typed<ir::Value> const &from) {
+  // TODO: Implement
+  current_block()->load_store_cache().clear();
+}
+
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Slice> const &to,
+    type::Typed<ir::Value> const &from) {
+  // TODO: Implement
+  current_block()->load_store_cache().clear();
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Slice> const &to,
+    type::Typed<ir::Value> const &from) {
+  // TODO: Implement
+  current_block()->load_store_cache().clear();
+}
+
 }  // namespace compiler

@@ -482,6 +482,26 @@ cc_library(
 # TODO: ShortFunctionLiteral
 
 cc_library(
+    name = "slice_type",
+    srcs = ["slice_type.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//type:slice",
+    ],
+)
+
+cc_test(
+    name = "slice_type_test",
+    srcs = ["slice_type_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "special",
     srcs = ["special.cc"],
     deps = [

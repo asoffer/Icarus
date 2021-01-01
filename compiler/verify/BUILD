@@ -531,6 +531,28 @@ cc_test(
 )
 
 cc_library(
+    name = "slice_type",
+    srcs = ["slice_type.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//type:slice",
+        "//type:primitive",
+        "//type:qual_type",
+    ],
+)
+
+cc_test(
+    name = "slice_type_test",
+    srcs = ["slice_type_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "short_function_literal",
     srcs = ["short_function_literal.cc"],
     deps = [

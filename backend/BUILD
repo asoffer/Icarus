@@ -29,6 +29,7 @@ cc_library(
         "//type:function",
         "//type:pointer",
         "//type:primitive",
+        "//type:slice",
         "//type:struct",
         "//type:tuple",
         "//type:type",

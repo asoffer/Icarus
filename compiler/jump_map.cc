@@ -246,6 +246,8 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
     ICARUS_SCOPE(SaveVar(node_stack_, node)) { Visit(node->body()); }
   }
 
+  void Visit(ast::SliceType const *node) final { Visit(node->data_type()); }
+
   void Visit(ast::StructLiteral const *node) final {
     for (auto const &f : node->fields()) { Visit(&f); }
   }

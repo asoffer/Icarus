@@ -398,6 +398,11 @@ void ScopeNode::DebugStrAppend(std::string *out, size_t indent) const {
   for (auto const &block : blocks()) { block.DebugStrAppend(out, indent); }
 }
 
+void SliceType::DebugStrAppend(std::string *out, size_t indent) const {
+  data_type()->DebugStrAppend(out, indent);
+  absl::StrAppend(out, "[]");
+}
+
 void ShortFunctionLiteral::DebugStrAppend(std::string *out,
                                           size_t indent) const {
   absl::StrAppend(out, "(",

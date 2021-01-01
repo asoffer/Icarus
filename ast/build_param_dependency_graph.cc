@@ -204,6 +204,10 @@ struct ParamDependencyGraphBuilder
     for (auto const &block : node->blocks()) { Visit(&block, d); }
   }
 
+  void Visit(SliceType const *node, core::DependencyNode<Declaration> d) {
+    Visit(node->data_type(), d);
+  }
+
   void Visit(StructLiteral const *node, core::DependencyNode<Declaration> d) {
     for (auto const &f : node->fields()) { Visit(&f, d); }
   }

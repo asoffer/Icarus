@@ -8,6 +8,7 @@
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/slice.h"
 #include "type/struct.h"
 #include "type/type.h"
 #include "type/visitor.h"
@@ -35,6 +36,8 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
   llvm::Type *get(type::Array const *t) {
     return llvm::ArrayType::get(get(t->data_type()), t->length());
   }
+
+  llvm::Type *get(type::Slice const *t) { NOT_YET(); }
 
   llvm::Type *get(type::Enum const *t) {
     return llvm::Type::getInt64Ty(context_);

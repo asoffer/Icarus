@@ -21,6 +21,7 @@
 #include "type/flags.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
+#include "type/slice.h"
 #include "type/struct.h"
 
 namespace interpreter {
@@ -156,14 +157,15 @@ struct instruction_set_t
           ir::CastInstruction<double, uint64_t>,
           ir::CastInstruction<double, int64_t>,
           ir::CastInstruction<double, float>, ir::NotInstruction,
-          type::XorFlagsInstruction, type::AndFlagsInstruction,
-          type::OrFlagsInstruction, type::PtrInstruction,
-          type::BufPtrInstruction, type::OpaqueTypeInstruction,
-          ir::ArrowInstruction, ir::LoadSymbolInstruction,
-          type::ArrayInstruction, type::StructInstruction,
-          ir::MakeBlockInstruction, ir::MakeScopeInstruction,
-          ir::StructIndexInstruction, ir::TupleIndexInstruction,
-          ir::PtrIncrInstruction, type::EnumInstruction, type::FlagsInstruction,
+          type::SliceInstruction, type::XorFlagsInstruction,
+          type::AndFlagsInstruction, type::OrFlagsInstruction,
+          type::PtrInstruction, type::BufPtrInstruction,
+          type::OpaqueTypeInstruction, ir::ArrowInstruction,
+          ir::LoadSymbolInstruction, type::ArrayInstruction,
+          type::StructInstruction, ir::MakeBlockInstruction,
+          ir::MakeScopeInstruction, ir::StructIndexInstruction,
+          ir::TupleIndexInstruction, ir::PtrIncrInstruction,
+          type::EnumInstruction, type::FlagsInstruction,
           ir::TypeInfoInstruction, ir::InitInstruction, ir::DestroyInstruction,
           ir::MoveInitInstruction, ir::CopyInitInstruction, ir::MoveInstruction,
           ir::CopyInstruction, ir::ByteViewLengthInstruction,

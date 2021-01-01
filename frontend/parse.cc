@@ -694,6 +694,17 @@ std::unique_ptr<ast::Node> BuildIndexOperator(
   return index;
 }
 
+std::unique_ptr<ast::Node> BuildSlice(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  auto range =
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end());
+  auto slice = std::make_unique<ast::SliceType>(
+      range, move_as<ast::Expression>(nodes[0]));
+
+  return slice;
+}
+
 std::unique_ptr<ast::Node> BuildEmptyArray(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1574,6 +1585,7 @@ static base::Global kRules = std::array{
               BuildOperatorIdentifier),
     ParseRule(expr, {l_paren, r_paren}, BuildEmptyCommaList),
     ParseRule(expr, {EXPR, l_bracket, EXPR, r_bracket}, BuildIndexOperator),
+    ParseRule(expr, {EXPR, l_bracket, r_bracket}, BuildSlice),
     ParseRule(expr, {l_bracket, r_bracket}, BuildEmptyArray),
     ParseRule(expr, {l_bracket, EXPR, semicolon, EXPR, r_bracket},
               BuildArrayType),

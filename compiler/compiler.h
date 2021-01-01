@@ -40,6 +40,7 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
+#include "type/slice.h"
 #include "type/struct.h"
 #include "type/tuple.h"
 #include "type/type.h"
@@ -362,6 +363,7 @@ struct Compiler
   DEFINE_EMIT_ASSIGN(type::Pointer);
   DEFINE_EMIT_ASSIGN(type::BufferPointer);
   DEFINE_EMIT_ASSIGN(type::Primitive);
+  DEFINE_EMIT_ASSIGN(type::Slice);
   DEFINE_EMIT_ASSIGN(type::Struct);
   DEFINE_EMIT_ASSIGN(type::Tuple);
 
@@ -405,6 +407,7 @@ struct Compiler
   DEFINE_EMIT_INIT(type::Pointer);
   DEFINE_EMIT_INIT(type::BufferPointer);
   DEFINE_EMIT_INIT(type::Primitive);
+  DEFINE_EMIT_INIT(type::Slice);
   DEFINE_EMIT_INIT(type::Struct);
   DEFINE_EMIT_INIT(type::Tuple);
 
@@ -421,6 +424,7 @@ struct Compiler
   DEFINE_EMIT_DESTROY(type::Pointer) {}
   DEFINE_EMIT_DESTROY(type::BufferPointer) {}
   DEFINE_EMIT_DESTROY(type::Primitive) {}
+  DEFINE_EMIT_DESTROY(type::Slice) {}
   DEFINE_EMIT_DESTROY(type::Struct);
   DEFINE_EMIT_DESTROY(type::Tuple);
 
@@ -467,6 +471,7 @@ struct Compiler
   DEFINE_EMIT(ast::Identifier)
   DEFINE_EMIT(ast::Index)
   DEFINE_EMIT(ast::ScopeNode)
+  DEFINE_EMIT(ast::SliceType)
   DEFINE_EMIT(ast::Terminal)
   DEFINE_EMIT(ast::UnaryOperator)
 #undef DEFINE_EMIT

@@ -137,6 +137,8 @@ bool ShortFunctionLiteral::IsDependent() const {
   return false;
 }
 
+bool SliceType::IsDependent() const { return data_type()->IsDependent(); }
+
 bool StructLiteral::IsDependent() const {
   // TODO
   return false;

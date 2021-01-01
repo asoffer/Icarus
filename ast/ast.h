@@ -1034,6 +1034,26 @@ struct ScopeNode : Expression {
   ScopeNode *last_scope_node_ = nullptr;
 };
 
+// SliceType:
+// Represents the syntactic construction for expressing the type of a slice,
+// which is a reference to a contiguous buffer of homogenous elements.
+//
+// Examples:
+//  `i32[]`  ... Represnts a slice of 32-bit itnegers
+//
+struct SliceType : Expression {
+  explicit SliceType(frontend::SourceRange const &range,
+                     std::unique_ptr<Expression> data_type)
+      : Expression(range), data_type_(std::move(data_type)) {}
+
+  Expression const *data_type() const { return data_type_.get(); }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  std::unique_ptr<Expression> data_type_;
+};
+
 // ShortFunctionLiteral:
 //
 // Represents a literal function which is syntactically "short". That is, it

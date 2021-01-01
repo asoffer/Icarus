@@ -143,6 +143,10 @@ void TokenExtractor::Visit(ast::ScopeNode const *node) {
   for (auto &block : node->blocks()) { Visit(&block); }
 }
 
+void TokenExtractor::Visit(ast::SliceType const *node) {
+  // TODO
+}
+
 void TokenExtractor::Visit(ast::StructLiteral const *node) {
   for (auto &f : node->fields()) { Visit(&f); }
 }
