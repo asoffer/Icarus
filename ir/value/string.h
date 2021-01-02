@@ -24,7 +24,7 @@ struct String {
   }
 
   template <typename H>
-  H AbslHashValue(H h, String s) {
+  friend H AbslHashValue(H h, String s) {
     return H::combine(std::move(h), s.get());
   }
 

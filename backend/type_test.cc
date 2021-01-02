@@ -31,7 +31,7 @@ TEST(ToLlvm, Primitive) {
             llvm::Type::getFloatTy(context));
   EXPECT_EQ(ToLlvmType(type::F64, context),
             llvm::Type::getDoubleTy(context));
-  // TODO: Test for `type`, and `byte_view`
+  // TODO: Test for `type`
 }
 
 TEST(ToLlvm, Pointer) {

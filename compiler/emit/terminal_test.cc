@@ -27,13 +27,6 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn({
         TestCase{.terminal = "true", .expected = ir::Value(true)},
         TestCase{.terminal = "false", .expected = ir::Value(false)},
-        TestCase{.terminal = R"("")", .expected = ir::Value(ir::String(""))},
-        TestCase{.terminal = R"("abc")",
-                 .expected = ir::Value(ir::String("abc"))},
-        TestCase{.terminal = R"("ab\"c")",
-                 .expected = ir::Value(ir::String("ab\"c"))},
-        TestCase{.terminal = R"("ab\n\r\t\v\\c")",
-                 .expected = ir::Value(ir::String("ab\n\r\t\v\\c"))},
         TestCase{.terminal = "null", .expected = ir::Value(ir::Addr::Null())},
         TestCase{.terminal = "u8", .expected = ir::Value(type::U8)},
         TestCase{.terminal = "u16", .expected = ir::Value(type::U16)},
@@ -48,9 +41,9 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{.terminal = "bool", .expected = ir::Value(type::Bool)},
         TestCase{.terminal = "type", .expected = ir::Value(type::Type_)},
         TestCase{.terminal = "module", .expected = ir::Value(type::Module)},
-        TestCase{.terminal = "byte_view",
-                 .expected = ir::Value(type::ByteView)},
 
+        // TODO: Evaluating string literals. Requires looking at read-only
+        // addresses.
         // TODO: Integers and their edge cases. Especially INT_MIN.
         // TODO: Floating point edge cases.
         // TODO: Determine how you will be allowed to specify arithmetic

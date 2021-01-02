@@ -34,13 +34,11 @@ static constexpr auto kTokens = std::array{
     std::string_view{"["}, std::string_view{"]"}, std::string_view{"{"},
     std::string_view{"}"}, std::string_view{";"}, std::string_view{"."},
     // Types
-    std::string_view{"bool"}, std::string_view{"i8"},
-    std::string_view{"i16"}, std::string_view{"i32"},
-    std::string_view{"i64"}, std::string_view{"u8"},
-    std::string_view{"u16"}, std::string_view{"u32"},
-    std::string_view{"u64"}, std::string_view{"f32"},
-    std::string_view{"f64"}, std::string_view{"type"},
-    std::string_view{"module"}, std::string_view{"byte_view"},
+    std::string_view{"bool"}, std::string_view{"i8"}, std::string_view{"i16"},
+    std::string_view{"i32"}, std::string_view{"i64"}, std::string_view{"u8"},
+    std::string_view{"u16"}, std::string_view{"u32"}, std::string_view{"u64"},
+    std::string_view{"f32"}, std::string_view{"f64"}, std::string_view{"type"},
+    std::string_view{"module"},
     // Other
     std::string_view{"block"}, std::string_view{"scope"},
     std::string_view{"#{export}"}, std::string_view{R"(\)"},

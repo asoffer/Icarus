@@ -137,7 +137,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         }
 
         if (not qt.constant()) {
-          if (qt.type().is<type::Array>() or qt.type() == type::ByteView) {
+          if (qt.type().is<type::Array>()) {
             qt = type::QualType(qt.type(), qt.quals() | type::Quals::Buf());
           }
 

@@ -87,37 +87,6 @@ struct NegativeArrayIndex {
   frontend::SourceRange range;
 };
 
-struct IndexingStringOutOfBounds {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "indexing-string-out-of-bounds";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text(
-            "String-literal is indexed out of bounds. String has length %u but "
-            "you are attempting to access position %u.",
-            length, index),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  frontend::SourceRange range;
-  uint64_t length;
-  uint64_t index;
-};
-
-struct NegativeStringIndex {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "negative-string-index";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Byte-view is indexed with a negative value."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
 struct InvalidIndexing {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "invalid-indexing";
@@ -136,11 +105,11 @@ struct InvalidIndexing {
 };
 
 // Validate the index type, possibly emitting diagnostics
-bool ValidIndexType(Compiler *c, ast::Index const *node, type::Type type,
+bool ValidIndexType(Compiler &c, ast::Index const *node, type::Type type,
                     type::QualType index_qt) {
   if (index_qt.ok()) {
     if (type::IsIntegral(index_qt.type())) { return true; }
-    c->diag().Consume(InvalidIndexType{
+    c.diag().Consume(InvalidIndexType{
         .range      = node->range(),
         .type       = type,
         .index_type = index_qt.type(),
@@ -174,49 +143,18 @@ std::optional<uint64_t> IntegralToUint64(ir::Value const &value) {
   }
 }
 
-type::QualType VerifyByteViewIndex(Compiler *c, ast::Index const *node,
-                                   type::Quals quals, type::QualType index_qt) {
+type::QualType VerifySliceIndex(Compiler &c, ast::Index const *node,
+                                type::Slice const *slice_type,
+                                type::Quals quals, type::QualType index_qt) {
+  // TODO: Emit errors when possible for out-of-bounds indices. Or probabl just
+  // do this with properties/symbolic-execution.
   quals = (quals & index_qt.quals()) | type::Quals::Buf();
-  type::QualType qt(type::Char, quals);
-  if (not ValidIndexType(c, node, type::ByteView, index_qt)) {
-    qt.MarkError();
-    return c->context().set_qual_type(node, qt);
-  }
-
-  if (index_qt.constant()) {
-    ir::Value maybe_index_value = c->EvaluateOrDiagnose(
-        type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
-
-    if (quals >= type::Quals::Const()) {
-      auto maybe_str = c->EvaluateOrDiagnoseAs<ir::String>(node->lhs());
-      if (maybe_index_value.empty() or not maybe_str) {
-        return type::QualType::Error();
-      }
-
-      std::optional<uint64_t> maybe_index = IntegralToUint64(maybe_index_value);
-      if (not maybe_index.has_value()) {
-        c->diag().Consume(NegativeStringIndex{
-            .range = node->range(),
-        });
-        qt.MarkError();
-      } else if (*maybe_index > maybe_str->get().size()) {
-        // Note: We only emit an error if it's beyond a potential
-        // null-terminator, regardless of whether or not we can prove a
-        // null-terminator exists.
-        c->diag().Consume(IndexingStringOutOfBounds{
-            .range  = node->range(),
-            .length = maybe_str->get().size(),
-            .index  = *maybe_index,
-        });
-        qt.MarkError();
-      }
-    }
-  }
-
-  return c->context().set_qual_type(node, qt);
+  type::QualType qt(slice_type->data_type(), quals);
+  if (not ValidIndexType(c, node, slice_type, index_qt)) { qt.MarkError(); }
+  return c.context().set_qual_type(node, qt);
 }
 
-type::QualType VerifyArrayIndex(Compiler *c, ast::Index const *node,
+type::QualType VerifyArrayIndex(Compiler &c, ast::Index const *node,
                                 type::Array const *array_type,
                                 type::Quals quals, type::QualType index_qt) {
   if (index_qt.quals() <= ~type::Quals::Const()) {
@@ -227,22 +165,22 @@ type::QualType VerifyArrayIndex(Compiler *c, ast::Index const *node,
 
   if (not ValidIndexType(c, node, array_type, index_qt)) {
     qt.MarkError();
-    return c->context().set_qual_type(node, qt);
+    return c.context().set_qual_type(node, qt);
   }
 
   if (index_qt.constant()) {
-    ir::Value maybe_index_value = c->EvaluateOrDiagnose(
+    ir::Value maybe_index_value = c.EvaluateOrDiagnose(
         type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
     if (maybe_index_value.empty()) { return type::QualType::Error(); }
 
     std::optional<uint64_t> maybe_index = IntegralToUint64(maybe_index_value);
     if (not maybe_index.has_value()) {
-      c->diag().Consume(NegativeArrayIndex{
+      c.diag().Consume(NegativeArrayIndex{
           .range = node->range(),
       });
       qt.MarkError();
     } else if (*maybe_index >= array_type->length()) {
-      c->diag().Consume(IndexingArrayOutOfBounds{
+      c.diag().Consume(IndexingArrayOutOfBounds{
           .range = node->range(),
           .array = array_type,
           .index = *maybe_index,
@@ -250,24 +188,24 @@ type::QualType VerifyArrayIndex(Compiler *c, ast::Index const *node,
       qt.MarkError();
     }
   }
-  return c->context().set_qual_type(node, qt);
+  return c.context().set_qual_type(node, qt);
 }
 
-type::QualType VerifyBufferPointerIndex(Compiler *c, ast::Index const *node,
+type::QualType VerifyBufferPointerIndex(Compiler &c, ast::Index const *node,
                                         type::BufferPointer const *buf_ptr_type,
                                         type::Quals quals,
                                         type::QualType index_qt) {
   quals = (quals & index_qt.quals()) | type::Quals::Buf();
   type::QualType qt(buf_ptr_type->pointee(), quals);
   if (not ValidIndexType(c, node, buf_ptr_type, index_qt)) { qt.MarkError(); }
-  return c->context().set_qual_type(node, qt);
+  return c.context().set_qual_type(node, qt);
 }
 
-type::QualType VerifyTupleIndex(Compiler *c, ast::Index const *node,
+type::QualType VerifyTupleIndex(Compiler &c, ast::Index const *node,
                                 type::Tuple const *tuple_type,
                                 type::Quals quals, type::QualType index_qt) {
   if (not index_qt.constant()) {
-    c->diag().Consume(NonConstantTupleIndex{
+    c.diag().Consume(NonConstantTupleIndex{
         .range = node->range(),
     });
     return type::QualType::Error();
@@ -277,13 +215,13 @@ type::QualType VerifyTupleIndex(Compiler *c, ast::Index const *node,
     return type::QualType::Error();
   }
 
-  ir::Value maybe_value = c->EvaluateOrDiagnose(
+  ir::Value maybe_value = c.EvaluateOrDiagnose(
       type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
   if (maybe_value.empty()) { return type::QualType::Error(); }
 
   std::optional<uint64_t> maybe_index = IntegralToUint64(maybe_value);
   if (not maybe_index.has_value() or *maybe_index >= tuple_type->size()) {
-    c->diag().Consume(IndexingTupleOutOfBounds{
+    c.diag().Consume(IndexingTupleOutOfBounds{
         .range = node->range(),
         .tuple = tuple_type,
         .index = *maybe_index,
@@ -293,7 +231,7 @@ type::QualType VerifyTupleIndex(Compiler *c, ast::Index const *node,
 
   quals = (quals & index_qt.quals()) | type::Quals::Ref();
   type::QualType qt(tuple_type->entries_[*maybe_index], quals);
-  return c->context().set_qual_type(node, qt);
+  return c.context().set_qual_type(node, qt);
 }
 
 }  // namespace
@@ -306,16 +244,16 @@ type::QualType Compiler::VerifyType(ast::Index const *node) {
   // indexed.
   if (not lhs_qt.ok()) { return type::QualType::Error(); }
 
-  if (lhs_qt.type() == type::ByteView) {
-    return VerifyByteViewIndex(this, node, lhs_qt.quals(), index_qt);
+  if (auto const *slice_type = lhs_qt.type().if_as<type::Slice>()) {
+    return VerifySliceIndex(*this, node, slice_type, lhs_qt.quals(), index_qt);
   } else if (auto const *array_type = lhs_qt.type().if_as<type::Array>()) {
-    return VerifyArrayIndex(this, node, array_type, lhs_qt.quals(), index_qt);
+    return VerifyArrayIndex(*this, node, array_type, lhs_qt.quals(), index_qt);
   } else if (auto const *buf_ptr_type =
                  lhs_qt.type().if_as<type::BufferPointer>()) {
-    return VerifyBufferPointerIndex(this, node, buf_ptr_type, lhs_qt.quals(),
+    return VerifyBufferPointerIndex(*this, node, buf_ptr_type, lhs_qt.quals(),
                                     index_qt);
   } else if (auto const *tuple_type = lhs_qt.type().if_as<type::Tuple>()) {
-    return VerifyTupleIndex(this, node, tuple_type, lhs_qt.quals(), index_qt);
+    return VerifyTupleIndex(*this, node, tuple_type, lhs_qt.quals(), index_qt);
   } else {
     diag().Consume(InvalidIndexing{
         .range = node->range(),

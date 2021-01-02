@@ -39,7 +39,6 @@ cc_library(
         "//ir:compiled_jump",
         "//ir/instruction",
         "//ir/instruction:arithmetic",
-        "//ir/instruction:byte_view",
         "//ir/instruction:compare",
         "//ir/instruction:core",
         "//ir/instruction:set",

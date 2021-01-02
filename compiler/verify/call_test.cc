@@ -79,7 +79,7 @@ TEST(BuiltinForeign, TooManyArgs) {
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
-TEST(BuiltinForeign, FirstParameterByteView) {
+TEST(BuiltinForeign, FirstParameterCharSlice) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>(R"(foreign(123, *i64))");
   auto const *qt   = mod.context().qual_type(call);

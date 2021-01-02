@@ -7,6 +7,7 @@
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
+#include "ir/value/slice.h"
 #include "type/type.h"
 
 namespace type {
@@ -34,6 +35,9 @@ struct Slice : LegacyType {
     return data_type().get()->completeness();
   }
 
+  // TODO: Instead of talking about this being big or not, we'd rather just say
+  // how many registers would be needed and let the implementation choose. This
+  // might also be a good solution for unwrapping one-element structs.
   bool is_big() const override { return false; }
 
   template <typename H>
@@ -48,7 +52,6 @@ struct Slice : LegacyType {
   friend bool operator!=(Slice const &lhs, Slice const &rhs) {
     return not(lhs == rhs);
   }
-
 
  private:
   explicit Slice(Type t)
@@ -74,6 +77,31 @@ struct SliceInstruction
   Type Resolve() const { return Slc(data_type.value()); }
 
   ir::RegOr<Type> data_type;
+  ir::Reg result;
+};
+
+struct SliceLengthInstruction
+    : base::Extend<SliceLengthInstruction>::With<ir::ByteCodeExtension,
+                                                 ir::InlineExtension,
+                                                 ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = slice-length %1$s";
+
+  Slice::length_t Resolve() const { return slice.value().length(); }
+
+  ir::RegOr<ir::Slice> slice;
+  ir::Reg result;
+};
+
+struct SliceDataInstruction
+    : base::Extend<SliceDataInstruction>::With<ir::ByteCodeExtension,
+                                               ir::InlineExtension,
+                                               ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat =
+      "%2$s = slice-data %1$s";
+
+  ir::Addr Resolve() const { return slice.value().data(); }
+
+  ir::RegOr<ir::Slice> slice;
   ir::Reg result;
 };
 

@@ -77,7 +77,6 @@ inline base::Global kPrimitiveArray = std::array{
     Primitive(Primitive::BasicType::Scope),
     Primitive(Primitive::BasicType::Block),
     Primitive(Primitive::BasicType::Module),
-    Primitive(Primitive::BasicType::ByteView),
     Primitive(Primitive::BasicType::Label),
     Primitive(Primitive::BasicType::Void),
 };
@@ -116,9 +115,8 @@ inline Type EmptyArray = &(*internal::kPrimitiveArray)[14];
 inline Type Scope      = &(*internal::kPrimitiveArray)[15];
 inline Type Block      = &(*internal::kPrimitiveArray)[16];
 inline Type Module     = &(*internal::kPrimitiveArray)[17];
-inline Type ByteView   = &(*internal::kPrimitiveArray)[18];
-inline Type Label      = &(*internal::kPrimitiveArray)[19];
-inline Type Void       = &(*internal::kPrimitiveArray)[20];
+inline Type Label      = &(*internal::kPrimitiveArray)[18];
+inline Type Void       = &(*internal::kPrimitiveArray)[19];
 
 inline bool IsNumeric(Type t) {
   return t.get() >= U8.get() and t.get() <= F64.get();

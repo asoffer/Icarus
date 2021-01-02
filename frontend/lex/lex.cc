@@ -247,21 +247,11 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
 // passed to an `ir::Value`, the write type tag is deduced.
 static base::Global kReservedTypes =
     absl::flat_hash_map<std::string_view, type::Type>{
-        {"bool", type::Bool},
-        {"char", type::Char},
-        {"i8", type::I8},
-        {"i16", type::I16},
-        {"i32", type::I32},
-        {"i64", type::I64},
-        {"u8", type::U8},
-        {"u16", type::U16},
-        {"u32", type::U32},
-        {"u64", type::U64},
-        {"f32", type::F32},
-        {"f64", type::F64},
-        {"type", type::Type_},
-        {"module", type::Module},
-        {"byte_view", type::ByteView}};
+        {"bool", type::Bool},  {"char", type::Char},    {"i8", type::I8},
+        {"i16", type::I16},    {"i32", type::I32},      {"i64", type::I64},
+        {"u8", type::U8},      {"u16", type::U16},      {"u32", type::U32},
+        {"u64", type::U64},    {"f32", type::F32},      {"f64", type::F64},
+        {"type", type::Type_}, {"module", type::Module}};
 
 // Consumes as many alpha-numeric or underscore characters as possible, assuming
 // the character under the cursor is an alpha or underscore character. Returns a
@@ -501,8 +491,10 @@ restart:
             .range  = range,
         });
       }
-      return Lexeme(
-          std::make_unique<ast::Terminal>(range, ir::Value(ir::String(str))));
+
+      ir::String s(str);
+      return Lexeme(std::make_unique<ast::Terminal>(
+          range, ir::Value(ir::Slice(s.addr(), s.get().length()))));
 
     } break;
     case '#': {

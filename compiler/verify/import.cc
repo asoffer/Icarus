@@ -45,7 +45,7 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
 
   auto qt  = type::QualType::Constant(type::Module);
   bool err = false;
-  if (result.type() != type::ByteView) {
+  if (result.type() != type::Slc(type::Char)) {
     diag().Consume(InvalidImport{.type  = result.type(),
                                  .range = node->operand()->range()});
     qt.MarkError();
@@ -60,14 +60,22 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
 
   if (err) { return context().set_qual_type(node, qt); }
 
-  auto maybe_src = EvaluateAs<ir::String>(node->operand());
+  auto maybe_src = Evaluate(type::Typed<ast::Expression const *>(
+      node->operand(), type::Slc(type::Char)));
+
   if (not maybe_src) {
     diag().Consume(maybe_src.error());
     qt.MarkError();
     return context().set_qual_type(node, qt);
   }
 
-  ir::ModuleId mod_id = importer().Import(maybe_src->get());
+  std::string name = [&] {
+    auto handle = ir::ReadOnlyData.lock();
+    return std::string(handle->raw(maybe_src->get<ir::Slice>().data().rodata()),
+                       maybe_src->get<ir::Slice>().length());
+  }();
+
+  ir::ModuleId mod_id = importer().Import(name);
   if (mod_id == ir::ModuleId::Invalid()) {
     qt.MarkError();
   } else {

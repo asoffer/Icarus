@@ -10,7 +10,7 @@ using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
-TEST(Index, ByteViewConstantIndex) {
+TEST(Index, SliceConstantIndex) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"("abc"[0])");
   auto const *qt   = mod.context().qual_type(expr);
@@ -20,7 +20,7 @@ TEST(Index, ByteViewConstantIndex) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Index, ByteViewNonConstantIndex) {
+TEST(Index, SliceNonConstantIndex) {
   test::TestModule mod;
   mod.AppendCode(R"(n: i64)");
   auto const *expr = mod.Append<ast::Expression>(R"("abc"[n])");
@@ -30,7 +30,7 @@ TEST(Index, ByteViewNonConstantIndex) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Index, NonConstantByteViewConstantIndex) {
+TEST(Index, NonConstantSliceConstantIndex) {
   test::TestModule mod;
   mod.AppendCode(R"(s := "abc")");
   auto const *expr = mod.Append<ast::Expression>(R"(s[0])");
@@ -40,7 +40,7 @@ TEST(Index, NonConstantByteViewConstantIndex) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Index, NonConstantByteViewNonConstantIndex) {
+TEST(Index, NonConstantSliceNonConstantIndex) {
   test::TestModule mod;
   mod.AppendCode(R"(
   s := "abc"
@@ -53,7 +53,7 @@ TEST(Index, NonConstantByteViewNonConstantIndex) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Index, ByteViewInvalidIndexType) {
+TEST(Index, SliceInvalidIndexType) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"("abc"["def"])");
   auto const *qt   = mod.context().qual_type(expr);
@@ -64,28 +64,24 @@ TEST(Index, ByteViewInvalidIndexType) {
               UnorderedElementsAre(Pair("type-error", "invalid-index-type")));
 }
 
-TEST(Index, ByteViewOutOfBoundsNegative) {
+TEST(Index, SliceOutOfBoundsNegative) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"("abc"[-1])");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Char,
                                 type::Quals::Const() | type::Quals::Buf()));
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "negative-string-index")));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Index, ByteViewOutOfBoundsLarge) {
+TEST(Index, SliceOutOfBoundsLarge) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"("abc"[4])");
   auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Char,
                                 type::Quals::Const() | type::Quals::Buf()));
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(
-                  Pair("type-error", "indexing-string-out-of-bounds")));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(Index, ArrayConstantIndex) {

@@ -23,7 +23,6 @@ cc_library(
         "//ir/blocks:group",
         "//ir/instruction",
         "//ir/instruction:arithmetic",
-        "//ir/instruction:byte_view",
         "//ir/instruction:compare",
         "//ir/instruction:core",
         "//ir/value:addr",

@@ -142,11 +142,12 @@ type::QualType VerifyForeignCall(
 
   if (error) { return type::QualType::Error(); }
 
-  if (arg_vals[0].type() != type::ByteView) {
+  if (arg_vals[0].type() != type::Slc(type::Char)) {
+    // TODO: When we change the syntax for slices change this error message too.
     c->diag().Consume(BuiltinError{
         .range   = range,
         .message = absl::StrCat("First argument to `foreign` must be a "
-                                "byte-view (You provided a(n) ",
+                                "char[] (You provided a(n) ",
                                 arg_vals[0].type().to_string(), ")."),
     });
     error = true;

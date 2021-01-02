@@ -22,12 +22,29 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
                           *flags_type->EmitLiteral(node->member_name())),
                       to);
     return true;
-  } else if (t == type::ByteView) {
-    ASSERT(node->member_name() == "length");
-    c.builder().Store(
-        ir::RegOr<uint64_t>(c.builder().ByteViewLength(
-            c.EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
-        to);
+  } else if (auto const *s = t.if_as<type::Slice>()) {
+    if (node->member_name() == "length") {
+      c.builder().Store(
+          ir::RegOr<type::Slice::length_t>(
+              c.current_block()->Append(type::SliceLengthInstruction{
+                  .slice =
+                      c.EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
+                  .result = c.builder().CurrentGroup()->Reserve(),
+              })),
+          to);
+    } else if (node->member_name() == "data") {
+      c.builder().Store(
+          ir::RegOr<ir::Addr>(
+              c.current_block()->Append(type::SliceDataInstruction{
+                  .slice =
+                      c.EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
+                  .result = c.builder().CurrentGroup()->Reserve(),
+              })),
+          to);
+
+    } else {
+      UNREACHABLE(node->member_name());
+    }
     return true;
   } else {
     return false;
@@ -57,10 +74,21 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     return ir::Value(*enum_type->EmitLiteral(node->member_name()));
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
     return ir::Value(*flags_type->EmitLiteral(node->member_name()));
-  } else if (operand_qt.type() == type::ByteView) {
-    ASSERT(node->member_name() == "length");
-    return ir::Value(builder().ByteViewLength(
-        EmitValue(node->operand()).get<ir::RegOr<ir::String>>()));
+  } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
+    if (node->member_name() == "length") {
+      return ir::Value(current_block()->Append(type::SliceLengthInstruction{
+          .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
+          .result = builder().CurrentGroup()->Reserve(),
+      }));
+
+    } else if (node->member_name() == "data") {
+      return ir::Value(current_block()->Append(type::SliceDataInstruction{
+          .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
+          .result = builder().CurrentGroup()->Reserve(),
+      }));
+    } else {
+      UNREACHABLE(node->member_name());
+    }
   } else if (operand_qt == type::QualType::Constant(type::Type_)) {
     if (auto t = EvaluateOrDiagnoseAs<type::Type>(node->operand())) {
       if (type::Array const *a = t->if_as<type::Array>()) {
@@ -157,14 +185,30 @@ void Compiler::EmitMoveInit(
                  type::Typed<ir::Value>(
                      ir::Value(*flags_type->EmitLiteral(node->member_name())),
                      flags_type));
-  } else if (operand_qt.type() == type::ByteView) {
-    ASSERT(node->member_name() == "length");
-    EmitMoveInit(
-        type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-        type::Typed<ir::Value>(
-            ir::Value(builder().ByteViewLength(
-                EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
-            type::U64));
+  } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
+    if (node->member_name() == "length") {
+      EmitMoveInit(
+          type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+          type::Typed<ir::Value>(
+              ir::Value(current_block()->Append(type::SliceLengthInstruction{
+                  .slice =
+                      EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
+                  .result = builder().CurrentGroup()->Reserve(),
+              })),
+              type::U64));
+    } else if (node->member_name() == "data") {
+      EmitMoveInit(
+          type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+          type::Typed<ir::Value>(
+              ir::Value(current_block()->Append(type::SliceDataInstruction{
+                  .slice =
+                      EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
+                  .result = builder().CurrentGroup()->Reserve(),
+              })),
+              type::BufPtr(s->data_type())));
+    } else {
+      UNREACHABLE(node->member_name());
+    }
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
       EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
@@ -217,14 +261,30 @@ void Compiler::EmitCopyInit(
                  type::Typed<ir::Value>(
                      ir::Value(*flags_type->EmitLiteral(node->member_name())),
                      flags_type));
-  } else if (operand_qt.type() == type::ByteView) {
-    ASSERT(node->member_name() == "length");
-    EmitCopyInit(
-        type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-        type::Typed<ir::Value>(
-            ir::Value(builder().ByteViewLength(
-                EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
-            type::U64));
+  } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
+    if (node->member_name() == "length") {
+      EmitCopyInit(
+          type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+          type::Typed<ir::Value>(
+              ir::Value(current_block()->Append(type::SliceLengthInstruction{
+                  .slice =
+                      EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
+                  .result = builder().CurrentGroup()->Reserve(),
+              })),
+              type::U64));
+    } else if (node->member_name() == "data") {
+      EmitCopyInit(
+          type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+          type::Typed<ir::Value>(
+              ir::Value(current_block()->Append(type::SliceDataInstruction{
+                  .slice =
+                      EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
+                  .result = builder().CurrentGroup()->Reserve(),
+              })),
+              type::BufPtr(s->data_type())));
+    } else {
+      UNREACHABLE(node->member_name());
+    }
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
       EmitCopyAssign(

@@ -49,7 +49,7 @@ TEST(Import, NonConstantAndInvalidType) {
                   Pair("value-category-error", "non-constant-import")));
 }
 
-TEST(Import, ByteViewLiteral) {
+TEST(Import, StringLiteral) {
   constexpr std::string_view kModule = "some-module";
   test::TestModule mod;
   EXPECT_CALL(mod.importer, Import(kModule)).WillOnce(Return(ir::ModuleId(7)));
@@ -60,7 +60,7 @@ TEST(Import, ByteViewLiteral) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Import, ConstantByteView) {
+TEST(Import, ConstantCharSlice) {
   constexpr std::string_view kModule = "some-module";
   test::TestModule mod;
   EXPECT_CALL(mod.importer, Import(kModule)).WillOnce(Return(ir::ModuleId(7)));

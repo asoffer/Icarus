@@ -37,15 +37,7 @@ struct Addr {
     return *this;
   }
 
-  friend constexpr bool operator==(Addr lhs, Addr rhs) {
-    return lhs.data_ == rhs.data_;
-  }
-
-  friend bool operator<(Addr lhs, Addr rhs) { return lhs.data_ < rhs.data_; }
-  friend bool operator<=(Addr lhs, Addr rhs) { return lhs.data_ <= rhs.data_; }
-  friend bool operator>(Addr lhs, Addr rhs) { return lhs.data_ > rhs.data_; }
-  friend bool operator>=(Addr lhs, Addr rhs) { return lhs.data_ >= rhs.data_; }
-  friend bool operator!=(Addr lhs, Addr rhs) { return not(lhs == rhs); }
+  auto operator<=>(Addr const &) const = default;
 
   friend core::Bytes operator-(Addr lhs, Addr rhs) {
     return core::Bytes(((lhs.data_ >> 2) | (lhs.data_ & 0b11) << 62) -

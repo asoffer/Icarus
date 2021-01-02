@@ -12,7 +12,6 @@
 #include "ir/blocks/basic.h"
 #include "ir/blocks/group.h"
 #include "ir/instruction/arithmetic.h"
-#include "ir/instruction/byte_view.h"
 #include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
 #include "ir/instruction/instructions.h"
@@ -339,7 +338,7 @@ struct Builder {
     if (t.is<type::Function>()) { return Value(Load<Fn>(r)); }
     return type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
                             uint8_t, uint16_t, uint32_t, uint64_t, float,
-                            double, type::Type, Addr, String, Fn>(
+                            double, type::Type, Addr, Slice, Fn>(
         t, [&]<typename T>() { return Value(Load<T>(r)); });
   }
 
@@ -363,8 +362,17 @@ struct Builder {
   }
 
   Reg Index(type::Pointer const* t, Reg array_ptr, RegOr<int64_t> offset) {
-    return PtrIncr(array_ptr, offset,
-                   type::Ptr(t->pointee().as<type::Array>().data_type()));
+    type::Type pointee = t->pointee();
+    type::Type data_type;
+    if (auto const* a = pointee.if_as<type::Array>()) {
+      data_type = a->data_type();
+    } else if (auto const* s = pointee.if_as<type::Slice>()) {
+      data_type = s->data_type();
+    } else {
+      UNREACHABLE(t->to_string());
+    }
+
+    return PtrIncr(array_ptr, offset, type::Ptr(data_type));
   }
 
   // Emits a function-call instruction, calling `fn` of type `f` with the given
@@ -434,8 +442,6 @@ struct Builder {
   }
 
   Reg PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Pointer const* t);
-  RegOr<uint64_t> ByteViewLength(RegOr<ir::String> val);
-  RegOr<Addr> ByteViewData(RegOr<ir::String> val);
 
   // Type construction commands
 

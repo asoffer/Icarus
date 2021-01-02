@@ -366,16 +366,20 @@ type::QualType Compiler::VerifyType(ast::Access const *node) {
     auto quals = operand_qt.quals();
     if (num_derefs > 0) { quals |= type::Quals::Ref(); }
 
-    if (base_type == type::ByteView) {
+    if (auto const *s = base_type.if_as<type::Slice>()) {
       if (node->member_name() == "length") {
         return context().set_qual_type(
-            node, type::QualType(type::U64, quals & type::Quals::Const()));
+            node, type::QualType(type::U64, quals | type::Quals::Ref()));
+      } else if (node->member_name() == "data") {
+        return context().set_qual_type(
+            node, type::QualType(type::BufPtr(s->data_type()),
+                                 quals | type::Quals::Ref()));
       } else {
         diag().Consume(MissingMember{
             .expr_range   = node->operand()->range(),
             .member_range = node->member_range(),
             .member       = std::string{node->member_name()},
-            .type         = type::ByteView,
+            .type         = s,
         });
         return type::QualType::Error();
       }

@@ -15,6 +15,7 @@
 #include "ir/value/module_id.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/scope.h"
+#include "ir/value/slice.h"
 #include "ir/value/string.h"
 #include "type/type.h"
 
@@ -44,16 +45,18 @@ struct Value {
   using supported_types =
       base::type_list<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                       uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                      Reg, Addr, String, ModuleId, Fn, GenericFn, Jump, Block,
-                      Hashtag, Scope, Label, Empty>;
+                      Reg, Addr, Slice, String, ModuleId, Fn, GenericFn, Jump,
+                      Block, Hashtag, Scope, Label, Empty>;
 
+  // TODO: Slices are larger than everything else, so it'd be really nice to cut
+  // them out.
   static constexpr size_t value_size_v = std::max(
       {sizeof(bool),       sizeof(Char),     sizeof(int8_t),  sizeof(int16_t),
        sizeof(int32_t),    sizeof(int64_t),  sizeof(uint8_t), sizeof(uint16_t),
        sizeof(uint32_t),   sizeof(uint64_t), sizeof(float),   sizeof(double),
-       sizeof(type::Type), sizeof(Reg),      sizeof(Addr),    sizeof(String),
-       sizeof(ModuleId),   sizeof(Jump),     sizeof(Block),   sizeof(Hashtag),
-       sizeof(Scope),      sizeof(Label),    sizeof(Empty)});
+       sizeof(type::Type), sizeof(Reg),      sizeof(Addr),    sizeof(ModuleId),
+       sizeof(Jump),       sizeof(Block),    sizeof(Hashtag), sizeof(Slice),
+       sizeof(String),     sizeof(Scope),    sizeof(Label),   sizeof(Empty)});
   // The above happen to cover the alignment of Fn, GenericFn, but we have
   // layering issues here and those are incomplete when this line is processed.
 
@@ -64,9 +67,9 @@ struct Value {
                 alignof(uint8_t),    alignof(uint16_t), alignof(uint32_t),
                 alignof(uint64_t),   alignof(float),    alignof(double),
                 alignof(type::Type), alignof(Reg),      alignof(Addr),
-                alignof(String),     alignof(ModuleId), alignof(Jump),
-                alignof(Block),      alignof(Hashtag),  alignof(Scope),
-                alignof(Label),      alignof(Empty)});
+                alignof(ModuleId),   alignof(Jump),     alignof(Block),
+                alignof(Hashtag),    alignof(Slice),    alignof(String),
+                alignof(Scope),      alignof(Label),    alignof(Empty)});
   // The above happen to cover the alignment of Fn, GenericFn, but we have
   // layering issues here and those are incomplete when this line is processed.
 
@@ -134,7 +137,7 @@ struct Value {
   template <typename F>
   constexpr void apply(F&& f) const {
     apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-               uint32_t, uint64_t, float, double, type::Type, Addr, String,
+               uint32_t, uint64_t, float, double, type::Type, Addr, Slice, String,
                /*Fn, GenericFn,*/ Reg, ModuleId, Empty>(std::forward<F>(f));
   }
 
@@ -142,8 +145,8 @@ struct Value {
   friend H AbslHashValue(H h, Value const& v) {
     v.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type, Addr,
-                 /*String, */ /* Fn, GenericFn, */ Hashtag, Jump, Reg, ModuleId,
-                 Empty>(
+                 Slice, String, /* Fn, GenericFn, */ Hashtag, Jump, Reg,
+                 ModuleId, Empty>(
         [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
     return h;
   }
@@ -172,9 +175,10 @@ struct Value {
     bool eq;
     lhs.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                    uint16_t, uint32_t, uint64_t, float, double, type::Type, Reg,
-                   Addr, Hashtag, String, ModuleId, Empty>([&rhs, &eq](auto x) {
-      eq = (x == rhs.get<std::decay_t<decltype(x)>>());
-    });
+                   Addr, Hashtag, Slice, String, ModuleId, Empty>(
+        [&rhs, &eq](auto x) {
+          eq = (x == rhs.get<std::decay_t<decltype(x)>>());
+        });
     return eq;
   }
 
@@ -187,8 +191,8 @@ struct Value {
     if (value.type_ == base::meta<Fn>) { return os << "fn"; }
     value.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                     Reg, Addr, String, ModuleId, Hashtag, Jump, Block, Scope,
-                     Empty>([&os](auto x) { os << x; });
+                     Reg, Addr, Slice, String, ModuleId, Hashtag, Jump, Block,
+                     Scope, Empty>([&os](auto x) { os << x; });
     return os;
   }
 

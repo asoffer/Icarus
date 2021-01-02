@@ -168,12 +168,26 @@ ir::Value EmitBuiltinCall(
     core::Arguments<ast::Expression const *> const &args) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
-      auto maybe_name         = c->EvaluateOrDiagnoseAs<ir::String>(args[0]);
+      auto maybe_name = c->Evaluate(
+          type::Typed<ast::Expression const *>(args[0], type::Slc(type::Char)));
+
+      if (not maybe_name) {
+        c->diag().Consume(maybe_name.error());
+        return ir::Value();
+      }
+
       auto maybe_foreign_type = c->EvaluateOrDiagnoseAs<type::Type>(args[1]);
       if (not maybe_name or not maybe_foreign_type) { return ir::Value(); }
-
+      ASSERT(maybe_name->get<ir::Slice>().data().kind() ==
+             ir::Addr::Kind::ReadOnly);
+      std::string name = [&] {
+        auto handle = ir::ReadOnlyData.lock();
+        return std::string(
+            handle->raw(maybe_name->get<ir::Slice>().data().rodata()),
+            maybe_name->get<ir::Slice>().length());
+      }();
       return ir::Value(
-          c->builder().LoadSymbol(*maybe_name, *maybe_foreign_type).get());
+          c->builder().LoadSymbol(ir::String(name), *maybe_foreign_type).get());
     } break;
 
     case ir::BuiltinFn::Which::Opaque:

@@ -599,8 +599,10 @@ cc_library(
     name = "terminal",
     srcs = ["terminal.cc"],
     deps = [
+        "//base:meta",
         "//ast",
         "//compiler:compiler_header",
+        "//type:slice",
         "//type:primitive",
         "//type:qual_type",
     ],

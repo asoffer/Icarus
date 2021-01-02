@@ -8,7 +8,6 @@
 #include "base/untyped_buffer.h"
 #include "ir/compiled_fn.h"
 #include "ir/instruction/arithmetic.h"
-#include "ir/instruction/byte_view.h"
 #include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
 #include "ir/instruction/instructions.h"
@@ -168,8 +167,8 @@ struct instruction_set_t
           type::EnumInstruction, type::FlagsInstruction,
           ir::TypeInfoInstruction, ir::InitInstruction, ir::DestroyInstruction,
           ir::MoveInitInstruction, ir::CopyInitInstruction, ir::MoveInstruction,
-          ir::CopyInstruction, ir::ByteViewLengthInstruction,
-          ir::ByteViewDataInstruction, ir::DebugIrInstruction> {};
+          ir::CopyInstruction, type::SliceLengthInstruction,
+          type::SliceDataInstruction, ir::DebugIrInstruction> {};
 
 void Execute(ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots);
@@ -190,6 +189,7 @@ T EvaluateAs(ir::CompiledFn &&fn) {
   ASSERT(result_buf.size() == sizeof(T));
   return result_buf.get<T>(0);
 }
+
 
 }  // namespace interpreter
 

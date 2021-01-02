@@ -20,6 +20,7 @@
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/slice.h"
 #include "type/struct.h"
 #include "type/tuple.h"
 #include "type/type.h"
@@ -58,9 +59,6 @@ type::Type Get() {
     return type::F32;
   } else if constexpr (base::meta<T> == base::meta<double>) {
     return type::F64;
-  } else if constexpr (base::meta<T> == base::meta<std::string_view> or
-                       base::meta<T> == base::meta<ir::String>) {
-    return type::ByteView;
   } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
     return type::Block;
   } else if constexpr (base::meta<T> == base::meta<type::Type>) {
@@ -114,9 +112,8 @@ bool Compare(::type::Type t) {
     return t == ::type::Type_;
   } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {
     return t.is<::type::Struct>();
-  } else if constexpr (base::meta<T> == base::meta<std::string_view> or
-                       base::meta<T> == base::meta<ir::String>) {
-    return t == type::ByteView;
+  } else if constexpr (base::meta<T> == base::meta<ir::Slice>) {
+    return t.is<::type::Slice>();
   } else if constexpr (base::meta<T> == base::meta<ir::Addr>) {
     return t.is<::type::Pointer>() or t == type::NullPtr;
   } else if constexpr (base::meta<T> == base::meta<ir::Scope>) {
@@ -166,7 +163,7 @@ template <typename Fn>
 auto Apply(Type t, Fn &&fn) {
   return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                     uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                    ir::Addr, ir::String, ir::ModuleId, ir::Scope, ir::Fn,
+                    ir::Addr, ir::Slice, ir::ModuleId, ir::Scope, ir::Fn,
                     ir::Jump, ir::Block, ir::GenericFn>(t,
                                                         std::forward<Fn>(fn));
 }

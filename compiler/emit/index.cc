@@ -10,13 +10,16 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
         EmitRef(node), ASSERT_NOT_NULL(context().qual_type(node))->type()));
   }
 
-  if (qt->type() == type::ByteView) {
-    auto data = builder().ByteViewData(
-        EmitValue(node->lhs()).get<ir::RegOr<ir::String>>());
-    auto addr = builder().PtrIncr(
-        data, EmitValue(node->rhs()).get<ir::RegOr<int64_t>>(),
-        type::Ptr(type::Char));
-    return builder().Load(addr, type::Char);
+  if (auto const *s = qt->type().if_as<type::Slice>()) {
+    auto data = current_block()->Append(type::SliceDataInstruction{
+        .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::Slice>>(),
+        .result = builder().CurrentGroup()->Reserve(),
+    });
+
+    auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
+        EmitValue(node->rhs()), context().qual_type(node->rhs())->type()));
+    return ir::Value(builder().PtrFix(
+        builder().Index(type::Ptr(s), data, index), s->data_type()));
   } else if (auto const *array_type = qt->type().if_as<type::Array>()) {
     auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
         EmitValue(node->rhs()), context().qual_type(node->rhs())->type()));
@@ -47,16 +50,16 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
 
     return builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(), index,
                              type::Ptr(buf_ptr_type->pointee()));
-  } else if (lhs_type == type::ByteView) {
+  } else if (auto const *s = lhs_type.if_as<type::Slice>()) {
+    auto data = current_block()->Append(type::SliceDataInstruction{
+        .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::Slice>>(),
+        .result = builder().CurrentGroup()->Reserve(),
+    });
+
     auto index = builder().CastTo<int64_t>(
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
-    auto str = EmitValue(node->lhs()).get<ir::RegOr<ir::String>>();
-    if (str.is_reg()) {
-      return builder().PtrIncr(str.reg(), index, type::Ptr(type::Char));
-    } else {
-      return builder().PtrIncr(str.value().addr(), index,
-                               type::Ptr(type::Char));
-    }
+
+    return builder().PtrIncr(data, index, type::BufPtr(s->data_type()));
   } else if (auto *tup = lhs_type.if_as<type::Tuple>()) {
     auto maybe_val = EvaluateOrDiagnose(
         type::Typed<ast::Expression const *>(node->rhs(), rhs_type));

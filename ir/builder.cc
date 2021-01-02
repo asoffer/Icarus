@@ -201,18 +201,6 @@ Reg Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
       .addr = ptr, .index = inc, .ptr = t, .result = result});
 }
 
-RegOr<uint64_t> Builder::ByteViewLength(RegOr<ir::String> val) {
-  if (not val.is_reg()) { return val.value().get().size(); }
-  return CurrentBlock()->Append(ByteViewLengthInstruction{
-      .reg = val.reg(), .result = CurrentGroup()->Reserve()});
-}
-
-RegOr<Addr> Builder::ByteViewData(RegOr<ir::String> val) {
-  if (not val.is_reg()) { return val.value().addr(); }
-  return CurrentBlock()->Append(ByteViewDataInstruction{
-      .reg = val.reg(), .result = CurrentGroup()->Reserve()});
-}
-
 type::Typed<Reg> Builder::FieldRef(RegOr<Addr> r, type::Tuple const *t,
                                    int64_t n) {
   auto &cache = CurrentBlock()->offset_cache();

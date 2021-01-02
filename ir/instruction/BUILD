@@ -30,15 +30,6 @@ cc_test(
 )
 
 cc_library(
-    name = "byte_view",
-    hdrs = ["byte_view.h"],
-    deps = [
-        ":inliner",
-        "//base:extend",
-    ],
-)
-
-cc_library(
     name = "compare",
     hdrs = ["compare.h"],
     deps = [

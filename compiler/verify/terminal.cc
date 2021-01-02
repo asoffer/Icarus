@@ -1,9 +1,9 @@
-#include <type_traits>
-
 #include "ast/ast.h"
+#include "base/meta.h"
 #include "compiler/compiler.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
+#include "type/slice.h"
 
 namespace compiler {
 
@@ -34,8 +34,9 @@ type::QualType Compiler::VerifyType(ast::Terminal const *node) {
     t = type::F64;
   } else if (mv == base::meta<ir::Addr>) {
     t = type::NullPtr;
-  } else if (mv == base::meta<ir::String>) {
-    t = type::ByteView;
+  } else if (mv == base::meta<ir::Slice>) {
+    // NOTE: The only terminal slices come from string literals.
+    t = type::Slc(type::Char);
   } else if (mv == base::meta<type::Type>) {
     t = type::Type_;
   } else {

@@ -90,13 +90,13 @@ append ::= (s: *string, character: char) -> () {
 }
 
 #{export}
-append ::= (s: *string, bv: byte_view) -> () {
-  core.if (s._length + bv.length > s._capacity) then {
-    resize_buffer(s, s._length + bv.length)
+append ::= (s: *string, slice: char[]) -> () {
+  core.if (s._length + slice.length > s._capacity) then {
+    resize_buffer(s, s._length + slice.length)
   }
 
-  memcpy((&s._data[0]) + s._length, &bv[0], bv.length + 1 as u64)
-  s._length += bv.length
+  memcpy((&s._data[0]) + s._length, slice.data, slice.length + 1 as u64)
+  s._length += slice.length
 }
 
 #{export}
@@ -128,8 +128,8 @@ make_string ::= (fill: char, len: u64) -> string {
 }
 
 #{export}
-make_string ::= (bv: byte_view) => string.{
-  _data     = allocate_and_copy(&bv[0], bv.length + 1 as u64)
-  _length   = bv.length
-  _capacity = bv.length
+make_string ::= (s: char[]) => string.{
+  _data     = allocate_and_copy(s.data, s.length + 1 as u64)
+  _length   = s.length
+  _capacity = s.length
 }

@@ -3,8 +3,8 @@ cstdio ::= import "cstdio.ic"
 
 #{export}
 File ::= scope(*cstdio.File) {
-  enter ::= jump [f: **cstdio.File] (name: byte_view) {
-    @f = cstdio.fopen(&name[0], &"r"[0])
+  enter ::= jump [f: **cstdio.File] (name: char[]) {
+    @f = cstdio.fopen(name.data, "r".data)
 
     e := errno.get()
     goto e == errno.error.SUCCESS, open(@f), error(e) | done()

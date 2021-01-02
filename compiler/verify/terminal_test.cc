@@ -37,19 +37,19 @@ INSTANTIATE_TEST_SUITE_P(
         },
         TestCase{
             .terminal = R"("")",
-            .expected = type::QualType::Constant(type::ByteView),
+            .expected = type::QualType::Constant(type::Slc(type::Char)),
         },
         TestCase{
             .terminal = R"("abc")",
-            .expected = type::QualType::Constant(type::ByteView),
+            .expected = type::QualType::Constant(type::Slc(type::Char)),
         },
         TestCase{
             .terminal = R"("ab\"c")",
-            .expected = type::QualType::Constant(type::ByteView),
+            .expected = type::QualType::Constant(type::Slc(type::Char)),
         },
         TestCase{
             .terminal = R"("ab\n\r\t\v\\c")",
-            .expected = type::QualType::Constant(type::ByteView),
+            .expected = type::QualType::Constant(type::Slc(type::Char)),
         },
         TestCase{
             .terminal = "null",
@@ -105,10 +105,6 @@ INSTANTIATE_TEST_SUITE_P(
         },
         TestCase{
             .terminal = "module",
-            .expected = type::QualType::Constant(type::Type_),
-        },
-        TestCase{
-            .terminal = "byte_view",
             .expected = type::QualType::Constant(type::Type_),
         },
 

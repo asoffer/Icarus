@@ -119,24 +119,35 @@ TEST(Access, NoFieldInStruct) {
               UnorderedElementsAre(Pair("type-error", "missing-member")));
 }
 
-TEST(Access, ConstantByteViewLength) {
+TEST(Access, ConstantSliceLength) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"("abc".length)");
   auto const *qt   = mod.context().qual_type(expr);
-  EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::U64)));
+  EXPECT_THAT(qt, Pointee(type::QualType(
+                      type::U64, type::Quals::Ref() | type::Quals::Const())));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Access, NonConstantByteViewLength) {
+TEST(Access, NonConstantSliceLength) {
   test::TestModule mod;
   mod.AppendCode(R"(s := "abc")");
   auto const *expr = mod.Append<ast::Expression>(R"(s.length)");
   auto const *qt   = mod.context().qual_type(expr);
-  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::U64)));
+  EXPECT_THAT(qt, Pointee(type::QualType(type::U64, type::Quals::Ref())));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Access, ByteViewInvalidMember) {
+TEST(Access, NonConstantSliceData) {
+  test::TestModule mod;
+  mod.AppendCode(R"(s := "abc")");
+  auto const *expr = mod.Append<ast::Expression>(R"(s.data)");
+  auto const *qt   = mod.context().qual_type(expr);
+  EXPECT_THAT(qt, Pointee(type::QualType(type::BufPtr(type::Char),
+                                         type::Quals::Ref())));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(Access, SliceInvalidMember) {
   test::TestModule mod;
   mod.AppendCode(R"(s := "abc")");
   auto const *expr = mod.Append<ast::Expression>(R"(s.size)");

@@ -238,6 +238,14 @@ cc_library(
 #TODO: scope_test
 
 cc_library(
+    name = "slice",
+    hdrs = ["slice.h"],
+    deps = [":addr"],
+)
+
+#TODO: slice_test
+
+cc_library(
     name = "string",
     hdrs = ["string.h"],
     srcs = ["string.cc"],
@@ -271,6 +279,7 @@ cc_library(
         ":module_id",
         ":reg_or",
         ":scope",
+        ":slice",
         ":string",
         "//base:guarded",
         "//base:meta",

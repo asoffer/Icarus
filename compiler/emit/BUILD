@@ -544,6 +544,8 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//type:primitive",
+        "//type:slice",
     ],
 )
 

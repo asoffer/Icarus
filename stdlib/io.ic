@@ -4,16 +4,16 @@ core ::= import "core.ic"
 #{export} Print ::= (n: i16) -> () { Print(n as i64) }
 #{export} Print ::= (n: i32) -> () { Print(n as i64) }
 #{export} Print ::= (n: i64) -> () {
-  printf ::= foreign("printf", (*char, i64) -> i32)
-  printf(&"%lld"[0], n)
+  printf ::= foreign("printf", ([*]char, i64) -> i32)
+  printf("%lld".data, n)
 }
 
 #{export} Print ::= (n: u8) -> () { Print(n as u64) }
 #{export} Print ::= (n: u16) -> () { Print(n as u64) }
 #{export} Print ::= (n: u32) -> () { Print(n as u64) }
 #{export} Print ::= (n: u64) -> () {
-  printf ::= foreign("printf", (*char, u64) -> i32)
-  printf(&"%llu"[0], n)
+  printf ::= foreign("printf", ([*]char, u64) -> i32)
+  printf("%llu".data, n)
 }
 
 #{export} Print ::= (b: bool) -> () {
@@ -21,18 +21,18 @@ core ::= import "core.ic"
 }
 
 #{export} Print ::= (c: char) -> () {
-  printf ::= foreign("printf", (*char, char) -> i32)
-  printf(&"%c"[0], c)
+  printf ::= foreign("printf", ([*]char, char) -> i32)
+  printf("%c".data, c)
 }
 
-#{export} Print ::= (s: byte_view) -> () {
-  printf ::= foreign("printf", (*char, *char) -> i32)
-  printf(&"%s"[0], &s[0])
+#{export} Print ::= (s: char[]) -> () {
+  printf ::= foreign("printf", ([*]char, [*]char) -> i32)
+  printf("%s".data, &s[0])
 }
 
 #{export} Print ::= (f: f32) -> () { Print(f as f64) }
 
 #{export} Print ::= (f: f64) -> () {
-  printf ::= foreign("printf", (*char, f64) -> i32)
-  printf(&"%f"[0], f)
+  printf ::= foreign("printf", ([*]char, f64) -> i32)
+  printf("%f".data, f)
 }
