@@ -10,6 +10,7 @@
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/slice.h"
 #include "type/struct.h"
 #include "type/tuple.h"
 
@@ -43,10 +44,17 @@ bool CanCastImplicitly(Type from, Type to) {
   }
 
   if (from == EmptyArray) {
-    if (auto *to_arr = to.if_as<Array>()) {
+    if (auto const *to_arr = to.if_as<Array>()) {
       return to_arr->length() == 0;
     } else {
-      return false;
+      return to.is<Slice>();
+    }
+  }
+
+  if (auto const *from_array = from.if_as<Array>()) {
+    if (auto const *to_slice = to.if_as<Slice>()) {
+      return CanCastPointer(Ptr(from_array->data_type()),
+                            Ptr(to_slice->data_type()));
     }
   }
 
@@ -101,15 +109,19 @@ bool CanCast(Type from, Type to) {
   }
 
   if (from == EmptyArray) {
-    if (auto *to_arr = to.if_as<Array>()) {
+    if (auto const *to_arr = to.if_as<Array>()) {
       return to_arr->length() == 0;
     } else {
-      return false;
+      return to.is<Slice>();
     }
   }
 
-  if (auto *from_arr = from.if_as<Array>()) {
-    if (auto *to_arr = to.if_as<Array>()) {
+  if (auto const *from_arr = from.if_as<Array>()) {
+    if (auto const *to_slice = to.if_as<Slice>()) {
+      return CanCastPointer(Ptr(from_arr->data_type()),
+                            Ptr(to_slice->data_type()));
+
+    } else if (auto const *to_arr = to.if_as<Array>()) {
       if (from_arr->length() != to_arr->length()) { return false; }
       if (auto *from_p = from_arr->data_type().if_as<Pointer>()) {
         if (auto *to_p = to_arr->data_type().if_as<Pointer>()) {

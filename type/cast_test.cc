@@ -5,6 +5,7 @@
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/slice.h"
 #include "type/tuple.h"
 
 namespace type {
@@ -174,6 +175,18 @@ TEST(CanCast, ArrayDataType) {
   EXPECT_FALSE(CanCast(Arr(5, Ptr(Bool)), Arr(5, BufPtr(Bool))));
 
   EXPECT_FALSE(CanCast(Arr(5, I32), Arr(5, I64)));
+}
+
+TEST(CanCast, ArrayToSlice) {
+  EXPECT_TRUE(CanCast(EmptyArray, Slc(Bool)));
+  EXPECT_TRUE(CanCast(EmptyArray, Slc(I64)));
+
+  EXPECT_TRUE(CanCast(Arr(5, I64), Slc(I64)));
+  EXPECT_TRUE(CanCast(Arr(3, I64), Slc(I64)));
+  EXPECT_TRUE(CanCast(Arr(3, Bool), Slc(Bool)));
+  EXPECT_FALSE(CanCast(Arr(3, Bool), Slc(I64)));
+
+  EXPECT_TRUE(CanCast(Arr(3, BufPtr(Bool)), Slc(Ptr(Bool))));
 }
 
 TEST(CanCast, Tuple) {
