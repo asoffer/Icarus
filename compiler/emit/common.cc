@@ -430,7 +430,6 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
   type::Type arg_type   = arg_qt.type();
   type::Type param_type = param_qt.type();
 
-  LOG("", "%s vs %s", arg_type, param_type);
   if (arg_type == param_type) {
     if (auto const *r = arg_value.get_if<ir::Reg>()) {
       return ir::Value(compiler.builder().PtrFix(*r, param_type));
