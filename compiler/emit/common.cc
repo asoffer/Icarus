@@ -430,7 +430,14 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
   type::Type arg_type   = arg_qt.type();
   type::Type param_type = param_qt.type();
 
-  if (arg_type == param_type) { return arg_value; }
+  LOG("", "%s vs %s", arg_type, param_type);
+  if (arg_type == param_type) {
+    if (auto const *r = arg_value.get_if<ir::Reg>()) {
+      return ir::Value(compiler.builder().PtrFix(*r, param_type));
+    } else {
+      return arg_value;
+    }
+  }
 
   if (auto [bufptr_arg_type, ptr_param_type] =
           std::make_pair(arg_type.if_as<type::BufferPointer>(),

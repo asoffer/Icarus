@@ -177,6 +177,8 @@ void SetBeforeBlockPhi(
     core::Arguments<std::pair<ir::Value, type::QualType>> const &args) {
   LOG("SetBeforeBlockPhi", "SetBeforeBlockPhi: %s", block_node->name());
 
+  auto *phi_block = std::exchange(c.builder().CurrentBlock(), incoming_block);
+
   decltype(before_blocks.begin()) iter;
   bool inserted;
   std::tie(iter, inserted) = before_blocks.try_emplace(
@@ -204,6 +206,8 @@ void SetBeforeBlockPhi(
     iter->second.block = c.builder().AddBlock(
         absl::StrFormat("Before block for `%s`", block_node->name()));
   }
+
+  c.builder().CurrentBlock() = phi_block;
 
   size_t i = 0;
   for (auto const &param : param_qts) {
