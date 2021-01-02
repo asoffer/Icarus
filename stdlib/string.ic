@@ -41,7 +41,7 @@ string ::= struct {
   }
 
   (move) ::= (to: *string, from: *string) -> () {
-    (to._data,     from._data)     = (from._data,     null as [*]char)
+    (to._data,     from._data)     = (from._data,     null)
     (to._length,   from._length)   = (from._length,   0 as u64)
     (to._capacity, from._capacity) = (from._capacity, 0 as u64)
   }

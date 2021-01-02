@@ -92,7 +92,7 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
     // TODO: deal with immovable and uncopyable types.
     type::Type lhs_type = (*lhs_iter).type();
     type::Type rhs_type = (*rhs_iter).type();
-    if (lhs_type != rhs_type) {
+    if (not type::CanCastImplicitly(rhs_type, lhs_type)) {
       diag().Consume(TypeMismatch{
           .lhs_type = lhs_type,
           .rhs_type = rhs_type,

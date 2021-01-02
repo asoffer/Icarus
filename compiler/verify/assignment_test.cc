@@ -41,6 +41,17 @@ TEST(Assignment, Constant) {
                   Pair("value-category-error", "assigning-to-constant")));
 }
 
+TEST(Assignment, WithCast) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  n: [*]i64
+  m: *i64
+  n = null
+  (m, n) = (n, null)
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
 TEST(Assignment, TypeMismatch) {
   test::TestModule mod;
   mod.AppendCode(R"(
