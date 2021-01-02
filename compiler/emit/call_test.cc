@@ -110,13 +110,10 @@ INSTANTIATE_TEST_SUITE_P(
                  .expected = ir::Value(6.25)},
 
         // TODO: Calling overload sets.
-        // TODO: There's something wrong with casting. When that's fixed we can
-        // try this with non-zero values. For now this test is at least
-        // verifying that we can instantiate both versions without crashing.
         TestCase{.description = "Instantiate the same generic more than once.",
-                 .expr        = R"((identity(0) as f64) + identity(0.0)
+                 .expr        = R"((identity(2) as f64) + identity(1.0)
                              )",
-                 .expected    = ir::Value(double{0})},
+                 .expected    = ir::Value(3.0)},
 
         // Value to pointer casts
         TestCase{

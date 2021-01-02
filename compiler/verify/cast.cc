@@ -38,7 +38,7 @@ type::QualType Compiler::VerifyType(ast::Cast const *node) {
 
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto t, EvaluateOrDiagnoseAs<type::Type>(node->type()));
-  if (not type::CanCast(expr_qt.type(), t)) {
+  if (not type::CanCastExplicitly(expr_qt.type(), t)) {
     diag().Consume(InvalidCast{
         .from  = expr_qt.type(),
         .to    = t,

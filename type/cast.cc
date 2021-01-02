@@ -15,32 +15,68 @@
 #include "type/tuple.h"
 
 namespace type {
+namespace {
 
-static bool CanCastPointer(Pointer const *from, Pointer const *to) {
+bool CanCastPointer(Pointer const *from, Pointer const *to) {
   if (from == to) { return true; }
   if (to->is<BufferPointer>() and not from->is<BufferPointer>()) {
     return false;
   }
-  if (auto *from_p = from->pointee().if_as<Pointer>()) {
-    if (auto *to_p = to->pointee().if_as<Pointer>()) {
+  if (auto const *from_p = from->pointee().if_as<Pointer>()) {
+    if (auto const *to_p = to->pointee().if_as<Pointer>()) {
       return CanCastPointer(from_p, to_p);
     }
   }
   return from->pointee() == to->pointee();
 }
 
-bool CanCastImplicitly(Type from, Type to) {
+bool CanCastFunction(Function const *from, Function const *to) {
+  if (from->params().size() != to->params().size()) { return false; }
+
+  if (from->output() != to->output()) { return false; }
+
+  size_t num_params = from->params().size();
+  for (size_t i = 0; i < num_params; ++i) {
+    auto const &from_param = from->params()[i];
+    auto const &to_param   = to->params()[i];
+
+    if (not CanCastImplicitly(from_param.value.type(), to_param.value.type())) {
+      return false;
+    }
+    if (from_param.flags & core::MUST_NOT_NAME) {
+      if (not(to_param.flags & core::MUST_NOT_NAME)) { return false; }
+    } else if (from_param.flags & core::MUST_NAME) {
+      if (not(to_param.flags & core::MUST_NAME) or
+          from_param.name != to_param.name) {
+        return false;
+      }
+    } else {
+      if (not(to_param.flags & core::MUST_NOT_NAME) and
+          from_param.name != to_param.name) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+// TODO: Much of this should be moved to virtual methods.
+// TODO: Need the full qual-type to handle buffer-reference conversions.
+template <bool IncludeExplicit>
+bool CanCast(Type from, Type to) {
+  // TODO: handle reinterpretation
   if (to == from) { return true; }
-  auto const *buf_ptr = from.if_as<BufferPointer>();
-  auto const *to_ptr = to.if_as<Pointer>();
 
-  if (buf_ptr and to == Type(Ptr(buf_ptr->pointee()))) { return true; }
-  if (buf_ptr and to_ptr and CanCastPointer(buf_ptr, to_ptr)) { return true; }
+  if (auto const *to_p = to.if_as<Pointer>()) {
+    if (from == NullPtr or
+        (to_p->pointee() == from and not to.is<BufferPointer>())) {
+      return true;
+    }
 
-  // TODO: Need the full qual-type to handle buffer-reference conversions.
-  if (to_ptr and from == type::NullPtr) { return true; }
-  if (to_ptr and not to.is<BufferPointer>()) {
-    if (from == to_ptr->pointee()) { return true; }
+    if (auto const *from_p = from.if_as<Pointer>()) {
+      return CanCastPointer(from_p, to_p);
+    }
   }
 
   if (from == EmptyArray) {
@@ -53,115 +89,84 @@ bool CanCastImplicitly(Type from, Type to) {
 
   if (auto const *from_array = from.if_as<Array>()) {
     if (auto const *to_slice = to.if_as<Slice>()) {
-      return CanCastPointer(Ptr(from_array->data_type()),
-                            Ptr(to_slice->data_type()));
+      return CanCastInPlace(from_array->data_type(), to_slice->data_type());
+
+    } else if constexpr (IncludeExplicit) {
+      if (auto const *to_array = to.if_as<Array>()) {
+        return from_array->length() == to_array->length() and
+               CanCastInPlace(from_array->data_type(), to_array->data_type());
+      }
+    }
+  }
+
+  if constexpr (IncludeExplicit) {
+    if (IsIntegral(from) and IsNumeric(to)) { return true; }
+    if (IsFloatingPoint(from) and IsFloatingPoint(to)) { return true; }
+
+    if (from == type::Char and IsIntegral(to)) { return true; }
+    if ((from == type::I8 or from == type::U8) and to == type::Char) {
+      return true;
+    }
+
+    if (from.is<Tuple>() and to == Type_) {
+      // TODO remove this hack for expressing the type of tuples
+      auto const &entries = from.as<Tuple>().entries_;
+      return std::all_of(entries.begin(), entries.end(),
+                         [](Type t) { return t == Type_; });
+    }
+
+    // TODO other integer types. This set of rules is weird and obviously wrong.
+    if (from == I32 and (to.is<Enum>() or to.is<Flags>())) { return true; }
+    if ((from.is<Enum>() or from.is<Flags>()) and to == U64) { return true; }
+
+    if (auto const *from_tup = from.if_as<Tuple>()) {
+      if (auto const *to_tup = to.if_as<Tuple>()) {
+        if (from_tup->size() != to_tup->size()) { return false; }
+        for (size_t i = 0; i < from_tup->size(); ++i) {
+          if (not CanCast<IncludeExplicit>(from_tup->entries_[i],
+                                           to_tup->entries_[i])) {
+            return false;
+          }
+        }
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    if (auto const *from_fn = from.if_as<Function>()) {
+      if (auto const *to_fn = to.if_as<Function>()) {
+        return CanCastFunction(from_fn, to_fn);
+      }
     }
   }
 
   return false;
 }
 
-// TODO much of this should be moved to virtual methods.
-bool CanCast(Type from, Type to) {
-  if (to == from) { return true; }
-  // TODO handle reinterpretation
+}  // namespace
 
-  if (IsIntegral(from) and IsNumeric(to)) { return true; }
-  if (IsFloatingPoint(from) and IsFloatingPoint(to)) { return true; }
+bool CanCastImplicitly(Type from, Type to) { return CanCast<false>(from, to); }
+bool CanCastExplicitly(Type from, Type to) { return CanCast<true>(from, to); }
 
-  if (from == type::Char and IsIntegral(to)) { return true; }
-  if ((from == type::I8 or from == type::U8) and to == type::Char) {
-    return true;
-  }
+bool CanCastInPlace(Type from, Type to) {
+  if (from == to) { return true; }
 
-  if (from.is<Tuple>() and to == Type_) {
-    // TODO remove this hack for expressing the type of tuples
-    auto const &entries = from.as<Tuple>().entries_;
-    return std::all_of(entries.begin(), entries.end(),
-                       [](Type t) { return t == Type_; });
-  }
-
-  // TODO other integer types. This set of rules is weird and obviously wrong.
-   if (from == I32 and (to.is<Enum>() or to.is<Flags>())) { return true; }
-   if ((from.is<Enum>() or from.is<Flags>()) and to == U64) { return true; }
-
-   if (auto *from_tup = from.if_as<Tuple>()) {
-     if (auto *to_tup = to.if_as<Tuple>()) {
-       if (from_tup->size() != to_tup->size()) { return false; }
-       for (size_t i = 0; i < from_tup->size(); ++i) {
-         if (not CanCast(from_tup->entries_[i], to_tup->entries_[i])) {
-           return false;
-         }
-       }
-       return true;
-     } else {
-       return false;
-     }
-  }
-
-  if (from == NullPtr) {
-    if (auto *to_p = to.if_as<Pointer>()) { return true; }
-  }
-  if (auto *to_p = to.if_as<Pointer>()) {
-    if (auto *from_p = from.if_as<Pointer>()) {
+  if (auto const *from_p = from.if_as<Pointer>()) {
+    if (auto const *to_p = to.if_as<Pointer>()) {
       return CanCastPointer(from_p, to_p);
     }
   }
 
-  if (from == EmptyArray) {
-    if (auto const *to_arr = to.if_as<Array>()) {
-      return to_arr->length() == 0;
-    } else {
-      return to.is<Slice>();
-    }
-  }
-
-  if (auto const *from_arr = from.if_as<Array>()) {
+  if (auto const *from_slice = from.if_as<Slice>()) {
     if (auto const *to_slice = to.if_as<Slice>()) {
-      return CanCastPointer(Ptr(from_arr->data_type()),
-                            Ptr(to_slice->data_type()));
-
-    } else if (auto const *to_arr = to.if_as<Array>()) {
-      if (from_arr->length() != to_arr->length()) { return false; }
-      if (auto *from_p = from_arr->data_type().if_as<Pointer>()) {
-        if (auto *to_p = to_arr->data_type().if_as<Pointer>()) {
-          return CanCastPointer(from_p, to_p);
-        }
-      }
+      return CanCastInPlace(from_slice->data_type(), to_slice->data_type());
     }
   }
 
-  if (auto *from_fn = from.if_as<Function>()) {
-    if (auto *to_fn = to.if_as<Function>()) {
-      if (from_fn->params().size() != to_fn->params().size()) { return false; }
-
-      if (from_fn->output() != to_fn->output()) { return false; }
-
-      size_t num_params = from_fn->params().size();
-      for (size_t i = 0; i < num_params; ++i) {
-        auto const &from_param = from_fn->params()[i];
-        auto const &to_param   = to_fn->params()[i];
-
-        if (not CanCast(from_param.value.type(), to_param.value.type())) {
-          return false;
-        }
-        if (from_param.flags & core::MUST_NOT_NAME) {
-          if (not(to_param.flags & core::MUST_NOT_NAME)) { return false; }
-        } else if (from_param.flags & core::MUST_NAME) {
-          if (not(to_param.flags & core::MUST_NAME) or
-              from_param.name != to_param.name) {
-            return false;
-          }
-        } else {
-          if (not(to_param.flags & core::MUST_NOT_NAME) and
-              from_param.name != to_param.name) {
-            return false;
-          }
-        }
-      }
-      return true;
-    } else {
-      return false;
+  if (auto const *from_fn = from.if_as<Function>()) {
+    if (auto const *to_fn = to.if_as<Function>()) {
+      return CanCastFunction(from_fn, to_fn);
     }
   }
 
@@ -180,8 +185,8 @@ Type Meet(Type lhs, Type rhs) {
   if (lhs.is<Pointer>()) {
     // TODO: This is wrong.
     return rhs.is<Pointer>() ? Ptr(Meet(lhs.as<Pointer>().pointee(),
-                                         rhs.as<Pointer>().pointee()))
-                              : nullptr;
+                                        rhs.as<Pointer>().pointee()))
+                             : nullptr;
   } else if (lhs.is<Array>() and rhs.is<Array>()) {
     if (lhs.as<Array>().length() != rhs.as<Array>().length()) {
       return nullptr;

@@ -190,7 +190,7 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
 
       type::Type lhs_type = initializer_qt.type();
       type::Type rhs_type = iter->second->type;
-      if (not type::CanCast(lhs_type, rhs_type)) {
+      if (not type::CanCastImplicitly(lhs_type, rhs_type)) {
         diag().Consume(InvalidInitializerType{
             .expected = rhs_type,
             .actual   = initializer_qt.type(),
