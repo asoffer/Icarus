@@ -159,29 +159,6 @@ TEST(TypeOf, Success) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Eval, Success) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::UnaryOperator>("`3");
-  auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::I64));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
-}
-
-TEST(Eval, NonConstant) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
-  n := 3
-  )");
-  auto const *expr = mod.Append<ast::UnaryOperator>("`n");
-  auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::I64));
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(
-                  Pair("evaluation-error", "non-constant-evaluation")));
-}
-
 TEST(At, Pointer) {
   test::TestModule mod;
   mod.AppendCode(R"(

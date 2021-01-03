@@ -74,20 +74,6 @@ struct NegatingUnsignedInteger {
   frontend::SourceRange range;
 };
 
-struct NonConstantEvaluation {
-  static constexpr std::string_view kCategory = "evaluation-error";
-  static constexpr std::string_view kName     = "non-constant-evaluation";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Cannot evaluate a non-constant at compile-time."),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
-  }
-
-  frontend::SourceRange range;
-};
-
 struct NonAddressableExpression {
   static constexpr std::string_view kCategory = "value-category-error";
   static constexpr std::string_view kName     = "non-addressable-expression";
@@ -172,15 +158,6 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
     } break;
     case ast::UnaryOperator::Kind::TypeOf: {
       qt = type::QualType::Constant(type::Type_);
-    } break;
-    case ast::UnaryOperator::Kind::Evaluate: {
-      qt = type::QualType::Constant(operand_type);
-      if (not operand_qt.constant()) {
-        diag().Consume(NonConstantEvaluation{
-            .range = node->operand()->range(),
-        });
-        qt.MarkError();
-      }
     } break;
     case ast::UnaryOperator::Kind::At: {
       if (auto const *ptr_type = operand_type.if_as<type::BufferPointer>()) {

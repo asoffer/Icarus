@@ -67,17 +67,6 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
           ASSERT_NOT_NULL(context().qual_type(node->operand()))->type());
     case ast::UnaryOperator::Kind::Address:
       return ir::Value(EmitRef(node->operand()));
-    case ast::UnaryOperator::Kind::Evaluate: {
-      // TODO: There's a chance this was already computed, in which case we
-      // should not execute it more than once. For example, if it was used in a
-      // context where evaluation was implicit.
-      // ```
-      // n: `i64
-      // ```
-      return EvaluateOrDiagnose(type::Typed<ast::Expression const *>(
-          node->operand(),
-          ASSERT_NOT_NULL(context().qual_type(node->operand()))->type()));
-    }
     case ast::UnaryOperator::Kind::Pointer: {
       base::defer d = [b = state_.must_complete, this] {
         state_.must_complete = b;
@@ -112,7 +101,6 @@ void Compiler::EmitCopyInit(
       EmitCopyInit(node->operand(), to);
       break;
     default: {
-      LOG("", "%s", node->DebugString());
       auto from_val = EmitValue(node);
       auto from_qt  = *context().qual_type(node);
       if (to.size() == 1) {

@@ -107,6 +107,14 @@ INSTANTIATE_TEST_SUITE_P(
             .terminal = "module",
             .expected = type::QualType::Constant(type::Type_),
         },
+        TestCase{
+            .terminal = R"(`a)",
+            .expected = type::QualType::Constant(type::Char),
+        },
+        TestCase{
+            .terminal = R"(`\a)",
+            .expected = type::QualType::Constant(type::Char),
+        },
 
         // TODO: Integers and their edge cases. Especially INT_MIN.
         // TODO: Floating point edge cases.

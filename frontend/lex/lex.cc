@@ -168,31 +168,29 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
 // match, we cannot, for example, put `:` before `::=`.
 static base::Global kOps =
     std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 46>{
-        {
-            {"@", {Operator::At}},         {",", {Operator::Comma}},
-            {"[*]", {Operator::BufPtr}},   {"`", {Operator::Eval}},
-            {"+=", {Operator::AddEq}},     {"+", {Operator::Add}},
-            {"-=", {Operator::SubEq}},     {"..", {Operator::VariadicPack}},
-            {"->", {Operator::Arrow}},     {"-", {Operator::Sub}},
-            {"*=", {Operator::MulEq}},     {"*", {Operator::Mul}},
-            {"%=", {Operator::ModEq}},     {"%", {Operator::Mod}},
-            {"&=", {Operator::AndEq}},     {"&", {Operator::And}},
-            {"|=", {Operator::OrEq}},      {"|", {Operator::Or}},
-            {"^=", {Operator::XorEq}},     {"^", {Operator::Xor}},
-            {">=", {Operator::Ge}},        {">", {Operator::Gt}},
-            {"!=", {Operator::Ne}},        {"::=", {Operator::DoubleColonEq}},
-            {":?", {Operator::TypeOf}},    {"::", {Operator::DoubleColon}},
-            {":=", {Operator::ColonEq}},   {".", {Syntax::Dot}},
-            {":", {Operator::Colon}},      {"<<", {Operator::Yield}},
-            {"<=", {Operator::Le}},        {"<", {Operator::Lt}},
-            {"!", {Operator::Not}},        {"==", {Operator::Eq}},
-            {"=>", {Operator::Rocket}},    {"=", {Operator::Assign}},
-            {"'", {Operator::Call}},       {"(", {Syntax::LeftParen}},
-            {")", {Syntax::RightParen}},   {"[", {Syntax::LeftBracket}},
-            {"]", {Syntax::RightBracket}}, {"{", {Syntax::LeftBrace}},
-            {"}", {Syntax::RightBrace}},   {";", {Syntax::Semicolon}},
-            {"`", {Operator::Eval}},       {"$", {Operator::ArgType}},
-        }};
+        {{"@", {Operator::At}},         {",", {Operator::Comma}},
+         {"[*]", {Operator::BufPtr}},   {"$", {Operator::ArgType}},
+         {"+=", {Operator::AddEq}},     {"+", {Operator::Add}},
+         {"-=", {Operator::SubEq}},     {"..", {Operator::VariadicPack}},
+         {"->", {Operator::Arrow}},     {"-", {Operator::Sub}},
+         {"*=", {Operator::MulEq}},     {"*", {Operator::Mul}},
+         {"%=", {Operator::ModEq}},     {"%", {Operator::Mod}},
+         {"&=", {Operator::AndEq}},     {"&", {Operator::And}},
+         {"|=", {Operator::OrEq}},      {"|", {Operator::Or}},
+         {"^=", {Operator::XorEq}},     {"^", {Operator::Xor}},
+         {">=", {Operator::Ge}},        {">", {Operator::Gt}},
+         {"!=", {Operator::Ne}},        {"::=", {Operator::DoubleColonEq}},
+         {":?", {Operator::TypeOf}},    {"::", {Operator::DoubleColon}},
+         {":=", {Operator::ColonEq}},   {".", {Syntax::Dot}},
+         {":", {Operator::Colon}},      {"<<", {Operator::Yield}},
+         {"<=", {Operator::Le}},        {"<", {Operator::Lt}},
+         {"!", {Operator::Not}},        {"==", {Operator::Eq}},
+         {"=>", {Operator::Rocket}},    {"=", {Operator::Assign}},
+         {"'", {Operator::Call}},       {"(", {Syntax::LeftParen}},
+         {")", {Syntax::RightParen}},   {"[", {Syntax::LeftBracket}},
+         {"]", {Syntax::RightBracket}}, {"{", {Syntax::LeftBrace}},
+         {"}", {Syntax::RightBrace}},   {";", {Syntax::Semicolon}}},
+    };
 
 Lexeme NextOperator(SourceCursor *cursor, Source *src) {
 #ifdef ICARUS_MATCHER
@@ -240,6 +238,39 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
       span.end() = span.begin() + Offset(1);
       return std::pair{span, Operator::Div};
   }
+}
+
+
+// Consumes a character literal represented by a backtick (`) followed by one of:
+// * A single non backslash character,
+// * A backslash and then any character in the set [abfnrtv]
+Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
+  SourceLoc start_loc = cursor;
+  ASSERT(buffer[cursor] == '`');
+  cursor += Offset(1);
+  // TODO: Ensure the character is printable.
+  char c;
+  if (buffer[cursor] == '\\') {
+    cursor += Offset(1);
+    switch (buffer[cursor]) {
+      case '\\':
+      case '`': c = '`'; break;
+      case 'a': c = '\a'; break;
+      case 'b': c = '\b'; break;
+      case 'f': c = '\f'; break;
+      case 'n': c = '\n'; break;
+      case 'r': c = '\r'; break;
+      case 't': c = '\t'; break;
+      case 'v': c = '\v'; break;
+      default: NOT_YET(); break;
+    }
+    cursor += Offset(1);
+  } else {
+    c = buffer[cursor];
+    cursor += Offset(1);
+  }
+  return Lexeme(std::make_unique<ast::Terminal>(SourceRange(start_loc, cursor),
+                                                ir::Value(ir::Char(c))));
 }
 
 // Note: Despite these all being primitives, we want the value-type of this map
@@ -496,6 +527,14 @@ restart:
       return Lexeme(std::make_unique<ast::Terminal>(
           range, ir::Value(ir::Slice(s.addr(), s.get().length()))));
 
+    } break;
+    case '`': {
+      SourceLoc loc      = state->cursor_.loc();
+      std::string_view v = state->cursor_.view();
+      auto result        = ConsumeCharLiteral(loc, state->buffer_);
+      v.remove_prefix((loc - state->cursor_.loc()).value);
+      state->cursor_ = SourceCursor(loc, v);
+      return result;
     } break;
     case '#': {
       state->cursor_.remove_prefix(1);

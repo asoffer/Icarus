@@ -1140,7 +1140,6 @@ struct UnaryOperator : Expression {
     Move,
     BufferPointer,
     TypeOf,
-    Evaluate,
     At,
     Pointer,
     Address,

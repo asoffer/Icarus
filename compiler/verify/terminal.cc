@@ -28,6 +28,8 @@ type::QualType Compiler::VerifyType(ast::Terminal const *node) {
     t = type::U64;
   } else if (mv == base::meta<bool>) {
     t = type::Bool;
+  } else if (mv == base::meta<ir::Char>) {
+    t = type::Char;
   } else if (mv == base::meta<float>) {
     t = type::F32;
   } else if (mv == base::meta<double>) {

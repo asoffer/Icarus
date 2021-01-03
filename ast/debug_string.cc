@@ -17,7 +17,6 @@ char const *OpStr(UnaryOperator::Kind op) {
     case UnaryOperator::Kind::Negate: return "-";
     case UnaryOperator::Kind::At: return "@";
     case UnaryOperator::Kind::Address: return "&";
-    case UnaryOperator::Kind::Evaluate: return "`";
     case UnaryOperator::Kind::TypeOf: UNREACHABLE();
   }
 }
@@ -51,7 +50,6 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Yield: return "<< ";
     case frontend::Operator::Not: return "!";
     case frontend::Operator::At: return "@";
-    case frontend::Operator::Eval: return "$";
     case frontend::Operator::Needs: return "needs ";
     case frontend::Operator::Ensure: return "ensure ";
     case frontend::Operator::VariadicPack: return "..";
