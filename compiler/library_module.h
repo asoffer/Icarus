@@ -27,7 +27,10 @@ struct LibraryModule : CompiledModule {
     });
 
     c.VerifyAll(nodes);
-    if (c.diag().num_consumed() > 0) { return; }
+    if (c.diag().num_consumed() > 0) {
+      CompilationComplete();
+      return;
+    }
 
     for (ast::Node const *node : nodes) { c.EmitValue(node); }
     c.CompleteDeferredBodies();
