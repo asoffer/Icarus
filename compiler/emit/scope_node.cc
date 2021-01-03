@@ -232,7 +232,7 @@ void SetBeforeBlockPhi(
 
 ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
-  ir::Scope scope            = *EvaluateAs<ir::Scope>(node->name());
+  ir::Scope scope            = *EvaluateOrDiagnoseAs<ir::Scope>(node->name());
   auto const *compiled_scope = ir::CompiledScope::From(scope);
 
   // If the scope is stateful, stack-allocate space for the state and

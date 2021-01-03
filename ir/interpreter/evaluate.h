@@ -178,19 +178,6 @@ base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn);
 // TODO wrap output in expected.
 void Execute(ir::CompiledFn &&fn);
 
-// TODO wrap output in expected.
-base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn);
-
-// TODO wrap output in expected.
-template <typename T>
-T EvaluateAs(ir::CompiledFn &&fn) {
-  static_assert(std::is_trivially_copyable_v<T>);
-  base::untyped_buffer result_buf = EvaluateToBuffer(std::move(fn));
-  ASSERT(result_buf.size() == sizeof(T));
-  return result_buf.get<T>(0);
-}
-
-
 }  // namespace interpreter
 
 #endif  // ICARUS_IR_INTERPRETER_EVALUATE_H

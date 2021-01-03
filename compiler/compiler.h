@@ -239,15 +239,6 @@ struct Compiler
 
   module::Importer &importer() const { return resources_.importer; }
 
-  template <typename T>
-  base::expected<T, interpreter::EvaluationFailure> EvaluateAs(
-      ast::Expression const *expr) {
-    ASSIGN_OR(return _.error(), auto val,
-                     Evaluate(type::Typed<ast::Expression const *>(
-                         expr, type::Get<T>())));
-    return val.template get<T>();
-  }
-
   // Evaluates `expr` in the current context as a value of type `T`. If
   // evaluation succeeds, returns the vaule, otherwise adds a diagnostic for the
   // failure and returns `nullopt`. If the expresison is no tof type `T`, the

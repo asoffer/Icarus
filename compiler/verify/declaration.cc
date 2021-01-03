@@ -320,13 +320,13 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       // TODO: check shadowing against other modules?
       // TODO: what if no init val is provded? what if not constant?
 
-      if (auto maybe_mod = EvaluateAs<ir::ModuleId>(node->init_val())) {
+      if (auto maybe_mod =
+              EvaluateOrDiagnoseAs<ir::ModuleId>(node->init_val())) {
         // TODO: In generic contexts it doesn't make sense to place this on the
         // AST.
         node->scope()->embedded_modules_.insert(
             maybe_mod->get<LibraryModule>());
       } else {
-        diag().Consume(maybe_mod.error());
         node_qual_type.MarkError();
       }
     } else {

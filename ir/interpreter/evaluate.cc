@@ -273,6 +273,24 @@ void ExecuteBlocks(ExecutionContext &ctx,
   }
 }
 
+base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
+  ASSERT(fn.type()->output().size() != 0u);
+  core::Bytes required = fn.type()->output()[0].bytes(kArchitecture);
+  auto ret_buf         = base::untyped_buffer::MakeFull(required.value());
+  std::vector<ir::Addr> ret_slots;
+
+  ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
+  // TODO actually just have a good way to construct the buffer
+  LOG("EvaluateToBuffer", "%s", fn);
+  ExecutionContext ctx;
+  Execute<instruction_set_t>(
+      ctx, &fn,
+      base::untyped_buffer::MakeFull(
+          (fn.type()->params().size() + fn.num_regs()) * kMaxSize),
+      ret_slots);
+  return ret_buf;
+}
+
 }  // namespace
 
 void Execute(ir::Fn fn, base::untyped_buffer arguments,
@@ -292,24 +310,6 @@ void Execute(ir::CompiledFn &&fn) {
       base::untyped_buffer::MakeFull(
           (fn.type()->params().size() + fn.num_regs()) * kMaxSize),
       {});
-}
-
-base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
-  ASSERT(fn.type()->output().size() != 0u);
-  core::Bytes required = fn.type()->output()[0].bytes(kArchitecture);
-  auto ret_buf         = base::untyped_buffer::MakeFull(required.value());
-  std::vector<ir::Addr> ret_slots;
-
-  ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
-  // TODO actually just have a good way to construct the buffer
-  LOG("EvaluateToBuffer", "%s", fn);
-  ExecutionContext ctx;
-  Execute<instruction_set_t>(
-      ctx, &fn,
-      base::untyped_buffer::MakeFull(
-          (fn.type()->params().size() + fn.num_regs()) * kMaxSize),
-      ret_slots);
-  return ret_buf;
 }
 
 // TODO why an r-value reference?

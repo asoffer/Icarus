@@ -180,7 +180,8 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
     }
 
     ASSIGN_OR(return type::QualType::Error(),  //
-                     state_type, EvaluateAs<type::Type>(node->state_type()));
+                     state_type,
+                     EvaluateOrDiagnoseAs<type::Type>(node->state_type()));
   }
 
   auto const *state_type_ptr = state_type ? type::Ptr(state_type) : nullptr;
