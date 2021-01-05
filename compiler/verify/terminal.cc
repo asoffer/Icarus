@@ -35,10 +35,11 @@ type::QualType Compiler::VerifyType(ast::Terminal const *node) {
   } else if (mv == base::meta<double>) {
     t = type::F64;
   } else if (mv == base::meta<ir::Addr>) {
-    t = type::NullPtr;
-  } else if (mv == base::meta<ir::Slice>) {
-    // NOTE: The only terminal slices come from string literals.
-    t = type::Slc(type::Char);
+    if (node->value().get<ir::Addr>() == ir::Addr::Null()) {
+      t = type::NullPtr;
+    } else {
+      t = type::Slc(type::Char);
+    }
   } else if (mv == base::meta<type::Type>) {
     t = type::Type_;
   } else {

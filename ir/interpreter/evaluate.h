@@ -178,6 +178,8 @@ base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn);
 // TODO wrap output in expected.
 void Execute(ir::CompiledFn &&fn);
 
+base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn);
+
 }  // namespace interpreter
 
 #endif  // ICARUS_IR_INTERPRETER_EVALUATE_H

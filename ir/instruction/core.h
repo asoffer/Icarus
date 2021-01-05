@@ -196,8 +196,12 @@ struct CallInstruction {
       if (r) {
         writer->Write(*r);
       } else {
-        type::Apply(fn_type_->params()[arg_index].value.type(),
-                    [&]<typename T>() { writer->Write(arg.get<T>()); });
+        auto t = fn_type_->params()[arg_index].value.type();
+        if (t.get()->is_big()) {
+          writer->Write(arg.get<Addr>());
+        } else {
+          type::Apply(t, [&]<typename T>() { writer->Write(arg.get<T>()); });
+        }
       }
       ++arg_index;
     }

@@ -25,19 +25,19 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
   } else if (auto const *s = t.if_as<type::Slice>()) {
     if (node->member_name() == "length") {
       c.builder().Store(
-          ir::RegOr<type::Slice::length_t>(
+          c.builder().Load<type::Slice::length_t>(
               c.current_block()->Append(type::SliceLengthInstruction{
                   .slice =
-                      c.EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
+                      c.EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
                   .result = c.builder().CurrentGroup()->Reserve(),
               })),
           to);
     } else if (node->member_name() == "data") {
       c.builder().Store(
-          ir::RegOr<ir::Addr>(
+          c.builder().Load<ir::Addr>(
               c.current_block()->Append(type::SliceDataInstruction{
                   .slice =
-                      c.EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
+                      c.EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
                   .result = c.builder().CurrentGroup()->Reserve(),
               })),
           to);
@@ -76,16 +76,18 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     return ir::Value(*flags_type->EmitLiteral(node->member_name()));
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
-      return ir::Value(current_block()->Append(type::SliceLengthInstruction{
-          .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
-          .result = builder().CurrentGroup()->Reserve(),
-      }));
+      return ir::Value(builder().Load<type::Slice::length_t>(
+          current_block()->Append(type::SliceLengthInstruction{
+              .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+              .result = builder().CurrentGroup()->Reserve(),
+          })));
 
     } else if (node->member_name() == "data") {
-      return ir::Value(current_block()->Append(type::SliceDataInstruction{
-          .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
-          .result = builder().CurrentGroup()->Reserve(),
-      }));
+      return ir::Value(builder().Load<ir::Addr>(
+          current_block()->Append(type::SliceDataInstruction{
+              .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+              .result = builder().CurrentGroup()->Reserve(),
+          })));
     } else {
       UNREACHABLE(node->member_name());
     }
@@ -190,21 +192,23 @@ void Compiler::EmitMoveInit(
       EmitMoveInit(
           type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
           type::Typed<ir::Value>(
-              ir::Value(current_block()->Append(type::SliceLengthInstruction{
-                  .slice =
-                      EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
-                  .result = builder().CurrentGroup()->Reserve(),
-              })),
+              ir::Value(builder().Load<type::Slice::length_t>(
+                  current_block()->Append(type::SliceLengthInstruction{
+                      .slice =
+                          EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }))),
               type::U64));
     } else if (node->member_name() == "data") {
       EmitMoveInit(
           type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
           type::Typed<ir::Value>(
-              ir::Value(current_block()->Append(type::SliceDataInstruction{
-                  .slice =
-                      EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
-                  .result = builder().CurrentGroup()->Reserve(),
-              })),
+              ir::Value(builder().Load<ir::Addr>(
+                  current_block()->Append(type::SliceDataInstruction{
+                      .slice =
+                          EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }))),
               type::BufPtr(s->data_type())));
     } else {
       UNREACHABLE(node->member_name());
@@ -266,21 +270,23 @@ void Compiler::EmitCopyInit(
       EmitCopyInit(
           type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
           type::Typed<ir::Value>(
-              ir::Value(current_block()->Append(type::SliceLengthInstruction{
-                  .slice =
-                      EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
-                  .result = builder().CurrentGroup()->Reserve(),
-              })),
+              ir::Value(builder().Load<type::Slice::length_t>(
+                  current_block()->Append(type::SliceLengthInstruction{
+                      .slice =
+                          EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }))),
               type::U64));
     } else if (node->member_name() == "data") {
       EmitCopyInit(
           type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
           type::Typed<ir::Value>(
-              ir::Value(current_block()->Append(type::SliceDataInstruction{
-                  .slice =
-                      EmitValue(node->operand()).get<ir::RegOr<ir::Slice>>(),
-                  .result = builder().CurrentGroup()->Reserve(),
-              })),
+              ir::Value(builder().Load<ir::Addr>(
+                  current_block()->Append(type::SliceDataInstruction{
+                      .slice =
+                          EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }))),
               type::BufPtr(s->data_type())));
     } else {
       UNREACHABLE(node->member_name());

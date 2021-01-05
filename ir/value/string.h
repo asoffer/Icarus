@@ -1,10 +1,12 @@
 #ifndef ICARUS_IR_VALUE_STRING_H
 #define ICARUS_IR_VALUE_STRING_H
 
+#include <iostream>
 #include <string>
 #include <string_view>
 
 #include "ir/value/addr.h"
+#include "ir/value/slice.h"
 
 namespace ir {
 
@@ -16,6 +18,7 @@ struct String {
   explicit String(std::string const& str);
 
   Addr addr() const { return addr_; }
+  Slice slice() const;
 
   std::string get() const;
 

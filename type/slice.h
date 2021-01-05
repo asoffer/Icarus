@@ -38,7 +38,7 @@ struct Slice : LegacyType {
   // TODO: Instead of talking about this being big or not, we'd rather just say
   // how many registers would be needed and let the implementation choose. This
   // might also be a good solution for unwrapping one-element structs.
-  bool is_big() const override { return false; }
+  bool is_big() const override { return true; }
 
   template <typename H>
   friend H AbslHashValue(H h, Slice const &s) {
@@ -86,9 +86,12 @@ struct SliceLengthInstruction
                                                  ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = slice-length %1$s";
 
-  Slice::length_t Resolve() const { return slice.value().length(); }
+  ir::Addr Resolve() const {
+    return (slice.value() + core::Bytes::Get<ir::Addr>())
+        .MoveForwardToAlignment(core::Alignment::Get<Slice::length_t>());
+  }
 
-  ir::RegOr<ir::Slice> slice;
+  ir::RegOr<ir::Addr> slice;
   ir::Reg result;
 };
 
@@ -99,9 +102,9 @@ struct SliceDataInstruction
   static constexpr std::string_view kDebugFormat =
       "%2$s = slice-data %1$s";
 
-  ir::Addr Resolve() const { return slice.value().data(); }
+  ir::Addr Resolve() const { return slice.value(); }
 
-  ir::RegOr<ir::Slice> slice;
+  ir::RegOr<ir::Addr> slice;
   ir::Reg result;
 };
 

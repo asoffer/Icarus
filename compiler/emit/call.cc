@@ -168,24 +168,16 @@ ir::Value EmitBuiltinCall(
     core::Arguments<ast::Expression const *> const &args) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
-      auto maybe_name = c->Evaluate(
+      auto name_buffer = c->EvaluateToBufferOrDiagnose(
           type::Typed<ast::Expression const *>(args[0], type::Slc(type::Char)));
-
-      if (not maybe_name) {
-        c->diag().Consume(maybe_name.error());
-        return ir::Value();
-      }
+      if (name_buffer.empty()) { return ir::Value(); }
 
       auto maybe_foreign_type = c->EvaluateOrDiagnoseAs<type::Type>(args[1]);
-      if (not maybe_name or not maybe_foreign_type) { return ir::Value(); }
-      ASSERT(maybe_name->get<ir::Slice>().data().kind() ==
-             ir::Addr::Kind::ReadOnly);
-      std::string name = [&] {
-        auto handle = ir::ReadOnlyData.lock();
-        return std::string(
-            handle->raw(maybe_name->get<ir::Slice>().data().rodata()),
-            maybe_name->get<ir::Slice>().length());
-      }();
+      if (not maybe_foreign_type) { return ir::Value(); }
+      auto slice = name_buffer.get<ir::Slice>(0);
+
+      std::string name(ir::ReadOnlyData.lock()->raw(slice.data().rodata()),
+                       slice.length());
       return ir::Value(
           c->builder().LoadSymbol(ir::String(name), *maybe_foreign_type).get());
     } break;

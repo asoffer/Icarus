@@ -264,6 +264,8 @@ struct Compiler
       return ir::Value();
     }
   }
+  base::untyped_buffer EvaluateToBufferOrDiagnose(
+      type::Typed<ast::Expression const *> expr);
 
   base::expected<ir::Value, interpreter::EvaluationFailure> Evaluate(
       type::Typed<ast::Expression const *> expr, bool must_complete = true);

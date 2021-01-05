@@ -23,6 +23,7 @@
 #include "ir/value/scope.h"
 #include "type/enum.h"
 #include "type/jump.h"
+#include "type/slice.h"
 #include "type/typed_value.h"
 #include "type/util.h"
 
@@ -338,7 +339,7 @@ struct Builder {
     if (t.is<type::Function>()) { return Value(Load<Fn>(r)); }
     return type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
                             uint8_t, uint16_t, uint32_t, uint64_t, float,
-                            double, type::Type, Addr, Slice, Fn>(
+                            double, type::Type, Addr, Fn>(
         t, [&]<typename T>() { return Value(Load<T>(r)); });
   }
 
@@ -361,7 +362,7 @@ struct Builder {
     return result;
   }
 
-  Reg Index(type::Pointer const* t, Reg array_ptr, RegOr<int64_t> offset) {
+  Reg Index(type::Pointer const* t, RegOr<Addr> addr, RegOr<int64_t> offset) {
     type::Type pointee = t->pointee();
     type::Type data_type;
     if (auto const* a = pointee.if_as<type::Array>()) {
@@ -372,7 +373,7 @@ struct Builder {
       UNREACHABLE(t->to_string());
     }
 
-    return PtrIncr(array_ptr, offset, type::Ptr(data_type));
+    return PtrIncr(addr, offset, type::Ptr(data_type));
   }
 
   // Emits a function-call instruction, calling `fn` of type `f` with the given

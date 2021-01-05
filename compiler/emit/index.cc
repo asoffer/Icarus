@@ -11,10 +11,11 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
   }
 
   if (auto const *s = qt->type().if_as<type::Slice>()) {
-    auto data = current_block()->Append(type::SliceDataInstruction{
-        .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::Slice>>(),
-        .result = builder().CurrentGroup()->Reserve(),
-    });
+    auto data = builder().Load<ir::Addr>(
+        current_block()->Append(type::SliceDataInstruction{
+            .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::Addr>>(),
+            .result = builder().CurrentGroup()->Reserve(),
+        }));
 
     auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
         EmitValue(node->rhs()), context().qual_type(node->rhs())->type()));
@@ -51,10 +52,11 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
     return builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(), index,
                              type::Ptr(buf_ptr_type->pointee()));
   } else if (auto const *s = lhs_type.if_as<type::Slice>()) {
-    auto data = current_block()->Append(type::SliceDataInstruction{
-        .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::Slice>>(),
-        .result = builder().CurrentGroup()->Reserve(),
-    });
+    auto data = builder().Load<ir::Addr>(
+        current_block()->Append(type::SliceDataInstruction{
+            .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::Addr>>(),
+            .result = builder().CurrentGroup()->Reserve(),
+        }));
 
     auto index = builder().CastTo<int64_t>(
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));

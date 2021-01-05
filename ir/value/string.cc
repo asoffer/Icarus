@@ -2,7 +2,11 @@
 
 #include "absl/container/node_hash_map.h"
 #include "base/no_destructor.h"
+#include "core/alignment.h"
+#include "core/arch.h"
+#include "core/bytes.h"
 #include "ir/read_only_data.h"
+#include "ir/value/char.h"
 
 namespace ir {
 namespace {
@@ -16,15 +20,29 @@ Addr SaveStringGlobally(std::string const& str) {
   auto [iter, success] = GlobalStringSet->emplace(str, Addr::ReadOnly(0));
   if (not success) { return iter->second; }
 
-  // TODO This means we're storing strings during lexing even if we never intend
-  // to use them later. I doubt that's a huge performance loss, but it's worth
-  // remembering and seeing if there's an easy way to fix it.
+  // TODO: This means we're storing strings during lexing even if we never
+  // intend to use them later. I doubt that's a huge performance loss, but it's
+  // worth remembering and seeing if there's an easy way to fix it.
   size_t buf_end = rodata_handle->size();
-  rodata_handle->append_bytes(str.size() + 1);  // +1 for the null terminator.
-  std::memcpy(rodata_handle->raw(buf_end), str.data(), str.size() + 1);
-  iter->second = Addr::ReadOnly(buf_end);
+  core::Bytes slice_start =
+      core::FwdAlign(core::Bytes(buf_end), core::Alignment::Get<Slice>());
+  core::Bytes data_start = slice_start + core::Bytes::Get<Slice>();
+  core::Bytes data_end =
+      data_start + core::Bytes(str.size() + 1);  // +1 for the null terminator.
 
-  return iter->second;
+  rodata_handle->append_bytes(data_end.value() - buf_end);
+  rodata_handle->set(slice_start.value(),
+                     Slice(Addr::ReadOnly(data_start.value()), str.size()));
+
+  size_t i = data_start.value();
+  for (char c : str) {
+    Char ch(c);
+    std::memcpy(rodata_handle->raw(i++), &ch, sizeof(ch));
+  }
+  Char ch('\0');
+  std::memcpy(rodata_handle->raw(i++), &ch, sizeof(ch));
+
+  return iter->second = Addr::ReadOnly(slice_start.value());
 }
 
 }  // namespace
@@ -37,9 +55,13 @@ std::string String::get() const {
   std::string result;
   {
     auto handle = ReadOnlyData.lock();
-    result      = handle->raw(addr_.rodata());
+    result      = handle->raw((addr_ + core::Bytes::Get<Slice>()).rodata());
   }
   return result;
+}
+
+Slice String::slice() const {
+  return ReadOnlyData.lock()->get<ir::Slice>(addr_.rodata());
 }
 
 std::ostream& operator<<(std::ostream& os, String s) { return os << s.get(); }

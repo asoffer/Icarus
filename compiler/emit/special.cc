@@ -505,27 +505,95 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Slice> to,
                             type::Typed<ir::Value> const &from) {
-  // TODO: Implement
+  builder().Store(builder().Load<ir::Addr>(
+                      current_block()->Append(type::SliceDataInstruction{
+                          .slice  = from->get<ir::RegOr<ir::Addr>>(),
+                          .result = builder().CurrentGroup()->Reserve(),
+                      })),
+                  current_block()->Append(type::SliceDataInstruction{
+                      .slice  = *to,
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }));
+  builder().Store(builder().Load<type::Slice::length_t>(
+                      current_block()->Append(type::SliceLengthInstruction{
+                          .slice  = from->get<ir::RegOr<ir::Addr>>(),
+                          .result = builder().CurrentGroup()->Reserve(),
+                      })),
+                  current_block()->Append(type::SliceLengthInstruction{
+                      .slice  = *to,
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }));
   current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Slice> to,
                             type::Typed<ir::Value> const &from) {
-  // TODO: Implement
+  builder().Store(builder().Load<ir::Addr>(
+                      current_block()->Append(type::SliceDataInstruction{
+                          .slice  = from->get<ir::RegOr<ir::Addr>>(),
+                          .result = builder().CurrentGroup()->Reserve(),
+                      })),
+                  current_block()->Append(type::SliceDataInstruction{
+                      .slice  = *to,
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }));
+  builder().Store(builder().Load<type::Slice::length_t>(
+                      current_block()->Append(type::SliceLengthInstruction{
+                          .slice  = from->get<ir::RegOr<ir::Addr>>(),
+                          .result = builder().CurrentGroup()->Reserve(),
+                      })),
+                  current_block()->Append(type::SliceLengthInstruction{
+                      .slice  = *to,
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }));
   current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Slice> const &to,
     type::Typed<ir::Value> const &from) {
-  // TODO: Implement
+  builder().Store(builder().Load<ir::Addr>(
+                      current_block()->Append(type::SliceDataInstruction{
+                          .slice  = from->get<ir::RegOr<ir::Addr>>(),
+                          .result = builder().CurrentGroup()->Reserve(),
+                      })),
+                  current_block()->Append(type::SliceDataInstruction{
+                      .slice  = *to,
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }));
+  builder().Store(builder().Load<type::Slice::length_t>(
+                      current_block()->Append(type::SliceLengthInstruction{
+                          .slice  = from->get<ir::RegOr<ir::Addr>>(),
+                          .result = builder().CurrentGroup()->Reserve(),
+                      })),
+                  current_block()->Append(type::SliceLengthInstruction{
+                      .slice  = *to,
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }));
   current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitMoveAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Slice> const &to,
     type::Typed<ir::Value> const &from) {
-  // TODO: Implement
+  builder().Store(builder().Load<ir::Addr>(
+                      current_block()->Append(type::SliceDataInstruction{
+                          .slice  = from->get<ir::RegOr<ir::Addr>>(),
+                          .result = builder().CurrentGroup()->Reserve(),
+                      })),
+                  current_block()->Append(type::SliceDataInstruction{
+                      .slice  = *to,
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }));
+  builder().Store(builder().Load<type::Slice::length_t>(
+                      current_block()->Append(type::SliceLengthInstruction{
+                          .slice  = from->get<ir::RegOr<ir::Addr>>(),
+                          .result = builder().CurrentGroup()->Reserve(),
+                      })),
+                  current_block()->Append(type::SliceLengthInstruction{
+                      .slice  = *to,
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }));
   current_block()->load_store_cache().clear();
 }
 

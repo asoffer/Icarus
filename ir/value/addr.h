@@ -1,9 +1,13 @@
 #ifndef ICARUS_IR_VALUE_ADDR_H
 #define ICARUS_IR_VALUE_ADDR_H
 
+#include <iostream>
 #include <string>
+#include <utility>
 
 #include "base/log.h"
+#include "core/alignment.h"
+#include "core/arch.h"
 #include "core/bytes.h"
 
 namespace ir {
@@ -42,6 +46,13 @@ struct Addr {
   friend core::Bytes operator-(Addr lhs, Addr rhs) {
     return core::Bytes(((lhs.data_ >> 2) | (lhs.data_ & 0b11) << 62) -
                        ((rhs.data_ >> 2) | (rhs.data_ & 0b11) << 62));
+  }
+
+  ir::Addr MoveForwardToAlignment(core::Alignment a) const {
+    ir::Addr addr;
+    addr.data_ = core::FwdAlign(core::Bytes(data_ >> 2), a).value() << 2 |
+                 (data_ & 0b11);
+    return addr;
   }
 
   template <typename H>

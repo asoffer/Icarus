@@ -6,6 +6,8 @@ cc_library(
     srcs = ["addr.cc"],
     deps = [
         "//base:log",
+        "//core:alignment",
+        "//core:arch",
         "//core:bytes",
         "//base:debug",
     ],
@@ -251,7 +253,12 @@ cc_library(
     srcs = ["string.cc"],
     deps = [
         ":addr",
+        ":char",
+        ":slice",
         "//base:no_destructor",
+        "//core:alignment",
+        "//core:arch",
+        "//core:bytes",
         "//ir:read_only_data",
         "@com_google_absl//absl/container:node_hash_map",
     ],

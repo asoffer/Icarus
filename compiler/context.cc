@@ -177,9 +177,14 @@ void Context::CompleteConstant(ast::Declaration const *decl) {
   iter->second.complete = true;
 }
 
-void Context::SetConstant(ast::Declaration const *decl, ir::Value const &value,
-                          bool complete) {
-  constants_.emplace(decl, ConstantValue{.value = value, .complete = complete});
+ir::Value Context::SetConstant(ast::Declaration const *decl,
+                               ir::Value const &value, bool complete) {
+  return constants_.try_emplace(decl, value, complete).first->second.value();
+}
+
+ir::Value Context::SetConstant(ast::Declaration const *decl,
+                               base::untyped_buffer buffer, bool complete) {
+  return constants_.try_emplace(decl, buffer, complete).first->second.value();
 }
 
 Context::ConstantValue const *Context::Constant(

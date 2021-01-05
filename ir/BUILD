@@ -28,6 +28,7 @@ cc_library(
         "//ir/value:addr",
         "//ir/value:char",
         "//ir/value:reg",
+        "//type:slice",
         "//type:typed_value",
         "//type:util",
         "@com_google_absl//absl/strings",

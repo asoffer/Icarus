@@ -48,34 +48,32 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
   if (result.type() != type::Slc(type::Char)) {
     diag().Consume(InvalidImport{.type  = result.type(),
                                  .range = node->operand()->range()});
-    qt.MarkError();
     err = true;
   }
 
   if (not result.constant()) {
     diag().Consume(NonConstantImport{.range = node->operand()->range()});
-    qt.MarkError();
     err = true;
   }
 
-  if (err) { return context().set_qual_type(node, qt); }
-
-  auto maybe_src = Evaluate(type::Typed<ast::Expression const *>(
-      node->operand(), type::Slc(type::Char)));
-
-  if (not maybe_src) {
-    diag().Consume(maybe_src.error());
+  if (err) {
     qt.MarkError();
     return context().set_qual_type(node, qt);
   }
 
-  std::string name = [&] {
-    auto handle = ir::ReadOnlyData.lock();
-    return std::string(handle->raw(maybe_src->get<ir::Slice>().data().rodata()),
-                       maybe_src->get<ir::Slice>().length());
-  }();
 
-  ir::ModuleId mod_id = importer().Import(name);
+  auto source_locator =
+      EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
+          node->operand(), type::Slc(type::Char)));
+  if (source_locator.empty()) {
+    qt.MarkError();
+    return context().set_qual_type(node, qt);
+  }
+
+  auto slice = source_locator.get<ir::Slice>(0);
+
+  ir::ModuleId mod_id = importer().Import(std::string(
+      ir::ReadOnlyData.lock()->raw(slice.data().rodata()), slice.length()));
   if (mod_id == ir::ModuleId::Invalid()) {
     qt.MarkError();
   } else {

@@ -215,7 +215,7 @@ struct Context {
 
   ir::Value LoadConstant(ast::Declaration const *decl) const {
     if (auto iter = constants_.find(decl); iter != constants_.end()) {
-      ir::Value val = iter->second.value;
+      ir::Value val = iter->second.value();
       if (not val.empty()) { return val; }
     }
     if (parent()) { return parent()->LoadConstant(decl); }
@@ -271,14 +271,37 @@ struct Context {
   void ClearVerifyBody(ast::Node const *node);
 
   struct ConstantValue {
-    ir::Value value;
+    explicit ConstantValue(base::untyped_buffer buffer, bool complete)
+        : complete(complete), is_big(true), buffer_(std::move(buffer)) {}
+    explicit ConstantValue(ir::Value const &v, bool complete)
+        : complete(complete), is_big(false) {
+      buffer_.append(v);
+    }
+
+    // TODO: This is essentially a small-buffer optimization for Value-sized
+    // things. Maybe we should do that explicitly.
+    ir::Value value() const {
+      // TODO: Do we need to track constness of addresses in the type system
+      // too?
+      return is_big
+                 ? ir::Value(ir::Addr::Heap(const_cast<char *>(buffer_.raw(0))))
+                 : ir::Value(buffer_.get<ir::Value>(0));
+    }
+
     // Whether or not the held value is complete. This may be a struct or
     // function whose body has not been emit yet.
     bool complete;
+    bool is_big;
+
+   private:
+    base::untyped_buffer buffer_;
   };
   void CompleteConstant(ast::Declaration const *decl);
-  void SetConstant(ast::Declaration const *decl, ir::Value const &value,
-                   bool complete = false);
+  ir::Value SetConstant(ast::Declaration const *decl, ir::Value const &value,
+                        bool complete = false);
+  ir::Value SetConstant(ast::Declaration const *decl,
+                        base::untyped_buffer buffer, bool complete = false);
+
   ConstantValue const *Constant(ast::Declaration const *decl) const;
 
   void SetAllOverloads(ast::Expression const *callee, ast::OverloadSet os);

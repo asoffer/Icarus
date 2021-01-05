@@ -467,10 +467,15 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
   return args.Transform([&](ast::Expression const *expr) {
     auto qt = *ASSERT_NOT_NULL(c.context().qual_type(expr));
     if (qt.constant()) {
-      ir::Value result = c.EvaluateOrDiagnose(
-          type::Typed<ast::Expression const *>(expr, qt.type()));
-      if (result.empty()) { NOT_YET(); }
-      return type::Typed<ir::Value>(result, qt.type());
+      if (qt.type().get()->is_big()) {
+        // TODO: Implement constant computation here.
+        return type::Typed<ir::Value>(ir::Value(), qt.type());
+      } else {
+        ir::Value result = c.EvaluateOrDiagnose(
+            type::Typed<ast::Expression const *>(expr, qt.type()));
+        if (result.empty()) { NOT_YET(); }
+        return type::Typed<ir::Value>(result, qt.type());
+      }
     } else {
       return type::Typed<ir::Value>(ir::Value(), qt.type());
     }

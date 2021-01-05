@@ -120,16 +120,14 @@ constexpr exec_t GetInstruction() {
 
         } else {
           type::Type t = fn_type->params()[i].value.type();
-          if (t.get()->is_big()) {
-            NOT_YET();
-          } else {
-            if (frame) {
-              frame->regs_.set_raw(ir::Reg::Arg(i), iter->raw(), kMaxSize);
-            }
-            std::memcpy(call_buf.raw((num_regs + i) * kMaxSize), iter->raw(),
-                        kMaxSize);
-            iter->skip(t.bytes(interpreter::kArchitecture).value());
+          if (frame) {
+            frame->regs_.set_raw(ir::Reg::Arg(i), iter->raw(), kMaxSize);
           }
+          std::memcpy(call_buf.raw((num_regs + i) * kMaxSize), iter->raw(),
+                      kMaxSize);
+          iter->skip(std::min(t.bytes(interpreter::kArchitecture),
+                              interpreter::kArchitecture.pointer().bytes())
+                         .value());
         }
       }
 
@@ -273,6 +271,8 @@ void ExecuteBlocks(ExecutionContext &ctx,
   }
 }
 
+}  // namespace
+
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   ASSERT(fn.type()->output().size() != 0u);
   core::Bytes required = fn.type()->output()[0].bytes(kArchitecture);
@@ -288,10 +288,9 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
       base::untyped_buffer::MakeFull(
           (fn.type()->params().size() + fn.num_regs()) * kMaxSize),
       ret_slots);
+  LOG("EvaluateToBuffer", "Result buffer = %s", ret_buf.to_string());
   return ret_buf;
 }
-
-}  // namespace
 
 void Execute(ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots) {
@@ -321,13 +320,16 @@ base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
 
   auto iter = buf.begin();
   for (type::Type t : fn.type()->output()) {
-    if (t.is<type::GenericStruct>()) {
+    if (t.get()->is_big()) {
+      ir::Addr addr = iter.read<ir::Addr>();
+      values.push_back(ir::Value(addr));
+    } else if (t.is<type::GenericStruct>()) {
       values.push_back(ir::Value(t));
     } else {
       type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
                        uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                       type::Type, ir::Addr, ir::ModuleId, ir::Slice, ir::Scope,
-                       ir::Fn, ir::Jump, ir::Block, ir::GenericFn>(
+                       type::Type, ir::Addr, ir::ModuleId, ir::Scope, ir::Fn,
+                       ir::Jump, ir::Block, ir::GenericFn>(
           t, [&]<typename T>() {
             T val = iter.read<T>();
             values.push_back(ir::Value(val));

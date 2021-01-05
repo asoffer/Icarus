@@ -19,7 +19,11 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
     // that module. They must be at the root of the binding tree map,
     // otherwise they would be local to some function/jump/etc. and not be
     // exported.
-    return node->module()->as<CompiledModule>().context().Constant(node)->value;
+    return node->module()
+        ->as<CompiledModule>()
+        .context()
+        .Constant(node)
+        ->value();
   }
 
   if (node->flags() & ast::Declaration::f_IsFnParam) {
@@ -39,7 +43,7 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
           });
         }
       }
-      return constant_value->value;
+      return constant_value->value();
     }
 
     auto t = ASSERT_NOT_NULL(c.context().qual_type(node))->type();
@@ -47,30 +51,39 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
     if (node->IsCustomInitialized()) {
       LOG("Declaration", "Computing slot with %s",
           node->init_val()->DebugString());
-      auto maybe_val =
-          c.Evaluate(type::Typed<ast::Expression const *>(node->init_val(), t),
-                     c.state().must_complete);
-      if (not maybe_val) {
-        // TODO: we reserved a slot and haven't cleaned it up. Do we care?
-        c.diag().Consume(maybe_val.error());
-        return ir::Value();
-      }
 
-      LOG("EmitValueDeclaration", "Setting slot = %s", *maybe_val);
-      c.context().SetConstant(node, *maybe_val);
+      if (t.get()->is_big()) {
+        auto value_buffer = c.EvaluateToBufferOrDiagnose(
+            type::Typed<ast::Expression const *>(node->init_val(), t));
+        if (value_buffer.empty()) { return ir::Value(); }
 
-      // TODO: This is a struct-speficic hack.
-      if (type::Type *type_val = maybe_val->get_if<type::Type>()) {
-        if (auto const *struct_type = type_val->if_as<type::Struct>()) {
-          if (struct_type->completeness() != type::Completeness::Complete) {
-            return *maybe_val;
-          }
-          c.context().CompleteConstant(node);
+        LOG("EmitValueDeclaration", "Setting slot = %s", value_buffer);
+        return c.context().SetConstant(node, std::move(value_buffer));
+      } else {
+        auto maybe_val = c.Evaluate(
+            type::Typed<ast::Expression const *>(node->init_val(), t),
+            c.state().must_complete);
+        if (not maybe_val) {
+          // TODO: we reserved a slot and haven't cleaned it up. Do we care?
+          c.diag().Consume(maybe_val.error());
+          return ir::Value();
         }
+
+        LOG("EmitValueDeclaration", "Setting slot = %s", *maybe_val);
+        c.context().SetConstant(node, *maybe_val);
+
+        // TODO: This is a struct-speficic hack.
+        if (type::Type *type_val = maybe_val->get_if<type::Type>()) {
+          if (auto const *struct_type = type_val->if_as<type::Struct>()) {
+            if (struct_type->completeness() != type::Completeness::Complete) {
+              return *maybe_val;
+            }
+            c.context().CompleteConstant(node);
+          }
+        }
+
+        return *maybe_val;
       }
-
-      return *maybe_val;
-
     } else if (node->IsDefaultInitialized()) {
       UNREACHABLE();
     } else {

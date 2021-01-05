@@ -67,9 +67,8 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision
 
-      c.EmitMoveInit(
-          type::Typed<ir::Reg>(c.builder().GetRet(0, t), type::Ptr(t)),
-          type::Typed<ir::Value>(val, t));
+      c.EmitMoveInit(type::Typed<ir::Reg>(c.builder().GetRet(0, t), t),
+                     type::Typed<ir::Value>(val, t));
 
     } else if (auto const *gs = t.if_as<type::GenericStruct>()) {
       c.builder().SetRet(0, gs);
@@ -91,9 +90,17 @@ base::expected<ir::Value, interpreter::EvaluationFailure> Compiler::Evaluate(
   auto thunk             = MakeThunk(c, *expr, expr.type());
   c.CompleteWorkQueue();
   c.CompleteDeferredBodies();
-  auto result = interpreter::Evaluate(std::move(thunk));
-  if (not result) { return result; }
-  return result;
+  return interpreter::Evaluate(std::move(thunk));
+}
+
+base::untyped_buffer Compiler::EvaluateToBufferOrDiagnose(
+    type::Typed<ast::Expression const *> expr) {
+  // TODO: The diagnosis part.
+  Compiler c = MakeChild(resources_);
+  auto thunk = MakeThunk(c, *expr, expr.type());
+  c.CompleteWorkQueue();
+  c.CompleteDeferredBodies();
+  return interpreter::EvaluateToBuffer(std::move(thunk));
 }
 
 ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {

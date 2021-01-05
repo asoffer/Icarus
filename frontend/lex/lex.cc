@@ -523,9 +523,8 @@ restart:
         });
       }
 
-      ir::String s(str);
       return Lexeme(std::make_unique<ast::Terminal>(
-          range, ir::Value(ir::Slice(s.addr(), s.get().length()))));
+          range, ir::Value(ir::String(str).addr())));
 
     } break;
     case '`': {
