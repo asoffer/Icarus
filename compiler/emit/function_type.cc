@@ -10,14 +10,22 @@
 
 namespace compiler {
 
-// TODO: Also support named parameter names.
 ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
   std::vector<std::pair<std::string, ir::RegOr<type::Type>>> param_vals;
   std::vector<ir::RegOr<type::Type>> out_vals;
   param_vals.reserve(node->params().size());
   out_vals.reserve(node->outputs().size());
   for (auto const *p : node->params()) {
-    param_vals.emplace_back("", EmitValue(p).get<ir::RegOr<type::Type>>());
+    if (auto const *decl = p->if_as<ast::Declaration>()) {
+      if (auto const *te = decl->type_expr()) {
+        param_vals.emplace_back(std::string(decl->id()),
+                                EmitValue(te).get<ir::RegOr<type::Type>>());
+      } else {
+        NOT_YET();
+      }
+    } else {
+      param_vals.emplace_back("", EmitValue(p).get<ir::RegOr<type::Type>>());
+    }
   }
   for (auto const *o : node->outputs()) {
     out_vals.push_back(EmitValue(o).get<ir::RegOr<type::Type>>());

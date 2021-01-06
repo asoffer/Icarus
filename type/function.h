@@ -68,7 +68,11 @@ struct FunctionTypeInstruction
     core::Params<QualType> params;
     params.reserve(inputs.size());
     for (auto const &[name, t] : inputs) {
-      params.append(core::AnonymousParam(QualType::NonConstant(t.value())));
+      params.append(
+          name.empty()
+              ? core::AnonymousParam(QualType::NonConstant(t.value()))
+              : core::Param<type::QualType>(std::move(name),
+                                            QualType::NonConstant(t.value())));
     }
 
     std::vector<Type> outputs_types;

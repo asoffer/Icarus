@@ -289,7 +289,15 @@ cc_library(
     ],
 )
 
-# TODO: FunctionType
+cc_test(
+    name = "function_type_test",
+    srcs = ["function_type_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_library(
     name = "function_literal",
