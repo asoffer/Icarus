@@ -3,7 +3,11 @@
 
 #include <vector>
 
+#include "base/extend.h"
 #include "core/params.h"
+#include "ir/instruction/base.h"
+#include "ir/instruction/debug.h"
+#include "ir/instruction/inliner.h"
 #include "type/callable.h"
 #include "type/qual_type.h"
 #include "type/type.h"
@@ -56,6 +60,49 @@ struct Function : public Callable {
 };
 
 Function const *Func(core::Params<QualType> in, std::vector<Type> out);
+
+struct FunctionTypeInstruction
+    : base::Extend<FunctionTypeInstruction>::With<ir::ByteCodeExtension,
+                                                  ir::InlineExtension> {
+  Type Resolve() const {
+    core::Params<QualType> params;
+    params.reserve(inputs.size());
+    for (auto const &[name, t] : inputs) {
+      params.append(core::AnonymousParam(QualType::NonConstant(t.value())));
+    }
+
+    std::vector<Type> outputs_types;
+    outputs_types.reserve(outputs.size());
+    for (auto const &t : outputs) { outputs_types.push_back(t.value()); }
+
+    return Func(std::move(params), std::move(outputs_types));
+  }
+
+  std::string to_string() const {
+    using base::stringify;
+    return absl::StrCat(
+        stringify(result), " = (",
+        absl::StrJoin(inputs, ", ",
+                      [](std::string *out,
+                         std::pair<std::string, ir::RegOr<Type>> const &r) {
+                        if (not r.first.empty()) {
+                          out->append(r.first);
+                          out->append(": ");
+                        }
+                        out->append(stringify(r.second));
+                      }),
+        ") -> (",
+        absl::StrJoin(outputs, ", ",
+                      [](std::string *out, ir::RegOr<Type> const &r) {
+                        out->append(stringify(r));
+                      }),
+        ")");
+  }
+
+  std::vector<std::pair<std::string, ir::RegOr<Type>>> inputs;
+  std::vector<ir::RegOr<Type>> outputs;
+  ir::Reg result;
+};
 
 }  // namespace type
 

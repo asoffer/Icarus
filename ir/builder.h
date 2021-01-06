@@ -444,19 +444,6 @@ struct Builder {
 
   Reg PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Pointer const* t);
 
-  // Type construction commands
-
-  // Note: Even though this must return a more specific type (Function instead
-  // of Type), we use Type to ensure that if this gets routed into an ir::Value,
-  // it will be tagged correctly.
-  RegOr<type::Type> Arrow(std::vector<RegOr<type::Type>> const& ins,
-                          std::vector<RegOr<type::Type>> const& outs);
-
-  RegOr<type::Type> Array(RegOr<type::ArrayInstruction::length_t> len,
-                          RegOr<type::Type> data_type);
-
-  type::Typed<Reg> LoadSymbol(String name, type::Type type);
-
   // Low-level size/alignment commands
   Reg Align(RegOr<type::Type> r);
   Reg Bytes(RegOr<type::Type> r);

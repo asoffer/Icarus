@@ -150,6 +150,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:resources",
+        "//ir/instruction",
         "//ir/value",
     ],
 )

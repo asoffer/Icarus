@@ -6,9 +6,6 @@
 #include <optional>
 
 #include "base/debug.h"
-#include "core/params.h"
-#include "type/function.h"
-#include "type/primitive.h"
 
 namespace ir {
 
@@ -34,27 +31,6 @@ struct BuiltinFn {
   }
 
   Which which() const { return which_; }
-
-  type::Function const *type() const {
-    switch (which_) {
-      case Which::Bytes:
-      case Which::Alignment:
-        return type::Func(
-            {core::AnonymousParam(type::QualType::Constant(type::Type_))},
-            {type::U64});
-      case Which::Opaque: return type::Func({}, {type::Type_});
-      case Which::Foreign:
-        // Note: We do not allow passing `foreign` around as a function object.
-        // It is call-only, which means the generic part can be handled in the
-        // type checker. The value here may be stored, but it will never be
-        // accessed again.
-        //
-        // TODO: Why not allow passing it around?
-        return nullptr;
-      case Which::DebugIr: return type::Func({}, {});
-    }
-    UNREACHABLE();
-  }
 
   friend std::ostream &operator<<(std::ostream &os, BuiltinFn f) {
     return os << kNames[static_cast<int>(f.which())];

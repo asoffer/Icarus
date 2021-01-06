@@ -33,10 +33,7 @@ cc_library(
 cc_library(
     name = "builtin_fn",
     hdrs = ["builtin_fn.h"],
-    deps = [
-        "//type:function",
-        "//type:primitive",
-    ],
+    deps = [],
 )
 
 cc_test(
@@ -61,6 +58,9 @@ cc_library(
         ":builtin_fn",
         ":foreign_fn",
         ":native_fn",
+        "//core:params",
+        "//type:function",
+        "//type:primitive",
     ],
 )
 

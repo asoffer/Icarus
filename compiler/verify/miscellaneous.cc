@@ -27,7 +27,7 @@ type::QualType Compiler::VerifyType(ast::ArgumentType const *node) {
 
 type::QualType Compiler::VerifyType(ast::BuiltinFn const *node) {
   return context().set_qual_type(
-      node, type::QualType::Constant(node->value().type()));
+      node, type::QualType::Constant(ir::Fn(node->value()).type()));
 }
 
 type::QualType Compiler::VerifyType(ast::ReturnStmt const *node) {

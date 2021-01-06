@@ -195,8 +195,8 @@ type::QualType VerifyForeignCall(
 type::QualType VerifyOpaqueCall(
     Compiler *c, frontend::SourceRange const &range,
     core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
-  type::QualType qt =
-      type::QualType::Constant(ir::BuiltinFn::Opaque().type()->output()[0]);
+  type::QualType qt = type::QualType::Constant(
+      ir::Fn(ir::BuiltinFn::Opaque()).type()->output()[0]);
   if (not arg_vals.empty()) {
     c->diag().Consume(BuiltinError{
         .range   = range,
@@ -209,8 +209,8 @@ type::QualType VerifyOpaqueCall(
 type::QualType VerifyBytesCall(
     Compiler *c, frontend::SourceRange const &range,
     core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
-  auto qt =
-      type::QualType::Constant(ir::BuiltinFn::Bytes().type()->output()[0]);
+  auto qt = type::QualType::Constant(
+      ir::Fn(ir::BuiltinFn::Bytes()).type()->output()[0]);
 
   if (not arg_vals.named().empty()) {
     c->diag().Consume(BuiltinError{.range = range,
@@ -245,8 +245,8 @@ type::QualType VerifyBytesCall(
 type::QualType VerifyAlignmentCall(
     Compiler *c, frontend::SourceRange const &range,
     core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
-  auto qt =
-      type::QualType::Constant(ir::BuiltinFn::Alignment().type()->output()[0]);
+  auto qt = type::QualType::Constant(
+      ir::Fn(ir::BuiltinFn::Alignment()).type()->output()[0]);
 
   if (not arg_vals.named().empty()) {
     c->diag().Consume(

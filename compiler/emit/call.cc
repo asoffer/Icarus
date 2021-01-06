@@ -3,6 +3,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/resources.h"
+#include "ir/instruction/instructions.h"
 
 namespace compiler {
 namespace {
@@ -178,8 +179,10 @@ ir::Value EmitBuiltinCall(
 
       std::string name(ir::ReadOnlyData.lock()->raw(slice.data().rodata()),
                        slice.length());
-      return ir::Value(
-          c->builder().LoadSymbol(ir::String(name), *maybe_foreign_type).get());
+      return ir::Value(c->current_block()->Append(ir::LoadSymbolInstruction{
+          .name   = std::move(name),
+          .type   = *maybe_foreign_type,
+          .result = c->builder().CurrentGroup()->Reserve()}));
     } break;
 
     case ir::BuiltinFn::Which::Opaque:
@@ -188,7 +191,7 @@ ir::Value EmitBuiltinCall(
           .result = c->builder().CurrentGroup()->Reserve()}));
 
     case ir::BuiltinFn::Which::Bytes: {
-      auto const &fn_type = *ir::BuiltinFn::Bytes().type();
+      auto const &fn_type = *ir::Fn(ir::BuiltinFn::Bytes()).type();
       ir::OutParams outs  = c->builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
       c->builder().Call(
@@ -200,7 +203,7 @@ ir::Value EmitBuiltinCall(
     } break;
 
     case ir::BuiltinFn::Which::Alignment: {
-      auto const &fn_type = *ir::BuiltinFn::Alignment().type();
+      auto const &fn_type = *ir::Fn(ir::BuiltinFn::Alignment()).type();
       ir::OutParams outs  = c->builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
       c->builder().Call(

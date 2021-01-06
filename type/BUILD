@@ -143,8 +143,12 @@ cc_library(
         ":qual_type",
         ":type",
         ":typed_value",
+        "//base:extend",
         "//base:global",
         "//core:params",
+        "//ir/instruction:base",
+        "//ir/instruction:debug",
+        "//ir/instruction:inliner",
     ],
 )
 

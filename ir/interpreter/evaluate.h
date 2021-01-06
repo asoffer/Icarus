@@ -18,6 +18,7 @@
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"
+#include "type/function.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/slice.h"
@@ -159,7 +160,7 @@ struct instruction_set_t
           type::SliceInstruction, type::XorFlagsInstruction,
           type::AndFlagsInstruction, type::OrFlagsInstruction,
           type::PtrInstruction, type::BufPtrInstruction,
-          type::OpaqueTypeInstruction, ir::ArrowInstruction,
+          type::OpaqueTypeInstruction, type::FunctionTypeInstruction,
           ir::LoadSymbolInstruction, type::ArrayInstruction,
           type::StructInstruction, ir::MakeBlockInstruction,
           ir::MakeScopeInstruction, ir::StructIndexInstruction,

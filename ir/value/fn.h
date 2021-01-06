@@ -5,9 +5,12 @@
 #include <iostream>
 
 #include "base/debug.h"
+#include "core/params.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
+#include "type/function.h"
+#include "type/primitive.h"
 
 namespace ir {
 
@@ -41,8 +44,26 @@ struct Fn {
   type::Function const *type() const {
     switch (kind()) {
       case Kind::Native: return native().type();
-      case Kind::Builtin: return builtin().type();
-      case Kind::Foreign: return foreign().type();
+      case Kind::Builtin: {
+        switch (builtin().which()) {
+          case BuiltinFn::Which::Bytes:
+          case BuiltinFn::Which::Alignment:
+            return type::Func(
+                {core::AnonymousParam(type::QualType::Constant(type::Type_))},
+                {type::U64});
+          case BuiltinFn::Which::Opaque: return type::Func({}, {type::Type_});
+          case BuiltinFn::Which::Foreign:
+            // Note: We do not allow passing `foreign` around as a function
+            // object. It is call-only, which means the generic part can be
+            // handled in the type checker. The value here may be stored, but it
+            // will never be accessed again.
+            //
+            // TODO: Why not allow passing it around?
+            return nullptr;
+          case BuiltinFn::Which::DebugIr: return type::Func({}, {});
+        }
+        case Kind::Foreign: return foreign().type();
+      }
     }
     UNREACHABLE();
   }

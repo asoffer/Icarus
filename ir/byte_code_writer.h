@@ -23,6 +23,10 @@ void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
       ReadInto(entry.second, iter);
       ref.insert(std::move(entry));
     }
+  } else if constexpr (base::meta<T>.template is_a<std::pair>()) {
+    ReadInto(ref.first, iter);
+    ReadInto(ref.second, iter);
+
   } else if constexpr (base::meta<T>.template is_a<std::vector>()) {
     ASSERT(ref.size() == 0u);
     uint16_t num_entries = iter->read<uint16_t>();
@@ -30,6 +34,12 @@ void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
     for (uint16_t i = 0; i < num_entries; ++i) {
       ReadInto(ref.emplace_back(), iter);
     }
+  } else if constexpr (base::meta<T> == base::meta<std::string>) {
+    ASSERT(ref.size() == 0u);
+    uint16_t num_chars = iter->read<uint16_t>();
+    ref.reserve(num_chars);
+    ref = std::string(static_cast<char const*>(iter->raw()), num_chars);
+    iter->skip(num_chars);
   } else {
     ref = iter->read<T>();
   }
@@ -48,6 +58,13 @@ struct ByteCodeWriter {
     if constexpr (base::meta<T>.template is_a<std::vector>()) {
       buf_->append<uint16_t>(val.size());
       for (auto const& element : val) { Write(element); }
+    } else if constexpr (base::meta<T>.template is_a<std::pair>()) {
+      Write(val.first);
+      Write(val.second);
+    } else if constexpr (base::meta<T> == base::meta<std::string>) {
+      buf_->append<uint16_t>(val.size());
+      for (char c : val) { Write(c); }
+
     } else if constexpr (base::meta<T>.template is_a<absl::flat_hash_map>()) {
       buf_->append<uint16_t>(val.size());
       for (auto const& [k, v] : val) {

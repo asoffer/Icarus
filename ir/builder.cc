@@ -168,13 +168,6 @@ void Builder::Copy(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from) {
       ir::CopyInstruction{.type = to.type(), .from = *from, .to = *to});
 }
 
-type::Typed<Reg> Builder::LoadSymbol(String name, type::Type type) {
-  return type::Typed<Reg>(
-      CurrentBlock()->Append(LoadSymbolInstruction{
-          .name = name, .type = type, .result = CurrentGroup()->Reserve()}),
-      type);
-}
-
 Reg Builder::Align(RegOr<type::Type> r) {
   return CurrentBlock()->Append(
       TypeInfoInstruction{.kind   = TypeInfoInstruction::Kind::Alignment,
@@ -247,44 +240,6 @@ Reg Builder::MakeScope(Scope scope, std::vector<RegOr<Jump>> inits,
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
-}
-
-// TODO: Right now function types can be generic and have parameter names as
-// part of the signature, but we don't actually have any way to emit IR for
-// these.
-RegOr<type::Type> Builder::Arrow(std::vector<RegOr<type::Type>> const &ins,
-                                 std::vector<RegOr<type::Type>> const &outs) {
-  if (absl::c_all_of(ins,
-                     [](RegOr<type::Type> r) { return not r.is_reg(); }) and
-      absl::c_all_of(outs,
-                     [](RegOr<type::Type> r) { return not r.is_reg(); })) {
-    core::Params<type::QualType> in_params;
-    std::vector<type::Type> out_vec;
-    in_params.reserve(ins.size());
-    for (auto in : ins) {
-      in_params.append(
-          core::AnonymousParam(type::QualType::NonConstant(in.value())));
-    }
-    out_vec.reserve(outs.size());
-    for (auto out : outs) { out_vec.push_back(out.value()); }
-    return type::Type(type::Func(std::move(in_params), std::move(out_vec)));
-  }
-  ArrowInstruction inst{.lhs = std::move(ins), .rhs = std::move(outs)};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
-}
-
-RegOr<type::Type> Builder::Array(RegOr<type::ArrayInstruction::length_t> len,
-                                 RegOr<type::Type> data_type) {
-  if (not len.is_reg() and not data_type.is_reg()) {
-    return type::Type(type::Arr(len.value(), data_type.value()));
-  }
-
-  return CurrentBlock()->Append(
-      type::ArrayInstruction{.length    = len,
-                             .data_type = data_type,
-                             .result    = CurrentGroup()->Reserve()});
 }
 
 }  // namespace ir
