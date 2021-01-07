@@ -82,24 +82,12 @@ InstructionInliner::InstructionInliner(
   }
 }
 
-void InstructionInliner::Inline(Value& v) const {
-  if (auto* r = v.get_if<Reg>()) { Inline(*r); }
-}
-
 void InstructionInliner::Inline(BasicBlock*& block,
                                 BasicBlock* incoming_block) const {
   auto iter = blocks_.find(block);
   ASSERT(iter != blocks_.end());
   block = iter->second;
   block->incoming_.insert(incoming_block);
-}
-
-void InstructionInliner::Inline(Reg& r) const {
-  if (r.is_arg()) {
-    r = Reg(r.arg_value() + register_offset_);
-  } else {
-    r = Reg(r.value() + register_offset_ + to_be_inlined_->num_args());
-  }
 }
 
 void InstructionInliner::InlineJump(BasicBlock* block) {

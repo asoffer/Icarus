@@ -55,6 +55,7 @@ cc_library(
     deps = [
         ":base",
         "//base:debug",
+        "//base:meta",
         "//ir:compiled_jump",
         "//ir:local_block_interpretation",
         "//ir/blocks:basic",

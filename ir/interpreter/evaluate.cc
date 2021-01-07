@@ -58,10 +58,12 @@ void ResolveField(ExecutionContext &ctx, T &field) {
   if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
     field = ctx.resolve(field);
   } else if constexpr (base::meta<T>.template is_a<std::vector>() or
-                       base::meta<T>.template is_a<absl::flat_hash_set>()) {
+                       base::meta<T>.template is_a<absl::flat_hash_set>() or
+                       base::meta<T>.template is_a<absl::flat_hash_map>()) {
     for (auto &f : field) { ResolveField(ctx, f); }
-  } else if constexpr (base::meta<T>.template is_a<absl::flat_hash_map>()) {
-    for (auto &[k, v] : field) { ResolveField(ctx, v); }
+  } else if constexpr (base::meta<T>.template is_a<std::pair>()) {
+    ResolveField(ctx, field.second);
+    ResolveField(ctx, field.first);
   }
 }
 

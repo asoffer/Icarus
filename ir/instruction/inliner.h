@@ -6,6 +6,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
+#include "base/meta.h"
 #include "ir/blocks/basic.h"
 #include "ir/blocks/group.h"
 #include "ir/instruction/jump.h"
@@ -22,26 +23,36 @@ struct InstructionInliner {
                               internal::BlockGroupBase *into,
                               LocalBlockInterpretation block_interp);
 
-  void Inline(Reg &r) const;
-  void Inline(Value &v) const;
-  void Inline(BasicBlock *&block, BasicBlock *incoming_block) const;
-  void InlineJump(BasicBlock *block);
-
+  // By default there's nothing to do. We'll add overloads
   template <typename T>
-  void Inline(RegOr<T> &r) const {
-    if (r.is_reg()) {
-      Reg copy = r.reg();
-      Inline(copy);
-      r = copy;
+  void Inline(T &v) const {
+    constexpr auto type = base::meta<T>;
+    if constexpr (type == base::meta<Reg>) {
+      if (v.is_arg()) {
+        v = Reg(v.arg_value() + register_offset_);
+      } else {
+        v = Reg(v.value() + register_offset_ + to_be_inlined_->num_args());
+      }
+    } else if constexpr (type.template is_a<RegOr>()) {
+      if (v.is_reg()) {
+        Reg copy = v.reg();
+        Inline(copy);
+        v = copy;
+      }
+    } else if constexpr (type == base::meta<Value>) {
+      if (auto *r = v.template get_if<Reg>()) { Inline(*r); }
+    } else if constexpr (type.template is_a<std::vector>()) {
+      for (auto &elem : v) { Inline(elem); }
+    } else if constexpr (type.template is_a<std::pair>()) {
+      Inline(v.first);
+      Inline(v.second);
     }
   }
 
-  BasicBlock *InlineAllBlocks();
+  void Inline(BasicBlock *&block, BasicBlock *incoming_block) const;
+  void InlineJump(BasicBlock *block);
 
-  template <typename T>
-  void Inline(std::vector<RegOr<T>> &rs) const {
-    for (auto &r : rs) { Inline(r); }
-  }
+  BasicBlock *InlineAllBlocks();
 
   absl::flat_hash_map<
       std::string,
@@ -74,14 +85,7 @@ struct InstructionInliner {
 template <typename T>
 struct InlineExtension {
   void Inline(InstructionInliner const &inliner) {
-    auto inline_register = [&](auto &field) {
-      using field_type = std::decay_t<decltype(field)>;
-      if constexpr (base::meta<field_type> == base::meta<Reg> or
-                    base::meta<field_type>.template is_a<ir::RegOr>()) {
-        inliner.Inline(field);
-      }
-    };
-    std::apply([&](auto &... field) { (inline_register(field), ...); },
+    std::apply([&](auto &... field) { (inliner.Inline(field), ...); },
                static_cast<T *>(this)->field_refs());
   }
 };
