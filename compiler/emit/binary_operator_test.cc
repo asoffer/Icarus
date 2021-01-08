@@ -74,6 +74,9 @@ TEST_P(BinaryOperatorTest, NonConstants) {
 
 TEST_P(BinaryOperatorTest, Assignment) {
   auto const &[test_case, test_data] = GetParam();
+  // TODO: Find a better way to do this.
+  if (std::isalpha(test_case.op[0])) GTEST_SKIP();
+
   test::TestModule mod;
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
@@ -105,7 +108,7 @@ TEST_P(BinaryOperatorTest, Assignment) {
 INSTANTIATE_TEST_SUITE_P(
     BooleanOr, BinaryOperatorTest,
     testing::Combine(
-        testing::ValuesIn({TestCase{.op = "|", .type = "bool"}}),
+        testing::ValuesIn({TestCase{.op = "or", .type = "bool"}}),
         testing::ValuesIn(std::vector<TestData>{
             {.lhs = "false", .rhs = "false", .expected = ir::Value(false)},
             {.lhs = "true", .rhs = "false", .expected = ir::Value(true)},
@@ -116,7 +119,7 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     BooleanAnd, BinaryOperatorTest,
     testing::Combine(
-        testing::ValuesIn({TestCase{.op = "&", .type = "bool"}}),
+        testing::ValuesIn({TestCase{.op = "and", .type = "bool"}}),
         testing::ValuesIn(std::vector<TestData>{
             {.lhs = "false", .rhs = "false", .expected = ir::Value(false)},
             {.lhs = "true", .rhs = "false", .expected = ir::Value(false)},
@@ -127,7 +130,7 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     BooleanXor, BinaryOperatorTest,
     testing::Combine(
-        testing::ValuesIn({TestCase{.op = "^", .type = "bool"}}),
+        testing::ValuesIn({TestCase{.op = "xor", .type = "bool"}}),
         testing::ValuesIn(std::vector<TestData>{
             {.lhs = "false", .rhs = "false", .expected = ir::Value(false)},
             {.lhs = "true", .rhs = "false", .expected = ir::Value(true)},

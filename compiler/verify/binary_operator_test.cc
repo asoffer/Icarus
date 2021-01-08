@@ -12,71 +12,6 @@ using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
-using BoolLogicalOperatorEq = testing::TestWithParam<char const *>;
-TEST_P(BoolLogicalOperatorEq, Success) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(R"(
-    b: bool
-    b %s true
-    )",
-                                 GetParam()));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
-}
-
-TEST_P(BoolLogicalOperatorEq, NonReference) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(R"(
-    b: bool
-    !b %s true
-    )",
-                                 GetParam()));
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("value-category-error",
-                                "invalid-assignment-lhs-value-category")));
-}
-
-TEST_P(BoolLogicalOperatorEq, Constant) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(R"(
-    b :: bool
-    b %s true
-    )",
-                                 GetParam()));
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("value-category-error",
-                                "invalid-assignment-lhs-value-category")));
-}
-
-TEST_P(BoolLogicalOperatorEq, InvalidLhsType) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(R"(
-    n: i64
-    n %s true
-    )",
-                                 GetParam()));
-
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair(
-                  "type-error", "logical-assignment-needs-bool-or-flags")));
-}
-
-TEST_P(BoolLogicalOperatorEq, InvalidRhsType) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(R"(
-    b: bool
-    b %s 3
-    )",
-                                 GetParam()));
-
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair(
-                  "type-error", "logical-assignment-needs-bool-or-flags")));
-}
-INSTANTIATE_TEST_SUITE_P(All, BoolLogicalOperatorEq,
-                         testing::ValuesIn({"^=", "&=", "|="}));
-
 using FlagsLogicalOperatorEq = testing::TestWithParam<char const *>;
 TEST_P(FlagsLogicalOperatorEq, Success) {
   test::TestModule mod;
@@ -337,10 +272,17 @@ INSTANTIATE_TEST_SUITE_P(
     FloatingPoint, BinaryOperator,
     testing::Combine(testing::ValuesIn({"f32", "f64"}),
                      testing::ValuesIn({"+", "-", "*", "/"})));
-INSTANTIATE_TEST_SUITE_P(LogicalOperator, BinaryOperator,
-                         testing::Combine(testing::ValuesIn({"bool",
-                                                             "FlagType"}),
-                                          testing::ValuesIn({"^", "&", "|"})));
+INSTANTIATE_TEST_SUITE_P(
+    FlagsOperator, BinaryOperator,
+    testing::ValuesIn({std::tuple<char const *, char const *>("FlagType", "&"),
+                       std::tuple<char const *, char const *>("FlagType", "|"),
+                       std::tuple<char const *, char const *>("FlagType", "^")}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LogicalOperator, BinaryOperator,
+    testing::ValuesIn({std::tuple<char const *, char const *>("bool", "and"),
+                       std::tuple<char const *, char const *>("bool", "or"),
+                       std::tuple<char const *, char const *>("bool", "xor")}));
 
 using OperatorOverload = testing::TestWithParam<char const *>;
 TEST_P(OperatorOverload, Overloads) {

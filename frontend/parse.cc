@@ -977,7 +977,7 @@ std::vector<std::unique_ptr<ast::Call>> BuildJumpOptions(
     std::unique_ptr<ast::Expression> node,
     diagnostic::DiagnosticConsumer &diag) {
   std::vector<std::unique_ptr<ast::Call>> call_exprs;
-  auto exprs = ExtractRightChain(Operator::Or, std::move(node));
+  auto exprs = ExtractRightChain(Operator::SymbolOr, std::move(node));
   for (auto &expr : exprs) {
     if (expr->is<ast::Call>()) {
       call_exprs.push_back(move_as<ast::Call>(expr));
@@ -1206,14 +1206,16 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
 
   static base::Global kSymbols =
       absl::flat_hash_map<std::string_view, Operator>{
-          {"|=", Operator::OrEq},  {"&=", Operator::AndEq},
-          {"^=", Operator::XorEq}, {"+=", Operator::AddEq},
-          {"-=", Operator::SubEq}, {"*=", Operator::MulEq},
-          {"/=", Operator::DivEq}, {"%=", Operator::ModEq},
-          {"+", Operator::Add},    {"-", Operator::Sub},
-          {"*", Operator::Mul},    {"/", Operator::Div},
-          {"%", Operator::Mod},    {"^", Operator::Xor},
-          {"&", Operator::And},    {"|", Operator::Or}};
+          {"|=", Operator::SymbolOrEq},  {"&=", Operator::SymbolAndEq},
+          {"^=", Operator::SymbolXorEq}, {"+=", Operator::AddEq},
+          {"-=", Operator::SubEq},       {"*=", Operator::MulEq},
+          {"/=", Operator::DivEq},       {"%=", Operator::ModEq},
+          {"+", Operator::Add},          {"-", Operator::Sub},
+          {"*", Operator::Mul},          {"/", Operator::Div},
+          {"%", Operator::Mod},          {"xor", Operator::Xor},
+          {"and", Operator::And},        {"or", Operator::Or},
+          {"^", Operator::SymbolXor},    {"&", Operator::SymbolAnd},
+          {"|", Operator::SymbolOr}};
   return std::make_unique<ast::BinaryOperator>(
       move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
       move_as<ast::Expression>(nodes[2]));

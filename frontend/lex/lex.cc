@@ -146,13 +146,13 @@ SourceCursor NextSimpleWord(SourceCursor *cursor) {
 
 static base::Global kKeywords =
     absl::flat_hash_map<std::string_view, std::variant<Operator, Syntax>>{
-        {"ensure", {Operator::Ensure}}, {"needs", {Operator::Needs}},
         {"import", {Operator::Import}}, {"flags", {Syntax::Flags}},
         {"enum", {Syntax::Enum}},       {"struct", {Syntax::Struct}},
         {"return", {Operator::Return}}, {"goto", {Operator::Goto}},
         {"jump", {Syntax::Jump}},       {"as", {Operator::As}},
         {"copy", {Operator::Copy}},     {"init", {Operator::Init}},
-        {"move", {Operator::Move}}};
+        {"move", {Operator::Move}},     {"and", {Operator::And}},
+        {"or", {Operator::Or}},         {"xor", {Operator::Xor}}};
 
 static bool BeginsWith(std::string_view prefix, std::string_view s) {
   if (s.size() < prefix.size()) { return false; }
@@ -168,28 +168,28 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
 // match, we cannot, for example, put `:` before `::=`.
 static base::Global kOps =
     std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 46>{
-        {{"@", {Operator::At}},         {",", {Operator::Comma}},
-         {"[*]", {Operator::BufPtr}},   {"$", {Operator::ArgType}},
-         {"+=", {Operator::AddEq}},     {"+", {Operator::Add}},
-         {"-=", {Operator::SubEq}},     {"..", {Operator::VariadicPack}},
-         {"->", {Operator::Arrow}},     {"-", {Operator::Sub}},
-         {"*=", {Operator::MulEq}},     {"*", {Operator::Mul}},
-         {"%=", {Operator::ModEq}},     {"%", {Operator::Mod}},
-         {"&=", {Operator::AndEq}},     {"&", {Operator::And}},
-         {"|=", {Operator::OrEq}},      {"|", {Operator::Or}},
-         {"^=", {Operator::XorEq}},     {"^", {Operator::Xor}},
-         {">=", {Operator::Ge}},        {">", {Operator::Gt}},
-         {"!=", {Operator::Ne}},        {"::=", {Operator::DoubleColonEq}},
-         {":?", {Operator::TypeOf}},    {"::", {Operator::DoubleColon}},
-         {":=", {Operator::ColonEq}},   {".", {Syntax::Dot}},
-         {":", {Operator::Colon}},      {"<<", {Operator::Yield}},
-         {"<=", {Operator::Le}},        {"<", {Operator::Lt}},
-         {"!", {Operator::Not}},        {"==", {Operator::Eq}},
-         {"=>", {Operator::Rocket}},    {"=", {Operator::Assign}},
-         {"'", {Operator::Call}},       {"(", {Syntax::LeftParen}},
-         {")", {Syntax::RightParen}},   {"[", {Syntax::LeftBracket}},
-         {"]", {Syntax::RightBracket}}, {"{", {Syntax::LeftBrace}},
-         {"}", {Syntax::RightBrace}},   {";", {Syntax::Semicolon}}},
+        {{"@", {Operator::At}},           {",", {Operator::Comma}},
+         {"[*]", {Operator::BufPtr}},     {"$", {Operator::ArgType}},
+         {"+=", {Operator::AddEq}},       {"+", {Operator::Add}},
+         {"-=", {Operator::SubEq}},       {"..", {Operator::VariadicPack}},
+         {"->", {Operator::Arrow}},       {"-", {Operator::Sub}},
+         {"*=", {Operator::MulEq}},       {"*", {Operator::Mul}},
+         {"%=", {Operator::ModEq}},       {"%", {Operator::Mod}},
+         {"&=", {Operator::SymbolAndEq}}, {"&", {Operator::SymbolAnd}},
+         {"|=", {Operator::SymbolOrEq}},  {"|", {Operator::SymbolOr}},
+         {"^=", {Operator::SymbolXorEq}}, {"^", {Operator::SymbolXor}},
+         {">=", {Operator::Ge}},          {">", {Operator::Gt}},
+         {"!=", {Operator::Ne}},          {"::=", {Operator::DoubleColonEq}},
+         {":?", {Operator::TypeOf}},      {"::", {Operator::DoubleColon}},
+         {":=", {Operator::ColonEq}},     {".", {Syntax::Dot}},
+         {":", {Operator::Colon}},        {"<<", {Operator::Yield}},
+         {"<=", {Operator::Le}},          {"<", {Operator::Lt}},
+         {"!", {Operator::Not}},          {"==", {Operator::Eq}},
+         {"=>", {Operator::Rocket}},      {"=", {Operator::Assign}},
+         {"'", {Operator::Call}},         {"(", {Syntax::LeftParen}},
+         {")", {Syntax::RightParen}},     {"[", {Syntax::LeftBracket}},
+         {"]", {Syntax::RightBracket}},   {"{", {Syntax::LeftBrace}},
+         {"}", {Syntax::RightBrace}},     {";", {Syntax::Semicolon}}},
     };
 
 Lexeme NextOperator(SourceCursor *cursor, Source *src) {

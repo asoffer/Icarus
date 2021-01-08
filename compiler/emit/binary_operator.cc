@@ -6,56 +6,71 @@ namespace compiler {
 ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
   switch (node->op()) {
     case frontend::Operator::Or: {
+      auto lhs_ir      = EmitValue(node->lhs());
+      auto *land_block = builder().AddBlock();
+
+      std::vector<ir::BasicBlock const *> phi_blocks;
+
+      auto *next_block = builder().AddBlock();
+      builder().CondJump(lhs_ir.get<ir::RegOr<bool>>(), land_block, next_block);
+      phi_blocks.push_back(builder().CurrentBlock());
+      builder().CurrentBlock() = next_block;
+
+      auto rhs_ir = EmitValue(node->rhs());
+      phi_blocks.push_back(builder().CurrentBlock());
+      builder().UncondJump(land_block);
+
+      builder().CurrentBlock() = land_block;
+
+      return ir::Value(builder().Phi<bool>(
+          std::move(phi_blocks), {true, rhs_ir.get<ir::RegOr<bool>>()}));
+    } break;
+    case frontend::Operator::SymbolOr: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
-      auto t      = ASSERT_NOT_NULL(context().qual_type(node))->type();
-      if (t == type::Bool) {
-        auto *land_block = builder().AddBlock();
-
-        std::vector<ir::BasicBlock const *> phi_blocks;
-
-        auto *next_block = builder().AddBlock();
-        builder().CondJump(lhs_ir.get<ir::RegOr<bool>>(), land_block,
-                           next_block);
-        phi_blocks.push_back(builder().CurrentBlock());
-        builder().CurrentBlock() = next_block;
-
-        auto rhs_ir = EmitValue(node->rhs());
-        phi_blocks.push_back(builder().CurrentBlock());
-        builder().UncondJump(land_block);
-
-        builder().CurrentBlock() = land_block;
-
-        return ir::Value(builder().Phi<bool>(
-            std::move(phi_blocks), {true, rhs_ir.get<ir::RegOr<bool>>()}));
-      } else if (t.is<type::Flags>()) {
-        // `|` is not overloadable, and blocks piped together must be done
-        // syntactically in a `goto` node and are handled by the parser.
-        return ir::Value(current_block()->Append(type::OrFlagsInstruction{
-            .lhs    = lhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
-            .rhs    = rhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
-            .result = builder().CurrentGroup()->Reserve()}));
-      } else {
-        UNREACHABLE();
-      }
+      // `|` is not overloadable, and blocks piped together must be done
+      // syntactically in a `goto` node and are handled by the parser.
+      return ir::Value(current_block()->Append(type::OrFlagsInstruction{
+          .lhs    = lhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
+          .rhs    = rhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
+          .result = builder().CurrentGroup()->Reserve()}));
     } break;
     case frontend::Operator::Xor: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
-      auto t      = ASSERT_NOT_NULL(context().qual_type(node))->type();
-      if (t == type::Bool) {
-        return ir::Value(builder().Ne(lhs_ir.get<ir::RegOr<bool>>(),
-                                      rhs_ir.get<ir::RegOr<bool>>()));
-      } else if (t.is<type::Flags>()) {
-        return ir::Value(current_block()->Append(type::XorFlagsInstruction{
-            .lhs    = lhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
-            .rhs    = rhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
-            .result = builder().CurrentGroup()->Reserve()}));
-      } else {
-        UNREACHABLE();
-      }
+      return ir::Value(builder().Ne(lhs_ir.get<ir::RegOr<bool>>(),
+                                    rhs_ir.get<ir::RegOr<bool>>()));
+    } break;
+    case frontend::Operator::SymbolXor: {
+      auto lhs_ir = EmitValue(node->lhs());
+      auto rhs_ir = EmitValue(node->rhs());
+      return ir::Value(current_block()->Append(type::XorFlagsInstruction{
+          .lhs    = lhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
+          .rhs    = rhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
+          .result = builder().CurrentGroup()->Reserve()}));
     } break;
     case frontend::Operator::And: {
+      auto lhs_ir = EmitValue(node->lhs());
+      auto rhs_ir = EmitValue(node->rhs());
+
+      auto *land_block = builder().AddBlock();
+
+      std::vector<ir::BasicBlock const *> phi_blocks;
+
+      auto *next_block = builder().AddBlock();
+      builder().CondJump(lhs_ir.get<ir::RegOr<bool>>(), next_block, land_block);
+      phi_blocks.push_back(builder().CurrentBlock());
+      builder().CurrentBlock() = next_block;
+
+      phi_blocks.push_back(builder().CurrentBlock());
+      builder().UncondJump(land_block);
+
+      builder().CurrentBlock() = land_block;
+
+      return ir::Value(builder().Phi<bool>(
+          std::move(phi_blocks), {false, rhs_ir.get<ir::RegOr<bool>>()}));
+    } break;
+    case frontend::Operator::SymbolAnd: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
       auto t      = ASSERT_NOT_NULL(context().qual_type(node))->type();
@@ -195,7 +210,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                 .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
-    case frontend::Operator::OrEq: {
+    case frontend::Operator::SymbolOrEq: {
       auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
       auto lhs_lval  = EmitRef(node->lhs());
       if (this_type == type::Bool) {
@@ -228,7 +243,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       }
       return ir::Value();
     } break;
-    case frontend::Operator::AndEq: {
+    case frontend::Operator::SymbolAndEq: {
       auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
       auto lhs_lval  = EmitRef(node->lhs());
       if (this_type.is<type::Flags>()) {
@@ -261,7 +276,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       }
       return ir::Value();
     } break;
-    case frontend::Operator::XorEq: {
+    case frontend::Operator::SymbolXorEq: {
       auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
       auto lhs_lval  = EmitRef(node->lhs());
       if (this_type.is<type::Flags>()) {

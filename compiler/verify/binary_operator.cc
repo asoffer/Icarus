@@ -39,9 +39,9 @@ struct LogicalAssignmentNeedsBoolOrFlags {
 
  private:
   static std::string_view OperatorToString(frontend::Operator op) {
-    if (op == frontend::Operator::XorEq) { return "^="; }
-    if (op == frontend::Operator::AndEq) { return "&="; }
-    if (op == frontend::Operator::OrEq) { return "|="; }
+    if (op == frontend::Operator::SymbolXorEq) { return "^="; }
+    if (op == frontend::Operator::SymbolAndEq) { return "&="; }
+    if (op == frontend::Operator::SymbolOrEq) { return "|="; }
     UNREACHABLE();
   }
 };
@@ -106,8 +106,31 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
   if (lhs_qual_type.type() == type::Bool and
       rhs_qual_type.type() == type::Bool) {
     return c->context().set_qual_type(node, type::QualType(return_type, quals));
-  } else if (lhs_qual_type.type().is<type::Flags>() and
-             rhs_qual_type.type().is<type::Flags>()) {
+  } else {
+    // TODO: Calling with constants?
+    auto qt = c->VerifyBinaryOverload(
+        op, node, type::Typed<ir::Value>(ir::Value(), lhs_qual_type.type()),
+        type::Typed<ir::Value>(ir::Value(), rhs_qual_type.type()));
+    if (not qt.ok()) {
+      c->diag().Consume(InvalidBinaryOperatorOverload{
+          .op    = std::string(op),
+          .range = frontend::SourceRange(node->lhs()->range().end(),
+                                         node->rhs()->range().begin()),
+      });
+    }
+    return qt;
+  }
+}
+
+type::QualType VerifyFlagsOperator(Compiler *c, std::string_view op,
+                                   ast::BinaryOperator const *node,
+                                   type::QualType lhs_qual_type,
+                                   type::QualType rhs_qual_type,
+                                   type::Type return_type) {
+  auto quals =
+      (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
+  if (lhs_qual_type.type().is<type::Flags>() and
+      rhs_qual_type.type().is<type::Flags>()) {
     if (lhs_qual_type.type() == rhs_qual_type.type()) {
       return c->context().set_qual_type(node,
                                         type::QualType(return_type, quals));
@@ -227,9 +250,9 @@ type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
 
   switch (node->op()) {
     using frontend::Operator;
-    case Operator::XorEq:
-    case Operator::AndEq:
-    case Operator::OrEq: {
+    case Operator::SymbolXorEq:
+    case Operator::SymbolAndEq:
+    case Operator::SymbolOrEq: {
       if (lhs_qual_type.quals() >= type::Quals::Const() or
           not(lhs_qual_type.quals() >= type::Quals::Ref())) {
         diag().Consume(InvalidAssignmentOperatorLhsValueCategory{
@@ -250,17 +273,30 @@ type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
       }
     } break;
     case Operator::Xor:
-      return VerifyLogicalOperator(this, "^", node, lhs_qual_type,
+      return VerifyLogicalOperator(this, "xor", node, lhs_qual_type,
                                    rhs_qual_type, lhs_qual_type.type());
     case Operator::And:
-      return VerifyLogicalOperator(this, "&", node, lhs_qual_type,
+      return VerifyLogicalOperator(this, "and", node, lhs_qual_type,
                                    rhs_qual_type, lhs_qual_type.type());
     case Operator::Or: {
       // Note: Block pipes are extracted in the parser so there's no need to
       // type-check them here. They will never be expressed in the syntax tree
       // as a binary operator.
-      return VerifyLogicalOperator(this, "|", node, lhs_qual_type,
+      return VerifyLogicalOperator(this, "or", node, lhs_qual_type,
                                    rhs_qual_type, lhs_qual_type.type());
+    }
+    case Operator::SymbolXor:
+      return VerifyFlagsOperator(this, "^", node, lhs_qual_type, rhs_qual_type,
+                                 lhs_qual_type.type());
+    case Operator::SymbolAnd:
+      return VerifyFlagsOperator(this, "&", node, lhs_qual_type, rhs_qual_type,
+                                 lhs_qual_type.type());
+    case Operator::SymbolOr: {
+      // Note: Block pipes are extracted in the parser so there's no need to
+      // type-check them here. They will never be expressed in the syntax tree
+      // as a binary operator.
+      return VerifyFlagsOperator(this, "|", node, lhs_qual_type, rhs_qual_type,
+                                 lhs_qual_type.type());
     }
     case Operator::Add:
       return VerifyArithmeticOperator(this, "+", node, lhs_qual_type,
