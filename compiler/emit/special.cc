@@ -10,9 +10,10 @@
 
 namespace compiler {
 namespace {
-enum AssignmentKind { Move, Copy };
+enum Kind{ Move, Copy };
 
-template <AssignmentKind K>
+
+template <Kind K>
 void EmitArrayAssignment(Compiler &c, type::Array const *to,
                          type::Array const *from) {
   auto &bldr          = c.builder();
@@ -71,6 +72,64 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
   bldr.ReturnJump();
 }
 
+template <Kind K>
+void EmitArrayInit(Compiler &c, type::Array const *to,
+                   type::Array const *from) {
+  auto &bldr          = c.builder();
+  auto &fn            = *bldr.CurrentGroup();
+  bldr.CurrentBlock() = fn.entry();
+  auto var            = ir::Reg::Arg(0);
+  auto ret            = bldr.GetRet(0, from->data_type());
+
+  auto from_data_ptr_type = type::Ptr(from->data_type());
+
+  auto from_ptr = bldr.PtrIncr(var, 0, from_data_ptr_type);
+  auto from_end_ptr =
+      bldr.PtrIncr(from_ptr, from->length(), from_data_ptr_type);
+  auto to_ptr = bldr.PtrIncr(ret, 0, from_data_ptr_type);
+
+  auto *loop_body  = bldr.AddBlock();
+  auto *land_block = bldr.AddBlock();
+  auto *cond_block = bldr.AddBlock();
+
+  bldr.UncondJump(cond_block);
+
+  bldr.CurrentBlock() = cond_block;
+  auto *from_phi      = bldr.PhiInst<ir::Addr>();
+  auto *to_phi        = bldr.PhiInst<ir::Addr>();
+  bldr.CondJump(bldr.Eq(ir::RegOr<ir::Addr>(from_phi->result), from_end_ptr),
+                land_block, loop_body);
+
+  bldr.CurrentBlock() = loop_body;
+  if constexpr (K == Copy) {
+    c.EmitCopyInit(
+        type::Typed<ir::Reg>(to_phi->result, to->data_type()),
+        type::Typed<ir::Value>(
+            ir::Value(c.builder().PtrFix(from_phi->result, from->data_type())),
+            from->data_type()));
+  } else if constexpr (K == Move) {
+    c.EmitMoveInit(
+        type::Typed<ir::Reg>(to_phi->result, to->data_type()),
+        type::Typed<ir::Value>(
+            ir::Value(c.builder().PtrFix(from_phi->result, from->data_type())),
+            from->data_type()));
+  } else {
+    UNREACHABLE();
+  }
+
+  ir::Reg next_to   = bldr.PtrIncr(to_phi->result, 1, from_data_ptr_type);
+  ir::Reg next_from = bldr.PtrIncr(from_phi->result, 1, from_data_ptr_type);
+  bldr.UncondJump(cond_block);
+
+  to_phi->add(fn.entry(), to_ptr);
+  to_phi->add(bldr.CurrentBlock(), next_to);
+  from_phi->add(fn.entry(), from_ptr);
+  from_phi->add(bldr.CurrentBlock(), next_from);
+
+  bldr.CurrentBlock() = land_block;
+  bldr.ReturnJump();
+}
+
 }  // namespace
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
@@ -109,6 +168,27 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
   current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
 
+void SetArrayInits(Compiler &c, type::Array const *array_type) {
+  auto [copy_fn, copy_inserted] =
+      c.context().root().InsertCopyInit(array_type, array_type);
+  auto [move_fn, move_inserted] =
+      c.context().root().InsertMoveInit(array_type, array_type);
+  ASSERT(copy_inserted == move_inserted);
+  if (copy_inserted) {
+    ICARUS_SCOPE(ir::SetCurrent(copy_fn, c.builder())) {
+      EmitArrayInit<Copy>(c, array_type, array_type);
+    }
+    ICARUS_SCOPE(ir::SetCurrent(move_fn, c.builder())) {
+      EmitArrayInit<Move>(c, array_type, array_type);
+    }
+
+    copy_fn->WriteByteCode<interpreter::instruction_set_t>();
+    move_fn->WriteByteCode<interpreter::instruction_set_t>();
+    // TODO: Remove const_cast.
+    const_cast<type::Array *>(array_type)->SetInits(copy_fn, move_fn);
+  }
+}
+
 void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
   auto [copy_fn, copy_inserted] =
       c.context().root().InsertCopyAssign(array_type, array_type);
@@ -132,12 +212,20 @@ void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Array> to,
                             type::Typed<ir::Value> const &from) {
-  NOT_YET();
+  ASSERT(type::Type(to.type()) == from.type());
+  SetArrayInits(*this, to.type());
+  current_block()->Append(ir::MoveInitInstruction{
+      .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
+  current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Array> to,
                             type::Typed<ir::Value> const &from) {
-  NOT_YET();
+  ASSERT(type::Type(to.type()) == from.type());
+  SetArrayInits(*this, to.type());
+  current_block()->Append(ir::CopyInitInstruction{
+      .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
+  current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitCopyAssign(

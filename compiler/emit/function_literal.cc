@@ -52,6 +52,42 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
   return ir::Value(ir::Fn{f});
 }
 
+void Compiler::EmitMoveInit(
+    ast::FunctionLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  if (node->is_generic()) { NOT_YET(); }
+
+  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+}
+
+void Compiler::EmitCopyInit(
+    ast::FunctionLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  if (node->is_generic()) { NOT_YET(); }
+
+  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+}
+
+void Compiler::EmitMoveAssign(
+    ast::FunctionLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  if (node->is_generic()) { NOT_YET(); }
+
+  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+}
+
+void Compiler::EmitCopyAssign(
+    ast::FunctionLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  if (node->is_generic()) { NOT_YET(); }
+
+  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+}
+
 WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   LOG("EmitFunctionBody", "%s", node->DebugString());
 

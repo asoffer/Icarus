@@ -442,6 +442,7 @@ Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
            or c == 'd'   // For decimal
            or c == 'o'   // For octal
            or c == 'x'   // For hexadecimal
+           or c == '_'   // For separators
            or c == '.';  // For non-integers
   });
 

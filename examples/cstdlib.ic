@@ -1,6 +1,0 @@
-alloc ::= (T: type) => foreign("malloc", int -> *T)(T'bytes)
-
-main ::= () -> () {
-  ptr := alloc(int)
-}
-

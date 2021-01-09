@@ -2,9 +2,8 @@
 io ::= import "io.ic"
 
 num := 0
-upper ::= 2_000_000
-n := 2
-while (n <= upper) do {
+upper ::= 1_000
+for (2, upper) do [n: i64] {
   found_div := false
   test := 2
   while (test * test <= n) do {

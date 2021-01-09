@@ -46,6 +46,42 @@ ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
   return ir::Value(ir::Fn{f});
 }
 
+void Compiler::EmitMoveInit(
+    ast::ShortFunctionLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  if (node->is_generic()) { NOT_YET(); }
+
+  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+}
+
+void Compiler::EmitCopyInit(
+    ast::ShortFunctionLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  if (node->is_generic()) { NOT_YET(); }
+
+  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+}
+
+void Compiler::EmitMoveAssign(
+    ast::ShortFunctionLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  if (node->is_generic()) { NOT_YET(); }
+
+  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+}
+
+void Compiler::EmitCopyAssign(
+    ast::ShortFunctionLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  if (node->is_generic()) { NOT_YET(); }
+
+  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+}
+
 WorkItem::Result Compiler::EmitShortFunctionBody(
     ast::ShortFunctionLiteral const *node) {
   ir::NativeFn ir_func =

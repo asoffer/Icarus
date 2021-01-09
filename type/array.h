@@ -51,13 +51,18 @@ struct Array : LegacyType {
   }
 
   void SetInitializer(ir::Fn f) {
-    ASSERT(init_.has_value() == false);
-    init_.emplace(f);
+    ASSERT(default_init_.has_value() == false);
+    default_init_.emplace(f);
   }
 
   void SetDestructor(ir::Fn f) {
-    ASSERT(init_.has_value() == false);
-    init_.emplace(f);
+    ASSERT(dtor_.has_value() == false);
+    dtor_.emplace(f);
+  }
+
+  void SetInits(ir::Fn copy_init, ir::Fn move_init) {
+    ASSERT(inits_.has_value() == false);
+    inits_.emplace(copy_init, move_init);
   }
 
   void SetAssignments(ir::Fn copy_assignment, ir::Fn move_assignment) {
@@ -65,8 +70,10 @@ struct Array : LegacyType {
     assignments_.emplace(copy_assignment, move_assignment);
   }
 
-  ir::Fn Initializer() const { return init_.value(); }
+  ir::Fn Initializer() const { return default_init_.value(); }
   ir::Fn Destructor() const { return dtor_.value(); }
+  ir::Fn CopyInit() const { return inits_->first; }
+  ir::Fn MoveInit() const { return inits_->second; }
   ir::Fn CopyAssign() const { return assignments_->first; }
   ir::Fn MoveAssign() const { return assignments_->second; }
 
@@ -76,8 +83,8 @@ struct Array : LegacyType {
 
   length_t len_;
   Type data_type_;
-  std::optional<ir::Fn> init_, dtor_;
-  std::optional<std::pair<ir::Fn, ir::Fn>> assignments_;
+  std::optional<ir::Fn> default_init_, dtor_;
+  std::optional<std::pair<ir::Fn, ir::Fn>> assignments_, inits_;
 };
 
 Array const *Arr(Array::length_t len, Type t);

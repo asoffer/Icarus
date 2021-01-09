@@ -2,7 +2,7 @@ io ::= import "io.ic"
 
 // The purpose of this example is to show all the ways in which functions can
 // be called. This includes things like default arguments, named arguments,
-// dynamic dispatch, and all the combinations thereof.
+// and all the combinations thereof.
 
 io.Print("Basic calls:\n")
 basic_calls()
@@ -22,10 +22,6 @@ io.Print("----------------------------------------------------------------\n")
 
 io.Print("Compile-time arguments:\n")
 compile_time_arguments()
-io.Print("----------------------------------------------------------------\n")
-
-io.Print("Dynamic dispatch:\n")
-dynamic_dispatch()
 io.Print("----------------------------------------------------------------\n")
 
 io.Print("Multiple return values:\n")
@@ -188,92 +184,40 @@ compile_time_arguments ::= () -> () {
   // So far we have only seen arguments to functions declared with a
   // single colon. Using `::` marks the argument as required to be known at
   // compile-time.
-//   compile_time_square ::= (n :: i64) => n * n
-//   io.Print(compile_time_square(3))
-//   io.Print("\n")
-// 
-//   // Compile-time arguments do not need to be literals. They can also be
-//   // compile-time constants, or expressions known at compile-time.
-//   N ::= 17
-//   io.Print(compile_time_square(N))
-//   io.Print("\n")
-//   io.Print(compile_time_square(2 * N - 10))
-//   io.Print("\n")
-// 
-//   // Compile-time arguments work just as well with named or default arguments.
-//   f ::= (a: i64, b ::= 2, c: i64) -> () {
-//     io.Print("f(a = ")
-//     io.Print(a)
-//     io.Print(", b = ")
-//     io.Print(b)
-//     io.Print(", c = ")
-//     io.Print(c)
-//     io.Print(")\n")
-//   }
-//   f(1, c = 3)
-//   f(1, c = 30, b = 20)
-// 
-//   // One benefit of compile-time arguments is that they can be used in the
-//   // return type of a function.
-//   // default_int_array ::= (len :: i64) -> [len; i64] {
-//   //   result: [len; i64]
-//   //   return result
-//   // }
-//   // TODO print default_int_array(3)
+  compile_time_square ::= (n :: i64) => n * n
+  io.Print(compile_time_square(3))
+  io.Print("\n")
+
+  // Compile-time arguments do not need to be literals. They can also be
+  // compile-time constants, or expressions known at compile-time.
+  N ::= 17
+  io.Print(compile_time_square(N))
+  io.Print("\n")
+  io.Print(compile_time_square(2 * N - 10))
+  io.Print("\n")
+
+  // Compile-time arguments work just as well with named or default arguments.
+  f ::= (a: i64, b ::= 2, c: i64) -> () {
+    io.Print("f(a = ")
+    io.Print(a)
+    io.Print(", b = ")
+    io.Print(b)
+    io.Print(", c = ")
+    io.Print(c)
+    io.Print(")\n")
+  }
+  // f(1, c = 3)
+  f(1, c = 30, b = 20)
+
+  // One benefit of compile-time arguments is that they can be used in the
+  // return type of a function.
+  default_int_array ::= (len :: i64) -> [len; i64] {
+    result: [len; i64]
+    return result
+  }
+  default_int_array(3)
 }
  
-dynamic_dispatch ::= () -> () {
-  // The idea behind dynamic dispatch is the ability to call a function without
-  // knowing at run-time exactly which function will be called. Icarus supports
-  // dynamic dispatch with a variant type. If a variant is passed to a function,
-  // a function of the given name need not actually exist, so long as the
-  // function exists for any possible input type. For example,
-  f ::= (n: i64) -> () { io.Print("f(i64)\n") }
-  f ::= (x: bool | f32) -> () { io.Print("f(bool | f32)\n") }
-  v: bool | i64 = true
-  f(v) // Calls the (bool | f32) overload.
-
-  v = 3
-  f(v) // Calls the i64 overload.
-
-  // Note that in the above, there is no function named f that takes a value of
-  // type bool | i64. Moreover, there is not even a function for each member of
-  // the variant. However, the i64 overload of `f` and the `bool | f32`
-  // overload of `f` together cover all possibilities for `v`, which enables the
-  // compiler to add code which picks the correct overload to be called at
-  // run-time.
-
-  // Dynamic dispatch can be used simultaneously with multiple arguments.
-  g ::= (x: bool, y: bool) -> () { io.Print("g(x: bool, y: bool)\n") }
-  g ::= (x: bool, y: i64) -> () { io.Print("g(x: bool, y: i64)\n") }
-  g ::= (x: i64, y: i64) -> () { io.Print("g(x: i64, y: i64)\n") }
-  g ::= (x: i64, y: bool) -> () { io.Print("g(x: i64, y: bool)\n") }
-  g(v, v)
-
-  // This works just as well with named arguments
-  // TODO g(y = v, x = true)
-
-  // And even with default arguments.
-  h ::= (x: bool = true, y: i64) -> () { io.Print("h(x: bool, y: i64)\n") }
-  h ::= (x: i64, y: i64) -> () { io.Print("h(x: i64, y: i64)\n") }
-  h(v, 3)
-  h(y = 3)
-
-  // The functions used in a dynamic dispatch need not have the same return
-  // type. The type of the result of a dynamic dispatch call will be a variant
-  // of all possible return types.
-  squared ::= (n: i64) => n * n
-  squared ::= (r: f64) => r * r
-  // TODO number: i64 | f64 = 17
-  io.Print("17^2 = ")
-  // TODO io.Print(number'squared)
-  io.Print("\n")
-  // TODO number = 1.7
-  io.Print("1.7^2 = ")
-  // TODO io.Print(number'squared)
-  io.Print("\n")
-}
-
 multiple_return_values ::= () -> () {
 //   // Functions can have multiple return values
 //   f ::= (n: i64) => (n, n * n)

@@ -6,11 +6,9 @@ factorial ::= (n: i64) -> i64 {
   return n * (n - 1)'factorial
 }
 
-num := 0
-while (num <= 10) do {
+for (0, 10) do [num: i64] {
   io.Print(num)
   io.Print("! = ")
   io.Print(num'factorial)
   io.Print("\n")
-  num += 1
 }

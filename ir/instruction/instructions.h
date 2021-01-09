@@ -218,12 +218,12 @@ struct CopyInitInstruction
                             std::vector<ir::Addr>{ctx.resolve<ir::Addr>(to)});
 
     } else if (auto *a = type.if_as<type::Array>()) {
-      NOT_YET();
-      // ir::Fn f = a->CopyInit();
+      ir::Fn f = a->CopyInit();
       // TODO: No reason this has to be native.
-      // auto frame = ctx.MakeStackFrame(f.native());
-      // frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-      // return std::make_pair(frame, std::vector<ir::Addr>{to});
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
+      return std::make_pair(frame,
+                            std::vector<ir::Addr>{ctx.resolve<ir::Addr>(to)});
     } else {
       NOT_YET();
     }
@@ -280,12 +280,12 @@ struct MoveInitInstruction
       return std::make_pair(frame,
                             std::vector<ir::Addr>{ctx.resolve<ir::Addr>(to)});
     } else if (auto *a = type.if_as<type::Array>()) {
-      NOT_YET();
-      // ir::Fn f = a->MoveInit();
+      ir::Fn f = a->MoveInit();
       // TODO: No reason this has to be native.
-      // auto frame = ctx.MakeStackFrame(f.native());
-      // frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-      // return std::make_pair(frame, std::vector<ir::Addr>{to});
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
+      return std::make_pair(frame,
+                            std::vector<ir::Addr>{ctx.resolve<ir::Addr>(to)});
     } else {
       NOT_YET();
     }
