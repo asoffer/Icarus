@@ -6,6 +6,7 @@ cc_library(
     srcs = ["scope.cc"],
     deps = [
         "//ast:ast_fwd",
+        "//ast:declaration",
         "//base:cast",
         "//base:debug",
         "//base:log",

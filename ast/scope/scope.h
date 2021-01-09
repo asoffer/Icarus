@@ -7,6 +7,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/types/span.h"
 #include "ast/ast_fwd.h"
+#include "ast/declaration.h"
 #include "base/cast.h"
 #include "base/debug.h"
 #include "base/log.h"
@@ -27,9 +28,7 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this, std::forward<Args>(args)...);
   }
 
-  // TODO: The `id` needs to be the same as decl->id() but due to layering
-  // issues declarations are incomplete when scopes are being compiled.
-  void InsertDecl(std::string_view id, Declaration *decl);
+  void InsertDeclaration(Declaration::const_iterator iter);
 
   // Whether or not non-constant declarations are visible across this scope
   // boundary. In this example,
@@ -67,17 +66,20 @@ struct Scope : public base::Cast<Scope> {
         static_cast<Scope const *>(this)->template Containing<Sc>());
   }
 
-  absl::flat_hash_map<std::string_view, std::vector<Declaration *>> decls_;
+  absl::flat_hash_map<std::string_view,
+                      std::vector<Declaration::const_iterator>>
+      decls_;
 
-  absl::Span<Declaration *const> VisibleChildren(std::string_view id) const {
+  absl::Span<Declaration::const_iterator const> VisibleChildren(
+      std::string_view id) const {
     if (auto iter = child_decls_.find(id); iter != child_decls_.end()) {
       return iter->second;
     }
-    return absl::Span<Declaration *const>();
+    return absl::Span<Declaration::const_iterator const>();
   }
 
  private:
-  absl::flat_hash_map<std::string_view, std::vector<Declaration *>>
+  absl::flat_hash_map<std::string_view, std::vector<Declaration::const_iterator>>
       child_decls_;
 
  public:

@@ -753,17 +753,29 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   auto op = nodes[1]->as<Token>().op;
   SourceRange decl_range(nodes.front()->range().begin(),
                          nodes.back()->range().end());
-  std::string id;
-  SourceRange id_range;
-  if (nodes[0]->is<ast::Identifier>()) {
-    id_range = nodes[0]->range();
-    id       = std::string(nodes[0]->as<ast::Identifier>().name());
+  std::vector<std::string >ids;
+  std::vector<SourceRange> id_ranges;
+  bool error = false;
+  if (auto *id = nodes[0]->if_as<ast::Identifier>()) {
+    id_ranges.push_back(nodes[0]->range());
+    ids.push_back(std::move(*id).extract());
+  } else if (auto * cl = nodes[0]->if_as<CommaList>()) {
+    ASSERT(cl->parenthesized_ == true);
+    for (auto &&i : std::move(*cl).extract()) {
+      if (auto *id = i->if_as<ast::Identifier>()) {
+        id_ranges.push_back(id->range());
+        ids.push_back(std::move(*id).extract());
+      } else {
+        diag.Consume(DeclaringNonIdentifier{.id_range = i->range()});
+        error = true;
+      }
+    }
+
   } else {
-    diag.Consume(DeclaringNonIdentifier{
-        .id_range = nodes[0]->range(),
-    });
-    return MakeInvalidNode(nodes[0]->range());
+    diag.Consume(DeclaringNonIdentifier{.id_range = nodes[0]->range()});
+    error = true;
   }
+  if (error) { return MakeInvalidNode(decl_range); }
 
   std::unique_ptr<ast::Expression> type_expr, init_val;
   if (op == Operator::Colon or op == Operator::DoubleColon) {
@@ -778,7 +790,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   }
 
   return std::make_unique<ast::Declaration>(
-      decl_range, std::move(id), id_range, std::move(type_expr),
+      decl_range, std::move(ids), std::move(id_ranges), std::move(type_expr),
       std::move(init_val),
       (initial_value_is_hole ? ast::Declaration::f_InitIsHole : 0) |
           (IsConst ? ast::Declaration::f_IsConst : 0));
@@ -1167,8 +1179,8 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   } else if (tk == "=") {
     SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
 
-    if (nodes[0]->is<ast::Declaration>()) {
-      if (nodes[0]->as<ast::Declaration>().IsInferred()) {
+    if (auto *d = nodes[0]->if_as<ast::Declaration>()) {
+      if (not d->type_expr()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
         // give a good error message if that's what is intended?
         diag.Consume(TodoDiagnostic{});
@@ -1237,10 +1249,13 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
         if (not(decl->flags() & ast::Declaration::f_IsConst)) {
           diag.Consume(TodoDiagnostic{});
         }
-        auto [id, type_expr, init_val] = std::move(*decl).extract();
+        auto [ids, type_expr, init_val] = std::move(*decl).extract();
         // TODO: Use the type expression?
-        auto &name = enumerators.emplace_back(std::move(id));
-        values.emplace(name, std::move(init_val));
+        enumerators.insert(enumerators.end(),
+                           std::make_move_iterator(ids.begin()),
+                           std::make_move_iterator(ids.end()));
+        // TODO: Support multiple declarations
+        values.emplace(enumerators.back(), std::move(init_val));
       } else {
         LOG("", "%s", stmt->DebugString());
         diag.Consume(TodoDiagnostic{});
@@ -1276,9 +1291,10 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
   std::vector<std::unique_ptr<ast::Declaration>> before, after;
   for (auto &stmt : stmts->content_) {
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
-      if (decl->id() == "before") {
+      if (decl->ids()[0] == "before") {  // TODO: Support multiple declarations.
         before.push_back(move_as<ast::Declaration>(stmt));
-      } else if (decl->id() == "after") {
+      } else if (decl->ids()[0] ==
+                 "after") {  // TODO: Support multiple declarations.
         after.push_back(move_as<ast::Declaration>(stmt));
       } else {
         diag.Consume(TodoDiagnostic{});

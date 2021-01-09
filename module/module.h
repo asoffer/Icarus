@@ -84,13 +84,13 @@ struct BasicModule : base::Cast<BasicModule> {
 
 // Returns a container of all declarations in this scope and in parent scopes
 // with the given identifier.
-std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
+std::vector<ast::Declaration::const_iterator> AllDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id);
 
 // Returns a container of all visible declarations in this scope  with the given
 // identifier. This means any declarations in the path to the ancestor
 // function/jump, and any constant declarations above that.
-std::vector<ast::Declaration const *> AllVisibleDeclsTowardsRoot(
+std::vector<ast::Declaration::const_iterator> AllVisibleDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id);
 
 // Calls `fn` on each declaration in this scope and in parent scopes with the
@@ -102,8 +102,9 @@ bool ForEachDeclTowardsRoot(ast::Scope const *starting_scope,
        scope_ptr      = scope_ptr->parent) {
     if (auto iter = scope_ptr->decls_.find(id);
         iter != scope_ptr->decls_.end()) {
-      for (auto *decl : iter->second) {
-        if (not fn(decl)) { return false; }
+      for (auto decl_iter : iter->second) {
+        // TODO: Support multiple declarations
+        if (not fn(decl_iter)) { return false; }
       }
     }
 
@@ -112,7 +113,9 @@ bool ForEachDeclTowardsRoot(ast::Scope const *starting_scope,
       for (auto *decl : mod->ExportedDeclarations(id)) {
         // TODO what about transitivity for embedded modules?
         // New context will lookup with no constants.
-        if (not fn(decl)) { return false; }
+        for (auto iter : *decl) {
+          if (not fn(iter)) { return false; }
+        }
       }
     }
   }
@@ -122,7 +125,7 @@ bool ForEachDeclTowardsRoot(ast::Scope const *starting_scope,
 // Returns a container of all declaration with the given identifier that are in
 // a scope directly related to this one (i.e., one of the scopes is an ancestor
 // of the other, or is the root scope of an embedded module).
-std::vector<ast::Declaration const *> AllAccessibleDecls(
+std::vector<ast::Declaration::const_iterator> AllAccessibleDecls(
     ast::Scope const *starting_scope, std::string_view id);
 
 }  // namespace module

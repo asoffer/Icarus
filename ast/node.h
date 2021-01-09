@@ -10,7 +10,7 @@
 namespace ast {
 struct Scope;
 
-struct Node : public base::Cast<Node> {
+struct Node : base::Cast<Node> {
   explicit constexpr Node(frontend::SourceRange const &range = {})
       : range_(range) {}
 

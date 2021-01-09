@@ -21,12 +21,14 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
   std::vector<ir::RegOr<ir::Jump>> enters;
   std::vector<ir::RegOr<ir::Fn>> exits;
   for (auto const &decl : node->decls()) {
-    if (decl.id() == "enter") {
+    // TODO: Support multiple declarations;
+    if (decl.ids()[0] == "enter") {
       enters.push_back(EmitValue(&decl).get<ir::RegOr<ir::Jump>>());
-    } else if (decl.id() == "exit") {
+      // TODO: Support multiple declarations;
+    } else if (decl.ids()[0] == "exit") {
       exits.push_back(EmitValue(&decl).get<ir::RegOr<ir::Fn>>());
     } else {
-      blocks.emplace(decl.id(),
+      blocks.emplace(decl.ids()[0],
                      EmitValue(&decl).get<ir::RegOr<ir::Block>>().value());
     }
   }

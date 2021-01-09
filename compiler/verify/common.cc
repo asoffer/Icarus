@@ -160,18 +160,20 @@ Compiler::ComputeParamsFromArgs(
       node->params().size());
 
   for (auto [index, dep_node] : node->ordered_dependency_nodes()) {
+    ASSERT(dep_node.node()->ids().size() == 1u);
+    std::string_view id = dep_node.node()->ids()[0];
     LOG("generic-fn", "Handling dep-node %s`%s`", ToString(dep_node.kind()),
-        dep_node.node()->id());
+        id);
     switch (dep_node.kind()) {
       case core::DependencyNodeKind::ArgValue: {
         ir::Value val;
         if (index < args.pos().size()) {
           val = *args[index];
-        } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
+        } else if (auto const *a = args.at_or_null(id)) {
           val = **a;
         } else {
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          type::Type t         = context().arg_type(dep_node.node()->id());
+          type::Type t         = context().arg_type(id);
           auto maybe_val =
               Evaluate(type::Typed<ast::Expression const *>(init_val, t));
           if (not maybe_val) { NOT_YET(); }
@@ -182,13 +184,13 @@ Compiler::ComputeParamsFromArgs(
         if (val.get_if<ir::Reg>()) { val = ir::Value(); }
 
         LOG("generic-fn", "... %s", val);
-        context().set_arg_value(dep_node.node()->id(), val);
+        context().set_arg_value(id, val);
       } break;
       case core::DependencyNodeKind::ArgType: {
         type::Type arg_type = nullptr;
         if (index < args.pos().size()) {
           arg_type = args[index].type();
-        } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
+        } else if (auto const *a = args.at_or_null(id)) {
           arg_type = a->type();
         } else {
           // TODO: What if this is a bug and you don't have an initial value?
@@ -196,7 +198,7 @@ Compiler::ComputeParamsFromArgs(
           arg_type       = VerifyType(init_val).type();
         }
         LOG("generic-fn", "... %s", arg_type.to_string());
-        context().set_arg_type(dep_node.node()->id(), arg_type);
+        context().set_arg_type(id, arg_type);
       } break;
       case core::DependencyNodeKind::ParamType: {
         type::Type t = nullptr;
@@ -222,11 +224,10 @@ Compiler::ComputeParamsFromArgs(
         // implicit casts are allowed.
         LOG("generic-fn", "... %s", qt.to_string());
         size_t i =
-            *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
-        parameters.set(
-            i, core::Param<std::pair<ir::Value, type::QualType>>(
-                   dep_node.node()->id(), std::make_pair(ir::Value(), qt),
-                   node->params()[i].flags));
+            *ASSERT_NOT_NULL(node->params().at_or_null(id));
+        parameters.set(i, core::Param<std::pair<ir::Value, type::QualType>>(
+                              id, std::make_pair(ir::Value(), qt),
+                              node->params()[i].flags));
       } break;
       case core::DependencyNodeKind::ParamValue: {
         // Find the argument associated with this parameter.
@@ -236,7 +237,7 @@ Compiler::ComputeParamsFromArgs(
         if (index < args.pos().size()) {
           arg = args[index];
           LOG("generic-fn", "%s %s", *arg, arg.type().to_string());
-        } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
+        } else if (auto const *a = args.at_or_null(id)) {
           arg = *a;
         } else {
           auto t         = context().qual_type(dep_node.node())->type();
@@ -252,8 +253,7 @@ Compiler::ComputeParamsFromArgs(
           context().SetConstant(dep_node.node(), *arg);
         }
 
-        size_t i =
-            *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
+        size_t i = *ASSERT_NOT_NULL(node->params().at_or_null(id));
         parameters[i].value.first = *arg;
       } break;
     }
@@ -308,8 +308,10 @@ type::QualType Compiler::VerifyUnaryOverload(
   absl::flat_hash_set<type::Callable const *> member_types;
 
   module::ForEachDeclTowardsRoot(
-      node->scope(), symbol, [&](ast::Expression const *expr) {
-        ASSIGN_OR(return false, auto qt, context().qual_type(expr));
+      node->scope(), symbol, [&](ast::Declaration::const_iterator decl_iter) {
+        // TODO: Support multiple declarations
+        ASSIGN_OR(return false, auto qt,
+                         context().qual_type(&decl_iter->declaration()));
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
         auto &c = qt.type().as<type::Callable>();
@@ -334,8 +336,10 @@ type::QualType Compiler::VerifyBinaryOverload(
   absl::flat_hash_set<type::Callable const *> member_types;
 
   module::ForEachDeclTowardsRoot(
-      node->scope(), symbol, [&](ast::Expression const *expr) {
-        ASSIGN_OR(return false, auto qt, context().qual_type(expr));
+      node->scope(), symbol, [&](ast::Declaration::const_iterator decl_iter) {
+        // TODO: Support multiple declarations
+        ASSIGN_OR(return false, auto qt,
+                         context().qual_type(&decl_iter->declaration()));
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
         auto &c = qt.type().as<type::Callable>();

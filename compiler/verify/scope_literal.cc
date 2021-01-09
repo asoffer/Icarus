@@ -123,7 +123,7 @@ bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
   if (not jump_type) {
     diag.Consume(NonJumpInit{
         .type  = decl_type,
-        .range = decl->id_range(),
+        .range = decl->id_ranges()[0],  // TODO: Support multiple declarations?
     });
     return false;
   } else if (type::Type(state_type_ptr) != jump_type->state()) {
@@ -131,7 +131,7 @@ bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
     diag.Consume(StateTypeMismatch{
         .actual_type   = jump_type->state(),
         .expected_type = state_type_ptr ? state_type_ptr->pointee() : nullptr,
-        .range         = decl->id_range(),
+        .range = decl->id_ranges()[0],  // TODO: Support multiple declarations?
     });
     return false;
   } else {
@@ -145,7 +145,7 @@ bool VerifyDone(diagnostic::DiagnosticConsumer &diag,
   if (not callable) {
     diag.Consume(NonCallableDone{
         .type  = decl_type,
-        .range = decl->id_range(),
+        .range = decl->id_ranges()[0],  // TODO: Support multiple declarations?
     });
     return false;
   } else {
@@ -193,11 +193,12 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
       qt.MarkError();
     }
 
-    if (decl.id() == "enter") {
+    if (decl.ids()[0] == "enter") {  // TODO: Support multiple declarations
       if (not VerifyInit(diag(), &decl, qual_type.type(), state_type_ptr)) {
         qt.MarkError();
       }
-    } else if (decl.id() == "exit") {
+    } else if (decl.ids()[0] ==
+               "exit") {  // TODO: Support multiple declarations
       if (not VerifyDone(diag(), &decl, qual_type.type())) { qt.MarkError(); }
     } else {
       // TODO: Quick-exit

@@ -17,8 +17,9 @@ ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
   out_vals.reserve(node->outputs().size());
   for (auto const *p : node->params()) {
     if (auto const *decl = p->if_as<ast::Declaration>()) {
+      ASSERT(decl->ids().size() == 1u);
       if (auto const *te = decl->type_expr()) {
-        param_vals.emplace_back(std::string(decl->id()),
+        param_vals.emplace_back(decl->ids()[0],
                                 EmitValue(te).get<ir::RegOr<type::Type>>());
       } else {
         NOT_YET();

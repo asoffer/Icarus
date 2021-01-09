@@ -29,6 +29,7 @@ struct OverloadSet {
 
   // Construct an overlaod set from a collection of declarations.
   OverloadSet(absl::Span<Declaration const *const> decls);
+  OverloadSet(absl::Span<Declaration::const_iterator const> decls);
 
   // Construct an overload set from all declarations visibile in `scope` that
   // have the name `id`.

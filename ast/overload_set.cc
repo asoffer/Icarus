@@ -13,6 +13,13 @@ OverloadSet::OverloadSet(absl::Span<Declaration const *const> decls) {
   for (auto const *decl : decls) { members_.push_back(decl); }
 }
 
+OverloadSet::OverloadSet(absl::Span<Declaration::const_iterator const> decls) {
+  members_.reserve(decls.size());
+  // TODO: Support multiple declarations
+  for (auto decl_iter : decls) { members_.push_back(&decl_iter->declaration()); }
+}
+
+
 OverloadSet::OverloadSet(ast::Scope const *scope, std::string_view id)
     : OverloadSet(module::AllDeclsTowardsRoot(scope, id)) {
   LOG("OverloadSet", R"(Constructing an overload set from "%s")", id);

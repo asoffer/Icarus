@@ -35,7 +35,7 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
   BuildParamDependencyGraph(node->params()).topologically([&](auto dep_node) {
     if (not deps.contains(dep_node)) { return; }
     LOG("OrderedDependencyNodes", "adding %s`%s`", ToString(dep_node.kind()),
-        dep_node.node()->id());
+        absl::StrJoin(dep_node.node()->ids(), ", "));
     ordered_nodes.emplace_back(0, dep_node);
   });
 
@@ -132,7 +132,7 @@ void ComparisonOperator::Initialize(Scope *scope) {
 void Declaration::Initialize(Scope *scope) {
   ASSERT(scope != nullptr);
   scope_ = scope;
-  scope_->InsertDecl(id(), this);
+  for (auto declared_id : *this) { scope_->InsertDeclaration(declared_id); }
   if (type_expr_.get()) { type_expr_->Initialize(scope); }
   if (init_val_.get()) { init_val_->Initialize(scope); }
 }

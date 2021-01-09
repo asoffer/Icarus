@@ -9,6 +9,16 @@ cc_library(
 )
 
 cc_library(
+    name = "declaration",
+    hdrs = ["declaration.h"],
+    deps = [
+        ":expression",
+        ":node",
+        "//frontend/source:buffer",
+    ],
+)
+
+cc_library(
     name = "ast",
     hdrs = [
         "ast.h",
@@ -22,6 +32,7 @@ cc_library(
         "is_dependent.cc",
     ],
     deps = [
+        ":declaration",
         ":expression",
         ":jump_options",
         ":node",
@@ -30,7 +41,7 @@ cc_library(
         "//ast/scope:exec",
         "//ast/scope:fn",
         "//ast/scope:module",
-        "//ast/scope:scope",
+        "//ast/scope",
         "//ast/scope:scope_lit",
         "//base:debug",
         "//base:graph",

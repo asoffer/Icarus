@@ -275,7 +275,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   // TODO: Consider first checking if it's a constant because we only need to do
   // this lookup in that case. Not sure how much performance that might win.
   if (auto const *qt = context().qual_type(node)) { return *qt; }
-  LOG("Declaration", "Verifying '%s'", node->id());
+  LOG("Declaration", "Verifying '%s'", absl::StrJoin(node->ids(), ", "));
 
   // TODO: If we don't already have type-checked this but it's an error, we'll
   // type-check this node again because we don't save errors. Maybe we should
@@ -314,7 +314,8 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     default: UNREACHABLE(node->DebugString());
   }
 
-  if (node->id().empty()) {
+  // TODO: Support multiple declarations
+  if (node->ids()[0].empty()) {
     if (node_qual_type.type() == type::Module) {
       // TODO: check if it's constant?
       // TODO: check shadowing against other modules?
@@ -384,18 +385,20 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
                                                         node_qual_type.type());
   // TODO: struct field decls shouldn't have issues with shadowing local
   // variables.
-  for (auto const *decl :
-       module::AllAccessibleDecls(node->scope(), node->id())) {
-    if (decl == node) { continue; }
-    ASSIGN_OR(continue, type::QualType q, context().qual_type(decl));
+  for (auto decl_iter :
+       module::AllAccessibleDecls(node->scope(), node->ids()[0])) {
+    // TODO: Support multiple declarations
+    auto const &decl = decl_iter->declaration();
+    if (&decl == node) { continue; }
+    ASSIGN_OR(continue, type::QualType q, context().qual_type(&decl));
     if (Shadow(typed_node_decl,
-               type::Typed<ast::Declaration const *>(decl, q.type()))) {
+               type::Typed<ast::Declaration const *>(&decl, q.type()))) {
       // TODO: If one of these declarations shadows the other
       node_qual_type.MarkError();
 
       diag().Consume(ShadowingDeclaration{
           .range1 = node->range(),
-          .range2 = decl->range(),
+          .range2 = decl.range(),
       });
     }
   }

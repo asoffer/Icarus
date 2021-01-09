@@ -222,7 +222,7 @@ void ComparisonOperator::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void Declaration::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, id());
+  absl::StrAppend(out, "(", absl::StrJoin(ids(), ", "), ")");
   if (type_expr()) {
     absl::StrAppend(out, (flags() & Declaration::f_IsConst) ? " :: " : ": ");
     type_expr()->DebugStrAppend(out, indent);

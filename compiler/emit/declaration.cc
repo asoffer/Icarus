@@ -14,12 +14,15 @@ namespace compiler {
 namespace {
 
 ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
-  if (node->module() != &c.context().module()) {
+  if (node->scope()->Containing<ast::ModuleScope>()->module() !=
+      &c.context().module()) {
     // Constant declarations from other modules should already be stored on
     // that module. They must be at the root of the binding tree map,
     // otherwise they would be local to some function/jump/etc. and not be
     // exported.
-    return node->module()
+    return node->scope()
+        ->Containing<ast::ModuleScope>()
+        ->module()
         ->as<CompiledModule>()
         .context()
         .Constant(node)
@@ -48,20 +51,20 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
 
     auto t = ASSERT_NOT_NULL(c.context().qual_type(node))->type();
 
-    if (node->IsCustomInitialized()) {
+    if (auto const *init_val = node->initial_value()) {
       LOG("Declaration", "Computing slot with %s",
-          node->init_val()->DebugString());
+          node->initial_value()->DebugString());
 
       if (t.get()->is_big()) {
         auto value_buffer = c.EvaluateToBufferOrDiagnose(
-            type::Typed<ast::Expression const *>(node->init_val(), t));
+            type::Typed<ast::Expression const *>(node->initial_value(), t));
         if (value_buffer.empty()) { return ir::Value(); }
 
         LOG("EmitValueDeclaration", "Setting slot = %s", value_buffer);
         return c.context().SetConstant(node, std::move(value_buffer));
       } else {
         auto maybe_val = c.Evaluate(
-            type::Typed<ast::Expression const *>(node->init_val(), t),
+            type::Typed<ast::Expression const *>(node->initial_value(), t),
             c.state().must_complete);
         if (not maybe_val) {
           // TODO: we reserved a slot and haven't cleaned it up. Do we care?
@@ -97,9 +100,9 @@ ir::Value EmitNonConstantDeclaration(Compiler &c,
   if (node->IsUninitialized()) { return ir::Value(); }
   auto t = c.context().qual_type(node)->type();
   auto a = c.context().addr(node);
-  if (node->IsCustomInitialized()) {
+  if (auto const *init_val = node->initial_value()) {
     auto to = type::Typed<ir::RegOr<ir::Addr>>(a, t);
-    c.EmitMoveInit(node->init_val(), absl::MakeConstSpan(&to, 1));
+    c.EmitMoveInit(init_val, absl::MakeConstSpan(&to, 1));
   } else {
     if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
       c.EmitDefaultInit(type::Typed<ir::Reg>(a, t));
@@ -111,7 +114,7 @@ ir::Value EmitNonConstantDeclaration(Compiler &c,
 }  // namespace
 
 ir::Value Compiler::EmitValue(ast::Declaration const *node) {
-  LOG("Declaration", "%s", node->id());
+  LOG("Declaration", "%s", absl::StrJoin(node->ids(), ", "));
   return (node->flags() & ast::Declaration::f_IsConst)
              ? EmitConstantDeclaration(*this, node)
              : EmitNonConstantDeclaration(*this, node);

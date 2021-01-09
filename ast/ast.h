@@ -9,6 +9,7 @@
 
 #include "absl/types/span.h"
 #include "ast/build_param_dependency_graph.h"
+#include "ast/declaration.h"
 #include "ast/expression.h"
 #include "ast/jump_options.h"
 #include "ast/node.h"
@@ -236,98 +237,6 @@ struct BinaryOperator : Expression {
   std::unique_ptr<Expression> lhs_, rhs_;
 };
 
-// Declaration:
-//
-// Represents a declaration of a new identifier. The declaration may be for a
-// local variable, global variable, function input parameter or return
-// parameter. It may be const or metable.
-//
-// Examples:
-//  * `a: i32`
-//  * `b: bool = true`
-//  * `c := 17`
-//  * `d: f32 = --`
-//  * `DAYS_PER_WEEK :: i32 = 7`
-//  * `HOURS_PER_DAY ::= 24`
-//  * `some_constant :: bool` ... This approach only makes sense when
-//                                `some_constant` is a (generic) function
-//                                parmaeter
-//
-struct Declaration : Expression {
-  using Flags                           = uint8_t;
-  static constexpr Flags f_IsFnParam    = 0x01;
-  static constexpr Flags f_IsOutput     = 0x02;
-  static constexpr Flags f_IsConst      = 0x04;
-  static constexpr Flags f_InitIsHole   = 0x08;
-  static constexpr Flags f_IsBlockParam = 0x10;
-
-  explicit Declaration(frontend::SourceRange const &range, std::string id,
-                       frontend::SourceRange const &id_range,
-                       std::unique_ptr<Expression> type_expression,
-                       std::unique_ptr<Expression> initial_val, Flags flags)
-      : Expression(range),
-        id_(std::move(id)),
-        id_range_(id_range),
-        type_expr_(std::move(type_expression)),
-        init_val_(std::move(initial_val)),
-        flags_(flags) {}
-  Declaration(Declaration &&) noexcept = default;
-  Declaration &operator=(Declaration &&) noexcept = default;
-
-  // TODO: These functions are confusingly named. They look correct in normal
-  // declarations, but in function arguments, IsDefaultInitialized() is true iff
-  // there is no default value provided.
-  bool IsInferred() const { return not type_expr_; }
-  bool IsDefaultInitialized() const {
-    return not init_val_ and not IsUninitialized();
-  }
-  bool IsCustomInitialized() const { return init_val_.get(); }
-  bool IsUninitialized() const { return (flags_ & f_InitIsHole); }
-
-  enum Kind {
-    kDefaultInit              = 0,
-    kCustomInit               = 2,
-    kInferred                 = 3,
-    kUninitialized            = 6,
-    kInferredAndUninitialized = 7,  // This is an error
-  };
-  Kind kind() const {
-    int k = IsInferred() ? 1 : 0;
-    if (IsUninitialized()) { k |= kUninitialized; }
-    if (IsCustomInitialized()) { k |= kCustomInit; }
-    return static_cast<Kind>(k);
-  }
-
-  std::string_view id() const { return id_; }
-  frontend::SourceRange const &id_range() const { return id_range_; }
-  Expression const *type_expr() const { return type_expr_.get(); }
-  Expression const *init_val() const { return init_val_.get(); }
-
-  std::tuple<std::string, std::unique_ptr<Expression>,
-             std::unique_ptr<Expression>>
-  extract() && {
-    return std::make_tuple(std::move(id_), std::move(type_expr_),
-                           std::move(init_val_));
-  }
-
-  module::BasicModule const *module() const {
-    return scope_->Containing<ModuleScope>()->module();
-  }
-
-  Flags flags() const { return flags_; }
-  Flags &flags() { return flags_; }  // TODO consider removing this.
-
-  void set_initial_value(std::unique_ptr<Expression> expr);
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
- private:
-  std::string id_;
-  frontend::SourceRange id_range_;
-  std::unique_ptr<Expression> type_expr_, init_val_;
-  Flags flags_;
-};
-
 // ParameterizedExpression:
 // This is a parent-class for all nodes that have parameters, allowing us to
 // handle those parameters uniformly. oreover, this gives us the ability to key
@@ -344,7 +253,9 @@ struct ParameterizedExpression : Expression {
       // NOTE: It's save to save a `std::string_view` to a parameter because
       // both the declaration and this will live for the length of the syntax
       // tree.
-      params_.append(param->id(), std::move(param));
+      //
+      // TODO: Support Declarations with multiple identifiers
+      params_.append(param->ids()[0], std::move(param));
     }
 
     InitializeParams();

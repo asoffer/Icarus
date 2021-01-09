@@ -3,12 +3,11 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "ast/node.h"
-#include "ast/scope/scope.h"
 #include "ir/value/hashtag.h"
 
 namespace ast {
 
-struct Expression : public Node {
+struct Expression : Node {
   Expression(frontend::SourceRange const &span = frontend::SourceRange())
       : Node(span) {}
 

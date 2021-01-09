@@ -10,7 +10,9 @@ struct ParamDependencyGraphBuilder
   explicit ParamDependencyGraphBuilder(
       core::Params<std::unique_ptr<Declaration>> const &params) {
     for (auto const &param : params) {
-      relevant_decls_.emplace(param.value->id(), param.value.get());
+      // Parameters must not be multiple-declarations.
+      ASSERT(param.value->size() == 1u);
+      relevant_decls_.emplace(param.value->ids()[0], param.value.get());
     }
   }
 
