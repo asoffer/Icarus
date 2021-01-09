@@ -507,7 +507,7 @@ struct Builder {
       return r;
     } else if constexpr (base::meta<FromType>.template converts_to<ToType>()) {
       if (r.is_reg()) {
-        return CurrentBlock()->Append(CastInstruction<ToType, FromType>{
+        return CurrentBlock()->Append(CastInstruction<ToType(FromType)>{
             .value = r.reg(), .result = CurrentGroup()->Reserve()});
       } else {
         return static_cast<ToType>(r.value());
