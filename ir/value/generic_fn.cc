@@ -9,8 +9,10 @@
 namespace ir {
 namespace {
 
-base::Global<std::vector<
-    base::any_invocable<NativeFn(core::Arguments<type::Typed<Value>> const &)>>>
+// Functions held in this global must be invoked while the lock is not being
+// held.
+base::Global<std::vector<std::unique_ptr<base::any_invocable<NativeFn(
+    core::Arguments<type::Typed<Value>> const &)>>>>
     gen_fns;
 
 }  // namespace
@@ -20,13 +22,21 @@ GenericFn::GenericFn(
         gen) {
   auto handle = gen_fns.lock();
   id_         = handle->size();
-  handle->push_back(std::move(gen));
+  handle->push_back(
+      std::make_unique<base::any_invocable<NativeFn(
+          core::Arguments<type::Typed<Value>> const &)>>(std::move(gen)));
 }
 
 NativeFn GenericFn::concrete(
     core::Arguments<type::Typed<Value>> const &args) const {
-  auto handle = gen_fns.lock();
-  return (*handle)[id_](args);
+  base::any_invocable<NativeFn(core::Arguments<type::Typed<Value>> const &)>
+      *fn;
+  {
+    auto handle = gen_fns.lock();
+    fn          = (*handle)[id_].get();
+  }
+  // Call the function without holding the lock.
+  return (*fn)(args);
 }
 
 }  // namespace ir
