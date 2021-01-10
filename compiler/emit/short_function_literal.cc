@@ -93,7 +93,9 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
     // TODO arguments should be renumbered to not waste space on const values
     size_t i = 0;
     for (auto const &param : node->params()) {
-      context().set_addr(param.value.get(), ir::Reg::Arg(i++));
+      absl::Span<ast::Declaration::Id const> ids = param.value->ids();
+      ASSERT(ids.size() == 1u);
+      context().set_addr(&ids[0], ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(*this, node->body_scope());

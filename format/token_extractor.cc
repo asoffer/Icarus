@@ -83,6 +83,8 @@ void TokenExtractor::Visit(ast::Declaration const *node) {
   if (node->init_val()) { Visit(node->init_val()); }
 }
 
+void TokenExtractor::Visit(ast::Declaration::Id const *node) {}
+
 void TokenExtractor::Visit(ast::EnumLiteral const *node) {
   // TODO
 }

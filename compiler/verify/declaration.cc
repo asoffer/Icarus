@@ -274,8 +274,12 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   //
   // TODO: Consider first checking if it's a constant because we only need to do
   // this lookup in that case. Not sure how much performance that might win.
-  if (auto const *qt = context().qual_type(node)) { return *qt; }
-  LOG("Declaration", "Verifying '%s'", absl::StrJoin(node->ids(), ", "));
+  if (auto const *qt = context().qual_type(&node->ids()[0])) { return *qt; }
+  LOG("Declaration", "Verifying '%s'",
+      absl::StrJoin(node->ids(), ", ",
+                    [](std::string *out, ast::Declaration::Id const &id) {
+                      absl::StrAppend(out, id.name());
+                    }));
 
   // TODO: If we don't already have type-checked this but it's an error, we'll
   // type-check this node again because we don't save errors. Maybe we should
@@ -315,7 +319,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   }
 
   // TODO: Support multiple declarations
-  if (node->ids()[0].empty()) {
+  if (node->ids()[0].name().empty()) {
     if (node_qual_type.type() == type::Module) {
       // TODO: check if it's constant?
       // TODO: check shadowing against other modules?
@@ -338,7 +342,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       node_qual_type.MarkError();
     }
 
-    context().set_qual_type(node, node_qual_type);
+    context().set_qual_type(&node->ids()[0], node_qual_type);
     return node_qual_type;
   }
 
@@ -385,12 +389,12 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
                                                         node_qual_type.type());
   // TODO: struct field decls shouldn't have issues with shadowing local
   // variables.
-  for (auto decl_iter :
-       module::AllAccessibleDecls(node->scope(), node->ids()[0])) {
+  for (auto const *id :
+       module::AllAccessibleDecls(node->scope(), node->ids()[0].name())) {
     // TODO: Support multiple declarations
-    auto const &decl = decl_iter->declaration();
+    auto const &decl = id->declaration();
     if (&decl == node) { continue; }
-    ASSIGN_OR(continue, type::QualType q, context().qual_type(&decl));
+    ASSIGN_OR(continue, type::QualType q, context().qual_type(id));
     if (Shadow(typed_node_decl,
                type::Typed<ast::Declaration const *>(&decl, q.type()))) {
       // TODO: If one of these declarations shadows the other
@@ -404,7 +408,11 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   }
 
   // TODO: verify special function signatures (copy, move, etc).
-  return context().set_qual_type(node, node_qual_type);
+  return context().set_qual_type(&node->ids()[0], node_qual_type);
+}
+
+type::QualType Compiler::VerifyType(ast::Declaration::Id const *node) {
+  return VerifyType(&node->declaration());
 }
 
 }  // namespace compiler

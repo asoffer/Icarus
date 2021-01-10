@@ -161,7 +161,7 @@ Compiler::ComputeParamsFromArgs(
 
   for (auto [index, dep_node] : node->ordered_dependency_nodes()) {
     ASSERT(dep_node.node()->ids().size() == 1u);
-    std::string_view id = dep_node.node()->ids()[0];
+    std::string_view id = dep_node.node()->ids()[0].name();
     LOG("generic-fn", "Handling dep-node %s`%s`", ToString(dep_node.kind()),
         id);
     switch (dep_node.kind()) {
@@ -248,9 +248,11 @@ Compiler::ComputeParamsFromArgs(
           LOG("generic-fn", "%s", dep_node.node()->DebugString());
         }
 
-        if (not context().Constant(dep_node.node())) {
+        // TODO: Support multiple declarations
+        if (not context().Constant(&dep_node.node()->ids()[0])) {
           // TODO complete?
-          context().SetConstant(dep_node.node(), *arg);
+          // TODO: Support multiple declarations
+          context().SetConstant(&dep_node.node()->ids()[0], *arg);
         }
 
         size_t i = *ASSERT_NOT_NULL(node->params().at_or_null(id));
@@ -308,10 +310,8 @@ type::QualType Compiler::VerifyUnaryOverload(
   absl::flat_hash_set<type::Callable const *> member_types;
 
   module::ForEachDeclTowardsRoot(
-      node->scope(), symbol, [&](ast::Declaration::const_iterator decl_iter) {
-        // TODO: Support multiple declarations
-        ASSIGN_OR(return false, auto qt,
-                         context().qual_type(&decl_iter->declaration()));
+      node->scope(), symbol, [&](ast::Declaration::Id const *id) {
+        ASSIGN_OR(return false, auto qt, context().qual_type(id));
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
         auto &c = qt.type().as<type::Callable>();
@@ -336,10 +336,8 @@ type::QualType Compiler::VerifyBinaryOverload(
   absl::flat_hash_set<type::Callable const *> member_types;
 
   module::ForEachDeclTowardsRoot(
-      node->scope(), symbol, [&](ast::Declaration::const_iterator decl_iter) {
-        // TODO: Support multiple declarations
-        ASSIGN_OR(return false, auto qt,
-                         context().qual_type(&decl_iter->declaration()));
+      node->scope(), symbol, [&](ast::Declaration::Id const *id) {
+        ASSIGN_OR(return false, auto qt, context().qual_type(id));
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
         auto &c = qt.type().as<type::Callable>();

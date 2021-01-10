@@ -122,8 +122,9 @@ bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
   auto *jump_type = decl_type.if_as<type::Jump>();
   if (not jump_type) {
     diag.Consume(NonJumpInit{
-        .type  = decl_type,
-        .range = decl->id_ranges()[0],  // TODO: Support multiple declarations?
+        .type = decl_type,
+        .range =
+            decl->ids()[0].range(),  // TODO: Support multiple declarations?
     });
     return false;
   } else if (type::Type(state_type_ptr) != jump_type->state()) {
@@ -131,7 +132,8 @@ bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
     diag.Consume(StateTypeMismatch{
         .actual_type   = jump_type->state(),
         .expected_type = state_type_ptr ? state_type_ptr->pointee() : nullptr,
-        .range = decl->id_ranges()[0],  // TODO: Support multiple declarations?
+        .range =
+            decl->ids()[0].range(),  // TODO: Support multiple declarations?
     });
     return false;
   } else {
@@ -144,8 +146,9 @@ bool VerifyDone(diagnostic::DiagnosticConsumer &diag,
   auto const *callable = decl_type.if_as<type::Callable>();
   if (not callable) {
     diag.Consume(NonCallableDone{
-        .type  = decl_type,
-        .range = decl->id_ranges()[0],  // TODO: Support multiple declarations?
+        .type = decl_type,
+        .range =
+            decl->ids()[0].range(),  // TODO: Support multiple declarations?
     });
     return false;
   } else {
@@ -193,11 +196,12 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
       qt.MarkError();
     }
 
-    if (decl.ids()[0] == "enter") {  // TODO: Support multiple declarations
+    if (decl.ids()[0].name() ==
+        "enter") {  // TODO: Support multiple declarations
       if (not VerifyInit(diag(), &decl, qual_type.type(), state_type_ptr)) {
         qt.MarkError();
       }
-    } else if (decl.ids()[0] ==
+    } else if (decl.ids()[0].name() ==
                "exit") {  // TODO: Support multiple declarations
       if (not VerifyDone(diag(), &decl, qual_type.type())) { qt.MarkError(); }
     } else {

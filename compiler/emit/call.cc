@@ -49,7 +49,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
     // address.
     if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
       return compiler->builder().Load<ir::Fn>(
-          compiler->context().addr(fn_decl));
+          compiler->context().addr(&fn_decl->ids()[0]));
     } else {
       return compiler->builder().Load<ir::Fn>(
           compiler->EmitValue(fn).get<ir::RegOr<ir::Addr>>());
@@ -66,9 +66,10 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
 
     // TODO: declarations aren't callable so we shouldn't have to check this
     // here.
-    if (auto const *decl = fn->if_as<ast::Declaration>()) {
+    if (auto const *id = fn->if_as<ast::Declaration::Id>()) {
       // TODO: make this more robust.
-      fn = decl->init_val();
+      // TODO: support multiple declarations
+      fn = id->declaration().init_val();
     }
 
     auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();

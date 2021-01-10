@@ -98,47 +98,43 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
 
   type::QualType qt;
 
-  auto potential_decls =
+  std::vector<ast::Declaration::Id const *> potential_decl_ids =
       module::AllVisibleDeclsTowardsRoot(node->scope(), node->name());
 
   // Ensure the types of all potential declarations hav ealready been verified.
   // TODO: Eventually we may want to relax this for functions where we don't
   // need the entire decl we just need to know if it's callable.
   bool error = false;
-  for (auto decl_iter : potential_decls) {
-    if (context().qual_type(&decl_iter->declaration())) { continue; }
-    auto qt = VerifyType(&decl_iter->declaration());
+  for (auto const*id : potential_decl_ids) {
+    if (context().qual_type(&id->declaration())) { continue; }
+    auto qt = VerifyType(&id->declaration());
     if (not qt.ok()) { error = true; }
   }
   if (error) { return type::QualType::Error(); }
 
-  LOG("Identifier", "%s: %p %s", node->DebugString(), node, potential_decls);
-  switch (potential_decls.size()) {
+  LOG("Identifier", "%s: %p %s", node->DebugString(), node, potential_decl_ids);
+  switch (potential_decl_ids.size()) {
     case 1: {
-      if (potential_decls[0]->declaration().flags() &
-          ast::Declaration::f_IsConst) {
-        if (auto const *maybe_qt =
-                context().qual_type(&potential_decls[0]->declaration())) {
+      auto const *id   = potential_decl_ids[0];
+      auto const *decl = &id->declaration();
+      if (decl->flags() & ast::Declaration::f_IsConst) {
+        if (auto const *maybe_qt = context().qual_type(id)) {
           qt = *maybe_qt;
         } else {
-          ASSIGN_OR(return type::QualType::Error(),  //
-                           qt, VerifyType(&potential_decls[0]->declaration()));
+          ASSIGN_OR(return type::QualType::Error(), qt, VerifyType(id));
         }
 
       } else {
-        // TODO: Support multiple declarations.
-        if (node->range().begin() < potential_decls[0]->id_range().begin()) {
+        if (node->range().begin() < id->range().begin()) {
           diag().Consume(DeclOutOfOrder{
               .id        = node->name(),
-              .id_range  = potential_decls[0]->id_range(),
+              .id_range  = potential_decl_ids[0]->range(),
               .use_range = node->range(),
           });
           // Haven't seen the declaration yet, so we can't proceed.
           return type::QualType::Error();
         } else {
-          // TODO: Support multiple declarations
-          qt = *ASSERT_NOT_NULL(
-              context().qual_type(&potential_decls[0]->declaration()));
+          qt = *ASSERT_NOT_NULL(context().qual_type(id));
         }
 
         if (not qt.constant()) {
@@ -152,14 +148,14 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       }
 
       if (qt.type().is<type::Callable>()) {
-        context().SetAllOverloads(node, ast::OverloadSet(potential_decls));
+        context().SetAllOverloads(node, ast::OverloadSet(potential_decl_ids));
       }
 
       LOG("Identifier", "setting %s", node->name());
       // TOOD: Support multiple declarations
       std::vector<ast::Declaration const *> decls;
-      for (auto decl_iter : potential_decls) {
-        decls.push_back(&decl_iter->declaration());
+      for (auto const *id : potential_decl_ids) {
+        decls.push_back(&id->declaration());
       }
       context().set_decls(node, std::move(decls));
     } break;
@@ -184,17 +180,15 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       absl::flat_hash_set<type::Callable const *> member_types;
       bool error = false;
 
-      for (auto decl_iter : potential_decls) {
-        // TODO: Support multiple declarations.
-        qt = *context().qual_type(&decl_iter->declaration());
+      for (auto const *id : potential_decl_ids) {
+        qt = *context().qual_type(id);
         if (not qt.ok() or qt.HasErrorMark()) {
           return type::QualType::Error();
         }
       }
 
-      for (auto decl_iter : potential_decls) {
-        // TODO: Support multiple declarations.
-        qt = *context().qual_type(&decl_iter->declaration());
+      for (auto const *id : potential_decl_ids) {
+        qt = *context().qual_type(id);
         if (not qt.ok()) { return type::QualType::Error(); }
 
         if (auto *c = qt.type().if_as<type::Callable>()) {
@@ -203,7 +197,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         } else {
           diag().Consume(NonCallableInOverloadSet{
               .id        = node->range(),
-              .decl      = decl_iter->declaration().range(),
+              .decl      = id->range(),
               .decl_type = qt.type(),
           });
           error = true;
@@ -212,14 +206,14 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
 
       if (error) { return type::QualType::Error(); }
 
-      context().SetAllOverloads(node, ast::OverloadSet(potential_decls));
+      context().SetAllOverloads(node, ast::OverloadSet(potential_decl_ids));
       qt =
           type::QualType(type::MakeOverloadSet(std::move(member_types)), quals);
       LOG("Identifier", "setting %s", node->name());
       // TOOD: Support multiple declarations
       std::vector<ast::Declaration const *> decls;
-      for (auto decl_iter : potential_decls) {
-        decls.push_back(&decl_iter->declaration());
+      for (auto const *id : potential_decl_ids) {
+        decls.push_back(&id->declaration());
       }
       context().set_decls(node, std::move(decls));
     } break;

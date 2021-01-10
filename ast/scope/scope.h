@@ -28,7 +28,7 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this, std::forward<Args>(args)...);
   }
 
-  void InsertDeclaration(Declaration::const_iterator iter);
+  void InsertDeclaration(ast::Declaration const * decl);
 
   // Whether or not non-constant declarations are visible across this scope
   // boundary. In this example,
@@ -66,20 +66,19 @@ struct Scope : public base::Cast<Scope> {
         static_cast<Scope const *>(this)->template Containing<Sc>());
   }
 
-  absl::flat_hash_map<std::string_view,
-                      std::vector<Declaration::const_iterator>>
+  absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       decls_;
 
-  absl::Span<Declaration::const_iterator const> VisibleChildren(
-      std::string_view id) const {
-    if (auto iter = child_decls_.find(id); iter != child_decls_.end()) {
+  absl::Span<Declaration::Id const *const> VisibleChildren(
+      std::string_view name) const {
+    if (auto iter = child_decls_.find(name); iter != child_decls_.end()) {
       return iter->second;
     }
-    return absl::Span<Declaration::const_iterator const>();
+    return absl::Span<Declaration::Id const *const>();
   }
 
  private:
-  absl::flat_hash_map<std::string_view, std::vector<Declaration::const_iterator>>
+  absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       child_decls_;
 
  public:

@@ -63,6 +63,8 @@ void Match::Visit(ast::ComparisonOperator const *node, MatchState *state) {}
 
 void Match::Visit(ast::Declaration const *node, MatchState *state) {}
 
+void Match::Visit(ast::Declaration::Id const *node, MatchState *state) {}
+
 void Match::Visit(ast::DesignatedInitializer const *node, MatchState *state) {}
 
 void Match::Visit(ast::EnumLiteral const *node, MatchState *state) {}

@@ -90,7 +90,8 @@ BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node) {
   for (auto const &decl : node->params()) {
     auto const *param = decl.value.get();
     auto addr = c.builder().Alloca(c.context().qual_type(param)->type());
-    c.context().set_addr(param, addr);
+    // TODO: Support multiple declarations?
+    c.context().set_addr(&param->ids()[0], addr);
   }
 
   bldr.block_termination_state() =
@@ -387,11 +388,13 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
 
     // TODO: This is probably incorrect.
     for (size_t i = 0; i < out_params.size(); ++i) {
-      auto const *param = before_block.block->params()[i].value.get();
-      type::Apply(
-          before_block.fn.type()->params()[i].value.type(), [&]<typename T>() {
-            builder().Store(ir::RegOr<T>(out_params[i]), context().addr(param));
-          });
+      absl::Span<ast::Declaration::Id const> ids  = before_block.block->params()[i].value->ids();
+      ASSERT(ids.size() == 1u);
+      type::Apply(before_block.fn.type()->params()[i].value.type(),
+                  [&]<typename T>() {
+                    builder().Store(ir::RegOr<T>(out_params[i]),
+                                    context().addr(&ids[0]));
+                  });
     }
     builder().UncondJump(bodies.at(before_block.block));
   }

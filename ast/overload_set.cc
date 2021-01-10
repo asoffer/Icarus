@@ -8,19 +8,19 @@
 
 namespace ast {
 
+// TODO: Remove this overload
 OverloadSet::OverloadSet(absl::Span<Declaration const *const> decls) {
   members_.reserve(decls.size());
   for (auto const *decl : decls) { members_.push_back(decl); }
 }
 
-OverloadSet::OverloadSet(absl::Span<Declaration::const_iterator const> decls) {
-  members_.reserve(decls.size());
+OverloadSet::OverloadSet(absl::Span<Declaration::Id const *const> ids) {
+  members_.reserve(ids.size());
   // TODO: Support multiple declarations
-  for (auto decl_iter : decls) { members_.push_back(&decl_iter->declaration()); }
+  for (auto const *id : ids) { members_.push_back(id); }
 }
 
-
-OverloadSet::OverloadSet(ast::Scope const *scope, std::string_view id)
+OverloadSet::OverloadSet(Scope const *scope, std::string_view id)
     : OverloadSet(module::AllDeclsTowardsRoot(scope, id)) {
   LOG("OverloadSet", R"(Constructing an overload set from "%s")", id);
 }

@@ -753,18 +753,17 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   auto op = nodes[1]->as<Token>().op;
   SourceRange decl_range(nodes.front()->range().begin(),
                          nodes.back()->range().end());
-  std::vector<std::string >ids;
-  std::vector<SourceRange> id_ranges;
+  std::vector<ast::Declaration::Id> ids;
   bool error = false;
   if (auto *id = nodes[0]->if_as<ast::Identifier>()) {
-    id_ranges.push_back(nodes[0]->range());
-    ids.push_back(std::move(*id).extract());
+    frontend::SourceRange range = nodes[0]->range();
+    ids.emplace_back(std::move(*id).extract(), range);
   } else if (auto * cl = nodes[0]->if_as<CommaList>()) {
     ASSERT(cl->parenthesized_ == true);
     for (auto &&i : std::move(*cl).extract()) {
       if (auto *id = i->if_as<ast::Identifier>()) {
-        id_ranges.push_back(id->range());
-        ids.push_back(std::move(*id).extract());
+        frontend::SourceRange range = id->range();
+        ids.emplace_back(std::move(*id).extract(), range);
       } else {
         diag.Consume(DeclaringNonIdentifier{.id_range = i->range()});
         error = true;
@@ -790,8 +789,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   }
 
   return std::make_unique<ast::Declaration>(
-      decl_range, std::move(ids), std::move(id_ranges), std::move(type_expr),
-      std::move(init_val),
+      decl_range, std::move(ids), std::move(type_expr), std::move(init_val),
       (initial_value_is_hole ? ast::Declaration::f_InitIsHole : 0) |
           (IsConst ? ast::Declaration::f_IsConst : 0));
 }
@@ -1251,11 +1249,12 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
         }
         auto [ids, type_expr, init_val] = std::move(*decl).extract();
         // TODO: Use the type expression?
-        enumerators.insert(enumerators.end(),
-                           std::make_move_iterator(ids.begin()),
-                           std::make_move_iterator(ids.end()));
-        // TODO: Support multiple declarations
-        values.emplace(enumerators.back(), std::move(init_val));
+        for (auto &id : ids) {
+          auto [name, range] = std::move(id).extract();
+          enumerators.push_back(std::move(name));
+          // TODO: Support multiple declarations
+          values.emplace(enumerators.back(), std::move(init_val));
+        }
       } else {
         LOG("", "%s", stmt->DebugString());
         diag.Consume(TodoDiagnostic{});
@@ -1291,9 +1290,10 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
   std::vector<std::unique_ptr<ast::Declaration>> before, after;
   for (auto &stmt : stmts->content_) {
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
-      if (decl->ids()[0] == "before") {  // TODO: Support multiple declarations.
+      if (decl->ids()[0].name() ==
+          "before") {  // TODO: Support multiple declarations.
         before.push_back(move_as<ast::Declaration>(stmt));
-      } else if (decl->ids()[0] ==
+      } else if (decl->ids()[0].name() ==
                  "after") {  // TODO: Support multiple declarations.
         after.push_back(move_as<ast::Declaration>(stmt));
       } else {

@@ -254,8 +254,8 @@ struct ParameterizedExpression : Expression {
       // both the declaration and this will live for the length of the syntax
       // tree.
       //
-      // TODO: Support Declarations with multiple identifiers
-      params_.append(param->ids()[0], std::move(param));
+      ASSERT(param->ids().size() == 1u);
+      params_.append(param->ids()[0].name(), std::move(param));
     }
 
     InitializeParams();

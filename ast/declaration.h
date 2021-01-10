@@ -13,6 +13,42 @@
 
 namespace ast {
 
+struct Declaration;
+
+// Refers to a single identifier being declared within a declaration.
+//
+// TODO: Does it make sense for this to be an expression?
+struct Declaration_Id : Expression {
+  explicit Declaration_Id(std::string name, frontend::SourceRange const &range)
+      : Expression(range), name_(std::move(name)) {}
+
+  std::string_view name() const { return name_; }
+  ast::Declaration const &declaration() const {
+    return *ASSERT_NOT_NULL(decl_);
+  }
+
+  std::pair<std::string, frontend::SourceRange> extract() && {
+    return std::pair<std::string, frontend::SourceRange>(std::move(name_),
+                                                         std::move(range_));
+  }
+
+  void Accept(VisitorBase *v, void *ret, void *arg_tuple) const override {
+    v->ErasedVisit(this, ret, arg_tuple);
+  }
+  void DebugStrAppend(std::string *out, size_t) const override {
+    out->append(name());
+  }
+  void Initialize(Scope *s) override { scope_ = s; }
+  bool IsDependent() const override { return false; }
+
+ private:
+  friend struct Declaration;
+  void set_decl(Declaration const *decl) { decl_ = decl; }
+
+  ast::Declaration const *decl_;
+  std::string name_;
+};
+
 // Declaration:
 //
 // Represents a declaration of a new identifier. The declaration may be for a
@@ -29,6 +65,7 @@ namespace ast {
 //  * `some_constant :: bool` ... This approach only makes sense when
 //                                `some_constant` is a (generic) function
 //                                parmaeter
+//  * (a, b) := function_returning_two_values()
 //
 struct Declaration : Expression {
   using Flags                           = uint8_t;
@@ -38,57 +75,34 @@ struct Declaration : Expression {
   static constexpr Flags f_InitIsHole   = 0x08;
   static constexpr Flags f_IsBlockParam = 0x10;
 
-  explicit Declaration(frontend::SourceRange const &range,
-                       std::vector<std::string> ids,
-                       std::vector<frontend::SourceRange> id_ranges,
+  using Id = Declaration_Id;
+
+  explicit Declaration(frontend::SourceRange const &range, std::vector<Id> ids,
                        std::unique_ptr<Expression> type_expression,
                        std::unique_ptr<Expression> initial_val, Flags flags)
       : Expression(range),
         ids_(std::move(ids)),
-        id_ranges_(std::move(id_ranges)),
         type_expr_(std::move(type_expression)),
         init_val_(std::move(initial_val)),
-        flags_(flags) {}
-  Declaration(Declaration &&) noexcept = default;
-  Declaration &operator=(Declaration &&) noexcept = default;
+        flags_(flags) {
+    for (auto &id : ids_) { id.set_decl(this); }
+  }
 
-  struct const_iterator {
-    const_iterator operator++() {
-      ++index_;
-      return *this;
-    }
-    const_iterator operator++(int) {
-      auto result = *this;
-      ++index_;
-      return result;
-    }
-
-    Declaration const &declaration() const { return *decl_; }
-    std::string_view id() const { return decl_->ids()[index_]; }
-    frontend::SourceRange const &id_range() const {
-      return decl_->id_ranges()[index_];
-    }
-
-    friend constexpr bool operator==(const_iterator lhs, const_iterator rhs) {
-      return lhs.index_ == rhs.index_ and lhs.decl_ == rhs.decl_;
-    }
-    friend constexpr bool operator!=(const_iterator lhs, const_iterator rhs) {
-      return not(lhs == rhs);
-    }
-    const_iterator operator*() const { return *this; }
-    const_iterator const *operator->() const { return this; }
-
-   private:
-    friend struct Declaration;
-    explicit constexpr const_iterator(size_t index, Declaration const *decl)
-        : index_(index), decl_(decl) {}
-
-    size_t index_;
-    Declaration const *decl_;
-  };
-
-  const_iterator begin() const { return const_iterator(0, this); }
-  const_iterator end() const { return const_iterator(size(), this); }
+  Declaration(Declaration &&decl) noexcept
+      : ids_(std::move(decl.ids_)),
+        type_expr_(std::move(decl.type_expr_)),
+        init_val_(std::move(decl.init_val_)),
+        flags_(decl.flags_) {
+    for (auto &id : ids_) { id.set_decl(this); }
+  }
+  Declaration &operator=(Declaration &&decl) noexcept {
+    ids_       = std::move(decl.ids_);
+    type_expr_ = std::move(decl.type_expr_);
+    init_val_  = std::move(decl.init_val_);
+    flags_     = decl.flags_;
+    for (auto &id : ids_) { id.set_decl(this); }
+    return *this;
+  }
 
   // TODO: These functions are confusingly named. They look correct in normal
   // declarations, but in function arguments, IsDefaultInitialized() is true
@@ -112,17 +126,13 @@ struct Declaration : Expression {
     return static_cast<Kind>(k);
   }
 
-  size_t size() const { return ids_.size(); }
+  absl::Span<Id const> ids() const { return ids_; }
 
-  absl::Span<std::string const> ids() const { return ids_; }
-  absl::Span<frontend::SourceRange const> id_ranges() const {
-    return id_ranges_;
-  }
   Expression const *type_expr() const { return type_expr_.get(); }
   Expression const *init_val() const { return init_val_.get(); }
   Expression const *initial_value() const { return init_val_.get(); }
 
-  std::tuple<std::vector<std::string>, std::unique_ptr<Expression>,
+  std::tuple<std::vector<Id>, std::unique_ptr<Expression>,
              std::unique_ptr<Expression>>
   extract() && {
     return std::make_tuple(std::move(ids_), std::move(type_expr_),
@@ -143,8 +153,7 @@ struct Declaration : Expression {
   bool IsDependent() const override;
 
  private:
-  std::vector<std::string> ids_;
-  std::vector<frontend::SourceRange> id_ranges_;
+  std::vector<Id> ids_;
   std::unique_ptr<Expression> type_expr_, init_val_;
   Flags flags_;
 };

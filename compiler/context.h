@@ -156,14 +156,14 @@ struct Context {
   // expression.
   type::QualType set_qual_type(ast::Expression const *expr, type::QualType qt);
 
-  ir::Reg addr(ast::Declaration const *decl) const {
-    auto iter = addr_.find(decl);
+  ir::Reg addr(ast::Declaration::Id const *id) const {
+    auto iter = addr_.find(id);
     if (iter != addr_.end()) { return iter->second; }
-    if (parent()) { return parent()->addr(decl); }
-    UNREACHABLE("Failed to find address for decl", decl->DebugString());
+    if (parent()) { return parent()->addr(id); }
+    UNREACHABLE("Failed to find address for decl-id", id->DebugString());
   }
-  void set_addr(ast::Declaration const *decl, ir::Reg addr) {
-    addr_.emplace(decl, addr);
+  void set_addr(ast::Declaration::Id const *id, ir::Reg addr) {
+    addr_.emplace(id, addr);
   }
 
   ir::ModuleId imported_module(ast::Import const *node);
@@ -213,17 +213,17 @@ struct Context {
 
   void CompleteType(ast::Expression const *expr, bool success);
 
-  ir::Value LoadConstant(ast::Declaration const *decl) const {
-    if (auto iter = constants_.find(decl); iter != constants_.end()) {
+  ir::Value LoadConstant(ast::Declaration::Id const *id) const {
+    if (auto iter = constants_.find(id); iter != constants_.end()) {
       ir::Value val = iter->second.value();
       if (not val.empty()) { return val; }
     }
-    if (parent()) { return parent()->LoadConstant(decl); }
+    if (parent()) { return parent()->LoadConstant(id); }
     return ir::Value();
   }
 
-  ir::Value LoadConstantParam(ast::Declaration const *decl) const {
-    return LoadConstant(decl);
+  ir::Value LoadConstantParam(ast::Declaration::Id const *id) const {
+    return LoadConstant(id);
   }
 
   ir::NativeFn *FindNativeFn(ast::ParameterizedExpression const *expr) {
@@ -252,6 +252,7 @@ struct Context {
     arg_val_.emplace(name, value);
   }
 
+  // TODO: Use Declaration::Id instead
   absl::Span<ast::Declaration const *const> decls(
       ast::Identifier const *id) const;
   void set_decls(ast::Identifier const *id,
@@ -296,13 +297,13 @@ struct Context {
    private:
     base::untyped_buffer buffer_;
   };
-  void CompleteConstant(ast::Declaration const *decl);
-  ir::Value SetConstant(ast::Declaration const *decl, ir::Value const &value,
+  void CompleteConstant(ast::Declaration::Id const *id);
+  ir::Value SetConstant(ast::Declaration::Id const *id, ir::Value const &value,
                         bool complete = false);
-  ir::Value SetConstant(ast::Declaration const *decl,
+  ir::Value SetConstant(ast::Declaration::Id const *id,
                         base::untyped_buffer buffer, bool complete = false);
 
-  ConstantValue const *Constant(ast::Declaration const *decl) const;
+  ConstantValue const *Constant(ast::Declaration::Id const *id) const;
 
   void SetAllOverloads(ast::Expression const *callee, ast::OverloadSet os);
   ast::OverloadSet const &AllOverloads(ast::Expression const *callee) const;
@@ -368,7 +369,7 @@ struct Context {
   constexpr Context *parent() { return tree_.parent; }
   constexpr Context const *parent() const { return tree_.parent; }
 
-  absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;
+  absl::flat_hash_map<ast::Declaration::Id const *, ir::Reg> addr_;
 
   // Types of the expressions in this context.
   absl::flat_hash_map<ast::Expression const *, type::QualType> qual_types_;
@@ -385,7 +386,7 @@ struct Context {
 
   // Map of all constant declarations to their values within this dependent
   // context.
-  absl::flat_hash_map<ast::Declaration const *, ConstantValue> constants_;
+  absl::flat_hash_map<ast::Declaration::Id const *, ConstantValue> constants_;
 
   // Collection of identifiers that are already known to have errors. This
   // allows us to emit cyclic dependencies exactly once rather than one time per

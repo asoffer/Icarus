@@ -61,10 +61,10 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
         EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
-    auto decls = mod.ExportedDeclarations(node->member_name());
-    switch (decls.size()) {
+    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
+    switch (decl_ids.size()) {
       case 0: NOT_YET();
-      case 1: return mod.ExportedValue(decls[0]);
+      case 1: return mod.ExportedValue(decl_ids[0]);
       default: NOT_YET();
     }
   }
@@ -162,13 +162,13 @@ void Compiler::EmitMoveInit(
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
         EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
-    auto decls = mod.ExportedDeclarations(node->member_name());
-    switch (decls.size()) {
+    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
+    switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
         type::QualType node_qt = *ASSERT_NOT_NULL(context().qual_type(node));
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                     type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
+                     type::Typed<ir::Value>(mod.ExportedValue(decl_ids[0]),
                                             node_qt.type()));
       }
         return;
@@ -242,12 +242,12 @@ void Compiler::EmitCopyInit(
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
         EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
-    auto decls = mod.ExportedDeclarations(node->member_name());
-    switch (decls.size()) {
+    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
+    switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1:
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                     type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
+                     type::Typed<ir::Value>(mod.ExportedValue(decl_ids[0]),
                                             operand_qt.type()));
         return;
       default: NOT_YET();
@@ -320,12 +320,12 @@ void Compiler::EmitMoveAssign(
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
         EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
-    auto decls = mod.ExportedDeclarations(node->member_name());
-    switch (decls.size()) {
+    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
+    switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1:
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                     type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
+                     type::Typed<ir::Value>(mod.ExportedValue(decl_ids[0]),
                                             operand_qt.type()));
         return;
       default: NOT_YET();
@@ -360,12 +360,12 @@ void Compiler::EmitCopyAssign(
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
         EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
-    auto decls = mod.ExportedDeclarations(node->member_name());
-    switch (decls.size()) {
+    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
+    switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1:
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                     type::Typed<ir::Value>(mod.ExportedValue(decls[0]),
+                     type::Typed<ir::Value>(mod.ExportedValue(decl_ids[0]),
                                             operand_qt.type()));
         return;
       default: NOT_YET();

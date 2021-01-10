@@ -125,15 +125,18 @@ ir::Fn InsertGeneratedCopyAssign(
 }  // namespace
 
 std::optional<ir::CompiledFn> StructCompletionFn(
-    Compiler &c, type::Struct *s, absl::Span<ast::Declaration const> fields) {
+    Compiler &c, type::Struct *s,
+    absl::Span<ast::Declaration const> field_decls) {
   ASSERT(s->completeness() != type::Completeness::Complete);
   bool field_error = false;
-  for (auto const &field : fields) {
-    auto const *qt = c.context().qual_type(&field);
-    if (not qt or
-        qt->type().get()->completeness() != type::Completeness::Complete) {
-      c.diag().Consume(IncompleteField{.range = field.range()});
-      field_error = true;
+  for (auto const &field_decl : field_decls) {
+    for (auto const &id : field_decl.ids()) {
+      auto const *qt = c.context().qual_type(&id);
+      if (not qt or
+          qt->type().get()->completeness() != type::Completeness::Complete) {
+        c.diag().Consume(IncompleteField{.range = id.range()});
+        field_error = true;
+      }
     }
   }
 
@@ -152,50 +155,54 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     std::optional<ir::Fn> user_dtor;
     std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
         copy_assignments;
-    for (auto const &field : fields) {
-      // TODO: Support multiple declarations.
-      //
-      // TODO: Decide whether to support all hashtags. For now just covering
-      // export.
-      if (field.ids()[0] == "destroy") {
-        // TODO: handle potential errors here.
-        user_dtor = c.EmitValue(field.init_val()).get<ir::Fn>();
-      } else if (field.ids()[0] == "move") {
-        // TODO handle potential errors here.
-        auto f = c.EmitValue(field.init_val()).get<ir::Fn>();
-        switch (f.type()->params().size()) {
-          case 1: move_inits.push_back(f); break;
-          case 2: move_assignments.push_back(f); break;
-          default: UNREACHABLE();
-        }
-      } else if (field.ids()[0] == "copy") {
-        // TODO handle potential errors here.
-        auto f = c.EmitValue(field.init_val()).get<ir::Fn>();
-        switch (f.type()->params().size()) {
-          case 1: copy_inits.push_back(f); break;
-          case 2: copy_assignments.push_back(f); break;
-          default: UNREACHABLE();
-        }
-      } else {
-        type::Type field_type;
-        if (auto *init_val = field.init_val()) {
-          // TODO init_val type may not be the same.
-          field_type = c.context().qual_type(init_val)->type();
-          // TODO: Support multiple declarations
-          ir_fields.emplace_back(field.ids()[0], field_type, c.EmitValue(init_val));
-          ir_fields.back().set_export(
-              field.hashtags.contains(ir::Hashtag::Export));
+    for (auto const &field_decl : field_decls) {
+      // TODO: Access to init_val is not correct here because that may
+      // initialize multiple values.
+      for (auto const &id : field_decl.ids()) {
+        // TODO: Decide whether to support all hashtags. For now just covering
+        // export.
+        if (id.name() == "destroy") {
+          // TODO: handle potential errors here.
+          user_dtor = c.EmitValue(id.declaration().init_val()).get<ir::Fn>();
+        } else if (id.name() == "move") {
+          // TODO handle potential errors here.
+          auto f = c.EmitValue(id.declaration().init_val()).get<ir::Fn>();
+          switch (f.type()->params().size()) {
+            case 1: move_inits.push_back(f); break;
+            case 2: move_assignments.push_back(f); break;
+            default: UNREACHABLE();
+          }
+        } else if (id.name() == "copy") {
+          // TODO handle potential errors here.
+          auto f = c.EmitValue(id.declaration().init_val()).get<ir::Fn>();
+          switch (f.type()->params().size()) {
+            case 1: copy_inits.push_back(f); break;
+            case 2: copy_assignments.push_back(f); break;
+            default: UNREACHABLE();
+          }
         } else {
-          // TODO: Failed evaluation
-          field_type =
-              c.EvaluateOrDiagnoseAs<type::Type>(field.type_expr()).value();
-          // TODO: Support multiple declarations
-          ir_fields.emplace_back(field.ids()[0], field_type);
-          ir_fields.back().set_export(
-              field.hashtags.contains(ir::Hashtag::Export));
+          type::Type field_type;
+          if (auto const *init_val = id.declaration().init_val()) {
+            // TODO init_val type may not be the same.
+            field_type = c.context().qual_type(init_val)->type();
+            ir_fields.emplace_back(id.name(), field_type,
+                                   c.EmitValue(init_val));
+            ir_fields.back().set_export(
+                id.declaration().hashtags.contains(ir::Hashtag::Export));
+          } else {
+            // TODO: Failed evaluation
+            // TODO: Type expression actually refers potentially to multiple
+            // declaration ids.
+            field_type =
+                c.EvaluateOrDiagnoseAs<type::Type>(id.declaration().type_expr())
+                    .value();
+            ir_fields.emplace_back(id.name(), field_type);
+            ir_fields.back().set_export(
+                id.declaration().hashtags.contains(ir::Hashtag::Export));
+          }
+          has_field_needing_destruction = has_field_needing_destruction or
+                                          field_type.get()->HasDestructor();
         }
-        has_field_needing_destruction =
-            has_field_needing_destruction or field_type.get()->HasDestructor();
       }
     }
 
@@ -211,7 +218,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
             c.builder().Call(*user_dtor, full_dtor.type(), {ir::Value(var)},
                              ir::OutParams());
           }
-          for (int i = fields.size() - 1; i >= 0; --i) {
+          for (int i = ir_fields.size() - 1; i >= 0; --i) {
             // TODO: Avoid emitting IR if the type doesn't need to be
             // destroyed.
             c.EmitDestroy(
@@ -308,22 +315,19 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
     for (const auto &[key, val] : scope->decls_) {
       LOG("MakeAllStackAllocations", "%s", key);
       // TODO: Support multiple declarations
-      for (auto decl_iter : val) {
-        if (decl_iter->declaration().flags() &
+      for (ast::Declaration::Id const *id : val) {
+        if (id->declaration().flags() &
             (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
           LOG("MakeAllStackAllocations", "skipping constant/param decl %s",
-              decl_iter->id());
+              id->name());
           continue;
         }
 
-        LOG("MakeAllStackAllocations", "allocating %s", decl_iter->id());
+        LOG("MakeAllStackAllocations", "allocating %s", id->name());
 
-        // TODO: Support multiple declarations
         compiler.context().set_addr(
-            &decl_iter->declaration(),
-            compiler.builder().Alloca(compiler.context()
-                                          .qual_type(&decl_iter->declaration())
-                                          ->type()));
+            id, compiler.builder().Alloca(
+                    compiler.context().qual_type(id)->type()));
       }
     }
   }
@@ -332,27 +336,23 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
 void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
-  std::vector<ast::Declaration const *> ordered_decls;
+  std::vector<ast::Declaration::Id const *> ordered_decl_ids;
   LOG("MakeAllDestructions", "decls in this scope:");
-  for (auto &[name, decl_iters] : exec_scope->decls_) {
+  for (auto &[name, ids] : exec_scope->decls_) {
     LOG("MakeAllDestructions", "... %s", name);
-    for (auto decl_iter : decl_iters) {
-      // TODO: Support multiple declarations
-      ordered_decls.push_back(&decl_iter->declaration());
-    }
+    for (ast::Declaration::Id const *id : ids) { ordered_decl_ids.push_back(id); }
   }
 
   // TODO eek, don't use line number to determine destruction order!
-  absl::c_sort(ordered_decls,
-               [](ast::Declaration const *lhs, ast::Declaration const *rhs) {
-                 return (lhs->range().begin() > rhs->range().begin());
-               });
+  absl::c_sort(ordered_decl_ids, [](ast::Declaration::Id const *lhs,
+                                    ast::Declaration::Id const *rhs) {
+    return (lhs->range().begin() > rhs->range().begin());
+  });
 
-  for (auto const *decl : ordered_decls) {
-    type::Type t = compiler.context().qual_type(decl)->type();
+  for (auto const *id : ordered_decl_ids) {
+    type::Type t = compiler.context().qual_type(id)->type();
     if (not t.get()->HasDestructor()) { continue; }
-    compiler.EmitDestroy(
-        type::Typed<ir::Reg>(compiler.context().addr(decl), t));
+    compiler.EmitDestroy(type::Typed<ir::Reg>(compiler.context().addr(id), t));
   }
 }
 

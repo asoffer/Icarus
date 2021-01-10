@@ -30,7 +30,7 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
     size_t i = 0;
     for (auto const &p : params) {
       if (p.value.first.empty()) { continue; }
-      iter->second->context.SetConstant(node->params()[i++].value.get(),
+      iter->second->context.SetConstant(&node->params()[i++].value->ids()[0],
                                         p.value.first);
     }
 
@@ -171,25 +171,25 @@ void Context::ClearVerifyBody(ast::Node const *node) {
   body_verification_complete_.erase(node);
 }
 
-void Context::CompleteConstant(ast::Declaration const *decl) {
-  auto iter = constants_.find(decl);
+void Context::CompleteConstant(ast::Declaration::Id const *id) {
+  auto iter = constants_.find(id);
   ASSERT(iter != constants_.end());
   iter->second.complete = true;
 }
 
-ir::Value Context::SetConstant(ast::Declaration const *decl,
+ir::Value Context::SetConstant(ast::Declaration::Id const *id,
                                ir::Value const &value, bool complete) {
-  return constants_.try_emplace(decl, value, complete).first->second.value();
+  return constants_.try_emplace(id, value, complete).first->second.value();
 }
 
-ir::Value Context::SetConstant(ast::Declaration const *decl,
+ir::Value Context::SetConstant(ast::Declaration::Id const *id,
                                base::untyped_buffer buffer, bool complete) {
-  return constants_.try_emplace(decl, buffer, complete).first->second.value();
+  return constants_.try_emplace(id, buffer, complete).first->second.value();
 }
 
 Context::ConstantValue const *Context::Constant(
-    ast::Declaration const *decl) const {
-  auto iter = constants_.find(decl);
+    ast::Declaration::Id const *id) const {
+  auto iter = constants_.find(id);
   return iter != constants_.end() ? &iter->second : nullptr;
 }
 

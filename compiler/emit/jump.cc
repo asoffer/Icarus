@@ -34,9 +34,13 @@ WorkItem::Result Compiler::EmitJumpBody(ast::Jump const *node) {
     // TODO arguments should be renumbered to not waste space on const
     // values
     int32_t i = 0;
-    if (node->state()) { context().set_addr(node->state(), ir::Reg::Arg(i++)); }
+    if (node->state()) {
+      // TODO: Support multiple declarations?
+      context().set_addr(&node->state()->ids()[0], ir::Reg::Arg(i++));
+    }
     for (auto const &param : node->params()) {
-      context().set_addr(param.value.get(), ir::Reg::Arg(i++));
+      // TODO: Support multiple declarations?
+      context().set_addr(&param.value->ids()[0], ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(*this, node->body_scope());

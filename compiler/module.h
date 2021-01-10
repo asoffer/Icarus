@@ -20,8 +20,8 @@ struct CompiledModule : module::BasicModule {
   explicit CompiledModule() : data_(this) {}
   ~CompiledModule() override {}
 
-  ir::Value ExportedValue(ast::Declaration const *decl) const {
-    return context().LoadConstant(decl);
+  ir::Value ExportedValue(ast::Declaration::Id const *id) const {
+    return context().LoadConstant(id);
   }
 
   // TODO We probably don't need these. There are likely better ways to expose

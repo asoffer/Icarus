@@ -28,7 +28,8 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
   }
   if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
     auto t      = context().qual_type(node)->type();
-    ir::Reg reg = context().addr(decl_span[0]);
+    // TODO: Support multiple declarations
+    ir::Reg reg = context().addr(&decl_span[0]->ids()[0]);
     return (decl_span[0]->flags() & (ast::Declaration::f_IsBlockParam |
                                      ast::Declaration::f_IsOutput)) and
                    not t.get()->is_big()
@@ -60,7 +61,8 @@ void Compiler::EmitMoveAssign(
 ir::Reg Compiler::EmitRef(ast::Identifier const *node) {
   auto decl_span = context().decls(node);
   ASSERT(decl_span.size() == 1u);
-  return context().addr(decl_span[0]);
+  ASSERT(decl_span[0]->ids().size() == 1u);
+  return context().addr(&decl_span[0]->ids()[0]);
 }
 
 }  // namespace compiler
