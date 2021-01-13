@@ -11,6 +11,7 @@ using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::SizeIs;
+using ::testing::UnorderedElementsAre;
 
 TEST(Identifier, Success) {
   test::TestModule mod;
@@ -57,8 +58,10 @@ TEST(Identifier, NonCallableOverloads) {
   auto const *id = mod.Append<ast::Identifier>("f");
   auto const *qt = mod.context().qual_type(id);
   ASSERT_EQ(qt, nullptr);
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              ElementsAre(Pair("type-error", "shadowing-declaration")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "non-callable-in-overload-set"),
+                           Pair("type-error", "shadowing-declaration")));
 }
 
 TEST(Identifier, CyclicDependency) {

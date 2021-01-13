@@ -148,10 +148,10 @@ UninferrableType::Reason Inferrable(type::Type t) {
 // TODO: what about shadowing of symbols across module boundaries imported with
 // -- ::= ?
 // Or when you import two modules verifying that symbols don't conflict.
-bool Shadow(type::Typed<ast::Declaration const *> decl1,
-            type::Typed<ast::Declaration const *> decl2) {
-  type::Callable const *callable1 = decl1.type().if_as<type::Callable>();
-  type::Callable const *callable2 = decl2.type().if_as<type::Callable>();
+bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
+            type::Typed<ast::Declaration::Id const *> id2) {
+  type::Callable const *callable1 = id1.type().if_as<type::Callable>();
+  type::Callable const *callable2 = id2.type().if_as<type::Callable>();
   if (not callable1 or not callable2) { return true; }
 
   // TODO: Don't worry about generic shadowing? It'll be checked later?
@@ -220,14 +220,19 @@ type::QualType VerifyInferred(Compiler &compiler,
                               ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto init_val_qt, compiler.VerifyType(node->init_val()));
-  auto reason = Inferrable(init_val_qt.type());
-  if (reason != UninferrableType::Reason::kInferrable) {
-    compiler.diag().Consume(UninferrableType{
-        .reason = reason,
-        .range  = node->init_val()->range(),
-    });
-    return type::QualType::Error();
-  }
+  bool inference_failure = false;
+  init_val_qt.ForEach([&](type::Type t) {
+    auto reason = Inferrable(t);
+    if (reason != UninferrableType::Reason::kInferrable) {
+      compiler.diag().Consume(UninferrableType{
+          .reason = reason,
+          .range  = node->init_val()->range(),
+      });
+      inference_failure = true;
+    }
+  });
+
+  if (inference_failure) { return type::QualType::Error(); }
 
   if (not internal::VerifyInitialization(compiler.diag(), node->range(),
                                          init_val_qt, init_val_qt)) {
@@ -237,7 +242,8 @@ type::QualType VerifyInferred(Compiler &compiler,
   type::Quals quals = (node->flags() & ast::Declaration::f_IsConst)
                           ? type::Quals::Const()
                           : type::Quals::Unqualified();
-  return type::QualType(init_val_qt.type(), quals);
+  init_val_qt.set_quals(quals);
+  return init_val_qt;
 }
 
 // Verifies the type of a declaration of the form `x: T = y`.
@@ -385,30 +391,35 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   // to see if we have saved the result of this declaration. We can also skip
   // out if the result was an error.
 
-  type::Typed<ast::Declaration const *> typed_node_decl(node,
-                                                        node_qual_type.type());
-  // TODO: struct field decls shouldn't have issues with shadowing local
-  // variables.
-  for (auto const *id :
-       module::AllAccessibleDecls(node->scope(), node->ids()[0].name())) {
-    // TODO: Support multiple declarations
-    auto const &decl = id->declaration();
-    if (&decl == node) { continue; }
-    ASSIGN_OR(continue, type::QualType q, context().qual_type(id));
-    if (Shadow(typed_node_decl,
-               type::Typed<ast::Declaration const *>(&decl, q.type()))) {
-      // TODO: If one of these declarations shadows the other
-      node_qual_type.MarkError();
+  std::vector<type::Type> types;
+  type::Quals quals = node_qual_type.quals();
+  size_t i = 0;
+  node_qual_type.ForEach([&](type::Type t) {
+    types.push_back(t);
+    auto &id = node->ids()[i++];
+    type::Typed<ast::Declaration::Id const *> typed_id(&id, t);
+    // TODO: struct field decls shouldn't have issues with shadowing local
+    // variables.
+    for (auto const *accessible_id :
+         module::AllAccessibleDecls(node->scope(), id.name())) {
+      if (&id == accessible_id) { continue; }
+      ASSIGN_OR(continue, type::QualType q, context().qual_type(accessible_id));
+      if (Shadow(typed_id,
+                 type::Typed<ast::Declaration::Id const *>(&id, q.type()))) {
+        // TODO: If one of these declarations shadows the other
+        node_qual_type.MarkError();
 
-      diag().Consume(ShadowingDeclaration{
-          .range1 = node->range(),
-          .range2 = decl.range(),
-      });
+        diag().Consume(ShadowingDeclaration{
+            .range1 = node->range(),
+            .range2 = id.range(),
+        });
+      }
     }
-  }
+    context().set_qual_type(&id, type::QualType(t, quals));
+  });
 
   // TODO: verify special function signatures (copy, move, etc).
-  return context().set_qual_type(&node->ids()[0], node_qual_type);
+  return context().set_qual_type(node, type::QualType(types, quals));
 }
 
 type::QualType Compiler::VerifyType(ast::Declaration::Id const *node) {

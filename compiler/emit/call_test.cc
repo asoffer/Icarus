@@ -128,6 +128,15 @@ INSTANTIATE_TEST_SUITE_P(
                          }())",
             .expected = ir::Value(int64_t{9}),
         },
+        TestCase{
+            .expr     = R"((() -> i64 {
+                             (a, b) := () -> (i64, i64) {
+                               return 3, 9
+                             }()
+                             return a + b
+                           })())",
+            .expected = ir::Value(int64_t{12}),
+        },
 
         // TODO: Value to pointer casts with structs and with designated
         // initializers.

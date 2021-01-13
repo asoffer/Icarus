@@ -61,8 +61,11 @@ void Compiler::EmitMoveAssign(
 ir::Reg Compiler::EmitRef(ast::Identifier const *node) {
   auto decl_span = context().decls(node);
   ASSERT(decl_span.size() == 1u);
-  ASSERT(decl_span[0]->ids().size() == 1u);
-  return context().addr(&decl_span[0]->ids()[0]);
+  for (auto const &id : decl_span[0]->ids()) {
+    if (id.name() != node->name()) { continue; }
+    return context().addr(&id);
+  }
+  UNREACHABLE();
 }
 
 }  // namespace compiler

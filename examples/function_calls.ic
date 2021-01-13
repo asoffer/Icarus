@@ -219,42 +219,20 @@ compile_time_arguments ::= () -> () {
 }
  
 multiple_return_values ::= () -> () {
-//   // Functions can have multiple return values
-//   f ::= (n: i64) => (n, n * n)
-// 
-//   a: i64
-//   b: i64
-//   (a, b) = f(3)
-//   io.Print(a)
-//   io.Print("^2 = ")
-//   io.Print(b)
-//   io.Print("\n")
-// 
-//   // In the future, we aim to support multi-declarations, as in
-//   //    (c, d) ::= f(3)
-//   // But today this is not available.
-// 
-//   // Regarding dynamic dispatch, all possible dispatches must have the same
-//   // number of arguments. When considering the resulting type of each argument,
-//   // each return value position is handled separately.
-//   g ::= (x: i64) => (1, 1.5)
-//   g ::= (x: bool) => (1.5, 1)
-// 
-//   arg1: f64 | i64 = 0
-//   arg2: f64 | i64 = 0
-//   var: bool | i64 = true
-//   (arg1, arg2) = g(var)
-//   io.Print("arg1 = ")
-//   io.Print(arg1)
-//   io.Print(" and arg2 = ")
-//   io.Print(arg2)
-//   io.Print("\n")
-// 
-//   var = 3
-//   (arg1, arg2) = g(var)
-//   io.Print("arg1 = ")
-//   io.Print(arg1)
-//   io.Print(" and arg2 = ")
-//   io.Print(arg2)
-//   io.Print("\n")
+  // Functions can have multiple return values
+  f ::= (n: i64) -> (i64, i64) {
+    return n, n * n
+  }
+
+  (a, b) := f(3)
+  io.Print(a)
+  io.Print("^2 = ")
+  io.Print(b)
+  io.Print("\n")
+
+  (a, b) = f(4)
+  io.Print(a)
+  io.Print("^2 = ")
+  io.Print(b)
+  io.Print("\n")
 }

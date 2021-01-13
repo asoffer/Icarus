@@ -104,18 +104,20 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
 ir::Value EmitNonConstantDeclaration(Compiler &c,
                                      ast::Declaration const *node) {
   if (node->IsUninitialized()) { return ir::Value(); }
-  // TODO: Support multiple declarations
-  auto t = c.context().qual_type(&node->ids()[0])->type();
-  auto a = c.context().addr(&node->ids()[0]);
+  std::vector<type::Typed<ir::RegOr<ir::Addr>>> addrs;
+  addrs.reserve(node->ids().size());
+  for (auto const &id : node->ids()) {
+    addrs.push_back(type::Typed<ir::RegOr<ir::Addr>>(
+        c.context().addr(&id), c.context().qual_type(&id)->type()));
+  }
   if (auto const *init_val = node->initial_value()) {
-    auto to = type::Typed<ir::RegOr<ir::Addr>>(a, t);
-    c.EmitMoveInit(init_val, absl::MakeConstSpan(&to, 1));
+    c.EmitMoveInit(init_val, addrs);
   } else {
     if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
-      c.EmitDefaultInit(type::Typed<ir::Reg>(a, t));
+      c.EmitDefaultInit(type::Typed<ir::Reg>(addrs[0]->reg(), addrs[0].type()));
     }
   }
-  return ir::Value(a);
+  return ir::Value(addrs[0]->reg());
 }
 
 }  // namespace

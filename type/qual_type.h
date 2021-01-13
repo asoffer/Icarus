@@ -184,6 +184,10 @@ struct QualType {
   constexpr bool HasErrorMark() const { return error_; }
 
   constexpr Quals quals() const { return Quals(data_ & 0x7); }
+  constexpr void set_quals(Quals q) {
+    data_ &= ~uintptr_t{0x7};
+    data_ |= static_cast<uintptr_t>(q.val_);
+  }
 
   constexpr void remove_constant() {
     auto low_bits = data_ & 0x7;
