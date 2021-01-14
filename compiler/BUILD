@@ -186,6 +186,7 @@ cc_library(
         "//ir:compiled_scope",
         "//module:module",
         "//type:qual_type",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 

@@ -93,6 +93,8 @@ struct Context {
   Context(Context &&);
   ~Context();
 
+  std::string DebugString() const;
+
   CompiledModule &module() const { return mod_; }
 
   Context &root() & { return tree_.parent ? tree_.parent->root() : *this; }

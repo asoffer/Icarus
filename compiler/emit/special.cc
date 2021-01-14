@@ -305,7 +305,8 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Pointer> const &r) {
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Pointer> to,
                             type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
+  ASSERT(from.type().is<type::Pointer>() == true);
+  ASSERT(from.type().as<type::Pointer>().pointee() == to.type()->pointee());
   builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
 }
 

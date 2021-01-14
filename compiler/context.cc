@@ -1,4 +1,5 @@
 #include "compiler/context.h"
+#include "absl/strings/str_format.h"
 
 namespace compiler {
 
@@ -18,6 +19,14 @@ Context::Context(CompiledModule *mod, Context *parent) : Context(mod) {
 
 Context Context::ScratchpadSubcontext() { return Context(&mod_, this); }
 
+std::string Context::DebugString() const {
+  std::string out = "context[";
+  for (auto *p = this; p; p = p->parent()) {
+    absl::StrAppendFormat(&out, " %p", p);
+  }
+  return out + " ]";
+}
+
 Context::InsertSubcontextResult Context::InsertSubcontext(
     ast::ParameterizedExpression const *node,
     core::Params<std::pair<ir::Value, type::QualType>> const &params,
@@ -27,6 +36,7 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
       map.try_emplace(params, std::make_unique<Subcontext>(std::move(context)));
 
   if (inserted) {
+    LOG("Instantiate", "Context inserted as %p", &iter->second->context);
     size_t i = 0;
     for (auto const &p : params) {
       if (p.value.first.empty()) { continue; }
@@ -53,7 +63,11 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
 Context::FindSubcontextResult Context::FindSubcontext(
     ast::ParameterizedExpression const *node,
     core::Params<std::pair<ir::Value, type::QualType>> const &params) {
-  auto &map = tree_.children.at(node);
+  auto children_iter = tree_.children.find(node);
+  if (children_iter == tree_.children.end()) {
+    return ASSERT_NOT_NULL(parent())->FindSubcontext(node, params);
+  }
+  auto &map = children_iter->second;
   auto iter = map.find(params);
   ASSERT(iter != map.end());
   auto &[rets, context] = *iter->second;
