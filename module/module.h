@@ -120,10 +120,10 @@ bool ForEachDeclTowardsRoot(ast::Scope const *starting_scope,
   return true;
 }
 
-// Returns a container of all declaration with the given identifier that are in
-// a scope directly related to this one (i.e., one of the scopes is an ancestor
-// of the other, or is the root scope of an embedded module).
-std::vector<ast::Declaration::Id const *> AllAccessibleDecls(
+// Returns a container of all declaration ids with the given identifier that are
+// in a scope directly related to this one (i.e., one of the scopes is an
+// ancestor of the other, or is the root scope of an embedded module).
+std::vector<ast::Declaration::Id const *> AllAccessibleDeclIds(
     ast::Scope const *starting_scope, std::string_view id);
 
 }  // namespace module

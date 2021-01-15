@@ -101,7 +101,7 @@ std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
   return ids;
 }
 
-std::vector<ast::Declaration::Id const *> AllAccessibleDecls(
+std::vector<ast::Declaration::Id const *> AllAccessibleDeclIds(
     ast::Scope const *starting_scope, std::string_view id_name) {
   std::vector<ast::Declaration::Id const *> decl_iters =
       module::AllVisibleDeclsTowardsRoot(starting_scope, id_name);

@@ -405,6 +405,8 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
                   overload_params, errors);
   }
 
+  LOG("VerifyCall", "%u overloads", overload_params.size());
+
   // TODO: Expansion is relevant too.
   std::vector<std::vector<type::Type>> return_types;
 
@@ -421,6 +423,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   ast::OverloadSet os;
   for (auto const &expansion : ExpandedArguments(args_qt)) {
     for (auto const &[callee, callable_type, params] : overload_params) {
+      LOG("VerifyCall", "Callable type of overload: %s", callable_type->to_string());
       // TODO: Assuming this is unambiguously callable is a bit of a stretch.
 
       // TODO: `core::IsCallable` already does this but doesn't give us access

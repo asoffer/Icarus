@@ -401,7 +401,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     // TODO: struct field decls shouldn't have issues with shadowing local
     // variables.
     for (auto const *accessible_id :
-         module::AllAccessibleDecls(node->scope(), id.name())) {
+         module::AllAccessibleDeclIds(node->scope(), id.name())) {
       if (&id == accessible_id) { continue; }
       ASSIGN_OR(continue, type::QualType q, context().qual_type(accessible_id));
       if (Shadow(typed_id,

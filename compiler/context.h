@@ -311,9 +311,7 @@ struct Context {
   ast::OverloadSet const &AllOverloads(ast::Expression const *callee) const;
 
   void SetViableOverloads(ast::Expression const *callee, ast::OverloadSet os) {
-    [[maybe_unused]] auto [iter, inserted] =
-        viable_overloads_.emplace(callee, std::move(os));
-    ASSERT(inserted == true);
+    viable_overloads_.emplace(callee, std::move(os));
   }
 
   ast::OverloadSet const &ViableOverloads(ast::Expression const *callee) const {

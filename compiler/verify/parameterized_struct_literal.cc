@@ -63,6 +63,7 @@ type::QualType Compiler::VerifyType(
                                 type::QualType::Constant(type::Type_))},
                             s);
     } else {
+      LOG("ParameterizedStructLiteral", "cached! %s", node->DebugString());
       return std::make_pair(core::Params<type::QualType>{core::AnonymousParam(
                                 type::QualType::Constant(type::Type_))},
                             context.get_struct(node));
