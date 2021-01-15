@@ -71,3 +71,12 @@ for ::= scope (range) {
 
   exit ::= () -> () {}
 }
+
+#{export}
+exchange ::= (x: *$y, y: $y) -> $x {
+  result: y:?
+  result = @x
+  @x = y
+  return result
+}
+

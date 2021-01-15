@@ -117,7 +117,7 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
         }
         set_highlight();
       }
-      absl::FPrintF(out_, "%s\n", line_str.substr(off.value));
+      absl::FPrintF(out_, "%s", line_str.substr(off.value));
     }
   }
 }
