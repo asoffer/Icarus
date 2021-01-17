@@ -8,10 +8,14 @@
 
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
+#include "frontend/source/file.h"
 #include "frontend/source/file_name.h"
+#include "frontend/source/shared.h"
 #include "ir/value/module_id.h"
-#include "module/module.h"
 
+// TODO: We should be able to have a diagnostic conusmer without specifying
+// source so that file importer can be agnostic to the diagnostic consuming
+// mechanism.
 namespace module {
 
 // `Importer` is responsible for scheduling any imports requested from an

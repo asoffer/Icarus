@@ -2,7 +2,6 @@
 
 #include "absl/algorithm/container.h"
 #include "ast/ast.h"
-#include "frontend/parse.h"
 
 namespace module {
 // Can't declare this in header because unique_ptr's destructor needs to know
@@ -26,15 +25,6 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
 
 void BasicModule::ExportsComplete() { exports_complete_.Notify(); }
 
-void BasicModule::AppendNode(std::unique_ptr<ast::Node> node,
-                             diagnostic::DiagnosticConsumer &diag,
-                             Importer &importer) {
-  InitializeNodes(base::PtrSpan<ast::Node>(&node, 1));
-  ProcessNodes(base::PtrSpan<ast::Node const>(&node, 1), diag, importer);
-  nodes_.push_back(std::move(node));
-}
-
-// TODO not sure this is necessary.
 void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
                               diagnostic::DiagnosticConsumer &diag,
                               Importer &importer) {

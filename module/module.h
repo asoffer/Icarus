@@ -18,19 +18,11 @@
 #include "base/ptr_span.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/consumer/streaming.h"
-#include "frontend/source/file.h"
-#include "frontend/source/file_name.h"
-#include "frontend/source/shared.h"
-#include "frontend/source/source.h"
-#include "module/module.h"
+#include "module/importer.h"
 
 namespace module {
 template <typename T>
 struct ExtendedModule;
-
-// Forward-declare to break the dependency cycle.
-// TODO: Fix this!
-struct Importer;
 
 // BasicModule:
 //
@@ -51,8 +43,6 @@ struct BasicModule : base::Cast<BasicModule> {
   BasicModule(BasicModule const &) = delete;
   BasicModule &operator=(BasicModule const &) = delete;
 
-  void AppendNode(std::unique_ptr<ast::Node> node,
-                  diagnostic::DiagnosticConsumer &diag, Importer &importer);
   void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
                    diagnostic::DiagnosticConsumer &diag, Importer &importer);
 

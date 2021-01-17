@@ -47,7 +47,9 @@ struct TestModule : compiler::CompiledModule {
     auto stmts =
         frontend::Parse(source, diag, source.buffer().num_chunks() - 1);
     if (auto* ptr = stmts[0]->template if_as<NodeType>()) {
-      AppendNode(std::move(stmts[0]), consumer, importer);
+      std::vector<std::unique_ptr<ast::Node>> nodes;
+      nodes.push_back(std::move(stmts[0]));
+      AppendNodes(std::move(nodes), consumer, importer);
       return ptr;
     } else {
       return nullptr;
