@@ -77,6 +77,22 @@ struct InvalidInitializerType {
   frontend::SourceRange range;
 };
 
+struct NonExportedField {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-exported-field";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Field named `%s` in struct `%s` is not exported.",
+                         member_name, type::Type(struct_type)),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  std::string member_name;
+  type::Struct const *struct_type;
+  frontend::SourceRange range;
+};
+
 struct MissingStructField {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "missing-struct-field";
@@ -84,7 +100,7 @@ struct MissingStructField {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No field named `%s` in struct `%s`.", member_name,
-                         struct_type->to_string()),
+                         type::Type(struct_type)),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -97,7 +113,9 @@ struct MissingStructField {
 
 type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
   auto type_type = VerifyType(node->type());
-  bool error     = false;
+  if (type_type.HasErrorMark()) { return type::QualType::Error(); }
+
+  bool error = false;
   // Check for constness and type-ness separately so we can emit different error
   // messages (potentially both). Then, if either failed, exit early.
   if (not type_type.constant()) {
@@ -156,7 +174,18 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
     for (auto const *field : assignment->lhs()) {
       std::string_view field_name = field->as<ast::Identifier>().name();
       if (auto *struct_field = struct_type->field(field_name)) {
-        name_to_field.emplace(field_name, struct_field);
+        if (struct_type->defining_module() == &context().module() or
+            struct_field->hashtags.contains(ir::Hashtag::Export)) {
+          name_to_field.emplace(field_name, struct_field);
+        } else {
+          diag().Consume(NonExportedField{
+              .member_name = std::string(field_name),
+              .struct_type = struct_type,
+              .range       = field->range(),
+          });
+          recovered_error = true;
+          quals           = type::Quals::Unqualified();
+        }
       } else {
         diag().Consume(MissingStructField{
             .member_name = std::string(field_name),
@@ -180,8 +209,8 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
         // If there was an error we still want to verify all other initializers
         // and we still want to claim this expression has the same type, but
         // we'll just give up on it being a constant.
-        quals           = type::Quals::Unqualified();
         recovered_error = true;
+        quals           = type::Quals::Unqualified();
         goto next_assignment;
       }
 

@@ -24,12 +24,8 @@ exchange ::= (x: *$y, y: $y) -> $x {
 
 #{export}
 string ::= struct {
-  // TODO: Remove export of _data.
-  #{export}
   _data:     [*]char
-  #{export}
   _length:   u64
-  #{export}
   _capacity: u64
 
   (move) ::= (to: *string) -> string {

@@ -280,6 +280,7 @@ cc_library(
         "//ast",
         "//base:defer",
         "//compiler:compiler_header",
+        "//compiler:library_module",
         "//compiler/verify/internal:qual_type_iterator",
         "//type:primitive",
         "//type:qual_type",

@@ -94,12 +94,14 @@ struct Declaration : Expression {
         init_val_(std::move(decl.init_val_)),
         flags_(decl.flags_) {
     for (auto &id : ids_) { id.set_decl(this); }
+    hashtags = std::move(decl.hashtags);
   }
   Declaration &operator=(Declaration &&decl) noexcept {
     ids_       = std::move(decl.ids_);
     type_expr_ = std::move(decl.type_expr_);
     init_val_  = std::move(decl.init_val_);
     flags_     = decl.flags_;
+    hashtags   = std::move(decl.hashtags);
     for (auto &id : ids_) { id.set_decl(this); }
     return *this;
   }

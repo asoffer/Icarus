@@ -2,7 +2,6 @@ constants ::= import "math/constants.ic"
 
 #{export}
 angle ::= struct {
-  #{export} // TODO: Remove the need for this export.
   // Represents the value of the angle in radians
   _val: f64
 }

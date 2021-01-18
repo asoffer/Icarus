@@ -1,4 +1,5 @@
 #include "compiler/compiler.h"
+#include "compiler/library_module.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/module.h"
@@ -6,6 +7,7 @@
 namespace compiler {
 namespace {
 
+using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
@@ -241,6 +243,59 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
               UnorderedElementsAre(
                   Pair("type-error", "non-type-designated-initializer-type"),
                   Pair("type-error", "missing-struct-field")));
+}
+
+TEST(DesignatedInitializer, CrossModule) {
+  auto [imported_id, imported, inserted] =
+      ir::ModuleId::FromFile<compiler::LibraryModule>(
+          frontend::CanonicalFileName::Make(frontend::FileName{"imported1"}));
+
+  LOG("", "%p", imported);
+  test::TestModule mod;
+  ON_CALL(mod.importer, Import(Eq("imported1")))
+      .WillByDefault([id = imported_id](std::string_view) { return id; });
+
+  frontend::StringSource src(R"(
+  #{export} S ::= struct {
+    #{export} n: i64
+  }
+  )");
+  imported->AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+                       mod.importer);
+  LOG("", "%p", imported);
+
+  mod.AppendCode("-- ::= import \"imported1\"");
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
+  auto const *qt   = mod.context().qual_type(expr);
+  ASSERT_NE(qt, nullptr);
+  EXPECT_TRUE(qt->type().is<type::Struct>());
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(DesignatedInitializer, NotExported) {
+  auto [imported_id, imported, inserted] =
+      ir::ModuleId::FromFile<compiler::LibraryModule>(
+          frontend::CanonicalFileName::Make(frontend::FileName{"imported2"}));
+
+  test::TestModule mod;
+  ON_CALL(mod.importer, Import(Eq("imported2")))
+      .WillByDefault([id = imported_id](std::string_view) { return id; });
+
+  frontend::StringSource src(R"(
+  #{export} S ::= struct {
+    n: i64
+  }
+  )");
+  imported->AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+                        mod.importer);
+
+  mod.AppendCode("-- ::= import \"imported2\"");
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
+  auto const *qt   = mod.context().qual_type(expr);
+  ASSERT_NE(qt, nullptr);
+  EXPECT_TRUE(qt->type().is<type::Struct>());
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "non-exported-field")));
 }
 
 }  // namespace

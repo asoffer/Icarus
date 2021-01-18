@@ -172,16 +172,17 @@ struct QualType {
   // compile-time evaluation) to recognize a failure. A simple example would be:
   //
   // ```
-  //  Suit ::= enum { Clubs \\ Diamonds \\ Hearts \\ Spades }
+  // Suit ::= enum { Clubs \\ Diamonds \\ Hearts \\ Spades }
   //
-  //  my_suit := Suit.Club // Error
-  //  ```
+  // my_suit := Suit.Club // Error
+  // ```
   //
-  //  It is clear that `my_suit` has type `Suit`, but the enumerator chosen is
-  //  mispelled so while it is safe to proceed with type-checking,
-  //  code-generation must not happen.
+  // It is clear that `my_suit` has type `Suit`, but the enumerator chosen is
+  // mispelled so while it is safe to proceed with type-checking,
+  // code-generation must not happen.
+  //
   constexpr void MarkError() { error_ = 1; }
-  constexpr bool HasErrorMark() const { return error_; }
+  constexpr bool HasErrorMark() const { return error_ or not ok(); }
 
   constexpr Quals quals() const { return Quals(data_ & 0x7); }
   constexpr void set_quals(Quals q) {
