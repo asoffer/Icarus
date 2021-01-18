@@ -115,30 +115,42 @@ ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
 Context::InsertSubcontextResult Compiler::Instantiate(
     ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::Value>> const &args) {
+  auto &ctx = node->scope()
+                  ->Containing<ast::ModuleScope>()
+                  ->module()
+                  ->as<CompiledModule>()
+                  .context();
   LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
-      context().DebugString());
-  Context scratchpad = context().ScratchpadSubcontext();
+      ctx.DebugString());
+  Context scratchpad = ctx.ScratchpadSubcontext();
   Compiler c({
       .data                = scratchpad,
       .diagnostic_consumer = diag(),
       .importer            = importer(),
   });
-  return context().InsertSubcontext(node, c.ComputeParamsFromArgs(node, args),
-                                    std::move(scratchpad));
+
+  return ctx.InsertSubcontext(node, c.ComputeParamsFromArgs(node, args),
+                              std::move(scratchpad));
 }
 
 Context::FindSubcontextResult Compiler::FindInstantiation(
     ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::Value>> const &args) {
+  auto &ctx = node->scope()
+                  ->Containing<ast::ModuleScope>()
+                  ->module()
+                  ->as<CompiledModule>()
+                  .context();
   LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
-      context().DebugString());
-  Context scratchpad = context().ScratchpadSubcontext();
+      ctx.DebugString());
+  Context scratchpad = ctx.ScratchpadSubcontext();
   Compiler c({
       .data                = scratchpad,
       .diagnostic_consumer = diag(),
       .importer            = importer(),
   });
-  return context().FindSubcontext(node, c.ComputeParamsFromArgs(node, args));
+
+  return ctx.FindSubcontext(node, c.ComputeParamsFromArgs(node, args));
 }
 
 void Compiler::ProcessExecutableBody(base::PtrSpan<ast::Node const> nodes,

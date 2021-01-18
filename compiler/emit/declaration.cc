@@ -14,6 +14,7 @@ namespace compiler {
 namespace {
 
 ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
+  LOG("EmitConstantDeclaration", "%s", node->DebugString());
   if (node->scope()->Containing<ast::ModuleScope>()->module() !=
       &c.context().module()) {
     // Constant declarations from other modules should already be stored on
