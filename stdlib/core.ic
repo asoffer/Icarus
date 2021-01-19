@@ -80,3 +80,11 @@ exchange ::= (x: *$y, y: $y) -> $x {
   return result
 }
 
+#{export}
+exchange ::= (x: *$z, y: *$z, z: $z) -> $x {
+  result: z:?
+  result = @x
+  @x = @y
+  @y = z
+  return result
+}

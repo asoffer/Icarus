@@ -15,13 +15,6 @@ allocate_and_copy ::= (ptr: [*]char, len: u64) -> [*]char {
   return buffer
 }
 
-exchange ::= (x: *$y, y: $y) -> $x {
-  result: y:?
-  result = @x
-  @x = y
-  return result
-}
-
 #{export}
 string ::= struct {
   _data:     [*]char
@@ -30,9 +23,9 @@ string ::= struct {
 
   (move) ::= (to: *string) -> string {
     return string.{
-      _data     = exchange(to._data, null as [*]char)
-      _length   = exchange(to._length, 0 as u64)
-      _capacity = exchange(to._capacity, 0 as u64)
+      _data     = core.exchange(to._data, null as [*]char)
+      _length   = core.exchange(to._length, 0 as u64)
+      _capacity = core.exchange(to._capacity, 0 as u64)
     }
   }
 

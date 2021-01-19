@@ -29,6 +29,15 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
         builder().Index(type::Ptr(context().qual_type(node->lhs())->type()),
                         EmitValue(node->lhs()).get<ir::Reg>(), index),
         array_type->data_type()));
+  } else if (auto const *buf_ptr_type =
+                 qt->type().if_as<type::BufferPointer>()) {
+    auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
+        EmitValue(node->rhs()), context().qual_type(node->rhs())->type()));
+
+    return ir::Value(builder().PtrFix(
+        builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(), index,
+                          buf_ptr_type),
+        buf_ptr_type->pointee()));
   } else {
     UNREACHABLE(*this, *qt);
   }

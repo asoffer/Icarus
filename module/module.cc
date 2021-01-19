@@ -48,8 +48,8 @@ std::vector<ast::Declaration::Id const *> AllDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id_name) {
   std::vector<ast::Declaration::Id const *> ids;
   ForEachDeclTowardsRoot(starting_scope, id_name,
-                         [&](ast::Declaration::Id const *d) {
-                           ids.push_back(d);
+                         [&](ast::Declaration::Id const *id) {
+                           ids.push_back(id);
                            return true;
                          });
   return ids;
