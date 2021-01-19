@@ -543,6 +543,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
           {"copy", ast::UnaryOperator::Kind::Copy},
           {"init", ast::UnaryOperator::Kind::Init},
           {"move", ast::UnaryOperator::Kind::Move},
+          {"destroy", ast::UnaryOperator::Kind::Destroy},
           {"[*]", ast::UnaryOperator::Kind::BufferPointer},
           {":?", ast::UnaryOperator::Kind::TypeOf},
           {"&", ast::UnaryOperator::Kind::Address},

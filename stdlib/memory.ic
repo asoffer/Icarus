@@ -1,0 +1,30 @@
+core ::= import "core.ic"
+
+#{export}
+allocate ::= (T :: type) -> *T {
+  malloc ::= foreign("malloc", u64 -> *T)
+  return malloc(T'bytes)
+}
+
+#{export}
+allocate ::= (T :: type, l: u64) -> [*]T {
+  malloc ::= foreign("malloc", u64 -> [*]T)
+  return malloc(T'bytes * l)
+}
+
+#{export}
+// TODO: Verify that `ptr` is a pointer-type
+deallocate ::= (ptr: $ptr) -> () {
+  free ::= foreign("free", $ptr -> ())
+  free(ptr)
+}
+
+#{export}
+// TODO: Verify that `ptr` is a buffer pointer.
+reverse_destroy_buffer ::= (ptr: $ptr, count: u64) -> () {
+  p := ptr + count
+  core.repeat (count as i64) do {
+    p -= 1
+    destroy p
+  }
+}

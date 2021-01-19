@@ -27,6 +27,7 @@ while ::= scope {
   exit ::= () -> () {}
 }
 
+// TODO: Accept unsigned as well
 #{export}
 repeat ::= scope (i64) {
   enter ::= jump [state: *i64] (n: i64) {

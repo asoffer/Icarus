@@ -7,7 +7,7 @@ if exists("b:current_syntax")
   finish
 endif
 
-syntax keyword Keyword move copy which import flags enum struct return jump scope when as goto foreign bytes align opaque block init fn
+syntax keyword Keyword move copy import flags enum struct return jump scope as goto foreign bytes align opaque block init destroy and or xor
 syntax match Operator ":*=*"
 syntax match Operator "[,'$]"
 syntax match Operator "[`+*\-/%<>&|!]=\?"

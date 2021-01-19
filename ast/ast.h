@@ -1046,9 +1046,10 @@ struct Terminal : Expression {
 //  * `@some_ptr`
 struct UnaryOperator : Expression {
   enum class Kind {
-    Copy,
     Init,
+    Copy,
     Move,
+    Destroy,
     BufferPointer,
     TypeOf,
     At,

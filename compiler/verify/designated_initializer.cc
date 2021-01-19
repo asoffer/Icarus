@@ -32,7 +32,7 @@ struct NonTypeDesignatedInitializerType {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Designated initializer type must be a type, but you "
-                         "provided an expression which is a `%s`."),
+                         "provided an expression which is a `%s`.", type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

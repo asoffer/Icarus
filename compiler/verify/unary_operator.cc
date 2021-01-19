@@ -132,6 +132,9 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       qt = type::QualType(operand_type,
                           operand_qt.quals() & ~type::Quals::Buf());
     } break;
+    case ast::UnaryOperator::Kind::Destroy: {
+      qt = type::QualType::NonConstant(type::Void);
+    } break;
     case ast::UnaryOperator::Kind::Move: {
       ASSERT(operand_type.get()->completeness() ==
              type::Completeness::Complete);

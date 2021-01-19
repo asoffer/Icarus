@@ -19,6 +19,12 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type));
       return ir::Value(builder().PtrFix(reg, operand_type));
     } break;
+    case ast::UnaryOperator::Kind::Destroy: {
+      EmitDestroy(
+          type::Typed<ir::Reg>(EmitValue(node->operand()).get<ir::Reg>(),
+                               context().qual_type(node->operand())->type()));
+      return ir::Value();
+    } break;
     case ast::UnaryOperator::Kind::Init:
       // TODO: Not entirely sure this is what the semantics ought to be.
     case ast::UnaryOperator::Kind::Move: {
@@ -99,6 +105,11 @@ void Compiler::EmitCopyInit(
       break;
     case ast::UnaryOperator::Kind::Copy:
       EmitCopyInit(node->operand(), to);
+      break;
+    case ast::UnaryOperator::Kind::Destroy:
+      EmitDestroy(
+          type::Typed<ir::Reg>(EmitValue(node->operand()).get<ir::Reg>(),
+                               context().qual_type(node->operand())->type()));
       break;
     default: {
       auto from_val = EmitValue(node);

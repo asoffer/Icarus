@@ -1,4 +1,5 @@
 core ::= import "core.ic"
+mem  ::= import "memory.ic"
 
 #{export}
 boxed ::= struct (T :: type) {
@@ -13,14 +14,12 @@ boxed ::= struct (T :: type) {
   (move) ::= (to: *boxed(T), from: *boxed(T)) -> () {
     to_free: *T
     (to_free, to._ptr, from._ptr) = (to._ptr, from._ptr, null)
-
-    free ::= foreign("free", *T -> ())
-    free(to_free)
+    mem.deallocate(to_free)
   }
 
-  destroy ::= (self: *boxed(T)) -> () {
-    free ::= foreign("free", *T -> ())
-    free(self._ptr)
+  (destroy) ::= (self: *boxed(T)) -> () {
+    destroy self._ptr
+    mem.deallocate(self._ptr)
   }
 }
 
@@ -29,16 +28,6 @@ get ::= (T :: type, ptr: *boxed(T)) => ptr._ptr
 
 #{export}
 release ::= (T :: type, ptr: *boxed_array(T)) => core.exchange(ptr._ptr, null as [*]T)
-
-allocate ::= (T :: type) -> *T {
-  malloc ::= foreign("malloc", u64 -> *T)
-  return malloc(T'bytes)
-}
-
-allocate ::= (T :: type, l: u64) -> [*]T {
-  malloc ::= foreign("malloc", u64 -> [*]T)
-  return malloc(T'bytes * l)
-}
 
 boxed_array ::= struct (T :: type) {
   _ptr: [*]T
@@ -52,14 +41,13 @@ boxed_array ::= struct (T :: type) {
   }
 
   (move) ::= (to: *boxed_array(T), from: *boxed_array(T)) -> () {
-    free ::= foreign("free", [*]T -> ())
-    free(core.exchange(to._ptr, from._ptr, null as [*]T))
+    mem.deallocate(core.exchange(to._ptr, from._ptr, null as [*]T))
     to._length = core.exchange(from._length, 0 as u64)
   }
 
-  destroy ::= (self: *boxed_array(T)) -> () {
-    free ::= foreign("free", [*]T -> ())
-    free(self._ptr)
+  (destroy) ::= (self: *boxed_array(T)) -> () {
+    mem.destroy_buffer(self._ptr, self._length)
+    mem.deallocate(self._ptr)
   }
 }
 
@@ -77,7 +65,7 @@ release ::= (T :: type, ptr: *boxed_array(T)) -> ([*]T, u64) {
 #{export}
 box ::= (value: $value) -> boxed(value:?) {
   T ::= value:?
-  ptr := allocate(T)
+  ptr := mem.allocate(T)
   @ptr = value
   return boxed(T).{ _ptr = ptr }
 }
@@ -85,7 +73,7 @@ box ::= (value: $value) -> boxed(value:?) {
 #{export}
 box_array ::= (repeat: *$repeat, count: u64) -> boxed_array((@repeat):?) {
   T ::= (@repeat):?
-  ptr := allocate(T, count)
+  ptr := mem.allocate(T, count)
   core.for (0, count as i64) do [i: i64] {
     ptr[i] = copy @repeat
   }
