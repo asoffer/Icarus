@@ -7,7 +7,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "type/callable.h"
-#include "type/generic_struct.h"
 #include "type/qual_type.h"
 
 namespace compiler {
@@ -278,10 +277,29 @@ type::QualType VerifyAlignmentCall(
   return qt;
 }
 
+bool OnlyPositionalDeclarations(
+    core::Arguments<ast::Expression const *> const &args) {
+  if (not args.named().empty()) { return false; }
+  for (auto const *e : args.pos()) {
+    if (not e->is<ast::Declaration>()) { return false; }
+  }
+  return true;
+}
+
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::Call const *node) {
   LOG("Call", "Verifying %s", node->DebugString());
+  if (OnlyPositionalDeclarations(node->args())) {
+    if (auto callee_qt = VerifyType(node->callee())) {
+      if (not callee_qt.ok()) { return type::QualType::Error(); }
+      if (auto const *gs = callee_qt.type().if_as<type::GenericStruct>()) {
+        return context().set_qual_type(
+            node, type::QualType::Constant(type::Interface));
+      }
+    }
+  }
+
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto arg_vals, VerifyArguments(node->args()));
   // TODO: consider having `foreign` be a generic type. This would allow for the

@@ -229,6 +229,11 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
     return EmitBuiltinCall(this, b, node->args());
   }
 
+  auto qt = *ASSERT_NOT_NULL(context().qual_type(node));
+  if (qt.expansion_size() == 1 and qt.type() == type::Interface) {
+    return ir::Value();
+  }
+
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   core::Arguments<type::Typed<ir::Value>> constant_arguments =
@@ -242,8 +247,6 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
     return ir::Value(
         type::Type(gs_type->Instantiate(constant_arguments).second));
   }
-
-  auto qt = *ASSERT_NOT_NULL(context().qual_type(node));
 
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.

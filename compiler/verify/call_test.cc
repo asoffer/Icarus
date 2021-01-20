@@ -451,6 +451,11 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
+        TestCase{
+            .context            = "S ::= struct (N :: i64) {}",
+            .expr               = "S(n :: i64)",
+            .expected_qual_type = type::QualType::Constant(type::Interface),
+        },
     }));
 
 }  // namespace
