@@ -200,10 +200,32 @@ void BuiltinFn::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void Call::DebugStrAppend(std::string *out, size_t indent) const {
+  std::string_view sep = "";
+  if (not prefix_arguments().empty()) {
+    absl::StrAppend(out, "(",
+                    absl::StrJoin(prefix_arguments(), ", ",
+                                  [&](std::string *out, auto const &p) {
+                                    auto const &[name, expr] = p;
+                                    if (not name.empty()) {
+                                      absl::StrAppend(out, name, " = ");
+                                    }
+                                    expr->DebugStrAppend(out, indent);
+                                  }),
+                    ")'");
+  }
   callee()->DebugStrAppend(out, indent);
-  absl::StrAppend(out, "(");
-  DumpArguments(out, indent, args());
-  absl::StrAppend(out, ")");
+  if (not postfix_arguments().empty() or arguments().empty()) {
+    absl::StrAppend(out, "(",
+                    absl::StrJoin(postfix_arguments(), ", ",
+                                  [&](std::string *out, auto const &p) {
+                                    auto const &[name, expr] = p;
+                                    if (not name.empty()) {
+                                      absl::StrAppend(out, name, " = ");
+                                    }
+                                    expr->DebugStrAppend(out, indent);
+                                  }),
+                    ")");
+  }
 }
 
 void Cast::DebugStrAppend(std::string *out, size_t indent) const {
@@ -229,7 +251,8 @@ void Declaration::DebugStrAppend(std::string *out, size_t indent) const {
       absl::StrJoin(ids(), ", ",
                     [&](std::string *out, ast::Declaration::Id const &id) {
                       id.DebugStrAppend(out, indent);
-                    }));
+                    }),
+      ")");
   if (type_expr()) {
     absl::StrAppend(out, (flags() & Declaration::f_IsConst) ? " :: " : ": ");
     type_expr()->DebugStrAppend(out, indent);

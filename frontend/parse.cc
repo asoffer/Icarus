@@ -447,16 +447,10 @@ std::unique_ptr<ast::Node> BuildRightUnop(
   }
 }
 
-std::unique_ptr<ast::Node> BuildCallImpl(
-    SourceRange range, std::unique_ptr<ast::Expression> callee,
+void MergeIntoArgs(
+    std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> &args,
     std::unique_ptr<ast::Expression> args_expr,
     diagnostic::DiagnosticConsumer &diag) {
-  if (not args_expr) {
-    return std::make_unique<ast::Call>(
-        range, std::move(callee), core::OrderedArguments<ast::Expression>{});
-  }
-
-  std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
   if (auto *cl = args_expr->if_as<CommaList>()) {
     std::optional<SourceRange> last_named_range_before_error = std::nullopt;
     std::vector<SourceRange> positional_error_ranges;
@@ -468,7 +462,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
         }
         // TODO: Error if there are multiple entries in this assignment.
         auto [lhs, rhs] = std::move(*a).extract();
-        args.emplace_back(std::string{lhs[0]->as<ast::Identifier>().name()},
+        args.emplace_back(std::string(lhs[0]->as<ast::Identifier>().name()),
                           std::move(rhs[0]));
       } else {
         if (last_named_range_before_error.has_value()) {
@@ -487,29 +481,53 @@ std::unique_ptr<ast::Node> BuildCallImpl(
     if (auto *a = args_expr->if_as<ast::Assignment>()) {
       auto [lhs, rhs] = std::move(*a).extract();
       // TODO: Error if there are multiple entries in this assignment.
-      args.emplace_back(std::string{lhs[0]->as<ast::Identifier>().name()},
+      args.emplace_back(std::string(lhs[0]->as<ast::Identifier>().name()),
                         std::move(rhs[0]));
     } else {
       args.emplace_back("", std::move(args_expr));
     }
   }
+}
+
+std::unique_ptr<ast::Node> BuildFullCall(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  // Due to constraints of predecence, The token must be a `'`.
+  ASSERT(nodes[1]->as<Token>().token == "'");
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
+
+  std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
+  MergeIntoArgs(args, move_as<ast::Expression>(nodes[0]), diag);
+  size_t split = args.size();
+  MergeIntoArgs(args, move_as<ast::Expression>(nodes[4]), diag);
+
+  auto callee = move_as<ast::Expression>(nodes[2]);
 
   if (callee->is<ast::Declaration>()) {
     diag.Consume(CallingDeclaration{.range = callee->range()});
   }
 
-  return std::make_unique<ast::Call>(
-      range, std::move(callee),
-      core::OrderedArguments<ast::Expression>(std::move(args)));
+  return std::make_unique<ast::Call>(range, std::move(callee), std::move(args),
+                                     split);
 }
 
-std::unique_ptr<ast::Node> BuildCall(
+std::unique_ptr<ast::Node> BuildParenCall(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   SourceRange range(nodes.front()->range().begin(),
                     nodes.back()->range().end());
-  return BuildCallImpl(range, move_as<ast::Expression>(nodes[0]),
-                       move_as<ast::Expression>(nodes[2]), diag);
+  auto callee = move_as<ast::Expression>(nodes[0]);
+
+  std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
+  MergeIntoArgs(args, move_as<ast::Expression>(nodes[2]), diag);
+
+  if (callee->is<ast::Declaration>()) {
+    diag.Consume(CallingDeclaration{.range = callee->range()});
+  }
+
+  return std::make_unique<ast::Call>(range, std::move(callee), std::move(args),
+                                     0);
 }
 
 std::unique_ptr<ast::Node> BuildLeftUnop(
@@ -525,8 +543,11 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   } else if (tk == "'") {
     SourceRange range(nodes.front()->range().begin(),
                       nodes.back()->range().end());
-    return BuildCallImpl(range, move_as<ast::Expression>(nodes[1]), nullptr,
-                         diag);
+    return std::make_unique<ast::Call>(
+        range, move_as<ast::Expression>(nodes[1]),
+        std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>>{},
+        0);
+
   } else if (tk == "$") {
     SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
     if (auto *id = nodes[1]->if_as<ast::Identifier>()) {
@@ -1082,13 +1103,14 @@ std::unique_ptr<ast::Node> BuildScopeNode(
     diagnostic::DiagnosticConsumer &diag) {
   SourceRange range(nodes.front()->range().begin(),
                     nodes.back()->range().end());
-  auto [callee, ordered_arguments] =
-      std::move(nodes[0]->as<ast::Call>()).extract();
+  auto [callee, args] = std::move(nodes[0]->as<ast::Call>()).extract();
+
   std::vector<ast::BlockNode> blocks;
   blocks.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
-  return std::make_unique<ast::ScopeNode>(range, std::move(callee),
-                                          std::move(ordered_arguments),
-                                          std::move(blocks));
+  return std::make_unique<ast::ScopeNode>(
+      range, std::move(callee),
+      core::OrderedArguments<ast::Expression>(std::move(args)),
+      std::move(blocks));
 }
 
 std::unique_ptr<ast::Node> BuildBlockNode(
@@ -1204,8 +1226,19 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   } else if (tk == "'") {
     SourceRange range(nodes.front()->range().begin(),
                       nodes.back()->range().end());
-    return BuildCallImpl(range, move_as<ast::Expression>(nodes[2]),
-                         move_as<ast::Expression>(nodes[0]), diag);
+    std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
+    MergeIntoArgs(args, move_as<ast::Expression>(nodes[0]), diag);
+
+    auto callee = move_as<ast::Expression>(nodes[2]);
+
+    if (callee->is<ast::Declaration>()) {
+      diag.Consume(CallingDeclaration{.range = callee->range()});
+    }
+
+    size_t num_args = args.size();
+    return std::make_unique<ast::Call>(range, std::move(callee),
+                                       std::move(args), num_args);
+
   } else if (tk == "->") {
     SourceRange range(nodes.front()->range().begin(),
                       nodes.back()->range().end());
@@ -1497,8 +1530,11 @@ std::unique_ptr<ast::Node> BuildEmptyParen(
     diag.Consume(CallingDeclaration{.range = nodes[0]->range()});
   }
   SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
-  return std::make_unique<ast::Call>(range, move_as<ast::Expression>(nodes[0]),
-                                     core::OrderedArguments<ast::Expression>{});
+
+  return std::make_unique<ast::Call>(
+      range, move_as<ast::Expression>(nodes[0]),
+      std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>>{},
+      0);
 }
 
 template <size_t N>
@@ -1584,7 +1620,9 @@ static base::Global kRules = std::array{
     ParseRule(scope_expr, {label, scope_expr}, LabelScopeNode),
 
     // Construction of function call expressions
-    ParseRule(fn_call_expr, {EXPR, l_paren, EXPR, r_paren}, BuildCall),
+    ParseRule(fn_call_expr, {EXPR, op_bl, EXPR, l_paren, EXPR, r_paren},
+              BuildFullCall),
+    ParseRule(fn_call_expr, {EXPR, l_paren, EXPR, r_paren}, BuildParenCall),
     ParseRule(fn_call_expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
 
     ParseRule(fn_expr, {EXPR, fn_arrow, EXPR}, BuildBinaryOperator),
@@ -1749,6 +1787,11 @@ struct ParseState {
         return ShiftState::MustReduce;
       }
       auto left_prec = precedence(get<2>()->as<Token>().op);
+
+      if (left_prec == precedence(Operator::Call) and ahead.tag_ == l_paren) {
+        return ShiftState::NeedMore;
+      }
+
       size_t right_prec;
       if (ahead.tag_ & OP) {
         right_prec = precedence(ahead.node_->as<Token>().op);

@@ -494,4 +494,35 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
   });
 }
 
+core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
+    Compiler &c,
+    absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
+        args) {
+  core::Arguments<type::Typed<ir::Value>> arg_vals;
+  type::Typed<ir::Value> result;
+  for (auto const &[name, expr] : args) {
+    auto qt = *ASSERT_NOT_NULL(c.context().qual_type(expr.get()));
+    if (qt.constant()) {
+      if (qt.type().get()->is_big()) {
+        // TODO: Implement constant computation here.
+        result = type::Typed<ir::Value>(ir::Value(), qt.type());
+      } else {
+        ir::Value value = c.EvaluateOrDiagnose(
+            type::Typed<ast::Expression const *>(expr.get(), qt.type()));
+        if (value.empty()) { NOT_YET(); }
+        result = type::Typed<ir::Value>(value, qt.type());
+      }
+    } else {
+      result = type::Typed<ir::Value>(ir::Value(), qt.type());
+    }
+
+    if (name.empty()) {
+      arg_vals.pos_emplace(result);
+    } else {
+      arg_vals.named_emplace(name, result);
+    }
+  }
+  return arg_vals;
+}
+
 }  // namespace compiler

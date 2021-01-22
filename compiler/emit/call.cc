@@ -88,10 +88,12 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
 }
 
 template <typename Tag>
-void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
-              core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
-              core::Arguments<ast::Expression const *> const &arg_exprs,
-              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+void EmitCall(
+    Tag, Compiler &compiler, ast::Expression const *callee,
+    core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
+    absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
+        arg_exprs,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   auto callee_qual_type =
       *ASSERT_NOT_NULL(compiler.context().qual_type(callee));
 
@@ -121,28 +123,38 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
 
   auto const &param_qts = overload_type->params();
 
-  // TODO: With expansions, args().pos().size() could be wrong.
-  for (size_t i = 0; i < arg_exprs.pos().size(); ++i) {
-    prepared_arguments.push_back(PrepareArgument(
-        compiler, *constant_arguments[i], arg_exprs[i], param_qts[i].value));
-  }
-
-  for (size_t i = arg_exprs.pos().size(); i < param_qts.size(); ++i) {
-    std::string_view name                = param_qts[i].name;
-    auto const *constant_typed_value     = constant_arguments.at_or_null(name);
-    auto const *expr                     = arg_exprs.at_or_null(name);
-    ast::Expression const *default_value = nullptr;
-
-    if (not expr) {
-      ASSERT(callee_fn.is_reg() == false);
-      ASSERT(callee_fn.value().kind() == ir::Fn::Kind::Native);
-      default_value = ASSERT_NOT_NULL(
-          callee_fn.value().native()->params()[i].value.get()->init_val());
+  // TODO: With expansions, this might be wrong.
+  {
+    size_t i = 0;
+    for (; i < arg_exprs.size() and arg_exprs[i].first.empty(); ++i) {
+      prepared_arguments.push_back(
+          PrepareArgument(compiler, *constant_arguments[i],
+                          arg_exprs[i].second.get(), param_qts[i].value));
     }
 
-    prepared_arguments.push_back(PrepareArgument(
-        compiler, constant_typed_value ? **constant_typed_value : ir::Value(),
-        expr ? *expr : default_value, param_qts[i].value));
+    absl::flat_hash_map<std::string_view, ast::Expression const *> named;
+    for (size_t j = i; j < arg_exprs.size(); ++j) {
+      named.emplace(arg_exprs[j].first, arg_exprs[j].second.get());
+    }
+
+    for (size_t j = i; j < param_qts.size(); ++j) {
+      std::string_view name            = param_qts[j].name;
+      auto const *constant_typed_value = constant_arguments.at_or_null(name);
+      auto iter                        = named.find(name);
+      auto const *expr = iter == named.end() ? nullptr : iter->second;
+      ast::Expression const *default_value = nullptr;
+
+      if (not expr) {
+        ASSERT(callee_fn.is_reg() == false);
+        ASSERT(callee_fn.value().kind() == ir::Fn::Kind::Native);
+        default_value = ASSERT_NOT_NULL(
+            callee_fn.value().native()->params()[j].value.get()->init_val());
+      }
+
+      prepared_arguments.push_back(PrepareArgument(
+          compiler, constant_typed_value ? **constant_typed_value : ir::Value(),
+          expr ? expr : default_value, param_qts[i].value));
+    }
   }
 
   auto out_params = SetReturns(Tag{}, c.builder(), overload_type, to);
@@ -167,14 +179,17 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
 //
 ir::Value EmitBuiltinCall(
     Compiler *c, ast::BuiltinFn const *callee,
-    core::Arguments<ast::Expression const *> const &args) {
+    absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
+        args) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
-      auto name_buffer = c->EvaluateToBufferOrDiagnose(
-          type::Typed<ast::Expression const *>(args[0], type::Slc(type::Char)));
+      auto name_buffer =
+          c->EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
+              args[0].second.get(), type::Slc(type::Char)));
       if (name_buffer.empty()) { return ir::Value(); }
 
-      auto maybe_foreign_type = c->EvaluateOrDiagnoseAs<type::Type>(args[1]);
+      auto maybe_foreign_type =
+          c->EvaluateOrDiagnoseAs<type::Type>(args[1].second.get());
       if (not maybe_foreign_type) { return ir::Value(); }
       auto slice = name_buffer.get<ir::Slice>(0);
 
@@ -197,7 +212,7 @@ ir::Value EmitBuiltinCall(
       ir::Reg reg         = outs[0];
       c->builder().Call(
           ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
-          {ir::Value(c->EmitValue(args[0]).get<ir::RegOr<type::Type>>())},
+          {ir::Value(c->EmitValue(args[0].second.get()).get<ir::RegOr<type::Type>>())},
           std::move(outs));
 
       return ir::Value(reg);
@@ -209,7 +224,8 @@ ir::Value EmitBuiltinCall(
       ir::Reg reg         = outs[0];
       c->builder().Call(
           ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
-          {ir::Value(c->EmitValue(args[0]).get<ir::RegOr<type::Type>>())},
+          {ir::Value(
+              c->EmitValue(args[0].second.get()).get<ir::RegOr<type::Type>>())},
           std::move(outs));
 
       return ir::Value(reg);
@@ -226,7 +242,7 @@ ir::Value EmitBuiltinCall(
 
 ir::Value Compiler::EmitValue(ast::Call const *node) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    return EmitBuiltinCall(this, b, node->args());
+    return EmitBuiltinCall(this, b, node->arguments());
   }
 
   auto qt = *ASSERT_NOT_NULL(context().qual_type(node));
@@ -237,7 +253,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->args());
+      EmitConstantArguments(*this, node->arguments());
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
@@ -253,14 +269,14 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   switch (qt.expansion_size()) {
     case 0:
       EmitCall(MoveInitTag{}, *this, os.members().front(), constant_arguments,
-               node->args(), {});
+               node->arguments(), {});
       return ir::Value();
     case 1: {
       // TODO: It'd be nice to not stack-allocate register-sized values.
       type::Typed<ir::RegOr<ir::Addr>> out(builder().TmpAlloca(qt.type()),
                                            qt.type());
       EmitCall(MoveInitTag{}, *this, os.members().front(), constant_arguments,
-               node->args(), absl::MakeConstSpan(&out, 1));
+               node->arguments(), absl::MakeConstSpan(&out, 1));
       return ir::Value(builder().PtrFix(out->reg(), qt.type()));
     }
     default: NOT_YET();
@@ -271,7 +287,7 @@ void Compiler::EmitMoveInit(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    auto result = EmitBuiltinCall(this, b, node->args());
+    auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
                               result, context().qual_type(node)->type()));
@@ -280,7 +296,7 @@ void Compiler::EmitMoveInit(
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->args());
+      EmitConstantArguments(*this, node->arguments());
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
@@ -298,14 +314,14 @@ void Compiler::EmitMoveInit(
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   EmitCall(MoveInitTag{}, *this, os.members().front(), constant_arguments,
-           node->args(), to);
+           node->arguments(), to);
 }
 
 void Compiler::EmitCopyInit(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    auto result = EmitBuiltinCall(this, b, node->args());
+    auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
                               result, context().qual_type(node)->type()));
@@ -314,7 +330,7 @@ void Compiler::EmitCopyInit(
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->args());
+      EmitConstantArguments(*this, node->arguments());
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
@@ -332,14 +348,14 @@ void Compiler::EmitCopyInit(
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   return EmitCall(CopyInitTag{}, *this, os.members().front(),
-                  constant_arguments, node->args(), to);
+                  constant_arguments, node->arguments(), to);
 }
 
 void Compiler::EmitMoveAssign(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    auto result = EmitBuiltinCall(this, b, node->args());
+    auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitMoveAssign(to[0], type::Typed<ir::Value>(
                               result, context().qual_type(node)->type()));
@@ -348,7 +364,7 @@ void Compiler::EmitMoveAssign(
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->args());
+      EmitConstantArguments(*this, node->arguments());
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
@@ -366,14 +382,14 @@ void Compiler::EmitMoveAssign(
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
 
   return EmitCall(AssignTag{}, *this, os.members().front(), constant_arguments,
-                  node->args(), to);
+                  node->arguments(), to);
 }
 
 void Compiler::EmitCopyAssign(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    auto result = EmitBuiltinCall(this, b, node->args());
+    auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
                               result, context().qual_type(node)->type()));
@@ -382,7 +398,7 @@ void Compiler::EmitCopyAssign(
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->args());
+      EmitConstantArguments(*this, node->arguments());
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_type(node->callee())
@@ -399,7 +415,7 @@ void Compiler::EmitCopyAssign(
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
 
   return EmitCall(AssignTag{}, *this, os.members().front(), constant_arguments,
-                  node->args(), to);
+                  node->arguments(), to);
 }
 
 }  // namespace compiler

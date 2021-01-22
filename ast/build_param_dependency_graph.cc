@@ -93,7 +93,7 @@ struct ParamDependencyGraphBuilder
 
   void Visit(Call const *node, core::DependencyNode<Declaration> d) {
     Visit(node->callee(), d);
-    for (Expression const *expr : node->args()) { Visit(expr, d); }
+    for (auto const &[name, expr] : node->arguments()) { Visit(expr.get(), d); }
   }
 
   void Visit(Cast const *node, core::DependencyNode<Declaration> d) {

@@ -267,7 +267,7 @@ struct ParameterizedExpression : Expression {
 
   // Returns a sequence of (parameter-index, dependency-node) pairs ordered in
   // such a way that each has no dependencies on any that come after it.
-  absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
+  absl::Span<std::pair<int, core::DependencyNode<Declaration>> const>
   ordered_dependency_nodes() const {
     return ordered_dependency_nodes_;
   }
@@ -290,8 +290,8 @@ struct ParameterizedExpression : Expression {
     }
   }
 
-  core::Params<std::unique_ptr<ast::Declaration>> params_;
-  std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
+  core::Params<std::unique_ptr<Declaration>> params_;
+  std::vector<std::pair<int, core::DependencyNode<Declaration>>>
       ordered_dependency_nodes_;
   bool is_generic_ = false;
 };
@@ -326,7 +326,7 @@ struct DesignatedInitializer : Expression {
         assignments_(std::move(assignments)) {
     for (auto const *assignment : this->assignments()) {
       for (auto const *expr : assignment->lhs()) {
-        ASSERT(expr->is<ast::Identifier>() == true);
+        ASSERT(expr->is<Identifier>() == true);
       }
     }
   }
@@ -400,7 +400,7 @@ struct BlockLiteral : Expression, WithScope<DeclScope> {
 //
 // Note: Today blocks have names and statements but cannot take any arguments.
 // This will likely change in the future so that blocks can take arguments
-// (likely in the form of `core::Arguments<std::unique_ptr<ast::Expression>>`).
+// (likely in the form of `core::Arguments<std::unique_ptr<Expression>>`).
 struct BlockNode : ParameterizedExpression, WithScope<ExecScope> {
   explicit BlockNode(frontend::SourceRange const &range, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)
@@ -426,7 +426,7 @@ struct BlockNode : ParameterizedExpression, WithScope<ExecScope> {
 
   std::string_view name() const { return name_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
-  ast::ScopeNode const *parent() const { return parent_; }
+  ScopeNode const *parent() const { return parent_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -461,20 +461,60 @@ struct BuiltinFn : Expression {
 struct Call : Expression {
   explicit Call(frontend::SourceRange const &range,
                 std::unique_ptr<Expression> callee,
-                core::OrderedArguments<Expression> args)
-      : Expression(range), callee_(std::move(callee)), args_(std::move(args)) {}
+                std::vector<std::pair<std::string, std::unique_ptr<Expression>>>
+                    arguments,
+                size_t prefix_split)
+      : Expression(range),
+        callee_(std::move(callee)),
+        arguments_(std::move(arguments)),
+        prefix_split_(prefix_split) {
+          size_t i = 0;
+          for (auto const &[name, expr] : arguments_) {
+            if (not name.empty()) { break; }
+            ++i;
+          }
+          positional_split_ = i;
+        }
   Expression const *callee() const { return callee_.get(); }
-  core::Arguments<Expression const *> const &args() const {
-    return args_.args();
+
+  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
+  prefix_arguments() const {
+    return absl::MakeConstSpan(arguments_.data(), prefix_split_);
   }
 
-  auto extract() && { return std::pair{std::move(callee_), std::move(args_)}; }
+  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
+  postfix_arguments() const {
+    return absl::MakeConstSpan(arguments_.data() + prefix_split_,
+                               arguments_.size() - prefix_split_);
+  }
+
+  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
+  arguments() const {
+    return arguments_;
+  }
+
+
+  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
+  named_arguments() const {
+    return absl::MakeConstSpan(arguments_.data() + positional_split_,
+                               arguments_.size() - positional_split_);
+  }
+
+  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
+  positional_arguments() const {
+    return absl::MakeConstSpan(arguments_.data(), positional_split_);
+  }
+
+  auto extract() && {
+    return std::make_tuple(std::move(callee_), std::move(arguments_));
+  }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::unique_ptr<Expression> callee_;
-  core::OrderedArguments<Expression> args_;
+  std::vector<std::pair<std::string, std::unique_ptr<Expression>>> arguments_;
+  size_t positional_split_, prefix_split_;
 };
 
 // Cast:
@@ -760,7 +800,7 @@ struct Label : Expression {
 //  ```
 struct Jump : ParameterizedExpression, WithScope<FnScope> {
   explicit Jump(frontend::SourceRange const &range,
-                std::unique_ptr<ast::Declaration> state,
+                std::unique_ptr<Declaration> state,
                 std::vector<std::unique_ptr<Declaration>> in_params,
                 std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(range, std::move(in_params)),
@@ -775,7 +815,7 @@ struct Jump : ParameterizedExpression, WithScope<FnScope> {
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
  private:
-  std::unique_ptr<ast::Declaration> state_;
+  std::unique_ptr<Declaration> state_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 
@@ -916,7 +956,7 @@ struct ScopeNode : Expression {
 
   absl::Span<BlockNode const> blocks() const { return blocks_; }
 
-  ast::Label const *label() const { return label_ ? &*label_ : nullptr; }
+  Label const *label() const { return label_ ? &*label_ : nullptr; }
   void set_label(Label label) { label_ = std::move(label); }
 
   // Appends the given block not necessarily to this ScopeNode, but to the scope
@@ -1098,20 +1138,22 @@ struct ConditionalGoto : Node {
                            std::vector<std::unique_ptr<Call>> false_calls)
       : Node(range), condition_(std::move(condition)) {
     for (auto &call : true_calls) {
-      auto [callee, ordered_args] = std::move(*call).extract();
+      auto [callee, args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
-        true_options_.emplace_back(std::string{id->name()},
-                                   std::move(ordered_args).DropOrder());
+        true_options_.emplace_back(
+            std::string{id->name()},
+            core::OrderedArguments<Expression>(std::move(args)).DropOrder());
       } else {
         UNREACHABLE();
       }
     }
 
     for (auto &call : false_calls) {
-      auto [callee, ordered_args] = std::move(*call).extract();
+      auto [callee, args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
-        false_options_.emplace_back(std::string{id->name()},
-                                    std::move(ordered_args).DropOrder());
+        false_options_.emplace_back(
+            std::string{id->name()},
+            core::OrderedArguments<Expression>(std::move(args)).DropOrder());
       } else {
         UNREACHABLE();
       }
@@ -1127,7 +1169,7 @@ struct ConditionalGoto : Node {
  private:
   // A jump will evaluate at compile-time to the first option for which the
   // scope node has all possible blocks.
-  std::unique_ptr<ast::Expression> condition_;
+  std::unique_ptr<Expression> condition_;
   std::vector<JumpOption> true_options_, false_options_;
 };
 
@@ -1155,10 +1197,11 @@ struct UnconditionalGoto : Node {
                              std::vector<std::unique_ptr<Call>> calls)
       : Node(range) {
     for (auto &call : calls) {
-      auto [callee, ordered_args] = std::move(*call).extract();
+      auto [callee, args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
-        options_.emplace_back(std::string{id->name()},
-                              std::move(ordered_args).DropOrder());
+        options_.emplace_back(
+            std::string{id->name()},
+            core::OrderedArguments<Expression>(std::move(args)).DropOrder());
       } else {
         UNREACHABLE();
       }
@@ -1186,17 +1229,17 @@ struct UnconditionalGoto : Node {
 struct YieldStmt : Node {
   explicit YieldStmt(frontend::SourceRange const &range,
                      std::vector<std::unique_ptr<Expression>> exprs,
-                     std::unique_ptr<ast::Label> label = nullptr)
+                     std::unique_ptr<Label> label = nullptr)
       : Node(range), exprs_(std::move(exprs)), label_(std::move(label)) {}
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-  ast::Label const *label() const { return label_.get(); }
+  Label const *label() const { return label_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::vector<std::unique_ptr<Expression>> exprs_;
-  std::unique_ptr<ast::Label> label_;
+  std::unique_ptr<Label> label_;
 };
 
 #undef ICARUS_AST_VIRTUAL_METHODS

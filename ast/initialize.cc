@@ -118,7 +118,7 @@ void BuiltinFn::Initialize(Scope *scope) { scope_ = scope; }
 void Call::Initialize(Scope *scope) {
   scope_ = scope;
   callee_->Initialize(scope);
-  args_.Apply([scope](Expression *expr) { expr->Initialize(scope); });
+  for (auto &[name, expr] : arguments_) { expr->Initialize(scope); }
 }
 
 void Cast::Initialize(Scope *scope) {

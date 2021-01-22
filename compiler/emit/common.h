@@ -54,6 +54,10 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
 core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
     Compiler &c, core::Arguments<ast::Expression const *> const &args);
 
+core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
+    Compiler &c,
+    absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
+        args);
 
 }  // namespace compiler
 

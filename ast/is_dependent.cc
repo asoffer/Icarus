@@ -55,12 +55,11 @@ bool BuiltinFn::IsDependent() const { return false; }
 
 bool Call::IsDependent() const {
   if (callee()->IsDependent()) { return true; }
-  for (auto const *arg : args().pos()) {
-    if (arg->IsDependent()) { return true; }
+
+  for (auto const &[name, expr] : arguments()) {
+    if (expr->IsDependent()) { return true; }
   }
-  for (auto [name, arg] : args().named()) {
-    if (arg->IsDependent()) { return true; }
-  }
+
   return false;
 }
 

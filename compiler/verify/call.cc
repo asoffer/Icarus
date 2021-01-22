@@ -277,31 +277,29 @@ type::QualType VerifyAlignmentCall(
   return qt;
 }
 
-bool OnlyPositionalDeclarations(
-    core::Arguments<ast::Expression const *> const &args) {
-  if (not args.named().empty()) { return false; }
-  for (auto const *e : args.pos()) {
-    if (not e->is<ast::Declaration>()) { return false; }
-  }
-  return true;
-}
-
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::Call const *node) {
   LOG("Call", "Verifying %s", node->DebugString());
-  if (OnlyPositionalDeclarations(node->args())) {
-    if (auto callee_qt = VerifyType(node->callee())) {
-      if (not callee_qt.ok()) { return type::QualType::Error(); }
-      if (auto const *gs = callee_qt.type().if_as<type::GenericStruct>()) {
-        return context().set_qual_type(
-            node, type::QualType::Constant(type::Interface));
-      }
+
+  if (not node->named_arguments().empty()) { goto not_an_interface; }
+  if (node->positional_arguments().empty()) { goto not_an_interface; }
+  for (auto const &[name, e] : node->positional_arguments()) {
+    if (not e->is<ast::Declaration>()) { goto not_an_interface; }
+  }
+
+  if (auto callee_qt = VerifyType(node->callee())) {
+    if (not callee_qt.ok()) { return type::QualType::Error(); }
+    if (auto const *gs = callee_qt.type().if_as<type::GenericStruct>()) {
+      return context().set_qual_type(node,
+                                     type::QualType::Constant(type::Interface));
     }
   }
 
+not_an_interface:
+
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto arg_vals, VerifyArguments(node->args()));
+                   auto arg_vals, VerifyArguments(node->arguments()));
   // TODO: consider having `foreign` be a generic type. This would allow for the
   // possibility of overlading builtins. That's a dangerous yet principled idea.
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {

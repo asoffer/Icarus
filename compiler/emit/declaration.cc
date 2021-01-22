@@ -95,7 +95,7 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
         return *maybe_val;
       }
     } else if (node->IsDefaultInitialized()) {
-      UNREACHABLE();
+      UNREACHABLE(node->DebugString());
     } else {
       UNREACHABLE();
     }

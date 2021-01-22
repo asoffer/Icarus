@@ -286,6 +286,33 @@ std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
 
 std::optional<core::Arguments<type::Typed<ir::Value>>>
 Compiler::VerifyArguments(
+   absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const> args) {
+  bool err = false;
+  core::Arguments<type::Typed<ir::Value>> arg_vals;
+  for (auto const &[name, expr] : args) {
+    type::Typed<ir::Value> result;
+    auto expr_qual_type = VerifyType(expr.get());
+    err |= not expr_qual_type.ok();
+    if (err) {
+      LOG("VerifyArguments", "Error with: %s", expr->DebugString());
+      result = type::Typed<ir::Value>(ir::Value(), nullptr);
+    } else {
+      LOG("VerifyArguments", "constant: %s", expr->DebugString());
+      result = EvaluateIfConstant(*this, expr.get(), expr_qual_type);
+    }
+    if (name.empty()) {
+      arg_vals.pos_emplace(result);
+    } else {
+      arg_vals.named_emplace(name, result);
+    }
+  }
+
+  if (err) { return std::nullopt; }
+  return arg_vals;
+}
+
+std::optional<core::Arguments<type::Typed<ir::Value>>>
+Compiler::VerifyArguments(
     core::Arguments<ast::Expression const *> const &args) {
   bool err      = false;
   auto arg_vals = args.Transform([&](ast::Expression const *expr) {

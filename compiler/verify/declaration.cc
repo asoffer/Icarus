@@ -148,6 +148,9 @@ UninferrableType::Reason Inferrable(type::Type t) {
 // TODO: what about shadowing of symbols across module boundaries imported with
 // -- ::= ?
 // Or when you import two modules verifying that symbols don't conflict.
+//
+// TODO: check shadowing of functions where one has a signature that could be
+// created from the other by currying some of the arguments or decide we don't care.
 bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
             type::Typed<ast::Declaration::Id const *> id2) {
   type::Callable const *callable1 = id1.type().if_as<type::Callable>();
