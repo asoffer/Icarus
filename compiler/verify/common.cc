@@ -145,6 +145,20 @@ std::vector<core::Arguments<type::Type>> ExpandedArguments(
   return all_expanded_options;
 }
 
+void AddOverloads(Context const &context, ast::Expression const *callee,
+                  absl::flat_hash_map<ast::Expression const *,
+                                      type::Callable const *> &overload_map) {
+  auto const *overloads = context.AllOverloads(callee);
+  if (not overloads) { return; }
+  for (auto const *overload : overloads->members()) {
+    LOG("AddOverloads", "Callee: %p %s", overload, overload->DebugString());
+    // TODO: Deduce the right scope from `callee`?
+    if (auto const *qt = context.qual_type(overload)) {
+      overload_map.emplace(overload, &qt->type().as<type::Callable>());
+    }
+  }
+}
+
 }  // namespace
 
 // TODO: There's something strange about this: We want to work on a temporary
@@ -386,26 +400,50 @@ type::QualType Compiler::VerifyBinaryOverload(
 
 std::pair<type::QualType,
           absl::flat_hash_map<ast::Expression const *, type::Callable const *>>
-Compiler::VerifyCallee(ast::Expression const *callee,
-                       core::Arguments<type::Typed<ir::Value>> const &args) {
+Compiler::VerifyCallee(
+    ast::Expression const *callee,
+    core::Arguments<type::Typed<ir::Value>> const &args,
+    absl::flat_hash_set<type::Type> const &argument_dependent_lookup_types) {
   using return_type =
       std::pair<type::QualType, absl::flat_hash_map<ast::Expression const *,
                                                     type::Callable const *>>;
+
+  absl::flat_hash_map<ast::Expression const *, type::Callable const *>
+      overload_map;
+
+  LOG("VerifyCallee", "Verify callee: %s", callee->DebugString());
+
+  // Set modules to be used for ADL before calling VerifyType on the callee, so
+  // the verifier knows which contexts to look things up in.
+  if (auto const *id = callee->if_as<ast::Identifier>()) {
+    absl::flat_hash_set<compiler::CompiledModule const *> adl_modules;
+    for (type::Type t : argument_dependent_lookup_types) {
+      // TODO: Generic structs? Arrays? Pointers?
+      if (auto const *s = t.if_as<type::Struct>()) {
+        adl_modules.insert(
+            &s->defining_module()->as<compiler::CompiledModule>());
+      }
+    }
+
+    context().SetAdlModules(id, std::move(adl_modules));
+  }
+
   ASSIGN_OR(return return_type(type::QualType::Error(), {}),  //
                    auto qt, VerifyType(callee));
 
   ASSIGN_OR(return return_type(qt, {}),  //
                    auto const &callable, qt.type().if_as<type::Callable>());
 
-  absl::flat_hash_map<ast::Expression const *, type::Callable const *>
-      overload_map;
-  for (auto const *overload : context().AllOverloads(callee).members()) {
-    LOG("VerifyCallee", "Callee: %p %s", overload, overload->DebugString());
-    overload_map.emplace(overload,
-                         &ASSERT_NOT_NULL(context().qual_type(overload))
-                              ->type()
-                              .as<type::Callable>());
+  AddOverloads(context(), callee, overload_map);
+  for (type::Type t : argument_dependent_lookup_types) {
+    // TODO: Generic structs? Arrays? Pointers?
+    if (auto const *s = t.if_as<type::Struct>()) {
+      AddOverloads(
+          s->defining_module()->as<compiler::CompiledModule>().context(),
+          callee, overload_map);
+    }
   }
+
   return return_type(qt, std::move(overload_map));
 }
 
@@ -425,11 +463,17 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   // else is inserted into the map. I believe not even if something is inserted
   // the iterator into members is still valid because there's an extra layer of
   // indirection in the overload set. Do we really want to rely on this?!
-  for (auto const *callee :
-       context().AllOverloads(call_expr->callee()).members()) {
-    auto maybe_qt = *ASSERT_NOT_NULL(context().qual_type(callee));
-    ExtractParams(callee, &maybe_qt.type().as<type::Callable>(), args,
-                  overload_params, errors);
+  if (auto const *overloads = context().AllOverloads(call_expr->callee())) {
+    for (auto const *callee : overloads->members()) {
+      auto maybe_qt = *ASSERT_NOT_NULL(callee->scope()
+                                           ->Containing<ast::ModuleScope>()
+                                           ->module()
+                                           ->as<CompiledModule>()
+                                           .context()
+                                           .qual_type(callee));
+      ExtractParams(callee, &maybe_qt.type().as<type::Callable>(), args,
+                    overload_params, errors);
+    }
   }
 
   LOG("VerifyCall", "%u overloads", overload_params.size());

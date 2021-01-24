@@ -50,7 +50,7 @@ string ::= struct {
     to._data     = allocate_and_copy(to._data, to._length + 1 as u64)
   }
 
-  destroy ::= (self: *string) -> () { free(self._data) }
+  (destroy) ::= (self: *string) -> () { free(self._data) }
 }
 
 resize_buffer ::= (s: *string, new_capacity: u64) -> () {

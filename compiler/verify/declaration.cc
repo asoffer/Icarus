@@ -284,11 +284,12 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   // TODO: Consider first checking if it's a constant because we only need to do
   // this lookup in that case. Not sure how much performance that might win.
   if (auto const *qt = context().qual_type(&node->ids()[0])) { return *qt; }
-  LOG("Declaration", "Verifying '%s'",
+  LOG("Declaration", "Verifying '%s' on %p",
       absl::StrJoin(node->ids(), ", ",
                     [](std::string *out, ast::Declaration::Id const &id) {
                       absl::StrAppend(out, id.name());
-                    }));
+                    }),
+      &context());
 
   // TODO: If we don't already have type-checked this but it's an error, we'll
   // type-check this node again because we don't save errors. Maybe we should
@@ -326,7 +327,6 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     } break;
     default: UNREACHABLE(node->DebugString());
   }
-
   // TODO: Support multiple declarations
   if (node->ids()[0].name().empty()) {
     if (node_qual_type.type() == type::Module) {
@@ -351,8 +351,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       node_qual_type.MarkError();
     }
 
-    context().set_qual_type(&node->ids()[0], node_qual_type);
-    return node_qual_type;
+    return context().set_qual_type(&node->ids()[0], node_qual_type);
   }
 
   // Gather all declarations with the same identifer that are visible in this
@@ -418,6 +417,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
         });
       }
     }
+
     context().set_qual_type(&id, type::QualType(t, quals));
   });
 
@@ -426,6 +426,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::Declaration::Id const *node) {
+  LOG("Declaration::Id", "Verifying %s", node->name());
   return VerifyType(&node->declaration());
 }
 

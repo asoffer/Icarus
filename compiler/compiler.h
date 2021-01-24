@@ -546,8 +546,10 @@ struct Compiler
 
   std::pair<type::QualType, absl::flat_hash_map<ast::Expression const *,
                                                 type::Callable const *>>
-  VerifyCallee(ast::Expression const *callee,
-               core::Arguments<type::Typed<ir::Value>> const &args);
+  VerifyCallee(
+      ast::Expression const *callee,
+      core::Arguments<type::Typed<ir::Value>> const &args,
+      absl::flat_hash_set<type::Type> const &argument_dependent_lookup_types);
 
   PersistentResources resources_;
   TransientState state_;

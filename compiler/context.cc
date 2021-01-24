@@ -215,16 +215,14 @@ void Context::SetAllOverloads(ast::Expression const *callee,
   ASSERT(inserted == true);
 }
 
-ast::OverloadSet const &Context::AllOverloads(
+ast::OverloadSet const *Context::AllOverloads(
     ast::Expression const *callee) const {
   auto iter = all_overloads_.find(callee);
   if (iter == all_overloads_.end()) {
-    if (parent() == nullptr) {
-      UNREACHABLE("Failed to find any overloads for ", callee->DebugString());
-    }
+    if (parent() == nullptr) { return nullptr; }
     return parent()->AllOverloads(callee);
   } else {
-    return iter->second;
+    return &iter->second;
   }
 }
 

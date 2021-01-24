@@ -327,7 +327,7 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
 
         compiler.context().set_addr(
             id, compiler.builder().Alloca(
-                    compiler.context().qual_type(id)->type()));
+                    ASSERT_NOT_NULL(compiler.context().qual_type(id))->type()));
       }
     }
   }

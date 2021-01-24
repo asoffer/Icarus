@@ -331,7 +331,13 @@ not_an_interface:
     return qt;
   }
 
-  auto [callee_qt, overload_map] = VerifyCallee(node->callee(), arg_vals);
+  absl::flat_hash_set<type::Type> argument_dependent_lookup_types;
+  for (auto const &[name, expr] : node->prefix_arguments()) {
+    argument_dependent_lookup_types.insert(
+        context().qual_type(expr.get())->type());
+  }
+  auto [callee_qt, overload_map] =
+      VerifyCallee(node->callee(), arg_vals, argument_dependent_lookup_types);
   LOG("Call", "Callee's qual-type is %s", callee_qt);
   if (not callee_qt.ok()) { return type::QualType::Error(); }
 

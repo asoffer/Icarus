@@ -41,6 +41,7 @@ struct InvalidImport {
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::Import const *node) {
+  LOG("Import", "%s", node->DebugString());
   ASSIGN_OR(return _, auto result, VerifyType(node->operand()));
 
   auto qt  = type::QualType::Constant(type::Module);

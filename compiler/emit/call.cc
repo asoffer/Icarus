@@ -94,11 +94,18 @@ void EmitCall(
     absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
         arg_exprs,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  auto callee_qual_type =
-      *ASSERT_NOT_NULL(compiler.context().qual_type(callee));
+  auto const *callee_qual_type = compiler.context().qual_type(callee);
+  if (not callee_qual_type) {
+    callee_qual_type = ASSERT_NOT_NULL(callee->scope()
+                                           ->Containing<ast::ModuleScope>()
+                                           ->module()
+                                           ->as<CompiledModule>()
+                                           .context()
+                                           .qual_type(callee));
+  }
 
   auto [callee_fn, overload_type, context] =
-      EmitCallee(compiler, callee, callee_qual_type, constant_arguments);
+      EmitCallee(compiler, callee, *callee_qual_type, constant_arguments);
 
   Compiler c = compiler.MakeChild(PersistentResources{
       .data                = context ? *context : compiler.context(),

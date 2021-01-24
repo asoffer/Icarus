@@ -138,6 +138,7 @@ void Declaration::Initialize(Scope *scope) {
   scope_->InsertDeclaration(this);
   if (type_expr_.get()) { type_expr_->Initialize(scope); }
   if (init_val_.get()) { init_val_->Initialize(scope); }
+  for (auto &id : ids_) { id.Initialize(scope); }
 }
 
 void DesignatedInitializer::Initialize(Scope *scope) {
