@@ -263,6 +263,7 @@ Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
       case 'r': c = '\r'; break;
       case 't': c = '\t'; break;
       case 'v': c = '\v'; break;
+      case '0': c = '\0'; break;
       default: NOT_YET(); break;
     }
     cursor += Offset(1);

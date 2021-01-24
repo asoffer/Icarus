@@ -51,6 +51,17 @@ string ::= struct {
   }
 
   (destroy) ::= (self: *string) -> () { free(self._data) }
+
+  make ::= (fill: char, len: u64) -> string {
+    buffer := malloc(len + 1 as u64)
+    memset(buffer, fill as i8 as i32, len)
+    buffer[len] = `\0
+    return string.{
+      _data     = buffer 
+      _length   = len
+      _capacity = len
+    }
+  }
 }
 
 resize_buffer ::= (s: *string, new_capacity: u64) -> () {
@@ -75,7 +86,7 @@ append ::= (s: *string, character: char) -> () {
 
   s._data[s._length] = character
   s._length += 1 as u64
-  s._data[s._length] = ""[0]
+  s._data[s._length] = `\0
 }
 
 #{export}
@@ -108,7 +119,7 @@ Print ::= (s: *string) -> () {
 make_string ::= (fill: char, len: u64) -> string {
   buffer := malloc(len + 1 as u64)
   memset(buffer, fill as i8 as i32, len)
-  buffer[len] = ""[0]
+  buffer[len] = `\0
   return string.{
     _data     = buffer 
     _length   = len
