@@ -125,8 +125,12 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
 void ConsoleRenderer::Add(frontend::Source const *source, Category cat,
                           DiagnosticMessage const &diag) {
   has_data_ = true;
-  absl::FPrintF(out_, "\033[31;1mError\033[0m in \033[1m%s\033[0m:\n",
-                source->FileName());
+  if (std::string filename = source->FileName(); !filename.empty()) {
+    absl::FPrintF(out_, "\033[31;1mError\033[0m in \033[1m%s\033[0m:\n",
+                  filename);
+  } else {
+    std::fputs("\033[31;1mError\033[0m:\n", out_);
+  }
   diag.for_each_component([&](auto const &component) {
     constexpr auto type = base::meta<std::decay_t<decltype(component)>>;
     if constexpr (type == base::meta<Text>) {
