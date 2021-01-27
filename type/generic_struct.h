@@ -3,11 +3,9 @@
 
 #include <vector>
 
-#include "ast/scope/module.h"
-#include "ast/scope/scope.h"
+#include "ast/scope.h"
 #include "base/any_invocable.h"
 #include "core/arguments.h"
-#include "module/module.h"
 #include "type/callable.h"
 #include "type/primitive.h"
 #include "type/struct.h"

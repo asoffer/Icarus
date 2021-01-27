@@ -32,16 +32,12 @@ cc_library(
         "is_dependent.cc",
     ],
     deps = [
+        ":scope",
         ":declaration",
         ":expression",
         ":jump_options",
         ":node",
         ":visitor_base",
-        "//ast/scope:decl",
-        "//ast/scope:fn",
-        "//ast/scope:module",
-        "//ast/scope",
-        "//ast/scope:scope_lit",
         "//base:debug",
         "//base:graph",
         "//base:ptr_span",
@@ -91,13 +87,30 @@ cc_library(
     hdrs = ["overload_set.h"],
     srcs = ["overload_set.cc"],
     deps = [
-        "//ast:ast",
-        "//ast/scope:scope",
+        ":ast",
+        ":scope",
         "//base:log",
         "//module:module",
         "@com_google_absl//absl/types:span",
     ],
     test_deps = None,
+)
+
+cc_library(
+    name = "scope",
+    hdrs = ["scope.h"],
+    srcs = ["scope.cc"],
+    deps = [
+        ":ast_fwd",
+        ":declaration",
+        "//base:cast",
+        "//base:debug",
+        "//base:log",
+        "//base:iterator",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/types:span"
+    ],
 )
 
 cc_library(

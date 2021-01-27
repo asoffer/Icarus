@@ -8,7 +8,7 @@ cc_library(
         ":importer",
         "//ast:ast",
         "//ast:ast_fwd",
-        "//ast/scope:module",
+        "//ast:scope",
         "//base:cast",
         "//base:debug",
         "//base:expected",

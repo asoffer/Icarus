@@ -18,8 +18,6 @@ struct LibraryModule : CompiledModule {
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                     diagnostic::DiagnosticConsumer &diag,
                     module::Importer &importer) override {
-    ExportsComplete();
-
     Compiler c({
         .data                = context(),
         .diagnostic_consumer = diag,

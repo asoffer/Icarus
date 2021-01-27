@@ -9,7 +9,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/types/span.h"
-#include "ast/scope/scope.h"
+#include "ast/scope.h"
 #include "base/extend.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/inliner.h"

@@ -32,9 +32,6 @@ struct Node : base::Cast<Node> {
   constexpr frontend::SourceRange range() const { return range_; }
   Scope *scope() const { return scope_; }
 
-  frontend::SourceRange range_;
-  Scope *scope_ = nullptr;
-
   // Object used to track state while initializing the syntax tree.
   struct Initializer {
     Scope *scope = nullptr;
@@ -46,6 +43,10 @@ struct Node : base::Cast<Node> {
   };
 
   virtual void Initialize(Initializer const &initializer) {}
+
+  protected:
+  frontend::SourceRange range_;
+  Scope *scope_ = nullptr;
 };
 
 }  // namespace ast

@@ -350,8 +350,8 @@ type::QualType Compiler::VerifyUnaryOverload(
     type::Typed<ir::Value> const &operand) {
   absl::flat_hash_set<type::Callable const *> member_types;
 
-  module::ForEachDeclTowardsRoot(
-      node->scope(), symbol, [&](ast::Declaration::Id const *id) {
+  node->scope()->ForEachDeclIdTowardsRoot(
+      symbol, [&](ast::Declaration::Id const *id) {
         ASSIGN_OR(return false, auto qt, context().qual_type(id));
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
@@ -376,8 +376,8 @@ type::QualType Compiler::VerifyBinaryOverload(
     type::Typed<ir::Value> const &lhs, type::Typed<ir::Value> const &rhs) {
   absl::flat_hash_set<type::Callable const *> member_types;
 
-  module::ForEachDeclTowardsRoot(
-      node->scope(), symbol, [&](ast::Declaration::Id const *id) {
+  node->scope()->ForEachDeclIdTowardsRoot(
+      symbol, [&](ast::Declaration::Id const *id) {
         ASSIGN_OR(return false, auto qt, context().qual_type(id));
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.

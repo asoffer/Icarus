@@ -117,7 +117,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
 
   if (auto const *adl_modules = context().AdlModules(node)) {
     for (auto const *mod : *adl_modules) {
-      auto ids  = mod->ExportedDeclarationIds(node->name());
+      auto ids = mod->scope().ExportedDeclarationIds(node->name());
       for (auto const *id : ids) {
         potential_decl_ids.emplace_back(
             id, *ASSERT_NOT_NULL(mod->context().qual_type(&id->declaration())));
@@ -176,16 +176,21 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
     case 0: {
       // TODO: Performance. We don't need to look at these, we just need to know
       // if any exist.
-      if (module::AllDeclsTowardsRoot(node->scope(), node->name()).empty()) {
-        diag().Consume(UndeclaredIdentifier{
-            .id    = node->name(),
-            .range = node->range(),
-        });
-      } else {
+
+      bool present = false;
+      node->scope()->ForEachDeclIdTowardsRoot(
+          node->name(), [&](ast::Declaration::Id const *id) {
+            present = true;
+            return false;
+          });
+      if (present) {
         diag().Consume(UncapturedIdentifier{
             .id    = node->name(),
             .range = node->range(),
         });
+      } else {
+        diag().Consume(
+            UndeclaredIdentifier{.id = node->name(), .range = node->range()});
       }
       return type::QualType::Error();
     } break;

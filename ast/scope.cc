@@ -1,4 +1,4 @@
-#include "ast/scope/scope.h"
+#include "ast/scope.h"
 
 namespace ast {
 

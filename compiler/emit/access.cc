@@ -61,7 +61,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
         EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
-    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
+    auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: return mod.ExportedValue(decl_ids[0]);
@@ -162,7 +162,7 @@ void Compiler::EmitMoveInit(
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
         EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
-    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
+    auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
@@ -242,7 +242,7 @@ void Compiler::EmitCopyInit(
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
         EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
-    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
+    auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1:
@@ -320,7 +320,7 @@ void Compiler::EmitMoveAssign(
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
         EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
-    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
+    auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1:
@@ -360,7 +360,7 @@ void Compiler::EmitCopyAssign(
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
         EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
-    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
+    auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1:

@@ -7,7 +7,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
-#include "ast/scope/scope.h"
+#include "ast/scope.h"
 #include "base/extend.h"
 #include "base/meta.h"
 #include "ir/compiled_block.h"

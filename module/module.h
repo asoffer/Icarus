@@ -10,7 +10,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/synchronization/notification.h"
-#include "ast/scope/module.h"
+#include "ast/scope.h"
 #include "base/cast.h"
 #include "base/expected.h"
 #include "base/guarded.h"
@@ -46,67 +46,25 @@ struct BasicModule : base::Cast<BasicModule> {
   void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
                    diagnostic::DiagnosticConsumer &diag, Importer &importer);
 
-  absl::Span<ast::Declaration::Id const *const> ExportedDeclarationIds(
-      std::string_view name) const;
-
-  constexpr ast::ModuleScope const *scope() const { return &scope_; }
+  constexpr ast::ModuleScope &scope() { return scope_; }
+  constexpr ast::ModuleScope const &scope() const { return scope_; }
 
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
                             diagnostic::DiagnosticConsumer &, Importer &) = 0;
 
-  // Child classes must call this when they no longer append nodes to the syntax
-  // tree. This notifies users of the module that it is safe to consume the
-  // syntaxt tree.
-  void ExportsComplete();
-
  private:
   void InitializeNodes(base::PtrSpan<ast::Node> nodes);
 
   ast::ModuleScope scope_;
-  absl::flat_hash_map<std::string_view,
-                      std::vector<ast::Declaration::Id const *>>
-      exported_declarations_;
   std::vector<std::unique_ptr<ast::Node>> nodes_;
-
-  // Notifies when exports are ready to be consumed.
-  absl::Notification exports_complete_;
 };
-
-// Returns a container of all declarations in this scope and in parent scopes
-// with the given identifier.
-std::vector<ast::Declaration::Id const *> AllDeclsTowardsRoot(
-    ast::Scope const *starting_scope, std::string_view id);
 
 // Returns a container of all visible declarations in this scope  with the given
 // identifier. This means any declarations in the path to the ancestor
 // function/jump, and any constant declarations above that.
 std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id);
-
-// Calls `fn` on each declaration in this scope and in parent scopes with the
-// given identifier.
-template <typename Fn>
-bool ForEachDeclTowardsRoot(ast::Scope const *starting_scope,
-                            std::string_view name, Fn fn) {
-  for (ast::Scope const &s : starting_scope->ancestors()) {
-    if (auto iter = s.decls_.find(name); iter != s.decls_.end()) {
-      for (auto const *id : iter->second) {
-        if (not fn(id)) { return false; }
-      }
-    }
-
-    for (auto const *mod_scope : s.embedded_module_scopes()) {
-      // TODO use the right bound constants? or kill bound constants?
-      for (auto const *id : mod_scope->module()->ExportedDeclarationIds(name)) {
-        // TODO what about transitivity for embedded modules?
-        // New context will lookup with no constants.
-        if (not fn(id)) { return false; }
-      }
-    }
-  }
-  return true;
-}
 
 // Returns a container of all declaration ids with the given identifier that are
 // in a scope directly related to this one (i.e., one of the scopes is an

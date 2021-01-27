@@ -238,7 +238,7 @@ cc_library(
         ":compiler_header",
         ":library_module",
         ":module",
-        "//ast/scope:fn",
+        "//ast:scope",
         "//diagnostic/consumer",
         "//ir:compiled_fn",
         "//module:importer",

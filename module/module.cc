@@ -18,13 +18,10 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
 
     // TODO: This presumes we don't have conditional exports.
     if (decl->hashtags.contains(ir::Hashtag::Export)) {
-      // TODO: Support multiple declarations
-      exported_declarations_[decl->ids()[0].name()].push_back(&decl->ids()[0]);
+      for (auto const &id : decl->ids()) { scope().insert_exported(&id); }
     }
   }
 }
-
-void BasicModule::ExportsComplete() { exports_complete_.Notify(); }
 
 void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
                               diagnostic::DiagnosticConsumer &diag,
@@ -33,27 +30,6 @@ void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
   ProcessNodes(nodes, diag, importer);
   nodes_.insert(nodes_.end(), std::make_move_iterator(nodes.begin()),
                 std::make_move_iterator(nodes.end()));
-}
-
-absl::Span<ast::Declaration::Id const *const>
-BasicModule::ExportedDeclarationIds(std::string_view name) const {
-  exports_complete_.WaitForNotification();
-  auto iter = exported_declarations_.find(name);
-  if (iter == exported_declarations_.end()) { return {}; }
-
-  // TODO handle exported embedded modules here too.
-  return iter->second;
-}
-
-std::vector<ast::Declaration::Id const *> AllDeclsTowardsRoot(
-    ast::Scope const *starting_scope, std::string_view id_name) {
-  std::vector<ast::Declaration::Id const *> ids;
-  ForEachDeclTowardsRoot(starting_scope, id_name,
-                         [&](ast::Declaration::Id const *id) {
-                           ids.push_back(id);
-                           return true;
-                         });
-  return ids;
 }
 
 // TODO: Add a version of this function that also gives the declarations that
@@ -76,8 +52,7 @@ std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
     }
 
     for (auto const *mod_scope : s.embedded_module_scopes()) {
-      for (auto const *id :
-           mod_scope->module()->ExportedDeclarationIds(id_name)) {
+      for (auto const *id : mod_scope->ExportedDeclarationIds(id_name)) {
         if (only_constants or
             (id->declaration().flags() & ast::Declaration::f_IsConst)) {
           ids.push_back(id);

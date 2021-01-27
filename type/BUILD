@@ -175,8 +175,7 @@ cc_library(
     deps = [
         ":struct",
         ":type",
-        "//ast/scope",
-        "//ast/scope:module",
+        "//ast:scope",
         "//base:any_invocable",
         "//core:arguments",
         "//module",

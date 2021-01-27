@@ -91,7 +91,7 @@ cc_library(
         ":base",
         ":debug",
         ":inliner",
-        "//ast/scope",
+        "//ast:scope",
         "//base:extend",
         "//ir:compiled_block",
         "//ir:compiled_scope",

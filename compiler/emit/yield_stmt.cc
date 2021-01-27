@@ -1,6 +1,6 @@
 #include "absl/types/span.h"
 #include "ast/ast.h"
-#include "ast/scope/fn.h"
+#include "ast/scope.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "ir/value/addr.h"

@@ -7,7 +7,7 @@
 
 #include "absl/types/span.h"
 #include "ast/ast.h"
-#include "ast/scope/scope.h"
+#include "ast/scope.h"
 
 namespace ast {
 
@@ -27,14 +27,14 @@ namespace ast {
 struct OverloadSet {
   OverloadSet() = default;
 
-  // Construct an overlaod set from a collection of declarations.
+  // Construct an overload set from a collection of declarations.
   OverloadSet(absl::Span<Declaration::Id const *const> ids);
   // TODO: Remove this overload
   OverloadSet(absl::Span<Declaration const *const> decls);
 
   // Construct an overload set from all declarations visibile in `scope` that
   // have the name `id`.
-  OverloadSet(Scope const *scope, std::string_view id);
+  OverloadSet(Scope const *scope, std::string_view name);
 
   absl::Span<Expression const *const> members() const { return members_; }
   void insert(Expression const *member) { members_.push_back(member); }

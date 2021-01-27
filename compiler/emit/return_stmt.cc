@@ -1,6 +1,6 @@
 #include "absl/types/span.h"
 #include "ast/ast.h"
-#include "ast/scope/fn.h"
+#include "ast/scope.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "ir/value/addr.h"
@@ -49,9 +49,9 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
 
   // Rather than doing this on each block it'd be better to have each
   // scope's destructors jump you to the correct next block for destruction.
-  for (auto *scope = node->scope(); scope; scope = scope->parent()) {
-    MakeAllDestructions(*this, scope);
-    if (scope->is<ast::FnScope>()) { break; }
+  for (auto const &scope : node->scope()->ancestors()) {
+    MakeAllDestructions(*this, &scope);
+    if (scope.is<ast::FnScope>()) { break; }
   }
 
   builder().ReturnJump();

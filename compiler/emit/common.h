@@ -6,7 +6,7 @@
 
 #include "absl/types/span.h"
 #include "ast/ast.h"
-#include "ast/scope/fn.h"
+#include "ast/scope.h"
 #include "base/ptr_span.h"
 #include "compiler/compiler.h"
 #include "ir/compiled_fn.h"
