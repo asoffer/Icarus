@@ -10,7 +10,7 @@ namespace ast {
 // struct is a declarative scope because all entries inside that scope must be
 // declarations.
 struct DeclScope : public Scope {
-  DeclScope(Scope *parent) : Scope(parent) {}
+  DeclScope(Scope *parent, bool executable) : Scope(parent, executable) {}
   ~DeclScope() override {}
 };
 

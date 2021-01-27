@@ -10,6 +10,7 @@ cc_library(
         "//base:cast",
         "//base:debug",
         "//base:log",
+        "//base:iterator",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/types:span"
@@ -27,18 +28,6 @@ cc_library(
     hdrs = ["scope_lit.h"],
     deps = [":scope"],
 )
-
-
-cc_library(
-    name = "exec",
-    hdrs = ["exec.h"],
-    srcs = ["exec.cc"],
-    deps = [
-        ":scope",
-        ":fn",
-    ],
-)
-
 
 cc_library(
     name = "fn",

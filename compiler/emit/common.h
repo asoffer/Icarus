@@ -6,7 +6,6 @@
 
 #include "absl/types/span.h"
 #include "ast/ast.h"
-#include "ast/scope/exec.h"
 #include "ast/scope/fn.h"
 #include "base/ptr_span.h"
 #include "compiler/compiler.h"
@@ -29,7 +28,7 @@ void EmitIrForStatements(Compiler &compiler,
                          base::PtrSpan<ast::Node const> stmts);
 
 // Inserts all destructor calls in this scope.
-void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope);
+void MakeAllDestructions(Compiler &compiler, ast::Scope const *scope);
 
 // Given an argument (which may be present in `constant` if it is known at
 // compile-time, or simply the AST `expr`, and the qualified type of the

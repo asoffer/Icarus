@@ -89,18 +89,16 @@ std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
 template <typename Fn>
 bool ForEachDeclTowardsRoot(ast::Scope const *starting_scope,
                             std::string_view name, Fn fn) {
-  for (auto scope_ptr = starting_scope; scope_ptr != nullptr;
-       scope_ptr      = scope_ptr->parent) {
-    if (auto iter = scope_ptr->decls_.find(name);
-        iter != scope_ptr->decls_.end()) {
+  for (ast::Scope const &s : starting_scope->ancestors()) {
+    if (auto iter = s.decls_.find(name); iter != s.decls_.end()) {
       for (auto const *id : iter->second) {
         if (not fn(id)) { return false; }
       }
     }
 
-    for (auto const *mod : scope_ptr->embedded_modules_) {
+    for (auto const *mod_scope : s.embedded_module_scopes()) {
       // TODO use the right bound constants? or kill bound constants?
-      for (auto const *id : mod->ExportedDeclarationIds(name)) {
+      for (auto const *id : mod_scope->module()->ExportedDeclarationIds(name)) {
         // TODO what about transitivity for embedded modules?
         // New context will lookup with no constants.
         if (not fn(id)) { return false; }

@@ -338,8 +338,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
               EvaluateOrDiagnoseAs<ir::ModuleId>(node->init_val())) {
         // TODO: In generic contexts it doesn't make sense to place this on the
         // AST.
-        node->scope()->embedded_modules_.insert(
-            maybe_mod->get<LibraryModule>());
+        node->scope()->embed(maybe_mod->get<LibraryModule>()->scope());
       } else {
         node_qual_type.MarkError();
       }

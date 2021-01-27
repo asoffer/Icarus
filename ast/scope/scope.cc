@@ -8,7 +8,8 @@ void Scope::InsertDeclaration(ast::Declaration const *decl) {
       continue;
     }
     decls_[id.name()].push_back(&id);
-    for (auto *scope_ptr = parent; scope_ptr; scope_ptr = scope_ptr->parent) {
+    for (auto *scope_ptr = parent(); scope_ptr;
+         scope_ptr       = scope_ptr->parent()) {
       if (scope_ptr->is_visibility_boundary()) { break; }
       child_decls_[id.name()].push_back(&id);
     }

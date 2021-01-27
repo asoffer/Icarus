@@ -48,11 +48,6 @@ void InitializeNodes(base::PtrSpan<Node> nodes,
 // A mixin which adds a scope of the given type `S`.
 template <typename S>
 struct WithScope {
-  void set_body_with_parent(Scope *p) {
-    ASSERT(body_scope_.has_value() == false);
-    body_scope_.emplace(p);
-  }
-
   S const &body_scope() const {
     ASSERT(body_scope_.has_value() == true);
     return *body_scope_;
@@ -63,7 +58,13 @@ struct WithScope {
     return *body_scope_;
   }
 
- private:
+ protected:
+  template <typename... Args>
+  void set_body_with_parent(Scope *p, Args... args) {
+    ASSERT(body_scope_.has_value() == false);
+    body_scope_.emplace(p, args...);
+  }
+
   std::optional<S> body_scope_;
 };
 
@@ -412,7 +413,7 @@ struct BlockLiteral : Expression, WithScope<DeclScope> {
 // Note: Today blocks have names and statements but cannot take any arguments.
 // This will likely change in the future so that blocks can take arguments
 // (likely in the form of `core::Arguments<std::unique_ptr<Expression>>`).
-struct BlockNode : ParameterizedExpression, WithScope<ExecScope> {
+struct BlockNode : ParameterizedExpression, WithScope<Scope> {
   explicit BlockNode(frontend::SourceRange const &range, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(range),

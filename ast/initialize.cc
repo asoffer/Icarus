@@ -105,7 +105,7 @@ void BinaryOperator::Initialize(Initializer const& initializer) {
 
 void BlockLiteral::Initialize(Initializer const& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  set_body_with_parent(initializer.scope, false);
   Initializer i{.scope            = &body_scope(),
                 .function_literal = initializer.function_literal};
   InitializeAll(before_, i);
@@ -114,7 +114,7 @@ void BlockLiteral::Initialize(Initializer const& initializer) {
 
 void BlockNode::Initialize(Initializer const& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  set_body_with_parent(initializer.scope, true);
   Initializer i{.scope            = &body_scope(),
                 .function_literal = initializer.function_literal};
   for (auto& param : params_) { param.value->Initialize(i); }
@@ -157,7 +157,7 @@ void DesignatedInitializer::Initialize(Initializer const& initializer) {
 
 void EnumLiteral::Initialize(Initializer const& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  set_body_with_parent(initializer.scope, false);
   for (auto& [id, value] : values_) { value->Initialize(initializer); }
 }
 
@@ -268,7 +268,7 @@ void ShortFunctionLiteral::Initialize(Initializer const& initializer) {
 
 void StructLiteral::Initialize(Initializer const& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  set_body_with_parent(initializer.scope, false);
   Initializer i{.scope            = &body_scope(),
                 .function_literal = initializer.function_literal};
   for (auto& field : fields_) { field.Initialize(i); }
@@ -276,7 +276,7 @@ void StructLiteral::Initialize(Initializer const& initializer) {
 
 void ParameterizedStructLiteral::Initialize(Initializer const& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  set_body_with_parent(initializer.scope, false);
   Initializer i{.scope            = &body_scope(),
                 .function_literal = initializer.function_literal};
   for (auto& param : params_) { param.value->Initialize(i); }

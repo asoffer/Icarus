@@ -333,12 +333,12 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
   }
 }
 
-void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
+void MakeAllDestructions(Compiler &compiler, ast::Scope  const *scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
   std::vector<ast::Declaration::Id const *> ordered_decl_ids;
   LOG("MakeAllDestructions", "decls in this scope:");
-  for (auto &[name, ids] : exec_scope->decls_) {
+  for (auto &[name, ids] : scope->decls_) {
     LOG("MakeAllDestructions", "... %s", name);
     for (ast::Declaration::Id const *id : ids) { ordered_decl_ids.push_back(id); }
   }

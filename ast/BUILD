@@ -38,7 +38,6 @@ cc_library(
         ":node",
         ":visitor_base",
         "//ast/scope:decl",
-        "//ast/scope:exec",
         "//ast/scope:fn",
         "//ast/scope:module",
         "//ast/scope",

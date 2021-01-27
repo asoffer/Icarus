@@ -64,10 +64,8 @@ std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id_name) {
   std::vector<ast::Declaration::Id const *> ids;
   bool only_constants = false;
-  for (auto scope_ptr = starting_scope; scope_ptr != nullptr;
-       scope_ptr      = scope_ptr->parent) {
-    if (auto iter = scope_ptr->decls_.find(id_name);
-        iter != scope_ptr->decls_.end()) {
+  for (ast::Scope const &s : starting_scope->ancestors()) {
+    if (auto iter = s.decls_.find(id_name); iter != s.decls_.end()) {
       // TODO: Support multiple declarations
       for (auto const *id : iter->second) {
         if (not only_constants or
@@ -77,9 +75,9 @@ std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
       }
     }
 
-    for (auto const *mod : scope_ptr->embedded_modules_) {
-      for (ast::Declaration::Id const *id :
-           mod->ExportedDeclarationIds(id_name)) {
+    for (auto const *mod_scope : s.embedded_module_scopes()) {
+      for (auto const *id :
+           mod_scope->module()->ExportedDeclarationIds(id_name)) {
         if (only_constants or
             (id->declaration().flags() & ast::Declaration::f_IsConst)) {
           ids.push_back(id);
@@ -87,7 +85,7 @@ std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
       }
     }
 
-    if (scope_ptr->is<ast::FnScope>()) { only_constants = true; }
+    if (s.is<ast::FnScope>()) { only_constants = true; }
   }
   return ids;
 }

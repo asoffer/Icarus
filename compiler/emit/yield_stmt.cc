@@ -95,7 +95,7 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
   }
 
   // TODO: store this as an exec_scope.
-  MakeAllDestructions(*this, &node->scope()->as<ast::ExecScope>());
+  MakeAllDestructions(*this, &node->scope()->as<ast::Scope>());
 
   return ir::Value();
 }

@@ -50,9 +50,7 @@ cc_library(
 cc_library(
     name = "extend",
     hdrs = ["extend.h"],
-    deps = [
-        ":meta",
-    ],
+    deps = [":meta"],
 )
 
 cc_test(
@@ -112,6 +110,20 @@ cc_library(
     name = "interval",
     hdrs = ["interval.h"],
     deps = [":debug"],
+)
+
+cc_library(
+    name = "iterator",
+    hdrs = ["iterator.h"]
+)
+
+cc_test(
+    name = "iterator_test",
+    srcs = ["iterator_test.cc"],
+    deps = [
+        ":iterator",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cc_library(

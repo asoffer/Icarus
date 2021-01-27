@@ -6,7 +6,7 @@ namespace ast {
 // Represents the body of a scope-literal which is the construct responsible for
 // defining scopes.
 struct ScopeLitScope : public DeclScope {
-  ScopeLitScope(Scope *parent) : DeclScope(parent) {}
+  ScopeLitScope(Scope *parent) : DeclScope(parent, false) {}
 };
 
 }  // namespace ast

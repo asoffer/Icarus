@@ -238,7 +238,6 @@ cc_library(
         ":compiler_header",
         ":library_module",
         ":module",
-        "//ast/scope:exec",
         "//ast/scope:fn",
         "//diagnostic/consumer",
         "//ir:compiled_fn",

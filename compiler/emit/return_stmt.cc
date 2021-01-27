@@ -49,11 +49,9 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
 
   // Rather than doing this on each block it'd be better to have each
   // scope's destructors jump you to the correct next block for destruction.
-  auto *scope = node->scope();
-  while (auto *exec = scope->if_as<ast::ExecScope>()) {
-    MakeAllDestructions(*this, exec);
-    if (not exec->parent or exec->is<ast::FnScope>()) { break; }
-    scope = exec->parent;
+  for (auto *scope = node->scope(); scope; scope = scope->parent()) {
+    MakeAllDestructions(*this, scope);
+    if (scope->is<ast::FnScope>()) { break; }
   }
 
   builder().ReturnJump();
