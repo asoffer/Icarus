@@ -44,7 +44,10 @@ cc_test(
 cc_library(
     name = "expected",
     hdrs = ["expected.h"],
-    deps = [":stringify"],
+    deps = [
+        ":stringify",
+        "@com_google_absl//absl/status",
+    ],
 )
 
 cc_library(
