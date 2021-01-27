@@ -215,8 +215,9 @@ cc_library(
         "//ir/interpreter:evaluate",
         "//ir:compiled_fn",
         "//ir:compiled_jump",
-        "//module:module",
+        "//module",
         "//type:type_fwd",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 

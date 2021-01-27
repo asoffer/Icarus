@@ -60,33 +60,27 @@ void Log(absl::FormatSpec<uintptr_t, std::string_view, size_t,
 void EnableLogging(std::string_view key);
 void DisableLogging(std::string_view key);
 
-#define LOG(key, fmt, ...)                                                     \
-  do { BASE_INTERNAL_LOG_IMPL(key, fmt, __VA_ARGS__); } while (false)
-
-#if defined(ICARUS_DEBUG)
-
-#define BASE_INTERNAL_LOG_IMPL(k, fmt, ...)                                    \
-  if ([](std::string_view key) -> bool {                                       \
-        static std::atomic<bool> is_on([key] {                                 \
-          if (std::string_view(key).empty()) { return true; }                  \
-          auto handle = ::base::internal_logging::log_switches.lock();         \
-          bool log_on =                                                        \
-              ::base::internal_logging::on_logs.lock()->contains(key);         \
-          (*handle)[key].push_back(&is_on);                                    \
-          return log_on;                                                       \
-        }());                                                                  \
-        return is_on.load(std::memory_order_relaxed);                          \
-      }(k)) {                                                                  \
-    [](auto const &... args) {                                                 \
-      ::base::internal_logging::Log(                                           \
-          ::base::internal_logging::kDefaultLogFormat,                         \
-          ::std::experimental::source_location::current(), __func__, fmt "\n", \
-          ::base::internal_logging::maybe_stringify(args)...);                 \
-    }(__VA_ARGS__);                                                            \
-  }
-#else  // defined(ICARUS_DEBUG)
-#define BASE_INTERNAL_LOG_IMPL(k, fmt, ...)
-#endif  // defined(ICARUS_DEBUG)
+#define LOG(k, fmt, ...)                                                       \
+  do {                                                                         \
+    if ([](std::string_view key) -> bool {                                     \
+          static std::atomic<bool> is_on([key] {                               \
+            if (std::string_view(key).empty()) { return true; }                \
+            auto handle = ::base::internal_logging::log_switches.lock();       \
+            bool log_on =                                                      \
+                ::base::internal_logging::on_logs.lock()->contains(key);       \
+            (*handle)[key].push_back(&is_on);                                  \
+            return log_on;                                                     \
+          }());                                                                \
+          return is_on.load(std::memory_order_relaxed);                        \
+        }(k)) {                                                                \
+      [](auto const &... args) {                                               \
+        ::base::internal_logging::Log(                                         \
+            ::base::internal_logging::kDefaultLogFormat,                       \
+            ::std::experimental::source_location::current(), __func__,         \
+            fmt "\n", ::base::internal_logging::maybe_stringify(args)...);     \
+      }(__VA_ARGS__);                                                          \
+    }                                                                          \
+  } while (false)
 
 }  // namespace base
 

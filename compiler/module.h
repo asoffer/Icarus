@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/synchronization/notification.h"
 #include "ast/ast_fwd.h"
 #include "base/guarded.h"
 #include "base/no_destructor.h"

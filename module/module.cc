@@ -18,9 +18,11 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
 
     // TODO: This presumes we don't have conditional exports.
     if (decl->hashtags.contains(ir::Hashtag::Export)) {
-      for (auto const &id : decl->ids()) { scope().insert_exported(&id); }
+      for (auto const &id : decl->ids()) { scope_.insert_exported(&id); }
     }
   }
+
+  done_parsing_.Notify();
 }
 
 void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
@@ -40,15 +42,19 @@ std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id_name) {
   std::vector<ast::Declaration::Id const *> ids;
   bool only_constants = false;
+
+  auto fn = [&](ast::Declaration::Id const *id) {
+    if (not only_constants or
+        (id->declaration().flags() & ast::Declaration::f_IsConst)) {
+      ids.push_back(id);
+    }
+    return true;
+  };
+
   for (ast::Scope const &s : starting_scope->ancestors()) {
     if (auto iter = s.decls_.find(id_name); iter != s.decls_.end()) {
       // TODO: Support multiple declarations
-      for (auto const *id : iter->second) {
-        if (not only_constants or
-            (id->declaration().flags() & ast::Declaration::f_IsConst)) {
-          ids.push_back(id);
-        }
-      }
+      for (auto const *id : iter->second) { fn(id); }
     }
 
     for (auto const *mod_scope : s.embedded_module_scopes()) {

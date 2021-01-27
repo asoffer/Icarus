@@ -21,7 +21,6 @@ cc_library(
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/container:node_hash_map",
-        "@com_google_absl//absl/synchronization",
     ],
 )
 

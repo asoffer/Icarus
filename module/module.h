@@ -46,8 +46,10 @@ struct BasicModule : base::Cast<BasicModule> {
   void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
                    diagnostic::DiagnosticConsumer &diag, Importer &importer);
 
-  constexpr ast::ModuleScope &scope() { return scope_; }
-  constexpr ast::ModuleScope const &scope() const { return scope_; }
+  ast::ModuleScope const &scope() const {
+    done_parsing_.WaitForNotification();
+    return scope_;
+  }
 
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
@@ -58,6 +60,12 @@ struct BasicModule : base::Cast<BasicModule> {
 
   ast::ModuleScope scope_;
   std::vector<std::unique_ptr<ast::Node>> nodes_;
+
+  // This notification is notified when parsing is complete. It is not possible
+  // to access `scope()` without this notification having been notified, thus
+  // ensuring that any external access to the scope happens after parsing is
+  // complete.
+  absl::Notification done_parsing_;
 };
 
 // Returns a container of all visible declarations in this scope  with the given

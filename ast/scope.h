@@ -63,7 +63,7 @@ struct Scope : public base::Cast<Scope> {
   ancestor_iterator end() const { return ancestor_iterator(nullptr); }
   auto ancestors() const { return base::iterator_range(begin(), end()); }
 
-  void InsertDeclaration(ast::Declaration const * decl);
+  void InsertDeclaration(Declaration const *decl);
 
   // Whether or not non-constant declarations are visible across this scope
   // boundary. In this example,
@@ -113,7 +113,7 @@ struct Scope : public base::Cast<Scope> {
     return absl::Span<Declaration::Id const *const>();
   }
 
-  void embed(ast::ModuleScope const *scope) {
+  void embed(ModuleScope const *scope) {
     embedded_module_scopes_.insert(scope);
   }
 
@@ -126,7 +126,7 @@ struct Scope : public base::Cast<Scope> {
   // given identifier `name`, until calling `fn` returns false.
   bool ForEachDeclIdTowardsRoot(
       std::string_view name,
-      std::invocable<ast::Declaration::Id const *> auto &&fn) const;
+      std::invocable<Declaration::Id const *> auto &&fn) const;
 
  private:
   Scope *parent_ = nullptr;
@@ -161,7 +161,7 @@ struct ModuleScope : FnScope {
   module::BasicModule *module() { return module_; }
   module::BasicModule const *module() const { return module_; }
 
-  absl::Span<ast::Declaration::Id const *const> ExportedDeclarationIds(
+  absl::Span<Declaration::Id const *const> ExportedDeclarationIds(
       std::string_view name) const {
     auto iter = exported_declarations_.find(name);
     if (iter == exported_declarations_.end()) { return {}; }
@@ -170,15 +170,14 @@ struct ModuleScope : FnScope {
     return iter->second;
   }
 
-  void insert_exported(ast::Declaration::Id const *id) {
+  void insert_exported(Declaration::Id const *id) {
     exported_declarations_[id->name()].push_back(id);
   }
 
  private:
   friend struct Scope;
 
-  absl::flat_hash_map<std::string_view,
-                      std::vector<ast::Declaration::Id const *>>
+  absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       exported_declarations_;
 
   module::BasicModule *module_;
@@ -201,8 +200,8 @@ struct ScopeLitScope : public DeclScope {
 
 bool Scope::ForEachDeclIdTowardsRoot(
     std::string_view name,
-    std::invocable<ast::Declaration::Id const *> auto &&fn) const {
-  for (ast::Scope const &s : ancestors()) {
+    std::invocable<Declaration::Id const *> auto &&fn) const {
+  for (Scope const &s : ancestors()) {
     if (auto iter = s.decls_.find(name); iter != s.decls_.end()) {
       for (auto const *id : iter->second) {
         if (not fn(id)) { return false; }
