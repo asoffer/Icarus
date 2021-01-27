@@ -3,6 +3,7 @@
 #include <cerrno>
 #include <cstring>
 
+#include "absl/status/status.h"
 #include "absl/strings/str_format.h"
 
 namespace frontend {
@@ -10,9 +11,9 @@ namespace frontend {
 base::expected<FileSource> FileSource::Make(CanonicalFileName file_name) {
   auto f = file_name.OpenReadOnly();
   if (not f) {
-    return base::unexpected(absl::StrFormat(R"(Failed to open file "%s": %s)",
-                                            file_name.name(),
-                                            std::strerror(errno)));
+    return absl::NotFoundError(
+        absl::StrFormat(R"(Failed to open file "%s": %s)", file_name.name(),
+                        std::strerror(errno)));
   }
 
   std::fseek(f.get(), 0, SEEK_END);

@@ -6,32 +6,19 @@
 #include <type_traits>
 #include <variant>
 
+#include "absl/status/status.h"
 #include "base/stringify.h"
 
 namespace base {
-struct unexpected {
-  explicit unexpected(char const *s) : reason_(s) {}
-  explicit unexpected(std::string_view s) : reason_(s) {}
-  explicit unexpected(std::string s) : reason_(std::move(s)) {}
 
-  std::string &&to_string() && { return std::move(reason_); }
-  std::string const &to_string() const & { return reason_; }
-  friend std::ostream &operator<<(std::ostream &os, unexpected const &u) {
-    return os << u.reason_;
-  }
-
- private:
-  std::string reason_;
-};
-
-template <typename T, typename E = unexpected>
+template <typename T, typename E = absl::Status>
 struct expected {
   static_assert(not std::is_same_v<T, E>);
 
   expected(T val) : val_(std::move(val)) {}
 
   template <typename... Args>
-  explicit expected(Args &&... args) : val_(T{std::forward<Args>(args)...}) {}
+  explicit expected(Args &&...args) : val_(T{std::forward<Args>(args)...}) {}
   expected(E e) : val_(std::move(e)) {}
 
   T *operator->() { return std::get_if<T>(&val_); }
@@ -51,7 +38,9 @@ struct expected {
   std::variant<T, E> val_;
 };
 
-inline std::string stringify(unexpected u) { return std::move(u).to_string(); }
+inline std::string stringify(absl::Status st) {
+  return std::string(std::move(st).message());
+}
 
 template <typename T, typename E>
 std::string stringify(expected<T, E> const &e) {

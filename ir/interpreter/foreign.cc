@@ -2,9 +2,11 @@
 
 #include <dlfcn.h>
 #include <ffi.h>
+
 #include <type_traits>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "base/debug.h"
 #include "ir/read_only_data.h"
 #include "ir/value/value.h"
@@ -111,8 +113,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
 
   ASSERT(fn_type->output().size() <= 1u);
 
-  auto out_type =
-      fn_type->output().empty() ? type::Void : fn_type->output()[0];
+  auto out_type = fn_type->output().empty() ? type::Void : fn_type->output()[0];
 
   ffi_cif cif;
   ffi_arg ret;
@@ -174,7 +175,7 @@ base::expected<void *> LoadDataSymbol(std::string_view name) {
   void *result    = dlsym(RTLD_DEFAULT, std::string(name).c_str());
   char const *err = dlerror();
   if (not err) { return result; }
-  return base::unexpected(err);
+  return absl::NotFoundError(err);
 }
 
 base::expected<void_fn_ptr> LoadFunctionSymbol(std::string_view name) {
@@ -183,7 +184,7 @@ base::expected<void_fn_ptr> LoadFunctionSymbol(std::string_view name) {
       dlsym(RTLD_DEFAULT, std::string(name).c_str()));
   char const *err = dlerror();
   if (not err) { return result; }
-  return base::unexpected(err);
+  return absl::NotFoundError(err);
 }
 
 }  // namespace interpreter

@@ -118,6 +118,7 @@ cc_library(
         "//type:function",
         "//type:pointer",
         "//type:primitive",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
     ],
 )
