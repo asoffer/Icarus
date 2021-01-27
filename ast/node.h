@@ -8,6 +8,7 @@
 #include "frontend/source/buffer.h"
 
 namespace ast {
+struct FunctionLiteral;
 struct Scope;
 
 struct Node : base::Cast<Node> {
@@ -26,7 +27,6 @@ struct Node : base::Cast<Node> {
   }
 
   virtual void DebugStrAppend(std::string *out, size_t indent) const {}
-  virtual void Initialize(Scope *scope) {}
   virtual bool IsDependent() const { return false; }
 
   constexpr frontend::SourceRange range() const { return range_; }
@@ -34,6 +34,18 @@ struct Node : base::Cast<Node> {
 
   frontend::SourceRange range_;
   Scope *scope_ = nullptr;
+
+  // Object used to track state while initializing the syntax tree.
+  struct Initializer {
+    Scope *scope = nullptr;
+
+    // The closest parent `FunctionLiteral` node. Used so that `ReturnStmt`
+    // nodes can point back to their corresponding function literal from which
+    // they return.
+    FunctionLiteral const *function_literal = nullptr;
+  };
+
+  virtual void Initialize(Initializer const &initializer) {}
 };
 
 }  // namespace ast

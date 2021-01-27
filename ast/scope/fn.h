@@ -14,14 +14,10 @@ namespace ast {
 // they need to know about all child scopes so they can stack-allocate enough
 // space when they start.
 struct FnScope : public ExecScope {
-  FnScope(Scope *parent, FunctionLiteral *fn_lit = nullptr)
-      : ExecScope(parent), fn_lit_(fn_lit) {
-    descendants_.push_back(this);
-  }
+  FnScope(Scope *parent) : ExecScope(parent) { descendants_.push_back(this); }
 
   bool is_visibility_boundary() const override { return true; }
 
-  FunctionLiteral *fn_lit_ = nullptr;
   void insert_descendant(ExecScope *s) { descendants_.push_back(s); }
   absl::Span<ExecScope *const> descendants() const { return descendants_; }
 

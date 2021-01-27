@@ -43,12 +43,12 @@ WorkItem::Result Compiler::EmitJumpBody(ast::Jump const *node) {
       context().set_addr(&param.value->ids()[0], ir::Reg::Arg(i++));
     }
 
-    MakeAllStackAllocations(*this, node->body_scope());
+    MakeAllStackAllocations(*this, &node->body_scope());
     EmitIrForStatements(*this, node->stmts());
 
     // TODO: it seems like this will be appended after ChooseJump, which means
     // it'll never be executed.
-    MakeAllDestructions(*this, node->body_scope());
+    MakeAllDestructions(*this, &node->body_scope());
   }
   jmp.WriteByteCode<interpreter::instruction_set_t>();
   return WorkItem::Result ::Success;

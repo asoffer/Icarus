@@ -13,11 +13,10 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
-  auto const &fn_scope =
-      *ASSERT_NOT_NULL(node->scope()->Containing<ast::FnScope>());
-  auto const &fn_lit = *ASSERT_NOT_NULL(fn_scope.fn_lit_);
-  auto const &fn_type =
-      context().qual_type(&fn_lit)->type().as<type::Function>();
+  auto const &fn_type = context()
+                            .qual_type(&node->function_literal())
+                            ->type()
+                            .as<type::Function>();
 
   // TODO: Reduce code-size by sharing these sequences whenever they share a
   // suffix.

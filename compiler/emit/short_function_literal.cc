@@ -98,7 +98,7 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
       context().set_addr(&ids[0], ir::Reg::Arg(i++));
     }
 
-    MakeAllStackAllocations(*this, node->body_scope());
+    MakeAllStackAllocations(*this, &node->body_scope());
 
     type::Type ret_type = ir_func.type()->output()[0];
     if (ret_type.get()->is_big()) {
@@ -115,7 +115,7 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
       if (r.type().get()->HasDestructor()) { EmitDestroy(r); }
     });
 
-    MakeAllDestructions(*this, node->body_scope());
+    MakeAllDestructions(*this, &node->body_scope());
     builder().ReturnJump();
   }
 

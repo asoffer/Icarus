@@ -31,7 +31,8 @@
 
 namespace ast {
 
-void InitializeNodes(base::PtrSpan<Node> nodes, Scope *scope);
+void InitializeNodes(base::PtrSpan<Node> nodes,
+                     Node::Initializer const &initializer);
 
 #define ICARUS_AST_VIRTUAL_METHODS                                             \
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple)                \
@@ -40,21 +41,30 @@ void InitializeNodes(base::PtrSpan<Node> nodes, Scope *scope);
   }                                                                            \
                                                                                \
   void DebugStrAppend(std::string *out, size_t indent) const override;         \
-  void Initialize(Scope *scope) override;                                      \
+  void Initialize(Node::Initializer const &initializer) override;              \
   bool IsDependent() const override
 
 // WithScope:
 // A mixin which adds a scope of the given type `S`.
 template <typename S>
 struct WithScope {
-  template <typename... Args>
-  void set_body_with_parent(Scope *p, Args &&... args) {
-    body_scope_ = p->template add_child<S>(std::forward<Args>(args)...);
+  void set_body_with_parent(Scope *p) {
+    ASSERT(body_scope_.has_value() == false);
+    body_scope_.emplace(p);
   }
-  S *body_scope() const { return body_scope_.get(); }
+
+  S const &body_scope() const {
+    ASSERT(body_scope_.has_value() == true);
+    return *body_scope_;
+  }
+
+  S &body_scope() {
+    ASSERT(body_scope_.has_value() == true);
+    return *body_scope_;
+  }
 
  private:
-  std::unique_ptr<S> body_scope_ = nullptr;
+  std::optional<S> body_scope_;
 };
 
 // Access:
@@ -63,6 +73,7 @@ struct WithScope {
 // Examples:
 //  * `my_pair.first_element`
 //  * `(some + computation).member`
+//
 struct Access : Expression {
   explicit Access(frontend::SourceRange const &range,
                   std::unique_ptr<Expression> operand, std::string member_name)
@@ -250,7 +261,7 @@ struct ParameterizedExpression : Expression {
       std::vector<std::unique_ptr<Declaration>> params)
       : Expression(range) {
     for (auto &param : params) {
-      // NOTE: It's save to save a `std::string_view` to a parameter because
+      // NOTE: It's safe to save a `std::string_view` to a parameter because
       // both the declaration and this will live for the length of the syntax
       // tree.
       //
@@ -868,11 +879,21 @@ struct ReturnStmt : Node {
                       std::vector<std::unique_ptr<Expression>> exprs = {})
       : Node(range), exprs_(std::move(exprs)) {}
 
-  base::PtrSpan<Expression const> exprs() const { return exprs_; }
+  ast::FunctionLiteral const &function_literal() const {
+    return *ASSERT_NOT_NULL(function_literal_);
+  }
+
+  base::PtrSpan<Expression const> exprs() const {
+    return exprs_;
+  }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
+  // Pointer to the function literal containing this return statement.
+  ast::FunctionLiteral const *function_literal_;
+
+  // Expressions being returned.
   std::vector<std::unique_ptr<Expression>> exprs_;
 };
 

@@ -38,7 +38,9 @@ struct Declaration_Id : Expression {
   void DebugStrAppend(std::string *out, size_t) const override {
     out->append(name());
   }
-  void Initialize(Scope *s) override { scope_ = s; }
+  void Initialize(Initializer const &initializer) override {
+    scope_ = initializer.scope;
+  }
   bool IsDependent() const override { return false; }
 
  private:
@@ -151,7 +153,7 @@ struct Declaration : Expression {
   }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
-  void Initialize(Scope *scope) override;
+  void Initialize(Initializer const &initializer) override;
   bool IsDependent() const override;
 
  private:

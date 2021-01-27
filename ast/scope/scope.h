@@ -23,9 +23,9 @@ struct Scope : public base::Cast<Scope> {
   Scope(Scope *parent) : parent(parent) {}
   virtual ~Scope() {}
 
-  template <typename ScopeType, typename... Args>
-  std::unique_ptr<ScopeType> add_child(Args &&... args) {
-    return std::make_unique<ScopeType>(this, std::forward<Args>(args)...);
+  template <typename ScopeType>
+  std::unique_ptr<ScopeType> add_child() {
+    return std::make_unique<ScopeType>(this);
   }
 
   void InsertDeclaration(ast::Declaration const * decl);

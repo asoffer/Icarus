@@ -10,7 +10,8 @@ BasicModule::BasicModule() : scope_(this) {}
 BasicModule::~BasicModule() {}
 
 void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
-  ast::InitializeNodes(nodes, &scope_);
+  ast::Node::Initializer initializer{.scope = &scope_};
+  ast::InitializeNodes(nodes, initializer);
   for (ast::Node const *node : nodes) {
     auto *decl = node->if_as<ast::Declaration>();
     if (not decl) { continue; }
