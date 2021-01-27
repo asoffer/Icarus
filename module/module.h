@@ -46,6 +46,8 @@ struct BasicModule : base::Cast<BasicModule> {
   void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
                    diagnostic::DiagnosticConsumer &diag, Importer &importer);
 
+  void ParsingComplete() { done_parsing_.Notify(); }
+
   ast::ModuleScope const &scope() const {
     done_parsing_.WaitForNotification();
     return scope_;

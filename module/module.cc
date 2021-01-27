@@ -22,7 +22,6 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
     }
   }
 
-  done_parsing_.Notify();
 }
 
 void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
