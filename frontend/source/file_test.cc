@@ -9,7 +9,7 @@ TEST(FileSource, EmptyFile) {
   auto name = CanonicalFileName::Make(
       FileName{"frontend/source/testdata/empty_file.txt"});
   auto src = FileSource::Make(name);
-  ASSERT_TRUE(src.has_value());
+  ASSERT_TRUE(src.ok());
 
   auto chunk = src->ReadUntil('\n');
   EXPECT_EQ(chunk.view, "");
@@ -20,7 +20,7 @@ TEST(FileSource, OneLine) {
   auto name = CanonicalFileName::Make(
       FileName{"frontend/source/testdata/one_line_file.txt"});
   auto src = FileSource::Make(name);
-  ASSERT_TRUE(src.has_value());
+  ASSERT_TRUE(src.ok());
 
   auto chunk = src->ReadUntil('\n');
   EXPECT_EQ(chunk.view, "hello");
@@ -31,7 +31,7 @@ TEST(FileSource, MultilineFile) {
   auto name = CanonicalFileName::Make(
       FileName{"frontend/source/testdata/multi_line_file.txt"});
   auto src = FileSource::Make(name);
-  ASSERT_TRUE(src.has_value());
+  ASSERT_TRUE(src.ok());
 
   auto chunk = src->ReadUntil('\n');
   EXPECT_EQ(chunk.view, "hello");

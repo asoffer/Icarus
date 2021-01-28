@@ -147,7 +147,7 @@ int Compile(frontend::FileName const &file_name) {
 
   auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
   auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
-  if (not maybe_file_src) {
+  if (not maybe_file_src.ok()) {
     diag.Consume(frontend::MissingModule{
         .source    = canonical_file_name,
         .requestor = "",
@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
   if (std::string lib = absl::GetFlag(FLAGS_link); not lib.empty()) {
     ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
   }
-  debug::parser      = absl::GetFlag(FLAGS_debug_parser);
+  debug::parser = absl::GetFlag(FLAGS_debug_parser);
 
   if (args.size() < 2) {
     std::cerr << "Missing required positional argument: source file"
