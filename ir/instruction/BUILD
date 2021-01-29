@@ -103,6 +103,7 @@ cc_library(
         "//ir/value:string",
         "//module",
         "//type:util",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
     ],
 )

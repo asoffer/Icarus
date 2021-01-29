@@ -5,6 +5,7 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/scope.h"
@@ -319,14 +320,14 @@ struct LoadSymbolInstruction
     // for functions and one for pointers) so that we can surface errors during
     // code-gen without the UNREACHABLE.
     if (auto* fn_type = type.if_as<type::Function>()) {
-      ASSIGN_OR(FatalInterpreterError(_.error().message()),  //
-                void (*sym)(), interpreter::LoadFunctionSymbol(name));
+      auto sym = interpreter::LoadFunctionSymbol(name);
+      if (not sym.ok()) { FatalInterpreterError(sym.status().message()); }
       ctx.current_frame().regs_.set(result,
-                                    ir::Fn(ir::ForeignFn(sym, fn_type)));
+                                    ir::Fn(ir::ForeignFn(*sym, fn_type)));
     } else if (type.is<type::Pointer>()) {
-      ASSIGN_OR(FatalInterpreterError(_.error().message()),  //
-                void* sym, interpreter::LoadDataSymbol(name));
-      ctx.current_frame().regs_.set(result, ir::Addr::Heap(sym));
+      absl::StatusOr<void*> sym = interpreter::LoadDataSymbol(name);
+      if (not sym.ok()) { FatalInterpreterError(sym.status().message()); }
+      ctx.current_frame().regs_.set(result, ir::Addr::Heap(*sym));
     } else {
       UNREACHABLE(type.to_string());
     }
