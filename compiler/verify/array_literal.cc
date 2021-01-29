@@ -45,7 +45,7 @@ type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
     error &= not elem_qts.back().ok();
   }
 
-  if (error) { return type::QualType::Error(); }
+  if (error) { return context().set_qual_type(node, type::QualType::Error()); }
 
   absl::flat_hash_map<type::Type, int> elem_type_count;
 
@@ -68,7 +68,7 @@ type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
       qt.MarkError();
       return context().set_qual_type(node, qt);
     } else {
-      return type::QualType::Error();
+      return context().set_qual_type(node, type::QualType::Error());
     }
   }
 }

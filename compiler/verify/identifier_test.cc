@@ -7,9 +7,9 @@
 namespace compiler {
 namespace {
 
-using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Pair;
+using ::testing::Pointee;
 using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 
@@ -20,9 +20,8 @@ TEST(Identifier, Success) {
   )");
   auto const *id = mod.Append<ast::Identifier>("n");
   auto const *qt = mod.context().qual_type(id);
-  ASSERT_NE(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType(type::I64, type::Quals::Ref())));
   EXPECT_THAT(mod.context().decls(id), SizeIs(1));
-  EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -30,9 +29,21 @@ TEST(Identifier, Undeclared) {
   test::TestModule mod;
   auto const *id = mod.Append<ast::Identifier>("n");
   auto const *qt = mod.context().qual_type(id);
-  ASSERT_EQ(qt, nullptr);
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              ElementsAre(Pair("type-error", "undeclared-identifier")));
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "undeclared-identifier")));
+}
+
+TEST(Identifier, UndeclaredDoesNotRepeat) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  x := f(1)
+  x + 1
+  )");
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "undeclared-identifier")));
 }
 
 TEST(Identifier, OverloadSetSuccess) {
@@ -57,7 +68,7 @@ TEST(Identifier, NonCallableOverloads) {
   )");
   auto const *id = mod.Append<ast::Identifier>("f");
   auto const *qt = mod.context().qual_type(id);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-callable-in-overload-set"),
@@ -71,11 +82,14 @@ TEST(Identifier, CyclicDependency) {
   y ::= z + 1
   z ::= x + 1
   )");
-  ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("x")), nullptr);
-  ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("y")), nullptr);
-  ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("z")), nullptr);
+  ASSERT_THAT(mod.context().qual_type(mod.Append<ast::Identifier>("x")),
+              Pointee(type::QualType::Error()));
+  ASSERT_THAT(mod.context().qual_type(mod.Append<ast::Identifier>("y")),
+              Pointee(type::QualType::Error()));
+  ASSERT_THAT(mod.context().qual_type(mod.Append<ast::Identifier>("z")),
+              Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
-              ElementsAre(Pair("type-error", "cyclic-dependency")));
+              UnorderedElementsAre(Pair("type-error", "cyclic-dependency")));
 }
 
 TEST(Identifier, InaccessibleDeclaration) {
@@ -84,8 +98,9 @@ TEST(Identifier, InaccessibleDeclaration) {
   n := 0
   f ::= () => n
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              ElementsAre(Pair("type-error", "uncaptured-identifier")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "uncaptured-identifier")));
 }
 
 }  // namespace

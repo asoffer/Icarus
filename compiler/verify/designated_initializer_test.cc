@@ -10,6 +10,7 @@ namespace {
 using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Pair;
+using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 TEST(DesignatedInitializer, NonConstantType) {
@@ -21,7 +22,7 @@ TEST(DesignatedInitializer, NonConstantType) {
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{})");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair(
                   "type-error", "non-constant-designated-initializer-type")));
@@ -34,7 +35,7 @@ TEST(DesignatedInitializer, NonType) {
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAType.{})");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "non-type-designated-initializer-type")));
@@ -47,7 +48,7 @@ TEST(DesignatedInitializer, NonConstantNonType) {
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAType.{})");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(
@@ -64,7 +65,7 @@ TEST(DesignatedInitializer, NonStrucType) {
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAStruct.{})");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair(
                   "type-error", "non-struct-designated-initializer-type")));
@@ -82,7 +83,7 @@ TEST(DesignatedInitializer, FieldErrorsAndStructErrors) {
   }
   )");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(

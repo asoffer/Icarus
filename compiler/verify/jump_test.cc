@@ -51,7 +51,7 @@ TEST(Jump, StateMustBeAPointer) {
     jump [n: i64] () { goto b() }
   )"));
 
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-pointer-jump-state")));
@@ -138,7 +138,7 @@ TEST(Jump, MultipleStateProblemsAllDiagnosed) {
     jump [n ::= 3] () { goto b() }
   )"));
 
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-pointer-jump-state"),

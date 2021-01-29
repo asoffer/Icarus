@@ -360,7 +360,9 @@ type::QualType Compiler::VerifyUnaryOverload(
         return true;
       });
 
-  if (member_types.empty()) { return type::QualType::Error(); }
+  if (member_types.empty()) {
+    return context().set_qual_type(node, type::QualType::Error());
+  }
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(operand);
   return type::QualType(
@@ -390,12 +392,11 @@ type::QualType Compiler::VerifyBinaryOverload(
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(lhs);
   pos_args.emplace_back(rhs);
-  return context().set_qual_type(
-      node,
-      type::QualType(type::MakeOverloadSet(std::move(member_types))
-                         ->return_types(core::Arguments<type::Typed<ir::Value>>(
-                             std::move(pos_args), {})),
-                     type::Quals::Unqualified()));
+  return type::QualType(
+      type::MakeOverloadSet(std::move(member_types))
+          ->return_types(
+              core::Arguments<type::Typed<ir::Value>>(std::move(pos_args), {})),
+      type::Quals::Unqualified());
 }
 
 std::pair<type::QualType,

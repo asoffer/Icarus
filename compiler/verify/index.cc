@@ -242,25 +242,28 @@ type::QualType Compiler::VerifyType(ast::Index const *node) {
 
   // We can recover from the index having errors but not from the data being
   // indexed.
-  if (not lhs_qt.ok()) { return type::QualType::Error(); }
-
-  if (auto const *slice_type = lhs_qt.type().if_as<type::Slice>()) {
-    return VerifySliceIndex(*this, node, slice_type, lhs_qt.quals(), index_qt);
+  type::QualType qt;
+  if (not lhs_qt.ok()) {
+    qt = type::QualType::Error();
+  } else if (auto const *slice_type = lhs_qt.type().if_as<type::Slice>()) {
+    qt = VerifySliceIndex(*this, node, slice_type, lhs_qt.quals(), index_qt);
   } else if (auto const *array_type = lhs_qt.type().if_as<type::Array>()) {
-    return VerifyArrayIndex(*this, node, array_type, lhs_qt.quals(), index_qt);
+    qt = VerifyArrayIndex(*this, node, array_type, lhs_qt.quals(), index_qt);
   } else if (auto const *buf_ptr_type =
                  lhs_qt.type().if_as<type::BufferPointer>()) {
-    return VerifyBufferPointerIndex(*this, node, buf_ptr_type, lhs_qt.quals(),
-                                    index_qt);
+    qt = VerifyBufferPointerIndex(*this, node, buf_ptr_type, lhs_qt.quals(),
+                                  index_qt);
   } else if (auto const *tuple_type = lhs_qt.type().if_as<type::Tuple>()) {
-    return VerifyTupleIndex(*this, node, tuple_type, lhs_qt.quals(), index_qt);
+    qt = VerifyTupleIndex(*this, node, tuple_type, lhs_qt.quals(), index_qt);
   } else {
     diag().Consume(InvalidIndexing{
         .range = node->range(),
         .type  = lhs_qt.type(),
     });
-    return type::QualType::Error();
+    qt = type::QualType::Error();
   }
+
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

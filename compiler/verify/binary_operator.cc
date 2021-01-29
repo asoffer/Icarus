@@ -118,7 +118,7 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
                                          node->rhs()->range().begin()),
       });
     }
-    return qt;
+    return c->context().set_qual_type(node, qt);
   }
 }
 
@@ -141,7 +141,7 @@ type::QualType VerifyFlagsOperator(Compiler *c, std::string_view op,
           .range    = frontend::SourceRange(node->lhs()->range().end(),
                                          node->rhs()->range().begin()),
       });
-      return type::QualType::Error();
+      return c->context().set_qual_type(node, type::QualType::Error());
     }
   } else {
     // TODO: Calling with constants?
@@ -155,7 +155,7 @@ type::QualType VerifyFlagsOperator(Compiler *c, std::string_view op,
                                          node->rhs()->range().begin()),
       });
     }
-    return qt;
+    return c->context().set_qual_type(node, qt);
   }
 }
 
@@ -182,7 +182,7 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
                                          node->rhs()->range().begin()),
       });
     }
-    return qt;
+    return c->context().set_qual_type(node, qt);
   } else if (type::IsNumeric(lhs_qual_type.type()) and
              type::IsNumeric(rhs_qual_type.type())) {
     if (lhs_qual_type.type() == rhs_qual_type.type()) {
@@ -195,7 +195,7 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
           .range    = frontend::SourceRange(node->lhs()->range().end(),
                                          node->rhs()->range().begin()),
       });
-      return type::QualType::Error();
+      return c->context().set_qual_type(node,type::QualType::Error());
     }
   } else if (op == "+" and (lhs_qual_type.type().is<type::BufferPointer>() and
                             type::IsIntegral(rhs_qual_type.type()))) {

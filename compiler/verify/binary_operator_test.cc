@@ -10,6 +10,7 @@ namespace {
 
 using ::testing::IsEmpty;
 using ::testing::Pair;
+using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 using FlagsLogicalOperatorEq = testing::TestWithParam<char const *>;
@@ -295,8 +296,7 @@ TEST_P(OperatorOverload, Overloads) {
   auto const *expr = mod.Append<ast::BinaryOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
   auto const *qt = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::I64));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::I64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -308,7 +308,7 @@ TEST_P(OperatorOverload, MissingOverloads) {
   auto const *expr = mod.Append<ast::BinaryOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
   auto const *qt = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "invalid-binary-operator-overload")));

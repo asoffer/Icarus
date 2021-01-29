@@ -113,7 +113,9 @@ struct MissingStructField {
 
 type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
   auto type_type = VerifyType(node->type());
-  if (type_type.HasErrorMark()) { return type::QualType::Error(); }
+  if (type_type.HasErrorMark()) {
+    return context().set_qual_type(node, type::QualType::Error());
+  }
 
   bool error = false;
   // Check for constness and type-ness separately so we can emit different error
@@ -132,7 +134,7 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
     });
     error = true;
   }
-  if (error) { return type::QualType::Error(); }
+  if (error) { return context().set_qual_type(node, type::QualType::Error()); }
 
   std::vector<std::vector<type::QualType>> initializer_qts;
   initializer_qts.reserve(node->assignments().size());
@@ -145,7 +147,8 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
 
   // Evaluate the type next so that the default ordering of error messages makes
   // sense (roughly top-to-bottom).
-  ASSIGN_OR(return type::QualType::Error(), type::Type t,
+  ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
+                   type::Type t,
                    EvaluateOrDiagnoseAs<type::Type>(node->type()));
 
   auto *struct_type = t.if_as<type::Struct>();
@@ -154,7 +157,7 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
         .type  = t,
         .range = node->type()->range(),
     });
-    return type::QualType::Error();
+    return context().set_qual_type(node, type::QualType::Error());
   }
 
   ASSERT(struct_type->completeness() >= type::Completeness::DataComplete);

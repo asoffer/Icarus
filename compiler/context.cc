@@ -93,6 +93,7 @@ type::QualType const *Context::qual_type(ast::Expression const *expr) const {
 
 type::QualType Context::set_qual_type(ast::Expression const *expr,
                                       type::QualType r) {
+  LOG("", "%p: %p => %s", this, expr, r);
   qual_types_.emplace(expr, r);
   return r;
 }

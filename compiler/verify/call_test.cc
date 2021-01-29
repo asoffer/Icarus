@@ -8,6 +8,7 @@ namespace {
 
 using ::testing::IsEmpty;
 using ::testing::Pair;
+using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 TEST(BuiltinForeign, FunctionSuccess) {
@@ -47,7 +48,7 @@ TEST(BuiltinForeign, NamedArgs) {
       foreign(name = "my_function", foreign_type = i64 -> bool)
       )");
   auto const *qt   = mod.context().qual_type(call);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -56,7 +57,7 @@ TEST(BuiltinForeign, NoArgs) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>("foreign()");
   auto const *qt   = mod.context().qual_type(call);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -65,7 +66,7 @@ TEST(BuiltinForeign, OneArg) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>(R"(foreign("abc"))");
   auto const *qt   = mod.context().qual_type(call);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -74,7 +75,7 @@ TEST(BuiltinForeign, TooManyArgs) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>(R"(foreign("abc", 1, 2, 3))");
   auto const *qt   = mod.context().qual_type(call);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -83,7 +84,7 @@ TEST(BuiltinForeign, FirstParameterCharSlice) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>(R"(foreign(123, *i64))");
   auto const *qt   = mod.context().qual_type(call);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -95,7 +96,7 @@ TEST(BuiltinForeign, NonConstantType) {
   )");
   auto const *call = mod.Append<ast::Call>(R"(foreign("f", f))");
   auto const *qt   = mod.context().qual_type(call);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -104,7 +105,7 @@ TEST(BuiltinForeign, SecondParameterType) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>(R"(foreign("f", 3))");
   auto const *qt   = mod.context().qual_type(call);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -230,7 +231,7 @@ TEST(Call, Uncallable) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>("3()");
   auto const *qt   = mod.context().qual_type(call);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "uncallable-expression")));
@@ -258,7 +259,7 @@ TEST_P(CallTest, Call) {
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, *expected_qual_type);
   } else {
-    EXPECT_EQ(qt, nullptr);
+    EXPECT_THAT(qt, Pointee(type::QualType::Error()));
   }
   EXPECT_THAT(mod.consumer.diagnostics(), expected_diagnostics);
 }

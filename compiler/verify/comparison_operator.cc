@@ -118,6 +118,7 @@ type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
   for (auto expr_qt : expr_qts) {
     if (not expr_qt.ok()) {
       qt.MarkError();
+      LOG("", "%s", qt);
       return context().set_qual_type(node, qt);
     }
   }
@@ -207,7 +208,6 @@ type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
         } break;
         default: UNREACHABLE("Expecting a ComparisonOperator operator type.");
       }
-
     } else {
       diag().Consume(NoMatchingComparisonOperator{
           .lhs   = lhs_qual_type.type(),
@@ -221,6 +221,7 @@ type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
     }
   }
 
+  LOG("", "%p: %p => %s", &context(), node, qt);
   return context().set_qual_type(node, qt);
 }
 

@@ -289,7 +289,9 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
   }
 
   if (auto callee_qt = VerifyType(node->callee())) {
-    if (not callee_qt.ok()) { return type::QualType::Error(); }
+    if (not callee_qt.ok()) {
+      return context().set_qual_type(node, type::QualType::Error());
+    }
     if (auto const *gs = callee_qt.type().if_as<type::GenericStruct>()) {
       return context().set_qual_type(node,
                                      type::QualType::Constant(type::Interface));
@@ -327,8 +329,7 @@ not_an_interface:
         qt = type::QualType::Constant(type::Void);
       }
     }
-    if (qt) { context().set_qual_type(node, qt); }
-    return qt;
+    return context().set_qual_type(node, qt);
   }
 
   absl::flat_hash_set<type::Type> argument_dependent_lookup_types;
@@ -339,7 +340,9 @@ not_an_interface:
   auto [callee_qt, overload_map] =
       VerifyCallee(node->callee(), arg_vals, argument_dependent_lookup_types);
   LOG("Call", "Callee's qual-type is %s", callee_qt);
-  if (not callee_qt.ok()) { return type::QualType::Error(); }
+  if (not callee_qt.ok()) {
+    return context().set_qual_type(node, type::QualType::Error());
+  }
 
   if (auto const *c = callee_qt.type().if_as<type::Callable>()) {
     auto qual_type = VerifyCall(node, overload_map, arg_vals);
@@ -349,14 +352,14 @@ not_an_interface:
           .error = std::move(qual_type).error(),
           .range = node->callee()->range(),
       });
-      return type::QualType::Error();
+      return context().set_qual_type(node, type::QualType::Error());
     }
     // TODO: under what circumstances can we prove that the implementation
     // doesn't need to be run at runtime?
     return context().set_qual_type(node, *qual_type);
   } else {
     diag().Consume(UncallableExpression{.range = node->callee()->range()});
-    return type::QualType::Error();
+    return context().set_qual_type(node, type::QualType::Error());
   }
 }
 

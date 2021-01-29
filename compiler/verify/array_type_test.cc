@@ -8,6 +8,7 @@ namespace {
 
 using ::testing::IsEmpty;
 using ::testing::Pair;
+using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 TEST(ArrayType, Correct) {
@@ -16,28 +17,24 @@ TEST(ArrayType, Correct) {
   {
     auto const *expr = mod.Append<ast::Expression>(R"([3; i64])");
     auto const *qt   = mod.context().qual_type(expr);
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+    EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
   }
 
   {
     auto const *expr = mod.Append<ast::Expression>(R"([2; [3; i64]])");
     auto const *qt   = mod.context().qual_type(expr);
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+    EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
   }
 
   {
     auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3; i64])");
     auto const *qt   = mod.context().qual_type(expr);
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+    EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
   }
   {
     auto const *expr = mod.Append<ast::Expression>(R"([1 as i8; i64])");
     auto const *qt   = mod.context().qual_type(expr);
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+    EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
   }
 
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -49,8 +46,7 @@ TEST(ArrayType, NonConstantType) {
   mod.AppendCode(R"(T := i64)");
   auto const *expr = mod.Append<ast::Expression>(R"([3; T])");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Type_));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Type_)));
 
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -60,8 +56,7 @@ TEST(ArrayType, NonTypeElement) {
 
   auto const *expr = mod.Append<ast::Expression>(R"([3; 2])");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+  EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
 
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -73,9 +68,7 @@ TEST(ArrayType, NonConstantLength) {
   mod.AppendCode(R"(n := 3)");
   auto const *expr = mod.Append<ast::Expression>(R"([3, n, 2; i64])");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Type_));
-
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Type_)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -83,8 +76,7 @@ TEST(ArrayType, NonIntegerLength) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([3.0; i64])");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+  EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
 
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -96,8 +88,7 @@ TEST(ArrayType, NonIntegerNonConstant) {
   mod.AppendCode(R"(x := 3.0)");
   auto const *expr = mod.Append<ast::Expression>(R"([x; i64])");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Type_));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Type_)));
 
   EXPECT_THAT(
       mod.consumer.diagnostics(),

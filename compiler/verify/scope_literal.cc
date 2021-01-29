@@ -182,7 +182,7 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
       qt.MarkError();
     }
 
-    ASSIGN_OR(return type::QualType::Error(),  //
+    ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
                      state_type,
                      EvaluateOrDiagnoseAs<type::Type>(node->state_type()));
   }

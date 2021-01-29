@@ -43,7 +43,7 @@ TEST(Cast, InvalidType) {
   auto const *expr = mod.Append<ast::Expression>("3.0 as true");
   auto const *qt   = mod.context().qual_type(expr);
   // Continues assuming the type is correct
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }

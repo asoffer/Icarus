@@ -11,6 +11,7 @@ namespace {
 
 using ::testing::IsEmpty;
 using ::testing::Pair;
+using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 TEST(Copy, Success) {
@@ -145,7 +146,7 @@ TEST(BufferPointer, NonType) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::UnaryOperator>("[*]17");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }
@@ -190,7 +191,7 @@ TEST(At, NonPointer) {
   )");
   auto const *expr = mod.Append<ast::UnaryOperator>("@p");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "dereferencing-non-pointer")));
@@ -212,7 +213,7 @@ TEST(And, NonReference) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::UnaryOperator>("&3");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("value-category-error", "non-addressable-expression")));
@@ -244,7 +245,7 @@ TEST(Pointer, NotAType) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::UnaryOperator>("*3");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }
@@ -309,7 +310,7 @@ TEST(Negate, UnsignedInteger) {
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
     auto const *qt   = mod.context().qual_type(expr);
-    ASSERT_EQ(qt, nullptr);
+    ASSERT_THAT(qt, Pointee(type::QualType::Error()));
     EXPECT_THAT(
         mod.consumer.diagnostics(),
         UnorderedElementsAre(Pair("type-error", "negating-unsigned-integer")));
@@ -322,7 +323,7 @@ TEST(Negate, UnsignedInteger) {
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
     auto const *qt   = mod.context().qual_type(expr);
-    ASSERT_EQ(qt, nullptr);
+    ASSERT_THAT(qt, Pointee(type::QualType::Error()));
     EXPECT_THAT(
         mod.consumer.diagnostics(),
         UnorderedElementsAre(Pair("type-error", "negating-unsigned-integer")));
@@ -337,7 +338,7 @@ TEST(Negate, InvalidType) {
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
     auto const *qt   = mod.context().qual_type(expr);
-    ASSERT_EQ(qt, nullptr);
+    ASSERT_THAT(qt, Pointee(type::QualType::Error()));
     EXPECT_THAT(mod.consumer.diagnostics(),
                 UnorderedElementsAre(
                     Pair("type-error", "invalid-unary-operator-call")));
@@ -350,7 +351,7 @@ TEST(Negate, InvalidType) {
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
     auto const *qt   = mod.context().qual_type(expr);
-    ASSERT_EQ(qt, nullptr);
+    ASSERT_THAT(qt, Pointee(type::QualType::Error()));
     EXPECT_THAT(mod.consumer.diagnostics(),
                 UnorderedElementsAre(
                     Pair("type-error", "invalid-unary-operator-call")));
@@ -377,7 +378,7 @@ TEST(Negate, MissingOverload) {
     )");
   auto const *expr = mod.Append<ast::UnaryOperator>("-S.{}");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "invalid-unary-operator-overload")));
@@ -445,7 +446,7 @@ TEST(Not, InvalidType) {
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("!n");
     auto const *qt   = mod.context().qual_type(expr);
-    ASSERT_EQ(qt, nullptr);
+    ASSERT_THAT(qt, Pointee(type::QualType::Error()));
     EXPECT_THAT(mod.consumer.diagnostics(),
                 UnorderedElementsAre(
                     Pair("type-error", "invalid-unary-operator-call")));
@@ -458,7 +459,7 @@ TEST(Not, InvalidType) {
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("!n");
     auto const *qt   = mod.context().qual_type(expr);
-    ASSERT_EQ(qt, nullptr);
+    ASSERT_THAT(qt, Pointee(type::QualType::Error()));
     EXPECT_THAT(mod.consumer.diagnostics(),
                 UnorderedElementsAre(
                     Pair("type-error", "invalid-unary-operator-call")));
@@ -485,7 +486,7 @@ TEST(Not, MissingOverload) {
     )");
   auto const *expr = mod.Append<ast::UnaryOperator>("!S.{}");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "invalid-unary-operator-overload")));

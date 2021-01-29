@@ -124,7 +124,7 @@ type::QualType Compiler::VerifyType(ast::Jump const *node) {
         return v.type();
       });
 
-  if (err) { return type::QualType::Error(); }
+  if (err) { return context().set_qual_type(node, type::QualType::Error()); }
 
   for (auto const *stmt : node->stmts()) { err &= not VerifyType(stmt).ok(); }
 

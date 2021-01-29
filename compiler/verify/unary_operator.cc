@@ -108,7 +108,7 @@ struct DereferencingNonPointer {
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
-  ASSIGN_OR(return type::QualType::Error(),  //
+  ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),  //
                    auto operand_qt, VerifyType(node->operand()));
   auto operand_type = operand_qt.type();
 
@@ -156,7 +156,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
             .range = node->operand()->range(),
             .type  = operand_type,
         });
-        return type::QualType::Error();
+        qt = type::QualType::Error();
       }
     } break;
     case ast::UnaryOperator::Kind::TypeOf: {
@@ -172,7 +172,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
             .type  = operand_type,
             .range = node->range(),
         });
-        return type::QualType::Error();
+        qt = type::QualType::Error();
       }
     } break;
     case ast::UnaryOperator::Kind::Address: {
@@ -184,7 +184,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
             type::QualType(type::Ptr(operand_type), type::Quals::Unqualified());
       } else {
         diag().Consume(NonAddressableExpression{.range = node->range()});
-        return type::QualType::Error();
+        qt = type::QualType::Error();
       }
     } break;
     case ast::UnaryOperator::Kind::Pointer: {
@@ -196,7 +196,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
             .range = node->operand()->range(),
             .type  = operand_type,
         });
-        return type::QualType::Error();
+        qt = type::QualType::Error();
       }
     } break;
     case ast::UnaryOperator::Kind::Negate: {
@@ -208,7 +208,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
             .type  = operand_type,
             .range = node->range(),
         });
-        return type::QualType::Error();
+        qt = type::QualType::Error();
       } else if (operand_type.is<type::Struct>()) {
         // TODO: support calling with constant arguments.
         qt = VerifyUnaryOverload(
@@ -218,7 +218,6 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
               .op    = "-",
               .range = node->range(),
           });
-          return type::QualType::Error();
         }
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
@@ -226,7 +225,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
             .type  = operand_type,
             .range = node->range(),
         });
-        return type::QualType::Error();
+        qt = type::QualType::Error();
       }
     } break;
     case ast::UnaryOperator::Kind::Not: {
@@ -242,7 +241,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
               .op    = "!",
               .range = node->range(),
           });
-          return type::QualType::Error();
+          qt = type::QualType::Error();
         }
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
@@ -250,7 +249,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
             .type  = operand_type,
             .range = node->range(),
         });
-        return type::QualType::Error();
+        qt = type::QualType::Error();
       }
     } break;
     default: UNREACHABLE(*node);

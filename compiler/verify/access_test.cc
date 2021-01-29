@@ -62,7 +62,7 @@ TEST(Access, NonConstantType) {
   mod.Append<ast::Node>(R"(T := i64)");
   auto const *expr = mod.Append<ast::Expression>(R"(T.something)");
   auto const *qt   = mod.context().qual_type(expr);
-  EXPECT_EQ(qt, nullptr);
+  EXPECT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "non-constant-type-member-access")));
@@ -75,7 +75,7 @@ TEST(Access, TypeHasNoMembers) {
   mod.Append<ast::Node>(R"(T ::= i64)");
   auto const *expr = mod.Append<ast::Expression>(R"(T.something)");
   auto const *qt   = mod.context().qual_type(expr);
-  EXPECT_EQ(qt, nullptr);
+  EXPECT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "type-has-no-members")));
 }
@@ -114,7 +114,7 @@ TEST(Access, NoFieldInStruct) {
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(s.x)");
   auto const *qt   = mod.context().qual_type(expr);
-  EXPECT_EQ(qt, nullptr);
+  EXPECT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-member")));
 }
@@ -152,7 +152,7 @@ TEST(Access, SliceInvalidMember) {
   mod.AppendCode(R"(s := "abc")");
   auto const *expr = mod.Append<ast::Expression>(R"(s.size)");
   auto const *qt   = mod.context().qual_type(expr);
-  EXPECT_EQ(qt, nullptr);
+  EXPECT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-member")));
 }
@@ -189,7 +189,7 @@ TEST(Access, ArrayInvalidMember) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([3; i64].size)");
   auto const *qt   = mod.context().qual_type(expr);
-  EXPECT_EQ(qt, nullptr);
+  EXPECT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-member")));
 }

@@ -299,13 +299,10 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   type::QualType node_qual_type;
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
-      ASSIGN_OR(return type::QualType::Error(),  //
-                       node_qual_type,
-                       VerifyDefaultInitialization(*this, node));
+      node_qual_type = VerifyDefaultInitialization(*this, node);
     } break;
     case ast::Declaration::kInferred: {
-      ASSIGN_OR(return type::QualType::Error(),  //
-                       node_qual_type, VerifyInferred(*this, node));
+      node_qual_type = VerifyInferred(*this, node);
     } break;
     case ast::Declaration::kInferredAndUninitialized: {
       diag().Consume(UninferrableType{
@@ -315,18 +312,19 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       if (node->flags() & ast::Declaration::f_IsConst) {
         diag().Consume(UninitializedConstant{.range = node->range()});
       }
-      return type::QualType::Error();
+      node_qual_type = type::QualType::Error();
     } break;
     case ast::Declaration::kCustomInit: {
-      ASSIGN_OR(return type::QualType::Error(),  //
-                       node_qual_type, VerifyCustom(*this, node));
+      node_qual_type = VerifyCustom(*this, node);
     } break;
     case ast::Declaration::kUninitialized: {
-      ASSIGN_OR(return type::QualType::Error(),  //
-                       node_qual_type, VerifyUninitialized(*this, node));
+      node_qual_type = VerifyUninitialized(*this, node);
     } break;
     default: UNREACHABLE(node->DebugString());
   }
+
+  if (not node_qual_type.ok()) { return node_qual_type; }
+
   // TODO: Support multiple declarations
   if (node->ids()[0].name().empty()) {
     if (node_qual_type.type() == type::Module) {

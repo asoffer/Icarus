@@ -64,10 +64,8 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
   ast::OverloadSet os;
   os.insert(node);
   context().SetAllOverloads(node, std::move(os));
-  ASSIGN_OR(return type::QualType::Error(),  //
-                   auto qt,
-                   node->is_generic() ? VerifyGeneric(*this, node)
-                                      : VerifyConcrete(*this, node));
+  auto qt = node->is_generic() ? VerifyGeneric(*this, node)
+                               : VerifyConcrete(*this, node);
   return context().set_qual_type(node, qt);
 }
 

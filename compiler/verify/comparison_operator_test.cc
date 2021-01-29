@@ -10,6 +10,7 @@ namespace {
 
 using ::testing::IsEmpty;
 using ::testing::Pair;
+using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 TEST(ComparisonOperator, ConstantSuccess) {
@@ -21,8 +22,7 @@ TEST(ComparisonOperator, ConstantSuccess) {
   auto const *expr =
       mod.Append<ast::ComparisonOperator>("x < y <= 3 == x != y >= 3 > x");
   auto const *qt = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Bool));
+  EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Bool)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -35,8 +35,7 @@ TEST(ComparisonOperator, NonConstantSuccess) {
   auto const *expr =
       mod.Append<ast::ComparisonOperator>("x < y <= 3 == x != y >= 3 > x");
   auto const *qt = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Bool));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Bool)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -48,8 +47,7 @@ TEST(ComparisonOperator, Pointer) {
       )");
   auto const *expr = mod.Append<ast::ComparisonOperator>("null != p == &x");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Bool));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Bool)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -61,8 +59,7 @@ TEST(ComparisonOperator, UnorderedPointers) {
       )");
   auto const *expr = mod.Append<ast::ComparisonOperator>("p < &x");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Bool));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Bool)));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "comparing-incomparables")));
@@ -75,8 +72,7 @@ TEST(ComparisonOperator, BufferPointerOrder) {
       )");
   auto const *expr = mod.Append<ast::ComparisonOperator>("p < p == p >= p");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Bool));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Bool)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -91,21 +87,19 @@ TEST_P(OperatorOverload, Overloads) {
   auto const *expr = mod.Append<ast::ComparisonOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
   auto const *qt = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Bool));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Bool)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST_P(OperatorOverload, MissingOverloads) {
   test::TestModule mod;
-  mod.AppendCode(
-      R"(S ::= struct {}
-      )");
+  mod.AppendCode(R"(S ::= struct {}
+  )");
   auto const *expr = mod.Append<ast::ComparisonOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
+  LOG("", "%p", &mod.context());
   auto const *qt = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Bool));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Bool)));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "invalid-comparison-operator-overload")));
@@ -118,8 +112,7 @@ TEST(ComparisonOperator, PriorError) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::ComparisonOperator>("(3 + true) < 3");
   auto const *qt   = mod.context().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Bool));
+  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::Bool)));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));

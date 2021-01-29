@@ -34,7 +34,7 @@ TEST(FunctionLiteral, InvalidReturnType) {
   test::TestModule mod;
   auto const *qt =
       mod.context().qual_type(mod.Append<ast::Expression>(R"(() -> 3 {})"));
-  EXPECT_EQ(qt, nullptr);
+  EXPECT_THAT(qt, Pointee(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "returning-non-type")));
 }

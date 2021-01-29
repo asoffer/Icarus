@@ -48,10 +48,10 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   // TODO: The type of the arguments and the scope name are independent and
   // should not have early-exists.
 
-  ASSIGN_OR(return type::QualType::Error(),  //
+  ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
                    std::ignore, VerifyArguments(node->args()));
 
-  ASSIGN_OR(return type::QualType::Error(),  //
+  ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
                    std::ignore, VerifyType(node->name()));
 
   context().TrackJumps(node);

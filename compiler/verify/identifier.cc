@@ -83,12 +83,16 @@ struct NonCallableInOverloadSet {
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::Identifier const *node) {
-  if (context().cyclic_error(node)) { return type::QualType::Error(); }
+  if (context().cyclic_error(node)) {
+    return context().set_qual_type(node, type::QualType::Error());
+  }
 
   // Dependency pushed until `token` is destroyed.
   auto token =
       cylcic_dependency_tracker_.PushDependency(node, context(), diag());
-  if (not token) { return type::QualType::Error(); }
+  if (not token) {
+    return context().set_qual_type(node, type::QualType::Error());
+  }
 
   // TODO: In what circumstances could this have been seen more than once?
   if (auto const *qt = context().qual_type(node)) {
@@ -125,8 +129,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
     }
   }
 
-  if (error) {
-    return type::QualType::Error(); }
+  if (error) { return context().set_qual_type(node, type::QualType::Error()); }
 
   LOG("Identifier", "%s: %p %s", node->DebugString(), node, potential_decl_ids);
   switch (potential_decl_ids.size()) {
@@ -136,7 +139,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       if (decl->flags() & ast::Declaration::f_IsConst) {
         qt = id_qt;
         if (not qt.ok() or qt.HasErrorMark()) {
-          return type::QualType::Error();
+          return context().set_qual_type(node, qt);
         }
       } else {
         if (node->range().begin() < id->range().begin()) {
@@ -146,7 +149,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
               .use_range = node->range(),
           });
           // Haven't seen the declaration yet, so we can't proceed.
-          return type::QualType::Error();
+          return context().set_qual_type(node, type::QualType::Error());
         } else {
           qt = *ASSERT_NOT_NULL(context().qual_type(id));
         }
@@ -192,7 +195,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         diag().Consume(
             UndeclaredIdentifier{.id = node->name(), .range = node->range()});
       }
-      return type::QualType::Error();
+      return context().set_qual_type(node, type::QualType::Error());
     } break;
     default: {
       type::Quals quals = type::Quals::Const();
@@ -202,14 +205,14 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       for (auto const &[id, id_qt] : potential_decl_ids) {
         qt = id_qt;
         if (not qt.ok() or qt.HasErrorMark()) {
-          return type::QualType::Error();
+          return context().set_qual_type(node, type::QualType::Error());
         }
       }
 
       for (auto const &[id, id_qt] : potential_decl_ids) {
         qt = id_qt;
         if (not qt.ok() or qt.HasErrorMark()) {
-          return type::QualType::Error();
+          return context().set_qual_type(node, type::QualType::Error());
         }
 
         if (auto *c = qt.type().if_as<type::Callable>()) {
@@ -225,8 +228,9 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         }
       }
 
-      if (error) { 
-        return type::QualType::Error(); }
+      if (error) {
+        return context().set_qual_type(node, type::QualType::Error());
+      }
 
       std::vector<ast::Declaration::Id const *> potential_ids;
       potential_ids.reserve(potential_decl_ids.size());
