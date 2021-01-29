@@ -15,21 +15,6 @@ namespace {
 
 ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
   LOG("EmitConstantDeclaration", "%s", node->DebugString());
-  if (node->scope()->Containing<ast::ModuleScope>()->module() !=
-      &c.context().module()) {
-    // Constant declarations from other modules should already be stored on
-    // that module. They must be at the root of the binding tree map,
-    // otherwise they would be local to some function/jump/etc. and not be
-    // exported.
-    return node->scope()
-        ->Containing<ast::ModuleScope>()
-        ->module()
-        ->as<CompiledModule>()
-        .context()
-        .Constant(&node->ids()[0]) // TODO: Support multiple declarations.
-        ->value();
-  }
-
   if (node->flags() & ast::Declaration::f_IsFnParam) {
     // TODO: Support multiple declarations.
     auto val = c.context().LoadConstantParam(&node->ids()[0]);
@@ -125,6 +110,8 @@ ir::Value EmitNonConstantDeclaration(Compiler &c,
 
 ir::Value Compiler::EmitValue(ast::Declaration const *node) {
   LOG("Declaration", "%s", node->DebugString());
+  ASSERT(node->scope()->Containing<ast::ModuleScope>()->module() ==
+         &context().module());
   return (node->flags() & ast::Declaration::f_IsConst)
              ? EmitConstantDeclaration(*this, node)
              : EmitNonConstantDeclaration(*this, node);

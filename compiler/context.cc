@@ -202,7 +202,7 @@ ir::Value Context::SetConstant(ast::Declaration::Id const *id,
 }
 
 Context::ConstantValue const *Context::Constant(
-    ast::Declaration::Id const *id) const {
+   ast::Declaration::Id const *id) const {
   auto iter = constants_.find(id);
   return iter != constants_.end() ? &iter->second : nullptr;
 }

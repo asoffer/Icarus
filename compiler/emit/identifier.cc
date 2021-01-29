@@ -24,10 +24,19 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
   auto decl_span = context().decls(node);
   ASSERT(decl_span.size() != 0u);
   if (decl_span[0]->flags() & ast::Declaration::f_IsConst) {
-    return EmitValue(decl_span[0]);
+    auto const *mod = &decl_span[0]
+                           ->scope()
+                           ->Containing<ast::ModuleScope>()
+                           ->module()
+                           ->as<CompiledModule>();
+    if (mod != &context().module()) {
+      return mod->context().Constant(&decl_span[0]->ids()[0])->value();
+    } else {
+      return EmitValue(decl_span[0]);
+    }
   }
   if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
-    auto t      = context().qual_type(node)->type();
+    auto t = context().qual_type(node)->type();
     // TODO: Support multiple declarations
     ir::Reg reg = context().addr(&decl_span[0]->ids()[0]);
     return (decl_span[0]->flags() & (ast::Declaration::f_IsBlockParam |

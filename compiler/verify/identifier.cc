@@ -113,7 +113,15 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
     if (auto const *prev_qt = context().qual_type(id)) {
       qt = *prev_qt;
     } else {
-      qt = VerifyType(id);
+      auto const *mod = &id->scope()
+                             ->Containing<ast::ModuleScope>()
+                             ->module()
+                             ->as<CompiledModule>();
+      if (mod != &context().module()) {
+        qt = *ASSERT_NOT_NULL(mod->context().qual_type(id));
+      } else {
+        qt = VerifyType(id);
+      }
       if (not qt.ok()) { error = true; }
     }
     potential_decl_ids.emplace_back(id, qt);
