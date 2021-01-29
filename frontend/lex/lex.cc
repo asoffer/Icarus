@@ -1,10 +1,12 @@
+#include "frontend/lex/lex.h"
+
 #include <cctype>
 #include <cmath>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
 #include "ast/ast.h"
 #include "base/meta.h"
-#include "frontend/lex/lex.h"
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
@@ -99,10 +101,12 @@ struct HashtagParsingFailure {
   static constexpr std::string_view kName     = "hashtag-parsing-failure";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    // TODO: Implement
-    return diagnostic::DiagnosticMessage();
+    // TODO: Highlight the source range.
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Invalid hashtag. %s", message));
   }
 
+  std::string message;
   SourceRange range;
 };
 
@@ -241,8 +245,8 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
   }
 }
 
-
-// Consumes a character literal represented by a backtick (`) followed by one of:
+// Consumes a character literal represented by a backtick (`) followed by one
+// of:
 // * A single non backslash character,
 // * A backslash and then any character in the set [abfnrtv]
 Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
@@ -395,19 +399,12 @@ StringLiteralLexResult NextStringLiteral(SourceCursor *cursor, Source *src) {
   return result;
 }
 
-enum class HashtagError {
-  kNothingAfterHash,
-  kMissingCloseBraceOnSystemHashtag,
-  kUnrecognizedHashtag,
-  kNotYetSupportedUserDefinedHashtag,
-};
-
-base::expected<Lexeme, HashtagError> NextHashtag(SourceCursor *cursor,
-                                                 Source *src) {
+absl::StatusOr<Lexeme> NextHashtag(SourceCursor *cursor, Source *src) {
   SourceRange span;
   std::string_view token;
   if (cursor->view().empty()) {
-    return HashtagError::kNothingAfterHash;
+    // TODO: use a better error code?
+    return absl::InvalidArgumentError("Nothing after # character.");
   } else if (cursor->view()[0] == '{') {
     cursor->remove_prefix(1);
     auto word_cursor = NextSimpleWord(cursor);
@@ -416,7 +413,8 @@ base::expected<Lexeme, HashtagError> NextHashtag(SourceCursor *cursor,
     span             = word_cursor.range();
 
     if (cursor->view().empty() or cursor->view()[0] != '}') {
-      return HashtagError::kMissingCloseBraceOnSystemHashtag;
+      return absl::InvalidArgumentError(
+          "Missing close brace on system hashtag.");
     }
     cursor->remove_prefix(1);
     span = span.expanded(Offset(1));
@@ -425,14 +423,15 @@ base::expected<Lexeme, HashtagError> NextHashtag(SourceCursor *cursor,
       if (token == name) { return Lexeme(tag, span); }
     }
 
-    return HashtagError::kUnrecognizedHashtag;
+    return absl::InvalidArgumentError("Unrecognized hashtag.");
   } else {
     auto word_cursor = NextSimpleWord(cursor);
     token            = word_cursor.view();
     span             = word_cursor.range();
 
     // TODO
-    return HashtagError::kNotYetSupportedUserDefinedHashtag;
+    return absl::InvalidArgumentError(
+        "User-defined hashtags are not yet supported.");
   }
 }
 
@@ -484,7 +483,7 @@ std::vector<Lexeme> Lex(Source &src, diagnostic::DiagnosticConsumer &diag,
 Lexeme NextToken(LexState *state) {
 restart:
   // Delegate based on the next character in the file stream
-  SourceLoc loc = state->cursor_.loc();
+  SourceLoc loc      = state->cursor_.loc();
   std::string_view v = state->cursor_.view();
   if (state->cursor_.view().empty()) {
     return Lexeme(Syntax::EndOfFile, state->cursor_.remove_prefix(0).range());
@@ -541,7 +540,8 @@ restart:
     case '#': {
       state->cursor_.remove_prefix(1);
       if (state->cursor_.view().empty()) {
-        state->diag_.Consume(HashtagParsingFailure{});
+        state->diag_.Consume(
+            HashtagParsingFailure{.message = "Nothing after # character."});
         goto restart;
       }
       if (state->peek() == '.') {
@@ -553,11 +553,12 @@ restart:
                                                    std::string{token}));
 
       } else {
-        if (auto result = NextHashtag(&state->cursor_, state->src_)) {
-          return *std::move(result);
-        }
+        auto result = NextHashtag(&state->cursor_, state->src_);
+        if (result.ok()) { return std::move(*result); }
 
-        state->diag_.Consume(HashtagParsingFailure{});
+        state->diag_.Consume(HashtagParsingFailure{
+            .message = std::string(result.status().message()),
+        });
         goto restart;
       }
     } break;

@@ -18,6 +18,7 @@ cc_library(
         "//ir/value:string",
         "//type:primitive",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
 
