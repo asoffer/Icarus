@@ -4,11 +4,12 @@
 #include <cstring>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
 
 namespace frontend {
 
-base::expected<FileSource> FileSource::Make(CanonicalFileName file_name) {
+absl::StatusOr<FileSource> FileSource::Make(CanonicalFileName file_name) {
   auto f = file_name.OpenReadOnly();
   if (not f) {
     return absl::NotFoundError(

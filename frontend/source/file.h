@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <utility>
 
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "base/expected.h"
 #include "diagnostic/message.h"
@@ -32,7 +33,7 @@ struct MissingModule {
 };
 
 struct FileSource : public Source {
-  static base::expected<FileSource> Make(CanonicalFileName file_name);
+  static absl::StatusOr<FileSource> Make(CanonicalFileName file_name);
 
   FileSource(FileSource const &) = delete;
   FileSource(FileSource &&f)     = default;

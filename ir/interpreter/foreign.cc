@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "base/debug.h"
 #include "ir/read_only_data.h"
 #include "ir/value/value.h"
@@ -170,7 +171,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
 done:;
 }
 
-base::expected<void *> LoadDataSymbol(std::string_view name) {
+absl::StatusOr<void *> LoadDataSymbol(std::string_view name) {
   dlerror();  // Clear previous errors.
   void *result    = dlsym(RTLD_DEFAULT, std::string(name).c_str());
   char const *err = dlerror();
@@ -178,7 +179,7 @@ base::expected<void *> LoadDataSymbol(std::string_view name) {
   return absl::NotFoundError(err);
 }
 
-base::expected<void_fn_ptr> LoadFunctionSymbol(std::string_view name) {
+absl::StatusOr<void_fn_ptr> LoadFunctionSymbol(std::string_view name) {
   dlerror();  // Clear previous errors.
   auto result = reinterpret_cast<void_fn_ptr>(
       dlsym(RTLD_DEFAULT, std::string(name).c_str()));

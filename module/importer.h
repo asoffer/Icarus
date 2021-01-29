@@ -40,7 +40,8 @@ struct FileImporter : Importer {
     frontend::CanonicalFileName const& module_path =
         id.template filename<ModuleType>();
     if (auto maybe_file_src = frontend::FileSource::Make(
-            ResolveModulePath(module_path, module_lookup_paths))) {
+            ResolveModulePath(module_path, module_lookup_paths));
+        maybe_file_src.ok()) {
       std::thread t(
           [this, mod = mod, file_src = std::move(*maybe_file_src)]() mutable {
             diagnostic::StreamingConsumer diag(stderr, &file_src);
