@@ -21,7 +21,7 @@ struct TestData {
 
 constexpr char const *kCommonDefinitions = R"(
   Color ::= flags {
-    RED   ::= 1 as u64 
+    RED   ::= 1 as u64
     GREEN ::= 2 as u64
     BLUE  ::= 4 as u64
   }

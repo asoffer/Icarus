@@ -4,3 +4,6 @@ perf.data*
 *fuzz_corpus*
 docs/_site/*
 docs/Gemfile.lock
+.cache
+compile_commands.json
+external
