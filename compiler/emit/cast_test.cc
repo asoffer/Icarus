@@ -20,9 +20,7 @@ TEST_P(CastTest, Cast) {
   F ::= flags { A ::= 1 as u64 \\ B ::= 2 as u64 \\ C ::= 4 as u64 }
   )");
   auto const *e  = mod.Append<ast::Expression>(expr);
-  auto const *qt = mod.context().qual_type(e);
-  ASSERT_NE(qt, nullptr);
-  auto t = qt->type();
+  auto t        = mod.context().qual_type(e).type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));

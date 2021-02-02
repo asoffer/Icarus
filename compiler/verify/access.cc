@@ -297,10 +297,10 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       return type::QualType::Error();
     } break;
     case 1: {
-      auto const *qt = mod->context().qual_type(ids[0]);
+      type::QualType qt = mod->context().qual_type(ids[0]);
 
-      type::Type t = mod->context().qual_type(ids[0])->type();
-      if (qt == nullptr or not qt->ok()) {
+      type::Type t = mod->context().qual_type(ids[0]).type();
+      if (not qt.ok()) {
         LOG("AccessModuleMember",
             "Found member in a different module that is missing a type. "
             "Suspected error generated from that module: %s",
@@ -308,7 +308,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
         return type::QualType::Error();
       } else {
         c.context().SetAllOverloads(node, ast::OverloadSet(ids));
-        c.context().set_qual_type(ids[0], *qt);
+        c.context().set_qual_type(ids[0], qt);
         return *qt;
       }
     } break;
@@ -318,8 +318,8 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       absl::flat_hash_set<type::Callable const *> member_types;
       auto const &ctx = mod->context();
       for (auto const *id : ids) {
-        auto *qt = ctx.qual_type(id);
-        if (qt == nullptr or not qt->ok()) {
+        auto qt = ctx.qual_type(id);
+        if (not qt.ok()) {
           LOG("AccessModuleMember",
               "Found member in a different module that is missing a type. "
               "Suspected error generated from that module: %s",
@@ -327,10 +327,10 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
           return type::QualType::Error();
         }
 
-        if (auto *callable = qt->type().if_as<type::Callable>()) {
-          quals &= qt->quals();
+        if (auto *callable = qt.type().if_as<type::Callable>()) {
+          quals &= qt.quals();
           member_types.insert(callable);
-          c.context().set_qual_type(id, *qt);
+          c.context().set_qual_type(id, qt);
         } else {
           LOG("AccessModuleMember",
               "Non-callable found in an overload set across module boundaries. "

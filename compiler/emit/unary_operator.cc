@@ -11,9 +11,8 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
   // TODO: user-defined-types
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Copy: {
-      auto operand_type =
-          ASSERT_NOT_NULL(context().qual_type(node->operand()))->type();
-      auto reg = builder().TmpAlloca(operand_type);
+      auto operand_type = context().qual_type(node->operand()).type();
+      auto reg          = builder().TmpAlloca(operand_type);
       EmitCopyInit(
           type::Typed<ir::Reg>(reg, operand_type),
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type));
@@ -22,14 +21,13 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::Destroy: {
       EmitDestroy(
           type::Typed<ir::Reg>(EmitValue(node->operand()).get<ir::Reg>(),
-                               context().qual_type(node->operand())->type()));
+                               context().qual_type(node->operand()).type()));
       return ir::Value();
     } break;
     case ast::UnaryOperator::Kind::Init:
       // TODO: Not entirely sure this is what the semantics ought to be.
     case ast::UnaryOperator::Kind::Move: {
-      auto operand_type =
-          ASSERT_NOT_NULL(context().qual_type(node->operand()))->type();
+      auto operand_type = context().qual_type(node->operand()).type();
       auto reg = builder().TmpAlloca(operand_type);
       EmitMoveInit(
           type::Typed<ir::Reg>(reg, operand_type),
@@ -48,7 +46,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       }));
     } break;
     case ast::UnaryOperator::Kind::Not: {
-      auto t = ASSERT_NOT_NULL(context().qual_type(node->operand()))->type();
+      auto t = context().qual_type(node->operand()).type();
       if (t == type::Bool) {
         return ir::Value(
             builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
@@ -63,14 +61,12 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::Negate: {
       auto operand_ir = EmitValue(node->operand());
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
-          ASSERT_NOT_NULL(context().qual_type(node->operand()))->type(),
-          [&]<typename T>() {
+          context().qual_type(node->operand()).type(), [&]<typename T>() {
             return ir::Value(builder().Neg(operand_ir.get<ir::RegOr<T>>()));
           });
     } break;
     case ast::UnaryOperator::Kind::TypeOf:
-      return ir::Value(
-          ASSERT_NOT_NULL(context().qual_type(node->operand()))->type());
+      return ir::Value(context().qual_type(node->operand()).type());
     case ast::UnaryOperator::Kind::Address:
       return ir::Value(EmitRef(node->operand()));
     case ast::UnaryOperator::Kind::Pointer: {
@@ -87,7 +83,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::At: {
       return builder().Load(
           EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
-          ASSERT_NOT_NULL(context().qual_type(node))->type());
+          context().qual_type(node).type());
     }
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));
   }
@@ -109,7 +105,7 @@ void Compiler::EmitCopyInit(
     case ast::UnaryOperator::Kind::Destroy:
       EmitDestroy(
           type::Typed<ir::Reg>(EmitValue(node->operand()).get<ir::Reg>(),
-                               context().qual_type(node->operand())->type()));
+                               context().qual_type(node->operand()).type()));
       break;
     default: {
       auto from_val = EmitValue(node);

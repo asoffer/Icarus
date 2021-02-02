@@ -285,7 +285,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   //
   // TODO: Consider first checking if it's a constant because we only need to do
   // this lookup in that case. Not sure how much performance that might win.
-  if (auto const *qt = context().qual_type(&node->ids()[0])) { return *qt; }
+  if (auto const *qt = context().maybe_qual_type(&node->ids()[0])) { return *qt; }
   LOG("Declaration", "Verifying '%s' on %p",
       absl::StrJoin(node->ids(), ", ",
                     [](std::string *out, ast::Declaration::Id const &id) {
@@ -404,7 +404,9 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     for (auto const *accessible_id :
          module::AllAccessibleDeclIds(node->scope(), id.name())) {
       if (&id == accessible_id) { continue; }
-      ASSIGN_OR(continue, type::QualType q, context().qual_type(accessible_id));
+      LOG("", "%s", id.name());
+      ASSIGN_OR(continue, type::QualType q,
+                context().maybe_qual_type(accessible_id));
       if (Shadow(typed_id,
                  type::Typed<ast::Declaration::Id const *>(&id, q.type()))) {
         // TODO: If one of these declarations shadows the other

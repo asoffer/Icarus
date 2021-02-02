@@ -335,7 +335,7 @@ not_an_interface:
   absl::flat_hash_set<type::Type> argument_dependent_lookup_types;
   for (auto const &[name, expr] : node->prefix_arguments()) {
     argument_dependent_lookup_types.insert(
-        context().qual_type(expr.get())->type());
+        context().qual_type(expr.get()).type());
   }
   auto [callee_qt, overload_map] =
       VerifyCallee(node->callee(), arg_vals, argument_dependent_lookup_types);

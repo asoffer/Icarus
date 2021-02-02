@@ -96,7 +96,7 @@ InferReturnTypes(Compiler &c, ast::FunctionLiteral const *node) {
     if (not ret_node) { continue; }
     std::vector<type::Type> ret_types;
     for (auto const *expr : ret_node->exprs()) {
-      ret_types.push_back(ASSERT_NOT_NULL(c.context().qual_type(expr))->type());
+      ret_types.push_back(c.context().qual_type(expr).type());
     }
 
     result.emplace(ret_node, std::move(ret_types));
@@ -189,8 +189,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
-        output_type_vec[i] =
-            ASSERT_NOT_NULL(c.context().qual_type(decl))->type();
+        output_type_vec[i] = c.context().qual_type(decl).type();
       } else if (auto maybe_type =
                      c.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i], false)) {
         output_type_vec[i] = *maybe_type;
@@ -271,8 +270,7 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "function-literal body verification: %s %p",
       node->DebugString(), &context());
 
-  auto const &fn_type =
-      ASSERT_NOT_NULL(context().qual_type(node))->type().as<type::Function>();
+  auto const &fn_type = context().qual_type(node).type().as<type::Function>();
   for (auto const &param : fn_type.params()) {
     if (param.value.type().get()->completeness() ==
         type::Completeness::Incomplete) {

@@ -95,7 +95,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   }
 
   // TODO: In what circumstances could this have been seen more than once?
-  if (auto const *qt = context().qual_type(node)) {
+  if (type::QualType const *qt = context().maybe_qual_type(node)) {
     LOG("Identifier", "Already saw `%s` so returning %s.", node->name(), *qt);
     return *qt;
   }
@@ -110,7 +110,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       potential_decl_ids;
   for (auto const *id :
        module::AllVisibleDeclsTowardsRoot(node->scope(), node->name())) {
-    if (auto const *prev_qt = context().qual_type(id)) {
+    if (type::QualType const *prev_qt = context().maybe_qual_type(id)) {
       qt = *prev_qt;
     } else {
       auto const *mod = &id->scope()
@@ -118,7 +118,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
                              ->module()
                              ->as<CompiledModule>();
       if (mod != &context().module()) {
-        qt = *ASSERT_NOT_NULL(mod->context().qual_type(id));
+        qt = mod->context().qual_type(id);
       } else {
         qt = VerifyType(id);
       }
@@ -132,7 +132,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       auto ids = mod->scope().ExportedDeclarationIds(node->name());
       for (auto const *id : ids) {
         potential_decl_ids.emplace_back(
-            id, *ASSERT_NOT_NULL(mod->context().qual_type(&id->declaration())));
+            id, mod->context().qual_type(&id->declaration()));
       }
     }
   }
@@ -159,7 +159,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
           // Haven't seen the declaration yet, so we can't proceed.
           return context().set_qual_type(node, type::QualType::Error());
         } else {
-          qt = *ASSERT_NOT_NULL(context().qual_type(id));
+          qt = context().qual_type(id);
         }
 
         if (not qt.constant()) {

@@ -16,9 +16,8 @@ TEST(Declaration, DefaultInitSuccess) {
     mod.AppendCode(R"(
     n: i64
     )");
-    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
+    type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
+    EXPECT_EQ(qt, type::QualType(type::I64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -27,9 +26,8 @@ TEST(Declaration, DefaultInitSuccess) {
     mod.AppendCode(R"(
     n :: i64
     )");
-    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Const()));
+    type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
+    EXPECT_EQ(qt, type::QualType(type::I64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -87,9 +85,8 @@ TEST(Declaration, InferredSuccess) {
     mod.AppendCode(R"(
     n := 3
     )");
-    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
+    type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
+    EXPECT_EQ(qt, type::QualType(type::I64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -98,9 +95,8 @@ TEST(Declaration, InferredSuccess) {
     mod.AppendCode(R"(
     n ::= 3
     )");
-    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Const()));
+    type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
+    EXPECT_EQ(qt, type::QualType(type::I64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -153,9 +149,8 @@ TEST(Declaration, CustomInitSuccess) {
     mod.AppendCode(R"(
     n: i64 = 3
     )");
-    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
+    type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
+    EXPECT_EQ(qt, type::QualType(type::I64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -164,9 +159,8 @@ TEST(Declaration, CustomInitSuccess) {
     mod.AppendCode(R"(
     n :: i64 = 3
     )");
-    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Const()));
+    type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
+    EXPECT_EQ(qt, type::QualType(type::I64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -221,9 +215,8 @@ TEST(Declaration, CustomInitAllowsConversions) {
     mod.AppendCode(R"(
     n: [0; i64] = []
     )");
-    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt,
+    type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
+    EXPECT_EQ(qt,
               type::QualType(type::Arr(0, type::I64), type::Quals::Buf()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
@@ -233,9 +226,8 @@ TEST(Declaration, CustomInitAllowsConversions) {
     mod.AppendCode(R"(
     n :: [0; i64] = []
     )");
-    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt,
+    type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
+    EXPECT_EQ(qt,
               type::QualType(type::Arr(0, type::I64), type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
@@ -247,9 +239,8 @@ TEST(Declaration, UninitializedSuccess) {
     mod.AppendCode(R"(
     n: i64 = --
     )");
-    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Ref()));
+    type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
+    EXPECT_EQ(qt, type::QualType(type::I64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -258,9 +249,8 @@ TEST(Declaration, UninitializedSuccess) {
     mod.AppendCode(R"(
     n :: i64 = --
     )");
-    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::I64, type::Quals::Const()));
+    type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
+    EXPECT_EQ(qt, type::QualType(type::I64, type::Quals::Const()));
     EXPECT_THAT(
         mod.consumer.diagnostics(),
         UnorderedElementsAre(Pair("type-error", "uninitialized-constant")));

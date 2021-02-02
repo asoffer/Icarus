@@ -13,7 +13,7 @@ ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
     t             = current_block()->Append(type::ArrayInstruction{
         .length =
             builder().CastTo<type::Array::length_t>(type::Typed<ir::Value>(
-                len, context().qual_type(node->length(i))->type())),
+                len, context().qual_type(node->length(i)).type())),
         .data_type = t,
         .result    = builder().CurrentGroup()->Reserve()});
   }

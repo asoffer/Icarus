@@ -38,7 +38,7 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
     }
 
     // TODO: Support multiple declarations
-    auto t = ASSERT_NOT_NULL(c.context().qual_type(&node->ids()[0]))->type();
+    auto t = c.context().qual_type(&node->ids()[0]).type();
 
     if (auto const *init_val = node->initial_value()) {
       LOG("Declaration", "Computing slot with %s",
@@ -94,7 +94,7 @@ ir::Value EmitNonConstantDeclaration(Compiler &c,
   addrs.reserve(node->ids().size());
   for (auto const &id : node->ids()) {
     addrs.push_back(type::Typed<ir::RegOr<ir::Addr>>(
-        c.context().addr(&id), c.context().qual_type(&id)->type()));
+        c.context().addr(&id), c.context().qual_type(&id).type()));
   }
   if (auto const *init_val = node->initial_value()) {
     c.EmitMoveInit(init_val, addrs);

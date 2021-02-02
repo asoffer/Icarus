@@ -153,8 +153,8 @@ void AddOverloads(Context const &context, ast::Expression const *callee,
   for (auto const *overload : overloads->members()) {
     LOG("AddOverloads", "Callee: %p %s", overload, overload->DebugString());
     // TODO: Deduce the right scope from `callee`?
-    if (auto const *qt = context.qual_type(overload)) {
-      overload_map.emplace(overload, &qt->type().as<type::Callable>());
+    if (type::QualType qt = context.qual_type(overload)) {
+      overload_map.emplace(overload, &qt.type().as<type::Callable>());
     }
   }
 }
@@ -254,7 +254,7 @@ Compiler::ComputeParamsFromArgs(
         } else if (auto const *a = args.at_or_null(id)) {
           arg = *a;
         } else {
-          auto t         = context().qual_type(dep_node.node())->type();
+          auto t         = context().qual_type(dep_node.node()).type();
           auto maybe_val = Evaluate(type::Typed<ast::Expression const *>(
               ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
           if (not maybe_val) { diag().Consume(maybe_val.error()); }
@@ -466,12 +466,12 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   // indirection in the overload set. Do we really want to rely on this?!
   if (auto const *overloads = context().AllOverloads(call_expr->callee())) {
     for (auto const *callee : overloads->members()) {
-      auto maybe_qt = *ASSERT_NOT_NULL(callee->scope()
-                                           ->Containing<ast::ModuleScope>()
-                                           ->module()
-                                           ->as<CompiledModule>()
-                                           .context()
-                                           .qual_type(callee));
+      auto maybe_qt = callee->scope()
+                          ->Containing<ast::ModuleScope>()
+                          ->module()
+                          ->as<CompiledModule>()
+                          .context()
+                          .qual_type(callee);
       ExtractParams(callee, &maybe_qt.type().as<type::Callable>(), args,
                     overload_params, errors);
     }
@@ -571,7 +571,7 @@ std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
     for (const auto *expr : yield_stmt->exprs()) {
       // TODO: Determine whether or not you want to support named yields. If
       // not, reduce this to a vector or some other positional arguments type.
-      yielded.pos_emplace(*ASSERT_NOT_NULL(context.qual_type(expr)));
+      yielded.pos_emplace(context.qual_type(expr));
     }
   }
   return yield_types;

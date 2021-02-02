@@ -146,13 +146,8 @@ struct Context {
       ast::ParameterizedExpression const *node,
       core::Params<std::pair<ir::Value, type::QualType>> const &params);
 
-  // Returned pointer is null if the expression does not have a type in this
-  // context. If the pointer is not null, it is only valid until the next
-  // mutation of `this`.
-  //
-  // TODO: Under what circumstances do we need to check for this being null?
-  // During type verification I believe this is not needed.
-  type::QualType const *qual_type(ast::Expression const *expr) const;
+  type::QualType qual_type(ast::Expression const *expr) const;
+  type::QualType const *maybe_qual_type(ast::Expression const *expr) const;
 
   // Stores the QualType in this context, associating it with the given
   // expression.
@@ -186,7 +181,7 @@ struct Context {
   std::pair<ir::NativeFn, bool> add_func(
       ast::ParameterizedExpression const *expr) {
     type::Function const *fn_type =
-        &ASSERT_NOT_NULL(qual_type(expr))->type().as<type::Function>();
+        &qual_type(expr).type().as<type::Function>();
     auto [iter, inserted] = ir_funcs_.try_emplace(
         expr, &fns_, fn_type,
         expr->params().Transform([fn_type, i = 0](auto const &d) mutable {
@@ -200,8 +195,7 @@ struct Context {
   // exists, returns a pointer to that object. Otherwise, constructs a new one
   // by calling `fn`.
   std::pair<ir::Jump, bool> add_jump(ast::Jump const *expr) {
-    type::Jump const *jump_type =
-        &ASSERT_NOT_NULL(qual_type(expr))->type().as<type::Jump>();
+    type::Jump const *jump_type = &qual_type(expr).type().as<type::Jump>();
     auto [iter, inserted] = ir_jumps_.try_emplace(
         expr, jump_type,
         expr->params().Transform([jump_type, i = 0](auto const &decl) mutable {

@@ -83,13 +83,18 @@ ir::CompiledJump *Context::jump(ast::Jump const *expr) {
   return iter == ir_jumps_.end() ? nullptr : &iter->second;
 }
 
-type::QualType const *Context::qual_type(ast::Expression const *expr) const {
-  if (auto iter = qual_types_.find(expr); iter != qual_types_.end()) {
-    return &iter->second;
-  }
-  if (parent()) { return parent()->qual_type(expr); }
+type::QualType Context::qual_type(ast::Expression const *expr) const {
+  return *ASSERT_NOT_NULL(maybe_qual_type(expr));
+}
+
+type::QualType const *Context::maybe_qual_type(
+    ast::Expression const *expr) const {
+  auto iter = qual_types_.find(expr);
+  if (iter != qual_types_.end()) { return &iter->second; }
+  if (parent()) { return parent()->maybe_qual_type(expr); }
   return nullptr;
 }
+
 
 type::QualType Context::set_qual_type(ast::Expression const *expr,
                                       type::QualType r) {

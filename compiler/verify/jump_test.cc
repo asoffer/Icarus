@@ -8,7 +8,6 @@ namespace {
 
 using ::testing::IsEmpty;
 using ::testing::Pair;
-using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 // TODO: Check that function body verification is scheduled.
@@ -17,13 +16,12 @@ TEST(Jump, StatelessSuccess) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
+  type::QualType qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump() { goto b() }
   )"));
 
-  ASSERT_NE(qt, nullptr);
-  ASSERT_TRUE(qt->type().is<type::Jump>());
-  auto& j = qt->type().as<type::Jump>();
+  ASSERT_TRUE(qt.type().is<type::Jump>());
+  auto& j = qt.type().as<type::Jump>();
   EXPECT_FALSE(j.state().valid());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -32,13 +30,12 @@ TEST(Jump, StatefulSuccess) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
+  type::QualType qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [n: *i64] () { goto b() }
   )"));
 
-  ASSERT_NE(qt, nullptr);
-  ASSERT_TRUE(qt->type().is<type::Jump>());
-  auto& j = qt->type().as<type::Jump>();
+  ASSERT_TRUE(qt.type().is<type::Jump>());
+  auto& j = qt.type().as<type::Jump>();
   EXPECT_EQ(j.state(), type::Type(type::Ptr(type::I64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -47,11 +44,11 @@ TEST(Jump, StateMustBeAPointer) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
+  type::QualType qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [n: i64] () { goto b() }
   )"));
 
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  EXPECT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-pointer-jump-state")));
@@ -61,13 +58,12 @@ TEST(Jump, StateMustNotBeABufferPointer) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
+  type::QualType qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [n: [*]i64] () { goto b() }
   )"));
 
-  ASSERT_NE(qt, nullptr);
-  ASSERT_TRUE(qt->type().is<type::Jump>());
-  auto& j = qt->type().as<type::Jump>();
+  ASSERT_TRUE(qt.type().is<type::Jump>());
+  auto& j = qt.type().as<type::Jump>();
   EXPECT_EQ(j.state(), type::Type(type::Ptr(type::I64)));
   EXPECT_THAT(j.params(), IsEmpty());
   EXPECT_THAT(
@@ -79,13 +75,12 @@ TEST(Jump, StateMustBeNonConstant) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
+  type::QualType qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [n :: *i64] () { goto b() }
   )"));
 
-  ASSERT_NE(qt, nullptr);
-  ASSERT_TRUE(qt->type().is<type::Jump>());
-  auto& j = qt->type().as<type::Jump>();
+  ASSERT_TRUE(qt.type().is<type::Jump>());
+  auto& j = qt.type().as<type::Jump>();
   EXPECT_EQ(j.state(), type::Type(type::Ptr(type::I64)));
   EXPECT_THAT(j.params(), IsEmpty());
   EXPECT_THAT(mod.consumer.diagnostics(),
@@ -96,13 +91,12 @@ TEST(Jump, InitialValue) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
+  type::QualType qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [p: *bool = null] () { goto b() }
   )"));
 
-  ASSERT_NE(qt, nullptr);
-  ASSERT_TRUE(qt->type().is<type::Jump>());
-  auto& j = qt->type().as<type::Jump>();
+  ASSERT_TRUE(qt.type().is<type::Jump>());
+  auto& j = qt.type().as<type::Jump>();
   EXPECT_EQ(j.state(), type::Type(type::Ptr(type::Bool)));
   EXPECT_THAT(j.params(), IsEmpty());
   EXPECT_THAT(
@@ -116,13 +110,12 @@ TEST(Jump, InitialValueInferred) {
     ptr ::= null as *i64
     b ::= block {}
   )");
-  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
+  type::QualType qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [p := ptr] () { goto b() }
   )"));
 
-  ASSERT_NE(qt, nullptr);
-  ASSERT_TRUE(qt->type().is<type::Jump>());
-  auto& j = qt->type().as<type::Jump>();
+  ASSERT_TRUE(qt.type().is<type::Jump>());
+  auto& j = qt.type().as<type::Jump>();
   EXPECT_EQ(j.state(), type::Type(type::Ptr(type::I64)));
   EXPECT_THAT(j.params(), IsEmpty());
   EXPECT_THAT(
@@ -134,11 +127,11 @@ TEST(Jump, MultipleStateProblemsAllDiagnosed) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
+  type::QualType qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [n ::= 3] () { goto b() }
   )"));
 
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  EXPECT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-pointer-jump-state"),

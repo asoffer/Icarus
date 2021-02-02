@@ -15,7 +15,7 @@ namespace compiler {
 ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   auto const &fn_type = context()
                             .qual_type(&node->function_literal())
-                            ->type()
+                            .type()
                             .as<type::Function>();
 
   // TODO: Reduce code-size by sharing these sequences whenever they share a

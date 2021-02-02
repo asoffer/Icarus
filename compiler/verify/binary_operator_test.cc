@@ -244,10 +244,9 @@ TEST_P(BinaryOperator, Success) {
     mod.AppendCode(absl::StrCat(R"(x: )", type));
     auto const *expr =
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
-    auto const *qt = mod.context().qual_type(expr);
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
-    EXPECT_EQ(qt->type(), mod.context().qual_type(expr->lhs())->type());
+    type::QualType qt = mod.context().qual_type(expr);
+    EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+    EXPECT_EQ(qt.type(), mod.context().qual_type(expr->lhs()).type());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
   {
@@ -256,10 +255,9 @@ TEST_P(BinaryOperator, Success) {
     mod.AppendCode(absl::StrCat(R"(x :: )", type));
     auto const *expr =
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
-    auto const *qt = mod.context().qual_type(expr);
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(qt->quals(), type::Quals::Const());
-    EXPECT_EQ(qt->type(), mod.context().qual_type(expr->lhs())->type());
+    type::QualType qt = mod.context().qual_type(expr);
+    EXPECT_EQ(qt.quals(), type::Quals::Const());
+    EXPECT_EQ(qt.type(), mod.context().qual_type(expr->lhs()).type());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -295,8 +293,8 @@ TEST_P(OperatorOverload, Overloads) {
       GetParam()));
   auto const *expr = mod.Append<ast::BinaryOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
-  auto const *qt = mod.context().qual_type(expr);
-  EXPECT_THAT(qt, Pointee(type::QualType::NonConstant(type::I64)));
+  type::QualType qt = mod.context().qual_type(expr);
+  EXPECT_EQ(qt, type::QualType::NonConstant(type::I64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -307,8 +305,8 @@ TEST_P(OperatorOverload, MissingOverloads) {
       )");
   auto const *expr = mod.Append<ast::BinaryOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
-  auto const *qt = mod.context().qual_type(expr);
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  type::QualType qt = mod.context().qual_type(expr);
+  EXPECT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "invalid-binary-operator-overload")));

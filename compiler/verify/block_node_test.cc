@@ -11,7 +11,6 @@ namespace {
 
 using ::testing::IsEmpty;
 using ::testing::Pair;
-using ::testing::Pointee;
 using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 
@@ -26,8 +25,8 @@ TEST(BlockNode, NoJumps) {
       mod.Append<ast::ScopeNode>(R"(s () b {})")->blocks();
   ASSERT_THAT(blocks, SizeIs(1));
   auto const &block = blocks[0];
-  EXPECT_THAT(mod.context().qual_type(&block),
-              Pointee(type::QualType::Constant(type::Block)));
+  EXPECT_EQ(mod.context().qual_type(&block),
+            type::QualType::Constant(type::Block));
   EXPECT_THAT(YieldArgumentTypes(mod.context(), &block), IsEmpty());
 }
 
@@ -43,11 +42,12 @@ TEST(BlockNode, HasJump) {
         value := true
         << value
       }
-  )")->blocks();
+  )")
+          ->blocks();
   ASSERT_THAT(blocks, SizeIs(1));
   auto const &block = blocks[0];
-  EXPECT_THAT(mod.context().qual_type(&block),
-              Pointee(type::QualType::Constant(type::Block)));
+  EXPECT_EQ(mod.context().qual_type(&block),
+            type::QualType::Constant(type::Block));
   EXPECT_THAT(YieldArgumentTypes(mod.context(), &block),
               UnorderedElementsAre(core::Arguments<type::QualType>(
                   {type::QualType(type::Bool, type::Quals::Ref())}, {})));
@@ -66,8 +66,8 @@ TEST(BlockNode, LabeledJumpSkipBlock) {
           ->blocks();
   ASSERT_THAT(blocks, SizeIs(1));
   auto const &block = blocks[0];
-  EXPECT_THAT(mod.context().qual_type(&block),
-              Pointee(type::QualType::Constant(type::Block)));
+  EXPECT_EQ(mod.context().qual_type(&block),
+            type::QualType::Constant(type::Block));
   EXPECT_THAT(YieldArgumentTypes(mod.context(), &block), IsEmpty());
 }
 
@@ -81,7 +81,6 @@ TEST(BlockNode, NoBlock) {
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("reference-error", "no-block-with-name")));
 }
-
 
 // TODO:
 // * Case where `exit` is generic.

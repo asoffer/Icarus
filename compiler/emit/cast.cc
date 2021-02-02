@@ -8,7 +8,7 @@ void Compiler::EmitCopyInit(
     ast::Cast const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = context().qual_type(node)->type();
+  auto t = context().qual_type(node).type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
@@ -16,18 +16,18 @@ void Compiler::EmitMoveInit(
     ast::Cast const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = context().qual_type(node)->type();
+  auto t = context().qual_type(node).type();
   EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
                  type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 ir::Value Compiler::EmitValue(ast::Cast const *node) {
-  type::Type to_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
+  type::Type to_type = context().qual_type(node).type();
   auto values        = EmitValue(node->expr());
 
   if (to_type == type::Type_) { return ir::Value(values.get<type::Type>()); }
 
-  auto from_type = ASSERT_NOT_NULL(context().qual_type(node->expr()))->type();
+  auto from_type = context().qual_type(node->expr()).type();
 
   if (to_type == from_type) { return values; }
 
@@ -82,7 +82,7 @@ void Compiler::EmitMoveAssign(
     ast::Cast const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = context().qual_type(node)->type();
+  auto t = context().qual_type(node).type();
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
@@ -90,7 +90,7 @@ void Compiler::EmitCopyAssign(
     ast::Cast const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = context().qual_type(node)->type();
+  auto t = context().qual_type(node).type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 

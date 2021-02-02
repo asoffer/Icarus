@@ -89,7 +89,7 @@ BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node) {
 
   for (auto const &decl : node->params()) {
     auto const *param = decl.value.get();
-    auto addr = c.builder().Alloca(c.context().qual_type(param)->type());
+    auto addr = c.builder().Alloca(c.context().qual_type(param).type());
     // TODO: Support multiple declarations?
     c.context().set_addr(&param->ids()[0], addr);
   }
@@ -258,12 +258,12 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   // inject their result values here.
   // TODO: Support more than one return type.
   // TODO: Support all types
-  type::QualType const *qt = ASSERT_NOT_NULL(context().qual_type(node));
+  type::QualType const qt = context().qual_type(node);
   std::optional<ir::Reg> result;
-  if (qt->type() != type::Void) {
+  if (qt.type() != type::Void) {
     type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double>(
-        qt->type(), [&]<typename T>() {
+        qt.type(), [&]<typename T>() {
           ir::PhiInstruction<T> phi;
           phi.result = builder().CurrentGroup()->Reserve();
           result     = phi.result;
@@ -277,7 +277,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   state().scope_landings.push_back(TransientState::ScopeLandingState{
       .label       = node->label() ? node->label()->value() : ir::Label(),
       .scope       = scope,
-      .result_type = *qt,
+      .result_type = qt,
       .block       = landing_block,
   });
   base::defer d = [&] { state().scope_landings.pop_back(); };
@@ -422,7 +422,7 @@ void Compiler::EmitCopyAssign(
     ast::ScopeNode const *node,
    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   // TODO: Implement this properly.
-  auto t = context().qual_type(node)->type();
+  auto t = context().qual_type(node).type();
   ASSERT(to.size() == 1u);
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
@@ -431,7 +431,7 @@ void Compiler::EmitMoveAssign(
     ast::ScopeNode const *node,
    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   // TODO: Implement this properly.
-  auto t = context().qual_type(node)->type();
+  auto t = context().qual_type(node).type();
   ASSERT(to.size() == 1u);
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }

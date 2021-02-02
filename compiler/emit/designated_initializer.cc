@@ -12,7 +12,7 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
-  auto t     = context().qual_type(node)->type();
+  auto t     = context().qual_type(node).type();
   auto alloc = builder().TmpAlloca(t);
   auto typed_alloc =
       type::Typed<ir::RegOr<ir::Addr>>(ir::RegOr<ir::Addr>(alloc), t);
@@ -26,7 +26,7 @@ void Compiler::EmitMoveAssign(
   ASSERT(to.size() == 1u);
   EmitMoveAssign(to[0],
                  type::Typed<ir::Value>(EmitValue(node),
-                                        context().qual_type(node)->type()));
+                                        context().qual_type(node).type()));
 }
 
 void Compiler::EmitCopyAssign(
@@ -35,7 +35,7 @@ void Compiler::EmitCopyAssign(
   ASSERT(to.size() == 1u);
   EmitCopyAssign(to[0],
                  type::Typed<ir::Value>(EmitValue(node),
-                                        context().qual_type(node)->type()));
+                                        context().qual_type(node).type()));
 }
 
 void Compiler::EmitMoveInit(
@@ -43,7 +43,7 @@ void Compiler::EmitMoveInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   // TODO actual initialization with these field members.
-  auto &struct_type  = context().qual_type(node)->type().as<type::Struct>();
+  auto &struct_type  = context().qual_type(node).type().as<type::Struct>();
   auto const &fields = struct_type.fields();
   for (size_t i = 0; i < fields.size(); ++i) {
     auto const &field = fields[i];
@@ -87,7 +87,7 @@ void Compiler::EmitCopyInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   // TODO actual initialization with these field members.
-  auto &struct_type  = context().qual_type(node)->type().as<type::Struct>();
+  auto &struct_type  = context().qual_type(node).type().as<type::Struct>();
   auto const &fields = struct_type.fields();
   for (size_t i = 0; i < fields.size(); ++i) {
     auto const &field = fields[i];

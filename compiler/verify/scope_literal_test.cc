@@ -13,25 +13,23 @@ using ::testing::UnorderedElementsAre;
 
 TEST(ScopeLiteral, SuccessStateless) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {}
+  auto const *s     = mod.Append<ast::ScopeLiteral>(R"(scope {}
   )");
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(qt->type(), type::Scope);
-  EXPECT_TRUE(qt->constant());
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt.type(), type::Scope);
+  EXPECT_TRUE(qt.constant());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(ScopeLiteral, StatelessNonConstantMember) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {
+  auto const *s     = mod.Append<ast::ScopeLiteral>(R"(scope {
     enter := jump () {}
   }
   )");
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(qt->type(), type::Scope);
-  EXPECT_TRUE(qt->constant());
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt.type(), type::Scope);
+  EXPECT_TRUE(qt.constant());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-constant-scope-member")));
@@ -39,15 +37,14 @@ TEST(ScopeLiteral, StatelessNonConstantMember) {
 
 TEST(ScopeLiteral, StatelessMemberTypes) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {
+  auto const *s     = mod.Append<ast::ScopeLiteral>(R"(scope {
     enter ::= 3
     exit ::= 3
   }
   )");
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(qt->type(), type::Scope);
-  EXPECT_TRUE(qt->constant());
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt.type(), type::Scope);
+  EXPECT_TRUE(qt.constant());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "non-jump-enter"),
                                    Pair("type-error", "non-callable-exit")));
@@ -55,39 +52,36 @@ TEST(ScopeLiteral, StatelessMemberTypes) {
 
 TEST(ScopeLiteral, StatelessInitIsStateful) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {
+  auto const *s     = mod.Append<ast::ScopeLiteral>(R"(scope {
     enter ::= jump [state: *i64] () {}
   }
   )");
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(qt->type(), type::Scope);
-  EXPECT_TRUE(qt->constant());
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt.type(), type::Scope);
+  EXPECT_TRUE(qt.constant());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "state-type-mismatch")));
 }
 
 TEST(ScopeLiteral, SuccessStateful) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {}
+  auto const *s     = mod.Append<ast::ScopeLiteral>(R"(scope {}
   )");
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(qt->type(), type::Scope);
-  EXPECT_TRUE(qt->constant());
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt.type(), type::Scope);
+  EXPECT_TRUE(qt.constant());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(ScopeLiteral, StatefulNonConstantMember) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (i64) {
+  auto const *s     = mod.Append<ast::ScopeLiteral>(R"(scope (i64) {
     enter := jump [state: *i64] () {}
   }
   )");
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(qt->type(), type::Scope);
-  EXPECT_TRUE(qt->constant());
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt.type(), type::Scope);
+  EXPECT_TRUE(qt.constant());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-constant-scope-member")));
@@ -95,15 +89,14 @@ TEST(ScopeLiteral, StatefulNonConstantMember) {
 
 TEST(ScopeLiteral, StatefulMemberTypes) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (i64) {
+  auto const *s     = mod.Append<ast::ScopeLiteral>(R"(scope (i64) {
     enter ::= 3
     exit ::= 3
   }
   )");
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(qt->type(), type::Scope);
-  EXPECT_TRUE(qt->constant());
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt.type(), type::Scope);
+  EXPECT_TRUE(qt.constant());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "non-jump-enter"),
                                    Pair("type-error", "non-callable-exit")));
@@ -111,14 +104,13 @@ TEST(ScopeLiteral, StatefulMemberTypes) {
 
 TEST(ScopeLiteral, StatefulInitIsStateless) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (i64) {
+  auto const *s     = mod.Append<ast::ScopeLiteral>(R"(scope (i64) {
     enter ::= jump () {}
   }
   )");
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(qt->type(), type::Scope);
-  EXPECT_TRUE(qt->constant());
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt.type(), type::Scope);
+  EXPECT_TRUE(qt.constant());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "state-type-mismatch")));
 }

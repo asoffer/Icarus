@@ -16,9 +16,8 @@ TEST(StructLiteral, SuccessEmpty) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::StructLiteral>(R"(struct {}
   )");
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt, type::QualType::Constant(type::Type_));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -29,9 +28,8 @@ TEST(StructLiteral, SuccessNonEmpty) {
     b := true
   }
   )");
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt, type::QualType::Constant(type::Type_));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -42,9 +40,8 @@ TEST(StructLiteral, FieldError) {
     b := true
   })");
   mod.compiler.VerifyBody(s);
-  auto const *qt = mod.context().qual_type(s);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+  type::QualType qt = mod.context().qual_type(s);
+  EXPECT_EQ(qt, type::QualType::Constant(type::Type_));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }
@@ -58,9 +55,8 @@ TEST(StructLiteral, SelfReferential) {
   }
   l: list
   )");
-  auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("l"));
-  ASSERT_NE(qt, nullptr);
-  type::Struct const *s = qt->type().if_as<type::Struct>();
+  type::QualType qt = mod.context().qual_type(mod.Append<ast::Identifier>("l"));
+  type::Struct const *s = qt.type().if_as<type::Struct>();
   ASSERT_NE(s, nullptr);
   type::Struct::Field const *field = s->field("next");
   ASSERT_NE(field, nullptr);
@@ -90,12 +86,10 @@ TEST(StructLiteral, MutuallyReferential) {
   a: A
   b: B
   )");
-  auto const *a_qt = mod.context().qual_type(mod.Append<ast::Identifier>("a"));
-  auto const *b_qt = mod.context().qual_type(mod.Append<ast::Identifier>("b"));
-  ASSERT_NE(a_qt, nullptr);
-  ASSERT_NE(b_qt, nullptr);
-  type::Struct const *a_struct = a_qt->type().if_as<type::Struct>();
-  type::Struct const *b_struct = b_qt->type().if_as<type::Struct>();
+  type::QualType a_qt = mod.context().qual_type(mod.Append<ast::Identifier>("a"));
+  type::QualType b_qt = mod.context().qual_type(mod.Append<ast::Identifier>("b"));
+  type::Struct const *a_struct = a_qt.type().if_as<type::Struct>();
+  type::Struct const *b_struct = b_qt.type().if_as<type::Struct>();
   ASSERT_NE(a_struct, nullptr);
   ASSERT_NE(b_struct, nullptr);
   type::Struct::Field const *ab_field = a_struct->field("b_ptr");

@@ -94,18 +94,19 @@ void EmitCall(
     absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
         arg_exprs,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  auto const *callee_qual_type = compiler.context().qual_type(callee);
-  if (not callee_qual_type) {
-    callee_qual_type = ASSERT_NOT_NULL(callee->scope()
-                                           ->Containing<ast::ModuleScope>()
-                                           ->module()
-                                           ->as<CompiledModule>()
-                                           .context()
-                                           .qual_type(callee));
-  }
+  auto const *mod              = &callee->scope()
+                        ->Containing<ast::ModuleScope>()
+                        ->module()
+                        ->as<CompiledModule>();
+  // Note: We only need to wait on the module if it's not this one, so even
+  // though `mod->context()` would be sufficient, we want to ensure that we call
+  // the non-const overload if `mod == &module()`.
+  type::QualType callee_qual_type = mod == &compiler.context().module()
+                                        ? compiler.context().qual_type(callee)
+                                        : mod->context().qual_type(callee);
 
   auto [callee_fn, overload_type, context] =
-      EmitCallee(compiler, callee, *callee_qual_type, constant_arguments);
+      EmitCallee(compiler, callee, callee_qual_type, constant_arguments);
 
   Compiler c = compiler.MakeChild(PersistentResources{
       .data                = context ? *context : compiler.context(),
@@ -252,7 +253,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
     return EmitBuiltinCall(this, b, node->arguments());
   }
 
-  auto qt = *ASSERT_NOT_NULL(context().qual_type(node));
+  auto qt = context().qual_type(node);
   if (qt.expansion_size() == 1 and qt.type() == type::Interface) {
     return ir::Value();
   }
@@ -265,7 +266,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_type(node->callee())
-                                ->type()
+                                .type()
                                 .if_as<type::GenericStruct>()) {
     return ir::Value(
         type::Type(gs_type->Instantiate(constant_arguments).second));
@@ -297,7 +298,7 @@ void Compiler::EmitMoveInit(
     auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_type(node)->type()));
+                              result, context().qual_type(node).type()));
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -308,7 +309,7 @@ void Compiler::EmitMoveInit(
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_type(node->callee())
-                                ->type()
+                                .type()
                                 .if_as<type::GenericStruct>()) {
     EmitCopyAssign(to[0],
                    type::Typed<ir::Value>(
@@ -331,7 +332,7 @@ void Compiler::EmitCopyInit(
     auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_type(node)->type()));
+                              result, context().qual_type(node).type()));
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -342,7 +343,7 @@ void Compiler::EmitCopyInit(
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_type(node->callee())
-                                ->type()
+                                .type()
                                 .if_as<type::GenericStruct>()) {
     EmitCopyAssign(to[0],
                    type::Typed<ir::Value>(
@@ -365,7 +366,7 @@ void Compiler::EmitMoveAssign(
     auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitMoveAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_type(node)->type()));
+                              result, context().qual_type(node).type()));
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -376,7 +377,7 @@ void Compiler::EmitMoveAssign(
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_type(node->callee())
-                                ->type()
+                                .type()
                                 .if_as<type::GenericStruct>()) {
     EmitMoveAssign(to[0],
                    type::Typed<ir::Value>(
@@ -399,7 +400,7 @@ void Compiler::EmitCopyAssign(
     auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_type(node)->type()));
+                              result, context().qual_type(node).type()));
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -409,7 +410,7 @@ void Compiler::EmitCopyAssign(
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_type(node->callee())
-                                ->type()
+                                .type()
                                 .if_as<type::GenericStruct>()) {
     EmitCopyAssign(to[0],
                    type::Typed<ir::Value>(

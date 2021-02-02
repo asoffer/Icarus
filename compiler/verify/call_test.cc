@@ -8,83 +8,79 @@ namespace {
 
 using ::testing::IsEmpty;
 using ::testing::Pair;
-using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 TEST(BuiltinForeign, FunctionSuccess) {
   test::TestModule mod;
   auto const *call =
       mod.Append<ast::Call>(R"(foreign("my_function", i64 -> bool))");
-  auto const *qt = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(
-      *qt, type::QualType::Constant(type::Func(
-               {core::AnonymousParam(type::QualType::NonConstant(type::I64))},
-               {type::Bool})));
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt,
+            type::QualType::Constant(type::Func(
+                {core::AnonymousParam(type::QualType::NonConstant(type::I64))},
+                {type::Bool})));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinForeign, PointerSuccess) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(foreign("my_ptr", *i64))");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Ptr(type::I64)));
+  auto const *call  = mod.Append<ast::Call>(R"(foreign("my_ptr", *i64))");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::Ptr(type::I64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinForeign, BufferPointerSuccess) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(foreign("my_array", [*]i64))");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::BufPtr(type::I64)));
+  auto const *call  = mod.Append<ast::Call>(R"(foreign("my_array", [*]i64))");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::BufPtr(type::I64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinForeign, NamedArgs) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(
+  auto const *call  = mod.Append<ast::Call>(R"(
       foreign(name = "my_function", foreign_type = i64 -> bool)
       )");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  type::QualType qt = mod.context().qual_type(call);
+  ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, NoArgs) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("foreign()");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  auto const *call  = mod.Append<ast::Call>("foreign()");
+  type::QualType qt = mod.context().qual_type(call);
+  ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, OneArg) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(foreign("abc"))");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  auto const *call  = mod.Append<ast::Call>(R"(foreign("abc"))");
+  type::QualType qt = mod.context().qual_type(call);
+  ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, TooManyArgs) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(foreign("abc", 1, 2, 3))");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  auto const *call  = mod.Append<ast::Call>(R"(foreign("abc", 1, 2, 3))");
+  type::QualType qt = mod.context().qual_type(call);
+  ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, FirstParameterCharSlice) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(foreign(123, *i64))");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  auto const *call  = mod.Append<ast::Call>(R"(foreign(123, *i64))");
+  type::QualType qt = mod.context().qual_type(call);
+  ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -94,144 +90,132 @@ TEST(BuiltinForeign, NonConstantType) {
   mod.AppendCode(R"(
   f := () -> ()
   )");
-  auto const *call = mod.Append<ast::Call>(R"(foreign("f", f))");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  auto const *call  = mod.Append<ast::Call>(R"(foreign("f", f))");
+  type::QualType qt = mod.context().qual_type(call);
+  ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, SecondParameterType) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(foreign("f", 3))");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  auto const *call  = mod.Append<ast::Call>(R"(foreign("f", 3))");
+  type::QualType qt = mod.context().qual_type(call);
+  ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinOpaque, Success) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("opaque()");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+  auto const *call  = mod.Append<ast::Call>("opaque()");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::Type_));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinOpaque, Arguments) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("opaque(3)");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+  auto const *call  = mod.Append<ast::Call>("opaque(3)");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::Type_));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinBytes, Success) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("bytes(bool)");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
+  auto const *call  = mod.Append<ast::Call>("bytes(bool)");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinBytes, NoArguments) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("bytes()");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
+  auto const *call  = mod.Append<ast::Call>("bytes()");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinBytes, TooManyArguments) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("bytes(i32, u8)");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
+  auto const *call  = mod.Append<ast::Call>("bytes(i32, u8)");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinBytes, NamedArgument) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("bytes(T = i32)");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
+  auto const *call  = mod.Append<ast::Call>("bytes(T = i32)");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinBytes, WrongType) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("bytes(3)");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
+  auto const *call  = mod.Append<ast::Call>("bytes(3)");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinAlignment, Success) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("alignment(bool)");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
+  auto const *call  = mod.Append<ast::Call>("alignment(bool)");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinAlignment, NoArguments) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("alignment()");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
+  auto const *call  = mod.Append<ast::Call>("alignment()");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinAlignment, TooManyArguments) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("alignment(i32, u8)");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
+  auto const *call  = mod.Append<ast::Call>("alignment(i32, u8)");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinAlignment, NamedArgument) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("alignment(T = i32)");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
+  auto const *call  = mod.Append<ast::Call>("alignment(T = i32)");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinAlignment, WrongType) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("alignment(3)");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::U64));
+  auto const *call  = mod.Append<ast::Call>("alignment(3)");
+  type::QualType qt = mod.context().qual_type(call);
+  EXPECT_EQ(qt, type::QualType::Constant(type::U64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(Call, Uncallable) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>("3()");
-  auto const *qt   = mod.context().qual_type(call);
-  ASSERT_THAT(qt, Pointee(type::QualType::Error()));
+  auto const *call  = mod.Append<ast::Call>("3()");
+  type::QualType qt = mod.context().qual_type(call);
+  ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "uncallable-expression")));
@@ -240,7 +224,7 @@ TEST(Call, Uncallable) {
 struct TestCase {
   std::string context;
   std::string expr;
-  std::optional<type::QualType> expected_qual_type = std::nullopt;
+  type::QualType expected_qual_type = type::QualType::Error();
   testing::Matcher<absl::Span<std::pair<std::string, std::string> const>>
       expected_diagnostics = IsEmpty();
 };
@@ -253,14 +237,9 @@ TEST_P(CallTest, Call) {
       GetParam();
   test::TestModule mod;
   mod.AppendCode(context);
-  auto const *e  = mod.Append<ast::Expression>(expr);
-  auto const *qt = mod.context().qual_type(e);
-  if (expected_qual_type) {
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, *expected_qual_type);
-  } else {
-    EXPECT_THAT(qt, Pointee(type::QualType::Error()));
-  }
+  auto const *e     = mod.Append<ast::Expression>(expr);
+  type::QualType qt = mod.context().qual_type(e);
+  EXPECT_EQ(qt, expected_qual_type);
   EXPECT_THAT(mod.consumer.diagnostics(), expected_diagnostics);
 }
 

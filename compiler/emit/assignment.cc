@@ -20,7 +20,7 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
     ASSERT(node->rhs().size() == 1u);
     auto const *l = node->lhs()[0];
     type::Typed<ir::RegOr<ir::Addr>> ref(
-        EmitRef(l), ASSERT_NOT_NULL(context().qual_type(l))->type());
+        EmitRef(l), context().qual_type(l).type());
     EmitMoveAssign(node->rhs()[0], absl::MakeConstSpan(&ref, 1));
     return ir::Value();
   }
@@ -34,14 +34,14 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   // TODO: Understand the precise semantics you care about here and document
   // them. Must references be computed first?
   for (auto const *l : node->lhs()) {
-    type::Type t = ASSERT_NOT_NULL(context().qual_type(l))->type();
+    type::Type t = context().qual_type(l).type();
     lhs_refs.emplace_back(EmitRef(l), t);
     temps.emplace_back(builder().TmpAlloca(t), t);
   }
 
   auto temp_iter = temps.begin();
   for (auto const *r : node->rhs()) {
-    auto from_qt          = *ASSERT_NOT_NULL(context().qual_type(r));
+    auto from_qt          = context().qual_type(r);
     size_t expansion_size = from_qt.expansion_size();
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> temp_span(
         &*temp_iter, expansion_size);
