@@ -83,7 +83,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
   return fn;
 }
 
-base::expected<ir::Value, interpreter::EvaluationFailure> Compiler::Evaluate(
+interpreter::EvaluationResult Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr, bool must_complete) {
   Compiler c             = MakeChild(resources_);
   c.state_.must_complete = must_complete;

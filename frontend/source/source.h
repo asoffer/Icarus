@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "base/cast.h"
-#include "base/expected.h"
 #include "frontend/source/buffer.h"
 #include "frontend/source/line.h"
 

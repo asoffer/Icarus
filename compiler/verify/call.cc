@@ -48,7 +48,7 @@ struct UncallableWithArguments {
     for (auto const &type_and_reason : error.reasons) {
       std::visit(
           [&](auto const &err) {
-            using call_error                    = Compiler::CallError;
+            using call_error = Compiler::VerifyCallResult::Error;
             auto const &[callable_type, reason] = type_and_reason;
             static constexpr auto type =
                 base::meta<std::decay_t<decltype(err)>>;
@@ -111,7 +111,7 @@ struct UncallableWithArguments {
         diagnostic::List(std::move(items)));
   }
 
-  Compiler::CallError error;
+  Compiler::VerifyCallResult::Error error;
   frontend::SourceRange range;
 };
 

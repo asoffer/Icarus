@@ -15,7 +15,6 @@
 #include "absl/strings/str_split.h"
 #include "backend/function.h"
 #include "backend/type.h"
-#include "base/expected.h"
 #include "base/log.h"
 #include "base/no_destructor.h"
 #include "base/untyped_buffer.h"

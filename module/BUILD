@@ -11,7 +11,6 @@ cc_library(
         "//ast:scope",
         "//base:cast",
         "//base:debug",
-        "//base:expected",
         "//base:graph",
         "//base:guarded",
         "//base:macros",

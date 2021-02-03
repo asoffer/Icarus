@@ -1,7 +1,6 @@
 #ifndef ICARUS_FRONTEND_LEX_LEX_H
 #define ICARUS_FRONTEND_LEX_LEX_H
 
-#include "base/expected.h"
 #include "base/global.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/lex/lexeme.h"

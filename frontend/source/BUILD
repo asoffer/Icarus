@@ -39,7 +39,6 @@ cc_library(
         ":file_name",
         ":source",
         ":string",
-        "//base:expected",
         "//base:strong_types",
         "//diagnostic:message",
         "@com_google_absl//absl/status",
@@ -107,7 +106,6 @@ cc_library(
         ":line",
         ":buffer",
         "//base:cast",
-        "//base:expected",
     ],
 )
 

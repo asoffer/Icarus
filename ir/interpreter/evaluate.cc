@@ -314,7 +314,7 @@ void Execute(ir::CompiledFn &&fn) {
 }
 
 // TODO why an r-value reference?
-base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
+EvaluationResult Evaluate(ir::CompiledFn &&fn) {
   LOG("Evaluate", "%s", fn);
   auto buf = EvaluateToBuffer(std::move(fn));
   std::vector<ir::Value> values;

@@ -101,7 +101,7 @@ struct Compiler
   PersistentResources &resources() { return resources_; }
 
   template <typename... Args>
-  Compiler MakeChild(Args &&...args) {
+  Compiler MakeChild(Args &&... args) {
     Compiler c(std::forward<Args>(args)...);
     c.builder().CurrentGroup() = builder().CurrentGroup();
     c.builder().CurrentBlock() = builder().CurrentBlock();
@@ -267,7 +267,7 @@ struct Compiler
   base::untyped_buffer EvaluateToBufferOrDiagnose(
       type::Typed<ast::Expression const *> expr);
 
-  base::expected<ir::Value, interpreter::EvaluationFailure> Evaluate(
+  interpreter::EvaluationResult Evaluate(
       type::Typed<ast::Expression const *> expr, bool must_complete = true);
 
   core::Params<std::pair<ir::Value, type::QualType>> ComputeParamsFromArgs(
@@ -477,38 +477,57 @@ struct Compiler
                                       type::Typed<ir::Value> const &rhs);
 
   // TODO: Figure out where to stick these.
-  struct CallError {
-    struct TooManyArguments {
-      size_t num_provided;
-      size_t max_num_accepted;
+  struct VerifyCallResult {
+    struct Error {
+      struct TooManyArguments {
+        size_t num_provided;
+        size_t max_num_accepted;
+      };
+
+      struct MissingNonDefaultableArguments {
+        absl::flat_hash_set<std::string> names;
+      };
+
+      struct TypeMismatch {
+        std::variant<std::string, size_t> parameter;
+        type::Type argument_type;
+      };
+
+      struct NoParameterNamed {
+        std::string name;
+      };
+
+      struct PositionalArgumentNamed {
+        size_t index;
+        std::string name;
+      };
+
+      using ErrorReason =
+          std::variant<TooManyArguments, MissingNonDefaultableArguments,
+                       TypeMismatch, NoParameterNamed, PositionalArgumentNamed,
+                       Error>;
+
+      // TODO: It might be better to track back to the definition, but for now
+      // all we have is type information.
+      absl::flat_hash_map<type::Callable const *, ErrorReason> reasons;
     };
+    VerifyCallResult(type::QualType qt) : data_(qt) {}
+    VerifyCallResult(Error &&e) : data_(std::move(e)) {}
+    VerifyCallResult(Error const &e) : data_(e) {}
 
-    struct MissingNonDefaultableArguments {
-      absl::flat_hash_set<std::string> names;
-    };
+    Error error() const & { return std::get<Error>(data_); }
+    Error &&error() && { return std::get<Error>(std::move(data_)); }
 
-    struct TypeMismatch {
-      std::variant<std::string, size_t> parameter;
-      type::Type argument_type;
-    };
+    operator bool() { return std::holds_alternative<type::QualType>(data_); }
 
-    struct NoParameterNamed {
-      std::string name;
-    };
+    type::QualType operator*() { return std::get<type::QualType>(data_); }
+    type::QualType *operator->() { return &std::get<type::QualType>(data_); }
+    type::QualType const *operator->() const {
+      return &std::get<type::QualType>(data_);
+    }
 
-    struct PositionalArgumentNamed {
-      size_t index;
-      std::string name;
-    };
-
-    using ErrorReason =
-        std::variant<TooManyArguments, MissingNonDefaultableArguments,
-                     TypeMismatch, NoParameterNamed, PositionalArgumentNamed,
-                     CallError>;
-
-    // TODO: It might be better to track back to the definition, but for now all
-    // we have is type information.
-    absl::flat_hash_map<type::Callable const *, ErrorReason> reasons;
+   private:
+    std::variant<Error, type::QualType> data_;
   };
 
   ir::ModuleId EvaluateModuleWithCache(ast::Expression const *expr);
@@ -538,7 +557,7 @@ struct Compiler
                                      ast::Expression const *node,
                                      type::Typed<ir::Value> const &operand);
 
-  base::expected<type::QualType, CallError> VerifyCall(
+  VerifyCallResult VerifyCall(
       ast::Call const *call_expr,
       absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
           &overload_map,

@@ -4,7 +4,6 @@
 #include <type_traits>
 
 #include "base/debug.h"
-#include "base/expected.h"
 #include "base/untyped_buffer.h"
 #include "ir/compiled_fn.h"
 #include "ir/instruction/arithmetic.h"
@@ -12,7 +11,7 @@
 #include "ir/instruction/core.h"
 #include "ir/instruction/instructions.h"
 #include "ir/instruction/set.h"
-#include "ir/interpreter/evaluation_failure.h"
+#include "ir/interpreter/evaluation_result.h"
 #include "ir/value/char.h"
 #include "ir/value/value.h"
 #include "type/array.h"
@@ -110,7 +109,7 @@ struct instruction_set_t
 void Execute(ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots);
 
-base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn);
+EvaluationResult Evaluate(ir::CompiledFn &&fn);
 
 // TODO wrap output in expected.
 void Execute(ir::CompiledFn &&fn);

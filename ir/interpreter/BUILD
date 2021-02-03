@@ -29,10 +29,9 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":architecture",
-        ":evaluation_failure",
+        ":evaluation_result",
         ":execution_context",
         "//base:debug",
-        "//base:expected",
         "//base:untyped_buffer",
         "//core:arch",
         "//ir:compiled_fn",
@@ -59,8 +58,8 @@ cc_library(
 )
 
 cc_library(
-    name = "evaluation_failure",
-    hdrs = ["evaluation_failure.h"],
+    name = "evaluation_result",
+    hdrs = ["evaluation_result.h"],
     visibility = ["//visibility:public"],
     deps = [
         "//diagnostic:message",
@@ -108,7 +107,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//base:debug",
-        "//base:expected",
         "//base:untyped_buffer",
         "//base:untyped_buffer_view",
         "//ir:read_only_data",

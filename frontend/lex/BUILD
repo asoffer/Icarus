@@ -53,7 +53,7 @@ cc_library(
     name = "numbers",
     hdrs = ["numbers.h"],
     srcs = ["numbers.cc"],
-    deps = ["//base:expected"],
+    deps = [],
 )
 
 cc_test(

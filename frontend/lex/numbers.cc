@@ -1,5 +1,9 @@
 #include "frontend/lex/numbers.h"
 
+#include <string>
+#include <string_view>
+#include <variant>
+
 namespace frontend {
 namespace {
 template <int Base>

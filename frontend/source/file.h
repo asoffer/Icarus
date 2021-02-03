@@ -6,7 +6,6 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "base/expected.h"
 #include "diagnostic/message.h"
 #include "frontend/source/file_name.h"
 #include "frontend/source/source.h"

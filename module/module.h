@@ -12,7 +12,6 @@
 #include "absl/synchronization/notification.h"
 #include "ast/scope.h"
 #include "base/cast.h"
-#include "base/expected.h"
 #include "base/guarded.h"
 #include "base/macros.h"
 #include "base/ptr_span.h"
