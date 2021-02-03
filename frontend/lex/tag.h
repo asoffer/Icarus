@@ -1,6 +1,8 @@
 #ifndef ICARUS_FRONTEND_LEX_TAG_H
 #define ICARUS_FRONTEND_LEX_TAG_H
 
+#include <string>
+
 namespace frontend {
 
 // TODO debug stringify.
