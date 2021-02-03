@@ -308,8 +308,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
         return type::QualType::Error();
       } else {
         c.context().SetAllOverloads(node, ast::OverloadSet(ids));
-        c.context().set_qual_type(ids[0], qt);
-        return *qt;
+        return c.context().set_qual_type(ids[0], qt);
       }
     } break;
     default: {

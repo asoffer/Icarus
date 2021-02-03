@@ -404,7 +404,6 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     for (auto const *accessible_id :
          module::AllAccessibleDeclIds(node->scope(), id.name())) {
       if (&id == accessible_id) { continue; }
-      LOG("", "%s", id.name());
       ASSIGN_OR(continue, type::QualType q,
                 context().maybe_qual_type(accessible_id));
       if (Shadow(typed_id,

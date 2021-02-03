@@ -152,10 +152,18 @@ void AddOverloads(Context const &context, ast::Expression const *callee,
   if (not overloads) { return; }
   for (auto const *overload : overloads->members()) {
     LOG("AddOverloads", "Callee: %p %s", overload, overload->DebugString());
-    // TODO: Deduce the right scope from `callee`?
-    if (type::QualType qt = context.qual_type(overload)) {
-      overload_map.emplace(overload, &qt.type().as<type::Callable>());
+    auto const &mod = overload->scope()
+                          ->Containing<ast::ModuleScope>()
+                          ->module()
+                          ->as<CompiledModule>();
+    type::QualType qt;
+    if (&mod == &context.module()) {
+      qt = context.qual_type(overload);
+    } else {
+      qt = mod.context().qual_type(overload);
     }
+
+    if (qt) { overload_map.emplace(overload, &qt.type().as<type::Callable>()); }
   }
 }
 

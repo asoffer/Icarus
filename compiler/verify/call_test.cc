@@ -1,4 +1,5 @@
 #include "compiler/compiler.h"
+#include "compiler/library_module.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/module.h"
@@ -6,6 +7,7 @@
 namespace compiler {
 namespace {
 
+using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
@@ -219,6 +221,84 @@ TEST(Call, Uncallable) {
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "uncallable-expression")));
+}
+
+
+TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
+ auto [imported_id, imported, inserted] =
+      ir::ModuleId::FromFile<compiler::LibraryModule>(
+          frontend::CanonicalFileName::Make(frontend::FileName{"imported1"}));
+
+  test::TestModule mod;
+  ON_CALL(mod.importer, Import(Eq("imported1")))
+      .WillByDefault([id = imported_id](std::string_view) { return id; });
+
+  frontend::StringSource src(R"(
+  #{export} S ::= struct {}
+  #{export} f ::= (s: S) => 3
+  )");
+  imported->AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+                        mod.importer);
+
+  mod.AppendCode(R"(
+    mod ::= import "imported1"
+    s: mod.S
+    f(s)
+  )");
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "undeclared-identifier")));
+}
+
+TEST(Call, CrossModuleWithADLSucceed) {
+ auto [imported_id, imported, inserted] =
+      ir::ModuleId::FromFile<compiler::LibraryModule>(
+          frontend::CanonicalFileName::Make(frontend::FileName{"imported2"}));
+
+  test::TestModule mod;
+  ON_CALL(mod.importer, Import(Eq("imported2")))
+      .WillByDefault([id = imported_id](std::string_view) { return id; });
+
+  frontend::StringSource src(R"(
+  #{export} S ::= struct {}
+  #{export} f ::= (s: S) => 3
+  )");
+  imported->AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+                        mod.importer);
+
+  mod.AppendCode(R"(
+    mod ::= import "imported2"
+    f ::= (n: i64) => true
+    s: mod.S
+    s'f
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(Call, CrossModuleWithADLWithoutExport) {
+ auto [imported_id, imported, inserted] =
+      ir::ModuleId::FromFile<compiler::LibraryModule>(
+          frontend::CanonicalFileName::Make(frontend::FileName{"imported3"}));
+
+  test::TestModule mod;
+  ON_CALL(mod.importer, Import(Eq("imported3")))
+      .WillByDefault([id = imported_id](std::string_view) { return id; });
+
+  frontend::StringSource src(R"(
+  #{export} S ::= struct {}
+  f ::= (s: S) => 3
+  )");
+  imported->AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+                        mod.importer);
+
+  mod.AppendCode(R"(
+    mod ::= import "imported3"
+    s: mod.S
+    s'f
+  )");
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "undeclared-identifier")));
 }
 
 struct TestCase {

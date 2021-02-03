@@ -33,12 +33,11 @@ ir::OutParams SetReturns(
   }
 }
 
-ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
-                                    ast::Expression const *fn,
+ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler &c, ast::Expression const *fn,
                                     type::Function const *f_type,
                                     type::Quals quals) {
   if (type::Quals::Const() <= quals) {
-    return compiler->EmitValue(fn).get<ir::RegOr<ir::Fn>>();
+    return c.EmitValue(fn).get<ir::RegOr<ir::Fn>>();
   } else {
     // NOTE: If the overload is a declaration, it's not because a
     // declaration is syntactically the callee. Rather, it's because the
@@ -48,21 +47,20 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
     // initialization for the declaration. Instead, we need load the
     // address.
     if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
-      return compiler->builder().Load<ir::Fn>(
-          compiler->context().addr(&fn_decl->ids()[0]));
+      return c.builder().Load<ir::Fn>(c.context().addr(&fn_decl->ids()[0]));
     } else {
-      return compiler->builder().Load<ir::Fn>(
-          compiler->EmitValue(fn).get<ir::RegOr<ir::Addr>>());
+      return c.builder().Load<ir::Fn>(
+          c.EmitValue(fn).get<ir::RegOr<ir::Addr>>());
     }
   }
 }
 
 std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
-    Compiler &compiler, ast::Expression const *fn, type::QualType qt,
+    Compiler &c, ast::Expression const *fn, type::QualType qt,
     const core::Arguments<type::Typed<ir::Value>> &constant_arguments) {
   if (auto const *gf_type = qt.type().if_as<type::GenericFunction>()) {
     ir::GenericFn gen_fn =
-        compiler.EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
+        c.EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
 
     // TODO: declarations aren't callable so we shouldn't have to check this
     // here.
@@ -75,13 +73,13 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
 
     auto find_subcontext_result =
-        compiler.FindInstantiation(parameterized_expr, constant_arguments);
+        c.FindInstantiation(parameterized_expr, constant_arguments);
     return std::make_tuple(ir::Fn(gen_fn.concrete(constant_arguments)),
                            find_subcontext_result.fn_type,
                            &find_subcontext_result.context);
   } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
-    return std::make_tuple(ComputeConcreteFn(&compiler, fn, f_type, qt.quals()),
-                           f_type, nullptr);
+    return std::make_tuple(ComputeConcreteFn(c, fn, f_type, qt.quals()), f_type,
+                           nullptr);
   } else {
     UNREACHABLE(fn->DebugString(), "\n", qt.type().to_string());
   }
@@ -94,19 +92,25 @@ void EmitCall(
     absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
         arg_exprs,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  auto const *mod              = &callee->scope()
-                        ->Containing<ast::ModuleScope>()
-                        ->module()
-                        ->as<CompiledModule>();
+  CompiledModule *callee_mod = &callee->scope()
+                                    ->Containing<ast::ModuleScope>()
+                                    ->module()
+                                    ->as<CompiledModule>();
   // Note: We only need to wait on the module if it's not this one, so even
-  // though `mod->context()` would be sufficient, we want to ensure that we call
-  // the non-const overload if `mod == &module()`.
-  type::QualType callee_qual_type = mod == &compiler.context().module()
-                                        ? compiler.context().qual_type(callee)
-                                        : mod->context().qual_type(callee);
+  // though `callee_mod->context()` would be sufficient, we want to ensure that
+  // we call the non-const overload if `callee_mod == &module()`.
+  type::QualType callee_qual_type =
+      callee_mod == &compiler.context().module()
+          ? compiler.context().qual_type(callee)
+          : callee_mod->context().qual_type(callee);
 
+  Compiler callee_compiler(PersistentResources{
+      .data                = callee_mod->context(),
+      .diagnostic_consumer = compiler.diag(),
+      .importer            = compiler.importer(),
+  });
   auto [callee_fn, overload_type, context] =
-      EmitCallee(compiler, callee, callee_qual_type, constant_arguments);
+      EmitCallee(callee_compiler, callee, callee_qual_type, constant_arguments);
 
   Compiler c = compiler.MakeChild(PersistentResources{
       .data                = context ? *context : compiler.context(),
