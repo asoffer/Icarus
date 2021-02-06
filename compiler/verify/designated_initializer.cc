@@ -1,6 +1,6 @@
+#include "absl/cleanup/cleanup.h"
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
-#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "compiler/verify/internal/qual_type_iterator.h"
 #include "type/primitive.h"
@@ -167,7 +167,7 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
   auto initializer_iter = initializer_qts.begin();
   for (auto const *assignment : node->assignments()) {
     auto const &initializer_qt_vec = *initializer_iter;
-    base::defer d                  = [&] { ++initializer_iter; };
+    absl::Cleanup c                = [&] { ++initializer_iter; };
 
     // Check all struct fields first to ensure we generate errors for them even
     // if there are errors in the initializers.

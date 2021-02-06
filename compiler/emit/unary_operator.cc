@@ -1,5 +1,5 @@
+#include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
-#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/value.h"
@@ -35,7 +35,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       return ir::Value(builder().PtrFix(reg, operand_type));
     } break;
     case ast::UnaryOperator::Kind::BufferPointer: {
-      base::defer d = [b = state_.must_complete, this] {
+      absl::Cleanup c = [b = state_.must_complete, this] {
         state_.must_complete = b;
       };
       state_.must_complete = false;
@@ -70,7 +70,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::Address:
       return ir::Value(EmitRef(node->operand()));
     case ast::UnaryOperator::Kind::Pointer: {
-      base::defer d = [b = state_.must_complete, this] {
+      absl::Cleanup c = [b = state_.must_complete, this] {
         state_.must_complete = b;
       };
       state_.must_complete = false;

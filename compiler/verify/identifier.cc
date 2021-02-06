@@ -1,5 +1,4 @@
 #include "ast/ast.h"
-#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "type/overload_set.h"

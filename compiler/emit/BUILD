@@ -453,11 +453,11 @@ cc_library(
     deps = [
         ":common",
         "//ast",
-        "//base:defer",
         "//compiler:compiler_header",
         "//ir:compiled_scope",
         "//ir/instruction:inliner",
         "//ir/value:scope",
+        "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/strings:str_format",
     ],
 )
@@ -573,9 +573,9 @@ cc_library(
     srcs = ["unary_operator.cc"],
     deps = [
         "//ast",
-        "//base:defer",
         "//frontend/lex:operators",
         "//compiler:compiler_header",
+        "@com_google_absl//absl/cleanup",
     ],
 )
 

@@ -27,21 +27,6 @@ cc_library(
 )
 
 cc_library(
-    name = "defer",
-    hdrs = ["defer.h"],
-    deps = [],
-)
-
-cc_test(
-    name = "defer_test",
-    srcs = ["defer_test.cc"],
-    deps = [
-        ":defer",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "extend",
     hdrs = ["extend.h"],
     deps = [":meta"],

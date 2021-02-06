@@ -252,7 +252,6 @@ cc_binary(
     deps = [
         ":compiler",
         ":executable_module",
-        "//base:defer",
         "//base:log",
         "//base:no_destructor",
         "//base:untyped_buffer",
@@ -279,7 +278,6 @@ cc_binary(
     deps = [
         ":compiler",
         ":executable_module",
-        "//base:defer",
         "//base:log",
         "//backend:function",
         "//backend:type",
@@ -307,7 +305,6 @@ cc_binary(
     deps = [
         ":compiler",
         ":executable_module",
-        "//base:defer",
         "//base:log",
         "//base:no_destructor",
         "//base:untyped_buffer",

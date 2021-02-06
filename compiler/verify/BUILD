@@ -278,12 +278,12 @@ cc_library(
     srcs = ["designated_initializer.cc"],
     deps = [
         "//ast",
-        "//base:defer",
         "//compiler:compiler_header",
         "//compiler:library_module",
         "//compiler/verify/internal:qual_type_iterator",
         "//type:primitive",
         "//type:qual_type",
+        "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -303,7 +303,6 @@ cc_library(
     srcs = ["enum_literal.cc"],
     deps = [
         "//ast",
-        "//base:defer",
         "//compiler:compiler_header",
         "//type:primitive",
         "//type:qual_type",
@@ -389,7 +388,6 @@ cc_library(
     srcs = ["identifier.cc"],
     deps = [
         "//ast",
-        "//base:defer",
         "//compiler:compiler_header",
         "//compiler:cyclic_dependency_tracker",
         "//type:overload_set",
@@ -479,7 +477,6 @@ cc_library(
     deps = [
         ":common",
         "//ast",
-        "//base:defer",
         "//compiler:compiler_header",
         "//type:primitive",
         "//type:qual_type",

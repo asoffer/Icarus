@@ -3,9 +3,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
   name = "com_google_absl",
-  urls = ["https://github.com/abseil/abseil-cpp/archive/962b067540f511070b7afa4cda465233b42b560a.zip"],
-  strip_prefix = "abseil-cpp-962b067540f511070b7afa4cda465233b42b560a",
-  sha256 = "bfadb40011195166ac1cbf7177f8269cbd8f1fdb60fea7440e86c0318f70a9c3"
+  urls = ["https://github.com/abseil/abseil-cpp/archive/9c6a50fdd80bb39fabd95faeda84f04062685ff3.zip"],
+  strip_prefix = "abseil-cpp-9c6a50fdd80bb39fabd95faeda84f04062685ff3",
+  sha256 = "e839ea17b0a9c3dcdb74d091de3c3e7fb0118b837384ed472a7eb4b380fa2d1e"
 )
 
 http_archive(

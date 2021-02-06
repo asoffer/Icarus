@@ -2,8 +2,8 @@
 #include <utility>
 
 #include "absl/strings/str_format.h"
+#include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
-#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "ir/compiled_scope.h"
@@ -280,7 +280,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
       .result_type = qt,
       .block       = landing_block,
   });
-  base::defer d = [&] { state().scope_landings.pop_back(); };
+  absl::Cleanup c = [&] { state().scope_landings.pop_back(); };
 
   // Add new blocks
   absl::flat_hash_map<ast::BlockNode const *, ir::BasicBlock *> interp_map;
