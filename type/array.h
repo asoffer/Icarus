@@ -32,7 +32,7 @@ struct Array : LegacyType {
   Type data_type() const { return data_type_; }
 
   Completeness completeness() const override {
-    return data_type().get()->completeness();
+    return data_type().as<LegacyType>().completeness();
   }
 
   bool is_big() const override { return true; }
@@ -79,7 +79,7 @@ struct Array : LegacyType {
 
  private:
   explicit Array(length_t l, Type t)
-      : LegacyType(t.get()->flags()), len_(l), data_type_(t) {}
+      : LegacyType(t.as<LegacyType>().flags()), len_(l), data_type_(t) {}
 
   length_t len_;
   Type data_type_;

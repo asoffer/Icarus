@@ -26,7 +26,9 @@ struct Tuple : public LegacyType {
 
   Completeness completeness() const override {
     Completeness c = Completeness::Complete;
-    for (Type e : entries_) { c = std::min(c, e.get()->completeness()); }
+    for (Type e : entries_) {
+      c = std::min(c, e.as<LegacyType>().completeness());
+    }
     return c;
   }
 

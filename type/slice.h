@@ -32,7 +32,7 @@ struct Slice : LegacyType {
   Type data_type() const { return data_type_; }
 
   Completeness completeness() const override {
-    return data_type().get()->completeness();
+    return data_type().as<LegacyType>().completeness();
   }
 
   // TODO: Instead of talking about this being big or not, we'd rather just say

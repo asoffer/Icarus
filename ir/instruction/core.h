@@ -187,7 +187,6 @@ struct CallInstruction {
 
   void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(fn_);
-    size_t bytes_written_slot = writer->buf_->reserve<core::Bytes>();
 
     size_t arg_index = 0;
     for (Value const& arg : args_) {
@@ -197,7 +196,7 @@ struct CallInstruction {
         writer->Write(*r);
       } else {
         auto t = fn_type_->params()[arg_index].value.type();
-        if (t.get()->is_big()) {
+        if (t.is_big()) {
           writer->Write(arg.get<Addr>());
         } else {
           type::Apply(t, [&]<typename T>() { writer->Write(arg.get<T>()); });
@@ -207,11 +206,6 @@ struct CallInstruction {
     }
 
     outs_.WriteByteCode(writer);
-
-    writer->buf_->set(
-        bytes_written_slot,
-        core::Bytes{static_cast<int64_t>(
-            writer->buf_->size() - bytes_written_slot - sizeof(core::Bytes))});
   }
 
   RegOr<Fn> func() const { return fn_; }

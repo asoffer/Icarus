@@ -46,7 +46,6 @@ struct Primitive : public LegacyType {
   core::Alignment alignment(core::Arch const &arch) const override;
 
   bool is_big() const override { return false; }
-  bool is_integral() const;
 
   BasicType type_;
 
@@ -121,19 +120,24 @@ inline Type Interface  = &(*internal::kPrimitiveArray)[19];
 inline Type Void       = &(*internal::kPrimitiveArray)[20];
 
 inline bool IsNumeric(Type t) {
-  return t.get() >= U8.get() and t.get() <= F64.get();
+  auto const *p = t.if_as<Primitive>();
+  return p and p >= &U8.as<Primitive>() and p <= &F64.as<Primitive>();
 }
 inline bool IsIntegral(Type t) {
-  return t.get() >= U8.get() and t.get() <= I64.get();
+  auto const *p = t.if_as<Primitive>();
+  return p and p >= &U8.as<Primitive>() and p <= &I64.as<Primitive>();
 }
 inline bool IsUnsignedNumeric(Type t) {
-  return t.get() >= U8.get() and t.get() <= U64.get();
+  auto const *p = t.if_as<Primitive>();
+  return p and p >= &U8.as<Primitive>() and p <= &U64.as<Primitive>();
 }
 inline bool IsSignedNumeric(Type t) {
-  return t.get() >= I8.get() and t.get() <= F64.get();
+  auto const *p = t.if_as<Primitive>();
+  return p and p >= &I8.as<Primitive>() and p <= &F64.as<Primitive>();
 }
 inline bool IsFloatingPoint(Type t) {
-  return t.get() >= F32.get() and t.get() <= F64.get();
+  auto const *p = t.if_as<Primitive>();
+  return p and p >= &F32.as<Primitive>() and p <= &F64.as<Primitive>();
 }
 
 }  // namespace type

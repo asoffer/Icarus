@@ -16,20 +16,6 @@ void Primitive::WriteTo(std::string *result) const {
   UNREACHABLE();
 }
 
-bool Primitive::is_integral() const {
-  switch (type_) {
-    case BasicType::I8:
-    case BasicType::I16:
-    case BasicType::I32:
-    case BasicType::I64:
-    case BasicType::U8:
-    case BasicType::U16:
-    case BasicType::U32:
-    case BasicType::U64: return true;
-    default: return false;
-  }
-}
-
 core::Bytes Primitive::bytes(core::Arch const &a) const {
   switch (type_) {
     // Types are stored as pointers on the host and integers on the target

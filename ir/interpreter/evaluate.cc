@@ -71,9 +71,6 @@ template <typename InstSet>
 void Execute(ExecutionContext &ctx, ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots);
 
-// Maximum size of any primitive type we may write
-inline constexpr size_t kMaxSize = ir::Value::value_size_v;
-
 using exec_t = void (*)(base::untyped_buffer::const_iterator *,
                         interpreter::ExecutionContext &,
                         absl::Span<ir::Addr const>);
@@ -85,7 +82,6 @@ constexpr exec_t GetInstruction() {
             absl::Span<ir::Addr const> ret_slots) {
     if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
       ir::Fn f = ctx.resolve(iter->read<ir::RegOr<ir::Fn>>().get());
-      iter->read<core::Bytes>().get();
 
       type::Function const *fn_type = f.type();
       LOG("call", "%s: %s", f, fn_type->to_string());
@@ -97,7 +93,8 @@ constexpr exec_t GetInstruction() {
         num_regs = f.native()->num_regs();
       }
       size_t num_entries = num_inputs + num_regs;
-      auto call_buf = base::untyped_buffer::MakeFull(num_entries * kMaxSize);
+      auto call_buf =
+          base::untyped_buffer::MakeFull(num_entries * ir::Value::value_size_v);
 
       // TODO not actually optional once we handle foreign functions, we just
       // need deferred construction?
@@ -113,22 +110,25 @@ constexpr exec_t GetInstruction() {
 
           if (frame) {
             frame->regs_.set_raw(ir::Reg::Arg(i),
-                                 ctx.current_frame().regs_.raw(reg), kMaxSize);
+                                 ctx.current_frame().regs_.raw(reg),
+                                 ir::Value::value_size_v);
           }
           ctx.MemCpyRegisterBytes(
-              /*    dst = */ call_buf.raw((num_regs + i) * kMaxSize),
+              /*    dst = */ call_buf.raw((num_regs + i) *
+                                          ir::Value::value_size_v),
               /*    src = */ reg,
-              /* length = */ kMaxSize);
+              /* length = */ ir::Value::value_size_v);
 
         } else {
           type::Type t = fn_type->params()[i].value.type();
           if (frame) {
-            frame->regs_.set_raw(ir::Reg::Arg(i), iter->raw(), kMaxSize);
+            frame->regs_.set_raw(ir::Reg::Arg(i), iter->raw(),
+                                 ir::Value::value_size_v);
           }
-          std::memcpy(call_buf.raw((num_regs + i) * kMaxSize), iter->raw(),
-                      kMaxSize);
-          iter->skip(std::min(t.bytes(interpreter::kArchitecture),
-                              interpreter::kArchitecture.pointer().bytes())
+          std::memcpy(call_buf.raw((num_regs + i) * ir::Value::value_size_v),
+                      iter->raw(), ir::Value::value_size_v);
+          iter->skip((t.is_big() ? interpreter::kArchitecture.pointer().bytes()
+                                 : t.bytes(interpreter::kArchitecture))
                          .value());
         }
       }
@@ -285,11 +285,11 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   // TODO actually just have a good way to construct the buffer
   LOG("EvaluateToBuffer", "%s", fn);
   ExecutionContext ctx;
-  Execute<instruction_set_t>(
-      ctx, &fn,
-      base::untyped_buffer::MakeFull(
-          (fn.type()->params().size() + fn.num_regs()) * kMaxSize),
-      ret_slots);
+  Execute<instruction_set_t>(ctx, &fn,
+                             base::untyped_buffer::MakeFull(
+                                 (fn.type()->params().size() + fn.num_regs()) *
+                                 ir::Value::value_size_v),
+                             ret_slots);
   LOG("EvaluateToBuffer", "Result buffer = %s", ret_buf.to_string());
   return ret_buf;
 }
@@ -306,11 +306,11 @@ void Execute(ir::CompiledFn &&fn) {
   // TODO actually just have a good way to construct the buffer
   LOG("Execute", "%s", fn);
   ExecutionContext ctx;
-  Execute<instruction_set_t>(
-      ctx, &fn,
-      base::untyped_buffer::MakeFull(
-          (fn.type()->params().size() + fn.num_regs()) * kMaxSize),
-      {});
+  Execute<instruction_set_t>(ctx, &fn,
+                             base::untyped_buffer::MakeFull(
+                                 (fn.type()->params().size() + fn.num_regs()) *
+                                 ir::Value::value_size_v),
+                             {});
 }
 
 // TODO why an r-value reference?

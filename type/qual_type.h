@@ -136,14 +136,13 @@ struct QualType {
   template <typename Arg,
             std::enable_if_t<std::is_convertible_v<Arg, Type>, int> = 0>
   explicit QualType(Arg t, Quals quals)
-      : data_(reinterpret_cast<uintptr_t>(
-                  static_cast<LegacyType const *>(Type(t).get())) |
+      : data_(reinterpret_cast<uintptr_t>(Type(t).if_as<LegacyType>()) |
               static_cast<uintptr_t>(quals.val_)) {}
 
   explicit QualType(absl::Span<Type const> ts, Quals quals) {
     num_ = ts.size();
     if (ts.size() == 1) {
-      data_ = reinterpret_cast<uintptr_t>(ts[0].get()) |
+      data_ = reinterpret_cast<uintptr_t>(ts[0].if_as<LegacyType>()) |
               static_cast<uintptr_t>(quals.val_);
     } else {
       auto pack = internal_type::AddPack(ts);
