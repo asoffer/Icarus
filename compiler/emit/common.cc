@@ -131,7 +131,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
   bool field_error = false;
   for (auto const &field_decl : field_decls) {
     for (auto const &id : field_decl.ids()) {
-      type::QualType qt = c.context().qual_type(&id);
+      type::QualType qt = c.context().qual_types(&id)[0];
       if (not qt or
           qt.type().get()->completeness() != type::Completeness::Complete) {
         c.diag().Consume(IncompleteField{.range = id.range()});
@@ -184,7 +184,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           type::Type field_type;
           if (auto const *init_val = id.declaration().init_val()) {
             // TODO init_val type may not be the same.
-            field_type = c.context().qual_type(init_val).type();
+            field_type = c.context().qual_types(init_val)[0].type();
             ir_fields.emplace_back(id.name(), field_type,
                                    c.EmitValue(init_val));
             ir_fields.back().set_export(
@@ -327,7 +327,7 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
 
         compiler.context().set_addr(
             id,
-            compiler.builder().Alloca(compiler.context().qual_type(id).type()));
+            compiler.builder().Alloca(compiler.context().qual_types(id)[0].type()));
       }
     }
   }
@@ -350,7 +350,7 @@ void MakeAllDestructions(Compiler &compiler, ast::Scope  const *scope) {
   });
 
   for (auto const *id : ordered_decl_ids) {
-    type::Type t = compiler.context().qual_type(id).type();
+    type::Type t = compiler.context().qual_types(id)[0].type();
     if (not t.get()->HasDestructor()) { continue; }
     compiler.EmitDestroy(type::Typed<ir::Reg>(compiler.context().addr(id), t));
   }
@@ -380,7 +380,7 @@ void EmitIrForStatements(Compiler &compiler,
 ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
                           ast::Expression const *expr,
                           type::QualType param_qt) {
-  type::QualType arg_qt = *compiler.context().qual_type(expr);
+  type::QualType arg_qt = *compiler.context().qual_types(expr)[0];
   type::Type arg_type   = arg_qt.type();
   type::Type param_type = param_qt.type();
 
@@ -477,7 +477,7 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
 core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
     Compiler &c, core::Arguments<ast::Expression const *> const &args) {
   return args.Transform([&](ast::Expression const *expr) {
-    auto qt = c.context().qual_type(expr);
+    auto qt = c.context().qual_types(expr)[0];
     if (qt.constant()) {
       if (qt.type().get()->is_big()) {
         // TODO: Implement constant computation here.
@@ -501,7 +501,7 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
   core::Arguments<type::Typed<ir::Value>> arg_vals;
   type::Typed<ir::Value> result;
   for (auto const &[name, expr] : args) {
-    auto qt = c.context().qual_type(expr.get());
+    auto qt = c.context().qual_types(expr.get())[0];
     if (qt.constant()) {
       if (qt.type().get()->is_big()) {
         // TODO: Implement constant computation here.

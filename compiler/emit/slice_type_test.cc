@@ -16,7 +16,7 @@ TEST_P(SliceTypeTest, SliceLiteral) {
   auto const &[expr, expected] = GetParam();
   test::TestModule mod;
   auto const *e  = mod.Append<ast::Expression>(expr);
-  auto t        = mod.context().qual_type(e).type();
+  auto t        = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));

@@ -14,7 +14,7 @@ WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
 
   bool error = false;
   for (auto const &field : node->fields()) {
-    auto field_qt = VerifyType(&field);
+    auto field_qt = VerifyType(&field)[0];
     if (not field_qt.ok()) {
       error = true;
     } else if (field_qt.type().get()->completeness() ==
@@ -30,7 +30,7 @@ WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
   return error ? WorkItem::Result::Failure : WorkItem::Result::Success;
 }
 
-type::QualType Compiler::VerifyType(ast::StructLiteral const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Verify type %p %s", node, node->DebugString());
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }

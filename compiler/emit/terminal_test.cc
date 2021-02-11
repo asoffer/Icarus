@@ -17,7 +17,7 @@ TEST_P(TerminalTest, Terminal) {
   test::TestModule mod;
   auto const *term = mod.Append<ast::Terminal>(terminal);
   auto result      = mod.compiler.Evaluate(type::Typed<ast::Expression const *>(
-      term, mod.context().qual_type(term).type()));
+      term, mod.context().qual_types(term)[0].type()));
   ASSERT_TRUE(result);
   EXPECT_EQ(*result, expected);
 }

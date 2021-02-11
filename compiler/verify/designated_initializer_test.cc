@@ -19,9 +19,9 @@ TEST(DesignatedInitializer, NonConstantType) {
     n: i64
   }
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(S.{})");
-  type::QualType qt = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, type::QualType::Error());
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{})");
+  auto qts         = mod.context().qual_types(expr);
+  ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair(
                   "type-error", "non-constant-designated-initializer-type")));
@@ -32,9 +32,9 @@ TEST(DesignatedInitializer, NonType) {
   mod.AppendCode(R"(
   NotAType ::= 3
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(NotAType.{})");
-  type::QualType qt = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, type::QualType::Error());
+  auto const *expr = mod.Append<ast::Expression>(R"(NotAType.{})");
+  auto qts         = mod.context().qual_types(expr);
+  ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "non-type-designated-initializer-type")));
@@ -45,9 +45,9 @@ TEST(DesignatedInitializer, NonConstantNonType) {
   mod.AppendCode(R"(
   NotAType: i64
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(NotAType.{})");
-  type::QualType qt = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, type::QualType::Error());
+  auto const *expr = mod.Append<ast::Expression>(R"(NotAType.{})");
+  auto qts         = mod.context().qual_types(expr);
+  ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(
@@ -62,9 +62,9 @@ TEST(DesignatedInitializer, NonStrucType) {
   mod.AppendCode(R"(
   NotAStruct ::= i64
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(NotAStruct.{})");
-  type::QualType qt = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, type::QualType::Error());
+  auto const *expr = mod.Append<ast::Expression>(R"(NotAStruct.{})");
+  auto qts         = mod.context().qual_types(expr);
+  ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair(
                   "type-error", "non-struct-designated-initializer-type")));
@@ -77,12 +77,12 @@ TEST(DesignatedInitializer, FieldErrorsAndStructErrors) {
   mod.AppendCode(R"(
   NotAStruct ::= i64
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(NotAStruct.{
+  auto const *expr = mod.Append<ast::Expression>(R"(NotAStruct.{
     field = NotAStruct.{}
   }
   )");
-  type::QualType qt = mod.context().qual_type(expr);
-  ASSERT_EQ(qt, type::QualType::Error());
+  auto qts         = mod.context().qual_types(expr);
+  ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(
@@ -99,13 +99,13 @@ TEST(DesignatedInitializer, NonMember) {
     n: i64
   }
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(S.{
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{
     not_a_field = 0
   }
   )");
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_TRUE(qt.type().is<type::Struct>());
-  EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_TRUE(qts[0].type().is<type::Struct>());
+  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-struct-field")));
 }
@@ -119,13 +119,13 @@ TEST(DesignatedInitializer, MemberInvalidConversion) {
     n: i64
   }
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(S.{
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{
     n = "abc"
   }
   )");
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_TRUE(qt.type().is<type::Struct>());
-  EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_TRUE(qts[0].type().is<type::Struct>());
+  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "invalid-initializer-type")));
@@ -140,13 +140,13 @@ TEST(DesignatedInitializer, Valid) {
     n: i64
   }
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(S.{
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{
     n = 0
   }
   )");
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_TRUE(qt.type().is<type::Struct>());
-  EXPECT_EQ(qt.quals(), type::Quals::Const());
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_TRUE(qts[0].type().is<type::Struct>());
+  EXPECT_EQ(qts[0].quals(), type::Quals::Const());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -161,13 +161,13 @@ TEST(DesignatedInitializer, MultipleMemberAssignments) {
     b: bool
   }
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(S.{
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{
     (n, b) = f()
   }
   )");
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_TRUE(qt.type().is<type::Struct>());
-  EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_TRUE(qts[0].type().is<type::Struct>());
+  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -182,13 +182,13 @@ TEST(DesignatedInitializer, MultipleMemberInvalidAssignments) {
     b: bool
   }
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(S.{
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{
     (n, b) = f()
   }
   )");
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_TRUE(qt.type().is<type::Struct>());
-  EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_TRUE(qts[0].type().is<type::Struct>());
+  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "invalid-initializer-type")));
@@ -205,13 +205,13 @@ TEST(DesignatedInitializer, MemberValidConversion) {
     pointer: *i64
   }
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(S.{
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{
     pointer = buffer_pointer
   }
   )");
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_TRUE(qt.type().is<type::Struct>());
-  EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_TRUE(qts[0].type().is<type::Struct>());
+  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -225,13 +225,13 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
     n: i64
   }
   )");
-  auto const *expr  = mod.Append<ast::Expression>(R"(S.{
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{
     m = NotAType.{}  // Still generate missing-struct-field for `m`.
   }
   )");
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_TRUE(qt.type().is<type::Struct>());
-  EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_TRUE(qts[0].type().is<type::Struct>());
+  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "non-type-designated-initializer-type"),
@@ -256,9 +256,9 @@ TEST(DesignatedInitializer, CrossModule) {
                         mod.importer);
 
   mod.AppendCode("-- ::= import \"imported1\"");
-  auto const *expr  = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_TRUE(qt.type().is<type::Struct>());
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_TRUE(qts[0].type().is<type::Struct>());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -280,9 +280,9 @@ TEST(DesignatedInitializer, NotExported) {
                         mod.importer);
 
   mod.AppendCode("-- ::= import \"imported2\"");
-  auto const *expr  = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_TRUE(qt.type().is<type::Struct>());
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_TRUE(qts[0].type().is<type::Struct>());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "non-exported-field")));
 }

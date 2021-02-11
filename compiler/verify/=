@@ -112,7 +112,7 @@ struct MissingStructField {
 }  // namespace
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer const *node) {
-  auto type_qt = VerifyType(node->type())[0];
+  auto type_qt = VerifyType(node->type());
   if (type_qt.HasErrorMark()) {
     return context().set_qual_type(node, type::QualType::Error());
   }
@@ -141,7 +141,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
   for (auto const *assignment : node->assignments()) {
     auto &back = initializer_qts.emplace_back();
     for (auto const *expr : assignment->rhs()) {
-      back.push_back(VerifyType(expr)[0]);
+      back.push_back(VerifyType(expr));
     }
   }
 

@@ -81,7 +81,7 @@ struct NonCallableInOverloadSet {
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::Identifier const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *node) {
   if (context().cyclic_error(node)) {
     return context().set_qual_type(node, type::QualType::Error());
   }
@@ -94,10 +94,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   }
 
   // TODO: In what circumstances could this have been seen more than once?
-  if (type::QualType const *qt = context().maybe_qual_type(node)) {
-    LOG("Identifier", "Already saw `%s` so returning %s.", node->name(), *qt);
-    return *qt;
-  }
+  if (auto qts = context().maybe_qual_type(node); qts.data()) { return qts; }
 
   type::QualType qt;
 
@@ -109,7 +106,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       potential_decl_ids;
   for (auto const *id :
        module::AllVisibleDeclsTowardsRoot(node->scope(), node->name())) {
-    if (type::QualType const *prev_qt = context().maybe_qual_type(id)) {
+    if (type::QualType const *prev_qt = context().maybe_qual_type(id).data()) {
       qt = *prev_qt;
     } else {
       auto const *mod = &id->scope()
@@ -117,9 +114,9 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
                              ->module()
                              ->as<CompiledModule>();
       if (mod != &context().module()) {
-        qt = mod->context().qual_type(id);
+        qt = mod->context().qual_types(id)[0];
       } else {
-        qt = VerifyType(id);
+        qt = VerifyType(id)[0];
       }
       if (not qt.ok()) { error = true; }
     }
@@ -131,7 +128,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       auto ids = mod->scope().ExportedDeclarationIds(node->name());
       for (auto const *id : ids) {
         potential_decl_ids.emplace_back(
-            id, mod->context().qual_type(&id->declaration()));
+            id, mod->context().qual_types(&id->declaration())[0]);
       }
     }
   }
@@ -158,7 +155,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
           // Haven't seen the declaration yet, so we can't proceed.
           return context().set_qual_type(node, type::QualType::Error());
         } else {
-          qt = context().qual_type(id);
+          qt = context().qual_types(id)[0];
         }
 
         if (not qt.constant()) {

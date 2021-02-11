@@ -24,8 +24,8 @@ struct NonBooleanConditionalGoto {
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::ConditionalGoto const *node) {
-  auto qt = VerifyType(node->condition());
+absl::Span<type::QualType const> Compiler::VerifyType(ast::ConditionalGoto const *node) {
+  auto qt = VerifyType(node->condition())[0];
 
   if (qt.type() != type::Bool) {
     diag().Consume(NonBooleanConditionalGoto{
@@ -41,14 +41,14 @@ type::QualType Compiler::VerifyType(ast::ConditionalGoto const *node) {
     for (auto const &expr : option.args()) { VerifyType(expr.get()); }
   }
 
-  return type::QualType::Constant(type::Void);
+  return {};
 }
 
-type::QualType Compiler::VerifyType(ast::UnconditionalGoto const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::UnconditionalGoto const *node) {
   for (auto const &option : node->options()) {
     for (auto const &expr : option.args()) { VerifyType(expr.get()); }
   }
-  return type::QualType::Constant(type::Void);
+  return {};
 }
 
 }  // namespace compiler

@@ -39,12 +39,12 @@ struct ArrayDataTypeNotAType {
 
 // Verifies that the array type has constant integer lengths and that the data
 // type expression is a type.
-type::QualType Compiler::VerifyType(ast::ArrayType const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayType const *node) {
   std::vector<type::QualType> length_results;
   length_results.reserve(node->lengths().size());
   auto quals = type::Quals::Const();
   for (auto const &len : node->lengths()) {
-    auto result = VerifyType(len);
+    auto result = VerifyType(len)[0];
     quals &= result.quals();
     length_results.push_back(result);
     if (not type::IsIntegral(result.type())) {
@@ -54,7 +54,7 @@ type::QualType Compiler::VerifyType(ast::ArrayType const *node) {
     }
   }
 
-  auto data_qual_type = VerifyType(node->data_type());
+  auto data_qual_type = VerifyType(node->data_type())[0];
   quals &= data_qual_type.quals();
   type::QualType qt(type::Type_, quals);
   if (data_qual_type.type() != type::Type_) {

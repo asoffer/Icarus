@@ -96,7 +96,7 @@ InferReturnTypes(Compiler &c, ast::FunctionLiteral const *node) {
     if (not ret_node) { continue; }
     std::vector<type::Type> ret_types;
     for (auto const *expr : ret_node->exprs()) {
-      ret_types.push_back(c.context().qual_type(expr).type());
+      ret_types.push_back(c.context().qual_types(expr)[0].type());
     }
 
     result.emplace(ret_node, std::move(ret_types));
@@ -148,7 +148,8 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
   c.context().TrackJumps(node);
   bool found_error = false;
   for (auto *stmt : node->stmts()) {
-    bool current_was_error = (c.VerifyType(stmt) == type::QualType::Error());
+    absl::Span<type::QualType const>  qts = c.VerifyType(stmt);
+    bool current_was_error = (qts.size() == 1 and not qts[0].ok());
     if (current_was_error) {
       found_error = true;
       LOG("FunctionLiteral", "Found an error in %s", node->DebugString());
@@ -172,7 +173,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 
     // TODO: Output types could depend on each other.
     for (auto *output : *outputs) {
-      auto result = c.VerifyType(output);
+      auto result = c.VerifyType(output)[0];
       if (not result) {
         error = true;
       } else if (result.type() != type::Type_) {
@@ -189,7 +190,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
-        output_type_vec[i] = c.context().qual_type(decl).type();
+        output_type_vec[i] = c.context().qual_types(decl)[0].type();
       } else if (auto maybe_type =
                      c.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i], false)) {
         output_type_vec[i] = *maybe_type;
@@ -254,7 +255,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
       std::move(gen)));
 }
 
-type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "Verifying %p: %s", node, node->DebugString());
   ast::OverloadSet os;
   os.insert(node);
@@ -270,7 +271,7 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "function-literal body verification: %s %p",
       node->DebugString(), &context());
 
-  auto const &fn_type = context().qual_type(node).type().as<type::Function>();
+  auto const &fn_type = context().qual_types(node)[0].type().as<type::Function>();
   for (auto const &param : fn_type.params()) {
     if (param.value.type().get()->completeness() ==
         type::Completeness::Incomplete) {

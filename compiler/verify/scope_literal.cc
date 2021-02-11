@@ -158,15 +158,16 @@ bool VerifyDone(diagnostic::DiagnosticConsumer &diag,
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::ScopeLiteral const *node) {
   LOG("ScopeLiteral", "Verifying body of %p: %s", node, node->DebugString());
 
-  auto qt =
+  auto qts =
       context().set_qual_type(node, type::QualType::Constant(type::Scope));
+  auto qt = qts[0];
 
   type::Type state_type = nullptr;
   if (node->state_type()) {
-    type::QualType state_qual_type = VerifyType(node->state_type());
+    type::QualType state_qual_type = VerifyType(node->state_type())[0];
     if (state_qual_type.type() != type::Type_) {
       diag().Consume(NonTypeScopeState{
           .type  = state_qual_type.type(),
@@ -190,7 +191,7 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
   auto const *state_type_ptr = state_type ? type::Ptr(state_type) : nullptr;
 
   for (auto const &decl : node->decls()) {
-    auto qual_type = VerifyType(&decl);
+    auto qual_type = VerifyType(&decl)[0];
     if (not qual_type.constant()) {
       diag().Consume(NonConstantScopeMember{.range = decl.range()});
       qt.MarkError();
@@ -210,7 +211,7 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
     }
   }
 
-  return qt;
+  return qts;
 }
 
 }  // namespace compiler

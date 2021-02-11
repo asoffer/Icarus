@@ -151,7 +151,7 @@ type::QualType VerifySliceIndex(Compiler &c, ast::Index const *node,
   quals = (quals & index_qt.quals()) | type::Quals::Buf();
   type::QualType qt(slice_type->data_type(), quals);
   if (not ValidIndexType(c, node, slice_type, index_qt)) { qt.MarkError(); }
-  return c.context().set_qual_type(node, qt);
+  return c.context().set_qual_type(node, qt)[0];
 }
 
 type::QualType VerifyArrayIndex(Compiler &c, ast::Index const *node,
@@ -165,7 +165,7 @@ type::QualType VerifyArrayIndex(Compiler &c, ast::Index const *node,
 
   if (not ValidIndexType(c, node, array_type, index_qt)) {
     qt.MarkError();
-    return c.context().set_qual_type(node, qt);
+    return c.context().set_qual_type(node, qt)[0];
   }
 
   if (index_qt.constant()) {
@@ -188,7 +188,7 @@ type::QualType VerifyArrayIndex(Compiler &c, ast::Index const *node,
       qt.MarkError();
     }
   }
-  return c.context().set_qual_type(node, qt);
+  return c.context().set_qual_type(node, qt)[0];
 }
 
 type::QualType VerifyBufferPointerIndex(Compiler &c, ast::Index const *node,
@@ -198,7 +198,7 @@ type::QualType VerifyBufferPointerIndex(Compiler &c, ast::Index const *node,
   quals = (quals & index_qt.quals()) | type::Quals::Buf();
   type::QualType qt(buf_ptr_type->pointee(), quals);
   if (not ValidIndexType(c, node, buf_ptr_type, index_qt)) { qt.MarkError(); }
-  return c.context().set_qual_type(node, qt);
+  return c.context().set_qual_type(node, qt)[0];
 }
 
 type::QualType VerifyTupleIndex(Compiler &c, ast::Index const *node,
@@ -231,14 +231,14 @@ type::QualType VerifyTupleIndex(Compiler &c, ast::Index const *node,
 
   quals = (quals & index_qt.quals()) | type::Quals::Ref();
   type::QualType qt(tuple_type->entries_[*maybe_index], quals);
-  return c.context().set_qual_type(node, qt);
+  return c.context().set_qual_type(node, qt)[0];
 }
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::Index const *node) {
-  auto lhs_qt   = VerifyType(node->lhs());
-  auto index_qt = VerifyType(node->rhs());
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Index const *node) {
+  auto lhs_qt   = VerifyType(node->lhs())[0];
+  auto index_qt = VerifyType(node->rhs())[0];
 
   // We can recover from the index having errors but not from the data being
   // indexed.

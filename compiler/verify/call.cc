@@ -279,7 +279,7 @@ type::QualType VerifyAlignmentCall(
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::Call const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
   LOG("Call", "Verifying %s", node->DebugString());
 
   if (not node->named_arguments().empty()) { goto not_an_interface; }
@@ -288,7 +288,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     if (not e->is<ast::Declaration>()) { goto not_an_interface; }
   }
 
-  if (auto callee_qt = VerifyType(node->callee())) {
+  if (auto callee_qt = VerifyType(node->callee())[0]) {
     if (not callee_qt.ok()) {
       return context().set_qual_type(node, type::QualType::Error());
     }
@@ -300,7 +300,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
 
 not_an_interface:
 
-  ASSIGN_OR(return type::QualType::Error(),  //
+  ASSIGN_OR(return type::QualType::ErrorSpan(),  //
                    auto arg_vals, VerifyArguments(node->arguments()));
   // TODO: consider having `foreign` be a generic type. This would allow for the
   // possibility of overlading builtins. That's a dangerous yet principled idea.
@@ -335,7 +335,7 @@ not_an_interface:
   absl::flat_hash_set<type::Type> argument_dependent_lookup_types;
   for (auto const &[name, expr] : node->prefix_arguments()) {
     argument_dependent_lookup_types.insert(
-        context().qual_type(expr.get()).type());
+        context().qual_types(expr.get())[0].type());
   }
   auto [callee_qt, overload_map] =
       VerifyCallee(node->callee(), arg_vals, argument_dependent_lookup_types);

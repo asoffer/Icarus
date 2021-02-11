@@ -89,7 +89,7 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
 type::Typed<ir::Value> EmitTypedValue(Compiler &c,
                                       ast::Expression const *expr) {
   return type::Typed<ir::Value>(c.EmitValue(expr),
-                                c.context().qual_type(expr).type());
+                                c.context().qual_types(expr)[0].type());
 }
 
 }  // namespace

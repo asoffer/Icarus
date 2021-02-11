@@ -22,9 +22,9 @@ struct CastToNonConstantType {
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::Cast const *node) {
-  auto expr_qt = VerifyType(node->expr());
-  auto type_qt = VerifyType(node->type());
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Cast const *node) {
+  auto expr_qt = VerifyType(node->expr())[0];
+  auto type_qt = VerifyType(node->type())[0];
   if (not expr_qt.ok() or not type_qt.ok()) {
     return context().set_qual_type(node, type::QualType::Error());
   }

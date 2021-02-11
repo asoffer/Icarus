@@ -10,10 +10,10 @@ type::QualType VerifyConcrete(Compiler &c,
   LOG("ShortFunctionLiteral", "VerifyConcrete %s", node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto params, c.VerifyParams(node->params()));
-  ASSIGN_OR(return _, auto body_qt, c.VerifyType(node->body()));
+  ASSIGN_OR(return _, auto body_qt, c.VerifyType(node->body())[0]);
   return c.context().set_qual_type(
       node, type::QualType::Constant(
-                type::Func(std::move(params), {body_qt.type()})));
+                type::Func(std::move(params), {body_qt.type()})))[0];
 }
 
 type::QualType VerifyGeneric(Compiler &c,
@@ -57,10 +57,10 @@ type::QualType VerifyGeneric(Compiler &c,
                 node->params().Transform([](auto const &p) {
                   return type::GenericFunction::EmptyStruct{};
                 }),
-                std::move(gen))));
+                std::move(gen))))[0];
 }
 
-type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
   ast::OverloadSet os;
   os.insert(node);
   context().SetAllOverloads(node, std::move(os));

@@ -159,9 +159,9 @@ void AddOverloads(Context const &context, ast::Expression const *callee,
                           ->as<CompiledModule>();
     type::QualType qt;
     if (&mod == &context.module()) {
-      qt = context.qual_type(overload);
+      qt = context.qual_types(overload)[0];
     } else {
-      qt = mod.context().qual_type(overload);
+      qt = mod.context().qual_types(overload)[0];
     }
 
     if (qt) { overload_map.emplace(overload, &qt.type().as<type::Callable>()); }
@@ -218,7 +218,7 @@ Compiler::ComputeParamsFromArgs(
         } else {
           // TODO: What if this is a bug and you don't have an initial value?
           auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          arg_type       = VerifyType(init_val).type();
+          arg_type       = VerifyType(init_val)[0].type();
         }
         LOG("generic-fn", "... %s", arg_type.to_string());
         context().set_arg_type(id, arg_type);
@@ -226,7 +226,7 @@ Compiler::ComputeParamsFromArgs(
       case core::DependencyNodeKind::ParamType: {
         type::Type t = nullptr;
         if (auto const *type_expr = dep_node.node()->type_expr()) {
-          auto type_expr_type = VerifyType(type_expr).type();
+          auto type_expr_type = VerifyType(type_expr)[0].type();
           if (type_expr_type != type::Type_) {
             NOT_YET("log an error: ", type_expr->DebugString(), ": ",
                     type_expr_type);
@@ -235,7 +235,7 @@ Compiler::ComputeParamsFromArgs(
           ASSIGN_OR(NOT_YET(),  //
                     t, EvaluateOrDiagnoseAs<type::Type>(type_expr));
         } else {
-          t = VerifyType(dep_node.node()->init_val()).type();
+          t = VerifyType(dep_node.node()->init_val())[0].type();
         }
 
         auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
@@ -262,7 +262,7 @@ Compiler::ComputeParamsFromArgs(
         } else if (auto const *a = args.at_or_null(id)) {
           arg = *a;
         } else {
-          auto t         = context().qual_type(dep_node.node()).type();
+          auto t         = context().qual_types(dep_node.node())[0].type();
           auto maybe_val = Evaluate(type::Typed<ast::Expression const *>(
               ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
           if (not maybe_val) { diag().Consume(maybe_val.error()); }
@@ -295,7 +295,7 @@ std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
   type_params.reserve(params.size());
   bool err = false;
   for (auto &d : params) {
-    auto qt = VerifyType(d.value.get());
+    auto qt = VerifyType(d.value.get())[0];
     if (qt.ok()) {
       type_params.append(d.name, qt, d.flags);
     } else {
@@ -314,7 +314,7 @@ Compiler::VerifyArguments(
   core::Arguments<type::Typed<ir::Value>> arg_vals;
   for (auto const &[name, expr] : args) {
     type::Typed<ir::Value> result;
-    auto expr_qual_type = VerifyType(expr.get());
+    auto expr_qual_type = VerifyType(expr.get())[0];
     err |= not expr_qual_type.ok();
     if (err) {
       LOG("VerifyArguments", "Error with: %s", expr->DebugString());
@@ -339,7 +339,7 @@ Compiler::VerifyArguments(
     core::Arguments<ast::Expression const *> const &args) {
   bool err      = false;
   auto arg_vals = args.Transform([&](ast::Expression const *expr) {
-    auto expr_qual_type = VerifyType(expr);
+    auto expr_qual_type = VerifyType(expr)[0];
     err |= not expr_qual_type.ok();
     if (err) {
       LOG("VerifyArguments", "Error with: %s", expr->DebugString());
@@ -361,7 +361,7 @@ type::QualType Compiler::VerifyUnaryOverload(
 
   node->scope()->ForEachDeclIdTowardsRoot(
       symbol, [&](ast::Declaration::Id const *id) {
-        ASSIGN_OR(return false, auto qt, context().qual_type(id));
+        ASSIGN_OR(return false, auto qt, context().qual_types(id)[0]);
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
         auto &c = qt.type().as<type::Callable>();
@@ -370,7 +370,7 @@ type::QualType Compiler::VerifyUnaryOverload(
       });
 
   if (member_types.empty()) {
-    return context().set_qual_type(node, type::QualType::Error());
+    return context().set_qual_type(node, type::QualType::Error())[0];
   }
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(operand);
@@ -389,7 +389,7 @@ type::QualType Compiler::VerifyBinaryOverload(
 
   node->scope()->ForEachDeclIdTowardsRoot(
       symbol, [&](ast::Declaration::Id const *id) {
-        ASSIGN_OR(return false, auto qt, context().qual_type(id));
+        ASSIGN_OR(return false, auto qt, context().qual_types(id)[0]);
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
         auto &c = qt.type().as<type::Callable>();
@@ -439,7 +439,7 @@ Compiler::VerifyCallee(
   }
 
   ASSIGN_OR(return return_type(type::QualType::Error(), {}),  //
-                   auto qt, VerifyType(callee));
+                   auto qt, VerifyType(callee)[0]);
 
   ASSIGN_OR(return return_type(qt, {}),  //
                    auto const &callable, qt.type().if_as<type::Callable>());
@@ -480,7 +480,7 @@ Compiler::VerifyCallResult Compiler::VerifyCall(
                           ->module()
                           ->as<CompiledModule>()
                           .context()
-                          .qual_type(callee);
+                          .qual_types(callee)[0];
       ExtractParams(callee, &maybe_qt.type().as<type::Callable>(), args,
                     overload_params, errors);
     }
@@ -581,7 +581,7 @@ std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
     for (const auto *expr : yield_stmt->exprs()) {
       // TODO: Determine whether or not you want to support named yields. If
       // not, reduce this to a vector or some other positional arguments type.
-      yielded.pos_emplace(context.qual_type(expr));
+      yielded.pos_emplace(context.qual_types(expr)[0]);
     }
   }
   return yield_types;

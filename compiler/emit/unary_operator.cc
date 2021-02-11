@@ -11,7 +11,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
   // TODO: user-defined-types
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Copy: {
-      auto operand_type = context().qual_type(node->operand()).type();
+      auto operand_type = context().qual_types(node->operand())[0].type();
       auto reg          = builder().TmpAlloca(operand_type);
       EmitCopyInit(
           type::Typed<ir::Reg>(reg, operand_type),
@@ -21,13 +21,13 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::Destroy: {
       EmitDestroy(
           type::Typed<ir::Reg>(EmitValue(node->operand()).get<ir::Reg>(),
-                               context().qual_type(node->operand()).type()));
+                               context().qual_types(node->operand())[0].type()));
       return ir::Value();
     } break;
     case ast::UnaryOperator::Kind::Init:
       // TODO: Not entirely sure this is what the semantics ought to be.
     case ast::UnaryOperator::Kind::Move: {
-      auto operand_type = context().qual_type(node->operand()).type();
+      auto operand_type = context().qual_types(node->operand())[0].type();
       auto reg = builder().TmpAlloca(operand_type);
       EmitMoveInit(
           type::Typed<ir::Reg>(reg, operand_type),
@@ -46,7 +46,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       }));
     } break;
     case ast::UnaryOperator::Kind::Not: {
-      auto t = context().qual_type(node->operand()).type();
+      auto t = context().qual_types(node->operand())[0].type();
       if (t == type::Bool) {
         return ir::Value(
             builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
@@ -61,12 +61,12 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::Negate: {
       auto operand_ir = EmitValue(node->operand());
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
-          context().qual_type(node->operand()).type(), [&]<typename T>() {
+          context().qual_types(node->operand())[0].type(), [&]<typename T>() {
             return ir::Value(builder().Neg(operand_ir.get<ir::RegOr<T>>()));
           });
     } break;
     case ast::UnaryOperator::Kind::TypeOf:
-      return ir::Value(context().qual_type(node->operand()).type());
+      return ir::Value(context().qual_types(node->operand())[0].type());
     case ast::UnaryOperator::Kind::Address:
       return ir::Value(EmitRef(node->operand()));
     case ast::UnaryOperator::Kind::Pointer: {
@@ -83,7 +83,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::At: {
       return builder().Load(
           EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
-          context().qual_type(node).type());
+          context().qual_types(node)[0].type());
     }
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));
   }
@@ -105,11 +105,11 @@ void Compiler::EmitCopyInit(
     case ast::UnaryOperator::Kind::Destroy:
       EmitDestroy(
           type::Typed<ir::Reg>(EmitValue(node->operand()).get<ir::Reg>(),
-                               context().qual_type(node->operand()).type()));
+                               context().qual_types(node->operand())[0].type()));
       break;
     default: {
       auto from_val = EmitValue(node);
-      auto from_qt  = *context().qual_type(node);
+      auto from_qt  = *context().qual_types(node)[0];
       if (to.size() == 1) {
         EmitCopyAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
       } else {
@@ -134,7 +134,7 @@ void Compiler::EmitMoveInit(
       break;
     default: {
       auto from_val = EmitValue(node);
-      auto from_qt  = *context().qual_type(node);
+      auto from_qt  = *context().qual_types(node)[0];
       if (to.size() == 1) {
         EmitMoveAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
       } else {
@@ -165,7 +165,7 @@ void Compiler::EmitCopyAssign(
       break;
     default: {
       auto from_val = EmitValue(node);
-      auto from_qt  = *context().qual_type(node);
+      auto from_qt  = *context().qual_types(node)[0];
       if (to.size() == 1) {
         EmitMoveAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
       } else {
@@ -191,7 +191,7 @@ void Compiler::EmitMoveAssign(
       break;
     default: {
       auto from_val = EmitValue(node);
-      auto from_qt  = *context().qual_type(node);
+      auto from_qt  = *context().qual_types(node)[0];
       if (to.size() == 1) {
         EmitMoveAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
       } else {

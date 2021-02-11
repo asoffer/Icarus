@@ -24,10 +24,10 @@ struct SliceDataTypeNotAType {
 }  // namespace
 
 // Verifies that the slice data type expression is a type.
-type::QualType Compiler::VerifyType(ast::SliceType const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::SliceType const *node) {
   auto quals = type::Quals::Const();
 
-  auto data_qual_type = VerifyType(node->data_type());
+  auto data_qual_type = VerifyType(node->data_type())[0];
   quals &= data_qual_type.quals();
   type::QualType qt(type::Type_, quals);
   if (data_qual_type.type() != type::Type_) {

@@ -86,7 +86,7 @@ struct Compiler
                    void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
       ast::Visitor<EmitRefTag, ir::Reg()>,
       ast::Visitor<EmitValueTag, ir::Value()>,
-      ast::Visitor<VerifyTypeTag, type::QualType()>,
+      ast::Visitor<VerifyTypeTag, absl::Span<type::QualType const>()>,
       ast::Visitor<VerifyBodyTag, WorkItem::Result()>,
       type::Visitor<EmitDestroyTag, void(ir::Reg)>,
       type::Visitor<EmitMoveInitTag,
@@ -138,8 +138,9 @@ struct Compiler
     state_.work_queue.Enqueue(std::move(work_item));
   }
 
-  type::QualType VerifyType(ast::Node const *node) {
-    return ast::Visitor<VerifyTypeTag, type::QualType()>::Visit(node);
+  absl::Span<type::QualType const> VerifyType(ast::Node const *node) {
+    return ast::Visitor<VerifyTypeTag,
+                        absl::Span<type::QualType const>()>::Visit(node);
   }
 
   WorkItem::Result VerifyBody(ast::Node const *node) {
@@ -290,8 +291,9 @@ struct Compiler
   void CompleteDeferredBodies();
 
 #define ICARUS_AST_NODE_X(name)                                                \
-  type::QualType VerifyType(ast::name const *node);                            \
-  type::QualType Visit(VerifyTypeTag, ast::name const *node) override {        \
+  absl::Span<type::QualType const> VerifyType(ast::name const *node);          \
+  absl::Span<type::QualType const> Visit(VerifyTypeTag, ast::name const *node) \
+      override {                                                               \
     return VerifyType(node);                                                   \
   }                                                                            \
                                                                                \

@@ -101,8 +101,8 @@ void EmitCall(
   // we call the non-const overload if `callee_mod == &module()`.
   type::QualType callee_qual_type =
       callee_mod == &compiler.context().module()
-          ? compiler.context().qual_type(callee)
-          : callee_mod->context().qual_type(callee);
+          ? compiler.context().qual_types(callee)[0]
+          : callee_mod->context().qual_types(callee)[0];
 
   Compiler callee_compiler(PersistentResources{
       .data                = callee_mod->context(),
@@ -257,7 +257,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
     return EmitBuiltinCall(this, b, node->arguments());
   }
 
-  auto qt = context().qual_type(node);
+  auto qt = context().qual_types(node)[0];
   if (qt.expansion_size() == 1 and qt.type() == type::Interface) {
     return ir::Value();
   }
@@ -269,7 +269,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
-                                .qual_type(node->callee())
+                                .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
     return ir::Value(
@@ -302,7 +302,7 @@ void Compiler::EmitMoveInit(
     auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_type(node).type()));
+                              result, context().qual_types(node)[0].type()));
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -312,7 +312,7 @@ void Compiler::EmitMoveInit(
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
-                                .qual_type(node->callee())
+                                .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
     EmitCopyAssign(to[0],
@@ -336,7 +336,7 @@ void Compiler::EmitCopyInit(
     auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_type(node).type()));
+                              result, context().qual_types(node)[0].type()));
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -346,7 +346,7 @@ void Compiler::EmitCopyInit(
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
-                                .qual_type(node->callee())
+                                .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
     EmitCopyAssign(to[0],
@@ -370,7 +370,7 @@ void Compiler::EmitMoveAssign(
     auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitMoveAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_type(node).type()));
+                              result, context().qual_types(node)[0].type()));
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -380,7 +380,7 @@ void Compiler::EmitMoveAssign(
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
-                                .qual_type(node->callee())
+                                .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
     EmitMoveAssign(to[0],
@@ -404,7 +404,7 @@ void Compiler::EmitCopyAssign(
     auto result = EmitBuiltinCall(this, b, node->arguments());
     if (result.empty()) return;
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_type(node).type()));
+                              result, context().qual_types(node)[0].type()));
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -413,7 +413,7 @@ void Compiler::EmitCopyAssign(
       EmitConstantArguments(*this, node->arguments());
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
-                                .qual_type(node->callee())
+                                .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
     EmitCopyAssign(to[0],

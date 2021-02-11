@@ -146,12 +146,26 @@ struct Context {
       ast::ParameterizedExpression const *node,
       core::Params<std::pair<ir::Value, type::QualType>> const &params);
 
-  type::QualType qual_type(ast::Expression const *expr) const;
-  type::QualType const *maybe_qual_type(ast::Expression const *expr) const;
+  // Returns a span over a the qualified types for this expression. The span may
+  // be empty if the expression's type is nothing, but behavior is undefined if
+  // the expressions type has not yet been computed. The returned span is valid
+  // accessible for the lifetime of this Context.
+  absl::Span<type::QualType const> qual_types(
+      ast::Expression const *expr) const;
 
-  // Stores the QualType in this context, associating it with the given
+  // Same as `qual_type` defined above, except that behavior is defined to
+  // return a default constructed span ifthe expression's type has not yet been
+  // computed.
+  absl::Span<type::QualType const> maybe_qual_type(
+      ast::Expression const *expr) const;
+
+  // Stores the QualTypes in this context, associating them with the given
   // expression.
-  type::QualType set_qual_type(ast::Expression const *expr, type::QualType qt);
+  absl::Span<type::QualType const> set_qual_types(
+      ast::Expression const *expr, absl::Span<type::QualType const> qts);
+  absl::Span<type::QualType const> set_qual_type(ast::Expression const *expr,
+                                                 type::QualType const qts);
+
 
   // TODO: This should go on some sort of a builder but doesn't need to be
   // persisted beyond emitting the IR for the given function.
@@ -181,7 +195,7 @@ struct Context {
   std::pair<ir::NativeFn, bool> add_func(
       ast::ParameterizedExpression const *expr) {
     type::Function const *fn_type =
-        &qual_type(expr).type().as<type::Function>();
+        &qual_types(expr)[0].type().as<type::Function>();
     auto [iter, inserted] = ir_funcs_.try_emplace(
         expr, &fns_, fn_type,
         expr->params().Transform([fn_type, i = 0](auto const &d) mutable {
@@ -195,7 +209,7 @@ struct Context {
   // exists, returns a pointer to that object. Otherwise, constructs a new one
   // by calling `fn`.
   std::pair<ir::Jump, bool> add_jump(ast::Jump const *expr) {
-    type::Jump const *jump_type = &qual_type(expr).type().as<type::Jump>();
+    type::Jump const *jump_type = &qual_types(expr)[0].type().as<type::Jump>();
     auto [iter, inserted] = ir_jumps_.try_emplace(
         expr, jump_type,
         expr->params().Transform([jump_type, i = 0](auto const &decl) mutable {
@@ -383,7 +397,8 @@ struct Context {
   absl::flat_hash_map<ast::Declaration::Id const *, ir::Reg> addr_;
 
   // Types of the expressions in this context.
-  absl::flat_hash_map<ast::Expression const *, type::QualType> qual_types_;
+  absl::flat_hash_map<ast::Expression const *, std::vector<type::QualType>>
+      qual_types_;
 
   // Stores the types of argument bound to the parameter with the given name.
   absl::flat_hash_map<std::string_view, type::Type> arg_type_;

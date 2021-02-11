@@ -14,7 +14,7 @@ namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   auto const &fn_type = context()
-                            .qual_type(&node->function_literal())
+                            .qual_types(&node->function_literal())[0]
                             .type()
                             .as<type::Function>();
 

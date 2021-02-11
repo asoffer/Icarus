@@ -4,10 +4,10 @@
 
 namespace compiler {
 
-type::QualType Compiler::VerifyType(ast::BlockLiteral const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::BlockLiteral const *node) {
   bool success = true;
-  for (auto *b : node->before()) { success &= VerifyType(b).ok(); }
-  for (auto *a : node->after()) { success &= VerifyType(a).ok(); }
+  for (auto *b : node->before()) { success &= VerifyType(b)[0].ok(); }
+  for (auto *a : node->after()) { success &= VerifyType(a)[0].ok(); }
   auto qt = type::QualType::Constant(type::Block);
   if (not success) { qt.MarkError(); }
   return context().set_qual_type(node, qt);

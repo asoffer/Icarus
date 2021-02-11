@@ -7,7 +7,7 @@
 
 namespace compiler {
 
-type::QualType Compiler::VerifyType(ast::Terminal const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Terminal const *node) {
   type::Type t;
   base::MetaValue mv = node->value().type();
   if (mv == base::meta<int8_t>) {

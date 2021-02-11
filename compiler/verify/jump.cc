@@ -72,14 +72,14 @@ struct BufferPointerJumpState {
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::Jump const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Jump const *node) {
   LOG("Jump", "%s", node->DebugString());
 
   bool err         = false;
   type::Type state = nullptr;
 
   if (node->state()) {
-    auto state_qual_type = VerifyType(node->state());
+    auto state_qual_type = VerifyType(node->state())[0];
     err                  = not state_qual_type.ok();
     if (not err) {
       state = state_qual_type.type();
@@ -119,14 +119,17 @@ type::QualType Compiler::VerifyType(ast::Jump const *node) {
 
   core::Params<type::Type> param_types =
       node->params().Transform([&](auto const &param) {
-        auto v = VerifyType(param.get());
-        err |= not v.ok();
-        return v.type();
+        auto qt = VerifyType(param.get())[0];
+        err |= not qt.ok();
+        return qt.type();
       });
 
   if (err) { return context().set_qual_type(node, type::QualType::Error()); }
 
-  for (auto const *stmt : node->stmts()) { err &= not VerifyType(stmt).ok(); }
+  for (auto const *stmt : node->stmts()) {
+    absl::Span<type::QualType const> qts = VerifyType(stmt);
+    err &= qts.size() == 1 and not qts[0].ok();
+  }
 
   return context().set_qual_type(
       node, type::QualType::Constant(type::Jmp(state, param_types)));

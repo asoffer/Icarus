@@ -107,9 +107,12 @@ struct DereferencingNonPointer {
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
-  ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),  //
-                   auto operand_qt, VerifyType(node->operand()));
+absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *node) {
+  auto operand_qts = VerifyType(node->operand());
+  if (not operand_qts[0].ok()) {
+    return context().set_qual_type(node, type::QualType::Error());
+  }
+  auto operand_qt   = operand_qts[0];
   auto operand_type = operand_qt.type();
 
   type::QualType qt;
@@ -253,9 +256,9 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       }
     } break;
     default: UNREACHABLE(*node);
-  }
+    }
 
-  return context().set_qual_type(node, qt);
+    return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

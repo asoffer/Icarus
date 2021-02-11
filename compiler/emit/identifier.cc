@@ -8,7 +8,7 @@ void Compiler::EmitMoveInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
                type::Typed<ir::Value>(EmitValue(node),
-                                      context().qual_type(node).type()));
+                                      context().qual_types(node)[0].type()));
 }
 
 void Compiler::EmitCopyInit(
@@ -16,7 +16,7 @@ void Compiler::EmitCopyInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
                type::Typed<ir::Value>(EmitValue(node),
-                                      context().qual_type(node).type()));
+                                      context().qual_types(node)[0].type()));
 }
 
 ir::Value Compiler::EmitValue(ast::Identifier const *node) {
@@ -36,7 +36,7 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
     }
   }
   if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
-    auto t = context().qual_type(node).type();
+    auto t = context().qual_types(node)[0].type();
     // TODO: Support multiple declarations
     ir::Reg reg = context().addr(&decl_span[0]->ids()[0]);
     return (decl_span[0]->flags() & (ast::Declaration::f_IsBlockParam |
@@ -45,7 +45,7 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
                ? builder().Load(reg, t)
                : ir::Value(reg);
   } else {
-    type::Type t = context().qual_type(node).type();
+    type::Type t = context().qual_types(node)[0].type();
     auto lval    = EmitRef(node);
     return ir::Value(builder().PtrFix(lval, t));
   }
@@ -55,7 +55,7 @@ void Compiler::EmitCopyAssign(
     ast::Identifier const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = context().qual_type(node).type();
+  auto t = context().qual_types(node)[0].type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
@@ -63,7 +63,7 @@ void Compiler::EmitMoveAssign(
     ast::Identifier const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = context().qual_type(node).type();
+  auto t = context().qual_types(node)[0].type();
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 

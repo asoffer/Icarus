@@ -18,8 +18,9 @@ TEST(Identifier, Success) {
   n: i64
   )");
   auto const *id = mod.Append<ast::Identifier>("n");
-  type::QualType qt = mod.context().qual_type(id);
-  ASSERT_EQ(qt, type::QualType(type::I64, type::Quals::Ref()));
+  auto qts       = mod.context().qual_types(id);
+  ASSERT_THAT(
+      qts, UnorderedElementsAre(type::QualType(type::I64, type::Quals::Ref())));
   EXPECT_THAT(mod.context().decls(id), SizeIs(1));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -27,8 +28,8 @@ TEST(Identifier, Success) {
 TEST(Identifier, Undeclared) {
   test::TestModule mod;
   auto const *id = mod.Append<ast::Identifier>("n");
-  type::QualType qt = mod.context().qual_type(id);
-  ASSERT_EQ(qt, type::QualType::Error());
+  auto qts       = mod.context().qual_types(id);
+  ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "undeclared-identifier")));
@@ -52,8 +53,8 @@ TEST(Identifier, OverloadSetSuccess) {
   f ::= (b: bool) => 4
   )");
   auto const *id = mod.Append<ast::Identifier>("f");
-  type::QualType qt = mod.context().qual_type(id);
-  EXPECT_TRUE(qt.type().is<type::OverloadSet>());
+  auto qts       = mod.context().qual_types(id);
+  EXPECT_TRUE(qts[0].type().is<type::OverloadSet>());
   EXPECT_THAT(mod.context().decls(id), SizeIs(2));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -65,8 +66,8 @@ TEST(Identifier, NonCallableOverloads) {
   f := 3
   )");
   auto const *id = mod.Append<ast::Identifier>("f");
-  type::QualType qt = mod.context().qual_type(id);
-  ASSERT_EQ(qt, type::QualType::Error());
+  auto qts       = mod.context().qual_types(id);
+  ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-callable-in-overload-set"),
@@ -80,9 +81,12 @@ TEST(Identifier, CyclicDependency) {
   y ::= z + 1
   z ::= x + 1
   )");
-  ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("x")), type::QualType::Error());
-  ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("y")), type::QualType::Error());
-  ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("z")), type::QualType::Error());
+  ASSERT_THAT(mod.context().qual_types(mod.Append<ast::Identifier>("x")),
+              UnorderedElementsAre(type::QualType::Error()));
+  ASSERT_THAT(mod.context().qual_types(mod.Append<ast::Identifier>("y")),
+              UnorderedElementsAre(type::QualType::Error()));
+  ASSERT_THAT(mod.context().qual_types(mod.Append<ast::Identifier>("z")),
+              UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "cyclic-dependency")));
 }

@@ -176,7 +176,8 @@ bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
 type::QualType VerifyDeclarationType(Compiler &compiler,
                                      ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto type_expr_qt, compiler.VerifyType(node->type_expr()));
+                   auto type_expr_qt,
+                   compiler.VerifyType(node->type_expr())[0]);
   if (type_expr_qt.type() != type::Type_) {
     compiler.diag().Consume(NotAType{
         .range = node->type_expr()->range(),
@@ -222,7 +223,7 @@ type::QualType VerifyDefaultInitialization(Compiler &compiler,
 type::QualType VerifyInferred(Compiler &compiler,
                               ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto init_val_qt, compiler.VerifyType(node->init_val()));
+                   auto init_val_qt, compiler.VerifyType(node->init_val())[0]);
   bool inference_failure = false;
   init_val_qt.ForEach([&](type::Type t) {
     auto reason = Inferrable(t);
@@ -251,7 +252,7 @@ type::QualType VerifyInferred(Compiler &compiler,
 
 // Verifies the type of a declaration of the form `x: T = y`.
 type::QualType VerifyCustom(Compiler &compiler, ast::Declaration const *node) {
-  auto init_val_qt = compiler.VerifyType(node->init_val());
+  auto init_val_qt = compiler.VerifyType(node->init_val())[0];
 
   ASSIGN_OR(return type::QualType::Error(), auto qt,
                    VerifyDeclarationType(compiler, node));
@@ -276,7 +277,7 @@ type::QualType VerifyUninitialized(Compiler &compiler,
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::Declaration const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Declaration const *node) {
   ASSERT(node->scope()->Containing<ast::ModuleScope>()->module() ==
          &context().module());
   // Declarations can be seen out of order if they're constants and we happen to
@@ -285,7 +286,9 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   //
   // TODO: Consider first checking if it's a constant because we only need to do
   // this lookup in that case. Not sure how much performance that might win.
-  if (auto const *qt = context().maybe_qual_type(&node->ids()[0])) { return *qt; }
+  if (auto qts = context().maybe_qual_type(&node->ids()[0]); qts.data()) {
+    return qts;
+  }
   LOG("Declaration", "Verifying '%s' on %p",
       absl::StrJoin(node->ids(), ", ",
                     [](std::string *out, ast::Declaration::Id const &id) {
@@ -325,7 +328,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     default: UNREACHABLE(node->DebugString());
   }
 
-  if (not node_qual_type.ok()) { return node_qual_type; }
+  if (not node_qual_type.ok()) { return type::QualType::ErrorSpan(); }
 
   // TODO: Support multiple declarations
   if (node->ids()[0].name().empty()) {
@@ -404,10 +407,10 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     for (auto const *accessible_id :
          module::AllAccessibleDeclIds(node->scope(), id.name())) {
       if (&id == accessible_id) { continue; }
-      ASSIGN_OR(continue, type::QualType q,
-                context().maybe_qual_type(accessible_id));
-      if (Shadow(typed_id,
-                 type::Typed<ast::Declaration::Id const *>(&id, q.type()))) {
+      auto qts = context().maybe_qual_type(accessible_id);
+      if (not qts.data()) { continue; }
+      if (Shadow(typed_id, type::Typed<ast::Declaration::Id const *>(
+                               &id, qts[0].type()))) {
         // TODO: If one of these declarations shadows the other
         node_qual_type.MarkError();
 
@@ -425,7 +428,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   return context().set_qual_type(node, type::QualType(types, quals));
 }
 
-type::QualType Compiler::VerifyType(ast::Declaration::Id const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Declaration::Id const *node) {
   LOG("Declaration::Id", "Verifying %s", node->name());
   return VerifyType(&node->declaration());
 }

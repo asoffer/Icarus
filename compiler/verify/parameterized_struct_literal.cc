@@ -17,7 +17,7 @@ WorkItem::Result Compiler::VerifyBody(
   return WorkItem::Result::Success;
 }
 
-type::QualType Compiler::VerifyType(
+absl::Span<type::QualType const> Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
   auto gen = [node, instantiation_compiler = Compiler(resources()),
               cg = builder().CurrentGroup()](

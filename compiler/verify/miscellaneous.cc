@@ -11,9 +11,9 @@ std::optional<type::Quals> VerifyAndGetQuals(
   bool err          = false;
   type::Quals quals = type::Quals::All();
   for (auto *expr : exprs) {
-    auto r = v->VerifyType(expr);
-    err |= not r.ok();
-    if (not err) { quals &= r.quals(); }
+    auto qt = v->VerifyType(expr)[0];
+    err |= not qt.ok();
+    if (not err) { quals &= qt.quals(); }
   }
   if (err) { return std::nullopt; }
   return quals;
@@ -21,28 +21,28 @@ std::optional<type::Quals> VerifyAndGetQuals(
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::ArgumentType const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::ArgumentType const *node) {
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
-type::QualType Compiler::VerifyType(ast::BuiltinFn const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::BuiltinFn const *node) {
   return context().set_qual_type(
       node, type::QualType::Constant(ir::Fn(node->value()).type()));
 }
 
-type::QualType Compiler::VerifyType(ast::ReturnStmt const *node) {
-  ASSIGN_OR(return type::QualType::Error(),  //
+absl::Span<type::QualType const> Compiler::VerifyType(ast::ReturnStmt const *node) {
+  ASSIGN_OR(return type::QualType::ErrorSpan(),  //
                    auto quals, VerifyAndGetQuals(this, node->exprs()));
-  return type::QualType(type::Void, quals);
+  return {};
 }
 
-type::QualType Compiler::VerifyType(ast::YieldStmt const *node) {
-  ASSIGN_OR(return type::QualType::Error(),  //
+absl::Span<type::QualType const> Compiler::VerifyType(ast::YieldStmt const *node) {
+  ASSIGN_OR(return type::QualType::ErrorSpan(),  //
                    auto quals, VerifyAndGetQuals(this, node->exprs()));
-  return type::QualType(type::Void, quals);
+  return {};
 }
 
-type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::ScopeNode const *node) {
   LOG("ScopeNode", "Verifying ScopeNode named `%s`",
       node->name()->DebugString());
   // TODO: The type of the arguments and the scope name are independent and
@@ -52,7 +52,7 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
                    std::ignore, VerifyArguments(node->args()));
 
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
-                   std::ignore, VerifyType(node->name()));
+                   std::ignore, VerifyType(node->name())[0]);
 
   context().TrackJumps(node);
 
@@ -106,7 +106,7 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   }
 }
 
-type::QualType Compiler::VerifyType(ast::Label const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Label const *node) {
   return context().set_qual_type(node, type::QualType::Constant(type::Label));
 }
 

@@ -36,7 +36,7 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
     // about. Thus, rather than emitting the values here, we emit references if
     // the qualified type is itself a reference and values otherwise.
     args.push_back(opt.args().Transform([&c](auto const &expr) {
-      auto qt = c.context().qual_type(expr.get());
+      auto qt = c.context().qual_types(expr.get())[0];
       return std::pair<ir::Value, type::QualType>(
           qt.quals() >= type::Quals::Ref() ? ir::Value(c.EmitRef(expr.get()))
                                            : c.EmitValue(expr.get()),

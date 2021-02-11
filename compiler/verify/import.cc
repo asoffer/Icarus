@@ -40,10 +40,10 @@ struct InvalidImport {
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::Import const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Import const *node) {
   LOG("Import", "%s", node->DebugString());
   ASSIGN_OR(return context().set_qual_type(node, _),  //
-                   auto result, VerifyType(node->operand()));
+                   auto result, VerifyType(node->operand())[0]);
 
   auto qt  = type::QualType::Constant(type::Module);
   bool err = false;

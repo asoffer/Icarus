@@ -37,7 +37,7 @@ TEST_P(BinaryOperatorTest, Constants) {
   mod.AppendCode(kCommonDefinitions);
   auto const *e  = mod.Append<ast::Expression>(absl::StrFormat(
       R"((%s) %s (%s))", test_data.lhs, test_case.op, test_data.rhs));
-  auto t         = mod.context().qual_type(e).type();
+  auto t         = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
@@ -60,7 +60,7 @@ TEST_P(BinaryOperatorTest, NonConstants) {
       })()
       )",
       test_case.type, test_data.lhs, test_data.rhs, test_case.op));
-  auto t = mod.context().qual_type(e).type();
+  auto t = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
@@ -87,7 +87,7 @@ TEST_P(BinaryOperatorTest, Assignment) {
       })()
       )",
       test_case.type, test_data.lhs, test_case.op, test_data.rhs));
-  auto t = mod.context().qual_type(e).type();
+  auto t = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
@@ -589,7 +589,7 @@ TEST_P(BufferPointerTest, Arithmetic) {
         return %s
       })()
       )", expr));
-  auto t         = mod.context().qual_type(e).type();
+  auto t         = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));

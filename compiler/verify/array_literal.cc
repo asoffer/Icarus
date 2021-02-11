@@ -31,7 +31,7 @@ type::Type GuessIntendedArrayType(absl::flat_hash_map<type::Type, int>) {
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayLiteral const *node) {
   if (node->empty()) {
     return context().set_qual_type(node,
                                    type::QualType::Constant(type::EmptyArray));
@@ -41,7 +41,7 @@ type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
   elem_qts.reserve(node->elems().size());
   bool error = false;
   for (auto const *elem : node->elems()) {
-    elem_qts.push_back(VerifyType(elem));
+    elem_qts.push_back(VerifyType(elem)[0]);
     error &= not elem_qts.back().ok();
   }
 

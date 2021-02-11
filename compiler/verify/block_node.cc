@@ -22,7 +22,7 @@ struct NoBlockWithName {
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::BlockNode const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::BlockNode const *node) {
   LOG("BlockNode", "Verifying %s", node->DebugString());
   auto qt = type::QualType::Constant(type::Block);
 
@@ -51,12 +51,13 @@ type::QualType Compiler::VerifyType(ast::BlockNode const *node) {
   }
 
   for (auto &param : node->params()) {
-    if (not VerifyType(param.value.get()).ok()) { qt.MarkError(); }
+    if (not VerifyType(param.value.get())[0].ok()) { qt.MarkError(); }
   }
 
   if (not qt.HasErrorMark()) {
     for (auto *stmt : node->stmts()) {
-      if (not VerifyType(stmt).ok()) { qt.MarkError(); }
+      absl::Span<type::QualType const> qts = VerifyType(stmt);
+      if (qts.size() == 1 and not qts[0].ok()) { qt.MarkError(); }
     }
   }
 

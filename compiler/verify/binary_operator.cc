@@ -96,11 +96,10 @@ struct NoMatchingBinaryOperator {
   frontend::SourceRange range;
 };
 
-type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
-                                     ast::BinaryOperator const *node,
-                                     type::QualType lhs_qual_type,
-                                     type::QualType rhs_qual_type,
-                                     type::Type return_type) {
+absl::Span<type::QualType const> VerifyLogicalOperator(
+    Compiler *c, std::string_view op, ast::BinaryOperator const *node,
+    type::QualType lhs_qual_type, type::QualType rhs_qual_type,
+    type::Type return_type) {
   auto quals =
       (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
   if (lhs_qual_type.type() == type::Bool and
@@ -122,11 +121,10 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
   }
 }
 
-type::QualType VerifyFlagsOperator(Compiler *c, std::string_view op,
-                                   ast::BinaryOperator const *node,
-                                   type::QualType lhs_qual_type,
-                                   type::QualType rhs_qual_type,
-                                   type::Type return_type) {
+absl::Span<type::QualType const> VerifyFlagsOperator(
+    Compiler *c, std::string_view op, ast::BinaryOperator const *node,
+    type::QualType lhs_qual_type, type::QualType rhs_qual_type,
+    type::Type return_type) {
   auto quals =
       (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
   if (lhs_qual_type.type().is<type::Flags>() and
@@ -159,11 +157,10 @@ type::QualType VerifyFlagsOperator(Compiler *c, std::string_view op,
   }
 }
 
-type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
-                                        ast::BinaryOperator const *node,
-                                        type::QualType lhs_qual_type,
-                                        type::QualType rhs_qual_type,
-                                        type::Type return_type) {
+absl::Span<type::QualType const> VerifyArithmeticOperator(
+    Compiler *c, std::string_view op, ast::BinaryOperator const *node,
+    type::QualType lhs_qual_type, type::QualType rhs_qual_type,
+    type::Type return_type) {
   auto quals =
       (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
   bool check_user_overload = not(lhs_qual_type.type().is<type::Primitive>() or
@@ -220,11 +217,11 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
         .range    = frontend::SourceRange(node->lhs()->range().end(),
                                        node->rhs()->range().begin()),
     });
-    return type::QualType::Error();
+    return c->context().set_qual_type(node,type::QualType::Error());
   }
 }
 
-type::QualType VerifyArithmeticAssignmentOperator(
+absl::Span<type::QualType const> VerifyArithmeticAssignmentOperator(
     Compiler *c, std::string_view op, ast::BinaryOperator const *node,
     type::QualType lhs_qual_type, type::QualType rhs_qual_type,
     type::Type return_type) {
@@ -240,12 +237,12 @@ type::QualType VerifyArithmeticAssignmentOperator(
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
-  auto lhs_qual_type = VerifyType(node->lhs());
-  auto rhs_qual_type = VerifyType(node->rhs());
+absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const *node) {
+  auto lhs_qual_type = VerifyType(node->lhs())[0];
+  auto rhs_qual_type = VerifyType(node->rhs())[0];
 
   if (not lhs_qual_type.ok() or not rhs_qual_type.ok()) {
-    return type::QualType::Error();
+    return context().set_qual_type(node, type::QualType::Error());
   }
 
   switch (node->op()) {
@@ -269,7 +266,7 @@ type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
             .range = frontend::SourceRange(node->lhs()->range().end(),
                                            node->rhs()->range().begin()),
         });
-        return type::QualType::Error();
+        return context().set_qual_type(node, type::QualType::Error());
       }
     } break;
     case Operator::Xor:

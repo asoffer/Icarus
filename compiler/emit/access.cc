@@ -55,7 +55,7 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
 
 ir::Value Compiler::EmitValue(ast::Access const *node) {
   LOG("Access", "Emitting value for %s", node->DebugString());
-  type::QualType operand_qt = context().qual_type(node->operand());
+  type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
@@ -68,7 +68,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     }
   }
 
-  type::QualType node_qt = context().qual_type(node);
+  type::QualType node_qt = context().qual_types(node)[0];
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
     return ir::Value(*enum_type->EmitLiteral(node->member_name()));
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
@@ -121,7 +121,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
 }
 
 ir::Reg Compiler::EmitRef(ast::Access const *node) {
-  auto op_qt = context().qual_type(node->operand());
+  auto op_qt = context().qual_types(node->operand())[0];
   // TODO: This trick is good except that parameters look like references when
   // really they're by value for small types.
   size_t deref_count = (op_qt.quals() >= type::Quals::Ref())
@@ -155,7 +155,7 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
 void Compiler::EmitMoveInit(
     ast::Access const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  type::QualType operand_qt = context().qual_type(node->operand());
+  type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
@@ -164,7 +164,7 @@ void Compiler::EmitMoveInit(
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
-        type::QualType node_qt = context().qual_type(node);
+        type::QualType node_qt = context().qual_types(node)[0];
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
                      type::Typed<ir::Value>(mod.ExportedValue(decl_ids[0]),
                                             node_qt.type()));
@@ -174,7 +174,7 @@ void Compiler::EmitMoveInit(
     }
   }
 
-  type::QualType node_qt = context().qual_type(node);
+  type::QualType node_qt = context().qual_types(node)[0];
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
     EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), enum_type),
                  type::Typed<ir::Value>(
@@ -234,7 +234,7 @@ void Compiler::EmitMoveInit(
 void Compiler::EmitCopyInit(
     ast::Access const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  type::QualType operand_qt = context().qual_type(node->operand());
+  type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
@@ -251,7 +251,7 @@ void Compiler::EmitCopyInit(
     }
   }
 
-  type::QualType node_qt = context().qual_type(node);
+  type::QualType node_qt = context().qual_types(node)[0];
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
     EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
                  type::Typed<ir::Value>(
@@ -311,7 +311,7 @@ void Compiler::EmitCopyInit(
 void Compiler::EmitMoveAssign(
     ast::Access const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  type::QualType operand_qt = context().qual_type(node->operand());
+  type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
@@ -331,7 +331,7 @@ void Compiler::EmitMoveAssign(
   if (not EmitAssignForAlwaysCopyTypes(*this, node, operand_qt.type(),
                                        *to[0])) {
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      type::Type t = context().qual_type(node).type();
+      type::Type t = context().qual_types(node)[0].type();
       EmitMoveAssign(to[0],
                      type::Typed<ir::Value>(
                          ir::Value(builder().PtrFix(EmitRef(node), t)), t));
@@ -350,7 +350,7 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitCopyAssign(
     ast::Access const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  type::QualType operand_qt = context().qual_type(node->operand());
+  type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
@@ -370,7 +370,7 @@ void Compiler::EmitCopyAssign(
   if (not EmitAssignForAlwaysCopyTypes(*this, node, operand_qt.type(),
                                        *to[0])) {
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      type::Type t = context().qual_type(node).type();
+      type::Type t = context().qual_types(node)[0].type();
       EmitMoveAssign(to[0],
                      type::Typed<ir::Value>(
                          ir::Value(builder().PtrFix(EmitRef(node), t)), t));

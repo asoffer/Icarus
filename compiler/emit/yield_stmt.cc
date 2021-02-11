@@ -21,7 +21,7 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
   core::Arguments<type::QualType> yield_arg_types;
   std::vector<type::Typed<ir::Value>> constant_arguments;
   for (auto const *expr : node->exprs()) {
-    auto qt = context().qual_type(expr);
+    auto qt = context().qual_types(expr)[0];
     yield_arg_types.pos_emplace(qt);
     if (qt.constant()) {
       ir::Value result = EvaluateOrDiagnose(

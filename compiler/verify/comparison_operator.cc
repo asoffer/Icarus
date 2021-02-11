@@ -105,12 +105,12 @@ ComparisonKind Comparator(type::Type t) {
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::ComparisonOperator const *node) {
   std::vector<type::QualType> expr_qts;
   expr_qts.reserve(node->exprs().size());
   type::Quals quals = ~type::Quals::Ref();
   for (auto *expr : node->exprs()) {
-    expr_qts.push_back(VerifyType(expr));
+    expr_qts.push_back(VerifyType(expr)[0]);
     quals &= expr_qts.back().quals();
   }
 

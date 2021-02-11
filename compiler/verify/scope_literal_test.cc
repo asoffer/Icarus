@@ -15,9 +15,8 @@ TEST(ScopeLiteral, SuccessStateless) {
   test::TestModule mod;
   auto const *s     = mod.Append<ast::ScopeLiteral>(R"(scope {}
   )");
-  type::QualType qt = mod.context().qual_type(s);
-  EXPECT_EQ(qt.type(), type::Scope);
-  EXPECT_TRUE(qt.constant());
+  auto qts  = mod.context().qual_types(s);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Scope)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -27,9 +26,8 @@ TEST(ScopeLiteral, StatelessNonConstantMember) {
     enter := jump () {}
   }
   )");
-  type::QualType qt = mod.context().qual_type(s);
-  EXPECT_EQ(qt.type(), type::Scope);
-  EXPECT_TRUE(qt.constant());
+  auto qts  = mod.context().qual_types(s);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Scope)));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-constant-scope-member")));
@@ -42,9 +40,8 @@ TEST(ScopeLiteral, StatelessMemberTypes) {
     exit ::= 3
   }
   )");
-  type::QualType qt = mod.context().qual_type(s);
-  EXPECT_EQ(qt.type(), type::Scope);
-  EXPECT_TRUE(qt.constant());
+  auto qts  = mod.context().qual_types(s);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Scope)));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "non-jump-enter"),
                                    Pair("type-error", "non-callable-exit")));
@@ -56,9 +53,8 @@ TEST(ScopeLiteral, StatelessInitIsStateful) {
     enter ::= jump [state: *i64] () {}
   }
   )");
-  type::QualType qt = mod.context().qual_type(s);
-  EXPECT_EQ(qt.type(), type::Scope);
-  EXPECT_TRUE(qt.constant());
+  auto qts  = mod.context().qual_types(s);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Scope)));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "state-type-mismatch")));
 }
@@ -67,9 +63,8 @@ TEST(ScopeLiteral, SuccessStateful) {
   test::TestModule mod;
   auto const *s     = mod.Append<ast::ScopeLiteral>(R"(scope {}
   )");
-  type::QualType qt = mod.context().qual_type(s);
-  EXPECT_EQ(qt.type(), type::Scope);
-  EXPECT_TRUE(qt.constant());
+  auto qts  = mod.context().qual_types(s);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Scope)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -79,9 +74,8 @@ TEST(ScopeLiteral, StatefulNonConstantMember) {
     enter := jump [state: *i64] () {}
   }
   )");
-  type::QualType qt = mod.context().qual_type(s);
-  EXPECT_EQ(qt.type(), type::Scope);
-  EXPECT_TRUE(qt.constant());
+  auto qts  = mod.context().qual_types(s);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Scope)));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-constant-scope-member")));
@@ -94,9 +88,8 @@ TEST(ScopeLiteral, StatefulMemberTypes) {
     exit ::= 3
   }
   )");
-  type::QualType qt = mod.context().qual_type(s);
-  EXPECT_EQ(qt.type(), type::Scope);
-  EXPECT_TRUE(qt.constant());
+  auto qts  = mod.context().qual_types(s);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Scope)));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "non-jump-enter"),
                                    Pair("type-error", "non-callable-exit")));
@@ -108,9 +101,8 @@ TEST(ScopeLiteral, StatefulInitIsStateless) {
     enter ::= jump () {}
   }
   )");
-  type::QualType qt = mod.context().qual_type(s);
-  EXPECT_EQ(qt.type(), type::Scope);
-  EXPECT_TRUE(qt.constant());
+  auto qts  = mod.context().qual_types(s);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Scope)));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "state-type-mismatch")));
 }

@@ -18,7 +18,7 @@ TEST_P(ScopeNodeTest, ScopeNode) {
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
   auto const *e  = mod.Append<ast::Expression>(expr);
-  auto t        = mod.context().qual_type(e).type();
+  auto t        = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));

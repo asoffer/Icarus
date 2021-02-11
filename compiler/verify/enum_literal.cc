@@ -35,23 +35,23 @@ struct NonIntegralEnumerator {
 WorkItem::Result Compiler::VerifyBody(ast::EnumLiteral const *node) {
   bool success = true;
   for (auto const &[name, value] : node->specified_values()) {
-    auto qt = VerifyType(value.get());
-    if (not(qt.quals() >= type::Quals::Const())) {
+    auto qts = VerifyType(value.get());
+    if (not(qts[0].quals() >= type::Quals::Const())) {
       success = false;
       diag().Consume(NonConstantEnumerator{.range = value->range()});
     }
-    if (not type::IsIntegral(qt.type())) {
+    if (not type::IsIntegral(qts[0].type())) {
       success = false;
       diag().Consume(NonIntegralEnumerator{
           .range = value->range(),
-          .type  = qt.type(),
+          .type  = qts[0].type(),
       });
     }
   }
   return success ? WorkItem::Result::Success : WorkItem::Result::Failure;
 }
 
-type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::EnumLiteral const *node) {
   LOG("compile-work-queue", "Request work enum: %p", node);
   state_.work_queue.Enqueue({
       .kind      = WorkItem::Kind::VerifyEnumBody,

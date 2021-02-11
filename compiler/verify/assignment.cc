@@ -43,7 +43,7 @@ struct AssigningToNonReference {
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::Assignment const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Assignment const *node) {
   std::vector<type::QualType> lhs_qts, rhs_qts;
   lhs_qts.reserve(node->lhs().size());
   rhs_qts.reserve(node->rhs().size());
@@ -52,7 +52,7 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
   for (int i = 0; i < node->lhs().size(); ++i) {
     auto const *l = node->lhs()[i];
 
-    auto qt = VerifyType(l);
+    auto qt = VerifyType(l)[0];
     if (not qt.ok()) {
       if (first_lhs_error_index == -1) { first_lhs_error_index = i; }
     } else {
@@ -69,7 +69,7 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
   int first_rhs_error_index = -1;
   for (int i = 0; i < node->lhs().size(); ++i) {
     auto const *r = node->rhs()[i];
-    auto qt       = VerifyType(r);
+    auto qt       = VerifyType(r)[0];
     if (not qt.ok()) {
       if (first_lhs_error_index == -1) { first_lhs_error_index = i; }
     }
@@ -105,7 +105,7 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
     ++rhs_iter;
   }
 
-  return type::QualType::Constant(type::Void);
+  return {};
 }
 
 }  // namespace compiler

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "type/type.h"
+#include "absl/types/span.h"
 
 namespace type {
 
@@ -126,9 +127,11 @@ absl::Span<Type const> AddPack(absl::Span<Type const> types);
 }  // namespace internal_type
 
 struct QualType {
-  explicit QualType() : QualType(nullptr, Quals::Unqualified()) {}
+  static absl::Span<type::QualType const> ErrorSpan();
 
-  explicit QualType(std::nullptr_t, Quals quals)
+  constexpr explicit QualType() : QualType(nullptr, Quals::Unqualified()) {}
+
+  constexpr explicit QualType(std::nullptr_t, Quals quals)
       : data_(static_cast<uintptr_t>(quals.val_)) {}
 
   // Use SFINAE  to disable braced-initialization for the type parameter. This

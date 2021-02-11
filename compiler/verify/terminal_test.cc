@@ -17,7 +17,8 @@ TEST_P(TerminalTest, Terminal) {
   auto const &[terminal, expected] = GetParam();
   test::TestModule mod;
   auto const *term = mod.Append<ast::Terminal>(terminal);
-  EXPECT_EQ(mod.context().qual_type(term), expected);
+  EXPECT_THAT(mod.context().qual_types(term),
+              testing::UnorderedElementsAre(expected));
 }
 
 // Note: We do not need to handle type-errors here because none are possible:

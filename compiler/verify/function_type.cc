@@ -33,12 +33,12 @@ struct NonTypeFunctionOutput {
   frontend::SourceRange range;
 };
 
-type::QualType Compiler::VerifyType(ast::FunctionType const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(ast::FunctionType const *node) {
   type::Type t      = type::Type_;
   type::Quals quals = type::Quals::Const();
 
   for (auto const *p : node->params()) {
-    auto qt = VerifyType(p);
+    auto qt = VerifyType(p)[0];
     if (not qt) {
       t = nullptr;
       continue;
@@ -52,7 +52,7 @@ type::QualType Compiler::VerifyType(ast::FunctionType const *node) {
   }
 
   for (auto const *p : node->outputs()) {
-    auto qt = VerifyType(p);
+    auto qt = VerifyType(p)[0];
     if (not qt) {
       t = nullptr;
       continue;

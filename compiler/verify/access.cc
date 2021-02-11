@@ -297,9 +297,9 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       return type::QualType::Error();
     } break;
     case 1: {
-      type::QualType qt = mod->context().qual_type(ids[0]);
+      type::QualType qt = mod->context().qual_types(ids[0])[0];
 
-      type::Type t = mod->context().qual_type(ids[0]).type();
+      type::Type t = mod->context().qual_types(ids[0])[0].type();
       if (not qt.ok()) {
         LOG("AccessModuleMember",
             "Found member in a different module that is missing a type. "
@@ -308,7 +308,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
         return type::QualType::Error();
       } else {
         c.context().SetAllOverloads(node, ast::OverloadSet(ids));
-        return c.context().set_qual_type(ids[0], qt);
+        return c.context().set_qual_type(ids[0], qt)[0];
       }
     } break;
     default: {
@@ -317,7 +317,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       absl::flat_hash_set<type::Callable const *> member_types;
       auto const &ctx = mod->context();
       for (auto const *id : ids) {
-        auto qt = ctx.qual_type(id);
+        auto qt = ctx.qual_types(id)[0];
         if (not qt.ok()) {
           LOG("AccessModuleMember",
               "Found member in a different module that is missing a type. "
@@ -349,9 +349,9 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
 
 }  // namespace
 
-type::QualType Compiler::VerifyType(ast::Access const *node) {
-  ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
-                   auto operand_qt, VerifyType(node->operand()));
+absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
+  ASSIGN_OR(return context().set_qual_types(node, type::QualType::ErrorSpan()),
+                   auto operand_qt, VerifyType(node->operand())[0]);
 
   auto [base_type, num_derefs] = DereferenceAll(operand_qt.type());
   if (base_type == type::Type_) {
@@ -379,7 +379,7 @@ type::QualType Compiler::VerifyType(ast::Access const *node) {
             .member       = std::string{node->member_name()},
             .type         = s,
         });
-        return context().set_qual_type(node, type::QualType::Error());
+        return context().set_qual_types(node, type::QualType::ErrorSpan());
       }
     } else if (auto *s = base_type.if_as<type::Struct>()) {
       return context().set_qual_type(node,
@@ -394,7 +394,7 @@ type::QualType Compiler::VerifyType(ast::Access const *node) {
           .member       = std::string{node->member_name()},
           .type         = base_type,
       });
-      return context().set_qual_type(node, type::QualType::Error());
+      return context().set_qual_types(node, type::QualType::ErrorSpan());
     }
   }
 }

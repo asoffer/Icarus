@@ -83,28 +83,36 @@ ir::CompiledJump *Context::jump(ast::Jump const *expr) {
   return iter == ir_jumps_.end() ? nullptr : &iter->second;
 }
 
-type::QualType Context::qual_type(ast::Expression const *expr) const {
-  return *ASSERT_NOT_NULL(maybe_qual_type(expr));
+absl::Span<type::QualType const> Context::qual_types(
+    ast::Expression const *expr) const {
+  absl::Span<type::QualType const> qts = maybe_qual_type(expr);
+  ASSERT(qts.data() != nullptr);
+  return qts;
 }
 
-type::QualType const *Context::maybe_qual_type(
+absl::Span<type::QualType const> Context::maybe_qual_type(
     ast::Expression const *expr) const {
   auto iter = qual_types_.find(expr);
-  if (iter != qual_types_.end()) { return &iter->second; }
+  if (iter != qual_types_.end()) { return iter->second; }
   if (parent()) { return parent()->maybe_qual_type(expr); }
-  return nullptr;
+  return absl::Span<type::QualType const>();
 }
 
+absl::Span<type::QualType const> Context::set_qual_types(
+    ast::Expression const *expr, absl::Span<type::QualType const> qts) {
+  return qual_types_.try_emplace(expr, qts.begin(), qts.end()).first->second;
+}
 
-type::QualType Context::set_qual_type(ast::Expression const *expr,
-                                      type::QualType r) {
-  qual_types_.emplace(expr, r);
-  return r;
+absl::Span<type::QualType const> Context::set_qual_type(
+    ast::Expression const *expr, type::QualType r) {
+  return qual_types_.try_emplace(expr, 1, r).first->second;
 }
 
 void Context::CompleteType(ast::Expression const *expr, bool success) {
   if (auto iter = qual_types_.find(expr); iter != qual_types_.end()) {
-    if (not success) { iter->second.MarkError(); }
+    if (not success) {
+      for (auto &qt : iter->second) { qt.MarkError(); }
+    }
     return;
   }
   // Note: It is possible that we never find the type, because the original

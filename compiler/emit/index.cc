@@ -4,10 +4,10 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::Index const *node) {
-  type::QualType qt = context().qual_type(node->lhs());
+  type::QualType qt = context().qual_types(node->lhs())[0];
   if (qt.quals() >= type::Quals::Ref()) {
-    return ir::Value(builder().PtrFix(
-        EmitRef(node), context().qual_type(node).type()));
+    return ir::Value(
+        builder().PtrFix(EmitRef(node), context().qual_types(node)[0].type()));
   }
 
   if (auto const *s = qt.type().if_as<type::Slice>()) {
@@ -18,21 +18,21 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
         }));
 
     auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
-        EmitValue(node->rhs()), context().qual_type(node->rhs()).type()));
+        EmitValue(node->rhs()), context().qual_types(node->rhs())[0].type()));
     return ir::Value(builder().PtrFix(
         builder().Index(type::Ptr(s), data, index), s->data_type()));
   } else if (auto const *array_type = qt.type().if_as<type::Array>()) {
     auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
-        EmitValue(node->rhs()), context().qual_type(node->rhs()).type()));
+        EmitValue(node->rhs()), context().qual_types(node->rhs())[0].type()));
 
     return ir::Value(builder().PtrFix(
-        builder().Index(type::Ptr(context().qual_type(node->lhs()).type()),
+        builder().Index(type::Ptr(context().qual_types(node->lhs())[0].type()),
                         EmitValue(node->lhs()).get<ir::Reg>(), index),
         array_type->data_type()));
   } else if (auto const *buf_ptr_type =
                  qt.type().if_as<type::BufferPointer>()) {
     auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
-        EmitValue(node->rhs()), context().qual_type(node->rhs()).type()));
+        EmitValue(node->rhs()), context().qual_types(node->rhs())[0].type()));
 
     return ir::Value(builder().PtrFix(
         builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(), index,
@@ -44,16 +44,16 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
 }
 
 ir::Reg Compiler::EmitRef(ast::Index const *node) {
-  type::Type lhs_type = context().qual_type(node->lhs()).type();
-  type::Type rhs_type = context().qual_type(node->rhs()).type();
+  type::Type lhs_type = context().qual_types(node->lhs())[0].type();
+  type::Type rhs_type = context().qual_types(node->rhs())[0].type();
 
   if (lhs_type.is<type::Array>()) {
     auto index = builder().CastTo<int64_t>(
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
 
     auto lval = EmitRef(node->lhs());
-    return builder().Index(type::Ptr(context().qual_type(node->lhs()).type()),
-                           lval, index);
+    return builder().Index(
+        type::Ptr(context().qual_types(node->lhs())[0].type()), lval, index);
   } else if (auto *buf_ptr_type = lhs_type.if_as<type::BufferPointer>()) {
     auto index = builder().CastTo<int64_t>(
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
@@ -89,7 +89,7 @@ void Compiler::EmitMoveInit(
     ast::Index const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = context().qual_type(node).type();
+  auto t = context().qual_types(node)[0].type();
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
@@ -97,7 +97,7 @@ void Compiler::EmitCopyInit(
     ast::Index const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = context().qual_type(node).type();
+  auto t = context().qual_types(node)[0].type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
@@ -105,7 +105,7 @@ void Compiler::EmitCopyAssign(
     ast::Index const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = context().qual_type(node).type();
+  auto t = context().qual_types(node)[0].type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
@@ -113,7 +113,7 @@ void Compiler::EmitMoveAssign(
     ast::Index const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = context().qual_type(node).type();
+  auto t = context().qual_types(node)[0].type();
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 

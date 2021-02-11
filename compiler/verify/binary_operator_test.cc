@@ -155,8 +155,8 @@ TEST_P(IntegerArithmeticOperatorEq, InvalidRhsType) {
 }
 INSTANTIATE_TEST_SUITE_P(
     All, IntegerArithmeticOperatorEq,
-    testing::Combine(testing::ValuesIn({"i8", "i16", "i32", "i64",
-                                        "u8", "u16", "u32", "u64"}),
+    testing::Combine(testing::ValuesIn({"i8", "i16", "i32", "i64", "u8", "u16",
+                                        "u32", "u64"}),
                      testing::ValuesIn({"+=", "-=", "*=", "/=", "%="})));
 
 using FloatingPointArithmeticOperatorEq =
@@ -244,9 +244,9 @@ TEST_P(BinaryOperator, Success) {
     mod.AppendCode(absl::StrCat(R"(x: )", type));
     auto const *expr =
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
-    type::QualType qt = mod.context().qual_type(expr);
-    EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
-    EXPECT_EQ(qt.type(), mod.context().qual_type(expr->lhs()).type());
+    auto qts = mod.context().qual_types(expr);
+    EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
+    EXPECT_EQ(qts[0].type(), mod.context().qual_types(expr->lhs())[0].type());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
   {
@@ -255,27 +255,28 @@ TEST_P(BinaryOperator, Success) {
     mod.AppendCode(absl::StrCat(R"(x :: )", type));
     auto const *expr =
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
-    type::QualType qt = mod.context().qual_type(expr);
-    EXPECT_EQ(qt.quals(), type::Quals::Const());
-    EXPECT_EQ(qt.type(), mod.context().qual_type(expr->lhs()).type());
+    auto qts = mod.context().qual_types(expr);
+    EXPECT_EQ(qts[0].quals(), type::Quals::Const());
+    EXPECT_EQ(qts[0].type(), mod.context().qual_types(expr->lhs())[0].type());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
 
 INSTANTIATE_TEST_SUITE_P(
     Integers, BinaryOperator,
-    testing::Combine(testing::ValuesIn({"i8", "i16", "i32", "i64",
-                                        "u8", "u16", "u32", "u64"}),
+    testing::Combine(testing::ValuesIn({"i8", "i16", "i32", "i64", "u8", "u16",
+                                        "u32", "u64"}),
                      testing::ValuesIn({"+", "-", "*", "/", "%"})));
-INSTANTIATE_TEST_SUITE_P(
-    FloatingPoint, BinaryOperator,
-    testing::Combine(testing::ValuesIn({"f32", "f64"}),
-                     testing::ValuesIn({"+", "-", "*", "/"})));
+INSTANTIATE_TEST_SUITE_P(FloatingPoint, BinaryOperator,
+                         testing::Combine(testing::ValuesIn({"f32", "f64"}),
+                                          testing::ValuesIn({"+", "-", "*",
+                                                             "/"})));
 INSTANTIATE_TEST_SUITE_P(
     FlagsOperator, BinaryOperator,
     testing::ValuesIn({std::tuple<char const *, char const *>("FlagType", "&"),
                        std::tuple<char const *, char const *>("FlagType", "|"),
-                       std::tuple<char const *, char const *>("FlagType", "^")}));
+                       std::tuple<char const *, char const *>("FlagType",
+                                                              "^")}));
 
 INSTANTIATE_TEST_SUITE_P(
     LogicalOperator, BinaryOperator,
@@ -293,8 +294,9 @@ TEST_P(OperatorOverload, Overloads) {
       GetParam()));
   auto const *expr = mod.Append<ast::BinaryOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_EQ(qt, type::QualType::NonConstant(type::I64));
+  auto qts = mod.context().qual_types(expr);
+  EXPECT_THAT(qts,
+              UnorderedElementsAre(type::QualType::NonConstant(type::I64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -305,8 +307,8 @@ TEST_P(OperatorOverload, MissingOverloads) {
       )");
   auto const *expr = mod.Append<ast::BinaryOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
-  type::QualType qt = mod.context().qual_type(expr);
-  EXPECT_EQ(qt, type::QualType::Error());
+  auto qts = mod.context().qual_types(expr);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "invalid-binary-operator-overload")));

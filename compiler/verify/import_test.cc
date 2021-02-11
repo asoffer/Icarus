@@ -15,8 +15,9 @@ TEST(Import, InvalidTypeBeingImported) {
   test::TestModule mod;
   EXPECT_CALL(mod.importer, Import).Times(0);
   auto const *import = mod.Append<ast::Expression>(R"(import 3)");
-  type::QualType qt     = mod.context().qual_type(import);
-  EXPECT_EQ(qt, type::QualType::Constant(type::Module));
+  auto qts           = mod.context().qual_types(import);
+  EXPECT_THAT(qts,
+              UnorderedElementsAre(type::QualType::Constant(type::Module)));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "invalid-import")));
 }
@@ -26,8 +27,9 @@ TEST(Import, NonConstantImport) {
   EXPECT_CALL(mod.importer, Import).Times(0);
   mod.AppendCode(R"(str := "abc")");
   auto const *import = mod.Append<ast::Expression>(R"(import str)");
-  type::QualType qt     = mod.context().qual_type(import);
-  EXPECT_EQ(qt, type::QualType::Constant(type::Module));
+  auto qts           = mod.context().qual_types(import);
+  EXPECT_THAT(qts,
+              UnorderedElementsAre(type::QualType::Constant(type::Module)));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("value-category-error", "non-constant-import")));
@@ -38,8 +40,9 @@ TEST(Import, NonConstantAndInvalidType) {
   EXPECT_CALL(mod.importer, Import).Times(0);
   mod.AppendCode(R"(x := 3)");
   auto const *import = mod.Append<ast::Expression>(R"(import x)");
-  type::QualType qt     = mod.context().qual_type(import);
-  EXPECT_EQ(qt, type::QualType::Constant(type::Module));
+  auto qts           = mod.context().qual_types(import);
+  EXPECT_THAT(qts,
+              UnorderedElementsAre(type::QualType::Constant(type::Module)));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "invalid-import"),
@@ -51,8 +54,9 @@ TEST(Import, StringLiteral) {
   test::TestModule mod;
   EXPECT_CALL(mod.importer, Import(kModule)).WillOnce(Return(ir::ModuleId(7)));
   auto const *import = mod.Append<ast::Expression>(R"(import "some-module")");
-  type::QualType qt     = mod.context().qual_type(import);
-  EXPECT_EQ(qt, type::QualType::Constant(type::Module));
+  auto qts           = mod.context().qual_types(import);
+  EXPECT_THAT(qts,
+              UnorderedElementsAre(type::QualType::Constant(type::Module)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -62,8 +66,9 @@ TEST(Import, ConstantCharSlice) {
   EXPECT_CALL(mod.importer, Import(kModule)).WillOnce(Return(ir::ModuleId(7)));
   mod.AppendCode(R"(str ::= "some-module")");
   auto const *import = mod.Append<ast::Expression>(R"(import str)");
-  type::QualType qt     = mod.context().qual_type(import);
-  EXPECT_EQ(qt, type::QualType::Constant(type::Module));
+  auto qts           = mod.context().qual_types(import);
+  EXPECT_THAT(qts,
+              UnorderedElementsAre(type::QualType::Constant(type::Module)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
