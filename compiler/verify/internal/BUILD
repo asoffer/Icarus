@@ -23,14 +23,3 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
-
-cc_library(
-    name = "qual_type_iterator",
-    hdrs = ["qual_type_iterator.h"],
-    deps = [
-        "//type:qual_type",
-        "//type:type",
-    ],
-)
-
-# TODO Tests for qual_type_iterator

@@ -84,10 +84,14 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ScopeNode const *node
     case 0:
       return context().set_qual_type(node,
                                      type::QualType::NonConstant(type::Void));
-    case 1:
-      return context().set_qual_type(
-          node,
-          type::QualType(return_types.front(), type::Quals::Unqualified()));
+    case 1: {
+      std::vector<type::QualType> qts;
+      qts.reserve(return_types.front().size());
+      for (auto t : return_types.front()) {
+        qts.emplace_back(t, type::Quals::Unqualified());
+      }
+      return context().set_qual_types(node, qts);
+    }
     default: {
       std::vector<type::Type> merged_rets(return_types.front().begin(),
                                           return_types.front().end());
@@ -100,8 +104,13 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ScopeNode const *node
           merged_rets[i] = type::Meet(merged_rets[i], rets[i]);
         }
       }
-      return context().set_qual_type(
-          node, type::QualType(merged_rets, type::Quals::Unqualified()));
+
+      std::vector<type::QualType> qts;
+      qts.reserve(merged_rets.size());
+      for (auto t : merged_rets) {
+        qts.emplace_back(t, type::Quals::Unqualified());
+      }
+      return context().set_qual_types(node, qts);
     }
   }
 }

@@ -50,10 +50,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayLiteral const *n
   absl::flat_hash_map<type::Type, int> elem_type_count;
 
   type::Quals quals   = type::Quals::All();
-  size_t num_elements = 0;
+  size_t num_elements = elem_qts.size();
   for (type::QualType qt : elem_qts) {
-    num_elements += qt.expansion_size();
-    qt.ForEach([&](type::Type t) { ++elem_type_count[t]; });
+    ++elem_type_count[qt.type()];
     quals &= qt.quals();
   }
 

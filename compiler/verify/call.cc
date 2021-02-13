@@ -356,7 +356,7 @@ not_an_interface:
     }
     // TODO: under what circumstances can we prove that the implementation
     // doesn't need to be run at runtime?
-    return context().set_qual_type(node, *qual_type);
+    return context().set_qual_types(node, *qual_type);
   } else {
     diag().Consume(UncallableExpression{.range = node->callee()->range()});
     return context().set_qual_type(node, type::QualType::Error());

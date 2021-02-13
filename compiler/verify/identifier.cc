@@ -208,16 +208,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
 
       for (auto const &[id, id_qt] : potential_decl_ids) {
         qt = id_qt;
-        if (not qt.ok() or qt.HasErrorMark()) {
-          return context().set_qual_type(node, type::QualType::Error());
-        }
-      }
-
-      for (auto const &[id, id_qt] : potential_decl_ids) {
-        qt = id_qt;
-        if (not qt.ok() or qt.HasErrorMark()) {
-          return context().set_qual_type(node, type::QualType::Error());
-        }
+        if (not qt.ok() or qt.HasErrorMark()) { error = true; }
 
         if (auto *c = qt.type().if_as<type::Callable>()) {
           quals &= qt.quals();

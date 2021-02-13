@@ -513,23 +513,31 @@ struct Compiler
       // all we have is type information.
       absl::flat_hash_map<type::Callable const *, ErrorReason> reasons;
     };
-    VerifyCallResult(type::QualType qt) : data_(qt) {}
+    VerifyCallResult(type::QualType qt)
+        : data_(std::vector<type::QualType>{qt}) {}
+    VerifyCallResult(std::vector<type::QualType> qts) : data_(std::move(qts)) {}
     VerifyCallResult(Error &&e) : data_(std::move(e)) {}
     VerifyCallResult(Error const &e) : data_(e) {}
 
     Error error() const & { return std::get<Error>(data_); }
     Error &&error() && { return std::get<Error>(std::move(data_)); }
 
-    operator bool() { return std::holds_alternative<type::QualType>(data_); }
+    operator bool() {
+      return std::holds_alternative<std::vector<type::QualType>>(data_);
+    }
 
-    type::QualType operator*() { return std::get<type::QualType>(data_); }
-    type::QualType *operator->() { return &std::get<type::QualType>(data_); }
-    type::QualType const *operator->() const {
-      return &std::get<type::QualType>(data_);
+    std::vector<type::QualType> operator*() {
+      return std::get<std::vector<type::QualType>>(data_);
+    }
+    std::vector<type::QualType> *operator->() {
+      return &std::get<std::vector<type::QualType>>(data_);
+    }
+    std::vector<type::QualType> const *operator->() const {
+      return &std::get<std::vector<type::QualType>>(data_);
     }
 
    private:
-    std::variant<Error, type::QualType> data_;
+    std::variant<Error, std::vector<type::QualType>> data_;
   };
 
   ir::ModuleId EvaluateModuleWithCache(ast::Expression const *expr);

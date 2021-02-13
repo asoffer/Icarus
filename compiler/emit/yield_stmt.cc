@@ -43,14 +43,8 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
     ir::OverloadSet &exit = ir::CompiledScope::From(iter->scope)->exit();
     ir::Fn exit_fn        = exit.Lookup(yield_arg_types).value();
 
-    type::Type t;
-    if (iter->result_type.expansion_size() == 1) {
-      t = iter->result_type.type();
-    }
-    absl::Span<type::Type const> result_types =
-        iter->result_type.expansion_size() == 1
-            ? absl::Span<type::Type const>(&t, 1)
-            : iter->result_type.expanded();
+    type::Type t = iter->result_type.type();
+    absl::Span<type::Type const> result_types(&t, 1);
     auto out_params = builder().OutParams(result_types);
 
     auto inst_iter = iter->block->instructions().begin();

@@ -19,8 +19,6 @@ namespace type {
 //
 // * Constness: Whether or not the value of the expression is known at
 //   compile-time
-// * Expansion-size: The number of identifiers that can be bound to this
-//   expression.
 // * Value category: Whether this expression can have it's address taken, and
 //   whether this element is one in a contiguous collection.
 //
@@ -49,17 +47,6 @@ namespace type {
 // of the function literal it is declared with `:`, despite the fact that, when
 // computing `FOUR`, the constant `2` is bound to `n`.
 //
-// *** Expansion-size ***
-// Some expressions represent multiple values, as in `(1, 2, 3)`. However, it is
-// not always clear syntactically that this is the case. For example, functions
-// can return multiple values, so the result of a function call may have
-// expansion-size greater than one. Functions that do not return a value have an
-// expansion-size of zero, which is distinct from returning a unit-type.
-//
-// ```
-// f ::= () -> (i64, bool) { return 3, true }
-// (n, b) := f()
-// ```
 struct Quals {
   static constexpr Quals Unqualified() { return Quals(0); }
   static constexpr Quals Const() { return Quals(1); }
@@ -142,17 +129,6 @@ struct QualType {
       : data_(reinterpret_cast<uintptr_t>(Type(t).if_as<LegacyType>()) |
               static_cast<uintptr_t>(quals.val_)) {}
 
-  explicit QualType(absl::Span<Type const> ts, Quals quals) {
-    num_ = ts.size();
-    if (ts.size() == 1) {
-      data_ = reinterpret_cast<uintptr_t>(ts[0].if_as<LegacyType>()) |
-              static_cast<uintptr_t>(quals.val_);
-    } else {
-      auto pack = internal_type::AddPack(ts);
-      data_     = reinterpret_cast<uintptr_t>(pack.data()) | quals.val_;
-    }
-  }
-
   static QualType Error() { return QualType(nullptr, Quals::Unqualified()); }
 
   static QualType Constant(Type t) { return QualType(t, Quals::Const()); }
@@ -162,7 +138,6 @@ struct QualType {
   }
 
   Type type() const {
-    ASSERT(num_ == 1u);
     return reinterpret_cast<LegacyType const *>(
         data_ & ~static_cast<uintptr_t>(Quals::All().val_));
   }
@@ -183,7 +158,7 @@ struct QualType {
   // mispelled so while it is safe to proceed with type-checking,
   // code-generation must not happen.
   //
-  constexpr void MarkError() { error_ = 1; }
+  constexpr void MarkError() { error_ = true; }
   constexpr bool HasErrorMark() const { return error_ or not ok(); }
 
   constexpr Quals quals() const { return Quals(data_ & 0x7); }
@@ -198,27 +173,9 @@ struct QualType {
     data_ |= (low_bits & (~Quals::Const()).val_);
   }
   constexpr bool constant() const { return (quals() & Quals::Const()).val_; }
-  constexpr size_t expansion_size() const { return num_; }
 
-  absl::Span<type::Type const> expanded() const {
-    ASSERT(expansion_size() != 1u);
-    return absl::MakeConstSpan(
-        reinterpret_cast<Type const *>(
-            data_ & ~static_cast<uintptr_t>(Quals::All().val_)),
-        num_);
-  }
-
-  template <typename F>
-  void ForEach(F f) const {
-    if (expansion_size() == 1) {
-      f(type());
-    } else {
-      for (Type t : expanded()) { f(t); }
-    }
-  }
-
-  explicit constexpr operator bool() const { return data_ != 0 or num_ != 1; }
-  constexpr bool ok() const { return data_ != 0 or num_ != 1; }
+  bool ok() const { return type() != nullptr; }
+  explicit operator bool() const { return ok(); }
 
   constexpr QualType const &operator*() const { return *this; }
 
@@ -234,7 +191,7 @@ struct QualType {
   friend H AbslHashValue(H h, QualType q) {
     // Even when these are holding pointers to expanded data, it's okay to hash
     // because we deduplicate them on insertion.
-    return H::combine(std::move(h), q.data_, q.num_);
+    return H::combine(std::move(h), q.data_);
   }
 
   friend std::ostream &operator<<(std::ostream &os, QualType q);
@@ -246,9 +203,8 @@ struct QualType {
   }
 
  private:
-  uintptr_t data_                                     = 0;
-  uintptr_t num_ : (sizeof(uintptr_t) * CHAR_BIT - 1) = 1;
-  uintptr_t error_ : 1                                = 0;
+  uintptr_t data_  = 0;
+  bool error_ = 0;
 };
 
 }  // namespace type

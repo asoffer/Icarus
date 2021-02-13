@@ -116,7 +116,6 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
-        "//compiler/verify/internal:qual_type_iterator",
         "//type:primitive",
         "//type:qual_type",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -259,6 +258,7 @@ cc_library(
         "//compiler/verify/internal:assignment_and_initialization",
         "//type:qual_type",
         "//type:typed_value",
+        "@com_google_absl//absl/cleanup",
     ],
 )
 
@@ -280,7 +280,6 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:library_module",
-        "//compiler/verify/internal:qual_type_iterator",
         "//type:primitive",
         "//type:qual_type",
         "@com_google_absl//absl/cleanup",
@@ -625,7 +624,6 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
-        "//compiler/verify/internal:qual_type_iterator",
         "//type:pointer",
         "//type:primitive",
         "//type:qual_type",

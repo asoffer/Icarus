@@ -258,9 +258,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   }
 
   auto qt = context().qual_types(node)[0];
-  if (qt.expansion_size() == 1 and qt.type() == type::Interface) {
-    return ir::Value();
-  }
+  if (qt.type() == type::Interface) { return ir::Value(); }
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
@@ -278,21 +276,12 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
 
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-  switch (qt.expansion_size()) {
-    case 0:
-      EmitCall(MoveInitTag{}, *this, os.members().front(), constant_arguments,
-               node->arguments(), {});
-      return ir::Value();
-    case 1: {
-      // TODO: It'd be nice to not stack-allocate register-sized values.
-      type::Typed<ir::RegOr<ir::Addr>> out(builder().TmpAlloca(qt.type()),
-                                           qt.type());
-      EmitCall(MoveInitTag{}, *this, os.members().front(), constant_arguments,
-               node->arguments(), absl::MakeConstSpan(&out, 1));
-      return ir::Value(builder().PtrFix(out->reg(), qt.type()));
-    }
-    default: NOT_YET();
-  }
+  // TODO: It'd be nice to not stack-allocate register-sized values.
+  type::Typed<ir::RegOr<ir::Addr>> out(builder().TmpAlloca(qt.type()),
+                                       qt.type());
+  EmitCall(MoveInitTag{}, *this, os.members().front(), constant_arguments,
+           node->arguments(), absl::MakeConstSpan(&out, 1));
+  return ir::Value(builder().PtrFix(out->reg(), qt.type()));
 }
 
 void Compiler::EmitMoveInit(

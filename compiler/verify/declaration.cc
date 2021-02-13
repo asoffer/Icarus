@@ -1,3 +1,4 @@
+#include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/library_module.h"
@@ -220,34 +221,36 @@ type::QualType VerifyDefaultInitialization(Compiler &compiler,
 }
 
 // Verifies the type of a declaration of the form `x := y`.
-type::QualType VerifyInferred(Compiler &compiler,
-                              ast::Declaration const *node) {
-  ASSIGN_OR(return type::QualType::Error(),  //
-                   auto init_val_qt, compiler.VerifyType(node->init_val())[0]);
+std::vector<type::QualType> VerifyInferred(Compiler &compiler,
+                                           ast::Declaration const *node) {
+  auto init_val_qt_span = compiler.VerifyType(node->init_val());
+  std::vector<type::QualType> init_val_qts(init_val_qt_span.begin(),
+                                           init_val_qt_span.end());
   bool inference_failure = false;
-  init_val_qt.ForEach([&](type::Type t) {
-    auto reason = Inferrable(t);
-    if (reason != UninferrableType::Reason::kInferrable) {
-      compiler.diag().Consume(UninferrableType{
-          .reason = reason,
-          .range  = node->init_val()->range(),
-      });
-      inference_failure = true;
-    }
-  });
-
-  if (inference_failure) { return type::QualType::Error(); }
-
-  if (not internal::VerifyInitialization(compiler.diag(), node->range(),
-                                         init_val_qt, init_val_qt)) {
-    return type::QualType::Error();
+  // TODO: Support multiple declarations
+  auto reason = Inferrable(init_val_qts[0].type());
+  if (reason != UninferrableType::Reason::kInferrable) {
+    compiler.diag().Consume(UninferrableType{
+        .reason = reason,
+        .range  = node->init_val()->range(),
+    });
+    inference_failure = true;
   }
+
+  if (inference_failure) { return {type::QualType::Error()}; }
 
   type::Quals quals = (node->flags() & ast::Declaration::f_IsConst)
                           ? type::Quals::Const()
                           : type::Quals::Unqualified();
-  init_val_qt.set_quals(quals);
-  return init_val_qt;
+  for (auto &qt : init_val_qts) {
+    if (not internal::VerifyInitialization(compiler.diag(), node->range(), qt,
+                                           qt)) {
+      qt.MarkError();
+    }
+    qt.set_quals(quals);
+  }
+
+  return init_val_qts;
 }
 
 // Verifies the type of a declaration of the form `x: T = y`.
@@ -277,7 +280,8 @@ type::QualType VerifyUninitialized(Compiler &compiler,
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::Declaration const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::Declaration const *node) {
   ASSERT(node->scope()->Containing<ast::ModuleScope>()->module() ==
          &context().module());
   // Declarations can be seen out of order if they're constants and we happen to
@@ -301,13 +305,13 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Declaration const *no
   // revisit that idea. It's likely the cause of the problem where we generate
   // the same error message multiple times.
 
-  type::QualType node_qual_type;
+  std::vector<type::QualType> node_qual_types;
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
-      node_qual_type = VerifyDefaultInitialization(*this, node);
+      node_qual_types = {VerifyDefaultInitialization(*this, node)};
     } break;
     case ast::Declaration::kInferred: {
-      node_qual_type = VerifyInferred(*this, node);
+      node_qual_types = VerifyInferred(*this, node);
     } break;
     case ast::Declaration::kInferredAndUninitialized: {
       diag().Consume(UninferrableType{
@@ -317,43 +321,57 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Declaration const *no
       if (node->flags() & ast::Declaration::f_IsConst) {
         diag().Consume(UninitializedConstant{.range = node->range()});
       }
-      node_qual_type = type::QualType::Error();
+      node_qual_types = {type::QualType::Error()};
     } break;
     case ast::Declaration::kCustomInit: {
-      node_qual_type = VerifyCustom(*this, node);
+      node_qual_types = {VerifyCustom(*this, node)};
     } break;
     case ast::Declaration::kUninitialized: {
-      node_qual_type = VerifyUninitialized(*this, node);
+      node_qual_types = {VerifyUninitialized(*this, node)};
     } break;
     default: UNREACHABLE(node->DebugString());
   }
 
-  if (not node_qual_type.ok()) { return type::QualType::ErrorSpan(); }
-
-  // TODO: Support multiple declarations
-  if (node->ids()[0].name().empty()) {
-    if (node_qual_type.type() == type::Module) {
-      // TODO: check if it's constant?
-      // TODO: check shadowing against other modules?
-      // TODO: what if no init val is provded? what if not constant?
-
-      if (auto maybe_mod =
-              EvaluateOrDiagnoseAs<ir::ModuleId>(node->init_val())) {
-        // TODO: In generic contexts it doesn't make sense to place this on the
-        // AST.
-        node->scope()->embed(&maybe_mod->get<LibraryModule>()->scope());
-      } else {
-        node_qual_type.MarkError();
+  for (type::QualType qt : node_qual_types) {
+    if (not qt.ok()) {
+      for (auto const &id : node->ids()) {
+        context().set_qual_type(&id, type::QualType::Error());
       }
-    } else {
-      diag().Consume(DeclaringHoleAsNonModule{
-          .type  = node_qual_type.type(),
-          .range = node->range(),
-      });
-      node_qual_type.MarkError();
+      return context().set_qual_type(node, type::QualType::Error());
     }
+  }
 
-    return context().set_qual_type(&node->ids()[0], node_qual_type);
+  if (node_qual_types.size() != node->ids().size()) {
+    return type::QualType::ErrorSpan();
+  }
+
+  size_t i = 0;
+  for (auto const &id : node->ids()) {
+    absl::Cleanup c = [&] { ++i; };
+    if (id.name().empty()) {
+      if (node_qual_types[i].type() == type::Module) {
+        // TODO: check if it's constant?
+        // TODO: check shadowing against other modules?
+        // TODO: what if no init val is provded? what if not constant?
+
+        if (auto maybe_mod =
+                EvaluateOrDiagnoseAs<ir::ModuleId>(node->init_val())) {
+          // TODO: In generic contexts it doesn't make sense to place this on
+          // the AST.
+          node->scope()->embed(&maybe_mod->get<LibraryModule>()->scope());
+        } else {
+          node_qual_types[i].MarkError();
+        }
+      } else {
+        diag().Consume(DeclaringHoleAsNonModule{
+            .type  = node_qual_types[i].type(),
+            .range = node->range(),
+        });
+        node_qual_types[i].MarkError();
+      }
+
+      return context().set_qual_types(&node->ids()[0], node_qual_types);
+    }
   }
 
   // Gather all declarations with the same identifer that are visible in this
@@ -395,13 +413,12 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Declaration const *no
   // to see if we have saved the result of this declaration. We can also skip
   // out if the result was an error.
 
-  std::vector<type::Type> types;
-  type::Quals quals = node_qual_type.quals();
-  size_t i = 0;
-  node_qual_type.ForEach([&](type::Type t) {
-    types.push_back(t);
-    auto &id = node->ids()[i++];
-    type::Typed<ast::Declaration::Id const *> typed_id(&id, t);
+  i = 0;
+  for (auto const &id : node->ids()) {
+    absl::Cleanup c = [&] { ++i; };
+
+    type::Typed<ast::Declaration::Id const *> typed_id(
+        &id, node_qual_types[i].type());
     // TODO: struct field decls shouldn't have issues with shadowing local
     // variables.
     for (auto const *accessible_id :
@@ -412,7 +429,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Declaration const *no
       if (Shadow(typed_id, type::Typed<ast::Declaration::Id const *>(
                                &id, qts[0].type()))) {
         // TODO: If one of these declarations shadows the other
-        node_qual_type.MarkError();
+        node_qual_types[i].MarkError();
 
         diag().Consume(ShadowingDeclaration{
             .range1 = node->range(),
@@ -420,15 +437,21 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Declaration const *no
         });
       }
     }
+  }
+  auto span = context().set_qual_types(node, node_qual_types);
 
-    context().set_qual_type(&id, type::QualType(t, quals));
-  });
+  i = 0;
+  for (auto const &id : node->ids()) {
+    absl::Cleanup c = [&] { ++i; };
+    context().set_qual_types(&id, absl::MakeConstSpan(&span[i], 1));
+  }
 
   // TODO: verify special function signatures (copy, move, etc).
-  return context().set_qual_type(node, type::QualType(types, quals));
+  return span;
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::Declaration::Id const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::Declaration::Id const *node) {
   LOG("Declaration::Id", "Verifying %s", node->name());
   return VerifyType(&node->declaration());
 }

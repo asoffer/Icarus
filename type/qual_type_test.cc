@@ -26,16 +26,10 @@ TEST(QualType, Regularity) {
             type::QualType::NonConstant(type::I64));
 
   EXPECT_EQ(type::QualType::NonConstant(type::I32),
-            type::QualType({type::I32}, type::Quals::Unqualified()));
+            type::QualType(type::I32, type::Quals::Unqualified()));
 
   EXPECT_EQ(type::QualType::Constant(type::I32),
-            type::QualType({type::I32}, type::Quals::Const()));
-
-  EXPECT_EQ(type::QualType({type::I32, type::Bool}, type::Quals::Const()),
-            type::QualType({type::I32, type::Bool}, type::Quals::Const()));
-  EXPECT_NE(
-      type::QualType({type::I32, type::Bool}, type::Quals::Unqualified()),
-      type::QualType({type::I32, type::Bool}, type::Quals::Const()));
+            type::QualType(type::I32, type::Quals::Const()));
 
   auto q = type::QualType::Constant(type::I64);
 
@@ -70,13 +64,6 @@ TEST(QualType, Streaming) {
     ss << q;
     EXPECT_EQ(ss.str(), "[](bool)");
   }
-
-  {
-    std::stringstream ss;
-    auto q = type::QualType({type::I64, type::Bool}, type::Quals::Const());
-    ss << q;
-    EXPECT_EQ(ss.str(), "[const](i64, bool)");
-  }
 }
 
 TEST(QualType, Ok) {
@@ -84,35 +71,6 @@ TEST(QualType, Ok) {
   EXPECT_FALSE(type::QualType::Error());
   EXPECT_TRUE(type::QualType::Constant(type::Bool).ok());
   EXPECT_TRUE(type::QualType::Constant(type::Bool));
-}
-
-TEST(QualType, ExpansionSize) {
-  EXPECT_EQ(type::QualType::Constant(type::I32).expansion_size(), 1);
-  EXPECT_EQ(
-      type::QualType({type::I32}, type::Quals::Const()).expansion_size(), 1);
-
-  EXPECT_EQ(type::QualType(absl::Span<type::Type const>{}, type::Quals::Const())
-                .expansion_size(),
-            0);
-  EXPECT_EQ(type::QualType({type::I32, type::Bool}, type::Quals::Const())
-                .expansion_size(),
-            2);
-}
-
-TEST(QualType, ForEach) {
-  {
-    MockFunction<void(type::Type)> mock_fn;
-    EXPECT_CALL(mock_fn, Call(type::Bool)).Times(1);
-    type::QualType::Constant(type::Bool).ForEach(mock_fn.AsStdFunction());
-  }
-
-  {
-    MockFunction<void(type::Type)> mock_fn;
-    EXPECT_CALL(mock_fn, Call(type::Bool)).Times(1);
-    EXPECT_CALL(mock_fn, Call(type::I64)).Times(1);
-    type::QualType({type::Bool, type::I64}, type::Quals::Const())
-        .ForEach(mock_fn.AsStdFunction());
-  }
 }
 
 TEST(QualType, RemoveConstant) {
@@ -137,11 +95,6 @@ TEST(QualType, RemoveConstant) {
     EXPECT_NE(qt, type::QualType::Error());
     EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
   }
-}
-
-TEST(QualType, EmptyVector) {
-  type::QualType qt(std::vector<type::Type>{}, type::Quals::Unqualified());
-  EXPECT_TRUE(qt.ok());
 }
 
 TEST(QualType, Error) {

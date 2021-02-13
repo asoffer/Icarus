@@ -2,7 +2,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/verify/internal/qual_type_iterator.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
 #include "type/struct.h"
@@ -141,7 +140,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
   for (auto const *assignment : node->assignments()) {
     auto &back = initializer_qts.emplace_back();
     for (auto const *expr : assignment->rhs()) {
-      back.push_back(VerifyType(expr)[0]);
+      auto span = VerifyType(expr);
+      back.insert(back.end(), span.begin(), span.end());
     }
   }
 
@@ -200,11 +200,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
       }
     }
 
-    internal::QualTypeIterator qt_iter(initializer_iter->begin());
-    internal::QualTypeIterator const qt_end(initializer_iter->end());
+    auto qt_iter = initializer_iter->begin();
 
     for (auto const *field : assignment->lhs()) {
       std::string_view field_name   = field->as<ast::Identifier>().name();
+      ASSERT(qt_iter != initializer_iter->end());
       type::QualType initializer_qt = *qt_iter;
       ++qt_iter;
 
@@ -225,7 +225,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
       if (not type::CanCastImplicitly(lhs_type, rhs_type)) {
         diag().Consume(InvalidInitializerType{
             .expected = rhs_type,
-            .actual   = initializer_qt.type(),
+            .actual   = lhs_type,
             .range    = field->range(),
         });
         recovered_error = true;

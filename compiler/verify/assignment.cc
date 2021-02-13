@@ -2,7 +2,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/verify/common.h"
-#include "compiler/verify/internal/qual_type_iterator.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
 
@@ -76,15 +75,15 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Assignment const *nod
     rhs_qts.push_back(qt);
   }
 
-  internal::QualTypeIterator lhs_iter(lhs_qts.begin());
-  internal::QualTypeIterator rhs_iter(rhs_qts.begin());
+  auto lhs_iter = lhs_qts.begin();
+  auto rhs_iter = rhs_qts.begin();
 
-  internal::QualTypeIterator const lhs_end(
-      (first_lhs_error_index == -1) ? lhs_qts.end()
-                                    : lhs_qts.begin() + first_lhs_error_index);
-  internal::QualTypeIterator const rhs_end(
-      (first_rhs_error_index == -1) ? rhs_qts.end()
-                                    : rhs_qts.begin() + first_rhs_error_index);
+  auto lhs_end = (first_lhs_error_index == -1)
+                     ? lhs_qts.end()
+                     : lhs_qts.begin() + first_lhs_error_index;
+  auto rhs_end = (first_rhs_error_index == -1)
+                     ? rhs_qts.end()
+                     : rhs_qts.begin() + first_rhs_error_index;
 
   while (true) {
     if (lhs_iter == lhs_end or rhs_iter == rhs_end) { break; }

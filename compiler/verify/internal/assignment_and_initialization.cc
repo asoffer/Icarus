@@ -57,36 +57,17 @@ bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
     }
   }
 
-  size_t expansion_size = to.expansion_size();
-  if (expansion_size != from.expansion_size()) {
-    using DiagnosticType =
-        std::conditional_t<IsInit, MismatchedInitializationCount,
-                           MismatchedAssignmentCount>;
-    diag.Consume(DiagnosticType{.to    = to.expansion_size(),
-                                .from  = from.expansion_size(),
-                                .range = range});
-    return false;
-  }
-
-  type::Type to_type =
-      expansion_size == 1
-          ? to.type()
-          : type::Tup({to.expanded().begin(), to.expanded().end()});
-  type::Type from_type =
-      expansion_size == 1
-          ? from.type()
-          : type::Tup({from.expanded().begin(), from.expanded().end()});
-
   if constexpr (not IsInit) {
     // Initializations do not care about movability.
-    if (not from_type.get()->IsMovable()) {
-      diag.Consume(ImmovableType{.from = from_type, .range = range});
+    if (not from.type().get()->IsMovable()) {
+      diag.Consume(ImmovableType{.from = from.type(), .range = range});
       return false;
     }
   }
 
-  if (not type::CanCastImplicitly(from_type, to_type)) {
-    diag.Consume(InvalidCast{.from = from_type, .to = to_type, .range = range});
+  if (not type::CanCastImplicitly(from.type(), to.type())) {
+    diag.Consume(
+        InvalidCast{.from = from.type(), .to = to.type(), .range = range});
     return false;
   } else {
     return true;

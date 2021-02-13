@@ -2,7 +2,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/verify/common.h"
-#include "compiler/verify/internal/qual_type_iterator.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"

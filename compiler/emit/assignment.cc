@@ -41,12 +41,11 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
 
   auto temp_iter = temps.begin();
   for (auto const *r : node->rhs()) {
-    auto from_qt          = context().qual_types(r)[0];
-    size_t expansion_size = from_qt.expansion_size();
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> temp_span(
-        &*temp_iter, expansion_size);
+    auto from_qt = context().qual_types(r)[0];
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> temp_span(&*temp_iter,
+                                                                 1);
     EmitMoveAssign(r, temp_span);
-    temp_iter += expansion_size;
+    ++temp_iter;
   }
 
   for (auto temp_iter = temps.begin(), ref_iter = lhs_refs.begin();

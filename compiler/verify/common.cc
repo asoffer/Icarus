@@ -374,10 +374,12 @@ type::QualType Compiler::VerifyUnaryOverload(
   }
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(operand);
+
+  // TODO: Check that we only have one return type on each of these overloads.
   return type::QualType(
       type::MakeOverloadSet(std::move(member_types))
-          ->return_types(
-              core::Arguments<type::Typed<ir::Value>>(std::move(pos_args), {})),
+          ->return_types(core::Arguments<type::Typed<ir::Value>>(
+              std::move(pos_args), {}))[0],
       type::Quals::Unqualified());
 }
 
@@ -401,10 +403,11 @@ type::QualType Compiler::VerifyBinaryOverload(
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(lhs);
   pos_args.emplace_back(rhs);
+  // TODO: Check that we only have one return type on each of these overloads.
   return type::QualType(
       type::MakeOverloadSet(std::move(member_types))
-          ->return_types(
-              core::Arguments<type::Typed<ir::Value>>(std::move(pos_args), {})),
+          ->return_types(core::Arguments<type::Typed<ir::Value>>(
+              std::move(pos_args), {}))[0],
       type::Quals::Unqualified());
 }
 
@@ -566,7 +569,10 @@ Compiler::VerifyCallResult Compiler::VerifyCall(
   context().SetViableOverloads(call_expr->callee(), std::move(os));
 
   ASSERT(return_types.size() == 1u);
-  return type::QualType(return_types.front(), quals);
+  std::vector<type::QualType> qts;
+  qts.reserve(return_types.front().size());
+  for (type::Type t : return_types.front()) { qts.emplace_back(t, quals); }
+  return qts;
 }
 
 std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
