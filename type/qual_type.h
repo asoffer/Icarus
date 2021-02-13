@@ -107,12 +107,6 @@ inline std::ostream &operator<<(std::ostream &os, Quals quals) {
   return os << "]";
 }
 
-namespace internal_type {
-
-absl::Span<Type const> AddPack(absl::Span<Type const> types);
-
-}  // namespace internal_type
-
 struct QualType {
   static absl::Span<type::QualType const> ErrorSpan();
 
