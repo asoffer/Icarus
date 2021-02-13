@@ -86,6 +86,11 @@ struct Quals {
   friend bool operator<=(Quals lhs, Quals rhs) { return (lhs | rhs) == rhs; }
   friend bool operator>=(Quals lhs, Quals rhs) { return rhs <= lhs; }
 
+  template <typename H>
+  friend H AbslHashValue(H h, Quals const &q) {
+    return H::combine(std::move(h), q.val_);
+  }
+
   // private:
   friend struct QualType;
   constexpr explicit Quals(uint8_t val) : val_(val) {}
@@ -110,20 +115,11 @@ inline std::ostream &operator<<(std::ostream &os, Quals quals) {
 struct QualType {
   static absl::Span<type::QualType const> ErrorSpan();
 
-  constexpr explicit QualType() : QualType(nullptr, Quals::Unqualified()) {}
+  explicit QualType() : QualType(Type(), Quals::Unqualified()) {}
+  explicit QualType(Type t, Quals quals)
+      : type_(t), quals_(quals), error_(false) {}
 
-  constexpr explicit QualType(std::nullptr_t, Quals quals)
-      : data_(static_cast<uintptr_t>(quals.val_)) {}
-
-  // Use SFINAE  to disable braced-initialization for the type parameter. This
-  // allows it to fallback to meaning the vector initializer.
-  template <typename Arg,
-            std::enable_if_t<std::is_convertible_v<Arg, Type>, int> = 0>
-  explicit QualType(Arg t, Quals quals)
-      : data_(reinterpret_cast<uintptr_t>(Type(t).if_as<LegacyType>()) |
-              static_cast<uintptr_t>(quals.val_)) {}
-
-  static QualType Error() { return QualType(nullptr, Quals::Unqualified()); }
+  static QualType Error() { return QualType(); }
 
   static QualType Constant(Type t) { return QualType(t, Quals::Const()); }
 
@@ -131,10 +127,7 @@ struct QualType {
     return QualType(t, Quals::Unqualified());
   }
 
-  Type type() const {
-    return reinterpret_cast<LegacyType const *>(
-        data_ & ~static_cast<uintptr_t>(Quals::All().val_));
-  }
+  Type type() const { return type_; }
 
   // Sets an indicator on this QualType indicating that the expression with this
   // `QualType` is indeed known to have this type but that the was an
@@ -155,28 +148,19 @@ struct QualType {
   constexpr void MarkError() { error_ = true; }
   constexpr bool HasErrorMark() const { return error_ or not ok(); }
 
-  constexpr Quals quals() const { return Quals(data_ & 0x7); }
-  constexpr void set_quals(Quals q) {
-    data_ &= ~uintptr_t{0x7};
-    data_ |= static_cast<uintptr_t>(q.val_);
-  }
+  constexpr Quals quals() const { return quals_; }
+  constexpr void set_quals(Quals q) { quals_ = q; }
 
-  constexpr void remove_constant() {
-    auto low_bits = data_ & 0x7;
-    data_ &= ~uintptr_t{0x7};
-    data_ |= (low_bits & (~Quals::Const()).val_);
-  }
-  constexpr bool constant() const { return (quals() & Quals::Const()).val_; }
+  constexpr void remove_constant() { quals_ &= ~Quals::Const(); }
+  constexpr bool constant() const { return (quals_ & Quals::Const()).val_; }
 
-  bool ok() const { return type() != nullptr; }
+  bool ok() const { return type() != Type(); }
   explicit operator bool() const { return ok(); }
 
   constexpr QualType const &operator*() const { return *this; }
 
   friend bool operator==(QualType lhs, QualType rhs) {
-    // Even when these are holding pointers to expanded data, it's okay to test
-    // for equality because we deduplicate them on insertion.
-    return lhs.data_ == rhs.data_;
+    return lhs.type_ == rhs.type_ and lhs.quals_ == rhs.quals_;
   }
 
   friend bool operator!=(QualType lhs, QualType rhs) { return !(lhs == rhs); }
@@ -185,7 +169,7 @@ struct QualType {
   friend H AbslHashValue(H h, QualType q) {
     // Even when these are holding pointers to expanded data, it's okay to hash
     // because we deduplicate them on insertion.
-    return H::combine(std::move(h), q.data_);
+    return H::combine(std::move(h), q.type_, q.quals_, q.error_);
   }
 
   friend std::ostream &operator<<(std::ostream &os, QualType q);
@@ -197,8 +181,9 @@ struct QualType {
   }
 
  private:
-  uintptr_t data_  = 0;
-  bool error_ = 0;
+  Type type_;
+  Quals quals_;
+  bool error_;
 };
 
 }  // namespace type

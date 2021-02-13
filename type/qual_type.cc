@@ -11,7 +11,8 @@
 namespace type {
 namespace {
 
-constexpr QualType kError;
+// TODO: Make this constexpr again.
+QualType kError;
 
 }  // namespace
 
