@@ -63,14 +63,15 @@ struct Struct : public LegacyType {
   Completeness completeness() const override { return completeness_; }
   void complete() { completeness_ = Completeness::Complete; }
 
-  // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string_view name) const;
+  Field const *constant(std::string_view name) const;
 
   module::BasicModule const *defining_module() const { return mod_; }
 
   core::Bytes offset(size_t n, core::Arch const &arch) const;
 
   absl::Span<Field const> fields() const { return fields_; }
+  absl::Span<Field const> constants() const { return constants_; }
   size_t index(std::string_view name) const;
 
   module::BasicModule const *mod_ = nullptr;
@@ -78,12 +79,13 @@ struct Struct : public LegacyType {
 
   // TODO: Make these private.
   std::vector<ir::Hashtag> hashtags;
-  std::vector<Field> fields_;
+  std::vector<Field> fields_, constants_;
   std::optional<ir::Fn> init_, user_dtor_, dtor_;
 
  private:
   friend struct StructInstruction;
 
+  void AppendConstants(std::vector<Struct::Field> constants);
   void AppendFields(std::vector<Field> fields);
   void SetDestructor(ir::Fn dtor);
   void SetInits(absl::Span<ir::Fn const> move_inits,
@@ -181,6 +183,7 @@ struct StructInstruction
 
   // TODO: Store a special type indicating that the struct is incomplete.
   Struct *struct_;
+  std::vector<Field> constants;
   std::vector<Field> fields;
   std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
       copy_assignments;

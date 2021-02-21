@@ -52,6 +52,7 @@ string ::= struct {
 
   (destroy) ::= (self: *string) -> () { free(self._data) }
 
+  #{export}
   make ::= (fill: char, len: u64) -> string {
     buffer := malloc(len + 1 as u64)
     memset(buffer, fill as i8 as i32, len)

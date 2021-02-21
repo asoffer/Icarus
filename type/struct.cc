@@ -15,6 +15,15 @@ Struct::Struct(module::BasicModule const *mod, Struct::Options options)
                                    .has_destructor = 0}),
       mod_(mod) {}
 
+void Struct::AppendConstants(std::vector<Struct::Field> constants) {
+  constants_ = std::move(constants);
+  size_t i   = 0;
+  for (auto const &constant : constants_) {
+    ASSERT(constant.type.valid() == true);
+    field_indices_.emplace(constant.name, i++);
+  }
+}
+
 void Struct::AppendFields(std::vector<Struct::Field> fields) {
   completeness_ = Completeness::DataComplete;
   fields_       = std::move(fields);
@@ -119,6 +128,13 @@ Struct::Field const *Struct::field(std::string_view name) const {
   return &fields_[iter->second];
 }
 
+Struct::Field const *Struct::constant(std::string_view name) const {
+  for (auto &constant : constants_) {
+    if (constant.name == name) { return &constant; }
+  }
+  return nullptr;
+}
+
 void Struct::WriteTo(std::string *result) const {
   result->append("struct.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
@@ -147,6 +163,30 @@ core::Alignment Struct::alignment(core::Arch const &a) const {
 }
 
 void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
+  std::vector<Struct::Field> constant_fields;
+  constant_fields.reserve(constants.size());
+  for (auto const &constant : constants) {
+    absl::flat_hash_set<ir::Hashtag> tags;
+    if (constant.exported()) { tags.insert(ir::Hashtag::Export); }
+
+    if (ir::Value const *init_val = constant.initial_value()) {
+      // TODO: constant.type() can be null. If the type is inferred from the
+      // initial value.
+      Type t = ctx.resolve(constant.type());
+      constant_fields.push_back(
+          Struct::Field{.name          = std::string(constant.name()),
+                        .type          = t,
+                        .initial_value = *init_val,
+                        .hashtags      = std::move(tags)});
+    } else {
+      constant_fields.push_back(
+          Struct::Field{.name          = std::string(constant.name()),
+                        .type          = ctx.resolve(constant.type()),
+                        .initial_value = ir::Value(),
+                        .hashtags      = std::move(tags)});
+    }
+  }
+
   std::vector<Struct::Field> struct_fields;
   struct_fields.reserve(fields.size());
   for (auto const &field : fields) {
@@ -169,6 +209,7 @@ void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
     }
   }
 
+  struct_->AppendConstants(std::move(constant_fields));
   struct_->AppendFields(std::move(struct_fields));
   struct_->SetInits(move_inits, copy_inits);
   struct_->SetAssignments(move_assignments, copy_assignments);

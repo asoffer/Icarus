@@ -85,9 +85,9 @@ ir::CompiledJump *Context::jump(ast::Jump const *expr) {
 
 absl::Span<type::QualType const> Context::qual_types(
     ast::Expression const *expr) const {
-  absl::Span<type::QualType const> qts = maybe_qual_type(expr);
-  ASSERT(qts.data() != nullptr);
-  return qts;
+  auto iter = qual_types_.find(expr);
+  if (iter != qual_types_.end()) { return iter->second; }
+  return ASSERT_NOT_NULL(parent())->qual_types(expr);
 }
 
 absl::Span<type::QualType const> Context::maybe_qual_type(

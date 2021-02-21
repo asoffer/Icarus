@@ -205,6 +205,20 @@ type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
     return qt;
   }
 
+  if (auto *s = evaled_type.if_as<type::Struct>()) {
+    auto const *member = s->constant(node->member_name());
+    if (member) {
+      std::vector<ast::Declaration::Id const *> ids;
+      auto const *ast_struct = c.context().ast_struct(s);
+      for (auto const &decl : ast_struct->as<ast::StructLiteral>().fields()) {
+        if (not(decl.flags() & ast::Declaration::f_IsConst)) { continue; }
+        for (auto const &id : decl.ids()) { ids.push_back(&id); }
+      }
+      c.context().SetAllOverloads(node, ast::OverloadSet(ids));
+      return type::QualType::Constant(member->type);
+    }
+  }
+
   // TODO: Determine whether structs are allowed to have constant members
   // accessible through the type-name. At the moment this is not allowed.
   c.diag().Consume(TypeHasNoMembers{
@@ -234,7 +248,7 @@ type::QualType AccessStructMember(Compiler &c, ast::Access const *node,
   ASSERT(s->completeness() >= type::Completeness::DataComplete);
 
   auto const *member = s->field(node->member_name());
-  if (member == nullptr) {
+  if (not member) {
     c.diag().Consume(MissingMember{
         .expr_range   = node->operand()->range(),
         .member_range = node->member_range(),

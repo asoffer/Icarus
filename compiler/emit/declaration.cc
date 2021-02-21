@@ -38,18 +38,19 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
     }
 
     // TODO: Support multiple declarations
-    auto t = c.context().qual_types(&node->ids()[0])[0].type();
+    auto qts = c.context().qual_types(&node->ids()[0]);
+    auto t   = qts[0].type();
 
     if (auto const *init_val = node->initial_value()) {
       LOG("Declaration", "Computing slot with %s",
           node->initial_value()->DebugString());
 
-      if (t.get()->is_big()) {
+      if (t.is_big()) {
         auto value_buffer = c.EvaluateToBufferOrDiagnose(
             type::Typed<ast::Expression const *>(node->initial_value(), t));
         if (value_buffer.empty()) { return ir::Value(); }
 
-        LOG("EmitValueDeclaration", "Setting slot = %s", value_buffer);
+        LOG("EmitConstatnDeclaration", "Setting slot = %s", value_buffer);
         // TODO: Support multiple declarations
         return c.context().SetConstant(&node->ids()[0], std::move(value_buffer));
       } else {
@@ -62,7 +63,7 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
           return ir::Value();
         }
 
-        LOG("EmitValueDeclaration", "Setting slot = %s", *maybe_val);
+        LOG("EmitConstantDeclaration", "Setting slot = %s", *maybe_val);
         // TODO: Support multiple declarations
         c.context().SetConstant(&node->ids()[0], *maybe_val);
 

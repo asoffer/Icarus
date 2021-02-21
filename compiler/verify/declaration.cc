@@ -440,6 +440,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
   }
   auto span = context().set_qual_types(node, node_qual_types);
 
+  ASSERT(span.size() == node->ids().size());
   i = 0;
   for (auto const &id : node->ids()) {
     absl::Cleanup c = [&] { ++i; };

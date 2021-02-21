@@ -149,7 +149,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     // Factor these out together.
     c.builder().CurrentBlock() = fn.entry();
 
-    std::vector<type::StructInstruction::Field> ir_fields;
+    std::vector<type::StructInstruction::Field> ir_fields, constants;
 
     bool has_field_needing_destruction = false;
     std::optional<ir::Fn> user_dtor;
@@ -182,12 +182,15 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           }
         } else {
           type::Type field_type;
+          auto &fields =
+              (id.declaration().flags() & ast::Declaration::f_IsConst)
+                  ? constants
+                  : ir_fields;
           if (auto const *init_val = id.declaration().init_val()) {
             // TODO init_val type may not be the same.
             field_type = c.context().qual_types(init_val)[0].type();
-            ir_fields.emplace_back(id.name(), field_type,
-                                   c.EmitValue(init_val));
-            ir_fields.back().set_export(
+            fields.emplace_back(id.name(), field_type, c.EmitValue(init_val));
+            fields.back().set_export(
                 id.declaration().hashtags.contains(ir::Hashtag::Export));
           } else {
             // TODO: Failed evaluation
@@ -196,8 +199,8 @@ std::optional<ir::CompiledFn> StructCompletionFn(
             field_type =
                 c.EvaluateOrDiagnoseAs<type::Type>(id.declaration().type_expr())
                     .value();
-            ir_fields.emplace_back(id.name(), field_type);
-            ir_fields.back().set_export(
+            fields.emplace_back(id.name(), field_type);
+            fields.back().set_export(
                 id.declaration().hashtags.contains(ir::Hashtag::Export));
           }
           has_field_needing_destruction = has_field_needing_destruction or
@@ -247,6 +250,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 
     c.current_block()->Append(
         type::StructInstruction{.struct_          = s,
+                                .constants        = std::move(constants),
                                 .fields           = std::move(ir_fields),
                                 .move_inits       = std::move(move_inits),
                                 .copy_inits       = std::move(copy_inits),

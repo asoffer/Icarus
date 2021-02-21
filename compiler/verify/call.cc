@@ -346,7 +346,6 @@ not_an_interface:
 
   if (auto const *c = callee_qt.type().if_as<type::Callable>()) {
     auto qual_type = VerifyCall(node, overload_map, arg_vals);
-    LOG("Call", "Call qual-type is %s", qual_type);
     if (not qual_type) {
       diag().Consume(UncallableWithArguments{
           .error = std::move(qual_type).error(),
@@ -354,6 +353,7 @@ not_an_interface:
       });
       return context().set_qual_type(node, type::QualType::Error());
     }
+    LOG("Call", "Call qual-type is %s on %p", *qual_type, &context());
     // TODO: under what circumstances can we prove that the implementation
     // doesn't need to be run at runtime?
     return context().set_qual_types(node, *qual_type);
