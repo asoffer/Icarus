@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/instructions.h"
 #include "core/arguments.h"
 #include "ir/value/value.h"
 #include "type/type.h"
@@ -50,7 +51,7 @@ WorkItem::Result Compiler::EmitJumpBody(ast::Jump const *node) {
     // it'll never be executed.
     MakeAllDestructions(*this, &node->body_scope());
   }
-  jmp.WriteByteCode<interpreter::instruction_set_t>();
+  jmp.WriteByteCode<instruction_set_t>();
   return WorkItem::Result ::Success;
 }
 

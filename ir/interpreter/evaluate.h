@@ -1,120 +1,91 @@
 #ifndef ICARUS_IR_INTERPRETER_EVALUATE_H
 #define ICARUS_IR_INTERPRETER_EVALUATE_H
 
-#include <type_traits>
-
 #include "base/debug.h"
 #include "base/untyped_buffer.h"
 #include "ir/compiled_fn.h"
-#include "ir/instruction/arithmetic.h"
-#include "ir/instruction/compare.h"
-#include "ir/instruction/core.h"
-#include "ir/instruction/instructions.h"
-#include "ir/instruction/set.h"
+#include "ir/interpreter/architecture.h"
 #include "ir/interpreter/evaluation_result.h"
-#include "ir/value/char.h"
+#include "ir/interpreter/execution_context.h"
 #include "ir/value/value.h"
-#include "type/array.h"
-#include "type/enum.h"
-#include "type/flags.h"
-#include "type/function.h"
-#include "type/opaque.h"
-#include "type/pointer.h"
-#include "type/slice.h"
-#include "type/struct.h"
+#include "type/generic_struct.h"
 
 namespace interpreter {
 
-// TODO: Include ModInstruction, but only for non-floating-point types.
-template <typename... Ts>
-using ArithmeticInstructions =
-    ir::InstructionSet<ir::AddInstruction<Ts>..., ir::SubInstruction<Ts>...,
-                       ir::MulInstruction<Ts>..., ir::DivInstruction<Ts>...>;
-template <typename... Ts>
-using EqualityComparisonInstructions =
-    ir::InstructionSet<ir::EqInstruction<Ts>..., ir::NeInstruction<Ts>...>;
-template <typename... Ts>
-using OrderedComparisonInstructions =
-    ir::InstructionSet<ir::LtInstruction<Ts>..., ir::LeInstruction<Ts>...,
-                       EqualityComparisonInstructions<Ts...>>;
-template <typename... Ts>
-using CastInstructions = ir::InstructionSet<ir::CastInstruction<Ts>...>;
-
-struct instruction_set_t
-    : ir::InstructionSet<
-          ir::CoreInstructions, ir::AddInstruction<uint8_t>,
-          ArithmeticInstructions<uint8_t, int8_t, uint16_t, int16_t, uint32_t,
-                                 int32_t, uint64_t, int64_t, float, double>,
-          ir::PtrDiffInstruction, ir::ModInstruction<uint8_t>,
-          ir::ModInstruction<int8_t>, ir::ModInstruction<uint16_t>,
-          ir::ModInstruction<int16_t>, ir::ModInstruction<uint32_t>,
-          ir::ModInstruction<int32_t>, ir::ModInstruction<uint64_t>,
-          ir::ModInstruction<int64_t>,
-          EqualityComparisonInstructions<
-              bool, uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t,
-              uint64_t, int64_t, float, double, type::Type, ir::Addr>,
-          OrderedComparisonInstructions<ir::Char, uint8_t, int8_t, uint16_t,
-                                        int16_t, uint32_t, int32_t, uint64_t,
-                                        int64_t, float, double, ir::Addr>,
-          ir::NegInstruction<int8_t>, ir::NegInstruction<int16_t>,
-          ir::NegInstruction<int32_t>, ir::NegInstruction<int64_t>,
-          ir::NegInstruction<float>, ir::NegInstruction<double>,
-          CastInstructions<
-              ir::Char(uint8_t), ir::Char(int8_t), int8_t(ir::Char),
-              uint8_t(ir::Char), int16_t(ir::Char), uint16_t(ir::Char),
-              int32_t(ir::Char), uint32_t(ir::Char), int64_t(ir::Char),
-              uint64_t(ir::Char), uint8_t(int8_t), uint8_t(uint16_t),
-              uint8_t(int16_t), uint8_t(uint32_t), uint8_t(int32_t),
-              uint8_t(uint64_t), uint8_t(int64_t), uint8_t(float),
-              uint8_t(double), int8_t(uint8_t), int8_t(uint16_t),
-              int8_t(int16_t), int8_t(uint32_t), int8_t(int32_t),
-              int8_t(uint64_t), int8_t(int64_t), int8_t(float), int8_t(double),
-              uint16_t(uint8_t), uint16_t(int8_t), uint16_t(int16_t),
-              uint16_t(uint32_t), uint16_t(int32_t), uint16_t(uint64_t),
-              uint16_t(int64_t), uint16_t(float), uint16_t(double),
-              int16_t(uint8_t), int16_t(int8_t), int16_t(uint16_t),
-              int16_t(uint32_t), int16_t(int32_t), int16_t(uint64_t),
-              int16_t(int64_t), int16_t(float), int16_t(double),
-              uint32_t(uint8_t), uint32_t(int8_t), uint32_t(uint16_t),
-              uint32_t(int16_t), uint32_t(int32_t), uint32_t(uint64_t),
-              uint32_t(int64_t), uint32_t(float), uint32_t(double),
-              uint32_t(uint8_t), int32_t(int8_t), int32_t(uint16_t),
-              int32_t(int16_t), int32_t(uint32_t), int32_t(uint64_t),
-              int32_t(int64_t), int32_t(float), int32_t(double),
-              int32_t(uint8_t), uint64_t(int8_t), uint64_t(uint16_t),
-              uint64_t(int16_t), uint64_t(uint32_t), uint64_t(int32_t),
-              uint64_t(int64_t), uint64_t(float), uint64_t(double),
-              uint64_t(uint8_t), int64_t(int8_t), int64_t(uint16_t),
-              int64_t(int16_t), int64_t(uint32_t), int64_t(int32_t),
-              int64_t(uint64_t), int64_t(float), int64_t(double),
-              int64_t(uint8_t), float(int8_t), float(uint16_t), float(int16_t),
-              float(uint32_t), float(int32_t), float(uint64_t), float(int64_t),
-              float(double), double(int8_t), double(uint16_t), double(int16_t),
-              double(uint32_t), double(int32_t), double(uint64_t),
-              double(int64_t), double(float)>,
-          ir::NotInstruction, type::SliceInstruction, type::XorFlagsInstruction,
-          type::AndFlagsInstruction, type::OrFlagsInstruction,
-          type::PtrInstruction, type::BufPtrInstruction,
-          type::OpaqueTypeInstruction, type::FunctionTypeInstruction,
-          ir::LoadSymbolInstruction, type::ArrayInstruction,
-          type::StructInstruction, ir::MakeBlockInstruction,
-          ir::MakeScopeInstruction, ir::StructIndexInstruction,
-          ir::TupleIndexInstruction, ir::PtrIncrInstruction,
-          type::EnumInstruction, type::FlagsInstruction,
-          ir::TypeInfoInstruction, ir::InitInstruction, ir::DestroyInstruction,
-          ir::MoveInitInstruction, ir::CopyInitInstruction, ir::MoveInstruction,
-          ir::CopyInstruction, type::SliceLengthInstruction,
-          type::SliceDataInstruction, ir::DebugIrInstruction> {};
-
-void Execute(ir::Fn fn, base::untyped_buffer arguments,
-             absl::Span<ir::Addr const> ret_slots);
-
-EvaluationResult Evaluate(ir::CompiledFn &&fn);
+template <typename InstSet>
+void Execute(ir::CompiledFn &&fn) {
+  ASSERT(fn.type()->output().size() == 0u);
+  // TODO actually just have a good way to construct the buffer
+  LOG("Execute", "%s", fn);
+  ExecutionContext ctx;
+  ctx.Execute<InstSet>(&fn,
+                       base::untyped_buffer::MakeFull(
+                           (fn.type()->params().size() + fn.num_regs()) *
+                           ir::Value::value_size_v),
+                       {});
+}
 
 // TODO wrap output in expected.
-void Execute(ir::CompiledFn &&fn);
+template <typename InstSet>
+void Execute(ir::Fn fn, base::untyped_buffer arguments,
+             absl::Span<ir::Addr const> ret_slots) {
+  ExecutionContext ctx;
+  ctx.Execute<InstSet>(fn, std::move(arguments), ret_slots);
+}
 
-base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn);
+template <typename InstSet>
+base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
+  ASSERT(fn.type()->output().size() != 0u);
+  core::Bytes required = fn.type()->output()[0].bytes(kArchitecture);
+  auto ret_buf         = base::untyped_buffer::MakeFull(required.value());
+  std::vector<ir::Addr> ret_slots;
+
+  ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
+  // TODO actually just have a good way to construct the buffer
+  LOG("EvaluateToBuffer", "%s", fn);
+  ExecutionContext ctx;
+  ctx.Execute<InstSet>(&fn,
+                       base::untyped_buffer::MakeFull(
+                           (fn.type()->params().size() + fn.num_regs()) *
+                           ir::Value::value_size_v),
+                       ret_slots);
+  LOG("EvaluateToBuffer", "Result buffer = %s", ret_buf.to_string());
+  return ret_buf;
+}
+
+// TODO: why an r-value reference?
+template <typename InstSet>
+EvaluationResult Evaluate(ir::CompiledFn &&fn) {
+  LOG("Evaluate", "%s", fn);
+  auto buf = EvaluateToBuffer<InstSet>(std::move(fn));
+  std::vector<ir::Value> values;
+  values.reserve(fn.type()->output().size());
+
+  auto iter = buf.begin();
+  for (type::Type t : fn.type()->output()) {
+    if (t.get()->is_big()) {
+      ir::Addr addr = iter.template read<ir::Addr>();
+      values.push_back(ir::Value(addr));
+    } else if (t.is<type::GenericStruct>()) {
+      values.push_back(ir::Value(t));
+    } else {
+      type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
+                       uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                       type::Type, ir::Addr, ir::ModuleId, ir::Scope, ir::Fn,
+                       ir::Jump, ir::Block, ir::GenericFn>(
+          t, [&]<typename T>() {
+            T val = iter.template read<T>();
+            values.push_back(ir::Value(val));
+          });
+    }
+  }
+
+  switch (values.size()) {
+    case 0: return ir::Value();
+    case 1: return values[0];
+    default: NOT_YET();
+  }
+}
 
 }  // namespace interpreter
 

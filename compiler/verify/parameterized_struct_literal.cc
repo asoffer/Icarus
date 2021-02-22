@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/instructions.h"
 #include "compiler/library_module.h"
 #include "compiler/resources.h"
 #include "compiler/verify/common.h"
@@ -53,7 +54,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       auto fn = *std::move(maybe_fn);
 
       // TODO: What if execution fails.
-      interpreter::Execute(std::move(fn));
+      interpreter::Execute<instruction_set_t>(std::move(fn));
       LOG("ParameterizedStructLiteral",
           "Completed %s which is a (parameterized) struct %s with %u field(s).",
           node->DebugString(), *s, s->fields().size());

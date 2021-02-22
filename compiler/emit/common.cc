@@ -1,6 +1,7 @@
 #include <vector>
 
 #include "compiler/compiler.h"
+#include "compiler/instructions.h"
 #include "core/arguments.h"
 #include "core/params.h"
 #include "ir/value/value.h"
@@ -32,7 +33,7 @@ ir::Fn InsertGeneratedMoveInit(
   auto [fn, inserted] = c.context().root().InsertMoveInit(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {}
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
   }
   return fn;
 
@@ -44,7 +45,7 @@ ir::Fn InsertGeneratedCopyInit(
   auto [fn, inserted] = c.context().root().InsertCopyInit(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {}
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
   }
   return fn;
 
@@ -81,7 +82,7 @@ ir::Fn InsertGeneratedMoveAssign(
 
       c.builder().ReturnJump();
     }
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
   }
   return fn;
 }
@@ -117,7 +118,7 @@ ir::Fn InsertGeneratedCopyAssign(
 
       c.builder().ReturnJump();
     }
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
   }
   return fn;
 }
@@ -229,7 +230,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           }
 
           c.builder().ReturnJump();
-          full_dtor->WriteByteCode<interpreter::instruction_set_t>();
+          full_dtor->WriteByteCode<instruction_set_t>();
 
           dtor = full_dtor;
         }
@@ -260,7 +261,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     c.builder().ReturnJump();
   }
 
-  fn.WriteByteCode<interpreter::instruction_set_t>();
+  fn.WriteByteCode<instruction_set_t>();
 
   return fn;
 }
@@ -285,7 +286,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     ASSIGN_OR(return WorkItem::Result::Failure,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
-    interpreter::Execute(std::move(fn));
+    interpreter::Execute<instruction_set_t>(std::move(fn));
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());
@@ -302,7 +303,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     ASSIGN_OR(return WorkItem::Result::Failure,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
-    interpreter::Execute(std::move(fn));
+    interpreter::Execute<instruction_set_t>(std::move(fn));
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());

@@ -4,6 +4,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/instructions.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
@@ -75,7 +76,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   ASSIGN_OR(return WorkItem::Result::Failure,  //
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
-  interpreter::Execute(std::move(fn));
+  interpreter::Execute<instruction_set_t>(std::move(fn));
   s->complete();
   LOG("StructLiteral", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());

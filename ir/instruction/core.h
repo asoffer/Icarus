@@ -12,12 +12,11 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
-#include "ir/interpreter/execution_context.h"
 #include "ir/out_params.h"
+#include "ir/value/fn.h"
 #include "ir/value/generic_fn.h"
 #include "ir/value/jump.h"
 #include "ir/value/reg_or.h"
-#include "type/util.h"
 
 namespace ir {
 // These instructions are required to appear in every instruction set. They
@@ -148,7 +147,8 @@ struct StoreInstruction
   static constexpr std::string_view kDebugFormat = "store %1$s into [%2$s]";
   using type                                     = T;
 
-  void Apply(interpreter::ExecutionContext& ctx) {
+  template <typename ExecContext>
+  void Apply(ExecContext& ctx) {
     ctx.Store(ctx.resolve(location), ctx.resolve(value));
   }
 
@@ -199,7 +199,7 @@ struct CallInstruction {
         if (t.is_big()) {
           writer->Write(arg.get<Addr>());
         } else {
-          type::Apply(t, [&]<typename T>() { writer->Write(arg.get<T>()); });
+          arg.apply([&](auto a) { writer->Write(a); });
         }
       }
       ++arg_index;
@@ -233,7 +233,8 @@ struct CommentInstruction
     return {};
   }
   void WriteByteCode(ByteCodeWriter*) const {}
-  void Apply(interpreter::ExecutionContext&) const {}
+  template <typename ExecContext>
+  void Apply(ExecContext&) const {}
 
   std::string comment;
 };

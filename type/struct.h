@@ -20,10 +20,6 @@
 #include "ir/value/value.h"
 #include "type/type.h"
 
-namespace ast {
-struct StructLiteral;
-}  // namespace ast
-
 namespace type {
 
 struct Struct : public LegacyType {

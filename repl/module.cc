@@ -6,6 +6,7 @@
 #include "ast/node.h"
 #include "base/log.h"
 #include "base/ptr_span.h"
+#include "compiler/instructions.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 
@@ -27,7 +28,8 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
     compiler->builder().ReturnJump();
   }
 
-  interpreter::Execute(&fn, base::untyped_buffer(0), {});
+  interpreter::Execute<compiler::instruction_set_t>(
+      &fn, base::untyped_buffer(0), {});
 }
 
 }  // namespace

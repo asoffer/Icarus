@@ -214,6 +214,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instructions",
         "//core:arguments",
         "//core:params",
         "//ir/value",
@@ -306,6 +307,7 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instructions",
         "//core:arguments",
         "//ir/value",
         "//ir/value:reg",
@@ -374,6 +376,7 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instructions",
         "//core:arguments",
         "//ir/value",
         "//ir/value:reg",
@@ -403,6 +406,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instructions",
         "//compiler/emit:common",
         "//ir/value",
         "//ir/value:addr",
@@ -454,8 +458,8 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instructions",
         "//ir:compiled_scope",
-        "//ir/instruction:inliner",
         "//ir/value:scope",
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/strings:str_format",
@@ -479,6 +483,7 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instructions",
         "//core:arguments",
         "//ir/value",
         "//ir/value:reg",
@@ -516,6 +521,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instructions",
     ],
 )
 
@@ -536,6 +542,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler/emit:common",
+        "//compiler:instructions",
         "//ir/value",
         "//ir/value:addr",
         "//ir/value:reg_or",

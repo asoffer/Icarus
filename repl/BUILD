@@ -20,6 +20,7 @@ cc_binary(
         ":module",
         ":source",
         "//ast:ast",
+        "//compiler:instructions",
         "//diagnostic/consumer:streaming",
         "@com_google_absl//absl/debugging:failure_signal_handler",
         "@com_google_absl//absl/debugging:symbolize",

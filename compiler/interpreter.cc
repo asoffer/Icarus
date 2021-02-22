@@ -19,6 +19,7 @@
 #include "base/untyped_buffer.h"
 #include "compiler/compiler.h"
 #include "compiler/executable_module.h"
+#include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
@@ -70,8 +71,8 @@ int Interpret(frontend::FileName const &file_name) {
 
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
-  main_fn.WriteByteCode<interpreter::instruction_set_t>();
-  interpreter::Execute(
+  main_fn.WriteByteCode<instruction_set_t>();
+  interpreter::Execute<instruction_set_t>(
       &main_fn, base::untyped_buffer::MakeFull(main_fn.num_regs() * 16), {});
 
   return 0;

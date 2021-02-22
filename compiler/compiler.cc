@@ -5,6 +5,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/executable_module.h"
+#include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
@@ -78,7 +79,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     c.builder().ReturnJump();
   }
 
-  fn.WriteByteCode<interpreter::instruction_set_t>();
+  fn.WriteByteCode<instruction_set_t>();
 
   return fn;
 }
@@ -90,7 +91,8 @@ interpreter::EvaluationResult Compiler::Evaluate(
   auto thunk             = MakeThunk(c, *expr, expr.type());
   c.CompleteWorkQueue();
   c.CompleteDeferredBodies();
-  return interpreter::Evaluate(std::move(thunk));
+  return interpreter::Evaluate<instruction_set_t>(
+      std::move(thunk));
 }
 
 base::untyped_buffer Compiler::EvaluateToBufferOrDiagnose(
@@ -100,7 +102,8 @@ base::untyped_buffer Compiler::EvaluateToBufferOrDiagnose(
   auto thunk = MakeThunk(c, *expr, expr.type());
   c.CompleteWorkQueue();
   c.CompleteDeferredBodies();
-  return interpreter::EvaluateToBuffer(std::move(thunk));
+  return interpreter::EvaluateToBuffer<instruction_set_t>(
+      std::move(thunk));
 }
 
 ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {

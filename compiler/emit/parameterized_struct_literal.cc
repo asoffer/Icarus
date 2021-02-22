@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/instructions.h"
 #include "ir/value/value.h"
 #include "type/struct.h"
 #include "type/type.h"
@@ -29,7 +30,7 @@ WorkItem::Result Compiler::CompleteStruct(
   ASSIGN_OR(return WorkItem::Result::Failure,  //
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
-  interpreter::Execute(std::move(fn));
+  interpreter::Execute<instruction_set_t>(std::move(fn));
   s->complete();
   LOG("struct", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());

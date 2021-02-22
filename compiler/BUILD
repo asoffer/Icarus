@@ -27,6 +27,31 @@ cc_test(
 )
 
 cc_library(
+    name = "instructions",
+    hdrs = ["instructions.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//type:array",
+        "//type:enum",
+        "//type:flags",
+        "//type:function",
+        "//type:opaque",
+        "//type:pointer",
+        "//type:slice",
+        "//type:struct",
+        "//type:generic_struct",
+        "//type:generic_function",
+        "//ir/instruction:arithmetic",
+        "//ir/instruction:compare",
+        "//ir/instruction:core",
+        "//ir/instruction:set",
+        "//ir/value",
+        "//ir/value:char",
+        "//ir/value:generic_fn",
+    ],
+)
+
+cc_library(
     name = "resources",
     hdrs = ["resources.h"],
     deps = [
@@ -126,6 +151,7 @@ cc_library(
     deps = [
         ":context",
         ":cyclic_dependency_tracker",
+        ":instructions",
         ":module",
         ":transient_state",
         "//ast",
@@ -156,6 +182,7 @@ cc_library(
         ":compiler_header",
         ":context",
         ":executable_module",
+        ":instructions",
         ":module",
         "//ast",
         "//base:log",
@@ -305,6 +332,7 @@ cc_binary(
     deps = [
         ":compiler",
         ":executable_module",
+        ":instructions",
         "//base:log",
         "//base:no_destructor",
         "//base:untyped_buffer",

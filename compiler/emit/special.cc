@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/instructions.h"
 #include "ir/instruction/instructions.h"
 
 // TODO: Currently inserting these always at the root. There are a couple of
@@ -142,7 +143,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
       });
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
     // TODO: Remove const_cast.
     const_cast<type::Array *>(r.type())->SetInitializer(fn);
   }
@@ -161,7 +162,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
       });
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
     // TODO: Remove const_cast.
     const_cast<type::Array *>(r.type())->SetDestructor(fn);
   }
@@ -182,8 +183,8 @@ void SetArrayInits(Compiler &c, type::Array const *array_type) {
       EmitArrayInit<Move>(c, array_type, array_type);
     }
 
-    copy_fn->WriteByteCode<interpreter::instruction_set_t>();
-    move_fn->WriteByteCode<interpreter::instruction_set_t>();
+    copy_fn->WriteByteCode<instruction_set_t>();
+    move_fn->WriteByteCode<instruction_set_t>();
     // TODO: Remove const_cast.
     const_cast<type::Array *>(array_type)->SetInits(copy_fn, move_fn);
   }
@@ -203,8 +204,8 @@ void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
       EmitArrayAssignment<Move>(c, array_type, array_type);
     }
 
-    copy_fn->WriteByteCode<interpreter::instruction_set_t>();
-    move_fn->WriteByteCode<interpreter::instruction_set_t>();
+    copy_fn->WriteByteCode<instruction_set_t>();
+    move_fn->WriteByteCode<instruction_set_t>();
     // TODO: Remove const_cast.
     const_cast<type::Array *>(array_type)->SetAssignments(copy_fn, move_fn);
   }
@@ -430,7 +431,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
     }
     // TODO: Remove this hack.
     const_cast<type::Struct *>(r.type())->init_ = fn;
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
   }
   current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
 }
@@ -453,7 +454,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Tuple> const &r) {
 
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
   }
   current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
 }
@@ -472,7 +473,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> const &r) {
 
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
   }
   current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
@@ -504,7 +505,7 @@ void Compiler::EmitMoveAssign(
 
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
   }
 
   builder().Move(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
@@ -527,7 +528,7 @@ void Compiler::EmitCopyAssign(
 
       builder().ReturnJump();
     }
-    fn->WriteByteCode<interpreter::instruction_set_t>();
+    fn->WriteByteCode<instruction_set_t>();
   }
 
   builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));

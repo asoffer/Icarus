@@ -492,6 +492,7 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instructions",
         "//compiler:library_module",
         "//compiler:resources",
         "//compiler/emit:common",

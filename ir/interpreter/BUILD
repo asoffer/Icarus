@@ -22,10 +22,10 @@ cc_library(
     ],
 )
 
+
 cc_library(
     name = "evaluate",
     hdrs = ["evaluate.h"],
-    srcs = ["evaluate.cc"],
     visibility = ["//visibility:public"],
     deps = [
         ":architecture",
@@ -37,23 +37,6 @@ cc_library(
         "//ir:compiled_fn",
         "//ir:compiled_jump",
         "//ir/instruction",
-        "//ir/instruction:arithmetic",
-        "//ir/instruction:compare",
-        "//ir/instruction:core",
-        "//ir/instruction:set",
-        "//ir/value",
-        "//ir/value:char",
-        "//ir/value:generic_fn",
-        "//type:array",
-        "//type:enum",
-        "//type:flags",
-        "//type:function",
-        "//type:opaque",
-        "//type:pointer",
-        "//type:slice",
-        "//type:struct",
-        "//type:generic_struct",
-        "//type:generic_function",
     ],
 )
 
@@ -86,17 +69,21 @@ cc_library(
 cc_library(
     name = "execution_context",
     hdrs = ["execution_context.h"],
+    srcs = ["execution_context.cc"],
     visibility = ["//visibility:public"],
     deps = [
         ":foreign",
         ":stack_frame",
         "//base:untyped_buffer",
+        "//ir/instruction:core",
         "//ir:read_only_data",
         "//ir/value",
         "//ir/value:addr",
         "//ir/value:fn",
         "//ir/value:reg",
         "//ir/value:reg_or",
+        "//type:pointer",
+        "@com_google_absl//absl/cleanup",
     ],
 )
 

@@ -133,12 +133,10 @@ cc_library(
         ":debug",
         "//base:extend",
         "//ir/blocks:basic",
-        "//ir/interpreter:execution_context",
         "//ir:out_params",
         "//ir/value:generic_fn",
         "//ir/value:jump",
         "//ir/value:reg_or",
-        "//type:util",
         "@com_google_absl//absl/strings",
     ],
 )

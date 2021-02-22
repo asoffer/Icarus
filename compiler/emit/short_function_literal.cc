@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/instructions.h"
 #include "core/arguments.h"
 #include "ir/value/value.h"
 #include "type/type.h"
@@ -119,7 +120,7 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
     builder().ReturnJump();
   }
 
-  ir_func->WriteByteCode<interpreter::instruction_set_t>();
+  ir_func->WriteByteCode<instruction_set_t>();
   return WorkItem::Result::Success;
 }
 
