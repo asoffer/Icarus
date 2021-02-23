@@ -157,7 +157,7 @@ static base::Global kKeywords =
         {"copy", {Operator::Copy}},     {"init", {Operator::Init}},
         {"move", {Operator::Move}},     {"destroy", {Operator::Destroy}},
         {"and", {Operator::And}},       {"or", {Operator::Or}},
-        {"xor", {Operator::Xor}}};
+        {"xor", {Operator::Xor}},       {"not", {Operator::Not}}};
 
 static bool BeginsWith(std::string_view prefix, std::string_view s) {
   if (s.size() < prefix.size()) { return false; }
@@ -189,12 +189,12 @@ static base::Global kOps =
          {":=", {Operator::ColonEq}},     {".", {Syntax::Dot}},
          {":", {Operator::Colon}},        {"<<", {Operator::Yield}},
          {"<=", {Operator::Le}},          {"<", {Operator::Lt}},
-         {"!", {Operator::Not}},          {"==", {Operator::Eq}},
-         {"=>", {Operator::Rocket}},      {"=", {Operator::Assign}},
-         {"'", {Operator::Call}},         {"(", {Syntax::LeftParen}},
-         {")", {Syntax::RightParen}},     {"[", {Syntax::LeftBracket}},
-         {"]", {Syntax::RightBracket}},   {"{", {Syntax::LeftBrace}},
-         {"}", {Syntax::RightBrace}},     {";", {Syntax::Semicolon}}},
+         {"==", {Operator::Eq}},          {"=>", {Operator::Rocket}},
+         {"=", {Operator::Assign}},       {"'", {Operator::Call}},
+         {"(", {Syntax::LeftParen}},      {")", {Syntax::RightParen}},
+         {"[", {Syntax::LeftBracket}},    {"]", {Syntax::RightBracket}},
+         {"{", {Syntax::LeftBrace}},      {"}", {Syntax::RightBrace}},
+         {";", {Syntax::Semicolon}}},
     };
 
 Lexeme NextOperator(SourceCursor *cursor, Source *src) {

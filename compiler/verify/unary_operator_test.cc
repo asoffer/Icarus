@@ -384,7 +384,7 @@ TEST(Not, Bool) {
     mod.AppendCode(R"(
     b: bool
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("!b");
+    auto const *expr = mod.Append<ast::UnaryOperator>("not b");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts,
                 UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
@@ -396,7 +396,7 @@ TEST(Not, Bool) {
     mod.AppendCode(R"(
     b :: bool
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("!b");
+    auto const *expr = mod.Append<ast::UnaryOperator>("not b");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts,
                 UnorderedElementsAre(type::QualType::Constant(type::Bool)));
@@ -411,7 +411,7 @@ TEST(Not, Flags) {
     F ::= flags { A \\ B \\ C }
     f: F
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("!f");
+    auto const *expr = mod.Append<ast::UnaryOperator>("not f");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_TRUE(qts[0].type().is<type::Flags>());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -423,7 +423,7 @@ TEST(Not, Flags) {
     F ::= flags { A \\ B \\ C }
     f :: F
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("!f");
+    auto const *expr = mod.Append<ast::UnaryOperator>("not f");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_TRUE(qts[0].type().is<type::Flags>());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -436,7 +436,7 @@ TEST(Not, InvalidType) {
     mod.AppendCode(R"(
     n: i64
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("!n");
+    auto const *expr = mod.Append<ast::UnaryOperator>("not n");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -449,7 +449,7 @@ TEST(Not, InvalidType) {
     mod.AppendCode(R"(
     n :: i64
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("!n");
+    auto const *expr = mod.Append<ast::UnaryOperator>("not n");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -462,9 +462,9 @@ TEST(Not, Overload) {
   test::TestModule mod;
   mod.AppendCode(R"(
     S ::= struct {}
-    (!) ::= (s: S) -> i64 { return 0 }
+    (not) ::= (s: S) -> i64 { return 0 }
     )");
-  auto const *expr = mod.Append<ast::UnaryOperator>("!S.{}");
+  auto const *expr = mod.Append<ast::UnaryOperator>("not S.{}");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::I64)));
@@ -476,7 +476,7 @@ TEST(Not, MissingOverload) {
   mod.AppendCode(R"(
     S ::= struct {}
     )");
-  auto const *expr = mod.Append<ast::UnaryOperator>("!S.{}");
+  auto const *expr = mod.Append<ast::UnaryOperator>("not S.{}");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),

@@ -49,9 +49,9 @@ INSTANTIATE_TEST_SUITE_P(
                  .expr     = "[*]f()",
                  .expected = ir::Value(
                      static_cast<type::Type>(type::BufPtr(type::Bool)))},
-        TestCase{.expr = "!true", .expected = ir::Value(false)},
+        TestCase{.expr = "not true", .expected = ir::Value(false)},
         TestCase{.context  = "f ::= () => false",
-                 .expr     = "!f()",
+                 .expr     = "not f()",
                  .expected = ir::Value(true)},
         // TODO: Test flag negation. The problem is is we randomize the flag
         // values so we need a way to extract specific values. Perhaps this is

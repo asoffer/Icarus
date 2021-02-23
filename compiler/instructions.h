@@ -19,9 +19,9 @@
 
 namespace compiler {
 
-// TODO: Include ModInstruction, but only for non-floating-point types.
 namespace internal_instructions {
 
+// TODO: Include ModInstruction, but only for non-floating-point types.
 template <typename... Ts>
 using ArithmeticInstructions =
     ir::InstructionSet<ir::AddInstruction<Ts>..., ir::SubInstruction<Ts>...,
