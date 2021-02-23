@@ -206,10 +206,13 @@ type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
   }
 
   if (auto *s = evaled_type.if_as<type::Struct>()) {
-    auto const *member = s->constant(node->member_name());
-    if (member) {
+    if (auto const *member = s->constant(node->member_name())) {
       std::vector<ast::Declaration::Id const *> ids;
-      auto const *ast_struct = c.context().ast_struct(s);
+
+      auto const *ast_struct = s->defining_module()
+                                   ->as<compiler::CompiledModule>()
+                                   .context()
+                                   .ast_struct(s);
       for (auto const &decl : ast_struct->as<ast::StructLiteral>().fields()) {
         if (not(decl.flags() & ast::Declaration::f_IsConst)) { continue; }
         for (auto const &id : decl.ids()) { ids.push_back(&id); }

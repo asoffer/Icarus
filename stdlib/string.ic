@@ -21,6 +21,18 @@ string ::= struct {
   _length:   u64
   _capacity: u64
 
+  #{export}
+  make ::= (fill: char, len: u64) -> string {
+    buffer := malloc(len + 1 as u64)
+    memset(buffer, fill as i8 as i32, len)
+    buffer[len] = `\0
+    return string.{
+      _data     = buffer
+      _length   = len
+      _capacity = len
+    }
+  }
+
   (move) ::= (to: *string) -> string {
     return string.{
       _data     = core.exchange(to._data, null as [*]char)
@@ -51,18 +63,6 @@ string ::= struct {
   }
 
   (destroy) ::= (self: *string) -> () { free(self._data) }
-
-  #{export}
-  make ::= (fill: char, len: u64) -> string {
-    buffer := malloc(len + 1 as u64)
-    memset(buffer, fill as i8 as i32, len)
-    buffer[len] = `\0
-    return string.{
-      _data     = buffer 
-      _length   = len
-      _capacity = len
-    }
-  }
 }
 
 resize_buffer ::= (s: *string, new_capacity: u64) -> () {
@@ -114,18 +114,6 @@ append ::= (s: *string, from: *string) -> () {
 Print ::= (s: *string) -> () {
   printf ::= foreign("printf", ([*]char, [*]char) -> i32)
   core.if (!s'is_empty) then { printf(&"%s"[0], s._data) }
-}
-
-#{export}
-make_string ::= (fill: char, len: u64) -> string {
-  buffer := malloc(len + 1 as u64)
-  memset(buffer, fill as i8 as i32, len)
-  buffer[len] = `\0
-  return string.{
-    _data     = buffer 
-    _length   = len
-    _capacity = len
-  }
 }
 
 #{export}

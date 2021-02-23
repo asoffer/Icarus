@@ -30,7 +30,8 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),
       });
 
-  LOG("struct", "Allocating a new struct %p for %p", s, node);
+  LOG("struct", "Allocating a new struct %p for %p on context %p", s, node,
+      &context());
   context().set_struct(node, s);
 
   // Note: VerifyBody may end up triggering EmitValue calls for member types
