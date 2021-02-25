@@ -3,9 +3,11 @@
 
 #include <string>
 
+#include "base/extend.h"
+
 namespace ir {
 
-struct Label {
+struct Label : base::Extend<Label, 1>::With<base::AbslHashExtension> {
   explicit constexpr Label() : label_(nullptr) {}
   explicit Label(std::string const *label) : label_(ASSERT_NOT_NULL(label)) {}
 
@@ -13,22 +15,13 @@ struct Label {
   constexpr std::string const &operator*() const { return *label_; }
   constexpr std::string const *operator->() const { return label_; }
 
-  friend bool operator==(Label lhs, Label rhs) {
-    return lhs.label_ == rhs.label_;
-  }
-
-  friend bool operator!=(Label lhs, Label rhs) { return not(lhs == rhs); }
-
-  template <typename H>
-  friend H AbslHashValue(H h, Label l) {
-    return H::combine(std::move(h), l.label_);
-  }
-
   friend std::ostream &operator<<(std::ostream &os, Label l) {
     return os << "Label(" << *l << ")";
   }
 
  private:
+  friend base::EnableExtensions;
+
   std::string const *label_;
 };
 

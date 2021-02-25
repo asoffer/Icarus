@@ -5,6 +5,8 @@
 #include <string>
 
 #include "base/debug.h"
+#include "base/extend.h"
+#include "base/extend/absl_hash.h"
 
 namespace ir {
 // Reg:
@@ -12,7 +14,7 @@ namespace ir {
 //
 // Registers may refer to registers holding values inside a function, function
 // arguments, or function outputs.
-struct Reg {
+struct Reg : base::Extend<Reg, 1>::With<base::AbslHashExtension> {
  private:
   using underlying_type = uint64_t;
 
@@ -53,22 +55,15 @@ struct Reg {
     return val_;
   }
 
-  template <typename H>
-  friend H AbslHashValue(H h, Reg r) {
-    return H::combine(std::move(h), r.val_);
-  }
-
   friend std::string stringify(Reg r);
 
   friend std::ostream& operator<<(std::ostream& os, Reg r) {
     return os << stringify(r);
   }
 
-  constexpr friend bool operator==(Reg lhs, Reg rhs) {
-    return lhs.val_ == rhs.val_;
-  }
-
  private:
+  friend base::EnableExtensions;
+
   constexpr static Reg MakeReg(underlying_type val) {
     Reg r;
     r.val_ = val;
@@ -82,8 +77,6 @@ struct Reg {
 
   underlying_type val_ = (std::numeric_limits<underlying_type>::max)();
 };
-
-constexpr bool operator!=(Reg lhs, Reg rhs) { return not(lhs == rhs); }
 
 }  // namespace ir
 

@@ -10,6 +10,9 @@ cc_library(
         "//core:arch",
         "//core:bytes",
         "//base:debug",
+        "//base:extend",
+        "//base/extend:absl_hash",
+        "//base/extend:compare",
     ],
 )
 
@@ -33,7 +36,10 @@ cc_library(
 cc_library(
     name = "builtin_fn",
     hdrs = ["builtin_fn.h"],
-    deps = [],
+    deps = [
+        "//base:extend",
+        "//base/extend:equality",
+    ],
 )
 
 cc_test(
@@ -61,6 +67,8 @@ cc_library(
         "//core:params",
         "//type:function",
         "//type:primitive",
+        "//base:extend",
+        "//base/extend:absl_hash",
     ],
 )
 
@@ -80,6 +88,9 @@ cc_library(
     deps = [
         "//base:debug",
         "//base:flyweight_map",
+        "//base:extend",
+        "//base/extend:absl_format",
+        "//base/extend:equality",
         "//base:guarded",
         "//type:function",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -103,6 +114,9 @@ cc_library(
     deps = [
         ":native_fn",
         "//base:any_invocable",
+        "//base:extend",
+        "//base/extend:absl_hash",
+        "//base/extend:equality",
         "//base:global",
         "//core:arguments",
         "//type",
@@ -134,7 +148,7 @@ cc_library(
 cc_library(
     name = "label",
     hdrs = ["label.h"],
-    deps = ["//base:strong_types"],
+    deps = ["//base:extend"],
 )
 
 cc_library(
@@ -142,6 +156,9 @@ cc_library(
     hdrs = ["module_id.h"],
     deps = [
         "//base:flyweight_map",
+        "//base:extend",
+        "//base/extend:absl_format",
+        "//base/extend:absl_hash",
         "//base:global",
         "//frontend/source:file_name",
     ],
@@ -153,6 +170,7 @@ cc_library(
     srcs = ["native_fn.cc"],
     deps = [
         "//base:debug",
+        "//base:extend",
         "//ir:compiled_fn",
         "//type:function",
     ],
@@ -201,6 +219,8 @@ cc_library(
     srcs = ["reg.cc"],
     deps = [
         "//base:debug",
+        "//base:extend",
+        "//base/extend:absl_hash",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -234,7 +254,11 @@ cc_test(
 cc_library(
     name = "scope",
     hdrs = ["scope.h"],
-    deps = [],
+    deps = [
+        "//base:extend",
+        "//base/extend:absl_format",
+        "//base/extend:absl_hash",
+    ],
 )
 
 #TODO: scope_test
@@ -242,7 +266,13 @@ cc_library(
 cc_library(
     name = "slice",
     hdrs = ["slice.h"],
-    deps = [":addr"],
+    deps = [
+        ":addr",
+        "//base:extend",
+        "//base/extend:absl_format",
+        "//base/extend:absl_hash",
+        "//base/extend:compare",
+    ],
 )
 
 #TODO: slice_test

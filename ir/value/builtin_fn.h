@@ -6,11 +6,13 @@
 #include <optional>
 
 #include "base/debug.h"
+#include "base/extend.h"
+#include "base/extend/equality.h"
 
 namespace ir {
 
 // Represents a function that comes built-in to the language
-struct BuiltinFn {
+struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
   friend struct Fn;
   enum class Which : uint8_t { Bytes, Alignment, Opaque, Foreign, DebugIr };
   explicit constexpr BuiltinFn(Which w) : which_(w) {}
@@ -36,15 +38,9 @@ struct BuiltinFn {
     return os << kNames[static_cast<int>(f.which())];
   }
 
-  friend bool operator==(BuiltinFn lhs, BuiltinFn rhs) {
-    return lhs.which_ == rhs.which_;
-  }
-
-  friend bool operator!=(BuiltinFn lhs, BuiltinFn rhs) {
-    return not(lhs == rhs);
-  }
-
  private:
+  friend base::EnableExtensions;
+
   static constexpr std::array kNames{
       "bytes", "alignment", "opaque", "foreign", "debug_ir",
   };

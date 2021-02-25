@@ -3,26 +3,22 @@
 
 #include <iostream>
 
+#include "base/extend.h"
+
 namespace ir {
 struct CompiledJump;
 
-struct Jump {
+struct Jump : base::Extend<Jump, 1>::With<base::AbslHashExtension> {
   explicit constexpr Jump(CompiledJump const *jump = nullptr) : jump_(jump) {}
-
-  friend bool operator==(Jump lhs, Jump rhs) { return lhs.jump_ == rhs.jump_; }
-  friend bool operator!=(Jump lhs, Jump rhs) { return not(lhs == rhs); }
-
-  template <typename H>
-  friend H AbslHashValue(H h, Jump j) {
-    return H::combine(std::move(h), j.jump_);
-  }
 
   friend std::ostream &operator<<(std::ostream &os, Jump j) {
     return os << "Jump(" << j.jump_ << ")";
   }
 
  private:
+  friend base::EnableExtensions;
   friend CompiledJump;
+
   CompiledJump const *jump_;
 };
 

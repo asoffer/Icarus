@@ -5,6 +5,9 @@
 #include <iostream>
 
 #include "base/any_invocable.h"
+#include "base/extend.h"
+#include "base/extend/absl_hash.h"
+#include "base/extend/equality.h"
 #include "core/arguments.h"
 #include "ir/value/native_fn.h"
 #include "type/typed_value.h"
@@ -22,26 +25,19 @@ struct Value;
 // Another is that we should instantiate a new version of this function. We need
 // to decide if we intend these to be distinguishable in the language, and if
 // not what approach we intend to take.
-struct GenericFn {
+struct GenericFn : base::Extend<GenericFn, 1>::With<base::EqualityExtension,
+                                                    base::AbslFormatExtension> {
+  static constexpr std::string_view kAbslFormatString = "GenericFn(id = %u)";
+
   explicit GenericFn(
       base::any_invocable<NativeFn(core::Arguments<type::Typed<Value>> const &)>
           gen);
 
   NativeFn concrete(core::Arguments<type::Typed<Value>> const &args) const;
 
-  friend std::ostream &operator<<(std::ostream &os, GenericFn f) {
-    return os << "GenericFn(id = " << f.id_ << ")";
-  }
-
-  friend bool operator==(GenericFn lhs, GenericFn rhs) {
-    return lhs.id_ == rhs.id_;
-  }
-
-  friend bool operator!=(GenericFn lhs, GenericFn rhs) {
-    return not(lhs == rhs);
-  }
-
  private:
+  friend base::EnableExtensions;
+
   uintptr_t id_;
 };
 

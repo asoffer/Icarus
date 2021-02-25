@@ -22,11 +22,17 @@ struct S3 {
 
 TEST(NumInitializers, Works) {
   EXPECT_EQ(
-      (std::integral_constant<int, internal::NumInitializers<S1>()>::value), 1);
+      (std::integral_constant<int,
+                              internal_extend::NumInitializers<S1>()>::value),
+      1);
   EXPECT_EQ(
-      (std::integral_constant<int, internal::NumInitializers<S2>()>::value), 2);
+      (std::integral_constant<int,
+                              internal_extend::NumInitializers<S2>()>::value),
+      2);
   EXPECT_EQ(
-      (std::integral_constant<int, internal::NumInitializers<S3>()>::value), 3);
+      (std::integral_constant<int,
+                              internal_extend::NumInitializers<S3>()>::value),
+      3);
 }
 
 struct Base {
@@ -40,60 +46,69 @@ struct Derived : Base {
 };
 
 TEST(NumInitializers, WorksWithBaseClass) {
-  EXPECT_EQ(
-      (std::integral_constant<int,
-                              internal::NumInitializers<Derived>()>::value),
-      4);
+  EXPECT_EQ((std::integral_constant<
+                int, internal_extend::NumInitializers<Derived>()>::value),
+            4);
 }
 
-TEST(GetFields, Mutable) {
+TEST(EnableExtensions, Mutable) {
   {
     S1 s1;
-    auto [x] = internal::GetFields<S1, 0>(s1);
+    auto [x] = EnableExtensions::field_refs<S1, 0, 1>(s1);
     EXPECT_EQ(&x, &s1.x);
   }
   {
     S2 s2;
-    auto [x, y] = internal::GetFields<S2, 0>(s2);
+    auto [x, y] = EnableExtensions::field_refs<S2, 0, 2>(s2);
     EXPECT_EQ(&x, &s2.x);
     EXPECT_EQ(&y, &s2.y);
   }
   {
     S3 s3;
-    auto [x, y, z] = internal::GetFields<S3, 0>(s3);
+    auto [x, y, z] = EnableExtensions::field_refs<S3, 0, 3>(s3);
     EXPECT_EQ(&x, &s3.x);
     EXPECT_EQ(&y, &s3.y);
     EXPECT_EQ(&z, &s3.z);
   }
 }
 
-TEST(GetFields, Const) {
+TEST(EnableExtensions, Const) {
   {
     S1 const s1;
-    auto [x] = internal::GetFields<S1, 0>(s1);
+    auto [x] = EnableExtensions::field_refs<S1, 0, 1>(s1);
     EXPECT_EQ(&x, &s1.x);
   }
   {
     S2 const s2;
-    auto [x, y] = internal::GetFields<S2, 0>(s2);
+    auto [x, y] = EnableExtensions::field_refs<S2, 0, 2>(s2);
     EXPECT_EQ(&x, &s2.x);
     EXPECT_EQ(&y, &s2.y);
   }
   {
     S3 const s3;
-    auto [x, y, z] = internal::GetFields<S3, 0>(s3);
+    auto [x, y, z] = EnableExtensions::field_refs<S3, 0, 3>(s3);
     EXPECT_EQ(&x, &s3.x);
     EXPECT_EQ(&y, &s3.y);
     EXPECT_EQ(&z, &s3.z);
   }
 }
 
-struct S : Extend<S>::With<> {
-  int x = 0;
-  int y = 0;
-};
-
 TEST(Extend, FieldRefs) {
+  struct S : Extend<S>::With<> {
+    int x = 0;
+    int y = 0;
+  };
+
+  S s;
+  EXPECT_EQ(&s.x, &std::get<0>(s.field_refs()));
+  EXPECT_EQ(&s.y, &std::get<1>(s.field_refs()));
+}
+
+TEST(Extend, ExplicitCountFieldRefs) {
+  struct S : Extend<S, 2>::With<> {
+    int x = 0;
+    int y = 0;
+  };
   S s;
   EXPECT_EQ(&s.x, &std::get<0>(s.field_refs()));
   EXPECT_EQ(&s.y, &std::get<1>(s.field_refs()));
@@ -114,7 +129,7 @@ struct A {
 };
 
 TEST(Extend, Dependencies) {
-  using deps = AllDependencies<A>;
+  using deps = internal_extend::AllDependencies<A>;
   EXPECT_TRUE((Contains<deps, A>));
   EXPECT_TRUE((Contains<deps, B>));
   EXPECT_TRUE((Contains<deps, C>));

@@ -4,35 +4,30 @@
 #include <cstring>
 #include <iostream>
 
+#include "base/extend.h"
+#include "base/extend/absl_format.h"
+#include "base/extend/equality.h"
 #include "type/function.h"
 
 namespace ir {
 // `ForeignFn` represents a function callable in the language that is defined
 // externally. New foreign functions can only be created in the intermediate
 // representation by calling the `foreign` builtin.
-struct ForeignFn {
+struct ForeignFn : base::Extend<ForeignFn, 1>::With<base::AbslFormatExtension,
+                                                    base::EqualityExtension> {
  private:
   using void_fn_ptr = void (*)();
 
  public:
+  static constexpr std::string_view kAbslFormatString = "ForeignFn(id = %u)";
+
   explicit ForeignFn(void (*fn)(), type::Function const *t);
 
   void_fn_ptr get() const;
   type::Function const *type() const;
 
-  friend std::ostream &operator<<(std::ostream &os, ForeignFn f) {
-    return os << "ForeignFn(id = " << f.id_ << ")";
-  }
-
-  friend bool operator==(ForeignFn lhs, ForeignFn rhs) {
-    return lhs.id_ == rhs.id_;
-  }
-
-  friend bool operator!=(ForeignFn lhs, ForeignFn rhs) {
-    return not(lhs == rhs);
-  }
-
  private:
+  friend base::EnableExtensions;
   friend struct Fn;
 
   using id_t  = uintptr_t;

@@ -2,10 +2,11 @@
 #define ICARUS_IR_VALUE_NATIVE_FN_H
 
 #include <cstring>
-#include <iostream>
+#include <string_view>
 #include <memory>
 #include <vector>
 
+#include "base/extend.h"
 #include "ir/compiled_fn.h"
 #include "type/function.h"
 
@@ -15,7 +16,10 @@ struct NativeFnSet;
 // `NativeFn` represents a function callable in the language that is defined
 // internally. These are "just normal functions" in the language. The are
 // distinguished from foreign functions.
-struct NativeFn {
+struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslFormatExtension,
+                                                  base::AbslHashExtension> {
+  static constexpr std::string_view kAbslFormatString = "NativeFn(fn = %p)";
+
   explicit NativeFn(CompiledFn *fn);
 
   explicit NativeFn(NativeFnSet *set, type::Function const *fn_type,
@@ -26,17 +30,8 @@ struct NativeFn {
 
   CompiledFn *operator->() { return get(); }
 
-  friend std::ostream &operator<<(std::ostream &os, NativeFn f) {
-    return os << "NativeFn(fn = " << f.fn_ << ")";
-  }
-
-  friend bool operator==(NativeFn lhs, NativeFn rhs) {
-    return lhs.fn_ == rhs.fn_;
-  }
-
-  friend bool operator!=(NativeFn lhs, NativeFn rhs) { return not(lhs == rhs); }
-
  private:
+  friend base::EnableExtensions;
   friend struct Fn;
 
   NativeFn() = default;

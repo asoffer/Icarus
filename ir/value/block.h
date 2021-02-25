@@ -3,28 +3,22 @@
 
 #include <iostream>
 
+#include "base/extend.h"
+#include "base/extend/absl_format.h"
+#include "base/extend/absl_hash.h"
+
 namespace ir {
 struct CompiledBlock;
 
-struct Block {
+struct Block : base::Extend<Block, 1>::With<base::AbslFormatExtension,
+                                            base::AbslHashExtension> {
+  static constexpr std::string_view kAbslFormatString = "Block(%p)";
+
   constexpr Block() : Block(nullptr) {}
   explicit constexpr Block(CompiledBlock *block) : block_(block) {}
 
-  friend bool operator==(Block lhs, Block rhs) {
-    return lhs.block_ == rhs.block_;
-  }
-  friend bool operator!=(Block lhs, Block rhs) { return not(lhs == rhs); }
-
-  template <typename H>
-  friend H AbslHashValue(H h, Block j) {
-    return H::combine(std::move(h), j.block_);
-  }
-
-  friend std::ostream &operator<<(std::ostream &os, Block b) {
-    return os << "Block(" << b.block_ << ")";
-  }
-
  private:
+  friend base::EnableExtensions;
   friend CompiledBlock;
   CompiledBlock *block_;
 };

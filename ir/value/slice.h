@@ -1,13 +1,21 @@
 #ifndef ICARUS_IR_VALUE_SLICE_H
 #define ICARUS_IR_VALUE_SLICE_H
 
-#include <iostream>
+#include <string_view>
 
+#include "base/extend.h"
+#include "base/extend/absl_format.h"
+#include "base/extend/absl_hash.h"
+#include "base/extend/compare.h"
 #include "ir/value/addr.h"
 
 namespace ir {
 
-struct Slice {
+struct Slice : base::Extend<Slice, 2>::With<base::AbslFormatExtension,
+                                            base::AbslHashExtension,
+                                            base::TotalOrderExtension> {
+  static constexpr std::string_view kAbslFormatString = "Slice(%s, %u)";
+
   Slice() = default;
   explicit Slice(ir::Addr data, uint64_t length)
       : data_(data), length_(length) {}
@@ -15,18 +23,9 @@ struct Slice {
   Addr data() const { return data_; }
   uint64_t length() const { return length_; }
 
-  auto operator<=>(Slice const&) const = default;
-
-  template <typename H>
-  friend H AbslHashValue(H h, Slice s) {
-    return H::combine(std::move(h), s.data(), s.length());
-  }
-
-  friend std::ostream& operator<<(std::ostream& os, Slice s) {
-    return os << "Slice(" << s.data() << ", " << s.length() << ")";
-  }
-
  private:
+  friend base::EnableExtensions;
+
   ir::Addr data_;
   uint64_t length_;
 };

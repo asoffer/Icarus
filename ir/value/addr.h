@@ -5,13 +5,17 @@
 #include <string>
 #include <utility>
 
+#include "base/extend.h"
+#include "base/extend/absl_hash.h"
+#include "base/extend/compare.h"
 #include "base/log.h"
 #include "core/alignment.h"
 #include "core/arch.h"
 #include "core/bytes.h"
 
 namespace ir {
-struct Addr {
+struct Addr : base::Extend<Addr, 1>::With<base::AbslHashExtension,
+                                          base::TotalOrderExtension> {
   enum class Kind : uint8_t { Heap, Stack, ReadOnly };
 
   constexpr Addr() : data_(0) {}
@@ -41,8 +45,6 @@ struct Addr {
     return *this;
   }
 
-  auto operator<=>(Addr const &) const = default;
-
   friend core::Bytes operator-(Addr lhs, Addr rhs) {
     return core::Bytes(((lhs.data_ >> 2) | (lhs.data_ & 0b11) << 62) -
                        ((rhs.data_ >> 2) | (rhs.data_ & 0b11) << 62));
@@ -55,15 +57,17 @@ struct Addr {
     return addr;
   }
 
-  template <typename H>
-  friend H AbslHashValue(H h, Addr a) {
-    return H::combine(std::move(h), a.data_);
-  }
-
   constexpr Kind kind() const { return static_cast<Kind>(data_ & 0b11); }
   constexpr uint64_t stack() const { return data_ >> 2; }
   constexpr uint64_t rodata() const { return data_ >> 2; }
   void *heap() const { return reinterpret_cast<void *>(data_ >> 2); }
+
+  friend absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+  AbslFormatConvert(Addr addr, const absl::FormatConversionSpec &spec,
+                    absl::FormatSink *s) {
+    s->Append(addr.to_string());
+    return {true};
+  }
 
   std::string to_string() const;
 
@@ -72,6 +76,7 @@ struct Addr {
   }
 
  private:
+  friend base::EnableExtensions;
   uintptr_t data_;
 };
 

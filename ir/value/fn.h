@@ -11,12 +11,14 @@
 #include "ir/value/native_fn.h"
 #include "type/function.h"
 #include "type/primitive.h"
+#include "base/extend.h"
+#include "base/extend/absl_hash.h"
 
 namespace ir {
 
 // `Fn` represents any callable function in the language (either a `NativeFn` or
 // a `ForeignFn`).
-struct Fn {
+struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
  private:
   using underlying_type = uintptr_t;
   static_assert(alignof(BuiltinFn) <= alignof(underlying_type));
@@ -109,15 +111,9 @@ struct Fn {
     return BuiltinFn(static_cast<BuiltinFn::Which>(data_ >> 2));
   }
 
-  template <typename H>
-  friend H AbslHashValue(H h, Fn f) {
-    return H::combine(std::move(h), f.data_);
-  }
-
-  friend bool operator==(Fn lhs, Fn rhs) { return lhs.data_ == rhs.data_; }
-  friend bool operator!=(Fn lhs, Fn rhs) { return not(lhs == rhs); }
-
  private:
+  friend base::EnableExtensions;
+
   underlying_type data_;
 };
 

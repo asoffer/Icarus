@@ -4,6 +4,9 @@
 #include <cstddef>
 #include <memory>
 
+#include "base/extend.h"
+#include "base/extend/absl_format.h"
+#include "base/extend/absl_hash.h"
 #include "base/flyweight_map.h"
 #include "base/global.h"
 #include "frontend/source/file_name.h"
@@ -23,7 +26,10 @@ inline base::Global<ModuleData<ModuleType>> all_modules;
 }  // namespace internal_module
 
 // A value-type representing a module (unit of compilation).
-struct ModuleId {
+struct ModuleId : base::Extend<ModuleId, 1>::With<base::AbslHashExtension,
+                                                  base::AbslFormatExtension> {
+  static constexpr std::string_view kAbslFormatString = "ModuleId(%u)";
+
   constexpr ModuleId() : id_(std::numeric_limits<size_t>::max()) {}
   constexpr explicit ModuleId(size_t n) : id_(n) {}
 
@@ -56,24 +62,9 @@ struct ModuleId {
     return handle->modules[id_].get();
   }
 
-  template <typename H>
-  friend H AbslHashValue(H h, ModuleId m) {
-    return H::combine(std::move(h), m.id_);
-  }
-
-  friend constexpr bool operator==(ModuleId lhs, ModuleId rhs) {
-    return lhs.id_ == rhs.id_;
-  }
-
-  friend constexpr bool operator!=(ModuleId lhs, ModuleId rhs) {
-    return not(lhs == rhs);
-  }
-
-  friend std::ostream& operator<<(std::ostream& os, ModuleId m) {
-    return os << "ModuleId(" << m.id_ << ")";
-  }
-
  private:
+  friend base::EnableExtensions;
+
   size_t id_;
 };
 
