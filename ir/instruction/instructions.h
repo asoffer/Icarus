@@ -101,6 +101,15 @@ struct DebugIrInstruction
   }
 };
 
+struct AbortInstruction
+    : base::Extend<AbortInstruction>::With<ByteCodeExtension, InlineExtension,
+                                           DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "abort";
+
+  void Apply(interpreter::ExecutionContext&) const { std::abort(); }
+};
+
+
 struct InitInstruction
     : base::Extend<InitInstruction>::With<ByteCodeExtension, InlineExtension,
                                           DebugFormatExtension> {

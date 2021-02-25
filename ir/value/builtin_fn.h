@@ -14,11 +14,19 @@ namespace ir {
 // Represents a function that comes built-in to the language
 struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
   friend struct Fn;
-  enum class Which : uint8_t { Bytes, Alignment, Opaque, Foreign, DebugIr };
+  enum class Which : uint8_t {
+    Abort,
+    Alignment,
+    Bytes,
+    Opaque,
+    Foreign,
+    DebugIr
+  };
   explicit constexpr BuiltinFn(Which w) : which_(w) {}
 
-  static BuiltinFn Bytes() { return BuiltinFn(Which::Bytes); }
+  static BuiltinFn Abort() { return BuiltinFn(Which::Abort); }
   static BuiltinFn Alignment() { return BuiltinFn(Which::Alignment); }
+  static BuiltinFn Bytes() { return BuiltinFn(Which::Bytes); }
   static BuiltinFn Opaque() { return BuiltinFn(Which::Opaque); }
   static BuiltinFn Foreign() { return BuiltinFn(Which::Foreign); }
   static BuiltinFn DebugIr() { return BuiltinFn(Which::DebugIr); }
@@ -41,9 +49,8 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
  private:
   friend base::EnableExtensions;
 
-  static constexpr std::array kNames{
-      "bytes", "alignment", "opaque", "foreign", "debug_ir",
-  };
+  static constexpr std::array kNames{"abort",  "alignment", "bytes",
+                                     "opaque", "foreign",   "debug_ir"};
 
   Which which_;
 };

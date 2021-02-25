@@ -246,6 +246,10 @@ ir::Value EmitBuiltinCall(
     case ir::BuiltinFn::Which::DebugIr:
       c->builder().DebugIr();
       return ir::Value();
+
+    case ir::BuiltinFn::Which::Abort:
+      c->current_block()->Append(ir::AbortInstruction{});
+      return ir::Value();
   }
   UNREACHABLE();
 }

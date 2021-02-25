@@ -277,6 +277,21 @@ type::QualType VerifyAlignmentCall(
   return qt;
 }
 
+type::QualType VerifyAbortCall(
+    Compiler *c, frontend::SourceRange const &range,
+    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+  auto qt = type::QualType::NonConstant(type::Void);
+
+  if (not arg_vals.empty()) {
+    c->diag().Consume(BuiltinError{
+        .range   = range,
+        .message = "Built-in function `abort` takes no arguments."});
+    qt.MarkError();
+  }
+
+  return qt;
+}
+
 }  // namespace
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
@@ -322,9 +337,12 @@ not_an_interface:
       case ir::BuiltinFn::Which::Alignment: {
         qt = VerifyAlignmentCall(this, b->range(), arg_vals);
       } break;
+      case ir::BuiltinFn::Which::Abort: {
+        qt = VerifyAbortCall(this, b->range(), arg_vals);
+      } break;
       case ir::BuiltinFn::Which::DebugIr: {
-        // This is for debugging the compiler only, so there's no need to write
-        // decent errors here.
+        // This is for debugging the compiler only, so there's no need to
+        // write decent errors here.
         ASSERT(arg_vals.size() == 0u);
         qt = type::QualType::Constant(type::Void);
       }

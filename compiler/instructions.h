@@ -103,7 +103,8 @@ struct instruction_set_t
           ir::TypeInfoInstruction, ir::InitInstruction, ir::DestroyInstruction,
           ir::MoveInitInstruction, ir::CopyInitInstruction, ir::MoveInstruction,
           ir::CopyInstruction, type::SliceLengthInstruction,
-          type::SliceDataInstruction, ir::DebugIrInstruction> {};
+          type::SliceDataInstruction, ir::DebugIrInstruction,
+          ir::AbortInstruction> {};
 
 }  // namespace compiler
 
