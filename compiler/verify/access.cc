@@ -209,13 +209,20 @@ type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
     if (auto const *member = s->constant(node->member_name())) {
       std::vector<ast::Declaration::Id const *> ids;
 
-      auto const *ast_struct = s->defining_module()
-                                   ->as<compiler::CompiledModule>()
-                                   .context()
-                                   .ast_struct(s);
+      auto &s_mod = s->defining_module()->as<compiler::CompiledModule>();
+      auto const *ast_struct = s_mod.context().ast_struct(s);
+
       for (auto const &decl : ast_struct->as<ast::StructLiteral>().fields()) {
         if (not(decl.flags() & ast::Declaration::f_IsConst)) { continue; }
-        for (auto const &id : decl.ids()) { ids.push_back(&id); }
+
+        if (&c.context().module() != &s_mod and
+            not decl.hashtags.contains(ir::Hashtag::Export)) {
+          continue;
+        }
+        for (auto const &id : decl.ids()) {
+          if (id.name() != node->member_name()) { continue; }
+          ids.push_back(&id);
+        }
       }
       c.context().SetAllOverloads(node, ast::OverloadSet(ids));
       return type::QualType::Constant(member->type);

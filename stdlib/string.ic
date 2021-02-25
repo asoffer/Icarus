@@ -42,6 +42,17 @@ string ::= struct {
     }
   }
 
+  #{export}
+  make ::= (capacity: u64) -> string {
+    buffer := malloc(capacity + 1 as u64)
+    buffer[0] = `\0
+    return string.{
+      _data     = buffer
+      _length   = capacity
+      _capacity = capacity
+    }
+  }
+
   (move) ::= (to: *string) -> string {
     return string.{
       _data     = core.exchange(to._data, null as [*]char)
@@ -124,3 +135,6 @@ Print ::= (s: *string) -> () {
   printf ::= foreign("printf", ([*]char, [*]char) -> i32)
   core.if (not s'is_empty) then { printf(&"%s"[0], s._data) }
 }
+
+#{export}
+at ::= (s: *string, n: u64) => &s._data[n]

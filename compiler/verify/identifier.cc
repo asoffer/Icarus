@@ -158,6 +158,10 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
           qt = context().qual_types(id)[0];
         }
 
+        if (not qt.ok() or qt.HasErrorMark()) {
+          return context().set_qual_type(node, qt);
+        }
+
         if (not qt.constant()) {
           if (qt.type().is<type::Array>()) {
             qt = type::QualType(qt.type(), qt.quals() | type::Quals::Buf());
@@ -172,7 +176,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
         context().SetAllOverloads(node, ast::OverloadSet({id}));
       }
 
-      LOG("Identifier", "setting %s", node->name());
+      LOG("Identifier", "setting %s: %s", node->name(), qt);
       // TOOD: Support multiple declarations
       std::vector<ast::Declaration const *> decls;
       for (auto const &[id, id_qt] : potential_decl_ids) {
