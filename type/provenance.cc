@@ -53,6 +53,9 @@ struct ProvenanceVisitor
   module::BasicModule const *Visit(ProvenanceTag, Pointer const *p) final {
     return Visit(p->pointee());
   }
+  module::BasicModule const *Visit(ProvenanceTag, Primitive const *) final {
+    return nullptr;
+  }
   module::BasicModule const *Visit(ProvenanceTag, Slice const *s) final {
     return Visit(s->data_type());
   }

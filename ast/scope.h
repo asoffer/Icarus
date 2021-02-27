@@ -22,8 +22,7 @@ struct ModuleScope;
 
 struct Scope : public base::Cast<Scope> {
   Scope() = delete;
-  Scope(Scope *parent, bool executable)
-      : parent_(parent), executable_(executable) {}
+  Scope(Scope *parent, bool executable);
   virtual ~Scope() {}
 
   struct ancestor_iterator {
