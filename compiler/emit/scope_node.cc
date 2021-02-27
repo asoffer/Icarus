@@ -1,9 +1,11 @@
 #include <optional>
 #include <utility>
 
-#include "absl/strings/str_format.h"
 #include "absl/cleanup/cleanup.h"
+#include "absl/strings/str_format.h"
 #include "ast/ast.h"
+#include "base/extend.h"
+#include "base/extend/absl_hash.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "ir/compiled_scope.h"
@@ -21,16 +23,9 @@ namespace {
 // jump, some from different jumps. They may end up calling different overloads
 // of the before/entry function. BeforeBlock describes one such possible entry
 // path.
-struct BeforeBlock {
+struct BeforeBlock : base::Extend<BeforeBlock>::With<base::AbslHashExtension> {
   ast::BlockNode const *block;
   ir::Fn fn;
-  template <typename H>
-  friend H AbslHashValue(H h, BeforeBlock const &b) {
-    return H::combine(std::move(h), b.block, b.fn);
-  }
-
-  bool operator==(BeforeBlock const &) const & = default;
-  bool operator!=(BeforeBlock const &) const & = default;
 };
 
 absl::flat_hash_map<
@@ -48,24 +43,13 @@ InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
   ir::InstructionInliner inl(jump, into, block_interp);
 
   bldr.CurrentBlock() = start_block;
-  size_t i = 0;
-  if (auto state_type = jump->type()->state()) {
-    type::Apply(state_type, [&]<typename T>() {
-      bldr.CurrentBlock()->Append(ir::RegisterInstruction<T>{
-          .operand = arguments[i++].get<ir::Reg>(),
-          .result  = bldr.CurrentGroup()->Reserve(),
-      });
-    });
+  size_t i            = 0;
+  if (type::Type state_type = jump->type()->state()) {
+    bldr.MakeRegisterReferencing(state_type, arguments[i++]);
   }
 
   for (auto const &p : jump->type()->params()) {
-    type::Apply(p.value, [&]<typename T>() {
-      bldr.CurrentBlock()->Append(ir::RegisterInstruction<T>{
-          .operand = arguments[i++].get<ir::RegOr<T>>(),
-          .result  = bldr.CurrentGroup()->Reserve(),
-      });
-    });
-    // TODO Handle types not covered by Apply (structs, etc).
+    bldr.MakeRegisterReferencing(p.value, arguments[i++]);
   }
 
   auto *entry = inl.InlineAllBlocks();

@@ -415,6 +415,7 @@ struct Compiler
   void EmitDestroy(type::Typed<ir::Reg, T> const &r)
 
   DEFINE_EMIT_DESTROY(type::Array);
+  DEFINE_EMIT_DESTROY(type::Enum) {}
   DEFINE_EMIT_DESTROY(type::Flags) {}
   DEFINE_EMIT_DESTROY(type::Pointer) {}
   DEFINE_EMIT_DESTROY(type::BufferPointer) {}

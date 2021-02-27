@@ -30,10 +30,11 @@ TEST_P(ScopeNodeTest, ScopeNode) {
 // to a function call. The former helps cover the constant-folding mechanisms
 // built in to the ir::Builder. The latter helps cover the common case for code
 // emission.
-INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
-                         testing::ValuesIn({
-                             TestCase{
-                                 .expr     = R"((() -> i64 {
+INSTANTIATE_TEST_SUITE_P(
+    All, ScopeNodeTest,
+    testing::ValuesIn({
+        TestCase{
+            .expr     = R"((() -> i64 {
   n := 0
   ignore ::= scope {
     enter ::= jump() { goto done() }
@@ -47,10 +48,10 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
   return n
 })()
                                   )",
-                                 .expected = ir::Value(int64_t{0}),
-                             },
-                             TestCase{
-                                 .expr     = R"((() -> i64 {
+            .expected = ir::Value(int64_t{0}),
+        },
+        TestCase{
+            .expr     = R"((() -> i64 {
   just ::= scope {
     enter ::= jump() { goto do() }
     do ::= block {
@@ -67,10 +68,10 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
   return n
 })()
                              )",
-                                 .expected = ir::Value(int64_t{1}),
-                             },
-                             TestCase{
-                                 .expr     = R"((() -> i64 {
+            .expected = ir::Value(int64_t{1}),
+        },
+        TestCase{
+            .expr     = R"((() -> i64 {
   while ::= scope {
     enter ::= jump(b: bool) { goto b, do(), done() }
     do ::= block {
@@ -87,11 +88,11 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
   return n
 })()
                              )",
-                                 .expected = ir::Value(int64_t{12}),
-                             },
+            .expected = ir::Value(int64_t{12}),
+        },
 
-                             TestCase{
-                                 .expr     = R"((() -> i64 {
+        TestCase{
+            .expr     = R"((() -> i64 {
   if ::= scope {
     enter ::= jump(condition: bool) { goto condition, then(), else() | done() }
     then ::= block {
@@ -116,12 +117,12 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
   return 1000 * a + 100 * b + 10 * c + d
 })()
                              )",
-                                 .expected = ir::Value(int64_t{1001}),
-                             },
+            .expected = ir::Value(int64_t{1001}),
+        },
 
-                             // Early return
-                             TestCase{
-                                 .expr     = R"((() -> i64 {
+        // Early return
+        TestCase{
+            .expr     = R"((() -> i64 {
   if ::= scope {
     enter ::= jump(condition: bool) { goto condition, then(), else() | done() }
     then ::= block {
@@ -153,10 +154,10 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
   return 10 * b + a
 })()
                              )",
-                                 .expected = ir::Value(int64_t{31}),
-                             },
-                             TestCase{
-                                 .expr     = R"((() -> i64 {
+            .expected = ir::Value(int64_t{31}),
+        },
+        TestCase{
+            .expr     = R"((() -> i64 {
   s ::= scope {
     enter ::= jump() { goto do() }
     do ::= block {
@@ -171,10 +172,10 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
   }
 })()
                              )",
-                                 .expected = ir::Value(int64_t{3}),
-                             },
-                             TestCase{
-                                 .expr     = R"((() -> i64 {
+            .expected = ir::Value(int64_t{3}),
+        },
+        TestCase{
+            .expr     = R"((() -> i64 {
   repeat ::= scope (i64) {
     enter ::= jump [state: *i64] (n: i64) {
       @state = n
@@ -197,11 +198,10 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
   return num
 })()
                              )",
-                                 .expected = ir::Value(int64_t{1024}),
-                             },
-
-                             TestCase{
-                                 .expr     = R"((() -> i64 {
+            .expected = ir::Value(int64_t{1024}),
+        },
+        TestCase{
+            .expr     = R"((() -> i64 {
   repeat ::= scope (i64) {
     enter ::= jump [state: *i64] (n: i64) {
       @state = n
@@ -227,9 +227,29 @@ INSTANTIATE_TEST_SUITE_P(All, ScopeNodeTest,
   return num
 })()
                              )",
-                                 .expected = ir::Value(int64_t{2}),
-                             },
-                         }));
+            .expected = ir::Value(int64_t{2}),
+        },
+        TestCase{
+            .expr = R"((() -> i64 {
+  scope_with_big_argument ::= scope {
+    enter ::= jump (str: char[]) { goto done(str) }
+    exit ::= (str: char[]) -> () {}
+  
+    do ::= block {
+      before ::= () -> () {}
+      after ::= jump () { goto do() }
+    }
+  }
+
+  scope_with_big_argument ("abc") do {}
+  return 0
+})()
+                             )",
+            // Really just checking that this compiles with a value
+            .expected = ir::Value(int64_t{0}),
+        },
+
+    }));
 
 // TODO: Ensure `before()` gets called.
 // TODO: Ensure destructors run

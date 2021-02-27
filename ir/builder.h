@@ -500,6 +500,12 @@ struct Builder {
     type::Apply(r.type(), [&]<typename T>() { SetRet(n, r->get<RegOr<T>>()); });
   }
 
+  // If the type `t` is not big, creates a new register referencing the value
+  // (or register) held in `value`. If `t` is big, `value` is either another
+  // register or the address of the big value and a new register referencing
+  // that address (or register) is created.
+  Reg MakeRegisterReferencing(type::Type t, Value value);
+
  private:
   template <typename FromType, typename ToType>
   RegOr<ToType> Cast(RegOr<FromType> r) {

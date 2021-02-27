@@ -17,7 +17,7 @@ TEST(Access, EnumSuccess) {
   mod.Append<ast::Node>(R"(E ::= enum { A \\ B \\ C })");
   auto const *enumerator = mod.Append<ast::Expression>(R"(E.A)");
   auto qts               = mod.context().qual_types(enumerator);
-  ASSERT(qts, SizeIs(1));
+  ASSERT_THAT(qts, SizeIs(1));
   EXPECT_TRUE(qts[0].type().is<type::Enum>());
   EXPECT_EQ(qts[0].quals(), type::Quals::Const());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
