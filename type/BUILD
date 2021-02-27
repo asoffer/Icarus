@@ -291,6 +291,19 @@ cc_test(
 )
 
 cc_library(
+    name = "provenance",
+    hdrs = ["provenance.h"],
+    srcs = ["provenance.cc"],
+    deps = CONCRETE_TYPES + [
+        ":generic_function",
+        ":generic_struct",
+        ":overload_set",
+        ":visitor",
+        "//module",
+    ],
+)
+
+cc_library(
     name = "slice",
     hdrs = ["slice.h"],
     srcs = ["slice.cc"],

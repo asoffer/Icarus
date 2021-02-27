@@ -11,11 +11,12 @@
 
 namespace type {
 struct Opaque : public LegacyType {
-  explicit Opaque(module::BasicModule const *)
+  explicit Opaque(module::BasicModule const *mod)
       : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 0,
                                      .is_movable               = 0,
-                                     .has_destructor           = 0}) {}
+                                     .has_destructor           = 0}),
+        mod_(mod) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -38,6 +39,11 @@ struct Opaque : public LegacyType {
   }
 
   bool IsDefaultInitializable() const { UNREACHABLE(); }
+
+  module::BasicModule const *defining_module() const { return mod_; }
+
+ private:
+  module::BasicModule const *mod_;
 };
 
 struct OpaqueTypeInstruction

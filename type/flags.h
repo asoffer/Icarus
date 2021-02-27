@@ -56,14 +56,16 @@ struct Flags : public type::LegacyType {
     return it->second;
   }
 
+  module::BasicModule const *defining_module() const { return mod_; }
+
   bool IsDefaultInitializable() const { return false; }
 
   underlying_type All = 0;
 
   Completeness completeness_;
-  module::BasicModule const *mod_;
 
  private:
+  module::BasicModule const *mod_;
   // TODO combine these into a single bidirectional map?
   absl::flat_hash_map<std::string, underlying_type> vals_;
   absl::flat_hash_map<underlying_type, std::string> members_;

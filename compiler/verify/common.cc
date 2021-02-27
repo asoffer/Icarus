@@ -10,6 +10,7 @@
 #include "ir/value/value.h"
 #include "type/callable.h"
 #include "type/overload_set.h"
+#include "type/provenance.h"
 #include "type/typed_value.h"
 
 namespace compiler {
@@ -431,10 +432,8 @@ Compiler::VerifyCallee(
   if (auto const *id = callee->if_as<ast::Identifier>()) {
     absl::flat_hash_set<compiler::CompiledModule const *> adl_modules;
     for (type::Type t : argument_dependent_lookup_types) {
-      // TODO: Generic structs? Arrays? Pointers?
-      if (auto const *s = t.if_as<type::Struct>()) {
-        adl_modules.insert(
-            &s->defining_module()->as<compiler::CompiledModule>());
+      if (auto const *mod = type::Provenance(t)) {
+        adl_modules.insert(&mod->as<compiler::CompiledModule>());
       }
     }
 

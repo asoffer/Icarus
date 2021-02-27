@@ -216,6 +216,7 @@ cc_library(
         "//ir/value",
         "//type:callable",
         "//type:overload_set",
+        "//type:provenance",
         "//type:typed_value",
     ],
 )

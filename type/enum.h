@@ -53,9 +53,10 @@ struct Enum : type::LegacyType {
     return it->second;
   }
 
+  module::BasicModule const *defining_module() const { return mod_; }
+
  private:
-  // TODO: Use module or drop it.
-  [[maybe_unused]] module::BasicModule const *mod_;
+  module::BasicModule const *mod_;
   Completeness completeness_;
   absl::flat_hash_map<std::string, underlying_type> vals_;
   absl::flat_hash_map<underlying_type, std::string_view> members_;
