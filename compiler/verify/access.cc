@@ -374,6 +374,8 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
 }  // namespace
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
+  if (auto qts = context().maybe_qual_type(node); qts.data()) { return qts; }
+
   ASSIGN_OR(return context().set_qual_types(node, type::QualType::ErrorSpan()),
                    auto operand_qt, VerifyType(node->operand())[0]);
 

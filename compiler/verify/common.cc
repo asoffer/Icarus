@@ -433,6 +433,7 @@ Compiler::VerifyCallee(
     absl::flat_hash_set<compiler::CompiledModule const *> adl_modules;
     for (type::Type t : argument_dependent_lookup_types) {
       if (auto const *mod = type::Provenance(t)) {
+        if (mod == &context().module()) { continue; }
         adl_modules.insert(&mod->as<compiler::CompiledModule>());
       }
     }
