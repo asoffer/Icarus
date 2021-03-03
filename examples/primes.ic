@@ -14,7 +14,7 @@ for (2, upper) do [n: i64] {
     test += 1
   }
 
-  if (!found_div) then { num += 1 }
+  if (not found_div) then { num += 1 }
   n += 1
 }
 
