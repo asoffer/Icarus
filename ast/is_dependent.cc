@@ -36,6 +36,13 @@ bool Assignment::IsDependent() const {
   return AnyIsDependent(lhs()) or AnyIsDependent(rhs());
 }
 
+bool InterfaceLiteral::IsDependent() const {
+  for (auto const &[name, expr] : entries()) {
+    if (name->IsDependent() or expr->IsDependent()) { return true; }
+  }
+  return false;
+}
+
 bool BinaryOperator::IsDependent() const {
   return lhs()->IsDependent() or rhs()->IsDependent();
 }

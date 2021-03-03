@@ -450,6 +450,18 @@ cc_test(
 )
 
 cc_library(
+    name = "interface_literal",
+    srcs = ["interface_literal.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//type:primitive",
+    ],
+)
+
+# TODO: interface_literal_test
+
+cc_library(
     name = "jump",
     srcs = ["jump.cc"],
     deps = [

@@ -157,6 +157,14 @@ struct ParamDependencyGraphBuilder
     Visit(node->rhs(), d);
   }
 
+  void Visit(InterfaceLiteral const *node,
+             core::DependencyNode<Declaration> d) {
+    for (auto &[name, expr] : node->entries()) {
+      Visit(name.get(), d);
+      Visit(expr.get(), d);
+    }
+  }
+
   void Visit(ConditionalGoto const *node, core::DependencyNode<Declaration> d) {
     Visit(node->condition(), d);
     for (auto const &opt : node->true_options()) {

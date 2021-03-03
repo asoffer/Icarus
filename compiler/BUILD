@@ -94,6 +94,7 @@ TYPE_VERIFICATION = [
     "//compiler/verify:identifier",
     "//compiler/verify:import",
     "//compiler/verify:index",
+    "//compiler/verify:interface_literal",
     "//compiler/verify:jump",
     "//compiler/verify:miscellaneous",
     "//compiler/verify:parameterized_struct_literal",
@@ -124,6 +125,7 @@ IR_EMISSION = [
     "//compiler/emit:goto",
     "//compiler/emit:identifier",
     "//compiler/emit:index",
+    "//compiler/emit:interface_literal",
     "//compiler/emit:jump",
     "//compiler/emit:miscellaneous",
     "//compiler/emit:parameterized_struct_literal",
@@ -138,12 +140,6 @@ IR_EMISSION = [
     "//compiler/emit:unary_operator",
     "//compiler/emit:yield_stmt",
 ]
-
-cc_library(
-    name = "visitors",
-    deps = [
-    ],
-)
 
 cc_library(
     name = "compiler_header",

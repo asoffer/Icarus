@@ -167,6 +167,8 @@ void TokenExtractor::Visit(ast::DesignatedInitializer const *node) {
   NOT_YET();
 }
 
+void TokenExtractor::Visit(ast::InterfaceLiteral const *node) { NOT_YET(); }
+
 void TokenExtractor::Visit(ast::Identifier const *node) {
   line_builder_.write(node->name());
 }

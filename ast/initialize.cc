@@ -193,6 +193,17 @@ void Index::Initialize(Initializer const& initializer) {
   rhs_->Initialize(initializer);
 }
 
+void InterfaceLiteral::Initialize(Initializer const& initializer) {
+  scope_ = initializer.scope;
+  set_body_with_parent(initializer.scope);
+  Initializer i{.scope            = &body_scope(),
+                .function_literal = initializer.function_literal};
+  for (auto& [name, expr] : entries_) {
+    name->Initialize(i);
+    expr->Initialize(i);
+  }
+}
+
 void ConditionalGoto::Initialize(Initializer const& initializer) {
   scope_ = initializer.scope;
   condition_->Initialize(initializer);
