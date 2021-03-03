@@ -48,7 +48,7 @@ string ::= struct {
     buffer[0] = `\0
     return string.{
       _data     = buffer
-      _length   = capacity
+      _length   = 0 as u64 
       _capacity = capacity
     }
   }
@@ -101,7 +101,9 @@ is_empty ::= (s: *string) => s._length == 0 as u64
 
 #{export}
 append ::= (s: *string, character: char) -> () {
-  core.if (s._capacity == s._length) then {
+  core.if (s._capacity == 0 as u64) then {
+    resize_buffer(s, 1 as u64)
+  } else core.if (s._capacity == s._length) then {
     resize_buffer(s, s._capacity * 2 as u64)
   }
 
@@ -133,7 +135,7 @@ append ::= (s: *string, from: *string) -> () {
 #{export}
 Print ::= (s: *string) -> () {
   printf ::= foreign("printf", ([*]char, [*]char) -> i32)
-  core.if (not s'is_empty) then { printf(&"%s"[0], s._data) }
+  core.if (not s'is_empty) then { printf("%s".data, s._data) }
 }
 
 #{export}

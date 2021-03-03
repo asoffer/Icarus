@@ -128,8 +128,11 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
     }
 
     EmitIrForStatements(*this, node->stmts());
-    MakeAllDestructions(*this, &node->body_scope());
-    builder().ReturnJump();
+    if (builder().block_termination_state() !=
+        ir::Builder::BlockTerminationState::kReturn) {
+      MakeAllDestructions(*this, &node->body_scope());
+      builder().ReturnJump();
+    }
   }
 
   ir_func->WriteByteCode<instruction_set_t>();

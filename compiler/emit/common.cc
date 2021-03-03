@@ -338,43 +338,45 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
   }
 }
 
-void MakeAllDestructions(Compiler &compiler, ast::Scope  const *scope) {
+void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
-  std::vector<ast::Declaration::Id const *> ordered_decl_ids;
+  std::vector<std::pair<ast::Declaration::Id const *, type::Type>>
+      ordered_decl_ids;
   LOG("MakeAllDestructions", "decls in this scope:");
   for (auto &[name, ids] : scope->decls_) {
     LOG("MakeAllDestructions", "... %s", name);
-    for (ast::Declaration::Id const *id : ids) { ordered_decl_ids.push_back(id); }
+    for (ast::Declaration::Id const *id : ids) {
+      type::QualType qt = c.context().qual_types(id)[0];
+      if (qt.constant()) { continue; }
+      if (not qt.type().get()->HasDestructor()) { continue; }
+      ordered_decl_ids.emplace_back(id, qt.type());
+    }
   }
 
   // TODO eek, don't use line number to determine destruction order!
-  absl::c_sort(ordered_decl_ids, [](ast::Declaration::Id const *lhs,
-                                    ast::Declaration::Id const *rhs) {
-    return (lhs->range().begin() > rhs->range().begin());
+  absl::c_sort(ordered_decl_ids, [](auto const &lhs, auto const &rhs) {
+    return (lhs.first->range().begin() > rhs.first->range().begin());
   });
 
-  for (auto const *id : ordered_decl_ids) {
-    type::Type t = compiler.context().qual_types(id)[0].type();
-    if (not t.get()->HasDestructor()) { continue; }
-    compiler.EmitDestroy(type::Typed<ir::Reg>(compiler.context().addr(id), t));
+  for (auto const &[id, t] : ordered_decl_ids) {
+    c.EmitDestroy(type::Typed<ir::Reg>(c.context().addr(id), t));
   }
 }
 
 // TODO One problem with this setup is that we don't end up calling destructors
 // if we exit early, so those need to be handled externally.
-void EmitIrForStatements(Compiler &compiler,
-                         base::PtrSpan<ast::Node const> stmts) {
-  ICARUS_SCOPE(ir::SetTemporaries(compiler.builder())) {
+void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
+  ICARUS_SCOPE(ir::SetTemporaries(c.builder())) {
     for (auto *stmt : stmts) {
       LOG("EmitIrForStatements", "%s", stmt->DebugString());
-      compiler.EmitValue(stmt);
-      compiler.builder().FinishTemporariesWith(
-          [&compiler](type::Typed<ir::Reg> r) { compiler.EmitDestroy(r); });
-      LOG("EmitIrForStatements", "%p %s", compiler.builder().CurrentBlock(),
-          *compiler.builder().CurrentGroup());
+      c.EmitValue(stmt);
+      c.builder().FinishTemporariesWith(
+          [&c](type::Typed<ir::Reg> r) { c.EmitDestroy(r); });
+      LOG("EmitIrForStatements", "%p %s", c.builder().CurrentBlock(),
+          *c.builder().CurrentGroup());
 
-      if (compiler.builder().block_termination_state() !=
+      if (c.builder().block_termination_state() !=
           ir::Builder::BlockTerminationState::kMoreStatements) {
         break;
       }
