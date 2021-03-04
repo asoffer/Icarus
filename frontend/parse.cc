@@ -155,6 +155,21 @@ struct NonDeclarationInStruct {
   SourceRange range;
 };
 
+struct NonDeclarationInInterface {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "non-declaration-in-interface";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Each interface member must be defined using a declaration."),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  SourceRange range;
+};
+
 struct UnknownParseError {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "unknown-parse-error";
@@ -1359,6 +1374,30 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
   return std::make_unique<ast::StructLiteral>(range, std::move(fields));
 }
 
+std::unique_ptr<ast::InterfaceLiteral> BuildInterfaceLiteral(
+    Statements &&stmts, SourceRange range,
+    diagnostic::DiagnosticConsumer &diag) {
+  std::vector<std::unique_ptr<ast::Node>> node_stmts =
+      std::move(stmts).extract();
+
+  std::vector<std::pair<std::unique_ptr<ast::Expression>,
+                        std::unique_ptr<ast::Expression>>>
+      exprs;
+  for (auto &stmt : node_stmts) {
+    if (auto *decl = stmt->if_as<ast::Declaration>()) {
+      auto [names, type_expr, init_expr] = std::move(*decl).extract();
+      ASSERT(names.size() == 1u);
+      ASSERT(init_expr == nullptr);
+      exprs.emplace_back(std::make_unique<ast::Declaration::Id>(names[0]),
+                         std::move(type_expr));
+    } else {
+      diag.Consume(NonDeclarationInInterface{.range = stmt->range()});
+    }
+  }
+
+  return std::make_unique<ast::InterfaceLiteral>(range, std::move(exprs));
+}
+
 std::unique_ptr<ast::Node> BuildStatefulJump(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1475,15 +1514,6 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
   }
 }
 
-std::unique_ptr<ast::Node> BuildConcreteStruct(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  return BuildStructLiteral(
-      std::move(nodes[1]->as<Statements>()),
-      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()),
-      diag);
-}
-
 std::unique_ptr<ast::Node> BuildKWBlock(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1497,7 +1527,16 @@ std::unique_ptr<ast::Node> BuildKWBlock(
                                     diag);
 
     } else if (tk == "struct") {
-      return BuildConcreteStruct(std::move(nodes), diag);
+      return BuildStructLiteral(std::move(nodes[1]->as<Statements>()),
+                                SourceRange(nodes.front()->range().begin(),
+                                            nodes.back()->range().end()),
+                                diag);
+
+    } else if (tk == "interface") {
+      return BuildInterfaceLiteral(std::move(nodes[1]->as<Statements>()),
+                                   SourceRange(nodes.front()->range().begin(),
+                                               nodes.back()->range().end()),
+                                   diag);
 
     } else if (tk == "scope") {
       SourceRange range(nodes.front()->range().begin(),
