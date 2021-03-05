@@ -110,6 +110,7 @@ ir::Fn const *Struct::CopyAssignment(type::Type from_type) const {
 }
 
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
+  ASSERT(completeness_ >= Completeness::DataComplete);
   auto offset = core::Bytes{0};
   for (size_t i = 0; i < field_num; ++i) {
     offset += fields_.at(i).type.bytes(a);

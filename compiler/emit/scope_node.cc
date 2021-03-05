@@ -196,17 +196,29 @@ void SetBeforeBlockPhi(
 
   size_t i = 0;
   for (auto const &param : param_qts) {
-    type::Apply(before_block.fn.type()->params()[i].value.type(),
-                [&]<typename T>() {
-                  ir::PhiInstruction<T> *phi =
-                      inserted ? c.builder().PhiInst<T>()
-                               : &c.builder()
-                                      .CurrentBlock()
-                                      ->instructions()[i]
-                                      .template as<ir::PhiInstruction<T>>();
-                  if (inserted) { phis.push_back(ir::Value(phi->result)); }
-                  phi->add(incoming_block, prepared_arguments[i].get<ir::RegOr<T>>());
-                });
+    auto t = before_block.fn.type()->params()[i].value.type();
+    if (t.is_big()) {
+      ir::PhiInstruction<ir::Addr> *phi =
+          inserted ? c.builder().PhiInst<ir::Addr>()
+                   : &c.builder()
+                          .CurrentBlock()
+                          ->instructions()[i]
+                          .template as<ir::PhiInstruction<ir::Addr>>();
+      if (inserted) { phis.push_back(ir::Value(phi->result)); }
+      phi->add(incoming_block,
+               prepared_arguments[i].get<ir::RegOr<ir::Addr>>());
+    } else {
+      type::Apply(t, [&]<typename T>() {
+        ir::PhiInstruction<T> *phi =
+            inserted ? c.builder().PhiInst<T>()
+                     : &c.builder()
+                            .CurrentBlock()
+                            ->instructions()[i]
+                            .template as<ir::PhiInstruction<T>>();
+        if (inserted) { phis.push_back(ir::Value(phi->result)); }
+        phi->add(incoming_block, prepared_arguments[i].get<ir::RegOr<T>>());
+      });
+    }
     ++i;
   }
 
@@ -374,11 +386,15 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
     for (size_t i = 0; i < out_params.size(); ++i) {
       absl::Span<ast::Declaration::Id const> ids  = before_block.block->params()[i].value->ids();
       ASSERT(ids.size() == 1u);
-      type::Apply(before_block.fn.type()->params()[i].value.type(),
-                  [&]<typename T>() {
-                    builder().Store(ir::RegOr<T>(out_params[i]),
-                                    context().addr(&ids[0]));
-                  });
+      auto t = before_block.fn.type()->params()[i].value.type();
+      if (t.is_big()) {
+        builder().Store(ir::RegOr<ir::Addr>(out_params[i]),
+                        context().addr(&ids[0]));
+      } else {
+        type::Apply(t, [&]<typename T>() {
+          builder().Store(ir::RegOr<T>(out_params[i]), context().addr(&ids[0]));
+        });
+      }
     }
     builder().UncondJump(bodies.at(before_block.block));
   }

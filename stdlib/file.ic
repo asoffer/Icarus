@@ -1,27 +1,57 @@
+
+io   ::= import "io.ic"
+core   ::= import "core.ic"
 errno  ::= import "errno.ic"
 cstdio ::= import "cstdio.ic"
 
 #{export}
-File ::= scope(*cstdio.File) {
-  enter ::= jump [f: **cstdio.File] (name: char[]) {
-    @f = cstdio.fopen(name.data, "r".data)
+File ::= struct {
+  _handle: *cstdio.File
+}
 
+#{export}
+With ::= scope(File) {
+  enter ::= jump [f: *File] (name: char[]) {
+    io.Print("I\n")
+    f._handle = cstdio.fopen(name.data, "r".data)
+
+    io.Print("J\n")
     e := errno.get()
+    io.Print("K\n")
     goto e == errno.error.SUCCESS, open(@f), error(e) | done()
   }
 
   open ::= block {
-    before ::= (f: *cstdio.File) => f
-    after ::= jump [f: **cstdio.File] () {
-      cstdio.fclose(@f)
+    before ::= (f: File) -> File { 
+      'debug_ir
+      io.Print("X\n") \\ return f }
+    after ::= jump [f: *File] () {
+      cstdio.fclose(f._handle)
       goto done()
     }
   }
 
   error ::= block {
     before ::= (e: errno.error) => e
-    after ::= jump [f: **cstdio.File] () { goto done() }
+    after ::= jump [f: *File] () { goto done() }
   }
 
   exit ::= () -> () {}
+}
+
+#{export}
+read_to ::= (f: File, T :: type) -> T {
+   result: T
+   CHUNK_SIZE ::= 10 as u64
+   num_read := CHUNK_SIZE
+   buffer: [CHUNK_SIZE; char]
+   core.while (num_read == CHUNK_SIZE) do {
+     num_read = cstdio.fread(&buffer[0], char'bytes, CHUNK_SIZE, f._handle)
+     i := 0 as u64
+     core.while (i < num_read) do {
+       result'append(buffer[i])
+       i += 1 as u64
+     }
+   }
+   return result
 }

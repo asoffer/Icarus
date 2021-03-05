@@ -51,6 +51,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f,
                               absl::Span<ir::Addr const> return_slots,
                               base::untyped_buffer_view stack) {
   type::Function const *fn_type = f.type();
+  LOG("CallFn", "Calling %s: %s", f, fn_type->to_string());
 
   std::vector<ffi_type *> arg_types;
   arg_types.reserve(fn_type->params().size());

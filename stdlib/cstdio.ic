@@ -5,5 +5,6 @@
 #{export} fclose ::= foreign("fclose", *File -> i32)
 #{export} fgets  ::= foreign("fgets", ([*]char, i32, *File) -> [*]char)
 #{export} fgetc  ::= foreign("fgetc", (*File) -> i32)
+#{export} fread  ::= foreign("fread", ([*]char, u64, u64, *File) -> u64)
 #{export} puts   ::= foreign("puts", [*]char -> i32)
 #{export} eof    ::= 4294967295 as i32

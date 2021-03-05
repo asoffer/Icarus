@@ -26,17 +26,44 @@ struct IncompleteField {
   frontend::SourceRange range;
 };
 
-
 ir::Fn InsertGeneratedMoveInit(
     Compiler &c, type::Struct *s,
     absl::Span<type::StructInstruction::Field const> ir_fields) {
   auto [fn, inserted] = c.context().root().InsertMoveInit(s, s);
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {}
+    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+      c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
+
+      auto from = ir::Reg::Arg(0);
+      auto to   = ir::Reg::Arg(1);
+
+      c.builder().DebugIr();
+      size_t i = 0;
+      for (auto const &field : ir_fields) {
+        type::Type t = field.type().value();
+        auto to_ref =
+            c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+                .addr        = to,
+                .index       = i,
+                .struct_type = s,
+                .result      = c.builder().CurrentGroup()->Reserve()});
+        auto from_val =
+            c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+                .addr        = from,
+                .index       = i,
+                .struct_type = s,
+                .result      = c.builder().CurrentGroup()->Reserve()});
+
+        c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, t),
+                       type::Typed<ir::Value>(
+                           ir::Value(c.builder().PtrFix(from_val, t)), t));
+        ++i;
+      }
+      c.builder().ReturnJump();
+    }
     fn->WriteByteCode<instruction_set_t>();
   }
   return fn;
-
 }
 
 ir::Fn InsertGeneratedCopyInit(
@@ -44,11 +71,39 @@ ir::Fn InsertGeneratedCopyInit(
     absl::Span<type::StructInstruction::Field const> ir_fields) {
   auto [fn, inserted] = c.context().root().InsertCopyInit(s, s);
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {}
+   ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+     c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
+
+     auto from                = ir::Reg::Arg(0);
+     auto to                  = ir::Reg::Arg(1);
+
+     c.builder().DebugIr();
+     size_t i = 0;
+     for (auto const &field : ir_fields) {
+       type::Type t = field.type().value();
+       auto to_ref =
+           c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+               .addr        = to,
+               .index       = i,
+               .struct_type = s,
+               .result      = c.builder().CurrentGroup()->Reserve()});
+       auto from_val =
+           c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+               .addr        = from,
+               .index       = i,
+               .struct_type = s,
+               .result      = c.builder().CurrentGroup()->Reserve()});
+
+       c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, t),
+                      type::Typed<ir::Value>(
+                          ir::Value(c.builder().PtrFix(from_val, t)), t));
+       ++i;
+      }
+      c.builder().ReturnJump();
+    }
     fn->WriteByteCode<instruction_set_t>();
   }
   return fn;
-
 }
 
 ir::Fn InsertGeneratedMoveAssign(

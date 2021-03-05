@@ -1,4 +1,5 @@
 core ::= import "core.ic"
+io ::= import "io.ic"
 
 // TODO: The precise types here are actually architecture dependent. We need to
 // provide some platform-querying capabilities so that we don't need to, for
@@ -85,9 +86,11 @@ string ::= struct {
   (destroy) ::= (self: *string) -> () { free(self._data) }
 }
 
+// Resizes the buffer, copying the string data to the new buffer, excluding the
+// null terminator. Assumes `new_capacity` is at least as large as`s._capacity`.
 resize_buffer ::= (s: *string, new_capacity: u64) -> () {
   buffer := malloc(new_capacity + 1 as u64)
-  memcpy(buffer, s._data, s._length + 1 as u64)
+  memcpy(buffer, s._data, s._length as u64)
   free(s._data)
   s._data = buffer
   s._capacity = new_capacity
@@ -106,7 +109,6 @@ append ::= (s: *string, character: char) -> () {
   } else core.if (s._capacity == s._length) then {
     resize_buffer(s, s._capacity * 2 as u64)
   }
-
   s._data[s._length] = character
   s._length += 1 as u64
   s._data[s._length] = `\0
@@ -128,8 +130,9 @@ append ::= (s: *string, from: *string) -> () {
     resize_buffer(s, s._length + from._length)
   }
 
-  memcpy((&s._data[0]) + s._length, &from._data[0], from._length + 1 as u64)
+  memcpy((&s._data[0]) + s._length, &from._data[0], from._length)
   s._length += from._length
+  s._data[s._length] = `\0
 }
 
 #{export}

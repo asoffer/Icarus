@@ -434,6 +434,7 @@ struct StructIndexInstruction
       "%4$s = index %2$s of %1$s (struct %3$s)";
 
   Addr Resolve() const {
+    LOG("", "%s", *this);
     return addr.value() +
            struct_type->offset(index.value(), interpreter::kArchitecture);
   }

@@ -35,7 +35,7 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   for (size_t i = 0; i < node->exprs().size(); ++i) {
     auto const *expr    = node->exprs()[i];
     type::Type ret_type = fn_type.output()[i];
-    if (ret_type.get()->is_big()) {
+    if (ret_type.is_big()) {
       type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
           ir::RegOr<ir::Addr>(builder().GetRet(i, ret_type)), ret_type);
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
