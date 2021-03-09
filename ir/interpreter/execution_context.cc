@@ -119,7 +119,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f,
   LOG("foreign-errno", "after: %d", errno);
 
   if (out_type == type::Void) {
-    goto done;
+    return;
   } else if (out_type == type::I8) {
     ExtractReturnValue<int8_t>(&ret, return_slots[0]);
   } else if (out_type == type::I16) {
@@ -140,27 +140,25 @@ void ExecutionContext::CallFn(ir::ForeignFn f,
     ExtractReturnValue<float>(&ret, return_slots[0]);
   } else if (out_type == type::F64) {
     ExtractReturnValue<double>(&ret, return_slots[0]);
-  } else {
-    // TODO: Must all other cases be pointers? We're relying on this to avoid
-    // spelling out `Pointer` which is necessarily an incomplete type at this
-    // point.
+  } else if (out_type.is<type::Pointer>()) {
     char *ptr;
     std::memcpy(&ptr, &ret, sizeof(ptr));
     ir::Addr addr;
     uintptr_t ptr_int    = reinterpret_cast<uintptr_t>(ptr);
     uintptr_t stack_head = reinterpret_cast<uintptr_t>(stack.raw(0));
-    uintptr_t stack_end =
-        reinterpret_cast<uintptr_t>(stack.raw(0)) + stack.size();
+    uintptr_t stack_end  = stack_head + stack.size();
     if (stack_head <= ptr_int and ptr_int < stack_end) {
       addr = ir::Addr::Stack(ptr_int - stack_head);
     } else {
-      // TODO read-only data?
+      // TODO: read-only data?
       addr = ir::Addr::Heap(ptr);
     }
     std::memcpy(return_slots[0].heap(), &addr, sizeof(addr));
+  } else {
+    UNREACHABLE(out_type);
   }
-done:;
 }
+
 void ExecutionContext::CallFn(ir::BuiltinFn fn,
                               base::untyped_buffer_view arguments,
                               absl::Span<ir::Addr const> ret_slots) {

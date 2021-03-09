@@ -355,7 +355,7 @@ struct Builder {
     }
   }
 
-  Reg GetRet(uint16_t n, type::Type t) {
+  Reg GetRet(uint16_t n) {
     GetReturnInstruction inst{.index = n};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));

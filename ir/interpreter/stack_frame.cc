@@ -12,10 +12,6 @@ StackFrame::StackFrame(ir::NativeFn fn, base::untyped_buffer arguments,
       current_(fn_->entry()),
       prev_(fn_->entry()),
       regs_(fn_->num_regs(), std::move(arguments)) {
-  LOG("",
-      "Creating a new stack frame with %u registers and argument block of size "
-      "%u\n%s",
-      fn_->num_regs(), regs_.data_.size(), *fn_.get());
   core::Bytes next_reg_loc = core::Bytes(stack->size());
   fn->for_each_alloc([&](type::Type t, ir::Reg r) {
     ASSERT(t.valid() == true);

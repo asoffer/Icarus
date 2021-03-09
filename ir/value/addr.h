@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include "base/debug.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "base/extend/compare.h"
@@ -60,7 +61,10 @@ struct Addr : base::Extend<Addr, 1>::With<base::AbslHashExtension,
   constexpr Kind kind() const { return static_cast<Kind>(data_ & 0b11); }
   constexpr uint64_t stack() const { return data_ >> 2; }
   constexpr uint64_t rodata() const { return data_ >> 2; }
-  void *heap() const { return reinterpret_cast<void *>(data_ >> 2); }
+  void *heap() const {
+    ASSERT(kind() == Kind::Heap);
+    return reinterpret_cast<void *>(data_ >> 2);
+  }
 
   friend absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
   AbslFormatConvert(Addr addr, const absl::FormatConversionSpec &spec,

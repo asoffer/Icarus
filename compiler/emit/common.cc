@@ -35,9 +35,8 @@ ir::Fn InsertGeneratedMoveInit(
       c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
       auto from = ir::Reg::Arg(0);
-      auto to   = ir::Reg::Arg(1);
+      auto to   = c.builder().GetRet(0);
 
-      c.builder().DebugIr();
       size_t i = 0;
       for (auto const &field : ir_fields) {
         type::Type t = field.type().value();
@@ -74,10 +73,9 @@ ir::Fn InsertGeneratedCopyInit(
    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
      c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
-     auto from                = ir::Reg::Arg(0);
-     auto to                  = ir::Reg::Arg(1);
+     auto from = ir::Reg::Arg(0);
+     auto to   = c.builder().GetRet(0);
 
-     c.builder().DebugIr();
      size_t i = 0;
      for (auto const &field : ir_fields) {
        type::Type t = field.type().value();

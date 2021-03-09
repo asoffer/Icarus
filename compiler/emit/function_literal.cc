@@ -112,7 +112,7 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
         if (not out_decl) { continue; }
         type::Type out_decl_type = context().qual_types(out_decl)[0].type();
         auto alloc               = out_decl_type.get()->is_big()
-                         ? builder().GetRet(i, out_decl_type)
+                         ? builder().GetRet(i)
                          : builder().Alloca(out_decl_type);
 
         ASSERT(out_decl->ids().size() == 1u);

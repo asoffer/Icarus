@@ -1,4 +1,3 @@
-
 io   ::= import "io.ic"
 core   ::= import "core.ic"
 errno  ::= import "errno.ic"
@@ -22,9 +21,7 @@ With ::= scope(File) {
   }
 
   open ::= block {
-    before ::= (f: File) -> File { 
-      'debug_ir
-      io.Print("X\n") \\ return f }
+    before ::= (f: File) => f
     after ::= jump [f: *File] () {
       cstdio.fclose(f._handle)
       goto done()
@@ -41,17 +38,17 @@ With ::= scope(File) {
 
 #{export}
 read_to ::= (f: File, T :: type) -> T {
-   result: T
-   CHUNK_SIZE ::= 10 as u64
-   num_read := CHUNK_SIZE
-   buffer: [CHUNK_SIZE; char]
-   core.while (num_read == CHUNK_SIZE) do {
-     num_read = cstdio.fread(&buffer[0], char'bytes, CHUNK_SIZE, f._handle)
-     i := 0 as u64
-     core.while (i < num_read) do {
-       result'append(buffer[i])
-       i += 1 as u64
-     }
-   }
-   return result
+  result: T
+  CHUNK_SIZE ::= 10 as u64
+  num_read := CHUNK_SIZE
+  buffer: [CHUNK_SIZE; char]
+  core.while (num_read == CHUNK_SIZE) do {
+    num_read = cstdio.fread(&buffer[0], char'bytes, CHUNK_SIZE, f._handle)
+    i := 0 as u64
+    core.while (i < num_read) do {
+      result'append(buffer[i])
+      i += 1 as u64
+    }
+  }
+  return result
 }

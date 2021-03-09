@@ -104,7 +104,7 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
     type::Type ret_type = ir_func.type()->output()[0];
     if (ret_type.is_big()) {
       type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
-          ir::RegOr<ir::Addr>(builder().GetRet(0, ret_type)), ret_type);
+          ir::RegOr<ir::Addr>(builder().GetRet(0)), ret_type);
       EmitMoveInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       builder().SetRet(
