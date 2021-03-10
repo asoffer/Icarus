@@ -55,11 +55,12 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
                 {core::AnonymousParam(type::QualType::Constant(type::Type_))},
                 {type::U64});
           case BuiltinFn::Which::Opaque: return type::Func({}, {type::Type_});
+          case BuiltinFn::Which::Slice:
           case BuiltinFn::Which::Foreign:
-            // Note: We do not allow passing `foreign` around as a function
-            // object. It is call-only, which means the generic part can be
-            // handled in the type checker. The value here may be stored, but it
-            // will never be accessed again.
+            // Note: We do not allow passing `foreign` or `slice` around as a
+            // function object. It is call-only, which means the generic part
+            // can be handled in the type checker. The value here may be stored,
+            // but it will never be accessed again.
             //
             // TODO: Why not allow passing it around?
             return nullptr;

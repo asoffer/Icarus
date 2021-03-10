@@ -20,6 +20,7 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
     Bytes,
     Opaque,
     Foreign,
+    Slice,
     DebugIr
   };
   explicit constexpr BuiltinFn(Which w) : which_(w) {}
@@ -29,6 +30,7 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
   static BuiltinFn Bytes() { return BuiltinFn(Which::Bytes); }
   static BuiltinFn Opaque() { return BuiltinFn(Which::Opaque); }
   static BuiltinFn Foreign() { return BuiltinFn(Which::Foreign); }
+  static BuiltinFn Slice() { return BuiltinFn(Which::Slice); }
   static BuiltinFn DebugIr() { return BuiltinFn(Which::DebugIr); }
 
   static std::optional<BuiltinFn> ByName(std::string_view name) {
@@ -49,8 +51,8 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
  private:
   friend base::EnableExtensions;
 
-  static constexpr std::array kNames{"abort",  "alignment", "bytes",
-                                     "opaque", "foreign",   "debug_ir"};
+  static constexpr std::array kNames{
+      "abort", "alignment", "bytes", "opaque", "foreign", "slice", "debug_ir"};
 
   Which which_;
 };

@@ -115,13 +115,13 @@ append ::= (s: *string, character: char) -> () {
 }
 
 #{export}
-append ::= (s: *string, slice: char[]) -> () {
-  core.if (s._length + slice.length > s._capacity) then {
-    resize_buffer(s, s._length + slice.length)
+append ::= (s: *string, char_slice: char[]) -> () {
+  core.if (s._length + char_slice.length > s._capacity) then {
+    resize_buffer(s, s._length + char_slice.length)
   }
 
-  memcpy((&s._data[0]) + s._length, slice.data, slice.length + 1 as u64)
-  s._length += slice.length
+  memcpy((&s._data[0]) + s._length, char_slice.data, char_slice.length + 1 as u64)
+  s._length += char_slice.length
 }
 
 #{export}
@@ -143,3 +143,6 @@ Print ::= (s: *string) -> () {
 
 #{export}
 at ::= (s: *string, n: u64) => &s._data[n]
+
+#{export}
+at ::= (s: *string, lo: u64, hi: u64) => slice(&s._data[lo], hi - lo)

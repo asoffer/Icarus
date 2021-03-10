@@ -26,8 +26,8 @@ core ::= import "core.ic"
 }
 
 #{export} Print ::= (s: char[]) -> () {
-  printf ::= foreign("printf", ([*]char, [*]char) -> i32)
-  printf("%s".data, &s[0])
+  printf ::= foreign("printf", ([*]char, u64, [*]char) -> i32)
+  printf("%.*s".data, s.length, &s[0])
 }
 
 #{export} Print ::= (f: f32) -> () { Print(f as f64) }

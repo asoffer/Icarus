@@ -108,6 +108,8 @@ TEST(BuiltinForeign, SecondParameterType) {
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
+// TODO: Slice tests.
+
 TEST(BuiltinOpaque, Success) {
   test::TestModule mod;
   auto const *call  = mod.Append<ast::Call>("opaque()");

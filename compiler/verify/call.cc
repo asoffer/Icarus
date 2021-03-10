@@ -115,6 +115,58 @@ struct UncallableWithArguments {
   frontend::SourceRange range;
 };
 
+type::QualType VerifySliceCall(
+    Compiler *c, frontend::SourceRange const &range,
+    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+  bool error = false;
+  if (not arg_vals.named().empty()) {
+    c->diag().Consume(BuiltinError{
+        .range   = range,
+        .message = "Built-in function `slice` cannot be called with named "
+                   "arguments.",
+    });
+    error = true;
+  }
+
+  size_t size = arg_vals.size();
+  if (size != 2u) {
+    c->diag().Consume(BuiltinError{
+        .range   = range,
+        .message = absl::StrCat("Built-in function `slice` takes exactly two "
+                                "arguments (You provided ",
+                                size, ")."),
+    });
+    error = true;
+  }
+
+  if (error) { return type::QualType::Error(); }
+
+  if (not arg_vals[0].type().is<type::BufferPointer>()) {
+    // TODO: When we change the syntax for slices change this error message too.
+    c->diag().Consume(BuiltinError{
+        .range   = range,
+        .message = absl::StrCat("First argument to `slice` must be a buffer "
+                                "pointer (You provided a(n) ",
+                                arg_vals[0].type().to_string(), ")."),
+    });
+    error = true;
+  }
+
+  if (arg_vals[1].type() != type::U64) {
+    c->diag().Consume(
+        BuiltinError{.range   = range,
+                     .message = "Second argument to `slice` must be `u64`."});
+    error = true;
+  }
+
+  if (error) { return type::QualType::Error(); }
+
+  LOG("", "%s %s", arg_vals[0].type().to_string(),
+      type::Slc(arg_vals[0].type())->to_string());
+  return type::QualType::NonConstant(
+      type::Slc(arg_vals[0].type().as<type::BufferPointer>().pointee()));
+}
+
 type::QualType VerifyForeignCall(
     Compiler *c, frontend::SourceRange const &range,
     core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
@@ -322,6 +374,12 @@ not_an_interface:
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     type::QualType qt;
     switch (b->value().which()) {
+      case ir::BuiltinFn::Which::Slice: {
+        ast::OverloadSet os;
+        os.insert(node);
+        context().SetAllOverloads(node, std::move(os));
+        qt = VerifySliceCall(this, b->range(), arg_vals);
+      } break;
       case ir::BuiltinFn::Which::Foreign: {
         ast::OverloadSet os;
         os.insert(node);
