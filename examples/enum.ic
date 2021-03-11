@@ -61,7 +61,7 @@ io.Print("\n")
 
 // Flag values can also be negated:
 io.Print("Cyan is ")
-PrintFlag(!Color.RED)
+PrintFlag(not Color.RED)
 io.Print("\n")
 
 // Flags do come with a partial ordering where "less than" means having a
@@ -84,7 +84,7 @@ io.Print("\n")
 
 // Lastly, enumerators can be intersected with the and-operator (&).
 io.Print("(not red and not blue) is ")
-PrintFlag(!Color.RED & !Color.BLUE)
+PrintFlag(not Color.RED & not Color.BLUE)
 io.Print("\n")
 
 io.Print("Magenta is ")
