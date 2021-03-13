@@ -6,7 +6,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//compiler:library_module",
+        "//compiler:module",
         "//ir/value:module_id",
         "//type:enum",
         "//type:flags",
@@ -176,6 +176,7 @@ cc_test(
     srcs = ["call_test.cc"],
     deps = [
         "//compiler",
+        "//compiler:library_module",
         "//test:module",
         "@com_google_googletest//:gtest_main",
     ],
@@ -210,7 +211,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:context",
-        "//compiler:library_module",
+        "//compiler:module",
         "//core:dependency_node",
         "//core:arguments",
         "//ir/value",
@@ -255,7 +256,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//compiler:library_module",
+        "//compiler:module",
         "//compiler/verify/internal:assignment_and_initialization",
         "//type:qual_type",
         "//type:typed_value",
@@ -280,7 +281,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//compiler:library_module",
         "//type:primitive",
         "//type:qual_type",
         "@com_google_absl//absl/cleanup",
@@ -293,6 +293,7 @@ cc_test(
     srcs = ["designated_initializer_test.cc"],
     deps = [
         "//compiler",
+        "//compiler:library_module",
         "//test:module",
         "@com_google_googletest//:gtest_main",
     ],
@@ -412,7 +413,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//compiler:library_module",
+        "//compiler:module",
         "//ir/value:module_id",
     ],
 )
@@ -506,7 +507,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instructions",
-        "//compiler:library_module",
+        "//compiler:module",
         "//compiler:resources",
         "//compiler/emit:common",
         "//type:qual_type",

@@ -4,7 +4,7 @@
 #include <string_view>
 
 #include "compiler/compiler.h"
-#include "compiler/library_module.h"
+#include "compiler/module.h"
 #include "core/arguments.h"
 #include "core/call.h"
 #include "ir/value/value.h"

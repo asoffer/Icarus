@@ -4,7 +4,6 @@
 #include "base/log.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
-#include "compiler/executable_module.h"
 #include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "ir/compiled_fn.h"

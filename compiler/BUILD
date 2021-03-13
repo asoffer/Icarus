@@ -177,7 +177,6 @@ cc_library(
     deps = [
         ":compiler_header",
         ":context",
-        ":executable_module",
         ":instructions",
         ":module",
         "//ast",
@@ -191,7 +190,6 @@ cc_library(
         "//type:generic_struct",
         "//type:jump",
     ] + TYPE_VERIFICATION + IR_EMISSION,
-    alwayslink = True, # TODO: Figure out a good way to remove this.
 )
 
 cc_library(
@@ -248,7 +246,7 @@ cc_library(
     name = "library_module",
     hdrs = ["library_module.h"],
     deps = [
-        ":compiler_header",
+        ":compiler",
         ":module",
         "//diagnostic/consumer",
         "//module:importer",
@@ -259,7 +257,7 @@ cc_library(
     name = "executable_module",
     hdrs = ["executable_module.h"],
     deps = [
-        ":compiler_header",
+        ":compiler",
         ":library_module",
         ":module",
         "//ast:scope",
@@ -273,11 +271,11 @@ cc_binary(
     name = "dump_cfg",
     srcs = ["dump_cfg.cc"],
     deps = [
-        ":compiler",
         ":executable_module",
         "//base:log",
         "//base:no_destructor",
         "//base:untyped_buffer",
+        "//compiler:library_module",
         "//diagnostic/consumer:streaming",
         "//frontend/source:file_name",
         "//frontend/source:shared",
@@ -299,7 +297,6 @@ cc_binary(
     srcs = ["main.cc"],
     linkopts = LLVM_LINKOPTS,
     deps = [
-        ":compiler",
         ":executable_module",
         "//base:log",
         "//backend:function",
@@ -326,7 +323,6 @@ cc_binary(
     name = "interpret",
     srcs = ["interpreter.cc"],
     deps = [
-        ":compiler",
         ":executable_module",
         ":instructions",
         "//base:log",

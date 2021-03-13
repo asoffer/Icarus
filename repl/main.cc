@@ -15,6 +15,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
 #include "base/log.h"
+#include "compiler/library_module.h"
 #include "diagnostic/consumer/streaming.h"
 #include "repl/module.h"
 #include "repl/source.h"

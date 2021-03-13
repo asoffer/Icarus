@@ -17,7 +17,6 @@
 #include "base/log.h"
 #include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
-#include "compiler/compiler.h"
 #include "compiler/executable_module.h"
 #include "compiler/instructions.h"
 #include "compiler/module.h"

@@ -2,7 +2,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/instructions.h"
-#include "compiler/library_module.h"
+#include "compiler/module.h"
 #include "compiler/resources.h"
 #include "compiler/verify/common.h"
 #include "type/generic_struct.h"

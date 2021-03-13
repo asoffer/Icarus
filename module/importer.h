@@ -37,8 +37,7 @@ struct FileImporter : Importer {
     auto [id, mod, inserted] = ir::ModuleId::FromFile<ModuleType>(file_name);
     if (not inserted) { return id; }
 
-    frontend::CanonicalFileName const& module_path =
-        id.template filename<ModuleType>();
+    frontend::CanonicalFileName const& module_path = id.filename();
     if (auto maybe_file_src = frontend::FileSource::Make(
             ResolveModulePath(module_path, module_lookup_paths));
         maybe_file_src.ok()) {

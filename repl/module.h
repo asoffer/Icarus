@@ -3,7 +3,6 @@
 
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/library_module.h"
 #include "compiler/module.h"
 
 namespace repl {

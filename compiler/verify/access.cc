@@ -1,6 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/library_module.h"
+#include "compiler/module.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"
 #include "type/enum.h"
@@ -304,14 +304,14 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
   // There is no way to refer to the current module, but a bug here could cause
   // a deadlock as this module waits for the notification that it's declarations
   // can be exported, so we would prefer to abort.
-  auto const *mod = mod_id.get<LibraryModule>();
-  ASSERT(mod != &c.context().module());
+  auto const &mod = mod_id.get()->as<CompiledModule>();
+  ASSERT(&mod != &c.context().module());
 
   // Note: for any declarations read across module boundaries, we set the
   // QualType of the imported declaration on the importing module context. This
   // makes it findable when it's called via an overload set as is type-checked
   // in VerifyCallee.
-  auto ids = mod->scope().ExportedDeclarationIds(node->member_name());
+  auto ids = mod.scope().ExportedDeclarationIds(node->member_name());
   switch (ids.size()) {
     case 0: {
       c.diag().Consume(UndeclaredIdentifierInModule{
@@ -321,9 +321,9 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       return type::QualType::Error();
     } break;
     case 1: {
-      type::QualType qt = mod->context().qual_types(ids[0])[0];
+      type::QualType qt = mod.context().qual_types(ids[0])[0];
 
-      type::Type t = mod->context().qual_types(ids[0])[0].type();
+      type::Type t = mod.context().qual_types(ids[0])[0].type();
       if (not qt.ok()) {
         LOG("AccessModuleMember",
             "Found member in a different module that is missing a type. "
@@ -339,7 +339,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       // TODO: these may also be an overload set of scopes
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Callable const *> member_types;
-      auto const &ctx = mod->context();
+      auto const &ctx = mod.context();
       for (auto const *id : ids) {
         auto qt = ctx.qual_types(id)[0];
         if (not qt.ok()) {

@@ -1,7 +1,7 @@
 #include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/library_module.h"
+#include "compiler/module.h"
 #include "compiler/verify/common.h"
 #include "compiler/verify/internal/assignment_and_initialization.h"
 #include "type/qual_type.h"
@@ -358,7 +358,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
                 EvaluateOrDiagnoseAs<ir::ModuleId>(node->init_val())) {
           // TODO: In generic contexts it doesn't make sense to place this on
           // the AST.
-          node->scope()->embed(&maybe_mod->get<LibraryModule>()->scope());
+          node->scope()->embed(&maybe_mod->get()->as<CompiledModule>().scope());
         } else {
           node_qual_types[i].MarkError();
         }

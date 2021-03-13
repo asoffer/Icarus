@@ -11,17 +11,21 @@
 #include "base/global.h"
 #include "frontend/source/file_name.h"
 
+namespace module {
+struct BasicModule;
+}  // namespace module
+
 namespace ir {
 namespace internal_module {
 
-template <typename ModuleType>
+// Because these are never deleted, there's no need to store the module ids in a
+// std::unique_ptr.
 struct ModuleData {
   base::flyweight_map<frontend::CanonicalFileName> ids;
-  std::vector<std::unique_ptr<ModuleType>> modules;
+  std::vector<module::BasicModule *> modules;
 };
 
-template <typename ModuleType>
-inline base::Global<ModuleData<ModuleType>> all_modules;
+inline base::Global<ModuleData> all_modules;
 
 }  // namespace internal_module
 
@@ -40,26 +44,30 @@ struct ModuleId : base::Extend<ModuleId, 1>::With<base::AbslHashExtension,
   template <typename ModuleType>
   static std::tuple<ModuleId, ModuleType*, bool> FromFile(
       frontend::CanonicalFileName const& filename) {
-    auto handle   = internal_module::all_modules<ModuleType>.lock();
+    auto handle   = internal_module::all_modules.lock();
     size_t id     = handle->ids.get(filename);
     bool inserted = false;
+    ModuleType* p;
     if (id == handle->modules.size()) {
       inserted = true;
-      handle->modules.push_back(std::make_unique<ModuleType>());
+      p        = new ModuleType;
+      handle->modules.push_back(p);
+    } else {
+      // TODO: Not sure this is allowed, but it's a workaround for the time
+      // being because BasicModule isn't complete yet.
+      p = reinterpret_cast<ModuleType*>(handle->modules.back());
     }
     ASSERT(id < handle->modules.size());
-    return std::tuple(ModuleId(id), handle->modules.back().get(), inserted);
+    return std::tuple(ModuleId(id), p, inserted);
   }
 
-  template <typename ModuleType>
   frontend::CanonicalFileName const& filename() const {
-    return internal_module::all_modules<ModuleType>.lock()->ids.get(id_);
+    return internal_module::all_modules.lock()->ids.get(id_);
   }
 
-  template <typename ModuleType>
-  ModuleType const* get() const {
-    auto handle = internal_module::all_modules<ModuleType>.lock();
-    return handle->modules[id_].get();
+  module::BasicModule const* get() const {
+    auto handle = internal_module::all_modules.lock();
+    return handle->modules[id_];
   }
 
  private:
