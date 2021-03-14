@@ -369,6 +369,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
 
 void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->descendants()) {
+    if (not scope->executable()) { continue; }
     if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
     for (const auto &[key, val] : scope->decls_) {
       LOG("MakeAllStackAllocations", "%s", key);

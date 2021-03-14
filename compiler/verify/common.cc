@@ -478,13 +478,17 @@ Compiler::VerifyCallResult Compiler::VerifyCall(
   // indirection in the overload set. Do we really want to rely on this?!
   if (auto const *overloads = context().AllOverloads(call_expr->callee())) {
     for (auto const *callee : overloads->members()) {
-      auto maybe_qt = callee->scope()
-                          ->Containing<ast::ModuleScope>()
-                          ->module()
-                          ->as<CompiledModule>()
-                          .context()
-                          .qual_types(callee)[0];
-      ExtractParams(callee, &maybe_qt.type().as<type::Callable>(), args,
+      auto const &callee_module = callee->scope()
+                                      ->Containing<ast::ModuleScope>()
+                                      ->module()
+                                      ->as<CompiledModule>();
+      type::QualType qt;
+      if (&callee_module == &context().module()) {
+        qt = context().qual_types(callee)[0];
+      } else {
+        qt = callee_module.context().qual_types(callee)[0];
+      }
+      ExtractParams(callee, &qt.type().as<type::Callable>(), args,
                     overload_params, errors);
     }
   }

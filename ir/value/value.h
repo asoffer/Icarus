@@ -186,6 +186,7 @@ struct Value {
   friend std::ostream& operator<<(std::ostream& os, Value value) {
     // TODO: Hack until we invert the Fn dependency.
     if (value.type_ == base::meta<Fn>) { return os << "fn"; }
+    if (value.type_ == base::meta<GenericFn>) { return os << "genfn"; }
     value.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double, type::Type,
                      Reg, Addr, String, ModuleId, Hashtag, Jump, Block, Scope,

@@ -35,6 +35,11 @@ struct GenericFn : base::Extend<GenericFn, 1>::With<base::EqualityExtension,
 
   NativeFn concrete(core::Arguments<type::Typed<Value>> const &args) const;
 
+  friend std::ostream& operator<<(std::ostream& os, GenericFn g) {
+    absl::Format(&os, kAbslFormatString, g.id_);
+    return os;
+  }
+
  private:
   friend base::EnableExtensions;
 

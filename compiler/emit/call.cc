@@ -99,19 +99,26 @@ void EmitCall(
   // Note: We only need to wait on the module if it's not this one, so even
   // though `callee_mod->context()` would be sufficient, we want to ensure that
   // we call the non-const overload if `callee_mod == &module()`.
-  type::QualType callee_qual_type =
-      callee_mod == &compiler.context().module()
-          ? compiler.context().qual_types(callee)[0]
-          : callee_mod->context().qual_types(callee)[0];
 
-  Compiler callee_compiler(PersistentResources{
-      .data                = callee_mod->context(),
-      .diagnostic_consumer = compiler.diag(),
-      .importer            = compiler.importer(),
-  });
-  auto [callee_fn, overload_type, context] =
-      EmitCallee(callee_compiler, callee, callee_qual_type, constant_arguments);
+  std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> results;
+  if (callee_mod == &compiler.context().module()) {
+    results =
+        EmitCallee(compiler, callee, compiler.context().qual_types(callee)[0],
+                   constant_arguments);
+  } else {
+    type::QualType callee_qual_type =
+        callee_mod->context().qual_types(callee)[0];
 
+    Compiler callee_compiler(PersistentResources{
+        .data                = callee_mod->context(),
+        .diagnostic_consumer = compiler.diag(),
+        .importer            = compiler.importer(),
+    });
+    results = EmitCallee(callee_compiler, callee, callee_qual_type,
+                         constant_arguments);
+  }
+
+  auto &[callee_fn, overload_type, context] = results;
   Compiler c = compiler.MakeChild(PersistentResources{
       .data                = context ? *context : compiler.context(),
       .diagnostic_consumer = compiler.diag(),

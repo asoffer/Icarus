@@ -50,7 +50,7 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
             type::Typed<ast::Expression const *>(node->initial_value(), t));
         if (value_buffer.empty()) { return ir::Value(); }
 
-        LOG("EmitConstatnDeclaration", "Setting slot = %s", value_buffer);
+        LOG("EmitConstantDeclaration", "Setting slot = %s", value_buffer);
         // TODO: Support multiple declarations
         return c.context().SetConstant(&node->ids()[0], std::move(value_buffer));
       } else {
