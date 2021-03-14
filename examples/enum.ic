@@ -11,7 +11,8 @@ Suit ::= enum {
   SPADE
 }
 
-// Recall that `\\` represents a line break, which yield the more concise:
+// Recall that `\\` denotes a line break, so enums can be expressed equivalently
+// (but more succinctly) as below.
 Boolean ::= enum { TRUE \\ FALSE }
 
 // Enums have no default initial value, so the following line will not
@@ -19,54 +20,57 @@ Boolean ::= enum { TRUE \\ FALSE }
 // b: Boolean
 
 // Accessing an enumerator is done with the enum name followed by a dot.
-trump := Suit.SPADE
+trump_suit := Suit.SPADE
 
-// When printed, enumerators show just the enumerator name.
-Print(trump)
+// Enumerators do not come with any builtin stringification, but users can define their own print function.
+io.Print("The trump suit is: ")
+Print(trump_suit)
 io.Print("\n")
 
-// Enums can be compared for (in)equality
+// Enums can be compared for equality with `==` or `!=`
 io.Print("(CLUB == DIAMOND): ")
 io.Print(Suit.CLUB == Suit.DIAMOND)
 io.Print("\n")
 
 // However enumerators do not come with any particular ordering, so operators
-// like (<) will not work.
+// such as `<` will not work.
 
 io.Print("--------------------------------------------------------------------\n")
 
 io.Print("Basic flags:\n")
 // Flags are like enums but whereas enums can only hold one value at a time,
-// flags can have each option set or unset.
+// flags can have each option either set or unset.
 Color ::= flags { RED \\ GREEN \\ BLUE }
+
+// Just as with enums, there is no builting stringification. Users must define
+// their own.
 io.Print("My favorite color is ")
 Print(Color.RED)
 io.Print("\n")
 
-// To set more than one option, use the or-operator (|).
-cyan ::= (Color.GREEN | Color.BLUE)
-magenta ::= (Color.RED | Color.BLUE)
-yellow ::= (Color.GREEN | Color.RED)
-io.Print("Yellow is just ")
-Print(yellow)
-io.Print("\n")
-
-// Flag values have a default initial value consisting of all enumerators
-// unset.
+// Unlike enums, flags do have a default value where none of the options are
+// set.
 black: Color
-// Printing an empty enumerator shows:
-
 io.Print("Black is ")
 Print(black)
 io.Print("\n")
 
-// Flag values can also be negated:
+// To set more than one option, use the or-operator `|`.
+cyan ::= (Color.GREEN | Color.BLUE)
+magenta ::= (Color.RED | Color.BLUE)
+yellow ::= (Color.GREEN | Color.RED)
+
+io.Print("Yellow is just ")
+Print(yellow)
+io.Print("\n")
+
+// Flag values can also be negated with `~`:
 io.Print("Cyan is ")
 Print(~Color.RED)
 io.Print("\n")
 
 // Flags do come with a partial ordering where "less than" means having a
-// subset of the enumerators set.
+// subset of the optinos set.
 io.Print("Red is \"less than\" magenta: ")
 io.Print(Color.RED < magenta)
 io.Print("\n")
@@ -83,8 +87,8 @@ io.Print("Cyan is ")
 Print(magenta ^ yellow)
 io.Print("\n")
 
-// Lastly, enumerators can be intersected with the and-operator (&).
-io.Print("(not red and not blue) is ")
+// Lastly, flags can be intersected with the and-operator `&`.
+io.Print("(~red and ~blue) is ")
 Print(~Color.RED & ~Color.BLUE)
 io.Print("\n")
 
@@ -94,7 +98,6 @@ io.Print("\n")
 
 io.Print("--------------------------------------------------------------------\n")
 
-// Workarounds for the lack of generics at the moment.
 Print ::= (x: Suit) -> () {
   if (x == Suit.CLUB) then {
     io.Print("CLUB")
@@ -107,14 +110,6 @@ Print ::= (x: Suit) -> () {
   }
 }
 
-Print ::= (x: Boolean) -> () {
-  if (x == Boolean.TRUE) then {
-    io.Print("TRUE")
-  } else {
-    io.Print("FALSE")
-  }
-}
-
 Print ::= (x: Color) -> () {
   sep := ""
   io.Print("Color[")
@@ -123,4 +118,3 @@ Print ::= (x: Color) -> () {
   if (Color.BLUE <= x) then { io.Print(sep) \\ io.Print("BLUE") }
   io.Print("]")
 }
-

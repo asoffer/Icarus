@@ -481,6 +481,19 @@ struct PtrIncrInstruction
   Reg result;
 };
 
+struct AndInstruction
+    : base::Extend<AndInstruction>::With<ByteCodeExtension, InlineExtension,
+                                         DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%3$s = and %1$s %2$s";
+
+  bool Resolve() const { return Apply(lhs.value(), rhs.value()); }
+  static bool Apply(bool lhs, bool rhs) { return lhs and rhs; }
+
+  RegOr<bool> lhs;
+  RegOr<bool> rhs;
+  Reg result;
+};
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_INSTRUCTION_INSTRUCTIONS_H

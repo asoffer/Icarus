@@ -10,11 +10,57 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
                          type::Typed<ir::Value> rhs) {
   auto &bldr = compiler.builder();
   auto op    = node->ops()[index];
-
   if (lhs.type().is<type::Array>() and rhs.type().is<type::Array>()) {
     NOT_YET();
   } else if (lhs.type().is<type::Struct>() or rhs.type().is<type::Struct>()) {
     NOT_YET();
+  } else if (lhs.type().is<type::Flags>() and lhs.type() == rhs.type()) {
+    using underlying_type = type::Flags::underlying_type;
+    auto lhs_value        = lhs->get<ir::RegOr<underlying_type>>();
+    auto rhs_value        = rhs->get<ir::RegOr<underlying_type>>();
+    switch (op) {
+      case frontend::Operator::Lt:
+        return compiler.current_block()->Append(ir::AndInstruction{
+            .lhs = bldr.Ne(lhs_value, rhs_value),
+            .rhs = bldr.Le(
+                ir::RegOr<underlying_type>(
+                    compiler.current_block()->Append(type::OrFlagsInstruction{
+                        .lhs    = lhs_value,
+                        .rhs    = rhs_value,
+                        .result = bldr.CurrentGroup()->Reserve()})),
+                rhs_value),
+            .result = bldr.CurrentGroup()->Reserve()});
+      case frontend::Operator::Le:
+        return bldr.Le(
+            ir::RegOr<underlying_type>(
+                compiler.current_block()->Append(type::OrFlagsInstruction{
+                    .lhs    = lhs_value,
+                    .rhs    = rhs_value,
+                    .result = bldr.CurrentGroup()->Reserve()})),
+            rhs_value);
+      case frontend::Operator::Eq: return bldr.Eq(lhs_value, rhs_value);
+      case frontend::Operator::Ne: return bldr.Ne(lhs_value, rhs_value);
+      case frontend::Operator::Ge:
+        return bldr.Le(
+            ir::RegOr<underlying_type>(
+                compiler.current_block()->Append(type::OrFlagsInstruction{
+                    .lhs    = lhs_value,
+                    .rhs    = rhs_value,
+                    .result = bldr.CurrentGroup()->Reserve()})),
+            lhs_value);
+      case frontend::Operator::Gt:
+        return compiler.current_block()->Append(ir::AndInstruction{
+            .lhs = bldr.Ne(lhs_value, rhs_value),
+            .rhs = bldr.Le(
+                ir::RegOr<underlying_type>(
+                    compiler.current_block()->Append(type::OrFlagsInstruction{
+                        .lhs    = lhs_value,
+                        .rhs    = rhs_value,
+                        .result = bldr.CurrentGroup()->Reserve()})),
+                lhs_value),
+            .result = bldr.CurrentGroup()->Reserve()});
+      default: UNREACHABLE();
+    }
 
   } else {
     switch (op) {
