@@ -46,17 +46,19 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       }));
     } break;
     case ast::UnaryOperator::Kind::Not: {
-      auto t = context().qual_types(node->operand())[0].type();
-      if (t == type::Bool) {
-        return ir::Value(
-            builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
-      } else {
-        return ir::Value(current_block()->Append(type::XorFlagsInstruction{
-            .lhs = EmitValue(node->operand())
-                       .get<ir::RegOr<type::Flags::underlying_type>>(),
-            .rhs    = t.as<type::Flags>().All,
-            .result = builder().CurrentGroup()->Reserve()}));
-      }
+      // TODO: Operator overloading
+      return ir::Value(
+          builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
+    } break;
+    case ast::UnaryOperator::Kind::Tilde: {
+      // TODO: Operator overloading
+      auto const &t =
+          context().qual_types(node->operand())[0].type().as<type::Flags>();
+      return ir::Value(current_block()->Append(type::XorFlagsInstruction{
+          .lhs = EmitValue(node->operand())
+                     .get<ir::RegOr<type::Flags::underlying_type>>(),
+          .rhs    = t.All,
+          .result = builder().CurrentGroup()->Reserve()}));
     } break;
     case ast::UnaryOperator::Kind::Negate: {
       auto operand_ir = EmitValue(node->operand());

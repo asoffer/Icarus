@@ -14,7 +14,8 @@ char const *OpStr(UnaryOperator::Kind op) {
     case UnaryOperator::Kind::Move: return "move ";
     case UnaryOperator::Kind::Pointer: return "*";
     case UnaryOperator::Kind::BufferPointer: return "[*]";
-    case UnaryOperator::Kind::Not: return "!";
+    case UnaryOperator::Kind::Not: return "not";
+    case UnaryOperator::Kind::Tilde: return "~";
     case UnaryOperator::Kind::Negate: return "-";
     case UnaryOperator::Kind::At: return "@";
     case UnaryOperator::Kind::Address: return "&";
@@ -52,7 +53,7 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Goto: return "goto ";
     case frontend::Operator::Return: return "return ";
     case frontend::Operator::Yield: return "<< ";
-    case frontend::Operator::Not: return "!";
+    case frontend::Operator::Not: return "not";
     case frontend::Operator::At: return "@";
     case frontend::Operator::VariadicPack: return "..";
     case frontend::Operator::BufPtr: return "[*]";
@@ -295,7 +296,7 @@ void EnumLiteral::DebugStrAppend(std::string *out, size_t indent) const {
     case EnumLiteral::Kind::Flags: absl::StrAppend(out, "flags {\n"); break;
   }
   for (std::string_view enumerator : enumerators()) {
-    absl::StrAppendFormat(out, "%*s%s", 2 * indent, "", enumerator);
+    absl::StrAppendFormat(out, "%*s%s", 2 * indent, " ", enumerator);
     if (auto iter = specified_values().find(enumerator);
         iter != specified_values().end()) {
       absl::StrAppend(out, " ::= ");
@@ -303,7 +304,7 @@ void EnumLiteral::DebugStrAppend(std::string *out, size_t indent) const {
     }
     absl::StrAppend(out, "\n");
   }
-  absl::StrAppend(out, "%*s}", 2 * indent);
+  absl::StrAppend(out, "%*s}", 2 * indent, " ");
 }
 
 void FunctionLiteral::DebugStrAppend(std::string *out, size_t indent) const {

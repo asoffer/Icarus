@@ -1153,7 +1153,8 @@ struct UnaryOperator : Expression {
     Pointer,
     Address,
     Negate,
-    Not
+    Not,
+    Tilde,
   };
 
   explicit UnaryOperator(frontend::SourceRange const &range, Kind kind,

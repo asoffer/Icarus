@@ -22,7 +22,7 @@ Boolean ::= enum { TRUE \\ FALSE }
 trump := Suit.SPADE
 
 // When printed, enumerators show just the enumerator name.
-PrintEnum(trump)
+Print(trump)
 io.Print("\n")
 
 // Enums can be compared for (in)equality
@@ -40,7 +40,7 @@ io.Print("Basic flags:\n")
 // flags can have each option set or unset.
 Color ::= flags { RED \\ GREEN \\ BLUE }
 io.Print("My favorite color is ")
-PrintFlag(Color.RED)
+Print(Color.RED)
 io.Print("\n")
 
 // To set more than one option, use the or-operator (|).
@@ -48,20 +48,21 @@ cyan ::= (Color.GREEN | Color.BLUE)
 magenta ::= (Color.RED | Color.BLUE)
 yellow ::= (Color.GREEN | Color.RED)
 io.Print("Yellow is just ")
-PrintFlag(yellow)
+Print(yellow)
 io.Print("\n")
 
 // Flag values have a default initial value consisting of all enumerators
 // unset.
 black: Color
 // Printing an empty enumerator shows:
+
 io.Print("Black is ")
-PrintFlag(black)
+Print(black)
 io.Print("\n")
 
 // Flag values can also be negated:
 io.Print("Cyan is ")
-PrintFlag(not Color.RED)
+Print(~Color.RED)
 io.Print("\n")
 
 // Flags do come with a partial ordering where "less than" means having a
@@ -79,36 +80,42 @@ io.Print("\n")
 
 // Flags can be xor-ed together:
 io.Print("Cyan is ")
-PrintFlag(magenta ^ yellow)
+Print(magenta ^ yellow)
 io.Print("\n")
 
 // Lastly, enumerators can be intersected with the and-operator (&).
 io.Print("(not red and not blue) is ")
-PrintFlag(not Color.RED & not Color.BLUE)
+Print(~Color.RED & ~Color.BLUE)
 io.Print("\n")
 
 io.Print("Magenta is ")
-PrintFlag(Color.RED | Color.BLUE)
+Print(Color.RED | Color.BLUE)
 io.Print("\n")
 
 io.Print("--------------------------------------------------------------------\n")
 
 // Workarounds for the lack of generics at the moment.
-PrintEnum ::= (x: Suit) -> () {
-  io.Print(switch (x) {
-    "CLUB" when Suit.CLUB
-    "DIAMOND" when Suit.DIAMOND
-    "HEART" when Suit.HEART
-    "SPADE" when Suit.SPADE
-  })
+Print ::= (x: Suit) -> () {
+  if (x == Suit.CLUB) then {
+    io.Print("CLUB")
+  } else if (x == Suit.DIAMOND) then {
+    io.Print("DIAMOND")
+  } else if (x == Suit.HEART) then {
+    io.Print("HEART")
+  } else {
+    io.Print("SPADE")
+  }
 }
-PrintEnum ::= (x: Boolean) -> () {
-  io.Print(switch (x) {
-    "TRUE" when Boolean.TRUE
-    "FALSE" when Boolean.FALSE
-  })
+
+Print ::= (x: Boolean) -> () {
+  if (x == Boolean.TRUE) then {
+    io.Print("TRUE")
+  } else {
+    io.Print("FALSE")
+  }
 }
-PrintFlag ::= (x: Color) -> () {
+
+Print ::= (x: Color) -> () {
   sep := ""
   io.Print("Color[")
   if (Color.RED <= x) then { io.Print("RED") \\ sep = ", " }

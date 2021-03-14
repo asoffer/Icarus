@@ -411,7 +411,7 @@ TEST(Not, Flags) {
     F ::= flags { A \\ B \\ C }
     f: F
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("not f");
+    auto const *expr = mod.Append<ast::UnaryOperator>("~f");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_TRUE(qts[0].type().is<type::Flags>());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -423,7 +423,7 @@ TEST(Not, Flags) {
     F ::= flags { A \\ B \\ C }
     f :: F
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("not f");
+    auto const *expr = mod.Append<ast::UnaryOperator>("~f");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_TRUE(qts[0].type().is<type::Flags>());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -447,9 +447,35 @@ TEST(Not, InvalidType) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
+    n: i64
+    )");
+    auto const *expr = mod.Append<ast::UnaryOperator>("~n");
+    auto qts         = mod.context().qual_types(expr);
+    EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
+    EXPECT_THAT(mod.consumer.diagnostics(),
+                UnorderedElementsAre(
+                    Pair("type-error", "invalid-unary-operator-call")));
+  }
+
+  {
+    test::TestModule mod;
+    mod.AppendCode(R"(
     n :: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("not n");
+    auto qts         = mod.context().qual_types(expr);
+    EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
+    EXPECT_THAT(mod.consumer.diagnostics(),
+                UnorderedElementsAre(
+                    Pair("type-error", "invalid-unary-operator-call")));
+  }
+
+  {
+    test::TestModule mod;
+    mod.AppendCode(R"(
+    n :: i64
+    )");
+    auto const *expr = mod.Append<ast::UnaryOperator>("~n");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
     EXPECT_THAT(mod.consumer.diagnostics(),

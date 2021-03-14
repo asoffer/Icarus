@@ -231,23 +231,48 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
       }
     } break;
     case ast::UnaryOperator::Kind::Not: {
-      if (operand_type == type::Bool or operand_type.is<type::Flags>()) {
-        qt = type::QualType(operand_type,
+      if (operand_type == type::Bool) {
+        qt = type::QualType(type::Bool,
                             operand_qt.quals() & type::Quals::Const());
       } else if (operand_type.is<type::Struct>()) {
         // TODO: support calling with constant arguments.
         qt = VerifyUnaryOverload(
-            "!", node, type::Typed<ir::Value>(ir::Value(), operand_qt.type()));
+            "not", node,
+            type::Typed<ir::Value>(ir::Value(), operand_qt.type()));
         if (not qt.ok()) {
           diag().Consume(InvalidUnaryOperatorOverload{
-              .op    = "!",
+              .op    = "not",
               .range = node->range(),
           });
           qt = type::QualType::Error();
         }
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
-            .op    = "!",
+            .op    = "not",
+            .type  = operand_type,
+            .range = node->range(),
+        });
+        qt = type::QualType::Error();
+      }
+    } break;
+    case ast::UnaryOperator::Kind::Tilde: {
+      if (operand_type.is<type::Flags>()) {
+        qt = type::QualType(operand_type,
+                            operand_qt.quals() & type::Quals::Const());
+      } else if (operand_type.is<type::Struct>()) {
+        // TODO: support calling with constant arguments.
+        qt = VerifyUnaryOverload(
+            "~", node, type::Typed<ir::Value>(ir::Value(), operand_qt.type()));
+        if (not qt.ok()) {
+          diag().Consume(InvalidUnaryOperatorOverload{
+              .op    = "~",
+              .range = node->range(),
+          });
+          qt = type::QualType::Error();
+        }
+      } else {
+        diag().Consume(InvalidUnaryOperatorCall{
+            .op    = "~",
             .type  = operand_type,
             .range = node->range(),
         });
@@ -255,9 +280,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
       }
     } break;
     default: UNREACHABLE(*node);
-    }
+  }
 
-    return context().set_qual_type(node, qt);
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

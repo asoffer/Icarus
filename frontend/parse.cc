@@ -586,7 +586,8 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
           {"@", ast::UnaryOperator::Kind::At},
           {"*", ast::UnaryOperator::Kind::Pointer},
           {"-", ast::UnaryOperator::Kind::Negate},
-          {"!", ast::UnaryOperator::Kind::Not}};
+          {"not", ast::UnaryOperator::Kind::Not},
+          {"~", ast::UnaryOperator::Kind::Tilde}};
 
   SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
 

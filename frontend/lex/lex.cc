@@ -173,7 +173,7 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
 // Note: The order here is somewhat important. Because we choose the first
 // match, we cannot, for example, put `:` before `::=`.
 static base::Global kOps =
-    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 46>{
+    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 47>{
         {{"@", {Operator::At}},           {",", {Operator::Comma}},
          {"[*]", {Operator::BufPtr}},     {"$", {Operator::ArgType}},
          {"+=", {Operator::AddEq}},       {"+", {Operator::Add}},
@@ -195,7 +195,7 @@ static base::Global kOps =
          {"(", {Syntax::LeftParen}},      {")", {Syntax::RightParen}},
          {"[", {Syntax::LeftBracket}},    {"]", {Syntax::RightBracket}},
          {"{", {Syntax::LeftBrace}},      {"}", {Syntax::RightBrace}},
-         {";", {Syntax::Semicolon}}},
+         {"~", {Operator::Tilde}},        {";", {Syntax::Semicolon}}},
     };
 
 Lexeme NextOperator(SourceCursor *cursor, Source *src) {
@@ -579,7 +579,6 @@ restart:
     case '\v':  // TODO: Should we disallow out vertical tabs entirely?
     case '\t':
     case ' ': state->cursor_.ConsumeWhile(IsHorizontalWhitespace); goto restart;
-    case '~':
     case '?': {
       auto loc = state->cursor_.loc();
       state->cursor_.remove_prefix(1);
