@@ -496,7 +496,7 @@ struct Builder {
   }
 
   void SetRet(uint16_t n, type::Typed<Value> const& r) {
-    ASSERT(r.type().get()->is_big() == false);
+    ASSERT(r.type().is_big() == false);
     type::Apply(r.type(), [&]<typename T>() { SetRet(n, r->get<RegOr<T>>()); });
   }
 

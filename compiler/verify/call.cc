@@ -161,8 +161,6 @@ type::QualType VerifySliceCall(
 
   if (error) { return type::QualType::Error(); }
 
-  LOG("", "%s %s", arg_vals[0].type().to_string(),
-      type::Slc(arg_vals[0].type())->to_string());
   return type::QualType::NonConstant(
       type::Slc(arg_vals[0].type().as<type::BufferPointer>().pointee()));
 }

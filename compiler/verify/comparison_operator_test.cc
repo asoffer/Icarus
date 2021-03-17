@@ -101,7 +101,6 @@ TEST_P(OperatorOverload, MissingOverloads) {
   )");
   auto const *expr = mod.Append<ast::ComparisonOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
-  LOG("", "%p", &mod.context());
   auto qts = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));

@@ -1,4 +1,5 @@
 --     ::= import "core.ic"
+str    ::= import "string.ic"
 cstdio ::= import "cstdio.ic"
 errno  ::= import "errno.ic"
 file   ::= import "file.ic"
@@ -8,18 +9,13 @@ io     ::= import "io.ic"
 // to open the file, creating a handle (a C++ FILE*) if it can open the file, or
 // goes to the error block with the value assigned into errno. If it was
 // successful, the open block is executed and then the file is closed.
-file.File ("examples/file.ic") open [f: *cstdio.File] {
 
-  // Iterate through all the characters and call putchar on each
-  c := 0 as i32
-  while (c >= 0 as i32) do {
-    c = cstdio.fgetc(f)
-    if (c > 0 as i32) then {
-      putchar ::= foreign("putchar", i32 -> i32)
-      putchar(c)
-    }
-  }
+file.With("examples/file.ic") open [f: file.File] {
+    printf ::= foreign("printf", ([*]char, *cstdio.File) -> i32)
+    printf("[%016p]\n".data, f._handle)
+    printf("[%016p]\n".data, f'CFileHandle)
+  cstdio.fgetc(f._handle)
 } error [e: errno.error] {
-  // TODO: support enum printing
-  io.Print("error\n")
 }
+
+

@@ -180,7 +180,7 @@ void EmitCall(
   compiler.builder().Call(callee_fn, overload_type,
                           std::move(prepared_arguments), out_params);
   int i = -1;
-  for (auto t : overload_type->output()) {
+  for (type::Type t : overload_type->output()) {
     ++i;
     if (t.get()->is_big()) { continue; }
     compiler.EmitCopyAssign(

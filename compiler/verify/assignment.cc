@@ -50,8 +50,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Assignment const *nod
   int first_lhs_error_index = -1;
   for (int i = 0; i < node->lhs().size(); ++i) {
     auto const *l = node->lhs()[i];
+    LOG("Assignment", "lhs %u: %s", i, l->DebugString());
 
-    auto qt = VerifyType(l)[0];
+    auto qts = VerifyType(l);
+    ASSERT(qts.size() == 1u);
+    auto qt = qts[0];
     if (not qt.ok()) {
       if (first_lhs_error_index == -1) { first_lhs_error_index = i; }
     } else {
@@ -66,13 +69,18 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Assignment const *nod
   }
 
   int first_rhs_error_index = -1;
-  for (int i = 0; i < node->lhs().size(); ++i) {
+  for (int i = 0; i < node->rhs().size(); ++i) {
     auto const *r = node->rhs()[i];
-    auto qt       = VerifyType(r)[0];
-    if (not qt.ok()) {
-      if (first_lhs_error_index == -1) { first_lhs_error_index = i; }
+    LOG("Assignment", "rhs %u: %s", i, r->DebugString());
+
+    auto qts = VerifyType(r);
+    if (not qts.empty() and not qts[0].ok()) {
+      if (first_rhs_error_index == -1) {
+        first_rhs_error_index = rhs_qts.size();
+      }
+    } else {
+      rhs_qts.insert(rhs_qts.end(), qts.begin(), qts.end());
     }
-    rhs_qts.push_back(qt);
   }
 
   auto lhs_iter = lhs_qts.begin();

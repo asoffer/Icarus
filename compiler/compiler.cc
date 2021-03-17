@@ -62,8 +62,8 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     // TODO is_big()?
 
     type::Type t = extracted_types[0];
-    LOG("MakeThunk", "%s %s", t, t.get()->is_big() ? "true" : "false");
-    if (t.get()->is_big()) {
+    LOG("MakeThunk", "%s %s", t, t.is_big() ? "true" : "false");
+    if (t.is_big()) {
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision
 

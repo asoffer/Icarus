@@ -1,22 +1,28 @@
-io   ::= import "io.ic"
 core   ::= import "core.ic"
 errno  ::= import "errno.ic"
 cstdio ::= import "cstdio.ic"
 
 #{export}
 File ::= struct {
-  _handle: *cstdio.File
+  #{export}
+  make ::= (f: *cstdio.File) -> File {
+    return File.{ _handle = f }
+  }
+
+  #{export} _handle: *cstdio.File
 }
+
+#{export}
+CFileHandle ::= (f: File) => f._handle
 
 #{export}
 With ::= scope(File) {
   enter ::= jump [f: *File] (name: char[]) {
-    io.Print("I\n")
     f._handle = cstdio.fopen(name.data, "r".data)
 
-    io.Print("J\n")
+    printf ::= foreign("printf", ([*]char, *cstdio.File) -> i32)
+    printf("[%016p]\n".data, f._handle)
     e := errno.get()
-    io.Print("K\n")
     goto e == errno.error.SUCCESS, open(@f), error(e) | done()
   }
 
