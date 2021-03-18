@@ -14,6 +14,9 @@ namespace ir {
 //
 // Registers may refer to registers holding values inside a function, function
 // arguments, or function outputs.
+//
+// TODO: These registers technically store parameters rather than arguments, and
+// we should rectify the naming at some point.
 struct Reg : base::Extend<Reg, 1>::With<base::AbslHashExtension> {
  private:
   using underlying_type = uint64_t;
@@ -21,9 +24,16 @@ struct Reg : base::Extend<Reg, 1>::With<base::AbslHashExtension> {
  public:
   constexpr Reg() = default;
 
+  enum class Kind { Value = 0, Output = 1, Argument = 2 };
+
   explicit Reg(underlying_type val) : val_(val) {
     ASSERT(is_arg() == false);
     ASSERT(is_out() == false);
+  }
+
+  Kind kind() const {
+    return static_cast<Kind>(
+        val_ >> (std::numeric_limits<underlying_type>::digits - 2));
   }
 
   static Reg Arg(underlying_type val) {

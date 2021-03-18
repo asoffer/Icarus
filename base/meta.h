@@ -191,6 +191,9 @@ template <typename T, typename... Ts>
 concept convertible_to_exactly_one_of = (((std::convertible_to<T, Ts> ? 1 : 0) +
                                           ...) == 1);
 
+template <typename T, typename TypeList>
+concept contained_in = Contains<TypeList, T>();
+
 template <typename T>
 constexpr bool always_false() {
   return false;

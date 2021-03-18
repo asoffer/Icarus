@@ -42,5 +42,11 @@ TEST(Reg, Compare) {
   EXPECT_EQ(Reg::Out(17), Reg::Out(17));
 }
 
+TEST(Reg, Kind) {
+  EXPECT_EQ(Reg(1).kind(), Reg::Kind::Value);
+  EXPECT_EQ(Reg::Arg(1).kind(), Reg::Kind::Argument);
+  EXPECT_EQ(Reg::Out(1).kind(), Reg::Kind::Output);
+}
+
 }  // namespace
 }  // namespace ir
