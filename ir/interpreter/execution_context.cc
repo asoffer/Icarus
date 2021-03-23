@@ -9,16 +9,15 @@ namespace interpreter {
 namespace {
 
 template <typename T>
-void ExtractReturnValue(ffi_arg *ret, ir::Addr ret_addr) {
+void ExtractReturnValue(ffi_arg *ret, StackFrame &frame) {
   // libffi promotes return values of size wider than the system register size.
   // size.
   if constexpr (std::is_integral_v<T> and sizeof(T) < sizeof(int)) {
     int int_val;
     std::memcpy(&int_val, ret, sizeof(int_val));
-    T val = int_val;
-    std::memcpy(ret_addr.heap(), &val, sizeof(val));
+    frame.regs_.set<T>(ir::Reg::Out(0), int_val);
   } else {
-    std::memcpy(ret_addr.heap(), ret, sizeof(T));
+    frame.regs_.set_raw(ir::Reg::Out(0), ret, sizeof(T));
   }
 }
 
@@ -46,9 +45,7 @@ ffi_type *ToFfiType(type::Type t) {
 
 // TODO return slot is always small enough that we should be able to use a
 // stack-allocated buffer for this.
-void ExecutionContext::CallFn(ir::ForeignFn f,
-                              base::untyped_buffer const &arguments,
-                              absl::Span<ir::Addr const> return_slots,
+void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame,
                               base::untyped_buffer_view stack) {
   type::Function const *fn_type = f.type();
   LOG("CallFn", "Calling %s: %s", f, fn_type->to_string());
@@ -59,10 +56,10 @@ void ExecutionContext::CallFn(ir::ForeignFn f,
   std::vector<void *> arg_vals;
   arg_vals.reserve(fn_type->params().size());
 
-  // Note: libffi expects a void*[] for it's arguments but we can't just take
-  // pointers into `arguments` when the arguments are in a different format
-  // (e.g., when they are pointers and tehrefore stored as ir::Addr rather than
-  // void *). So we extract those values appropriately and store them here so
+  // Note: libffi expects a void*[] for its arguments but we can't just take
+  // pointers into `frame` when the arguments are in a different format (e.g.,
+  // when they are pointers and therefore stored as ir::Addr rather than
+  // void*). So we extract those values appropriately and store them here so
   // that we can take a pointer into `pointer_values`.
   std::vector<void const *> pointer_values;
 
@@ -77,7 +74,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f,
     // elements are stable.
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
-      ir::Addr addr = arguments.get<ir::Addr>(ir::Value::value_size_v * i);
+      ir::Addr addr = frame.regs_.get<ir::Addr>(ir::Reg::Arg(i));
       LOG("CallFn", "Pushing pointer addr = %s stored in argument %u", addr, i);
       ++i;
       switch (addr.kind()) {
@@ -99,7 +96,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f,
       // ir::Char where we're writing/reading `char` through the `ir::Char`
       // according to the C++ standard.
       arg_vals.push_back(
-          const_cast<char *>(arguments.raw(ir::Value::value_size_v * i++)));
+          const_cast<char *>(frame.regs_.raw(ir::Reg::Arg(i++))));
     }
   }
 
@@ -121,25 +118,25 @@ void ExecutionContext::CallFn(ir::ForeignFn f,
   if (out_type == type::Void) {
     return;
   } else if (out_type == type::I8) {
-    ExtractReturnValue<int8_t>(&ret, return_slots[0]);
+    ExtractReturnValue<int8_t>(&ret, frame);
   } else if (out_type == type::I16) {
-    ExtractReturnValue<int16_t>(&ret, return_slots[0]);
+    ExtractReturnValue<int16_t>(&ret, frame);
   } else if (out_type == type::I32) {
-    ExtractReturnValue<int32_t>(&ret, return_slots[0]);
+    ExtractReturnValue<int32_t>(&ret, frame);
   } else if (out_type == type::I64) {
-    ExtractReturnValue<int64_t>(&ret, return_slots[0]);
+    ExtractReturnValue<int64_t>(&ret, frame);
   } else if (out_type == type::U8) {
-    ExtractReturnValue<uint8_t>(&ret, return_slots[0]);
+    ExtractReturnValue<uint8_t>(&ret, frame);
   } else if (out_type == type::U16) {
-    ExtractReturnValue<uint16_t>(&ret, return_slots[0]);
+    ExtractReturnValue<uint16_t>(&ret, frame);
   } else if (out_type == type::U32) {
-    ExtractReturnValue<uint32_t>(&ret, return_slots[0]);
+    ExtractReturnValue<uint32_t>(&ret, frame);
   } else if (out_type == type::U64) {
-    ExtractReturnValue<uint64_t>(&ret, return_slots[0]);
+    ExtractReturnValue<uint64_t>(&ret, frame);
   } else if (out_type == type::F32) {
-    ExtractReturnValue<float>(&ret, return_slots[0]);
+    ExtractReturnValue<float>(&ret, frame);
   } else if (out_type == type::F64) {
-    ExtractReturnValue<double>(&ret, return_slots[0]);
+    ExtractReturnValue<double>(&ret, frame);
   } else if (out_type.is<type::Pointer>()) {
     char *ptr;
     std::memcpy(&ptr, &ret, sizeof(ptr));
@@ -153,34 +150,29 @@ void ExecutionContext::CallFn(ir::ForeignFn f,
       // TODO: read-only data?
       addr = ir::Addr::Heap(ptr);
     }
-    std::memcpy(return_slots[0].heap(), &addr, sizeof(addr));
+    frame.regs_.set<ir::Addr>(ir::Reg::Out(0), addr);
   } else {
     UNREACHABLE(out_type);
   }
 }
 
-void ExecutionContext::CallFn(ir::BuiltinFn fn,
-                              base::untyped_buffer_view arguments,
-                              absl::Span<ir::Addr const> ret_slots) {
+void ExecutionContext::CallFn(ir::BuiltinFn fn, StackFrame &frame) {
   switch (fn.which()) {
     case ir::BuiltinFn::Which::Alignment: {
-      type::Type type = arguments.get<type::Type>(0);
-      *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
+      type::Type type = frame.regs_.get<type::Type>(ir::Reg::Arg(0));
+      auto out        = frame.regs_.get<ir::Addr>(ir::Reg::Out(0));
+      *static_cast<uint64_t *>(ASSERT_NOT_NULL(out.heap())) =
           type.alignment(kArchitecture).value();
     } break;
     case ir::BuiltinFn::Which::Bytes: {
-      type::Type type = arguments.get<type::Type>(0);
-      *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
+      type::Type type = frame.regs_.get<type::Type>(ir::Reg::Arg(0));
+      auto out        = frame.regs_.get<ir::Addr>(ir::Reg::Out(0));
+      *static_cast<uint64_t *>(ASSERT_NOT_NULL(out.heap())) =
           type.bytes(kArchitecture).value();
     } break;
     default: NOT_YET();
   }
 
-  // size_t i = 0;
-  // for (auto const &result : fn.Call(arguments)) {
-  //   ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
-  //   *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
-  // }
 }
 
 }  // namespace interpreter

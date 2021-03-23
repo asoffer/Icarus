@@ -71,8 +71,7 @@ int Interpret(frontend::FileName const &file_name) {
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
   main_fn.WriteByteCode<instruction_set_t>();
-  interpreter::Execute<instruction_set_t>(
-      &main_fn, base::untyped_buffer::MakeFull(main_fn.num_regs() * 16), {});
+  interpreter::Execute<instruction_set_t>(ir::NativeFn(&main_fn));
 
   return 0;
 }

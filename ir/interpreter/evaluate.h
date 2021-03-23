@@ -7,48 +7,39 @@
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/evaluation_result.h"
 #include "ir/interpreter/execution_context.h"
+#include "ir/value/native_fn.h"
 #include "ir/value/value.h"
 #include "type/generic_struct.h"
 
 namespace interpreter {
 
 template <typename InstSet>
-void Execute(ir::CompiledFn &&fn) {
+void Execute(ir::NativeFn fn) {
   ASSERT(fn.type()->output().size() == 0u);
   // TODO actually just have a good way to construct the buffer
   LOG("Execute", "%s", fn);
   ExecutionContext ctx;
-  ctx.Execute<InstSet>(&fn,
-                       base::untyped_buffer::MakeFull(
-                           (fn.type()->params().size() + fn.num_regs()) *
-                           ir::Value::value_size_v),
-                       {});
-}
-
-// TODO wrap output in expected.
-template <typename InstSet>
-void Execute(ir::Fn fn, base::untyped_buffer arguments,
-             absl::Span<ir::Addr const> ret_slots) {
-  ExecutionContext ctx;
-  ctx.Execute<InstSet>(fn, std::move(arguments), ret_slots);
+  StackFrame frame = ctx.MakeStackFrame(
+      fn, base::untyped_buffer::MakeFull(fn.type()->params().size() *
+                                         ir::Value::value_size_v));
+  ctx.Execute<InstSet>(fn, frame);
 }
 
 template <typename InstSet>
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
+  // TODO: Support multiple outputs.
+  LOG("EvaluateToBuffer", "%s", fn);
+
   ASSERT(fn.type()->output().size() != 0u);
   core::Bytes required = fn.type()->output()[0].bytes(kArchitecture);
   auto ret_buf         = base::untyped_buffer::MakeFull(required.value());
-  std::vector<ir::Addr> ret_slots;
 
-  ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
-  // TODO actually just have a good way to construct the buffer
-  LOG("EvaluateToBuffer", "%s", fn);
   ExecutionContext ctx;
-  ctx.Execute<InstSet>(&fn,
-                       base::untyped_buffer::MakeFull(
-                           (fn.type()->params().size() + fn.num_regs()) *
-                           ir::Value::value_size_v),
-                       ret_slots);
+  StackFrame frame = ctx.MakeStackFrame(ir::NativeFn(&fn));
+
+  frame.regs_.set<ir::Addr>(ir::Reg::Out(0), ir::Addr::Heap(ret_buf.raw(0)));
+  ctx.Execute<InstSet>(&fn, frame);
+
   LOG("EvaluateToBuffer", "Result buffer = %s", ret_buf.to_string());
   return ret_buf;
 }

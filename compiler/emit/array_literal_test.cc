@@ -31,7 +31,7 @@ TEST_P(ArrayLiteralTest, ArrayLiteral) {
 INSTANTIATE_TEST_SUITE_P(
     All, ArrayLiteralTest,
     testing::ValuesIn({
-        TestCase{.expr     = R"((() -> i64 { return [3][0] })())",
+        TestCase{.expr     = R"((() -> i64 { 'debug_ir \\ return [3][0] })())",
                  .expected = ir::Value(int64_t{3})},
         TestCase{.expr     = R"((() -> i64 { return [1, 4, 9][2] })())",
                  .expected = ir::Value(int64_t{9})},

@@ -23,16 +23,6 @@ namespace ir {
 // consist of any instruction having to do with control-flow or reading/writing
 // memory.
 
-struct GetReturnInstruction
-    : base::Extend<GetReturnInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr cmd_index_t kIndex = internal::kGetReturnInstruction;
-  static constexpr std::string_view kDebugFormat = "%2$s = get-ret %1$s";
-
-  uint16_t index;
-  Reg result;
-};
-
 struct LoadInstruction
     : base::Extend<LoadInstruction>::With<
           WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {

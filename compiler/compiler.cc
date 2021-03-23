@@ -67,7 +67,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision
 
-      c.EmitMoveInit(type::Typed<ir::Reg>(c.builder().GetRet(0), t),
+      c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), t),
                      type::Typed<ir::Value>(val, t));
 
     } else if (auto const *gs = t.if_as<type::GenericStruct>()) {

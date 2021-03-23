@@ -35,7 +35,7 @@ ir::Fn InsertGeneratedMoveInit(
       c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
       auto from = ir::Reg::Arg(0);
-      auto to   = c.builder().GetRet(0);
+      auto to   = ir::Reg::Out(0);
 
       size_t i = 0;
       for (auto const &field : ir_fields) {
@@ -74,7 +74,7 @@ ir::Fn InsertGeneratedCopyInit(
      c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
      auto from = ir::Reg::Arg(0);
-     auto to   = c.builder().GetRet(0);
+     auto to   = ir::Reg::Out(0);
 
      size_t i = 0;
      for (auto const &field : ir_fields) {
@@ -339,7 +339,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     ASSIGN_OR(return WorkItem::Result::Failure,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
-    interpreter::Execute<instruction_set_t>(std::move(fn));
+    interpreter::Execute<instruction_set_t>(ir::NativeFn(&fn));
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());
@@ -356,7 +356,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     ASSIGN_OR(return WorkItem::Result::Failure,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
-    interpreter::Execute<instruction_set_t>(std::move(fn));
+    interpreter::Execute<instruction_set_t>(ir::NativeFn(&fn));
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());

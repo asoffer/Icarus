@@ -355,13 +355,6 @@ struct Builder {
     }
   }
 
-  Reg GetRet(uint16_t n) {
-    GetReturnInstruction inst{.index = n};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
-  }
-
   Reg Index(type::Pointer const* t, RegOr<Addr> addr, RegOr<int64_t> offset) {
     type::Type pointee = t->pointee();
     type::Type data_type;

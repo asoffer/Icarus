@@ -16,8 +16,6 @@ inline constexpr cmd_index_t kCondJumpInstruction =
     std::numeric_limits<cmd_index_t>::max() - 2;
 inline constexpr cmd_index_t kLoadInstructionNumber =
     std::numeric_limits<cmd_index_t>::max() - 3;
-inline constexpr cmd_index_t kGetReturnInstruction =
-    std::numeric_limits<cmd_index_t>::max() - 4;
 
 }  // namespace internal
 }  // namespace ir

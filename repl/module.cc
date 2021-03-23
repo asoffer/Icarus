@@ -14,7 +14,6 @@ namespace repl {
 namespace {
 
 void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
-  // TODO is nullptr for module okay here?
   ir::CompiledFn fn(type::Func({}, {}), {});
   ICARUS_SCOPE(ir::SetCurrent(fn, compiler->builder())) {
     compiler->builder().CurrentBlock() = fn.entry();
@@ -28,8 +27,7 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
     compiler->builder().ReturnJump();
   }
 
-  interpreter::Execute<compiler::instruction_set_t>(
-      &fn, base::untyped_buffer(0), {});
+  interpreter::Execute<compiler::instruction_set_t>(ir::NativeFn(&fn));
 }
 
 }  // namespace

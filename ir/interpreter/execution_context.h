@@ -30,6 +30,46 @@ concept HasResolveMemberFunction = requires(T t) {
 };
 // clang-format on
 
+struct StackFrameIterator {
+  StackFrameIterator(ir::NativeFn fn, StackFrame &frame)
+      : byte_code_iter_(fn->byte_code().begin()),
+        begin_(fn->byte_code().begin()),
+        prev_index_(0),
+        current_index_(0) {}
+
+  void MoveTo(uintptr_t offset) {
+    prev_index_     = std::exchange(current_index_, offset);
+    byte_code_iter_ = begin_;
+    byte_code_iter_.skip(offset);
+  }
+
+  // Reads exactly `num` uintptr_t's starting at `iter` and returns the index of
+  // the one whose value was the previous index. Behavior is undefined if zero
+  // or more than one such value matches.
+  uintptr_t IndexMatchingPrevious(base::untyped_buffer::const_iterator &iter,
+                                  size_t num) {
+    uint64_t index = std::numeric_limits<uint64_t>::max();
+    for (size_t i = 0; i < num; ++i) {
+      if (prev_index_ == iter.read<uintptr_t>()) {
+        ASSERT(index == std::numeric_limits<uint64_t>::max());
+        index = i;
+      }
+    }
+    ASSERT(index != std::numeric_limits<uint64_t>::max());
+    return index;
+  }
+
+  base::untyped_buffer::const_iterator &byte_code_iterator() {
+    return byte_code_iter_;
+  }
+
+ private:
+  base::untyped_buffer::const_iterator byte_code_iter_;
+  base::untyped_buffer::const_iterator begin_;
+  uintptr_t prev_index_    = 0;
+  uintptr_t current_index_ = 0;
+};
+
 }  // namespace internal_execution
 
 // An ExecutionContext holds all the required state needed during the execution
@@ -98,25 +138,21 @@ struct ExecutionContext {
   }
 
   template <typename... Args>
-  StackFrame MakeStackFrame(ir::NativeFn fn, Args &&... args) {
+  StackFrame MakeStackFrame(ir::Fn fn, Args &&... args) {
     return StackFrame(fn, std::forward<Args>(args)..., &stack_);
   }
 
-  // TODO: Rename the `arguments` parameter. It actually should be arguments and
-  // space for registers.
   template <typename InstSet>
-  void Execute(ir::Fn fn, base::untyped_buffer arguments,
-               absl::Span<ir::Addr const> ret_slots) {
+  void Execute(ir::Fn fn, StackFrame &frame) {
     switch (fn.kind()) {
       case ir::Fn::Kind::Native: {
-        auto frame = MakeStackFrame(fn.native(), std::move(arguments));
-        CallFn<InstSet>(fn.native(), &frame, ret_slots);
+        CallFn<InstSet>(fn.native(), frame);
       } break;
       case ir::Fn::Kind::Builtin: {
-        CallFn(fn.builtin(), arguments, ret_slots);
+        CallFn(fn.builtin(), frame);
       } break;
       case ir::Fn::Kind::Foreign: {
-        CallFn(fn.foreign(), arguments, ret_slots, stack());
+        CallFn(fn.foreign(), frame, stack());
       } break;
     }
   }
@@ -125,44 +161,36 @@ struct ExecutionContext {
 
  private:
   template <typename InstSet>
-  void CallFn(ir::NativeFn fn, StackFrame *frame,
-              absl::Span<ir::Addr const> ret_slots) {
-    StackFrame *old = std::exchange(current_frame_, frame);
+  void CallFn(ir::NativeFn fn, StackFrame &frame) {
+    StackFrame *old = std::exchange(current_frame_, &frame);
     absl::Cleanup c = [&] { current_frame_ = old; };
-    ExecuteBlocks<InstSet>(ret_slots);
+    ExecuteBlocks<InstSet>();
   }
 
-  static void CallFn(ir::BuiltinFn fn, base::untyped_buffer_view arguments,
-                     absl::Span<ir::Addr const> ret_slots);
+  static void CallFn(ir::BuiltinFn fn, StackFrame &frame);
 
-  static void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
-                     absl::Span<ir::Addr const> return_slots,
-                     base::untyped_buffer_view stack);
+  static void CallFn(ir::ForeignFn f, StackFrame &frame,
+                     base::untyped_buffer_view arguments);
 
   template <typename InstSet>
-  void ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
-    auto &buffer = current_frame().fn_->byte_code();
-
-    auto iter = buffer.begin();
+  void ExecuteBlocks() {
+    internal_execution::StackFrameIterator frame_iter(
+        current_frame_->fn().native(), *current_frame_);
+    auto &iter = frame_iter.byte_code_iterator();
     while (true) {
-      ASSERT(iter < buffer.end());
       ir::cmd_index_t cmd_index = iter.read<ir::cmd_index_t>();
       switch (cmd_index) {
         case ir::internal::kReturnInstruction: return;
         case ir::internal::kUncondJumpInstruction: {
           uintptr_t offset = iter.read<uintptr_t>();
-          current_frame().MoveTo(offset);
-          iter = current_frame().fn_->byte_code().begin();
-          iter.skip(offset);
+          frame_iter.MoveTo(offset);
         } break;
         case ir::internal::kCondJumpInstruction: {
           ir::Reg r             = iter.read<ir::Reg>();
           uintptr_t true_block  = iter.read<uintptr_t>();
           uintptr_t false_block = iter.read<uintptr_t>();
           uintptr_t offset      = resolve<bool>(r) ? true_block : false_block;
-          current_frame().MoveTo(offset);
-          iter = current_frame().fn_->byte_code().begin();
-          iter.skip(offset);
+          frame_iter.MoveTo(offset);
         } break;
         case ir::LoadInstruction::kIndex: {
           uint16_t num_bytes = iter.read<uint16_t>();
@@ -174,7 +202,7 @@ struct ExecutionContext {
         default: {
           static constexpr std::array ExecutionArray =
               MakeExecuteFunctions<InstSet>(typename InstSet::instructions_t{});
-          ExecutionArray[cmd_index](&iter, *this, ret_slots);
+          ExecutionArray[cmd_index](*this, frame_iter);
         }
       }
     }
@@ -194,62 +222,37 @@ struct ExecutionContext {
     }
   }
 
-  using exec_t = void (*)(base::untyped_buffer::const_iterator *,
-                          interpreter::ExecutionContext &,
-                          absl::Span<ir::Addr const>);
+  using exec_t = void (*)(interpreter::ExecutionContext &,
+                          internal_execution::StackFrameIterator &);
 
   template <typename InstSet, typename Inst>
   static constexpr exec_t GetInstruction() {
-    return [](base::untyped_buffer::const_iterator *iter,
-              interpreter::ExecutionContext &ctx,
-              absl::Span<ir::Addr const> ret_slots) {
+    return [](interpreter::ExecutionContext &ctx,
+              internal_execution::StackFrameIterator &frame_iter) {
+      auto *iter = &frame_iter.byte_code_iterator();
+
       if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
         ir::Fn f = ctx.resolve(iter->read<ir::RegOr<ir::Fn>>().get());
 
         type::Function const *fn_type = f.type();
-        LOG("call", "%s: %s", f, fn_type->to_string());
+        LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
 
-        // TODO you probably want interpreter::Arguments or something.
+        StackFrame frame = ctx.MakeStackFrame(f);
+
+        // TODO: you probably want interpreter::Arguments or something.
         size_t num_inputs = fn_type->params().size();
-        size_t num_regs   = 0;
-        if (f.kind() == ir::Fn::Kind::Native) {
-          num_regs = f.native()->num_regs();
-        }
-        size_t num_entries = num_inputs + num_regs;
-        auto call_buf      = base::untyped_buffer::MakeFull(num_entries *
-                                                       ir::Value::value_size_v);
-
-        // TODO not actually optional once we handle foreign functions, we just
-        // need deferred construction?
-        std::optional<interpreter::StackFrame> frame;
-        if (f.kind() == ir::Fn::Kind::Native) {
-          frame = ctx.MakeStackFrame(f.native());
-        }
-
         for (size_t i = 0; i < num_inputs; ++i) {
           if (iter->read<bool>()) {
             ir::Reg reg = iter->read<ir::Reg>();
-            LOG("call", "%s", reg);
-
-            if (frame) {
-              frame->regs_.set_raw(ir::Reg::Arg(i),
-                                   ctx.current_frame().regs_.raw(reg),
-                                   ir::Value::value_size_v);
-            }
-            ctx.MemCpyRegisterBytes(
-                /*    dst = */ call_buf.raw((num_regs + i) *
-                                            ir::Value::value_size_v),
-                /*    src = */ reg,
-                /* length = */ ir::Value::value_size_v);
-
+            frame.regs_.set_raw(ir::Reg::Arg(i),
+                                ctx.current_frame().regs_.raw(reg),
+                                ir::Value::value_size_v);
+            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i), reg);
           } else {
             type::Type t = fn_type->params()[i].value.type();
-            if (frame) {
-              frame->regs_.set_raw(ir::Reg::Arg(i), iter->raw(),
-                                   ir::Value::value_size_v);
-            }
-            std::memcpy(call_buf.raw((num_regs + i) * ir::Value::value_size_v),
-                        iter->raw(), ir::Value::value_size_v);
+            frame.regs_.set_raw(ir::Reg::Arg(i), iter->raw(),
+                                ir::Value::value_size_v);
+            LOG("CallInstruction", "  %s: ???]", ir::Reg::Arg(i));
             iter->skip((t.is_big()
                             ? interpreter::kArchitecture.pointer().bytes()
                             : t.bytes(interpreter::kArchitecture))
@@ -259,38 +262,21 @@ struct ExecutionContext {
 
         uint16_t num_rets = iter->read<uint16_t>();
 
-        std::vector<ir::Addr> return_slots;
-        return_slots.reserve(num_rets);
-        ASSERT(fn_type->output().size() == num_rets);
         for (uint16_t i = 0; i < num_rets; ++i) {
-          ir::Reg reg = iter->read<ir::Reg>();
-          // NOTE: This is a hack using heap address slots to represent
-          // registers since they are both void* and are used identically in the
-          // interpreter.
-          ir::Addr addr =
-              (fn_type->output()[i].get()->is_big())
-                  ? ctx.resolve<ir::Addr>(reg)
-                  : ir::Addr::Heap(ctx.current_frame().regs_.raw(reg));
-
-          LOG("call", "Ret addr = %s", addr);
-          return_slots.push_back(addr);
+          ir::Reg reg  = iter->read<ir::Reg>();
+          type::Type t = fn_type->output()[i];
+          ir::Addr out_addr =
+              t.is_big() ? ctx.resolve<ir::Addr>(reg)
+                         : ir::Addr::Heap(ctx.current_frame().regs_.raw(reg));
+          frame.regs_.set(ir::Reg::Out(i), out_addr);
         }
 
-        ctx.Execute<InstSet>(f, std::move(call_buf), return_slots);
-      } else if constexpr (base::meta<Inst> ==
-                           base::meta<ir::GetReturnInstruction>) {
-        uint16_t index = iter->read<uint16_t>();
-        ctx.current_frame().regs_.set(iter->read<ir::Reg>(), ret_slots[index]);
+        ctx.Execute<InstSet>(f, frame);
+
       } else if constexpr (
           base::meta<Inst>.template is_a<ir::PhiInstruction>()) {
         uint16_t num   = iter->read<uint16_t>();
-        uint64_t index = std::numeric_limits<uint64_t>::max();
-        for (uint16_t i = 0; i < num; ++i) {
-          if (ctx.current_frame().prev_index_ == iter->read<uintptr_t>()) {
-            index = i;
-          }
-        }
-        ASSERT(index != std::numeric_limits<uint64_t>::max());
+        uint64_t index = frame_iter.IndexMatchingPrevious(*iter, num);
 
         using type = typename Inst::type;
 
@@ -306,14 +292,12 @@ struct ExecutionContext {
         ctx.current_frame().regs_.set(iter->read<ir::Reg>(), result);
       } else if constexpr (
           base::meta<Inst>.template is_a<ir::SetReturnInstruction>()) {
-        using type = typename Inst::type;
-        uint16_t n = iter->read<uint16_t>();
-        ASSERT(ret_slots.size() > n);
-        ir::Addr ret_slot = ret_slots[n];
+        using type        = typename Inst::type;
+        uint16_t n        = iter->read<uint16_t>();
+        ir::Addr ret_slot = ctx.resolve<ir::Addr>(ir::Reg::Out(n));
         type val          = ctx.resolve(iter->read<ir::RegOr<type>>().get());
         ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
         *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
-
       } else if constexpr (internal_execution::HasResolveMemberFunction<Inst>) {
         auto inst = Inst::ReadFromByteCode(iter);
         std::apply([&](auto &... fields) { (ctx.ResolveField(fields), ...); },
@@ -325,8 +309,8 @@ struct ExecutionContext {
                                ctx))> == base::meta<void>) {
         Inst::ReadFromByteCode(iter).Apply(ctx);
       } else {
-        auto [frame, return_slots] = Inst::ReadFromByteCode(iter).Apply(ctx);
-        ctx.CallFn<InstSet>(frame.fn_, &frame, return_slots);
+        StackFrame frame = Inst::ReadFromByteCode(iter).Apply(ctx);
+        ctx.CallFn<InstSet>(frame.fn().native(), frame);
       }
     };
   }

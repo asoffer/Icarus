@@ -9,7 +9,10 @@ size_t NumNonConstants(
     core::Params<type::Typed<ast::Declaration const *>> const &params) {
   size_t num = 0;
   for (auto const &param : params) {
-    if (param.value.get() and
+    // TODO: The declaration may be missing for generated native functions like
+    // initializers or copies/moves. In these cases we always know the parameter
+    // is non-constant, but we shouldn't rely on that.
+    if (not param.value.get() or
         not(param.value.get()->flags() & ast::Declaration::f_IsConst)) {
       ++num;
     }

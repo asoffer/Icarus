@@ -97,7 +97,7 @@ struct DebugIrInstruction
   static constexpr std::string_view kDebugFormat = "debug-ir";
 
   void Apply(interpreter::ExecutionContext& ctx) const {
-    std::cerr << *ctx.current_frame().fn_.get();
+    std::cerr << *ctx.current_frame().fn().native().get();
   }
 };
 
@@ -115,25 +115,24 @@ struct InitInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "init %2$s";
 
-  std::pair<interpreter::StackFrame, std::vector<ir::Addr>> Apply(
-      interpreter::ExecutionContext& ctx) const {
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       ir::Fn f   = *s->init_;
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
-      return std::make_pair(frame, std::vector<ir::Addr>{});
+      return frame;
 
     } else if (auto* tup = type.if_as<type::Tuple>()) {
       ir::Fn f   = tup->init_func_.get();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
-      return std::make_pair(frame, std::vector<ir::Addr>{});
+      return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f   = a->Initializer();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
-      return std::make_pair(frame, std::vector<ir::Addr>{});
+      return frame;
 
     } else {
       NOT_YET();
@@ -149,26 +148,25 @@ struct DestroyInstruction
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "destroy %2$s";
 
-  std::pair<interpreter::StackFrame, std::vector<ir::Addr>> Apply(
-      interpreter::ExecutionContext& ctx) const {
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       ASSERT(s->dtor_.has_value() == true);
       ir::Fn f   = *s->dtor_;
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
-      return std::make_pair(frame, std::vector<ir::Addr>{});
+      return frame;
 
     } else if (auto* tup = type.if_as<type::Tuple>()) {
       ir::Fn f   = tup->destroy_func_.get();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
-      return std::make_pair(frame, std::vector<ir::Addr>{});
+      return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f   = a->Destructor();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
-      return std::make_pair(frame, std::vector<ir::Addr>{});
+      return frame;
 
     } else {
       NOT_YET();
@@ -184,15 +182,14 @@ struct CopyInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "copy %2$s to %3$s";
 
-  std::pair<interpreter::StackFrame, std::vector<ir::Addr>> Apply(
-      interpreter::ExecutionContext& ctx) const {
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       ir::Fn f = *ASSERT_NOT_NULL(s->CopyAssignment(s));
       // TODO: No reason this has to be native.
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
       frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
-      return std::make_pair(frame, std::vector<ir::Addr>{});
+      return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f = a->CopyAssign();
@@ -200,7 +197,7 @@ struct CopyInstruction
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
       frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
-      return std::make_pair(frame, std::vector<ir::Addr>{});
+      return frame;
 
     } else {
       NOT_YET();
@@ -217,23 +214,21 @@ struct CopyInitInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "copy-init %2$s to %3$s";
 
-  std::pair<interpreter::StackFrame, std::vector<ir::Addr>> Apply(
-      interpreter::ExecutionContext& ctx) const {
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       ir::Fn f = *ASSERT_NOT_NULL(s->CopyInit(s));
       // TODO: No reason this has to be native.
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-      return std::make_pair(frame,
-                            std::vector<ir::Addr>{ctx.resolve<ir::Addr>(to)});
+      return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f = a->CopyInit();
       // TODO: No reason this has to be native.
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-      return std::make_pair(frame,
-                            std::vector<ir::Addr>{ctx.resolve<ir::Addr>(to)});
+      return frame;
+
     } else {
       NOT_YET();
     }
@@ -248,22 +243,22 @@ struct MoveInstruction
     : base::Extend<MoveInstruction>::With<ByteCodeExtension, InlineExtension,
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "move %2$s to %3$s";
-  std::pair<interpreter::StackFrame, std::vector<ir::Addr>> Apply(
-      interpreter::ExecutionContext& ctx) const {
+
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       ir::Fn f = *ASSERT_NOT_NULL(s->MoveAssignment(s));
       // TODO: No reason this has to be native.
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
       frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
-      return std::make_pair(frame, std::vector<ir::Addr>{});
+      return frame;
     } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f = a->MoveAssign();
       // TODO: No reason this has to be native.
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
       frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
-      return std::make_pair(frame, std::vector<ir::Addr>{});
+      return frame;
     } else {
       NOT_YET();
     }
@@ -279,22 +274,19 @@ struct MoveInitInstruction
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "move-init %2$s to %3$s";
 
-  std::pair<interpreter::StackFrame, std::vector<ir::Addr>> Apply(
-      interpreter::ExecutionContext& ctx) const {
+  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       ir::Fn f = *ASSERT_NOT_NULL(s->MoveInit(s));
       // TODO: No reason this has to be native.
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-      return std::make_pair(frame,
-                            std::vector<ir::Addr>{ctx.resolve<ir::Addr>(to)});
+      return frame;
     } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f = a->MoveInit();
       // TODO: No reason this has to be native.
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-      return std::make_pair(frame,
-                            std::vector<ir::Addr>{ctx.resolve<ir::Addr>(to)});
+      return frame;
     } else {
       NOT_YET();
     }

@@ -80,7 +80,7 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
   auto &fn            = *bldr.CurrentGroup();
   bldr.CurrentBlock() = fn.entry();
   auto var            = ir::Reg::Arg(0);
-  auto ret            = bldr.GetRet(0);
+  auto ret            = ir::Reg::Out(0);
 
   auto from_data_ptr_type = type::Ptr(from->data_type());
 

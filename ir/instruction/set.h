@@ -87,9 +87,9 @@ absl::flat_hash_map<base::MetaValue, cmd_index_t> const
 template <typename... Ts>
 using CoreInstructionsImpl = InstructionSet<
     CommentInstruction, RegisterInstruction<Ts>..., StoreInstruction<Ts>...,
-    PhiInstruction<Ts>..., SetReturnInstruction<Ts>..., GetReturnInstruction,
-    CallInstruction, SetReturnInstruction<core::Bytes>,
-    SetReturnInstruction<core::Alignment>, SetReturnInstruction<GenericFn>,
+    PhiInstruction<Ts>..., SetReturnInstruction<Ts>..., CallInstruction,
+    SetReturnInstruction<core::Bytes>, SetReturnInstruction<core::Alignment>,
+    SetReturnInstruction<GenericFn>,
     SetReturnInstruction<type::GenericStruct const *>>;
 using CoreInstructions =
     CoreInstructionsImpl<bool, ir::Char, uint8_t, int8_t, uint16_t, int16_t,

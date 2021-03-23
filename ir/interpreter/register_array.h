@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_INTERPRETER_REGISTER_ARRAY_H
 #define ICARUS_IR_INTERPRETER_REGISTER_ARRAY_H
 
+#include "base/meta.h"
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
 #include "ir/value/reg.h"
@@ -9,69 +10,63 @@ namespace interpreter {
 
 // Represents a a collection of registers available within a given stack frame.
 struct RegisterArray {
-  static constexpr size_t kMaxSize = ir::Value::value_size_v;
-  explicit RegisterArray(size_t num_regs, size_t num_args)
-      : num_regs_(num_regs),
-        data_(
-            base::untyped_buffer::MakeFull((num_regs + num_args) * kMaxSize)) {}
-  explicit RegisterArray(size_t num_regs, base::untyped_buffer args)
-      : num_regs_(num_regs), data_(std::move(args)) {
-    ASSERT(num_regs_ * kMaxSize <= data_.size());
-  }
+  struct Sizes {
+    size_t num_registers;
+    size_t num_parameters;
+    size_t num_outputs;
+  };
 
-  auto raw(ir::Reg r) const {
-    if (r.is_arg()) {
-      return data_.raw((r.arg_value() + num_regs_) * kMaxSize);
-    }
-    if (r.is_out()) NOT_YET();
-    return data_.raw(r.value() * kMaxSize);
-  }
+  static constexpr size_t value_size = ir::Value::value_size_v;
 
-  auto raw(ir::Reg r) {
-    if (r.is_arg()) {
-      return data_.raw((r.arg_value() + num_regs_) * kMaxSize);
-    }
-    if (r.is_out()) NOT_YET();
-    return data_.raw(r.value() * kMaxSize);
-  }
+  explicit RegisterArray(Sizes const &sizes)
+      : sizes_(sizes),
+        data_(base::untyped_buffer::MakeFull((sizes_.num_registers +
+                                              sizes_.num_parameters +
+                                              sizes_.num_outputs) *
+                                             value_size)) {}
+
+  auto raw(ir::Reg r) const { return data_.raw(offset(r) * value_size); }
+  auto raw(ir::Reg r) { return data_.raw(offset(r) * value_size); }
 
   template <typename T>
   auto get(ir::Reg r) const {
-    static_assert(sizeof(T) <= kMaxSize);
-    if (r.is_arg()) {
-      return data_.get<T>((r.arg_value() + num_regs_) * kMaxSize);
-    }
-    if (r.is_out()) NOT_YET();
-    return data_.get<T>(r.value() * kMaxSize);
+    static_assert(sizeof(T) <= value_size);
+    return data_.get<T>(offset(r) * value_size);
   }
 
-  template <typename T,
-            std::enable_if_t<base::Contains<ir::Value::supported_types, T>(),
-                             int> = 0>
+  template <base::contained_in<ir::Value::supported_types> T>
   auto set(ir::Reg r, T const &val) {
-    static_assert(sizeof(T) <= kMaxSize);
-    if (r.is_arg()) {
-      return data_.set<T>((r.arg_value() + num_regs_) * kMaxSize, val);
-    }
-    if (r.is_out()) NOT_YET();
-    return data_.set<T>(r.value() * kMaxSize, val);
+    static_assert(sizeof(T) <= value_size);
+    return data_.set<T>(offset(r) * value_size, val);
   }
 
   void set_raw(ir::Reg r, void const *src, uint16_t num_bytes) {
-    ASSERT(num_bytes <= kMaxSize);
-    void *dst;
-    if (r.is_arg()) {
-      dst = data_.raw((r.arg_value() + num_regs_) * kMaxSize);
-    } else if (r.is_out()) {
-      NOT_YET();
-    } else {
-      dst = data_.raw(r.value() * kMaxSize);
-    }
-    std::memcpy(dst, src, num_bytes);
+    ASSERT(num_bytes <= value_size);
+    std::memcpy(data_.raw(offset(r) * value_size), src, num_bytes);
   }
 
-  // private:
-  size_t num_regs_;
+ private:
+  // The buffer stores all registers, then all parameters, then all outputs.
+  size_t offset(ir::Reg r) const {
+    size_t offset = 0;
+    switch (r.kind()) {
+      case ir::Reg::Kind::Output:
+        offset += sizes_.num_parameters;
+        [[fallthrough]];
+      case ir::Reg::Kind::Argument:
+        offset += sizes_.num_registers;
+        [[fallthrough]];
+      case ir::Reg::Kind::Value:;
+    }
+
+    switch (r.kind()) {
+      case ir::Reg::Kind::Argument: return offset + r.arg_value();
+      case ir::Reg::Kind::Output: return offset + r.out_value();
+      case ir::Reg::Kind::Value: return offset + r.value();
+    }
+  }
+
+  Sizes sizes_;
   base::untyped_buffer data_;
 };
 
