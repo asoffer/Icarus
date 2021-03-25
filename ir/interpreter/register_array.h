@@ -25,24 +25,24 @@ struct RegisterArray {
                                               sizes_.num_outputs) *
                                              value_size)) {}
 
-  auto raw(ir::Reg r) const { return data_.raw(offset(r) * value_size); }
-  auto raw(ir::Reg r) { return data_.raw(offset(r) * value_size); }
+  auto raw(ir::Reg r) const { return data_.raw(offset(r)); }
+  auto raw(ir::Reg r) { return data_.raw(offset(r)); }
 
   template <typename T>
   auto get(ir::Reg r) const {
     static_assert(sizeof(T) <= value_size);
-    return data_.get<T>(offset(r) * value_size);
+    return data_.get<T>(offset(r));
   }
 
   template <base::contained_in<ir::Value::supported_types> T>
   auto set(ir::Reg r, T const &val) {
     static_assert(sizeof(T) <= value_size);
-    return data_.set<T>(offset(r) * value_size, val);
+    return data_.set<T>(offset(r), val);
   }
 
   void set_raw(ir::Reg r, void const *src, uint16_t num_bytes) {
     ASSERT(num_bytes <= value_size);
-    std::memcpy(data_.raw(offset(r) * value_size), src, num_bytes);
+    std::memcpy(data_.raw(offset(r)), src, num_bytes);
   }
 
  private:
@@ -60,10 +60,11 @@ struct RegisterArray {
     }
 
     switch (r.kind()) {
-      case ir::Reg::Kind::Argument: return offset + r.arg_value();
-      case ir::Reg::Kind::Output: return offset + r.out_value();
-      case ir::Reg::Kind::Value: return offset + r.value();
+      case ir::Reg::Kind::Argument: offset += r.arg_value(); break;
+      case ir::Reg::Kind::Output: offset += r.out_value(); break;
+      case ir::Reg::Kind::Value: offset += r.value(); break;
     }
+    return offset * value_size;
   }
 
   Sizes sizes_;

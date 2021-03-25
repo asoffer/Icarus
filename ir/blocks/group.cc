@@ -5,26 +5,10 @@
 
 namespace ir::internal {
 
-size_t NumNonConstants(
-    core::Params<type::Typed<ast::Declaration const *>> const &params) {
-  size_t num = 0;
-  for (auto const &param : params) {
-    // TODO: The declaration may be missing for generated native functions like
-    // initializers or copies/moves. In these cases we always know the parameter
-    // is non-constant, but we shouldn't rely on that.
-    if (not param.value.get() or
-        not(param.value.get()->flags() & ast::Declaration::f_IsConst)) {
-      ++num;
-    }
-  }
-  return num;
-}
-
 BlockGroupBase::BlockGroupBase(
     core::Params<type::Typed<ast::Declaration const *>> params,
     size_t num_state_args)
-    : params_(std::move(params)),
-      alloc_(NumNonConstants(params_) + num_state_args) {
+    : params_(std::move(params)), alloc_(params_.size() + num_state_args) {
   // Ensure the existence of an entry block. The entry block marks itself as
   // incoming so it is never accidentally cleaned up.
   auto *b = AppendBlock(BasicBlock::DebugInfo{.header = "Entry"});

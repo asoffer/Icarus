@@ -19,9 +19,7 @@ void Execute(ir::NativeFn fn) {
   // TODO actually just have a good way to construct the buffer
   LOG("Execute", "%s", fn);
   ExecutionContext ctx;
-  StackFrame frame = ctx.MakeStackFrame(
-      fn, base::untyped_buffer::MakeFull(fn.type()->params().size() *
-                                         ir::Value::value_size_v));
+  StackFrame frame(fn, ctx.stack());
   ctx.Execute<InstSet>(fn, frame);
 }
 
@@ -35,7 +33,7 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   auto ret_buf         = base::untyped_buffer::MakeFull(required.value());
 
   ExecutionContext ctx;
-  StackFrame frame = ctx.MakeStackFrame(ir::NativeFn(&fn));
+  StackFrame frame(ir::NativeFn(&fn), ctx.stack());
 
   frame.regs_.set<ir::Addr>(ir::Reg::Out(0), ir::Addr::Heap(ret_buf.raw(0)));
   ctx.Execute<InstSet>(&fn, frame);

@@ -118,19 +118,19 @@ struct InitInstruction
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
       ir::Fn f   = *s->init_;
-      auto frame = ctx.MakeStackFrame(f.native());
+      interpreter::StackFrame frame(f.native(), ctx.stack());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
 
     } else if (auto* tup = type.if_as<type::Tuple>()) {
       ir::Fn f   = tup->init_func_.get();
-      auto frame = ctx.MakeStackFrame(f.native());
+      interpreter::StackFrame frame(f.native(), ctx.stack());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f   = a->Initializer();
-      auto frame = ctx.MakeStackFrame(f.native());
+      interpreter::StackFrame frame(f.native(), ctx.stack());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
 
@@ -149,32 +149,26 @@ struct DestroyInstruction
   static constexpr std::string_view kDebugFormat = "destroy %2$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
+    interpreter::StackFrame frame(function(), ctx.stack());
+    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
+    return frame;
+  }
+
+  type::Type type;
+  Reg reg;
+
+ private:
+  ir::Fn function() const {
     if (auto* s = type.if_as<type::Struct>()) {
       ASSERT(s->dtor_.has_value() == true);
-      ir::Fn f   = *s->dtor_;
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
-      return frame;
-
-    } else if (auto* tup = type.if_as<type::Tuple>()) {
-      ir::Fn f   = tup->destroy_func_.get();
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
-      return frame;
-
+      return *s->dtor_;
     } else if (auto* a = type.if_as<type::Array>()) {
-      ir::Fn f   = a->Destructor();
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
-      return frame;
-
+      return a->Destructor();
     } else {
       NOT_YET();
     }
   }
 
-  type::Type type;
-  Reg reg;
 };
 
 struct CopyInstruction
@@ -183,30 +177,26 @@ struct CopyInstruction
   static constexpr std::string_view kDebugFormat = "copy %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    if (auto* s = type.if_as<type::Struct>()) {
-      ir::Fn f = *ASSERT_NOT_NULL(s->CopyAssignment(s));
-      // TODO: No reason this has to be native.
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
-      frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
-      return frame;
-
-    } else if (auto* a = type.if_as<type::Array>()) {
-      ir::Fn f = a->CopyAssign();
-      // TODO: No reason this has to be native.
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
-      frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
-      return frame;
-
-    } else {
-      NOT_YET();
-    }
+    interpreter::StackFrame frame(function(), ctx.stack());
+    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
+    frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+    return frame;
   }
 
   type::Type type;
   ir::RegOr<ir::Addr> from;
   ir::RegOr<ir::Addr> to;
+
+ private:
+  ir::Fn function() const {
+    if (auto* s = type.if_as<type::Struct>()) {
+      return *ASSERT_NOT_NULL(s->CopyAssignment(s));
+    } else if (auto* a = type.if_as<type::Array>()) {
+      return a->CopyAssign();
+    } else {
+      NOT_YET();
+    }
+  }
 };
 
 struct CopyInitInstruction
@@ -215,28 +205,26 @@ struct CopyInitInstruction
   static constexpr std::string_view kDebugFormat = "copy-init %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    if (auto* s = type.if_as<type::Struct>()) {
-      ir::Fn f = *ASSERT_NOT_NULL(s->CopyInit(s));
-      // TODO: No reason this has to be native.
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-      return frame;
-
-    } else if (auto* a = type.if_as<type::Array>()) {
-      ir::Fn f = a->CopyInit();
-      // TODO: No reason this has to be native.
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-      return frame;
-
-    } else {
-      NOT_YET();
-    }
+    interpreter::StackFrame frame(function(), ctx.stack());
+    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
+    frame.regs_.set(ir::Reg::Out(0), ctx.resolve<ir::Addr>(to));
+    return frame;
   }
 
   type::Type type;
   ir::RegOr<ir::Addr> from;
   ir::RegOr<ir::Addr> to;
+
+ private:
+  ir::Fn function() const {
+    if (auto* s = type.if_as<type::Struct>()) {
+      return *ASSERT_NOT_NULL(s->CopyInit(s));
+    } else if (auto* a = type.if_as<type::Array>()) {
+      return a->CopyInit();
+    } else {
+      NOT_YET();
+    }
+  }
 };
 
 struct MoveInstruction
@@ -245,28 +233,26 @@ struct MoveInstruction
   static constexpr std::string_view kDebugFormat = "move %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    if (auto* s = type.if_as<type::Struct>()) {
-      ir::Fn f = *ASSERT_NOT_NULL(s->MoveAssignment(s));
-      // TODO: No reason this has to be native.
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
-      frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
-      return frame;
-    } else if (auto* a = type.if_as<type::Array>()) {
-      ir::Fn f = a->MoveAssign();
-      // TODO: No reason this has to be native.
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
-      frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
-      return frame;
-    } else {
-      NOT_YET();
-    }
+    interpreter::StackFrame frame(function(), ctx.stack());
+    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
+    frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+    return frame;
   }
 
   type::Type type;
   ir::RegOr<ir::Addr> from;
   ir::RegOr<ir::Addr> to;
+
+ private:
+  ir::Fn function() const {
+    if (auto* s = type.if_as<type::Struct>()) {
+      return *ASSERT_NOT_NULL(s->MoveAssignment(s));
+    } else if (auto* a = type.if_as<type::Array>()) {
+      return a->MoveAssign();
+    } else {
+      NOT_YET();
+    }
+  }
 };
 
 struct MoveInitInstruction
@@ -275,26 +261,26 @@ struct MoveInitInstruction
   static constexpr std::string_view kDebugFormat = "move-init %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    if (auto* s = type.if_as<type::Struct>()) {
-      ir::Fn f = *ASSERT_NOT_NULL(s->MoveInit(s));
-      // TODO: No reason this has to be native.
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-      return frame;
-    } else if (auto* a = type.if_as<type::Array>()) {
-      ir::Fn f = a->MoveInit();
-      // TODO: No reason this has to be native.
-      auto frame = ctx.MakeStackFrame(f.native());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-      return frame;
-    } else {
-      NOT_YET();
-    }
+    interpreter::StackFrame frame(function(), ctx.stack());
+    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
+    frame.regs_.set(ir::Reg::Out(0), ctx.resolve<ir::Addr>(to));
+    return frame;
   }
 
   type::Type type;
   ir::RegOr<ir::Addr> from;
   ir::RegOr<ir::Addr> to;
+
+ private:
+  ir::Fn function() const {
+    if (auto* s = type.if_as<type::Struct>()) {
+      return *ASSERT_NOT_NULL(s->MoveInit(s));
+    } else if (auto* a = type.if_as<type::Array>()) {
+      return a->MoveInit();
+    } else {
+      NOT_YET();
+    }
+  }
 };
 
 [[noreturn]] inline void FatalInterpreterError(std::string_view err_msg) {

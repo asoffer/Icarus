@@ -99,28 +99,7 @@ struct ExecutionContext {
 
   // Loads `num_bytes` bytes starting at `addr` and stores the result into
   // `result`.
-  void Load(ir::Reg result, ir::Addr addr, core::Bytes num_bytes) {
-    switch (addr.kind()) {
-      case ir::Addr::Kind::Stack: {
-        current_frame().regs_.set_raw(result, stack_.raw(addr.stack()),
-                                      num_bytes.value());
-      } break;
-      case ir::Addr::Kind::ReadOnly: {
-        auto handle = ir::ReadOnlyData.lock();
-        current_frame().regs_.set_raw(result, handle->raw(addr.rodata()),
-                                      num_bytes.value());
-      } break;
-      case ir::Addr::Kind::Heap: {
-        current_frame().regs_.set_raw(result, addr.heap(), num_bytes.value());
-      } break;
-    }
-  }
-
-  // TODO: Deprecate. This doesn't feel particularly great API.
-  // Copies `length` bytes stored in `reg` to `dst`.
-  void MemCpyRegisterBytes(void *dst, ir::Reg reg, size_t length) {
-    std::memcpy(dst, current_frame().regs_.raw(reg), length);
-  }
+  void Load(ir::Reg result, ir::Addr addr, core::Bytes num_bytes);
 
   // Reads the value stored in `r` assuming it has type `T`. Behavior is
   // undefined if the value stored in the register is of another type.
@@ -135,11 +114,6 @@ struct ExecutionContext {
   template <typename T>
   T resolve(ir::RegOr<T> val) const {
     return val.resolve([&](ir::Reg r) { return resolve<T>(r); });
-  }
-
-  template <typename... Args>
-  StackFrame MakeStackFrame(ir::Fn fn, Args &&... args) {
-    return StackFrame(fn, std::forward<Args>(args)..., &stack_);
   }
 
   template <typename InstSet>
@@ -157,7 +131,8 @@ struct ExecutionContext {
     }
   }
 
-  base::untyped_buffer_view stack() const { return stack_; }
+  base::untyped_buffer_view stack() const & { return stack_; }
+  base::untyped_buffer &stack() & { return stack_; }
 
  private:
   template <typename InstSet>
@@ -237,11 +212,11 @@ struct ExecutionContext {
         type::Function const *fn_type = f.type();
         LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
 
-        StackFrame frame = ctx.MakeStackFrame(f);
+        StackFrame frame(f, ctx.stack());
 
         // TODO: you probably want interpreter::Arguments or something.
         size_t num_inputs = fn_type->params().size();
-        for (size_t i = 0; i < num_inputs; ++i) {
+        for (size_t i = 0; i < f.num_parameters(); ++i) {
           if (iter->read<bool>()) {
             ir::Reg reg = iter->read<ir::Reg>();
             frame.regs_.set_raw(ir::Reg::Arg(i),
@@ -250,13 +225,14 @@ struct ExecutionContext {
             LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i), reg);
           } else {
             type::Type t = fn_type->params()[i].value.type();
-            frame.regs_.set_raw(ir::Reg::Arg(i), iter->raw(),
-                                ir::Value::value_size_v);
-            LOG("CallInstruction", "  %s: ???]", ir::Reg::Arg(i));
-            iter->skip((t.is_big()
-                            ? interpreter::kArchitecture.pointer().bytes()
-                            : t.bytes(interpreter::kArchitecture))
-                           .value());
+            core::Bytes size =
+                t.is_big() ? interpreter::kArchitecture.pointer().bytes()
+                           : t.bytes(interpreter::kArchitecture);
+            frame.regs_.set_raw(ir::Reg::Arg(i), iter->raw(), size.value());
+            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i),
+                base::untyped_buffer_view(iter->raw(), size.value())
+                    .to_string());
+            iter->skip(size.value());
           }
         }
 
@@ -268,6 +244,7 @@ struct ExecutionContext {
           ir::Addr out_addr =
               t.is_big() ? ctx.resolve<ir::Addr>(reg)
                          : ir::Addr::Heap(ctx.current_frame().regs_.raw(reg));
+          LOG("CallInstruction", "  %s: [%s]", ir::Reg::Out(i), out_addr);
           frame.regs_.set(ir::Reg::Out(i), out_addr);
         }
 

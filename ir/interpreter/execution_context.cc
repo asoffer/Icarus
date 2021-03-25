@@ -63,8 +63,9 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame,
   // that we can take a pointer into `pointer_values`.
   std::vector<void const *> pointer_values;
 
-  size_t i = 0;
-  for (auto const &in : fn_type->params()) {
+  for (size_t i = 0; i < fn_type->params().size(); ++i) {
+    auto const& in = fn_type->params()[i];
+
     ASSERT(in.value.constant() == false);
     auto ffi_type = ToFfiType(in.value.type());
     arg_types.push_back(ffi_type);
@@ -75,8 +76,9 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame,
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
       ir::Addr addr = frame.regs_.get<ir::Addr>(ir::Reg::Arg(i));
-      LOG("CallFn", "Pushing pointer addr = %s stored in argument %u", addr, i);
-      ++i;
+
+      LOG("CallFn", "Pushing pointer addr = %s stored in %s", addr,
+          ir::Reg::Arg(i));
       switch (addr.kind()) {
         case ir::Addr::Kind::Heap: {
           pointer_values.push_back(addr.heap());
@@ -96,7 +98,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame,
       // ir::Char where we're writing/reading `char` through the `ir::Char`
       // according to the C++ standard.
       arg_vals.push_back(
-          const_cast<char *>(frame.regs_.raw(ir::Reg::Arg(i++))));
+          const_cast<char *>(frame.regs_.raw(ir::Reg::Arg(i))));
     }
   }
 
@@ -173,6 +175,24 @@ void ExecutionContext::CallFn(ir::BuiltinFn fn, StackFrame &frame) {
     default: NOT_YET();
   }
 
+}
+
+void ExecutionContext::Load(ir::Reg result, ir::Addr addr,
+                            core::Bytes num_bytes) {
+  switch (addr.kind()) {
+    case ir::Addr::Kind::Stack: {
+      current_frame().regs_.set_raw(result, stack_.raw(addr.stack()),
+                                    num_bytes.value());
+    } break;
+    case ir::Addr::Kind::ReadOnly: {
+      auto handle = ir::ReadOnlyData.lock();
+      current_frame().regs_.set_raw(result, handle->raw(addr.rodata()),
+                                    num_bytes.value());
+    } break;
+    case ir::Addr::Kind::Heap: {
+      current_frame().regs_.set_raw(result, addr.heap(), num_bytes.value());
+    } break;
+  }
 }
 
 }  // namespace interpreter

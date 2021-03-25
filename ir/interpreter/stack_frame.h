@@ -10,9 +10,7 @@ namespace interpreter {
 
 struct StackFrame {
   StackFrame() = delete;
-  StackFrame(ir::Fn fn, base::untyped_buffer *stack);
-  StackFrame(ir::Fn fn, base::untyped_buffer_view arguments,
-             base::untyped_buffer *stack);
+  StackFrame(ir::Fn fn, base::untyped_buffer &stack);
 
   ir::Fn fn() const { return fn_; }
 
