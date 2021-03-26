@@ -19,9 +19,10 @@ program in Icarus*.
 ## Basics
 
 Variable declarations are expressed with a `:` separating the variable name from
-its type. You may optionally initialize the variable with a value. If no
-initialization is present, the value will be initialized to a "zero-like" value.
-This means zero for numeric types and `false` for booleans.
+its type. You may optionally initialize the variable with a value using `=`
+following the type If no initialization is present, the value will be
+initialized to a "zero-like" value.  This means zero for numeric types and
+`false` for booleans.
 
 ```
 // Initialize a 64-bit integer named `x` to zero.
@@ -36,7 +37,7 @@ type, simply omit it from the declaration. This is typically stylized as
 `:=`, but it is perfectly valid to have whitespace between the `:` and the `=`.
 
 ```
-x := 0
+b := true
 pi := 3.14
 ```
 
@@ -47,6 +48,8 @@ variables uninitialized. Assigning the special value `--` denotes this.
 // An uninitialized 32-bit integer
 x: i32 = --
 ```
+
+All variables must be initialized before being used. Initializing already-declared variables is outside the scope of this tour.
 
 ## Constants
 
@@ -80,7 +83,7 @@ square(3) // Evaluates to 9.
 Notice that we declared a constant `square` and defined it to have the
 value of this function. You will see this pattern in Icarus a lot. Where other
 languages have special syntax for defining functions, types, or modules, Icarus
-uses the same syntax for all types of declarations.
+uses the same syntax for all kinds of declarations.
 
 In addition to the standard function call syntax, Icarus supports a few other
 styles for calling a function:
@@ -104,7 +107,7 @@ All of the functions shown so far are simple enough that the standard function
 syntax is overly verbose. Icarus provides a shorthand syntax that replaces
 `->` with `=>`, and replaces the return type with a single-expression
 function body.
-The return type is deduced.
+The return type is always deduced.
 
 ```
 square ::= (n: i64) => n * n
@@ -113,11 +116,11 @@ half   ::= (x := 1.0) => x / 2.0
 
 ## Arrays
 
-Arrays are contiguous, fixed-size chunks of memory that hold data all of the
-same type. The type of an array is written `[N; T]` where `T` is the type
-of data held in the array, and `N` is the length of the array.
-Arrays can be constructed with a comma-separated list of values
-surrounded by square brackets.
+Arrays are contiguous, fixed-size blocks of memory that hold data all of the
+same type. The type of an array [is written](design) `[N; T]` where `T` is the
+type of data held in the array, and `N` is the length of the array.
+Arrays can be constructed with a comma-separated list of values surrounded by
+square brackets.
 
 ```
 a: [3; i64] = [1, 4, 9]
@@ -125,23 +128,50 @@ b := [2, 4, 6]
 ```
 
 ## Pointers
-TODO
-
-## Tuples
-TODO
-
-## Variants
-A variant is a value which can be one of a handful of different types. Variant
-types are constructed from other types with the `|` binary operator. The type
-currently held in the variant is accessed with the `which` keyword.
-Note that the type returned from `which` is not a compile-time constant,
-so it cannot be used in a variable declaration.
+Pointers represent the location of an object in memory. A pointer to an object
+of type `T` has type `*T`. To take the address of an object, we use the unary
+`&` operator. To dereference a pointer to an object, we use `@`.
 
 ```
-v: i64 | bool = 3
-which v // Evaluates to i64.
-v = true
-which v // Evaluates to bool.
+n: i64
+p: *i64 = &n
+@p = 3
+// Now `n` holds the value `3`.
+```
+
+Unlike C/C++, pointer arithmetic is not allowed on `*T` at all.
+Icarus has a second pointer type, called a buffer pointer, denoted `[*]T` which
+does allow arithmetic. Taking the address and dereferencing are done with the
+same operators.
+
+```
+a := [1, 2, 3]
+p: [*]i64 = &a[1]  // Okay to use a buffer pointer, because we are pointing into
+                   // an array
+
+@(p - 1) = 10      // We can do arithmetic with `p`
+@p = 20            //
+p[1] = 30          // We can also directly index with brackets.
+
+// Now a == [10, 20, 30]
+```
+
+Note that buffer pointers must point into arrays or slices (see below). You may not use buffer pointer arithmetic to dereference a value outside the underlying array or slice.
+
+## Slices
+
+A slice is another reference-type like pointers. It holds effectively is a
+buffer pointer and a length, allowing you refer to subsequences of contiguous
+blocks of memory. A slice of objects of type `T` is written as `T[]`. Slices
+can be indexed and dereferenced just as buffer pointers.
+
+```
+a := [1, 2, 3, 4, 5]
+s := slice(&a[1], 3)  // A slice refering to the elements in `a` whose values
+                      // are currently 2, 3, and 4.
+s[1] = 30
+
+// Now a == [1, 2, 30, 4, 5]
 ```
 
 ## Enums and Flags
@@ -199,22 +229,32 @@ p: Point
 p.x = 3.0
 ```
 
+You can also initialize the values in a struct directly using the designated initializer syntax:
+
+```
+p := Point.{
+  x = 0.1
+  y = 0.2
+  z = 0.3
+}
+```
+
 # Modules
 
 Icarus modules are the primary unit of encapsulation. The importer of a module
 gets to choose the name associated to that module.
 
 ```
-math ::= import "examples/lib/math/math.ic"
-math.sqrt(9.0) // Evaluates to 3.0.
+math ::= import "math/core.ic"
+math.sqrt(9.0)  // Evaluates to 3.0.
 ```
 
 Modules can also be assigned to `--`, which makes their contents available
 directly without using module's name as a prefix.
 
 ```
--- ::= import "examples/lib/math/math.ic"
-sqrt(9.0) // Evaluates to 3.0.
+-- ::= import "math/core.ic"
+sqrt(9.0)  // Evaluates to 3.0.
 ```
 
 When defining your own module, declarations are not exposed publicly by default.
@@ -227,6 +267,24 @@ sqrt ::= (x: f64) => sqrt_impl(x)
 
 // Not exported. Users of this module cannot see this.
 sqrt_impl ::= (x: f64) -> f64 { ... }
+```
+
+Moreover, when exporting structs, note that the members of a struct are (by
+default) not accessible outside the module, even if the struct itself is
+exported. Where other languages use keywords like "public" or "private" to
+denote access control to struct fields, Icarus reuses `#{export}`.
+
+```
+#{export}
+my_public_struct ::= struct {
+  #{export}
+  my_public_field: i64
+  my_private_field: bool
+}
+
+my_private_struct ::= struct {
+  also_private: f64
+}
 ```
 
 # Control Flow
@@ -245,45 +303,17 @@ while (i < 10) do {
   if (i == 5) then {
     io.Print("five")
   } else {
-    io.Print(5)
+    io.Print(i)
   }
   i += 1
 }
 ```
 
-Defining your own scope requires a few pieces:
-1. What parameters are used to initialize your scope? (In a while-loop, this is
-   the boolean condition.)
-2. What blocks can be jumped to? (In an if-statement, these are the "then" and
-   "else" block.)
-3. How should the blocks be connected together? 
-4. What are the exit conditions?
+Commonly used scopes (`if`, `for`, and `while`) are all defined in the standard
+library's "core.ic".
 
-To define a scope that runs a "do" block forever, we would write:
-
-```
-forever ::= scope {
-  init ::= jump() { goto do() }
-  do ::= block {
-    // Nothing special to be done before the do-block is entered.
-    before ::= () -> () {} 
-
-    // Restart the do-block
-    after: jump() { goto do() }
-  }
-
-  // There's no need for an exit condition, because there's no way to
-  // exit.
-}
-```
-
-Using this new scope is simple:
-
-```
-forever () do {
-  io.Print("yes\n")
-}
-```
+Defining your own scopes is more complex than would succinctly fit in this tour.
+You can learn more about that [here](user-defined-scopes).
 
 # Generic Functions
 
@@ -369,4 +399,19 @@ max ::= (x: $x, y: eq($x, $y)) -> $x { ... }
 ```
 
 # Parameterized Structs
-TODO
+
+Parameterized structs work much the same way as generic functions do, by
+accepting constant parameters. Here is an example of a pair type.
+
+```
+pair ::= struct (A :: type, B :: type) {
+  first: A
+  second: B
+}
+
+// Usage:
+p := pair(i64, bool).{
+  first = 3
+  second = false
+}
+```

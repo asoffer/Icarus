@@ -3,7 +3,7 @@ title: Icarus
 author: Andy Soffer
 ---
 
-#Icarus
+# Icarus
 
 Icarus is an experimental general-purpose programming language, designed to be
 fast to compile, fast to run, and easy to migrate.
