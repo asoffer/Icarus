@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_BLOCKS_GROUP_H
 #define ICARUS_IR_BLOCKS_GROUP_H
 
+#include <concepts>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -67,8 +68,8 @@ struct BlockGroupBase {
     writer.MakeReplacements();
   }
 
-  template <typename Fn>
-  void for_each_alloc(Fn &&f) {
+  template <std::invocable<type::Type, ir::Reg> Fn>
+  void for_each_alloc(Fn &&f) const {
     alloc_.for_each_alloc(std::forward<Fn>(f));
   }
 

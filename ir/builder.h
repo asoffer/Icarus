@@ -312,7 +312,7 @@ struct Builder {
   }
 
   template <typename T>
-  RegOr<T> Load(RegOr<Addr> addr) {
+  RegOr<T> Load(RegOr<Addr> addr, type::Type t = type::Get<T>()) {
     auto& blk = *CurrentBlock();
 
     // TODO Just take a Reg. RegOr<Addr> is overkill and not possible because
@@ -323,8 +323,7 @@ struct Builder {
       return cache_results.get<RegOr<T>>();
     }
 
-    LoadInstruction inst{.num_bytes = core::Bytes::Get<T>().value(),
-                         .addr      = addr};
+    LoadInstruction inst{.type = t, .addr = addr};
     auto result = inst.result = CurrentGroup()->Reserve();
 
     cache_results = Value(result);
@@ -336,11 +335,11 @@ struct Builder {
   Value Load(RegOr<Addr> r, type::Type t) {
     using base::stringify;
     LOG("Load", "Calling Load(%s, %s)", r, t.to_string());
-    if (t.is<type::Function>()) { return Value(Load<Fn>(r)); }
+    if (t.is<type::Function>()) { return Value(Load<Fn>(r, t)); }
     return type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
                             uint8_t, uint16_t, uint32_t, uint64_t, float,
                             double, type::Type, Addr, Fn>(
-        t, [&]<typename T>() { return Value(Load<T>(r)); });
+        t, [&]<typename T>() { return Value(Load<T>(r, t)); });
   }
 
   template <typename T>

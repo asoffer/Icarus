@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_BLOCKS_REGISTER_ALLOCATOR_H
 #define ICARUS_IR_BLOCKS_REGISTER_ALLOCATOR_H
 
+#include <concepts>
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -52,7 +53,7 @@ struct RegisterAllocator {
   // allocated register in the to-be-inlined group to update it so that it's
   // value does not conflict with that a register value in `*this`. Typically
   // this is just incrementing it by a particular offset.
-  template <typename Fn>
+  template <std::invocable<ir::Reg> Fn>
   void MergeFrom(RegisterAllocator const& a, Fn&& f) {
     num_regs_ += a.num_regs_;
     for (auto const& [t, reg] : a.allocs_) { allocs_.emplace_back(t, f(reg)); }
@@ -63,7 +64,7 @@ struct RegisterAllocator {
   // register represents the address of a stored value of the given type, so it
   // would be misleading. The register has a value which is a pointer to this
   // type rather than the type itself.
-  template <typename Fn>
+  template <std::invocable<type::Type, ir::Reg> Fn>
   void for_each_alloc(Fn&& f) const {
     for (auto const& [t, reg] : allocs_) { f(t, reg); }
   }

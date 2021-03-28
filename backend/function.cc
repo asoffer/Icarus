@@ -15,6 +15,7 @@ struct IrToLlvmMapping {
   llvm::IRBuilder<> &builder;
   absl::flat_hash_map<ir::BasicBlock const *, llvm::BasicBlock *> blocks;
   absl::flat_hash_map<ir::Reg, llvm::Value *> registers;
+  absl::flat_hash_map<ir::CompiledFn const *, llvm::Function *> const &fn_map;
 
   template <typename T>
   llvm::Value *Lookup(ir::RegOr<T> val, llvm::IRBuilder<> &builder) {
@@ -38,6 +39,13 @@ struct IrToLlvmMapping {
             llvm::APInt(sizeof(T) * CHAR_BIT,
                         static_cast<uint64_t>(val.value()),
                         std::is_signed_v<T>));
+      } else if constexpr (base::meta<T> == base::meta<ir::Fn>) {
+        switch (val.value().kind()) {
+          case ir::Fn::Kind::Native: {
+            return fn_map.at(val.value().native().get());
+          } break;
+          default: NOT_YET();
+        }
       } else {
         NOT_YET(typeid(T).name());
       }
@@ -477,8 +485,162 @@ void TryEmitLlvmBasicBlock(ir::BasicBlock const *block,
           ToLlvmType(inst->ptr, to_llvm.builder.getContext()),
           to_llvm.Lookup(inst->addr, to_llvm.builder),
           to_llvm.Lookup(inst->index, to_llvm.builder));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<bool>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<int8_t>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<int8_t>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<int16_t>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<uint16_t>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<int32_t>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<uint32_t>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<int64_t>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<uint64_t>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<float>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst =
+                   instruction.if_as<ir::SetReturnInstruction<double>>()) {
+      if (inst->index == 0) {
+        to_llvm.builder.CreateRet(to_llvm.Lookup(inst->value, to_llvm.builder));
+      } else {
+        NOT_YET("Not yet supporting multiple returns: index = ", inst->index);
+      }
+    } else if (auto const *inst = instruction.if_as<ir::CallInstruction>()) {
+      // TODO: support multiple outputs
+      if (inst->outputs().size() > 1) { NOT_YET(); }
+      std::vector<llvm::Value *> args;
+      args.reserve(inst->arguments().size());
+      for (auto const &arg : inst->arguments()) {
+        arg.apply([&](auto v) {
+          using type = std::decay_t<decltype(v)>;
+          if constexpr (base::meta<type> == base::meta<ir::Reg>) {
+            NOT_YET();
+          } else {
+            args.push_back(to_llvm.Lookup<type>(v, to_llvm.builder));
+          }
+        });
+      }
+      llvm::Value *result = to_llvm.builder.CreateCall(
+          llvm::cast<llvm::FunctionType>(
+              ToLlvmType(inst->func_type(), to_llvm.builder.getContext())),
+          to_llvm.Lookup(inst->func(), to_llvm.builder), args);
+      if (inst->outputs().size() == 1) {
+        to_llvm.insert(inst->outputs()[0], result);
+      }
+    } else if (auto const *inst = instruction.if_as<ir::LoadInstruction>()) {
+      to_llvm.insert(inst->result,
+                     to_llvm.builder.CreateLoad(
+                         ToLlvmType(inst->type, to_llvm.builder.getContext()),
+                         to_llvm.Lookup(inst->addr, to_llvm.builder)));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::StoreInstruction<bool>>()) {
+      to_llvm.builder.CreateStore(
+          to_llvm.Lookup(inst->value, to_llvm.builder),
+          to_llvm.Lookup(inst->location, to_llvm.builder));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::StoreInstruction<ir::Char>>()) {
+      to_llvm.builder.CreateStore(
+          to_llvm.Lookup(inst->value, to_llvm.builder),
+          to_llvm.Lookup(inst->location, to_llvm.builder));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::StoreInstruction<int8_t>>()) {
+      to_llvm.builder.CreateStore(
+          to_llvm.Lookup(inst->value, to_llvm.builder),
+          to_llvm.Lookup(inst->location, to_llvm.builder));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::StoreInstruction<uint8_t>>()) {
+      to_llvm.builder.CreateStore(
+          to_llvm.Lookup(inst->value, to_llvm.builder),
+          to_llvm.Lookup(inst->location, to_llvm.builder));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::StoreInstruction<int16_t>>()) {
+      to_llvm.builder.CreateStore(
+          to_llvm.Lookup(inst->value, to_llvm.builder),
+          to_llvm.Lookup(inst->location, to_llvm.builder));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::StoreInstruction<uint16_t>>()) {
+      to_llvm.builder.CreateStore(
+          to_llvm.Lookup(inst->value, to_llvm.builder),
+          to_llvm.Lookup(inst->location, to_llvm.builder));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::StoreInstruction<int32_t>>()) {
+      to_llvm.builder.CreateStore(
+          to_llvm.Lookup(inst->value, to_llvm.builder),
+          to_llvm.Lookup(inst->location, to_llvm.builder));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::StoreInstruction<uint32_t>>()) {
+      to_llvm.builder.CreateStore(
+          to_llvm.Lookup(inst->value, to_llvm.builder),
+          to_llvm.Lookup(inst->location, to_llvm.builder));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::StoreInstruction<int64_t>>()) {
+      to_llvm.builder.CreateStore(
+          to_llvm.Lookup(inst->value, to_llvm.builder),
+          to_llvm.Lookup(inst->location, to_llvm.builder));
+    } else if (auto const *inst =
+                   instruction.if_as<ir::StoreInstruction<uint64_t>>()) {
+      to_llvm.builder.CreateStore(
+          to_llvm.Lookup(inst->value, to_llvm.builder),
+          to_llvm.Lookup(inst->location, to_llvm.builder));
     } else {
-      NOT_YET(instruction.to_string());
+      NOT_YET(instruction.rtti(), instruction.to_string());
     }
 
     instructions.remove_prefix(1);
@@ -486,13 +648,12 @@ void TryEmitLlvmBasicBlock(ir::BasicBlock const *block,
 }
 
 void FinishLlvmBasicBlock(ir::BasicBlock const *block,
-                          IrToLlvmMapping &to_llvm) {
+                          IrToLlvmMapping &to_llvm, bool returns_void) {
   to_llvm.builder.SetInsertPoint(to_llvm.blocks.at(block));
 
   switch (block->jump().kind()) {
     case ir::JumpCmd::Kind::Return:
-      // TODO: Not necessarily void.
-      to_llvm.builder.CreateRetVoid();
+      if (returns_void) { to_llvm.builder.CreateRetVoid(); }
       return;
     case ir::JumpCmd::Kind::Uncond:
       to_llvm.builder.CreateBr(to_llvm.blocks.at(block->jump().UncondTarget()));
@@ -520,16 +681,27 @@ llvm::Function *DeclareLlvmFunction(ir::CompiledFn const &fn,
 }
 
 void EmitLlvmFunction(llvm::IRBuilder<> &builder, llvm::LLVMContext &context,
-                      ir::CompiledFn const &fn, llvm::Function &llvm_fn) {
-  IrToLlvmMapping mapping{.builder = builder};
+                      ir::CompiledFn const &fn, 
+                      absl::flat_hash_map<ir::CompiledFn const *,
+                                          llvm::Function *> const &fn_map) {
+  llvm::Function &llvm_fn = *ASSERT_NOT_NULL(fn_map.at(&fn));
+  IrToLlvmMapping mapping{.builder = builder, .fn_map = fn_map};
 
-  char const *block_name = "entry";
-  for (auto const *block : fn.blocks()) {
-    mapping.blocks.emplace(
-        block,
-        llvm::BasicBlock::Create(builder.getContext(), block_name, &llvm_fn));
-    block_name = "block";
+  auto iter = fn.blocks().begin();
+  auto *entry_block =
+      llvm::BasicBlock::Create(builder.getContext(), "entry", &llvm_fn);
+  mapping.blocks.emplace(*iter, entry_block);
+  ++iter;
+  for (; iter != fn.blocks().end(); ++iter) {
+    mapping.blocks.emplace(*iter, llvm::BasicBlock::Create(builder.getContext(),
+                                                           "block", &llvm_fn));
   }
+
+  builder.SetInsertPoint(entry_block);
+  fn.for_each_alloc([&](type::Type t, ir::Reg r) {
+    mapping.registers.emplace(
+        r, mapping.builder.CreateAlloca(ToLlvmType(t, context)));
+  });
 
   std::vector<std::pair<ir::BasicBlock const *, absl::Span<ir::Inst const>>>
       to_process;
@@ -553,8 +725,9 @@ void EmitLlvmFunction(llvm::IRBuilder<> &builder, llvm::LLVMContext &context,
     front_iter = to_process.begin();
   }
 
+  bool returns_void = fn.type()->output().empty();
   for (auto const *block : fn.blocks()) {
-    FinishLlvmBasicBlock(block, mapping);
+    FinishLlvmBasicBlock(block, mapping, returns_void);
   }
 }
 

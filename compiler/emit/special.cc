@@ -598,7 +598,8 @@ void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Slice> to,
                       current_block()->Append(type::SliceDataInstruction{
                           .slice  = from->get<ir::RegOr<ir::Addr>>(),
                           .result = builder().CurrentGroup()->Reserve(),
-                      })),
+                      }),
+                      type::BufPtr(to.type()->data_type())),
                   current_block()->Append(type::SliceDataInstruction{
                       .slice  = *to,
                       .result = builder().CurrentGroup()->Reserve(),
@@ -621,7 +622,8 @@ void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Slice> to,
                       current_block()->Append(type::SliceDataInstruction{
                           .slice  = from->get<ir::RegOr<ir::Addr>>(),
                           .result = builder().CurrentGroup()->Reserve(),
-                      })),
+                      }),
+                      type::BufPtr(to.type()->data_type())),
                   current_block()->Append(type::SliceDataInstruction{
                       .slice  = *to,
                       .result = builder().CurrentGroup()->Reserve(),
@@ -645,7 +647,8 @@ void Compiler::EmitCopyAssign(
                       current_block()->Append(type::SliceDataInstruction{
                           .slice  = from->get<ir::RegOr<ir::Addr>>(),
                           .result = builder().CurrentGroup()->Reserve(),
-                      })),
+                      }),
+                      type::BufPtr(to.type()->data_type())),
                   current_block()->Append(type::SliceDataInstruction{
                       .slice  = *to,
                       .result = builder().CurrentGroup()->Reserve(),
@@ -669,7 +672,8 @@ void Compiler::EmitMoveAssign(
                       current_block()->Append(type::SliceDataInstruction{
                           .slice  = from->get<ir::RegOr<ir::Addr>>(),
                           .result = builder().CurrentGroup()->Reserve(),
-                      })),
+                      }),
+                      type::BufPtr(to.type()->data_type())),
                   current_block()->Append(type::SliceDataInstruction{
                       .slice  = *to,
                       .result = builder().CurrentGroup()->Reserve(),

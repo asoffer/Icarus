@@ -36,6 +36,7 @@ struct ExecutableModule : CompiledModule {
     if (diag.num_consumed() > 0) { return; }
 
     c.ProcessExecutableBody(nodes, &main());
+    CompilationComplete();
   }
 
  private:

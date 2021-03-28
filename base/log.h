@@ -62,6 +62,7 @@ void DisableLogging(std::string_view key);
 
 #define LOG(k, fmt, ...)                                                       \
   do {                                                                         \
+    constexpr auto kFunc = __func__;                                           \
     if ([](std::string_view key) -> bool {                                     \
           static std::atomic<bool> is_on([key] {                               \
             if (std::string_view(key).empty()) { return true; }                \
@@ -76,8 +77,8 @@ void DisableLogging(std::string_view key);
       [](auto const &... args) {                                               \
         ::base::internal_logging::Log(                                         \
             ::base::internal_logging::kDefaultLogFormat,                       \
-            ::std::experimental::source_location::current(), __func__,         \
-            fmt "\n", ::base::internal_logging::maybe_stringify(args)...);     \
+            ::std::experimental::source_location::current(), kFunc, fmt "\n",  \
+            ::base::internal_logging::maybe_stringify(args)...);               \
       }(__VA_ARGS__);                                                          \
     }                                                                          \
   } while (false)

@@ -39,7 +39,8 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
                   .slice =
                       c.EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
                   .result = c.builder().CurrentGroup()->Reserve(),
-              })),
+              }),
+              type::BufPtr(s->data_type())),
           to);
 
     } else {
@@ -86,7 +87,8 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
           current_block()->Append(type::SliceDataInstruction{
               .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
               .result = builder().CurrentGroup()->Reserve(),
-          })));
+          }),
+          type::BufPtr(s->data_type())));
     } else {
       UNREACHABLE(node->member_name());
     }
@@ -132,6 +134,7 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
   auto ref = EmitRef(node->operand());
   if (ref.is_arg() and not t.get()->is_big()) { --deref_count; }
 
+  // TODO: Do not iterate through this twice.
   auto const *tp = t.if_as<type::Pointer>();
   while (tp) {
     t  = tp->pointee();
@@ -142,8 +145,15 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
   ir::Value reg = (op_qt.quals() >= type::Quals::Ref())
                       ? ir::Value(ref)
                       : EmitValue(node->operand());
-  for (size_t i = 0; i < deref_count; ++i) {
-    reg = ir::Value(builder().Load<ir::Addr>(reg.get<ir::RegOr<ir::Addr>>()));
+  {
+    auto t  = op_qt.type();
+    auto tp = t.if_as<type::Pointer>();
+    for (size_t i = 0; i < deref_count; ++i) {
+      reg = ir::Value(
+          builder().Load<ir::Addr>(reg.get<ir::RegOr<ir::Addr>>(), tp));
+      t = tp->pointee();
+      tp = t.if_as<type::Pointer>();
+    }
   }
 
   auto const &struct_type = t.as<type::Struct>();

@@ -15,7 +15,8 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
         current_block()->Append(type::SliceDataInstruction{
             .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::Addr>>(),
             .result = builder().CurrentGroup()->Reserve(),
-        }));
+        }),
+        type::BufPtr(s->data_type()));
 
     auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
         EmitValue(node->rhs()), context().qual_types(node->rhs())[0].type()));
@@ -65,7 +66,8 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
         current_block()->Append(type::SliceDataInstruction{
             .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::Addr>>(),
             .result = builder().CurrentGroup()->Reserve(),
-        }));
+        }),
+        type::BufPtr(s->data_type()));
 
     auto index = builder().CastTo<int64_t>(
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));

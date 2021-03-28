@@ -50,7 +50,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler &c, ast::Expression const *fn,
       return c.builder().Load<ir::Fn>(c.context().addr(&fn_decl->ids()[0]));
     } else {
       return c.builder().Load<ir::Fn>(
-          c.EmitValue(fn).get<ir::RegOr<ir::Addr>>());
+          c.EmitValue(fn).get<ir::RegOr<ir::Addr>>(), f_type);
     }
   }
 }

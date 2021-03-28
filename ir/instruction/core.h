@@ -12,6 +12,7 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
+#include "ir/interpreter/architecture.h"
 #include "ir/out_params.h"
 #include "ir/value/fn.h"
 #include "ir/value/generic_fn.h"
@@ -24,35 +25,21 @@ namespace ir {
 // memory.
 
 struct LoadInstruction
-    : base::Extend<LoadInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<LoadInstruction>::With<InlineExtension,
+                                          DebugFormatExtension> {
   static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
-  static constexpr std::string_view kDebugFormat =
-      "%3$s = load %2$s (%1$s bytes)";
+  static constexpr std::string_view kDebugFormat = "%3$s = load %2$s (%1$s)";
 
-  uint16_t num_bytes;
+  void WriteByteCode(ByteCodeWriter* writer) const {
+    writer->Write<uint16_t>(type.bytes(interpreter::kArchitecture).value());
+    writer->Write(addr);
+    writer->Write(result);
+  }
+
+  type::Type type;
   RegOr<Addr> addr;
   Reg result;
 };
-
-namespace internal_core {
-template <typename SizeType, typename T, typename Fn>
-void WriteBits(ByteCodeWriter* writer, absl::Span<T const> span,
-               Fn&& predicate) {
-  ASSERT(span.size() < std::numeric_limits<SizeType>::max());
-  writer->Write<SizeType>(span.size());
-
-  uint8_t reg_mask = 0;
-  for (size_t i = 0; i < span.size(); ++i) {
-    if (predicate(span[i])) { reg_mask |= (1 << (7 - (i % 8))); }
-    if (i % 8 == 7) {
-      writer->Write(reg_mask);
-      reg_mask = 0;
-    }
-  }
-  if (span.size() % 8 != 0) { writer->Write(reg_mask); }
-}
-}  // namespace internal_core
 
 // TODO consider changing these to something like 'basic block arguments'
 template <typename T>
@@ -198,7 +185,10 @@ struct CallInstruction {
     outs_.WriteByteCode(writer);
   }
 
+  type::Function const* func_type() const { return fn_type_; }
   RegOr<Fn> func() const { return fn_; }
+  absl::Span<Value const> arguments() const { return args_; }
+  OutParams const& outputs() const { return outs_; }
 
   void Inline(InstructionInliner const& inliner) {
     inliner.Inline(fn_);

@@ -113,10 +113,9 @@ int CompileToObjectFile(ExecutableModule const &module,
 
   llvm::IRBuilder<> builder(context);
   module.context().ForEachCompiledFn([&](ir::CompiledFn const *fn) {
-    backend::EmitLlvmFunction(builder, context, *fn, *llvm_fn_map.at(fn));
+    backend::EmitLlvmFunction(builder, context, *fn, llvm_fn_map);
   });
-  backend::EmitLlvmFunction(builder, context, module.main(),
-                            *llvm_fn_map.at(&module.main()));
+  backend::EmitLlvmFunction(builder, context, module.main(), llvm_fn_map);
 
   llvm_module.dump();
 

@@ -1,6 +1,7 @@
 #ifndef ICARUS_BACKEND_FUNCTION_H
 #define ICARUS_BACKEND_FUNCTION_H
 
+#include "absl/container/flat_hash_map.h"
 #include "compiler/module.h"
 #include "ir/compiled_fn.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -14,7 +15,9 @@ llvm::Function *DeclareLlvmFunction(ir::CompiledFn const &fn,
                                     llvm::Module &llvm_module);
 
 void EmitLlvmFunction(llvm::IRBuilder<> &builder, llvm::LLVMContext &context,
-                      ir::CompiledFn const &fn, llvm::Function &llvm_fn);
+                      ir::CompiledFn const &fn,
+                      absl::flat_hash_map<ir::CompiledFn const *,
+                                          llvm::Function *> const &fn_map);
 
 }  // namespace backend
 
