@@ -48,6 +48,9 @@ struct RegisterAllocator {
   // or implicit state).
   constexpr size_t num_args() const { return num_args_; }
 
+  // Returns the number of stack allocations.
+  size_t num_allocs() const { return allocs_.size(); }
+
   // Merge allocations from another RegisterAllocator. This method is used when
   // inlining another group into this one. The callable `f` is applied to each
   // allocated register in the to-be-inlined group to update it so that it's

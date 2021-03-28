@@ -13,8 +13,7 @@
 #include "absl/flags/usage_config.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
-#include "backend/function.h"
-#include "backend/type.h"
+#include "backend/llvm.h"
 #include "base/log.h"
 #include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
@@ -94,28 +93,12 @@ int CompileToObjectFile(ExecutableModule const &module,
     return 1;
   }
 
-  // Declare all functions first so we can safely iterate through each and
-  // emit instructions. Doing so might end up calling functions, so first
-  // emiting declarations guarantees they're already available.
   absl::flat_hash_map<ir::CompiledFn const *, llvm::Function *> llvm_fn_map;
-  module.context().ForEachCompiledFn([&](ir::CompiledFn const *fn) {
-    // TODO: Add optimization passes. Currently ignoring --opt_ir flag entirely.
-
-    llvm_fn_map.emplace(fn,
-                        backend::DeclareLlvmFunction(*fn, module, llvm_module));
-  });
-  llvm_fn_map.emplace(
-      &module.main(),
-      llvm::Function::Create(
-          llvm::cast<llvm::FunctionType>(backend::ToLlvmType(
-              module.main().type(), llvm_module.getContext())),
-          llvm::Function::ExternalLinkage, "main", &llvm_module));
-
   llvm::IRBuilder<> builder(context);
-  module.context().ForEachCompiledFn([&](ir::CompiledFn const *fn) {
-    backend::EmitLlvmFunction(builder, context, *fn, llvm_fn_map);
-  });
-  backend::EmitLlvmFunction(builder, context, module.main(), llvm_fn_map);
+
+  backend::LlvmEmitter emitter(builder, &llvm_fn_map, &llvm_module);
+
+  emitter.EmitModule(module);
 
   llvm_module.dump();
 

@@ -299,8 +299,7 @@ cc_binary(
     deps = [
         ":executable_module",
         "//base:log",
-        "//backend:function",
-        "//backend:type",
+        "//backend:llvm",
         "//base:no_destructor",
         "//base:untyped_buffer",
         "//diagnostic/consumer:streaming",

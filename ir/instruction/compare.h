@@ -14,13 +14,14 @@ template <typename NumType>
 struct EqInstruction
     : base::Extend<EqInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = eq %1$s %2$s";
 
   bool Resolve() const { return Apply(lhs.value(), rhs.value()); }
-  static bool Apply(NumType lhs, NumType rhs) { return lhs == rhs; }
+  static bool Apply(num_type lhs, num_type rhs) { return lhs == rhs; }
 
-  RegOr<NumType> lhs;
-  RegOr<NumType> rhs;
+  RegOr<num_type> lhs;
+  RegOr<num_type> rhs;
   Reg result;
 };
 
@@ -28,13 +29,14 @@ template <typename NumType>
 struct NeInstruction
     : base::Extend<NeInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = ne %1$s %2$s";
 
   bool Resolve() const { return Apply(lhs.value(), rhs.value()); }
-  static bool Apply(NumType lhs, NumType rhs) { return lhs != rhs; }
+  static bool Apply(num_type lhs, num_type rhs) { return lhs != rhs; }
 
-  RegOr<NumType> lhs;
-  RegOr<NumType> rhs;
+  RegOr<num_type> lhs;
+  RegOr<num_type> rhs;
   Reg result;
 };
 
@@ -42,13 +44,14 @@ template <typename NumType>
 struct LtInstruction
     : base::Extend<LtInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = lt %1$s %2$s";
 
   bool Resolve() const { return Apply(lhs.value(), rhs.value()); }
-  static bool Apply(NumType lhs, NumType rhs) { return lhs < rhs; }
+  static bool Apply(num_type lhs, num_type rhs) { return lhs < rhs; }
 
-  RegOr<NumType> lhs;
-  RegOr<NumType> rhs;
+  RegOr<num_type> lhs;
+  RegOr<num_type> rhs;
   Reg result;
 };
 
@@ -56,13 +59,14 @@ template <typename NumType>
 struct LeInstruction
     : base::Extend<LeInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = le %1$s %2$s";
 
   bool Resolve() const { return Apply(lhs.value(), rhs.value()); }
-  static bool Apply(NumType lhs, NumType rhs) { return lhs <= rhs; }
+  static bool Apply(num_type lhs, num_type rhs) { return lhs <= rhs; }
 
-  RegOr<NumType> lhs;
-  RegOr<NumType> rhs;
+  RegOr<num_type> lhs;
+  RegOr<num_type> rhs;
   Reg result;
 };
 

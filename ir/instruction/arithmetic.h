@@ -10,79 +10,49 @@
 
 namespace ir {
 
-// TODO: Support all flavors of overflow behavior.
-struct OverflowBehavior {
-  enum Type { Undefined, Abort, Saturate, Wrap };
-};
+// TODO: Support all flavors of overflow behavior (undefined, trap, saturate,
+// wrap). Note: We rely on these instructions being templates with only type
+// parameters, so when we add overflow support, we must use type tags rather
+// than enums.
 
-template <typename NumType,
-          OverflowBehavior::Type Behavior = OverflowBehavior::Undefined>
+template <typename NumType>
 struct AddInstruction
     : base::Extend<AddInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = add %1$s %2$s";
 
-  NumType Resolve() const {
-    if constexpr (Behavior == OverflowBehavior::Undefined) {
-      return lhs.value() + rhs.value();
-    } else if constexpr (Behavior == OverflowBehavior::Abort) {
-      NOT_YET();
-    } else if constexpr (Behavior == OverflowBehavior::Saturate) {
-      NOT_YET();
-    } else if constexpr (Behavior == OverflowBehavior::Wrap) {
-      NOT_YET();
-    }
-  }
+  num_type Resolve() const { return lhs.value() + rhs.value(); }
 
-  RegOr<NumType> lhs;
-  RegOr<NumType> rhs;
+  RegOr<num_type> lhs;
+  RegOr<num_type> rhs;
   Reg result;
 };
 
-template <typename NumType,
-          OverflowBehavior::Type Behavior = OverflowBehavior::Undefined>
+template <typename NumType>
 struct SubInstruction
     : base::Extend<SubInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = sub %1$s %2$s";
 
-  NumType Resolve() const {
-    if constexpr (Behavior == OverflowBehavior::Undefined) {
-      return lhs.value() - rhs.value();
-    } else if constexpr (Behavior == OverflowBehavior::Abort) {
-      NOT_YET();
-    } else if constexpr (Behavior == OverflowBehavior::Saturate) {
-      NOT_YET();
-    } else if constexpr (Behavior == OverflowBehavior::Wrap) {
-      NOT_YET();
-    }
-  }
-  RegOr<NumType> lhs;
-  RegOr<NumType> rhs;
+  num_type Resolve() const { return lhs.value() - rhs.value(); }
+  RegOr<num_type> lhs;
+  RegOr<num_type> rhs;
   Reg result;
 };
 
-template <typename NumType,
-          OverflowBehavior::Type Behavior = OverflowBehavior::Undefined>
+template <typename NumType>
 struct MulInstruction
     : base::Extend<MulInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = mul %1$s %2$s";
 
-  NumType Resolve() const {
-    if constexpr (Behavior == OverflowBehavior::Undefined) {
-      return lhs.value() * rhs.value();
-    } else if constexpr (Behavior == OverflowBehavior::Abort) {
-      NOT_YET();
-    } else if constexpr (Behavior == OverflowBehavior::Saturate) {
-      NOT_YET();
-    } else if constexpr (Behavior == OverflowBehavior::Wrap) {
-      NOT_YET();
-    }
-  }
+  num_type Resolve() const { return lhs.value() * rhs.value(); }
 
-  RegOr<NumType> lhs;
-  RegOr<NumType> rhs;
+  RegOr<num_type> lhs;
+  RegOr<num_type> rhs;
   Reg result;
 };
 
@@ -90,12 +60,13 @@ template <typename NumType>
 struct DivInstruction
     : base::Extend<DivInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = div %1$s %2$s";
 
-  NumType Resolve() const { return lhs.value() / rhs.value(); }
+  num_type Resolve() const { return lhs.value() / rhs.value(); }
 
-  RegOr<NumType> lhs;
-  RegOr<NumType> rhs;
+  RegOr<num_type> lhs;
+  RegOr<num_type> rhs;
   Reg result;
 };
 
@@ -103,12 +74,13 @@ template <typename NumType>
 struct ModInstruction
     : base::Extend<ModInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = mod %1$s %2$s";
 
-  NumType Resolve() const { return lhs.value() % rhs.value(); }
+  num_type Resolve() const { return lhs.value() % rhs.value(); }
 
-  RegOr<NumType> lhs;
-  RegOr<NumType> rhs;
+  RegOr<num_type> lhs;
+  RegOr<num_type> rhs;
   Reg result;
 };
 
@@ -116,12 +88,13 @@ template <typename NumType>
 struct NegInstruction
     : base::Extend<NegInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
 
-  NumType Resolve() const { return Apply(operand.value()); }
-  static NumType Apply(NumType operand) { return -operand; }
+  num_type Resolve() const { return Apply(operand.value()); }
+  static num_type Apply(num_type operand) { return -operand; }
 
-  RegOr<NumType> operand;
+  RegOr<num_type> operand;
   Reg result;
 };
 

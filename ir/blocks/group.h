@@ -78,6 +78,7 @@ struct BlockGroupBase {
 
   constexpr size_t num_regs() const { return alloc_.num_regs(); }
   constexpr size_t num_args() const { return alloc_.num_args(); }
+  size_t num_allocs() const { return alloc_.num_allocs(); }
 
   friend std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b);
 

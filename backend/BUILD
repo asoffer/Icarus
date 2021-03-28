@@ -2,11 +2,25 @@ package(default_visibility = ["//visibility:public"])
 load("//:common.bzl", "LLVM_LINKOPTS")
 
 cc_library(
-    name = "function",
-    hdrs = ["function.h"],
-    srcs = ["function.cc"],
+    name = "emit",
+    hdrs = ["emit.h"],
+    deps = [
+        "//compiler:module",
+        "//ir:compiled_fn",
+        "//ir/value:reg",
+        "//type",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "llvm",
+    hdrs = ["llvm.h"],
+    srcs = ["llvm.cc"],
     linkopts = LLVM_LINKOPTS,
     deps = [
+        ":emit",
         ":type",
         "//base:log",
         "//compiler:module",
