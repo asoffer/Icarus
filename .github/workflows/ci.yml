@@ -32,4 +32,6 @@ jobs:
         run: "./bazel-bin/compiler/interpret examples/fizzbuzz.ic"
       - name: Run Function Calls Example
         run: "./bazel-bin/compiler/interpret examples/function_calls.ic"
+      - name: Run Primes Example
+        run: "./bazel-bin/compiler/interpret examples/primes.ic"
 
