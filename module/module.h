@@ -20,8 +20,8 @@
 #include "module/importer.h"
 
 namespace module {
-template <typename T>
-struct ExtendedModule;
+
+enum class Linkage { Internal, External };
 
 // BasicModule:
 //

@@ -51,6 +51,9 @@ ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
 ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Comma-separated list of paths to search when importing modules. "
           "Defaults to $ICARUS_MODULE_PATH.");
+ABSL_FLAG(
+    std::string, output, "",
+    "Name of the output file to which the generated output should be written.");
 
 namespace debug {
 extern bool parser;
@@ -77,10 +80,8 @@ int CompileToObjectFile(ExecutableModule const &module,
   llvm::Module llvm_module("module", context);
   llvm_module.setDataLayout(target_machine->createDataLayout());
 
-  // TODO: Lift this to a flag.
-  char const filename[] = "a.out";
   std::error_code error_code;
-  llvm::raw_fd_ostream destination(filename, error_code,
+  llvm::raw_fd_ostream destination(absl::GetFlag(FLAGS_output), error_code,
                                    llvm::sys::fs::OF_None);
   llvm::legacy::PassManager pass;
   auto file_type = llvm::LLVMTargetMachine::CGFT_ObjectFile;
@@ -93,18 +94,17 @@ int CompileToObjectFile(ExecutableModule const &module,
     return 1;
   }
 
-  absl::flat_hash_map<ir::CompiledFn const *, llvm::Function *> llvm_fn_map;
   llvm::IRBuilder<> builder(context);
 
-  backend::LlvmEmitter emitter(builder, &llvm_fn_map, &llvm_module);
+  backend::LlvmEmitter emitter(builder, &llvm_module);
 
   emitter.EmitModule(module);
+  auto *f = emitter.EmitFunction(&module.main(), module::Linkage::External);
+  f->setName("main");
 
-  llvm_module.dump();
+  pass.run(llvm_module);
 
-  // pass.run(llvm_module);
-
-  // destination.flush();
+  destination.flush();
   return 0;
 }
 
@@ -166,6 +166,7 @@ int main(int argc, char *argv[]) {
   if (char *const env_str = std::getenv("ICARUS_MODULE_PATH")) {
     absl::SetFlag(&FLAGS_module_paths, absl::StrSplit(env_str, ':'));
   }
+
   absl::FlagsUsageConfig flag_config;
   flag_config.contains_helpshort_flags = &HelpFilter;
   flag_config.contains_help_flags      = &HelpFilter;
@@ -175,6 +176,11 @@ int main(int argc, char *argv[]) {
   absl::InitializeSymbolizer(args[0]);
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
+
+  if (absl::GetFlag(FLAGS_output).empty()) {
+    std::cerr << "--output must be specified.";
+    return 1;
+  }
 
   std::vector<std::string> log_keys = absl::GetFlag(FLAGS_log);
   for (absl::string_view key : log_keys) { base::EnableLogging(key); }

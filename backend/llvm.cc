@@ -4,25 +4,31 @@
 #include "backend/type.h"
 #include "base/log.h"
 #include "base/meta.h"
-#include "ir/instruction/instructions.h"
 #include "ir/instruction/arithmetic.h"
+#include "ir/instruction/instructions.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
+#include "type/util.h"
 
 namespace backend {
 
 LlvmEmitter::function_type *LlvmEmitter::DeclareFunction(
-    ir::CompiledFn const *fn, module_type &output_module) {
+    ir::CompiledFn const *fn, module::Linkage linkage,
+    module_type &output_module) {
   return llvm::Function::Create(
       llvm::cast<llvm::FunctionType>(ToLlvmType(fn->type(), context_)),
-      llvm::Function::PrivateLinkage, "fn", &output_module);
+      [&] {
+        switch (linkage) {
+          case module::Linkage::Internal: return llvm::Function::PrivateLinkage;
+          case module::Linkage::External:
+            return llvm::Function::ExternalLinkage;
+        }
+      }(),
+      "fn", &output_module);
 }
 
-LlvmEmitter::LlvmEmitter(
-    llvm::IRBuilder<> &builder,
-    absl::flat_hash_map<ir::CompiledFn const *, function_type *> const *fn_map,
-    module_type *module)
-    : Emitter<LlvmEmitter, LlvmBackendTraits>(fn_map, module),
+LlvmEmitter::LlvmEmitter(llvm::IRBuilder<> &builder, module_type *module)
+    : Emitter<LlvmEmitter, LlvmBackendTraits>(module),
       builder_(builder),
       context_(builder.getContext()) {}
 
@@ -187,19 +193,24 @@ bool EmitInstruction(LlvmEmitter &emitter, LlvmEmitter::context_type &context,
     if (inst.outputs().size() > 1) { NOT_YET(); }
     std::vector<typename LlvmEmitter::value_type *> args;
     args.reserve(inst.arguments().size());
+    auto *fn_type = inst.func_type();
+    auto param_iter = fn_type->params().begin();
     for (auto const &arg : inst.arguments()) {
       arg.apply([&](auto v) {
         using type = std::decay_t<decltype(v)>;
         if constexpr (base::meta<type> == base::meta<ir::Reg>) {
-          NOT_YET();
+          ::type::Apply(param_iter->value.type(), [&]<typename T>() {
+            args.push_back(emitter.Resolve<T>(v, context));
+          });
         } else {
           args.push_back(emitter.Resolve<type>(v, context));
         }
       });
+      ++param_iter;
     }
     auto *result = emitter.builder().CreateCall(
         llvm::cast<llvm::FunctionType>(
-            ToLlvmType(inst.func_type(), emitter.builder().getContext())),
+            ToLlvmType(fn_type, emitter.builder().getContext())),
         emitter.Resolve(inst.func(), context), args);
     if (inst.outputs().size() == 1) {
       context.registers.emplace(inst.outputs()[0], result);
@@ -275,9 +286,11 @@ bool LlvmEmitter::EmitInstruction(ir::Inst const &instruction,
       ir::StoreInstruction<uint64_t>, ir::StoreInstruction<float>,
       ir::StoreInstruction<double>, ir::LoadInstruction, ir::CallInstruction,
       ir::PtrIncrInstruction>();
+  LOG("EmitInstruction", "Emitting LLVM IR for %s", instruction.to_string());
   if (auto iter = inst_map.find(instruction.rtti()); iter != inst_map.end()) {
     return iter->second(*this, context, instruction);
   } else {
+    UNREACHABLE("Failed to find emitter for %s", instruction);
     return false;
   }
 }

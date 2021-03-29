@@ -22,12 +22,10 @@ struct LlvmEmitter : Emitter<LlvmEmitter, LlvmBackendTraits> {
   using traits_type  = LlvmBackendTraits;
   using context_type = EmitContext<traits_type>;
 
-  explicit LlvmEmitter(llvm::IRBuilder<> &builder,
-                       absl::flat_hash_map<ir::CompiledFn const *,
-                                           function_type *> const *fn_map,
-                       module_type *module);
+  explicit LlvmEmitter(llvm::IRBuilder<> &builder, module_type *module);
 
   function_type *DeclareFunction(ir::CompiledFn const *fn,
+                                 module::Linkage linkage,
                                  module_type &output_module);
 
   basic_block_type *DeclareBasicBlock(function_type &fn);

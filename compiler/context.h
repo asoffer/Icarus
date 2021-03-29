@@ -187,9 +187,18 @@ struct Context {
   }
   ir::Block add_block() { return ir::Block(&blocks_.emplace_front()); }
 
-  void ForEachCompiledFn(std::invocable<ir::CompiledFn const *> auto f) {
-    for (auto [expr, native_fn] : ir_funcs_) { f(native_fn.get()); }
+  void ForEachCompiledFn(
+      std::invocable<ir::CompiledFn const *> auto &&f) const {
+    for (auto const &native_fn : fns_.fns) { f(native_fn.get()); }
   }
+
+  void ForEachCompiledFn(
+      std::invocable<ir::CompiledFn const *, module::Linkage> auto &&f) const {
+    for (auto const &native_fn : fns_.fns) {
+      f(native_fn.get(), module::Linkage::Internal);
+    }
+  }
+
 
   // TODO Audit everything below here
   std::pair<ir::NativeFn, bool> add_func(
@@ -349,11 +358,6 @@ struct Context {
     } else {
       return iter->second;
     }
-  }
-
-  void ForEachCompiledFn(
-      std::invocable<ir::CompiledFn const *> auto &&f) const {
-    for (auto const &native_fn : fns_.fns) { f(native_fn.get()); }
   }
 
   std::pair<ir::NativeFn, bool> InsertInit(type::Type t);

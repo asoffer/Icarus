@@ -15,12 +15,17 @@ namespace backend {
 
 template <typename Traits>
 struct EmitContext {
+  explicit EmitContext(
+      absl::flat_hash_map<ir::CompiledFn const *,
+                          typename Traits::function_type *> &fs)
+      : functions(fs) {}
+
   absl::flat_hash_map<ir::BasicBlock const *,
                       typename Traits::basic_block_type *>
       blocks;
   absl::flat_hash_map<ir::Reg, typename Traits::value_type *> registers;
-  absl::flat_hash_map<ir::CompiledFn const *,
-                      typename Traits::function_type *> const &functions;
+  absl::flat_hash_map<ir::CompiledFn const *, typename Traits::function_type *>
+      &functions;
 };
 
 template <typename Derived, typename Traits>
@@ -33,42 +38,73 @@ struct Emitter {
   void EmitModule(compiler::CompiledModule const &module) {
     auto &emitter = *static_cast<Derived *>(this);
 
-    module.context().ForEachCompiledFn([&](ir::CompiledFn const *fn) {
-      emitter.DeclareFunction(fn, module_);
-    });
+    module.context().ForEachCompiledFn(
+        [&](ir::CompiledFn const *fn, module::Linkage linkage) {
+          LOG("Emitter", "Declaring function %p", fn);
+          contexts_.try_emplace(fn, functions_);
+          functions_.emplace(fn, emitter.DeclareFunction(fn, linkage, module_));
+        });
 
     module.context().ForEachCompiledFn(
-        [&](ir::CompiledFn const *fn) { emitter.EmitFunction(fn); });
+        [&](ir::CompiledFn const *fn, module::Linkage linkage) {
+          emitter.EmitFunction(fn, linkage);
+        });
   }
 
-  void EmitFunction(ir::CompiledFn const *fn) {
+  function_type *EmitFunction(ir::CompiledFn const *fn,
+                              module::Linkage linkage) {
+    LOG("Emitter", "Emitting function %p", fn);
     auto &emitter = *static_cast<Derived *>(this);
-    emitter.DeclareBasicBlocks(fn->blocks(), *context_.functions.at(fn));
+
+    contexts_.try_emplace(fn, functions_);
+    auto [iter, inserted] = functions_.try_emplace(fn);
+    function_type *f;
+    if (inserted) {
+      f = iter->second = emitter.DeclareFunction(fn, linkage, module_);
+    }
+    DeclareBasicBlocks(fn);
+
     emitter.AllocateLocalVariables(*fn);
     emitter.EmitBasicBlocks(*fn);
 
     bool returns_void = fn->type()->output().empty();
 
     for (auto const *block : fn->blocks()) {
-      emitter.EmitBasicBlockJump(block, context_, returns_void);
+      emitter.EmitBasicBlockJump(block, contexts_.at(fn), returns_void);
     }
+    return f;
   }
 
   void AllocateLocalVariables(ir::CompiledFn const &f) {
     auto &emitter = *static_cast<Derived *>(this);
-    emitter.PrepareForStackAllocation(f, context_.blocks);
-    context_.registers.reserve(f.num_allocs());
+    auto &ctx     = contexts_.at(&f);
+    emitter.PrepareForStackAllocation(f, ctx.blocks);
+    ctx.registers.reserve(f.num_allocs());
     f.for_each_alloc([&](type::Type t, ir::Reg r) {
-      context_.registers.emplace(r, emitter.StackAllocate(t));
+      ctx.registers.emplace(r, emitter.StackAllocate(t));
     });
   }
 
+ protected:
+  Emitter(module_type *module) : module_(*ASSERT_NOT_NULL(module)) {}
+  void DeclareBasicBlocks(ir::CompiledFn const *f) {
+    auto &output_fn = *functions_.at(f);
+    auto &ctx       = contexts_.at(f);
+    ctx.blocks.reserve(f->blocks().size());
+    for (auto const *block : f->blocks()) {
+      ctx.blocks.emplace(
+          block, static_cast<Derived *>(this)->DeclareBasicBlock(output_fn));
+    }
+  }
+
+ private:
   void EmitBasicBlocks(ir::CompiledFn const &fn) {
     std::vector<std::tuple<ir::BasicBlock const *, basic_block_type *,
                            absl::Span<ir::Inst const>>>
         to_process;
+    auto &ctx = contexts_.at(&fn);
     for (auto const *block : fn.blocks()) {
-      to_process.emplace_back(block, context_.blocks.at(block),
+      to_process.emplace_back(block, ctx.blocks.at(block),
                               block->instructions());
     }
 
@@ -81,7 +117,7 @@ struct Emitter {
 
         while (not instructions.empty()) {
           if (static_cast<Derived *>(this)->EmitInstruction(
-                  instructions.front(), context_)) {
+                  instructions.front(), ctx)) {
             instructions.remove_prefix(1);
           } else {
             break;
@@ -99,24 +135,11 @@ struct Emitter {
     }
   }
 
- protected:
-  Emitter(absl::flat_hash_map<ir::CompiledFn const *, function_type *> const
-              *fn_map,
-          module_type *module)
-      : module_(*ASSERT_NOT_NULL(module)),
-        context_{.functions = *ASSERT_NOT_NULL(fn_map)} {}
-  void DeclareBasicBlocks(base::PtrSpan<ir::BasicBlock const> blocks,
-                          function_type &output_fn) {
-    context_.blocks.reserve(blocks.size());
-    for (auto const *block : blocks) {
-      context_.blocks.emplace(
-          block, static_cast<Derived *>(this)->DeclareBasicBlock(output_fn));
-    }
-  }
-
- private:
   module_type &module_;
-  EmitContext<Traits> context_;
+
+  absl::flat_hash_map<ir::CompiledFn const *, typename Traits::function_type *>
+      functions_;
+  absl::flat_hash_map<ir::CompiledFn const *, EmitContext<Traits>> contexts_;
 };
 
 }  // namespace backend

@@ -1,8 +1,7 @@
 #ifndef ICARUS_COMPILER_LIBRARY_MODULE_H
 #define ICARUS_COMPILER_LIBRARY_MODULE_H
 
-#include <thread>
-
+#include "absl/functional/function_ref.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
