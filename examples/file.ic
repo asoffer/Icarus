@@ -10,12 +10,17 @@ io     ::= import "io.ic"
 // goes to the error block with the value assigned into errno. If it was
 // successful, the open block is executed and then the file is closed.
 
-file.With("examples/file.ic") open [f: file.File] {
-    printf ::= foreign("printf", ([*]char, *cstdio.File) -> i32)
-    printf("[%016p]\n".data, f._handle)
-    printf("[%016p]\n".data, f'CFileHandle)
-  cstdio.fgetc(f._handle)
+file.With("examples/file.ic") open [f: *file.File] {
+  first_char := cstdio.fgetc(f._handle)
+  io.Print("First character of file: ")
+  io.Print(first_char)
+  io.Print("\n")
+  contents := (@f)'read_to(str.string)
+  contents'Print
 } error [e: errno.error] {
+  io.Print("Error opening file: ")
+  io.Print(e as u64)
+  io.Print("\n")
 }
 
 

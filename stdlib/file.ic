@@ -19,9 +19,6 @@ CFileHandle ::= (f: File) => f._handle
 With ::= scope(File) {
   enter ::= jump [f: *File] (name: char[]) {
     f._handle = cstdio.fopen(name.data, "r".data)
-
-    printf ::= foreign("printf", ([*]char, *cstdio.File) -> i32)
-    printf("[%016p]\n".data, f._handle)
     e := errno.get()
     goto e == errno.error.SUCCESS, open(@f), error(e) | done()
   }
@@ -50,11 +47,7 @@ read_to ::= (f: File, T :: type) -> T {
   buffer: [CHUNK_SIZE; char]
   core.while (num_read == CHUNK_SIZE) do {
     num_read = cstdio.fread(&buffer[0], char'bytes, CHUNK_SIZE, f._handle)
-    i := 0 as u64
-    core.while (i < num_read) do {
-      result'append(buffer[i])
-      i += 1 as u64
-    }
+    result'append(slice(&buffer[0], num_read))
   }
   return result
 }
