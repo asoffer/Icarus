@@ -49,7 +49,7 @@ string ::= struct {
     buffer[0] = `\0
     return string.{
       _data     = buffer
-      _length   = 0 as u64 
+      _length   = 0 as u64
       _capacity = capacity
     }
   }
