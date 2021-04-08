@@ -38,9 +38,9 @@ struct TodoDiagnostic {
 };
 
 template <typename T>
-struct InheritsFrom : public matcher::UntypedMatcher<InheritsFrom<T>> {
+struct InheritsFrom : matcher::UntypedMatcher<InheritsFrom<T>> {
   template <typename Expr>
-  struct Matcher : public ::matcher::Matcher<Expr> {
+  struct Matcher : ::matcher::Matcher<Expr> {
     Matcher(InheritsFrom const &m) {}
     bool match(Expr const &input) const override {
       if constexpr (matcher::is_pointery<Expr>::value) {
@@ -251,7 +251,8 @@ struct UnknownBuiltinHashtag {
   SourceRange range;
 };
 
-struct BracedShortFunctionLiteral {
+// TODO: This is probably a useful error message.
+struct [[maybe_unused]] BracedShortFunctionLiteral {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "braced-short-function-literal";
 
@@ -275,7 +276,7 @@ std::unique_ptr<ast::Identifier> MakeInvalidNode(
   return std::make_unique<ast::Identifier>(range, "invalid_node");
 }
 
-struct Statements : public ast::Node {
+struct Statements : ast::Node {
   Statements(SourceRange const &range) : ast::Node(range) {}
   ~Statements() override {}
   Statements(Statements &&) noexcept = default;
@@ -334,6 +335,14 @@ struct CommaList : ast::Expression {
   std::vector<std::unique_ptr<ast::Expression>> exprs_;
 };
 
+std::vector<std::unique_ptr<ast::Node>> ExtractStatements(
+    std::unique_ptr<ast::Node> node) {
+  if (auto *s = node->if_as<Statements>()) { return std::move(*s).extract(); }
+  std::vector<std::unique_ptr<ast::Node>> result;
+  result.push_back(std::move(node));
+  return result;
+}
+
 template <typename To, typename From>
 std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
   ASSERT(val, InheritsFrom<To>());
@@ -390,16 +399,6 @@ std::unique_ptr<ast::Node> AddHashtag(
   return expr;
 }
 
-std::unique_ptr<ast::Node> OneBracedStatement(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto stmts = std::make_unique<Statements>(
-      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()));
-  stmts->append(std::move(nodes[1]));
-  ValidateStatementSyntax(stmts->content_.back().get(), diag);
-  return stmts;
-}
-
 std::unique_ptr<ast::Node> EmptyBraces(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &) {
@@ -414,31 +413,6 @@ std::unique_ptr<ast::Node> BuildControlHandler(
     return std::make_unique<ast::ReturnStmt>(node->range());
   }
   UNREACHABLE();
-}
-
-std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto stmts = move_as<Statements>(nodes[1]);
-  stmts->set_range(
-      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()));
-  if (nodes[2]->is<Statements>()) {
-    for (auto &stmt : nodes[2]->as<Statements>().content_) {
-      stmts->append(std::move(stmt));
-      ValidateStatementSyntax(stmts->content_.back().get(), diag);
-    }
-  } else {
-    stmts->append(std::move(nodes[2]));
-    ValidateStatementSyntax(stmts->content_.back().get(), diag);
-  }
-  return stmts;
-}
-
-std::unique_ptr<ast::Node> BracedStatementsJumpSameLineEnd(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  nodes[2] = BuildControlHandler(std::move(nodes[2]));
-  return BracedStatementsSameLineEnd(std::move(nodes), diag);
 }
 
 std::unique_ptr<ast::Node> BuildRightUnop(
@@ -515,7 +489,7 @@ std::unique_ptr<ast::Node> BuildFullCall(
   std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
   MergeIntoArgs(args, move_as<ast::Expression>(nodes[0]), diag);
   size_t split = args.size();
-  MergeIntoArgs(args, move_as<ast::Expression>(nodes[4]), diag);
+  MergeIntoArgs(args, move_as<ast::Expression>(nodes[3]), diag);
 
   auto callee = move_as<ast::Expression>(nodes[2]);
 
@@ -535,7 +509,7 @@ std::unique_ptr<ast::Node> BuildParenCall(
   auto callee = move_as<ast::Expression>(nodes[0]);
 
   std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
-  MergeIntoArgs(args, move_as<ast::Expression>(nodes[2]), diag);
+  MergeIntoArgs(args, move_as<ast::Expression>(nodes[1]), diag);
 
   if (callee->is<ast::Declaration>()) {
     diag.Consume(CallingDeclaration{.range = callee->range()});
@@ -908,45 +882,24 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
     return MakeInvalidNode(range);
   }
 
-  // TODO: This is either in the wrong place, or this function is poorly named.
-  if (tok->token == "=>") {
-    diag.Consume(BracedShortFunctionLiteral{
-        .open_brace  = SourceRange(nodes.back()->range().begin(), 1),
-        .close_brace = SourceRange(nodes.back()->range().end(), -1),
-    });
-    return MakeInvalidNode(range);
-  }
+  auto extracted_stmts = ExtractStatements(std::move(nodes[2]));
 
-  if (tok->token != ".") {
-    diag.Consume(TodoDiagnostic{});
-    return MakeInvalidNode(range);
-  }
-
-  if (auto *stmts = nodes[2]->if_as<Statements>()) {
-    auto extracted_stmts = std::move(*stmts).extract();
-    std::vector<std::unique_ptr<ast::Assignment>> initializers;
-    initializers.reserve(extracted_stmts.size());
-    for (auto &stmt : extracted_stmts) {
-      if (auto const *assignment = stmt->if_as<ast::Assignment>()) {
-        initializers.push_back(move_as<ast::Assignment>(stmt));
-        for (auto const *expr : assignment->lhs()) {
-          if (not expr->is<ast::Identifier>()) {
-            diag.Consume(TodoDiagnostic{});
-          }
-        }
-      } else {
-        diag.Consume(TodoDiagnostic{});
-        continue;
+  std::vector<std::unique_ptr<ast::Assignment>> initializers;
+  initializers.reserve(extracted_stmts.size());
+  for (auto &stmt : extracted_stmts) {
+    if (auto const *assignment = stmt->if_as<ast::Assignment>()) {
+      initializers.push_back(move_as<ast::Assignment>(stmt));
+      for (auto const *expr : assignment->lhs()) {
+        if (not expr->is<ast::Identifier>()) { diag.Consume(TodoDiagnostic{}); }
       }
+    } else {
+      diag.Consume(TodoDiagnostic{});
+      continue;
     }
-
-    return std::make_unique<ast::DesignatedInitializer>(
-        range, move_as<ast::Expression>(nodes[0]), std::move(initializers));
-  } else {
-    return std::make_unique<ast::DesignatedInitializer>(
-        range, move_as<ast::Expression>(nodes[0]),
-        std::vector<std::unique_ptr<ast::Assignment>>{});
   }
+
+  return std::make_unique<ast::DesignatedInitializer>(
+      range, move_as<ast::Expression>(nodes[0]), std::move(initializers));
 }
 
 std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
@@ -990,16 +943,6 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
   }
   return std::make_unique<ast::ShortFunctionLiteral>(range, std::move(inputs),
                                                      std::move(ret_vals[0]));
-}
-
-std::unique_ptr<ast::Node> BuildOneElementCommaList(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto comma_list = std::make_unique<CommaList>(
-      SourceRange(nodes[0]->range().begin(), nodes[3]->range().end()));
-  comma_list->exprs_.push_back(move_as<ast::Expression>(nodes[1]));
-  comma_list->parenthesized_ = true;
-  return comma_list;
 }
 
 void ExtractRightChainImpl(Operator op, std::unique_ptr<ast::Expression> node,
@@ -1066,8 +1009,8 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
       default: diag.Consume(TodoDiagnostic{}); return MakeInvalidNode(range);
     }
   } else if (tk == "return") {
-    auto range = SourceRange(nodes.front()->range().begin(),
-                             nodes.back()->range().end());
+    SourceRange range(nodes.front()->range().begin(),
+                      nodes.back()->range().end());
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     if (auto *cl = nodes[1]->if_as<CommaList>();
         cl and not cl->parenthesized_) {
@@ -1098,12 +1041,11 @@ std::unique_ptr<ast::Node> BuildMoreStatements(
   return stmts;
 }
 
-std::unique_ptr<ast::Node> OneBracedJump(
+std::unique_ptr<ast::Node> BuildMoreBracedStatements(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto stmts = std::make_unique<Statements>(
-      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()));
-  stmts->append(BuildControlHandler(std::move(nodes[1])));
+  std::unique_ptr<Statements> stmts = move_as<Statements>(nodes[1]);
+  stmts->append(std::move(nodes[2]));
   ValidateStatementSyntax(stmts->content_.back().get(), diag);
   return stmts;
 }
@@ -1132,12 +1074,13 @@ std::unique_ptr<ast::Node> BuildScopeNode(
 std::unique_ptr<ast::Node> BuildBlockNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto range =
-      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end());
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
+
+  auto stmts = ExtractStatements(std::move(nodes.back()));
   if (auto *id = nodes.front()->if_as<ast::Identifier>()) {
-    return std::make_unique<ast::BlockNode>(
-        range, std::string{id->name()},
-        std::move(nodes.back()->as<Statements>()).extract());
+    return std::make_unique<ast::BlockNode>(range, std::string{id->name()},
+                                            std::move(stmts));
   } else if (auto *index = nodes.front()->if_as<ast::Index>()) {
     auto [lhs, rhs] = std::move(*index).extract();
     std::vector<std::unique_ptr<ast::Declaration>> params;
@@ -1152,7 +1095,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
     }
     return std::make_unique<ast::BlockNode>(
         range, std::string{lhs->as<ast::Identifier>().name()},
-        std::move(params), std::move(nodes.back()->as<Statements>()).extract());
+        std::move(params), std::move(stmts));
 
   } else {
     diag.Consume(TodoDiagnostic{});
@@ -1358,13 +1301,11 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
 }
 
 std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
-    Statements &&stmts, SourceRange range,
+    std::vector<std::unique_ptr<ast::Node>> &&stmts, SourceRange range,
     diagnostic::DiagnosticConsumer &diag) {
-  std::vector<std::unique_ptr<ast::Node>> node_stmts =
-      std::move(stmts).extract();
   std::vector<ast::Declaration> fields;
-  fields.reserve(node_stmts.size());
-  for (auto &stmt : node_stmts) {
+  fields.reserve(stmts.size());
+  for (auto &stmt : stmts) {
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
       fields.push_back(std::move(*decl));
     } else {
@@ -1412,40 +1353,36 @@ std::unique_ptr<ast::Node> BuildStatefulJump(
                     nodes.back()->range().end());
   std::vector<std::unique_ptr<ast::Declaration>> params;
   if (nodes.size() == 6) {
-    if (nodes[3]->is<CommaList>()) {
-      for (auto &expr : nodes[3]->as<CommaList>().exprs_) {
+    if (nodes[4]->is<CommaList>()) {
+      for (auto &expr : nodes[4]->as<CommaList>().exprs_) {
         ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO: handle failure
         auto decl = move_as<ast::Declaration>(expr);
         decl->flags() |= ast::Declaration::f_IsFnParam;
         params.push_back(std::move(decl));
       }
     } else {
-      auto decl = move_as<ast::Declaration>(nodes[3]);
+      auto decl = move_as<ast::Declaration>(nodes[4]);
       decl->flags() |= ast::Declaration::f_IsFnParam;
       params.push_back(std::move(decl));
     }
   }
 
-  auto &state_node = nodes[1];
-  auto *array_expr = state_node->if_as<ast::ArrayLiteral>();
-  if (not array_expr) {
-    diag.Consume(TodoDiagnostic{});
-    return nullptr;
-  }
-  if (array_expr->size() != 1) {
-    diag.Consume(TodoDiagnostic{});
-    return nullptr;
+  std::vector<std::unique_ptr<ast::Expression>> state_exprs;
+
+  auto &state_node = nodes[2];
+  if (auto *cl = nodes[2]->if_as<CommaList>()) {
+    state_exprs = std::move(*cl).extract();
+  } else {
+    state_exprs.push_back(move_as<ast::Expression>(nodes[2]));
   }
 
-  std::unique_ptr<ast::Expression> state_expr =
-      std::move(std::move(*array_expr).extract()[0]);
-  if (not state_expr->is<ast::Declaration>()) {
+  if (not state_exprs[0]->is<ast::Declaration>()) {
     diag.Consume(TodoDiagnostic{});
     return nullptr;
   }
 
   return std::make_unique<ast::Jump>(
-      range, move_as<ast::Declaration>(state_expr), std::move(params),
+      range, move_as<ast::Declaration>(state_exprs[0]), std::move(params),
       std::move(nodes.back()->as<Statements>()).extract());
 }
 
@@ -1459,44 +1396,48 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
   if (tk == "jump") {
     SourceRange range(nodes.front()->range().begin(),
                       nodes.back()->range().end());
+
+    auto stmts = ExtractStatements(std::move(nodes.back()));
+
     std::vector<std::unique_ptr<ast::Declaration>> params;
-    if (nodes.size() == 5) {
-      if (nodes[2]->is<CommaList>()) {
-        for (auto &expr : nodes[2]->as<CommaList>().exprs_) {
-          ASSERT(expr,
-                 InheritsFrom<ast::Declaration>());  // TODO: handle failure
-          auto decl = move_as<ast::Declaration>(expr);
-          decl->flags() |= ast::Declaration::f_IsFnParam;
-          params.push_back(std::move(decl));
-        }
-      } else {
-        auto decl = move_as<ast::Declaration>(nodes[2]);
+    if (auto *cl = nodes[1]->if_as<CommaList>()) {
+      for (auto &expr : cl->exprs_) {
+        ASSERT(expr,
+               InheritsFrom<ast::Declaration>());  // TODO: handle failure
+        auto decl = move_as<ast::Declaration>(expr);
         decl->flags() |= ast::Declaration::f_IsFnParam;
         params.push_back(std::move(decl));
       }
+    } else {
+      auto decl = move_as<ast::Declaration>(nodes[1]);
+      decl->flags() |= ast::Declaration::f_IsFnParam;
+      params.push_back(std::move(decl));
     }
 
-    return std::make_unique<ast::Jump>(
-        range, nullptr, std::move(params),
-        std::move(nodes.back()->as<Statements>()).extract());
+    return std::make_unique<ast::Jump>(range, nullptr, std::move(params),
+                                       std::move(stmts));
 
   } else if (tk == "scope") {
     SourceRange range(nodes.front()->range().begin(),
                       nodes.back()->range().end());
-    return BuildScopeLiteral(move_as<ast::Expression>(nodes[2]),
+    return BuildScopeLiteral(move_as<ast::Expression>(nodes[1]),
                              move_as<Statements>(nodes.back()), range, diag);
 
   } else if (tk == "struct") {
-    auto &stmts = nodes.back()->as<Statements>();
+    SourceRange range(nodes.front()->range().begin(),
+                      nodes.back()->range().end());
+
+    auto stmts = ExtractStatements(std::move(nodes.back()));
+
     std::vector<ast::Declaration> fields;
-    for (auto &stmt : stmts.content_) {
+    for (auto &stmt : stmts) {
       if (auto *decl = stmt->if_as<ast::Declaration>()) {
         fields.push_back(std::move(*decl));
       } else {
         diag.Consume(TodoDiagnostic{});
       }
     }
-    auto inputs = ExtractInputs(move_as<ast::Expression>(nodes[2]), diag);
+    auto inputs = ExtractInputs(move_as<ast::Expression>(nodes[1]), diag);
     std::vector<std::unique_ptr<ast::Declaration>> params;
     for (auto &expr : inputs) {
       if (expr->is<ast::Declaration>()) {
@@ -1507,9 +1448,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     }
 
     return std::make_unique<ast::ParameterizedStructLiteral>(
-        SourceRange(nodes.front()->range().begin(),
-                    nodes.back()->range().end()),
-        std::move(params), std::move(fields));
+        range, std::move(params), std::move(fields));
   } else {
     UNREACHABLE();
   }
@@ -1528,10 +1467,16 @@ std::unique_ptr<ast::Node> BuildKWBlock(
                                     diag);
 
     } else if (tk == "struct") {
-      return BuildStructLiteral(std::move(nodes[1]->as<Statements>()),
-                                SourceRange(nodes.front()->range().begin(),
-                                            nodes.back()->range().end()),
-                                diag);
+      SourceRange range(nodes.front()->range().begin(),
+                        nodes.back()->range().end());
+
+      std::vector<std::unique_ptr<ast::Node>> stmts;
+      if (nodes[1]->is<Statements>()) {
+        stmts = std::move(nodes[1]->as<Statements>()).extract();
+      } else {
+        stmts.push_back(std::move(nodes[1]));
+      }
+      return BuildStructLiteral(std::move(stmts), range, diag);
 
     } else if (tk == "interface") {
       return BuildInterfaceLiteral(std::move(nodes[1]->as<Statements>()),
@@ -1563,24 +1508,10 @@ std::unique_ptr<ast::Node> Parenthesize(
   return result;
 }
 
-std::unique_ptr<ast::Node> BuildEmptyParen(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  if (nodes[0]->is<ast::Declaration>()) {
-    diag.Consume(CallingDeclaration{.range = nodes[0]->range()});
-  }
-  SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
-
-  return std::make_unique<ast::Call>(
-      range, move_as<ast::Expression>(nodes[0]),
-      std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>>{},
-      0);
-}
-
 template <size_t N>
-std::unique_ptr<ast::Node> drop_all_but(
+std::unique_ptr<ast::Node> KeepOnly(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
+    diagnostic::DiagnosticConsumer &) {
   return std::move(nodes[N]);
 }
 
@@ -1590,7 +1521,7 @@ std::unique_ptr<ast::Node> CombineColonEq(
   auto *tk_node = &nodes[0]->as<Token>();
   tk_node->token += "=";  // Change : to := and :: to ::=
   tk_node->op = Operator::ColonEq;
-  return drop_all_but<0>(std::move(nodes), diag);
+  return KeepOnly<0>(std::move(nodes), diag);
 }
 
 template <size_t ReturnIndex, size_t... ReservedIndices>
@@ -1628,8 +1559,11 @@ std::unique_ptr<ast::Node> LabelScopeNode(
   return scope_node;
 }
 
-constexpr uint64_t OP_B = op_b | comma | colon | eq;
-constexpr uint64_t EXPR = expr | fn_expr | scope_expr | fn_call_expr;
+constexpr uint64_t OP_B         = op_b | dot | colon | eq | colon_eq | rocket;
+constexpr uint64_t FN_CALL_EXPR = paren_call_expr | full_call_expr;
+constexpr uint64_t EXPR         = expr | fn_expr | scope_expr | FN_CALL_EXPR |
+                          paren_expr | bracket_expr | empty_brackets;
+constexpr uint64_t STMTS = stmt | stmt_list;
 // Used in error productions only!
 constexpr uint64_t RESERVED = kw_struct | kw_block_head | op_lt;
 constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
@@ -1638,112 +1572,272 @@ constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
 // list (second line of each rule). If so, then the function given in the third
 // line of each rule is applied, replacing the matched nodes. Lastly, the new
 // nodes type is set to the given type in the first line.
+
+using rule_t = Rule<6>;
+
 static base::Global kRules = std::array{
-    // Construction of braced statements
-    ParseRule(braced_stmts, {l_brace, stmts, stmts | EXPR, r_brace},
-              BracedStatementsSameLineEnd),
-    ParseRule(braced_stmts, {l_brace, stmts, op_lt, r_brace},
-              BracedStatementsJumpSameLineEnd),
-    ParseRule(braced_stmts, {l_brace, stmts, r_brace}, drop_all_but<1>),
-    ParseRule(braced_stmts, {l_brace, r_brace}, EmptyBraces),
-    ParseRule(braced_stmts, {l_brace, EXPR, r_brace}, OneBracedStatement),
-    ParseRule(braced_stmts, {l_brace, op_lt, r_brace}, OneBracedJump),
+    // Array types
+    rule_t{.match   = {l_bracket, EXPR | expr_list, semicolon, EXPR, r_bracket},
+           .output  = expr,
+           .execute = BuildArrayType},
+    rule_t{
+        .match  = {l_bracket, EXPR | expr_list, semicolon, RESERVED, r_bracket},
+        .output = expr,
+        .execute = ReservedKeywords<0, 3>},
+    rule_t{.match   = {l_bracket, RESERVED, semicolon, EXPR, r_bracket},
+           .output  = expr,
+           .execute = ReservedKeywords<0, 1>},
+    rule_t{.match   = {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
+           .output  = expr,
+           .execute = ReservedKeywords<0, 1, 3>},
 
-    // Construction of block expressions
-    ParseRule(block_expr, {expr, braced_stmts}, BuildBlockNode),
+    // Declarations and assignments
+    rule_t{.match  = {EXPR, colon, EXPR},
+           .output = decl,
+           // TODO: We could split the declaration part off of this function.
+           .execute = BuildBinaryOperator},
+    rule_t{.match  = {EXPR, colon_eq, EXPR},
+           .output = decl,
+           // TODO: We could split the declaration part off of this function.
+           .execute = BuildBinaryOperator},
+    rule_t{.match = {colon, eq}, .output = colon_eq, .execute = CombineColonEq},
+    rule_t{.match  = {decl, eq, EXPR},
+           .output = decl,
+           // TODO: We could split the declaration part off of this function.
+           .execute = BuildBinaryOperator},
+    rule_t{.match  = {EXPR, eq, EXPR},
+           .output = assignment,
+           // TODO: We could split the declaration part off of this function.
+           .execute = BuildBinaryOperator},
 
-    // Construction of scope expressions
-    ParseRule(scope_expr, {fn_call_expr, block_expr}, BuildScopeNode),
-    ParseRule(scope_expr, {scope_expr, block_expr}, ExtendScopeNode),
-    ParseRule(scope_expr, {scope_expr, expr, scope_expr},
-              SugaredExtendScopeNode),
-    ParseRule(scope_expr, {label, scope_expr}, LabelScopeNode),
+    // Bracket-indexing
+    rule_t{.match   = {EXPR, l_bracket, EXPR, r_bracket},
+           .output  = expr,
+           .execute = BuildIndexOperator},
+    rule_t{.match   = {EXPR, l_bracket, RESERVED, r_bracket},
+           .output  = expr,
+           .execute = ReservedKeywords<0, 2>},
 
-    // Construction of function call expressions
-    ParseRule(fn_call_expr, {EXPR, op_bl, EXPR, l_paren, EXPR, r_paren},
-              BuildFullCall),
-    ParseRule(fn_call_expr, {EXPR, l_paren, EXPR, r_paren}, BuildParenCall),
-    ParseRule(fn_call_expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
+    // Slices
+    // TODO: Make slices prefix operators as in `[]char` rather than `char[]`.
+    rule_t{
+        .match = {EXPR, empty_brackets}, .output = expr, .execute = BuildSlice},
+    rule_t{.match   = {RESERVED, empty_brackets},
+           .output  = expr,
+           .execute = ReservedKeywords<0, 1>},
 
-    ParseRule(fn_expr, {EXPR, fn_arrow, EXPR}, BuildBinaryOperator),
-    ParseRule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
-    ParseRule(op_b, {colon, eq}, CombineColonEq),
-    ParseRule(fn_expr, {EXPR, fn_arrow, RESERVED}, ReservedKeywords<1, 2>),
-    ParseRule(fn_expr, {RESERVED, fn_arrow, EXPR | kw_block},
-              ReservedKeywords<1, 0>),
-    ParseRule(fn_expr, {RESERVED, fn_arrow, RESERVED},
-              ReservedKeywords<1, 0, 2>),
-    ParseRule(expr, {EXPR, (OP_B | yield | op_bl), RESERVED},
-              ReservedKeywords<1, 2>),
-    ParseRule(expr, {RESERVED, (OP_B | yield | op_bl), RESERVED},
-              ReservedKeywords<1, 0, 2>),
-    ParseRule(expr, {l_paren, op_l | op_b | eq | op_bl, r_paren},
-              BuildOperatorIdentifier),
-    ParseRule(expr, {l_paren, r_paren}, BuildEmptyCommaList),
-    ParseRule(expr, {EXPR, l_bracket, EXPR, r_bracket}, BuildIndexOperator),
-    ParseRule(expr, {EXPR, l_bracket, r_bracket}, BuildSlice),
-    ParseRule(expr, {l_bracket, r_bracket}, BuildEmptyArray),
-    ParseRule(expr, {l_bracket, EXPR, semicolon, EXPR, r_bracket},
-              BuildArrayType),
-    ParseRule(expr, {l_bracket, EXPR, semicolon, RESERVED, r_bracket},
-              ReservedKeywords<0, 3>),
-    ParseRule(expr, {l_bracket, RESERVED, semicolon, EXPR, r_bracket},
-              ReservedKeywords<0, 1>),
-    ParseRule(expr, {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
-              ReservedKeywords<0, 1, 3>),
-    // TODO: more specifically, the op_b needs to be a '.'
-    ParseRule(expr, {expr | fn_call_expr, op_b, braced_stmts},
-              BuildDesignatedInitializer),
+    // Array literals
+    rule_t{.match   = {l_bracket, r_bracket},
+           .output  = empty_brackets,
+           .execute = BuildEmptyArray},
+    rule_t{.match   = {l_bracket, EXPR | expr_list, r_bracket},
+           .output  = bracket_expr,
+           .execute = BuildArrayLiteral},
+    rule_t{.match   = {l_bracket, RESERVED, r_bracket},
+           .output  = bracket_expr,
+           .execute = ReservedKeywords<1, 1>},
 
-    ParseRule(expr, {fn_expr, braced_stmts}, BuildNormalFunctionLiteral),
-    ParseRule(expr, {expr, fn_arrow, braced_stmts},
-              BuildInferredFunctionLiteral),
-    ParseRule(expr, {hashtag, EXPR}, AddHashtag),
+    // Statements
+    rule_t{.match   = {label, yield, EXPR},
+           .output  = stmt,
+           .execute = BuildLabeledYield},
+    rule_t{
+        .match = {label, yield}, .output = stmt, .execute = BuildLabeledYield},
+    rule_t{
+        .match = {yield, EXPR}, .output = stmt, .execute = BuildUnlabeledYield},
 
-    // Call and index operator with reserved words. We can't put reserved words
-    // in the first slot because that might conflict with a real use case.
-    ParseRule(expr, {EXPR, l_paren, RESERVED, r_paren}, ReservedKeywords<0, 2>),
-    ParseRule(expr, {EXPR, l_bracket, RESERVED, r_bracket},
-              ReservedKeywords<0, 2>),
+    // Function expressions `a -> b`
+    rule_t{.match   = {EXPR | paren_decl_list | empty_parens, fn_arrow,
+                     EXPR | empty_parens},
+           .output  = fn_expr,
+           .execute = BuildBinaryOperator},
+    rule_t{.match   = {EXPR | paren_decl_list, fn_arrow, RESERVED},
+           .output  = fn_expr,
+           .execute = ReservedKeywords<0, 2>},
+    rule_t{.match   = {RESERVED, fn_arrow, EXPR},
+           .output  = fn_expr,
+           .execute = ReservedKeywords<0, 0>},
+    rule_t{.match   = {RESERVED, fn_arrow, RESERVED},
+           .output  = fn_expr,
+           .execute = ReservedKeywords<0, 0, 2>},
 
-    ParseRule(expr, {EXPR, op_r}, BuildRightUnop),
-    ParseRule(expr, {(op_l | op_bl | op_lt), EXPR}, BuildLeftUnop),
-    ParseRule(stmts, {sop_lt | sop_l, EXPR}, BuildStatementLeftUnop),
+    rule_t{.match   = {fn_expr, braced_stmts},
+           .output  = expr,
+           .execute = BuildNormalFunctionLiteral},
+    rule_t{.match   = {paren_decl_list | empty_parens, fn_arrow, braced_stmts},
+           .output  = expr,
+           .execute = BuildInferredFunctionLiteral},
 
-    ParseRule(stmts, {label, yield, EXPR}, BuildLabeledYield),
-    ParseRule(stmts, {yield, EXPR}, BuildUnlabeledYield),
-    ParseRule(stmts, {label, yield}, BuildLabeledYield),
+    // Structs, etc.
+    rule_t{.match   = {kw_struct, empty_parens | paren_expr | paren_decl_list,
+                     braced_stmts},
+           .output  = expr,
+           .execute = BuildParameterizedKeywordScope},
+    rule_t{.match   = {kw_struct, l_bracket, decl | decl_list, r_bracket,
+                     empty_parens | paren_expr | paren_decl_list, braced_stmts},
+           .output  = expr,
+           .execute = BuildStatefulJump},
+    rule_t{.match   = {KW_BLOCK, braced_stmts},
+           .output  = expr,
+           .execute = BuildKWBlock},
 
-    ParseRule(expr, {RESERVED, (OP_B | yield | op_bl), EXPR},
-              ReservedKeywords<1, 0>),
-    ParseRule(expr, {l_paren | l_ref, EXPR, r_paren}, Parenthesize),
-    ParseRule(expr, {l_bracket, EXPR, r_bracket}, BuildArrayLiteral),
-    ParseRule(expr, {l_paren, RESERVED, r_paren}, ReservedKeywords<1, 1>),
-    ParseRule(expr, {l_bracket, RESERVED, r_bracket}, ReservedKeywords<1, 1>),
-    ParseRule(stmts, {stmts, (EXPR | stmts), newline | eof},
-              BuildMoreStatements),
-    ParseRule(expr, {kw_struct, l_paren, expr, r_paren, braced_stmts},
-              BuildParameterizedKeywordScope),
-    ParseRule(expr, {kw_struct, l_paren, r_paren, braced_stmts},
-              BuildParameterizedKeywordScope),
-    ParseRule(expr, {kw_struct, expr, l_paren, r_paren, braced_stmts},
-              BuildStatefulJump),
-    ParseRule(expr, {kw_struct, expr, l_paren, expr, r_paren, braced_stmts},
-              BuildStatefulJump),
-    ParseRule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
+    // Function call expressions
+    rule_t{.match   = {EXPR, op_bl, EXPR, paren_expr | empty_parens},
+           .output  = full_call_expr,
+           .execute = BuildFullCall},
+    rule_t{.match   = {RESERVED, op_bl, EXPR, paren_expr | empty_parens},
+           .output  = full_call_expr,
+           .execute = ReservedKeywords<1, 0>},
+    rule_t{.match   = {EXPR, op_bl, RESERVED, paren_expr | empty_parens},
+           .output  = full_call_expr,
+           .execute = ReservedKeywords<1, 2>},
+    rule_t{.match   = {RESERVED, op_bl, RESERVED, paren_expr | empty_parens},
+           .output  = full_call_expr,
+           .execute = ReservedKeywords<1, 0, 2>},
+    rule_t{.match = {EXPR, paren_expr | empty_parens | paren_decl_list},
+           // TODO: Remove the paren_decl_list and have that be it's own
+           // interface building node.
+           .output  = paren_call_expr,
+           .execute = BuildParenCall},
+    rule_t{.match   = {RESERVED, paren_expr | empty_parens},
+           .output  = paren_call_expr,
+           .execute = ReservedKeywords<0, 0>},
 
-    ParseRule(expr, {(op_l | op_bl | op_lt), RESERVED}, ReservedKeywords<0, 1>),
-    // TODO: does this rule prevent chained scope blocks on new lines or is it
-    // preceeded by a shift rule that eats newlines after a right-brace?
-    ParseRule(stmts, {EXPR, (newline | eof)}, BuildOneStatement),
-    ParseRule(expr, {l_paren, EXPR, comma, r_paren}, BuildOneElementCommaList),
+    // Braced statements
+    rule_t{.match   = {l_brace, r_brace},
+           .output  = braced_stmts,
+           .execute = EmptyBraces},
+    rule_t{.match   = {l_brace, STMTS | EXPR | assignment | decl, r_brace},
+           .output  = braced_stmts,
+           .execute = KeepOnly<1>},
+    rule_t{.match   = {l_brace, STMTS, EXPR | assignment | decl, r_brace},
+           .output  = braced_stmts,
+           .execute = BuildMoreBracedStatements},
+    rule_t{.match   = {l_brace, RESERVED, r_brace},
+           .output  = braced_stmts,
+           .execute = ReservedKeywords<1, 1>},
 
-    // TODO: also need to handle labels with yields.
-    ParseRule(stmts, {op_lt}, BuildControlHandler),
-    ParseRule(stmts, {stmts, eof}, drop_all_but<0>),
+    // Block nodes
+    rule_t{.match   = {expr, braced_stmts},
+           .output  = block_expr,
+           .execute = BuildBlockNode},
+
+    // Scope nodes
+    rule_t{.match   = {FN_CALL_EXPR, block_expr},
+           .output  = scope_expr,
+           .execute = BuildScopeNode},
+    rule_t{.match   = {scope_expr, block_expr},
+           .output  = scope_expr,
+           .execute = ExtendScopeNode},
+    rule_t{.match   = {scope_expr, expr, scope_expr},
+           .output  = scope_expr,
+           .execute = SugaredExtendScopeNode},
+    rule_t{.match   = {label, scope_expr},
+           .output  = scope_expr,
+           .execute = LabelScopeNode},
+
+    // Operators
+    rule_t{.match   = {EXPR, op_bl | OP_B, EXPR},
+           .output  = expr,
+           .execute = BuildBinaryOperator},
+    rule_t{.match   = {EXPR, op_bl | OP_B, RESERVED},
+           .output  = expr,
+           .execute = ReservedKeywords<1, 2>},
+    rule_t{.match   = {RESERVED, op_bl | OP_B, EXPR},
+           .output  = expr,
+           .execute = ReservedKeywords<1, 0>},
+    rule_t{.match   = {RESERVED, op_bl | OP_B, RESERVED},
+           .output  = expr,
+           .execute = ReservedKeywords<1, 0, 2>},
+    rule_t{.match   = {paren_decl_list | empty_parens, rocket, EXPR},
+           .output  = expr,
+           .execute = BuildBinaryOperator},
+    rule_t{.match   = {paren_decl_list | empty_parens, rocket, RESERVED},
+           .output  = expr,
+           .execute = ReservedKeywords<1, 2>},
+    rule_t{.match   = {op_l | op_bl | op_lt, EXPR},
+           .output  = expr,
+           .execute = BuildLeftUnop},
+    rule_t{.match   = {op_l | op_bl | op_lt, RESERVED},
+           .output  = expr,
+           .execute = ReservedKeywords<0, 1>},
+    rule_t{.match = {EXPR, op_r}, .output = expr, .execute = BuildRightUnop},
+    rule_t{.match   = {RESERVED, op_r},
+           .output  = expr,
+           .execute = ReservedKeywords<1, 0>},
+    rule_t{.match   = {sop_lt | sop_l, EXPR | expr_list},
+           .output  = stmt,
+           .execute = BuildStatementLeftUnop},
+    rule_t{.match   = {sop_lt | sop_l, RESERVED},
+           .output  = stmt,
+           .execute = ReservedKeywords<0, 1>},
+    rule_t{.match   = {RESERVED, (OP_B | yield | op_bl), EXPR},
+           .output  = expr,
+           .execute = ReservedKeywords<1, 0>},
+
+    // Parentheses
+    rule_t{.match   = {l_paren, r_paren},
+           .output  = empty_parens,
+           .execute = BuildEmptyCommaList},
+    rule_t{.match   = {l_paren, EXPR | expr_list | assignment | assignment_list,
+                     r_paren},
+           .output  = paren_expr,
+           .execute = Parenthesize},
+    rule_t{.match   = {l_paren, decl | decl_list, r_paren},
+           .output  = paren_decl_list,
+           .execute = Parenthesize},
+    rule_t{.match   = {l_paren, RESERVED, r_paren},
+           .output  = paren_expr,
+           .execute = ReservedKeywords<1, 1>},
+
+    // Statements
+    rule_t{.match   = {STMTS, stmt},
+           .output  = stmt_list,
+           .execute = BuildMoreStatements},
+    rule_t{.match   = {decl | EXPR, newline | eof},
+           .output  = stmt,
+           .execute = BuildOneStatement},
+
+    // Miscellaneous
+    rule_t{.match   = {EXPR | assignment | expr_list, comma, EXPR | assignment},
+           .output  = expr_list,
+           .execute = BuildCommaList},
+    rule_t{.match   = {EXPR | expr_list, comma, decl},
+           .output  = decl_list,
+           .execute = BuildCommaList},
+    rule_t{.match   = {decl | decl_list, comma, decl | EXPR},
+           .output  = decl_list,
+           .execute = BuildCommaList},
+    rule_t{.match   = {l_paren, op_l | op_b | eq | op_bl, r_paren},
+           .output  = expr,
+           .execute = BuildOperatorIdentifier},
+    rule_t{.match   = {EXPR, dot, braced_stmts},
+           .output  = expr,
+           .execute = BuildDesignatedInitializer},
+    rule_t{.match = {hashtag, EXPR}, .output = expr, .execute = AddHashtag},
+    rule_t{.match = {hashtag, decl}, .output = decl, .execute = AddHashtag},
+    rule_t{.match = {STMTS, eof}, .output = stmt_list, .execute = KeepOnly<0>},
 };
 
-enum class ShiftState { NeedMore, EndOfExpr, MustReduce };
+static base::Global kMoreRules = std::array{
+    // Backups.
+    //
+    // Barring any other successful reductions, these rules should be applied.
+    // They need to be last, because they change the tag type, making it one
+    // step more general, but only match exactly one node.
+    //
+    // TODO: does this rule prevent chained scope blocks on new lines or is it
+    // preceeded by a shift rule that eats newlines after a right-brace?
+    rule_t{.match = {op_lt}, .output = stmt, .execute = BuildControlHandler},
+    rule_t{.match   = {EXPR | decl | assignment},
+           .output  = stmt,
+           .execute = BuildOneStatement},
+    rule_t{
+        .match = {RESERVED}, .output = expr, .execute = ReservedKeywords<0, 0>},
+
+};
+
+enum class ShiftState { NeedMore, MustReduce, ReduceHarder };
 struct ParseState {
   // TODO: storing the `diag` reference twice is unnecessary.
   explicit ParseState(std::vector<Lexeme> tokens,
@@ -1761,71 +1855,60 @@ struct ParseState {
   }
 
   ShiftState shift_state() {
-    // If the size is just 1, no rule will match so don't bother checking.
-    if (node_stack_.size() < 2) { return ShiftState::NeedMore; }
+    // TODO: Rather than repeatedly checking for empty, which can only happen on
+    // the first iteration, just unroll that iteration.
+    if (node_stack_.empty()) { return ShiftState::NeedMore; }
+
+    switch (get_type<1>()) {
+      case stmt:
+      case newline: return ShiftState::MustReduce;
+      default: break;
+    }
 
     const auto &ahead = Next();
-    if (ahead.tag_ == newline) {
-      return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::MustReduce;
+    switch (ahead.tag_) {
+      case colon:
+        return get_type<1>() == r_paren ? ShiftState::MustReduce
+                                        : ShiftState::NeedMore;
+      case l_paren: {
+        if (get_type<1>() & (kw_struct | kw_block_head)) {
+          return ShiftState::NeedMore;
+        } else if ((get_type<1>() & EXPR) and
+                   get_type<2>() & (sop_l | sop_lt)) {
+          return ShiftState::NeedMore;
+        }
+      } break;
+      case l_brace:
+        if (get_type<1>() & fn_expr) { return ShiftState::NeedMore; }
+        if (get_type<1>() &
+            (kw_struct | empty_parens | paren_expr | kw_block_head)) {
+          if (get_type<2>() == fn_arrow) {
+            return ShiftState::MustReduce;
+          } else {
+            return ShiftState::NeedMore;
+          }
+        } else {
+          return ShiftState::MustReduce;
+        }
+      case r_brace: return ShiftState::MustReduce;
+      case newline: return ShiftState::ReduceHarder;
+      default: break;
     }
 
-    if (ahead.tag_ == expr and
-        (get_type<1>() == fn_call_expr or get_type<1>() == scope_expr)) {
-      return ShiftState::NeedMore;
-    }
-
-    if (ahead.tag_ == l_brace and (get_type<1>() & kw_block) and
-        get_type<2>() == fn_arrow) {
-      return ShiftState::MustReduce;
-    }
-
-    if (ahead.tag_ == l_brace and get_type<1>() == fn_expr and
-        get_type<2>() == fn_arrow) {
-      return ShiftState::MustReduce;
-    }
-
-    if (ahead.tag_ == l_brace and
-        (get_type<1>() & (fn_expr | kw_block_head | kw_struct))) {
-      return ShiftState::NeedMore;
-    }
-
-    if (get_type<1>() == newline and get_type<2>() == comma) {
-      return ShiftState::MustReduce;
-    }
+    if (node_stack_.size() == 1) { return ShiftState::NeedMore; }
 
     if (get_type<1>() & (op_lt | yield) and ahead.tag_ != newline) {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<1>() & (kw_block_head | kw_struct)) and
-        ahead.tag_ == newline) {
-      return ShiftState::NeedMore;
-    }
-
-    if ((get_type<2>() & (kw_block_head | kw_struct)) and
-        get_type<1>() == newline) {
-      return ShiftState::NeedMore;
-    }
-
-    if (ahead.tag_ == r_paren) { return ShiftState::MustReduce; }
-
-    if (get_type<1>() == r_paren and ahead.tag_ == l_brace) {
-      size_t i = tag_stack_.size() - 1;
-      while (i > 0) {
-        if (tag_stack_[i] == fn_arrow) { return ShiftState::MustReduce; }
-        if (tag_stack_[i] == stmts) { return ShiftState::NeedMore; }
-        --i;
-      }
-      return ShiftState::NeedMore;
-    }
-
-    constexpr uint64_t OP = hashtag | op_r | op_l | op_b | colon | eq | comma |
-                            op_bl | op_lt | fn_arrow | yield | sop_l | sop_lt;
+    constexpr uint64_t OP = hashtag | op_r | op_l | op_b | dot | colon | eq |
+                            colon_eq | dot | comma | op_bl | op_lt | fn_arrow |
+                            yield | sop_l | sop_lt | rocket;
     if (get_type<2>() & OP) {
-      if (get_type<1>() == r_paren) {
-        // TODO: this feels like a hack, but maybe this whole function is.
-        return ShiftState::MustReduce;
-      }
+      //   if (get_type<1>() == r_paren) {
+      //     // TODO: this feels like a hack, but maybe this whole function is.
+      //     return ShiftState::MustReduce;
+      //   }
       auto left_prec = precedence(get<2>()->as<Token>().op);
 
       if (left_prec == precedence(Operator::Call) and ahead.tag_ == l_paren) {
@@ -1839,17 +1922,17 @@ struct ParseState {
         right_prec = precedence(Operator::Index);
 
       } else if (ahead.tag_ == l_paren) {
-        // TODO: this might be a hack. To get the following example to parse
-        // correctly:
+        // TODO: this might be a hack. To get the following example to
+        // parse correctly:
         //
         //    #tag
         //    (+) ::= ...
         //
         // As it stands we're assuming there's some expression being called
-        // between the tag and the paren where the newline actually is. We can
-        // get around this here by just explicitly checking that case, but
-        // perhaps we should actually just lex "(+)" as it's own symbol with
-        // it's own tag type. That might be more robust.
+        // between the tag and the paren where the newline actually is. We
+        // can get around this here by just explicitly checking that case,
+        // but perhaps we should actually just lex "(+)" as it's own symbol
+        // with it's own tag type. That might be more robust.
         if (get_type<1>() == newline) { return ShiftState::MustReduce; }
         right_prec = precedence(Operator::Call);
       } else {
@@ -1860,8 +1943,9 @@ struct ParseState {
                       (left_prec & assoc_mask) == right_assoc)
                  ? ShiftState::NeedMore
                  : ShiftState::MustReduce;
+    } else {
+      return ShiftState::MustReduce;
     }
-    return ShiftState::MustReduce;
   }
 
   void LookAhead() {
@@ -1895,8 +1979,14 @@ struct ParseState {
 void Debug(ParseState *ps) {
   // Clear the screen
   fputs("\033[2J\033[1;1H\n", stderr);
-  for (auto x : ps->tag_stack_) { absl::FPrintF(stderr, "%s, ", stringify(x)); }
-  absl::FPrintF(stderr, " -> %s\n", stringify(ps->Next().tag_));
+  for (auto x : ps->tag_stack_) {
+    std::stringstream ss;
+    ss << x;
+    absl::FPrintF(stderr, "%s, ", ss.str());
+  }
+  std::stringstream ss;
+  ss << ps->Next().tag_;
+  absl::FPrintF(stderr, " -> %s\n", ss.str());
 
   for (const auto &node_ptr : ps->node_stack_) {
     fputs(node_ptr->DebugString().c_str(), stderr);
@@ -1920,54 +2010,56 @@ void Shift(ParseState *ps) {
   }
 }
 
+template <auto &RuleSet>
 bool Reduce(ParseState *ps) {
   LOG("parse", "reducing");
-  const ParseRule *matched_rule_ptr = nullptr;
-  for (ParseRule const &rule : *kRules) {
-    if (rule.Match(ps->tag_stack_)) {
-      matched_rule_ptr = &rule;
-      break;
+  for (auto const &rule : *RuleSet) {
+    if (rule.match(ps->tag_stack_)) {
+      auto nodes_to_reduce = absl::MakeSpan(
+          std::addressof(*(ps->node_stack_.end() - rule.match.size())),
+          rule.match.size());
+      auto result     = rule.execute(nodes_to_reduce, ps->diag_);
+      size_t new_size = ps->node_stack_.size() - rule.match.size() + 1;
+      ps->tag_stack_.resize(new_size);
+      ps->node_stack_.resize(new_size);
+      ps->node_stack_.back() = std::move(result);
+      ps->tag_stack_.back()  = rule.output;
+      return true;
     }
   }
 
-  if (matched_rule_ptr == nullptr) {
-    // If there are no good rules to match, look for some defaults. We could
-    // encode these in `kRules` as well, but typically these do strange things
-    // like preserving the tag type, so we'd have to encode it many times if it
-    // were in `kRules`.
-    if (ps->tag_stack_.size() >= 2 and ps->get_type<2>() == newline) {
-      auto tag = ps->tag_stack_.back();
-      ps->tag_stack_.pop_back();
-      ps->tag_stack_.back() = tag;
+  // If there are no good rules to match, look for some defaults. We could
+  // encode these in `*RuleSet` as well, but typically these do strange things
+  // like preserving the tag type, so we'd have to encode it many times if it
+  // were in `*RuleSet`.
+  if (ps->tag_stack_.size() >= 2 and ps->get_type<2>() == newline) {
+    auto tag = ps->tag_stack_.back();
+    ps->tag_stack_.pop_back();
+    ps->tag_stack_.back() = tag;
 
-      auto node = std::move(ps->node_stack_.back());
-      ps->node_stack_.pop_back();
-      ps->node_stack_.back() = std::move(node);
-    } else if (ps->get_type<1>() == newline) {
-      ps->tag_stack_.pop_back();
-      ps->node_stack_.pop_back();
-    } else {
-      return false;
-    }
-
-    return true;
+    auto node = std::move(ps->node_stack_.back());
+    ps->node_stack_.pop_back();
+    ps->node_stack_.back() = std::move(node);
+  } else if (ps->get_type<1>() == newline) {
+    ps->tag_stack_.pop_back();
+    ps->node_stack_.pop_back();
+  } else {
+    return false;
   }
-
-  matched_rule_ptr->Apply(&ps->node_stack_, &ps->tag_stack_, ps->diag_);
 
   return true;
 }
 
 void CleanUpReduction(ParseState *state) {
   // Reduce what you can
-  while (Reduce(state)) {
+  while (Reduce<kRules>(state)) {
     if (debug::parser) { Debug(state); }
   }
 
   Shift(state);
 
   // Reduce what you can again
-  while (Reduce(state)) {
+  while (Reduce<kRules>(state)) {
     if (debug::parser) { Debug(state); }
   }
   if (debug::parser) { Debug(state); }
@@ -1984,11 +2076,16 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
   while (state.Next().tag_ != eof) {
     ASSERT(state.tag_stack_.size() == state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
-    if (state.shift_state() == ShiftState::NeedMore or not Reduce(&state)) {
-      LOG("parse", "Need to shift");
-      Shift(&state);
-      LOG("parse", "shift_state == %d",
-          static_cast<std::underlying_type_t<ShiftState>>(state.shift_state()));
+    switch (state.shift_state()) {
+      case ShiftState::ReduceHarder:
+        if (Reduce<kRules>(&state)) break;
+        if (Reduce<kMoreRules>(&state)) break;
+        Shift(&state);
+        break;
+      case ShiftState::MustReduce:
+        if (Reduce<kRules>(&state)) break;
+        [[fallthrough]];
+      case ShiftState::NeedMore: Shift(&state); break;
     }
 
     if (debug::parser) { Debug(&state); }
@@ -2003,7 +2100,7 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
     case 1:
       // TODO: log an error
       if (diag.num_consumed() > 0) { return {}; }
-      if (state.tag_stack_.back() & (eof | bof)) { return {}; }
+      if (state.tag_stack_.back() & eof) { return {}; }
       return std::move(move_as<Statements>(state.node_stack_.back())->content_);
 
     default: {

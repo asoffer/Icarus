@@ -304,7 +304,7 @@ void EnumLiteral::DebugStrAppend(std::string *out, size_t indent) const {
     }
     absl::StrAppend(out, "\n");
   }
-  absl::StrAppend(out, "%*s}", 2 * indent, " ");
+  absl::StrAppendFormat(out, "%*s}", 2 * indent, " ");
 }
 
 void FunctionLiteral::DebugStrAppend(std::string *out, size_t indent) const {

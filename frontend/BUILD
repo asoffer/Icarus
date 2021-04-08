@@ -3,7 +3,6 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "parse_rule",
     hdrs = ["parse_rule.h"],
-    srcs = ["parse_rule.cc"],
     deps = [
         "//ast:node",
         "//base:no_destructor",

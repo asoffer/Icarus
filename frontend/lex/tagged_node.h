@@ -14,7 +14,7 @@ struct SourceRange;
 
 struct TaggedNode {
   std::unique_ptr<ast::Node> node_;
-  Tag tag_ = bof;
+  Tag tag_{};
 
   TaggedNode() = default;
 
