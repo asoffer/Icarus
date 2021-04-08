@@ -908,9 +908,14 @@ std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
   auto range =
       SourceRange(nodes[0]->range().begin(), nodes.back()->range().end());
   auto [params, outs] = std::move(nodes[0]->as<ast::FunctionType>()).extract();
+  Statements stmts(nodes[1]->range());
+  if (auto *s = nodes[1]->if_as<Statements>()) {
+    stmts = std::move(*s);
+  } else {
+    stmts.append(std::move(nodes[1]));
+  }
   return BuildFunctionLiteral(range, ExtractInputs(std::move(params), diag),
-                              std::move(outs),
-                              std::move(nodes[1]->as<Statements>()), diag);
+                              std::move(outs), std::move(stmts), diag);
 }
 
 std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
@@ -918,9 +923,16 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
     diagnostic::DiagnosticConsumer &diag) {
   auto range =
       SourceRange(nodes[0]->range().begin(), nodes.back()->range().end());
+
+  Statements stmts(nodes[2]->range());
+  if (auto *s = nodes[2]->if_as<Statements>()) {
+    stmts = std::move(*s);
+  } else {
+    stmts.append(std::move(nodes[1]));
+  }
   return BuildFunctionLiteral(
       range, ExtractInputs(move_as<ast::Expression>(nodes[0]), diag), nullptr,
-      std::move(nodes[2]->as<Statements>()), diag);
+      std::move(stmts), diag);
 }
 
 // TODO: this loses syntactic information that a formatter cares about.
@@ -1078,28 +1090,25 @@ std::unique_ptr<ast::Node> BuildBlockNode(
                     nodes.back()->range().end());
 
   auto stmts = ExtractStatements(std::move(nodes.back()));
-  if (auto *id = nodes.front()->if_as<ast::Identifier>()) {
-    return std::make_unique<ast::BlockNode>(range, std::string{id->name()},
-                                            std::move(stmts));
-  } else if (auto *index = nodes.front()->if_as<ast::Index>()) {
-    auto [lhs, rhs] = std::move(*index).extract();
+  auto &id   = nodes.front()->as<ast::Identifier>();
+
+  if (nodes.size() == 5) {
     std::vector<std::unique_ptr<ast::Declaration>> params;
-    if (auto *cl = rhs->if_as<CommaList>()) {
+    if (auto *cl = nodes[2]->if_as<CommaList>()) {
       auto exprs = std::move(*cl).extract();
       for (auto &expr : exprs) {
         params.push_back(move_as<ast::Declaration>(expr));
       }
 
     } else {
-      params.push_back(move_as<ast::Declaration>(rhs));
+      params.push_back(move_as<ast::Declaration>(nodes[2]));
     }
-    return std::make_unique<ast::BlockNode>(
-        range, std::string{lhs->as<ast::Identifier>().name()},
-        std::move(params), std::move(stmts));
 
+    return std::make_unique<ast::BlockNode>(
+        range, std::string{id.name()}, std::move(params), std::move(stmts));
   } else {
-    diag.Consume(TodoDiagnostic{});
-    return nullptr;
+    return std::make_unique<ast::BlockNode>(range, std::string{id.name()},
+                                            std::move(stmts));
   }
 }
 
@@ -1721,6 +1730,10 @@ static base::Global kRules = std::array{
     rule_t{.match   = {expr, braced_stmts},
            .output  = block_expr,
            .execute = BuildBlockNode},
+    rule_t{
+        .match   = {expr, l_bracket, decl | decl_list, r_bracket, braced_stmts},
+        .output  = block_expr,
+        .execute = BuildBlockNode},
 
     // Scope nodes
     rule_t{.match   = {FN_CALL_EXPR, block_expr},
