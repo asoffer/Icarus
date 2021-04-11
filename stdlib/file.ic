@@ -17,7 +17,7 @@ CFileHandle ::= (f: File) => f._handle
 
 #{export}
 With ::= scope(File) {
-  enter ::= jump [f: *File] (name: char[]) {
+  enter ::= jump [f: *File] (name: []char) {
     f._handle = cstdio.fopen(name.data, "r".data)
     e := errno.get()
     goto e == errno.error.SUCCESS, open(@f), error(e) | done()

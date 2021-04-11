@@ -35,7 +35,7 @@ string ::= struct {
   }
 
   #{export}
-  make ::= (s: char[]) -> string {
+  make ::= (s: []char) -> string {
     return string.{
       _data     = allocate_and_copy(s.data, s.length + 1 as u64)
       _length   = s.length
@@ -115,7 +115,7 @@ append ::= (s: *string, character: char) -> () {
 }
 
 #{export}
-append ::= (s: *string, char_slice: char[]) -> () {
+append ::= (s: *string, char_slice: []char) -> () {
   core.if (s._length + char_slice.length > s._capacity) then {
     resize_buffer(s, s._length + char_slice.length)
   }

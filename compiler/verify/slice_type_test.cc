@@ -13,7 +13,7 @@ using ::testing::UnorderedElementsAre;
 TEST(SliceType, Correct) {
   test::TestModule mod;
 
-  auto const *expr = mod.Append<ast::Expression>(R"(i64[])");
+  auto const *expr = mod.Append<ast::Expression>(R"([]i64)");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
 
@@ -24,7 +24,7 @@ TEST(SliceType, NonConstantType) {
   test::TestModule mod;
 
   mod.AppendCode(R"(T := i64)");
-  auto const *expr = mod.Append<ast::Expression>(R"(T[])");
+  auto const *expr = mod.Append<ast::Expression>(R"([]T)");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::Type_)));
@@ -34,7 +34,7 @@ TEST(SliceType, NonConstantType) {
 
 TEST(SliceType, NonTypeData) {
   test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"(3[])");
+  auto const *expr = mod.Append<ast::Expression>(R"([]3)");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
 

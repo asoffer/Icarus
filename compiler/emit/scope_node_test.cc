@@ -232,8 +232,8 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{
             .expr = R"((() -> i64 {
   scope_with_big_argument ::= scope {
-    enter ::= jump (str: char[]) { goto done(str) }
-    exit ::= (str: char[]) -> () {}
+    enter ::= jump (str: []char) { goto done(str) }
+    exit ::= (str: []char) -> () {}
   
     do ::= block {
       before ::= () -> () {}

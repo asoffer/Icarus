@@ -27,13 +27,13 @@ TEST_P(SliceTypeTest, SliceLiteral) {
 INSTANTIATE_TEST_SUITE_P(
     All, SliceTypeTest,
     testing::ValuesIn({
-        TestCase{.expr     = R"(i32[])",
+        TestCase{.expr     = R"([]i32)",
                  .expected = ir::Value(type::Type(type::Slc(type::I32)))},
-        TestCase{.expr = R"(bool[][])",
+        TestCase{.expr = R"([][]bool)",
                  .expected =
                      ir::Value(type::Type(type::Slc(type::Slc(type::Bool))))},
         TestCase{.expr     = R"(((t: type) -> type {
-          return t[]
+          return []t
         })(f32)
         )",
                  .expected = ir::Value(type::Type(type::Slc(type::F32)))},

@@ -162,7 +162,7 @@ Note that buffer pointers must point into arrays or slices (see below). You may 
 
 A slice is another reference-type like pointers. It holds effectively is a
 buffer pointer and a length, allowing you refer to subsequences of contiguous
-blocks of memory. A slice of objects of type `T` is written as `T[]`. Slices
+blocks of memory. A slice of objects of type `T` is written as `[]T`. Slices
 can be indexed and dereferenced just as buffer pointers.
 
 ```

@@ -441,8 +441,8 @@ void ScopeNode::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void SliceType::DebugStrAppend(std::string *out, size_t indent) const {
-  data_type()->DebugStrAppend(out, indent);
   absl::StrAppend(out, "[]");
+  data_type()->DebugStrAppend(out, indent);
 }
 
 void ShortFunctionLiteral::DebugStrAppend(std::string *out,

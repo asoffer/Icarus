@@ -711,7 +711,7 @@ std::unique_ptr<ast::Node> BuildSlice(
   auto range =
       SourceRange(nodes.front()->range().begin(), nodes.back()->range().end());
   auto slice = std::make_unique<ast::SliceType>(
-      range, move_as<ast::Expression>(nodes[0]));
+      range, move_as<ast::Expression>(nodes[1]));
 
   return slice;
 }
@@ -1628,10 +1628,9 @@ static base::Global kRules = std::array{
            .execute = ReservedKeywords<0, 2>},
 
     // Slices
-    // TODO: Make slices prefix operators as in `[]char` rather than `char[]`.
     rule_t{
-        .match = {EXPR, empty_brackets}, .output = expr, .execute = BuildSlice},
-    rule_t{.match   = {RESERVED, empty_brackets},
+        .match = {empty_brackets, EXPR}, .output = expr, .execute = BuildSlice},
+    rule_t{.match   = {empty_brackets, RESERVED},
            .output  = expr,
            .execute = ReservedKeywords<0, 1>},
 
@@ -1872,13 +1871,17 @@ struct ParseState {
     // the first iteration, just unroll that iteration.
     if (node_stack_.empty()) { return ShiftState::NeedMore; }
 
+    const auto &ahead = Next();
+
     switch (get_type<1>()) {
+      case empty_brackets:
+        return ahead.tag_ == newline ? ShiftState::MustReduce
+                                     : ShiftState::NeedMore;
       case stmt:
       case newline: return ShiftState::MustReduce;
       default: break;
     }
 
-    const auto &ahead = Next();
     switch (ahead.tag_) {
       case colon:
         return get_type<1>() == r_paren ? ShiftState::MustReduce
@@ -1918,10 +1921,6 @@ struct ParseState {
                             colon_eq | dot | comma | op_bl | op_lt | fn_arrow |
                             yield | sop_l | sop_lt | rocket;
     if (get_type<2>() & OP) {
-      //   if (get_type<1>() == r_paren) {
-      //     // TODO: this feels like a hack, but maybe this whole function is.
-      //     return ShiftState::MustReduce;
-      //   }
       auto left_prec = precedence(get<2>()->as<Token>().op);
 
       if (left_prec == precedence(Operator::Call) and ahead.tag_ == l_paren) {
