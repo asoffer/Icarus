@@ -556,20 +556,18 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
 }
 
 core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
-    Compiler &c,
-    absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
-        args) {
+    Compiler &c, absl::Span<ast::Call::Argument const> args) {
   core::Arguments<type::Typed<ir::Value>> arg_vals;
   type::Typed<ir::Value> result;
-  for (auto const &[name, expr] : args) {
-    auto qt = c.context().qual_types(expr.get())[0];
+  for (auto const &arg : args) {
+    auto qt = c.context().qual_types(&arg.expr())[0];
     if (qt.constant()) {
       if (qt.type().get()->is_big()) {
         // TODO: Implement constant computation here.
         result = type::Typed<ir::Value>(ir::Value(), qt.type());
       } else {
         ir::Value value = c.EvaluateOrDiagnose(
-            type::Typed<ast::Expression const *>(expr.get(), qt.type()));
+            type::Typed<ast::Expression const *>(&arg.expr(), qt.type()));
         if (value.empty()) { NOT_YET(); }
         result = type::Typed<ir::Value>(value, qt.type());
       }
@@ -577,10 +575,10 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
       result = type::Typed<ir::Value>(ir::Value(), qt.type());
     }
 
-    if (name.empty()) {
+    if (not arg.named()) {
       arg_vals.pos_emplace(result);
     } else {
-      arg_vals.named_emplace(name, result);
+      arg_vals.named_emplace(arg.name(), result);
     }
   }
   return arg_vals;

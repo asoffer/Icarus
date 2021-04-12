@@ -308,26 +308,24 @@ std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
 }
 
 std::optional<core::Arguments<type::Typed<ir::Value>>>
-Compiler::VerifyArguments(
-    absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
-        args) {
+Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args) {
   bool err = false;
   core::Arguments<type::Typed<ir::Value>> arg_vals;
-  for (auto const &[name, expr] : args) {
+  for (auto const &arg : args) {
     type::Typed<ir::Value> result;
-    auto expr_qual_type = VerifyType(expr.get())[0];
+    auto expr_qual_type = VerifyType(&arg.expr())[0];
     err |= not expr_qual_type.ok();
     if (err) {
-      LOG("VerifyArguments", "Error with: %s", expr->DebugString());
+      LOG("VerifyArguments", "Error with: %s", arg.expr().DebugString());
       result = type::Typed<ir::Value>(ir::Value(), nullptr);
     } else {
-      LOG("VerifyArguments", "constant: %s", expr->DebugString());
-      result = EvaluateIfConstant(*this, expr.get(), expr_qual_type);
+      LOG("VerifyArguments", "constant: %s", arg.expr().DebugString());
+      result = EvaluateIfConstant(*this, &arg.expr(), expr_qual_type);
     }
-    if (name.empty()) {
+    if (not arg.named()) {
       arg_vals.pos_emplace(result);
     } else {
-      arg_vals.named_emplace(name, result);
+      arg_vals.named_emplace(arg.name(), result);
     }
   }
 

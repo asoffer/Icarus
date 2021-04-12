@@ -86,12 +86,10 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
 }
 
 template <typename Tag>
-void EmitCall(
-    Tag, Compiler &compiler, ast::Expression const *callee,
-    core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
-    absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
-        arg_exprs,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
+              core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
+              absl::Span<ast::Call::Argument const> arg_exprs,
+              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   CompiledModule *callee_mod = &callee->scope()
                                     ->Containing<ast::ModuleScope>()
                                     ->module()
@@ -145,15 +143,15 @@ void EmitCall(
   // TODO: With expansions, this might be wrong.
   {
     size_t i = 0;
-    for (; i < arg_exprs.size() and arg_exprs[i].first.empty(); ++i) {
+    for (; i < arg_exprs.size() and not arg_exprs[i].named(); ++i) {
       prepared_arguments.push_back(
           PrepareArgument(compiler, *constant_arguments[i],
-                          arg_exprs[i].second.get(), param_qts[i].value));
+                          &arg_exprs[i].expr(), param_qts[i].value));
     }
 
     absl::flat_hash_map<std::string_view, ast::Expression const *> named;
     for (size_t j = i; j < arg_exprs.size(); ++j) {
-      named.emplace(arg_exprs[j].first, arg_exprs[j].second.get());
+      named.emplace(arg_exprs[j].name(), &arg_exprs[j].expr());
     }
 
     for (size_t j = i; j < param_qts.size(); ++j) {
@@ -196,15 +194,13 @@ void EmitCall(
 // ```
 // breaks.
 //
-ir::Value EmitBuiltinCall(
-    Compiler &c, ast::BuiltinFn const *callee,
-    absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
-        args) {
+ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
+                          absl::Span<ast::Call::Argument const> args) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::Slice: {
       type::Slice const *slice_type =
           type::Slc(c.context()
-                        .qual_types(args[0].second.get())[0]
+                        .qual_types(&args[0].expr())[0]
                         .type()
                         .as<type::BufferPointer>()
                         .pointee());
@@ -226,21 +222,20 @@ ir::Value EmitBuiltinCall(
           type::U64);
 
       c.EmitMoveAssign(
-          data, type::Typed<ir::Value>(c.EmitValue(args[0].second.get()),
+          data, type::Typed<ir::Value>(c.EmitValue(&args[0].expr()),
                                        type::BufPtr(slice_type->data_type())));
-      c.EmitMoveAssign(
-          length,
-          type::Typed<ir::Value>(c.EmitValue(args[1].second.get()), type::U64));
+      c.EmitMoveAssign(length, type::Typed<ir::Value>(
+                                   c.EmitValue(&args[1].expr()), type::U64));
       return ir::Value(slice);
     } break;
     case ir::BuiltinFn::Which::Foreign: {
       auto name_buffer =
           c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
-              args[0].second.get(), type::Slc(type::Char)));
+              &args[0].expr(), type::Slc(type::Char)));
       if (name_buffer.empty()) { return ir::Value(); }
 
       auto maybe_foreign_type =
-          c.EvaluateOrDiagnoseAs<type::Type>(args[1].second.get());
+          c.EvaluateOrDiagnoseAs<type::Type>(&args[1].expr());
       if (not maybe_foreign_type) { return ir::Value(); }
       auto slice = name_buffer.get<ir::Slice>(0);
 
@@ -264,7 +259,7 @@ ir::Value EmitBuiltinCall(
       c.builder().Call(
           ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
           {ir::Value(
-              c.EmitValue(args[0].second.get()).get<ir::RegOr<type::Type>>())},
+              c.EmitValue(&args[0].expr()).get<ir::RegOr<type::Type>>())},
           std::move(outs));
 
       return ir::Value(reg);
@@ -277,7 +272,7 @@ ir::Value EmitBuiltinCall(
       c.builder().Call(
           ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
           {ir::Value(
-              c.EmitValue(args[0].second.get()).get<ir::RegOr<type::Type>>())},
+              c.EmitValue(&args[0].expr()).get<ir::RegOr<type::Type>>())},
           std::move(outs));
 
       return ir::Value(reg);

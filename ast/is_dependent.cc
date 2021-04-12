@@ -63,8 +63,8 @@ bool BuiltinFn::IsDependent() const { return false; }
 bool Call::IsDependent() const {
   if (callee()->IsDependent()) { return true; }
 
-  for (auto const &[name, expr] : arguments()) {
-    if (expr->IsDependent()) { return true; }
+  for (auto const &arg : arguments()) {
+    if (arg.expr().IsDependent()) { return true; }
   }
 
   return false;

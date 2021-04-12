@@ -54,9 +54,7 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
     Compiler &c, core::Arguments<ast::Expression const *> const &args);
 
 core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
-    Compiler &c,
-    absl::Span<std::pair<std::string, std::unique_ptr<ast::Expression>> const>
-        args);
+    Compiler &c, absl::Span<ast::Call::Argument const> args);
 
 }  // namespace compiler
 

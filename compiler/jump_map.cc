@@ -67,7 +67,7 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
 
   void Visit(ast::Call const *node) final {
     Visit(node->callee());
-    for (auto const &[name, expr] : node->arguments()) { Visit(expr.get()); }
+    for (auto const &arg : node->arguments()) { Visit(&arg.expr()); }
   }
 
   void Visit(ast::Cast const *node) final {

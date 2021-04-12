@@ -125,11 +125,6 @@ struct ArgumentType : Expression {
 //  * `[im_the_only_thing]`
 //  * `[]`
 struct ArrayLiteral : Expression {
-  explicit ArrayLiteral(frontend::SourceRange const &range,
-                        std::unique_ptr<Expression> elem)
-      : Expression(range) {
-    elems_.push_back(std::move(elem));
-  }
   ArrayLiteral(frontend::SourceRange const &range,
                std::vector<std::unique_ptr<Expression>> elems)
       : Expression(range), elems_(std::move(elems)) {}
@@ -467,49 +462,72 @@ struct BuiltinFn : Expression {
 //  * `f(a, b, c = 3)`
 //  * `arg'func`
 struct Call : Expression {
+  struct Argument {
+    explicit Argument(std::string name, std::unique_ptr<Expression> expr)
+        : name_(std::move(name)), expr_(std::move(expr)) {}
+
+    bool named() const { return not name_.empty(); }
+    std::string_view name() const { return name_; }
+    ast::Expression const &expr() const { return *expr_; }
+    ast::Expression &expr() { return *expr_; }
+
+    std::pair<std::string, std::unique_ptr<ast::Expression>> extract() && {
+      return std::pair(std::move(name_), std::move(expr_));
+    }
+
+    // TODO: Remove this.
+    static core::Arguments<std::unique_ptr<ast::Expression>> Extract(
+        std::vector<Argument> v) {
+      core::Arguments<std::unique_ptr<ast::Expression>> args;
+      for (auto &arg : v) {
+        auto [name, expr] = std::move(arg).extract();
+        if (arg.named()) {
+          args.named_emplace(std::move(name), std::move(expr));
+        } else {
+          args.pos_emplace(std::move(expr));
+        }
+      }
+      return args;
+    }
+
+   private:
+    std::string name_;
+    std::unique_ptr<Expression> expr_;
+  };
+
   explicit Call(frontend::SourceRange const &range,
                 std::unique_ptr<Expression> callee,
-                std::vector<std::pair<std::string, std::unique_ptr<Expression>>>
-                    arguments,
-                size_t prefix_split)
+                std::vector<Argument> arguments, size_t prefix_split)
       : Expression(range),
         callee_(std::move(callee)),
         arguments_(std::move(arguments)),
         prefix_split_(prefix_split) {
-          size_t i = 0;
-          for (auto const &[name, expr] : arguments_) {
-            if (not name.empty()) { break; }
-            ++i;
-          }
-          positional_split_ = i;
-        }
+    size_t i = 0;
+    for (auto const &arg : arguments_) {
+      if (arg.named()) { break; }
+      ++i;
+    }
+    positional_split_ = i;
+  }
   Expression const *callee() const { return callee_.get(); }
 
-  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
-  prefix_arguments() const {
+  absl::Span<Argument const> prefix_arguments() const {
     return absl::MakeConstSpan(arguments_.data(), prefix_split_);
   }
 
-  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
-  postfix_arguments() const {
+  absl::Span<Argument const> postfix_arguments() const {
     return absl::MakeConstSpan(arguments_.data() + prefix_split_,
                                arguments_.size() - prefix_split_);
   }
 
-  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
-  arguments() const {
-    return arguments_;
-  }
+  absl::Span<Argument const> arguments() const { return arguments_; }
 
-
-  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
-  named_arguments() const {
+  absl::Span<Argument const> named_arguments() const {
     return absl::MakeConstSpan(arguments_.data() + positional_split_,
                                arguments_.size() - positional_split_);
   }
 
-  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
-  positional_arguments() const {
+  absl::Span<Argument const> positional_arguments() const {
     return absl::MakeConstSpan(arguments_.data(), positional_split_);
   }
 
@@ -521,7 +539,7 @@ struct Call : Expression {
 
  private:
   std::unique_ptr<Expression> callee_;
-  std::vector<std::pair<std::string, std::unique_ptr<Expression>>> arguments_;
+  std::vector<Argument> arguments_;
   size_t positional_split_, prefix_split_;
 };
 
@@ -1198,9 +1216,8 @@ struct ConditionalGoto : Node {
     for (auto &call : true_calls) {
       auto [callee, args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
-        true_options_.emplace_back(
-            std::string{id->name()},
-            core::OrderedArguments<Expression>(std::move(args)).DropOrder());
+        true_options_.emplace_back(std::string{id->name()},
+                                   Call::Argument::Extract(std::move(args)));
       } else {
         UNREACHABLE();
       }
@@ -1209,9 +1226,8 @@ struct ConditionalGoto : Node {
     for (auto &call : false_calls) {
       auto [callee, args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
-        false_options_.emplace_back(
-            std::string{id->name()},
-            core::OrderedArguments<Expression>(std::move(args)).DropOrder());
+        false_options_.emplace_back(std::string{id->name()},
+                                    Call::Argument::Extract(std::move(args)));
       } else {
         UNREACHABLE();
       }
@@ -1257,9 +1273,8 @@ struct UnconditionalGoto : Node {
     for (auto &call : calls) {
       auto [callee, args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
-        options_.emplace_back(
-            std::string{id->name()},
-            core::OrderedArguments<Expression>(std::move(args)).DropOrder());
+        options_.emplace_back(std::string{id->name()},
+                              Call::Argument::Extract(std::move(args)));
       } else {
         UNREACHABLE();
       }

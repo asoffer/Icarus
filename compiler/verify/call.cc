@@ -349,8 +349,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
 
   if (not node->named_arguments().empty()) { goto not_an_interface; }
   if (node->positional_arguments().empty()) { goto not_an_interface; }
-  for (auto const &[name, e] : node->positional_arguments()) {
-    if (not e->is<ast::Declaration>()) { goto not_an_interface; }
+  for (auto const &arg : node->positional_arguments()) {
+    if (not arg.expr().is<ast::Declaration>()) { goto not_an_interface; }
   }
 
   if (auto callee_qt = VerifyType(node->callee())[0]) {
@@ -407,9 +407,9 @@ not_an_interface:
   }
 
   absl::flat_hash_set<type::Type> argument_dependent_lookup_types;
-  for (auto const &[name, expr] : node->prefix_arguments()) {
+  for (auto const &arg : node->prefix_arguments()) {
     argument_dependent_lookup_types.insert(
-        context().qual_types(expr.get())[0].type());
+        context().qual_types(&arg.expr())[0].type());
   }
   auto [callee_qt, overload_map] =
       VerifyCallee(node->callee(), arg_vals, argument_dependent_lookup_types);

@@ -12,7 +12,7 @@ struct TestCase {
 };
 
 using ComparisonOperatorTest = testing::TestWithParam<TestCase>;
-TEST_P(ComparisonOperatorTest, Access) {
+TEST_P(ComparisonOperatorTest, Struct) {
   auto const &[expr, expected] = GetParam();
   test::TestModule mod;
   // TODO: We can't use `s` as the field member because the compiler thinks

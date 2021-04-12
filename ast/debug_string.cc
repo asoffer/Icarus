@@ -205,12 +205,11 @@ void Call::DebugStrAppend(std::string *out, size_t indent) const {
   if (not prefix_arguments().empty()) {
     absl::StrAppend(out, "(",
                     absl::StrJoin(prefix_arguments(), ", ",
-                                  [&](std::string *out, auto const &p) {
-                                    auto const &[name, expr] = p;
-                                    if (not name.empty()) {
-                                      absl::StrAppend(out, name, " = ");
+                                  [&](std::string *out, auto const &arg) {
+                                    if (arg.named()) {
+                                      absl::StrAppend(out, arg.name(), " = ");
                                     }
-                                    expr->DebugStrAppend(out, indent);
+                                    arg.expr().DebugStrAppend(out, indent);
                                   }),
                     ")'");
   }
@@ -218,12 +217,11 @@ void Call::DebugStrAppend(std::string *out, size_t indent) const {
   if (not postfix_arguments().empty() or arguments().empty()) {
     absl::StrAppend(out, "(",
                     absl::StrJoin(postfix_arguments(), ", ",
-                                  [&](std::string *out, auto const &p) {
-                                    auto const &[name, expr] = p;
-                                    if (not name.empty()) {
-                                      absl::StrAppend(out, name, " = ");
+                                  [&](std::string *out, auto const &arg) {
+                                    if (arg.named()) {
+                                      absl::StrAppend(out, arg.name(), " = ");
                                     }
-                                    expr->DebugStrAppend(out, indent);
+                                    arg.expr().DebugStrAppend(out, indent);
                                   }),
                     ")");
   }

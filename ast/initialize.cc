@@ -126,7 +126,7 @@ void BuiltinFn::Initialize(Initializer const& initializer) { scope_ = initialize
 void Call::Initialize(Initializer const& initializer) {
   scope_ = initializer.scope;
   callee_->Initialize(initializer);
-  for (auto& [name, expr] : arguments_) { expr->Initialize(initializer); }
+  for (auto& arg : arguments_) { arg.expr().Initialize(initializer); }
 }
 
 void Cast::Initialize(Initializer const& initializer) {
