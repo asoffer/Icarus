@@ -437,7 +437,7 @@ std::unique_ptr<ast::Node> BuildRightUnop(
 }
 
 void MergeIntoArgs(std::vector<ast::Call::Argument> &args,
-                   std::unique_ptr<ast::Expression> args_expr,
+                   std::unique_ptr<ast::Node> args_expr,
                    diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = args_expr->if_as<CommaList>()) {
     std::optional<SourceRange> last_named_range_before_error = std::nullopt;
@@ -472,7 +472,7 @@ void MergeIntoArgs(std::vector<ast::Call::Argument> &args,
       args.emplace_back(std::string(lhs[0]->as<ast::Identifier>().name()),
                         std::move(rhs[0]));
     } else {
-      args.emplace_back("", std::move(args_expr));
+      args.emplace_back("", move_as<ast::Expression>(args_expr));
     }
   }
 }
@@ -486,9 +486,9 @@ std::unique_ptr<ast::Node> BuildFullCall(
                     nodes.back()->range().end());
 
   std::vector<ast::Call::Argument> args;
-  MergeIntoArgs(args, move_as<ast::Expression>(nodes[0]), diag);
+  MergeIntoArgs(args, std::move(nodes[0]), diag);
   size_t split = args.size();
-  MergeIntoArgs(args, move_as<ast::Expression>(nodes[3]), diag);
+  MergeIntoArgs(args, std::move(nodes[3]), diag);
 
   auto callee = move_as<ast::Expression>(nodes[2]);
 
@@ -508,7 +508,7 @@ std::unique_ptr<ast::Node> BuildParenCall(
   auto callee = move_as<ast::Expression>(nodes[0]);
 
   std::vector<ast::Call::Argument> args;
-  MergeIntoArgs(args, move_as<ast::Expression>(nodes[1]), diag);
+  MergeIntoArgs(args, std::move(nodes[1]), diag);
 
   if (callee->is<ast::Declaration>()) {
     diag.Consume(CallingDeclaration{.range = callee->range()});
@@ -1156,7 +1156,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     SourceRange range(nodes.front()->range().begin(),
                       nodes.back()->range().end());
     std::vector<ast::Call::Argument> args;
-    MergeIntoArgs(args, move_as<ast::Expression>(nodes[0]), diag);
+    MergeIntoArgs(args, std::move(nodes[0]), diag);
 
     auto callee = move_as<ast::Expression>(nodes[2]);
 
@@ -1737,8 +1737,10 @@ static base::Global kRules = std::array{
     rule_t{.match   = {l_paren, r_paren},
            .output  = empty_parens,
            .execute = BuildEmptyCommaList},
-    rule_t{.match   = {l_paren, EXPR | expr_list | assignment | assignment_list,
-                     r_paren},
+    rule_t{.match   = {l_paren, assignment, r_paren},
+           .output  = paren_expr,
+           .execute = KeepOnly<1>},
+    rule_t{.match   = {l_paren, EXPR | expr_list | assignment_list, r_paren},
            .output  = paren_expr,
            .execute = Parenthesize},
     rule_t{.match   = {l_paren, decl | decl_list, r_paren},
