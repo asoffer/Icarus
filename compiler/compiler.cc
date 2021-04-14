@@ -50,30 +50,21 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     c.builder().CurrentBlock() = fn.entry();
 
     auto val = c.EmitValue(expr);
-    // TODO wrap this up into SetRet(vector)
-    std::vector<type::Type> extracted_types;
-    if (auto *tup = type.if_as<type::Tuple>()) {
-      extracted_types = tup->entries_;
-    } else {
-      extracted_types = {type};
-    }
-
     if (type != type::Void) { ASSERT(val.empty() == false); }
     // TODO is_big()?
 
-    type::Type t = extracted_types[0];
-    LOG("MakeThunk", "%s %s", t, t.is_big() ? "true" : "false");
-    if (t.is_big()) {
+    LOG("MakeThunk", "%s %s", type, type.is_big() ? "true" : "false");
+    if (type.is_big()) {
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision
 
-      c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), t),
-                     type::Typed<ir::Value>(val, t));
+      c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), type),
+                     type::Typed<ir::Value>(val, type));
 
-    } else if (auto const *gs = t.if_as<type::GenericStruct>()) {
+    } else if (auto const *gs = type.if_as<type::GenericStruct>()) {
       c.builder().SetRet(0, gs);
     } else {
-      c.builder().SetRet(0, type::Typed<ir::Value>(val, t));
+      c.builder().SetRet(0, type::Typed<ir::Value>(val, type));
     }
     c.builder().ReturnJump();
   }

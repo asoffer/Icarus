@@ -194,19 +194,6 @@ Reg Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
       .addr = ptr, .index = inc, .ptr = t, .result = result});
 }
 
-type::Typed<Reg> Builder::FieldRef(RegOr<Addr> r, type::Tuple const *t,
-                                   int64_t n) {
-  auto &cache = CurrentBlock()->offset_cache();
-  if (auto result = cache.get(r, n, OffsetCache::Kind::Into)) {
-    return type::Typed<Reg>(*result, t->entries()[n]);
-  }
-  Reg result = CurrentGroup()->Reserve();
-  cache.set(r, n, OffsetCache::Kind::Into, result);
-  CurrentBlock()->Append(TupleIndexInstruction{
-      .addr = r, .index = n, .tuple = t, .result = result});
-  return type::Typed<Reg>(result, t->entries()[n]);
-}
-
 type::Typed<Reg> Builder::FieldRef(RegOr<Addr> r, type::Struct const *t,
                                    int64_t n) {
   auto &cache = CurrentBlock()->offset_cache();

@@ -10,7 +10,6 @@
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
-#include "type/tuple.h"
 #include "type/type.h"
 
 namespace backend {
@@ -240,7 +239,7 @@ TEST(ToLlvm, FunctionMultipleReturns) {
           false));
 }
 
-// TODO: tuples, structs
+// TODO: structs
 
 }  // namespace
 }  // namespace backend

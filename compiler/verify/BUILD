@@ -235,7 +235,6 @@ cc_library(
         "//type:primitive",
         "//type:qual_type",
         "//type:struct",
-        "//type:tuple",
     ],
 )
 

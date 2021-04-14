@@ -4,7 +4,6 @@
 #include "type/primitive.h"
 #include "type/qual_type.h"
 #include "type/struct.h"
-#include "type/tuple.h"
 
 namespace compiler {
 namespace {
@@ -78,14 +77,6 @@ ComparisonKind Comparator(type::Type t) {
 
   if (auto const *p = t.if_as<type::Pointer>()) {
     return ComparisonKind::Equality;
-  }
-  if (auto const *tup = t.if_as<type::Tuple>()) {
-    using cmp_t = std::underlying_type_t<ComparisonKind>;
-    return static_cast<ComparisonKind>(absl::c_accumulate(
-        tup->entries_, static_cast<cmp_t>(ComparisonKind::Equality),
-        [](cmp_t val, type::Type t) {
-          return std::min(val, static_cast<cmp_t>(Comparator(t)));
-        }));
   }
   if (auto const *a = t.if_as<type::Array>()) {
     return static_cast<ComparisonKind>(

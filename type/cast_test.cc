@@ -6,7 +6,6 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/slice.h"
-#include "type/tuple.h"
 
 namespace type {
 namespace {
@@ -185,8 +184,6 @@ TEST(CanCastExplicitly, Pointers) {
   EXPECT_FALSE(CanCastExplicitly(BufPtr(I8), BufPtr(I16)));
   EXPECT_FALSE(CanCastExplicitly(BufPtr(I8), Ptr(I16)));
 
-  EXPECT_FALSE(CanCastExplicitly(Ptr(Tup({I32, I64})), Ptr(Tup({I64, I32}))));
-
   EXPECT_TRUE(CanCastImplicitly(Arr(3, U64), Ptr(Arr(3, U64))));
   EXPECT_FALSE(CanCastImplicitly(Arr(3, U64), BufPtr(Arr(3, U64))));
 }
@@ -211,14 +208,6 @@ TEST(CanCastExplicitly, Arrays) {
   EXPECT_FALSE(CanCastExplicitly(Arr(3, Bool), Slc(I64)));
 
   EXPECT_TRUE(CanCastExplicitly(Arr(3, BufPtr(Bool)), Slc(Ptr(Bool))));
-}
-
-TEST(CanCastExplicitly, Tuple) {
-  EXPECT_TRUE(CanCastExplicitly(Tup({I32, I64}), Tup({I64, I32})));
-  EXPECT_FALSE(CanCastExplicitly(Tup({I32, I64}), Tup({Bool, I32})));
-  EXPECT_FALSE(CanCastExplicitly(Tup({I32, I64}), Tup({I32, I32, I32})));
-  EXPECT_TRUE(CanCastExplicitly(Tup({I32, BufPtr(I32), NullPtr}),
-                                Tup({I64, Ptr(I32), BufPtr(Bool)})));
 }
 
 TEST(CanCastInPlace, Function) {

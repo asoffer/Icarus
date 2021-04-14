@@ -60,7 +60,6 @@ CONCRETE_TYPES = [
     ":primitive",
     ":slice",
     ":struct",
-    ":tuple",
     ":type",
 ]
 
@@ -93,7 +92,6 @@ cc_test(
         ":function",
         ":pointer",
         ":primitive",
-        ":tuple",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -349,19 +347,6 @@ cc_library(
         "//ir/value:hashtag",
         "//module:module",
         "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_library(
-    name = "tuple",
-    hdrs = ["tuple.h"],
-    srcs = ["tuple.cc"],
-    deps = [
-        ":type",
-        "//base:lazy",
-        "//base:global",
-        "//core:arch",
-        "//ir/value:native_fn",
     ],
 )
 

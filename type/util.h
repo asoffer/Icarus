@@ -21,7 +21,6 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/struct.h"
-#include "type/tuple.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 

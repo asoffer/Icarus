@@ -73,15 +73,6 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
 
     return builder().PtrIncr(data, index, type::BufPtr(s->data_type()));
-  } else if (auto *tup = lhs_type.if_as<type::Tuple>()) {
-    auto maybe_val = EvaluateOrDiagnose(
-        type::Typed<ast::Expression const *>(node->rhs(), rhs_type));
-    if (maybe_val.empty()) { NOT_YET(); }
-    auto index =
-        builder()
-            .CastTo<int64_t>(type::Typed<ir::Value>(maybe_val, rhs_type))
-            .value();
-    return builder().FieldRef(EmitRef(node->lhs()), tup, index).get();
   }
   UNREACHABLE(*this, lhs_type.to_string());
 }

@@ -122,12 +122,6 @@ struct InitInstruction
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
 
-    } else if (auto* tup = type.if_as<type::Tuple>()) {
-      ir::Fn f   = tup->init_func_.get();
-      interpreter::StackFrame frame(f.native(), ctx.stack());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
-      return frame;
-
     } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f   = a->Initializer();
       interpreter::StackFrame frame(f.native(), ctx.stack());
@@ -419,23 +413,6 @@ struct StructIndexInstruction
   RegOr<Addr> addr;
   RegOr<int64_t> index;
   ::type::Struct const* struct_type;
-  Reg result;
-};
-
-struct TupleIndexInstruction
-    : base::Extend<TupleIndexInstruction>::With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat =
-      "%4$s = index %2$s of %1$s (tuple %3$s)";
-
-  Addr Resolve() const {
-    return addr.value() +
-           tuple->offset(index.value(), interpreter::kArchitecture);
-  }
-
-  RegOr<Addr> addr;
-  RegOr<int64_t> index;
-  ::type::Tuple const* tuple;
   Reg result;
 };
 

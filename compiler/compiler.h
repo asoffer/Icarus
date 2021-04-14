@@ -42,7 +42,6 @@
 #include "type/qual_type.h"
 #include "type/slice.h"
 #include "type/struct.h"
-#include "type/tuple.h"
 #include "type/type.h"
 #include "type/visitor.h"
 
@@ -360,7 +359,6 @@ struct Compiler
   DEFINE_EMIT_ASSIGN(type::Primitive);
   DEFINE_EMIT_ASSIGN(type::Slice);
   DEFINE_EMIT_ASSIGN(type::Struct);
-  DEFINE_EMIT_ASSIGN(type::Tuple);
 
 #undef DEFINE_EMIT_ASSIGN
 
@@ -376,7 +374,6 @@ struct Compiler
   DEFINE_EMIT_DEFAULT_INIT(type::BufferPointer);
   DEFINE_EMIT_DEFAULT_INIT(type::Primitive);
   DEFINE_EMIT_DEFAULT_INIT(type::Struct);
-  DEFINE_EMIT_DEFAULT_INIT(type::Tuple);
 
 #undef DEFINE_EMIT_DEFAULT_INIT
 
@@ -404,7 +401,6 @@ struct Compiler
   DEFINE_EMIT_INIT(type::Primitive);
   DEFINE_EMIT_INIT(type::Slice);
   DEFINE_EMIT_INIT(type::Struct);
-  DEFINE_EMIT_INIT(type::Tuple);
 
 #undef DEFINE_EMIT_INIT
 
@@ -422,7 +418,6 @@ struct Compiler
   DEFINE_EMIT_DESTROY(type::Primitive) {}
   DEFINE_EMIT_DESTROY(type::Slice) {}
   DEFINE_EMIT_DESTROY(type::Struct);
-  DEFINE_EMIT_DESTROY(type::Tuple);
 
 #undef DEFINE_EMIT_DESTROY
 

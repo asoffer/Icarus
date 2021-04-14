@@ -127,12 +127,7 @@ UninferrableType::Reason Inferrable(type::Type t) {
   if (t == type::EmptyArray) { return UninferrableType::Reason::kEmptyArray; }
   if (auto *a = t.if_as<type::Array>()) { return Inferrable(a->data_type()); }
   if (auto *p = t.if_as<type::Pointer>()) { return Inferrable(p->pointee()); }
-  if (auto *tup = t.if_as<type::Tuple>()) {
-    for (auto entry : tup->entries_) {
-      auto reason = Inferrable(entry);
-      if (reason != UninferrableType::Reason::kInferrable) { return reason; }
-    }
-  } else if (auto *f = t.if_as<type::Function>()) {
+  if (auto *f = t.if_as<type::Function>()) {
     for (auto const &param : f->params()) {
       auto reason = Inferrable(param.value.type());
       if (reason != UninferrableType::Reason::kInferrable) { return reason; }

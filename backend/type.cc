@@ -93,7 +93,6 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
   llvm::Type *get(type::Jump const *t) { NOT_YET(); }
   llvm::Type *get(type::Opaque const *t) { NOT_YET(); }
   llvm::Type *get(type::Struct const *t) { NOT_YET(); }
-  llvm::Type *get(type::Tuple const *t) { NOT_YET(); }
 
  private:
   llvm::LLVMContext &context_;

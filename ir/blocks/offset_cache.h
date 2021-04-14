@@ -22,8 +22,8 @@ struct OffsetCache {
     // Assumes we are pointing into a buffer and will cache index results passed
     // this element in the buffer.
     Passed,
-    // Assumes we are pointing at a struct/tuple and will cache index results
-    // into that struct/tuple.
+    // Assumes we are pointing at a struct and will cache index results into
+    // that struct.
     Into,
   };
   // Creates an entry in the cache if one did not already exist, and returns a

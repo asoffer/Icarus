@@ -12,7 +12,6 @@
 #include "type/primitive.h"
 #include "type/slice.h"
 #include "type/struct.h"
-#include "type/tuple.h"
 
 namespace type {
 namespace {
@@ -108,31 +107,9 @@ bool CanCast(Type from, Type to) {
       return true;
     }
 
-    if (from.is<Tuple>() and to == Type_) {
-      // TODO remove this hack for expressing the type of tuples
-      auto const &entries = from.as<Tuple>().entries_;
-      return std::all_of(entries.begin(), entries.end(),
-                         [](Type t) { return t == Type_; });
-    }
-
     // TODO other integer types. This set of rules is weird and obviously wrong.
     if (from == I32 and (to.is<Enum>() or to.is<Flags>())) { return true; }
     if ((from.is<Enum>() or from.is<Flags>()) and to == U64) { return true; }
-
-    if (auto const *from_tup = from.if_as<Tuple>()) {
-      if (auto const *to_tup = to.if_as<Tuple>()) {
-        if (from_tup->size() != to_tup->size()) { return false; }
-        for (size_t i = 0; i < from_tup->size(); ++i) {
-          if (not CanCast<IncludeExplicit>(from_tup->entries_[i],
-                                           to_tup->entries_[i])) {
-            return false;
-          }
-        }
-        return true;
-      } else {
-        return false;
-      }
-    }
 
     if (auto const *from_fn = from.if_as<Function>()) {
       if (auto const *to_fn = to.if_as<Function>()) {

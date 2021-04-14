@@ -413,13 +413,12 @@ struct Builder {
   void Move(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from);
   void Copy(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from);
 
-  // Data structure access commands. For structs and tuples, `Fields` takes an
+  // Data structure access commands. For structs, `Fields` takes an
   // address of the data structure and returns the address of the particular
   // field requested. For variants, `VariantType` computes the location where
   // the type is stored and `VariantValue` accesses the location where the
   // value is stored.
   type::Typed<Reg> FieldRef(RegOr<Addr> r, type::Struct const* t, int64_t n);
-  type::Typed<Reg> FieldRef(RegOr<Addr> r, type::Tuple const* t, int64_t n);
 
   type::Typed<Value> FieldValue(RegOr<Addr> r, type::Struct const* t,
                                 int64_t n) {
@@ -427,13 +426,6 @@ struct Builder {
     return type::Typed<Value>(Value(PtrFix(*typed_reg, typed_reg.type())),
                               typed_reg.type());
   }
-  type::Typed<Value> FieldValue(RegOr<Addr> r, type::Tuple const* t,
-                                int64_t n) {
-    auto typed_reg = FieldRef(r, t, n);
-    return type::Typed<Value>(Value(PtrFix(*typed_reg, typed_reg.type())),
-                              typed_reg.type());
-  }
-
   Reg PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Pointer const* t);
 
   // Low-level size/alignment commands

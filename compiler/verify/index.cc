@@ -25,37 +25,6 @@ struct InvalidIndexType {
   type::Type index_type;
 };
 
-struct NonConstantTupleIndex {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-constant-tuple-index";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Index into a tuple must be a compile-time constant."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
-struct IndexingTupleOutOfBounds {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "indexing-tuple-out-of-bounds";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text(
-            "Tuple is indexed out of bounds. Tuple of type `%s` has size %u "
-            "but you are attempting to access position %d.",
-            type::Type(tuple), tuple->entries_.size(), index),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  frontend::SourceRange range;
-  type::Tuple const *tuple;
-  uint64_t index;
-};
-
 struct IndexingArrayOutOfBounds {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "indexing-array-out-of-bounds";
@@ -201,39 +170,6 @@ type::QualType VerifyBufferPointerIndex(Compiler &c, ast::Index const *node,
   return c.context().set_qual_type(node, qt)[0];
 }
 
-type::QualType VerifyTupleIndex(Compiler &c, ast::Index const *node,
-                                type::Tuple const *tuple_type,
-                                type::Quals quals, type::QualType index_qt) {
-  if (not index_qt.constant()) {
-    c.diag().Consume(NonConstantTupleIndex{
-        .range = node->range(),
-    });
-    return type::QualType::Error();
-  }
-
-  if (not ValidIndexType(c, node, tuple_type, index_qt)) {
-    return type::QualType::Error();
-  }
-
-  ir::Value maybe_value = c.EvaluateOrDiagnose(
-      type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
-  if (maybe_value.empty()) { return type::QualType::Error(); }
-
-  std::optional<uint64_t> maybe_index = IntegralToUint64(maybe_value);
-  if (not maybe_index.has_value() or *maybe_index >= tuple_type->size()) {
-    c.diag().Consume(IndexingTupleOutOfBounds{
-        .range = node->range(),
-        .tuple = tuple_type,
-        .index = *maybe_index,
-    });
-    return type::QualType::Error();
-  }
-
-  quals = (quals & index_qt.quals()) | type::Quals::Ref();
-  type::QualType qt(tuple_type->entries_[*maybe_index], quals);
-  return c.context().set_qual_type(node, qt)[0];
-}
-
 }  // namespace
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::Index const *node) {
@@ -253,8 +189,6 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Index const *node) {
                  lhs_qt.type().if_as<type::BufferPointer>()) {
     qt = VerifyBufferPointerIndex(*this, node, buf_ptr_type, lhs_qt.quals(),
                                   index_qt);
-  } else if (auto const *tuple_type = lhs_qt.type().if_as<type::Tuple>()) {
-    qt = VerifyTupleIndex(*this, node, tuple_type, lhs_qt.quals(), index_qt);
   } else {
     diag().Consume(InvalidIndexing{
         .range = node->range(),

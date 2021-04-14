@@ -1877,7 +1877,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
       }
 
       constexpr uint64_t OP = hashtag | op_r | op_l | op_b | dot | colon | eq |
-                              colon_eq | dot | comma | op_bl | op_lt |
+                              tick | colon_eq | dot | comma | op_bl | op_lt |
                               fn_arrow | yield | sop_l | sop_lt | rocket;
       if (get_type<2>() & OP) {
         auto left_prec = precedence(get<2>()->as<Token>().op);
