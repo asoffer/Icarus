@@ -528,12 +528,6 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
         SourceRange(nodes[0]->range().begin(), nodes[1]->range().end());
     return std::make_unique<ast::Import>(range,
                                          move_as<ast::Expression>(nodes[1]));
-  } else if (tk == "'") {
-    SourceRange range(nodes.front()->range().begin(),
-                      nodes.back()->range().end());
-    return std::make_unique<ast::Call>(range,
-                                       move_as<ast::Expression>(nodes[1]),
-                                       std::vector<ast::Call::Argument>{}, 0);
 
   } else if (tk == "$") {
     SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
@@ -759,10 +753,11 @@ std::unique_ptr<ast::Node> BuildArrayType(
   }
 }
 
-template <bool IsConst>
 std::unique_ptr<ast::Node> BuildDeclaration(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
+  std::string_view token = nodes[1]->as<Token>().token;
+  bool is_const = (token == "::" or token == "::=");
   auto op = nodes[1]->as<Token>().op;
   SourceRange decl_range(nodes.front()->range().begin(),
                          nodes.back()->range().end());
@@ -804,7 +799,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   return std::make_unique<ast::Declaration>(
       decl_range, std::move(ids), std::move(type_expr), std::move(init_val),
       (initial_value_is_hole ? ast::Declaration::f_InitIsHole : 0) |
-          (IsConst ? ast::Declaration::f_IsConst : 0));
+          (is_const ? ast::Declaration::f_IsConst : 0));
 }
 
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
@@ -907,11 +902,11 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
       nullptr, std::move(stmts), diag);
 }
 
-// TODO: this loses syntactic information that a formatter cares about.
 std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
-    std::unique_ptr<ast::Expression> args,
-    std::unique_ptr<ast::Expression> body,
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
+  auto args = move_as<ast::Expression>(nodes[0]);
+  auto body = move_as<ast::Expression>(nodes[2]);
   auto range  = SourceRange(args->range().begin(), body->range().end());
   auto inputs = ExtractIfCommaList<ast::Declaration>(std::move(args), true);
 
@@ -1097,6 +1092,56 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
   return std::move(nodes[0]);
 }
 
+std::unique_ptr<ast::Node> BuildDeclarationInitialization(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
+
+  auto decl = move_as<ast::Declaration>(nodes[0]);
+  if (not decl->type_expr()) {
+    // NOTE: It might be that this was supposed to be a bool ==? How can we
+    // give a good error message if that's what is intended?
+    diag.Consume(TodoDiagnostic{});
+    return move_as<ast::Declaration>(nodes[0]);
+  }
+
+  decl->set_initial_value(move_as<ast::Expression>(nodes[2]));
+  return decl;
+}
+
+std::unique_ptr<ast::Node> BuildAssignment(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
+  auto lhs = ExtractIfCommaList<ast::Expression>(std::move(nodes[0]), true);
+  auto rhs = ExtractIfCommaList<ast::Expression>(std::move(nodes[2]), true);
+  return std::make_unique<ast::Assignment>(range, std::move(lhs),
+                                           std::move(rhs));
+}
+
+std::unique_ptr<ast::Node> BuildTickCall(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
+  std::unique_ptr<ast::Expression> callee =
+      move_as<ast::Expression>(nodes.back());
+
+  if (callee->is<ast::Declaration>()) {
+    diag.Consume(CallingDeclaration{.range = callee->range()});
+  }
+
+  std::vector<ast::Call::Argument> args;
+
+  if (nodes.size() != 2) {
+    MergeIntoArgs(args, std::move(nodes[0]), diag);
+  }
+  size_t num_args = args.size();
+
+  return std::make_unique<ast::Call>(range, std::move(callee), std::move(args),
+                                     num_args);
+}
+
 std::unique_ptr<ast::Node> BuildBinaryOperator(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1114,68 +1159,11 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
                : BuildChainOp(std::move(nodes), diag);
   }
 
-  if (tk == ".") {
-    return BuildAccess(std::move(nodes), diag);
-
-  } else if (tk == ":" or tk == ":=") {
-    return BuildDeclaration<false>(std::move(nodes), diag);
-
-  } else if (tk == "::" or tk == "::=") {
-    return BuildDeclaration<true>(std::move(nodes), diag);
-
-  } else if (tk == "=>") {
-    return BuildShortFunctionLiteral(move_as<ast::Expression>(nodes[0]),
-                                     move_as<ast::Expression>(nodes[2]), diag);
-  } else if (tk == "=") {
-    SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
-
-    if (auto *d = nodes[0]->if_as<ast::Declaration>()) {
-      if (not d->type_expr()) {
-        // NOTE: It might be that this was supposed to be a bool ==? How can we
-        // give a good error message if that's what is intended?
-        diag.Consume(TodoDiagnostic{});
-        return move_as<ast::Declaration>(nodes[0]);
-      }
-
-      auto decl = move_as<ast::Declaration>(nodes[0]);
-      decl->set_initial_value(move_as<ast::Expression>(nodes[2]));
-      return decl;
-
-    } else {
-      auto lhs = ExtractIfCommaList<ast::Expression>(std::move(nodes[0]), true);
-      auto rhs = ExtractIfCommaList<ast::Expression>(std::move(nodes[2]), true);
-      return std::make_unique<ast::Assignment>(range, std::move(lhs),
-                                               std::move(rhs));
-    }
-  } else if (tk == "as") {
+  if (tk == "as") {
     SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
     return std::make_unique<ast::Cast>(range,
                                        move_as<ast::Expression>(nodes[0]),
                                        move_as<ast::Expression>(nodes[2]));
-  } else if (tk == "'") {
-    SourceRange range(nodes.front()->range().begin(),
-                      nodes.back()->range().end());
-    std::vector<ast::Call::Argument> args;
-    MergeIntoArgs(args, std::move(nodes[0]), diag);
-
-    auto callee = move_as<ast::Expression>(nodes[2]);
-
-    if (callee->is<ast::Declaration>()) {
-      diag.Consume(CallingDeclaration{.range = callee->range()});
-    }
-
-    size_t num_args = args.size();
-    return std::make_unique<ast::Call>(range, std::move(callee),
-                                       std::move(args), num_args);
-
-  } else if (tk == "->") {
-    SourceRange range(nodes.front()->range().begin(),
-                      nodes.back()->range().end());
-    auto params =
-        ExtractIfCommaList<ast::Expression>(std::move(nodes[0]), true);
-    auto outs = ExtractIfCommaList<ast::Expression>(std::move(nodes[2]), true);
-    return std::make_unique<ast::FunctionType>(range, std::move(params),
-                                               std::move(outs));
   }
 
   static base::Global kSymbols =
@@ -1193,6 +1181,17 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   return std::make_unique<ast::BinaryOperator>(
       move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
       move_as<ast::Expression>(nodes[2]));
+}
+
+std::unique_ptr<ast::Node> BuildFunctionExpression(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
+  auto params = ExtractIfCommaList<ast::Expression>(std::move(nodes[0]), true);
+  auto outs   = ExtractIfCommaList<ast::Expression>(std::move(nodes[2]), true);
+  return std::make_unique<ast::FunctionType>(range, std::move(params),
+                                             std::move(outs));
 }
 
 std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
@@ -1228,802 +1227,814 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
 
   return std::make_unique<ast::EnumLiteral>(range, std::move(enumerators),
                                             std::move(values), kind);
-}
-
-std::unique_ptr<ast::Node> BuildScopeLiteral(
-    std::unique_ptr<ast::Expression> state_type,
-    std::unique_ptr<Statements> stmts, SourceRange const &range,
-    diagnostic::DiagnosticConsumer &diag) {
-  std::vector<ast::Declaration> decls;
-  for (auto &stmt : stmts->content_) {
-    if (auto *decl = stmt->if_as<ast::Declaration>()) {
-      decls.push_back(std::move(*decl));
-    } else {
-      diag.Consume(TodoDiagnostic{});
-    }
   }
-  return std::make_unique<ast::ScopeLiteral>(range, std::move(state_type),
-                                             std::move(decls));
-}
 
-std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
-                                      diagnostic::DiagnosticConsumer &diag) {
-  auto range = stmts->range();  // TODO: it's really bigger than this because it
-                                // involves the keyword too.
-
-  std::vector<std::unique_ptr<ast::Declaration>> before, after;
-  for (auto &stmt : stmts->content_) {
-    if (auto *decl = stmt->if_as<ast::Declaration>()) {
-      if (decl->ids()[0].name() ==
-          "before") {  // TODO: Support multiple declarations.
-        before.push_back(move_as<ast::Declaration>(stmt));
-      } else if (decl->ids()[0].name() ==
-                 "after") {  // TODO: Support multiple declarations.
-        after.push_back(move_as<ast::Declaration>(stmt));
+  std::unique_ptr<ast::Node> BuildScopeLiteral(
+      std::unique_ptr<ast::Expression> state_type,
+      std::unique_ptr<Statements> stmts, SourceRange const &range,
+      diagnostic::DiagnosticConsumer &diag) {
+    std::vector<ast::Declaration> decls;
+    for (auto &stmt : stmts->content_) {
+      if (auto *decl = stmt->if_as<ast::Declaration>()) {
+        decls.push_back(std::move(*decl));
       } else {
         diag.Consume(TodoDiagnostic{});
       }
-    } else {
-      diag.Consume(TodoDiagnostic{});
     }
-  }
-  return std::make_unique<ast::BlockLiteral>(range, std::move(before),
-                                             std::move(after));
-}
-
-std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
-    std::vector<std::unique_ptr<ast::Node>> &&stmts, SourceRange range,
-    diagnostic::DiagnosticConsumer &diag) {
-  std::vector<ast::Declaration> fields;
-  fields.reserve(stmts.size());
-  for (auto &stmt : stmts) {
-    if (auto *decl = stmt->if_as<ast::Declaration>()) {
-      fields.push_back(std::move(*decl));
-    } else {
-      diag.Consume(NonDeclarationInStruct{.range = stmt->range()});
-    }
+    return std::make_unique<ast::ScopeLiteral>(range, std::move(state_type),
+                                               std::move(decls));
   }
 
-  return std::make_unique<ast::StructLiteral>(range, std::move(fields));
-}
+  std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
+                                        diagnostic::DiagnosticConsumer & diag) {
+    auto range = stmts->range();  // TODO: it's really bigger than this because
+                                  // it involves the keyword too.
 
-std::unique_ptr<ast::InterfaceLiteral> BuildInterfaceLiteral(
-    Statements &&stmts, SourceRange range,
-    diagnostic::DiagnosticConsumer &diag) {
-  std::vector<std::unique_ptr<ast::Node>> node_stmts =
-      std::move(stmts).extract();
-
-  std::vector<std::pair<std::unique_ptr<ast::Expression>,
-                        std::unique_ptr<ast::Expression>>>
-      exprs;
-  for (auto &stmt : node_stmts) {
-    if (auto *decl = stmt->if_as<ast::Declaration>()) {
-      auto [names, type_expr, init_expr] = std::move(*decl).extract();
-      ASSERT(names.size() == 1u);
-      ASSERT(init_expr == nullptr);
-      exprs.emplace_back(std::make_unique<ast::Declaration::Id>(names[0]),
-                         std::move(type_expr));
-    } else {
-      diag.Consume(NonDeclarationInInterface{.range = stmt->range()});
-    }
-  }
-
-  return std::make_unique<ast::InterfaceLiteral>(range, std::move(exprs));
-}
-
-std::unique_ptr<ast::Node> BuildStatefulJump(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto const &tk = nodes[0]->as<Token>().token;
-  if (tk != "jump") {
-    diag.Consume(TodoDiagnostic{});
-    return nullptr;
-  }
-
-  SourceRange range(nodes.front()->range().begin(),
-                    nodes.back()->range().end());
-  std::vector<std::unique_ptr<ast::Declaration>> params;
-  if (nodes.size() == 6) {
-    if (nodes[4]->is<CommaList>()) {
-      for (auto &expr : nodes[4]->as<CommaList>().nodes_) {
-        ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO: handle failure
-        auto decl = move_as<ast::Declaration>(expr);
-        decl->flags() |= ast::Declaration::f_IsFnParam;
-        params.push_back(std::move(decl));
+    std::vector<std::unique_ptr<ast::Declaration>> before, after;
+    for (auto &stmt : stmts->content_) {
+      if (auto *decl = stmt->if_as<ast::Declaration>()) {
+        if (decl->ids()[0].name() ==
+            "before") {  // TODO: Support multiple declarations.
+          before.push_back(move_as<ast::Declaration>(stmt));
+        } else if (decl->ids()[0].name() ==
+                   "after") {  // TODO: Support multiple declarations.
+          after.push_back(move_as<ast::Declaration>(stmt));
+        } else {
+          diag.Consume(TodoDiagnostic{});
+        }
+      } else {
+        diag.Consume(TodoDiagnostic{});
       }
-    } else {
-      auto decl = move_as<ast::Declaration>(nodes[4]);
-      decl->flags() |= ast::Declaration::f_IsFnParam;
-      params.push_back(std::move(decl));
     }
+    return std::make_unique<ast::BlockLiteral>(range, std::move(before),
+                                               std::move(after));
   }
 
-  std::vector<std::unique_ptr<ast::Expression>> state_exprs =
-      ExtractIfCommaList<ast::Expression>(std::move(nodes[2]));
-
-  if (not state_exprs[0]->is<ast::Declaration>()) {
-    diag.Consume(TodoDiagnostic{});
-    return nullptr;
-  }
-
-  return std::make_unique<ast::Jump>(
-      range, move_as<ast::Declaration>(state_exprs[0]), std::move(params),
-      std::move(nodes.back()->as<Statements>()).extract());
-}
-
-std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  // TODO: should probably not do this with a token but some sort of enumerator
-  // so we can ensure coverage/safety.
-  ASSERT(nodes[0], InheritsFrom<Token>());
-  auto const &tk = nodes[0]->as<Token>().token;
-  if (tk == "jump") {
-    SourceRange range(nodes.front()->range().begin(),
-                      nodes.back()->range().end());
-
-    auto stmts = ExtractStatements(std::move(nodes.back()));
-
-    std::vector<std::unique_ptr<ast::Declaration>> params =
-        ExtractIfCommaList<ast::Declaration>(std::move(nodes[1]), true);
-    for (auto &p : params) { p->flags() |= ast::Declaration::f_IsFnParam; }
-
-    return std::make_unique<ast::Jump>(range, nullptr, std::move(params),
-                                       std::move(stmts));
-
-  } else if (tk == "scope") {
-    SourceRange range(nodes.front()->range().begin(),
-                      nodes.back()->range().end());
-    return BuildScopeLiteral(move_as<ast::Expression>(nodes[1]),
-                             move_as<Statements>(nodes.back()), range, diag);
-
-  } else if (tk == "struct") {
-    SourceRange range(nodes.front()->range().begin(),
-                      nodes.back()->range().end());
-
-    auto stmts = ExtractStatements(std::move(nodes.back()));
-
+  std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
+      std::vector<std::unique_ptr<ast::Node>> && stmts, SourceRange range,
+      diagnostic::DiagnosticConsumer & diag) {
     std::vector<ast::Declaration> fields;
+    fields.reserve(stmts.size());
     for (auto &stmt : stmts) {
       if (auto *decl = stmt->if_as<ast::Declaration>()) {
         fields.push_back(std::move(*decl));
       } else {
-        diag.Consume(TodoDiagnostic{});
-      }
-    }
-    auto inputs =
-        ExtractIfCommaList<ast::Declaration>(std::move(nodes[1]), true);
-    std::vector<std::unique_ptr<ast::Declaration>> params;
-    for (auto &expr : inputs) {
-      if (expr->is<ast::Declaration>()) {
-        params.push_back(move_as<ast::Declaration>(expr));
-      } else {
-        diag.Consume(TodoDiagnostic{});
+        diag.Consume(NonDeclarationInStruct{.range = stmt->range()});
       }
     }
 
-    return std::make_unique<ast::ParameterizedStructLiteral>(
-        range, std::move(params), std::move(fields));
-  } else {
-    UNREACHABLE();
+    return std::make_unique<ast::StructLiteral>(range, std::move(fields));
   }
-}
 
-std::unique_ptr<ast::Node> BuildKWBlock(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  if (nodes[0]->is<Token>()) {
-    std::string const &tk = nodes[0]->as<Token>().token;
+  std::unique_ptr<ast::InterfaceLiteral> BuildInterfaceLiteral(
+      Statements && stmts, SourceRange range,
+      diagnostic::DiagnosticConsumer & diag) {
+    std::vector<std::unique_ptr<ast::Node>> node_stmts =
+        std::move(stmts).extract();
 
-    if (bool is_enum = (tk == "enum"); is_enum or tk == "flags") {
-      return BuildEnumOrFlagLiteral(std::move(nodes),
-                                    is_enum ? ast::EnumLiteral::Kind::Enum
-                                            : ast::EnumLiteral::Kind::Flags,
-                                    diag);
+    std::vector<std::pair<std::unique_ptr<ast::Expression>,
+                          std::unique_ptr<ast::Expression>>>
+        exprs;
+    for (auto &stmt : node_stmts) {
+      if (auto *decl = stmt->if_as<ast::Declaration>()) {
+        auto [names, type_expr, init_expr] = std::move(*decl).extract();
+        ASSERT(names.size() == 1u);
+        ASSERT(init_expr == nullptr);
+        exprs.emplace_back(std::make_unique<ast::Declaration::Id>(names[0]),
+                           std::move(type_expr));
+      } else {
+        diag.Consume(NonDeclarationInInterface{.range = stmt->range()});
+      }
+    }
+
+    return std::make_unique<ast::InterfaceLiteral>(range, std::move(exprs));
+  }
+
+  std::unique_ptr<ast::Node> BuildStatefulJump(
+      absl::Span<std::unique_ptr<ast::Node>> nodes,
+      diagnostic::DiagnosticConsumer & diag) {
+    auto const &tk = nodes[0]->as<Token>().token;
+    if (tk != "jump") {
+      diag.Consume(TodoDiagnostic{});
+      return nullptr;
+    }
+
+    SourceRange range(nodes.front()->range().begin(),
+                      nodes.back()->range().end());
+    std::vector<std::unique_ptr<ast::Declaration>> params;
+    if (nodes.size() == 6) {
+      if (nodes[4]->is<CommaList>()) {
+        for (auto &expr : nodes[4]->as<CommaList>().nodes_) {
+          ASSERT(expr,
+                 InheritsFrom<ast::Declaration>());  // TODO: handle failure
+          auto decl = move_as<ast::Declaration>(expr);
+          decl->flags() |= ast::Declaration::f_IsFnParam;
+          params.push_back(std::move(decl));
+        }
+      } else {
+        auto decl = move_as<ast::Declaration>(nodes[4]);
+        decl->flags() |= ast::Declaration::f_IsFnParam;
+        params.push_back(std::move(decl));
+      }
+    }
+
+    std::vector<std::unique_ptr<ast::Expression>> state_exprs =
+        ExtractIfCommaList<ast::Expression>(std::move(nodes[2]));
+
+    if (not state_exprs[0]->is<ast::Declaration>()) {
+      diag.Consume(TodoDiagnostic{});
+      return nullptr;
+    }
+
+    return std::make_unique<ast::Jump>(
+        range, move_as<ast::Declaration>(state_exprs[0]), std::move(params),
+        std::move(nodes.back()->as<Statements>()).extract());
+  }
+
+  std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
+      absl::Span<std::unique_ptr<ast::Node>> nodes,
+      diagnostic::DiagnosticConsumer & diag) {
+    // TODO: should probably not do this with a token but some sort of
+    // enumerator so we can ensure coverage/safety.
+    ASSERT(nodes[0], InheritsFrom<Token>());
+    auto const &tk = nodes[0]->as<Token>().token;
+    if (tk == "jump") {
+      SourceRange range(nodes.front()->range().begin(),
+                        nodes.back()->range().end());
+
+      auto stmts = ExtractStatements(std::move(nodes.back()));
+
+      std::vector<std::unique_ptr<ast::Declaration>> params =
+          ExtractIfCommaList<ast::Declaration>(std::move(nodes[1]), true);
+      for (auto &p : params) { p->flags() |= ast::Declaration::f_IsFnParam; }
+
+      return std::make_unique<ast::Jump>(range, nullptr, std::move(params),
+                                         std::move(stmts));
+
+    } else if (tk == "scope") {
+      SourceRange range(nodes.front()->range().begin(),
+                        nodes.back()->range().end());
+      return BuildScopeLiteral(move_as<ast::Expression>(nodes[1]),
+                               move_as<Statements>(nodes.back()), range, diag);
 
     } else if (tk == "struct") {
       SourceRange range(nodes.front()->range().begin(),
                         nodes.back()->range().end());
 
-      std::vector<std::unique_ptr<ast::Node>> stmts;
-      if (nodes[1]->is<Statements>()) {
-        stmts = std::move(nodes[1]->as<Statements>()).extract();
-      } else {
-        stmts.push_back(std::move(nodes[1]));
-      }
-      return BuildStructLiteral(std::move(stmts), range, diag);
+      auto stmts = ExtractStatements(std::move(nodes.back()));
 
-    } else if (tk == "interface") {
-      return BuildInterfaceLiteral(std::move(nodes[1]->as<Statements>()),
-                                   SourceRange(nodes.front()->range().begin(),
-                                               nodes.back()->range().end()),
-                                   diag);
-
-    } else if (tk == "scope") {
-      SourceRange range(nodes.front()->range().begin(),
-                        nodes.back()->range().end());
-      return BuildScopeLiteral(nullptr, move_as<Statements>(nodes[1]), range,
-                               diag);
-
-    } else if (tk == "block") {
-      return BuildBlock(move_as<Statements>(nodes[1]), diag);
-    } else {
-      UNREACHABLE(tk);
-    }
-  } else {
-    UNREACHABLE(nodes[0].get());
-  }
-}
-
-std::unique_ptr<ast::Node> Parenthesize(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto result            = move_as<ast::Expression>(nodes[1]);
-  result->parenthesized_ = true;
-  return result;
-}
-
-template <size_t N>
-std::unique_ptr<ast::Node> KeepOnly(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &) {
-  return std::move(nodes[N]);
-}
-
-std::unique_ptr<ast::Node> CombineColonEq(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto *tk_node = &nodes[0]->as<Token>();
-  tk_node->token += "=";  // Change : to := and :: to ::=
-  tk_node->op = Operator::ColonEq;
-  return KeepOnly<0>(std::move(nodes), diag);
-}
-
-template <size_t ReturnIndex, size_t... ReservedIndices>
-std::unique_ptr<ast::Node> ReservedKeywords(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  (diag.Consume(
-       ReservedKeyword{.range   = nodes[ReservedIndices]->range(),
-                       .keyword = nodes[ReservedIndices]->as<Token>().token}),
-   ...);
-  return MakeInvalidNode(nodes[ReturnIndex]->range());
-}
-
-std::unique_ptr<ast::Node> BuildOperatorIdentifier(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto range = nodes[1]->range();
-  return std::make_unique<ast::Identifier>(range,
-                                           move_as<Token>(nodes[1])->token);
-}
-
-std::unique_ptr<ast::Node> LabelScopeNode(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto scope_node = move_as<ast::ScopeNode>(nodes[1]);
-  if (scope_node->label()) {
-    diag.Consume(
-        ScopeNodeAlreadyHasLabel{.label_range = scope_node->label()->range(),
-                                 .range       = scope_node->range()});
-  } else {
-    scope_node->range() =
-        SourceRange(nodes[0]->range().begin(), scope_node->range().end());
-    scope_node->set_label(std::move(nodes[0]->as<ast::Label>()));
-  }
-  return scope_node;
-}
-
-constexpr uint64_t OP_B         = op_b | dot | colon | eq | colon_eq | rocket;
-constexpr uint64_t FN_CALL_EXPR = paren_call_expr | full_call_expr;
-constexpr uint64_t EXPR         = expr | fn_expr | scope_expr | FN_CALL_EXPR |
-                          paren_expr | bracket_expr | empty_brackets;
-constexpr uint64_t STMTS = stmt | stmt_list;
-// Used in error productions only!
-constexpr uint64_t RESERVED = kw_struct | kw_block_head | op_lt;
-constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
-// Here are the definitions for all rules in the langugae. For a rule to be
-// applied, the node types on the top of the stack must match those given in the
-// list (second line of each rule). If so, then the function given in the third
-// line of each rule is applied, replacing the matched nodes. Lastly, the new
-// nodes type is set to the given type in the first line.
-
-using rule_t = Rule<6>;
-
-static base::Global kRules = std::array{
-    // Array types
-    rule_t{.match   = {l_bracket, EXPR | expr_list, semicolon, EXPR, r_bracket},
-           .output  = expr,
-           .execute = BuildArrayType},
-    rule_t{
-        .match  = {l_bracket, EXPR | expr_list, semicolon, RESERVED, r_bracket},
-        .output = expr,
-        .execute = ReservedKeywords<0, 3>},
-    rule_t{.match   = {l_bracket, RESERVED, semicolon, EXPR, r_bracket},
-           .output  = expr,
-           .execute = ReservedKeywords<0, 1>},
-    rule_t{.match   = {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
-           .output  = expr,
-           .execute = ReservedKeywords<0, 1, 3>},
-
-    // Declarations and assignments
-    rule_t{.match  = {EXPR, colon, EXPR},
-           .output = decl,
-           // TODO: We could split the declaration part off of this function.
-           .execute = BuildBinaryOperator},
-    rule_t{.match  = {EXPR, colon_eq, EXPR},
-           .output = decl,
-           // TODO: We could split the declaration part off of this function.
-           .execute = BuildBinaryOperator},
-    rule_t{.match = {colon, eq}, .output = colon_eq, .execute = CombineColonEq},
-    rule_t{.match  = {decl, eq, EXPR},
-           .output = decl,
-           // TODO: We could split the declaration part off of this function.
-           .execute = BuildBinaryOperator},
-    rule_t{.match  = {EXPR, eq, EXPR},
-           .output = assignment,
-           // TODO: We could split the declaration part off of this function.
-           .execute = BuildBinaryOperator},
-
-    // Bracket-indexing
-    rule_t{.match   = {EXPR, l_bracket, EXPR, r_bracket},
-           .output  = expr,
-           .execute = BuildIndexOperator},
-    rule_t{.match   = {EXPR, l_bracket, RESERVED, r_bracket},
-           .output  = expr,
-           .execute = ReservedKeywords<0, 2>},
-
-    // Slices
-    rule_t{
-        .match = {empty_brackets, EXPR}, .output = expr, .execute = BuildSlice},
-    rule_t{.match   = {empty_brackets, RESERVED},
-           .output  = expr,
-           .execute = ReservedKeywords<0, 1>},
-
-    // Array literals
-    rule_t{.match   = {l_bracket, r_bracket},
-           .output  = empty_brackets,
-           .execute = BuildEmptyArray},
-    rule_t{.match   = {l_bracket, EXPR | expr_list, r_bracket},
-           .output  = bracket_expr,
-           .execute = BuildArrayLiteral},
-    rule_t{.match   = {l_bracket, RESERVED, r_bracket},
-           .output  = bracket_expr,
-           .execute = ReservedKeywords<1, 1>},
-
-    // Statements
-    rule_t{.match   = {label, yield, EXPR},
-           .output  = stmt,
-           .execute = BuildLabeledYield},
-    rule_t{
-        .match = {label, yield}, .output = stmt, .execute = BuildLabeledYield},
-    rule_t{
-        .match = {yield, EXPR}, .output = stmt, .execute = BuildUnlabeledYield},
-
-    // Function expressions `a -> b`
-    rule_t{.match   = {EXPR | paren_decl_list | empty_parens, fn_arrow,
-                     EXPR | empty_parens},
-           .output  = fn_expr,
-           .execute = BuildBinaryOperator},
-    rule_t{.match   = {EXPR | paren_decl_list, fn_arrow, RESERVED},
-           .output  = fn_expr,
-           .execute = ReservedKeywords<0, 2>},
-    rule_t{.match   = {RESERVED, fn_arrow, EXPR},
-           .output  = fn_expr,
-           .execute = ReservedKeywords<0, 0>},
-    rule_t{.match   = {RESERVED, fn_arrow, RESERVED},
-           .output  = fn_expr,
-           .execute = ReservedKeywords<0, 0, 2>},
-
-    rule_t{.match   = {fn_expr, braced_stmts},
-           .output  = expr,
-           .execute = BuildNormalFunctionLiteral},
-    rule_t{.match   = {paren_decl_list | empty_parens, fn_arrow, braced_stmts},
-           .output  = expr,
-           .execute = BuildInferredFunctionLiteral},
-
-    // Structs, etc.
-    rule_t{.match   = {kw_struct, empty_parens | paren_expr | paren_decl_list,
-                     braced_stmts},
-           .output  = expr,
-           .execute = BuildParameterizedKeywordScope},
-    rule_t{.match   = {kw_struct, l_bracket, decl | decl_list, r_bracket,
-                     empty_parens | paren_expr | paren_decl_list, braced_stmts},
-           .output  = expr,
-           .execute = BuildStatefulJump},
-    rule_t{.match   = {KW_BLOCK, braced_stmts},
-           .output  = expr,
-           .execute = BuildKWBlock},
-
-    // Function call expressions
-    rule_t{.match   = {EXPR, op_bl, EXPR, paren_expr | empty_parens},
-           .output  = full_call_expr,
-           .execute = BuildFullCall},
-    rule_t{.match   = {RESERVED, op_bl, EXPR, paren_expr | empty_parens},
-           .output  = full_call_expr,
-           .execute = ReservedKeywords<1, 0>},
-    rule_t{.match   = {EXPR, op_bl, RESERVED, paren_expr | empty_parens},
-           .output  = full_call_expr,
-           .execute = ReservedKeywords<1, 2>},
-    rule_t{.match   = {RESERVED, op_bl, RESERVED, paren_expr | empty_parens},
-           .output  = full_call_expr,
-           .execute = ReservedKeywords<1, 0, 2>},
-    rule_t{.match = {EXPR, paren_expr | empty_parens | paren_decl_list},
-           // TODO: Remove the paren_decl_list and have that be it's own
-           // interface building node.
-           .output  = paren_call_expr,
-           .execute = BuildParenCall},
-    rule_t{.match   = {RESERVED, paren_expr | empty_parens},
-           .output  = paren_call_expr,
-           .execute = ReservedKeywords<0, 0>},
-
-    // Braced statements
-    rule_t{.match   = {l_brace, r_brace},
-           .output  = braced_stmts,
-           .execute = EmptyBraces},
-    rule_t{.match   = {l_brace, STMTS | EXPR | assignment | decl, r_brace},
-           .output  = braced_stmts,
-           .execute = KeepOnly<1>},
-    rule_t{.match   = {l_brace, STMTS, EXPR | assignment | decl, r_brace},
-           .output  = braced_stmts,
-           .execute = BuildMoreBracedStatements},
-    rule_t{.match   = {l_brace, RESERVED, r_brace},
-           .output  = braced_stmts,
-           .execute = ReservedKeywords<1, 1>},
-
-    // Block nodes
-    rule_t{.match   = {expr, braced_stmts},
-           .output  = block_expr,
-           .execute = BuildBlockNode},
-    rule_t{
-        .match   = {expr, l_bracket, decl | decl_list, r_bracket, braced_stmts},
-        .output  = block_expr,
-        .execute = BuildBlockNode},
-
-    // Scope nodes
-    rule_t{.match   = {FN_CALL_EXPR, block_expr},
-           .output  = scope_expr,
-           .execute = BuildScopeNode},
-    rule_t{.match   = {scope_expr, block_expr},
-           .output  = scope_expr,
-           .execute = ExtendScopeNode},
-    rule_t{.match   = {scope_expr, expr, scope_expr},
-           .output  = scope_expr,
-           .execute = SugaredExtendScopeNode},
-    rule_t{.match   = {label, scope_expr},
-           .output  = scope_expr,
-           .execute = LabelScopeNode},
-
-    // Operators
-    rule_t{.match   = {EXPR, op_bl | OP_B, EXPR},
-           .output  = expr,
-           .execute = BuildBinaryOperator},
-    rule_t{.match   = {EXPR, op_bl | OP_B, RESERVED},
-           .output  = expr,
-           .execute = ReservedKeywords<1, 2>},
-    rule_t{.match   = {RESERVED, op_bl | OP_B, EXPR},
-           .output  = expr,
-           .execute = ReservedKeywords<1, 0>},
-    rule_t{.match   = {RESERVED, op_bl | OP_B, RESERVED},
-           .output  = expr,
-           .execute = ReservedKeywords<1, 0, 2>},
-    rule_t{.match   = {paren_decl_list | empty_parens, rocket, EXPR},
-           .output  = expr,
-           .execute = BuildBinaryOperator},
-    rule_t{.match   = {paren_decl_list | empty_parens, rocket, RESERVED},
-           .output  = expr,
-           .execute = ReservedKeywords<1, 2>},
-    rule_t{.match   = {op_l | op_bl | op_lt, EXPR},
-           .output  = expr,
-           .execute = BuildLeftUnop},
-    rule_t{.match   = {op_l | op_bl | op_lt, RESERVED},
-           .output  = expr,
-           .execute = ReservedKeywords<0, 1>},
-    rule_t{.match = {EXPR, op_r}, .output = expr, .execute = BuildRightUnop},
-    rule_t{.match   = {RESERVED, op_r},
-           .output  = expr,
-           .execute = ReservedKeywords<1, 0>},
-    rule_t{.match   = {sop_lt | sop_l, EXPR | expr_list},
-           .output  = stmt,
-           .execute = BuildStatementLeftUnop},
-    rule_t{.match   = {sop_lt | sop_l, RESERVED},
-           .output  = stmt,
-           .execute = ReservedKeywords<0, 1>},
-    rule_t{.match   = {RESERVED, (OP_B | yield | op_bl), EXPR},
-           .output  = expr,
-           .execute = ReservedKeywords<1, 0>},
-
-    // Parentheses
-    rule_t{.match   = {l_paren, r_paren},
-           .output  = empty_parens,
-           .execute = BuildEmptyCommaList},
-    rule_t{.match   = {l_paren, assignment, r_paren},
-           .output  = paren_expr,
-           .execute = KeepOnly<1>},
-    rule_t{.match   = {l_paren, EXPR | expr_list | assignment_list, r_paren},
-           .output  = paren_expr,
-           .execute = Parenthesize},
-    rule_t{.match   = {l_paren, decl | decl_list, r_paren},
-           .output  = paren_decl_list,
-           .execute = Parenthesize},
-    rule_t{.match   = {l_paren, RESERVED, r_paren},
-           .output  = paren_expr,
-           .execute = ReservedKeywords<1, 1>},
-
-    // Statements
-    rule_t{.match   = {STMTS, stmt},
-           .output  = stmt_list,
-           .execute = BuildMoreStatements},
-    rule_t{.match   = {decl | EXPR, newline | eof},
-           .output  = stmt,
-           .execute = BuildOneStatement},
-
-    // Miscellaneous
-    rule_t{.match   = {EXPR | assignment | expr_list, comma, EXPR | assignment},
-           .output  = expr_list,
-           .execute = BuildCommaList},
-    rule_t{.match   = {EXPR | expr_list, comma, decl},
-           .output  = decl_list,
-           .execute = BuildCommaList},
-    rule_t{.match   = {decl | decl_list, comma, decl | EXPR},
-           .output  = decl_list,
-           .execute = BuildCommaList},
-    rule_t{.match   = {l_paren, op_l | op_b | eq | op_bl, r_paren},
-           .output  = expr,
-           .execute = BuildOperatorIdentifier},
-    rule_t{.match   = {EXPR, dot, braced_stmts},
-           .output  = expr,
-           .execute = BuildDesignatedInitializer},
-    rule_t{.match = {hashtag, EXPR}, .output = expr, .execute = AddHashtag},
-    rule_t{.match = {hashtag, decl}, .output = decl, .execute = AddHashtag},
-    rule_t{.match = {STMTS, eof}, .output = stmt_list, .execute = KeepOnly<0>},
-};
-
-static base::Global kMoreRules = std::array{
-    // Backups.
-    //
-    // Barring any other successful reductions, these rules should be applied.
-    // They need to be last, because they change the tag type, making it one
-    // step more general, but only match exactly one node.
-    //
-    // TODO: does this rule prevent chained scope blocks on new lines or is it
-    // preceeded by a shift rule that eats newlines after a right-brace?
-    rule_t{.match = {op_lt}, .output = stmt, .execute = BuildControlHandler},
-    rule_t{.match   = {EXPR | decl | assignment},
-           .output  = stmt,
-           .execute = BuildOneStatement},
-    rule_t{
-        .match = {RESERVED}, .output = expr, .execute = ReservedKeywords<0, 0>},
-
-};
-
-enum class ShiftState { NeedMore, MustReduce, ReduceHarder };
-struct ParseState {
-  // TODO: storing the `diag` reference twice is unnecessary.
-  explicit ParseState(std::vector<Lexeme> tokens,
-                      diagnostic::DiagnosticConsumer &diag)
-      : tokens_(std::move(tokens)), diag_(diag) {}
-
-  template <size_t N>
-  inline Tag get_type() const {
-    return tag_stack_[tag_stack_.size() - N];
-  }
-
-  template <size_t N>
-  inline ast::Node *get() const {
-    return node_stack_[node_stack_.size() - N].get();
-  }
-
-  ShiftState shift_state() {
-    // TODO: Rather than repeatedly checking for empty, which can only happen on
-    // the first iteration, just unroll that iteration.
-    if (node_stack_.empty()) { return ShiftState::NeedMore; }
-
-    const auto &ahead = Next();
-
-    switch (get_type<1>()) {
-      case empty_brackets:
-        return ahead.tag_ == newline ? ShiftState::MustReduce
-                                     : ShiftState::NeedMore;
-      case stmt:
-      case newline: return ShiftState::MustReduce;
-      default: break;
-    }
-
-    switch (ahead.tag_) {
-      case colon:
-        return get_type<1>() == r_paren ? ShiftState::MustReduce
-                                        : ShiftState::NeedMore;
-      case l_paren: {
-        if (get_type<1>() & (kw_struct | kw_block_head)) {
-          return ShiftState::NeedMore;
-        } else if ((get_type<1>() & EXPR) and
-                   get_type<2>() & (sop_l | sop_lt)) {
-          return ShiftState::NeedMore;
+      std::vector<ast::Declaration> fields;
+      for (auto &stmt : stmts) {
+        if (auto *decl = stmt->if_as<ast::Declaration>()) {
+          fields.push_back(std::move(*decl));
+        } else {
+          diag.Consume(TodoDiagnostic{});
         }
-      } break;
-      case l_brace:
-        if (get_type<1>() & fn_expr) { return ShiftState::NeedMore; }
-        if (get_type<1>() &
-            (kw_struct | empty_parens | paren_expr | kw_block_head)) {
-          if (get_type<2>() == fn_arrow) {
-            return ShiftState::MustReduce;
-          } else {
+      }
+      auto inputs =
+          ExtractIfCommaList<ast::Declaration>(std::move(nodes[1]), true);
+      std::vector<std::unique_ptr<ast::Declaration>> params;
+      for (auto &expr : inputs) {
+        if (expr->is<ast::Declaration>()) {
+          params.push_back(move_as<ast::Declaration>(expr));
+        } else {
+          diag.Consume(TodoDiagnostic{});
+        }
+      }
+
+      return std::make_unique<ast::ParameterizedStructLiteral>(
+          range, std::move(params), std::move(fields));
+    } else {
+      UNREACHABLE();
+    }
+  }
+
+  std::unique_ptr<ast::Node> BuildKWBlock(
+      absl::Span<std::unique_ptr<ast::Node>> nodes,
+      diagnostic::DiagnosticConsumer & diag) {
+    if (nodes[0]->is<Token>()) {
+      std::string const &tk = nodes[0]->as<Token>().token;
+
+      if (bool is_enum = (tk == "enum"); is_enum or tk == "flags") {
+        return BuildEnumOrFlagLiteral(std::move(nodes),
+                                      is_enum ? ast::EnumLiteral::Kind::Enum
+                                              : ast::EnumLiteral::Kind::Flags,
+                                      diag);
+
+      } else if (tk == "struct") {
+        SourceRange range(nodes.front()->range().begin(),
+                          nodes.back()->range().end());
+
+        std::vector<std::unique_ptr<ast::Node>> stmts;
+        if (nodes[1]->is<Statements>()) {
+          stmts = std::move(nodes[1]->as<Statements>()).extract();
+        } else {
+          stmts.push_back(std::move(nodes[1]));
+        }
+        return BuildStructLiteral(std::move(stmts), range, diag);
+
+      } else if (tk == "interface") {
+        return BuildInterfaceLiteral(std::move(nodes[1]->as<Statements>()),
+                                     SourceRange(nodes.front()->range().begin(),
+                                                 nodes.back()->range().end()),
+                                     diag);
+
+      } else if (tk == "scope") {
+        SourceRange range(nodes.front()->range().begin(),
+                          nodes.back()->range().end());
+        return BuildScopeLiteral(nullptr, move_as<Statements>(nodes[1]), range,
+                                 diag);
+
+      } else if (tk == "block") {
+        return BuildBlock(move_as<Statements>(nodes[1]), diag);
+      } else {
+        UNREACHABLE(tk);
+      }
+    } else {
+      UNREACHABLE(nodes[0].get());
+    }
+  }
+
+  std::unique_ptr<ast::Node> Parenthesize(
+      absl::Span<std::unique_ptr<ast::Node>> nodes,
+      diagnostic::DiagnosticConsumer & diag) {
+    auto result            = move_as<ast::Expression>(nodes[1]);
+    result->parenthesized_ = true;
+    return result;
+  }
+
+  template <size_t N>
+  std::unique_ptr<ast::Node> KeepOnly(
+      absl::Span<std::unique_ptr<ast::Node>> nodes,
+      diagnostic::DiagnosticConsumer &) {
+    return std::move(nodes[N]);
+  }
+
+  std::unique_ptr<ast::Node> CombineColonEq(
+      absl::Span<std::unique_ptr<ast::Node>> nodes,
+      diagnostic::DiagnosticConsumer & diag) {
+    auto *tk_node = &nodes[0]->as<Token>();
+    tk_node->token += "=";  // Change : to := and :: to ::=
+    tk_node->op = Operator::ColonEq;
+    return KeepOnly<0>(std::move(nodes), diag);
+  }
+
+  template <size_t ReturnIndex, size_t... ReservedIndices>
+  std::unique_ptr<ast::Node> ReservedKeywords(
+      absl::Span<std::unique_ptr<ast::Node>> nodes,
+      diagnostic::DiagnosticConsumer & diag) {
+    (diag.Consume(
+         ReservedKeyword{.range   = nodes[ReservedIndices]->range(),
+                         .keyword = nodes[ReservedIndices]->as<Token>().token}),
+     ...);
+    return MakeInvalidNode(nodes[ReturnIndex]->range());
+  }
+
+  std::unique_ptr<ast::Node> BuildOperatorIdentifier(
+      absl::Span<std::unique_ptr<ast::Node>> nodes,
+      diagnostic::DiagnosticConsumer & diag) {
+    auto range = nodes[1]->range();
+    return std::make_unique<ast::Identifier>(range,
+                                             move_as<Token>(nodes[1])->token);
+  }
+
+  std::unique_ptr<ast::Node> LabelScopeNode(
+      absl::Span<std::unique_ptr<ast::Node>> nodes,
+      diagnostic::DiagnosticConsumer & diag) {
+    auto scope_node = move_as<ast::ScopeNode>(nodes[1]);
+    if (scope_node->label()) {
+      diag.Consume(
+          ScopeNodeAlreadyHasLabel{.label_range = scope_node->label()->range(),
+                                   .range       = scope_node->range()});
+    } else {
+      scope_node->range() =
+          SourceRange(nodes[0]->range().begin(), scope_node->range().end());
+      scope_node->set_label(std::move(nodes[0]->as<ast::Label>()));
+    }
+    return scope_node;
+  }
+
+  constexpr uint64_t OP_B = op_b | tick | dot | colon | eq | colon_eq | rocket;
+  constexpr uint64_t FN_CALL_EXPR = paren_call_expr | full_call_expr;
+  constexpr uint64_t EXPR         = expr | fn_expr | scope_expr | FN_CALL_EXPR |
+                            paren_expr | bracket_expr | empty_brackets;
+  constexpr uint64_t STMTS = stmt | stmt_list;
+  // Used in error productions only!
+  constexpr uint64_t RESERVED = kw_struct | kw_block_head | op_lt;
+  constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
+  // Here are the definitions for all rules in the langugae. For a rule to be
+  // applied, the node types on the top of the stack must match those given in
+  // the list (second line of each rule). If so, then the function given in the
+  // third line of each rule is applied, replacing the matched nodes. Lastly,
+  // the new nodes type is set to the given type in the first line.
+
+  using rule_t = Rule<6>;
+
+  static base::Global kRules = std::array{
+      // Array types
+      rule_t{.match = {l_bracket, EXPR | expr_list, semicolon, EXPR, r_bracket},
+             .output  = expr,
+             .execute = BuildArrayType},
+      rule_t{.match   = {l_bracket, EXPR | expr_list, semicolon, RESERVED,
+                       r_bracket},
+             .output  = expr,
+             .execute = ReservedKeywords<0, 3>},
+      rule_t{.match   = {l_bracket, RESERVED, semicolon, EXPR, r_bracket},
+             .output  = expr,
+             .execute = ReservedKeywords<0, 1>},
+      rule_t{.match   = {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
+             .output  = expr,
+             .execute = ReservedKeywords<0, 1, 3>},
+
+      // Declarations and assignments
+      rule_t{.match   = {EXPR, colon, EXPR},
+             .output  = decl,
+             .execute = BuildDeclaration},
+      rule_t{.match   = {EXPR, colon_eq, EXPR},
+             .output  = decl,
+             .execute = BuildDeclaration},
+      rule_t{
+          .match = {colon, eq}, .output = colon_eq, .execute = CombineColonEq},
+      rule_t{.match  = {decl, eq, EXPR},
+             .output = decl,
+             // TODO: We could split the declaration part off of this function.
+             .execute = BuildDeclarationInitialization},
+      rule_t{.match  = {EXPR, eq, EXPR},
+             .output = assignment,
+             // TODO: We could split the declaration part off of this function.
+             .execute = BuildAssignment},
+
+      // Bracket-indexing
+      rule_t{.match   = {EXPR, l_bracket, EXPR, r_bracket},
+             .output  = expr,
+             .execute = BuildIndexOperator},
+      rule_t{.match   = {EXPR, l_bracket, RESERVED, r_bracket},
+             .output  = expr,
+             .execute = ReservedKeywords<0, 2>},
+
+      // Slices
+      rule_t{.match   = {empty_brackets, EXPR},
+             .output  = expr,
+             .execute = BuildSlice},
+      rule_t{.match   = {empty_brackets, RESERVED},
+             .output  = expr,
+             .execute = ReservedKeywords<0, 1>},
+
+      // Array literals
+      rule_t{.match   = {l_bracket, r_bracket},
+             .output  = empty_brackets,
+             .execute = BuildEmptyArray},
+      rule_t{.match   = {l_bracket, EXPR | expr_list, r_bracket},
+             .output  = bracket_expr,
+             .execute = BuildArrayLiteral},
+      rule_t{.match   = {l_bracket, RESERVED, r_bracket},
+             .output  = bracket_expr,
+             .execute = ReservedKeywords<1, 1>},
+
+      // Statements
+      rule_t{.match   = {label, yield, EXPR},
+             .output  = stmt,
+             .execute = BuildLabeledYield},
+      rule_t{.match   = {label, yield},
+             .output  = stmt,
+             .execute = BuildLabeledYield},
+      rule_t{.match   = {yield, EXPR},
+             .output  = stmt,
+             .execute = BuildUnlabeledYield},
+
+      // Function expressions `a -> b`
+      rule_t{.match   = {EXPR | paren_decl_list | empty_parens, fn_arrow,
+                       EXPR | empty_parens},
+             .output  = fn_expr,
+             .execute = BuildFunctionExpression},
+      rule_t{.match   = {EXPR | paren_decl_list, fn_arrow, RESERVED},
+             .output  = fn_expr,
+             .execute = ReservedKeywords<0, 2>},
+      rule_t{.match   = {RESERVED, fn_arrow, EXPR},
+             .output  = fn_expr,
+             .execute = ReservedKeywords<0, 0>},
+      rule_t{.match   = {RESERVED, fn_arrow, RESERVED},
+             .output  = fn_expr,
+             .execute = ReservedKeywords<0, 0, 2>},
+
+      rule_t{.match   = {fn_expr, braced_stmts},
+             .output  = expr,
+             .execute = BuildNormalFunctionLiteral},
+      rule_t{.match  = {paren_decl_list | empty_parens, fn_arrow, braced_stmts},
+             .output = expr,
+             .execute = BuildInferredFunctionLiteral},
+
+      // Structs, etc.
+      rule_t{.match   = {kw_struct, empty_parens | paren_expr | paren_decl_list,
+                       braced_stmts},
+             .output  = expr,
+             .execute = BuildParameterizedKeywordScope},
+      rule_t{
+          .match   = {kw_struct, l_bracket, decl | decl_list, r_bracket,
+                    empty_parens | paren_expr | paren_decl_list, braced_stmts},
+          .output  = expr,
+          .execute = BuildStatefulJump},
+      rule_t{.match   = {KW_BLOCK, braced_stmts},
+             .output  = expr,
+             .execute = BuildKWBlock},
+
+      // Function call expressions
+      rule_t{.match   = {EXPR, tick, EXPR, paren_expr | empty_parens},
+             .output  = full_call_expr,
+             .execute = BuildFullCall},
+      rule_t{.match   = {RESERVED, tick, EXPR, paren_expr | empty_parens},
+             .output  = full_call_expr,
+             .execute = ReservedKeywords<1, 0>},
+      rule_t{.match   = {EXPR, tick, RESERVED, paren_expr | empty_parens},
+             .output  = full_call_expr,
+             .execute = ReservedKeywords<1, 2>},
+      rule_t{.match   = {RESERVED, tick, RESERVED, paren_expr | empty_parens},
+             .output  = full_call_expr,
+             .execute = ReservedKeywords<1, 0, 2>},
+      rule_t{.match = {EXPR, paren_expr | empty_parens | paren_decl_list},
+             // TODO: Remove the paren_decl_list and have that be it's own
+             // interface building node.
+             .output  = paren_call_expr,
+             .execute = BuildParenCall},
+      rule_t{.match   = {RESERVED, paren_expr | empty_parens},
+             .output  = paren_call_expr,
+             .execute = ReservedKeywords<0, 0>},
+
+      // Braced statements
+      rule_t{.match   = {l_brace, r_brace},
+             .output  = braced_stmts,
+             .execute = EmptyBraces},
+      rule_t{.match   = {l_brace, STMTS | EXPR | assignment | decl, r_brace},
+             .output  = braced_stmts,
+             .execute = KeepOnly<1>},
+      rule_t{.match   = {l_brace, STMTS, EXPR | assignment | decl, r_brace},
+             .output  = braced_stmts,
+             .execute = BuildMoreBracedStatements},
+      rule_t{.match   = {l_brace, RESERVED, r_brace},
+             .output  = braced_stmts,
+             .execute = ReservedKeywords<1, 1>},
+
+      // Block nodes
+      rule_t{.match   = {expr, braced_stmts},
+             .output  = block_expr,
+             .execute = BuildBlockNode},
+      rule_t{
+          .match = {expr, l_bracket, decl | decl_list, r_bracket, braced_stmts},
+          .output  = block_expr,
+          .execute = BuildBlockNode},
+
+      // Scope nodes
+      rule_t{.match   = {FN_CALL_EXPR, block_expr},
+             .output  = scope_expr,
+             .execute = BuildScopeNode},
+      rule_t{.match   = {scope_expr, block_expr},
+             .output  = scope_expr,
+             .execute = ExtendScopeNode},
+      rule_t{.match   = {scope_expr, expr, scope_expr},
+             .output  = scope_expr,
+             .execute = SugaredExtendScopeNode},
+      rule_t{.match   = {label, scope_expr},
+             .output  = scope_expr,
+             .execute = LabelScopeNode},
+
+      // Operators
+      rule_t{.match   = {paren_decl_list | empty_parens | EXPR, rocket, EXPR},
+             .output  = expr,
+             .execute = BuildShortFunctionLiteral},
+      rule_t{
+          .match = {EXPR, dot, EXPR}, .output = expr, .execute = BuildAccess},
+      rule_t{.match   = {EXPR, tick, EXPR},
+             .output  = expr,
+             .execute = BuildTickCall},
+      rule_t{.match   = {EXPR, op_bl | OP_B, EXPR},
+             .output  = expr,
+             .execute = BuildBinaryOperator},
+      rule_t{.match   = {EXPR, op_bl | OP_B, RESERVED},
+             .output  = expr,
+             .execute = ReservedKeywords<1, 2>},
+      rule_t{.match   = {RESERVED, op_bl | OP_B, EXPR},
+             .output  = expr,
+             .execute = ReservedKeywords<1, 0>},
+      rule_t{.match   = {RESERVED, op_bl | OP_B, RESERVED},
+             .output  = expr,
+             .execute = ReservedKeywords<1, 0, 2>},
+      rule_t{.match   = {paren_decl_list | empty_parens, rocket, RESERVED},
+             .output  = expr,
+             .execute = ReservedKeywords<1, 2>},
+      rule_t{.match = {tick, EXPR}, .output = expr, .execute = BuildTickCall},
+      rule_t{.match   = {op_l | op_bl | op_lt, EXPR},
+             .output  = expr,
+             .execute = BuildLeftUnop},
+      rule_t{.match   = {tick | op_l | op_bl | op_lt, RESERVED},
+             .output  = expr,
+             .execute = ReservedKeywords<0, 1>},
+      rule_t{.match = {EXPR, op_r}, .output = expr, .execute = BuildRightUnop},
+      rule_t{.match   = {RESERVED, op_r},
+             .output  = expr,
+             .execute = ReservedKeywords<1, 0>},
+      rule_t{.match   = {sop_lt | sop_l, EXPR | expr_list},
+             .output  = stmt,
+             .execute = BuildStatementLeftUnop},
+      rule_t{.match   = {sop_lt | sop_l, RESERVED},
+             .output  = stmt,
+             .execute = ReservedKeywords<0, 1>},
+      rule_t{.match   = {RESERVED, (OP_B | yield | op_bl), EXPR},
+             .output  = expr,
+             .execute = ReservedKeywords<1, 0>},
+
+      // Parentheses
+      rule_t{.match   = {l_paren, r_paren},
+             .output  = empty_parens,
+             .execute = BuildEmptyCommaList},
+      rule_t{.match   = {l_paren, assignment, r_paren},
+             .output  = paren_expr,
+             .execute = KeepOnly<1>},
+      rule_t{.match   = {l_paren, EXPR | expr_list | assignment_list, r_paren},
+             .output  = paren_expr,
+             .execute = Parenthesize},
+      rule_t{.match   = {l_paren, decl | decl_list, r_paren},
+             .output  = paren_decl_list,
+             .execute = Parenthesize},
+      rule_t{.match   = {l_paren, RESERVED, r_paren},
+             .output  = paren_expr,
+             .execute = ReservedKeywords<1, 1>},
+
+      // Statements
+      rule_t{.match   = {STMTS, stmt},
+             .output  = stmt_list,
+             .execute = BuildMoreStatements},
+      rule_t{.match   = {decl | EXPR, newline | eof},
+             .output  = stmt,
+             .execute = BuildOneStatement},
+
+      // Miscellaneous
+      rule_t{.match = {EXPR | assignment | expr_list, comma, EXPR | assignment},
+             .output  = expr_list,
+             .execute = BuildCommaList},
+      rule_t{.match   = {EXPR | expr_list, comma, decl},
+             .output  = decl_list,
+             .execute = BuildCommaList},
+      rule_t{.match   = {decl | decl_list, comma, decl | EXPR},
+             .output  = decl_list,
+             .execute = BuildCommaList},
+      rule_t{.match   = {l_paren, op_l | op_b | eq | op_bl, r_paren},
+             .output  = expr,
+             .execute = BuildOperatorIdentifier},
+      rule_t{.match   = {EXPR, dot, braced_stmts},
+             .output  = expr,
+             .execute = BuildDesignatedInitializer},
+      rule_t{.match = {hashtag, EXPR}, .output = expr, .execute = AddHashtag},
+      rule_t{.match = {hashtag, decl}, .output = decl, .execute = AddHashtag},
+      rule_t{
+          .match = {STMTS, eof}, .output = stmt_list, .execute = KeepOnly<0>},
+  };
+
+  static base::Global kMoreRules = std::array{
+      // Backups.
+      //
+      // Barring any other successful reductions, these rules should be applied.
+      // They need to be last, because they change the tag type, making it one
+      // step more general, but only match exactly one node.
+      //
+      // TODO: does this rule prevent chained scope blocks on new lines or is it
+      // preceeded by a shift rule that eats newlines after a right-brace?
+      rule_t{.match = {op_lt}, .output = stmt, .execute = BuildControlHandler},
+      rule_t{.match   = {EXPR | decl | assignment},
+             .output  = stmt,
+             .execute = BuildOneStatement},
+      rule_t{.match   = {RESERVED},
+             .output  = expr,
+             .execute = ReservedKeywords<0, 0>},
+
+  };
+
+  enum class ShiftState { NeedMore, MustReduce, ReduceHarder };
+  struct ParseState {
+    // TODO: storing the `diag` reference twice is unnecessary.
+    explicit ParseState(std::vector<Lexeme> tokens,
+                        diagnostic::DiagnosticConsumer &diag)
+        : tokens_(std::move(tokens)), diag_(diag) {}
+
+    template <size_t N>
+    inline Tag get_type() const {
+      return tag_stack_[tag_stack_.size() - N];
+    }
+
+    template <size_t N>
+    inline ast::Node *get() const {
+      return node_stack_[node_stack_.size() - N].get();
+    }
+
+    ShiftState shift_state() {
+      // TODO: Rather than repeatedly checking for empty, which can only happen
+      // on the first iteration, just unroll that iteration.
+      if (node_stack_.empty()) { return ShiftState::NeedMore; }
+
+      const auto &ahead = Next();
+
+      switch (get_type<1>()) {
+        case empty_brackets:
+          return ahead.tag_ == newline ? ShiftState::MustReduce
+                                       : ShiftState::NeedMore;
+        case stmt:
+        case newline: return ShiftState::MustReduce;
+        default: break;
+      }
+
+      switch (ahead.tag_) {
+        case colon:
+          return get_type<1>() == r_paren ? ShiftState::MustReduce
+                                          : ShiftState::NeedMore;
+        case l_paren: {
+          if (get_type<1>() & (kw_struct | kw_block_head)) {
+            return ShiftState::NeedMore;
+          } else if ((get_type<1>() & EXPR) and
+                     get_type<2>() & (sop_l | sop_lt)) {
             return ShiftState::NeedMore;
           }
-        } else {
-          return ShiftState::MustReduce;
-        }
-      case r_brace: return ShiftState::MustReduce;
-      case newline: return ShiftState::ReduceHarder;
-      default: break;
-    }
+        } break;
+        case l_brace:
+          if (get_type<1>() & fn_expr) { return ShiftState::NeedMore; }
+          if (get_type<1>() &
+              (kw_struct | empty_parens | paren_expr | kw_block_head)) {
+            if (get_type<2>() == fn_arrow) {
+              return ShiftState::MustReduce;
+            } else {
+              return ShiftState::NeedMore;
+            }
+          } else {
+            return ShiftState::MustReduce;
+          }
+        case r_brace: return ShiftState::MustReduce;
+        case newline: return ShiftState::ReduceHarder;
+        default: break;
+      }
 
-    if (node_stack_.size() == 1) { return ShiftState::NeedMore; }
+      if (node_stack_.size() == 1) { return ShiftState::NeedMore; }
 
-    if (get_type<1>() & (op_lt | yield) and ahead.tag_ != newline) {
-      return ShiftState::NeedMore;
-    }
-
-    constexpr uint64_t OP = hashtag | op_r | op_l | op_b | dot | colon | eq |
-                            colon_eq | dot | comma | op_bl | op_lt | fn_arrow |
-                            yield | sop_l | sop_lt | rocket;
-    if (get_type<2>() & OP) {
-      auto left_prec = precedence(get<2>()->as<Token>().op);
-
-      if (left_prec == precedence(Operator::Call) and ahead.tag_ == l_paren) {
+      if (get_type<1>() & (op_lt | yield) and ahead.tag_ != newline) {
         return ShiftState::NeedMore;
       }
 
-      size_t right_prec;
-      if (ahead.tag_ & OP) {
-        right_prec = precedence(ahead.node_->as<Token>().op);
-      } else if (ahead.tag_ == l_bracket) {
-        right_prec = precedence(Operator::Index);
+      constexpr uint64_t OP = hashtag | op_r | op_l | op_b | dot | colon | eq |
+                              colon_eq | dot | comma | op_bl | op_lt |
+                              fn_arrow | yield | sop_l | sop_lt | rocket;
+      if (get_type<2>() & OP) {
+        auto left_prec = precedence(get<2>()->as<Token>().op);
 
-      } else if (ahead.tag_ == l_paren) {
-        // TODO: this might be a hack. To get the following example to
-        // parse correctly:
-        //
-        //    #tag
-        //    (+) ::= ...
-        //
-        // As it stands we're assuming there's some expression being called
-        // between the tag and the paren where the newline actually is. We
-        // can get around this here by just explicitly checking that case,
-        // but perhaps we should actually just lex "(+)" as it's own symbol
-        // with it's own tag type. That might be more robust.
-        if (get_type<1>() == newline) { return ShiftState::MustReduce; }
-        right_prec = precedence(Operator::Call);
+        if (left_prec == precedence(Operator::Call) and ahead.tag_ == l_paren) {
+          return ShiftState::NeedMore;
+        }
+
+        size_t right_prec;
+        if (ahead.tag_ & OP) {
+          right_prec = precedence(ahead.node_->as<Token>().op);
+        } else if (ahead.tag_ == l_bracket) {
+          right_prec = precedence(Operator::Index);
+
+        } else if (ahead.tag_ == l_paren) {
+          // TODO: this might be a hack. To get the following example to
+          // parse correctly:
+          //
+          //    #tag
+          //    (+) ::= ...
+          //
+          // As it stands we're assuming there's some expression being called
+          // between the tag and the paren where the newline actually is. We
+          // can get around this here by just explicitly checking that case,
+          // but perhaps we should actually just lex "(+)" as it's own symbol
+          // with it's own tag type. That might be more robust.
+          if (get_type<1>() == newline) { return ShiftState::MustReduce; }
+          right_prec = precedence(Operator::Call);
+        } else {
+          return ShiftState::MustReduce;
+        }
+        return (left_prec < right_prec) or
+                       (left_prec == right_prec and
+                        (left_prec & assoc_mask) == right_assoc)
+                   ? ShiftState::NeedMore
+                   : ShiftState::MustReduce;
       } else {
         return ShiftState::MustReduce;
       }
-      return (left_prec < right_prec) or
-                     (left_prec == right_prec and
-                      (left_prec & assoc_mask) == right_assoc)
-                 ? ShiftState::NeedMore
-                 : ShiftState::MustReduce;
-    } else {
-      return ShiftState::MustReduce;
     }
-  }
 
-  void LookAhead() {
-    if (token_index_ < tokens_.size()) {
-      lookahead_ = std::move(tokens_[token_index_++]);
-    } else {
-      lookahead_ = std::nullopt;
+    void LookAhead() {
+      if (token_index_ < tokens_.size()) {
+        lookahead_ = std::move(tokens_[token_index_++]);
+      } else {
+        lookahead_ = std::nullopt;
+      }
     }
-  }
 
-  const TaggedNode &Next() {
-    if (not lookahead_) { LookAhead(); }
-    return *lookahead_;
-  }
+    const TaggedNode &Next() {
+      if (not lookahead_) { LookAhead(); }
+      return *lookahead_;
+    }
 
-  std::vector<Tag> tag_stack_;
-  std::vector<std::unique_ptr<ast::Node>> node_stack_;
-  std::optional<TaggedNode> lookahead_;
-  std::vector<Lexeme> tokens_;
-  int token_index_ = 0;
+    std::vector<Tag> tag_stack_;
+    std::vector<std::unique_ptr<ast::Node>> node_stack_;
+    std::optional<TaggedNode> lookahead_;
+    std::vector<Lexeme> tokens_;
+    int token_index_ = 0;
 
-  // We actually don't care about mathing braces because we are only using this
-  // to determine for the REPL if we should prompt for further input. If it's
-  // wrong, we won't be able to to parse anyway, so it only needs to be the
-  // correct value when the braces match.
-  int brace_count = 0;
-  diagnostic::DiagnosticConsumer &diag_;
-};
+    // We actually don't care about mathing braces because we are only using
+    // this to determine for the REPL if we should prompt for further input. If
+    // it's wrong, we won't be able to to parse anyway, so it only needs to be
+    // the correct value when the braces match.
+    int brace_count = 0;
+    diagnostic::DiagnosticConsumer &diag_;
+  };
 
-// Print out the debug information for the parse stack, and pause.
-void Debug(ParseState *ps) {
-  // Clear the screen
-  fputs("\033[2J\033[1;1H\n", stderr);
-  for (auto x : ps->tag_stack_) {
+  // Print out the debug information for the parse stack, and pause.
+  void Debug(ParseState * ps) {
+    // Clear the screen
+    fputs("\033[2J\033[1;1H\n", stderr);
+    for (auto x : ps->tag_stack_) {
+      std::stringstream ss;
+      ss << x;
+      absl::FPrintF(stderr, "%s, ", ss.str());
+    }
     std::stringstream ss;
-    ss << x;
-    absl::FPrintF(stderr, "%s, ", ss.str());
+    ss << ps->Next().tag_;
+    absl::FPrintF(stderr, " -> %s\n", ss.str());
+
+    for (const auto &node_ptr : ps->node_stack_) {
+      fputs(node_ptr->DebugString().c_str(), stderr);
+    }
+    fgetc(stdin);
   }
-  std::stringstream ss;
-  ss << ps->Next().tag_;
-  absl::FPrintF(stderr, " -> %s\n", ss.str());
 
-  for (const auto &node_ptr : ps->node_stack_) {
-    fputs(node_ptr->DebugString().c_str(), stderr);
-  }
-  fgetc(stdin);
-}
+  void Shift(ParseState * ps) {
+    if (not ps->lookahead_) { ps->LookAhead(); }
+    auto ahead = *std::exchange(ps->lookahead_, std::nullopt);
+    ps->tag_stack_.push_back(ahead.tag_);
+    ps->node_stack_.push_back(std::move(ahead.node_));
 
-void Shift(ParseState *ps) {
-  if (not ps->lookahead_) { ps->LookAhead(); }
-  auto ahead = *std::exchange(ps->lookahead_, std::nullopt);
-  ps->tag_stack_.push_back(ahead.tag_);
-  ps->node_stack_.push_back(std::move(ahead.node_));
-
-  LOG("parse", "shifting %s onto the stack.",
-      ps->node_stack_.back()->DebugString());
-  auto tag_ahead = ps->Next().tag_;
-  if (tag_ahead & (l_paren | l_bracket | l_brace)) {
-    ++ps->brace_count;
-  } else if (tag_ahead & (r_paren | r_bracket | r_brace)) {
-    --ps->brace_count;
-  }
-}
-
-template <auto &RuleSet>
-bool Reduce(ParseState *ps) {
-  LOG("parse", "reducing");
-  for (auto const &rule : *RuleSet) {
-    if (rule.match(ps->tag_stack_)) {
-      auto nodes_to_reduce = absl::MakeSpan(
-          std::addressof(*(ps->node_stack_.end() - rule.match.size())),
-          rule.match.size());
-      auto result     = rule.execute(nodes_to_reduce, ps->diag_);
-      size_t new_size = ps->node_stack_.size() - rule.match.size() + 1;
-      ps->tag_stack_.resize(new_size);
-      ps->node_stack_.resize(new_size);
-      ps->node_stack_.back() = std::move(result);
-      ps->tag_stack_.back()  = rule.output;
-      return true;
+    LOG("parse", "shifting %s onto the stack.",
+        ps->node_stack_.back()->DebugString());
+    auto tag_ahead = ps->Next().tag_;
+    if (tag_ahead & (l_paren | l_bracket | l_brace)) {
+      ++ps->brace_count;
+    } else if (tag_ahead & (r_paren | r_bracket | r_brace)) {
+      --ps->brace_count;
     }
   }
 
-  // If there are no good rules to match, look for some defaults. We could
-  // encode these in `*RuleSet` as well, but typically these do strange things
-  // like preserving the tag type, so we'd have to encode it many times if it
-  // were in `*RuleSet`.
-  if (ps->tag_stack_.size() >= 2 and ps->get_type<2>() == newline) {
-    auto tag = ps->tag_stack_.back();
-    ps->tag_stack_.pop_back();
-    ps->tag_stack_.back() = tag;
+  template <auto &RuleSet>
+  bool Reduce(ParseState * ps) {
+    LOG("parse", "reducing");
+    for (auto const &rule : *RuleSet) {
+      if (rule.match(ps->tag_stack_)) {
+        auto nodes_to_reduce = absl::MakeSpan(
+            std::addressof(*(ps->node_stack_.end() - rule.match.size())),
+            rule.match.size());
+        auto result     = rule.execute(nodes_to_reduce, ps->diag_);
+        size_t new_size = ps->node_stack_.size() - rule.match.size() + 1;
+        ps->tag_stack_.resize(new_size);
+        ps->node_stack_.resize(new_size);
+        ps->node_stack_.back() = std::move(result);
+        ps->tag_stack_.back()  = rule.output;
+        return true;
+      }
+    }
 
-    auto node = std::move(ps->node_stack_.back());
-    ps->node_stack_.pop_back();
-    ps->node_stack_.back() = std::move(node);
-  } else if (ps->get_type<1>() == newline) {
-    ps->tag_stack_.pop_back();
-    ps->node_stack_.pop_back();
-  } else {
-    return false;
+    // If there are no good rules to match, look for some defaults. We could
+    // encode these in `*RuleSet` as well, but typically these do strange things
+    // like preserving the tag type, so we'd have to encode it many times if it
+    // were in `*RuleSet`.
+    if (ps->tag_stack_.size() >= 2 and ps->get_type<2>() == newline) {
+      auto tag = ps->tag_stack_.back();
+      ps->tag_stack_.pop_back();
+      ps->tag_stack_.back() = tag;
+
+      auto node = std::move(ps->node_stack_.back());
+      ps->node_stack_.pop_back();
+      ps->node_stack_.back() = std::move(node);
+    } else if (ps->get_type<1>() == newline) {
+      ps->tag_stack_.pop_back();
+      ps->node_stack_.pop_back();
+    } else {
+      return false;
+    }
+
+    return true;
   }
 
-  return true;
-}
+  void CleanUpReduction(ParseState * state) {
+    // Reduce what you can
+    while (Reduce<kRules>(state)) {
+      if (debug::parser) { Debug(state); }
+    }
 
-void CleanUpReduction(ParseState *state) {
-  // Reduce what you can
-  while (Reduce<kRules>(state)) {
+    Shift(state);
+
+    // Reduce what you can again
+    while (Reduce<kRules>(state)) {
+      if (debug::parser) { Debug(state); }
+    }
     if (debug::parser) { Debug(state); }
   }
-
-  Shift(state);
-
-  // Reduce what you can again
-  while (Reduce<kRules>(state)) {
-    if (debug::parser) { Debug(state); }
-  }
-  if (debug::parser) { Debug(state); }
-}
 }  // namespace
 
 std::vector<std::unique_ptr<ast::Node>> Parse(
