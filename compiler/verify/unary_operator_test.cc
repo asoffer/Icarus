@@ -510,5 +510,21 @@ TEST(Not, MissingOverload) {
                   Pair("type-error", "invalid-unary-operator-overload")));
 }
 
+TEST(Unexpanded, Failure) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+    f ::= () -> (i64, i64) { return 1, 2 }
+    g ::= () -> i64 { return 1 }
+    h ::= () -> () { }
+    -'f
+    -'g
+    -'h
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(
+                  Pair("type-error", "unexpanded-unary-operator-argument"),
+                  Pair("type-error", "unexpanded-unary-operator-argument")));
+}
+
 }  // namespace
 }  // namespace compiler

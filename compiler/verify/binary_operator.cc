@@ -6,6 +6,23 @@
 namespace compiler {
 namespace {
 
+struct UnexpandedBinaryOperatorArgument {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName = "unexpanded-binary-operator-argument";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Binary operator argument expands to %u values. Each "
+                         "operand must expand to exactly 1 value.",
+                         num_arguments),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  size_t num_arguments;
+  frontend::SourceRange range;
+};
+
 struct InvalidBinaryOperatorOverload {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName = "invalid-binary-operator-overload";
@@ -238,8 +255,30 @@ absl::Span<type::QualType const> VerifyArithmeticAssignmentOperator(
 }  // namespace
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const *node) {
-  auto lhs_qual_type = VerifyType(node->lhs())[0];
-  auto rhs_qual_type = VerifyType(node->rhs())[0];
+  auto lhs_qts = VerifyType(node->lhs());
+  auto rhs_qts = VerifyType(node->rhs());
+
+  bool error = false;
+  if (lhs_qts.size() != 1) {
+    diag().Consume(UnexpandedBinaryOperatorArgument{
+        .num_arguments = lhs_qts.size(),
+        .range         = node->lhs()->range(),
+    });
+    error = true;
+  }
+
+  if (rhs_qts.size() != 1) {
+    diag().Consume(UnexpandedBinaryOperatorArgument{
+        .num_arguments = rhs_qts.size(),
+        .range         = node->rhs()->range(),
+    });
+    error = true;
+  }
+
+  if (error) { return context().set_qual_type(node, type::QualType::Error()); }
+
+  auto lhs_qual_type = lhs_qts[0];
+  auto rhs_qual_type = rhs_qts[0];
 
   if (not lhs_qual_type.ok() or not rhs_qual_type.ok()) {
     return context().set_qual_type(node, type::QualType::Error());

@@ -9,6 +9,23 @@
 namespace compiler {
 namespace {
 
+struct UnexpandedUnaryOperatorArgument {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName = "unexpanded-unary-operator-argument";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Unary operator argument expands to %u values. Each "
+                         "operand must expand to exactly 1 value.",
+                         num_arguments),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  size_t num_arguments;
+  frontend::SourceRange range;
+};
+
 struct UncopyableType {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "uncopyable-type";
@@ -108,6 +125,15 @@ struct DereferencingNonPointer {
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *node) {
   auto operand_qts = VerifyType(node->operand());
+
+  if (operand_qts.size() != 1) {
+    diag().Consume(UnexpandedUnaryOperatorArgument{
+        .num_arguments = operand_qts.size(),
+        .range         = node->operand()->range(),
+    });
+    return context().set_qual_type(node, type::QualType::Error());
+  }
+
   if (not operand_qts[0].ok()) {
     return context().set_qual_type(node, type::QualType::Error());
   }

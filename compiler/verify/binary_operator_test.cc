@@ -352,6 +352,22 @@ TEST(BufferPointerArithmetic, Failure) {
                   Pair("type-error", "no-matching-binary-operator")));
 }
 
+TEST(Unexpanded, Failure) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+    f ::= () -> (i64, i64) { return 1, 2 }
+    g ::= () -> i64 { return 1 }
+    h ::= () -> () { }
+    'f * 1
+    'g * 1
+    'h * 1
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(
+                  Pair("type-error", "unexpanded-binary-operator-argument"),
+                  Pair("type-error", "unexpanded-binary-operator-argument")));
+}
+
 // TODO: Assignment operator overloading tests.
 
 }  // namespace
