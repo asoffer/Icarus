@@ -5,7 +5,6 @@ cc_library(
     hdrs = ["module.h"],
     srcs = ["module.cc"],
     deps = [
-        ":importer",
         "//ast:ast",
         "//ast:ast_fwd",
         "//ast:scope",
@@ -28,6 +27,7 @@ cc_library(
     hdrs = ["importer.h"],
     srcs = ["importer.cc"],
     deps = [
+        ":module",
         "//diagnostic/consumer:streaming",
         "//frontend/source",
         "//frontend/source:file",

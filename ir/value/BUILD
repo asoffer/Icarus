@@ -155,12 +155,9 @@ cc_library(
     name = "module_id",
     hdrs = ["module_id.h"],
     deps = [
-        "//base:flyweight_map",
         "//base:extend",
         "//base/extend:absl_format",
         "//base/extend:absl_hash",
-        "//base:global",
-        "//frontend/source:file_name",
     ],
 )
 

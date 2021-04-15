@@ -1,5 +1,7 @@
 #include "type/function.h"
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/node_hash_map.h"
 #include "base/global.h"
 
 namespace type {

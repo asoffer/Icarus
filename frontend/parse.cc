@@ -655,9 +655,9 @@ std::unique_ptr<ast::Node> BuildCommaList(
   } else {
     comma_list = std::make_unique<CommaList>(
         SourceRange(nodes[0]->range().begin(), nodes[2]->range().end()));
-    comma_list->nodes_.push_back(move_as<ast::Expression>(nodes[0]));
+    comma_list->nodes_.push_back(std::move(nodes[0]));
   }
-  comma_list->nodes_.push_back(move_as<ast::Expression>(nodes[2]));
+  comma_list->nodes_.push_back(std::move(nodes[2]));
   comma_list->range().end() = comma_list->nodes_.back()->range().end();
   return comma_list;
 }

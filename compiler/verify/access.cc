@@ -304,7 +304,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
   // There is no way to refer to the current module, but a bug here could cause
   // a deadlock as this module waits for the notification that it's declarations
   // can be exported, so we would prefer to abort.
-  auto const &mod = mod_id.get()->as<CompiledModule>();
+  auto const &mod = c.importer().get(mod_id).as<CompiledModule>();
   ASSERT(&mod != &c.context().module());
 
   // Note: for any declarations read across module boundaries, we set the

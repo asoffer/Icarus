@@ -12,6 +12,7 @@
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
 #include "ir/value/module_id.h"
+#include "module/module.h"
 
 // TODO: We should be able to have a diagnostic conusmer without specifying
 // source so that file importer can be agnostic to the diagnostic consuming
@@ -22,6 +23,7 @@ namespace module {
 // `import` expression.
 struct Importer {
   virtual ir::ModuleId Import(std::string_view module_locator) = 0;
+  virtual BasicModule const& get(ir::ModuleId id) = 0;
 };
 
 // Looks up the given module path to retrieve an absolute path to the module.
@@ -34,32 +36,50 @@ struct FileImporter : Importer {
   ir::ModuleId Import(std::string_view module_locator) override {
     auto file_name = frontend::CanonicalFileName::Make(
         frontend::FileName(std::string(module_locator)));
-    auto [id, mod, inserted] = ir::ModuleId::FromFile<ModuleType>(file_name);
+    auto [iter, inserted] = modules_.try_emplace(file_name);
+    auto& [id, mod]       = iter->second;
     if (not inserted) { return id; }
 
-    frontend::CanonicalFileName const& module_path = id.filename();
-    if (auto maybe_file_src = frontend::FileSource::Make(
-            ResolveModulePath(module_path, module_lookup_paths));
-        maybe_file_src.ok()) {
-      std::thread t(
-          [this, mod = mod, file_src = std::move(*maybe_file_src)]() mutable {
-            diagnostic::StreamingConsumer diag(stderr, &file_src);
-            mod->AppendNodes(frontend::Parse(file_src, diag), diag, *this);
-          });
-      t.detach();
-      return id;
-    } else {
+    auto maybe_file_src = frontend::FileSource::Make(
+        ResolveModulePath(file_name, module_lookup_paths));
+
+    if (not maybe_file_src.ok()) {
+      modules_.erase(iter);
       diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
       diag.Consume(frontend::MissingModule{
-          .source    = module_path,
+          .source    = file_name,
           .requestor = "",
           .reason    = stringify(maybe_file_src),
       });
       return ir::ModuleId::Invalid();
     }
+
+    id  = ir::ModuleId::New();
+    mod = std::make_unique<ModuleType>();
+    modules_by_id_.emplace(id, mod.get());
+
+    std::thread t([this, mod = mod.get(),
+                   file_src = std::move(*maybe_file_src)]() mutable {
+      mod->template set_diagnostic_consumer<diagnostic::StreamingConsumer>(
+          stderr, &file_src);
+      mod->AppendNodes(frontend::Parse(file_src, mod->diagnostic_consumer()),
+                       mod->diagnostic_consumer(), *this);
+    });
+    t.detach();
+    return id;
+  }
+
+  BasicModule const& get(ir::ModuleId id) override {
+    return *modules_by_id_.at(id);
   }
 
   std::vector<std::string> module_lookup_paths;
+
+ private:
+  absl::flat_hash_map<frontend::CanonicalFileName,
+                      std::pair<ir::ModuleId, std::unique_ptr<ModuleType>>>
+      modules_;
+  absl::flat_hash_map<ir::ModuleId, ModuleType*> modules_by_id_;
 };
 
 }  // namespace module

@@ -239,23 +239,25 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
 }
 
 TEST(DesignatedInitializer, CrossModule) {
-  auto [imported_id, imported, inserted] =
-      ir::ModuleId::FromFile<compiler::LibraryModule>(
-          frontend::CanonicalFileName::Make(frontend::FileName{"imported1"}));
+  auto id = ir::ModuleId::New();
+  LibraryModule imported_mod;
 
   test::TestModule mod;
-  ON_CALL(mod.importer, Import(Eq("imported1")))
-      .WillByDefault([id = imported_id](std::string_view) { return id; });
+  ON_CALL(mod.importer, Import(Eq("imported")))
+      .WillByDefault([id](std::string_view) { return id; });
+  ON_CALL(mod.importer, get(id))
+      .WillByDefault(
+          [&](ir::ModuleId) -> module::BasicModule & { return imported_mod; });
 
   frontend::StringSource src(R"(
   #{export} S ::= struct {
     #{export} n: i64
   }
   )");
-  imported->AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
-                        mod.importer);
+  imported_mod.AppendNodes(frontend::Parse(src, mod.consumer),
+                                    mod.consumer, mod.importer);
 
-  mod.AppendCode("-- ::= import \"imported1\"");
+  mod.AppendCode("-- ::= import \"imported\"");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_TRUE(qts[0].type().is<type::Struct>());
@@ -263,23 +265,25 @@ TEST(DesignatedInitializer, CrossModule) {
 }
 
 TEST(DesignatedInitializer, NotExported) {
-  auto [imported_id, imported, inserted] =
-      ir::ModuleId::FromFile<compiler::LibraryModule>(
-          frontend::CanonicalFileName::Make(frontend::FileName{"imported2"}));
+  auto id = ir::ModuleId::New();
+  LibraryModule imported_mod;
 
   test::TestModule mod;
-  ON_CALL(mod.importer, Import(Eq("imported2")))
-      .WillByDefault([id = imported_id](std::string_view) { return id; });
+  ON_CALL(mod.importer, Import(Eq("imported")))
+      .WillByDefault([id](std::string_view) { return id; });
+  ON_CALL(mod.importer, get(id))
+      .WillByDefault(
+          [&](ir::ModuleId) -> module::BasicModule & { return imported_mod; });
 
   frontend::StringSource src(R"(
   #{export} S ::= struct {
     n: i64
   }
   )");
-  imported->AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
-                        mod.importer);
+  imported_mod.AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+                           mod.importer);
 
-  mod.AppendCode("-- ::= import \"imported2\"");
+  mod.AppendCode("-- ::= import \"imported\"");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_TRUE(qts[0].type().is<type::Struct>());

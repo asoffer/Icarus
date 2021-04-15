@@ -16,10 +16,9 @@
 #include "base/macros.h"
 #include "base/ptr_span.h"
 #include "diagnostic/consumer/consumer.h"
-#include "diagnostic/consumer/streaming.h"
-#include "module/importer.h"
 
 namespace module {
+struct Importer;
 
 enum class Linkage { Internal, External };
 
@@ -52,6 +51,18 @@ struct BasicModule : base::Cast<BasicModule> {
     return scope_;
   }
 
+  diagnostic::DiagnosticConsumer &diagnostic_consumer() {
+    return *ASSERT_NOT_NULL(diagnostic_consumer_);
+  }
+  diagnostic::DiagnosticConsumer const &diagnostic_consumer() const {
+    return *ASSERT_NOT_NULL(diagnostic_consumer_);
+  }
+
+  template <typename T, typename... Args>
+  void set_diagnostic_consumer(Args &&... args) {
+    diagnostic_consumer_ = std::make_unique<T>(std::forward<Args>(args)...);
+  }
+
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
                             diagnostic::DiagnosticConsumer &, Importer &) = 0;
@@ -67,6 +78,8 @@ struct BasicModule : base::Cast<BasicModule> {
   // ensuring that any external access to the scope happens after parsing is
   // complete.
   absl::Notification done_parsing_;
+
+  std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer_;
 };
 
 // Returns a container of all visible declarations in this scope  with the given
