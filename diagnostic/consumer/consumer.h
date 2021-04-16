@@ -5,7 +5,7 @@
 
 namespace diagnostic {
 
-struct DiagnosticConsumer {
+struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
   explicit DiagnosticConsumer(frontend::Source const* src) : src_(src) {}
   virtual ~DiagnosticConsumer() {}
 

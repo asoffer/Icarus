@@ -60,6 +60,7 @@ cc_test(
     srcs = ["access_test.cc"],
     deps = [
         "//compiler",
+        "//compiler:library_module",
         "//test:module",
         "@com_google_googletest//:gtest_main",
     ],

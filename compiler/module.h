@@ -33,6 +33,13 @@ struct CompiledModule : module::BasicModule {
   }
   Context &context() { return data_; }
 
+  bool has_error_in_dependent_module() const {
+    return depends_on_module_with_errors_;
+  }
+  void set_dependent_module_with_errors() {
+    depends_on_module_with_errors_ = true;
+  }
+
  protected:
   // Child classes must call this when compilation of this module is complete
   // to notify other modules which may be waiting on data for their own
@@ -42,6 +49,11 @@ struct CompiledModule : module::BasicModule {
  private:
   Context data_;
   absl::Notification notification_;
+
+  // This flag should be set to true if this module is ever found to depend on
+  // another which has errors, even if those errors do not effect
+  // code-generation in this module.
+  bool depends_on_module_with_errors_ = false;
 };
 
 }  // namespace compiler

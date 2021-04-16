@@ -33,7 +33,10 @@ struct ExecutableModule : CompiledModule {
     // because it's not actually present.
     for (ast::Node const *node : nodes) { context().TrackJumps(node); }
     c.VerifyAll(nodes);
-    if (diag.num_consumed() > 0) { return; }
+    if (diag.num_consumed() > 0 or has_error_in_dependent_module()) {
+      CompilationComplete();
+      return;
+    }
 
     c.ProcessExecutableBody(nodes, &main());
     CompilationComplete();

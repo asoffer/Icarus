@@ -212,6 +212,10 @@ type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
       auto &s_mod = s->defining_module()->as<compiler::CompiledModule>();
       auto const *ast_struct = s_mod.context().ast_struct(s);
 
+      if (s_mod.diagnostic_consumer().num_consumed() != 0) {
+        c.context().module().set_dependent_module_with_errors();
+      }
+
       for (auto const &decl : ast_struct->as<ast::StructLiteral>().fields()) {
         if (not(decl.flags() & ast::Declaration::f_IsConst)) { continue; }
 
@@ -323,7 +327,10 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
     case 1: {
       type::QualType qt = mod.context().qual_types(ids[0])[0];
 
-      type::Type t = mod.context().qual_types(ids[0])[0].type();
+      if (mod.diagnostic_consumer().num_consumed() != 0) {
+        c.context().module().set_dependent_module_with_errors();
+      }
+
       if (not qt.ok()) {
         LOG("AccessModuleMember",
             "Found member in a different module that is missing a type. "
@@ -340,6 +347,11 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Callable const *> member_types;
       auto const &ctx = mod.context();
+
+      if (mod.diagnostic_consumer().num_consumed() != 0) {
+        c.context().module().set_dependent_module_with_errors();
+      }
+
       for (auto const *id : ids) {
         auto qt = ctx.qual_types(id)[0];
         if (not qt.ok()) {

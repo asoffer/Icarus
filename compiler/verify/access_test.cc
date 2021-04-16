@@ -1,4 +1,5 @@
 #include "compiler/compiler.h"
+#include "compiler/library_module.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/module.h"
@@ -7,6 +8,7 @@ namespace compiler {
 namespace {
 
 using ::testing::ElementsAre;
+using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::SizeIs;
@@ -188,6 +190,34 @@ TEST(Access, ArrayInvalidMember) {
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-member")));
 }
+
+TEST(Access, IntoModuleWithError) {
+  auto id = ir::ModuleId::New();
+  LibraryModule imported_module;
+  imported_module.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
+
+  test::TestModule mod;
+  ON_CALL(mod.importer, Import(Eq("imported")))
+      .WillByDefault([id](std::string_view) { return id; });
+  ON_CALL(mod.importer, get(id))
+      .WillByDefault([&](ir::ModuleId) -> module::BasicModule & {
+        return imported_module;
+      });
+
+  frontend::StringSource src(R"(
+  #{export} N :: bool = 3
+  )");
+  imported_module.AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+                              mod.importer);
+
+  mod.AppendCode("mod ::= import \"imported\"");
+  auto const *expr = mod.Append<ast::Expression>(R"(mod.N)");
+  EXPECT_THAT(imported_module.diagnostic_consumer()
+                  .as<diagnostic::TrackingConsumer>()
+                  .diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "invalid-cast")));
+}
+
 
 // TODO: Field not exported from another module.
 // TODO: Non-constant module

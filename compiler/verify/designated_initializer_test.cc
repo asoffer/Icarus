@@ -241,6 +241,7 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
 TEST(DesignatedInitializer, CrossModule) {
   auto id = ir::ModuleId::New();
   LibraryModule imported_mod;
+  imported_mod.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
 
   test::TestModule mod;
   ON_CALL(mod.importer, Import(Eq("imported")))
@@ -267,6 +268,7 @@ TEST(DesignatedInitializer, CrossModule) {
 TEST(DesignatedInitializer, NotExported) {
   auto id = ir::ModuleId::New();
   LibraryModule imported_mod;
+  imported_mod.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
 
   test::TestModule mod;
   ON_CALL(mod.importer, Import(Eq("imported")))

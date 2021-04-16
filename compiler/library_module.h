@@ -21,12 +21,13 @@ struct LibraryModule : CompiledModule {
 
     Compiler c({
         .data                = context(),
-        .diagnostic_consumer = diag,
+        .diagnostic_consumer = diagnostic_consumer(),
         .importer            = importer,
     });
 
     c.VerifyAll(nodes);
-    if (c.diag().num_consumed() > 0) {
+    if (diagnostic_consumer().num_consumed() > 0 or
+        has_error_in_dependent_module()) {
       CompilationComplete();
       return;
     }

@@ -65,7 +65,9 @@ int Interpret(frontend::FileName const &file_name) {
   importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
   compiler::ExecutableModule exec_mod;
   exec_mod.AppendNodes(frontend::Parse(*src, diag), diag, importer);
-  if (diag.num_consumed() != 0) { return 1; }
+  if (diag.num_consumed() != 0 or exec_mod.has_error_in_dependent_module()) {
+    return 1;
+  }
   auto &main_fn = exec_mod.main();
 
   // TODO All the functions? In all the modules?

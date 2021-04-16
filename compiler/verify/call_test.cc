@@ -227,6 +227,7 @@ TEST(Call, Uncallable) {
 TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
   auto id = ir::ModuleId::New();
   LibraryModule imported_mod;
+  imported_mod.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
 
   test::TestModule mod;
   ON_CALL(mod.importer, Import(Eq("imported")))
@@ -255,6 +256,7 @@ TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
 TEST(Call, CrossModuleWithADLSucceed) {
   auto id = ir::ModuleId::New();
   LibraryModule imported_mod;
+  imported_mod.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
 
   test::TestModule mod;
   ON_CALL(mod.importer, Import(Eq("imported")))
@@ -282,6 +284,7 @@ TEST(Call, CrossModuleWithADLSucceed) {
 TEST(Call, CrossModuleWithADLWithoutExport) {
   auto id = ir::ModuleId::New();
   LibraryModule imported_mod;
+  imported_mod.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
 
   test::TestModule mod;
   ON_CALL(mod.importer, Import(Eq("imported")))
