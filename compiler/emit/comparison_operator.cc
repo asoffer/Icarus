@@ -115,16 +115,16 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
                                 double, ir::Addr>(
             lhs.type(), [&]<typename T>() {
-              return bldr.Ge(lhs->get<ir::RegOr<T>>(),
-                             rhs->get<ir::RegOr<T>>());
+              return bldr.Le(rhs->get<ir::RegOr<T>>(),
+                             lhs->get<ir::RegOr<T>>());
             });
       case frontend::Operator::Gt:
         return type::ApplyTypes<ir::Char, int8_t, int16_t, int32_t, int64_t,
                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
                                 double, ir::Addr>(
             lhs.type(), [&]<typename T>() {
-              return bldr.Gt(lhs->get<ir::RegOr<T>>(),
-                             rhs->get<ir::RegOr<T>>());
+              return bldr.Lt(rhs->get<ir::RegOr<T>>(),
+                             lhs->get<ir::RegOr<T>>());
             });
         // TODO case frontend::Operator::And: cmp = *lhs; break;
       default: UNREACHABLE();

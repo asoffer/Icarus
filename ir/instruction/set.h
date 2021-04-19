@@ -88,7 +88,6 @@ template <typename... Ts>
 using CoreInstructionsImpl = InstructionSet<
     CommentInstruction, RegisterInstruction<Ts>..., StoreInstruction<Ts>...,
     PhiInstruction<Ts>..., SetReturnInstruction<Ts>..., CallInstruction,
-    SetReturnInstruction<core::Bytes>, SetReturnInstruction<core::Alignment>,
     SetReturnInstruction<GenericFn>,
     SetReturnInstruction<type::GenericStruct const *>>;
 using CoreInstructions =

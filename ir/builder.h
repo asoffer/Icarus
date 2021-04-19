@@ -103,11 +103,6 @@ struct Builder {
   }
 
   template <typename Lhs, typename Rhs>
-  RegOr<bool> Gt(Lhs const& lhs, Rhs const& rhs) {
-    return Lt(rhs, lhs);
-  }
-
-  template <typename Lhs, typename Rhs>
   RegOr<bool> Le(Lhs const& lhs, Rhs const& rhs) {
     using type = reduced_type_t<Lhs>;
     if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
@@ -121,11 +116,6 @@ struct Builder {
     } else {
       return Le(RegOr<type>(lhs), RegOr<type>(rhs));
     }
-  }
-
-  template <typename Lhs, typename Rhs>
-  RegOr<bool> Ge(Lhs const& lhs, Rhs const& rhs) {
-    return Le(rhs, lhs);
   }
 
   // Comparison
@@ -467,21 +457,6 @@ struct Builder {
   }
   constexpr BlockTerminationState& block_termination_state() {
     return current_.block_termination_state_;
-  }
-
-  template <typename T>
-  void SetRet(uint16_t n, T val) {
-    if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
-      SetReturnInstruction<typename T::type> inst{.index = n, .value = val};
-      CurrentBlock()->Append(std::move(inst));
-    } else {
-      SetRet(n, RegOr<T>(val));
-    }
-  }
-
-  void SetRet(uint16_t n, type::Typed<Value> const& r) {
-    ASSERT(r.type().is_big() == false);
-    type::Apply(r.type(), [&]<typename T>() { SetRet(n, r->get<RegOr<T>>()); });
   }
 
   // If the type `t` is not big, creates a new register referencing the value

@@ -62,9 +62,18 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
                      type::Typed<ir::Value>(val, type));
 
     } else if (auto const *gs = type.if_as<type::GenericStruct>()) {
-      c.builder().SetRet(0, gs);
+      c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<type::Type>{
+          .index = 0,
+          .value = ir::RegOr<type::Type>(gs),
+      });
     } else {
-      c.builder().SetRet(0, type::Typed<ir::Value>(val, type));
+      type::Apply(type, [&]<typename T>() {
+        c.builder().CurrentBlock()->Append(
+            ir::SetReturnInstruction<T>{
+                .index = 0,
+                .value = ir::RegOr<T>(val.get<ir::RegOr<T>>()),
+            });
+      });
     }
     c.builder().ReturnJump();
   }

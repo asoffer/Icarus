@@ -107,8 +107,13 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
           ir::RegOr<ir::Addr>(ir::Reg::Out(0)), ret_type);
       EmitMoveInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
     } else {
-      builder().SetRet(
-          0, type::Typed<ir::Value>(EmitValue(node->body()), ret_type));
+      type::Apply(ret_type, [&]<typename T>() {
+        auto value = EmitValue(node->body()).get<ir::RegOr<T>>();
+        builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
+            .index = 0,
+            .value = value,
+        });
+      });
     }
 
     builder().FinishTemporariesWith([this](type::Typed<ir::Reg> r) {

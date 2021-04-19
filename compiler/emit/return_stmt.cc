@@ -40,7 +40,13 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
           ir::RegOr<ir::Addr>(ir::Reg::Out(i)), ret_type);
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
-      builder().SetRet(i, type::Typed<ir::Value>(EmitValue(expr), ret_type));
+      type::Apply(ret_type, [&]<typename T>() {
+        auto value = EmitValue(expr).get<ir::RegOr<T>>();
+        builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
+            .index = static_cast<uint16_t>(i),
+            .value = value,
+        });
+      });
     }
   }
 
