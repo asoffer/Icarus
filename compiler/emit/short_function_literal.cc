@@ -124,7 +124,7 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
     builder().ReturnJump();
   }
 
-  ir_func->WriteByteCode<instruction_set_t>();
+  WriteByteCode(*ir_func.get());
   return WorkItem::Result::Success;
 }
 

@@ -29,6 +29,7 @@ cc_test(
 cc_library(
     name = "instructions",
     hdrs = ["instructions.h"],
+    srcs = ["instructions.cc"],
     visibility = ["//visibility:public"],
     deps = [
         "//type:array",
@@ -45,6 +46,7 @@ cc_library(
         "//ir/instruction:compare",
         "//ir/instruction:core",
         "//ir/instruction:set",
+        "//ir/interpreter:evaluate",
         "//ir/value",
         "//ir/value:char",
         "//ir/value:generic_fn",

@@ -134,7 +134,7 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
     }
   }
 
-  ir_func->WriteByteCode<instruction_set_t>();
+  WriteByteCode(*ir_func.get());
   return WorkItem::Result::Success;
 }
 

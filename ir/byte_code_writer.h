@@ -81,7 +81,7 @@ struct ByteCodeWriter {
     buf_->append_bytes(sizeof(BasicBlock*));
   }
 
-  void StartBlock(BasicBlock* b) { offsets_.emplace(b, buf_->size()); }
+  void StartBlock(BasicBlock const* b) { offsets_.emplace(b, buf_->size()); }
 
   void MakeReplacements() {
     for (auto const& [block, locs] : replacements_) {

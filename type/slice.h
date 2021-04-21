@@ -4,6 +4,7 @@
 #include "absl/container/node_hash_set.h"
 #include "base/extend.h"
 #include "core/arch.h"
+#include "ir/byte_code_writer.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"

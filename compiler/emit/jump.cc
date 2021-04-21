@@ -51,8 +51,8 @@ WorkItem::Result Compiler::EmitJumpBody(ast::Jump const *node) {
     // it'll never be executed.
     MakeAllDestructions(*this, &node->body_scope());
   }
-  jmp.WriteByteCode<instruction_set_t>();
-  return WorkItem::Result ::Success;
+
+  return WorkItem::Result::Success;
 }
 
 }  // namespace compiler

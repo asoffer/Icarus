@@ -4,6 +4,7 @@
 #include "compiler/instructions.h"
 #include "core/arguments.h"
 #include "core/params.h"
+#include "ir/byte_code_writer.h"
 #include "ir/value/value.h"
 #include "type/qual_type.h"
 #include "type/type.h"
@@ -60,7 +61,7 @@ ir::Fn InsertGeneratedMoveInit(
       }
       c.builder().ReturnJump();
     }
-    fn->WriteByteCode<instruction_set_t>();
+    WriteByteCode(*fn.get());
   }
   return fn;
 }
@@ -99,7 +100,7 @@ ir::Fn InsertGeneratedCopyInit(
       }
       c.builder().ReturnJump();
     }
-    fn->WriteByteCode<instruction_set_t>();
+    WriteByteCode(*fn.get());
   }
   return fn;
 }
@@ -135,7 +136,7 @@ ir::Fn InsertGeneratedMoveAssign(
 
       c.builder().ReturnJump();
     }
-    fn->WriteByteCode<instruction_set_t>();
+    WriteByteCode(*fn.get());
   }
   return fn;
 }
@@ -171,7 +172,7 @@ ir::Fn InsertGeneratedCopyAssign(
 
       c.builder().ReturnJump();
     }
-    fn->WriteByteCode<instruction_set_t>();
+    WriteByteCode(*fn.get());
   }
   return fn;
 }
@@ -283,7 +284,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           }
 
           c.builder().ReturnJump();
-          full_dtor->WriteByteCode<instruction_set_t>();
+          WriteByteCode(*full_dtor.get());
 
           dtor = full_dtor;
         }
@@ -314,7 +315,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     c.builder().ReturnJump();
   }
 
-  fn.WriteByteCode<instruction_set_t>();
+  WriteByteCode(fn);
 
   return fn;
 }
@@ -339,7 +340,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     ASSIGN_OR(return WorkItem::Result::Failure,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
-    interpreter::Execute<instruction_set_t>(ir::NativeFn(&fn));
+    InterpretAtCompileTime(ir::NativeFn(&fn));
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());
@@ -356,7 +357,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     ASSIGN_OR(return WorkItem::Result::Failure,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
-    interpreter::Execute<instruction_set_t>(ir::NativeFn(&fn));
+    InterpretAtCompileTime(ir::NativeFn(&fn));
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());

@@ -9,7 +9,6 @@
 #include "base/untyped_buffer.h"
 #include "ir/blocks/load_store_cache.h"
 #include "ir/blocks/offset_cache.h"
-#include "ir/byte_code_writer.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/jump.h"
 #include "ir/instruction/op_codes.h"
@@ -80,30 +79,6 @@ struct BasicBlock {
 
   void set_jump(JumpCmd j) { jump_ = std::move(j); }
   JumpCmd const &jump() const { return jump_; }
-
-  template <typename InstructionSet>
-  void WriteByteCode(ByteCodeWriter *writer) {
-    writer->StartBlock(this);
-    for (auto const &inst : instructions_) {
-      if (not inst) { continue; }
-      writer->Write(InstructionSet::Index(inst));
-      inst.WriteByteCode(writer);
-    }
-    jump_.Visit([&](auto &j) {
-      using type = std::decay_t<decltype(j)>;
-      if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {
-        writer->Write(internal::kReturnInstruction);
-      } else if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
-        writer->Write(internal::kUncondJumpInstruction);
-        writer->Write(j.block);
-      } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
-        writer->Write(internal::kCondJumpInstruction);
-        writer->Write(j.reg);
-        writer->Write(j.true_block);
-        writer->Write(j.false_block);
-      }
-    });
-  }
 
   friend std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
 

@@ -143,7 +143,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
       });
       builder().ReturnJump();
     }
-    fn->WriteByteCode<instruction_set_t>();
+    WriteByteCode(*fn.get());
     // TODO: Remove const_cast.
     const_cast<type::Array *>(r.type())->SetInitializer(fn);
   }
@@ -162,7 +162,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
       });
       builder().ReturnJump();
     }
-    fn->WriteByteCode<instruction_set_t>();
+    WriteByteCode(*fn.get());
     // TODO: Remove const_cast.
     const_cast<type::Array *>(r.type())->SetDestructor(fn);
   }
@@ -183,8 +183,8 @@ void SetArrayInits(Compiler &c, type::Array const *array_type) {
       EmitArrayInit<Move>(c, array_type, array_type);
     }
 
-    copy_fn->WriteByteCode<instruction_set_t>();
-    move_fn->WriteByteCode<instruction_set_t>();
+    WriteByteCode(*copy_fn.get());
+    WriteByteCode(*move_fn.get());
     // TODO: Remove const_cast.
     const_cast<type::Array *>(array_type)->SetInits(copy_fn, move_fn);
   }
@@ -204,8 +204,8 @@ void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
       EmitArrayAssignment<Move>(c, array_type, array_type);
     }
 
-    copy_fn->WriteByteCode<instruction_set_t>();
-    move_fn->WriteByteCode<instruction_set_t>();
+    WriteByteCode(*copy_fn.get());
+    WriteByteCode(*move_fn.get());
     // TODO: Remove const_cast.
     const_cast<type::Array *>(array_type)->SetAssignments(copy_fn, move_fn);
   }
@@ -430,7 +430,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
     }
     // TODO: Remove this hack.
     const_cast<type::Struct *>(r.type())->init_ = fn;
-    fn->WriteByteCode<instruction_set_t>();
+    WriteByteCode(*fn.get());
   }
   current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
 }

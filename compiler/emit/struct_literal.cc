@@ -77,7 +77,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   ASSIGN_OR(return WorkItem::Result::Failure,  //
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
-  interpreter::Execute<instruction_set_t>(ir::NativeFn(&fn));
+  InterpretAtCompileTime(ir::NativeFn(&fn));
   s->complete();
   LOG("StructLiteral", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());

@@ -78,8 +78,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     c.builder().ReturnJump();
   }
 
-  fn.WriteByteCode<instruction_set_t>();
-
+  WriteByteCode(fn);
   return fn;
 }
 
@@ -90,8 +89,7 @@ interpreter::EvaluationResult Compiler::Evaluate(
   auto thunk             = MakeThunk(c, *expr, expr.type());
   c.CompleteWorkQueue();
   c.CompleteDeferredBodies();
-  return interpreter::Evaluate<instruction_set_t>(
-      std::move(thunk));
+  return EvaluateAtCompileTime(std::move(thunk));
 }
 
 base::untyped_buffer Compiler::EvaluateToBufferOrDiagnose(
@@ -101,8 +99,7 @@ base::untyped_buffer Compiler::EvaluateToBufferOrDiagnose(
   auto thunk = MakeThunk(c, *expr, expr.type());
   c.CompleteWorkQueue();
   c.CompleteDeferredBodies();
-  return interpreter::EvaluateToBuffer<instruction_set_t>(
-      std::move(thunk));
+  return EvaluateAtCompileTimeToBuffer(std::move(thunk));
 }
 
 ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {

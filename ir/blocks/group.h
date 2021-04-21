@@ -14,6 +14,7 @@
 #include "core/params.h"
 #include "ir/blocks/basic.h"
 #include "ir/blocks/register_allocator.h"
+#include "ir/byte_code_writer.h"
 #include "ir/value/reg.h"
 #include "type/type_fwd.h"
 #include "type/typed_value.h"
@@ -63,7 +64,26 @@ struct BlockGroupBase {
     ByteCodeWriter writer(&byte_code_);
     ASSERT(byte_code_.size() == 0u);
     for (auto &block : blocks_) {
-      block->WriteByteCode<InstructionSet>(&writer);
+      writer.StartBlock(block.get());
+      for (auto const &inst : block->instructions()) {
+        if (not inst) { continue; }
+        writer.Write(InstructionSet::Index(inst));
+        inst.WriteByteCode(&writer);
+      }
+      block->jump().Visit([&](auto &j) {
+        using type = std::decay_t<decltype(j)>;
+        if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {
+          writer.Write(internal::kReturnInstruction);
+        } else if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
+          writer.Write(internal::kUncondJumpInstruction);
+          writer.Write(j.block);
+        } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
+          writer.Write(internal::kCondJumpInstruction);
+          writer.Write(j.reg);
+          writer.Write(j.true_block);
+          writer.Write(j.false_block);
+        }
+      });
     }
     writer.MakeReplacements();
   }

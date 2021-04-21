@@ -311,6 +311,7 @@ cc_library(
         "//base:global",
         "//base:no_destructor",
         "//core:arch",
+        "//ir:byte_code_writer",
         "//ir/value:slice",
         "//ir/instruction:base",
         "//ir/instruction:debug",
