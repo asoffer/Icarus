@@ -581,7 +581,7 @@ static std::vector<std::unique_ptr<T>> ExtractIfCommaList(
     std::unique_ptr<ast::Node> node, bool even_if_parenthesized = false) {
   std::vector<std::unique_ptr<T>> nodes;
   if (auto *cl = node->if_as<CommaList>();
-      cl and (even_if_parenthesized or not cl->parenthesized_)) {
+      cl and (even_if_parenthesized or cl->num_parentheses() == 0)) {
     auto extracted = std::move(*cl).extract();
     nodes.reserve(extracted.size());
     for (auto &n : extracted) { nodes.push_back(move_as<T>(n)); }
@@ -650,7 +650,7 @@ std::unique_ptr<ast::Node> BuildCommaList(
     diagnostic::DiagnosticConsumer &diag) {
   std::unique_ptr<CommaList> comma_list = nullptr;
   if (nodes[0]->is<CommaList>() and
-      not nodes[0]->as<CommaList>().parenthesized_) {
+      nodes[0]->as<CommaList>().num_parentheses() == 0) {
     comma_list = move_as<CommaList>(nodes[0]);
   } else {
     comma_list = std::make_unique<CommaList>(
@@ -740,7 +740,8 @@ std::unique_ptr<ast::Node> BuildArrayLiteral(
 std::unique_ptr<ast::Node> BuildArrayType(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  if (auto *cl = nodes[1]->if_as<CommaList>(); cl and not cl->parenthesized_) {
+  if (auto *cl = nodes[1]->if_as<CommaList>();
+      cl and cl->num_parentheses() == 0) {
     SourceRange range(nodes.front()->range().begin(),
                       nodes.back()->range().end());
     return std::make_unique<ast::ArrayType>(
@@ -767,7 +768,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
     frontend::SourceRange range = nodes[0]->range();
     ids.emplace_back(std::move(*id).extract(), range);
   } else if (auto *cl = nodes[0]->if_as<CommaList>()) {
-    ASSERT(cl->parenthesized_ == true);
+    ASSERT(cl->num_parentheses() != 0u);
     for (auto &&i : std::move(*cl).extract()) {
       if (auto *id = i->if_as<ast::Identifier>()) {
         frontend::SourceRange range = id->range();
@@ -923,7 +924,7 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
 void ExtractRightChainImpl(Operator op, std::unique_ptr<ast::Expression> node,
                            std::vector<std::unique_ptr<ast::Expression>> &out) {
   if (auto *b = node->if_as<ast::BinaryOperator>();
-      b and b->op() == op and not b->parenthesized_) {
+      b and b->op() == op and b->num_parentheses() == 0) {
     auto [lhs, rhs] = std::move(*b).extract();
     ExtractRightChainImpl(op, std::move(lhs), out);
     out.push_back(std::move(rhs));
@@ -1459,7 +1460,8 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
       absl::Span<std::unique_ptr<ast::Node>> nodes,
       diagnostic::DiagnosticConsumer & diag) {
     auto result            = move_as<ast::Expression>(nodes[1]);
-    result->parenthesized_ = true;
+    result->wrap_parentheses(frontend::SourceRange(
+        nodes.front()->range().begin(), nodes.back()->range().end()));
     return result;
   }
 
