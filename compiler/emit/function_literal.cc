@@ -92,7 +92,8 @@ void Compiler::EmitCopyAssign(
 WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   LOG("EmitFunctionBody", "%s", node->DebugString());
 
-  ir::NativeFn ir_func = *ASSERT_NOT_NULL(context().FindNativeFn(node));
+  ir::NativeFn ir_func = context().FindNativeFn(node);
+  ASSERT(static_cast<bool>(ir_func) == true);
 
   ICARUS_SCOPE(ir::SetCurrent(ir_func, builder())) {
     builder().CurrentBlock() = builder().CurrentGroup()->entry();
@@ -134,7 +135,7 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
     }
   }
 
-  WriteByteCode(*ir_func.get());
+  context().WriteByteCode(ir_func);
   return WorkItem::Result::Success;
 }
 

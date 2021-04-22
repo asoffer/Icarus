@@ -3,6 +3,7 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "ast/ast.h"
+#include "ir/instruction/op_codes.h"
 #include "ir/instruction/set.h"
 #include "ir/value/block.h"
 #include "ir/value/jump.h"
@@ -12,16 +13,25 @@
 
 namespace ir {
 
-inline CompiledFn &TrivialFunction() {
+inline NativeFn TrivialFunction() {
   // TODO: Avoid the delayed static here.
-  static base::NoDestructor<CompiledFn> f = [] {
-    CompiledFn f(type::Func({}, {}),
-                 core::Params<type::Typed<ast::Declaration const *>>{});
-    f.entry()->set_jump(JumpCmd::Return());
-    f.WriteByteCode<InstructionSet<>>();
-    return f;
+  static base::NoDestructor<base::untyped_buffer> byte_code = [] {
+    base::untyped_buffer result;
+    result.append(internal::kReturnInstruction);
+    return result;
   }();
-  return *f;
+  static base::NoDestructor<NativeFn::Data> data = [] {
+    auto fn_type = type::Func({}, {});
+    auto *f      = new CompiledFn(
+        fn_type, core::Params<type::Typed<ast::Declaration const *>>{});
+    f->entry()->set_jump(JumpCmd::Return());
+    return NativeFn::Data{
+        .fn        = f,
+        .type      = fn_type,
+        .byte_code = byte_code->begin(),
+    };
+  }();
+  return NativeFn(&*data);
 }
 
 struct CompiledBlock {
@@ -29,7 +39,7 @@ struct CompiledBlock {
 
   CompiledBlock() = default;
   explicit CompiledBlock(absl::flat_hash_set<Jump> after)
-      : before_({Fn(&TrivialFunction())}), after_(std::move(after)) {}
+      : before_({Fn(TrivialFunction())}), after_(std::move(after)) {}
   explicit CompiledBlock(OverloadSet os, absl::flat_hash_set<Jump> after)
       : before_(std::move(os)), after_(std::move(after)) {}
 

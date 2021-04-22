@@ -61,7 +61,7 @@ ir::Fn InsertGeneratedMoveInit(
       }
       c.builder().ReturnJump();
     }
-    WriteByteCode(*fn.get());
+    c.context().root().WriteByteCode(fn);
   }
   return fn;
 }
@@ -99,8 +99,8 @@ ir::Fn InsertGeneratedCopyInit(
        ++i;
       }
       c.builder().ReturnJump();
-    }
-    WriteByteCode(*fn.get());
+   }
+   c.context().root().WriteByteCode(fn);
   }
   return fn;
 }
@@ -136,7 +136,7 @@ ir::Fn InsertGeneratedMoveAssign(
 
       c.builder().ReturnJump();
     }
-    WriteByteCode(*fn.get());
+    c.context().root().WriteByteCode(fn);
   }
   return fn;
 }
@@ -172,7 +172,7 @@ ir::Fn InsertGeneratedCopyAssign(
 
       c.builder().ReturnJump();
     }
-    WriteByteCode(*fn.get());
+    c.context().root().WriteByteCode(fn);
   }
   return fn;
 }
@@ -284,7 +284,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           }
 
           c.builder().ReturnJump();
-          WriteByteCode(*full_dtor.get());
+          c.context().WriteByteCode(full_dtor);
 
           dtor = full_dtor;
         }
@@ -315,8 +315,6 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     c.builder().ReturnJump();
   }
 
-  WriteByteCode(fn);
-
   return fn;
 }
 
@@ -340,7 +338,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     ASSIGN_OR(return WorkItem::Result::Failure,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
-    InterpretAtCompileTime(ir::NativeFn(&fn));
+    InterpretAtCompileTime(fn);
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());
@@ -357,7 +355,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     ASSIGN_OR(return WorkItem::Result::Failure,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
-    InterpretAtCompileTime(ir::NativeFn(&fn));
+    InterpretAtCompileTime(fn);
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());

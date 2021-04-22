@@ -51,10 +51,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       auto maybe_fn = StructCompletionFn(compiler, s, node->fields());
       // TODO: Deal with error-case.
       ASSERT(maybe_fn.has_value() == true);
-      auto fn = *std::move(maybe_fn);
-
       // TODO: What if execution fails.
-      compiler::InterpretAtCompileTime(ir::NativeFn(&fn));
+      InterpretAtCompileTime(*maybe_fn);
       LOG("ParameterizedStructLiteral",
           "Completed %s which is a (parameterized) struct %s with %u field(s).",
           node->DebugString(), *s, s->fields().size());

@@ -2,6 +2,7 @@
 #define ICARUS_TYPE_POINTER_H
 
 #include "base/extend.h"
+#include "ir/byte_code_writer.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"

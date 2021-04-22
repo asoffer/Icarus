@@ -27,7 +27,7 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
     compiler->builder().ReturnJump();
   }
 
-  compiler::InterpretAtCompileTime(ir::NativeFn(&fn));
+  compiler::InterpretAtCompileTime(fn);
 }
 
 }  // namespace

@@ -32,8 +32,8 @@ concept HasResolveMemberFunction = requires(T t) {
 
 struct StackFrameIterator {
   StackFrameIterator(ir::NativeFn fn, StackFrame &frame)
-      : byte_code_iter_(fn->byte_code().begin()),
-        begin_(fn->byte_code().begin()),
+      : byte_code_iter_(fn.byte_code_iterator()),
+        begin_(fn.byte_code_iterator()),
         prev_index_(0),
         current_index_(0) {}
 

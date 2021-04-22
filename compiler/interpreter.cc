@@ -72,8 +72,7 @@ int Interpret(frontend::FileName const &file_name) {
 
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
-  WriteByteCode(main_fn);
-  InterpretAtCompileTime(ir::NativeFn(&main_fn));
+  InterpretAtCompileTime(main_fn);
 
   return 0;
 }

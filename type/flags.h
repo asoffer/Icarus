@@ -8,6 +8,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
 #include "base/extend.h"
+#include "ir/byte_code_writer.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"

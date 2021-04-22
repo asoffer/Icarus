@@ -2,17 +2,8 @@
 
 namespace ir {
 
-NativeFn::NativeFn(CompiledFn *fn) : fn_(fn) {}
+NativeFn::NativeFn(NativeFn::Data const *data) : data_(data) {}
 
-NativeFn::NativeFn(NativeFnSet *set, type::Function const *fn_type,
-                   core::Params<type::Typed<ast::Declaration const *>> p)
-    : NativeFn(
-          set->fns
-              .emplace_back(std::make_unique<CompiledFn>(fn_type, std::move(p)))
-              .get()) {}
-
-type::Function const *NativeFn::type() const { return get()->type(); }
-
-CompiledFn *NativeFn::get() const { return fn_; }
+type::Function const *NativeFn::type() const { return data_->type; }
 
 }  // namespace ir

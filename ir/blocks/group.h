@@ -14,7 +14,6 @@
 #include "core/params.h"
 #include "ir/blocks/basic.h"
 #include "ir/blocks/register_allocator.h"
-#include "ir/byte_code_writer.h"
 #include "ir/value/reg.h"
 #include "type/type_fwd.h"
 #include "type/typed_value.h"
@@ -32,6 +31,11 @@ namespace internal {
 struct BlockGroupBase {
   // TODO We should not need to store anything to do with the AST here.
   // TODO blocks need to know how to handle initial values for their parameters.
+  BlockGroupBase(BlockGroupBase const &) = delete;
+  BlockGroupBase(BlockGroupBase &&)      = default;
+  BlockGroupBase &operator=(BlockGroupBase const &) = delete;
+  BlockGroupBase &operator=(BlockGroupBase &&) = default;
+
   explicit BlockGroupBase(
       core::Params<type::Typed<ast::Declaration const *>> params,
       size_t num_state_args = 0);
@@ -54,40 +58,6 @@ struct BlockGroupBase {
     return params_;
   }
 
-  base::untyped_buffer const &byte_code() const {
-    ASSERT(byte_code_.size() != 0u);
-    return byte_code_;
-  }
-
-  template <typename InstructionSet>
-  void WriteByteCode() {
-    ByteCodeWriter writer(&byte_code_);
-    ASSERT(byte_code_.size() == 0u);
-    for (auto &block : blocks_) {
-      writer.StartBlock(block.get());
-      for (auto const &inst : block->instructions()) {
-        if (not inst) { continue; }
-        writer.Write(InstructionSet::Index(inst));
-        inst.WriteByteCode(&writer);
-      }
-      block->jump().Visit([&](auto &j) {
-        using type = std::decay_t<decltype(j)>;
-        if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {
-          writer.Write(internal::kReturnInstruction);
-        } else if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
-          writer.Write(internal::kUncondJumpInstruction);
-          writer.Write(j.block);
-        } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
-          writer.Write(internal::kCondJumpInstruction);
-          writer.Write(j.reg);
-          writer.Write(j.true_block);
-          writer.Write(j.false_block);
-        }
-      });
-    }
-    writer.MakeReplacements();
-  }
-
   template <std::invocable<type::Type, ir::Reg> Fn>
   void for_each_alloc(Fn &&f) const {
     alloc_.for_each_alloc(std::forward<Fn>(f));
@@ -108,8 +78,6 @@ struct BlockGroupBase {
   core::Params<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   RegisterAllocator alloc_;
-
-  base::untyped_buffer byte_code_;
 };
 
 }  // namespace internal

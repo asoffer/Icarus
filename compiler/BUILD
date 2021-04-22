@@ -199,6 +199,7 @@ cc_library(
     hdrs = ["context.h"],
     srcs = ["context.cc"],
     deps = [
+        ":instructions",
         ":jump_map",
         "//ast:ast",
         "//base:guarded",

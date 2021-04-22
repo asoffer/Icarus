@@ -1,12 +1,15 @@
 #ifndef ICARUS_BASE_RAW_ITERATOR_H
 #define ICARUS_BASE_RAW_ITERATOR_H
 
+#include <compare>
+
 #include "base/unaligned_ref.h"
 
 namespace base::internal {
 
 struct raw_const_iterator {
   explicit constexpr raw_const_iterator(char const *ptr) : ptr_(ptr) {}
+  constexpr raw_const_iterator() : raw_const_iterator(nullptr) {}
 
   constexpr void skip(size_t n) { ptr_ += n; }
 
@@ -19,30 +22,7 @@ struct raw_const_iterator {
 
   constexpr void const *raw() const { return ptr_; }
 
-  friend constexpr bool operator<(raw_const_iterator lhs,
-                                  raw_const_iterator rhs) {
-    return lhs.ptr_ < rhs.ptr_;
-  }
-  friend constexpr bool operator>(raw_const_iterator lhs,
-                                  raw_const_iterator rhs) {
-    return rhs < lhs;
-  }
-  friend constexpr bool operator<=(raw_const_iterator lhs,
-                                   raw_const_iterator rhs) {
-    return not(lhs > rhs);
-  }
-  friend constexpr bool operator>=(raw_const_iterator lhs,
-                                   raw_const_iterator rhs) {
-    return not(rhs > lhs);
-  }
-  friend constexpr bool operator==(raw_const_iterator lhs,
-                                   raw_const_iterator rhs) {
-    return lhs.ptr_ == rhs.ptr_;
-  }
-  friend constexpr bool operator!=(raw_const_iterator lhs,
-                                   raw_const_iterator rhs) {
-    return not(lhs == rhs);
-  }
+  auto operator<=>(raw_const_iterator const &) const = default;
 
  private:
   friend struct raw_iterator;

@@ -101,22 +101,61 @@ struct instruction_set_t
           type::SliceDataInstruction, ir::DebugIrInstruction,
           ir::AbortInstruction> {};
 
+void WriteByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
+  writer.StartBlock(&block);
+
+  for (auto const& inst : block.instructions()) {
+    if (not inst) { continue; }
+    writer.Write(instruction_set_t::Index(inst));
+    inst.WriteByteCode(&writer);
+  }
+
+  block.jump().Visit([&](auto& j) {
+    using type = std::decay_t<decltype(j)>;
+    if constexpr (std::is_same_v<type, ir::JumpCmd::RetJump>) {
+      writer.Write(ir::internal::kReturnInstruction);
+    } else if constexpr (std::is_same_v<type, ir::JumpCmd::UncondJump>) {
+      writer.Write(ir::internal::kUncondJumpInstruction);
+      writer.Write(j.block);
+    } else if constexpr (std::is_same_v<type, ir::JumpCmd::CondJump>) {
+      writer.Write(ir::internal::kCondJumpInstruction);
+      writer.Write(j.reg);
+      writer.Write(j.true_block);
+      writer.Write(j.false_block);
+    }
+  });
+}
+
 }  // namespace
 
-void WriteByteCode(ir::CompiledFn& fn) {
-  fn.WriteByteCode<instruction_set_t>();
+base::untyped_buffer EmitByteCode(ir::CompiledFn const& fn) {
+  base::untyped_buffer byte_code;
+  ir::ByteCodeWriter writer(&byte_code);
+  for (auto const& block : fn.blocks()) { WriteByteCode(writer, *block); }
+  writer.MakeReplacements();
+  return byte_code;
+}
+
+void InterpretAtCompileTime(ir::CompiledFn const& fn) {
+  auto byte_code = EmitByteCode(fn);
+  ir::NativeFn::Data data{
+      .fn        = &const_cast<ir::CompiledFn&>(fn),
+      .type      = fn.type(),
+      .byte_code = byte_code.begin(),
+  };
+  InterpretAtCompileTime(ir::NativeFn(&data));
 }
 
 void InterpretAtCompileTime(ir::NativeFn f) {
   interpreter::Execute<instruction_set_t>(f);
 }
 
-base::untyped_buffer EvaluateAtCompileTimeToBuffer(ir::CompiledFn&& f) {
-  return interpreter::EvaluateToBuffer<instruction_set_t>(std::move(f));
+base::untyped_buffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f) {
+  return interpreter::EvaluateToBuffer<instruction_set_t>(f);
 }
 
-interpreter::EvaluationResult EvaluateAtCompileTime(ir::CompiledFn&& f) {
-  return interpreter::Evaluate<instruction_set_t>(std::move(f));
+interpreter::EvaluationResult EvaluateAtCompileTime(ir::NativeFn f) {
+  return interpreter::Evaluate<instruction_set_t>(f);
 }
 
 }  // namespace compiler

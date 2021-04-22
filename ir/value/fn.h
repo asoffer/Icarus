@@ -31,10 +31,7 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
  public:
   enum class Kind { Native, Builtin, Foreign };
 
-  // TODO: remove this constructor.
-  // TODO: Using default construction to avoid some work needed in byte-code
-  // reader.
-  Fn(CompiledFn *f = nullptr) : Fn(NativeFn(f)) {}
+  Fn() : Fn(NativeFn(nullptr)) {}
 
   Fn(NativeFn f) {
     std::memcpy(&data_, &f, sizeof(data_));
@@ -43,13 +40,7 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
 
   constexpr Kind kind() const { return static_cast<Kind>(data_ & 3); }
 
-  size_t num_parameters() const {
-    switch (kind()) {
-      case ir::Fn::Kind::Native: return native()->num_args();
-      case ir::Fn::Kind::Builtin:
-      case ir::Fn::Kind::Foreign: return type()->params().size();
-    }
-  }
+  size_t num_parameters() const { return type()->params().size(); }
 
   type::Function const *type() const {
     switch (kind()) {
@@ -107,7 +98,7 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
   NativeFn native() const {
     ASSERT(kind() == Kind::Native);
     NativeFn f;
-    std::memcpy(&f.fn_, &data_, sizeof(CompiledFn *));
+    std::memcpy(&f.data_, &data_, sizeof(CompiledFn *));
     return f;
   }
 

@@ -39,8 +39,8 @@ Compiler::Compiler(PersistentResources const &resources)
 
 void Compiler::CompleteDeferredBodies() { state_.Complete(); }
 
-static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
-                                type::Type type) {
+static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
+    Compiler &c, ast::Expression const *expr, type::Type type) {
   LOG("MakeThunk", "Thunk for %s: %s", expr->DebugString(), type.to_string());
   ir::CompiledFn fn(type::Func({}, {type}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
@@ -78,28 +78,38 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     c.builder().ReturnJump();
   }
 
-  WriteByteCode(fn);
-  return fn;
+  return std::pair<ir::CompiledFn, base::untyped_buffer>(std::move(fn),
+                                                         EmitByteCode(fn));
 }
 
 interpreter::EvaluationResult Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr, bool must_complete) {
   Compiler c             = MakeChild(resources_);
-  c.state_.must_complete = must_complete;
-  auto thunk             = MakeThunk(c, *expr, expr.type());
+  c.state_.must_complete  = must_complete;
+  auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
+  ir::NativeFn::Data data{
+      .fn        = &thunk,
+      .type      = thunk.type(),
+      .byte_code = byte_code.begin(),
+  };
   c.CompleteWorkQueue();
   c.CompleteDeferredBodies();
-  return EvaluateAtCompileTime(std::move(thunk));
+  return EvaluateAtCompileTime(ir::NativeFn(&data));
 }
 
 base::untyped_buffer Compiler::EvaluateToBufferOrDiagnose(
     type::Typed<ast::Expression const *> expr) {
   // TODO: The diagnosis part.
   Compiler c = MakeChild(resources_);
-  auto thunk = MakeThunk(c, *expr, expr.type());
+  auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
+  ir::NativeFn::Data data{
+      .fn        = &thunk,
+      .type      = thunk.type(),
+      .byte_code = byte_code.begin(),
+  };
   c.CompleteWorkQueue();
   c.CompleteDeferredBodies();
-  return EvaluateAtCompileTimeToBuffer(std::move(thunk));
+  return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
 }
 
 ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {

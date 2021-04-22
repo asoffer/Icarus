@@ -70,7 +70,6 @@ cc_library(
         "//core:alignment",
         "//core:bytes",
         "//core:params",
-        "//ir:byte_code_writer",
         "//type:type_fwd",
         "//type:typed_value",
     ],

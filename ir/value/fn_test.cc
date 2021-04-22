@@ -27,9 +27,14 @@ TEST(Fn, ForeignFn) {
 
 TEST(Fn, NativeFn) {
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::Fn a(&f);
+  ir::NativeFn::Data data{
+      .fn        = &f,
+      .type      = f.type(),
+  };
+  ir::Fn a{ir::NativeFn(&data)};
   ASSERT_EQ(a.kind(), ir::Fn::Kind::Native);
-  ASSERT_EQ(a.native(), ir::NativeFn(&f));
+
+  ASSERT_EQ(a.native(), ir::NativeFn(&data));
 }
 
 TEST(Fn, BuiltinFn) {

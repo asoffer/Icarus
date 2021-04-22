@@ -97,7 +97,7 @@ struct DebugIrInstruction
   static constexpr std::string_view kDebugFormat = "debug-ir";
 
   void Apply(interpreter::ExecutionContext& ctx) const {
-    std::cerr << *ctx.current_frame().fn().native().get();
+    std::cerr << *ctx.current_frame().fn().native();
   }
 };
 

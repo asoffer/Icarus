@@ -24,7 +24,7 @@ void Execute(ir::NativeFn fn) {
 }
 
 template <typename InstSet>
-base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
+base::untyped_buffer EvaluateToBuffer(ir::NativeFn fn) {
   // TODO: Support multiple outputs.
   LOG("EvaluateToBuffer", "%s", fn);
 
@@ -33,10 +33,10 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   auto ret_buf         = base::untyped_buffer::MakeFull(required.value());
 
   ExecutionContext ctx;
-  StackFrame frame(ir::NativeFn(&fn), ctx.stack());
+  StackFrame frame(fn, ctx.stack());
 
   frame.regs_.set<ir::Addr>(ir::Reg::Out(0), ir::Addr::Heap(ret_buf.raw(0)));
-  ctx.Execute<InstSet>(&fn, frame);
+  ctx.Execute<InstSet>(fn, frame);
 
   LOG("EvaluateToBuffer", "Result buffer = %s", ret_buf.to_string());
   return ret_buf;
@@ -44,9 +44,9 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
 
 // TODO: why an r-value reference?
 template <typename InstSet>
-EvaluationResult Evaluate(ir::CompiledFn &&fn) {
+EvaluationResult Evaluate(ir::NativeFn fn) {
   LOG("Evaluate", "%s", fn);
-  auto buf = EvaluateToBuffer<InstSet>(std::move(fn));
+  auto buf = EvaluateToBuffer<InstSet>(fn);
   std::vector<ir::Value> values;
   values.reserve(fn.type()->output().size());
 
