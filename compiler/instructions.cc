@@ -11,6 +11,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
+#include "type/interface.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/slice.h"
@@ -34,9 +35,21 @@ using OrderedComparisonInstructions =
 template <typename... Ts>
 using CastInstructions = ir::InstructionSet<ir::CastInstruction<Ts>...>;
 
+using TypeConstructorInstructions =
+    ir::InstructionSet<type::PtrInstruction, type::BufPtrInstruction,
+                       type::OpaqueTypeInstruction,
+                       type::FunctionTypeInstruction, type::SliceInstruction,
+                       type::ConvertsToInstruction, type::StructInstruction,
+                       type::EnumInstruction, type::FlagsInstruction>;
+
 struct instruction_set_t
     : ir::InstructionSet<
-          ir::CoreInstructions, ir::AddInstruction<uint8_t>,
+          ir::CoreInstructions<bool, ir::Char, uint8_t, int8_t, uint16_t,
+                               int16_t, uint32_t, int32_t, uint64_t, int64_t,
+                               float, double, type::Type, ir::Addr, ir::String,
+                               ir::Fn, ir::Block, ir::Scope, ir::Jump,
+                               ir::ModuleId, ir::Interface>,
+          ir::SetReturnInstruction<ir::GenericFn>,
           ArithmeticInstructions<uint8_t, int8_t, uint16_t, int16_t, uint32_t,
                                  int32_t, uint64_t, int64_t, float, double>,
           ir::PtrDiffInstruction, ir::ModInstruction<uint8_t>,
@@ -86,20 +99,16 @@ struct instruction_set_t
               float(double), double(int8_t), double(uint16_t), double(int16_t),
               double(uint32_t), double(int32_t), double(uint64_t),
               double(int64_t), double(float)>,
-          ir::AndInstruction, ir::NotInstruction, type::SliceInstruction,
-          type::XorFlagsInstruction, type::AndFlagsInstruction,
-          type::OrFlagsInstruction, type::PtrInstruction,
-          type::BufPtrInstruction, type::OpaqueTypeInstruction,
-          type::FunctionTypeInstruction, ir::LoadSymbolInstruction,
-          type::ArrayInstruction, type::StructInstruction,
+          ir::AndInstruction, ir::NotInstruction, type::XorFlagsInstruction,
+          type::AndFlagsInstruction, type::OrFlagsInstruction,
+          ir::LoadSymbolInstruction, type::ArrayInstruction,
           ir::MakeBlockInstruction, ir::MakeScopeInstruction,
           ir::StructIndexInstruction, ir::PtrIncrInstruction,
-          type::EnumInstruction, type::FlagsInstruction,
           ir::TypeInfoInstruction, ir::InitInstruction, ir::DestroyInstruction,
           ir::MoveInitInstruction, ir::CopyInitInstruction, ir::MoveInstruction,
           ir::CopyInstruction, type::SliceLengthInstruction,
           type::SliceDataInstruction, ir::DebugIrInstruction,
-          ir::AbortInstruction> {};
+          ir::AbortInstruction, TypeConstructorInstructions> {};
 
 void WriteByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
   writer.StartBlock(&block);

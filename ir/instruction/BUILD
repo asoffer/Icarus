@@ -161,7 +161,6 @@ cc_library(
         "//ir/value:native_fn",
         "//ir/value:reg",
         "//ir/value:reg_or",
-        "@com_google_absl//absl/strings:str_format",
-        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

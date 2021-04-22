@@ -65,6 +65,8 @@ type::Type Get() {
     return type::Scope;
   } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
     return type::Module;
+  } else if constexpr (base::meta<T> == base::meta<ir::Interface>) {
+    return type::Interface;
   } else if constexpr (std::is_pointer_v<T>) {
     return Ptr(Get<std::decay_t<decltype(*std::declval<T>())>>());
   } else {
@@ -126,6 +128,8 @@ bool Compare(::type::Type t) {
     return t == ::type::Module;
   } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
     return t == ::type::Block;
+  } else if constexpr (base::meta<T> == base::meta<ir::Interface>) {
+    return t == ::type::Interface;
   } else {
     UNREACHABLE(t.to_string(), " vs ", typeid(T).name());
   }
@@ -160,7 +164,8 @@ auto Apply(Type t, Fn &&fn) {
   return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                     uint16_t, uint32_t, uint64_t, float, double, type::Type,
                     ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
-                    ir::Block, ir::GenericFn>(t, std::forward<Fn>(fn));
+                    ir::Block, ir::GenericFn, ir::Interface>(
+      t, std::forward<Fn>(fn));
 }
 
 }  // namespace type

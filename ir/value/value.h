@@ -10,6 +10,7 @@
 #include "ir/value/block.h"
 #include "ir/value/char.h"
 #include "ir/value/hashtag.h"
+#include "ir/value/interface.h"
 #include "ir/value/jump.h"
 #include "ir/value/label.h"
 #include "ir/value/module_id.h"
@@ -46,28 +47,30 @@ struct Value {
       base::type_list<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                       uint16_t, uint32_t, uint64_t, float, double, type::Type,
                       Reg, Addr, String, ModuleId, Fn, GenericFn, Jump, Block,
-                      Hashtag, Scope, Label, Empty>;
+                      Hashtag, Scope, Label, Interface, Empty>;
 
-  static constexpr size_t value_size_v = std::max(
-      {sizeof(bool),       sizeof(Char),     sizeof(int8_t),  sizeof(int16_t),
-       sizeof(int32_t),    sizeof(int64_t),  sizeof(uint8_t), sizeof(uint16_t),
-       sizeof(uint32_t),   sizeof(uint64_t), sizeof(float),   sizeof(double),
-       sizeof(type::Type), sizeof(Reg),      sizeof(Addr),    sizeof(ModuleId),
-       sizeof(Jump),       sizeof(Block),    sizeof(Hashtag), sizeof(String),
-       sizeof(Scope),      sizeof(Label),    sizeof(Empty)});
+  static constexpr size_t value_size_v =
+      std::max({sizeof(bool),       sizeof(Char),      sizeof(int8_t),
+                sizeof(int16_t),    sizeof(int32_t),   sizeof(int64_t),
+                sizeof(uint8_t),    sizeof(uint16_t),  sizeof(uint32_t),
+                sizeof(uint64_t),   sizeof(float),     sizeof(double),
+                sizeof(type::Type), sizeof(Reg),       sizeof(Addr),
+                sizeof(ModuleId),   sizeof(Jump),      sizeof(Block),
+                sizeof(Hashtag),    sizeof(String),    sizeof(Scope),
+                sizeof(Label),      sizeof(Interface), sizeof(Empty)});
   // The above happen to cover the alignment of Fn, GenericFn, but we have
   // layering issues here and those are incomplete when this line is processed.
 
  private:
   static constexpr size_t alignment_v =
-      std::max({alignof(bool),       alignof(Char),     alignof(int8_t),
-                alignof(int16_t),    alignof(int32_t),  alignof(int64_t),
-                alignof(uint8_t),    alignof(uint16_t), alignof(uint32_t),
-                alignof(uint64_t),   alignof(float),    alignof(double),
-                alignof(type::Type), alignof(Reg),      alignof(Addr),
-                alignof(ModuleId),   alignof(Jump),     alignof(Block),
-                alignof(Hashtag),    alignof(String),   alignof(Scope),
-                alignof(Label),      alignof(Empty)});
+      std::max({alignof(bool),       alignof(Char),      alignof(int8_t),
+                alignof(int16_t),    alignof(int32_t),   alignof(int64_t),
+                alignof(uint8_t),    alignof(uint16_t),  alignof(uint32_t),
+                alignof(uint64_t),   alignof(float),     alignof(double),
+                alignof(type::Type), alignof(Reg),       alignof(Addr),
+                alignof(ModuleId),   alignof(Jump),      alignof(Block),
+                alignof(Hashtag),    alignof(String),    alignof(Scope),
+                alignof(Label),      alignof(Interface), alignof(Empty)});
   // The above happen to cover the alignment of Fn, GenericFn, but we have
   // layering issues here and those are incomplete when this line is processed.
 
@@ -136,7 +139,8 @@ struct Value {
   constexpr void apply(F&& f) const {
     apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                uint32_t, uint64_t, float, double, type::Type, Addr, String,
-               /*Fn, GenericFn,*/ Reg, ModuleId, Empty>(std::forward<F>(f));
+               /*Fn, GenericFn,*/ Reg, ModuleId, Interface, Empty>(
+        std::forward<F>(f));
   }
 
   template <typename H>
@@ -144,7 +148,7 @@ struct Value {
     v.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type, Addr,
                  String, /* Fn, GenericFn, */ Hashtag, Jump, Reg, ModuleId,
-                 Empty>(
+                 Interface, Empty>(
         [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
     return h;
   }
@@ -173,9 +177,10 @@ struct Value {
     bool eq;
     lhs.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                    uint16_t, uint32_t, uint64_t, float, double, type::Type, Reg,
-                   Addr, Hashtag, String, ModuleId, Empty>([&rhs, &eq](auto x) {
-      eq = (x == rhs.get<std::decay_t<decltype(x)>>());
-    });
+                   Addr, Hashtag, String, ModuleId, Interface, Empty>(
+        [&rhs, &eq](auto x) {
+          eq = (x == rhs.get<std::decay_t<decltype(x)>>());
+        });
     return eq;
   }
 

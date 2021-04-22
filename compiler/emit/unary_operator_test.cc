@@ -80,8 +80,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{.context  = "f ::= () => 3 as f32",
                  .expr     = "-f()",
                  .expected = ir::Value(float{-3})},
-        TestCase{.expr     = "-(3.0 as f64)",
-                 .expected = ir::Value(double{-3})},
+        TestCase{.expr = "-(3.0 as f64)", .expected = ir::Value(double{-3})},
         TestCase{.context  = "f ::= () => 3 as f64",
                  .expr     = "-f()",
                  .expected = ir::Value(double{-3})},
@@ -90,13 +89,13 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{.context  = "f ::= () => true",
                  .expr     = "f():?",
                  .expected = ir::Value(static_cast<type::Type>(type::Bool))},
-        TestCase{.expr     = "*i32",
-                 .expected = ir::Value(
-                     static_cast<type::Type>(type::Ptr(type::I32)))},
-        TestCase{.context  = "f ::= () => i32",
-                 .expr     = "*f()",
-                 .expected = ir::Value(
-                     static_cast<type::Type>(type::Ptr(type::I32)))},
+        TestCase{.expr = "*i32",
+                 .expected =
+                     ir::Value(static_cast<type::Type>(type::Ptr(type::I32)))},
+        TestCase{.context = "f ::= () => i32",
+                 .expr    = "*f()",
+                 .expected =
+                     ir::Value(static_cast<type::Type>(type::Ptr(type::I32)))},
         TestCase{.context  = R"(
                f ::= () -> i64 {
                  n: i64
@@ -107,6 +106,8 @@ INSTANTIATE_TEST_SUITE_P(
                )",
                  .expr     = "f()",
                  .expected = ir::Value(int64_t{3})},
+        TestCase{.expr     = "~i64",
+                 .expected = ir::Value(ir::Interface::ConvertsTo(type::I64))},
     }));
 
 }  // namespace

@@ -141,6 +141,18 @@ cc_library(
 )
 
 cc_library(
+    name = "interface",
+    hdrs = ["interface.h"],
+    srcs = ["interface.cc"],
+    deps = [
+        "//base:global",
+        "//core:params",
+        "//type",
+        "@com_google_absl//absl/container:node_hash_set",
+    ],
+)
+
+cc_library(
     name = "jump",
     hdrs = ["jump.h"],
 )
@@ -308,6 +320,7 @@ cc_library(
         ":block",
         ":char",
         ":hashtag",
+        ":interface",
         ":jump",
         ":label",
         ":module_id",

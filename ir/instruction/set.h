@@ -7,8 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/random/random.h"
-#include "absl/strings/str_format.h"
+#include "absl/container/flat_hash_map.h"
 #include "base/meta.h"
 #include "ir/compiled_jump.h"
 #include "ir/instruction/core.h"
@@ -19,7 +18,6 @@
 #include "ir/value/fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
-#include "type/primitive.h"
 
 namespace ir {
 
@@ -85,16 +83,10 @@ absl::flat_hash_map<base::MetaValue, cmd_index_t> const
             static_cast<instructions_t>(nullptr));
 
 template <typename... Ts>
-using CoreInstructionsImpl = InstructionSet<
-    CommentInstruction, RegisterInstruction<Ts>..., StoreInstruction<Ts>...,
-    PhiInstruction<Ts>..., SetReturnInstruction<Ts>..., CallInstruction,
-    SetReturnInstruction<GenericFn>,
-    SetReturnInstruction<type::GenericStruct const *>>;
 using CoreInstructions =
-    CoreInstructionsImpl<bool, ir::Char, uint8_t, int8_t, uint16_t, int16_t,
-                         uint32_t, int32_t, uint64_t, int64_t, float, double,
-                         type::Type, Addr, String, Fn, Block, Scope, Jump,
-                         ModuleId>;
+    InstructionSet<CommentInstruction, RegisterInstruction<Ts>...,
+                   StoreInstruction<Ts>..., PhiInstruction<Ts>...,
+                   SetReturnInstruction<Ts>..., CallInstruction>;
 
 }  // namespace ir
 

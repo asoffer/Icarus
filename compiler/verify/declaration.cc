@@ -174,29 +174,49 @@ type::QualType VerifyDeclarationType(Compiler &compiler,
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto type_expr_qt,
                    compiler.VerifyType(node->type_expr())[0]);
-  if (type_expr_qt.type() != type::Type_) {
+  if (type_expr_qt.type() == type::Type_) {
+    if (not type_expr_qt.constant()) {
+      compiler.diag().Consume(NonConstantTypeInDeclaration{
+          .range = node->type_expr()->range(),
+      });
+      return type::QualType::Error();
+    }
+
+    ASSIGN_OR(
+        return type::QualType::Error(),  //
+               auto t,
+               compiler.EvaluateOrDiagnoseAs<type::Type>(node->type_expr()));
+
+    return type::QualType(t, (node->flags() & ast::Declaration::f_IsConst)
+                                 ? type::Quals::Const()
+                                 : type::Quals::Unqualified());
+  } else if (type_expr_qt.type() == type::Interface) {
+    // TODO: Non-constant *INTERFACE*, not a type.
+    if (not type_expr_qt.constant()) {
+      compiler.diag().Consume(NonConstantTypeInDeclaration{
+          .range = node->type_expr()->range(),
+      });
+      return type::QualType::Error();
+    }
+
+    ASSIGN_OR(
+        return type::QualType::Error(),  //
+               auto intf,
+               compiler.EvaluateOrDiagnoseAs<ir::Interface>(node->type_expr()));
+
+    // TODO: we need to pass `intf` in.
+    return type::QualType(type::Interface,
+                          (node->flags() & ast::Declaration::f_IsConst)
+                              ? type::Quals::Const()
+                              : type::Quals::Unqualified());
+  } else {
+    // TODO: Not a type or *INTERFACE*
     compiler.diag().Consume(NotAType{
         .range = node->type_expr()->range(),
         .type  = type_expr_qt.type(),
     });
     return type::QualType::Error();
   }
-
-  if (not type_expr_qt.constant()) {
-    compiler.diag().Consume(NonConstantTypeInDeclaration{
-        .range = node->type_expr()->range(),
-    });
-    return type::QualType::Error();
-  }
-
-  ASSIGN_OR(
-      return type::QualType::Error(),  //
-             auto t,
-             compiler.EvaluateOrDiagnoseAs<type::Type>(node->type_expr()));
-
-  return type::QualType(t, (node->flags() & ast::Declaration::f_IsConst)
-                               ? type::Quals::Const()
-                               : type::Quals::Unqualified());
 }
 
 // Verifies the type of a declaration of the form `x: t`.

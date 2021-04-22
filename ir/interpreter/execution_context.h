@@ -257,16 +257,17 @@ struct ExecutionContext {
 
         using type = typename Inst::type;
 
-        type result;
+        alignas(type) char result_buffer[sizeof(type)];
+        type *result = reinterpret_cast<type *>(result_buffer);
         for (uint16_t i = 0; i < num; ++i) {
           if (i == index) {
-            result = ctx.resolve(iter->read<ir::RegOr<type>>().get());
+            new (result) type(ctx.resolve(iter->read<ir::RegOr<type>>().get()));
           } else {
             iter->read<ir::RegOr<type>>();
           }
         }
 
-        ctx.current_frame().regs_.set(iter->read<ir::Reg>(), result);
+        ctx.current_frame().regs_.set(iter->read<ir::Reg>(), *result);
       } else if constexpr (
           base::meta<Inst>.template is_a<ir::SetReturnInstruction>()) {
         using type        = typename Inst::type;

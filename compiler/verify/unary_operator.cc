@@ -41,6 +41,20 @@ struct UncopyableType {
   frontend::SourceRange range;
 };
 
+struct NonConstantInterface {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-constant-interface";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Non-constant type in interface constructor `~`"),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  frontend::SourceRange range;
+};
+
 struct InvalidUnaryOperatorOverload {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName = "invalid-unary-operator-overload";
@@ -282,7 +296,14 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
       }
     } break;
     case ast::UnaryOperator::Kind::Tilde: {
-      if (operand_type.is<type::Flags>()) {
+      if (operand_type == type::Type_) {
+        qt = type::QualType::Constant(type::Interface);
+        if (not operand_qt.constant()) {
+          diag().Consume(
+              NonConstantInterface{.range = node->operand()->range()});
+          qt.MarkError();
+        }
+      } else if (operand_type.is<type::Flags>()) {
         qt = type::QualType(operand_type,
                             operand_qt.quals() & type::Quals::Const());
       } else if (operand_type.is<type::Struct>()) {

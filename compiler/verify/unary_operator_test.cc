@@ -526,5 +526,32 @@ TEST(Unexpanded, Failure) {
                   Pair("type-error", "unexpanded-unary-operator-argument")));
 }
 
+
+TEST(Tilde, InterfaceSuccess) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  T ::= i64
+  )");
+  auto const *expr = mod.Append<ast::UnaryOperator>("~T");
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_THAT(qts,
+              UnorderedElementsAre(type::QualType::Constant(type::Interface)));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(Tilde, NonConstantInterface) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  T := i64
+  )");
+  auto const *expr = mod.Append<ast::UnaryOperator>("~T");
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_THAT(qts,
+              UnorderedElementsAre(type::QualType::Constant(type::Interface)));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "non-constant-interface")));
+}
+
 }  // namespace
 }  // namespace compiler
