@@ -78,7 +78,16 @@ cc_library(
     name = "cast",
     hdrs = ["cast.h"],
     srcs = ["cast.cc"],
-    deps = CONCRETE_TYPES + [
+    deps = [
+        ":array",
+        ":enum",
+        ":flags",
+        ":function",
+        ":opaque",
+        ":pointer",
+        ":primitive",
+        ":slice",
+        ":type",
         "@com_google_absl//absl/algorithm:container",
     ],
 )

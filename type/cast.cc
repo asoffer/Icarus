@@ -11,7 +11,6 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/slice.h"
-#include "type/struct.h"
 
 namespace type {
 namespace {
