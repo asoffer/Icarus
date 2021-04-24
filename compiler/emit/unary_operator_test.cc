@@ -106,8 +106,9 @@ INSTANTIATE_TEST_SUITE_P(
                )",
                  .expr     = "f()",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = "~i64",
-                 .expected = ir::Value(ir::Interface::ConvertsTo(type::I64))},
+        TestCase{
+            .expr     = "~i64",
+            .expected = ir::Value(interface::Interface::ConvertsTo(type::I64))},
     }));
 
 }  // namespace

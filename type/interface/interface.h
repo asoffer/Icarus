@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_VALUE_INTERFACE_H
-#define ICARUS_IR_VALUE_INTERFACE_H
+#ifndef ICARUS_TYPE_INTERFACE_INTERFACE_H
+#define ICARUS_TYPE_INTERFACE_INTERFACE_H
 
 #include <iostream>
 
@@ -7,7 +7,7 @@
 #include "base/extend/absl_hash.h"
 #include "type/type.h"
 
-namespace ir {
+namespace interface {
 
 struct Interface : base::Extend<Interface, 1>::With<base::AbslHashExtension> {
   // TODO: Remove this.
@@ -33,6 +33,6 @@ struct Interface : base::Extend<Interface, 1>::With<base::AbslHashExtension> {
   Impl const* impl_ = nullptr;
 };
 
-}  // namespace ir
+}  // namespace interface
 
-#endif  // ICARUS_IR_VALUE_INTERFACE_H
+#endif  // ICARUS_TYPE_INTERFACE_INTERFACE_H

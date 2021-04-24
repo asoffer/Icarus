@@ -61,7 +61,7 @@ EvaluationResult Evaluate(ir::NativeFn fn) {
       type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
                        uint8_t, uint16_t, uint32_t, uint64_t, float, double,
                        type::Type, ir::Addr, ir::ModuleId, ir::Scope, ir::Fn,
-                       ir::Jump, ir::Block, ir::GenericFn, ir::Interface>(
+                       ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
           t, [&]<typename T>() {
             T val = iter.template read<T>();
             values.push_back(ir::Value(val));

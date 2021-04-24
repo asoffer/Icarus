@@ -1,11 +1,11 @@
-#include "ir/value/interface.h"
+#include "type/interface/interface.h"
 
 #include "gtest/gtest.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/type.h"
 
-namespace ir {
+namespace interface {
 namespace {
 
 TEST(Interface, Equality) {
@@ -29,4 +29,4 @@ TEST(Satisfiability, ConvertsTo) {
 }
 
 }  // namespace
-}  // namespace ir
+}  // namespace interface

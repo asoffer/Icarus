@@ -193,18 +193,6 @@ cc_library(
 )
 
 cc_library(
-    name = "interface",
-    hdrs = ["interface.h"],
-    deps = [
-        ":type",
-        "//base:extend",
-        "//ir/value:interface",
-        "//ir/value:reg",
-        "//ir/value:reg_or",
-    ],
-)
-
-cc_library(
     name = "jump",
     hdrs = ["jump.h"],
     srcs = ["jump.cc"],

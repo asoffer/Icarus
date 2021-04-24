@@ -199,10 +199,10 @@ type::QualType VerifyDeclarationType(Compiler &compiler,
       return type::QualType::Error();
     }
 
-    ASSIGN_OR(
-        return type::QualType::Error(),  //
-               auto intf,
-               compiler.EvaluateOrDiagnoseAs<ir::Interface>(node->type_expr()));
+    ASSIGN_OR(return type::QualType::Error(),  //
+                     auto intf,
+                     compiler.EvaluateOrDiagnoseAs<interface::Interface>(
+                         node->type_expr()));
 
     // TODO: we need to pass `intf` in.
     return type::QualType(type::Interface,

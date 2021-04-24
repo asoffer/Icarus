@@ -1,9 +1,9 @@
 #include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
-#include "type/interface.h"
 #include "compiler/compiler.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/value.h"
+#include "type/interface/ir.h"
 #include "type/pointer.h"
 
 namespace compiler {
@@ -55,10 +55,11 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       auto operand_qt = context().qual_types(node->operand())[0];
       // TODO: Operator overloading
       if (operand_qt.type() == type::Type_) {
-        return ir::Value(current_block()->Append(type::ConvertsToInstruction{
-            .type   = EmitValue(node->operand()).get<ir::RegOr<type::Type>>(),
-            .result = builder().CurrentGroup()->Reserve(),
-        }));
+        return ir::Value(
+            current_block()->Append(interface::ConvertsToInstruction{
+                .type = EmitValue(node->operand()).get<ir::RegOr<type::Type>>(),
+                .result = builder().CurrentGroup()->Reserve(),
+            }));
       } else if (auto const *t = operand_qt.type().if_as<type::Flags>()) {
         return ir::Value(current_block()->Append(type::XorFlagsInstruction{
             .lhs = EmitValue(node->operand())

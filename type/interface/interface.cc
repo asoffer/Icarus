@@ -1,9 +1,9 @@
-#include "ir/value/interface.h"
+#include "type/interface/interface.h"
 #include "absl/container/node_hash_set.h"
 #include "base/global.h"
 #include "type/cast.h"
 
-namespace ir {
+namespace interface {
 
 struct Interface::Impl {
   virtual ~Impl() {}
@@ -66,4 +66,4 @@ Interface Interface::ConvertsTo(type::Type t) {
   return Interface(&*conversions_.lock()->emplace(t).first);
 }
 
-}  // namespace ir
+}  // namespace interface

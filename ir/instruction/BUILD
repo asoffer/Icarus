@@ -135,10 +135,10 @@ cc_library(
         "//ir/blocks:basic",
         "//ir:out_params",
         "//ir/value:generic_fn",
-        "//ir/value:interface",
         "//ir/value:jump",
         "//ir/value:module_id",
         "//ir/value:reg_or",
+        "//type/interface",
         "@com_google_absl//absl/strings",
     ],
 )

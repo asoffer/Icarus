@@ -11,7 +11,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
-#include "type/interface.h"
+#include "type/interface/ir.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/slice.h"
@@ -35,12 +35,11 @@ using OrderedComparisonInstructions =
 template <typename... Ts>
 using CastInstructions = ir::InstructionSet<ir::CastInstruction<Ts>...>;
 
-using TypeConstructorInstructions =
-    ir::InstructionSet<type::PtrInstruction, type::BufPtrInstruction,
-                       type::OpaqueTypeInstruction,
-                       type::FunctionTypeInstruction, type::SliceInstruction,
-                       type::ConvertsToInstruction, type::StructInstruction,
-                       type::EnumInstruction, type::FlagsInstruction>;
+using TypeConstructorInstructions = ir::InstructionSet<
+    type::PtrInstruction, type::BufPtrInstruction, type::OpaqueTypeInstruction,
+    type::FunctionTypeInstruction, type::SliceInstruction,
+    interface::ConvertsToInstruction, type::StructInstruction,
+    type::EnumInstruction, type::FlagsInstruction>;
 
 struct instruction_set_t
     : ir::InstructionSet<
@@ -48,7 +47,7 @@ struct instruction_set_t
                                int16_t, uint32_t, int32_t, uint64_t, int64_t,
                                float, double, type::Type, ir::Addr, ir::String,
                                ir::Fn, ir::Block, ir::Scope, ir::Jump,
-                               ir::ModuleId, ir::Interface>,
+                               ir::ModuleId, interface::Interface>,
           ir::SetReturnInstruction<ir::GenericFn>,
           ArithmeticInstructions<uint8_t, int8_t, uint16_t, int16_t, uint32_t,
                                  int32_t, uint64_t, int64_t, float, double>,

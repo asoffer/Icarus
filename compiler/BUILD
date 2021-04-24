@@ -36,7 +36,7 @@ cc_library(
         "//type:enum",
         "//type:flags",
         "//type:function",
-        "//type:interface",
+        "//type/interface:ir",
         "//type:opaque",
         "//type:pointer",
         "//type:slice",
