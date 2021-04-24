@@ -6,8 +6,12 @@ cc_library(
     srcs = ["interface.cc"],
     deps = [
         "//base:global",
+        "//core:arguments",
+        "//core:call",
         "//core:params",
         "//type",
+        "//type:callable",
+        "//type:function",
         "//type:cast",
         "@com_google_absl//absl/container:node_hash_set",
     ],
@@ -18,6 +22,7 @@ cc_test(
     srcs = ["interface_test.cc"],
     deps = [
         ":interface",
+        "//type:function",
         "//type:pointer",
         "//type:primitive",
         "@com_google_googletest//:gtest_main",

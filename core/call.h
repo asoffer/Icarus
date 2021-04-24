@@ -120,9 +120,9 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
 
 // Returns true if and only if a callable with `params` can be called with
 // `args`.
-template <typename T, typename U, typename ConvertibleFn>
+template <typename T, typename U>
 bool IsCallable(Params<T> const& params, Arguments<U> const& args,
-                ConvertibleFn fn) {
+                std::invocable<U, T> auto fn) {
   if (params.size() < args.size()) {
     LOG("core::IsCallable",
         "IsCallable = false due to size mismatch (%u vs %u)", params.size(),

@@ -4,6 +4,7 @@
 #include "compiler/emit/common.h"
 #include "compiler/resources.h"
 #include "ir/instruction/instructions.h"
+#include "type/interface/ir.h"
 
 namespace compiler {
 namespace {
@@ -282,6 +283,23 @@ ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       c.builder().DebugIr();
       return ir::Value();
 
+    case ir::BuiltinFn::Which::Callable: {
+      std::vector<ir::RegOr<type::Type>> pos;
+      absl::flat_hash_map<std::string, ir::RegOr<type::Type>> named;
+      for (auto const &arg : args) {
+        if (arg.named()) {
+          named.emplace(arg.name(),
+                        c.EmitValue(&arg.expr()).get<ir::RegOr<type::Type>>());
+        } else {
+          pos.push_back(c.EmitValue(&arg.expr()).get<ir::RegOr<type::Type>>());
+        }
+      }
+      return ir::Value(c.current_block()->Append(interface::CallableInstruction{
+          .positional = std::move(pos),
+          .named      = std::move(named),
+          .result     = c.builder().CurrentGroup()->Reserve(),
+      }));
+    }
     case ir::BuiltinFn::Which::Abort:
       c.current_block()->Append(ir::AbortInstruction{});
       return ir::Value();

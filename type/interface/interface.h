@@ -5,6 +5,8 @@
 
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
+#include "core/arguments.h"
+#include "core/params.h"
 #include "type/type.h"
 
 namespace interface {
@@ -15,11 +17,10 @@ struct Interface : base::Extend<Interface, 1>::With<base::AbslHashExtension> {
 
   static Interface Just(type::Type t);
   static Interface ConvertsTo(type::Type t);
+  // TODO: Figure out what to do about return values and ADL.
+  static Interface Callable(core::Arguments<type::Type> const& args);
 
-  friend std::ostream& operator<<(std::ostream& os, Interface) {
-    // TODO
-    return os << "interface";
-  }
+  friend std::ostream& operator<<(std::ostream& os, Interface);
 
   bool SatisfiedBy(type::Type t) const;
 

@@ -38,7 +38,8 @@ using CastInstructions = ir::InstructionSet<ir::CastInstruction<Ts>...>;
 using TypeConstructorInstructions = ir::InstructionSet<
     type::PtrInstruction, type::BufPtrInstruction, type::OpaqueTypeInstruction,
     type::FunctionTypeInstruction, type::SliceInstruction,
-    interface::ConvertsToInstruction, type::StructInstruction,
+    interface::ConvertsToInstruction, interface::JustInstruction,
+    interface::CallableInstruction, type::StructInstruction,
     type::EnumInstruction, type::FlagsInstruction>;
 
 struct instruction_set_t

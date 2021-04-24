@@ -32,91 +32,73 @@ TEST_P(CallTest, Call) {
 INSTANTIATE_TEST_SUITE_P(
     All, CallTest,
     testing::ValuesIn({
-        TestCase{.expr     = R"(bytes(i64)
-                             )",
+        TestCase{.expr     = R"(bytes(i64))",
                  .expected = ir::Value(uint64_t{sizeof(int64_t)})},
-        TestCase{.expr     = R"(alignment(i64)
-                             )",
+        TestCase{.expr     = R"(alignment(i64))",
                  .expected = ir::Value(uint64_t{alignof(int64_t)})},
-
+        TestCase{.expr     = R"(callable(i64))",
+                 .expected = ir::Value(interface::Interface::Callable(
+                     core::Arguments<type::Type>({type::I64}, {})))},
+        TestCase{.expr     = R"(callable(bool, n = i64))",
+                 .expected = ir::Value(interface::Interface::Callable(
+                     core::Arguments<type::Type>({type::Bool},
+                                                 {{"n", type::I64}})))},
         // TODO: Test for opaque, foreign.
 
-        TestCase{.expr     = R"((() => 3)()
-                             )",
+        TestCase{.expr     = R"((() => 3)())",
                  .expected = ir::Value(int64_t{3})},
 
-        TestCase{.expr     = R"(((n: i64) => n * n)(3)
-                             )",
+        TestCase{.expr     = R"(((n: i64) => n * n)(3))",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"(((n: i64) => n * n)(n = 3)
-                             )",
+        TestCase{.expr     = R"(((n: i64) => n * n)(n = 3))",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"(((n := 2) => n * n)(3)
-                             )",
+        TestCase{.expr     = R"(((n := 2) => n * n)(3))",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"(((n := 2) => n * n)(n = 3)
-                             )",
+        TestCase{.expr     = R"(((n := 2) => n * n)(n = 3))",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"(((n := 2) => n * n)()
-                             )",
+        TestCase{.expr     = R"(((n := 2) => n * n)())",
                  .expected = ir::Value(int64_t{4})},
 
-        TestCase{.expr     = R"(((n :: i64) => n * n)(3)
-                             )",
+        TestCase{.expr     = R"(((n :: i64) => n * n)(3))",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"(((n :: i64) => n * n)(n = 3)
-                             )",
+        TestCase{.expr     = R"(((n :: i64) => n * n)(n = 3))",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"(((n ::= 2) => n * n)(3)
-                             )",
+        TestCase{.expr     = R"(((n ::= 2) => n * n)(3))",
                  .expected = ir::Value(int64_t{9})},
-        TestCase{.expr     = R"(((n ::= 2) => n * n)(n = 3)
-                             )",
+        TestCase{.expr     = R"(((n ::= 2) => n * n)(n = 3))",
                  .expected = ir::Value(int64_t{9})},
-        // TestCase{.expr     = R"(((n ::= 2) => n * n)()
-        //                      )",
+        // TestCase{.expr     = R"(((n ::= 2) => n * n)())",
         //          .expected = ir::Value(int64_t{4})},
 
-        TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(1, 2)
-                             )",
+        TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(1, 2))",
                  .expected = ir::Value(int64_t{5})},
-        TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(a = 1, b = 2)
-                             )",
+        TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(a = 1, b = 2))",
                  .expected = ir::Value(int64_t{5})},
-        TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(b = 1, a = 2)
-                             )",
+        TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(b = 1, a = 2))",
                  .expected = ir::Value(int64_t{4})},
 
-        TestCase{.expr     = R"(((a := 1, b := 2) => a + 2 * b)(b = 1, a = 2)
-                             )",
+        TestCase{.expr     = R"(((a := 1, b := 2) => a + 2 * b)(b = 1, a = 2))",
                  .expected = ir::Value(int64_t{4})},
-        TestCase{.expr     = R"(((a := 1, b := 2) => a + 2 * b)(a = 2)
-                             )",
+        TestCase{.expr     = R"(((a := 1, b := 2) => a + 2 * b)(a = 2))",
                  .expected = ir::Value(int64_t{6})},
-        TestCase{.expr     = R"(((a := 1, b := 2) => a + 2 * b)(b = 1)
-                             )",
+        TestCase{.expr     = R"(((a := 1, b := 2) => a + 2 * b)(b = 1))",
                  .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = R"(((a := 1, b := 2) => a + 2 * b)(2)
-                             )",
+        TestCase{.expr     = R"(((a := 1, b := 2) => a + 2 * b)(2))",
                  .expected = ir::Value(int64_t{6})},
 
-        TestCase{.expr     = R"(((a: $a) => a * a)(2)
-                             )",
+        TestCase{.expr     = R"(((a: $a) => a * a)(2))",
                  .expected = ir::Value(int64_t{4})},
-        TestCase{.expr     = R"(((a: $a) => a * a)(2.5)
-                             )",
+        TestCase{.expr     = R"(((a: $a) => a * a)(2.5))",
                  .expected = ir::Value(6.25)},
 
         // TODO: Calling overload sets.
         TestCase{.description = "Instantiate the same generic more than once.",
-                 .expr        = R"((identity(2) as f64) + identity(1.0)
-                             )",
+                 .expr        = R"((identity(2) as f64) + identity(1.0))",
                  .expected    = ir::Value(3.0)},
 
         // Value to pointer casts
         TestCase{
-            .expr     = R"(((n: *i64) => @n * @n)(3)
-                         )",
+            .expr     = R"(((n: *i64) => @n * @n)(3))",
             .expected = ir::Value(int64_t{9}),
         },
         TestCase{
@@ -139,8 +121,7 @@ INSTANTIATE_TEST_SUITE_P(
         // TODO: Value to pointer casts with structs and with designated
         // initializers.
         TestCase{
-            .expr     = R"(((n: *i64) => @n * @n)(3)
-                         )",
+            .expr     = R"(((n: *i64) => @n * @n)(3))",
             .expected = ir::Value(int64_t{9}),
         },
     }));

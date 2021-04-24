@@ -108,6 +108,19 @@ struct Arguments {
     return Arguments<out_t, StringType>(std::move(pos), std::move(named));
   }
 
+  template <typename H>
+  friend H AbslHashValue(H h, core::Arguments<T> const &args) {
+    std::vector<std::pair<std::string_view, T const *>> ordered;
+    ordered.reserve(args.named().size());
+    for (auto const &[n, a] : args.named()) { ordered.emplace_back(n, &a); }
+    std::sort(
+        ordered.begin(), ordered.end(),
+        [](auto const &lhs, auto const &rhs) { return lhs.first < rhs.first; });
+    h = H::combine(std::move(h), args.pos_);
+    for (auto const &[n, a] : ordered) { h = H::combine(std::move(h), n, *a); }
+    return h;
+  }
+
   struct const_iterator {
    private:
     using named_iter_type =

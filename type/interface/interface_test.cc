@@ -1,6 +1,7 @@
 #include "type/interface/interface.h"
 
 #include "gtest/gtest.h"
+#include "type/function.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/type.h"
@@ -26,6 +27,28 @@ TEST(Satisfiability, ConvertsTo) {
                   .SatisfiedBy(type::BufPtr(type::I64)));
   EXPECT_TRUE(
       Interface::ConvertsTo(type::Ptr(type::I64)).SatisfiedBy(type::I64));
+}
+
+TEST(Satisfiability, Callable) {
+  EXPECT_TRUE(Interface::Callable(
+                  core::Arguments<type::Type>({type::Ptr(type::I64)}, {}))
+                  .SatisfiedBy(type::Func(
+                      core::Params<type::QualType>({core::AnonymousParam(
+                          type::QualType::NonConstant(type::Ptr(type::I64)))}),
+                      {})));
+  EXPECT_TRUE(Interface::Callable(
+                  core::Arguments<type::Type>({type::BufPtr(type::I64)}, {}))
+                  .SatisfiedBy(type::Func(
+                      core::Params<type::QualType>({core::AnonymousParam(
+                          type::QualType::NonConstant(type::Ptr(type::I64)))}),
+                      {})));
+  EXPECT_FALSE(
+      Interface::Callable(
+          core::Arguments<type::Type>({type::Ptr(type::I64)}, {}))
+          .SatisfiedBy(type::Func(
+              core::Params<type::QualType>({core::AnonymousParam(
+                  type::QualType::NonConstant(type::BufPtr(type::I64)))}),
+              {})));
 }
 
 }  // namespace

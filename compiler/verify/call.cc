@@ -327,6 +327,39 @@ type::QualType VerifyAlignmentCall(
   return qt;
 }
 
+type::QualType VerifyCallableCall(
+    Compiler *c, frontend::SourceRange const &range,
+    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+  type::Quals quals = type::Quals::Const();
+  bool error = false;
+
+  for (auto const &arg : arg_vals.pos()) {
+    if (arg->empty()) { quals = type::Quals::Unqualified(); }
+    if (arg.type() != type::Type_) {
+      c->diag().Consume(BuiltinError{
+          .range = range,
+          .message =
+              "Built-in function `callable` takes types as it's arguments."});
+      error = true;
+    }
+  }
+
+  for (auto const &[name, arg] : arg_vals.named()) {
+    if (arg->empty()) { quals = type::Quals::Unqualified(); }
+    if (arg.type() != type::Type_) {
+      c->diag().Consume(BuiltinError{
+          .range = range,
+          .message =
+              "Built-in function `callable` takes types as it's arguments."});
+      error = true;
+    }
+  }
+
+  type::QualType qt(type::Interface, quals);
+  if (error) { qt.MarkError(); }
+  return qt;
+}
+
 type::QualType VerifyAbortCall(
     Compiler *c, frontend::SourceRange const &range,
     core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
@@ -392,6 +425,9 @@ not_an_interface:
       } break;
       case ir::BuiltinFn::Which::Alignment: {
         qt = VerifyAlignmentCall(this, b->range(), arg_vals);
+      } break;
+      case ir::BuiltinFn::Which::Callable: {
+        qt = VerifyCallableCall(this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Abort: {
         qt = VerifyAbortCall(this, b->range(), arg_vals);
