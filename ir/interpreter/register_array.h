@@ -34,7 +34,7 @@ struct RegisterArray {
     return data_.get<T>(offset(r));
   }
 
-  template <base::contained_in<ir::Value::supported_types> T>
+  template <typename T>
   auto set(ir::Reg r, T const &val) {
     static_assert(sizeof(T) <= value_size);
     return data_.set<T>(offset(r), val);

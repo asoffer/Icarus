@@ -10,6 +10,7 @@
 #include "ir/value/block.h"
 #include "ir/value/jump.h"
 #include "ir/value/overload_set.h"
+#include "ir/value/scope.h"
 #include "type/type.h"
 
 namespace ir {

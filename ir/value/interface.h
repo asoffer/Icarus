@@ -16,6 +16,11 @@ struct Interface : base::Extend<Interface, 1>::With<base::AbslHashExtension> {
 
   static Interface ConvertsTo(type::Type t);
 
+  friend std::ostream& operator<<(std::ostream& os, Interface) {
+    // TODO
+    return os << "interface";
+  }
+
  private:
   friend base::EnableExtensions;
 

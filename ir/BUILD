@@ -78,6 +78,7 @@ cc_library(
     deps = [
         "//ir/value:block",
         "//ir/value:jump",
+        "//ir/value:scope",
         "//ir/value:overload_set",
         "//type",
         "@com_google_absl//absl/container:flat_hash_map",

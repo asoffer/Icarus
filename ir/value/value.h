@@ -3,31 +3,56 @@
 
 #include <cstdint>
 
-#include "absl/types/span.h"
 #include "base/debug.h"
 #include "base/meta.h"
-#include "ir/value/addr.h"
-#include "ir/value/block.h"
-#include "ir/value/char.h"
-#include "ir/value/hashtag.h"
-#include "ir/value/interface.h"
-#include "ir/value/jump.h"
-#include "ir/value/label.h"
-#include "ir/value/module_id.h"
+#include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/scope.h"
-#include "ir/value/slice.h"
-#include "ir/value/string.h"
-#include "type/type.h"
 
 namespace ir {
-// TODO: Invert the dependencies here.
-struct Fn;
-struct GenericFn;
+namespace internal_value {
+
+struct VTable {
+  size_t (*hash)(void const*);
+  bool (*equals)(void const*, void const*);
+  std::ostream& (*stream)(std::ostream&, void const*);
+  base::MetaValue type;
+};
+
+template <typename T>
+VTable VTableFor{
+    .hash =
+        [](void const* p) {
+          return absl::Hash<T>()(*reinterpret_cast<T const*>(p));
+        },
+    .equals =
+        [](void const* lhs, void const* rhs) {
+          return *reinterpret_cast<T const*>(lhs) ==
+                 *reinterpret_cast<T const*>(rhs);
+        },
+    .stream = [](std::ostream& os, void const* p) -> std::ostream& {
+      return os << *reinterpret_cast<T const*>(p);
+    },
+    .type = base::meta<T>,
+};
+
+// clang-format off
+template <typename T, size_t Size, size_t Align>
+concept HoldableInValue = (sizeof(T) <= Size) and (alignof(T) <= Align)
+  and std::is_trivially_copyable_v<T> and std::is_trivially_destructible_v<T>
+  and requires(T t) {
+    { absl::Hash<T>{}(t) } -> std::same_as<size_t>;
+    { t == t } -> std::same_as<bool>;
+    { std::declval<std::ostream>() << t } -> std::same_as<std::ostream&>;
+};
+
+// clang-format on
+
+}  // namespace internal_value
 
 // A `Value` represents any register or value constant usable in the
 // intermediate representation.
 struct Value {
+ private:
   // `Empty` is a special tag to hold empty values.
   struct Empty {
     template <typename H>
@@ -41,69 +66,33 @@ struct Value {
     friend constexpr bool operator!=(Empty, Empty) { return false; }
   };
 
+ public:
+  static constexpr size_t value_size_v = 16;
+  static constexpr size_t alignment_v  = 8;
+
   explicit Value() : Value(Empty{}) {}
 
-  using supported_types =
-      base::type_list<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                      uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                      Reg, Addr, String, ModuleId, Fn, GenericFn, Jump, Block,
-                      Hashtag, Scope, Label, Interface, Empty>;
+  template <internal_value::HoldableInValue<value_size_v, alignment_v> T>
+  explicit Value(T const& t) : vptr_(&internal_value::VTableFor<T>) {
+    std::memcpy(data_, &t, sizeof(t));
+  }
 
-  static constexpr size_t value_size_v =
-      std::max({sizeof(bool),       sizeof(Char),      sizeof(int8_t),
-                sizeof(int16_t),    sizeof(int32_t),   sizeof(int64_t),
-                sizeof(uint8_t),    sizeof(uint16_t),  sizeof(uint32_t),
-                sizeof(uint64_t),   sizeof(float),     sizeof(double),
-                sizeof(type::Type), sizeof(Reg),       sizeof(Addr),
-                sizeof(ModuleId),   sizeof(Jump),      sizeof(Block),
-                sizeof(Hashtag),    sizeof(String),    sizeof(Scope),
-                sizeof(Label),      sizeof(Interface), sizeof(Empty)});
-  // The above happen to cover the alignment of Fn, GenericFn, but we have
-  // layering issues here and those are incomplete when this line is processed.
-
- private:
-  static constexpr size_t alignment_v =
-      std::max({alignof(bool),       alignof(Char),      alignof(int8_t),
-                alignof(int16_t),    alignof(int32_t),   alignof(int64_t),
-                alignof(uint8_t),    alignof(uint16_t),  alignof(uint32_t),
-                alignof(uint64_t),   alignof(float),     alignof(double),
-                alignof(type::Type), alignof(Reg),       alignof(Addr),
-                alignof(ModuleId),   alignof(Jump),      alignof(Block),
-                alignof(Hashtag),    alignof(String),    alignof(Scope),
-                alignof(Label),      alignof(Interface), alignof(Empty)});
-  // The above happen to cover the alignment of Fn, GenericFn, but we have
-  // layering issues here and those are incomplete when this line is processed.
-
- public:
-  // Constructs a `Value` from the passed in type. The parameter may be of any
-  // type supported by `Value` or an `ir::RegOr<T>` where `T` is an type
-  // supported by `Value`.
-  //
-  // TODO: The instantiation taking pointers and modules is annoying due to
-  // subclasses.
-  template <typename T>
-  explicit Value(T val) : type_(base::meta<T>) {
-    if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
-      static_assert(base::Contains<supported_types, typename T::type>());
-      if (val.is_reg()) {
-        type_ = base::meta<Reg>;
-        new (&get_ref<Reg>()) Reg(val.reg());
-      } else {
-        using underlying_type      = typename T::type;
-        type_                      = base::meta<underlying_type>;
-        get_ref<underlying_type>() = std::move(val).value();
-        new (&get_ref<underlying_type>())
-            underlying_type(std::move(val).value());
-      }
+  template <internal_value::HoldableInValue<value_size_v, alignment_v> T>
+  explicit Value(RegOr<T> const& t) {
+    if (t.is_reg()) {
+      vptr_  = &internal_value::VTableFor<Reg>;
+      type() = base::meta<Reg>;
+      new (&get_ref<Reg>()) Reg(t.reg());
     } else {
-      static_assert(base::Contains<supported_types, T>());
-      new (&get_ref<T>()) T(std::move(val));
+      vptr_        = &internal_value::VTableFor<T>;
+      get_ref<T>() = t.value();
+      new (&get_ref<T>()) T(t.value());
     }
   }
 
   bool empty() const { return get_if<Empty>(); }
 
-  constexpr base::MetaValue type() const { return type_; }
+  constexpr base::MetaValue type() const { return vptr_->type; }
 
   // Returns the stored value. Behavior is undefined if the stored type is not
   // the same as the template parameter.
@@ -121,7 +110,7 @@ struct Value {
   // otherwise.
   template <typename T>
   T const* get_if() const {
-    if (type_ == base::meta<T>) { return &get_ref<T>(); }
+    if (type() == base::meta<T>) { return &get_ref<T>(); }
     return nullptr;
   }
 
@@ -133,55 +122,32 @@ struct Value {
         static_cast<Value const*>(this)->template get_if<T>());
   }
 
-  // Calls `f` on the held type. `f` must be callable with any type
-  // storable by `Value`.
-  template <typename F>
-  constexpr void apply(F&& f) const {
-    apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-               uint32_t, uint64_t, float, double, type::Type, Addr, String,
-               /*Fn, GenericFn,*/ Reg, ModuleId, Interface, Empty>(
-        std::forward<F>(f));
-  }
-
   template <typename H>
   friend H AbslHashValue(H h, Value const& v) {
-    v.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                 uint16_t, uint32_t, uint64_t, float, double, type::Type, Addr,
-                 String, /* Fn, GenericFn, */ Hashtag, Jump, Reg, ModuleId,
-                 Interface, Empty>(
-        [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
-    return h;
+    return H::combine(std::move(h), v.vptr_->hash(v.data_));
   }
 
- private:
   template <typename... Ts, typename F>
-  void apply_impl(F&& f) const {
+  void apply(F&& f) const {
     if (((this->template get_if<Ts>()
-              ? (std::forward<F>(f)(*this->template get_if<Ts>()), true)
+              ? (std::forward<F>(f)(this->template get<Ts>()), true)
               : false) or
          ...)) {
       return;
     }
-    UNREACHABLE(type_.name());
+    UNREACHABLE(type().name());
   }
 
+ private:
   template <typename T>
   T const& get_ref() const {
-    static_assert(base::Contains<supported_types, T>());
-    ASSERT(type_ == base::meta<T>);
-    return *reinterpret_cast<T const*>(buf_);
+    ASSERT(type() == base::meta<T>);
+    return *reinterpret_cast<T const*>(data_);
   }
 
   friend bool operator==(Value const& lhs, Value const& rhs) {
-    if (lhs.type_ != rhs.type_) { return false; }
-    bool eq;
-    lhs.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                   uint16_t, uint32_t, uint64_t, float, double, type::Type, Reg,
-                   Addr, Hashtag, String, ModuleId, Interface, Empty>(
-        [&rhs, &eq](auto x) {
-          eq = (x == rhs.get<std::decay_t<decltype(x)>>());
-        });
-    return eq;
+    if (lhs.type() != rhs.type()) { return false; }
+    return lhs.vptr_->equals(lhs.data_, rhs.data_);
   }
 
   friend bool operator!=(Value const& lhs, Value const& rhs) {
@@ -189,14 +155,7 @@ struct Value {
   }
 
   friend std::ostream& operator<<(std::ostream& os, Value value) {
-    // TODO: Hack until we invert the Fn dependency.
-    if (value.type_ == base::meta<Fn>) { return os << "fn"; }
-    if (value.type_ == base::meta<GenericFn>) { return os << "genfn"; }
-    value.apply_impl<bool, Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                     uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                     Reg, Addr, String, ModuleId, Hashtag, Jump, Block, Scope,
-                     Empty>([&os](auto x) { os << x; });
-    return os;
+    return value.vptr_->stream(os, value.data_);
   }
 
   template <typename T>
@@ -204,8 +163,8 @@ struct Value {
     return const_cast<T&>(static_cast<Value const*>(this)->get_ref<T>());
   }
 
-  base::MetaValue type_;
-  alignas(alignment_v) char buf_[value_size_v];
+  alignas(alignment_v) char data_[value_size_v];
+  internal_value::VTable const* vptr_;
 };
 
 }  // namespace ir

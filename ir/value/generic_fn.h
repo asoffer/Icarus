@@ -26,6 +26,7 @@ struct Value;
 // to decide if we intend these to be distinguishable in the language, and if
 // not what approach we intend to take.
 struct GenericFn : base::Extend<GenericFn, 1>::With<base::EqualityExtension,
+                                                    base::AbslHashExtension,
                                                     base::AbslFormatExtension> {
   static constexpr std::string_view kAbslFormatString = "GenericFn(id = %u)";
 

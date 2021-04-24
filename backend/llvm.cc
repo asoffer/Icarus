@@ -196,7 +196,9 @@ bool EmitInstruction(LlvmEmitter &emitter, LlvmEmitter::context_type &context,
     auto *fn_type = inst.func_type();
     auto param_iter = fn_type->params().begin();
     for (auto const &arg : inst.arguments()) {
-      arg.apply([&](auto v) {
+      arg.template apply<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
+                         uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                         ir::Reg, ir::Addr, ir::Fn>([&](auto v) {
         using type = std::decay_t<decltype(v)>;
         if constexpr (base::meta<type> == base::meta<ir::Reg>) {
           ::type::Apply(param_iter->value.type(), [&]<typename T>() {

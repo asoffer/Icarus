@@ -16,7 +16,9 @@
 #include "ir/out_params.h"
 #include "ir/value/fn.h"
 #include "ir/value/generic_fn.h"
+#include "ir/value/interface.h"
 #include "ir/value/jump.h"
+#include "ir/value/module_id.h"
 #include "ir/value/reg_or.h"
 
 namespace ir {
@@ -176,7 +178,10 @@ struct CallInstruction {
         if (t.is_big()) {
           writer->Write(arg.get<Addr>());
         } else {
-          arg.apply([&](auto a) { writer->Write(a); });
+          arg.apply<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                    uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                    ir::Reg, ir::Addr, ir::ModuleId, ir::Fn, ir::GenericFn,
+                    ir::Interface>([&](auto a) { writer->Write(a); });
         }
       }
       ++arg_index;

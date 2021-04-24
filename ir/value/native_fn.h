@@ -7,6 +7,8 @@
 #include <vector>
 
 #include "base/extend.h"
+#include "base/extend/absl_format.h"
+#include "base/extend/absl_hash.h"
 #include "ir/compiled_fn.h"
 #include "type/function.h"
 

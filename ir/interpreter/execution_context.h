@@ -25,7 +25,6 @@ namespace internal_execution {
 // clang-format off
 template <typename T>
 concept HasResolveMemberFunction = requires(T t) {
-  // TODO: Check that the type is supported in ir::Value::supported_types
   { (void)t.Resolve() } -> std::same_as<void>;
 };
 // clang-format on
