@@ -14,12 +14,7 @@
 #include "ir/instruction/op_codes.h"
 #include "ir/interpreter/architecture.h"
 #include "ir/out_params.h"
-#include "ir/value/fn.h"
-#include "ir/value/generic_fn.h"
-#include "ir/value/jump.h"
-#include "ir/value/module_id.h"
 #include "ir/value/reg_or.h"
-#include "type/interface/interface.h"
 
 namespace ir {
 // These instructions are required to appear in every instruction set. They
@@ -166,27 +161,7 @@ struct CallInstruction {
 
   void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(fn_);
-
-    size_t arg_index = 0;
-    for (Value const& arg : args_) {
-      Reg const* r = arg.get_if<Reg>();
-      writer->Write(static_cast<bool>(r));
-      if (r) {
-        writer->Write(*r);
-      } else {
-        auto t = fn_type_->params()[arg_index].value.type();
-        if (t.is_big()) {
-          writer->Write(arg.get<Addr>());
-        } else {
-          arg.apply<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                    uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                    ir::Reg, ir::Addr, ir::ModuleId, ir::Fn, ir::GenericFn,
-                    interface::Interface>([&](auto a) { writer->Write(a); });
-        }
-      }
-      ++arg_index;
-    }
-
+    writer->Write(args_);
     outs_.WriteByteCode(writer);
   }
 

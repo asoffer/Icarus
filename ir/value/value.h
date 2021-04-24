@@ -77,6 +77,8 @@ struct Value {
     std::memcpy(data_, &t, sizeof(t));
   }
 
+  Value(Value const&) = default;
+
   template <internal_value::HoldableInValue<value_size_v, alignment_v> T>
   explicit Value(RegOr<T> const& t) {
     if (t.is_reg()) {
@@ -93,6 +95,8 @@ struct Value {
   bool empty() const { return get_if<Empty>(); }
 
   constexpr base::MetaValue type() const { return vptr_->type; }
+
+  void const* raw() const { return data_; }
 
   // Returns the stored value. Behavior is undefined if the stored type is not
   // the same as the template parameter.

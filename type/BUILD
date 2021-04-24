@@ -400,6 +400,7 @@ cc_library(
     deps = CONCRETE_TYPES + [
         "//ir/value:module_id",
         "//type:generic_function",
+        "//type/interface",
     ],
 )
 

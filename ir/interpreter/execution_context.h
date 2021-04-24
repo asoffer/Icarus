@@ -215,23 +215,20 @@ struct ExecutionContext {
 
         // TODO: you probably want interpreter::Arguments or something.
         size_t num_inputs = fn_type->params().size();
-        for (size_t i = 0; i < f.num_parameters(); ++i) {
-          if (iter->read<bool>()) {
-            ir::Reg reg = iter->read<ir::Reg>();
+        size_t num_args = iter->read<uint16_t>();
+        for (size_t i = 0; i < num_args; ++i) {
+          ir::Value arg = iter->read<ir::Value>();
+          if (auto *reg = arg.get_if<ir::Reg>()) {
             frame.regs_.set_raw(ir::Reg::Arg(i),
-                                ctx.current_frame().regs_.raw(reg),
+                                ctx.current_frame().regs_.raw(*reg),
                                 ir::Value::value_size_v);
-            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i), reg);
+            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i), *reg);
           } else {
             type::Type t = fn_type->params()[i].value.type();
             core::Bytes size =
                 t.is_big() ? interpreter::kArchitecture.pointer().bytes()
                            : t.bytes(interpreter::kArchitecture);
-            frame.regs_.set_raw(ir::Reg::Arg(i), iter->raw(), size.value());
-            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i),
-                base::untyped_buffer_view(iter->raw(), size.value())
-                    .to_string());
-            iter->skip(size.value());
+            frame.regs_.set_raw(ir::Reg::Arg(i), arg.raw(), size.value());
           }
         }
 
