@@ -229,20 +229,4 @@ Reg Builder::MakeScope(Scope scope, std::vector<RegOr<Jump>> inits,
   return result;
 }
 
-Reg Builder::MakeRegisterReferencing(type::Type t, Value value) {
-  if (t.is_big()) {
-    return CurrentBlock()->Append(RegisterInstruction<Addr>{
-        .operand = value.get<RegOr<Addr>>(),
-        .result  = CurrentGroup()->Reserve(),
-    });
-  } else {
-    return type::Apply(t, [&]<typename T>() {
-      return CurrentBlock()->Append(RegisterInstruction<T>{
-          .operand = value.get<RegOr<T>>(),
-          .result  = CurrentGroup()->Reserve(),
-      });
-    });
-  }
-}
-
 }  // namespace ir

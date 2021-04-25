@@ -51,8 +51,8 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
     auto out_iter  = out_params.regs().begin();
     for (type::Type const &result_type : result_types) {
       // TODO: Support all types
-      type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                       uint16_t, uint32_t, uint64_t, float, double>(
+      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t, float, double>(
           result_type, [&]<typename T>() {
             ASSERT(inst_iter != iter->block->instructions().end());
             ASSERT(static_cast<bool>(*inst_iter) == true);

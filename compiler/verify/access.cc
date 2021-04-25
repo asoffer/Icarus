@@ -156,7 +156,7 @@ type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
   // arrays but that should maybe be unsigned as well.
   if (type::Array const *a = evaled_type.if_as<type::Array>()) {
     if (node->member_name() == "length") {
-      return type::QualType::Constant(type::Get<type::Array::length_t>());
+      return type::QualType::Constant(type::Array::LengthType());
     } else if (node->member_name() == "element_type") {
       return type::QualType::Constant(type::Type_);
     } else {

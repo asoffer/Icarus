@@ -42,40 +42,6 @@ base::untyped_buffer EvaluateToBuffer(ir::NativeFn fn) {
   return ret_buf;
 }
 
-// TODO: why an r-value reference?
-template <typename InstSet>
-EvaluationResult Evaluate(ir::NativeFn fn) {
-  LOG("Evaluate", "%s", fn);
-  auto buf = EvaluateToBuffer<InstSet>(fn);
-  std::vector<ir::Value> values;
-  values.reserve(fn.type()->output().size());
-
-  auto iter = buf.begin();
-  for (type::Type t : fn.type()->output()) {
-    if (t.get()->is_big()) {
-      ir::Addr addr = iter.template read<ir::Addr>();
-      values.push_back(ir::Value(addr));
-    } else if (t.is<type::GenericStruct>()) {
-      values.push_back(ir::Value(t));
-    } else {
-      type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
-                       uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                       type::Type, ir::Addr, ir::ModuleId, ir::Scope, ir::Fn,
-                       ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
-          t, [&]<typename T>() {
-            T val = iter.template read<T>();
-            values.push_back(ir::Value(val));
-          });
-    }
-  }
-
-  switch (values.size()) {
-    case 0: return ir::Value();
-    case 1: return values[0];
-    default: NOT_YET();
-  }
-}
-
 }  // namespace interpreter
 
 #endif  // ICARUS_IR_INTERPRETER_EVALUATE_H

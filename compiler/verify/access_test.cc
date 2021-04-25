@@ -160,8 +160,8 @@ TEST(Access, ArrayLength) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([3; i64].length)");
   auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts, ElementsAre(type::QualType::Constant(
-                       type::Get<type::Array::length_t>())));
+  EXPECT_THAT(qts,
+              ElementsAre(type::QualType::Constant(type::Array::LengthType())));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -169,8 +169,8 @@ TEST(Access, MultidimensionalArrayLength) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([3, 2; i64].length)");
   auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts, ElementsAre(type::QualType::Constant(
-                       type::Get<type::Array::length_t>())));
+  EXPECT_THAT(qts,
+              ElementsAre(type::QualType::Constant(type::Array::LengthType())));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 

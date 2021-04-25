@@ -163,8 +163,35 @@ base::untyped_buffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f) {
   return interpreter::EvaluateToBuffer<instruction_set_t>(f);
 }
 
-interpreter::EvaluationResult EvaluateAtCompileTime(ir::NativeFn f) {
-  return interpreter::Evaluate<instruction_set_t>(f);
+interpreter::EvaluationResult EvaluateAtCompileTime(ir::NativeFn fn) {
+  LOG("EvaluateAtCompileTime", "%s", fn);
+  auto buf = interpreter::EvaluateToBuffer<instruction_set_t>(fn);
+  std::vector<ir::Value> values;
+  values.reserve(fn.type()->output().size());
+
+  auto iter = buf.begin();
+  for (type::Type t : fn.type()->output()) {
+    if (t.get()->is_big()) {
+      ir::Addr addr = iter.template read<ir::Addr>();
+      values.push_back(ir::Value(addr));
+    } else if (t.is<type::GenericStruct>()) {
+      values.push_back(ir::Value(t));
+    } else {
+      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                 ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+                 ir::GenericFn, interface::Interface>(t, [&]<typename T>() {
+        T val = iter.template read<T>();
+        values.push_back(ir::Value(val));
+      });
+    }
+  }
+
+  switch (values.size()) {
+    case 0: return ir::Value();
+    case 1: return values[0];
+    default: NOT_YET();
+  }
 }
 
 }  // namespace compiler

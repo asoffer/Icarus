@@ -9,6 +9,7 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/value/slice.h"
+#include "type/primitive.h"
 #include "type/type.h"
 
 namespace type {
@@ -18,6 +19,8 @@ namespace type {
 // are only a view into a buffer.
 struct Slice : LegacyType {
   using length_t = uint64_t;
+  static type::Type LengthType() { return type::U64; }
+
   // Construct a new slice from the given parameters, or if one already exists
   // in the cache, return that.
   friend Slice const *Slc(Type t);

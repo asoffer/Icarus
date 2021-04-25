@@ -25,6 +25,7 @@ cc_library(
     hdrs = ["array.h"],
     srcs = ["array.cc"],
     deps = [
+        ":primitive",
         ":type",
         "//base:extend",
         "//base:global",
@@ -319,6 +320,7 @@ cc_library(
     hdrs = ["slice.h"],
     srcs = ["slice.cc"],
     deps = [
+        ":primitive",
         ":type",
         "//base:extend",
         "//base:global",
@@ -391,16 +393,6 @@ cc_test(
     deps = [
         ":type",
         "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "util",
-    hdrs = ["util.h"],
-    deps = CONCRETE_TYPES + [
-        "//ir/value:module_id",
-        "//type:generic_function",
-        "//type/interface",
     ],
 )
 

@@ -246,9 +246,17 @@ struct Compiler
   template <typename T>
   std::optional<T> EvaluateOrDiagnoseAs(ast::Expression const *expr,
                                         bool must_complete = true) {
+    type::Type t = [] {
+      constexpr auto type = base::meta<T>;
+      if constexpr (type == base::meta<type::Type>) { return type::Type_; }
+      if constexpr (type == base::meta<ir::Scope>) { return type::Scope; }
+      if constexpr (type == base::meta<ir::ModuleId>) { return type::Module; }
+      if constexpr (type == base::meta<interface::Interface>) {
+        return type::Interface;
+      }
+    }();
     auto maybe_value =
-        Evaluate(type::Typed<ast::Expression const *>(expr, type::Get<T>()),
-                 must_complete);
+        Evaluate(type::Typed<ast::Expression const *>(expr, t), must_complete);
     if (not maybe_value) {
       diag().Consume(maybe_value.error());
       return std::nullopt;

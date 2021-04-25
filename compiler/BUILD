@@ -43,6 +43,7 @@ cc_library(
         "//type:struct",
         "//type:generic_struct",
         "//type:generic_function",
+        "//type",
         "//ir/instruction:arithmetic",
         "//ir/instruction:compare",
         "//ir/instruction:core",
@@ -51,6 +52,7 @@ cc_library(
         "//ir/value",
         "//ir/value:char",
         "//ir/value:generic_fn",
+        "//ir/value:module_id",
     ],
 )
 

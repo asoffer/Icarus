@@ -72,7 +72,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     } break;
     case ast::UnaryOperator::Kind::Negate: {
       auto operand_ir = EmitValue(node->operand());
-      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
+      return ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
           context().qual_types(node->operand())[0].type(), [&]<typename T>() {
             return ir::Value(builder().Neg(operand_ir.get<ir::RegOr<T>>()));
           });

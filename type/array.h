@@ -8,6 +8,7 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/value/fn.h"
+#include "type/primitive.h"
 #include "type/type.h"
 
 namespace type {
@@ -16,6 +17,8 @@ namespace type {
 // values of a given type (the `data_type`).
 struct Array : LegacyType {
   using length_t = uint64_t;
+  static type::Type LengthType() { return type::U64; }
+
   // Construct a new array from the given parameters, or if one already exists
   // in the cache, return that.
   friend Array const *Arr(length_t len, Type t);

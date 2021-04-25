@@ -37,22 +37,21 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
         builder().CastTo<ir::Char>(type::Typed<ir::Value>(values, from_type)));
   } else if (from_type == type::Char) {
     ASSERT(type::IsIntegral(to_type) == true);
-    return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                            uint16_t, uint32_t, uint64_t>(
-        to_type, [&]<typename T>() {
-          return ir::Value(
-              builder().CastTo<T>(type::Typed<ir::Value>(values, from_type)));
-        });
+    return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                      uint32_t, uint64_t>(to_type, [&]<typename T>() {
+      return ir::Value(
+          builder().CastTo<T>(type::Typed<ir::Value>(values, from_type)));
+    });
   } else if (type::IsNumeric(from_type)) {
     if (type::IsIntegral(from_type)) {
-      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                              uint16_t, uint32_t, uint64_t, float, double>(
+      return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                        uint32_t, uint64_t, float, double>(
           to_type, [&]<typename T>() {
             return ir::Value(
                 builder().CastTo<T>(type::Typed<ir::Value>(values, from_type)));
           });
     } else {
-      return type::ApplyTypes<float, double>(to_type, [&]<typename T>() {
+      return ApplyTypes<float, double>(to_type, [&]<typename T>() {
         return ir::Value(
             builder().CastTo<T>(type::Typed<ir::Value>(values, from_type)));
       });
@@ -60,19 +59,17 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
   } else if (from_type == type::NullPtr) {
     return ir::Value(ir::Addr::Null());
   } else if (auto const *enum_type = from_type.if_as<type::Enum>()) {
-    return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                            uint16_t, uint32_t, uint64_t>(
-        to_type, [&]<typename T>() {
-          return ir::Value(
-              builder().CastTo<T>(type::Typed<ir::Value>(values, enum_type)));
-        });
+    return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                      uint32_t, uint64_t>(to_type, [&]<typename T>() {
+      return ir::Value(
+          builder().CastTo<T>(type::Typed<ir::Value>(values, enum_type)));
+    });
   } else if (auto const *flags_type = from_type.if_as<type::Flags>()) {
-    return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                            uint16_t, uint32_t, uint64_t>(
-        to_type, [&]<typename T>() {
-          return ir::Value(
-              builder().CastTo<T>(type::Typed<ir::Value>(values, from_type)));
-        });
+    return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                      uint32_t, uint64_t>(to_type, [&]<typename T>() {
+      return ir::Value(
+          builder().CastTo<T>(type::Typed<ir::Value>(values, from_type)));
+    });
   } else {
     NOT_YET(from_type, " to ", to_type);
   }

@@ -18,14 +18,27 @@
 #include "ir/local_block_interpretation.h"
 #include "ir/out_params.h"
 #include "ir/value/addr.h"
+#include "ir/value/block.h"
 #include "ir/value/char.h"
+#include "ir/value/module_id.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
+#include "ir/value/string.h"
+#include "ir/value/value.h"
+#include "type/array.h"
 #include "type/enum.h"
+#include "type/flags.h"
+#include "type/function.h"
+#include "type/generic_function.h"
+#include "type/interface/interface.h"
 #include "type/jump.h"
+#include "type/opaque.h"
+#include "type/pointer.h"
+#include "type/primitive.h"
 #include "type/slice.h"
+#include "type/struct.h"
+#include "type/type.h"
 #include "type/typed_value.h"
-#include "type/util.h"
 
 namespace ir {
 
@@ -138,9 +151,7 @@ struct Builder {
 
   RegOr<bool> Eq(type::Type common_type, ir::Value const& lhs_val,
                  ir::Value const& rhs_val) {
-    return type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
-                            uint8_t, uint16_t, uint32_t, uint64_t, float,
-                            double>(common_type, [&]<typename T>() {
+    return common_type.as<type::Primitive>().Apply([&]<typename T>() {
       return Eq(lhs_val.get<RegOr<T>>(), rhs_val.get<RegOr<T>>());
     });
   }
@@ -302,7 +313,7 @@ struct Builder {
   }
 
   template <typename T>
-  RegOr<T> Load(RegOr<Addr> addr, type::Type t = type::Get<T>()) {
+  RegOr<T> Load(RegOr<Addr> addr, type::Type t = GetType<T>()) {
     auto& blk = *CurrentBlock();
 
     // TODO Just take a Reg. RegOr<Addr> is overkill and not possible because
@@ -326,10 +337,15 @@ struct Builder {
     using base::stringify;
     LOG("Load", "Calling Load(%s, %s)", r, t.to_string());
     if (t.is<type::Function>()) { return Value(Load<Fn>(r, t)); }
-    return type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
-                            uint8_t, uint16_t, uint32_t, uint64_t, float,
-                            double, type::Type, Addr, Fn>(
-        t, [&]<typename T>() { return Value(Load<T>(r, t)); });
+    if (t.is<type::Pointer>()) { return Value(Load<Addr>(r, t)); }
+    if (t.is<type::Enum>()) {
+      return Value(Load<type::Enum::underlying_type>(r, t));
+    }
+    if (t.is<type::Flags>()) {
+      return Value(Load<type::Flags::underlying_type>(r, t));
+    }
+    return t.as<type::Primitive>().Apply(
+        [&]<typename T>() { return Value(Load<T>(r, t)); });
   }
 
   template <typename T>
@@ -459,13 +475,50 @@ struct Builder {
     return current_.block_termination_state_;
   }
 
-  // If the type `t` is not big, creates a new register referencing the value
-  // (or register) held in `value`. If `t` is big, `value` is either another
-  // register or the address of the big value and a new register referencing
-  // that address (or register) is created.
-  Reg MakeRegisterReferencing(type::Type t, Value value);
-
  private:
+  template <typename T>
+  static type::Type GetType() {
+    if constexpr (base::meta<T> == base::meta<bool>) {
+      return type::Bool;
+    } else if constexpr (base::meta<T> == base::meta<ir::Char>) {
+      return type::Char;
+    } else if constexpr (base::meta<T> == base::meta<int8_t>) {
+      return type::I8;
+    } else if constexpr (base::meta<T> == base::meta<int16_t>) {
+      return type::I16;
+    } else if constexpr (base::meta<T> == base::meta<int32_t>) {
+      return type::I32;
+    } else if constexpr (base::meta<T> == base::meta<int64_t>) {
+      return type::I64;
+    } else if constexpr (base::meta<T> == base::meta<uint8_t>) {
+      return type::U8;
+    } else if constexpr (base::meta<T> == base::meta<uint16_t>) {
+      return type::U16;
+    } else if constexpr (base::meta<T> == base::meta<uint32_t>) {
+      return type::U32;
+    } else if constexpr (base::meta<T> == base::meta<uint64_t>) {
+      return type::U64;
+    } else if constexpr (base::meta<T> == base::meta<float>) {
+      return type::F32;
+    } else if constexpr (base::meta<T> == base::meta<double>) {
+      return type::F64;
+    } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
+      return type::Block;
+    } else if constexpr (base::meta<T> == base::meta<type::Type>) {
+      return type::Type_;
+    } else if constexpr (base::meta<T> == base::meta<ir::Scope>) {
+      return type::Scope;
+    } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
+      return type::Module;
+    } else if constexpr (base::meta<T> == base::meta<interface::Interface>) {
+      return type::Interface;
+    } else if constexpr (std::is_pointer_v<T>) {
+      return type::Ptr(GetType<std::decay_t<decltype(*std::declval<T>())>>());
+    } else {
+      UNREACHABLE(typeid(T).name());
+    }
+  }
+
   template <typename FromType, typename ToType>
   RegOr<ToType> Cast(RegOr<FromType> r) {
     if constexpr (base::meta<ToType> == base::meta<FromType>) {

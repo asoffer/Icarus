@@ -8,7 +8,6 @@
 #include "ir/instruction/instructions.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
-#include "type/util.h"
 
 namespace backend {
 
@@ -199,13 +198,18 @@ bool EmitInstruction(LlvmEmitter &emitter, LlvmEmitter::context_type &context,
       arg.template apply<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
                          uint8_t, uint16_t, uint32_t, uint64_t, float, double,
                          ir::Reg, ir::Addr, ir::Fn>([&](auto v) {
-        using type = std::decay_t<decltype(v)>;
-        if constexpr (base::meta<type> == base::meta<ir::Reg>) {
-          ::type::Apply(param_iter->value.type(), [&]<typename T>() {
-            args.push_back(emitter.Resolve<T>(v, context));
-          });
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (base::meta<T> == base::meta<ir::Reg>) {
+          if (param_iter->value.type().template is<type::Pointer>()) {
+            args.push_back(emitter.Resolve<ir::Addr>(v, context));
+          } else {
+            param_iter->value.type().template as<type::Primitive>().Apply(
+                [&]<typename T>() {
+                  args.push_back(emitter.Resolve<T>(v, context));
+                });
+          }
         } else {
-          args.push_back(emitter.Resolve<type>(v, context));
+          args.push_back(emitter.Resolve<T>(v, context));
         }
       });
       ++param_iter;

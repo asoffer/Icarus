@@ -40,7 +40,11 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
           ir::RegOr<ir::Addr>(ir::Reg::Out(i)), ret_type);
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
-      type::Apply(ret_type, [&]<typename T>() {
+      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                 ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+                 ir::GenericFn,
+                 interface::Interface>(ret_type, [&]<typename T>() {
         auto value = EmitValue(expr).get<ir::RegOr<T>>();
         builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
             .index = static_cast<uint16_t>(i),

@@ -161,36 +161,52 @@ INSTANTIATE_TEST_SUITE_P(
             .rhs      = "Color.BLUE | Color.GREEN",
             .expected = ir::Value(type::Flags::underlying_type(5))}})));
 
+template <typename T>
+std::string_view TypeName() {
+  constexpr auto type = base::meta<T>;
+  if constexpr (type == base::meta<bool>) { return "bool"; }
+  if constexpr (type == base::meta<int8_t>) { return "i8"; }
+  if constexpr (type == base::meta<int16_t>) { return "i16"; }
+  if constexpr (type == base::meta<int32_t>) { return "i32"; }
+  if constexpr (type == base::meta<int64_t>) { return "i64"; }
+  if constexpr (type == base::meta<uint8_t>) { return "u8"; }
+  if constexpr (type == base::meta<uint16_t>) { return "u16"; }
+  if constexpr (type == base::meta<uint32_t>) { return "u32"; }
+  if constexpr (type == base::meta<uint64_t>) { return "u64"; }
+  if constexpr (type == base::meta<float>) { return "f32"; }
+  if constexpr (type == base::meta<double>) { return "f64"; }
+}
+
 template <char Op, typename T>
 TestData MakeTestData(T lhs, T rhs) {
   if constexpr (Op == '+') {
     return {
-        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>().to_string()),
-        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>().to_string()),
+        .lhs      = absl::StrCat(lhs, " as ", TypeName<T>()),
+        .rhs      = absl::StrCat(rhs, " as ", TypeName<T>()),
         .expected = ir::Value(static_cast<T>(lhs + rhs)),
     };
   } else if constexpr (Op == '-') {
     return {
-        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>().to_string()),
-        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>().to_string()),
+        .lhs      = absl::StrCat(lhs, " as ", TypeName<T>()),
+        .rhs      = absl::StrCat(rhs, " as ", TypeName<T>()),
         .expected = ir::Value(static_cast<T>(lhs - rhs)),
     };
   } else if constexpr (Op == '*') {
     return {
-        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>().to_string()),
-        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>().to_string()),
+        .lhs      = absl::StrCat(lhs, " as ", TypeName<T>()),
+        .rhs      = absl::StrCat(rhs, " as ", TypeName<T>()),
         .expected = ir::Value(static_cast<T>(lhs * rhs)),
     };
   } else if constexpr (Op == '/') {
     return {
-        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>().to_string()),
-        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>().to_string()),
+        .lhs      = absl::StrCat(lhs, " as ", TypeName<T>()),
+        .rhs      = absl::StrCat(rhs, " as ", TypeName<T>()),
         .expected = ir::Value(static_cast<T>(lhs / rhs)),
     };
   } else if constexpr (Op == '%') {
     return {
-        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>().to_string()),
-        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>().to_string()),
+        .lhs      = absl::StrCat(lhs, " as ", TypeName<T>()),
+        .rhs      = absl::StrCat(rhs, " as ", TypeName<T>()),
         .expected = ir::Value(static_cast<T>(lhs % rhs)),
     };
   }

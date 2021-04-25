@@ -19,6 +19,31 @@
 namespace compiler {
 namespace {
 
+// If the type `t` is not big, creates a new register referencing the value (or
+// register) held in `value`. If `t` is big, `value` is either another register
+// or the address of the big value and a new register referencing that address
+// (or register) is created.
+ir::Reg RegisterReferencing(ir::Builder& builder, type::Type t,
+                            ir::Value value) {
+  if (t.is_big()) {
+    return builder.CurrentBlock()->Append(ir::RegisterInstruction<ir::Addr>{
+        .operand = value.get<ir::RegOr<ir::Addr>>(),
+        .result  = builder.CurrentGroup()->Reserve(),
+    });
+  } else {
+    return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
+                      uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                      type::Type, ir::Addr, ir::ModuleId, ir::Scope, ir::Fn,
+                      ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
+        t, [&]<typename T>() {
+          return builder.CurrentBlock()->Append(ir::RegisterInstruction<T>{
+              .operand = value.get<ir::RegOr<T>>(),
+              .result  = builder.CurrentGroup()->Reserve(),
+          });
+        });
+  }
+}
+
 // Many different gotos may end up at the same block node, some from the same
 // jump, some from different jumps. They may end up calling different overloads
 // of the before/entry function. BeforeBlock describes one such possible entry
@@ -45,11 +70,11 @@ InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
   bldr.CurrentBlock() = start_block;
   size_t i            = 0;
   if (type::Type state_type = jump->type()->state()) {
-    bldr.MakeRegisterReferencing(state_type, arguments[i++]);
+    RegisterReferencing(bldr, state_type, arguments[i++]);
   }
 
   for (auto const &p : jump->type()->params()) {
-    bldr.MakeRegisterReferencing(p.value, arguments[i++]);
+    RegisterReferencing(bldr, p.value, arguments[i++]);
   }
 
   auto *entry = inl.InlineAllBlocks();
@@ -208,7 +233,10 @@ void SetBeforeBlockPhi(
       phi->add(incoming_block,
                prepared_arguments[i].get<ir::RegOr<ir::Addr>>());
     } else {
-      type::Apply(t, [&]<typename T>() {
+      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                 ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+                 ir::GenericFn, interface::Interface>(t, [&]<typename T>() {
         ir::PhiInstruction<T> *phi =
             inserted ? c.builder().PhiInst<T>()
                      : &c.builder()
@@ -257,8 +285,8 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   type::QualType const qt = context().qual_types(node)[0];
   std::optional<ir::Reg> result;
   if (qt.type() != type::Void) {
-    type::ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                     uint16_t, uint32_t, uint64_t, float, double>(
+    ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+               uint16_t, uint32_t, uint64_t, float, double>(
         qt.type(), [&]<typename T>() {
           ir::PhiInstruction<T> phi;
           phi.result = builder().CurrentGroup()->Reserve();
@@ -391,9 +419,14 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
         builder().Store(ir::RegOr<ir::Addr>(out_params[i]),
                         context().addr(&ids[0]));
       } else {
-        type::Apply(t, [&]<typename T>() {
-          builder().Store(ir::RegOr<T>(out_params[i]), context().addr(&ids[0]));
-        });
+        ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                   uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                   ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
+                   ir::Block, ir::GenericFn, interface::Interface>(
+            t, [&]<typename T>() {
+              builder().Store(ir::RegOr<T>(out_params[i]),
+                              context().addr(&ids[0]));
+            });
       }
     }
     builder().UncondJump(bodies.at(before_block.block));

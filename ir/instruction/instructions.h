@@ -27,8 +27,11 @@
 #include "ir/value/reg_or.h"
 #include "ir/value/scope.h"
 #include "ir/value/string.h"
+#include "type/array.h"
 #include "type/generic_function.h"
-#include "type/util.h"
+#include "type/pointer.h"
+#include "type/struct.h"
+#include "type/type.h"
 
 // This file defines the interface required for IR instructions as well as all
 // the common instructions available in the core IR.
