@@ -33,6 +33,10 @@ frontend::CanonicalFileName ResolveModulePath(
 
 template <typename ModuleType>
 struct FileImporter : Importer {
+  ~FileImporter() {
+    for (auto& t : work_) { t.join(); }
+  }
+
   ir::ModuleId Import(std::string_view module_locator) override {
     auto file_name = frontend::CanonicalFileName::Make(
         frontend::FileName(std::string(module_locator)));
@@ -58,14 +62,13 @@ struct FileImporter : Importer {
     mod = std::make_unique<ModuleType>();
     modules_by_id_.emplace(id, mod.get());
 
-    std::thread t([this, mod = mod.get(),
-                   file_src = std::move(*maybe_file_src)]() mutable {
+    work_.emplace_back([this, mod = mod.get(),
+                       file_src = std::move(*maybe_file_src)]() mutable {
       mod->template set_diagnostic_consumer<diagnostic::StreamingConsumer>(
           stderr, &file_src);
       mod->AppendNodes(frontend::Parse(file_src, mod->diagnostic_consumer()),
                        mod->diagnostic_consumer(), *this);
     });
-    t.detach();
     return id;
   }
 
@@ -76,6 +79,7 @@ struct FileImporter : Importer {
   std::vector<std::string> module_lookup_paths;
 
  private:
+  std::vector<std::thread> work_;
   absl::flat_hash_map<frontend::CanonicalFileName,
                       std::pair<ir::ModuleId, std::unique_ptr<ModuleType>>>
       modules_;
