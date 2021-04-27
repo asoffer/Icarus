@@ -11,7 +11,7 @@ export ICARUS_MODULE_PATH="$root/stdlib"
 $binary "$examples/enum.ic" >/dev/null && echo enum OK
 $binary "$examples/factorial.ic" >/dev/null && echo factorial OK
 $binary "$examples/fibonacci.ic" >/dev/null && echo fibonacci OK
-# file.ic is broken; errors on full flat_hash_map
+$binary "$examples/file.ic" >/dev/null && echo file OK
 $binary "$examples/fizzbuzz.ic" >/dev/null && echo fizzbuzz OK
 $binary "$examples/function_calls.ic" >/dev/null && echo function_calls OK
 $binary "$examples/ping_pong.ic" | head >/dev/null && echo ping_pong OK

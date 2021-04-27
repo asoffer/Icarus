@@ -427,7 +427,6 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
     builder().Call(before_block.fn, before_block.fn.type(), phis, out_params);
     ASSERT(out_params.size() == before_block.block->params().size());
 
-    // TODO: This is probably incorrect.
     for (size_t i = 0; i < out_params.size(); ++i) {
       absl::Span<ast::Declaration::Id const> ids  = before_block.block->params()[i].value->ids();
       ASSERT(ids.size() == 1u);

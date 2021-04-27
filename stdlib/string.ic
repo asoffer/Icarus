@@ -122,6 +122,7 @@ append ::= (s: *string, char_slice: []char) -> () {
 
   memcpy((&s._data[0]) + s._length, char_slice.data, char_slice.length + 1 as u64)
   s._length += char_slice.length
+  s._data[s._length] = 0 as u8 as char
 }
 
 #{export}
