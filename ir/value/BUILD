@@ -170,6 +170,7 @@ cc_library(
         "//base:extend",
         "//ir:compiled_fn",
         "//type:function",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 

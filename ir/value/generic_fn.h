@@ -6,6 +6,7 @@
 
 #include "base/any_invocable.h"
 #include "base/extend.h"
+#include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
 #include "base/extend/equality.h"
 #include "core/arguments.h"

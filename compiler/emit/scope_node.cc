@@ -405,8 +405,25 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
     LOG("ScopeNode", "%s: before %s", before_block.block->name(),
         before_block.fn.type()->to_string());
 
-    auto out_params =
-        builder().OutParams(before_block.fn.type()->return_types());
+    absl::Span<type::Type const> types = before_block.fn.type()->return_types();
+    std::vector<ir::Reg> out_regs;
+    out_regs.reserve(types.size());
+    for (type::Type type : types) {
+      absl::Span<ast::Declaration::Id const> ids =
+          before_block.block->params()[out_regs.size()].value->ids();
+      ASSERT(ids.size() == 1u);
+      auto reg = builder().CurrentGroup()->Reserve();
+      if (type.is_big()) {
+        reg =
+            builder().CurrentBlock()->Append(ir::RegisterInstruction<ir::Addr>{
+                .operand = context().addr(&ids[0]),
+                .result  = reg,
+            });
+      }
+      out_regs.push_back(reg);
+    }
+    ir::OutParams out_params(std::move(out_regs));
+
     builder().Call(before_block.fn, before_block.fn.type(), phis, out_params);
     ASSERT(out_params.size() == before_block.block->params().size());
 
@@ -415,10 +432,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
       absl::Span<ast::Declaration::Id const> ids  = before_block.block->params()[i].value->ids();
       ASSERT(ids.size() == 1u);
       auto t = before_block.fn.type()->params()[i].value.type();
-      if (t.is_big()) {
-        builder().Store(ir::RegOr<ir::Addr>(out_params[i]),
-                        context().addr(&ids[0]));
-      } else {
+      if (not t.is_big()) {
         ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                    uint16_t, uint32_t, uint64_t, float, double, type::Type,
                    ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,

@@ -6,8 +6,8 @@
 #include <string_view>
 #include <vector>
 
+#include "absl/strings/str_format.h"
 #include "base/extend.h"
-#include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
 #include "ir/compiled_fn.h"
 #include "type/function.h"
@@ -17,8 +17,7 @@ namespace ir {
 // `NativeFn` represents a function callable in the language that is defined
 // internally. These are "just normal functions" in the language. The are
 // distinguished from foreign functions.
-struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslFormatExtension,
-                                                  base::AbslHashExtension> {
+struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslHashExtension> {
   static constexpr std::string_view kAbslFormatString = "NativeFn(data = %p)";
 
   struct Data {
@@ -39,6 +38,19 @@ struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslFormatExtension,
 
   CompiledFn *operator->() { return data_->fn; }
   CompiledFn &operator*() { return *data_->fn; }
+
+  friend absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+  AbslFormatConvert(NativeFn fn, const absl::FormatConversionSpec &spec,
+                    absl::FormatSink *s) {
+    s->Append(absl::StrFormat("NativeFn(fn = %p)", fn.data_->fn));
+    return {true};
+  }
+
+  friend std::ostream &operator<<(std::ostream &os, NativeFn f) {
+    absl::Format(&os, "%s", f);
+    return os;
+  }
+
 
  private:
   friend base::EnableExtensions;
