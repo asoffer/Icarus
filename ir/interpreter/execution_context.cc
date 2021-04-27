@@ -9,16 +9,15 @@ namespace interpreter {
 namespace {
 
 template <typename T>
-void ExtractReturnValue(ffi_arg *ret, StackFrame &frame) {
+void ExtractReturnValue(ExecutionContext& ctx, ffi_arg *ret, StackFrame &frame) {
   // libffi promotes return values of size wider than the system register size.
   // size.
-  if constexpr (std::is_integral_v<T> and sizeof(T) < sizeof(int)) {
-    int int_val;
-    std::memcpy(&int_val, ret, sizeof(int_val));
-    frame.regs_.set<T>(ir::Reg::Out(0), int_val);
-  } else {
-    frame.regs_.set_raw(ir::Reg::Out(0), ret, sizeof(T));
-  }
+  static constexpr bool PromotesToInt =
+      std::is_integral_v<T> and sizeof(T) < sizeof(int);
+  using ffi_ret_type = std::conditional_t<PromotesToInt, int, T>;
+  ffi_ret_type value;
+  std::memcpy(&value, ret, sizeof(value));
+  ctx.Store(frame.regs_.get<ir::Addr>(ir::Reg::Out(0)), static_cast<T>(value));
 }
 
 ffi_type *ToFfiType(type::Type t) {
@@ -120,25 +119,25 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame,
   if (out_type == type::Void) {
     return;
   } else if (out_type == type::I8) {
-    ExtractReturnValue<int8_t>(&ret, frame);
+    ExtractReturnValue<int8_t>(*this, &ret, frame);
   } else if (out_type == type::I16) {
-    ExtractReturnValue<int16_t>(&ret, frame);
+    ExtractReturnValue<int16_t>(*this, &ret, frame);
   } else if (out_type == type::I32) {
-    ExtractReturnValue<int32_t>(&ret, frame);
+    ExtractReturnValue<int32_t>(*this, &ret, frame);
   } else if (out_type == type::I64) {
-    ExtractReturnValue<int64_t>(&ret, frame);
+    ExtractReturnValue<int64_t>(*this, &ret, frame);
   } else if (out_type == type::U8) {
-    ExtractReturnValue<uint8_t>(&ret, frame);
+    ExtractReturnValue<uint8_t>(*this, &ret, frame);
   } else if (out_type == type::U16) {
-    ExtractReturnValue<uint16_t>(&ret, frame);
+    ExtractReturnValue<uint16_t>(*this, &ret, frame);
   } else if (out_type == type::U32) {
-    ExtractReturnValue<uint32_t>(&ret, frame);
+    ExtractReturnValue<uint32_t>(*this, &ret, frame);
   } else if (out_type == type::U64) {
-    ExtractReturnValue<uint64_t>(&ret, frame);
+    ExtractReturnValue<uint64_t>(*this, &ret, frame);
   } else if (out_type == type::F32) {
-    ExtractReturnValue<float>(&ret, frame);
+    ExtractReturnValue<float>(*this, &ret, frame);
   } else if (out_type == type::F64) {
-    ExtractReturnValue<double>(&ret, frame);
+    ExtractReturnValue<double>(*this, &ret, frame);
   } else if (out_type.is<type::Pointer>()) {
     char *ptr;
     std::memcpy(&ptr, &ret, sizeof(ptr));
@@ -152,7 +151,8 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame,
       // TODO: read-only data?
       addr = ir::Addr::Heap(ptr);
     }
-    frame.regs_.set<ir::Addr>(ir::Reg::Out(0), addr);
+
+    Store(frame.regs_.get<ir::Addr>(ir::Reg::Out(0)), addr);
   } else {
     UNREACHABLE(out_type);
   }

@@ -127,4 +127,58 @@ INSTANTIATE_TEST_SUITE_P(
     }));
 
 }  // namespace
+
+extern "C" {
+
+int64_t *ForeignFunctionPtr() {
+  static int64_t ptr;
+  return &ptr;
+}
+
+int8_t ForeignFunctionI8() { return 17; }
+int64_t ForeignFunctionI64() { return 17; }
+} 
+
+namespace {
+
+TEST(CallTest, Foreign) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  f_ptr ::= foreign("ForeignFunctionPtr", () -> *i64)
+  f_i8  ::= foreign("ForeignFunctionI8", () -> i8)
+  f_i64 ::= foreign("ForeignFunctionI64", () -> i64)
+  )");
+
+  {
+    auto const *e = mod.Append<ast::Expression>("f_ptr()");
+    auto t        = mod.context().qual_types(e)[0].type();
+    ASSERT_TRUE(t.valid());
+    auto result =
+        mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, ir::Value(ir::Addr::Heap(ForeignFunctionPtr())));
+  }
+
+  {
+    auto const *e = mod.Append<ast::Expression>("f_i8()");
+    auto t        = mod.context().qual_types(e)[0].type();
+    ASSERT_TRUE(t.valid());
+    auto result =
+        mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, ir::Value(ForeignFunctionI8()));
+  }
+
+  {
+    auto const *e = mod.Append<ast::Expression>("f_i64()");
+    auto t        = mod.context().qual_types(e)[0].type();
+    ASSERT_TRUE(t.valid());
+    auto result =
+        mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, ir::Value(ForeignFunctionI64()));
+  }
+}
+
+}  // namespace
 }  // namespace compiler

@@ -143,8 +143,8 @@ struct ExecutionContext {
 
   static void CallFn(ir::BuiltinFn fn, StackFrame &frame);
 
-  static void CallFn(ir::ForeignFn f, StackFrame &frame,
-                     base::untyped_buffer_view arguments);
+  void CallFn(ir::ForeignFn f, StackFrame &frame,
+              base::untyped_buffer_view arguments);
 
   template <typename InstSet>
   void ExecuteBlocks() {
