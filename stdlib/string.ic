@@ -1,5 +1,4 @@
 core ::= import "core.ic"
-io ::= import "io.ic"
 
 // TODO: The precise types here are actually architecture dependent. We need to
 // provide some platform-querying capabilities so that we don't need to, for

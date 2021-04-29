@@ -1857,6 +1857,10 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
         } break;
         case l_brace:
           if (get_type<1>() & fn_expr) { return ShiftState::NeedMore; }
+          if ((get_type<1>() & paren_expr) and (get_type<2>() & EXPR)) {
+            return ShiftState::MustReduce;
+          }
+
           if (get_type<1>() &
               (kw_struct | empty_parens | paren_expr | kw_block_head)) {
             if (get_type<2>() == fn_arrow) {
