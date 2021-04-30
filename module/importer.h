@@ -23,7 +23,18 @@ namespace module {
 // `import` expression.
 struct Importer {
   virtual ir::ModuleId Import(std::string_view module_locator) = 0;
-  virtual BasicModule const& get(ir::ModuleId id) = 0;
+  virtual BasicModule const& get(ir::ModuleId id)              = 0;
+  virtual void CompleteWork()                                  = 0;
+
+  bool SetImplicitlyEmbeddedModules(
+      absl::Span<std::string const> module_locators);
+
+  absl::Span<ir::ModuleId const> implicitly_embedded_modules() const {
+    return embedded_module_ids_;
+  }
+
+ private:
+  std::vector<ir::ModuleId> embedded_module_ids_;
 };
 
 // Looks up the given module path to retrieve an absolute path to the module.
@@ -33,9 +44,7 @@ frontend::CanonicalFileName ResolveModulePath(
 
 template <typename ModuleType>
 struct FileImporter : Importer {
-  ~FileImporter() {
-    for (auto& t : work_) { t.join(); }
-  }
+  ~FileImporter() { CompleteWork(); }
 
   ir::ModuleId Import(std::string_view module_locator) override {
     auto file_name = frontend::CanonicalFileName::Make(
@@ -62,14 +71,25 @@ struct FileImporter : Importer {
     mod = std::make_unique<ModuleType>();
     modules_by_id_.emplace(id, mod.get());
 
+    for (ir::ModuleId embedded_id : implicitly_embedded_modules()) {
+      mod->embed(get(embedded_id));
+    }
+
     work_.emplace_back([this, mod = mod.get(),
-                       file_src = std::move(*maybe_file_src)]() mutable {
+                        file_src = std::move(*maybe_file_src)]() mutable {
       mod->template set_diagnostic_consumer<diagnostic::StreamingConsumer>(
           stderr, &file_src);
       mod->AppendNodes(frontend::Parse(file_src, mod->diagnostic_consumer()),
                        mod->diagnostic_consumer(), *this);
     });
     return id;
+  }
+
+  void CompleteWork() override {
+    while (not work_.empty()) {
+      auto work = std::exchange(work_, {});
+      for (auto& t : work) { t.join(); }
+    }
   }
 
   BasicModule const& get(ir::ModuleId id) override {

@@ -200,8 +200,10 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
             .range = node->range(),
         });
       } else {
-        diag().Consume(
-            UndeclaredIdentifier{.id = node->name(), .range = node->range()});
+        diag().Consume(UndeclaredIdentifier{
+            .id    = node->name(),
+            .range = node->range(),
+        });
       }
       return context().set_qual_type(node, type::QualType::Error());
     } break;

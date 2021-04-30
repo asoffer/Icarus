@@ -13,12 +13,12 @@
 #include "frontend/lex/operators.h"
 #include "frontend/lex/tagged_node.h"
 #include "frontend/lex/token.h"
+#include "frontend/parse.h"
 #include "frontend/parse_rule.h"
 #include "frontend/source/source.h"
 
-namespace debug {
-bool parser = false;
-}  // namespace debug
+ABSL_FLAG(bool, debug_parser, false,
+          "Step through the parser step-by-step for debugging.");
 
 namespace frontend {
 namespace {
@@ -2030,16 +2030,16 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
   void CleanUpReduction(ParseState * state) {
     // Reduce what you can
     while (Reduce<kRules>(state)) {
-      if (debug::parser) { Debug(state); }
+      if (absl::GetFlag(FLAGS_debug_parser)) { Debug(state); }
     }
 
     Shift(state);
 
     // Reduce what you can again
     while (Reduce<kRules>(state)) {
-      if (debug::parser) { Debug(state); }
+      if (absl::GetFlag(FLAGS_debug_parser)) { Debug(state); }
     }
-    if (debug::parser) { Debug(state); }
+    if (absl::GetFlag(FLAGS_debug_parser)) { Debug(state); }
   }
 }  // namespace
 
@@ -2065,7 +2065,7 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
       case ShiftState::NeedMore: Shift(&state); break;
     }
 
-    if (debug::parser) { Debug(&state); }
+    if (absl::GetFlag(FLAGS_debug_parser)) { Debug(&state); }
   }
 
   // Cleanup

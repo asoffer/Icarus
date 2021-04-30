@@ -63,6 +63,8 @@ struct BasicModule : base::Cast<BasicModule> {
     diagnostic_consumer_ = std::make_unique<T>(std::forward<Args>(args)...);
   }
 
+  void embed(BasicModule const &module) { scope_.embed(&module.scope_); }
+
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
                             diagnostic::DiagnosticConsumer &, Importer &) = 0;

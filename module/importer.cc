@@ -7,6 +7,7 @@
 
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "base/debug.h"
 #include "frontend/source/file_name.h"
 
 namespace module {
@@ -37,4 +38,19 @@ frontend::CanonicalFileName ResolveModulePath(
   // Fall back to using the given path as-is, relative to $PWD.
   return module_path;
 }
+
+bool Importer::SetImplicitlyEmbeddedModules(
+    absl::Span<std::string const> module_locators) {
+  ASSERT(embedded_module_ids_.size() == 0u);
+  embedded_module_ids_.reserve(module_locators.size());
+  for (std::string_view module : module_locators) {
+    auto id = Import(module);
+    embedded_module_ids_.push_back(id);
+    if (id == ir::ModuleId::Invalid()) { return false; }
+  }
+
+  CompleteWork();
+  return true;
+}
+
 }  // namespace module

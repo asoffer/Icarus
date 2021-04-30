@@ -45,8 +45,6 @@ ABSL_FLAG(std::vector<std::string>, log, {},
 ABSL_FLAG(std::string, link, "",
           "Library to be dynamically loaded by the compiler to be used "
           "at compile-time. Libraries will not be unloaded.");
-ABSL_FLAG(bool, debug_parser, false,
-          "Step through the parser step-by-step for debugging.");
 ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
 ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Comma-separated list of paths to search when importing modules. "
@@ -54,10 +52,8 @@ ABSL_FLAG(std::vector<std::string>, module_paths, {},
 ABSL_FLAG(
     std::string, output, "",
     "Name of the output file to which the generated output should be written.");
-
-namespace debug {
-extern bool parser;
-}  // namespace debug
+ABSL_FLAG(std::vector<std::string>, implicitly_embedded_modules, {},
+          "Comma-separated list of modules that are embedded implicitly.");
 
 namespace compiler {
 namespace {
@@ -147,7 +143,16 @@ int Compile(frontend::FileName const &file_name) {
   diag      = diagnostic::StreamingConsumer(stderr, src);
   module::FileImporter<LibraryModule> importer;
   importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
+  if (not importer.SetImplicitlyEmbeddedModules(
+          absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
+    return 1;
+  }
+
   compiler::ExecutableModule exec_mod;
+  for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
+    exec_mod.embed(importer.get(embedded_id));
+  }
+
   exec_mod.AppendNodes(frontend::Parse(*src, diag), diag, importer);
   if (diag.num_consumed() != 0) { return 1; }
 
@@ -188,7 +193,6 @@ int main(int argc, char *argv[]) {
   if (std::string lib = absl::GetFlag(FLAGS_link); not lib.empty()) {
     ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
   }
-  debug::parser = absl::GetFlag(FLAGS_debug_parser);
 
   if (args.size() < 2) {
     std::cerr << "Missing required positional argument: source file"
