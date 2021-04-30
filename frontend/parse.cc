@@ -37,24 +37,6 @@ struct TodoDiagnostic {
       std::experimental::source_location::current();
 };
 
-template <typename T>
-struct InheritsFrom : matcher::UntypedMatcher<InheritsFrom<T>> {
-  template <typename Expr>
-  struct Matcher : ::matcher::Matcher<Expr> {
-    Matcher(InheritsFrom const &m) {}
-    bool match(Expr const &input) const override {
-      if constexpr (matcher::is_pointery<Expr>::value) {
-        return dynamic_cast<T const *>(
-                   matcher::is_pointery<Expr>{}.get(input)) != nullptr;
-      }
-    }
-    std::string describe(bool positive) const override {
-      return (positive ? "inherits from " : "does not inherit from ") +
-             std::string(typeid(T).name());
-    }
-  };
-};
-
 struct DeclaringNonIdentifier {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "declaring-non-identifier";
@@ -345,7 +327,6 @@ std::vector<std::unique_ptr<ast::Node>> ExtractStatements(
 
 template <typename To, typename From>
 std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
-  ASSERT(val, InheritsFrom<To>());
   return std::unique_ptr<To>(static_cast<To *>(val.release()));
 }
 
@@ -1326,8 +1307,6 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     if (nodes.size() == 6) {
       if (nodes[4]->is<CommaList>()) {
         for (auto &expr : nodes[4]->as<CommaList>().nodes_) {
-          ASSERT(expr,
-                 InheritsFrom<ast::Declaration>());  // TODO: handle failure
           auto decl = move_as<ast::Declaration>(expr);
           decl->flags() |= ast::Declaration::f_IsFnParam;
           params.push_back(std::move(decl));
@@ -1357,7 +1336,6 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
       diagnostic::DiagnosticConsumer & diag) {
     // TODO: should probably not do this with a token but some sort of
     // enumerator so we can ensure coverage/safety.
-    ASSERT(nodes[0], InheritsFrom<Token>());
     auto const &tk = nodes[0]->as<Token>().token;
     if (tk == "jump") {
       SourceRange range(nodes.front()->range().begin(),

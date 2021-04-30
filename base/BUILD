@@ -23,7 +23,7 @@ cc_library(
 cc_library(
     name = "debug",
     hdrs = ["debug.h"],
-    deps = [":matchers", ":log"],
+    deps = [":log", ":stringify"],
 )
 
 cc_library(
@@ -130,11 +130,6 @@ cc_library(
     name = "macros",
     hdrs = ["macros.h"],
     deps = [],
-)
-
-cc_library(
-    name = "matchers",
-    hdrs = ["matchers.h"],
 )
 
 cc_library(

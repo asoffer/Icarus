@@ -2,7 +2,7 @@
 #define ICARUS_BASE_DEBUG_H
 
 #include "base/log.h"
-#include "base/matchers.h"
+#include "base/stringify.h"
 
 #if defined(ICARUS_DEBUG)
 
@@ -11,20 +11,87 @@
 #define ICARUS_CONSTEXPR inline
 #define ICARUS_PRIVATE
 
-#define ASSERT(...)                                                            \
+#define ASSERT(expr)                                                           \
   do {                                                                         \
-    if (not static_cast<bool>(MATCH(::debug::Asserter{}, __VA_ARGS__))) {      \
+    if (not::debug::Asserter{}(::debug::internal_matcher::ExprStealer{#expr}   \
+                               << expr)) {                                     \
       std::abort();                                                            \
     }                                                                          \
   } while (false)
 
 namespace debug {
+namespace internal_matcher {
+
+template <typename L, typename R>
+struct ExprMatchResult {
+  char const* expr_string = nullptr;
+  bool matched;
+  L const& lhs;
+  R const& rhs;
+};
+
+template <typename T>
+struct StolenExpr {
+  StolenExpr(char const* expr_string, T const& expr)
+      : expr_string_(expr_string), expr_(expr) {}
+
+  char const* expr_string_;
+  T const& expr_;
+};
+
+struct ExprStealer {
+  char const* expr_string_;
+};
+
+template <typename T>
+StolenExpr<T> operator<<(ExprStealer expr_stealer, T const& expr) {
+  return {expr_stealer.expr_string_, expr};
+}
+
+template <typename T, typename U>
+ExprMatchResult<T, U> operator==(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ == rhs);
+  return {expr.expr_string_, matched, expr.expr_, rhs};
+}
+
+template <typename T, typename U>
+ExprMatchResult<T, U> operator!=(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ != rhs);
+  return {expr.expr_string_, matched, expr.expr_, rhs};
+}
+
+template <typename T, typename U>
+ExprMatchResult<T, U> operator<(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ < rhs);
+  return {expr.expr_string_, matched, expr.expr_, rhs};
+}
+
+template <typename T, typename U>
+ExprMatchResult<T, U> operator>(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ > rhs);
+  return {expr.expr_string_, matched, expr.expr_, rhs};
+}
+
+template <typename T, typename U>
+ExprMatchResult<T, U> operator<=(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ <= rhs);
+  return {expr.expr_string_, matched, expr.expr_, rhs};
+}
+
+template <typename T, typename U>
+ExprMatchResult<T, U> operator>=(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ >= rhs);
+  return {expr.expr_string_, matched, expr.expr_, rhs};
+}
+
+}  // namespace internal_matcher
 
 struct Asserter {
   template <typename L, typename R>
-  bool operator()(::matcher::ExprMatchResult<L, R> const &result,
-                  std::experimental::source_location src_loc =
-                      std::experimental::source_location::current()) const {
+  bool operator()(
+      ::debug::internal_matcher::ExprMatchResult<L, R> const &result,
+      std::experimental::source_location src_loc =
+          std::experimental::source_location::current()) const {
     if (not result.matched) {
       using ::base::stringify;
       base::internal_logging::Log(
@@ -37,25 +104,8 @@ struct Asserter {
     }
     return result.matched;
   }
-
-  template <typename T>
-  bool operator()(::matcher::MatchResult<T> const &match_result,
-                  std::experimental::source_location src_loc =
-                      std::experimental::source_location::current()) {
-    if (match_result.description.has_value()) {
-      using ::base::stringify;
-      base::internal_logging::Log(
-          ::base::internal_logging::kLogWithoutFunctionNameFormat, src_loc, "",
-          "\033[0;1;31mAssertion failed\n"
-          "  \033[0;1;37mExpression:\033[0m %s\n"
-          "    \033[0;1;37mExpected:\033[0m %s\n"
-          "      \033[0;1;37mActual:\033[0m %s\n",
-          match_result.expr.string(), *match_result.description,
-          stringify(match_result.expr.value()));
-    }
-    return not match_result.description.has_value();
-  }
 };
+
 }  // namespace debug
 
 #define ASSERT_NOT_NULL(expr)                                                  \
