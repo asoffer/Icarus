@@ -42,8 +42,7 @@ cc_binary(
     deps = [
         ":parse",
         "//diagnostic/consumer:trivial",
-        "//frontend/source:cursor",
-        "//frontend/source:string",
+        "//frontend/source:buffer",
     ],
     copts = ["-fsanitize=fuzzer"],
     linkopts = ["-fsanitize=fuzzer"],

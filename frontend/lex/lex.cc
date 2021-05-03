@@ -20,6 +20,7 @@
 
 namespace frontend {
 namespace {
+
 struct NumberParsingFailure {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "number-parsing-failure";
@@ -144,8 +145,8 @@ constexpr inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) or (c == '_');
 }
 
-SourceCursor NextSimpleWord(SourceCursor *cursor) {
-  return cursor->ConsumeWhile(IsAlphaNumericOrUnderscore);
+SourceCursor NextSimpleWord(SourceCursor &cursor) {
+  return cursor.ConsumeWhile(IsAlphaNumericOrUnderscore);
 }
 
 static base::Global kKeywords =
@@ -198,12 +199,12 @@ static base::Global kOps =
          {"~", {Operator::Tilde}},        {";", {Syntax::Semicolon}}},
     };
 
-Lexeme NextOperator(SourceCursor *cursor, Source *src) {
+Lexeme NextOperator(SourceCursor &cursor) {
 #ifdef ICARUS_MATCHER
   // TODO "@% is a terrible choice for the operator here, but we can deal with
   // that later.
-  if (BeginsWith(match::kMatchPrefix, cursor->view())) {
-    cursor->remove_prefix(2);
+  if (BeginsWith(match::kMatchPrefix, cursor.view())) {
+    cursor.remove_prefix(2);
     auto word_cursor       = NextSimpleWord(cursor);
     std::string_view token = word_cursor.view();
     auto span              = word_cursor.range();
@@ -212,14 +213,14 @@ Lexeme NextOperator(SourceCursor *cursor, Source *src) {
   }
 #endif
 
-  if (BeginsWith("--", cursor->view())) {
-    auto span = cursor->remove_prefix(2).range();
+  if (BeginsWith("--", cursor.view())) {
+    auto span = cursor.remove_prefix(2).range();
     return Lexeme(std::make_unique<ast::Identifier>(span, ""));
   }
 
   for (auto [prefix, x] : *kOps) {
-    if (BeginsWith(prefix, cursor->view())) {
-      auto span = cursor->remove_prefix(prefix.size()).range();
+    if (BeginsWith(prefix, cursor.view())) {
+      auto span = cursor.remove_prefix(prefix.size()).range();
       return std::visit([&](auto x) { return Lexeme(x, span); }, x);
     }
   }
@@ -227,17 +228,17 @@ Lexeme NextOperator(SourceCursor *cursor, Source *src) {
 }
 
 std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
-    SourceCursor *cursor, Source *src) {
+    SourceCursor &cursor) {
   SourceRange span;
-  span.begin() = cursor->loc();
-  cursor->remove_prefix(1);
+  span.begin() = cursor.loc();
+  cursor.remove_prefix(1);
   // TODO support multi-line comments?
-  switch (cursor->view()[0]) {
+  switch (cursor.view()[0]) {
     case '/':  // line comment
-      cursor->ConsumeWhile([](char c) { return c != '\n'; });
+      cursor.ConsumeWhile([](char c) { return c != '\n'; });
       return std::nullopt;
     case '=':
-      cursor->remove_prefix(1);
+      cursor.remove_prefix(1);
       span.end() = span.begin() + Offset(2);
       return std::pair{span, Operator::DivEq};
     default:
@@ -349,12 +350,12 @@ struct StringLiteralLexResult {
   std::vector<StringLiteralError> errors;
 };
 
-StringLiteralLexResult NextStringLiteral(SourceCursor *cursor, Source *src) {
+StringLiteralLexResult NextStringLiteral(SourceCursor &cursor) {
   StringLiteralLexResult result;
-  cursor->remove_prefix(1);
+  cursor.remove_prefix(1);
   bool escaped        = false;
   int offset          = -1;
-  auto str_lit_cursor = cursor->ConsumeWhile([&](char c) {
+  auto str_lit_cursor = cursor.ConsumeWhile([&](char c) {
     ++offset;
     if (not escaped) {
       switch (c) {
@@ -388,36 +389,36 @@ StringLiteralLexResult NextStringLiteral(SourceCursor *cursor, Source *src) {
   });
 
   result.range = str_lit_cursor.range();
-  if (cursor->view().empty()) {
+  if (cursor.view().empty()) {
     result.errors.push_back(StringLiteralError{
         .kind   = StringLiteralError::Kind::kRunaway,
         .offset = -1,
     });
   } else {
-    cursor->remove_prefix(1);  // Ending '"'
+    cursor.remove_prefix(1);  // Ending '"'
   }
 
   return result;
 }
 
-absl::StatusOr<Lexeme> NextHashtag(SourceCursor *cursor, Source *src) {
+absl::StatusOr<Lexeme> NextHashtag(SourceCursor &cursor) {
   SourceRange span;
   std::string_view token;
-  if (cursor->view().empty()) {
+  if (cursor.view().empty()) {
     // TODO: use a better error code?
     return absl::InvalidArgumentError("Nothing after # character.");
-  } else if (cursor->view()[0] == '{') {
-    cursor->remove_prefix(1);
+  } else if (cursor.view()[0] == '{') {
+    cursor.remove_prefix(1);
     auto word_cursor = NextSimpleWord(cursor);
     token            = std::string_view{word_cursor.view().data() - 1,
                              word_cursor.view().size() + 2};
     span             = word_cursor.range();
 
-    if (cursor->view().empty() or cursor->view()[0] != '}') {
+    if (cursor.view().empty() or cursor.view()[0] != '}') {
       return absl::InvalidArgumentError(
           "Missing close brace on system hashtag.");
     }
-    cursor->remove_prefix(1);
+    cursor.remove_prefix(1);
     span = span.expanded(Offset(1));
 
     for (auto [name, tag] : ir::BuiltinHashtagsByName) {
@@ -473,10 +474,10 @@ Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
 }
 }  // namespace
 
-std::vector<Lexeme> Lex(Source &src, diagnostic::DiagnosticConsumer &diag,
+std::vector<Lexeme> Lex(SourceBuffer &buffer, diagnostic::DiagnosticConsumer &diag,
                         size_t chunk) {
   std::vector<Lexeme> result;
-  LexState state(&src, diag, chunk);
+  LexState state(&buffer, diag, chunk);
   do { result.push_back(NextToken(&state)); } while (not result.back().eof());
   return result;
 }
@@ -517,8 +518,7 @@ restart:
   }
   switch (peek) {
     case '"': {
-      auto [str, range, errors] =
-          NextStringLiteral(&state->cursor_, state->src_);
+      auto [str, range, errors] = NextStringLiteral(state->cursor_);
       if (not errors.empty()) {
         state->diag_.Consume(StringLiteralParsingFailure{
             .errors = std::move(errors),
@@ -547,14 +547,14 @@ restart:
       }
       if (state->peek() == '.') {
         state->cursor_.remove_prefix(1);
-        auto word_cursor       = NextSimpleWord(&state->cursor_);
+        auto word_cursor       = NextSimpleWord(state->cursor_);
         std::string_view token = word_cursor.view();
 
         return Lexeme(std::make_unique<ast::Label>(word_cursor.range(),
                                                    std::string{token}));
 
       } else {
-        auto result = NextHashtag(&state->cursor_, state->src_);
+        auto result = NextHashtag(state->cursor_);
         if (result.ok()) { return std::move(*result); }
 
         state->diag_.Consume(HashtagParsingFailure{
@@ -565,8 +565,7 @@ restart:
     } break;
     case '/': {
       // TODO just check for comments early and roll this into NextOperator.
-      if (auto maybe_op =
-              NextSlashInitiatedToken(&state->cursor_, state->src_)) {
+      if (auto maybe_op = NextSlashInitiatedToken(state->cursor_)) {
         auto &[span, op] = *maybe_op;
         return Lexeme(op, state->cursor_.range());
       }
@@ -601,7 +600,7 @@ restart:
       }
       goto restart;
     } break;
-    default: return NextOperator(&state->cursor_, state->src_); break;
+    default: return NextOperator(state->cursor_); break;
   }
   UNREACHABLE();
 }

@@ -1,5 +1,6 @@
 #include "compiler/compiler.h"
 #include "compiler/library_module.h"
+#include "frontend/source/buffer.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/module.h"
@@ -267,7 +268,6 @@ TEST(Call, Uncallable) {
       UnorderedElementsAre(Pair("type-error", "uncallable-expression")));
 }
 
-
 TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
   auto id = ir::ModuleId::New();
   LibraryModule imported_mod;
@@ -280,11 +280,11 @@ TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
       .WillByDefault(
           [&](ir::ModuleId) -> module::BasicModule & { return imported_mod; });
 
-  frontend::StringSource src(R"(
+  frontend::SourceBuffer buffer(R"(
   #{export} S ::= struct {}
   #{export} f ::= (s: S) => 3
   )");
-  imported_mod.AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+  imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer), mod.consumer,
                            mod.importer);
 
   mod.AppendCode(R"(
@@ -309,11 +309,11 @@ TEST(Call, CrossModuleWithADLSucceed) {
       .WillByDefault(
           [&](ir::ModuleId) -> module::BasicModule & { return imported_mod; });
 
-  frontend::StringSource src(R"(
+  frontend::SourceBuffer buffer(R"(
   #{export} S ::= struct {}
   #{export} f ::= (s: S) => 3
   )");
-  imported_mod.AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+  imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer), mod.consumer,
                            mod.importer);
 
   mod.AppendCode(R"(
@@ -337,11 +337,11 @@ TEST(Call, CrossModuleWithADLWithoutExport) {
       .WillByDefault(
           [&](ir::ModuleId) -> module::BasicModule & { return imported_mod; });
 
-  frontend::StringSource src(R"(
+  frontend::SourceBuffer buffer(R"(
   #{export} S ::= struct {}
   f ::= (s: S) => 3
   )");
-  imported_mod.AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+  imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer), mod.consumer,
                            mod.importer);
 
   mod.AppendCode(R"(

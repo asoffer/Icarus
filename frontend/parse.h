@@ -15,7 +15,8 @@ ABSL_DECLARE_FLAG(bool, debug_parser);
 namespace frontend {
 
 std::vector<std::unique_ptr<ast::Node>> Parse(
-    Source& src, diagnostic::DiagnosticConsumer& diag, size_t chunk = 0);
+    SourceBuffer& buffer, diagnostic::DiagnosticConsumer& diag,
+    size_t chunk = 0);
 }  // namespace frontend
 
 #endif  // ICARUS_FRONTEND_PARSE_H

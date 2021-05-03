@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
   repl::Module mod;
   // TODO: Handle parse failures
   while (true) {
-    mod.AppendNodes(frontend::Parse(source, diag), diag, importer);
+    mod.AppendNodes(frontend::Parse(source.buffer(), diag), diag, importer);
   }
   return 0;
 }

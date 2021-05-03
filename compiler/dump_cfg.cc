@@ -133,7 +133,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
   module::FileImporter<compiler::LibraryModule> importer;
   importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
   compiler::ExecutableModule exec_mod;
-  exec_mod.AppendNodes(frontend::Parse(*src, diag), diag, importer);
+  exec_mod.AppendNodes(frontend::Parse(src->buffer(), diag), diag, importer);
   if (diag.num_consumed() != 0) { return 1; }
   auto &main_fn = exec_mod.main();
 

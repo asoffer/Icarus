@@ -33,9 +33,9 @@ struct TestModule : compiler::CompiledModule {
   void AppendCode(std::string code) {
     code.push_back('\n');
     source.buffer().AppendChunk(std::move(code));
-    AppendNodes(
-        frontend::Parse(source, consumer, source.buffer().num_chunks() - 1),
-        consumer, importer);
+    AppendNodes(frontend::Parse(source.buffer(), consumer,
+                                source.buffer().num_chunks() - 1),
+                consumer, importer);
   }
 
   template <typename NodeType>
@@ -44,8 +44,8 @@ struct TestModule : compiler::CompiledModule {
     source.buffer().AppendChunk(std::move(code));
 
     diagnostic::AbortingConsumer diag(&source);
-    auto stmts =
-        frontend::Parse(source, diag, source.buffer().num_chunks() - 1);
+    auto stmts = frontend::Parse(source.buffer(), diag,
+                                 source.buffer().num_chunks() - 1);
     if (auto* ptr = stmts[0]->template if_as<NodeType>()) {
       std::vector<std::unique_ptr<ast::Node>> nodes;
       nodes.push_back(std::move(stmts[0]));

@@ -2022,8 +2022,8 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
 }  // namespace
 
 std::vector<std::unique_ptr<ast::Node>> Parse(
-    Source &src, diagnostic::DiagnosticConsumer &diag, size_t chunk) {
-  auto nodes = Lex(src, diag, chunk);
+    SourceBuffer &buffer, diagnostic::DiagnosticConsumer &diag, size_t chunk) {
+  auto nodes = Lex(buffer, diag, chunk);
   // TODO: Shouldn't need this protection.
   if (nodes.size() == 1) { return {}; }
   ParseState state(std::move(nodes), diag);

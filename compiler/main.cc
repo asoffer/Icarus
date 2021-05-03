@@ -153,7 +153,7 @@ int Compile(frontend::FileName const &file_name) {
     exec_mod.embed(importer.get(embedded_id));
   }
 
-  exec_mod.AppendNodes(frontend::Parse(*src, diag), diag, importer);
+  exec_mod.AppendNodes(frontend::Parse(src->buffer(), diag), diag, importer);
   if (diag.num_consumed() != 0) { return 1; }
 
   return CompileToObjectFile(exec_mod, target_machine);

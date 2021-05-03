@@ -1,5 +1,6 @@
 #include "compiler/compiler.h"
 #include "compiler/library_module.h"
+#include "frontend/source/buffer.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/module.h"
@@ -204,11 +205,11 @@ TEST(Access, IntoModuleWithError) {
         return imported_module;
       });
 
-  frontend::StringSource src(R"(
+  frontend::SourceBuffer buffer(R"(
   #{export} N :: bool = 3
   )");
-  imported_module.AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
-                              mod.importer);
+  imported_module.AppendNodes(frontend::Parse(buffer, mod.consumer),
+                              mod.consumer, mod.importer);
 
   mod.AppendCode("mod ::= import \"imported\"");
   auto const *expr = mod.Append<ast::Expression>(R"(mod.N)");

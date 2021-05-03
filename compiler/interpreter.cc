@@ -69,7 +69,7 @@ int Interpret(frontend::FileName const &file_name) {
     exec_mod.embed(importer.get(embedded_id));
   }
 
-  exec_mod.AppendNodes(frontend::Parse(*src, diag), diag, importer);
+  exec_mod.AppendNodes(frontend::Parse(src->buffer(), diag), diag, importer);
   if (diag.num_consumed() != 0 or exec_mod.has_error_in_dependent_module()) {
     return 1;
   }

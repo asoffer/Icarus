@@ -79,8 +79,9 @@ struct FileImporter : Importer {
                         file_src = std::move(*maybe_file_src)]() mutable {
       mod->template set_diagnostic_consumer<diagnostic::StreamingConsumer>(
           stderr, &file_src);
-      mod->AppendNodes(frontend::Parse(file_src, mod->diagnostic_consumer()),
-                       mod->diagnostic_consumer(), *this);
+      mod->AppendNodes(
+          frontend::Parse(file_src.buffer(), mod->diagnostic_consumer()),
+          mod->diagnostic_consumer(), *this);
     });
     return id;
   }

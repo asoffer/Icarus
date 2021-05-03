@@ -1,5 +1,6 @@
 #include "compiler/compiler.h"
 #include "compiler/library_module.h"
+#include "frontend/source/buffer.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/module.h"
@@ -250,12 +251,12 @@ TEST(DesignatedInitializer, CrossModule) {
       .WillByDefault(
           [&](ir::ModuleId) -> module::BasicModule & { return imported_mod; });
 
-  frontend::StringSource src(R"(
+  frontend::SourceBuffer buffer(R"(
   #{export} S ::= struct {
     #{export} n: i64
   }
   )");
-  imported_mod.AppendNodes(frontend::Parse(src, mod.consumer),
+  imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer),
                                     mod.consumer, mod.importer);
 
   mod.AppendCode("-- ::= import \"imported\"");
@@ -277,12 +278,12 @@ TEST(DesignatedInitializer, NotExported) {
       .WillByDefault(
           [&](ir::ModuleId) -> module::BasicModule & { return imported_mod; });
 
-  frontend::StringSource src(R"(
+  frontend::SourceBuffer buffer(R"(
   #{export} S ::= struct {
     n: i64
   }
   )");
-  imported_mod.AppendNodes(frontend::Parse(src, mod.consumer), mod.consumer,
+  imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer), mod.consumer,
                            mod.importer);
 
   mod.AppendCode("-- ::= import \"imported\"");
