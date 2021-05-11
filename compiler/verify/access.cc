@@ -239,8 +239,7 @@ type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
   c.diag().Consume(TypeHasNoMembers{
       .type   = evaled_type,
       .member = std::string(node->member_name()),
-      .range  = frontend::SourceRange(node->operand()->range().end(),
-                                     node->range().end()),
+      .range  = node->member_range(),
   });
   return type::QualType::Error();
 }

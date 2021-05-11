@@ -79,7 +79,8 @@ struct Access : Expression {
         member_name_(std::move(member_name)) {}
   constexpr std::string_view member_name() const { return member_name_; }
   constexpr frontend::SourceRange member_range() const {
-    return frontend::SourceRange(operand_->range().end(), range().end());
+    return frontend::SourceRange(
+        range().end() - frontend::Offset(member_name_.size()), range().end());
   }
   Expression const *operand() const { return operand_.get(); }
 
