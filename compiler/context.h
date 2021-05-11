@@ -1,5 +1,5 @@
-#ifndef ICARUS_COMPILER_DATA_H
-#define ICARUS_COMPILER_DATA_H
+#ifndef ICARUS_COMPILER_CONTEXT_H
+#define ICARUS_COMPILER_CONTEXT_H
 
 #include <forward_list>
 #include <memory>
@@ -498,4 +498,4 @@ struct Context {
 };
 
 }  // namespace compiler
-#endif  // ICARUS_COMPILER_DATA_H
+#endif  // ICARUS_COMPILER_CONTEXT_H

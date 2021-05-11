@@ -30,7 +30,9 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
                            ->module()
                            ->as<CompiledModule>();
     if (mod != &context().module()) {
-      return mod->context().Constant(&decl_span[0]->ids()[0])->value();
+      return mod->context(&context().module())
+          .Constant(&decl_span[0]->ids()[0])
+          ->value();
     } else {
       return EmitValue(decl_span[0]);
     }

@@ -210,7 +210,8 @@ type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
       std::vector<ast::Declaration::Id const *> ids;
 
       auto &s_mod = s->defining_module()->as<compiler::CompiledModule>();
-      auto const *ast_struct = s_mod.context().ast_struct(s);
+      auto const *ast_struct =
+          s_mod.context(&c.context().module()).ast_struct(s);
 
       if (s_mod.diagnostic_consumer().num_consumed() != 0) {
         c.context().module().set_dependent_module_with_errors();
@@ -325,7 +326,8 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       return type::QualType::Error();
     } break;
     case 1: {
-      type::QualType qt = mod.context().qual_types(ids[0])[0];
+      type::QualType qt =
+          mod.context(&c.context().module()).qual_types(ids[0])[0];
 
       if (mod.diagnostic_consumer().num_consumed() != 0) {
         c.context().module().set_dependent_module_with_errors();
@@ -346,7 +348,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       // TODO: these may also be an overload set of scopes
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Callable const *> member_types;
-      auto const &ctx = mod.context();
+      auto const &ctx = mod.context(&c.context().module());
 
       if (mod.diagnostic_consumer().num_consumed() != 0) {
         c.context().module().set_dependent_module_with_errors();

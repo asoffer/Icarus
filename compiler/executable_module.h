@@ -22,7 +22,7 @@ struct ExecutableModule : CompiledModule {
                     diagnostic::DiagnosticConsumer &diag,
                     module::Importer &importer) override {
     Compiler c({
-        .data                = context(),
+        .data                = context(this),
         .diagnostic_consumer = diag,
         .importer            = importer,
     });
@@ -31,7 +31,7 @@ struct ExecutableModule : CompiledModule {
     // main, so it'd be nice to have some mechanism for handling this. That
     // being said, we don't want to add a fake ast node for the implicit main
     // because it's not actually present.
-    for (ast::Node const *node : nodes) { context().TrackJumps(node); }
+    for (ast::Node const *node : nodes) { context(this).TrackJumps(node); }
     c.VerifyAll(nodes);
     if (diag.num_consumed() > 0 or has_error_in_dependent_module()) {
       CompilationComplete();

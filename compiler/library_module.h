@@ -20,7 +20,7 @@ struct LibraryModule : CompiledModule {
     ParsingComplete();
 
     Compiler c({
-        .data                = context(),
+        .data                = context(this),
         .diagnostic_consumer = diagnostic_consumer(),
         .importer            = importer,
     });

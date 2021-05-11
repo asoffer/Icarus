@@ -130,7 +130,7 @@ Context::InsertSubcontextResult Compiler::Instantiate(
                   ->Containing<ast::ModuleScope>()
                   ->module()
                   ->as<CompiledModule>()
-                  .context();
+                  .context(&context().module());
   LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
       ctx.DebugString());
   Context scratchpad = ctx.ScratchpadSubcontext();
@@ -151,7 +151,7 @@ Context::FindSubcontextResult Compiler::FindInstantiation(
                   ->Containing<ast::ModuleScope>()
                   ->module()
                   ->as<CompiledModule>()
-                  .context();
+                  .context(&context().module());
   LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
       ctx.DebugString());
   Context scratchpad = ctx.ScratchpadSubcontext();

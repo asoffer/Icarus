@@ -106,10 +106,10 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
                    constant_arguments);
   } else {
     type::QualType callee_qual_type =
-        callee_mod->context().qual_types(callee)[0];
+        callee_mod->context(&compiler.context().module()).qual_types(callee)[0];
 
     Compiler callee_compiler(PersistentResources{
-        .data                = callee_mod->context(),
+        .data = callee_mod->context(&compiler.context().module()),
         .diagnostic_consumer = compiler.diag(),
         .importer            = compiler.importer(),
     });

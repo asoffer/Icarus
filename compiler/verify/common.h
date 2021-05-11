@@ -1,6 +1,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/context.h"
@@ -75,5 +76,8 @@ struct ImmovableType {
 std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
     Context const &context,
     base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node);
+
+absl::Span<type::QualType const> RetrieveQualTypes(Context const &c,
+                                                   ast::Expression const *expr);
 
 }  // namespace compiler

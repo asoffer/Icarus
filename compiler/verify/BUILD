@@ -222,6 +222,7 @@ cc_library(
         "//type:overload_set",
         "//type:provenance",
         "//type:typed_value",
+        "@com_google_absl//absl/types:span",
     ],
 )
 # TODO: Tests for things in common. These are largely covered by other AST-node 

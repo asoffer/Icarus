@@ -25,13 +25,19 @@ struct CompiledModule : module::BasicModule {
     return context().LoadConstant(id);
   }
 
-  // TODO We probably don't need these. There are likely better ways to expose
-  // the requisite information.
-  Context const &context() const {
-    notification_.WaitForNotification();
+  // If we're requesting from a different module we need to ensure that we've
+  // waited for that module to complete processing. But from the same module we
+  // node processing order to dictates safety.
+  Context const &context(module::BasicModule const *requestor) const {
+    if (requestor != this) { notification_.WaitForNotification(); }
     return data_;
   }
-  Context &context() { return data_; }
+  Context &context(module::BasicModule const *requestor) {
+    ASSERT(requestor == this);
+    return data_;
+  }
+  Context const &context() const { return context(this); }
+  Context &context() { return context(this); }
 
   bool has_error_in_dependent_module() const {
     return depends_on_module_with_errors_;
