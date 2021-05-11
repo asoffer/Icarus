@@ -1,0 +1,17 @@
+--     ::= import "core.ic"
+str    ::= import "string.ic"
+io     ::= import "io.ic"
+
+a := str.string.make("this is a string\n")
+a'Print
+b := str.string.make("here's another\n")
+b'Print
+
+c := str.string.make(a'length + b'length)
+c'append(b)
+c'append(a)
+c'Print
+
+io.Print(c'at(5 as u64)[0])
+io.Print(c'view[5])
+io.Print(`\n)

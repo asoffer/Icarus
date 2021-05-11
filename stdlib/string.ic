@@ -119,20 +119,16 @@ append ::= (s: *string, char_slice: []char) -> () {
     resize_buffer(s, s._length + char_slice.length)
   }
 
-  memcpy((&s._data[0]) + s._length, char_slice.data, char_slice.length + 1 as u64)
-  s._length += char_slice.length
-  s._data[s._length] = 0 as u8 as char
+  core.if (char_slice.length > 0 as u64) then {
+    memcpy((&s._data[0]) + s._length, char_slice.data, char_slice.length + 1 as u64)
+    s._length += char_slice.length
+    s._data[s._length] = `\0
+  }
 }
 
 #{export}
 append ::= (s: *string, from: *string) -> () {
-  core.if (s._length + from._length > s._capacity) then {
-    resize_buffer(s, s._length + from._length)
-  }
-
-  memcpy((&s._data[0]) + s._length, &from._data[0], from._length)
-  s._length += from._length
-  s._data[s._length] = `\0
+  s'append(from'view)
 }
 
 #{export}
@@ -146,3 +142,7 @@ at ::= (s: *string, n: u64) => &s._data[n]
 
 #{export}
 at ::= (s: *string, lo: u64, hi: u64) => slice(&s._data[lo], hi - lo)
+
+#{export}
+view ::= (s: *string) => slice(&s._data[0], s._length)
+
