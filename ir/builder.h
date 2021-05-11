@@ -475,6 +475,11 @@ struct Builder {
     return current_.block_termination_state_;
   }
 
+  ir::Reg addr(ast::Declaration::Id const* id) const { return addr_.at(id); }
+  void set_addr(ast::Declaration::Id const* id, ir::Reg addr) {
+    addr_.emplace(id, addr);
+  }
+
  private:
   template <typename T>
   static type::Type GetType() {
@@ -564,6 +569,9 @@ struct Builder {
     BlockTerminationState block_termination_state_ =
         BlockTerminationState::kMoreStatements;
   } current_;
+
+  // Stores addresses of local identifiers
+  absl::flat_hash_map<ast::Declaration::Id const *, ir::Reg> addr_;
 };
 
 struct SetCurrent : public base::UseWithScope {

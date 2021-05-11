@@ -145,17 +145,6 @@ void Context::set_decls(ast::Identifier const *id,
   decls_.emplace(id, std::move(decls));
 }
 
-bool Context::cyclic_error(ast::Identifier const *id) const {
-  auto iter = cyclic_error_ids_.find(id);
-  if (iter != cyclic_error_ids_.end()) { return true; }
-  if (not parent()) { return false; }
-  return parent()->cyclic_error(id);
-}
-
-void Context::set_cyclic_error(ast::Identifier const *id) {
-  cyclic_error_ids_.insert(id);
-}
-
 type::Struct *Context::get_struct(ast::StructLiteral const *s) const {
   auto iter = structs_.find(s);
   if (iter != structs_.end()) { return iter->second; }

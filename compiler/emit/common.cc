@@ -383,9 +383,9 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
 
         LOG("MakeAllStackAllocations", "allocating %s", id->name());
 
-        compiler.context().set_addr(
-            id,
-            compiler.builder().Alloca(compiler.context().qual_types(id)[0].type()));
+        compiler.builder().set_addr(
+            id, compiler.builder().Alloca(
+                    compiler.context().qual_types(id)[0].type()));
       }
     }
   }
@@ -413,7 +413,7 @@ void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
   });
 
   for (auto const &[id, t] : ordered_decl_ids) {
-    c.EmitDestroy(type::Typed<ir::Reg>(c.context().addr(id), t));
+    c.EmitDestroy(type::Typed<ir::Reg>(c.builder().addr(id), t));
   }
 }
 

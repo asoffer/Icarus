@@ -168,18 +168,6 @@ struct Context {
                                                  type::QualType const qts);
 
 
-  // TODO: This should go on some sort of a builder but doesn't need to be
-  // persisted beyond emitting the IR for the given function.
-  ir::Reg addr(ast::Declaration::Id const *id) const {
-    auto iter = addr_.find(id);
-    if (iter != addr_.end()) { return iter->second; }
-    if (parent()) { return parent()->addr(id); }
-    UNREACHABLE("Failed to find address for decl-id", id->DebugString());
-  }
-  void set_addr(ast::Declaration::Id const *id, ir::Reg addr) {
-    addr_.emplace(id, addr);
-  }
-
   ir::ModuleId imported_module(ast::Import const *node);
   void set_imported_module(ast::Import const *node, ir::ModuleId module_id);
 
@@ -286,10 +274,6 @@ struct Context {
       ast::Identifier const *id) const;
   void set_decls(ast::Identifier const *id,
                  std::vector<ast::Declaration const *> decls);
-
-  // TODO: Move to compiler.
-  bool cyclic_error(ast::Identifier const *id) const;
-  void set_cyclic_error(ast::Identifier const *id);
 
   type::Struct *get_struct(ast::StructLiteral const *s) const;
   void set_struct(ast::StructLiteral const *sl, type::Struct *s);
@@ -416,8 +400,6 @@ struct Context {
   constexpr Context *parent() { return tree_.parent; }
   constexpr Context const *parent() const { return tree_.parent; }
 
-  absl::flat_hash_map<ast::Declaration::Id const *, ir::Reg> addr_;
-
   // Types of the expressions in this context.
   absl::flat_hash_map<ast::Expression const *, std::vector<type::QualType>>
       qual_types_;
@@ -435,11 +417,6 @@ struct Context {
   // Map of all constant declarations to their values within this dependent
   // context.
   absl::flat_hash_map<ast::Declaration::Id const *, ConstantValue> constants_;
-
-  // Collection of identifiers that are already known to have errors. This
-  // allows us to emit cyclic dependencies exactly once rather than one time per
-  // loop in the cycle.
-  absl::flat_hash_set<ast::Identifier const *> cyclic_error_ids_;
 
   absl::flat_hash_map<ast::StructLiteral const *, type::Struct *> structs_;
   absl::flat_hash_map<ast::ParameterizedStructLiteral const *, type::Struct *>

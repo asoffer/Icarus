@@ -82,13 +82,12 @@ struct NonCallableInOverloadSet {
 }  // namespace
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *node) {
-  if (context().cyclic_error(node)) {
+  if (cylcic_dependency_tracker_.has_error(node)) {
     return context().set_qual_type(node, type::QualType::Error());
   }
 
   // Dependency pushed until `token` is destroyed.
-  auto token =
-      cylcic_dependency_tracker_.PushDependency(node, context(), diag());
+  auto token = cylcic_dependency_tracker_.PushDependency(node, diag());
   if (not token) {
     return context().set_qual_type(node, type::QualType::Error());
   }

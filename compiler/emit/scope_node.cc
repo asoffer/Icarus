@@ -100,7 +100,7 @@ BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node) {
     auto const *param = decl.value.get();
     auto addr = c.builder().Alloca(c.context().qual_types(param)[0].type());
     // TODO: Support multiple declarations?
-    c.context().set_addr(&param->ids()[0], addr);
+    c.builder().set_addr(&param->ids()[0], addr);
   }
 
   bldr.block_termination_state() =
@@ -416,7 +416,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
       if (type.is_big()) {
         reg =
             builder().CurrentBlock()->Append(ir::RegisterInstruction<ir::Addr>{
-                .operand = context().addr(&ids[0]),
+                .operand = builder().addr(&ids[0]),
                 .result  = reg,
             });
       }
@@ -438,7 +438,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
                    ir::Block, ir::GenericFn, interface::Interface>(
             t, [&]<typename T>() {
               builder().Store(ir::RegOr<T>(out_params[i]),
-                              context().addr(&ids[0]));
+                              builder().addr(&ids[0]));
             });
       }
     }

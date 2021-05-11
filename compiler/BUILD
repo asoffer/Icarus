@@ -5,10 +5,9 @@ cc_library(
     name = "cyclic_dependency_tracker",
     hdrs = ["cyclic_dependency_tracker.h"],
     deps = [
-        ":context",
         "//ast",
         "//diagnostic/consumer",
-        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 
@@ -16,11 +15,8 @@ cc_test(
     name = "cyclic_dependency_tracker_test",
     srcs = ["cyclic_dependency_tracker_test.cc"],
     deps = [
-        ":context",
         ":cyclic_dependency_tracker",
-        ":module",
         "//ast",
-        "//base:ptr_span",
         "//diagnostic/consumer:tracking",
         "@com_google_googletest//:gtest_main",
     ],

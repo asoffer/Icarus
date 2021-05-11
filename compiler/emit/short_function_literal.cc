@@ -96,7 +96,7 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
     for (auto const &param : node->params()) {
       absl::Span<ast::Declaration::Id const> ids = param.value->ids();
       ASSERT(ids.size() == 1u);
-      context().set_addr(&ids[0], ir::Reg::Arg(i++));
+      builder().set_addr(&ids[0], ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(*this, &node->body_scope());

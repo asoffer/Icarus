@@ -103,7 +103,7 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
     for (auto const &param : node->params()) {
       absl::Span<ast::Declaration::Id const> ids = param.value->ids();
       ASSERT(ids.size() == 1u);
-      context().set_addr(&ids[0], ir::Reg::Arg(i++));
+      builder().set_addr(&ids[0], ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(*this, &node->body_scope());
@@ -116,7 +116,7 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
                                             : builder().Alloca(out_decl_type);
 
         ASSERT(out_decl->ids().size() == 1u);
-        context().set_addr(&out_decl->ids()[0], alloc);
+        builder().set_addr(&out_decl->ids()[0], alloc);
         if (out_decl->IsDefaultInitialized()) {
           EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
         } else {

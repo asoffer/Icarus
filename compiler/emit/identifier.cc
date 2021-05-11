@@ -40,7 +40,7 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
   if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
     auto t = context().qual_types(node)[0].type();
     // TODO: Support multiple declarations
-    ir::Reg reg = context().addr(&decl_span[0]->ids()[0]);
+    ir::Reg reg = builder().addr(&decl_span[0]->ids()[0]);
     return (decl_span[0]->flags() & (ast::Declaration::f_IsBlockParam |
                                      ast::Declaration::f_IsOutput)) and
                    not t.get()->is_big()
@@ -74,7 +74,7 @@ ir::Reg Compiler::EmitRef(ast::Identifier const *node) {
   ASSERT(decl_span.size() == 1u);
   for (auto const &id : decl_span[0]->ids()) {
     if (id.name() != node->name()) { continue; }
-    return context().addr(&id);
+    return builder().addr(&id);
   }
   UNREACHABLE();
 }

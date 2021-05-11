@@ -4,9 +4,9 @@
 #include <iterator>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/types/span.h"
 #include "ast/ast.h"
-#include "compiler/context.h"
 #include "diagnostic/consumer/consumer.h"
 
 namespace compiler {
@@ -59,7 +59,7 @@ struct CyclicDependencyTracker {
     CyclicDependencyTracker *ptr_ = nullptr;
   };
 
-  DependencyToken PushDependency(ast::Identifier const *id, Context &context,
+  DependencyToken PushDependency(ast::Identifier const *id,
                                  diagnostic::DiagnosticConsumer &diag) {
     dependencies_.push_back(id);
     auto iter = dependencies_.begin();
@@ -74,16 +74,23 @@ struct CyclicDependencyTracker {
     diag.Consume(CyclicDependency{
         .cycle = {iter, dependencies_.end()},
     });
-    for (; iter != dependencies_.end(); ++iter) {
-      context.set_cyclic_error(*iter);
-    }
+    for (; iter != dependencies_.end(); ++iter) { error_ids_.insert(id); }
 
     return DependencyToken();
+  }
+
+  bool has_error(ast::Identifier const *id) const {
+    return error_ids_.contains(id);
   }
 
  private:
   friend DependencyToken;
   std::vector<ast::Identifier const *> dependencies_;
+
+  // Collection of identifiers that are already known to have errors. This
+  // allows us to emit cyclic dependencies exactly once rather than one time per
+  // loop in the cycle.
+  absl::flat_hash_set<ast::Identifier const *> error_ids_;
 };
 
 }  // namespace compiler

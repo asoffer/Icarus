@@ -37,11 +37,11 @@ WorkItem::Result Compiler::EmitJumpBody(ast::Jump const *node) {
     int32_t i = 0;
     if (node->state()) {
       // TODO: Support multiple declarations?
-      context().set_addr(&node->state()->ids()[0], ir::Reg::Arg(i++));
+      builder().set_addr(&node->state()->ids()[0], ir::Reg::Arg(i++));
     }
     for (auto const &param : node->params()) {
       // TODO: Support multiple declarations?
-      context().set_addr(&param.value->ids()[0], ir::Reg::Arg(i++));
+      builder().set_addr(&param.value->ids()[0], ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(*this, &node->body_scope());

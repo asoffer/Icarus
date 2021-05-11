@@ -95,7 +95,7 @@ ir::Value EmitNonConstantDeclaration(Compiler &c,
   addrs.reserve(node->ids().size());
   for (auto const &id : node->ids()) {
     addrs.push_back(type::Typed<ir::RegOr<ir::Addr>>(
-        c.context().addr(&id), c.context().qual_types(&id)[0].type()));
+        c.builder().addr(&id), c.context().qual_types(&id)[0].type()));
   }
   if (auto const *init_val = node->initial_value()) {
     c.EmitMoveInit(init_val, addrs);
