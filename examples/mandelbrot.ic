@@ -1,0 +1,60 @@
+-- ::= import "core.ic"
+io ::= import "io.ic"
+
+complex ::= struct {
+  real: f64
+  imaj: f64
+}
+
+mandelbrot ::= (a: complex) -> complex {
+  z := a
+  for (0, 50) do [iter: i64] {
+    tmp := z.real * z.real - z.imaj * z.imaj + a.real
+    z = complex.{
+      real = tmp
+      imaj = 2.0 * z.real * z.imaj +  a.imaj
+    }
+  }
+  return z
+}
+
+linspace_state ::= struct {
+  current: f64
+  step: f64
+  remaining: i64
+}
+
+linspace ::= scope (linspace_state) {
+  enter ::= jump [state: *linspace_state] (begin: f64, end: f64, steps: i64) {
+    @state = linspace_state.{
+      current = begin
+      step = (end - begin) / (steps as f64)
+      remaining = steps
+    }
+    goto state.remaining == 0, done(), do(state.current)
+  }
+
+  do ::= block {
+    before ::= (x: f64) => x
+    after ::= jump [state: *linspace_state] () {
+      state.remaining -= 1
+      state.current += state.step
+      goto state.remaining == 0, done(), do(state.current)
+    }
+  }
+
+  exit ::= () -> () {}
+}
+
+linspace (1.0, -1.0, 40) do [y: f64] {
+  linspace (-2.0, 0.5, 80) do [x: f64] {
+    z := mandelbrot(complex.{ real = x \\ imaj = y})
+    z_abs_squared := z.real * z.real + z.imaj * z.imaj
+    if (z_abs_squared < 4.0) then {
+      io.Print("*")
+    } else {
+      io.Print(" ")
+    }
+  }
+  io.Print("\n")
+}
