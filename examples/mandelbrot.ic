@@ -1,0 +1,76 @@
+-- ::= import "core.ic"
+io ::= import "io.ic"
+
+complex ::= struct {
+  real: f64
+  imag: f64
+}
+
+squared_norm ::= (x: complex) -> f64 {
+  return x.real * x.real + x.imag * x.imag
+}
+
+add ::= (x: complex, y: complex) -> complex {
+  return complex.{
+    real = x.real + y.real
+    imag = x.imag + y.imag
+  }
+}
+
+squared ::= (x: f64) -> f64 {
+  return x * x
+}
+
+squared ::= (x: complex) -> complex {
+  return complex.{
+    real = x.real'squared - x.imag'squared
+    imag = 2.0 * x.real * x.imag
+  }
+}
+
+mandelbrot ::= (a: complex) -> i64 {
+  z := a
+  for (0, 30) do [iter: i64] {
+    z = z'squared'add(a)
+    if (z'squared_norm > 4.0) then {
+      return iter + 1
+    }
+  }
+  return 30
+}
+
+linspace_state ::= struct {
+  current: f64
+  step: f64
+  remaining: i64
+}
+
+linspace ::= scope (linspace_state) {
+  enter ::= jump [state: *linspace_state] (begin: f64, end: f64, steps: i64) {
+    @state = linspace_state.{
+      current = begin
+      step = (end - begin) / (steps as f64)
+      remaining = steps
+    }
+    goto state.remaining == 0, done(), do(state.current)
+  }
+
+  do ::= block {
+    before ::= (x: f64) => x
+    after ::= jump [state: *linspace_state] () {
+      state.remaining -= 1
+      state.current += state.step
+      goto state.remaining == 0, done(), do(state.current)
+    }
+  }
+
+  exit ::= () -> () {}
+}
+
+linspace (1.0, -1.0, 40) do [y: f64] {
+  linspace (-2.0, 0.5, 80) do [x: f64] {
+    n := mandelbrot(complex.{ real = x \\ imag = y})
+    io.Print((62 - n) as u8 as char)
+  }
+  io.Print("\n")
+}
