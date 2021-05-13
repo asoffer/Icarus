@@ -6,14 +6,32 @@ complex ::= struct {
   imaj: f64
 }
 
+squared_norm ::= (x: complex) -> f64 {
+  return x.real * x.real + x.imaj * x.imaj
+}
+
+add ::= (x: complex, y: complex) -> complex {
+  return complex.{
+    real = x.real + y.real
+    imaj = x.imaj + y.imaj
+  }
+}
+
+squared ::= (x: f64) -> f64 {
+  return x * x
+}
+
+squared ::= (x: complex) -> complex {
+  return complex.{
+    real = x.real'squared - x.imaj'squared
+    imaj = 2.0 * x.real * x.imaj
+  }
+}
+
 mandelbrot ::= (a: complex) -> complex {
   z := a
   for (0, 50) do [iter: i64] {
-    tmp := z.real * z.real - z.imaj * z.imaj + a.real
-    z = complex.{
-      real = tmp
-      imaj = 2.0 * z.real * z.imaj +  a.imaj
-    }
+    z = z'squared'add(a)
   }
   return z
 }
@@ -49,8 +67,7 @@ linspace ::= scope (linspace_state) {
 linspace (1.0, -1.0, 40) do [y: f64] {
   linspace (-2.0, 0.5, 80) do [x: f64] {
     z := mandelbrot(complex.{ real = x \\ imaj = y})
-    z_abs_squared := z.real * z.real + z.imaj * z.imaj
-    if (z_abs_squared < 4.0) then {
+    if (z'squared_norm < 4.0) then {
       io.Print("*")
     } else {
       io.Print(" ")
