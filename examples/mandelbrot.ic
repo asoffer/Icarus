@@ -3,17 +3,17 @@ io ::= import "io.ic"
 
 complex ::= struct {
   real: f64
-  imaj: f64
+  imag: f64
 }
 
 squared_norm ::= (x: complex) -> f64 {
-  return x.real * x.real + x.imaj * x.imaj
+  return x.real * x.real + x.imag * x.imag
 }
 
 add ::= (x: complex, y: complex) -> complex {
   return complex.{
     real = x.real + y.real
-    imaj = x.imaj + y.imaj
+    imag = x.imag + y.imag
   }
 }
 
@@ -23,8 +23,8 @@ squared ::= (x: f64) -> f64 {
 
 squared ::= (x: complex) -> complex {
   return complex.{
-    real = x.real'squared - x.imaj'squared
-    imaj = 2.0 * x.real * x.imaj
+    real = x.real'squared - x.imag'squared
+    imag = 2.0 * x.real * x.imag
   }
 }
 
@@ -66,7 +66,7 @@ linspace ::= scope (linspace_state) {
 
 linspace (1.0, -1.0, 40) do [y: f64] {
   linspace (-2.0, 0.5, 80) do [x: f64] {
-    z := mandelbrot(complex.{ real = x \\ imaj = y})
+    z := mandelbrot(complex.{ real = x \\ imag = y})
     if (z'squared_norm < 4.0) then {
       io.Print("*")
     } else {
