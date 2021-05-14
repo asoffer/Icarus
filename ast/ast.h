@@ -407,15 +407,19 @@ struct BlockLiteral : Expression, WithScope<DeclScope> {
 // (likely in the form of `core::Arguments<std::unique_ptr<Expression>>`).
 struct BlockNode : ParameterizedExpression, WithScope<Scope> {
   explicit BlockNode(frontend::SourceRange const &range, std::string name,
+                     frontend::SourceLoc const &name_end,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(range),
         name_(std::move(name)),
+        name_end_(name_end),
         stmts_(std::move(stmts)) {}
   explicit BlockNode(frontend::SourceRange const &range, std::string name,
+                     frontend::SourceLoc const &name_end,
                      std::vector<std::unique_ptr<Declaration>> params,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(range, std::move(params)),
         name_(std::move(name)),
+        name_end_(name_end),
         stmts_(std::move(stmts)) {
     // TODO: We only track that this is a block parameter because arguments
     // bound to these parameters end up being stored on the stack and we need to
@@ -431,12 +435,16 @@ struct BlockNode : ParameterizedExpression, WithScope<Scope> {
   std::string_view name() const { return name_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
   ScopeNode const *parent() const { return parent_; }
+  frontend::SourceRange name_range() const {
+    return frontend::SourceRange(range().begin(), name_end_);
+  }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   friend struct ScopeNode;
   std::string name_;
+  frontend::SourceLoc name_end_;
   std::vector<std::unique_ptr<Node>> stmts_;
   ScopeNode *parent_ = nullptr;
 };

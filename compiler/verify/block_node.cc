@@ -45,7 +45,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BlockNode const *node
   if (not compiled_scope->find_block(node->name())) {
     diag().Consume(NoBlockWithName{
         .name  = std::string(node->name()),
-        .range = node->range(),
+        .range = node->name_range(),
     });
     qt.MarkError(); 
   }

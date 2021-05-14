@@ -1042,11 +1042,12 @@ std::unique_ptr<ast::Node> BuildBlockNode(
     std::vector<std::unique_ptr<ast::Declaration>> params =
         ExtractIfCommaList<ast::Declaration>(std::move(nodes[2]), true);
 
-    return std::make_unique<ast::BlockNode>(
-        range, std::string{id.name()}, std::move(params), std::move(stmts));
+    return std::make_unique<ast::BlockNode>(range, std::string{id.name()},
+                                            id.range().end(), std::move(params),
+                                            std::move(stmts));
   } else {
     return std::make_unique<ast::BlockNode>(range, std::string{id.name()},
-                                            std::move(stmts));
+                                            id.range().end(), std::move(stmts));
   }
 }
 
@@ -1069,7 +1070,7 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
 
   nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
       ast::BlockNode(range, std::string{nodes[1]->as<ast::Identifier>().name()},
-                     std::move(block_stmt_nodes)),
+                     nodes[1]->range().end(), std::move(block_stmt_nodes)),
       updated_last_scope_node);
   return std::move(nodes[0]);
 }
