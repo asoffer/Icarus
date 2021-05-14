@@ -33,7 +33,9 @@ struct CompiledModule : module::BasicModule {
     return data_;
   }
   Context &context(module::BasicModule const *requestor) {
-    ASSERT(requestor == this);
+    // TODO: We really probably want to assert if it's a different module. You
+    // shouldn't be able to modify the context of a different module.
+    if (requestor != this) { notification_.WaitForNotification(); }
     return data_;
   }
   Context const &context() const { return context(this); }
