@@ -56,6 +56,11 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
 core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
     Compiler &c, absl::Span<ast::Call::Argument const> args);
 
+void EmitCall(Compiler &compiler, ast::Expression const *callee,
+              core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
+              absl::Span<ast::Call::Argument const> arg_exprs,
+              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
+
 }  // namespace compiler
 
 #endif  // ICARUS_IR_EMIT_COMMON_H

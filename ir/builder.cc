@@ -44,48 +44,15 @@ Reg Builder::TmpAlloca(type::Type t) {
   return reg;
 }
 
-ir::OutParams Builder::OutParams(absl::Span<type::Type const> types) {
-  std::vector<Reg> regs;
-  regs.reserve(types.size());
-  for (type::Type type : types) {
-    regs.push_back(type.get()->is_big() ? TmpAlloca(type)
-                                        : CurrentGroup()->Reserve());
-  }
-  return ir::OutParams(std::move(regs));
-}
-
-ir::OutParams Builder::OutParamsMoveInit(
+ir::OutParams Builder::OutParams(
     absl::Span<type::Type const> types,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   std::vector<Reg> regs;
   regs.reserve(types.size());
   for (size_t i = 0; i < types.size(); ++i) {
-    regs.push_back(types[i].get()->is_big() ? to[i]->reg()
-                                            : CurrentGroup()->Reserve());
-  }
-  return ir::OutParams(std::move(regs));
-}
-
-ir::OutParams Builder::OutParamsCopyInit(
-    absl::Span<type::Type const> types,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  std::vector<Reg> regs;
-  regs.reserve(types.size());
-  for (size_t i = 0; i < types.size(); ++i) {
-    regs.push_back(types[i].get()->is_big() ? to[i]->reg()
-                                            : CurrentGroup()->Reserve());
-  }
-  return ir::OutParams(std::move(regs));
-}
-
-ir::OutParams Builder::OutParamsAssign(
-    absl::Span<type::Type const> types,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  std::vector<Reg> regs;
-  regs.reserve(types.size());
-  for (size_t i = 0; i < types.size(); ++i) {
-    regs.push_back(types[i].get()->is_big() ? to[i]->reg()
-                                            : CurrentGroup()->Reserve());
+    regs.push_back(types[i].get()->is_big()
+                       ? (to.empty() ? TmpAlloca(types[i]) : to[i]->reg())
+                       : CurrentGroup()->Reserve());
   }
   return ir::OutParams(std::move(regs));
 }

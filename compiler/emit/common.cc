@@ -66,6 +66,18 @@ ir::Fn InsertGeneratedMoveInit(
   return fn;
 }
 
+ir::OutParams SetReturns(
+    ir::Builder &bldr, type::Type type,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  if (auto *fn_type = type.if_as<type::Function>()) {
+    return bldr.OutParams(fn_type->output(), to);
+  } else if (type.is<type::GenericFunction>()) {
+    NOT_YET(type.to_string());
+  } else {
+    NOT_YET(type.to_string());
+  }
+}
+
 ir::Fn InsertGeneratedCopyInit(
     Compiler &c, type::Struct *s,
     absl::Span<type::StructInstruction::Field const> ir_fields) {
@@ -175,6 +187,58 @@ ir::Fn InsertGeneratedCopyAssign(
     c.context().root().WriteByteCode(fn);
   }
   return fn;
+}
+
+ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler &c, ast::Expression const *fn,
+                                    type::Function const *f_type,
+                                    type::Quals quals) {
+  if (type::Quals::Const() <= quals) {
+    return c.EmitValue(fn).get<ir::RegOr<ir::Fn>>();
+  } else {
+    // NOTE: If the overload is a declaration, it's not because a
+    // declaration is syntactically the callee. Rather, it's because the
+    // callee is an identifier (or module_name.identifier, etc.) and this
+    // is one possible resolution of that identifier. We cannot directly
+    // ask to emit IR for the declaration because that will emit the
+    // initialization for the declaration. Instead, we need load the
+    // address.
+    if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
+      return c.builder().Load<ir::Fn>(c.builder().addr(&fn_decl->ids()[0]));
+    } else {
+      return c.builder().Load<ir::Fn>(
+          c.EmitValue(fn).get<ir::RegOr<ir::Addr>>(), f_type);
+    }
+  }
+}
+
+std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
+    Compiler &c, ast::Expression const *fn, type::QualType qt,
+    const core::Arguments<type::Typed<ir::Value>> &constant_arguments) {
+  if (auto const *gf_type = qt.type().if_as<type::GenericFunction>()) {
+    ir::GenericFn gen_fn =
+        c.EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
+
+    // TODO: declarations aren't callable so we shouldn't have to check this
+    // here.
+    if (auto const *id = fn->if_as<ast::Declaration::Id>()) {
+      // TODO: make this more robust.
+      // TODO: support multiple declarations
+      fn = id->declaration().init_val();
+    }
+
+    auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
+
+    auto find_subcontext_result =
+        c.FindInstantiation(parameterized_expr, constant_arguments);
+    return std::make_tuple(ir::Fn(gen_fn.concrete(constant_arguments)),
+                           find_subcontext_result.fn_type,
+                           &find_subcontext_result.context);
+  } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
+    return std::make_tuple(ComputeConcreteFn(c, fn, f_type, qt.quals()), f_type,
+                           nullptr);
+  } else {
+    UNREACHABLE(fn->DebugString(), "\n", qt.type().to_string());
+  }
 }
 
 }  // namespace
@@ -581,6 +645,106 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
     }
   }
   return arg_vals;
+}
+
+void EmitCall(Compiler &compiler, ast::Expression const *callee,
+              core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
+              absl::Span<ast::Call::Argument const> arg_exprs,
+              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  CompiledModule *callee_mod = &callee->scope()
+                                    ->Containing<ast::ModuleScope>()
+                                    ->module()
+                                    ->as<CompiledModule>();
+  // Note: We only need to wait on the module if it's not this one, so even
+  // though `callee_mod->context()` would be sufficient, we want to ensure that
+  // we call the non-const overload if `callee_mod == &module()`.
+
+  std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> results;
+  if (callee_mod == &compiler.context().module()) {
+    results =
+        EmitCallee(compiler, callee, compiler.context().qual_types(callee)[0],
+                   constant_arguments);
+  } else {
+    type::QualType callee_qual_type =
+        callee_mod->context(&compiler.context().module()).qual_types(callee)[0];
+
+    Compiler callee_compiler(PersistentResources{
+        .data = callee_mod->context(&compiler.context().module()),
+        .diagnostic_consumer = compiler.diag(),
+        .importer            = compiler.importer(),
+    });
+    results = EmitCallee(callee_compiler, callee, callee_qual_type,
+                         constant_arguments);
+  }
+
+  auto &[callee_fn, overload_type, context] = results;
+  Compiler c = compiler.MakeChild(PersistentResources{
+      .data                = context ? *context : compiler.context(),
+      .diagnostic_consumer = compiler.diag(),
+      .importer            = compiler.importer(),
+  });
+
+  // Arguments provided to a function call need to be "prepared" in the sense
+  // that they need to be
+  // * Ordered according to the parameters of the function (because named
+  //   arguments may be out of order)
+  // * Have any implicit conversions applied.
+  //
+  // Implicit conversions are tricky because we cannot first compute the values
+  // and then apply conversions to them. This may work for conversions that take
+  // a buffer-pointer and convert it to just a pointer, but some conversions
+  // take values and convert them to pointers/references. If we first compute
+  // the value, we may end up loading the value from memory and no longer having
+  // access to its address. Or worse, we may have a temporary and never have an
+  // allocated address for it.
+  std::vector<ir::Value> prepared_arguments;
+
+  auto const &param_qts = overload_type->params();
+
+  // TODO: With expansions, this might be wrong.
+  {
+    size_t i = 0;
+    for (; i < arg_exprs.size() and not arg_exprs[i].named(); ++i) {
+      prepared_arguments.push_back(
+          PrepareArgument(compiler, *constant_arguments[i],
+                          &arg_exprs[i].expr(), param_qts[i].value));
+    }
+
+    absl::flat_hash_map<std::string_view, ast::Expression const *> named;
+    for (size_t j = i; j < arg_exprs.size(); ++j) {
+      named.emplace(arg_exprs[j].name(), &arg_exprs[j].expr());
+    }
+
+    for (size_t j = i; j < param_qts.size(); ++j) {
+      std::string_view name            = param_qts[j].name;
+      auto const *constant_typed_value = constant_arguments.at_or_null(name);
+      auto iter                        = named.find(name);
+      auto const *expr = iter == named.end() ? nullptr : iter->second;
+      ast::Expression const *default_value = nullptr;
+
+      if (not expr) {
+        ASSERT(callee_fn.is_reg() == false);
+        ASSERT(callee_fn.value().kind() == ir::Fn::Kind::Native);
+        default_value = ASSERT_NOT_NULL(
+            callee_fn.value().native()->params()[j].value.get()->init_val());
+      }
+
+      prepared_arguments.push_back(PrepareArgument(
+          compiler, constant_typed_value ? **constant_typed_value : ir::Value(),
+          expr ? expr : default_value, param_qts[i].value));
+    }
+  }
+
+  auto out_params = SetReturns(c.builder(), overload_type, to);
+  compiler.builder().Call(callee_fn, overload_type,
+                          std::move(prepared_arguments), out_params);
+  int i = -1;
+  for (type::Type t : overload_type->output()) {
+    ++i;
+    if (t.get()->is_big()) { continue; }
+    compiler.EmitCopyAssign(
+        to[i], type::Typed<ir::Value>(ir::Value(out_params[i]), t));
+  }
 }
 
 }  // namespace compiler
