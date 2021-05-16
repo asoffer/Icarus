@@ -2,6 +2,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/type_for_diagnostic.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
 #include "type/struct.h"
@@ -35,7 +36,7 @@ struct NonTypeDesignatedInitializerType {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type type;
+  std::string type;
   frontend::SourceRange range;
 };
 
@@ -53,7 +54,7 @@ struct NonStructDesignatedInitializer {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type type;
+  std::string type;
   frontend::SourceRange range;
 };
 
@@ -99,12 +100,12 @@ struct MissingStructField {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No field named `%s` in struct `%s`.", member_name,
-                         type::Type(struct_type)),
+                         struct_type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
   std::string member_name;
-  type::Struct const *struct_type;
+  std::string struct_type;
   frontend::SourceRange range;
 };
 
@@ -128,7 +129,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
 
   if (type_qt.type() != type::Type_) {
     diag().Consume(NonTypeDesignatedInitializerType{
-        .type  = type_qt.type(),
+        .type  = TypeForDiagnostic(node, context()),
         .range = node->range(),
     });
     error = true;
@@ -154,7 +155,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
   auto *struct_type = t.if_as<type::Struct>();
   if (not struct_type) {
     diag().Consume(NonStructDesignatedInitializer{
-        .type  = t,
+        .type  = TypeForDiagnostic(node->type(), context()),
         .range = node->type()->range(),
     });
     return context().set_qual_type(node, type::QualType::Error());
@@ -192,7 +193,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
       } else {
         diag().Consume(MissingStructField{
             .member_name = std::string(field_name),
-            .struct_type = struct_type,
+            .struct_type = TypeForDiagnostic(node, context()),
             .range       = field->range(),
         });
         recovered_error = true;

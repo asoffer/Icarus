@@ -66,8 +66,11 @@ bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
   }
 
   if (not type::CanCastImplicitly(from.type(), to.type())) {
-    diag.Consume(
-        InvalidCast{.from = from.type(), .to = to.type(), .range = range});
+    // TODO: Wire through the expressions relevant to this type so we can emit
+    // better error messages.
+    diag.Consume(InvalidCast{.from  = from.type().to_string(),
+                             .to    = to.type().to_string(),
+                             .range = range});
     return false;
   } else {
     return true;

@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
 #include "type/primitive.h"
 
@@ -42,8 +43,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Cast const *node) {
                    auto t, EvaluateOrDiagnoseAs<type::Type>(node->type()));
   if (not type::CanCastExplicitly(expr_qt.type(), t)) {
     diag().Consume(InvalidCast{
-        .from  = expr_qt.type(),
-        .to    = t,
+        .from  = TypeForDiagnostic(node->expr(), context()),
+        .to    = TypeForDiagnostic(node, context()),
         .range = node->range(),
     });
   }

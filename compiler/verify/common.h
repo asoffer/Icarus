@@ -36,8 +36,8 @@ struct InvalidCast {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type from;
-  type::Type to;
+  std::string from;
+  std::string to;
   frontend::SourceRange range;
 };
 

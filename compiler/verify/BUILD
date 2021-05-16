@@ -192,6 +192,7 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:type_for_diagnostic",
         "//type:qual_type",
     ],
 )
@@ -284,6 +285,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:type_for_diagnostic",
         "//type:primitive",
         "//type:qual_type",
         "@com_google_absl//absl/cleanup",

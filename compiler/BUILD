@@ -269,6 +269,18 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "type_for_diagnostic",
+    hdrs = ["type_for_diagnostic.h"],
+    srcs = ["type_for_diagnostic.cc"],
+    deps = [
+        ":context",
+        "//ast",
+        "//ast:visitor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
 cc_binary(
     name = "dump_cfg",
     srcs = ["dump_cfg.cc"],
@@ -342,11 +354,5 @@ cc_binary(
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
-    ],
-)
-
-cc_library(
-    name = "verify_type",
-    deps = [
     ],
 )
