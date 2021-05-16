@@ -7,6 +7,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:module",
+        "//compiler:type_for_diagnostic",
         "//ir/value:module_id",
         "//type:enum",
         "//type:flags",

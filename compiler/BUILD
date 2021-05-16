@@ -281,6 +281,19 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "type_for_diagnostic_test",
+    srcs = ["type_for_diagnostic_test.cc"],
+    deps = [
+        ":library_module",
+        ":type_for_diagnostic",
+        ":context",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+
 cc_binary(
     name = "dump_cfg",
     srcs = ["dump_cfg.cc"],

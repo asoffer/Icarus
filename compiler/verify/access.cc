@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"
+#include "compiler/type_for_diagnostic.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"
 #include "type/enum.h"
@@ -32,6 +33,8 @@ struct IncompleteTypeMemberAccess {
   type::Type type;
 };
 
+// TODO: This is being used for both struct member access and enum/flags access.
+// The later could have an improved error message.
 struct MissingMember {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "missing-member";
@@ -48,7 +51,7 @@ struct MissingMember {
   frontend::SourceRange expr_range;
   frontend::SourceRange member_range;
   std::string member;
-  type::Type type;
+  std::string type;
 };
 
 struct NonConstantTypeMemberAccess {
@@ -139,15 +142,23 @@ std::pair<type::Type, int> DereferenceAll(type::Type t) {
 
 // Verification of an `Access` expression when the operand is a type. This is
 // only allowed when the type in question is constant and is an enum or flags.
-type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
-                                type::QualType operand_qt) {
+//
+// Note: In order to ensure that when diagnostics are emitted, the requisite
+// type information is available, we need to capture the type information (via
+// calls to `set_qual_types` before the diagnostic is emitted). This means we
+// have to call `set_qual_types` on each return path, possibly before a
+// diagnostic, rather than using the returned value when this function is
+// called.
+absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
+                                                  ast::Access const *node,
+                                                  type::QualType operand_qt) {
   if (not operand_qt.constant()) {
     c.diag().Consume(NonConstantTypeMemberAccess{
         .range = node->range(),
     });
-    return type::QualType::Error();
+    return c.context().set_qual_type(node, type::QualType::Error());
   }
-  ASSIGN_OR(return type::QualType::Error(),  //
+  ASSIGN_OR(return c.context().set_qual_type(node, type::QualType::Error()),
                    auto evaled_type,
                    c.EvaluateOrDiagnoseAs<type::Type>(node->operand()));
   auto qt = type::QualType::Constant(evaled_type);
@@ -156,17 +167,20 @@ type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
   // arrays but that should maybe be unsigned as well.
   if (type::Array const *a = evaled_type.if_as<type::Array>()) {
     if (node->member_name() == "length") {
-      return type::QualType::Constant(type::Array::LengthType());
+      return c.context().set_qual_type(
+          node, type::QualType::Constant(type::Array::LengthType()));
     } else if (node->member_name() == "element_type") {
-      return type::QualType::Constant(type::Type_);
+      return c.context().set_qual_type(node,
+                                       type::QualType::Constant(type::Type_));
     } else {
+      auto qts = c.context().set_qual_type(node, type::QualType::Error());
       c.diag().Consume(MissingMember{
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
           .member       = std::string{node->member_name()},
-          .type         = evaled_type,
+          .type         = TypeForDiagnostic(node->operand(), c.context()),
       });
-      return type::QualType::Error();
+      return qts;
     }
   }
 
@@ -175,34 +189,40 @@ type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
   // carry on assuming that node is an element of that enum type.
   if (auto *e = evaled_type.if_as<type::Enum>()) {
     if (not e->Get(node->member_name()).has_value()) {
+      // We can continue passed this error because we are confident that this is
+      // an enumerator, but we should not emit code for it.
+      qt.MarkError();
+      auto qts = c.context().set_qual_type(node, qt);
+
       c.diag().Consume(MissingMember{
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
           .member       = std::string{node->member_name()},
-          .type         = evaled_type,
+          .type         = TypeForDiagnostic(node, c.context()),
       });
-
-      // We can continue passed this error because we are confident that this is
-      // an enumerator, but we should not emit code for it.
-      qt.MarkError();
+      return qts;
+    } else {
+      return c.context().set_qual_type(node, qt);
     }
-    return qt;
   }
 
   if (auto *f = evaled_type.if_as<type::Flags>()) {
     if (not f->Get(node->member_name()).has_value()) {
+      // We can continue passed this error because we are confident that this is
+      // a flag, but we should not emit code for it.
+      qt.MarkError();
+      auto qts = c.context().set_qual_type(node, qt);
+
       c.diag().Consume(MissingMember{
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
           .member       = std::string(node->member_name()),
-          .type         = evaled_type,
+          .type         = TypeForDiagnostic(node, c.context()),
       });
-
-      // We can continue passed this error because we are confident that this is
-      // a flag, but we should not emit code for it.
-      qt.MarkError();
+      return qts;
+    } else {
+      return c.context().set_qual_type(node, qt);
     }
-    return qt;
   }
 
   if (auto *s = evaled_type.if_as<type::Struct>()) {
@@ -230,18 +250,20 @@ type::QualType AccessTypeMember(Compiler &c, ast::Access const *node,
         }
       }
       c.context().SetAllOverloads(node, ast::OverloadSet(ids));
-      return type::QualType::Constant(member->type);
+      return c.context().set_qual_type(node,
+                                       type::QualType::Constant(member->type));
     }
   }
 
   // TODO: Determine whether structs are allowed to have constant members
   // accessible through the type-name. At the moment this is not allowed.
+  auto qts = c.context().set_qual_type(node, type::QualType::Error());
   c.diag().Consume(TypeHasNoMembers{
       .type   = evaled_type,
       .member = std::string(node->member_name()),
       .range  = node->member_range(),
   });
-  return type::QualType::Error();
+  return qts;
 }
 
 // Verifies access to a struct field. The field must be exported if it is in a
@@ -267,7 +289,7 @@ type::QualType AccessStructMember(Compiler &c, ast::Access const *node,
         .expr_range   = node->operand()->range(),
         .member_range = node->member_range(),
         .member       = std::string{node->member_name()},
-        .type         = s,
+        .type         = TypeForDiagnostic(node->operand(), c.context()),
     });
     return type::QualType::Error();
   }
@@ -394,8 +416,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
 
   auto [base_type, num_derefs] = DereferenceAll(operand_qt.type());
   if (base_type == type::Type_) {
-    return context().set_qual_type(node,
-                                   AccessTypeMember(*this, node, operand_qt));
+    return AccessTypeMember(*this, node, operand_qt);
   } else if (base_type == type::Module) {
     return context().set_qual_type(node,
                                    AccessModuleMember(*this, node, operand_qt));
@@ -416,7 +437,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
             .expr_range   = node->operand()->range(),
             .member_range = node->member_range(),
             .member       = std::string{node->member_name()},
-            .type         = s,
+            .type         = TypeForDiagnostic(node->operand(), context()),
         });
         return context().set_qual_types(node, type::QualType::ErrorSpan());
       }
@@ -426,12 +447,13 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
     } else {
       // TODO: Improve this error message. It's not just that the member is
       // missing but that we don't even think it's allowed to have a member on a
-      // value of this type.
+      // value of this type. Also, we're emitting the type of the operand even
+      // if we want to follow multiple layers of pointers.
       diag().Consume(MissingMember{
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
           .member       = std::string{node->member_name()},
-          .type         = base_type,
+          .type         = TypeForDiagnostic(node->operand(), context()),
       });
       return context().set_qual_types(node, type::QualType::ErrorSpan());
     }

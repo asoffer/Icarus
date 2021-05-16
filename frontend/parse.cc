@@ -1183,49 +1183,49 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
   SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
   std::vector<std::string> enumerators;
   absl::flat_hash_map<std::string, std::unique_ptr<ast::Expression>> values;
-  if (auto *stmts = nodes[1]->if_as<Statements>()) {
-    // TODO: if you want these values to depend on compile-time parameters,
-    // you'll need to actually build the AST nodes.
-    for (auto &stmt : stmts->content_) {
-      if (auto *id = stmt->if_as<ast::Identifier>()) {
-        enumerators.push_back(std::move(*id).extract());
-      } else if (auto *decl = stmt->if_as<ast::Declaration>()) {
-        if (not(decl->flags() & ast::Declaration::f_IsConst)) {
-          diag.Consume(TodoDiagnostic{});
-        }
-        auto [ids, type_expr, init_val] = std::move(*decl).extract();
-        // TODO: Use the type expression?
-        for (auto &id : ids) {
-          auto [name, range] = std::move(id).extract();
-          enumerators.push_back(std::move(name));
-          // TODO: Support multiple declarations
-          values.emplace(enumerators.back(), std::move(init_val));
-        }
-      } else {
-        LOG("", "%s", stmt->DebugString());
+  auto stmts = ExtractStatements(std::move(nodes[1]));
+
+  // TODO: if you want these values to depend on compile-time parameters,
+  // you'll need to actually build the AST nodes.
+  for (auto &stmt : stmts) {
+    if (auto *id = stmt->if_as<ast::Identifier>()) {
+      enumerators.push_back(std::move(*id).extract());
+    } else if (auto *decl = stmt->if_as<ast::Declaration>()) {
+      if (not(decl->flags() & ast::Declaration::f_IsConst)) {
         diag.Consume(TodoDiagnostic{});
       }
+      auto [ids, type_expr, init_val] = std::move(*decl).extract();
+      // TODO: Use the type expression?
+      for (auto &id : ids) {
+        auto [name, range] = std::move(id).extract();
+        enumerators.push_back(std::move(name));
+        // TODO: Support multiple declarations
+        values.emplace(enumerators.back(), std::move(init_val));
+      }
+    } else {
+      LOG("", "%s", stmt->DebugString());
+      diag.Consume(TodoDiagnostic{});
     }
   }
 
   return std::make_unique<ast::EnumLiteral>(range, std::move(enumerators),
                                             std::move(values), kind);
-  }
+}
 
-  std::unique_ptr<ast::Node> BuildScopeLiteral(
-      std::unique_ptr<ast::Expression> state_type,
-      std::unique_ptr<Statements> stmts, SourceRange const &range,
-      diagnostic::DiagnosticConsumer &diag) {
-    std::vector<ast::Declaration> decls;
-    for (auto &stmt : stmts->content_) {
-      if (auto *decl = stmt->if_as<ast::Declaration>()) {
-        decls.push_back(std::move(*decl));
-      } else {
-        diag.Consume(TodoDiagnostic{});
-      }
+std::unique_ptr<ast::Node> BuildScopeLiteral(
+    std::unique_ptr<ast::Expression> state_type,
+    std::unique_ptr<Statements> stmts, SourceRange const &range,
+    diagnostic::DiagnosticConsumer &diag) {
+  std::vector<ast::Declaration> decls;
+  for (auto &stmt : stmts->content_) {
+    if (auto *decl = stmt->if_as<ast::Declaration>()) {
+      decls.push_back(std::move(*decl));
+    } else {
+      diag.Consume(TodoDiagnostic{});
     }
-    return std::make_unique<ast::ScopeLiteral>(range, std::move(state_type),
-                                               std::move(decls));
+  }
+  return std::make_unique<ast::ScopeLiteral>(range, std::move(state_type),
+                                             std::move(decls));
   }
 
   std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,

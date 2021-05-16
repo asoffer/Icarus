@@ -22,6 +22,16 @@ struct StringifyExpression : ast::Visitor<std::string()> {
     return absl::StrCat(Visit(node->operand()), ".", node->member_name());
   }
 
+  std::string Visit(ast::ArrayType const *node) final {
+    return absl::StrCat(
+        "[",
+        absl::StrJoin(node->lengths(), ", ",
+                      [&](std::string *out, auto const *length_expr) {
+                        absl::StrAppend(out, Visit(length_expr));
+                      }),
+        "; ", Visit(node->data_type()), "]");
+  }
+
   std::string Visit(ast::Identifier const *node) final {
     return std::string(node->name());
   }
@@ -44,20 +54,16 @@ struct StringifyType : ast::Visitor<std::string()> {
   }
 
   std::string Visit(ast::Access const *node) final {
+    auto qts = context_.qual_types(node);
+    if (qts.size() == 1 and
+        (qts[0].type().is<type::Enum>() or qts[0].type().is<type::Flags>())) {
+      return StringifyExpression(&context_).Visit(node->operand());
+    }
     return absl::StrCat(StringifyExpression(&context_).Visit(node->operand()),
                         ".", node->member_name());
   }
 
-  std::string Visit(ast::ArrayType const *node) final {
-    return absl::StrCat(
-        "[",
-        absl::StrJoin(node->lengths(), ", ",
-                      [&](std::string *out, auto const *length_expr) {
-                        absl::StrAppend(
-                            out, StringifyExpression(&context_).Visit(node));
-                      }),
-        "; ", StringifyExpression(&context_).Visit(node->data_type()), "]");
-  }
+  std::string Visit(ast::ArrayType const *node) final { return "type"; }
 
   std::string Visit(ast::Cast const *node) {
     return StringifyExpression(&context_).Visit(node->type());
