@@ -71,6 +71,18 @@ INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
                                  .expr     = "f",
                                  .expected = "F",
                              },
+                             TestCase{
+                                 .expr     = "[1, 2, 3]",
+                                 .expected = "[3; i64]",
+                             },
+                             TestCase{
+                                 .context  = R"(
+                                 I ::= i64
+                                 n: I
+                                 )",
+                                 .expr     = "[n, n, n]",
+                                 .expected = "[3; I]",
+                             },
                          }));
 
 TEST(CrossModule, TypeForDiagnostic) {

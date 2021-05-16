@@ -33,8 +33,6 @@ struct IncompleteTypeMemberAccess {
   type::Type type;
 };
 
-// TODO: This is being used for both struct member access and enum/flags access.
-// The later could have an improved error message.
 struct MissingMember {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "missing-member";
@@ -53,6 +51,24 @@ struct MissingMember {
   std::string member;
   std::string type;
 };
+
+struct MissingConstantMember {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "missing-constant-member";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("No member named `%s` in this expression.", member),
+        diagnostic::SourceQuote(src)
+            .Highlighted(expr_range, diagnostic::Style{})
+            .Highlighted(member_range, diagnostic::Style::ErrorText()));
+  }
+
+  frontend::SourceRange expr_range;
+  frontend::SourceRange member_range;
+  std::string member;
+};
+
 
 struct NonConstantTypeMemberAccess {
   static constexpr std::string_view kCategory = "type-error";
@@ -174,11 +190,10 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
                                        type::QualType::Constant(type::Type_));
     } else {
       auto qts = c.context().set_qual_type(node, type::QualType::Error());
-      c.diag().Consume(MissingMember{
+      c.diag().Consume(MissingConstantMember{
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
           .member       = std::string{node->member_name()},
-          .type         = TypeForDiagnostic(node->operand(), c.context()),
       });
       return qts;
     }
@@ -194,11 +209,10 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
       qt.MarkError();
       auto qts = c.context().set_qual_type(node, qt);
 
-      c.diag().Consume(MissingMember{
+      c.diag().Consume(MissingConstantMember{
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
           .member       = std::string{node->member_name()},
-          .type         = TypeForDiagnostic(node, c.context()),
       });
       return qts;
     } else {
@@ -213,11 +227,10 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
       qt.MarkError();
       auto qts = c.context().set_qual_type(node, qt);
 
-      c.diag().Consume(MissingMember{
+      c.diag().Consume(MissingConstantMember{
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
           .member       = std::string(node->member_name()),
-          .type         = TypeForDiagnostic(node, c.context()),
       });
       return qts;
     } else {

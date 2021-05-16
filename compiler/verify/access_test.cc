@@ -33,8 +33,9 @@ TEST(Access, EnumMisnamed) {
   auto qts               = mod.context().qual_types(enumerator);
   EXPECT_TRUE(qts[0].type().is<type::Enum>());
   EXPECT_EQ(qts[0].quals(), type::Quals::Const());
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "missing-member")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "missing-constant-member")));
 }
 
 TEST(Access, FlagsSuccess) {
@@ -54,8 +55,9 @@ TEST(Access, FlagsMisnamed) {
   auto qts         = mod.context().qual_types(flag);
   EXPECT_TRUE(qts[0].type().is<type::Flags>());
   EXPECT_EQ(qts[0].quals(), type::Quals::Const());
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "missing-member")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "missing-constant-member")));
 }
 
 TEST(Access, NonConstantType) {
@@ -188,8 +190,9 @@ TEST(Access, ArrayInvalidMember) {
   auto const *expr = mod.Append<ast::Expression>(R"([3; i64].size)");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType::Error()));
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "missing-member")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "missing-constant-member")));
 }
 
 TEST(Access, IntoModuleWithError) {

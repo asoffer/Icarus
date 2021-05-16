@@ -63,7 +63,17 @@ struct StringifyType : ast::Visitor<std::string()> {
                         ".", node->member_name());
   }
 
-  std::string Visit(ast::ArrayType const *node) final { return "type"; }
+  std::string Visit(ast::ArrayLiteral const *node) final{
+    // TODO: Look at all the elements type-spellings and choose the best one.
+    // TODO: If the element-type is also an array, shorten the lengths, unless
+    // the common spelling for elements of that type is a better alias.
+    return absl::StrCat("[", node->size(), "; ", Visit(node->elems().front()),
+                        "]");
+  }
+
+  std::string Visit(ast::ArrayType const *node) final {
+    return "type";
+  }
 
   std::string Visit(ast::Cast const *node) {
     return StringifyExpression(&context_).Visit(node->type());

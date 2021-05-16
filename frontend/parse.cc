@@ -714,7 +714,7 @@ std::unique_ptr<ast::Node> BuildArrayLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   return std::make_unique<ast::ArrayLiteral>(
-      nodes[0]->range(),
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()),
       ExtractIfCommaList<ast::Expression>(std::move(nodes[1])));
 }
 
@@ -729,9 +729,9 @@ std::unique_ptr<ast::Node> BuildArrayType(
         range, ExtractIfCommaList<ast::Expression>(std::move(nodes[1])),
         move_as<ast::Expression>(nodes[3]));
   } else {
-    return std::make_unique<ast::ArrayType>(nodes[0]->range(),
-                                            move_as<ast::Expression>(nodes[1]),
-                                            move_as<ast::Expression>(nodes[3]));
+    return std::make_unique<ast::ArrayType>(
+        SourceRange(nodes[0]->range().begin(), nodes[4]->range().end()),
+        move_as<ast::Expression>(nodes[1]), move_as<ast::Expression>(nodes[3]));
   }
 }
 
