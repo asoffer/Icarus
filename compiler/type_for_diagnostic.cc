@@ -11,9 +11,6 @@ namespace compiler {
 namespace {
 
 struct StringifyExpression : ast::Visitor<std::string()> {
-  explicit StringifyExpression(Context const *c)
-      : context_(*ASSERT_NOT_NULL(c)) {}
-
   std::string Visit(ast::Expression const *node) {
     return ast::Visitor<std::string()>::Visit(node);
   }
@@ -41,9 +38,6 @@ struct StringifyExpression : ast::Visitor<std::string()> {
     ss << node->value();
     return ss.str();
   }
-
- private:
-  Context const &context_;
 };
 
 struct StringifyType : ast::Visitor<std::string()> {
@@ -57,10 +51,10 @@ struct StringifyType : ast::Visitor<std::string()> {
     auto qts = context_.qual_types(node);
     if (qts.size() == 1 and
         (qts[0].type().is<type::Enum>() or qts[0].type().is<type::Flags>())) {
-      return StringifyExpression(&context_).Visit(node->operand());
+      return StringifyExpression{}.Visit(node->operand());
     }
-    return absl::StrCat(StringifyExpression(&context_).Visit(node->operand()),
-                        ".", node->member_name());
+    return absl::StrCat(StringifyExpression{}.Visit(node->operand()), ".",
+                        node->member_name());
   }
 
   std::string Visit(ast::ArrayLiteral const *node) final{
@@ -76,19 +70,19 @@ struct StringifyType : ast::Visitor<std::string()> {
   }
 
   std::string Visit(ast::Cast const *node) {
-    return StringifyExpression(&context_).Visit(node->type());
+    return StringifyExpression{}.Visit(node->type());
   }
 
   std::string Visit(ast::Declaration const *node) final {
     if (auto const *expr = node->type_expr()) {
-      return StringifyExpression(&context_).Visit(expr);
+      return StringifyExpression{}.Visit(expr);
     } else {
       return StringifyType(&context_).Visit(node->init_val());
     }
   }
 
   std::string Visit(ast::DesignatedInitializer const *node) final {
-    return StringifyExpression(&context_).Visit(node->type());
+    return StringifyExpression{}.Visit(node->type());
   }
 
   std::string Visit(ast::Identifier const *node) final {
