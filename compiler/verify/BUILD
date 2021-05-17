@@ -646,6 +646,7 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:type_for_diagnostic",
         "//type:pointer",
         "//type:primitive",
         "//type:qual_type",

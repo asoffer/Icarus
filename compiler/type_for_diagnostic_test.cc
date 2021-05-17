@@ -1,6 +1,7 @@
 #include "compiler/type_for_diagnostic.h"
 
 #include "compiler/library_module.h"
+#include "diagnostic/consumer/tracking.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/module.h"
@@ -83,34 +84,101 @@ INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
                                  .expr     = "[n, n, n]",
                                  .expected = "[3; I]",
                              },
+                             TestCase{
+                                 .context  = R"(Int ::= i64 \\ n: Int)",
+                                 .expr     = "n + n",
+                                 .expected = "Int",
+                             },
+                             TestCase{
+                                 .context  = R"(Int ::= i64 \\ n: Int)",
+                                 .expr     = "-n",
+                                 .expected = "Int",
+                             },
+                             TestCase{
+                                 .context  = R"(
+                                 Int ::= i64
+                                 S ::= struct (T :: type) {}
+                                 n: Int
+                                 s: S(n:?)
+                                 )",
+                                 .expr     = "s",
+                                 .expected = "S(Int)",
+                             },
+                             TestCase{
+                                 .context  = R"(
+                                 Int ::= i64
+                                 S ::= struct (T :: type) {}
+                                 n: Int
+                                 s: n:?'S
+                                 )",
+                                 .expr     = "s",
+                                 .expected = "S(Int)",
+                             },
+                             TestCase{
+                                 .context  = R"(
+                                 Int ::= i64
+                                 S ::= struct (T :: type) {}
+                                 n: Int
+                                 s: S(T = n:?)
+                                 )",
+                                 .expr     = "s",
+                                 .expected = "S(T = Int)",
+                             },
+                             TestCase{
+                                 .context  = R"(
+                                 Int ::= i64
+                                 f ::= () -> Int { return 0 }
+                                 )",
+                                 .expr     = "f()",
+                                 .expected = "Int",
+                             },
                          }));
 
 TEST(CrossModule, TypeForDiagnostic) {
-  auto id = ir::ModuleId::New();
-  LibraryModule imported_mod;
-  imported_mod.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
+  auto id1 = ir::ModuleId::New();
+  auto id2 = ir::ModuleId::New();
+  LibraryModule imported_mod1;
+  LibraryModule imported_mod2;
+  imported_mod1.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
+  imported_mod2.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
 
   test::TestModule mod;
-  ON_CALL(mod.importer, Import(Eq("imported")))
-      .WillByDefault([id](std::string_view) { return id; });
-  ON_CALL(mod.importer, get(id))
+  ON_CALL(mod.importer, Import(Eq("imported1")))
+      .WillByDefault([id1](std::string_view) { return id1; });
+  ON_CALL(mod.importer, Import(Eq("imported2")))
+      .WillByDefault([id2](std::string_view) { return id2; });
+  ON_CALL(mod.importer, get(id1))
       .WillByDefault(
-          [&](ir::ModuleId) -> module::BasicModule & { return imported_mod; });
+          [&](ir::ModuleId) -> module::BasicModule & { return imported_mod1; });
+  ON_CALL(mod.importer, get(id2))
+      .WillByDefault(
+          [&](ir::ModuleId) -> module::BasicModule & { return imported_mod2; });
 
-  frontend::SourceBuffer buffer(R"(
+  frontend::SourceBuffer buffer1(R"(
   #{export} S ::= struct {}
   )");
-  imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer), mod.consumer,
-                           mod.importer);
+  imported_mod1.AppendNodes(frontend::Parse(buffer1, mod.consumer),
+                            mod.consumer, mod.importer);
+
+  frontend::SourceBuffer buffer2(R"(
+  #{export} S ::= struct {}
+  #{export} P ::= struct (T :: type) {}
+  )");
+  imported_mod2.AppendNodes(frontend::Parse(buffer2, mod.consumer),
+                            mod.consumer, mod.importer);
 
   mod.AppendCode(R"(
-  mod ::= import "imported"
-  -- ::= mod
+  --  ::= import "imported1"
+  mod ::= import "imported2"
   )");
+
   auto const *module_access   = mod.Append<ast::Expression>(R"(mod.S.{})");
-  auto const *embedded_access = mod.Append<ast::Expression>(R"(S.{})");
   EXPECT_EQ(TypeForDiagnostic(module_access, mod.context()), "mod.S");
+
+  auto const *embedded_access = mod.Append<ast::Expression>(R"(S.{})");
   EXPECT_EQ(TypeForDiagnostic(embedded_access, mod.context()), "S");
+
+  // TODO: Deal with ADL.
 }
 
 }  // namespace

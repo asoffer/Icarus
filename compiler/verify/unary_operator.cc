@@ -1,6 +1,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -84,7 +85,7 @@ struct InvalidUnaryOperatorCall {
   }
 
   char const *op;
-  type::Type type;
+  std::string type;
   frontend::SourceRange range;
 };
 
@@ -264,7 +265,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
             .op    = "-",
-            .type  = operand_type,
+            .type  = TypeForDiagnostic(node->operand(), context()),
             .range = node->range(),
         });
         qt = type::QualType::Error();
@@ -289,7 +290,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
             .op    = "not",
-            .type  = operand_type,
+            .type  = TypeForDiagnostic(node->operand(), context()),
             .range = node->range(),
         });
         qt = type::QualType::Error();
@@ -320,7 +321,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
             .op    = "~",
-            .type  = operand_type,
+            .type  = TypeForDiagnostic(node->operand(), context()),
             .range = node->range(),
         });
         qt = type::QualType::Error();

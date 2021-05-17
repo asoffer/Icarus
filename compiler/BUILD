@@ -275,6 +275,7 @@ cc_library(
     srcs = ["type_for_diagnostic.cc"],
     deps = [
         ":context",
+        ":module",
         "//ast",
         "//ast:visitor",
         "@com_google_absl//absl/strings",
