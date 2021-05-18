@@ -5,7 +5,8 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "base/log.h"
+#include "base/extend.h"
+#include "base/extend/equality.h"
 #include "core/arguments.h"
 #include "core/dependency_node.h"
 #include "core/params.h"
@@ -118,37 +119,104 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
   return false;
 }
 
+struct CallabilityResult
+    : base::Extend<CallabilityResult, 1>::With<base::EqualityExtension> {
+  // Error indicating that too many arguments have been provided for the
+  // callable.
+  struct TooManyArguments
+      : base::Extend<TooManyArguments>::With<base::EqualityExtension> {
+    size_t num_provided;
+    size_t max_num_accepted;
+  };
+
+  // Error indicating that a parameter does not have an argument bound to it
+  // nor does it have a default value.
+  struct MissingNonDefaultableArguments {
+    absl::flat_hash_set<std::string> names;
+
+    friend bool operator==(MissingNonDefaultableArguments const& lhs,
+                           MissingNonDefaultableArguments const& rhs) {
+      if (lhs.names.size() != rhs.names.size()) { return false; }
+      for (std::string_view name : lhs.names) {
+        if (not rhs.names.contains(name)) { return false; }
+      }
+      return true;
+    }
+  };
+
+  // Error indicating that the type of an argument an dthe parameter to which
+  // it is bound are incompatible.
+  struct TypeMismatch
+      : base::Extend<TypeMismatch>::With<base::EqualityExtension> {
+    std::variant<std::string, size_t> parameter, argument;
+  };
+
+  // Error indicating that a named argument has a name not matching any
+  // parameter.
+  struct NoParameterNamed
+      : base::Extend<NoParameterNamed>::With<base::EqualityExtension> {
+    std::string name;
+  };
+
+  // Error indicating that a named argument binds to a parameter before the
+  // parameter to which the final positional argument is bound.
+  struct PositionalArgumentNamed
+      : base::Extend<PositionalArgumentNamed>::With<base::EqualityExtension> {
+    size_t index;
+    std::string name;
+  };
+
+  template <typename Fn>
+  auto Visit(Fn&& f) const {
+    return std::visit(std::forward<Fn>(f), data_);
+  }
+
+  // Not an error. The call is valid.
+  struct Valid : base::Extend<Valid>::With<base::EqualityExtension> {};
+
+  CallabilityResult() : data_(Valid{}) {}
+
+  template <typename Error>
+  CallabilityResult(Error&& e) : data_(std::forward<Error>(e)) {}
+
+  bool ok() const { return std::holds_alternative<Valid>(data_); }
+
+ private:
+  friend base::EnableExtensions;
+
+  std::variant<Valid, TooManyArguments, MissingNonDefaultableArguments,
+               TypeMismatch, NoParameterNamed, PositionalArgumentNamed>
+      data_;
+};
+
 // Returns true if and only if a callable with `params` can be called with
 // `args`.
 template <typename T, typename U>
-bool IsCallable(Params<T> const& params, Arguments<U> const& args,
-                std::invocable<U, T> auto fn) {
+CallabilityResult Callability(Params<T> const& params, Arguments<U> const& args,
+                              std::invocable<U, T> auto fn) {
   if (params.size() < args.size()) {
-    LOG("core::IsCallable",
-        "IsCallable = false due to size mismatch (%u vs %u)", params.size(),
-        args.size());
-    return false;
+    return CallabilityResult::TooManyArguments{
+        .num_provided = args.size(), .max_num_accepted = params.size()};
   }
 
   for (size_t i = 0; i < args.pos().size(); ++i) {
     if (not fn(args.pos()[i], params[i].value)) {
-      LOG("core::IsCallable",
-          "IsCallable = false due to convertible failure at %u", i);
-      return false;
+      return CallabilityResult::TypeMismatch{.parameter = i, .argument = i};
     }
   }
 
   for (auto const& [name, type] : args.named()) {
     auto* index = params.at_or_null(name);
-    if (not index) {
-      LOG("core::IsCallable", "No such parameter named \"%s\"", name);
-      return false;
+    if (not index) { return CallabilityResult::NoParameterNamed{.name = name}; }
+
+    if (*index < args.pos().size()) {
+      return CallabilityResult::PositionalArgumentNamed{.index = *index,
+                                                        .name  = name};
     }
 
     if (not fn(type, params[*index].value)) {
-      LOG("core::IsCallable",
-          "IsCallable = false due to convertible failure on \"%s\"", name);
-      return false;
+      return CallabilityResult::TypeMismatch{.parameter = name,
+                                             .argument  = name};
     }
   }
 
@@ -156,14 +224,12 @@ bool IsCallable(Params<T> const& params, Arguments<U> const& args,
     auto const& param = params[i];
     if (param.flags & HAS_DEFAULT) { continue; }
     if (args.at_or_null(param.name) == nullptr) {
-      LOG("core::IsCallable",
-          "No argument for non-default parameter named \"%s\"", param.name);
-      return false;
+      return CallabilityResult::MissingNonDefaultableArguments{
+          .names = {param.name}};
     }
   }
 
-  LOG("core::IsCallable", "Yes, it's callable");
-  return true;
+  return {};
 }
 
 }  // namespace core

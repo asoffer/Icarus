@@ -29,69 +29,21 @@ type::Typed<ir::Value> EvaluateIfConstant(Compiler &c,
   return type::Typed<ir::Value>(ir::Value(), qt.type());
 }
 
-// Determines which arguments are passed to which parameters. No type-checking
-// is done in this phase. Matching arguments to parameters can be done, even on
-// generics without any type-checking.
-template <typename Ignored>
-std::optional<Compiler::VerifyCallResult::Error::ErrorReason>
-MatchArgumentsToParameters(
-    core::Params<Ignored> const &params,
-    core::Arguments<type::Typed<ir::Value>> const &args) {
-  if (args.size() > params.size()) {
-    return Compiler::VerifyCallResult::Error::TooManyArguments{
-        .num_provided     = args.size(),
-        .max_num_accepted = params.size(),
-    };
-  }
-
-  absl::flat_hash_set<std::string> missing_non_defaultable;
-
-  for (size_t i = args.pos().size(); i < params.size(); ++i) {
-    auto const &param = params[i];
-    LOG("match", "Matching param in position %u (name = %s)", i, param.name);
-    if (args.at_or_null(param.name)) { continue; }
-
-    // No argument provided by that name? This could be because we have
-    // default parameters or an empty variadic pack.
-    // TODO: Handle variadic packs.
-    if (not(param.flags & core::HAS_DEFAULT)) {
-      missing_non_defaultable.insert(param.name);
-    }
-  }
-
-  // TODO: Instead of early exit get all relevant errors.
-  if (not missing_non_defaultable.empty()) {
-    return Compiler::VerifyCallResult::Error::MissingNonDefaultableArguments{
-        .names = std::move(missing_non_defaultable),
-    };
-  }
-
-  for (auto const &[name, val] : args.named()) {
-    auto const *index = params.at_or_null(name);
-    if (not index) {
-      return Compiler::VerifyCallResult::Error::NoParameterNamed{.name = name};
-    } else if (*index < args.pos().size()) {
-      return Compiler::VerifyCallResult::Error::PositionalArgumentNamed{
-          .index = *index, .name = name};
-    }
-  }
-
-  return std::nullopt;
-}
-
 void ExtractParams(
     ast::Expression const *callee, type::Callable const *callable,
     core::Arguments<type::Typed<ir::Value>> const &args,
     std::vector<std::tuple<ast::Expression const *, type::Callable const *,
                            core::Params<type::QualType>>> &overload_params,
-    Compiler::VerifyCallResult::Error &errors) {
-  Compiler::VerifyCallResult::Error error;
+    absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
+        &errors) {
   if (auto const *f = callable->if_as<type::Function>()) {
-    if (auto error_reason = MatchArgumentsToParameters(f->params(), args)) {
-      errors.reasons.emplace(f, *std::move(error_reason));
-      return;
-    } else {
+    auto result = core::Callability(f->params(), args,
+                                    [](auto const &...) { return true; });
+    if (result.ok()) {
       overload_params.emplace_back(callee, f, f->params());
+    } else {
+      errors.emplace(f, std::move(result));
+      return;
     }
   } else if (auto const *os = callable->if_as<type::OverloadSet>()) {
     for (auto const *overload : os->members()) {
@@ -100,14 +52,17 @@ void ExtractParams(
     }
     if (overload_params.empty()) { return; }
   } else if (auto const *gf = callable->if_as<type::GenericFunction>()) {
-    if (auto error_reason = MatchArgumentsToParameters(gf->params(), args)) {
-      errors.reasons.emplace(gf, *std::move(error_reason));
-      return;
-    } else {
+    auto result = core::Callability(gf->params(), args,
+                                    [](auto const &...) { return true; });
+
+    if (result.ok()) {
       // TODO: But this could fail and when it fails we want to capture failure
       // reasons.
       auto const *f = gf->concrete(args);
       overload_params.emplace_back(callee, f, f->params());
+    } else {
+      errors.emplace(gf, std::move(result));
+      return;
     }
   } else if (auto const *gs = callable->if_as<type::GenericStruct>()) {
     // TODO: But this could fail and when it fails we want to capture failure
@@ -449,13 +404,16 @@ Compiler::VerifyCallee(
   return return_type(qt, std::move(overload_map));
 }
 
-Compiler::VerifyCallResult Compiler::VerifyCall(
+std::variant<
+    std::vector<type::QualType>,
+    absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
+Compiler::VerifyCall(
     ast::Call const *call_expr,
     absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
         &overload_map,
     core::Arguments<type::Typed<ir::Value>> const &args) {
   LOG("VerifyCall", "%s", call_expr->DebugString());
-  VerifyCallResult::Error errors;
+  absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
   std::vector<std::tuple<ast::Expression const *, type::Callable const *,
                          core::Params<type::QualType>>>
       overload_params;
@@ -506,11 +464,10 @@ Compiler::VerifyCallResult Compiler::VerifyCall(
         if (not type::CanCastImplicitly(expansion[i], params[i].value.type())) {
           // TODO: Currently as soon as we find an error with a call we move on.
           // It'd be nice to extract all the error information for each.
-          errors.reasons.emplace(
-              callable_type, Compiler::VerifyCallResult::Error::TypeMismatch{
-                                 .parameter     = i,
-                                 .argument_type = expansion[i],
-                             });
+          errors.emplace(callable_type, core::CallabilityResult::TypeMismatch{
+                                            .parameter = i,
+                                            .argument  = expansion[i],
+                                        });
           goto next_overload;
         }
       }
@@ -527,11 +484,10 @@ Compiler::VerifyCallResult Compiler::VerifyCall(
         if (not type::CanCastImplicitly(*arg, param.value.type())) {
           // TODO: Currently as soon as we find an error with a call we move on.
           // It'd be nice to extract all the error information for each.
-          errors.reasons.emplace(
-              callable_type, Compiler::VerifyCallResult::Error::TypeMismatch{
-                                 .parameter     = param.name,
-                                 .argument_type = expansion[param.name],
-                             });
+          errors.emplace(callable_type, core::CallabilityResult::TypeMismatch{
+                                            .parameter = param.name,
+                                            .argument  = expansion[param.name],
+                                        });
           goto next_overload;
         }
       }

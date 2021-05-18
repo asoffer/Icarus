@@ -62,10 +62,11 @@ struct OverloadSet {
 
     size_t i = 0;
     for (Fn const &fn : fns_) {
-      if (core::IsCallable(fn.type()->params(), args,
-                           [](type::QualType a, type::QualType p) {
-                             return type::CanCastImplicitly(p.type(), a.type());
-                           })) {
+      auto result = core::Callability(
+          fn.type()->params(), args, [](type::QualType a, type::QualType p) {
+            return type::CanCastImplicitly(p.type(), a.type());
+          });
+      if (result.ok()) {
         cache_.emplace_back(args, i);
         return fn;
       }

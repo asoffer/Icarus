@@ -482,68 +482,6 @@ struct Compiler
                                       type::Typed<ir::Value> const &lhs,
                                       type::Typed<ir::Value> const &rhs);
 
-  // TODO: Figure out where to stick these.
-  struct VerifyCallResult {
-    struct Error {
-      struct TooManyArguments {
-        size_t num_provided;
-        size_t max_num_accepted;
-      };
-
-      struct MissingNonDefaultableArguments {
-        absl::flat_hash_set<std::string> names;
-      };
-
-      struct TypeMismatch {
-        std::variant<std::string, size_t> parameter;
-        type::Type argument_type;
-      };
-
-      struct NoParameterNamed {
-        std::string name;
-      };
-
-      struct PositionalArgumentNamed {
-        size_t index;
-        std::string name;
-      };
-
-      using ErrorReason =
-          std::variant<TooManyArguments, MissingNonDefaultableArguments,
-                       TypeMismatch, NoParameterNamed, PositionalArgumentNamed,
-                       Error>;
-
-      // TODO: It might be better to track back to the definition, but for now
-      // all we have is type information.
-      absl::flat_hash_map<type::Callable const *, ErrorReason> reasons;
-    };
-    VerifyCallResult(type::QualType qt)
-        : data_(std::vector<type::QualType>{qt}) {}
-    VerifyCallResult(std::vector<type::QualType> qts) : data_(std::move(qts)) {}
-    VerifyCallResult(Error &&e) : data_(std::move(e)) {}
-    VerifyCallResult(Error const &e) : data_(e) {}
-
-    Error error() const & { return std::get<Error>(data_); }
-    Error &&error() && { return std::get<Error>(std::move(data_)); }
-
-    operator bool() {
-      return std::holds_alternative<std::vector<type::QualType>>(data_);
-    }
-
-    std::vector<type::QualType> operator*() {
-      return std::get<std::vector<type::QualType>>(data_);
-    }
-    std::vector<type::QualType> *operator->() {
-      return &std::get<std::vector<type::QualType>>(data_);
-    }
-    std::vector<type::QualType> const *operator->() const {
-      return &std::get<std::vector<type::QualType>>(data_);
-    }
-
-   private:
-    std::variant<Error, std::vector<type::QualType>> data_;
-  };
-
   ir::ModuleId EvaluateModuleWithCache(ast::Expression const *expr);
 
   std::optional<core::Params<type::QualType>> VerifyParams(
@@ -570,11 +508,13 @@ struct Compiler
                                      ast::Expression const *node,
                                      type::Typed<ir::Value> const &operand);
 
-  VerifyCallResult VerifyCall(
-      ast::Call const *call_expr,
-      absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
-          &overload_map,
-      core::Arguments<type::Typed<ir::Value>> const &args);
+  std::variant<
+      std::vector<type::QualType>,
+      absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
+  VerifyCall(ast::Call const *call_expr,
+             absl::flat_hash_map<ast::Expression const *,
+                                 type::Callable const *> const &overload_map,
+             core::Arguments<type::Typed<ir::Value>> const &args);
 
   std::pair<type::QualType, absl::flat_hash_map<ast::Expression const *,
                                                 type::Callable const *>>

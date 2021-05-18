@@ -67,56 +67,98 @@ TEST(AmbiguouslyCallable, Anonymous) {
   EXPECT_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
 }
 
-TEST(IsCallable, EmptyParams) {
+TEST(Callability, EmptyParams) {
   auto convertible = [](int from, int to) { return from == to; };
 
   Params<int> p;
-  EXPECT_TRUE(IsCallable(p, Arguments<int>{}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{3}, {}}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{}, {{"a", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{3}, {{"a", 4}}}, convertible));
+  EXPECT_EQ(Callability(p, Arguments<int>{}, convertible),
+            CallabilityResult::Valid{});
+  EXPECT_EQ(Callability(p, Arguments<int>{{3}, {}}, convertible),
+            (CallabilityResult::TooManyArguments{.num_provided     = 1,
+                                                .max_num_accepted = 0}));
+  EXPECT_EQ(Callability(p, Arguments<int>{{}, {{"a", 4}}}, convertible),
+            (CallabilityResult::TooManyArguments{.num_provided     = 1,
+                                                .max_num_accepted = 0}));
+  EXPECT_EQ(Callability(p, Arguments<int>{{3}, {{"a", 4}}}, convertible),
+            (CallabilityResult::TooManyArguments{.num_provided     = 2,
+                                                .max_num_accepted = 0}));
 }
 
-TEST(IsCallable, OneParamWithoutDefault) {
+TEST(Callability, OneParamWithoutDefault) {
   auto convertible = [](int from, int to) { return from == to; };
   Params<int> p{Param<int>{"a", 4}};
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{3}, {}}, convertible));
-  EXPECT_TRUE(IsCallable(p, Arguments<int>{{4}, {}}, convertible));
-  EXPECT_TRUE(IsCallable(p, Arguments<int>{{}, {{"a", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{}, {{"b", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{4}, {{"a", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{4}, {{"a", 5}}}, convertible));
+  EXPECT_EQ(Callability(p, Arguments<int>{}, convertible),
+            CallabilityResult::MissingNonDefaultableArguments{.names = {"a"}});
+  EXPECT_EQ(Callability(p, Arguments<int>{{3}, {}}, convertible),
+            (CallabilityResult::TypeMismatch{.parameter = 0u, .argument = 0u}));
+  EXPECT_EQ(Callability(p, Arguments<int>{{4}, {}}, convertible),
+            CallabilityResult::Valid{});
+  EXPECT_EQ(Callability(p, Arguments<int>{{}, {{"a", 4}}}, convertible),
+            CallabilityResult::Valid{});
+  EXPECT_EQ(Callability(p, Arguments<int>{{}, {{"b", 4}}}, convertible),
+            CallabilityResult::NoParameterNamed{.name = "b"});
+  EXPECT_EQ(Callability(p, Arguments<int>{{4}, {{"a", 4}}}, convertible),
+            (CallabilityResult::TooManyArguments{.num_provided     = 2,
+                                                .max_num_accepted = 1}));
+  EXPECT_EQ(Callability(p, Arguments<int>{{4}, {{"a", 5}}}, convertible),
+            (CallabilityResult::TooManyArguments{.num_provided     = 2,
+                                                .max_num_accepted = 1}));
 }
 
-TEST(IsCallable, OneParamWithDefault) {
+TEST(Callability, OneParamWithDefault) {
   auto convertible = [](int from, int to) { return from == to; };
   Params<int> p{Param<int>{"a", 4, HAS_DEFAULT}};
-  EXPECT_TRUE(IsCallable(p, Arguments<int>{}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{3}, {}}, convertible));
-  EXPECT_TRUE(IsCallable(p, Arguments<int>{{4}, {}}, convertible));
-  EXPECT_TRUE(IsCallable(p, Arguments<int>{{}, {{"a", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{}, {{"b", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{4}, {{"a", 4}}}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{4}, {{"a", 5}}}, convertible));
+  EXPECT_EQ(Callability(p, Arguments<int>{}, convertible),
+            CallabilityResult::Valid{});
+  EXPECT_EQ(Callability(p, Arguments<int>{{3}, {}}, convertible),
+            (CallabilityResult::TypeMismatch{.parameter = 0u, .argument = 0u}));
+  EXPECT_EQ(Callability(p, Arguments<int>{{4}, {}}, convertible),
+            CallabilityResult::Valid{});
+  EXPECT_EQ(Callability(p, Arguments<int>{{}, {{"a", 4}}}, convertible),
+            CallabilityResult::Valid{});
+  EXPECT_EQ(Callability(p, Arguments<int>{{}, {{"b", 4}}}, convertible),
+               CallabilityResult::NoParameterNamed{.name = "b"});
+  EXPECT_EQ(Callability(p, Arguments<int>{{4}, {{"a", 4}}}, convertible),
+            (CallabilityResult::TooManyArguments{.num_provided     = 2,
+                                                .max_num_accepted = 1}));
+  EXPECT_EQ(Callability(p, Arguments<int>{{4}, {{"a", 5}}}, convertible),
+            (CallabilityResult::TooManyArguments{.num_provided     = 2,
+                                                .max_num_accepted = 1}));
 }
 
-TEST(IsCallable, MultipleParamsWithNonTrailingDefault) {
+TEST(Callability, MultipleParamsWithNonTrailingDefault) {
   auto convertible = [](int from, int to) { return from == to; };
 
   Params<int> p{Param<int>{"a", 4, HAS_DEFAULT}, Param<int>{"b", 7}};
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{3}, {}}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{4}, {}}, convertible));
-  EXPECT_TRUE(IsCallable(p, Arguments<int>{{4, 7}, {}}, convertible));
-  EXPECT_FALSE(IsCallable(p, Arguments<int>{{}, {{"a", 4}}}, convertible));
-  EXPECT_TRUE(IsCallable(p, Arguments<int>{{4}, {{"b", 7}}}, convertible));
-  EXPECT_TRUE(
-      IsCallable(p, Arguments<int>{{}, {{"a", 4}, {"b", 7}}}, convertible));
+  EXPECT_EQ(Callability(p, Arguments<int>{}, convertible),
+            CallabilityResult::MissingNonDefaultableArguments{.names = {"b"}});
+  EXPECT_EQ(Callability(p, Arguments<int>{{3}, {}}, convertible),
+            (CallabilityResult::TypeMismatch{.parameter = 0u, .argument = 0u}));
+  EXPECT_EQ(Callability(p, Arguments<int>{{4}, {}}, convertible),
+            CallabilityResult::MissingNonDefaultableArguments{.names = {"b"}});
+  EXPECT_EQ(Callability(p, Arguments<int>{{4, 7}, {}}, convertible),
+            CallabilityResult::Valid{});
+  EXPECT_EQ(Callability(p, Arguments<int>{{}, {{"a", 4}}}, convertible),
+            CallabilityResult::MissingNonDefaultableArguments{.names = {"b"}});
+  EXPECT_EQ(Callability(p, Arguments<int>{{4}, {{"b", 7}}}, convertible),
+            CallabilityResult::Valid{});
+  EXPECT_EQ(
+      Callability(p, Arguments<int>{{}, {{"a", 4}, {"b", 7}}}, convertible),
+      CallabilityResult::Valid{});
 }
 
-// TODO tests for transform
-// TODO tests for FillMissingArgs
+TEST(Callability, MultipleParametersWithDefaults) {
+  auto convertible = [](int from, int to) { return from == to; };
+
+  Params<int> p{Param<int>{"a", 1, HAS_DEFAULT},
+                Param<int>{"b", 2, HAS_DEFAULT}};
+
+  EXPECT_EQ(Callability(p, Arguments<int>{}, convertible),
+            CallabilityResult::Valid{});
+  EXPECT_EQ(
+      Callability(p, Arguments<int>{{1}, {{"a", 1}}}, convertible),
+      (CallabilityResult::PositionalArgumentNamed{.index = 0, .name = "a"}));
+}
 
 }  // namespace
 }  // namespace core

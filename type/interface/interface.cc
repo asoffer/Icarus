@@ -78,10 +78,11 @@ struct Callable : Interface::Impl {
     // structs as well.
     auto *f = t.if_as<type::Function>();
     if (not f) { return false; }
-    return core::IsCallable(f->params(), args_,
-                            [](type::Type arg, type::QualType param) {
-                              return type::CanCastImplicitly(arg, param.type());
-                            });
+    auto result = core::Callability(
+        f->params(), args_, [](type::Type arg, type::QualType param) {
+          return type::CanCastImplicitly(arg, param.type());
+        });
+    return result.ok();
   }
 
   void stream(std::ostream &os) const override {

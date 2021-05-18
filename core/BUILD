@@ -37,8 +37,8 @@ cc_library(
         ":dependency_node",
         ":arguments",
         ":params",
-        "//base:lazy",
-        "//base:log",
+        "//base:extend",
+        "//base/extend:equality",
         "@com_google_absl//absl/types:span",
     ],
 )

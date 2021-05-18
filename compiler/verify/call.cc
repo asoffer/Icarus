@@ -44,63 +44,65 @@ struct UncallableWithArguments {
   static constexpr std::string_view kName     = "uncallable-with-arguments";
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     std::vector<std::string> items;
-    items.reserve(error.reasons.size());
-    for (auto const &type_and_reason : error.reasons) {
-      std::visit(
-          [&](auto const &err) {
-            using call_error = Compiler::VerifyCallResult::Error;
-            auto const &[callable_type, reason] = type_and_reason;
-            static constexpr auto type =
-                base::meta<std::decay_t<decltype(err)>>;
-            if constexpr (type == base::meta<call_error::TooManyArguments>) {
-              items.push_back(absl::StrFormat(
-                  "%s -- Has %d parameters, but %d arguments provided.",
-                  callable_type->to_string(), err.max_num_accepted,
-                  err.num_provided));
-            } else if constexpr (
-                type ==
-                base::meta<call_error::MissingNonDefaultableArguments>) {
-              std::vector<std::string> names(err.names.begin(),
-                                             err.names.end());
-              std::sort(names.begin(), names.end());
-              items.push_back(absl::StrCat(
-                  callable_type->to_string(),
-                  " -- The following parameters do not have default arguments "
-                  "and are not provided at the call-site: ",
-                  absl::StrJoin(names, ", ")));
-            } else if constexpr (type == base::meta<call_error::TypeMismatch>) {
-              std::string param_str;
-              if (auto const *param_as_str =
-                      std::get_if<std::string>(&err.parameter)) {
-                param_str = absl::StrCat("named `", *param_as_str, "`");
-              } else {
-                param_str =
-                    absl::StrCat("at index ", std::get<size_t>(err.parameter));
-              }
+    items.reserve(errors.size());
+    for (auto const &type_and_reason : errors) {
+      type_and_reason.second.Visit([&](auto const &err) {
+        using call_error                    = core::CallabilityResult;
+        auto const &[callable_type, reason] = type_and_reason;
+        static constexpr auto type = base::meta<std::decay_t<decltype(err)>>;
+        if constexpr (type == base::meta<call_error::TooManyArguments>) {
+          items.push_back(absl::StrFormat(
+              "%s -- Has %d parameters, but %d arguments provided.",
+              callable_type->to_string(), err.max_num_accepted,
+              err.num_provided));
+        } else if constexpr (type ==
+                             base::meta<
+                                 call_error::MissingNonDefaultableArguments>) {
+          std::vector<std::string> names(err.names.begin(), err.names.end());
+          std::sort(names.begin(), names.end());
+          items.push_back(
+              absl::StrCat(callable_type->to_string(),
+                           " -- The following parameters do not have default "
+                           "arguments and are not provided at the call-site:",
+                           absl::StrJoin(names, ", ")));
+        } else if constexpr (type == base::meta<call_error::TypeMismatch>) {
+          std::string param_str;
+          if (auto const *param_as_str =
+                  std::get_if<std::string>(&err.parameter)) {
+            param_str = absl::StrCat("named `", *param_as_str, "`");
+          } else {
+            param_str =
+                absl::StrCat("at index ", std::get<size_t>(err.parameter));
+          }
 
-              items.push_back(absl::StrFormat(
-                  "%s -- Parameter %s cannot accept an argument of type `%s`",
-                  callable_type->to_string(), param_str,
-                  err.argument_type.to_string()));
-            } else if constexpr (type ==
-                                 base::meta<call_error::NoParameterNamed>) {
-              items.push_back(absl::StrFormat("%s -- No parameter named `%s`.",
-                                              callable_type->to_string(),
-                                              err.name));
-            } else if constexpr (type ==
-                                 base::meta<
-                                     call_error::PositionalArgumentNamed>) {
-              items.push_back(absl::StrFormat(
-                  "%s -- Named argument `%s` bound to the same parameter as "
-                  "the argument at index %d.",
-                  callable_type->to_string(), err.name, err.index));
-            } else {
-              // TODO: Determine how deeply to dig into this error message.
-              items.push_back(
-                  absl::StrCat(callable_type->to_string(), " -- ", "TODO"));
-            }
-          },
-          type_and_reason.second);
+          std::string arg_str;
+          if (auto const *arg_as_str =
+                  std::get_if<std::string>(&err.argument)) {
+            arg_str = absl::StrCat("named `", *arg_as_str, "`");
+          } else {
+            arg_str =
+                absl::StrCat("at index ", std::get<size_t>(err.parameter));
+          }
+
+          items.push_back(absl::StrFormat(
+              "%s -- Parameter %s cannot accept an argument of type `%s`",
+              callable_type->to_string(), param_str, arg_str));
+        } else if constexpr (type == base::meta<call_error::NoParameterNamed>) {
+          items.push_back(absl::StrFormat("%s -- No parameter named `%s`.",
+                                          callable_type->to_string(),
+                                          err.name));
+        } else if constexpr (type ==
+                             base::meta<call_error::PositionalArgumentNamed>) {
+          items.push_back(absl::StrFormat(
+              "%s -- Named argument `%s` bound to the same parameter as "
+              "the argument at index %d.",
+              callable_type->to_string(), err.name, err.index));
+        } else {
+          // TODO: Determine how deeply to dig into this error message.
+          items.push_back(
+              absl::StrCat(callable_type->to_string(), " -- ", "TODO"));
+        }
+      });
     }
 
     return diagnostic::DiagnosticMessage(
@@ -111,7 +113,7 @@ struct UncallableWithArguments {
         diagnostic::List(std::move(items)));
   }
 
-  Compiler::VerifyCallResult::Error error;
+  absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
   frontend::SourceRange range;
 };
 
@@ -455,18 +457,20 @@ not_an_interface:
   }
 
   if (auto const *c = callee_qt.type().if_as<type::Callable>()) {
-    auto qual_type = VerifyCall(node, overload_map, arg_vals);
-    if (not qual_type) {
+    auto qts_or_errors = VerifyCall(node, overload_map, arg_vals);
+    if (auto *errors = std::get_if<absl::flat_hash_map<
+            type::Callable const *, core::CallabilityResult>>(&qts_or_errors)) {
       diag().Consume(UncallableWithArguments{
-          .error = std::move(qual_type).error(),
+          .errors = std::move(*errors),
           .range = node->callee()->range(),
       });
       return context().set_qual_type(node, type::QualType::Error());
     }
-    LOG("Call", "Call qual-type is %s on %p", *qual_type, &context());
+    auto &qual_type = std::get<std::vector<type::QualType>>(qts_or_errors);
+    LOG("Call", "Call qual-type is %s on %p", qual_type, &context());
     // TODO: under what circumstances can we prove that the implementation
     // doesn't need to be run at runtime?
-    return context().set_qual_types(node, *qual_type);
+    return context().set_qual_types(node, std::move(qual_type));
   } else {
     diag().Consume(UncallableExpression{.range = node->callee()->range()});
     return context().set_qual_type(node, type::QualType::Error());
