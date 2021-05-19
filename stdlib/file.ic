@@ -1,6 +1,7 @@
 core   ::= import "core.ic"
 errno  ::= import "errno.ic"
 cstdio ::= import "cstdio.ic"
+memory ::= import "memory.ic"
 
 #{export}
 File ::= struct {
@@ -50,4 +51,41 @@ read_to ::= (f: File, T :: type) -> T {
     result'append(slice(&buffer[0], num_read))
   }
   return result
+}
+
+LinesState ::= struct {
+  handle: *cstdio.File
+  line: [*]char
+  bufsize: u64
+  line_length: i64
+
+  (destroy) ::= (self: *LinesState) -> () {
+    memory.deallocate(self.line)
+  }
+}
+
+next_line ::= (s: *LinesState) -> bool {
+  s.line_length = cstdio.getline(&s.line, &s.bufsize, s.handle)
+  return s.line_length > 0
+}
+
+as_slice ::= (s: *LinesState) -> []char {
+  return slice(s.line, s.line_length as u64)
+}
+
+#{export}
+Lines ::= scope(LinesState) {
+  enter ::= jump [state: *LinesState] (f: File) {
+    state.handle = f'CFileHandle
+    goto state'next_line(), each(state'as_slice()), done()
+  }
+
+  each ::= block {
+    before ::= (line: []char) => line
+    after ::= jump [state: *LinesState] () {
+      goto state'next_line(), each(state'as_slice()), done()
+    }
+  }
+
+  exit ::= () -> () {}
 }

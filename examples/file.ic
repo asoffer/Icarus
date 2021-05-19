@@ -1,18 +1,19 @@
 --     ::= import "core.ic"
-str    ::= import "string.ic"
 cstdio ::= import "cstdio.ic"
 errno  ::= import "errno.ic"
 file   ::= import "file.ic"
 io     ::= import "io.ic"
 
-// File is a user-defined scope in the file module. Given a file name it attempts
-// to open the file, creating a handle (a C++ FILE*) if it can open the file, or
-// goes to the error block with the value assigned into errno. If it was
-// successful, the open block is executed and then the file is closed.
+// `With` is a user-defined scope in the `file` module.
+// It attempts to open the given filepath, creating a handle (a C++ FILE*) if
+// it succeeds. Otherwise, it jumps to the error block with the value assigned
+// to errno. If it was successful, the `open` block is executed, after which
+// the file is closed.
 
 file.With("examples/file.ic") open [f: file.File] {
-  contents := f'read_to(str.string)
-  contents'Print
+  file.Lines(f) each [line: []char] {
+    io.Print(line)
+  }
 } error [e: errno.error] {
   io.Print("Error opening file: ")
   io.Print(e as u64)
