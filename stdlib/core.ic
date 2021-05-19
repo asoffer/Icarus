@@ -46,19 +46,16 @@ repeat ::= scope (i64) {
   exit ::= () -> () {}
 }
 
-// TODO: We shouldn't need to export any of this.
-#{export}
 range ::= struct {
-  #{export}
   current: i64
-  #{export}
   end: i64
 }
 
 #{export}
 for ::= scope (range) {
   enter ::= jump [state: *range] (begin: i64, end: i64) {
-    @state = range.{ current = begin \\ end = end }
+    state.current = begin
+    state.end = end
     goto state.current >= state.end, done(), do(state.current)
   }
 
