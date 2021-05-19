@@ -1,10 +1,15 @@
-// This module provides an ierface to functions in the <stdio.h> C-header file.
+// This module provides an interface to functions in the <stdio.h> C-header
+// file.
 
-#{export} File   ::= 'opaque
+#{export} File ::= 'opaque
+#{export} eof  ::= 4294967295 as i32
+
 #{export} fopen  ::= foreign("fopen", ([*]char, [*]char) -> *File)
 #{export} fclose ::= foreign("fclose", *File -> i32)
 #{export} fgets  ::= foreign("fgets", ([*]char, i32, *File) -> [*]char)
 #{export} fgetc  ::= foreign("fgetc", (*File) -> i32)
 #{export} fread  ::= foreign("fread", ([*]char, u64, u64, *File) -> u64)
 #{export} puts   ::= foreign("puts", [*]char -> i32)
-#{export} eof    ::= 4294967295 as i32
+
+#{export} getline  ::= foreign("getline", (*[*]char, *u64, *File) -> i64)
+#{export} getdelim ::= foreign("getdelim", (*[*]char, *u64, i32, *File) -> i64)
