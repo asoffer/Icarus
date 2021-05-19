@@ -24,7 +24,7 @@ struct LoadStoreCache {
   // reference to the value held in the cache whcih can be populated or read
   // from.
   template <typename T>
-  Value &slot(RegOr<Addr> r) {
+  Value &slot(RegOr<addr_t> r) {
     constexpr auto type = base::meta<T>;
     static_assert(not type.template is_a<ir::RegOr>());
     return storage_[type][r];
@@ -66,7 +66,7 @@ struct LoadStoreCache {
   void clear(base::MetaValue m) { storage_.erase(m); }
 
  private:
-  absl::flat_hash_map<base::MetaValue, absl::flat_hash_map<RegOr<Addr>, Value>>
+  absl::flat_hash_map<base::MetaValue, absl::flat_hash_map<RegOr<addr_t>, Value>>
       storage_;
 };
 

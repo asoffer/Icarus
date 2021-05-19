@@ -27,7 +27,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn({
         TestCase{.terminal = "true", .expected = ir::Value(true)},
         TestCase{.terminal = "false", .expected = ir::Value(false)},
-        TestCase{.terminal = "null", .expected = ir::Value(ir::Addr::Null())},
+        TestCase{.terminal = "null", .expected = ir::Value(ir::Null())},
         TestCase{.terminal = "u8", .expected = ir::Value(type::U8)},
         TestCase{.terminal = "u16", .expected = ir::Value(type::U16)},
         TestCase{.terminal = "u32", .expected = ir::Value(type::U32)},

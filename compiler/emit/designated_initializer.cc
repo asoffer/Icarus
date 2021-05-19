@@ -15,14 +15,14 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
   auto t     = context().qual_types(node)[0].type();
   auto alloc = builder().TmpAlloca(t);
   auto typed_alloc =
-      type::Typed<ir::RegOr<ir::Addr>>(ir::RegOr<ir::Addr>(alloc), t);
+      type::Typed<ir::RegOr<ir::addr_t>>(ir::RegOr<ir::addr_t>(alloc), t);
   EmitMoveInit(node, absl::MakeConstSpan(&typed_alloc, 1));
   return ir::Value(alloc);
 }
 
 void Compiler::EmitMoveAssign(
     ast::DesignatedInitializer const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   EmitMoveAssign(to[0],
                  type::Typed<ir::Value>(EmitValue(node),
@@ -31,7 +31,7 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitCopyAssign(
     ast::DesignatedInitializer const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   EmitCopyAssign(to[0],
                  type::Typed<ir::Value>(EmitValue(node),
@@ -40,7 +40,7 @@ void Compiler::EmitCopyAssign(
 
 void Compiler::EmitMoveInit(
     ast::DesignatedInitializer const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   // TODO actual initialization with these field members.
   auto &struct_type  = context().qual_types(node)[0].type().as<type::Struct>();
@@ -76,7 +76,7 @@ void Compiler::EmitMoveInit(
     auto const &id     = assignment->lhs()[0]->as<ast::Identifier>();
     auto const *f      = struct_type.field(id.name());
     size_t field_index = struct_type.index(f->name);
-    type::Typed<ir::RegOr<ir::Addr>> field_reg =
+    type::Typed<ir::RegOr<ir::addr_t>> field_reg =
         builder().FieldRef(to[0]->reg(), &struct_type, field_index);
     EmitMoveInit(assignment->rhs()[0], absl::MakeConstSpan(&field_reg, 1));
   }
@@ -84,7 +84,7 @@ void Compiler::EmitMoveInit(
 
 void Compiler::EmitCopyInit(
     ast::DesignatedInitializer const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   // TODO actual initialization with these field members.
   auto &struct_type  = context().qual_types(node)[0].type().as<type::Struct>();
@@ -122,7 +122,7 @@ void Compiler::EmitCopyInit(
     size_t field_index = struct_type.index(f->name);
     auto field_reg =
         builder().FieldRef(to[0]->reg(), &struct_type, field_index);
-    type::Typed<ir::RegOr<ir::Addr>> lhs(*field_reg, field_reg.type());
+    type::Typed<ir::RegOr<ir::addr_t>> lhs(*field_reg, field_reg.type());
     EmitCopyInit(assignment->rhs()[0], absl::MakeConstSpan(&lhs, 1));
   }
 }

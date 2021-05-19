@@ -19,16 +19,16 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   if (node->lhs().size() == 1) {
     ASSERT(node->rhs().size() == 1u);
     auto const *l = node->lhs()[0];
-    type::Typed<ir::RegOr<ir::Addr>> ref(
+    type::Typed<ir::RegOr<ir::addr_t>> ref(
         EmitRef(l), context().qual_types(l)[0].type());
     EmitMoveAssign(node->rhs()[0], absl::MakeConstSpan(&ref, 1));
     return ir::Value();
   }
 
-  std::vector<type::Typed<ir::RegOr<ir::Addr>>> lhs_refs;
+  std::vector<type::Typed<ir::RegOr<ir::addr_t>>> lhs_refs;
   lhs_refs.reserve(node->lhs().size());
 
-  std::vector<type::Typed<ir::RegOr<ir::Addr>>> temps;
+  std::vector<type::Typed<ir::RegOr<ir::addr_t>>> temps;
   temps.reserve(node->lhs().size());
 
   // TODO: Understand the precise semantics you care about here and document
@@ -42,7 +42,7 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   auto temp_iter = temps.begin();
   for (auto const *r : node->rhs()) {
     size_t num_rets = context().qual_types(r).size();
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> temp_span(&*temp_iter,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> temp_span(&*temp_iter,
                                                                  num_rets);
     EmitMoveAssign(r, temp_span);
     temp_iter += num_rets;

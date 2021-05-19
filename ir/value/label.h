@@ -4,6 +4,7 @@
 #include <string>
 
 #include "base/extend.h"
+#include "base/extend/absl_hash.h"
 
 namespace ir {
 

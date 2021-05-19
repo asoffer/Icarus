@@ -54,7 +54,7 @@ struct Builder {
 
   ir::OutParams OutParams(
       absl::Span<type::Type const> types,
-      absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to = {});
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to = {});
 
   template <typename KeyType, typename ValueType>
   absl::flat_hash_map<KeyType, ir::BasicBlock*> AddBlocks(
@@ -282,8 +282,8 @@ struct Builder {
     UncondJump(cond_block);
 
     CurrentBlock() = cond_block;
-    auto* phi      = PhiInst<Addr>();
-    CondJump(Eq(RegOr<Addr>(phi->result), end_ptr), land_block, loop_body);
+    auto* phi      = PhiInst<addr_t>();
+    CondJump(Eq(RegOr<addr_t>(phi->result), end_ptr), land_block, loop_body);
 
     CurrentBlock() = loop_body;
     fn(phi->result);
@@ -306,10 +306,10 @@ struct Builder {
   }
 
   template <typename T>
-  RegOr<T> Load(RegOr<Addr> addr, type::Type t = GetType<T>()) {
+  RegOr<T> Load(RegOr<addr_t> addr, type::Type t = GetType<T>()) {
     auto& blk = *CurrentBlock();
 
-    // TODO Just take a Reg. RegOr<Addr> is overkill and not possible because
+    // TODO Just take a Reg. RegOr<addr_t> is overkill and not possible because
     // constants don't have addresses.
     Value& cache_results = blk.load_store_cache().slot<T>(addr);
     if (not cache_results.empty()) {
@@ -326,11 +326,11 @@ struct Builder {
     return result;
   }
 
-  Value Load(RegOr<Addr> r, type::Type t) {
+  Value Load(RegOr<addr_t> r, type::Type t) {
     using base::stringify;
     LOG("Load", "Calling Load(%s, %s)", r, t.to_string());
     if (t.is<type::Function>()) { return Value(Load<Fn>(r, t)); }
-    if (t.is<type::Pointer>()) { return Value(Load<Addr>(r, t)); }
+    if (t.is<type::Pointer>()) { return Value(Load<addr_t>(r, t)); }
     if (t.is<type::Enum>()) {
       return Value(Load<type::Enum::underlying_type>(r, t));
     }
@@ -342,7 +342,7 @@ struct Builder {
   }
 
   template <typename T>
-  void Store(T r, RegOr<Addr> addr) {
+  void Store(T r, RegOr<addr_t> addr) {
     if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
       auto& blk = *CurrentBlock();
       blk.load_store_cache().clear<typename T::type>();
@@ -353,7 +353,7 @@ struct Builder {
     }
   }
 
-  Reg Index(type::Pointer const* t, RegOr<Addr> addr, RegOr<int64_t> offset) {
+  Reg Index(type::Pointer const* t, RegOr<addr_t> addr, RegOr<int64_t> offset) {
     type::Type pointee = t->pointee();
     type::Type data_type;
     if (auto const* a = pointee.if_as<type::Array>()) {
@@ -409,23 +409,23 @@ struct Builder {
 
   // Special members function instructions. Calling these typically calls
   // builtin functions (or, in the case of primitive types, do nothing).
-  void Move(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from);
-  void Copy(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from);
+  void Move(type::Typed<RegOr<addr_t>> to, type::Typed<Reg> from);
+  void Copy(type::Typed<RegOr<addr_t>> to, type::Typed<Reg> from);
 
   // Data structure access commands. For structs, `Fields` takes an
   // address of the data structure and returns the address of the particular
   // field requested. For variants, `VariantType` computes the location where
   // the type is stored and `VariantValue` accesses the location where the
   // value is stored.
-  type::Typed<Reg> FieldRef(RegOr<Addr> r, type::Struct const* t, int64_t n);
+  type::Typed<Reg> FieldRef(RegOr<addr_t> r, type::Struct const* t, int64_t n);
 
-  type::Typed<Value> FieldValue(RegOr<Addr> r, type::Struct const* t,
+  type::Typed<Value> FieldValue(RegOr<addr_t> r, type::Struct const* t,
                                 int64_t n) {
     auto typed_reg = FieldRef(r, t, n);
     return type::Typed<Value>(Value(PtrFix(*typed_reg, typed_reg.type())),
                               typed_reg.type());
   }
-  Reg PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Pointer const* t);
+  Reg PtrIncr(RegOr<addr_t> ptr, RegOr<int64_t> inc, type::Pointer const* t);
 
   // Low-level size/alignment commands
   Reg Align(RegOr<type::Type> r);

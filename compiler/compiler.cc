@@ -69,7 +69,7 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
     } else {
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
                  ir::GenericFn, interface::Interface>(type, [&]<typename T>() {
         c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
             .index = 0,

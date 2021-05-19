@@ -10,7 +10,7 @@ ir::Value Compiler::EmitValue(ast::Terminal const *node) {
 // TODO: Unit tests
 void Compiler::EmitCopyAssign(
     ast::Terminal const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
@@ -19,7 +19,7 @@ void Compiler::EmitCopyAssign(
 // TODO: Unit tests
 void Compiler::EmitMoveAssign(
     ast::Terminal const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
@@ -28,7 +28,7 @@ void Compiler::EmitMoveAssign(
 // TODO: Unit tests
 void Compiler::EmitCopyInit(
     ast::Terminal const *node,
-   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+   absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
@@ -37,7 +37,7 @@ void Compiler::EmitCopyInit(
 // TODO: Unit tests
 void Compiler::EmitMoveInit(
     ast::Terminal const *node,
-   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+   absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));

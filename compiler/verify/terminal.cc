@@ -34,8 +34,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Terminal const *node)
     t = type::F32;
   } else if (mv == base::meta<double>) {
     t = type::F64;
-  } else if (mv == base::meta<ir::Addr>) {
-    if (node->value().get<ir::Addr>() == ir::Addr::Null()) {
+  } else if (mv == base::meta<ir::addr_t>) {
+    if (node->value().get<ir::addr_t>() == ir::Null()) {
       t = type::NullPtr;
     } else {
       t = type::Slc(type::Char);

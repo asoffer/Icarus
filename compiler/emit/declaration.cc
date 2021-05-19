@@ -91,10 +91,10 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
 ir::Value EmitNonConstantDeclaration(Compiler &c,
                                      ast::Declaration const *node) {
   if (node->IsUninitialized()) { return ir::Value(); }
-  std::vector<type::Typed<ir::RegOr<ir::Addr>>> addrs;
+  std::vector<type::Typed<ir::RegOr<ir::addr_t>>> addrs;
   addrs.reserve(node->ids().size());
   for (auto const &id : node->ids()) {
-    addrs.push_back(type::Typed<ir::RegOr<ir::Addr>>(
+    addrs.push_back(type::Typed<ir::RegOr<ir::addr_t>>(
         c.builder().addr(&id), c.context().qual_types(&id)[0].type()));
   }
   if (auto const *init_val = node->initial_value()) {

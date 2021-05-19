@@ -29,19 +29,20 @@ struct OffsetCache {
   // Creates an entry in the cache if one did not already exist, and returns a
   // reference to the value held in the cache whcih can be populated or read
   // from.
-  std::optional<Reg> get(RegOr<Addr> original, RegOr<int64_t> offset,
+  std::optional<Reg> get(RegOr<addr_t> original, RegOr<int64_t> offset,
                          Kind kind) const {
     auto iter = storage_.find(std::make_tuple(original, offset, kind));
     if (iter == storage_.end()) { return std::nullopt; }
     return iter->second;
   }
 
-  void set(RegOr<Addr> original, RegOr<int64_t> offset, Kind kind, Reg result) {
+  void set(RegOr<addr_t> original, RegOr<int64_t> offset, Kind kind,
+           Reg result) {
     storage_.emplace(std::make_tuple(original, offset, kind), result);
   }
 
  private:
-  absl::flat_hash_map<std::tuple<RegOr<Addr>, RegOr<int64_t>, Kind>, Reg>
+  absl::flat_hash_map<std::tuple<RegOr<addr_t>, RegOr<int64_t>, Kind>, Reg>
       storage_;
 };
 

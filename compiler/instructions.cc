@@ -46,7 +46,7 @@ struct instruction_set_t
     : ir::InstructionSet<
           ir::CoreInstructions<bool, ir::Char, uint8_t, int8_t, uint16_t,
                                int16_t, uint32_t, int32_t, uint64_t, int64_t,
-                               float, double, type::Type, ir::Addr, ir::String,
+                               float, double, type::Type, ir::addr_t, ir::String,
                                ir::Fn, ir::Block, ir::Scope, ir::Jump,
                                ir::ModuleId, interface::Interface>,
           ir::SetReturnInstruction<ir::GenericFn>,
@@ -59,10 +59,10 @@ struct instruction_set_t
           ir::ModInstruction<int64_t>,
           EqualityComparisonInstructions<
               bool, uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t,
-              uint64_t, int64_t, float, double, type::Type, ir::Addr>,
+              uint64_t, int64_t, float, double, type::Type, ir::addr_t>,
           OrderedComparisonInstructions<ir::Char, uint8_t, int8_t, uint16_t,
                                         int16_t, uint32_t, int32_t, uint64_t,
-                                        int64_t, float, double, ir::Addr>,
+                                        int64_t, float, double, ir::addr_t>,
           ir::NegInstruction<int8_t>, ir::NegInstruction<int16_t>,
           ir::NegInstruction<int32_t>, ir::NegInstruction<int64_t>,
           ir::NegInstruction<float>, ir::NegInstruction<double>,
@@ -172,14 +172,14 @@ interpreter::EvaluationResult EvaluateAtCompileTime(ir::NativeFn fn) {
   auto iter = buf.begin();
   for (type::Type t : fn.type()->output()) {
     if (t.get()->is_big()) {
-      ir::Addr addr = iter.template read<ir::Addr>();
+      ir::addr_t addr = iter.template read<ir::addr_t>();
       values.push_back(ir::Value(addr));
     } else if (t.is<type::GenericStruct>()) {
       values.push_back(ir::Value(t));
     } else {
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
                  ir::GenericFn, interface::Interface>(t, [&]<typename T>() {
         T val = iter.template read<T>();
         values.push_back(ir::Value(val));

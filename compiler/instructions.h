@@ -79,7 +79,7 @@ bool Compare(::type::Type t) {
     return t == ::type::Type_;
   } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {
     return t.is<::type::Struct>();
-  } else if constexpr (base::meta<T> == base::meta<ir::Addr>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::addr_t>) {
     return t.is<::type::Pointer>() or t == type::NullPtr;
   } else if constexpr (base::meta<T> == base::meta<ir::Scope>) {
     return t == ::type::Scope;

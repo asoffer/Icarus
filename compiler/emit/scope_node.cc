@@ -26,14 +26,14 @@ namespace {
 ir::Reg RegisterReferencing(ir::Builder& builder, type::Type t,
                             ir::Value value) {
   if (t.is_big()) {
-    return builder.CurrentBlock()->Append(ir::RegisterInstruction<ir::Addr>{
-        .operand = value.get<ir::RegOr<ir::Addr>>(),
+    return builder.CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
+        .operand = value.get<ir::RegOr<ir::addr_t>>(),
         .result  = builder.CurrentGroup()->Reserve(),
     });
   } else {
     return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
                       uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                      type::Type, ir::Addr, ir::ModuleId, ir::Scope, ir::Fn,
+                      type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
                       ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
         t, [&]<typename T>() {
           return builder.CurrentBlock()->Append(ir::RegisterInstruction<T>{
@@ -223,19 +223,19 @@ void SetBeforeBlockPhi(
   for (auto const &param : param_qts) {
     auto t = before_block.fn.type()->params()[i].value.type();
     if (t.is_big()) {
-      ir::PhiInstruction<ir::Addr> *phi =
-          inserted ? c.builder().PhiInst<ir::Addr>()
+      ir::PhiInstruction<ir::addr_t> *phi =
+          inserted ? c.builder().PhiInst<ir::addr_t>()
                    : &c.builder()
                           .CurrentBlock()
                           ->instructions()[i]
-                          .template as<ir::PhiInstruction<ir::Addr>>();
+                          .template as<ir::PhiInstruction<ir::addr_t>>();
       if (inserted) { phis.push_back(ir::Value(phi->result)); }
       phi->add(incoming_block,
-               prepared_arguments[i].get<ir::RegOr<ir::Addr>>());
+               prepared_arguments[i].get<ir::RegOr<ir::addr_t>>());
     } else {
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
                  ir::GenericFn, interface::Interface>(t, [&]<typename T>() {
         ir::PhiInstruction<T> *phi =
             inserted ? c.builder().PhiInst<T>()
@@ -415,7 +415,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
       auto reg = builder().CurrentGroup()->Reserve();
       if (type.is_big()) {
         reg =
-            builder().CurrentBlock()->Append(ir::RegisterInstruction<ir::Addr>{
+            builder().CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
                 .operand = builder().addr(&ids[0]),
                 .result  = reg,
             });
@@ -434,7 +434,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
       if (not t.is_big()) {
         ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                    uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                   ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
+                   ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
                    ir::Block, ir::GenericFn, interface::Interface>(
             t, [&]<typename T>() {
               builder().Store(ir::RegOr<T>(out_params[i]),
@@ -453,20 +453,20 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
 
 void Compiler::EmitCopyInit(
     ast::ScopeNode const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   // TODO: Implement this properly.
   EmitCopyAssign(node, to);
 }
 
 void Compiler::EmitMoveInit(
     ast::ScopeNode const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   // TODO: Implement this properly.
   EmitMoveAssign(node, to);
 }
 void Compiler::EmitCopyAssign(
     ast::ScopeNode const *node,
-   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+   absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   // TODO: Implement this properly.
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
@@ -475,7 +475,7 @@ void Compiler::EmitCopyAssign(
 
 void Compiler::EmitMoveAssign(
     ast::ScopeNode const *node,
-   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+   absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   // TODO: Implement this properly.
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);

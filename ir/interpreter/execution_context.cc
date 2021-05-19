@@ -17,7 +17,7 @@ void ExtractReturnValue(ExecutionContext& ctx, ffi_arg *ret, StackFrame &frame) 
   using ffi_ret_type = std::conditional_t<PromotesToInt, int, T>;
   ffi_ret_type value;
   std::memcpy(&value, ret, sizeof(value));
-  ctx.Store(frame.regs_.get<ir::Addr>(ir::Reg::Out(0)), static_cast<T>(value));
+  ctx.Store(frame.regs_.get<ir::addr_t>(ir::Reg::Out(0)), static_cast<T>(value));
 }
 
 ffi_type *ToFfiType(type::Type t) {
@@ -44,8 +44,7 @@ ffi_type *ToFfiType(type::Type t) {
 
 // TODO return slot is always small enough that we should be able to use a
 // stack-allocated buffer for this.
-void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame,
-                              base::untyped_buffer_view stack) {
+void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
   type::Function const *fn_type = f.type();
   LOG("CallFn", "Calling %s: %s", f, fn_type->to_string());
 
@@ -57,7 +56,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame,
 
   // Note: libffi expects a void*[] for its arguments but we can't just take
   // pointers into `frame` when the arguments are in a different format (e.g.,
-  // when they are pointers and therefore stored as ir::Addr rather than
+  // when they are pointers and therefore stored as ir::addr_t rather than
   // void*). So we extract those values appropriately and store them here so
   // that we can take a pointer into `pointer_values`.
   std::vector<void const *> pointer_values;
@@ -74,22 +73,11 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame,
     // elements are stable.
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
-      ir::Addr addr = frame.regs_.get<ir::Addr>(ir::Reg::Arg(i));
+      ir::addr_t addr = frame.regs_.get<ir::addr_t>(ir::Reg::Arg(i));
 
       LOG("CallFn", "Pushing pointer addr = %s stored in %s", addr,
           ir::Reg::Arg(i));
-      switch (addr.kind()) {
-        case ir::Addr::Kind::Heap: {
-          pointer_values.push_back(addr.heap());
-        } break;
-        case ir::Addr::Kind::Stack: {
-          pointer_values.push_back(stack.raw(addr.stack()));
-        } break;
-        case ir::Addr::Kind::ReadOnly: {
-          void *ptr = ir::ReadOnlyData.lock()->raw(addr.rodata());
-          pointer_values.push_back(ptr);
-        } break;
-      }
+      pointer_values.push_back(addr);
       arg_vals.push_back(&pointer_values.back());
     } else {
       // TODO: This is sufficient for integer types where we've written the
@@ -139,20 +127,9 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame,
   } else if (out_type == type::F64) {
     ExtractReturnValue<double>(*this, &ret, frame);
   } else if (out_type.is<type::Pointer>()) {
-    char *ptr;
+    ir::addr_t ptr;
     std::memcpy(&ptr, &ret, sizeof(ptr));
-    ir::Addr addr;
-    uintptr_t ptr_int    = reinterpret_cast<uintptr_t>(ptr);
-    uintptr_t stack_head = reinterpret_cast<uintptr_t>(stack.raw(0));
-    uintptr_t stack_end  = stack_head + stack.size();
-    if (stack_head <= ptr_int and ptr_int < stack_end) {
-      addr = ir::Addr::Stack(ptr_int - stack_head);
-    } else {
-      // TODO: read-only data?
-      addr = ir::Addr::Heap(ptr);
-    }
-
-    Store(frame.regs_.get<ir::Addr>(ir::Reg::Out(0)), addr);
+    Store(frame.regs_.get<ir::addr_t>(ir::Reg::Out(0)), ptr);
   } else {
     UNREACHABLE(out_type);
   }
@@ -162,14 +139,14 @@ void ExecutionContext::CallFn(ir::BuiltinFn fn, StackFrame &frame) {
   switch (fn.which()) {
     case ir::BuiltinFn::Which::Alignment: {
       type::Type type = frame.regs_.get<type::Type>(ir::Reg::Arg(0));
-      auto out        = frame.regs_.get<ir::Addr>(ir::Reg::Out(0));
-      *static_cast<uint64_t *>(ASSERT_NOT_NULL(out.heap())) =
+      auto out        = frame.regs_.get<ir::addr_t>(ir::Reg::Out(0));
+      *reinterpret_cast<uint64_t *>(ASSERT_NOT_NULL(out)) =
           type.alignment(kArchitecture).value();
     } break;
     case ir::BuiltinFn::Which::Bytes: {
       type::Type type = frame.regs_.get<type::Type>(ir::Reg::Arg(0));
-      auto out        = frame.regs_.get<ir::Addr>(ir::Reg::Out(0));
-      *static_cast<uint64_t *>(ASSERT_NOT_NULL(out.heap())) =
+      auto out        = frame.regs_.get<ir::addr_t>(ir::Reg::Out(0));
+      *reinterpret_cast<uint64_t *>(ASSERT_NOT_NULL(out)) =
           type.bytes(kArchitecture).value();
     } break;
     default: NOT_YET();
@@ -177,22 +154,9 @@ void ExecutionContext::CallFn(ir::BuiltinFn fn, StackFrame &frame) {
 
 }
 
-void ExecutionContext::Load(ir::Reg result, ir::Addr addr,
+void ExecutionContext::Load(ir::Reg result, ir::addr_t addr,
                             core::Bytes num_bytes) {
-  switch (addr.kind()) {
-    case ir::Addr::Kind::Stack: {
-      current_frame().regs_.set_raw(result, stack_.raw(addr.stack()),
-                                    num_bytes.value());
-    } break;
-    case ir::Addr::Kind::ReadOnly: {
-      auto handle = ir::ReadOnlyData.lock();
-      current_frame().regs_.set_raw(result, handle->raw(addr.rodata()),
-                                    num_bytes.value());
-    } break;
-    case ir::Addr::Kind::Heap: {
-      current_frame().regs_.set_raw(result, addr.heap(), num_bytes.value());
-    } break;
-  }
+  current_frame().regs_.set_raw(result, addr, num_bytes.value());
 }
 
 }  // namespace interpreter

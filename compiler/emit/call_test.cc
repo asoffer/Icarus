@@ -156,7 +156,7 @@ TEST(CallTest, Foreign) {
     auto result =
         mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
     ASSERT_TRUE(result);
-    EXPECT_EQ(*result, ir::Value(ir::Addr::Heap(ForeignFunctionPtr())));
+    EXPECT_EQ(*result, ir::Value(ir::Addr(ForeignFunctionPtr())));
   }
 
   {

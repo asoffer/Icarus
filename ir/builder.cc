@@ -2,9 +2,9 @@
 
 #include <memory>
 
-#include "type/array.h"
 #include "absl/strings/str_cat.h"
 #include "ir/blocks/group.h"
+#include "type/array.h"
 
 namespace ir {
 
@@ -46,7 +46,7 @@ Reg Builder::TmpAlloca(type::Type t) {
 
 ir::OutParams Builder::OutParams(
     absl::Span<type::Type const> types,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<addr_t>> const> to) {
   std::vector<Reg> regs;
   regs.reserve(types.size());
   for (size_t i = 0; i < types.size(); ++i) {
@@ -125,12 +125,12 @@ void Builder::JumpExitJump(std::string name, BasicBlock *choose_block) {
   CurrentBlock()->set_jump(JumpCmd::JumpExit(std::move(name), choose_block));
 }
 
-void Builder::Move(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from) {
+void Builder::Move(type::Typed<RegOr<addr_t>> to, type::Typed<Reg> from) {
   CurrentBlock()->Append(
       ir::MoveInstruction{.type = to.type(), .from = *from, .to = *to});
 }
 
-void Builder::Copy(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from) {
+void Builder::Copy(type::Typed<RegOr<addr_t>> to, type::Typed<Reg> from) {
   CurrentBlock()->Append(
       ir::CopyInstruction{.type = to.type(), .from = *from, .to = *to});
 }
@@ -149,7 +149,7 @@ Reg Builder::Bytes(RegOr<type::Type> r) {
                           .result = CurrentGroup()->Reserve()});
 }
 
-Reg Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
+Reg Builder::PtrIncr(RegOr<addr_t> ptr, RegOr<int64_t> inc,
                      type::Pointer const *t) {
   auto &cache = CurrentBlock()->offset_cache();
   if (auto result = cache.get(ptr, inc, OffsetCache::Kind::Passed)) {
@@ -161,7 +161,7 @@ Reg Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
       .addr = ptr, .index = inc, .ptr = t, .result = result});
 }
 
-type::Typed<Reg> Builder::FieldRef(RegOr<Addr> r, type::Struct const *t,
+type::Typed<Reg> Builder::FieldRef(RegOr<addr_t> r, type::Struct const *t,
                                    int64_t n) {
   auto &cache = CurrentBlock()->offset_cache();
   if (auto result = cache.get(r, n, OffsetCache::Kind::Into)) {

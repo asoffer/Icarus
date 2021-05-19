@@ -112,14 +112,14 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         return ir::Value(builder().PtrIncr(
-            lhs_ir.get<ir::RegOr<ir::Addr>>(),
+            lhs_ir.get<ir::RegOr<ir::addr_t>>(),
             builder().CastTo<int64_t>(type::Typed<ir::Value>(rhs_ir, rhs_type)),
             lhs_buf_ptr_type));
       } else if (auto const *rhs_buf_ptr_type =
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
         return ir::Value(builder().PtrIncr(
-            rhs_ir.get<ir::RegOr<ir::Addr>>(),
+            rhs_ir.get<ir::RegOr<ir::addr_t>>(),
             builder().CastTo<int64_t>(type::Typed<ir::Value>(lhs_ir, lhs_type)),
             rhs_buf_ptr_type));
       }
@@ -140,7 +140,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         return ir::Value(
-            builder().PtrIncr(lhs_ir.get<ir::RegOr<ir::Addr>>(),
+            builder().PtrIncr(lhs_ir.get<ir::RegOr<ir::addr_t>>(),
                               builder().Neg(builder().CastTo<int64_t>(
                                   type::Typed<ir::Value>(rhs_ir, rhs_type))),
                               lhs_buf_ptr_type));
@@ -148,15 +148,15 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
         return ir::Value(
-            builder().PtrIncr(rhs_ir.get<ir::RegOr<ir::Addr>>(),
+            builder().PtrIncr(rhs_ir.get<ir::RegOr<ir::addr_t>>(),
                               builder().Neg(builder().CastTo<int64_t>(
                                   type::Typed<ir::Value>(lhs_ir, lhs_type))),
                               rhs_buf_ptr_type));
       } else if (auto const *buf_ptr = lhs_type.if_as<type::BufferPointer>();
                  lhs_type == rhs_type and buf_ptr) {
         return ir::Value(current_block()->Append(ir::PtrDiffInstruction{
-            .lhs          = lhs_ir.get<ir::RegOr<ir::Addr>>(),
-            .rhs          = rhs_ir.get<ir::RegOr<ir::Addr>>(),
+            .lhs          = lhs_ir.get<ir::RegOr<ir::addr_t>>(),
+            .rhs          = rhs_ir.get<ir::RegOr<ir::addr_t>>(),
             .pointee_type = buf_ptr->pointee(),
             .result       = builder().CurrentGroup()->Reserve()}));
       }
@@ -299,8 +299,8 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
-        builder().Store<ir::RegOr<ir::Addr>>(
-            builder().PtrIncr(builder().Load<ir::Addr>(lhs_lval),
+        builder().Store<ir::RegOr<ir::addr_t>>(
+            builder().PtrIncr(builder().Load<ir::addr_t>(lhs_lval),
                               builder().CastTo<int64_t>(
                                   type::Typed<ir::Value>(rhs_ir, rhs_type)),
                               lhs_buf_ptr_type),
@@ -326,8 +326,8 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
-        builder().Store<ir::RegOr<ir::Addr>>(
-            builder().PtrIncr(builder().Load<ir::Addr>(lhs_lval),
+        builder().Store<ir::RegOr<ir::addr_t>>(
+            builder().PtrIncr(builder().Load<ir::addr_t>(lhs_lval),
                               builder().Neg(builder().CastTo<int64_t>(
                                   type::Typed<ir::Value>(rhs_ir, rhs_type))),
                               lhs_buf_ptr_type),
@@ -398,37 +398,37 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
 
 void Compiler::EmitCopyInit(
     ast::BinaryOperator const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
+  EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
                  type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 void Compiler::EmitMoveInit(
     ast::BinaryOperator const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
+  EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
                  type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 void Compiler::EmitMoveAssign(
     ast::BinaryOperator const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
+  EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
                  type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 void Compiler::EmitCopyAssign(
     ast::BinaryOperator const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
+  EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
                  type::Typed<ir::Value>(EmitValue(node), t));
 }
 

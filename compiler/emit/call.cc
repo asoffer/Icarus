@@ -31,13 +31,13 @@ ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
 
       // TODO: These have the wrong types, or at least these types are not the
       // types of the values held, but that's what's expected by EmitMoveAssign.
-      type::Typed<ir::RegOr<ir::Addr>> data(
+      type::Typed<ir::RegOr<ir::addr_t>> data(
           c.current_block()->Append(type::SliceDataInstruction{
               .slice  = slice,
               .result = c.builder().CurrentGroup()->Reserve(),
           }),
           type::BufPtr(slice_type->data_type()));
-      type::Typed<ir::RegOr<ir::Addr>> length(
+      type::Typed<ir::RegOr<ir::addr_t>> length(
           c.current_block()->Append(type::SliceLengthInstruction{
               .slice  = slice,
               .result = c.builder().CurrentGroup()->Reserve(),
@@ -62,8 +62,7 @@ ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       if (not maybe_foreign_type) { return ir::Value(); }
       auto slice = name_buffer.get<ir::Slice>(0);
 
-      std::string name(ir::ReadOnlyData.lock()->raw(slice.data().rodata()),
-                       slice.length());
+      std::string name(slice.data(), slice.length());
       return ir::Value(c.current_block()->Append(ir::LoadSymbolInstruction{
           .name   = std::move(name),
           .type   = *maybe_foreign_type,
@@ -158,7 +157,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   // TODO: It'd be nice to not stack-allocate register-sized values.
-  std::vector<type::Typed<ir::RegOr<ir::Addr>>> outs;
+  std::vector<type::Typed<ir::RegOr<ir::addr_t>>> outs;
   outs.reserve(qts.size());
   for (type::QualType const &qt : qts) {
     outs.emplace_back(builder().TmpAlloca(qt.type()), qt.type());
@@ -174,7 +173,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
 
 void Compiler::EmitMoveInit(
     ast::Call const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(*this, b, node->arguments());
     if (result.empty()) return;
@@ -209,7 +208,7 @@ void Compiler::EmitMoveInit(
 
 void Compiler::EmitCopyInit(
     ast::Call const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(*this, b, node->arguments());
     if (result.empty()) return;
@@ -244,7 +243,7 @@ void Compiler::EmitCopyInit(
 
 void Compiler::EmitMoveAssign(
     ast::Call const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(*this, b, node->arguments());
     if (result.empty()) return;
@@ -279,7 +278,7 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitCopyAssign(
     ast::Call const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(*this, b, node->arguments());
     if (result.empty()) return;

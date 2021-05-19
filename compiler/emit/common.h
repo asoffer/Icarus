@@ -59,7 +59,7 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
 void EmitCall(Compiler &compiler, ast::Expression const *callee,
               core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
               absl::Span<ast::Call::Argument const> arg_exprs,
-              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
+              absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to);
 
 }  // namespace compiler
 

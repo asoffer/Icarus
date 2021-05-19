@@ -36,13 +36,13 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
     auto const *expr    = node->exprs()[i];
     type::Type ret_type = fn_type.output()[i];
     if (ret_type.is_big()) {
-      type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
-          ir::RegOr<ir::Addr>(ir::Reg::Out(i)), ret_type);
+      type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
+          ir::RegOr<ir::addr_t>(ir::Reg::Out(i)), ret_type);
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
                  ir::GenericFn,
                  interface::Interface>(ret_type, [&]<typename T>() {
         auto value = EmitValue(expr).get<ir::RegOr<T>>();

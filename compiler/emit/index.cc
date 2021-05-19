@@ -11,9 +11,9 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
   }
 
   if (auto const *s = qt.type().if_as<type::Slice>()) {
-    auto data = builder().Load<ir::Addr>(
+    auto data = builder().Load<ir::addr_t>(
         current_block()->Append(type::SliceDataInstruction{
-            .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::Addr>>(),
+            .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::addr_t>>(),
             .result = builder().CurrentGroup()->Reserve(),
         }),
         type::BufPtr(s->data_type()));
@@ -62,9 +62,9 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
     return builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(), index,
                              type::Ptr(buf_ptr_type->pointee()));
   } else if (auto const *s = lhs_type.if_as<type::Slice>()) {
-    auto data = builder().Load<ir::Addr>(
+    auto data = builder().Load<ir::addr_t>(
         current_block()->Append(type::SliceDataInstruction{
-            .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::Addr>>(),
+            .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::addr_t>>(),
             .result = builder().CurrentGroup()->Reserve(),
         }),
         type::BufPtr(s->data_type()));
@@ -80,7 +80,7 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
 // TODO: Unit tests
 void Compiler::EmitMoveInit(
     ast::Index const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
@@ -88,7 +88,7 @@ void Compiler::EmitMoveInit(
 
 void Compiler::EmitCopyInit(
     ast::Index const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
@@ -96,7 +96,7 @@ void Compiler::EmitCopyInit(
 
 void Compiler::EmitCopyAssign(
     ast::Index const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
@@ -104,7 +104,7 @@ void Compiler::EmitCopyAssign(
 
 void Compiler::EmitMoveAssign(
     ast::Index const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));

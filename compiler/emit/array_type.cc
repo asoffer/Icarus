@@ -22,28 +22,28 @@ ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
 
 void Compiler::EmitCopyAssign(
     ast::ArrayType const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
 }
 
 void Compiler::EmitMoveAssign(
     ast::ArrayType const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
 }
 
 void Compiler::EmitCopyInit(
     ast::ArrayType const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
 }
 
 void Compiler::EmitMoveInit(
     ast::ArrayType const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
 }

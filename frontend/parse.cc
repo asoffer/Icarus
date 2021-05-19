@@ -1829,7 +1829,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
         case l_paren: {
           if (get_type<1>() & (kw_struct | kw_block_head)) {
             return ShiftState::NeedMore;
-          } else if ((get_type<1>() & EXPR) and
+          } else if (node_stack_.size() >= 2 and (get_type<1>() & EXPR) and
                      get_type<2>() & (sop_l | sop_lt)) {
             return ShiftState::NeedMore;
           }

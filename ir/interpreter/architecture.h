@@ -9,8 +9,8 @@ namespace interpreter {
 
 // `kArchitecture` is the constant defining the architecture for the
 // interpreter. It may be different from the host architecture because, for
-// example, it uses `ir::Addr` as its pointer type rather than `void *`.
-inline constexpr auto kArchitecture = core::Arch::Get<ir::Addr, ir::Fn>();
+// example, it uses `ir::addr_t` as its pointer type rather than `void *`.
+inline constexpr auto kArchitecture = core::Arch::Get<ir::addr_t, ir::Fn>();
 
 }  // namespace interpreter
 

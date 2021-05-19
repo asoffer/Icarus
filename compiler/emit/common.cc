@@ -68,7 +68,7 @@ ir::Fn InsertGeneratedMoveInit(
 
 ir::OutParams SetReturns(
     ir::Builder &bldr, type::Type type,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *fn_type = type.if_as<type::Function>()) {
     return bldr.OutParams(fn_type->output(), to);
   } else if (type.is<type::GenericFunction>()) {
@@ -139,7 +139,7 @@ ir::Fn InsertGeneratedMoveAssign(
             .struct_type = s,
             .result      = c.builder().CurrentGroup()->Reserve()});
         c.EmitMoveAssign(
-            type::Typed<ir::RegOr<ir::Addr>>(to_ref,
+            type::Typed<ir::RegOr<ir::addr_t>>(to_ref,
                                              ir_fields[i].type().value()),
             type::Typed<ir::Value>(ir::Value(c.builder().PtrFix(
                                        from_ref, ir_fields[i].type().value())),
@@ -175,7 +175,7 @@ ir::Fn InsertGeneratedCopyAssign(
             .struct_type = s,
             .result      = c.builder().CurrentGroup()->Reserve()});
         c.EmitCopyAssign(
-            type::Typed<ir::RegOr<ir::Addr>>(to_ref,
+            type::Typed<ir::RegOr<ir::addr_t>>(to_ref,
                                              ir_fields[i].type().value()),
             type::Typed<ir::Value>(ir::Value(c.builder().PtrFix(
                                        from_ref, ir_fields[i].type().value())),
@@ -206,7 +206,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler &c, ast::Expression const *fn,
       return c.builder().Load<ir::Fn>(c.builder().addr(&fn_decl->ids()[0]));
     } else {
       return c.builder().Load<ir::Fn>(
-          c.EmitValue(fn).get<ir::RegOr<ir::Addr>>(), f_type);
+          c.EmitValue(fn).get<ir::RegOr<ir::addr_t>>(), f_type);
     }
   }
 }
@@ -524,7 +524,7 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
         } else {
           auto reg = compiler.builder().TmpAlloca(arg_type);
           compiler.EmitMoveInit(
-              expr, {type::Typed<ir::RegOr<ir::Addr>>(reg, arg_type)});
+              expr, {type::Typed<ir::RegOr<ir::addr_t>>(reg, arg_type)});
           return ir::Value(reg);
         }
       } else {
@@ -549,7 +549,7 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
                               type::Typed<ir::Value>(constant, arg_type));
         return ir::Value(reg);
       } else if (arg_type == type::NullPtr) {
-        return ir::Value(ir::Addr::Null());
+        return ir::Value(ir::Null());
       } else {
         NOT_YET(arg_qt, " vs ", param_qt);
       }
@@ -650,7 +650,7 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
 void EmitCall(Compiler &compiler, ast::Expression const *callee,
               core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
               absl::Span<ast::Call::Argument const> arg_exprs,
-              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+              absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   CompiledModule *callee_mod = &callee->scope()
                                     ->Containing<ast::ModuleScope>()
                                     ->module()

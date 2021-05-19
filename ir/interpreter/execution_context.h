@@ -83,22 +83,13 @@ struct ExecutionContext {
   // Stores the given `value` into the given location expressed by `addr`. The
   // value must be register-sized.
   template <typename T>
-  void Store(ir::Addr addr, T const &value) {
-    switch (addr.kind()) {
-      case ir::Addr::Kind::Stack: stack_.set(addr.stack(), value); break;
-      case ir::Addr::Kind::ReadOnly:
-        NOT_YET(
-            "Storing into read-only data seems suspect. Is it just for "
-            "initialization?");
-        break;
-      case ir::Addr::Kind::Heap:
-        *ASSERT_NOT_NULL(static_cast<T *>(addr.heap())) = value;
-    }
+  void Store(ir::addr_t addr, T const &value) {
+    *ASSERT_NOT_NULL(reinterpret_cast<T *>(addr)) = value;
   }
 
   // Loads `num_bytes` bytes starting at `addr` and stores the result into
   // `result`.
-  void Load(ir::Reg result, ir::Addr addr, core::Bytes num_bytes);
+  void Load(ir::Reg result, ir::addr_t addr, core::Bytes num_bytes);
 
   // Reads the value stored in `r` assuming it has type `T`. Behavior is
   // undefined if the value stored in the register is of another type.
@@ -118,20 +109,14 @@ struct ExecutionContext {
   template <typename InstSet>
   void Execute(ir::Fn fn, StackFrame &frame) {
     switch (fn.kind()) {
-      case ir::Fn::Kind::Native: {
-        CallFn<InstSet>(fn.native(), frame);
-      } break;
-      case ir::Fn::Kind::Builtin: {
-        CallFn(fn.builtin(), frame);
-      } break;
-      case ir::Fn::Kind::Foreign: {
-        CallFn(fn.foreign(), frame, stack());
-      } break;
+      case ir::Fn::Kind::Native: CallFn<InstSet>(fn.native(), frame); break;
+      case ir::Fn::Kind::Builtin: CallFn(fn.builtin(), frame); break;
+      case ir::Fn::Kind::Foreign: CallFn(fn.foreign(), frame); break;
     }
   }
 
-  base::untyped_buffer_view stack() const & { return stack_; }
-  base::untyped_buffer &stack() & { return stack_; }
+  Stack const &stack() const & { return stack_; }
+  Stack &stack() & { return stack_; }
 
  private:
   template <typename InstSet>
@@ -143,8 +128,7 @@ struct ExecutionContext {
 
   static void CallFn(ir::BuiltinFn fn, StackFrame &frame);
 
-  void CallFn(ir::ForeignFn f, StackFrame &frame,
-              base::untyped_buffer_view arguments);
+  void CallFn(ir::ForeignFn f, StackFrame &frame);
 
   template <typename InstSet>
   void ExecuteBlocks() {
@@ -168,7 +152,7 @@ struct ExecutionContext {
         } break;
         case ir::LoadInstruction::kIndex: {
           uint16_t num_bytes = iter.read<uint16_t>();
-          ir::Addr addr      = resolve(iter.read<ir::RegOr<ir::Addr>>().get());
+          ir::addr_t addr      = resolve(iter.read<ir::RegOr<ir::addr_t>>().get());
           auto result_reg    = iter.read<ir::Reg>().get();
           Load(result_reg, addr, core::Bytes(num_bytes));
         } break;
@@ -237,9 +221,8 @@ struct ExecutionContext {
         for (uint16_t i = 0; i < num_rets; ++i) {
           ir::Reg reg  = iter->read<ir::Reg>();
           type::Type t = fn_type->output()[i];
-          ir::Addr out_addr =
-              t.is_big() ? ctx.resolve<ir::Addr>(reg)
-                         : ir::Addr::Heap(ctx.current_frame().regs_.raw(reg));
+          ir::addr_t out_addr = t.is_big() ? ctx.resolve<ir::addr_t>(reg)
+                                           : ctx.current_frame().regs_.raw(reg);
           LOG("CallInstruction", "  %s: [%s]", ir::Reg::Out(i), out_addr);
           frame.regs_.set(ir::Reg::Out(i), out_addr);
         }
@@ -268,10 +251,9 @@ struct ExecutionContext {
           base::meta<Inst>.template is_a<ir::SetReturnInstruction>()) {
         using type        = typename Inst::type;
         uint16_t n        = iter->read<uint16_t>();
-        ir::Addr ret_slot = ctx.resolve<ir::Addr>(ir::Reg::Out(n));
+        ir::addr_t ret_slot = ctx.resolve<ir::addr_t>(ir::Reg::Out(n));
         type val          = ctx.resolve(iter->read<ir::RegOr<type>>().get());
-        ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
-        *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
+        *ASSERT_NOT_NULL(reinterpret_cast<type *>(ret_slot)) = val;
       } else if constexpr (internal_execution::HasResolveMemberFunction<Inst>) {
         auto inst = Inst::ReadFromByteCode(iter);
         std::apply([&](auto &... fields) { (ctx.ResolveField(fields), ...); },
@@ -295,7 +277,7 @@ struct ExecutionContext {
     return {GetInstruction<InstSet, Insts>()...};
   }
 
-  base::untyped_buffer stack_;
+  Stack stack_;
   StackFrame *current_frame_ = nullptr;
 };
 

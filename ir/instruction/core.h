@@ -34,7 +34,7 @@ struct LoadInstruction
   }
 
   type::Type type;
-  RegOr<Addr> addr;
+  RegOr<addr_t> addr;
   Reg result;
 };
 
@@ -127,7 +127,7 @@ struct StoreInstruction
   }
 
   RegOr<T> value;
-  RegOr<Addr> location;
+  RegOr<addr_t> location;
 };
 
 struct CallInstruction {

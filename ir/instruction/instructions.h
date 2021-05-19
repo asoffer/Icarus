@@ -72,11 +72,11 @@ struct PtrDiffInstruction
   void Apply(interpreter::ExecutionContext& ctx) const {
     ctx.current_frame().regs_.set(
         result, (ctx.resolve(lhs) - ctx.resolve(rhs)) /
-                    pointee_type.bytes(interpreter::kArchitecture));
+                    pointee_type.bytes(interpreter::kArchitecture).value());
   }
 
-  RegOr<Addr> lhs;
-  RegOr<Addr> rhs;
+  RegOr<addr_t> lhs;
+  RegOr<addr_t> rhs;
   type::Type pointee_type;
   Reg result;
 };
@@ -122,13 +122,13 @@ struct InitInstruction
     if (auto* s = type.if_as<type::Struct>()) {
       ir::Fn f   = *s->init_;
       interpreter::StackFrame frame(f.native(), ctx.stack());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
       return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f   = a->Initializer();
       interpreter::StackFrame frame(f.native(), ctx.stack());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
       return frame;
 
     } else {
@@ -147,7 +147,7 @@ struct DestroyInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
+    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
     return frame;
   }
 
@@ -175,14 +175,14 @@ struct CopyInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
-    frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(to));
+    frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::addr_t>(from));
     return frame;
   }
 
   type::Type type;
-  ir::RegOr<ir::Addr> from;
-  ir::RegOr<ir::Addr> to;
+  ir::RegOr<ir::addr_t> from;
+  ir::RegOr<ir::addr_t> to;
 
  private:
   ir::Fn function() const {
@@ -203,14 +203,14 @@ struct CopyInitInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-    frame.regs_.set(ir::Reg::Out(0), ctx.resolve<ir::Addr>(to));
+    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(from));
+    frame.regs_.set(ir::Reg::Out(0), ctx.resolve<ir::addr_t>(to));
     return frame;
   }
 
   type::Type type;
-  ir::RegOr<ir::Addr> from;
-  ir::RegOr<ir::Addr> to;
+  ir::RegOr<ir::addr_t> from;
+  ir::RegOr<ir::addr_t> to;
 
  private:
   ir::Fn function() const {
@@ -231,14 +231,14 @@ struct MoveInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
-    frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(to));
+    frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::addr_t>(from));
     return frame;
   }
 
   type::Type type;
-  ir::RegOr<ir::Addr> from;
-  ir::RegOr<ir::Addr> to;
+  ir::RegOr<ir::addr_t> from;
+  ir::RegOr<ir::addr_t> to;
 
  private:
   ir::Fn function() const {
@@ -259,14 +259,14 @@ struct MoveInitInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(from));
-    frame.regs_.set(ir::Reg::Out(0), ctx.resolve<ir::Addr>(to));
+    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(from));
+    frame.regs_.set(ir::Reg::Out(0), ctx.resolve<ir::addr_t>(to));
     return frame;
   }
 
   type::Type type;
-  ir::RegOr<ir::Addr> from;
-  ir::RegOr<ir::Addr> to;
+  ir::RegOr<ir::addr_t> from;
+  ir::RegOr<ir::addr_t> to;
 
  private:
   ir::Fn function() const {
@@ -311,7 +311,7 @@ struct LoadSymbolInstruction
     } else if (type.is<type::Pointer>()) {
       absl::StatusOr<void*> sym = interpreter::LoadDataSymbol(name);
       if (not sym.ok()) { FatalInterpreterError(sym.status().message()); }
-      ctx.current_frame().regs_.set(result, ir::Addr::Heap(*sym));
+      ctx.current_frame().regs_.set(result, ir::Addr(*sym));
     } else {
       UNREACHABLE(type.to_string());
     }
@@ -408,12 +408,13 @@ struct StructIndexInstruction
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (struct %3$s)";
 
-  Addr Resolve() const {
+  addr_t Resolve() const {
     return addr.value() +
-           struct_type->offset(index.value(), interpreter::kArchitecture);
+           struct_type->offset(index.value(), interpreter::kArchitecture)
+               .value();
   }
 
-  RegOr<Addr> addr;
+  RegOr<addr_t> addr;
   RegOr<int64_t> index;
   ::type::Struct const* struct_type;
   Reg result;
@@ -425,15 +426,16 @@ struct PtrIncrInstruction
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (pointer %3$s)";
 
-  Addr Resolve() const {
+  addr_t Resolve() const {
     return addr.value() +
-           core::FwdAlign(
-               ptr->pointee().bytes(interpreter::kArchitecture),
-               ptr->pointee().alignment(interpreter::kArchitecture)) *
-               index.value();
+           (core::FwdAlign(
+                ptr->pointee().bytes(interpreter::kArchitecture),
+                ptr->pointee().alignment(interpreter::kArchitecture)) *
+            index.value())
+               .value();
   }
 
-  RegOr<Addr> addr;
+  RegOr<addr_t> addr;
   RegOr<int64_t> index;
   ::type::Pointer const* ptr;
   Reg result;

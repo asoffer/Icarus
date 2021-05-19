@@ -3,26 +3,6 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "addr",
     hdrs = ["addr.h"],
-    srcs = ["addr.cc"],
-    deps = [
-        "//base:log",
-        "//core:alignment",
-        "//core:arch",
-        "//core:bytes",
-        "//base:debug",
-        "//base:extend",
-        "//base/extend:absl_hash",
-        "//base/extend:compare",
-    ],
-)
-
-cc_test(
-    name = "addr_test",
-    srcs = ["addr_test.cc"],
-    deps = [
-        ":addr",
-        "@com_google_googletest//:gtest_main",
-    ],
 )
 
 cc_library(
@@ -148,7 +128,10 @@ cc_library(
 cc_library(
     name = "label",
     hdrs = ["label.h"],
-    deps = ["//base:extend"],
+    deps = [
+        "//base:extend",
+        "//base/extend:absl_hash",
+    ],
 )
 
 cc_library(

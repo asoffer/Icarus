@@ -6,7 +6,7 @@ namespace compiler {
 
 void Compiler::EmitCopyInit(
     ast::Cast const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
@@ -14,10 +14,10 @@ void Compiler::EmitCopyInit(
 
 void Compiler::EmitMoveInit(
     ast::Cast const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
+  EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
                  type::Typed<ir::Value>(EmitValue(node), t));
 }
 
@@ -57,7 +57,7 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
       });
     }
   } else if (from_type == type::NullPtr) {
-    return ir::Value(ir::Addr::Null());
+    return ir::Value(ir::Null());
   } else if (auto const *enum_type = from_type.if_as<type::Enum>()) {
     return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                       uint32_t, uint64_t>(to_type, [&]<typename T>() {
@@ -77,7 +77,7 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
 
 void Compiler::EmitMoveAssign(
     ast::Cast const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
@@ -85,7 +85,7 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitCopyAssign(
     ast::Cast const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));

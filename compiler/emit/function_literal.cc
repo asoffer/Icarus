@@ -55,7 +55,7 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
 
 void Compiler::EmitMoveInit(
     ast::FunctionLiteral const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
@@ -64,7 +64,7 @@ void Compiler::EmitMoveInit(
 
 void Compiler::EmitCopyInit(
     ast::FunctionLiteral const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
@@ -73,7 +73,7 @@ void Compiler::EmitCopyInit(
 
 void Compiler::EmitMoveAssign(
     ast::FunctionLiteral const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
@@ -82,7 +82,7 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitCopyAssign(
     ast::FunctionLiteral const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
@@ -120,7 +120,7 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
         if (out_decl->IsDefaultInitialized()) {
           EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
         } else {
-          EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(alloc, out_decl_type),
+          EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(alloc, out_decl_type),
                          type::Typed<ir::Value>(EmitValue(out_decl->init_val()),
                                                 out_decl_type));
         }

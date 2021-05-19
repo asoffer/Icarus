@@ -17,16 +17,16 @@ struct Slice : base::Extend<Slice, 2>::With<base::AbslFormatExtension,
   static constexpr std::string_view kAbslFormatString = "Slice(%s, %u)";
 
   Slice() = default;
-  explicit Slice(ir::Addr data, uint64_t length)
+  explicit Slice(ir::addr_t data, uint64_t length)
       : data_(data), length_(length) {}
 
-  Addr data() const { return data_; }
+  addr_t data() const { return data_; }
   uint64_t length() const { return length_; }
 
  private:
   friend base::EnableExtensions;
 
-  ir::Addr data_;
+  ir::addr_t data_;
   uint64_t length_;
 };
 

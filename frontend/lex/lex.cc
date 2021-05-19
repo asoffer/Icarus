@@ -311,7 +311,7 @@ Lexeme ConsumeWord(SourceLoc &cursor, SourceBuffer const &buffer) {
     return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(false)));
   } else if (word == "null") {
     return Lexeme(
-        std::make_unique<ast::Terminal>(range, ir::Value(ir::Addr::Null())));
+        std::make_unique<ast::Terminal>(range, ir::Value(ir::Null())));
   }
 
   if (auto iter = kReservedTypes->find(word); iter != kReservedTypes->end()) {

@@ -94,7 +94,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     } break;
     case ast::UnaryOperator::Kind::At: {
       return builder().Load(
-          EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+          EmitValue(node->operand()).get<ir::RegOr<ir::addr_t>>(),
           context().qual_types(node)[0].type());
     }
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));
@@ -103,7 +103,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
 
 void Compiler::EmitCopyInit(
     ast::UnaryOperator const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Init:
       EmitCopyInit(node->operand(), to);
@@ -133,7 +133,7 @@ void Compiler::EmitCopyInit(
 
 void Compiler::EmitMoveInit(
     ast::UnaryOperator const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Init:
       EmitMoveInit(node->operand(), to);
@@ -164,7 +164,7 @@ ir::Reg Compiler::EmitRef(ast::UnaryOperator const *node) {
 // TODO: Unit tests
 void Compiler::EmitCopyAssign(
     ast::UnaryOperator const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Init: {
       EmitCopyInit(node->operand(), to);
@@ -190,7 +190,7 @@ void Compiler::EmitCopyAssign(
 // TODO: Unit tests
 void Compiler::EmitMoveAssign(
     ast::UnaryOperator const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Init: {
       EmitMoveInit(node->operand(), to);

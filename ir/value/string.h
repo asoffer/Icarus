@@ -17,7 +17,7 @@ struct String {
   explicit String(char const* str);
   explicit String(std::string const& str);
 
-  Addr addr() const { return addr_; }
+  addr_t addr() const { return addr_; }
   Slice slice() const;
 
   std::string get() const;
@@ -34,7 +34,7 @@ struct String {
   friend std::ostream& operator<<(std::ostream& os, String s);
 
  private:
-  ir::Addr addr_;
+  ir::addr_t addr_;
 };
 
 }  // namespace ir

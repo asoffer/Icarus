@@ -11,7 +11,7 @@ namespace compiler {
 namespace {
 
 bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
-                                  type::Type t, ir::RegOr<ir::Addr> to) {
+                                  type::Type t, ir::RegOr<ir::addr_t> to) {
   if (auto const *enum_type = t.if_as<type::Enum>()) {
     c.builder().Store(ir::RegOr<type::Enum::underlying_type>(
                           *enum_type->EmitLiteral(node->member_name())),
@@ -28,16 +28,16 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
           c.builder().Load<type::Slice::length_t>(
               c.current_block()->Append(type::SliceLengthInstruction{
                   .slice =
-                      c.EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+                      c.EmitValue(node->operand()).get<ir::RegOr<ir::addr_t>>(),
                   .result = c.builder().CurrentGroup()->Reserve(),
               })),
           to);
     } else if (node->member_name() == "data") {
       c.builder().Store(
-          c.builder().Load<ir::Addr>(
+          c.builder().Load<ir::addr_t>(
               c.current_block()->Append(type::SliceDataInstruction{
                   .slice =
-                      c.EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+                      c.EmitValue(node->operand()).get<ir::RegOr<ir::addr_t>>(),
                   .result = c.builder().CurrentGroup()->Reserve(),
               }),
               type::BufPtr(s->data_type())),
@@ -79,14 +79,14 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     if (node->member_name() == "length") {
       return ir::Value(builder().Load<type::Slice::length_t>(
           current_block()->Append(type::SliceLengthInstruction{
-              .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+              .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::addr_t>>(),
               .result = builder().CurrentGroup()->Reserve(),
           })));
 
     } else if (node->member_name() == "data") {
-      return ir::Value(builder().Load<ir::Addr>(
+      return ir::Value(builder().Load<ir::addr_t>(
           current_block()->Append(type::SliceDataInstruction{
-              .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
+              .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::addr_t>>(),
               .result = builder().CurrentGroup()->Reserve(),
           }),
           type::BufPtr(s->data_type())));
@@ -113,7 +113,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     if (operand_qt.quals() >= type::Quals::Ref()) {
       return ir::Value(builder().PtrFix(EmitRef(node), node_qt.type()));
     } else {
-      type::Typed<ir::RegOr<ir::Addr>> temp(
+      type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
@@ -151,21 +151,21 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
     auto tp = t.if_as<type::Pointer>();
     for (size_t i = 0; i < deref_count; ++i) {
       reg = ir::Value(
-          builder().Load<ir::Addr>(reg.get<ir::RegOr<ir::Addr>>(), tp));
-      t = tp->pointee();
+          builder().Load<ir::addr_t>(reg.get<ir::RegOr<ir::addr_t>>(), tp));
+      t  = tp->pointee();
       tp = t.if_as<type::Pointer>();
     }
   }
 
   auto const &struct_type = t.as<type::Struct>();
-  return *builder().FieldRef(reg.get<ir::RegOr<ir::Addr>>(), &struct_type,
+  return *builder().FieldRef(reg.get<ir::RegOr<ir::addr_t>>(), &struct_type,
                              struct_type.index(node->member_name()));
 }
 
 // TODO: Unit tests
 void Compiler::EmitMoveInit(
     ast::Access const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
@@ -199,27 +199,25 @@ void Compiler::EmitMoveInit(
                      flags_type));
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
-      EmitMoveInit(
-          type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-          type::Typed<ir::Value>(
-              ir::Value(builder().Load<type::Slice::length_t>(
-                  current_block()->Append(type::SliceLengthInstruction{
-                      .slice =
-                          EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
-                      .result = builder().CurrentGroup()->Reserve(),
-                  }))),
-              type::U64));
+      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                   type::Typed<ir::Value>(
+                       ir::Value(builder().Load<type::Slice::length_t>(
+                           current_block()->Append(type::SliceLengthInstruction{
+                               .slice = EmitValue(node->operand())
+                                            .get<ir::RegOr<ir::addr_t>>(),
+                               .result = builder().CurrentGroup()->Reserve(),
+                           }))),
+                       type::U64));
     } else if (node->member_name() == "data") {
-      EmitMoveInit(
-          type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-          type::Typed<ir::Value>(
-              ir::Value(builder().Load<ir::Addr>(
-                  current_block()->Append(type::SliceDataInstruction{
-                      .slice =
-                          EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
-                      .result = builder().CurrentGroup()->Reserve(),
-                  }))),
-              type::BufPtr(s->data_type())));
+      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                   type::Typed<ir::Value>(
+                       ir::Value(builder().Load<ir::addr_t>(
+                           current_block()->Append(type::SliceDataInstruction{
+                               .slice = EmitValue(node->operand())
+                                            .get<ir::RegOr<ir::addr_t>>(),
+                               .result = builder().CurrentGroup()->Reserve(),
+                           }))),
+                       type::BufPtr(s->data_type())));
     } else {
       UNREACHABLE(node->member_name());
     }
@@ -231,7 +229,7 @@ void Compiler::EmitMoveInit(
                                           node_qt.type()));
 
     } else {
-      type::Typed<ir::RegOr<ir::Addr>> temp(
+      type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
@@ -245,7 +243,7 @@ void Compiler::EmitMoveInit(
 // TODO: Unit tests
 void Compiler::EmitCopyInit(
     ast::Access const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
@@ -277,27 +275,25 @@ void Compiler::EmitCopyInit(
                      flags_type));
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
-      EmitCopyInit(
-          type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-          type::Typed<ir::Value>(
-              ir::Value(builder().Load<type::Slice::length_t>(
-                  current_block()->Append(type::SliceLengthInstruction{
-                      .slice =
-                          EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
-                      .result = builder().CurrentGroup()->Reserve(),
-                  }))),
-              type::U64));
+      EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                   type::Typed<ir::Value>(
+                       ir::Value(builder().Load<type::Slice::length_t>(
+                           current_block()->Append(type::SliceLengthInstruction{
+                               .slice = EmitValue(node->operand())
+                                            .get<ir::RegOr<ir::addr_t>>(),
+                               .result = builder().CurrentGroup()->Reserve(),
+                           }))),
+                       type::U64));
     } else if (node->member_name() == "data") {
-      EmitCopyInit(
-          type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-          type::Typed<ir::Value>(
-              ir::Value(builder().Load<ir::Addr>(
-                  current_block()->Append(type::SliceDataInstruction{
-                      .slice =
-                          EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
-                      .result = builder().CurrentGroup()->Reserve(),
-                  }))),
-              type::BufPtr(s->data_type())));
+      EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
+                   type::Typed<ir::Value>(
+                       ir::Value(builder().Load<ir::addr_t>(
+                           current_block()->Append(type::SliceDataInstruction{
+                               .slice = EmitValue(node->operand())
+                                            .get<ir::RegOr<ir::addr_t>>(),
+                               .result = builder().CurrentGroup()->Reserve(),
+                           }))),
+                       type::BufPtr(s->data_type())));
     } else {
       UNREACHABLE(node->member_name());
     }
@@ -309,7 +305,7 @@ void Compiler::EmitCopyInit(
                      node_qt.type()));
 
     } else {
-      type::Typed<ir::RegOr<ir::Addr>> temp(
+      type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
@@ -323,7 +319,7 @@ void Compiler::EmitCopyInit(
 // TODO: Unit tests
 void Compiler::EmitMoveAssign(
     ast::Access const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
@@ -350,7 +346,7 @@ void Compiler::EmitMoveAssign(
                      type::Typed<ir::Value>(
                          ir::Value(builder().PtrFix(EmitRef(node), t)), t));
     } else {
-      type::Typed<ir::RegOr<ir::Addr>> temp(
+      type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
@@ -363,7 +359,7 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitCopyAssign(
     ast::Access const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
@@ -390,7 +386,7 @@ void Compiler::EmitCopyAssign(
                      type::Typed<ir::Value>(
                          ir::Value(builder().PtrFix(EmitRef(node), t)), t));
     } else {
-      type::Typed<ir::RegOr<ir::Addr>> temp(
+      type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitCopyInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();

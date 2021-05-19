@@ -101,13 +101,13 @@ INSTANTIATE_TEST_SUITE_P(All, SpecialTest,
                                return p
                              })()
                              )",
-                                      .expected = ir::Value(ir::Addr::Null())},
+                                      .expected = ir::Value(ir::Null())},
                              TestCase{.expr     = R"((() -> {
                                p: [*]bool
                                return p
                              })()
                              )",
-                                      .expected = ir::Value(ir::Addr::Null())},
+                                      .expected = ir::Value(ir::Null())},
 
                              TestCase{.expr     = R"((() -> {
                                // Test struct initialization
@@ -115,7 +115,7 @@ INSTANTIATE_TEST_SUITE_P(All, SpecialTest,
                                return s.p
                              })()
                              )",
-                                      .expected = ir::Value(ir::Addr::Null())},
+                                      .expected = ir::Value(ir::Null())},
 
                              TestCase{.expr     = R"((() -> {
                                // Test struct initialization

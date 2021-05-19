@@ -49,7 +49,7 @@ ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
 
 void Compiler::EmitMoveInit(
     ast::ShortFunctionLiteral const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
@@ -58,7 +58,7 @@ void Compiler::EmitMoveInit(
 
 void Compiler::EmitCopyInit(
     ast::ShortFunctionLiteral const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
@@ -67,7 +67,7 @@ void Compiler::EmitCopyInit(
 
 void Compiler::EmitMoveAssign(
     ast::ShortFunctionLiteral const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
@@ -76,7 +76,7 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitCopyAssign(
     ast::ShortFunctionLiteral const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
@@ -103,13 +103,13 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
 
     type::Type ret_type = ir_func.type()->output()[0];
     if (ret_type.is_big()) {
-      type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
-          ir::RegOr<ir::Addr>(ir::Reg::Out(0)), ret_type);
+      type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
+          ir::RegOr<ir::addr_t>(ir::Reg::Out(0)), ret_type);
       EmitMoveInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::Addr, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
                  ir::GenericFn,
                  interface::Interface>(ret_type, [&]<typename T>() {
         auto value = EmitValue(node->body()).get<ir::RegOr<T>>();

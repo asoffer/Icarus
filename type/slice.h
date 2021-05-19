@@ -90,12 +90,12 @@ struct SliceLengthInstruction
                                                  ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = slice-length %1$s";
 
-  ir::Addr Resolve() const {
-    return (slice.value() + core::Bytes::Get<ir::Addr>())
-        .MoveForwardToAlignment(core::Alignment::Get<Slice::length_t>());
+  ir::addr_t Resolve() const {
+    // TODO: Guarantee alignment?
+    return (slice.value() + core::Bytes::Get<ir::addr_t>().value());
   }
 
-  ir::RegOr<ir::Addr> slice;
+  ir::RegOr<ir::addr_t> slice;
   ir::Reg result;
 };
 
@@ -106,9 +106,9 @@ struct SliceDataInstruction
   static constexpr std::string_view kDebugFormat =
       "%2$s = slice-data %1$s";
 
-  ir::Addr Resolve() const { return slice.value(); }
+  ir::addr_t Resolve() const { return slice.value(); }
 
-  ir::RegOr<ir::Addr> slice;
+  ir::RegOr<ir::addr_t> slice;
   ir::Reg result;
 };
 
