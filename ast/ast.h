@@ -92,7 +92,7 @@ struct Access : Expression {
 };
 
 // ArgumentType:
-// Reperesnts the type of the argument bound to a parameter of the given name in
+// Represents the type of the argument bound to a parameter of the given name in
 // generic parameter lists. Syntactically, this is spelled with a `$` optionally
 // followed by the name of a parameter. If missing, the name is implicitly the
 // name of the surrounding declaration. For example,
