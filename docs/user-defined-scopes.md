@@ -51,15 +51,15 @@ Let's start by defining a relatively simple scope named `forever` which will
 loop forever. Because each scope needs at least one block, and blocks must be
 named in Icarus, we will choose the name `do` for the block.
 
-The implementation of this scope looks like this:
+The implementation of this scope looks like:
 
 ```
 forever ::= scope {
-  init ::= jump () { goto do() }
+  enter ::= jump () { goto do() }
 
   do ::= block {
     before ::= () -> () {}
-    after ::= jump () { goto do }
+    after ::= jump () { goto do() }
   }
 }
 
@@ -69,13 +69,13 @@ forever () do {
 }
 ```
 
-When a call to the `forever` scope is reached, the `init` jump will be executed.
+When a call to the `forever` scope is reached, the `enter` jump will be executed.
 The jump says that it should go to the `do` block, so control jumps to the
 `before` function in the `do` block. Once the function executes (it is trivial
 in this case, but you may imagine wanting to do something interesting here), the
-body of the `do` block is executed. In this example, that's the call do
+body of the `do` block is executed. In this example, that's the call to
 `do_something`. When the body of the `do` block completes, the `do` block's
-after jump is executed which once again directs control back to the `do` block
+`after` jump is executed which once again directs control back to the `do` block
 itself, restarting the loop.
 
 TODO: Dive into more details here.
