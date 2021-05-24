@@ -1,0 +1,20 @@
+// This module provides an interface to functions in the <stdlib.h> C-header
+// file.
+
+// TODO: Detect how many bits are in a system 'long int'.
+#{export} strtol  ::= foreign("strtol", ([*]char, *[*]char, i32) -> i32)
+#{export} strtoll ::= foreign("strtoll", ([*]char, *[*]char, i32) -> i64)
+
+
+// TODO: Move these wrappers to a separate module.
+#{export}
+ParseInt32 ::= (s: []char, base: i32) -> i32 {
+  endptr: [*]char
+  return strtol(s.data, &endptr, base)
+}
+
+#{export}
+ParseInt64 ::= (s: []char, base: i32) -> i64 {
+  endptr: [*]char
+  return strtoll(s.data, &endptr, base)
+}
