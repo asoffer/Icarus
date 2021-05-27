@@ -26,27 +26,27 @@ struct NumberParsingFailure {
   static constexpr std::string_view kName     = "number-parsing-failure";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    std::string_view message;
+    std::string message;
     switch (error) {
       case NumberParsingError::kUnknownBase:
-        message = "Unknown base for numeric literal";
+        message = "Unknown base for numeric literal.";
         break;
       case NumberParsingError::kTooManyDots:
-        message = "Too many `.` characters in numeric literal";
+        message = "Too many `.` characters in numeric literal.";
         break;
       case NumberParsingError::kNoDigits:
-        message = "No digits in numeric literal";
+        message = "No digits in numeric literal.";
         break;
       case NumberParsingError::kInvalidDigit:
-        message = "Invalid digit encountered";
+        message = "Invalid digit encountered in numeric literal.";
         break;
       case NumberParsingError::kTooLarge:
-        message = "Numeric literal is too large";
+        message = "Numeric literal is too large.";
         break;
     }
 
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("%s", message),
+        diagnostic::Text(message),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -448,10 +448,10 @@ absl::StatusOr<Lexeme> NextHashtag(SourceCursor &cursor) {
 Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
                      diagnostic::DiagnosticConsumer &diag) {
   auto [range, number_str] = buffer.ConsumeChunkWhile(cursor, [](char c) {
-    return IsDigit(c)    //
-           or c == 'b'   // For binary
-           or c == 'd'   // For decimal
-           or c == 'o'   // For octal
+    return IsDigit(c)
+           // For hex digits, as well as 0b and 0d prefixes.
+           or ('a' <= c and c <= 'f') or ('A' <= c and c <= 'F') or
+           c == 'o'      // For octal
            or c == 'x'   // For hexadecimal
            or c == '_'   // For separators
            or c == '.';  // For non-integers
@@ -469,10 +469,7 @@ Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
           // unlikely to be useful. The value may also be important if it's used
           // at compile-time (e.g., as an array extent). Generally proceeding
           // further if we can't lex the input is likely not going to be useful.
-          diag.Consume(NumberParsingFailure{
-              .error = num,
-              .range = r,
-          });
+          diag.Consume(NumberParsingFailure{.error = num, .range = r});
           return Lexeme(std::make_unique<ast::Terminal>(r, ir::Value(0)));
         } else {
           static_assert(base::always_false(type));
