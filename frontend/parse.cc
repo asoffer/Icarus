@@ -371,9 +371,26 @@ struct BracedShortFunctionLiteral {
         diagnostic::Text("Unexpected braces in short function literal."),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}),
         diagnostic::Text(
-            "Short function literals do not use braces in Icarus. Rather than "
-            "writing `(n: i64) => { n * n }`, remove the braces and write "
-            "`(n: i64) => n * n`."));
+            "\nShort function literals do not use braces in Icarus.\n"
+            "Rather than writing `(n: i64) => { n * n }`, remove the braces "
+            "and write `(n: i64) => n * n`."));
+  }
+
+  SourceRange range;
+};
+
+struct InvalidGoto {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "invalid-goto";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Invalid number of arguments for `goto`."),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}),
+        diagnostic::Text(
+            "\nThe `goto` keyword can be used in one of two ways:\n"
+            " 1) an unconditional jump, like `goto done()`\n"
+            " 2) a conditional jump like `goto x > 3, higher(), lower()`."));
   }
 
   SourceRange range;
@@ -1093,7 +1110,7 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
             std::move(false_jumps)));
       } break;
       default:
-        diag.Consume(TodoDiagnostic{.range = range});
+        diag.Consume(InvalidGoto{.range = range});
         return MakeInvalidNode(range);
     }
   } else if (tk == "return") {
