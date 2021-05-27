@@ -17,7 +17,7 @@ struct NotAType {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expression was expected to be a type, but instead "
-                         "was of type `%s`.",
+                         "was a value of type `%s`.",
                          type),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
@@ -48,10 +48,7 @@ struct AssigningToConstant {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text(
-            "It is not allowed to assign to a constant expression. In this "
-            "case, the left-hand side of the assignment has type `%s`",
-            to),
+        diagnostic::Text("Cannot assign to a constant (of type `%s`).", to),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
