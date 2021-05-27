@@ -281,6 +281,24 @@ struct UnknownParseError {
   std::vector<SourceRange> lines;
 };
 
+struct ExceedinglyCrappyParseError {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName = "exceedingly-crappy-parse-error";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    diagnostic::SourceQuote quote(src);
+    for (auto const &range : lines) {
+      quote.Highlighted(range, diagnostic::Style{});
+    }
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Parse errors found somewhere in \"%s\":",
+                         src->FileName()),
+        std::move(quote));
+  }
+
+  std::vector<SourceRange> lines;
+};
+
 struct CommaSeparatedListStatement {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName = "comma-separated-list-statement";
@@ -2136,6 +2154,8 @@ void CleanUpReduction(ParseState *state) {
 std::vector<std::unique_ptr<ast::Node>> Parse(
     SourceBuffer &buffer, diagnostic::DiagnosticConsumer &diag, size_t chunk) {
   auto nodes = Lex(buffer, diag, chunk);
+  // If lexing failed, don't bother trying to parse.
+  if (diag.num_consumed() > 0) { return {}; }
   // TODO: Shouldn't need this protection.
   if (nodes.size() == 1) { return {}; }
   ParseState state(std::move(nodes), diag);
@@ -2172,11 +2192,8 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
 
     default: {
       std::vector<SourceRange> lines;
-
       for (size_t i = 0; i < state.node_stack_.size(); ++i) {
-        if (state.tag_stack_[i] &
-            (braced_stmts | l_paren | r_paren | l_bracket | r_bracket |
-             l_brace | r_brace | semicolon | fn_arrow | expr)) {
+        if (not(state.tag_stack_[i] & stmt_list)) {
           lines.push_back(state.node_stack_[i]->range());
         }
       }
@@ -2185,10 +2202,10 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
         for (const auto &ns : state.node_stack_) {
           lines.push_back(ns->range());
         }
+        diag.Consume(ExceedinglyCrappyParseError{.lines = std::move(lines)});
+      } else {
+        diag.Consume(UnknownParseError{.lines = std::move(lines)});
       }
-
-      // This is an exceedingly crappy error message.
-      diag.Consume(UnknownParseError{.lines = std::move(lines)});
       return {};
     }
   }
