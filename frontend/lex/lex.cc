@@ -59,10 +59,11 @@ struct UnprintableSourceCharacter {
   static constexpr std::string_view kName     = "unprintable-source-character";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    return diagnostic::DiagnosticMessage(diagnostic::Text(
-        "Encountered unprintable character with integral value '%d' "
-        "encountered in source.",
-        value));
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Encountered unprintable character '\\x%02x' "
+                         "encountered in source.",
+                         value),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
   int value;
@@ -474,8 +475,8 @@ Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
 }
 }  // namespace
 
-std::vector<Lexeme> Lex(SourceBuffer &buffer, diagnostic::DiagnosticConsumer &diag,
-                        size_t chunk) {
+std::vector<Lexeme> Lex(SourceBuffer &buffer,
+                        diagnostic::DiagnosticConsumer &diag, size_t chunk) {
   std::vector<Lexeme> result;
   LexState state(&buffer, diag, chunk);
   do { result.push_back(NextToken(&state)); } while (not result.back().eof());
@@ -507,7 +508,8 @@ restart:
   if (peek == '\n') {
     return Lexeme(Syntax::ImplicitNewline,
                   state->cursor_.remove_prefix(1).range());
-  } else if (static_cast<uint8_t>(peek) >= 0x80 or not std::isprint(peek)) {
+  } else if (static_cast<uint8_t>(peek) >= 0x80 or
+             not(std::isprint(peek) or std::isspace(peek))) {
     auto loc = state->cursor_.loc();
     state->cursor_.remove_prefix(1);
     state->diag_.Consume(UnprintableSourceCharacter{
