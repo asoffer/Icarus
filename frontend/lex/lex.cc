@@ -107,7 +107,7 @@ struct HashtagParsingFailure {
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Invalid hashtag: %s", message),
+        diagnostic::Text(message),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
@@ -255,7 +255,7 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
 // Consumes a character literal represented by a backtick (`) followed by one
 // of:
 // * A single non backslash character,
-// * A backslash and then any character in the set [abfnrtv]
+// * A backslash and then any character in the set [abfnrtv0`\]
 Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
   SourceLoc start_loc = cursor;
   ASSERT(buffer[cursor] == '`');
@@ -266,7 +266,7 @@ Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
     cursor += Offset(1);
     switch (buffer[cursor]) {
       case '\\':
-      case '`': c = '`'; break;
+      case '`': c = buffer[cursor]; break;
       case 'a': c = '\a'; break;
       case 'b': c = '\b'; break;
       case 'f': c = '\f'; break;
@@ -430,7 +430,10 @@ absl::StatusOr<Lexeme> NextHashtag(SourceCursor &cursor) {
       if (token == name) { return Lexeme(tag, span); }
     }
 
-    return absl::InvalidArgumentError("Unrecognized hashtag.");
+    return absl::InvalidArgumentError("Unrecognized system hashtag.");
+  } else if (cursor.view()[0] == '!') {
+    cursor.remove_prefix(1);
+    return absl::InvalidArgumentError("Shebang directives are not supported.");
   } else {
     auto word_cursor = NextSimpleWord(cursor);
     token            = word_cursor.view();
@@ -546,11 +549,6 @@ restart:
     } break;
     case '#': {
       state->cursor_.remove_prefix(1);
-      if (state->cursor_.view().empty()) {
-        state->diag_.Consume(
-            HashtagParsingFailure{.message = "Nothing after # character."});
-        goto restart;
-      }
       if (state->peek() == '.') {
         state->cursor_.remove_prefix(1);
         auto word_cursor       = NextSimpleWord(state->cursor_);
@@ -565,6 +563,7 @@ restart:
 
         state->diag_.Consume(HashtagParsingFailure{
             .message = std::string(result.status().message()),
+            .range   = SourceRange(loc, state->cursor_.loc()),
         });
         goto restart;
       }
