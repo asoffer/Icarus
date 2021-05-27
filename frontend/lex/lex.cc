@@ -90,8 +90,11 @@ struct StringLiteralParsingFailure {
   static constexpr std::string_view kName = "string-literal-parsing-failure";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    // TODO: Implement
-    return diagnostic::DiagnosticMessage();
+    // TODO: Display the contents of the errors.
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Failure to parse string literal: %d error%s.",
+                         errors.size(), errors.size() == 1 ? "" : "s"),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
   std::vector<StringLiteralError> errors;
@@ -103,9 +106,9 @@ struct HashtagParsingFailure {
   static constexpr std::string_view kName     = "hashtag-parsing-failure";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    // TODO: Highlight the source range.
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Invalid hashtag. %s", message));
+        diagnostic::Text("Invalid hashtag: %s", message),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
   std::string message;
@@ -118,8 +121,9 @@ struct NonWhitespaceAfterNewlineEscape {
       "non-whitespace-after-newline-escape";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    // TODO: Implement
-    return diagnostic::DiagnosticMessage();
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Invalid escaped newline."),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
   SourceRange range;
