@@ -362,24 +362,21 @@ struct UnknownBuiltinHashtag {
   SourceRange range;
 };
 
-// TODO: This is probably a useful error message.
-struct [[maybe_unused]] BracedShortFunctionLiteral {
+struct BracedShortFunctionLiteral {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "braced-short-function-literal";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Unexpected braces in short function literal."),
-        diagnostic::SourceQuote(src)
-            .Highlighted(open_brace, diagnostic::Style::ErrorText())
-            .Highlighted(close_brace, diagnostic::Style::ErrorText()),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}),
         diagnostic::Text(
             "Short function literals do not use braces in Icarus. Rather than "
             "writing `(n: i64) => { n * n }`, remove the braces and write "
             "`(n: i64) => n * n`."));
   }
 
-  SourceRange open_brace, close_brace;
+  SourceRange range;
 };
 
 std::unique_ptr<ast::Identifier> MakeInvalidNode(
@@ -937,24 +934,13 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
   }
 }
 
-// Represents a sequence of the form:
-// `<expr> <infix-operator> <braced-statements>`
+// Represents a sequence of the form: `<expr> . <braced-statements>`
 // The only valid expressions of this form are designated initializers, where
-// `expr` is the type being initialized and the infix operator is `.`. However,
-// we should not assume that designated initializers are the intent here. For
-// example, The sequence `(n: i64) => { n * n }` would trigger this rule and
-// more clearly shows that the user likely expected a short-function literal.
-//
-// Currently, we use the operator as the signal about user intent.
+// `expr` is the type being initialized.
 std::unique_ptr<ast::Node> BuildDesignatedInitializer(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto *tok = nodes[1]->if_as<Token>();
   SourceRange range(nodes[0]->range().begin(), nodes.back()->range().end());
-  if (not tok) {
-    diag.Consume(TodoDiagnostic{.range = range});
-    return MakeInvalidNode(range);
-  }
 
   auto extracted_stmts = ExtractStatements(std::move(nodes[2]));
 
@@ -979,6 +965,17 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
 
   return std::make_unique<ast::DesignatedInitializer>(
       range, move_as<ast::Expression>(nodes[0]), std::move(initializers));
+}
+
+// Represents a sequence of the form: `(decls) => <braced-statements>`
+// This isn't a valid short function literal, but it's a common mistake so we
+// have a special parse rule to call it out with a useful error message.
+std::unique_ptr<ast::Node> HandleBracedShortFunctionLiteral(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  SourceRange range(nodes[0]->range().begin(), nodes.back()->range().end());
+  diag.Consume(BracedShortFunctionLiteral{.range = range});
+  return MakeInvalidNode(range);
 }
 
 std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
@@ -1895,6 +1892,9 @@ static base::Global kRules = std::array{
     rule_t{.match   = {EXPR, dot, braced_stmts},
            .output  = expr,
            .execute = BuildDesignatedInitializer},
+    rule_t{.match   = {paren_decl_list | empty_parens, rocket, braced_stmts},
+           .output  = expr,
+           .execute = HandleBracedShortFunctionLiteral},
     rule_t{.match = {hashtag, EXPR}, .output = expr, .execute = AddHashtag},
     rule_t{.match = {hashtag, decl}, .output = decl, .execute = AddHashtag},
     rule_t{.match = {STMTS, eof}, .output = stmt_list, .execute = KeepOnly<0>},
