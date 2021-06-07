@@ -64,9 +64,9 @@ io.Print("Yellow is just ")
 Print(yellow)
 io.Print("\n")
 
-// Flag values can also be negated with `~`:
+// Flag values can also be negated with `not`:
 io.Print("Cyan is ")
-Print(~Color.RED)
+Print(not Color.RED)
 io.Print("\n")
 
 // Flags do come with a partial ordering where "less than" means having a
@@ -88,8 +88,8 @@ Print(magenta ^ yellow)
 io.Print("\n")
 
 // Lastly, flags can be intersected with the and-operator `&`.
-io.Print("(~red and ~blue) is ")
-Print(~Color.RED & ~Color.BLUE)
+io.Print("(not red and not blue) is ")
+Print(not Color.RED & not Color.BLUE)
 io.Print("\n")
 
 io.Print("Magenta is ")

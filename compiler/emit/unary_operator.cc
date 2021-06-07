@@ -47,19 +47,10 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       }));
     } break;
     case ast::UnaryOperator::Kind::Not: {
-      // TODO: Operator overloading
-      return ir::Value(
-          builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
-    } break;
-    case ast::UnaryOperator::Kind::Tilde: {
       auto operand_qt = context().qual_types(node->operand())[0];
-      // TODO: Operator overloading
-      if (operand_qt.type() == type::Type_) {
+      if (operand_qt.type() == type::Bool) {
         return ir::Value(
-            current_block()->Append(interface::ConvertsToInstruction{
-                .type = EmitValue(node->operand()).get<ir::RegOr<type::Type>>(),
-                .result = builder().CurrentGroup()->Reserve(),
-            }));
+            builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
       } else if (auto const *t = operand_qt.type().if_as<type::Flags>()) {
         return ir::Value(current_block()->Append(type::XorFlagsInstruction{
             .lhs = EmitValue(node->operand())
@@ -67,8 +58,12 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
             .rhs    = t->All,
             .result = builder().CurrentGroup()->Reserve()}));
       } else {
+        // TODO: Operator overloading
         NOT_YET();
       }
+    } break;
+    case ast::UnaryOperator::Kind::Tilde: {
+      NOT_YET();
     } break;
     case ast::UnaryOperator::Kind::Negate: {
       auto operand_ir = EmitValue(node->operand());
@@ -115,9 +110,9 @@ void Compiler::EmitCopyInit(
       EmitCopyInit(node->operand(), to);
       break;
     case ast::UnaryOperator::Kind::Destroy:
-      EmitDestroy(
-          type::Typed<ir::Reg>(EmitValue(node->operand()).get<ir::Reg>(),
-                               context().qual_types(node->operand())[0].type()));
+      EmitDestroy(type::Typed<ir::Reg>(
+          EmitValue(node->operand()).get<ir::Reg>(),
+          context().qual_types(node->operand())[0].type()));
       break;
     default: {
       auto from_val = EmitValue(node);

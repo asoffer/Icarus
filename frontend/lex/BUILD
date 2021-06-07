@@ -1,6 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-# TODO handle match
 cc_library(
     name = "lex",
     hdrs = ["lex.h"],

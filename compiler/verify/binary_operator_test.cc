@@ -30,7 +30,7 @@ TEST_P(FlagsLogicalOperatorEq, NonReference) {
   mod.AppendCode(absl::StrFormat(R"(
     F ::= flags { A \\ B \\ C }
     f: F
-    ~f %s f
+    not f %s f
     )",
                                  GetParam()));
   EXPECT_THAT(

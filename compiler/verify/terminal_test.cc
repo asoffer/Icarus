@@ -107,11 +107,11 @@ INSTANTIATE_TEST_SUITE_P(
             .expected = type::QualType::Constant(type::Type_),
         },
         TestCase{
-            .terminal = R"(`a)",
+            .terminal = R"(!a)",
             .expected = type::QualType::Constant(type::Char),
         },
         TestCase{
-            .terminal = R"(`\a)",
+            .terminal = R"(!\a)",
             .expected = type::QualType::Constant(type::Char),
         },
 

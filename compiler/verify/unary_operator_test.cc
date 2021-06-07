@@ -411,7 +411,7 @@ TEST(Not, Flags) {
     F ::= flags { A \\ B \\ C }
     f: F
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("~f");
+    auto const *expr = mod.Append<ast::UnaryOperator>("not f");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_TRUE(qts[0].type().is<type::Flags>());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -423,7 +423,7 @@ TEST(Not, Flags) {
     F ::= flags { A \\ B \\ C }
     f :: F
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("~f");
+    auto const *expr = mod.Append<ast::UnaryOperator>("not f");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_TRUE(qts[0].type().is<type::Flags>());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -449,7 +449,7 @@ TEST(Not, InvalidType) {
     mod.AppendCode(R"(
     n: i64
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("~n");
+    auto const *expr = mod.Append<ast::UnaryOperator>("not n");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -475,7 +475,7 @@ TEST(Not, InvalidType) {
     mod.AppendCode(R"(
     n :: i64
     )");
-    auto const *expr = mod.Append<ast::UnaryOperator>("~n");
+    auto const *expr = mod.Append<ast::UnaryOperator>("not n");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -524,33 +524,6 @@ TEST(Unexpanded, Failure) {
               UnorderedElementsAre(
                   Pair("type-error", "unexpanded-unary-operator-argument"),
                   Pair("type-error", "unexpanded-unary-operator-argument")));
-}
-
-
-TEST(Tilde, InterfaceSuccess) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
-  T ::= i64
-  )");
-  auto const *expr = mod.Append<ast::UnaryOperator>("~T");
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::Constant(type::Interface)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
-}
-
-TEST(Tilde, NonConstantInterface) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
-  T := i64
-  )");
-  auto const *expr = mod.Append<ast::UnaryOperator>("~T");
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::Constant(type::Interface)));
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "non-constant-interface")));
 }
 
 }  // namespace

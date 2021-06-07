@@ -13,10 +13,6 @@
 #include "ir/value/builtin_fn.h"
 #include "ir/value/string.h"
 #include "type/primitive.h"
-#ifdef ICARUS_MATCHER
-#include "match/binding_id.h"
-#include "match/binding_node.h"
-#endif  // ICARUS_MATCHER
 
 namespace frontend {
 namespace {
@@ -176,89 +172,13 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
   return true;
 }
 
-// Note: The order here is somewhat important. Because we choose the first
-// match, we cannot, for example, put `:` before `::=`.
-static base::Global kOps =
-    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 47>{
-        {{"@", {Operator::At}},           {",", {Operator::Comma}},
-         {"[*]", {Operator::BufPtr}},     {"$", {Operator::ArgType}},
-         {"+=", {Operator::AddEq}},       {"+", {Operator::Add}},
-         {"-=", {Operator::SubEq}},       {"..", {Operator::VariadicPack}},
-         {"->", {Operator::Arrow}},       {"-", {Operator::Sub}},
-         {"*=", {Operator::MulEq}},       {"*", {Operator::Mul}},
-         {"%=", {Operator::ModEq}},       {"%", {Operator::Mod}},
-         {"&=", {Operator::SymbolAndEq}}, {"&", {Operator::SymbolAnd}},
-         {"|=", {Operator::SymbolOrEq}},  {"|", {Operator::SymbolOr}},
-         {"^=", {Operator::SymbolXorEq}}, {"^", {Operator::SymbolXor}},
-         {">=", {Operator::Ge}},          {">", {Operator::Gt}},
-         {"!=", {Operator::Ne}},          {"::=", {Operator::DoubleColonEq}},
-         {":?", {Operator::TypeOf}},      {"::", {Operator::DoubleColon}},
-         {":=", {Operator::ColonEq}},     {".", {Syntax::Dot}},
-         {":", {Operator::Colon}},        {"<<", {Operator::Yield}},
-         {"<=", {Operator::Le}},          {"<", {Operator::Lt}},
-         {"==", {Operator::Eq}},          {"=>", {Operator::Rocket}},
-         {"=", {Operator::Assign}},       {"'", {Operator::Call}},
-         {"(", {Syntax::LeftParen}},      {")", {Syntax::RightParen}},
-         {"[", {Syntax::LeftBracket}},    {"]", {Syntax::RightBracket}},
-         {"{", {Syntax::LeftBrace}},      {"}", {Syntax::RightBrace}},
-         {"~", {Operator::Tilde}},        {";", {Syntax::Semicolon}}},
-    };
-
-Lexeme NextOperator(SourceCursor &cursor) {
-#ifdef ICARUS_MATCHER
-  // TODO "@% is a terrible choice for the operator here, but we can deal with
-  // that later.
-  if (BeginsWith(match::kMatchPrefix, cursor.view())) {
-    cursor.remove_prefix(2);
-    auto word_cursor       = NextSimpleWord(cursor);
-    std::string_view token = word_cursor.view();
-    auto span              = word_cursor.range();
-    return Lexeme(
-        std::make_unique<match::BindingNode>(match::BindingId{token}, span));
-  }
-#endif
-
-  if (BeginsWith("--", cursor.view())) {
-    auto span = cursor.remove_prefix(2).range();
-    return Lexeme(std::make_unique<ast::Identifier>(span, ""));
-  }
-
-  for (auto [prefix, x] : *kOps) {
-    if (BeginsWith(prefix, cursor.view())) {
-      auto span = cursor.remove_prefix(prefix.size()).range();
-      return std::visit([&](auto x) { return Lexeme(x, span); }, x);
-    }
-  }
-  UNREACHABLE();
-}
-
-std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
-    SourceCursor &cursor) {
-  SourceRange span;
-  span.begin() = cursor.loc();
-  cursor.remove_prefix(1);
-  // TODO support multi-line comments?
-  switch (cursor.view()[0]) {
-    case '/':  // line comment
-      cursor.ConsumeWhile([](char c) { return c != '\n'; });
-      return std::nullopt;
-    case '=':
-      cursor.remove_prefix(1);
-      span.end() = span.begin() + Offset(2);
-      return std::pair{span, Operator::DivEq};
-    default:
-      span.end() = span.begin() + Offset(1);
-      return std::pair{span, Operator::Div};
-  }
-}
-
 // Consumes a character literal represented by a backtick (`) followed by one
 // of:
 // * A single non backslash character,
 // * A backslash and then any character in the set [abfnrtv0`\]
 Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
   SourceLoc start_loc = cursor;
-  ASSERT(buffer[cursor] == '`');
+  ASSERT(buffer[cursor] == '!');
   cursor += Offset(1);
   // TODO: Ensure the character is printable.
   char c;
@@ -284,6 +204,76 @@ Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
   }
   return Lexeme(std::make_unique<ast::Terminal>(SourceRange(start_loc, cursor),
                                                 ir::Value(ir::Char(c))));
+}
+
+// Note: The order here is somewhat important. Because we choose the first
+// match, we cannot, for example, put `:` before `::=`.
+static base::Global kOps =
+    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 44>{
+        {{"@", {Operator::At}},           {",", {Operator::Comma}},
+         {"[*]", {Operator::BufPtr}},     {"$", {Operator::ArgType}},
+         {"+=", {Operator::AddEq}},       {"+", {Operator::Add}},
+         {"-=", {Operator::SubEq}},       {"..", {Operator::VariadicPack}},
+         {"->", {Operator::Arrow}},       {"-", {Operator::Sub}},
+         {"*=", {Operator::MulEq}},       {"*", {Operator::Mul}},
+         {"%=", {Operator::ModEq}},       {"%", {Operator::Mod}},
+         {"&=", {Operator::SymbolAndEq}}, {"&", {Operator::SymbolAnd}},
+         {"|=", {Operator::SymbolOrEq}},  {"|", {Operator::SymbolOr}},
+         {"^=", {Operator::SymbolXorEq}}, {"^", {Operator::SymbolXor}},
+         {">=", {Operator::Ge}},          {">", {Operator::Gt}},
+         {"!=", {Operator::Ne}},          {"::=", {Operator::DoubleColonEq}},
+         {":?", {Operator::TypeOf}},      {"::", {Operator::DoubleColon}},
+         {":=", {Operator::ColonEq}},     {".", {Syntax::Dot}},
+         {":", {Operator::Colon}},        {"<<", {Operator::Yield}},
+         {"<=", {Operator::Le}},          {"<", {Operator::Lt}},
+         {"==", {Operator::Eq}},          {"=>", {Operator::Rocket}},
+         {"=", {Operator::Assign}},       {"'", {Operator::Call}},
+         {"(", {Syntax::LeftParen}},      {")", {Syntax::RightParen}},
+         {"[", {Syntax::LeftBracket}},    {"]", {Syntax::RightBracket}},
+         {"{", {Syntax::LeftBrace}},      {"}", {Syntax::RightBrace}},
+         {"~", {Operator::Tilde}},        {";", {Syntax::Semicolon}}},
+    };
+
+Lexeme NextOperator(SourceCursor &cursor, SourceBuffer const &buffer) {
+  if (BeginsWith("--", cursor.view())) {
+    auto span = cursor.remove_prefix(2).range();
+    return Lexeme(std::make_unique<ast::Identifier>(span, ""));
+  }
+
+  for (auto [prefix, x] : *kOps) {
+    if (BeginsWith(prefix, cursor.view())) {
+      auto span = cursor.remove_prefix(prefix.size()).range();
+      return std::visit([&](auto x) { return Lexeme(x, span); }, x);
+    }
+  }
+
+  SourceLoc loc      = cursor.loc();
+  std::string_view v = cursor.view();
+  ASSERT(buffer[loc] == '!');
+  auto result = ConsumeCharLiteral(loc, buffer);
+  v.remove_prefix((loc - cursor.loc()).value);
+  cursor = SourceCursor(loc, v);
+  return result;
+}
+
+std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
+    SourceCursor &cursor) {
+  SourceRange span;
+  span.begin() = cursor.loc();
+  cursor.remove_prefix(1);
+  // TODO support multi-line comments?
+  switch (cursor.view()[0]) {
+    case '/':  // line comment
+      cursor.ConsumeWhile([](char c) { return c != '\n'; });
+      return std::nullopt;
+    case '=':
+      cursor.remove_prefix(1);
+      span.end() = span.begin() + Offset(2);
+      return std::pair{span, Operator::DivEq};
+    default:
+      span.end() = span.begin() + Offset(1);
+      return std::pair{span, Operator::Div};
+  }
 }
 
 // Note: Despite these all being primitives, we want the value-type of this map
@@ -536,14 +526,6 @@ restart:
           range, ir::Value(ir::String(str).addr())));
 
     } break;
-    case '`': {
-      SourceLoc loc      = state->cursor_.loc();
-      std::string_view v = state->cursor_.view();
-      auto result        = ConsumeCharLiteral(loc, state->buffer_);
-      v.remove_prefix((loc - state->cursor_.loc()).value);
-      state->cursor_ = SourceCursor(loc, v);
-      return result;
-    } break;
     case '#': {
       state->cursor_.remove_prefix(1);
       if (state->peek() == '.') {
@@ -602,7 +584,7 @@ restart:
       }
       goto restart;
     } break;
-    default: return NextOperator(state->cursor_); break;
+    default: return NextOperator(state->cursor_, state->buffer_); break;
   }
   UNREACHABLE();
 }

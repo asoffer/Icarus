@@ -10,7 +10,7 @@ endif
 syntax keyword Keyword move copy import flags enum struct return jump scope as goto foreign bytes align opaque block init destroy and or xor
 syntax match Operator ":*=*"
 syntax match Operator "[,'$]"
-syntax match Operator "[`+*\-/%<>&|!]=\?"
+syntax match Operator "[~`+*\-/%<>&|!]=\?"
 syntax region String start=/\v"/ skip=/\v\\./ end=/\v"/
 syntax keyword Constant true false bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 type module null
 syntax match Constant "\<\d+\(\.\d*\)\?"

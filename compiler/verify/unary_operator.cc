@@ -275,6 +275,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
       if (operand_type == type::Bool) {
         qt = type::QualType(type::Bool,
                             operand_qt.quals() & type::Quals::Const());
+      } else if (operand_type.is<type::Flags>()) {
+        qt = type::QualType(operand_type,
+                            operand_qt.quals() & type::Quals::Const());
       } else if (operand_type.is<type::Struct>()) {
         // TODO: support calling with constant arguments.
         qt = VerifyUnaryOverload(
@@ -297,35 +300,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
       }
     } break;
     case ast::UnaryOperator::Kind::Tilde: {
-      if (operand_type == type::Type_) {
-        qt = type::QualType::Constant(type::Interface);
-        if (not operand_qt.constant()) {
-          diag().Consume(
-              NonConstantInterface{.range = node->operand()->range()});
-          qt.MarkError();
-        }
-      } else if (operand_type.is<type::Flags>()) {
-        qt = type::QualType(operand_type,
-                            operand_qt.quals() & type::Quals::Const());
-      } else if (operand_type.is<type::Struct>()) {
-        // TODO: support calling with constant arguments.
-        qt = VerifyUnaryOverload(
-            "~", node, type::Typed<ir::Value>(ir::Value(), operand_qt.type()));
-        if (not qt.ok()) {
-          diag().Consume(InvalidUnaryOperatorOverload{
-              .op    = "~",
-              .range = node->range(),
-          });
-          qt = type::QualType::Error();
-        }
-      } else {
-        diag().Consume(InvalidUnaryOperatorCall{
-            .op    = "~",
-            .type  = TypeForDiagnostic(node->operand(), context()),
-            .range = node->range(),
-        });
-        qt = type::QualType::Error();
-      }
+      NOT_YET();
     } break;
     default: UNREACHABLE(*node);
   }
