@@ -14,4 +14,4 @@ c'Print
 
 io.Print(c'at(5 as u64)[0])
 io.Print(c'view[5])
-io.Print(`\n)
+io.Print(!\n)

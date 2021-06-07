@@ -172,10 +172,10 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
   return true;
 }
 
-// Consumes a character literal represented by a backtick (`) followed by one
+// Consumes a character literal represented by a bang (!) followed by one
 // of:
 // * A single non backslash character,
-// * A backslash and then any character in the set [abfnrtv0`\]
+// * A backslash and then any character in the set [abfnrtv0!\]
 Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
   SourceLoc start_loc = cursor;
   ASSERT(buffer[cursor] == '!');
@@ -186,7 +186,7 @@ Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
     cursor += Offset(1);
     switch (buffer[cursor]) {
       case '\\':
-      case '`': c = buffer[cursor]; break;
+      case '!': c = buffer[cursor]; break;
       case 'a': c = '\a'; break;
       case 'b': c = '\b'; break;
       case 'f': c = '\f'; break;
