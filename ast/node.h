@@ -42,9 +42,9 @@ struct Node : base::Cast<Node> {
     FunctionLiteral const *function_literal = nullptr;
   };
 
-  virtual void Initialize(Initializer const &initializer) {}
+  virtual void Initialize(Initializer &initializer) {}
 
-  protected:
+ protected:
   frontend::SourceRange range_;
   Scope *scope_ = nullptr;
 };

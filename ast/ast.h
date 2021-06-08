@@ -27,8 +27,7 @@
 
 namespace ast {
 
-void InitializeNodes(base::PtrSpan<Node> nodes,
-                     Node::Initializer const &initializer);
+void InitializeNodes(base::PtrSpan<Node> nodes, Node::Initializer &initializer);
 
 #define ICARUS_AST_VIRTUAL_METHODS                                             \
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple)                \
@@ -37,7 +36,7 @@ void InitializeNodes(base::PtrSpan<Node> nodes,
   }                                                                            \
                                                                                \
   void DebugStrAppend(std::string *out, size_t indent) const override;         \
-  void Initialize(Node::Initializer const &initializer) override;              \
+  void Initialize(Node::Initializer &initializer) override;                    \
   bool IsDependent() const override
 
 // WithScope:

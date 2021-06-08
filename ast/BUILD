@@ -51,6 +51,7 @@ cc_library(
         "//ir/value:label",
         "//ir/value:string",
         "//ir/value",
+        "@com_google_absl//absl/cleanup",
     ],
 )
 

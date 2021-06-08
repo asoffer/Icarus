@@ -1,3 +1,4 @@
+#include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
 #include "ast/build_param_dependency_graph.h"
 #include "ast/scope.h"
@@ -62,85 +63,87 @@ OrderedDependencyNodes(ast::ParameterizedExpression const* node) {
 
 template <typename T>
 static void InitializeAll(std::vector<std::unique_ptr<T>>& nodes,
-                          Node::Initializer const& initializer) {
+                          Node::Initializer& initializer) {
   for (auto& n : nodes) { n->Initialize(initializer); }
 }
 
 void InitializeNodes(base::PtrSpan<Node> nodes,
-                     Node::Initializer const& initializer) {
+                     Node::Initializer& initializer) {
   for (auto* n : nodes) { n->Initialize(initializer); }
 }
 
-void Access::Initialize(Initializer const& initializer) {
+void Access::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   operand_->Initialize(initializer);
 }
 
-void ArgumentType::Initialize(Initializer const& initializer) {
+void ArgumentType::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
 }
 
-void ArrayLiteral::Initialize(Initializer const& initializer) {
+void ArrayLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   for (auto& expr : elems_) { expr->Initialize(initializer); }
 }
 
-void ArrayType::Initialize(Initializer const& initializer) {
+void ArrayType::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   for (auto const& len : lengths_) { len->Initialize(initializer); }
   data_type_->Initialize(initializer);
 }
 
-void Assignment::Initialize(Initializer const& initializer) {
+void Assignment::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   InitializeAll(lhs_, initializer);
   InitializeAll(rhs_, initializer);
 }
 
-void BinaryOperator::Initialize(Initializer const& initializer) {
+void BinaryOperator::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   lhs_->Initialize(initializer);
   rhs_->Initialize(initializer);
 }
 
-void BlockLiteral::Initialize(Initializer const& initializer) {
+void BlockLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
-  Initializer i{.scope            = &body_scope(),
-                .function_literal = initializer.function_literal};
-  InitializeAll(before_, i);
-  InitializeAll(after_, i);
+  initializer.scope = &body_scope();
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  InitializeAll(before_, initializer);
+  InitializeAll(after_, initializer);
 }
 
-void BlockNode::Initialize(Initializer const& initializer) {
+void BlockNode::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope, true);
-  Initializer i{.scope            = &body_scope(),
-                .function_literal = initializer.function_literal};
-  for (auto& param : params_) { param.value->Initialize(i); }
-  InitializeAll(stmts_, i);
+  initializer.scope = &body_scope();
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  for (auto& param : params_) { param.value->Initialize(initializer); }
+  InitializeAll(stmts_, initializer);
 }
 
-void BuiltinFn::Initialize(Initializer const& initializer) { scope_ = initializer.scope; }
+void BuiltinFn::Initialize(Initializer& initializer) {
+  scope_ = initializer.scope;
+}
 
-void Call::Initialize(Initializer const& initializer) {
+void Call::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   callee_->Initialize(initializer);
   for (auto& arg : arguments_) { arg.expr().Initialize(initializer); }
 }
 
-void Cast::Initialize(Initializer const& initializer) {
+void Cast::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   expr_->Initialize(initializer);
   type_->Initialize(initializer);
 }
 
-void ComparisonOperator::Initialize(Initializer const& initializer) {
+void ComparisonOperator::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   for (auto& expr : exprs_) { expr->Initialize(initializer); }
 }
 
-void Declaration::Initialize(Initializer const& initializer) {
+void Declaration::Initialize(Initializer& initializer) {
   ASSERT(initializer.scope != nullptr);
   scope_ = initializer.scope;
   scope_->InsertDeclaration(this);
@@ -149,62 +152,69 @@ void Declaration::Initialize(Initializer const& initializer) {
   for (auto& id : ids_) { id.Initialize(initializer); }
 }
 
-void DesignatedInitializer::Initialize(Initializer const& initializer) {
+void DesignatedInitializer::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   type_->Initialize(initializer);
   for (auto& assignment : assignments_) { assignment->Initialize(initializer); }
 }
 
-void EnumLiteral::Initialize(Initializer const& initializer) {
+void EnumLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
   for (auto& [id, value] : values_) { value->Initialize(initializer); }
 }
 
-void FunctionLiteral::Initialize(Initializer const& initializer) {
+void FunctionLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
 
-  Initializer i{.scope = &body_scope(), .function_literal = this};
-  for (auto& param : params_) { param.value->Initialize(i); }
+  initializer.scope = &body_scope();
+  auto const* f     = std::exchange(initializer.function_literal, this);
+  absl::Cleanup c   = [&] {
+    initializer.scope            = scope_;
+    initializer.function_literal = f;
+  };
+  for (auto& param : params_) { param.value->Initialize(initializer); }
   if (outputs_) {
-    for (auto& out : *outputs_) { out->Initialize(i); }
+    for (auto& out : *outputs_) { out->Initialize(initializer); }
   }
-  InitializeAll(stmts_,i);
+  InitializeAll(stmts_, initializer);
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
 }
 
-void FunctionType::Initialize(Initializer const& initializer) {
+void FunctionType::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   InitializeAll(params_, initializer);
   InitializeAll(output_, initializer);
 }
 
-void Identifier::Initialize(Initializer const& initializer) { scope_ = initializer.scope; }
+void Identifier::Initialize(Initializer& initializer) {
+  scope_ = initializer.scope;
+}
 
-void Import::Initialize(Initializer const& initializer) {
+void Import::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   operand_->Initialize(initializer);
 }
 
-void Index::Initialize(Initializer const& initializer) {
+void Index::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   lhs_->Initialize(initializer);
   rhs_->Initialize(initializer);
 }
 
-void InterfaceLiteral::Initialize(Initializer const& initializer) {
+void InterfaceLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
-  Initializer i{.scope            = &body_scope(),
-                .function_literal = initializer.function_literal};
+  initializer.scope = &body_scope();
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
   for (auto& [name, expr] : entries_) {
-    name->Initialize(i);
-    expr->Initialize(i);
+    name->Initialize(initializer);
+    expr->Initialize(initializer);
   }
 }
 
-void ConditionalGoto::Initialize(Initializer const& initializer) {
+void ConditionalGoto::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   condition_->Initialize(initializer);
   for (auto& opt : true_options_) {
@@ -215,46 +225,46 @@ void ConditionalGoto::Initialize(Initializer const& initializer) {
   }
 }
 
-void UnconditionalGoto::Initialize(Initializer const& initializer) {
+void UnconditionalGoto::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   for (auto& opt : options_) {
     opt.args_.Apply([&](auto& expr) { expr->Initialize(initializer); });
   }
 }
 
-void Jump::Initialize(Initializer const& initializer) {
+void Jump::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
-  Initializer i{.scope            = &body_scope(),
-                .function_literal = initializer.function_literal};
-  if (state_.get()) { state_->Initialize(i); }
-  for (auto& param : params_) { param.value->Initialize(i); }
-  InitializeAll(stmts_, i);
+  initializer.scope = &body_scope();
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  if (state_.get()) { state_->Initialize(initializer); }
+  for (auto& param : params_) { param.value->Initialize(initializer); }
+  InitializeAll(stmts_, initializer);
 }
 
-void Label::Initialize(Initializer const& initializer) { scope_ = initializer.scope; }
+void Label::Initialize(Initializer& initializer) { scope_ = initializer.scope; }
 
-void ReturnStmt::Initialize(Initializer const& initializer) {
+void ReturnStmt::Initialize(Initializer& initializer) {
   scope_            = initializer.scope;
   function_literal_ = initializer.function_literal;
   InitializeAll(exprs_, initializer);
 }
 
-void YieldStmt::Initialize(Initializer const& initializer) {
+void YieldStmt::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   InitializeAll(exprs_, initializer);
 }
 
-void ScopeLiteral::Initialize(Initializer const& initializer) {
+void ScopeLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
   if (state_type_) { state_type_->Initialize(initializer); }
-  Initializer i{.scope            = &body_scope(),
-                .function_literal = initializer.function_literal};
-  for (auto& decl : decls_) { decl.Initialize(i); }
+  initializer.scope = &body_scope();
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  for (auto& decl : decls_) { decl.Initialize(initializer); }
 }
 
-void ScopeNode::Initialize(Initializer const& initializer) {
+void ScopeNode::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   name_->Initialize(initializer);
   args_.Apply([&](Expression* expr) { expr->Initialize(initializer); });
@@ -262,42 +272,44 @@ void ScopeNode::Initialize(Initializer const& initializer) {
   for (auto& block : blocks_) { block.Initialize(initializer); }
 }
 
-void SliceType::Initialize(Initializer const& initializer) {
+void SliceType::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   data_type_->Initialize(initializer);
 }
 
-void ShortFunctionLiteral::Initialize(Initializer const& initializer) {
+void ShortFunctionLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
-  Initializer i{.scope            = &body_scope(),
-                .function_literal = initializer.function_literal};
-  for (auto& param : params_) { param.value->Initialize(i); }
-  body_->Initialize(i);
+  initializer.scope = &body_scope();
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  for (auto& param : params_) { param.value->Initialize(initializer); }
+  body_->Initialize(initializer);
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
 }
 
-void StructLiteral::Initialize(Initializer const& initializer) {
+void StructLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
-  Initializer i{.scope            = &body_scope(),
-                .function_literal = initializer.function_literal};
-  for (auto& field : fields_) { field.Initialize(i); }
+  initializer.scope = &body_scope();
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  for (auto& field : fields_) { field.Initialize(initializer); }
 }
 
-void ParameterizedStructLiteral::Initialize(Initializer const& initializer) {
+void ParameterizedStructLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
-  Initializer i{.scope            = &body_scope(),
-                .function_literal = initializer.function_literal};
-  for (auto& param : params_) { param.value->Initialize(i); }
-  for (auto& field : fields_) { field.Initialize(i); }
+  initializer.scope = &body_scope();
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  for (auto& param : params_) { param.value->Initialize(initializer); }
+  for (auto& field : fields_) { field.Initialize(initializer); }
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
 }
 
-void Terminal::Initialize(Initializer const& initializer) { scope_ = initializer.scope; }
+void Terminal::Initialize(Initializer& initializer) {
+  scope_ = initializer.scope;
+}
 
-void UnaryOperator::Initialize(Initializer const& initializer) {
+void UnaryOperator::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   operand_->Initialize(initializer);
 }
