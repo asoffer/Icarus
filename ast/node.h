@@ -30,6 +30,7 @@ struct Node : base::Cast<Node> {
 
   virtual void DebugStrAppend(std::string *out, size_t indent) const {}
   bool covers_binding() const { return covers_binding_; }
+  bool is_dependent() const { return is_dependent_; }
 
   constexpr frontend::SourceRange range() const { return range_; }
   Scope *scope() const { return scope_; }
@@ -43,8 +44,8 @@ struct Node : base::Cast<Node> {
     // they return.
     FunctionLiteral const *function_literal = nullptr;
 
-    PatternMatch const *pattern     = nullptr;
-    Expression const *match_against = nullptr;
+    PatternMatch const *pattern = nullptr;
+    Declaration *match_against  = nullptr;
   };
 
   virtual void Initialize(Initializer &initializer) {}
@@ -54,6 +55,7 @@ struct Node : base::Cast<Node> {
   Scope *scope_ = nullptr;
   // TODO: We can compress these bit somewhere.
   bool covers_binding_ = false;
+  bool is_dependent_   = false;
 };
 
 }  // namespace ast

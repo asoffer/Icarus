@@ -170,7 +170,7 @@ bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
 // Verifies and evaluates the type expression, returning its value if it can be
 // computed or an error.
 type::QualType VerifyDeclarationType(Compiler &compiler,
-                                     ast::Declaration const *node) {
+                                    ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto type_expr_qt,
                    compiler.VerifyType(node->type_expr())[0]);
@@ -358,6 +358,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
         context().set_qual_type(&id, type::QualType::Error());
       }
       return context().set_qual_type(node, type::QualType::Error());
+    } else {
     }
   }
 
@@ -459,8 +460,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       }
     }
   }
-  auto span = context().set_qual_types(node, node_qual_types);
 
+  auto span = context().set_qual_types(node, node_qual_types);
   ASSERT(span.size() == node->ids().size());
   i = 0;
   for (auto const &id : node->ids()) {

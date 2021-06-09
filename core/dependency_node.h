@@ -17,6 +17,9 @@ struct DependencyNode {
   using node_type = T;
   static_assert(alignof(node_type) >= 4);
 
+  explicit DependencyNode(node_type const *node, DependencyNodeKind k)
+      : node_(reinterpret_cast<uintptr_t>(node) | static_cast<uintptr_t>(k)) {}
+
   static DependencyNode MakeType(node_type const *decl) {
     return DependencyNode(decl, DependencyNodeKind::ParamType);
   }
@@ -55,9 +58,6 @@ struct DependencyNode {
   }
 
  private:
-  explicit DependencyNode(node_type const *node, DependencyNodeKind k)
-      : node_(reinterpret_cast<uintptr_t>(node) | static_cast<uintptr_t>(k)) {}
-
   uintptr_t node_;
 };
 

@@ -47,7 +47,6 @@
 
 namespace compiler {
 struct PatternMatchingContext {
-  ast::Expression const *node;
   type::Type type;
   base::untyped_buffer value;
   absl::flat_hash_map<std::string_view, ir::Value> bindings;

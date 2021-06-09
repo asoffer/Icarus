@@ -51,6 +51,7 @@ cc_library(
         "//ir/value:string",
         "//ir/value",
         "@com_google_absl//absl/cleanup",
+        "@com_google_absl//absl/container:node_hash_map",
     ],
 )
 

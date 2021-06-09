@@ -677,6 +677,11 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 
     return std::make_unique<ast::BindingDeclaration>(
         range, ast::Declaration::Id(std::move(id_str), nodes[0]->range()));
+  } else if (tk == "~") {
+    SourceRange range(nodes.front()->range().begin(),
+                      nodes.back()->range().end());
+    return std::make_unique<ast::PatternMatch>(
+        range, move_as<ast::Expression>(nodes[1]));
   } else if (tk == "$") {
     std::string id_str;
     if (auto *id = nodes[1]->if_as<ast::Identifier>()) {
@@ -702,8 +707,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
           {"@", ast::UnaryOperator::Kind::At},
           {"*", ast::UnaryOperator::Kind::Pointer},
           {"-", ast::UnaryOperator::Kind::Negate},
-          {"not", ast::UnaryOperator::Kind::Not},
-          {"~", ast::UnaryOperator::Kind::Tilde}};
+          {"not", ast::UnaryOperator::Kind::Not}};
 
   auto &operand = nodes[1];
   auto op       = kUnaryOperatorMap->find(tk)->second;

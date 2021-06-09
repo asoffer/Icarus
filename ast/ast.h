@@ -259,8 +259,6 @@ struct ParameterizedExpression : Expression {
       ASSERT(param->ids().size() == 1u);
       params_.append(param->ids()[0].name(), std::move(param));
     }
-
-    InitializeParams();
   }
 
   // TODO params() should be a reference to core::Params?
@@ -279,18 +277,7 @@ struct ParameterizedExpression : Expression {
   constexpr bool is_generic() const { return is_generic_; }
 
  protected:
-  void InitializeParams() {
-    for (auto &param : params_) {
-      param.value->flags() |= Declaration::f_IsFnParam;
-      if (not param.value->IsDefaultInitialized()) {
-        param.flags = core::HAS_DEFAULT;
-      }
-      if (not is_generic_) {
-        is_generic_ = (param.value->flags() & Declaration::f_IsConst) or
-                      param.value->covers_binding();
-      }
-    }
-  }
+  void InitializeParams();
 
   core::Params<std::unique_ptr<Declaration>> params_;
   std::vector<std::pair<int, core::DependencyNode<Declaration>>>
@@ -340,6 +327,10 @@ struct PatternMatch : Expression {
   Expression &expr() {
     return *ASSERT_NOT_NULL(
         reinterpret_cast<Expression *>(expr_to_match_ & ~uintptr_t{1}));
+  }
+
+  void set_match_against(Declaration *d) {
+    expr_to_match_ = reinterpret_cast<uintptr_t>(d) | uintptr_t{is_binary()};
   }
 
   uintptr_t expr_to_match_;

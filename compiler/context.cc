@@ -101,12 +101,14 @@ absl::Span<type::QualType const> Context::maybe_qual_type(
 
 absl::Span<type::QualType const> Context::set_qual_types(
     ast::Expression const *expr, absl::Span<type::QualType const> qts) {
-  return qual_types_.try_emplace(expr, qts.begin(), qts.end()).first->second;
+  auto [iter, inserted] = qual_types_.try_emplace(expr, qts.begin(), qts.end());
+  return iter->second;
 }
 
 absl::Span<type::QualType const> Context::set_qual_type(
     ast::Expression const *expr, type::QualType r) {
-  return qual_types_.try_emplace(expr, 1, r).first->second;
+  auto [iter, inserted] = qual_types_.try_emplace(expr, 1, r);
+  return iter->second;
 }
 
 void Context::CompleteType(ast::Expression const *expr, bool success) {

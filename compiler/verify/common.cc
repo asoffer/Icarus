@@ -171,7 +171,7 @@ Compiler::ComputeParamsFromArgs(
         context().set_arg_type(id, arg_type);
       } break;
       case core::DependencyNodeKind::ParamType: {
-        type::Type t = nullptr;
+        type::Type t;
         if (auto const *type_expr = dep_node.node()->type_expr()) {
           auto type_expr_type = VerifyType(type_expr)[0].type();
           if (type_expr_type != type::Type_) {
