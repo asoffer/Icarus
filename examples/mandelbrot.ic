@@ -72,5 +72,5 @@ linspace (1.0, -1.0, 40) do [y: f64] {
     n := mandelbrot(complex.{ real = x \\ imag = y})
     io.Print((62 - n) as u8 as char)
   }
-  io.Print("\n")
+  io.Print(!\n)
 }
