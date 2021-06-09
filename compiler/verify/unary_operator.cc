@@ -308,4 +308,16 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
   return context().set_qual_type(node, qt);
 }
 
+void Compiler::VerifyPatternType(ast::UnaryOperator const *node,
+                                 type::Type t) {
+  switch (node->kind()) {
+    case ast::UnaryOperator::Kind::Pointer:
+    case ast::UnaryOperator::Kind::BufferPointer:
+    case ast::UnaryOperator::Kind::Negate: {
+      VerifyPatternType(node->operand(), t);
+    } break;
+    default: NOT_YET(node->DebugString());
+  }
+}
+
 }  // namespace compiler

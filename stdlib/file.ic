@@ -60,7 +60,7 @@ LinesState ::= struct {
   line_length: i64
 
   (destroy) ::= (self: *LinesState) -> () {
-    memory.deallocate(char, self.line)
+    memory.deallocate(self.line)
   }
 }
 

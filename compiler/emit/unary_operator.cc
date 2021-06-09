@@ -208,4 +208,27 @@ void Compiler::EmitMoveAssign(
   }
 }
 
+bool Compiler::PatternMatch(ast::UnaryOperator const *node,
+                            PatternMatchingContext &pmc) {
+  switch (node->kind()) {
+    case ast::UnaryOperator::Kind::Pointer: {
+      auto t = pmc.value.get<type::Type>(0);
+      if (not t.is<type::Pointer>() or t.is<type::BufferPointer>()) {
+        return false;
+      }
+      pmc.value.set(0, type::Type(t.as<type::Pointer>().pointee()));
+      return PatternMatch(node->operand(), pmc);
+    } break;
+    case ast::UnaryOperator::Kind::BufferPointer: {
+      auto t = pmc.value.get<type::Type>(0);
+      auto const *p = t.if_as<type::BufferPointer>();
+      if (not p) { return false; }
+      pmc.value.set(0, type::Type(p->pointee()));
+      return PatternMatch(node->operand(), pmc);
+    } break;
+    default: NOT_YET();
+  }
+  UNREACHABLE();
+}
+
 }  // namespace compiler

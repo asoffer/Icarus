@@ -55,9 +55,9 @@ string ::= struct {
 
   (move) ::= (to: *string) -> string {
     return string.{
-      _data     = core.exchange([*]char, to._data, null as [*]char)
-      _length   = core.exchange(u64, to._length, 0 as u64)
-      _capacity = core.exchange(u64, to._capacity, 0 as u64)
+      _data     = core.exchange(to._data, null as [*]char)
+      _length   = core.exchange(to._length, 0 as u64)
+      _capacity = core.exchange(to._capacity, 0 as u64)
     }
   }
 

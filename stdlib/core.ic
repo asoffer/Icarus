@@ -70,9 +70,8 @@ for ::= scope (range) {
   exit ::= () -> () {}
 }
 
-// TODO: Rewrite with inference implementation.
 #{export}
-exchange ::= (T :: type, x: *T, y: T) -> T {
+exchange ::= (x: *~`T, y: T) -> T {
   result: T
   result = @x
   @x = y
@@ -80,7 +79,7 @@ exchange ::= (T :: type, x: *T, y: T) -> T {
 }
 
 #{export}
-exchange ::= (T :: type, x: *T, y: *T, z: T) -> T {
+exchange ::= (x: *~`T, y: *T, z: T) -> T {
   result: T
   result = @x
   @x = @y

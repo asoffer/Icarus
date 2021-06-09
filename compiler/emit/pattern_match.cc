@@ -31,7 +31,7 @@ ir::Value Compiler::EmitValue(ast::PatternMatch const *node) {
       context().SetConstant(id, std::move(buffer));
     }
   } else {
-    NOT_YET();
+    NOT_YET(node->DebugString());
   }
 
   return result;

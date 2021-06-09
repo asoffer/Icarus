@@ -350,6 +350,7 @@ struct Compiler
   DEFINE_PATTERN_MATCH(ast::BinaryOperator)
   DEFINE_PATTERN_MATCH(ast::BindingDeclaration)
   DEFINE_PATTERN_MATCH(ast::Declaration)
+  DEFINE_PATTERN_MATCH(ast::UnaryOperator)
 #undef DEFINE_PATTERN_MATCH
 
   // The reason to separate out type/body verification is if the body might
