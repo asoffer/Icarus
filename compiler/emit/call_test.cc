@@ -16,9 +16,9 @@ using CallTest = testing::TestWithParam<TestCase>;
 TEST_P(CallTest, Call) {
   auto const &[description, expr, expected] = GetParam();
   test::TestModule mod;
-  mod.AppendCode(R"(
-  identity ::= (x: $x) => x
-  )");
+  // mod.AppendCode(R"(
+  // identity ::= (x: ~`x) => x
+  // )");
 
   auto const *e = mod.Append<ast::Expression>(expr);
   auto t        = mod.context().qual_types(e)[0].type();
@@ -86,16 +86,16 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{.expr     = R"(((a := 1, b := 2) => a + 2 * b)(2))",
                  .expected = ir::Value(int64_t{6})},
 
-        TestCase{.expr     = R"(((a: $a) => a * a)(2))",
-                 .expected = ir::Value(int64_t{4})},
-        TestCase{.expr     = R"(((a: $a) => a * a)(2.5))",
-                 .expected = ir::Value(6.25)},
+        // TestCase{.expr     = R"(((a: ~`a) => a * a)(2))",
+        //          .expected = ir::Value(int64_t{4})},
+        // TestCase{.expr     = R"(((a: ~`a) => a * a)(2.5))",
+        //          .expected = ir::Value(6.25)},
 
         // TODO: Calling overload sets.
-        TestCase{.description = "Instantiate the same generic more than once.",
-                 .expr        = R"((identity(2) as f64) + identity(1.0))",
-                 .expected    = ir::Value(3.0)},
-
+//         TestCase{.description = "Instantiate the same generic more than once.",
+//                  .expr        = R"((identity(2) as f64) + identity(1.0))",
+//                  .expected    = ir::Value(3.0)},
+// 
         // Value to pointer casts
         TestCase{
             .expr     = R"(((n: *i64) => @n * @n)(3))",

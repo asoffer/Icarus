@@ -61,6 +61,7 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Init: return "init ";
     case frontend::Operator::Destroy: return "destroy ";
     case frontend::Operator::Move: return "move ";
+    case frontend::Operator::Tilde: return "~";
     default: UNREACHABLE();
   }
 }
@@ -142,6 +143,10 @@ void BinaryOperator::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, OpStr(op()));
   rhs()->DebugStrAppend(out, indent);
   absl::StrAppend(out, ")");
+}
+
+void BindingDeclaration::DebugStrAppend(std::string *out, size_t indent) const {
+  absl::StrAppend(out, "`", ids()[0].name());
 }
 
 void BlockLiteral::DebugStrAppend(std::string *out, size_t indent) const {
@@ -398,6 +403,12 @@ void UnconditionalGoto::DebugStrAppend(std::string *out, size_t indent) const {
 
 void Label::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "#.", label_);
+}
+
+void PatternMatch::DebugStrAppend(std::string *out, size_t indent) const {
+  if (is_binary()) { expr().DebugStrAppend(out, indent); }
+  absl::StrAppend(out, "~");
+  pattern().DebugStrAppend(out, indent);
 }
 
 void ReturnStmt::DebugStrAppend(std::string *out, size_t indent) const {

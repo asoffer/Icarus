@@ -46,6 +46,8 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
     Visit(node->rhs());
   }
 
+  void Visit(ast::BindingDeclaration const *node) final {}
+
   void Visit(ast::BlockLiteral const *node) final {
     for (auto const *b : node->before()) { Visit(b); }
     for (auto const *a : node->after()) { Visit(a); }
@@ -165,6 +167,10 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
     jumps_->Insert(&(*iter)->as<ast::Jump>(), node);
   }
 
+  void Visit(ast::PatternMatch const *node) final {
+    if (node->is_binary()) { Visit(&node->expr()); }
+    Visit(&node->pattern());
+  }
   void Visit(ast::Label const *node) final {}
 
   void Visit(ast::Jump const *node) final {

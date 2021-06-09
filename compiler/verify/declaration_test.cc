@@ -6,6 +6,7 @@
 namespace compiler {
 namespace {
 
+using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
@@ -398,6 +399,16 @@ TEST(Declaration, AmbiguouslyCallableFunctionsCannotShadow) {
         UnorderedElementsAre(Pair("type-error", "shadowing-declaration")));
   }
 }
+
+TEST(BindingDeclaration, Success) {
+  test::TestModule mod;
+  mod.Append<ast::PatternMatch>(R"(true ~ `x)");
+  auto const *e = mod.Append<ast::Expression>(R"(x)");
+  ASSERT_THAT(mod.context().qual_types(e),
+              ElementsAre(type::QualType::Constant(type::Bool)));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
 
 // TODO check shadowing on generics once you have interfaces implemented.
 // TODO Special functions (copy, move, etc)

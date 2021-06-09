@@ -46,6 +46,13 @@
 #include "type/visitor.h"
 
 namespace compiler {
+struct PatternMatchingContext {
+  ast::Expression const *node;
+  type::Type type;
+  base::untyped_buffer value;
+  absl::flat_hash_map<std::string_view, ir::Value> bindings;
+};
+
 struct EmitRefTag {};
 struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
@@ -56,6 +63,8 @@ struct EmitDestroyTag {};
 struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
 struct EmitMoveAssignTag {};
+struct PatternTypeTag {};
+struct PatternMatchTag {};
 
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a
@@ -87,16 +96,18 @@ struct Compiler
       ast::Visitor<EmitValueTag, ir::Value()>,
       ast::Visitor<VerifyTypeTag, absl::Span<type::QualType const>()>,
       ast::Visitor<VerifyBodyTag, WorkItem::Result()>,
+      ast::Visitor<PatternMatchTag, bool(PatternMatchingContext *)>,
+      ast::Visitor<PatternTypeTag, void(type::Type)>,
       type::Visitor<EmitDestroyTag, void(ir::Reg)>,
       type::Visitor<EmitMoveInitTag,
                     void(ir::Reg, type::Typed<ir::Value> const &)>,
       type::Visitor<EmitCopyInitTag,
                     void(ir::Reg, type::Typed<ir::Value> const &)>,
       type::Visitor<EmitDefaultInitTag, void(ir::Reg)>,
-      type::Visitor<EmitMoveAssignTag,
-                    void(ir::RegOr<ir::addr_t>, type::Typed<ir::Value> const &)>,
-      type::Visitor<EmitCopyAssignTag,
-                    void(ir::RegOr<ir::addr_t>, type::Typed<ir::Value> const &)> {
+      type::Visitor<EmitMoveAssignTag, void(ir::RegOr<ir::addr_t>,
+                                            type::Typed<ir::Value> const &)>,
+      type::Visitor<EmitCopyAssignTag, void(ir::RegOr<ir::addr_t>,
+                                            type::Typed<ir::Value> const &)> {
   PersistentResources &resources() { return resources_; }
 
   template <typename... Args>
@@ -145,6 +156,16 @@ struct Compiler
   WorkItem::Result VerifyBody(ast::Node const *node) {
     return ast::Visitor<VerifyBodyTag, WorkItem::Result()>::Visit(node);
   }
+
+  bool PatternMatch(ast::Node const *node, PatternMatchingContext &context) {
+    return ast::Visitor<PatternMatchTag, bool(PatternMatchingContext *)>::Visit(
+        node, &context);
+  }
+
+  void VerifyPatternType(ast::Node const *node, type::Type t) {
+    return ast::Visitor<PatternTypeTag, void(type::Type)>::Visit(node, t);
+  }
+
 
   ir::Value EmitValue(ast::Node const *node) {
     return ast::Visitor<EmitValueTag, ir::Value()>::Visit(node);
@@ -312,8 +333,25 @@ struct Compiler
   ir::Value Visit(EmitValueTag, ast::name const *node) override {              \
     return EmitValue(node);                                                    \
   }
+
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
+
+#define DEFINE_PATTERN_MATCH(name)                                             \
+  bool PatternMatch(name const *node, PatternMatchingContext &context);        \
+  bool Visit(PatternMatchTag, name const *node,                                \
+             PatternMatchingContext *context) override {                       \
+    return PatternMatch(node, *context);                                       \
+  }                                                                            \
+                                                                               \
+  void VerifyPatternType(name const *node, type::Type t);                      \
+  void Visit(PatternTypeTag, name const *node, type::Type t) override {        \
+    VerifyPatternType(node, t);                                                \
+  }
+  DEFINE_PATTERN_MATCH(ast::BinaryOperator)
+  DEFINE_PATTERN_MATCH(ast::BindingDeclaration)
+  DEFINE_PATTERN_MATCH(ast::Declaration)
+#undef DEFINE_PATTERN_MATCH
 
   // The reason to separate out type/body verification is if the body might
   // transitively have identifiers referring to a declaration that is assigned

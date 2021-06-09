@@ -36,8 +36,7 @@ void InitializeNodes(base::PtrSpan<Node> nodes, Node::Initializer &initializer);
   }                                                                            \
                                                                                \
   void DebugStrAppend(std::string *out, size_t indent) const override;         \
-  void Initialize(Node::Initializer &initializer) override;                    \
-  bool IsDependent() const override
+  void Initialize(Node::Initializer &initializer) override;
 
 // WithScope:
 // A mixin which adds a scope of the given type `S`.
@@ -288,7 +287,7 @@ struct ParameterizedExpression : Expression {
       }
       if (not is_generic_) {
         is_generic_ = (param.value->flags() & Declaration::f_IsConst) or
-                      param.value->IsDependent();
+                      param.value->covers_binding();
       }
     }
   }
@@ -297,6 +296,78 @@ struct ParameterizedExpression : Expression {
   std::vector<std::pair<int, core::DependencyNode<Declaration>>>
       ordered_dependency_nodes_;
   bool is_generic_ = false;
+};
+
+// PatternMatch:
+//
+// Represents a pattern matching expression, which may or may not own the
+// expression being matched against.
+//
+// Examples:
+// ```
+// 3 ~ 2 * `N + 1
+// identity ::= (x: ~`x) => x
+// ```
+//
+struct PatternMatch : Expression {
+  explicit PatternMatch(std::unique_ptr<Expression> expr_to_match,
+                        std::unique_ptr<Expression> pattern)
+      : Expression(frontend::SourceRange(expr_to_match->range().begin(),
+                                         pattern->range().end())),
+        expr_to_match_(reinterpret_cast<uintptr_t>(expr_to_match.release()) |
+                       uintptr_t{1}),
+        pattern_(std::move(pattern)) {}
+  explicit PatternMatch(frontend::SourceRange const &range,
+                        std::unique_ptr<Expression> pattern)
+      : Expression(range), expr_to_match_(0), pattern_(std::move(pattern)) {}
+
+  ~PatternMatch() override {
+    if (is_binary()) { delete &expr(); }
+  }
+
+  Expression const &expr() const {
+    return *ASSERT_NOT_NULL(
+        reinterpret_cast<Expression const *>(expr_to_match_ & ~uintptr_t{1}));
+  }
+
+  Expression const &pattern() const { return *ASSERT_NOT_NULL(pattern_.get()); }
+
+  bool is_binary() const { return expr_to_match_ & uintptr_t{1}; }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  Expression &expr() {
+    return *ASSERT_NOT_NULL(
+        reinterpret_cast<Expression *>(expr_to_match_ & ~uintptr_t{1}));
+  }
+
+  uintptr_t expr_to_match_;
+  std::unique_ptr<Expression> pattern_;
+};
+
+// BindingDeclaration:
+// Represents a pattern matching binding declaration.
+//
+// For example: `N
+struct BindingDeclaration : Declaration {
+  explicit BindingDeclaration(frontend::SourceRange const &range,
+                              Declaration::Id id)
+      : Declaration(range, ToVector(std::move(id)), nullptr, nullptr,
+                    f_IsConst) {}
+
+  PatternMatch const &pattern() const { return *ASSERT_NOT_NULL(pattern_); }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  static std::vector<ast::Declaration::Id> ToVector(ast::Declaration::Id id) {
+    std::vector<ast::Declaration::Id> ids;
+    ids.push_back(std::move(id));
+    return ids;
+  }
+
+  PatternMatch const *pattern_;
 };
 
 // DesignatedInitializer:
@@ -812,7 +883,7 @@ struct Index : Expression {
 //   this.some_integer_field: T
 // }
 // ```
-// 
+//
 // ```
 // interface {
 //   swap: (*this, *this) -> ()
@@ -945,9 +1016,7 @@ struct ReturnStmt : Node {
     return *ASSERT_NOT_NULL(function_literal_);
   }
 
-  base::PtrSpan<Expression const> exprs() const {
-    return exprs_;
-  }
+  base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 

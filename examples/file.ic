@@ -1,5 +1,4 @@
 --     ::= import "core.ic"
-cstdio ::= import "cstdio.ic"
 errno  ::= import "errno.ic"
 file   ::= import "file.ic"
 io     ::= import "io.ic"

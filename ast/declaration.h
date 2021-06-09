@@ -41,7 +41,6 @@ struct Declaration_Id : Expression {
   void Initialize(Initializer &initializer) override {
     scope_ = initializer.scope;
   }
-  bool IsDependent() const override { return false; }
 
  private:
   friend struct Declaration;
@@ -122,11 +121,13 @@ struct Declaration : Expression {
     kInferred                 = 3,
     kUninitialized            = 6,
     kInferredAndUninitialized = 7,  // This is an error
+    kBinding                  = 9,
   };
   Kind kind() const {
     int k = type_expr() ? 0 : 1;
     if (IsUninitialized()) { k |= kUninitialized; }
     if (initial_value()) { k |= kCustomInit; }
+    if (covers_binding()) { k |= kBinding; }
     return static_cast<Kind>(k);
   }
 
@@ -154,7 +155,6 @@ struct Declaration : Expression {
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Initializer &initializer) override;
-  bool IsDependent() const override;
 
  private:
   std::vector<Id> ids_;

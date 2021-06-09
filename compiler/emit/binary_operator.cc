@@ -1,7 +1,25 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "diagnostic/message.h"
 
 namespace compiler {
+namespace {
+
+struct PatternMatchingFailed {
+  static constexpr std::string_view kCategory = "pattern-match-error";
+  static constexpr std::string_view kName     = "pattern-matching-failed";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Pattern matching failed"),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  frontend::SourceRange range;
+};
+
+}  // namespace
 
 ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
   switch (node->op()) {
@@ -430,6 +448,181 @@ void Compiler::EmitCopyAssign(
   auto t = context().qual_types(node)[0].type();
   EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
                  type::Typed<ir::Value>(EmitValue(node), t));
+}
+
+bool Compiler::PatternMatch(ast::BinaryOperator const *node,
+                            PatternMatchingContext &pmc) {
+  switch (node->op()) {
+    case frontend::Operator::Add: {
+      if (not node->lhs()->covers_binding()) {
+        auto lhs_buffer = EvaluateToBufferOrDiagnose(
+            type::Typed<ast::Expression const *>(node->lhs(), pmc.type));
+        if (auto const *p = pmc.type.if_as<type::Primitive>()) {
+          bool match = p->Apply([&]<typename T>()->bool {
+            auto sum  = pmc.value.template get<T>(0);
+            auto term = lhs_buffer.template get<T>(0);
+            if constexpr (std::is_integral_v<T>) {
+              pmc.value.set(0, static_cast<T>(sum - term));
+            } else {
+              NOT_YET();
+            }
+
+            return true;
+          });
+
+          if (match) {
+            return PatternMatch(node->rhs(), pmc);
+          } else {
+            diag().Consume(PatternMatchingFailed{.range = node->range()});
+            return false;
+          }
+        } else {
+          NOT_YET();
+        }
+      } else if (not node->rhs()->covers_binding()) {
+        auto rhs_buffer = EvaluateToBufferOrDiagnose(
+            type::Typed<ast::Expression const *>(node->rhs(), pmc.type));
+        if (auto const *p = pmc.type.if_as<type::Primitive>()) {
+          bool match = p->Apply([&]<typename T>()->bool {
+            auto sum = pmc.value.template get<T>(0);
+            auto term  = rhs_buffer.template get<T>(0);
+            if constexpr (std::is_integral_v<T>) {
+              pmc.value.set(0, static_cast<T>(sum - term));
+            } else {
+              NOT_YET();
+            }
+
+            return true;
+          });
+
+          if (match) {
+            return PatternMatch(node->lhs(), pmc);
+          } else {
+            diag().Consume(PatternMatchingFailed{.range = node->range()});
+            return false;
+          }
+        } else {
+          NOT_YET();
+        }
+      } else {
+        NOT_YET();
+      }
+    } break;
+    case frontend::Operator::Sub: {
+      if (not node->lhs()->covers_binding()) {
+        auto lhs_buffer = EvaluateToBufferOrDiagnose(
+            type::Typed<ast::Expression const *>(node->lhs(), pmc.type));
+        if (auto const *p = pmc.type.if_as<type::Primitive>()) {
+          bool match = p->Apply([&]<typename T>()->bool {
+            auto diff = pmc.value.template get<T>(0);
+            auto term = lhs_buffer.template get<T>(0);
+            if constexpr (std::is_integral_v<T>) {
+              pmc.value.set(0, static_cast<T>(term - diff));
+            } else {
+              NOT_YET();
+            }
+
+            return true;
+          });
+
+          if (match) {
+            return PatternMatch(node->rhs(), pmc);
+          } else {
+            diag().Consume(PatternMatchingFailed{.range = node->range()});
+            return false;
+          }
+        } else {
+          NOT_YET();
+        }
+      } else if (not node->rhs()->covers_binding()) {
+        auto rhs_buffer = EvaluateToBufferOrDiagnose(
+            type::Typed<ast::Expression const *>(node->rhs(), pmc.type));
+        if (auto const *p = pmc.type.if_as<type::Primitive>()) {
+          bool match = p->Apply([&]<typename T>()->bool {
+            auto diff = pmc.value.template get<T>(0);
+            auto term  = rhs_buffer.template get<T>(0);
+            if constexpr (std::is_integral_v<T>) {
+              pmc.value.set(0, static_cast<T>(diff + term));
+            } else {
+              NOT_YET();
+            }
+
+            return true;
+          });
+
+          if (match) {
+            return PatternMatch(node->lhs(), pmc);
+          } else {
+            diag().Consume(PatternMatchingFailed{.range = node->range()});
+            return false;
+          }
+        } else {
+          NOT_YET();
+        }
+      } else {
+        NOT_YET();
+      }
+    } break;
+    case frontend::Operator::Mul: {
+      if (not node->lhs()->covers_binding()) {
+        auto lhs_buffer = EvaluateToBufferOrDiagnose(
+            type::Typed<ast::Expression const *>(node->lhs(), pmc.type));
+        if (auto const *p = pmc.type.if_as<type::Primitive>()) {
+          bool match = p->Apply([&]<typename T>()->bool {
+            auto product = pmc.value.template get<T>(0);
+            auto factor  = lhs_buffer.template get<T>(0);
+            if constexpr (std::is_integral_v<T>) {
+              if (product % factor != 0) { return false; }
+              pmc.value.set(0, static_cast<T>(product / factor));
+            } else {
+              NOT_YET();
+            }
+
+            return true;
+          });
+
+          if (match) {
+            return PatternMatch(node->rhs(), pmc);
+          } else {
+            diag().Consume(PatternMatchingFailed{.range = node->range()});
+            return false;
+          }
+        } else {
+          NOT_YET();
+        }
+      } else if (not node->rhs()->covers_binding()) {
+        auto rhs_buffer = EvaluateToBufferOrDiagnose(
+            type::Typed<ast::Expression const *>(node->rhs(), pmc.type));
+        if (auto const *p = pmc.type.if_as<type::Primitive>()) {
+          bool match = p->Apply([&]<typename T>()->bool {
+            auto product = pmc.value.template get<T>(0);
+            auto factor  = rhs_buffer.template get<T>(0);
+            if constexpr (std::is_integral_v<T>) {
+              if (product % factor != 0) { return false; }
+              pmc.value.set(0, static_cast<T>(product / factor));
+            } else {
+              NOT_YET();
+            }
+
+            return true;
+          });
+
+          if (match) {
+            return PatternMatch(node->lhs(), pmc);
+          } else {
+            diag().Consume(PatternMatchingFailed{.range = node->range()});
+            return false;
+          }
+        } else {
+          NOT_YET();
+        }
+      } else {
+        NOT_YET();
+      }
+    } break;
+    default: NOT_YET();
+  }
+  UNREACHABLE();
 }
 
 }  // namespace compiler

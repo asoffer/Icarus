@@ -29,7 +29,6 @@ cc_library(
         "build_param_dependency_graph.cc",
         "debug_string.cc",
         "initialize.cc",
-        "is_dependent.cc",
     ],
     deps = [
         ":scope",

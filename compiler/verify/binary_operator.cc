@@ -370,4 +370,35 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const 
   UNREACHABLE(stringify(node->op()));
 }
 
+void Compiler::VerifyPatternType(ast::BinaryOperator const *node,
+                                 type::Type t) {
+  switch (node->op()) {
+    using frontend::Operator;
+    case Operator::Add:
+    case Operator::Sub:
+    case Operator::Mul: {
+      // TODO: Support non-builtin types.
+      if (node->rhs()->covers_binding()) {
+        if (node->lhs()->covers_binding()) {
+          NOT_YET();
+        } else {
+          VerifyType(node->lhs());
+          VerifyPatternType(node->rhs(), t);
+        }
+      }
+
+      if (node->lhs()->covers_binding()) {
+        if (node->lhs()->covers_binding()) {
+          VerifyType(node->rhs());
+          VerifyPatternType(node->lhs(), t);
+        } else {
+          NOT_YET();
+        }
+      }
+    } break;
+
+    default: NOT_YET(node->DebugString());
+  }
+}
+
 }  // namespace compiler

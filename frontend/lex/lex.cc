@@ -209,7 +209,7 @@ Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
 // Note: The order here is somewhat important. Because we choose the first
 // match, we cannot, for example, put `:` before `::=`.
 static base::Global kOps =
-    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 44>{
+    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 45>{
         {{"@", {Operator::At}},           {",", {Operator::Comma}},
          {"[*]", {Operator::BufPtr}},     {"$", {Operator::ArgType}},
          {"+=", {Operator::AddEq}},       {"+", {Operator::Add}},
@@ -231,7 +231,8 @@ static base::Global kOps =
          {"(", {Syntax::LeftParen}},      {")", {Syntax::RightParen}},
          {"[", {Syntax::LeftBracket}},    {"]", {Syntax::RightBracket}},
          {"{", {Syntax::LeftBrace}},      {"}", {Syntax::RightBrace}},
-         {"~", {Operator::Tilde}},        {";", {Syntax::Semicolon}}},
+         {"~", {Operator::Tilde}},        {";", {Syntax::Semicolon}},
+         {"`", {Operator::Backtick}}},
     };
 
 Lexeme NextOperator(SourceCursor &cursor, SourceBuffer const &buffer) {

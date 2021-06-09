@@ -13,15 +13,15 @@ allocate ::= (T :: type, l: u64) -> [*]T {
 }
 
 #{export}
-// TODO: Verify that `ptr` is a pointer-type
-deallocate ::= (ptr: $ptr) -> () {
-  free ::= foreign("free", $ptr -> ())
+// TODO: Infer the type and ensure it's a pointer.
+deallocate ::= (T :: type, ptr: *T) -> () {
+  free ::= foreign("free", *T -> ())
   free(ptr)
 }
 
 #{export}
-// TODO: Verify that `ptr` is a buffer pointer.
-reverse_destroy_buffer ::= (ptr: $ptr, count: u64) -> () {
+// TODO: Infer the type and ensure it's a pointer.
+reverse_destroy_buffer ::= (T :: type, ptr: [*]T, count: u64) -> () {
   p := ptr + count
   core.repeat (count as i64) do {
     p -= 1

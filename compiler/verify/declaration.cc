@@ -344,6 +344,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     case ast::Declaration::kUninitialized: {
       node_qual_types = {VerifyUninitialized(*this, node)};
     } break;
+    case ast::Declaration::kBinding: {
+      VerifyType(&node->as<ast::BindingDeclaration>().pattern());
+      auto span       = context().qual_types(node);
+      node_qual_types = std::vector<type::QualType>(span.begin(), span.end());
+    } break;
     default: UNREACHABLE(node->DebugString());
   }
 
@@ -471,6 +476,20 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     ast::Declaration::Id const *node) {
   LOG("Declaration::Id", "Verifying %s", node->name());
   return VerifyType(&node->declaration());
+}
+
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::BindingDeclaration const *node) {
+  UNREACHABLE();
+}
+
+void Compiler::VerifyPatternType(ast::Declaration const *node, type::Type t) {
+  UNREACHABLE();
+}
+
+void Compiler::VerifyPatternType(ast::BindingDeclaration const *node,
+                                 type::Type t) {
+  context().set_qual_type(node, type::QualType::Constant(t));
 }
 
 }  // namespace compiler

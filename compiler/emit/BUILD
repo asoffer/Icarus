@@ -95,7 +95,7 @@ cc_library(
     srcs = ["binary_operator.cc"],
     deps = [
         "//ast",
-        "//compiler:compiler_header",
+        "//compiler:compiler_header", 
     ],
 )
 
@@ -430,6 +430,29 @@ cc_library(
 )
 
 # TODO: ParameterizedStructLiteral tests.
+
+cc_library(
+    name = "pattern_match",
+    srcs = ["pattern_match.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//ir/value",
+        "//ir/value:addr",
+        "//ir/value:reg_or",
+        "//type",
+    ],
+)
+
+cc_test(
+    name = "pattern_match_test",
+    srcs = ["pattern_match_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_library(
     name = "return_stmt",

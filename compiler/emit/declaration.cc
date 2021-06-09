@@ -80,6 +80,14 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
 
         return *maybe_val;
       }
+    } else if (auto const * bd =node->if_as<ast::BindingDeclaration>()) {
+      // TODO: Support multiple declarations
+      if (auto const *constant = c.context().Constant(&node->ids()[0])) {
+        return constant->value();
+      } else {
+        c.EmitValue(&bd->pattern());
+        return ASSERT_NOT_NULL(c.context().Constant(&node->ids()[0]))->value();
+      }
     } else if (node->IsDefaultInitialized()) {
       UNREACHABLE(node->DebugString());
     } else {
@@ -125,5 +133,26 @@ ir::Value Compiler::EmitValue(ast::Declaration::Id const *node) {
              : EmitNonConstantDeclaration(*this, &node->declaration());
 }
 
+ir::Value Compiler::EmitValue(ast::BindingDeclaration const *node) {
+  UNREACHABLE();
+}
+
+bool Compiler::PatternMatch(ast::Declaration const *node,
+                            PatternMatchingContext &pmc) {
+  NOT_YET();
+}
+
+bool Compiler::PatternMatch(ast::BindingDeclaration const *node,
+                            PatternMatchingContext &pmc) {
+  if (auto const *p = pmc.type.if_as<type::Primitive>()) {
+    pmc.bindings.emplace(node->ids()[0].name(),
+                         p->Apply([&]<typename T>()->ir::Value {
+                           return ir::Value(pmc.value.template get<T>(0));
+                         }));
+    return true;
+  } else {
+    NOT_YET();
+  }
+}
 
 }  // namespace compiler

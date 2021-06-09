@@ -49,6 +49,8 @@ void Match::Visit(ast::Assignment const *node, MatchState *state) {}
 
 void Match::Visit(ast::BinaryOperator const *node, MatchState *state) {}
 
+void Match::Visit(ast::BindingDeclaration const *node, MatchState *state) {}
+
 void Match::Visit(ast::BlockLiteral const *node, MatchState *state) {}
 
 void Match::Visit(ast::BlockNode const *node, MatchState *state) {}
@@ -82,6 +84,8 @@ void Match::Visit(ast::Import const *node, MatchState *state) {}
 void Match::Visit(ast::Index const *node, MatchState *state) {}
 
 void Match::Visit(ast::InterfaceLiteral const *node, MatchState *state) {}
+
+void Match::Visit(ast::PatternMatch const *node, MatchState *state) {}
 
 void Match::Visit(ast::ConditionalGoto const *node, MatchState *state) {}
 

@@ -78,6 +78,10 @@ void TokenExtractor::Visit(ast::ComparisonOperator const *node) {
 }
 
 ///////////////////////////////////////////////////////////////////////////
+void TokenExtractor::Visit(ast::BindingDeclaration const *node) {
+  UNREACHABLE();
+}
+
 void TokenExtractor::Visit(ast::Declaration const *node) {
   if (node->type_expr()) { Visit(node->type_expr()); }
   if (node->init_val()) { Visit(node->init_val()); }
@@ -172,6 +176,9 @@ void TokenExtractor::Visit(ast::InterfaceLiteral const *node) { NOT_YET(); }
 void TokenExtractor::Visit(ast::Identifier const *node) {
   line_builder_.write(node->name());
 }
+
+void TokenExtractor::Visit(ast::PatternMatch const *node) { NOT_YET(); }
+
 void TokenExtractor::Visit(ast::Terminal const *node) {
   line_builder_.write("TERM");
 }

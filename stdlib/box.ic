@@ -46,7 +46,7 @@ boxed_array ::= struct (T :: type) {
   }
 
   (destroy) ::= (self: *boxed_array(T)) -> () {
-    mem.reverse_destroy_buffer(self._ptr, self._length)
+    mem.reverse_destroy_buffer(T, self._ptr, self._length)
     mem.deallocate(self._ptr)
   }
 }

@@ -462,6 +462,11 @@ void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
       ordered_decl_ids;
   LOG("MakeAllDestructions", "decls in this scope:");
   for (auto &[name, ids] : scope->decls_) {
+
+    if (ids[0]->declaration().flags() & ast::Declaration::f_IsConst) {
+      continue;
+    }
+
     LOG("MakeAllDestructions", "... %s", name);
     for (ast::Declaration::Id const *id : ids) {
       type::QualType qt = c.context().qual_types(id)[0];

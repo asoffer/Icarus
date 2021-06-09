@@ -8,7 +8,9 @@
 #include "frontend/source/buffer.h"
 
 namespace ast {
+struct Expression;
 struct FunctionLiteral;
+struct PatternMatch;
 struct Scope;
 
 struct Node : base::Cast<Node> {
@@ -27,7 +29,7 @@ struct Node : base::Cast<Node> {
   }
 
   virtual void DebugStrAppend(std::string *out, size_t indent) const {}
-  virtual bool IsDependent() const { return false; }
+  bool covers_binding() const { return covers_binding_; }
 
   constexpr frontend::SourceRange range() const { return range_; }
   Scope *scope() const { return scope_; }
@@ -40,6 +42,9 @@ struct Node : base::Cast<Node> {
     // nodes can point back to their corresponding function literal from which
     // they return.
     FunctionLiteral const *function_literal = nullptr;
+
+    PatternMatch const *pattern     = nullptr;
+    Expression const *match_against = nullptr;
   };
 
   virtual void Initialize(Initializer &initializer) {}
@@ -47,6 +52,8 @@ struct Node : base::Cast<Node> {
  protected:
   frontend::SourceRange range_;
   Scope *scope_ = nullptr;
+  // TODO: We can compress these bit somewhere.
+  bool covers_binding_ = false;
 };
 
 }  // namespace ast

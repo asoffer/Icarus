@@ -548,27 +548,27 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         // Generic functions
-        TestCase{
-            .context            = "f ::= (x: $x) => x",
-            .expr               = "f(3)",
-            .expected_qual_type = type::QualType::NonConstant(type::I64),
-        },
-        TestCase{
-            .context            = "f ::= (x: $x) => x",
-            .expr               = "f(true)",
-            .expected_qual_type = type::QualType::NonConstant(type::Bool),
-        },
-        TestCase{
-            .context              = "f ::= (x: $x) => x",
-            .expr                 = "f()",
-            .expected_diagnostics = UnorderedElementsAre(
-                Pair("type-error", "uncallable-with-arguments")),
-        },
-        TestCase{
-            .context            = "S ::= struct (N :: i64) {}",
-            .expr               = "S(n :: i64)",
-            .expected_qual_type = type::QualType::Constant(type::Interface),
-        },
+        // TestCase{
+        //     .context            = "f ::= (x: ~`x) => x",
+        //     .expr               = "f(3)",
+        //     .expected_qual_type = type::QualType::NonConstant(type::I64),
+        // },
+        // TestCase{
+        //     .context            = "f ::= (x: ~`x) => x",
+        //     .expr               = "f(true)",
+        //     .expected_qual_type = type::QualType::NonConstant(type::Bool),
+        // },
+        // TestCase{
+        //     .context              = "f ::= (x: ~`x) => x",
+        //     .expr                 = "f()",
+        //     .expected_diagnostics = UnorderedElementsAre(
+        //         Pair("type-error", "uncallable-with-arguments")),
+        // },
+        // TestCase{
+        //     .context            = "S ::= struct (N :: i64) {}",
+        //     .expr               = "S(n :: i64)",
+        //     .expected_qual_type = type::QualType::Constant(type::Interface),
+        // },
     }));
 
 }  // namespace

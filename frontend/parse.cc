@@ -40,6 +40,20 @@ struct TodoDiagnostic {
   SourceRange range;
 };
 
+struct NonIdentifierBinding {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "non-identifier-binding";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("A backtick (`) must be followed by an identifier"),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  SourceRange range;
+};
+
+
 struct DeclaringNonIdentifier {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "declaring-non-identifier";
@@ -549,7 +563,8 @@ std::unique_ptr<ast::Node> BuildRightUnop(
         range, ast::UnaryOperator::Kind::TypeOf,
         move_as<ast::Expression>(nodes[0]));
 
-    if (unop->operand()->is<ast::Declaration>()) {
+    if (unop->operand()->is<ast::Declaration>() and
+        not unop->operand()->is<ast::BindingDeclaration>()) {
       diag.Consume(
           DeclarationUsedInUnaryOperator{.range = unop->operand()->range()});
     }
@@ -652,17 +667,27 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     return std::make_unique<ast::Import>(range,
                                          move_as<ast::Expression>(nodes[1]));
 
-  } else if (tk == "$") {
+  } else if (tk == "`") {
+    std::string id_str;
     if (auto *id = nodes[1]->if_as<ast::Identifier>()) {
-      return std::make_unique<ast::ArgumentType>(range,
-                                                 std::move(*id).extract());
+      id_str = std::move(*id).extract();
+    } else {
+      diag.Consume(NonIdentifierBinding{.range = nodes[0]->range()});
+    }
+
+    return std::make_unique<ast::BindingDeclaration>(
+        range, ast::Declaration::Id(std::move(id_str), nodes[0]->range()));
+  } else if (tk == "$") {
+    std::string id_str;
+    if (auto *id = nodes[1]->if_as<ast::Identifier>()) {
+      id_str = std::move(*id).extract();
     } else {
       diag.Consume(InvalidArgumentTypeVar{
           .error_range   = nodes[1]->range(),
           .context_range = range,
       });
-      return std::make_unique<ast::ArgumentType>(range, "");
     }
+    return std::make_unique<ast::ArgumentType>(range, std::move(id_str));
   }
 
   static base::Global kUnaryOperatorMap =
@@ -683,7 +708,8 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   auto &operand = nodes[1];
   auto op       = kUnaryOperatorMap->find(tk)->second;
 
-  if (operand->is<ast::Declaration>()) {
+  if (operand->is<ast::Declaration>() and
+      not operand->is<ast::BindingDeclaration>()) {
     diag.Consume(DeclarationUsedInUnaryOperator{.range = range});
     return std::make_unique<ast::UnaryOperator>(
         range, op, MakeInvalidNode(nodes[1]->range()));
@@ -1288,6 +1314,11 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     return (iter->second == Operator::Comma)
                ? BuildCommaList(std::move(nodes), diag)
                : BuildChainOp(std::move(nodes), diag);
+  }
+
+  if (tk == "~") {
+    return std::make_unique<ast::PatternMatch>(
+        move_as<ast::Expression>(nodes[0]), move_as<ast::Expression>(nodes[2]));
   }
 
   if (tk == "as") {

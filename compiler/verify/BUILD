@@ -522,7 +522,26 @@ cc_library(
     ],
 )
 
-# TODO: parameterized_struct_literal
+# TODO: parameterized_struct_literal_test
+
+cc_library(
+    name = "pattern_match",
+    srcs = ["pattern_match.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+cc_test(
+    name = "pattern_match_test",
+    srcs = ["pattern_match_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_library(
     name = "scope_literal",

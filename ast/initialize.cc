@@ -63,8 +63,11 @@ OrderedDependencyNodes(ast::ParameterizedExpression const* node) {
 
 template <typename T>
 static void InitializeAll(std::vector<std::unique_ptr<T>>& nodes,
-                          Node::Initializer& initializer) {
-  for (auto& n : nodes) { n->Initialize(initializer); }
+                          Node::Initializer& initializer, bool* covers) {
+  for (auto& n : nodes) {
+    n->Initialize(initializer);
+    *covers |= n->covers_binding();
+  }
 }
 
 void InitializeNodes(base::PtrSpan<Node> nodes,
@@ -75,6 +78,7 @@ void InitializeNodes(base::PtrSpan<Node> nodes,
 void Access::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   operand_->Initialize(initializer);
+  covers_binding_ = operand_->covers_binding();
 }
 
 void ArgumentType::Initialize(Initializer& initializer) {
@@ -83,43 +87,57 @@ void ArgumentType::Initialize(Initializer& initializer) {
 
 void ArrayLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  for (auto& expr : elems_) { expr->Initialize(initializer); }
+  for (auto& expr : elems_) {
+    expr->Initialize(initializer);
+    covers_binding_ |= expr->covers_binding();
+  }
 }
 
 void ArrayType::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  for (auto const& len : lengths_) { len->Initialize(initializer); }
+  for (auto const& len : lengths_) {
+    len->Initialize(initializer);
+    covers_binding_ |= len->covers_binding();
+  }
   data_type_->Initialize(initializer);
+  covers_binding_ |= data_type_->covers_binding();
 }
 
 void Assignment::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  InitializeAll(lhs_, initializer);
-  InitializeAll(rhs_, initializer);
+  InitializeAll(lhs_, initializer, &covers_binding_);
+  InitializeAll(rhs_, initializer, &covers_binding_);
 }
 
 void BinaryOperator::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   lhs_->Initialize(initializer);
   rhs_->Initialize(initializer);
+  covers_binding_ = lhs_->covers_binding() or rhs_->covers_binding();
+}
+
+void BindingDeclaration::Initialize(Initializer& initializer) {
+  Declaration::Initialize(initializer);
+  covers_binding_ = true;
+  pattern_        = initializer.pattern;
 }
 
 void BlockLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
   initializer.scope = &body_scope();
-  absl::Cleanup c = [&] { initializer.scope = scope_; };
-  InitializeAll(before_, initializer);
-  InitializeAll(after_, initializer);
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
+  InitializeAll(before_, initializer, &covers_binding_);
+  InitializeAll(after_, initializer, &covers_binding_);
 }
 
 void BlockNode::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope, true);
   initializer.scope = &body_scope();
-  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& param : params_) { param.value->Initialize(initializer); }
-  InitializeAll(stmts_, initializer);
+  InitializeAll(stmts_, initializer, &covers_binding_);
 }
 
 void BuiltinFn::Initialize(Initializer& initializer) {
@@ -129,39 +147,63 @@ void BuiltinFn::Initialize(Initializer& initializer) {
 void Call::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   callee_->Initialize(initializer);
-  for (auto& arg : arguments_) { arg.expr().Initialize(initializer); }
+  covers_binding_ = callee_->covers_binding();
+  for (auto& arg : arguments_) {
+    arg.expr().Initialize(initializer);
+    covers_binding_ |= arg.expr().covers_binding();
+  }
 }
 
 void Cast::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   expr_->Initialize(initializer);
   type_->Initialize(initializer);
+  covers_binding_ = expr_->covers_binding() or type_->covers_binding();
 }
 
 void ComparisonOperator::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  for (auto& expr : exprs_) { expr->Initialize(initializer); }
+  for (auto& expr : exprs_) {
+    expr->Initialize(initializer);
+    covers_binding_ |= expr->covers_binding();
+  }
 }
 
 void Declaration::Initialize(Initializer& initializer) {
-  ASSERT(initializer.scope != nullptr);
-  scope_ = initializer.scope;
+  scope_ = ASSERT_NOT_NULL(initializer.scope);
   scope_->InsertDeclaration(this);
-  if (type_expr_.get()) { type_expr_->Initialize(initializer); }
-  if (init_val_.get()) { init_val_->Initialize(initializer); }
-  for (auto& id : ids_) { id.Initialize(initializer); }
+  if (type_expr_.get()) {
+    auto const* m   = std::exchange(initializer.match_against, init_val_.get());
+    absl::Cleanup c = [&] { initializer.match_against = m; };
+    type_expr_->Initialize(initializer);
+    covers_binding_ |= type_expr_->covers_binding();
+  }
+  if (init_val_.get()) {
+    init_val_->Initialize(initializer);
+    covers_binding_ |= init_val_->covers_binding();
+  }
+  for (auto& id : ids_) {
+    id.Initialize(initializer);
+    covers_binding_ |= id.covers_binding();
+  }
 }
 
 void DesignatedInitializer::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   type_->Initialize(initializer);
-  for (auto& assignment : assignments_) { assignment->Initialize(initializer); }
+  for (auto& assignment : assignments_) {
+    assignment->Initialize(initializer);
+    covers_binding_ |= assignment->covers_binding();
+  }
 }
 
 void EnumLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
-  for (auto& [id, value] : values_) { value->Initialize(initializer); }
+  for (auto& [id, value] : values_) {
+    value->Initialize(initializer);
+    covers_binding_ |= value->covers_binding();
+  }
 }
 
 void FunctionLiteral::Initialize(Initializer& initializer) {
@@ -174,18 +216,21 @@ void FunctionLiteral::Initialize(Initializer& initializer) {
     initializer.scope            = scope_;
     initializer.function_literal = f;
   };
-  for (auto& param : params_) { param.value->Initialize(initializer); }
+  for (auto& param : params_) {
+    param.value->Initialize(initializer);
+    covers_binding_ |= param.value->covers_binding();
+  }
   if (outputs_) {
     for (auto& out : *outputs_) { out->Initialize(initializer); }
   }
-  InitializeAll(stmts_, initializer);
+  InitializeAll(stmts_, initializer, &covers_binding_);
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
 }
 
 void FunctionType::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  InitializeAll(params_, initializer);
-  InitializeAll(output_, initializer);
+  InitializeAll(params_, initializer, &covers_binding_);
+  InitializeAll(output_, initializer, &covers_binding_);
 }
 
 void Identifier::Initialize(Initializer& initializer) {
@@ -195,22 +240,25 @@ void Identifier::Initialize(Initializer& initializer) {
 void Import::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   operand_->Initialize(initializer);
+  covers_binding_ = operand_->covers_binding();
 }
 
 void Index::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   lhs_->Initialize(initializer);
   rhs_->Initialize(initializer);
+  covers_binding_ = lhs_->covers_binding() or rhs_->covers_binding();
 }
 
 void InterfaceLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
   initializer.scope = &body_scope();
-  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& [name, expr] : entries_) {
     name->Initialize(initializer);
     expr->Initialize(initializer);
+    covers_binding_ |= name->covers_binding() or expr->covers_binding();
   }
 }
 
@@ -218,17 +266,26 @@ void ConditionalGoto::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   condition_->Initialize(initializer);
   for (auto& opt : true_options_) {
-    opt.args_.Apply([&](auto& expr) { expr->Initialize(initializer); });
+    opt.args_.Apply([&](auto& expr) {
+      expr->Initialize(initializer);
+      covers_binding_ |= expr->covers_binding();
+    });
   }
   for (auto& opt : false_options_) {
-    opt.args_.Apply([&](auto& expr) { expr->Initialize(initializer); });
+    opt.args_.Apply([&](auto& expr) {
+      expr->Initialize(initializer);
+      covers_binding_ |= expr->covers_binding();
+    });
   }
 }
 
 void UnconditionalGoto::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   for (auto& opt : options_) {
-    opt.args_.Apply([&](auto& expr) { expr->Initialize(initializer); });
+    opt.args_.Apply([&](auto& expr) {
+      expr->Initialize(initializer);
+      covers_binding_ |= expr->covers_binding();
+    });
   }
 }
 
@@ -236,10 +293,16 @@ void Jump::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
   initializer.scope = &body_scope();
-  absl::Cleanup c = [&] { initializer.scope = scope_; };
-  if (state_.get()) { state_->Initialize(initializer); }
-  for (auto& param : params_) { param.value->Initialize(initializer); }
-  InitializeAll(stmts_, initializer);
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
+  if (state_.get()) {
+    state_->Initialize(initializer);
+    covers_binding_ |= state_->covers_binding();
+  }
+  for (auto& param : params_) {
+    param.value->Initialize(initializer);
+    covers_binding_ |= param.value->covers_binding();
+  }
+  InitializeAll(stmts_, initializer, &covers_binding_);
 }
 
 void Label::Initialize(Initializer& initializer) { scope_ = initializer.scope; }
@@ -247,12 +310,12 @@ void Label::Initialize(Initializer& initializer) { scope_ = initializer.scope; }
 void ReturnStmt::Initialize(Initializer& initializer) {
   scope_            = initializer.scope;
   function_literal_ = initializer.function_literal;
-  InitializeAll(exprs_, initializer);
+  InitializeAll(exprs_, initializer, &covers_binding_);
 }
 
 void YieldStmt::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  InitializeAll(exprs_, initializer);
+  InitializeAll(exprs_, initializer, &covers_binding_);
 }
 
 void ScopeLiteral::Initialize(Initializer& initializer) {
@@ -260,7 +323,7 @@ void ScopeLiteral::Initialize(Initializer& initializer) {
   set_body_with_parent(initializer.scope);
   if (state_type_) { state_type_->Initialize(initializer); }
   initializer.scope = &body_scope();
-  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& decl : decls_) { decl.Initialize(initializer); }
 }
 
@@ -275,13 +338,14 @@ void ScopeNode::Initialize(Initializer& initializer) {
 void SliceType::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   data_type_->Initialize(initializer);
+  covers_binding_ = data_type_->covers_binding();
 }
 
 void ShortFunctionLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
   initializer.scope = &body_scope();
-  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& param : params_) { param.value->Initialize(initializer); }
   body_->Initialize(initializer);
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
@@ -291,7 +355,7 @@ void StructLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
   initializer.scope = &body_scope();
-  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& field : fields_) { field.Initialize(initializer); }
 }
 
@@ -299,10 +363,18 @@ void ParameterizedStructLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
   initializer.scope = &body_scope();
-  absl::Cleanup c = [&] { initializer.scope = scope_; };
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& param : params_) { param.value->Initialize(initializer); }
   for (auto& field : fields_) { field.Initialize(initializer); }
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
+}
+
+void PatternMatch::Initialize(Initializer& initializer) {
+  scope_          = initializer.scope;
+  auto const* p   = std::exchange(initializer.pattern, this);
+  absl::Cleanup c = [&] { initializer.pattern = p; };
+  pattern_->Initialize(initializer);
+  expr().Initialize(initializer);
 }
 
 void Terminal::Initialize(Initializer& initializer) {
@@ -312,6 +384,7 @@ void Terminal::Initialize(Initializer& initializer) {
 void UnaryOperator::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   operand_->Initialize(initializer);
+  covers_binding_ = operand_->covers_binding();
 }
 
 }  // namespace ast
