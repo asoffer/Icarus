@@ -223,6 +223,22 @@ TEST(Access, IntoModuleWithError) {
 }
 
 
+TEST(Access, Pattern) {
+  test::TestModule mod;
+
+  mod.AppendCode(R"(
+  S ::= struct {
+    n: i64
+  }
+
+  3 ~ (`s).n
+  )");
+
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("pattern-error", "deducing-access")));
+}
+
+
 // TODO: Field not exported from another module.
 // TODO: Non-constant module
 // TODO: Module evaluation failure

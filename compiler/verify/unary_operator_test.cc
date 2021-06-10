@@ -526,5 +526,23 @@ TEST(Unexpanded, Failure) {
                   Pair("type-error", "unexpanded-unary-operator-argument")));
 }
 
+TEST(UnaryOperator, ValidPattern) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  true ~ not `B
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(UnaryOperator, InvalidPattern) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  true ~ -`B
+  )");
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("pattern-error", "pattern-type-mismatch")));
+}
+
 }  // namespace
 }  // namespace compiler

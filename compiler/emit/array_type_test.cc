@@ -59,6 +59,13 @@ INSTANTIATE_TEST_SUITE_P(
         )",
                  .expected = ir::Value(static_cast<type::Type>(
                      type::Arr(3, type::Arr(9, type::F32))))},
+        TestCase{.expr     = R"((() -> type {
+          [3, 2, 1; i64] ~ [3, `N; `T]
+          return T
+        })()
+        )",
+                 .expected = ir::Value(
+                     static_cast<type::Type>(type::Arr(1, type::I64)))},
 
     }));
 

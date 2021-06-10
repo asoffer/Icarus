@@ -48,4 +48,33 @@ void Compiler::EmitMoveInit(
   builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
 }
 
+bool Compiler::PatternMatch(ast::ArrayType const *node,
+                            PatternMatchingContext &pmc) {
+  type::Type t = pmc.value.get<type::Type>(0);
+  for (auto const *len : node->lengths()) {
+    LOG("", "Comparing %s on %s", len->DebugString(), t);
+    type::Array const *a = t.if_as<type::Array>();
+    if (not a) { return false; }
+
+    base::untyped_buffer buff;
+    buff.append(a->length());
+    auto old_type   = std::exchange(pmc.type, type::I64);
+    auto old_value  = std::exchange(pmc.value, std::move(buff));
+    absl::Cleanup c = [&] {
+      pmc.type  = old_type;
+      pmc.value = old_value;
+    };
+
+    if (PatternMatch(len, pmc)) {
+      t = a->data_type();
+    } else {
+      return false;
+    }
+  }
+
+  pmc.type  = type::Type_;
+  pmc.value.set<type::Type>(0, t);
+  return PatternMatch(node->data_type(), pmc);
+}
+
 }  // namespace compiler

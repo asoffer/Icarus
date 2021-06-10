@@ -17,6 +17,21 @@
 namespace compiler {
 namespace {
 
+struct DeducingAccess {
+  static constexpr std::string_view kCategory = "pattern-error";
+  static constexpr std::string_view kName     = "deducing-access";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("The type of an object cannot be deduced from the "
+                         "type of a member."),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  frontend::SourceRange range;
+};
+
 struct IncompleteTypeMemberAccess {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "incomplete-type-member-access";
@@ -471,6 +486,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
       return context().set_qual_types(node, type::QualType::ErrorSpan());
     }
   }
+}
+
+void Compiler::VerifyPatternType(ast::Access const *node, type::Type t) {
+  context().set_qual_type(node, type::QualType::Constant(t));
+  diag().Consume(DeducingAccess{.range = node->range()});
 }
 
 }  // namespace compiler

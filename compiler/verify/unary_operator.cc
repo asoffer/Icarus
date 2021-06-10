@@ -299,24 +299,53 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
         qt = type::QualType::Error();
       }
     } break;
-    case ast::UnaryOperator::Kind::Tilde: {
-      NOT_YET();
-    } break;
     default: UNREACHABLE(*node);
   }
 
   return context().set_qual_type(node, qt);
 }
 
-void Compiler::VerifyPatternType(ast::UnaryOperator const *node,
-                                 type::Type t) {
+void Compiler::VerifyPatternType(ast::UnaryOperator const *node, type::Type t) {
+  context().set_qual_type(node, type::QualType::Constant(t));
   switch (node->kind()) {
-    case ast::UnaryOperator::Kind::Pointer:
+    case ast::UnaryOperator::Kind::Not:
+      if (t != type::Bool) {
+        diag().Consume(PatternTypeMismatch{
+            .pattern_type = t,
+            .matched_type = "bool",
+            .range        = node->range(),
+        });
+      }
+      VerifyPatternType(node->operand(), type::Bool);
+      break;
     case ast::UnaryOperator::Kind::BufferPointer:
-    case ast::UnaryOperator::Kind::Negate: {
+    case ast::UnaryOperator::Kind::Pointer:
+      if (t != type::Type_) {
+        diag().Consume(PatternTypeMismatch{
+            .pattern_type = t,
+            .matched_type = "type",
+            .range        = node->range(),
+        });
+      }
+      VerifyPatternType(node->operand(), type::Type_);
+      break;
+    case ast::UnaryOperator::Kind::Negate:
+      if (not type::IsNumeric(t)) {
+        diag().Consume(PatternTypeMismatch{
+            .pattern_type = t,
+            .matched_type = "Must be a numeric primitive type",
+            .range        = node->range(),
+        });
+      } else {
+        VerifyPatternType(node->operand(), t);
+      }
+      break;
+    case ast::UnaryOperator::Kind::Copy:
+    case ast::UnaryOperator::Kind::Init:
+    case ast::UnaryOperator::Kind::Move: {
       VerifyPatternType(node->operand(), t);
     } break;
-    default: NOT_YET(node->DebugString());
+    default: UNREACHABLE(node->DebugString());
   }
 }
 

@@ -62,9 +62,6 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
         NOT_YET();
       }
     } break;
-    case ast::UnaryOperator::Kind::Tilde: {
-      NOT_YET();
-    } break;
     case ast::UnaryOperator::Kind::Negate: {
       auto operand_ir = EmitValue(node->operand());
       return ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
@@ -220,15 +217,36 @@ bool Compiler::PatternMatch(ast::UnaryOperator const *node,
       return PatternMatch(node->operand(), pmc);
     } break;
     case ast::UnaryOperator::Kind::BufferPointer: {
-      auto t = pmc.value.get<type::Type>(0);
+      auto t        = pmc.value.get<type::Type>(0);
       auto const *p = t.if_as<type::BufferPointer>();
       if (not p) { return false; }
       pmc.value.set(0, type::Type(p->pointee()));
       return PatternMatch(node->operand(), pmc);
     } break;
-    default: NOT_YET();
+    case ast::UnaryOperator::Kind::Not: {
+      bool b = pmc.value.get<bool>(0);
+      pmc.value.set(0, not b);
+      return PatternMatch(node->operand(), pmc);
+    } break;
+    case ast::UnaryOperator::Kind::Negate: {
+      auto t        = context().qual_types(node->operand())[0].type();
+      auto const *p = t.if_as<type::Primitive>();
+      if (not p) { return false; }
+      p->Apply([&]<typename T>() {
+        if constexpr (std::is_arithmetic_v<T>) {
+          T x = pmc.value.template get<T>(0);
+          pmc.value.set(0, -x);
+        }
+      });
+      return PatternMatch(node->operand(), pmc);
+    } break;
+    case ast::UnaryOperator::Kind::Address: NOT_YET();
+    case ast::UnaryOperator::Kind::Copy:
+    case ast::UnaryOperator::Kind::Init:
+    case ast::UnaryOperator::Kind::Move:
+      return PatternMatch(node->operand(), pmc);
+    default: UNREACHABLE();
   }
-  UNREACHABLE();
 }
 
 }  // namespace compiler

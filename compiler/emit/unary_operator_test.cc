@@ -106,6 +106,21 @@ INSTANTIATE_TEST_SUITE_P(
                )",
                  .expr     = "f()",
                  .expected = ir::Value(int64_t{3})},
+        TestCase{.context  = R"(*[*]i64 ~ *`T)",
+                 .expr     = "T",
+                 .expected = ir::Value(type::Type(type::BufPtr(type::I64)))},
+        TestCase{.context  = R"([*]*i64 ~ [*]`T)",
+                 .expr     = "T",
+                 .expected = ir::Value(type::Type(type::Ptr(type::I64)))},
+        TestCase{.context  = R"(3 ~ -`N)",
+                 .expr     = "N",
+                 .expected = ir::Value(int64_t{-3})},
+        TestCase{.context  = R"(3.1 ~ -`N)",
+                 .expr     = "N",
+                 .expected = ir::Value(-3.1)},
+        TestCase{.context  = R"(true ~ not `B)",
+                 .expr     = "B",
+                 .expected = ir::Value(false)},
     }));
 
 }  // namespace

@@ -35,6 +35,22 @@ struct ArrayDataTypeNotAType {
   frontend::SourceRange range;
 };
 
+struct NonTypeArrayTypeMatch {
+  static constexpr std::string_view kCategory = "pattern-error";
+  static constexpr std::string_view kName     = "non-type-array-type-match";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Attempting to match an array type against a value of type `%s`.",
+            type),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+  type::Type type;
+};
+
 }  // namespace
 
 // Verifies that the array type has constant integer lengths and that the data
@@ -66,5 +82,19 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayType const *node
 
   return context().set_qual_type(node, qt);
 }
+
+void Compiler::VerifyPatternType(ast::ArrayType const *node, type::Type t) {
+  if (t != type::Type_) {
+    diag().Consume(NonTypeArrayTypeMatch{.range = node->range(), .type = t});
+    return;
+  }
+
+  VerifyPatternType(node->data_type(), type::Type_);
+  for (auto const *expr : node->lengths()) {
+    // TODO: Support arbitrary constant types.
+    VerifyPatternType(expr, type::I64);
+  }
+}
+
 
 }  // namespace compiler

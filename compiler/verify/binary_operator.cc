@@ -372,6 +372,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const 
 
 void Compiler::VerifyPatternType(ast::BinaryOperator const *node,
                                  type::Type t) {
+  context().set_qual_type(node, type::QualType::Constant(t));
   switch (node->op()) {
     using frontend::Operator;
     case Operator::Add:

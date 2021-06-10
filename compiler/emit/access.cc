@@ -397,4 +397,9 @@ void Compiler::EmitCopyAssign(
   }
 }
 
+bool Compiler::PatternMatch(ast::Access const *node,
+                            PatternMatchingContext &pmc) {
+  UNREACHABLE(node->DebugString());
+}
+
 }  // namespace compiler

@@ -101,5 +101,32 @@ TEST(ArrayType, NonIntegerNonConstant) {
       UnorderedElementsAre(Pair("type-error", "non-integral-array-length")));
 }
 
+TEST(ArrayType, InvalidPattern) {
+  test::TestModule mod;
+  mod.AppendCode(R"(3 ~ [2; `T])");
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("pattern-error", "non-type-array-type-match")));
+}
+
+TEST(ArrayType, ValidPattern) {
+  test::TestModule mod;
+  mod.AppendCode(R"([2, 3; i64] ~ [`N; `T])");
+  {
+    auto const *expr = mod.Append<ast::Identifier>(R"(N)");
+    auto qts         = mod.context().qual_types(expr);
+    EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::I64)));
+  }
+
+  {
+    auto const *expr = mod.Append<ast::Identifier>(R"(T)");
+    auto qts         = mod.context().qual_types(expr);
+    EXPECT_THAT(qts,
+                UnorderedElementsAre(type::QualType::Constant(type::Type_)));
+  }
+
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
 }  // namespace
 }  // namespace compiler

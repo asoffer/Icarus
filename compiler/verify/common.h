@@ -70,6 +70,26 @@ struct ImmovableType {
   frontend::SourceRange range;
 };
 
+struct PatternTypeMismatch {
+  static constexpr std::string_view kCategory = "pattern-error";
+  static constexpr std::string_view kName     = "pattern-type-mismatch";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            R"(Mismatched type between pattern and expression being matched.
+  Type from pattern:          %s
+  Type being matched against: %s)",
+            pattern_type, matched_type),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  type::Type pattern_type;
+  std::string matched_type;
+  frontend::SourceRange range;
+};
+
 std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
     Context const &context,
     base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node);

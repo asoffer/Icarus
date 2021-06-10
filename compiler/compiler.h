@@ -347,9 +347,12 @@ struct Compiler
   void Visit(PatternTypeTag, name const *node, type::Type t) override {        \
     VerifyPatternType(node, t);                                                \
   }
+  DEFINE_PATTERN_MATCH(ast::Access)
+  DEFINE_PATTERN_MATCH(ast::ArrayType)
   DEFINE_PATTERN_MATCH(ast::BinaryOperator)
   DEFINE_PATTERN_MATCH(ast::BindingDeclaration)
   DEFINE_PATTERN_MATCH(ast::Declaration)
+  DEFINE_PATTERN_MATCH(ast::Terminal)
   DEFINE_PATTERN_MATCH(ast::UnaryOperator)
 #undef DEFINE_PATTERN_MATCH
 

@@ -15,7 +15,6 @@ char const *OpStr(UnaryOperator::Kind op) {
     case UnaryOperator::Kind::Pointer: return "*";
     case UnaryOperator::Kind::BufferPointer: return "[*]";
     case UnaryOperator::Kind::Not: return "not";
-    case UnaryOperator::Kind::Tilde: return "~";
     case UnaryOperator::Kind::Negate: return "-";
     case UnaryOperator::Kind::At: return "@";
     case UnaryOperator::Kind::Address: return "&";

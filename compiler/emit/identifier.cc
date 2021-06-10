@@ -20,7 +20,7 @@ void Compiler::EmitCopyInit(
 }
 
 ir::Value Compiler::EmitValue(ast::Identifier const *node) {
-  LOG("Identifier", "%s", node->name());
+  LOG("Identifier", "%s on context %p", node->name(), &context());
   auto decl_span = context().decls(node);
   ASSERT(decl_span.size() != 0u);
   if (decl_span[0]->flags() & ast::Declaration::f_IsConst) {

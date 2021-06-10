@@ -1240,7 +1240,6 @@ struct UnaryOperator : Expression {
     Address,
     Negate,
     Not,
-    Tilde,
   };
 
   explicit UnaryOperator(frontend::SourceRange const &range, Kind kind,

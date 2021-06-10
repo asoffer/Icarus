@@ -491,6 +491,10 @@ void Compiler::VerifyPatternType(ast::Declaration const *node, type::Type t) {
 void Compiler::VerifyPatternType(ast::BindingDeclaration const *node,
                                  type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
+  // TODO: Do this explicitly on VerifyPatternType(Declaration::Id, type::Type)
+  for (auto const &id : node->ids()) {
+    context().set_qual_type(&id, type::QualType::Constant(t));
+  }
 }
 
 }  // namespace compiler
