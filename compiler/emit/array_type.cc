@@ -48,33 +48,36 @@ void Compiler::EmitMoveInit(
   builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
 }
 
-bool Compiler::PatternMatch(ast::ArrayType const *node,
-                            PatternMatchingContext &pmc) {
-  type::Type t = pmc.value.get<type::Type>(0);
-  for (auto const *len : node->lengths()) {
-    LOG("", "Comparing %s on %s", len->DebugString(), t);
-    type::Array const *a = t.if_as<type::Array>();
-    if (not a) { return false; }
+bool Compiler::PatternMatch(
+    ast::ArrayType const *node, PatternMatchingContext &pmc,
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+  type::Type t         = pmc.value.get<type::Type>(0);
 
-    base::untyped_buffer buff;
-    buff.append(a->length());
-    auto old_type   = std::exchange(pmc.type, type::I64);
-    auto old_value  = std::exchange(pmc.value, std::move(buff));
-    absl::Cleanup c = [&] {
-      pmc.type  = old_type;
-      pmc.value = old_value;
-    };
+  type::Array const *a = t.if_as<type::Array>();
+  if (not a) { return false; }
 
-    if (PatternMatch(len, pmc)) {
-      t = a->data_type();
-    } else {
-      return false;
-    }
+  size_t index = pmc.array_type_index;
+
+  base::untyped_buffer length_buffer;
+  length_buffer.append(a->length());
+  EnqueuePatternMatch(node->length(index),
+                      {.type = type::I64, .value = std::move(length_buffer)});
+
+  base::untyped_buffer data_type_buffer;
+  data_type_buffer.append(a->data_type());
+
+  if (index + 1 == node->lengths().size()) {
+    EnqueuePatternMatch(
+        node->data_type(),
+        {.type = type::Type_, .value = std::move(data_type_buffer)});
+  } else {
+    // TODO: Support integer constants in general.
+    EnqueuePatternMatch(node, {.type             = type::I64,
+                               .value            = std::move(data_type_buffer),
+                               .array_type_index = index + 1});
   }
 
-  pmc.type  = type::Type_;
-  pmc.value.set<type::Type>(0, t);
-  return PatternMatch(node->data_type(), pmc);
+  return true;
 }
 
 }  // namespace compiler

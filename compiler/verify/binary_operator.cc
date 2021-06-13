@@ -370,7 +370,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const 
   UNREACHABLE(stringify(node->op()));
 }
 
-void Compiler::VerifyPatternType(ast::BinaryOperator const *node,
+bool Compiler::VerifyPatternType(ast::BinaryOperator const *node,
                                  type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
   switch (node->op()) {
@@ -384,14 +384,14 @@ void Compiler::VerifyPatternType(ast::BinaryOperator const *node,
           NOT_YET();
         } else {
           VerifyType(node->lhs());
-          VerifyPatternType(node->rhs(), t);
+          EnqueueVerifyPatternMatchType(node->rhs(), t);
         }
       }
 
       if (node->lhs()->covers_binding()) {
         if (node->lhs()->covers_binding()) {
           VerifyType(node->rhs());
-          VerifyPatternType(node->lhs(), t);
+          EnqueueVerifyPatternMatchType(node->lhs(), t);
         } else {
           NOT_YET();
         }
@@ -400,6 +400,7 @@ void Compiler::VerifyPatternType(ast::BinaryOperator const *node,
 
     default: NOT_YET(node->DebugString());
   }
+  return true;
 }
 
 }  // namespace compiler

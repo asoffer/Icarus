@@ -48,8 +48,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Terminal const *node)
   return context().set_qual_type(node, type::QualType::Constant(t));
 }
 
-void Compiler::VerifyPatternType(ast::Terminal const *node, type::Type t) {
-  if (VerifyType(node)[0].type() != t) { NOT_YET(); }
+bool Compiler::VerifyPatternType(ast::Terminal const *node, type::Type t) {
+  return VerifyType(node)[0].type() == t;
 }
 
 }  // namespace compiler

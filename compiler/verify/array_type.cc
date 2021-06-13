@@ -83,17 +83,19 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayType const *node
   return context().set_qual_type(node, qt);
 }
 
-void Compiler::VerifyPatternType(ast::ArrayType const *node, type::Type t) {
+bool Compiler::VerifyPatternType(ast::ArrayType const *node, type::Type t) {
   if (t != type::Type_) {
     diag().Consume(NonTypeArrayTypeMatch{.range = node->range(), .type = t});
-    return;
+    return false;
   }
 
-  VerifyPatternType(node->data_type(), type::Type_);
+  EnqueueVerifyPatternMatchType(node->data_type(), type::Type_);
   for (auto const *expr : node->lengths()) {
     // TODO: Support arbitrary constant types.
-    VerifyPatternType(expr, type::I64);
+    EnqueueVerifyPatternMatchType(expr, type::I64);
   }
+
+  return true;
 }
 
 

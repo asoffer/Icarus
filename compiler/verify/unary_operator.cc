@@ -305,7 +305,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
   return context().set_qual_type(node, qt);
 }
 
-void Compiler::VerifyPatternType(ast::UnaryOperator const *node, type::Type t) {
+bool Compiler::VerifyPatternType(ast::UnaryOperator const *node, type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Not:
@@ -315,8 +315,9 @@ void Compiler::VerifyPatternType(ast::UnaryOperator const *node, type::Type t) {
             .matched_type = "bool",
             .range        = node->range(),
         });
+        return false;
       }
-      VerifyPatternType(node->operand(), type::Bool);
+      return VerifyPatternType(node->operand(), type::Bool);
       break;
     case ast::UnaryOperator::Kind::BufferPointer:
     case ast::UnaryOperator::Kind::Pointer:
@@ -326,8 +327,9 @@ void Compiler::VerifyPatternType(ast::UnaryOperator const *node, type::Type t) {
             .matched_type = "type",
             .range        = node->range(),
         });
+        return false;
       }
-      VerifyPatternType(node->operand(), type::Type_);
+      return VerifyPatternType(node->operand(), type::Type_);
       break;
     case ast::UnaryOperator::Kind::Negate:
       if (not type::IsNumeric(t)) {
@@ -336,17 +338,19 @@ void Compiler::VerifyPatternType(ast::UnaryOperator const *node, type::Type t) {
             .matched_type = "Must be a numeric primitive type",
             .range        = node->range(),
         });
+        return false;
       } else {
-        VerifyPatternType(node->operand(), t);
+        return VerifyPatternType(node->operand(), t);
       }
       break;
     case ast::UnaryOperator::Kind::Copy:
     case ast::UnaryOperator::Kind::Init:
     case ast::UnaryOperator::Kind::Move: {
-      VerifyPatternType(node->operand(), t);
+      return VerifyPatternType(node->operand(), t);
     } break;
     default: UNREACHABLE(node->DebugString());
   }
+  return true;
 }
 
 }  // namespace compiler

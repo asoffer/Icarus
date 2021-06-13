@@ -137,21 +137,22 @@ ir::Value Compiler::EmitValue(ast::BindingDeclaration const *node) {
   UNREACHABLE();
 }
 
-bool Compiler::PatternMatch(ast::Declaration const *node,
-                            PatternMatchingContext &pmc) {
+bool Compiler::PatternMatch(
+    ast::Declaration const *node, PatternMatchingContext &pmc,
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
   NOT_YET();
 }
 
-bool Compiler::PatternMatch(ast::BindingDeclaration const *node,
-                            PatternMatchingContext &pmc) {
+bool Compiler::PatternMatch(
+    ast::BindingDeclaration const *node, PatternMatchingContext &pmc,
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
   if (auto const *p = pmc.type.if_as<type::Primitive>()) {
-    pmc.bindings.emplace(node->ids()[0].name(),
-                         p->Apply([&]<typename T>()->ir::Value {
-                           return ir::Value(pmc.value.template get<T>(0));
-                         }));
+    bindings.emplace(&node->ids()[0], p->Apply([&]<typename T>()->ir::Value {
+      return ir::Value(pmc.value.template get<T>(0));
+    }));
     return true;
   } else {
-    NOT_YET();
+    NOT_YET(pmc.type.to_string());
   }
 }
 

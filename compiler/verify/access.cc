@@ -488,9 +488,10 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
   }
 }
 
-void Compiler::VerifyPatternType(ast::Access const *node, type::Type t) {
+bool Compiler::VerifyPatternType(ast::Access const *node, type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
   diag().Consume(DeducingAccess{.range = node->range()});
+  return false;
 }
 
 }  // namespace compiler

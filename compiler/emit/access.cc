@@ -397,8 +397,9 @@ void Compiler::EmitCopyAssign(
   }
 }
 
-bool Compiler::PatternMatch(ast::Access const *node,
-                            PatternMatchingContext &pmc) {
+bool Compiler::PatternMatch(
+    ast::Access const *node, PatternMatchingContext &pmc,
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
   UNREACHABLE(node->DebugString());
 }
 

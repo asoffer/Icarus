@@ -205,8 +205,9 @@ void Compiler::EmitMoveAssign(
   }
 }
 
-bool Compiler::PatternMatch(ast::UnaryOperator const *node,
-                            PatternMatchingContext &pmc) {
+bool Compiler::PatternMatch(
+    ast::UnaryOperator const *node, PatternMatchingContext &pmc,
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Pointer: {
       auto t = pmc.value.get<type::Type>(0);
@@ -214,19 +215,19 @@ bool Compiler::PatternMatch(ast::UnaryOperator const *node,
         return false;
       }
       pmc.value.set(0, type::Type(t.as<type::Pointer>().pointee()));
-      return PatternMatch(node->operand(), pmc);
+      return PatternMatch(node->operand(), pmc, bindings);
     } break;
     case ast::UnaryOperator::Kind::BufferPointer: {
       auto t        = pmc.value.get<type::Type>(0);
       auto const *p = t.if_as<type::BufferPointer>();
       if (not p) { return false; }
       pmc.value.set(0, type::Type(p->pointee()));
-      return PatternMatch(node->operand(), pmc);
+      return PatternMatch(node->operand(), pmc, bindings);
     } break;
     case ast::UnaryOperator::Kind::Not: {
       bool b = pmc.value.get<bool>(0);
       pmc.value.set(0, not b);
-      return PatternMatch(node->operand(), pmc);
+      return PatternMatch(node->operand(), pmc, bindings);
     } break;
     case ast::UnaryOperator::Kind::Negate: {
       auto t        = context().qual_types(node->operand())[0].type();
@@ -238,13 +239,13 @@ bool Compiler::PatternMatch(ast::UnaryOperator const *node,
           pmc.value.set(0, -x);
         }
       });
-      return PatternMatch(node->operand(), pmc);
+      return PatternMatch(node->operand(), pmc, bindings);
     } break;
     case ast::UnaryOperator::Kind::Address: NOT_YET();
     case ast::UnaryOperator::Kind::Copy:
     case ast::UnaryOperator::Kind::Init:
     case ast::UnaryOperator::Kind::Move:
-      return PatternMatch(node->operand(), pmc);
+      return PatternMatch(node->operand(), pmc, bindings);
     default: UNREACHABLE();
   }
 }

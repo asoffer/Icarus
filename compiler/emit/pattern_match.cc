@@ -1,3 +1,4 @@
+#include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "diagnostic/message.h"
@@ -20,18 +21,25 @@ ir::Value Compiler::EmitValue(ast::PatternMatch const *node) {
     result = ir::Value(unary_result);
   }
 
-  PatternMatchingContext pmc{
-      .type  = t,
-      .value = result_buffer,
-  };
-  if (PatternMatch(&node->pattern(), pmc)) {
-    for (auto &[name, buffer] : pmc.bindings) {
-      auto const *id =
-          module::AllVisibleDeclsTowardsRoot(node->scope(), name)[0];
-      context().SetConstant(id, std::move(buffer));
-    }
-  } else {
-    NOT_YET(node->DebugString());
+  auto &q         = pattern_match_queues_.emplace_back();
+  absl::Cleanup c = [&] { pattern_match_queues_.pop_back(); };
+
+  q.emplace(
+      &node->pattern(),
+      PatternMatchingContext{.type = t, .value = std::move(result_buffer)});
+
+  absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> bindings;
+  while (not q.empty()) {
+    auto [n, pmc] = std::move(q.front());
+    q.pop();
+
+    if (not PatternMatch(n, pmc, bindings)) { NOT_YET(node->DebugString()); }
+  }
+
+  for (auto &[name, buffer] : bindings) {
+    auto const *id =
+        module::AllVisibleDeclsTowardsRoot(node->scope(), name->name())[0];
+    context().SetConstant(id, std::move(buffer));
   }
 
   return result;

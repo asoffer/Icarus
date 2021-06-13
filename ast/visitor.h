@@ -35,7 +35,12 @@ struct Visitor<Tag, Ret(Args...)> : VisitorBase {
             Tag{}, node,                                                       \
             std::forward<Args>(*static_cast<Args *>(erased_args))...));        \
       } else {                                                                 \
-        static_assert(base::always_false<Tag>(), "Currently unsupported");     \
+        std::apply(                                                            \
+            [&](auto &&... as) {                                               \
+              new (static_cast<Ret *>(erased_ret)) Ret(this->Visit(            \
+                  Tag{}, node, std::forward<decltype(as)>(as)...));            \
+            },                                                                 \
+            std::move(*static_cast<std::tuple<Args...> *>(erased_args)));      \
       }                                                                        \
     }                                                                          \
   }                                                                            \
@@ -59,10 +64,9 @@ struct Visitor<Tag, Ret(Args...)> : VisitorBase {
       alignas(alignof(Ret)) char r[sizeof(Ret)];
       if constexpr (sizeof...(Args) == 0) {
         node->Accept(this, r, nullptr);
-      } else if constexpr (sizeof...(Args) == 1) {
-        node->Accept(this, r, &args...);
       } else {
-        static_assert(base::always_false<Tag>(), "Currently unsupported");
+        auto arguments = std::make_tuple(std::forward<Args>(args)...);
+        node->Accept(this, r, &arguments);
       }
 
       return *reinterpret_cast<Ret *>(r);

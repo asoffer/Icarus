@@ -61,8 +61,9 @@ void Compiler::EmitMoveInit(
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
-bool Compiler::PatternMatch(ast::Terminal const *node,
-                            PatternMatchingContext &pmc) {
+bool Compiler::PatternMatch(
+    ast::Terminal const *node, PatternMatchingContext &pmc,
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
   auto t        = context().qual_types(node)[0].type();
   auto const &p = t.as<type::Primitive>();
   return p.Apply([&]<typename T>()->bool {

@@ -49,7 +49,9 @@ namespace compiler {
 struct PatternMatchingContext {
   type::Type type;
   base::untyped_buffer value;
-  absl::flat_hash_map<std::string_view, ir::Value> bindings;
+  union {
+    size_t array_type_index = 0;
+  };
 };
 
 struct EmitRefTag {};
@@ -95,8 +97,11 @@ struct Compiler
       ast::Visitor<EmitValueTag, ir::Value()>,
       ast::Visitor<VerifyTypeTag, absl::Span<type::QualType const>()>,
       ast::Visitor<VerifyBodyTag, WorkItem::Result()>,
-      ast::Visitor<PatternMatchTag, bool(PatternMatchingContext *)>,
-      ast::Visitor<PatternTypeTag, void(type::Type)>,
+      ast::Visitor<
+          PatternMatchTag,
+          bool(PatternMatchingContext *,
+               absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> *)>,
+      ast::Visitor<PatternTypeTag, bool(type::Type)>,
       type::Visitor<EmitDestroyTag, void(ir::Reg)>,
       type::Visitor<EmitMoveInitTag,
                     void(ir::Reg, type::Typed<ir::Value> const &)>,
@@ -156,13 +161,28 @@ struct Compiler
     return ast::Visitor<VerifyBodyTag, WorkItem::Result()>::Visit(node);
   }
 
-  bool PatternMatch(ast::Node const *node, PatternMatchingContext &context) {
-    return ast::Visitor<PatternMatchTag, bool(PatternMatchingContext *)>::Visit(
-        node, &context);
+  bool PatternMatch(
+      ast::Node const *node, PatternMatchingContext &context,
+      absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+    return ast::Visitor<
+        PatternMatchTag,
+        bool(PatternMatchingContext *,
+             absl::flat_hash_map<ast::Declaration::Id const *, ir::Value>
+                 *)>::Visit(node, &context, &bindings);
   }
 
-  void VerifyPatternType(ast::Node const *node, type::Type t) {
-    return ast::Visitor<PatternTypeTag, void(type::Type)>::Visit(node, t);
+  void EnqueuePatternMatch(ast::Node const *node,
+                           PatternMatchingContext context) {
+    pattern_match_queues_.back().emplace(node, std::move(context));
+  }
+
+  void EnqueueVerifyPatternMatchType(ast::Node const *node,
+                                     type::Type match_type) {
+    verify_pattern_type_queues_.back().emplace(node, match_type);
+  }
+
+  bool VerifyPatternType(ast::Node const *node, type::Type t) {
+    return ast::Visitor<PatternTypeTag, bool(type::Type)>::Visit(node, t);
   }
 
 
@@ -337,15 +357,19 @@ struct Compiler
 #undef ICARUS_AST_NODE_X
 
 #define DEFINE_PATTERN_MATCH(name)                                             \
-  bool PatternMatch(name const *node, PatternMatchingContext &context);        \
-  bool Visit(PatternMatchTag, name const *node,                                \
-             PatternMatchingContext *context) override {                       \
-    return PatternMatch(node, *context);                                       \
+  bool PatternMatch(                                                           \
+      name const *node, PatternMatchingContext &context,                       \
+      absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings); \
+  bool Visit(                                                                  \
+      PatternMatchTag, name const *node, PatternMatchingContext *context,      \
+      absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> *bindings)  \
+      override {                                                               \
+    return PatternMatch(node, *context, *bindings);                            \
   }                                                                            \
                                                                                \
-  void VerifyPatternType(name const *node, type::Type t);                      \
-  void Visit(PatternTypeTag, name const *node, type::Type t) override {        \
-    VerifyPatternType(node, t);                                                \
+  bool VerifyPatternType(name const *node, type::Type t);                      \
+  bool Visit(PatternTypeTag, name const *node, type::Type t) override {        \
+    return VerifyPatternType(node, t);                                         \
   }
   DEFINE_PATTERN_MATCH(ast::Access)
   DEFINE_PATTERN_MATCH(ast::ArrayType)
@@ -567,6 +591,12 @@ struct Compiler
   PersistentResources resources_;
   TransientState state_;
   ir::Builder builder_;
+
+  // TODO: Should move this into TransientState?
+  std::vector<std::queue<std::pair<ast::Node const *, PatternMatchingContext>>>
+      pattern_match_queues_;
+  std::vector<std::queue<std::pair<ast::Node const *, type::Type>>>
+      verify_pattern_type_queues_;
 
   // TODO: Should be persistent, but also needs on some local context.
   CyclicDependencyTracker cylcic_dependency_tracker_;

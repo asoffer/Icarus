@@ -9,14 +9,31 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     ast::PatternMatch const *node) {
   absl::Span<type::QualType const> result;
 
+  type::Type match_type;
   if (node->is_binary()) {
     auto expr_qts = VerifyType(&node->expr());
-    VerifyPatternType(&node->pattern(), expr_qts[0].type());
     result = context().set_qual_types(node, expr_qts);
+    match_type = expr_qts[0].type();
   } else {
-    VerifyPatternType(&node->pattern(), type::Type_);
     result =
         context().set_qual_type(node, type::QualType::Constant(type::Type_));
+    match_type = type::Type_;
+  }
+
+  auto &q         = verify_pattern_type_queues_.emplace_back();
+  absl::Cleanup c = [&] { verify_pattern_type_queues_.pop_back(); };
+
+  q.emplace(&node->pattern(), match_type);
+
+  absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> bindings;
+  while (not q.empty()) {
+    auto [n, t] = std::move(q.front());
+    q.pop();
+
+    if (not VerifyPatternType(n, t)) {
+      // TODO: It may not be okay to emit an error because it may just determine
+      // an overload set member is not valid.
+    }
   }
 
   for (auto const &[name, ids] : node->scope()->decls_) {
@@ -24,11 +41,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       auto const *d = id->declaration().if_as<ast::BindingDeclaration>();
       if (not d or &d->pattern() != node) { continue; }
       if (context().maybe_qual_type(d).empty()) {
-        LOG("", "Blargh");
         context().set_qual_type(d, type::QualType::Error());
       }
       if (context().maybe_qual_type(id).empty()) {
-        LOG("", "Blargh");
         context().set_qual_type(id, type::QualType::Error());
       }
     }
