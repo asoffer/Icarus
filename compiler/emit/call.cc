@@ -4,6 +4,7 @@
 #include "compiler/emit/common.h"
 #include "compiler/resources.h"
 #include "ir/instruction/instructions.h"
+#include "type/instantiated_generic_struct.h"
 #include "type/interface/ir.h"
 
 namespace compiler {
@@ -308,6 +309,33 @@ void Compiler::EmitCopyAssign(
 
   return EmitCall(*this, os.members().front(), constant_arguments,
                   node->arguments(), to);
+}
+
+bool Compiler::PatternMatch(
+    ast::Call const *node, PatternMatchingContext &pmc,
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+  // TODO: Only supporting parameterized structs right now.
+  if (pmc.type != type::Type_) { return false; }
+
+  auto const *i =
+      pmc.value.get<type::Type>(0).if_as<type::InstantiatedGenericStruct>();
+
+  if (not i) { return false; }
+
+  // TODO: Named arguments as well.
+  size_t index = 0;
+  for (auto const &a : i->arguments().pos()) {
+    // TODO: Check that the type is what we expect.
+    base::untyped_buffer buffer;
+    buffer.append(a->get<type::Type>());
+
+    // TODO: Support non-type parameters.
+    EnqueuePatternMatch(&node->arguments()[index].expr(),
+                        {.type = type::Type_, .value = std::move(buffer)});
+    ++i;
+  }
+
+  return true;
 }
 
 }  // namespace compiler

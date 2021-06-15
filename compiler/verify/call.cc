@@ -477,4 +477,25 @@ not_an_interface:
   }
 }
 
+bool Compiler::VerifyPatternType(ast::Call const *node, type::Type t) {
+  context().set_qual_type(node, type::QualType::Constant(t));
+
+  // Note that the type here cannot use ADL. Maybe we could inspect the
+  // expression arguments and use ADL for anything we see has a module set? But
+  // that seems like a bad idea.
+  ASSIGN_OR(return false,  //
+                   auto qt, VerifyType(node->callee())[0]);
+  if (auto const *gs = qt.type().if_as<type::GenericStruct>()) {
+    for (auto const &arg : node->arguments()) {
+      // TODO: Having these always be types is problematic, but for now we don't
+      // have a way to deduce another possibility.
+      EnqueueVerifyPatternMatchType(&arg.expr(), type::Type_);
+    }
+
+    return true;
+  } else {
+    return false;
+  }
+}
+
 }  // namespace compiler

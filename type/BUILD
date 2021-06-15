@@ -194,6 +194,16 @@ cc_library(
 )
 
 cc_library(
+    name = "instantiated_generic_struct",
+    hdrs = ["instantiated_generic_struct.h"],
+    deps = [
+        ":generic_struct",
+        ":struct",
+        ":type",
+    ],
+)
+
+cc_library(
     name = "jump",
     hdrs = ["jump.h"],
     srcs = ["jump.cc"],

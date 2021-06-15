@@ -6,6 +6,7 @@
 #include "compiler/resources.h"
 #include "compiler/verify/common.h"
 #include "type/generic_struct.h"
+#include "type/instantiated_generic_struct.h"
 #include "type/qual_type.h"
 #include "type/struct.h"
 #include "type/typed_value.h"
@@ -20,7 +21,9 @@ WorkItem::Result Compiler::VerifyBody(
 
 absl::Span<type::QualType const> Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
-  auto gen = [node, instantiation_compiler = Compiler(resources()),
+  auto *gen_struct = type::Allocate<type::GenericStruct>();
+
+  auto gen = [gen_struct, node, instantiation_compiler = Compiler(resources()),
               cg = builder().CurrentGroup()](
                  core::Arguments<type::Typed<ir::Value>> const &args) mutable
       -> std::pair<core::Params<type::QualType>, type::Struct *> {
@@ -36,12 +39,14 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       });
       compiler.builder().CurrentGroup() = cg;
 
-      type::Struct *s = type::Allocate<type::Struct>(
+      auto *s = type::Allocate<type::InstantiatedGenericStruct>(
           &compiler.context().module(),
           type::Struct::Options{.is_copyable = not node->hashtags.contains(
                                     ir::Hashtag::Uncopyable),
                                 .is_movable = not node->hashtags.contains(
-                                    ir::Hashtag::Immovable)});
+                                    ir::Hashtag::Immovable)},
+          gen_struct);
+      s->set_arguments(args);
 
       LOG("ParameterizedStructLiteral",
           "Allocating a new (parameterized) struct %p for %p", s, node);
@@ -69,9 +74,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     }
   };
 
-  return context().set_qual_type(
-      node, type::QualType::Constant(
-                type::Allocate<type::GenericStruct>(std::move(gen))));
+  gen_struct->set_invocable(std::move(gen));
+
+  return context().set_qual_type(node, type::QualType::Constant(gen_struct));
 }
 
 }  // namespace compiler

@@ -14,13 +14,15 @@
 namespace type {
 
 struct GenericStruct : Callable {
-  explicit GenericStruct(
-      base::any_invocable<std::pair<core::Params<QualType>, Struct const *>(
-          core::Arguments<Typed<ir::Value>> const &)>
-          fn)
-      : gen_(std::move(fn)) {}
   void WriteTo(std::string *result) const override {
     result->append("generic-struct");
+  }
+
+  void set_invocable(
+      base::any_invocable<std::pair<core::Params<QualType>, Struct const *>(
+          core::Arguments<Typed<ir::Value>> const &)>
+          fn) {
+    gen_ = std::move(fn);
   }
 
   bool is_big() const override { return false; }

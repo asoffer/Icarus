@@ -518,6 +518,9 @@ cc_library(
         "//compiler:resources",
         "//compiler/emit:common",
         "//type:qual_type",
+        "//type:generic_struct",
+        "//type:instantiated_generic_struct",
+        "//type:struct",
         "//type:typed_value",
     ],
 )

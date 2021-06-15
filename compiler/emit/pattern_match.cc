@@ -4,6 +4,26 @@
 #include "diagnostic/message.h"
 
 namespace compiler {
+namespace {
+
+struct PatternMatchFailure {
+  static constexpr std::string_view kCategory = "pattern-error";
+  static constexpr std::string_view kName     = "pattern-match-fail";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Failed to match type of function parameter against "
+                         "provided argument of type `%s`.",
+                         type),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  std::string type;
+  frontend::SourceRange range;
+};
+
+}  // namespace
 
 ir::Value Compiler::EmitValue(ast::PatternMatch const *node) {
   ir::Value result;
@@ -33,7 +53,18 @@ ir::Value Compiler::EmitValue(ast::PatternMatch const *node) {
     auto [n, pmc] = std::move(q.front());
     q.pop();
 
-    if (not PatternMatch(n, pmc, bindings)) { NOT_YET(node->DebugString()); }
+    if (not PatternMatch(n, pmc, bindings)) {
+      if (node->is_binary()) {
+        NOT_YET(node->DebugString());
+      } else {
+        diag().Consume(PatternMatchFailure{
+            .type = result.get<type::Type>()
+                        .to_string(),  // TODO: Use TypeForDiagnostic
+            .range = node->pattern().range(),
+        });
+        return ir::Value();
+      }
+    }
   }
 
   for (auto &[name, buffer] : bindings) {

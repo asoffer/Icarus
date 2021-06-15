@@ -33,6 +33,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     if (not VerifyPatternType(n, t)) {
       // TODO: It may not be okay to emit an error because it may just determine
       // an overload set member is not valid.
+      return context().set_qual_type(node, type::QualType::Error());
     }
   }
 

@@ -53,7 +53,6 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
     if (type != type::Void) { ASSERT(val.empty() == false); }
     // TODO is_big()?
 
-    LOG("MakeThunk", "%s %s", type, type.is_big() ? "true" : "false");
     if (type.is_big()) {
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision

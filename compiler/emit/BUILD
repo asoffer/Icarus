@@ -152,6 +152,7 @@ cc_library(
         "//compiler:resources",
         "//ir/instruction",
         "//ir/value",
+        "//type:instantiated_generic_struct",
     ],
 )
 

@@ -35,6 +35,10 @@ struct StringifyExpression : ast::Visitor<std::string()> {
         "; ", Visit(node->data_type()), "]");
   }
 
+  std::string Visit(ast::BindingDeclaration const *node) final {
+    return std::string(node->ids()[0].name());
+  }
+
   std::string Visit(ast::Call const *node) final {
     return absl::StrCat(
         Visit(node->callee()), "(",
@@ -52,6 +56,10 @@ struct StringifyExpression : ast::Visitor<std::string()> {
 
   std::string Visit(ast::Identifier const *node) final {
     return std::string(node->name());
+  }
+
+  std::string Visit(ast::PatternMatch const *node) final {
+    return Visit(&node->pattern());
   }
 
   std::string Visit(ast::Terminal const *node) final {
@@ -157,6 +165,10 @@ struct StringifyType : ast::Visitor<std::string()> {
   }
 
   std::string Visit(ast::Import const *node) final { return "module"; }
+
+  std::string Visit(ast::PatternMatch const *node) final {
+    return Visit(&node->pattern());
+  }
 
   std::string Visit(ast::Terminal const *node) final {
     return context_.qual_types(node)[0].type().to_string();
