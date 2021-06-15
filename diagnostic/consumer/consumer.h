@@ -5,9 +5,20 @@
 
 namespace diagnostic {
 
+struct ConsumedMessage {
+  std::string_view category;
+  std::string_view name;
+  DiagnosticMessage message;
+};
+
 struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
   explicit DiagnosticConsumer(frontend::Source const* src) : src_(src) {}
   virtual ~DiagnosticConsumer() {}
+
+  void Consume(ConsumedMessage m) {
+    ConsumeImpl(m.category, m.name, std::move(m.message));
+    ++num_consumed_;
+  }
 
   template <typename Diag>
   void Consume(Diag const& diag) {
@@ -22,7 +33,6 @@ struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
   // errors, we might change the count.
   constexpr size_t num_consumed() const { return num_consumed_; }
 
- protected:
   virtual void ConsumeImpl(std::string_view category, std::string_view name,
                            DiagnosticMessage&& diag) = 0;
 

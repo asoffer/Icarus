@@ -6,6 +6,7 @@
 #include "compiler/emit/common.h"
 #include "compiler/instructions.h"
 #include "compiler/module.h"
+#include "diagnostic/consumer/buffering.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
 #include "ir/interpreter/evaluate.h"
@@ -98,10 +99,18 @@ interpreter::EvaluationResult Compiler::Evaluate(
   return EvaluateAtCompileTime(ir::NativeFn(&data));
 }
 
-base::untyped_buffer Compiler::EvaluateToBufferOrDiagnose(
-    type::Typed<ast::Expression const *> expr) {
+std::variant<base::untyped_buffer, std::vector<diagnostic::ConsumedMessage>>
+Compiler::EvaluateToBufferOrDiagnose(
+    type::Typed<ast::Expression const *> expr, bool must_complete) {
   // TODO: The diagnosis part.
-  Compiler c = MakeChild(resources_);
+  diagnostic::BufferingConsumer buffering_consumer(&diag());
+  Compiler c              = MakeChild(PersistentResources{
+      .data                = context(),
+      .diagnostic_consumer = buffering_consumer,
+      .importer            = importer(),
+  });
+  c.state_.must_complete  = must_complete;
+
   auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
   ir::NativeFn::Data data{
       .fn        = &thunk,
@@ -110,7 +119,11 @@ base::untyped_buffer Compiler::EvaluateToBufferOrDiagnose(
   };
   c.CompleteWorkQueue();
   c.CompleteDeferredBodies();
-  return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
+  if (buffering_consumer.empty()) {
+    return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
+  } else {
+    return std::move(buffering_consumer).extract();
+  }
 }
 
 ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {

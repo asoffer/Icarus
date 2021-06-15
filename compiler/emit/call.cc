@@ -56,12 +56,18 @@ ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       auto name_buffer =
           c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
               &args[0].expr(), type::Slc(type::Char)));
-      if (name_buffer.empty()) { return ir::Value(); }
+      if (auto *diagnostics =
+              std::get_if<std::vector<diagnostic::ConsumedMessage>>(
+                  &name_buffer)) {
+        for (auto &d : *diagnostics) { c.diag().Consume(std::move(d)); }
+        return ir::Value();
+      }
 
       auto maybe_foreign_type =
           c.EvaluateOrDiagnoseAs<type::Type>(&args[1].expr());
       if (not maybe_foreign_type) { return ir::Value(); }
-      auto slice = name_buffer.get<ir::Slice>(0);
+      auto slice =
+          std::get<base::untyped_buffer>(name_buffer).get<ir::Slice>(0);
 
       std::string name(slice.data(), slice.length());
       return ir::Value(c.current_block()->Append(ir::LoadSymbolInstruction{

@@ -295,13 +295,15 @@ struct Compiler
         return type::Interface;
       }
     }();
-    auto maybe_value =
-        Evaluate(type::Typed<ast::Expression const *>(expr, t), must_complete);
-    if (not maybe_value) {
-      diag().Consume(maybe_value.error());
+    auto result = EvaluateToBufferOrDiagnose(
+        type::Typed<ast::Expression const *>(expr, t), must_complete);
+    if (auto *diagnostics =
+            std::get_if<std::vector<diagnostic::ConsumedMessage>>(&result)) {
+      for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
       return std::nullopt;
+    } else {
+      return std::get<base::untyped_buffer>(result).template get<T>(0);
     }
-    return maybe_value->template get<T>();
   }
 
   ir::Value EvaluateOrDiagnose(type::Typed<ast::Expression const *> expr) {
@@ -312,8 +314,10 @@ struct Compiler
       return ir::Value();
     }
   }
-  base::untyped_buffer EvaluateToBufferOrDiagnose(
-      type::Typed<ast::Expression const *> expr);
+
+  std::variant<base::untyped_buffer, std::vector<diagnostic::ConsumedMessage>>
+  EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *> expr,
+                             bool must_complete = true);
 
   interpreter::EvaluationResult Evaluate(
       type::Typed<ast::Expression const *> expr, bool must_complete = true);

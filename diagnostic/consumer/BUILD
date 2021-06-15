@@ -1,6 +1,15 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "buffering",
+    hdrs = ["buffering.h"],
+    deps = [
+        ":consumer",
+        "//diagnostic:message",
+    ],
+)
+
+cc_library(
     name = "consumer",
     hdrs = ["consumer.h"],
     deps = [

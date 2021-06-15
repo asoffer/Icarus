@@ -48,11 +48,18 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
       if (t.is_big()) {
         auto value_buffer = c.EvaluateToBufferOrDiagnose(
             type::Typed<ast::Expression const *>(node->initial_value(), t));
-        if (value_buffer.empty()) { return ir::Value(); }
+        if (auto *diagnostics =
+                std::get_if<std::vector<diagnostic::ConsumedMessage>>(
+                    &value_buffer)) {
+          for (auto &d : *diagnostics) { c.diag().Consume(std::move(d)); }
+          return ir::Value();
+        }
 
         LOG("EmitConstantDeclaration", "Setting slot = %s", value_buffer);
         // TODO: Support multiple declarations
-        return c.context().SetConstant(&node->ids()[0], std::move(value_buffer));
+        return c.context().SetConstant(
+            &node->ids()[0],
+            std::get<base::untyped_buffer>(std::move(value_buffer)));
       } else {
         auto maybe_val = c.Evaluate(
             type::Typed<ast::Expression const *>(node->initial_value(), t),

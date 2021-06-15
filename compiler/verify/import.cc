@@ -67,12 +67,14 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Import const *node) {
   auto source_locator =
       EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
           node->operand(), type::Slc(type::Char)));
-  if (source_locator.empty()) {
+  if (auto *diagnostics = std::get_if<std::vector<diagnostic::ConsumedMessage>>(
+          &source_locator)) {
+    for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
     qt.MarkError();
     return context().set_qual_type(node, qt);
   }
 
-  auto slice = source_locator.get<ir::Slice>(0);
+  auto slice = std::get<base::untyped_buffer>(source_locator).get<ir::Slice>(0);
 
   ir::ModuleId mod_id =
       importer().Import(std::string(slice.data(), slice.length()));

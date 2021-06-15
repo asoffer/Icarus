@@ -31,8 +31,8 @@ ir::Value Compiler::EmitValue(ast::PatternMatch const *node) {
   base::untyped_buffer result_buffer;
   if (node->is_binary()) {
     t             = context().qual_types(node)[0].type();
-    result_buffer = EvaluateToBufferOrDiagnose(
-        type::Typed<ast::Expression const *>(&node->expr(), t));
+    result_buffer = std::get<base::untyped_buffer>(EvaluateToBufferOrDiagnose(
+        type::Typed<ast::Expression const *>(&node->expr(), t)));
   } else {
     t = type::Type_;
     type::Type unary_result =

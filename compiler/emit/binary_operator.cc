@@ -453,7 +453,9 @@ void Compiler::EmitCopyAssign(
 bool Compiler::PatternMatch(
     ast::BinaryOperator const *node, PatternMatchingContext &pmc,
     absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
-  std::optional<base::untyped_buffer> lhs_buffer, rhs_buffer;
+  std::optional<std::variant<base::untyped_buffer,
+                             std::vector<diagnostic::ConsumedMessage>>>
+      lhs_buffer, rhs_buffer;
   if (not node->lhs()->covers_binding()) {
     lhs_buffer = EvaluateToBufferOrDiagnose(
         type::Typed<ast::Expression const *>(node->lhs(), pmc.type));
@@ -469,8 +471,9 @@ bool Compiler::PatternMatch(
       auto const *p = pmc.type.if_as<type::Primitive>();
       if (p and lhs_buffer) {
         p->Apply([&]<typename T>() {
-          auto sum  = pmc.value.template get<T>(0);
-          auto term = lhs_buffer->template get<T>(0);
+          auto sum = pmc.value.template get<T>(0);
+          auto term =
+              std::get<base::untyped_buffer>(*lhs_buffer).template get<T>(0);
           if constexpr (std::is_arithmetic_v<T>) {
             pmc.value.set(0, static_cast<T>(sum - term));
           }
@@ -478,8 +481,9 @@ bool Compiler::PatternMatch(
         return PatternMatch(node->rhs(), pmc, bindings);
       } else if (p and rhs_buffer) {
         p->Apply([&]<typename T>() {
-          auto sum  = pmc.value.template get<T>(0);
-          auto term = rhs_buffer->template get<T>(0);
+          auto sum = pmc.value.template get<T>(0);
+          auto term =
+              std::get<base::untyped_buffer>(*rhs_buffer).template get<T>(0);
           if constexpr (std::is_arithmetic_v<T>) {
             pmc.value.set(0, static_cast<T>(sum - term));
           }
@@ -497,16 +501,18 @@ bool Compiler::PatternMatch(
       if (p and lhs_buffer) {
         p->Apply([&]<typename T>() {
           auto diff = pmc.value.template get<T>(0);
-          auto term = lhs_buffer->template get<T>(0);
+          auto term =
+              std::get<base::untyped_buffer>(*lhs_buffer).template get<T>(0);
           if constexpr (std::is_integral_v<T>) {
             pmc.value.set(0, static_cast<T>(term - diff));
           }
         });
-       return PatternMatch(node->rhs(), pmc, bindings);
+        return PatternMatch(node->rhs(), pmc, bindings);
       } else if (p and rhs_buffer) {
         p->Apply([&]<typename T>() {
           auto diff = pmc.value.template get<T>(0);
-          auto term = rhs_buffer->template get<T>(0);
+          auto term =
+              std::get<base::untyped_buffer>(*rhs_buffer).template get<T>(0);
           if constexpr (std::is_integral_v<T>) {
             pmc.value.set(0, static_cast<T>(diff + term));
           }
@@ -524,8 +530,9 @@ bool Compiler::PatternMatch(
       if (p and lhs_buffer) {
         expr = node->rhs();
         p->Apply([&]<typename T>() {
-          auto product  = pmc.value.template get<T>(0);
-          auto factor = lhs_buffer->template get<T>(0);
+          auto product = pmc.value.template get<T>(0);
+          auto factor =
+              std::get<base::untyped_buffer>(*lhs_buffer).template get<T>(0);
           if constexpr (std::is_integral_v<T>) {
             if (product % factor == 0) { expr = nullptr; }
           }
@@ -538,7 +545,8 @@ bool Compiler::PatternMatch(
         expr = node->lhs();
         p->Apply([&]<typename T>() {
           auto product = pmc.value.template get<T>(0);
-          auto factor = rhs_buffer->template get<T>(0);
+          auto factor =
+              std::get<base::untyped_buffer>(*rhs_buffer).template get<T>(0);
           if constexpr (std::is_integral_v<T>) {
             if (product % factor == 0) { expr = nullptr; }
           }

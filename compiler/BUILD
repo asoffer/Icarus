@@ -158,6 +158,7 @@ cc_library(
         "//ast:visitor",
         "//base:debug",
         "//diagnostic/consumer",
+        "//diagnostic/consumer:buffering",
         "//frontend/source",
         "//ir:builder",
         "//ir/instruction:set",
