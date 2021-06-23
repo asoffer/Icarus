@@ -1,39 +1,16 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "test/module.h"
+#include "test/evaluation.h"
 #include "type/primitive.h"
 
 namespace compiler {
 namespace {
 
-struct TestCase {
-  std::string expr;
-  ir::Value expected;
-};
-
-using ScopeNodeTest = testing::TestWithParam<TestCase>;
-TEST_P(ScopeNodeTest, ScopeNode) {
-  auto const &[expr, expected] = GetParam();
-  test::TestModule mod;
-  // TODO: We can't use `s` as the field member because the compiler thinks
-  // there's an ambiguity (there isn't).
-  auto const *e  = mod.Append<ast::Expression>(expr);
-  auto t        = mod.context().qual_types(e)[0].type();
-  ASSERT_TRUE(t.valid());
-  auto result =
-      mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
-  ASSERT_TRUE(result);
-  EXPECT_EQ(*result, expected);
-}
-
-// Note: We test both with literals and with a unary-operator applied directly
-// to a function call. The former helps cover the constant-folding mechanisms
-// built in to the ir::Builder. The latter helps cover the common case for code
-// emission.
+using Test = test::EvaluationTest;
 INSTANTIATE_TEST_SUITE_P(
-    All, ScopeNodeTest,
+    All, Test,
     testing::ValuesIn({
-        TestCase{
+        test::TestCase{
             .expr     = R"((() -> i64 {
   n := 0
   ignore ::= scope {
@@ -50,7 +27,7 @@ INSTANTIATE_TEST_SUITE_P(
                                   )",
             .expected = ir::Value(int64_t{0}),
         },
-        TestCase{
+        test::TestCase{
             .expr     = R"((() -> i64 {
   just ::= scope {
     enter ::= jump() { goto do() }
@@ -70,7 +47,7 @@ INSTANTIATE_TEST_SUITE_P(
                              )",
             .expected = ir::Value(int64_t{1}),
         },
-        TestCase{
+        test::TestCase{
             .expr     = R"((() -> i64 {
   while ::= scope {
     enter ::= jump(b: bool) { goto b, do(), done() }
@@ -91,7 +68,7 @@ INSTANTIATE_TEST_SUITE_P(
             .expected = ir::Value(int64_t{12}),
         },
 
-        TestCase{
+        test::TestCase{
             .expr     = R"((() -> i64 {
   if ::= scope {
     enter ::= jump(condition: bool) { goto condition, then(), else() | done() }
@@ -121,7 +98,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
 
         // Early return
-        TestCase{
+        test::TestCase{
             .expr     = R"((() -> i64 {
   if ::= scope {
     enter ::= jump(condition: bool) { goto condition, then(), else() | done() }
@@ -156,7 +133,7 @@ INSTANTIATE_TEST_SUITE_P(
                              )",
             .expected = ir::Value(int64_t{31}),
         },
-        TestCase{
+        test::TestCase{
             .expr     = R"((() -> i64 {
   s ::= scope {
     enter ::= jump() { goto do() }
@@ -174,7 +151,7 @@ INSTANTIATE_TEST_SUITE_P(
                              )",
             .expected = ir::Value(int64_t{3}),
         },
-        TestCase{
+        test::TestCase{
             .expr     = R"((() -> i64 {
   repeat ::= scope (i64) {
     enter ::= jump [state: *i64] (n: i64) {
@@ -200,7 +177,7 @@ INSTANTIATE_TEST_SUITE_P(
                              )",
             .expected = ir::Value(int64_t{1024}),
         },
-        TestCase{
+        test::TestCase{
             .expr     = R"((() -> i64 {
   repeat ::= scope (i64) {
     enter ::= jump [state: *i64] (n: i64) {
@@ -229,7 +206,7 @@ INSTANTIATE_TEST_SUITE_P(
                              )",
             .expected = ir::Value(int64_t{2}),
         },
-        TestCase{
+        test::TestCase{
             .expr = R"((() -> i64 {
   scope_with_big_argument ::= scope {
     enter ::= jump (str: []char) { goto done(str) }

@@ -20,7 +20,7 @@ cc_test(
     srcs = ["access_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -39,7 +39,7 @@ cc_test(
     srcs = ["array_literal_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -58,7 +58,7 @@ cc_test(
     srcs = ["array_type_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -84,7 +84,7 @@ cc_test(
     srcs = ["assignment_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -161,7 +161,7 @@ cc_test(
     srcs = ["call_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -181,7 +181,7 @@ cc_test(
     srcs = ["cast_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",
     ],
@@ -202,7 +202,7 @@ cc_test(
     srcs = ["comparison_operator_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",
     ],
@@ -262,7 +262,7 @@ cc_test(
     srcs = ["designated_initializer_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -296,7 +296,7 @@ cc_test(
     srcs = ["function_type_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -346,7 +346,7 @@ cc_test(
     srcs = ["identifier_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -365,7 +365,7 @@ cc_test(
     srcs = ["index_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -450,7 +450,7 @@ cc_test(
     srcs = ["pattern_match_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -507,7 +507,7 @@ cc_test(
     srcs = ["scope_node_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -546,7 +546,7 @@ cc_test(
     srcs = ["slice_type_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -566,7 +566,7 @@ cc_test(
     srcs = ["special_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -606,7 +606,7 @@ cc_test(
     srcs = ["terminal_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -628,7 +628,7 @@ cc_test(
     srcs = ["unary_operator_test.cc"],
     deps = [
         "//compiler",
-        "//test:module",
+        "//test:evaluation",
         "@com_google_googletest//:gtest_main",
     ],
 )

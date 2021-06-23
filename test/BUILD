@@ -27,6 +27,19 @@ cc_library(
 )
 
 cc_library(
+    name = "evaluation",
+    hdrs = ["evaluation.h"],
+    deps = [
+        ":module",
+        "//type",
+        "//type:typed_value",
+        "//ir/value",
+        "@com_google_googletest//:gtest",
+    ],
+    testonly = True,
+)
+
+cc_library(
     name = "failing_diagnostic_consumer",
     hdrs = ["failing_diagnostic_consumer.h"],
     deps = [

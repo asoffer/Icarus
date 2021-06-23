@@ -1,61 +1,39 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "test/module.h"
+#include "test/evaluation.h"
 #include "type/primitive.h"
 
 namespace compiler {
 namespace {
 
-struct TestCase {
-  std::string expr;
-  ir::Value expected;
-};
-
-using AssignmentTest = testing::TestWithParam<TestCase>;
-TEST_P(AssignmentTest, Assignment) {
-  auto const &[expr, expected] = GetParam();
-  test::TestModule mod;
-  auto const *e  = mod.Append<ast::Expression>(expr);
-  auto t         = mod.context().qual_types(e)[0].type();
-  ASSERT_TRUE(t.valid());
-  auto result =
-      mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
-  ASSERT_TRUE(result);
-  EXPECT_EQ(*result, expected);
-}
-
-// Note: We test both with literals and with a unary-operator applied directly
-// to a function call. The former helps cover the constant-folding mechanisms
-// built in to the ir::Builder. The latter helps cover the common case for code
-// emission.
+using Test = test::EvaluationTest;
 INSTANTIATE_TEST_SUITE_P(
-    All, AssignmentTest,
-    testing::ValuesIn({
-        TestCase{.expr     = R"(((n: i64) -> i64 {
+    All, Test,
+    testing::ValuesIn({test::TestCase{.expr     = R"(((n: i64) -> i64 {
                                   a: i64
                                   a = n
                                return a
                              })(3)
                              )",
-                 .expected = ir::Value(int64_t{3})},
-        TestCase{.expr     = R"(((n: i64, m: i64) -> i64 {
+                                      .expected = ir::Value(int64_t{3})},
+                       test::TestCase{.expr     = R"(((n: i64, m: i64) -> i64 {
                                  a: i64
                                  b: i64
                                  (a, b) = (n, m)
                                return 10 * a + b
                              })(1, 2)
                              )",
-                 .expected = ir::Value(int64_t{12})},
-        TestCase{.expr     = R"((() -> i64 {
+                                      .expected = ir::Value(int64_t{12})},
+                       test::TestCase{.expr     = R"((() -> i64 {
                                 a := 1
                                 b := 2
                                 (a, b) = (b, a)
                                return 10 * a + b
                              })()
                              )",
-                 .expected = ir::Value(int64_t{21})},
-        // Auto-generated assignment
-        TestCase{.expr     = R"((() -> i64 {
+                                      .expected = ir::Value(int64_t{21})},
+                       // Auto-generated assignment
+                       test::TestCase{.expr     = R"((() -> i64 {
                                   S ::= struct {
                                     _a: i64
                                   }
@@ -65,9 +43,9 @@ INSTANTIATE_TEST_SUITE_P(
                                return 10 * s1._a + s2._a
                              })()
                              )",
-                 .expected = ir::Value(int64_t{21})},
-        // User-specified copy-assign
-        TestCase{.expr     = R"((() -> i64 {
+                                      .expected = ir::Value(int64_t{21})},
+                       // User-specified copy-assign
+                       test::TestCase{.expr     = R"((() -> i64 {
                                   S ::= struct {
                                     _a: i64
                                     (copy) ::= (lhs: *S, rhs: *S) -> () {
@@ -80,9 +58,9 @@ INSTANTIATE_TEST_SUITE_P(
                                return 10 * s1._a + s2._a
                              })()
                              )",
-                 .expected = ir::Value(int64_t{21})},
-        // User-specified move-assign
-        TestCase{.expr     = R"((() -> i64 {
+                                      .expected = ir::Value(int64_t{21})},
+                       // User-specified move-assign
+                       test::TestCase{.expr     = R"((() -> i64 {
                                   S ::= struct {
                                     _a: i64
                                     (move) ::= (lhs: *S, rhs: *S) -> () {
@@ -95,8 +73,7 @@ INSTANTIATE_TEST_SUITE_P(
                                return 10 * s1._a + s2._a
                              })()
                              )",
-                 .expected = ir::Value(int64_t{21})}
-    }));
+                                      .expected = ir::Value(int64_t{21})}}));
 
 }  // namespace
 }  // namespace compiler

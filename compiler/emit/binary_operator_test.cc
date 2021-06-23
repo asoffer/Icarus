@@ -35,9 +35,9 @@ TEST_P(BinaryOperatorTest, Constants) {
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
   mod.AppendCode(kCommonDefinitions);
-  auto const *e  = mod.Append<ast::Expression>(absl::StrFormat(
+  auto const *e = mod.Append<ast::Expression>(absl::StrFormat(
       R"((%s) %s (%s))", test_data.lhs, test_case.op, test_data.rhs));
-  auto t         = mod.context().qual_types(e)[0].type();
+  auto t        = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
@@ -612,6 +612,7 @@ TEST_P(BufferPointerTest, Arithmetic) {
   ASSERT_TRUE(result);
   EXPECT_EQ(*result, ir::Value(expected_result));
 }
+
 INSTANTIATE_TEST_SUITE_P(
     Arithmetic, BufferPointerTest,
     testing::ValuesIn({
