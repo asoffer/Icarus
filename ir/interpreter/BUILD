@@ -46,6 +46,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//diagnostic:message",
+        "//diagnostic/consumer",
         "//frontend/source:buffer",
     ],
 )

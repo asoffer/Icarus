@@ -10,6 +10,8 @@ namespace core {
 // its size in bytes, and required alignment.
 struct TypeContour {
   constexpr explicit TypeContour() : size_(0), alignment_(1) {}
+  constexpr explicit TypeContour(Bytes b, Alignment a)
+      : size_(b), alignment_(a) {}
 
   // Constructs a TypeCounter for the given type on the host architechture.
   template <typename T>
@@ -29,8 +31,6 @@ struct TypeContour {
   }
 
  private:
-  constexpr TypeContour(Bytes size, Alignment alignment)
-      : size_(size), alignment_(alignment) {}
   Bytes size_;
   Alignment alignment_;
 };

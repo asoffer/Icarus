@@ -170,6 +170,10 @@ TEST(CanCastExplicitly, Arithmetic) {
 }
 
 TEST(CanCastExplicitly, Pointers) {
+  EXPECT_TRUE(CanCastExplicitly(MemPtr, Ptr(Bool)));
+  EXPECT_TRUE(CanCastExplicitly(MemPtr, BufPtr(Bool)));
+  EXPECT_FALSE(CanCastExplicitly(MemPtr, NullPtr));
+
   EXPECT_TRUE(CanCastExplicitly(NullPtr, Ptr(Bool)));
   EXPECT_TRUE(CanCastExplicitly(NullPtr, BufPtr(Bool)));
   EXPECT_FALSE(CanCastExplicitly(NullPtr, I64));

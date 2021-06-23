@@ -67,7 +67,7 @@ bool CanCast(Type from, Type to) {
   if (to == from) { return true; }
 
   if (auto const *to_p = to.if_as<Pointer>()) {
-    if (from == NullPtr or
+    if (from == NullPtr or from == MemPtr or
         (to_p->pointee() == from and not to.is<BufferPointer>())) {
       return true;
     }

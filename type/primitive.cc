@@ -36,6 +36,7 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
     case BasicType::U64: return core::Bytes{8};
     case BasicType::F32: return core::Bytes{4};
     case BasicType::F64: return core::Bytes{8};
+    case BasicType::MemPtr: return core::Host.pointer().bytes();
     case BasicType::Module: return core::Host.pointer().bytes();
     case BasicType::Scope: return core::Host.pointer().bytes();
     case BasicType::Block: return core::Host.pointer().bytes();
@@ -66,6 +67,7 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     case BasicType::U64: return core::Alignment{8};
     case BasicType::F32: return core::Alignment{4};
     case BasicType::F64: return core::Alignment{8};
+    case BasicType::MemPtr: return core::Host.pointer().alignment();
     case BasicType::Module: return core::Host.pointer().alignment();
     case BasicType::Scope: return core::Host.pointer().alignment();
     case BasicType::Block: return core::Host.pointer().alignment();

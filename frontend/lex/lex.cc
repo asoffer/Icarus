@@ -237,14 +237,20 @@ static base::Global kOps =
 
 Lexeme NextOperator(SourceCursor &cursor, SourceBuffer const &buffer) {
   if (BeginsWith("--", cursor.view())) {
-    auto span = cursor.remove_prefix(2).range();
-    return Lexeme(std::make_unique<ast::Identifier>(span, ""));
+    auto range = cursor.remove_prefix(2).range();
+    return Lexeme(std::make_unique<ast::Identifier>(range, ""));
+  }
+
+  if (BeginsWith("[*]memory", cursor.view())) {
+    auto range = cursor.remove_prefix(9).range();
+    return Lexeme(
+        std::make_unique<ast::Terminal>(range, ir::Value(type::MemPtr)));
   }
 
   for (auto [prefix, x] : *kOps) {
     if (BeginsWith(prefix, cursor.view())) {
-      auto span = cursor.remove_prefix(prefix.size()).range();
-      return std::visit([&](auto x) { return Lexeme(x, span); }, x);
+      auto range = cursor.remove_prefix(prefix.size()).range();
+      return std::visit([&](auto x) { return Lexeme(x, range); }, x);
     }
   }
 

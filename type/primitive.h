@@ -4,7 +4,9 @@
 #include "absl/functional/function_ref.h"
 #include "base/global.h"
 #include "base/meta.h"
+#include "ir/value/addr.h"
 #include "ir/value/char.h"
+#include "ir/value/module_id.h"
 #include "type/type.h"
 
 namespace type {
@@ -31,8 +33,9 @@ struct Primitive : public LegacyType {
   template <typename Fn>
   auto Apply(Fn &&fn) const {
     return ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t,
-                     int32_t, int64_t, float, double, bool, ir::Char,
-                     Type /* TODO: Other primitives */>(std::forward<Fn>(fn));
+                     int32_t, int64_t, float, double, bool, ir::Char, Type,
+                     ir::ModuleId, ir::addr_t /* TODO: Other primitives */>(
+        std::forward<Fn>(fn));
   }
 
   base::MetaValue meta() const {
@@ -71,11 +74,12 @@ inline base::Global kPrimitiveArray = std::array{
     Primitive(Primitive::BasicType::Bool),
     Primitive(Primitive::BasicType::Char),
     Primitive(Primitive::BasicType::Type_),
+    Primitive(Primitive::BasicType::Module),
+    Primitive(Primitive::BasicType::MemPtr),
     Primitive(Primitive::BasicType::NullPtr),
     Primitive(Primitive::BasicType::EmptyArray),
     Primitive(Primitive::BasicType::Scope),
     Primitive(Primitive::BasicType::Block),
-    Primitive(Primitive::BasicType::Module),
     Primitive(Primitive::BasicType::Label),
     Primitive(Primitive::BasicType::Interface),
     Primitive(Primitive::BasicType::Void),
@@ -110,14 +114,15 @@ inline Type F64        = &(*internal::kPrimitiveArray)[9];
 inline Type Bool       = &(*internal::kPrimitiveArray)[10];
 inline Type Char       = &(*internal::kPrimitiveArray)[11];
 inline Type Type_      = &(*internal::kPrimitiveArray)[12];
-inline Type NullPtr    = &(*internal::kPrimitiveArray)[13];
-inline Type EmptyArray = &(*internal::kPrimitiveArray)[14];
-inline Type Scope      = &(*internal::kPrimitiveArray)[15];
-inline Type Block      = &(*internal::kPrimitiveArray)[16];
-inline Type Module     = &(*internal::kPrimitiveArray)[17];
-inline Type Label      = &(*internal::kPrimitiveArray)[18];
-inline Type Interface  = &(*internal::kPrimitiveArray)[19];
-inline Type Void       = &(*internal::kPrimitiveArray)[20];
+inline Type Module     = &(*internal::kPrimitiveArray)[13];
+inline Type MemPtr     = &(*internal::kPrimitiveArray)[14];
+inline Type NullPtr    = &(*internal::kPrimitiveArray)[15];
+inline Type EmptyArray = &(*internal::kPrimitiveArray)[16];
+inline Type Scope      = &(*internal::kPrimitiveArray)[17];
+inline Type Block      = &(*internal::kPrimitiveArray)[18];
+inline Type Label      = &(*internal::kPrimitiveArray)[19];
+inline Type Interface  = &(*internal::kPrimitiveArray)[20];
+inline Type Void       = &(*internal::kPrimitiveArray)[21];
 
 inline bool IsNumeric(Type t) {
   auto const *p = t.if_as<Primitive>();

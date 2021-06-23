@@ -26,6 +26,8 @@ INSTANTIATE_TEST_SUITE_P(
         test::TestCase{.expr = "bool", .expected = ir::Value(type::Bool)},
         test::TestCase{.expr = "type", .expected = ir::Value(type::Type_)},
         test::TestCase{.expr = "module", .expected = ir::Value(type::Module)},
+        test::TestCase{.expr     = "[*]memory",
+                       .expected = ir::Value(type::MemPtr)},
 
         // TODO: Evaluating string literals. Requires looking at read-only
         // addresses.

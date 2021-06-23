@@ -63,8 +63,14 @@ struct BlockGroupBase {
     alloc_.for_each_alloc(std::forward<Fn>(f));
   }
 
+  template <std::invocable<core::TypeContour, ir::Reg> Fn>
+  void for_each_alloc(core::Arch a, Fn &&f) const {
+    alloc_.for_each_alloc(a, std::forward<Fn>(f));
+  }
+
   Reg Reserve() { return alloc_.Reserve(); }
   Reg Alloca(type::Type t);
+  Reg Alloca(core::TypeContour tc);
 
   constexpr size_t num_regs() const { return alloc_.num_regs(); }
   constexpr size_t num_args() const { return alloc_.num_args(); }

@@ -16,6 +16,9 @@ BlockGroupBase::BlockGroupBase(
 }
 
 Reg BlockGroupBase::Alloca(type::Type t) { return alloc_.StackAllocate(t); }
+Reg BlockGroupBase::Alloca(core::TypeContour tc) {
+  return alloc_.StackAllocate(tc);
+}
 
 std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b) {
   os << "\n" << b.alloc_;

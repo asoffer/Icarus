@@ -29,7 +29,7 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
 
   auto from_type = context().qual_types(node->expr())[0].type();
 
-  if (to_type == from_type) { return values; }
+  if (to_type == from_type or from_type == type::MemPtr) { return values; }
 
   if (to_type == type::Char) {
     ASSERT((from_type == type::U8 or from_type == type::I8) == true);

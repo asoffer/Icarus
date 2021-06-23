@@ -32,12 +32,12 @@ StackFrame::StackFrame(ir::Fn fn, Stack& stack)
 
   if (fn_.kind() == ir::Fn::Kind::Native) {
     core::Bytes next_reg_loc = core::Bytes(0);
-    fn_.native()->for_each_alloc([&](type::Type t, ir::Reg r) {
-      ASSERT(t.valid() == true);
-      next_reg_loc = core::FwdAlign(next_reg_loc, t.alignment(kArchitecture));
-      offsets.emplace(r, next_reg_loc.value());
-      next_reg_loc += t.bytes(kArchitecture);
-    });
+    fn_.native()->for_each_alloc(
+        kArchitecture, [&](core::TypeContour tc, ir::Reg r) {
+          next_reg_loc = core::FwdAlign(next_reg_loc, tc.alignment());
+          offsets.emplace(r, next_reg_loc.value());
+          next_reg_loc += tc.bytes();
+        });
 
     frame_size_        = next_reg_loc.value();
     ir::addr_t frame_start = stack_.Allocate(frame_size_);

@@ -284,6 +284,7 @@ cc_library(
         "//base:meta",
         "//base:global",
         "//ir/value:char",
+        "//ir/value:module_id",
         "//ir/value:string",
         "@com_google_absl//absl/functional:function_ref",
     ],

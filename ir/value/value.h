@@ -30,7 +30,11 @@ VTable VTableFor{
                  *reinterpret_cast<T const*>(rhs);
         },
     .stream = [](std::ostream& os, void const* p) -> std::ostream& {
-      return os << *reinterpret_cast<T const*>(p);
+      if constexpr (base::meta<T> == base::meta<char*>) {
+        return os << *reinterpret_cast<void* const*>(p);
+      } else {
+        return os << *reinterpret_cast<T const*>(p);
+      }
     },
     .type = base::meta<T>,
 };

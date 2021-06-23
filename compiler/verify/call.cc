@@ -144,7 +144,6 @@ type::QualType VerifySliceCall(
   if (error) { return type::QualType::Error(); }
 
   if (not arg_vals[0].type().is<type::BufferPointer>()) {
-    // TODO: When we change the syntax for slices change this error message too.
     c->diag().Consume(BuiltinError{
         .range   = range,
         .message = absl::StrCat("First argument to `slice` must be a buffer "
@@ -194,11 +193,10 @@ type::QualType VerifyForeignCall(
   if (error) { return type::QualType::Error(); }
 
   if (arg_vals[0].type() != type::Slc(type::Char)) {
-    // TODO: When we change the syntax for slices change this error message too.
     c->diag().Consume(BuiltinError{
         .range   = range,
         .message = absl::StrCat("First argument to `foreign` must be a "
-                                "char[] (You provided a(n) ",
+                                "[]char (You provided a(n) ",
                                 arg_vals[0].type().to_string(), ")."),
     });
     error = true;
@@ -241,6 +239,44 @@ type::QualType VerifyForeignCall(
   }
 
   return type::QualType::Constant(*foreign_type);
+}
+
+type::QualType VerifyReserveMemoryCall(
+    Compiler *c, frontend::SourceRange const &range,
+    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+  type::QualType qt = type::QualType::NonConstant(type::MemPtr);
+  size_t size       = arg_vals.size();
+  if (size != 2u) {
+    c->diag().Consume(BuiltinError{
+        .range   = range,
+        .message = absl::StrCat("Built-in function `reserve_memory` takes "
+                                "exactly two arguments (You provided ",
+                                size, ")."),
+    });
+    qt.MarkError();
+  } else {
+    for (size_t i : {0, 1}) {
+      if (arg_vals[i].type() != type::U64) {
+        c->diag().Consume(BuiltinError{
+            .range   = range,
+            .message = absl::StrCat("Arguments to `reserve_memory` must be a "
+                                    "u64 (You provided a(n) ",
+                                    arg_vals[i].type().to_string(), ")."),
+        });
+        qt.MarkError();
+        break;
+      } else if (arg_vals[i]->empty()) {
+        c->diag().Consume(
+            BuiltinError{.range   = range,
+                         .message = "Arguments to `reserve_memory` must be "
+                                    "compile-time constants."});
+        qt.MarkError();
+        break;
+      }
+    }
+  }
+
+  return qt;
 }
 
 type::QualType VerifyOpaqueCall(
@@ -412,6 +448,9 @@ not_an_interface:
         os.insert(node);
         context().SetAllOverloads(node, std::move(os));
         qt = VerifySliceCall(this, b->range(), arg_vals);
+      } break;
+      case ir::BuiltinFn::Which::ReserveMemory: {
+        qt = VerifyReserveMemoryCall(this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Foreign: {
         ast::OverloadSet os;

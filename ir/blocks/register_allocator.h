@@ -41,6 +41,15 @@ struct RegisterAllocator {
     return r;
   }
 
+  // Adds a new stack allocation for a type with the given contour (size and
+  // alignment) and returns the `Reg` representing the register to which it was
+  // assigned.
+  Reg StackAllocate(core::TypeContour tc) {
+    auto r = Reserve();
+    raw_allocs_.emplace_back(tc, r);
+    return r;
+  }
+
   // Returns the number of registers requested through this `RegisterAllocator`.
   constexpr size_t num_regs() const { return num_regs_; }
 
@@ -49,7 +58,7 @@ struct RegisterAllocator {
   constexpr size_t num_args() const { return num_args_; }
 
   // Returns the number of stack allocations.
-  size_t num_allocs() const { return allocs_.size(); }
+  size_t num_allocs() const { return allocs_.size() + raw_allocs_.size(); }
 
   // Merge allocations from another RegisterAllocator. This method is used when
   // inlining another group into this one. The callable `f` is applied to each
@@ -60,22 +69,35 @@ struct RegisterAllocator {
   void MergeFrom(RegisterAllocator const& a, Fn&& f) {
     num_regs_ += a.num_regs_;
     for (auto const& [t, reg] : a.allocs_) { allocs_.emplace_back(t, f(reg)); }
+    for (auto const& [tc, reg] : a.raw_allocs_) {
+      raw_allocs_.emplace_back(tc, f(reg));
+    }
   }
 
-  // Iterate through each allocation, calling `f` on each (type, register)-pair.
-  // Note that we intentionally do not use `type::Typed<ir::Reg>`, because the
-  // register represents the address of a stored value of the given type, so it
-  // would be misleading. The register has a value which is a pointer to this
-  // type rather than the type itself.
+  // Iterate through each allocation, calling `f` on each allocated register
   template <std::invocable<type::Type, ir::Reg> Fn>
   void for_each_alloc(Fn&& f) const {
     for (auto const& [t, reg] : allocs_) { f(t, reg); }
+    // TODO: raw allocs
+  }
+
+  template <std::invocable<core::TypeContour, ir::Reg> Fn>
+  void for_each_alloc(core::Arch a, Fn&& f) const {
+    for (auto const& [t, reg] : allocs_) {
+      f(core::TypeContour(t.bytes(a), t.alignment(a)), reg);
+    }
+    for (auto const& [tc, reg] : raw_allocs_) { f(tc, reg); }
   }
 
   friend std::ostream& operator<<(std::ostream& os,
                                   RegisterAllocator const& a) {
     for (auto const& [t, reg] : a.allocs_) {
       os << "  " << stringify(reg) << ": " << t << "\n";
+    }
+
+    for (auto const& [tc, reg] : a.raw_allocs_) {
+      os << "  " << stringify(reg) << ": " << tc.bytes() << ", "
+         << tc.alignment() << "\n";
     }
     return os;
   }
@@ -84,6 +106,7 @@ struct RegisterAllocator {
   size_t num_regs_;
   size_t num_args_;
   std::vector<std::pair<type::Type, Reg>> allocs_;
+  std::vector<std::pair<core::TypeContour, Reg>> raw_allocs_;
 };
 
 }  // namespace ir

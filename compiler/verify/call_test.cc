@@ -13,6 +13,34 @@ using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
+TEST(BuiltinReserveMemory, FunctionSuccess) {
+  test::TestModule mod;
+  auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(1 as u64, 1 as u64))");
+  type::QualType qt = mod.context().qual_types(call)[0];
+  EXPECT_EQ(qt, type::QualType::NonConstant(type::MemPtr));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(BuiltinReserveMemory, NonConstantArgument) {
+  test::TestModule mod;
+  mod.AppendCode(R"(n := 3 as u64)");
+  auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(n, 1 as u64))");
+  type::QualType qt = mod.context().qual_types(call)[0];
+  EXPECT_EQ(qt, type::QualType::NonConstant(type::MemPtr));
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "builtin-error")));
+}
+
+TEST(BuiltinReserveMemory, WrongType) {
+  test::TestModule mod;
+  auto const *call =
+      mod.Append<ast::Call>(R"(reserve_memory(true, 1 as u64))");
+  type::QualType qt = mod.context().qual_types(call)[0];
+  EXPECT_EQ(qt, type::QualType::NonConstant(type::MemPtr));
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "builtin-error")));
+}
+
 TEST(BuiltinForeign, FunctionSuccess) {
   test::TestModule mod;
   auto const *call =

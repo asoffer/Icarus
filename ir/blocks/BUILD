@@ -92,6 +92,7 @@ cc_test(
     srcs = ["register_allocator_test.cc"],
     deps = [
         ":register_allocator",
+        "//type:fake",
         "//type:primitive",
         "@com_google_googletest//:gtest_main",
     ],

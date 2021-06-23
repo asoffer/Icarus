@@ -21,6 +21,12 @@ namespace {
 ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
                           absl::Span<ast::Call::Argument const> args) {
   switch (callee->value().which()) {
+    case ir::BuiltinFn::Which::ReserveMemory: {
+      return ir::Value(c.builder().CurrentGroup()->Alloca(core::TypeContour(
+          core::Bytes(*c.EvaluateOrDiagnoseAs<uint64_t>(&args[0].expr())),
+          core::Alignment(
+              *c.EvaluateOrDiagnoseAs<uint64_t>(&args[1].expr())))));
+    } break;
     case ir::BuiltinFn::Which::Slice: {
       type::Slice const *slice_type =
           type::Slc(c.context()

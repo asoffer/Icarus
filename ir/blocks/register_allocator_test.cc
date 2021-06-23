@@ -1,8 +1,9 @@
 #include "ir/blocks/register_allocator.h"
-#include "type/primitive.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "type/fake.h"
+#include "type/primitive.h"
 
 namespace ir {
 namespace {
@@ -27,14 +28,25 @@ TEST(RegisterAllocator, NumRegs) {
 }
 
 TEST(RegisterAllocator, ForEachAlloc) {
-  RegisterAllocator a(3);
-  a.StackAllocate(type::I32);
-  a.StackAllocate(type::I64);
+  type::FakeType ft(core::Bytes(1), core::Alignment(1));
 
-  MockFunction<void(type::Type, Reg)> mock_fn;
-  EXPECT_CALL(mock_fn, Call(type::I32, _)).Times(1);
-  EXPECT_CALL(mock_fn, Call(type::I64, _)).Times(1);
-  a.for_each_alloc(mock_fn.AsStdFunction());
+  RegisterAllocator a(3);
+  a.StackAllocate(&ft);
+  a.StackAllocate(core::TypeContour(core::Bytes(17), core::Alignment(4)));
+  a.StackAllocate(core::TypeContour(core::Bytes(3), core::Alignment(8)));
+
+  MockFunction<void(core::TypeContour, Reg)> mock_fn;
+  EXPECT_CALL(mock_fn, Call(core::TypeContour(ft.bytes(core::Host),
+                                              ft.alignment(core::Host)),
+                            _))
+      .Times(1);
+  EXPECT_CALL(mock_fn,
+              Call(core::TypeContour(core::Bytes(17), core::Alignment(4)), _))
+      .Times(1);
+  EXPECT_CALL(mock_fn,
+              Call(core::TypeContour(core::Bytes(3), core::Alignment(8)), _))
+      .Times(1);
+  a.for_each_alloc(core::Host, mock_fn.AsStdFunction());
 }
 
 TEST(RegisterAllocator, MergeFrom) {
