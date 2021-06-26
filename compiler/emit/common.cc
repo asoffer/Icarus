@@ -520,7 +520,7 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
                    std::make_pair(arg_type.if_as<type::BufferPointer>(),
                                   param_type.if_as<type::Pointer>());
                bufptr_arg_type and ptr_param_type and
-               ptr_param_type->pointee() == bufptr_arg_type->pointee()) {
+               type::CanCastImplicitly(bufptr_arg_type, ptr_param_type)) {
       return ir::Value(compiler.EmitValue(expr));
     } else if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
       if (ptr_param_type->pointee() == arg_type) {

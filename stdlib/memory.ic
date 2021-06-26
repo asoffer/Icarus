@@ -1,5 +1,8 @@
 core ::= import "core.ic"
 
+io     ::= import "io.ic"
+memcpy ::= foreign("memcpy", ([*]memory, [*]memory, u64) -> [*]memory)
+
 #{export}
 allocate ::= (T :: type) -> *T {
   malloc ::= foreign("malloc", u64 -> *T)
@@ -7,9 +10,9 @@ allocate ::= (T :: type) -> *T {
 }
 
 #{export}
-allocate ::= (T :: type, l: u64) -> [*]T {
+allocate ::= (T :: type, l: u64) -> []T {
   malloc ::= foreign("malloc", u64 -> [*]T)
-  return malloc(T'bytes * l)
+  return slice(malloc(T'bytes * l), l)
 }
 
 #{export}
@@ -29,11 +32,22 @@ reverse_destroy_buffer ::= (ptr: ~[*]`T, count: u64) -> () {
 }
 
 #{export}
-clone ::= (m: []memory) -> []memory {
-  memcpy ::= foreign("memcpy", ([*]memory, [*]memory, u64) -> [*]memory)
+clone ::= (m: []memory) => expand(m, m.length)
 
-  buffer := allocate(memory, m.length)
-  memcpy(buffer, m.data, m.length)
+#{export}
+expand ::= (m: []memory, new_size: u64) -> []memory {
+  buffer := allocate(memory, new_size)
+  memcpy(buffer.data, m.data, m.length)
+  return buffer
+}
 
-  return slice(buffer, m.length)
+#{export}
+fill ::= (m: []memory, value: u8) -> () {
+  memset ::= foreign("memset", ([*]char, i32, u64) -> [*]char)
+  memset(m.data, value as i32, m.length)
+}
+
+#{export}
+Copy ::= (from: []memory, to: []memory) -> () {
+  memcpy(to.data, from.data, to.length)
 }
