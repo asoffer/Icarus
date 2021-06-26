@@ -1,9 +1,12 @@
 #ifndef ICARUS_IR_VALUE_ADDR_H
 #define ICARUS_IR_VALUE_ADDR_H
 
+#include <cstddef>
+
 namespace ir {
 
-using addr_t = char *;
+using memory_t  = std::byte;
+using addr_t = memory_t *;
 
 constexpr addr_t Null() { return nullptr; }
 

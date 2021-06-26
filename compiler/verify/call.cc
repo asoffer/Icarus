@@ -244,7 +244,7 @@ type::QualType VerifyForeignCall(
 type::QualType VerifyReserveMemoryCall(
     Compiler *c, frontend::SourceRange const &range,
     core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
-  type::QualType qt = type::QualType::NonConstant(type::MemPtr);
+  type::QualType qt = type::QualType::NonConstant(type::BufPtr(type::Memory));
   size_t size       = arg_vals.size();
   if (size != 2u) {
     c->diag().Consume(BuiltinError{

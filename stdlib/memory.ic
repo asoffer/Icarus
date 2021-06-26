@@ -27,3 +27,13 @@ reverse_destroy_buffer ::= (ptr: ~[*]`T, count: u64) -> () {
     destroy p
   }
 }
+
+#{export}
+clone ::= (m: []memory) -> []memory {
+  memcpy ::= foreign("memcpy", ([*]memory, [*]memory, u64) -> [*]memory)
+
+  buffer := allocate(memory, m.length)
+  memcpy(buffer, m.data, m.length)
+
+  return slice(buffer, m.length)
+}

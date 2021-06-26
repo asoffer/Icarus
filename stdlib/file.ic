@@ -1,7 +1,7 @@
 core   ::= import "core.ic"
 errno  ::= import "errno.ic"
 cstdio ::= import "cstdio.ic"
-memory ::= import "memory.ic"
+mem    ::= import "memory.ic"
 
 #{export}
 File ::= struct {
@@ -60,7 +60,7 @@ LinesState ::= struct {
   line_length: i64
 
   (destroy) ::= (self: *LinesState) -> () {
-    memory.deallocate(self.line)
+    mem.deallocate(self.line)
   }
 }
 

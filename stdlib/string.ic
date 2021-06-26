@@ -1,4 +1,5 @@
 core ::= import "core.ic"
+mem  ::= import "memory.ic"
 
 // TODO: The precise types here are actually architecture dependent. We need to
 // provide some platform-querying capabilities so that we don't need to, for
@@ -36,7 +37,7 @@ string ::= struct {
   #{export}
   make ::= (s: []char) -> string {
     return string.{
-      _data     = allocate_and_copy(s.data, s.length + 1 as u64)
+      _data     = mem.clone(slice(s.data as [*]memory, s.length + 1 as u64)).data
       _length   = s.length
       _capacity = s.length
     }
@@ -145,4 +146,3 @@ at ::= (s: *string, lo: u64, hi: u64) => slice(&s._data[lo], hi - lo)
 
 #{export}
 view ::= (s: *string) => slice(&s._data[0], s._length)
-

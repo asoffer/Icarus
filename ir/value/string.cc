@@ -30,9 +30,7 @@ String::String(char const* str) : String(std::string(str)) {}
 String::String(std::string_view str) : String(std::string(str)) {}
 String::String(std::string const& str) : addr_(SaveStringGlobally(str)) {}
 
-std::string String::get() const {
-  return std::string(slice().data(), slice().length());
-}
+std::string String::get() const { return std::string(slice()); }
 
 Slice String::slice() const { return *reinterpret_cast<Slice const*>(addr_); }
 

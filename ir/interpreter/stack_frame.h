@@ -1,6 +1,9 @@
 #ifndef ICARUS_IR_INTERPRETER_STACK_FRAME_H
 #define ICARUS_IR_INTERPRETER_STACK_FRAME_H
 
+#include <cstddef>
+#include <vector>
+
 #include "base/untyped_buffer_view.h"
 #include "ir/blocks/basic.h"
 #include "ir/interpreter/register_array.h"
@@ -30,7 +33,7 @@ struct StackFrame {
 struct Stack {
   Stack();
 
-  char* Allocate(size_t bytes);
+  std::byte* Allocate(size_t bytes);
   void Deallocate(size_t bytes);
 
  private:
@@ -43,7 +46,7 @@ struct Stack {
   };
 
   std::vector<Segment> segments_;
-  char* end_;
+  std::byte* end_;
 };
 
 }  // namespace interpreter

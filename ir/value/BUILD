@@ -46,6 +46,7 @@ cc_library(
         ":native_fn",
         "//core:params",
         "//type:function",
+        "//type:pointer",
         "//type:primitive",
         "//base:extend",
         "//base/extend:absl_hash",

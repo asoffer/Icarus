@@ -23,6 +23,10 @@ struct Slice : base::Extend<Slice, 2>::With<base::AbslFormatExtension,
   addr_t data() const { return data_; }
   uint64_t length() const { return length_; }
 
+  operator std::string_view() const {
+    return std::string_view(reinterpret_cast<char const *>(data_), length_);
+  }
+
  private:
   friend base::EnableExtensions;
 

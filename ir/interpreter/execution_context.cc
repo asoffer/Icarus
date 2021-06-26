@@ -75,7 +75,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
     if (ffi_type == &ffi_type_pointer) {
       ir::addr_t addr = frame.regs_.get<ir::addr_t>(ir::Reg::Arg(i));
 
-      LOG("CallFn", "Pushing pointer addr = %s stored in %s", addr,
+      LOG("CallFn", "Pushing pointer addr = %p stored in %s", addr,
           ir::Reg::Arg(i));
       pointer_values.push_back(addr);
       arg_vals.push_back(&pointer_values.back());
@@ -84,8 +84,8 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
       // values directly into the buffer. Detetrmine if this is also okay for
       // ir::Char where we're writing/reading `char` through the `ir::Char`
       // according to the C++ standard.
-      arg_vals.push_back(
-          const_cast<char *>(frame.regs_.raw(ir::Reg::Arg(i))));
+      arg_vals.push_back(reinterpret_cast<char *>(
+          const_cast<std::byte *>(frame.regs_.raw(ir::Reg::Arg(i)))));
     }
   }
 

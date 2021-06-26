@@ -241,12 +241,6 @@ Lexeme NextOperator(SourceCursor &cursor, SourceBuffer const &buffer) {
     return Lexeme(std::make_unique<ast::Identifier>(range, ""));
   }
 
-  if (BeginsWith("[*]memory", cursor.view())) {
-    auto range = cursor.remove_prefix(9).range();
-    return Lexeme(
-        std::make_unique<ast::Terminal>(range, ir::Value(type::MemPtr)));
-  }
-
   for (auto [prefix, x] : *kOps) {
     if (BeginsWith(prefix, cursor.view())) {
       auto range = cursor.remove_prefix(prefix.size()).range();
@@ -311,6 +305,9 @@ Lexeme ConsumeWord(SourceLoc &cursor, SourceBuffer const &buffer) {
     return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(true)));
   } else if (word == "false") {
     return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(false)));
+  } else if (word == "memory") {
+    return Lexeme(
+        std::make_unique<ast::Terminal>(range, ir::Value(type::Memory)));
   } else if (word == "null") {
     return Lexeme(
         std::make_unique<ast::Terminal>(range, ir::Value(ir::Null())));

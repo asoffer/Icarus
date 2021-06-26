@@ -170,9 +170,21 @@ TEST(CanCastExplicitly, Arithmetic) {
 }
 
 TEST(CanCastExplicitly, Pointers) {
-  EXPECT_TRUE(CanCastExplicitly(MemPtr, Ptr(Bool)));
-  EXPECT_TRUE(CanCastExplicitly(MemPtr, BufPtr(Bool)));
-  EXPECT_FALSE(CanCastExplicitly(MemPtr, NullPtr));
+  EXPECT_TRUE(CanCastExplicitly(BufPtr(Memory), Ptr(Bool)));
+  EXPECT_TRUE(CanCastExplicitly(BufPtr(Memory), BufPtr(Bool)));
+  EXPECT_FALSE(CanCastExplicitly(BufPtr(Memory), NullPtr));
+
+  EXPECT_TRUE(CanCastExplicitly(Ptr(Bool), Ptr(Memory)));
+  EXPECT_TRUE(CanCastExplicitly(BufPtr(Bool), BufPtr(Memory)));
+  EXPECT_TRUE(CanCastExplicitly(NullPtr, BufPtr(Memory)));
+
+  EXPECT_TRUE(CanCastExplicitly(Ptr(Memory), Ptr(Bool)));
+  EXPECT_FALSE(CanCastExplicitly(Ptr(Memory), BufPtr(Bool)));
+  EXPECT_FALSE(CanCastExplicitly(Ptr(Memory), NullPtr));
+
+  EXPECT_TRUE(CanCastExplicitly(Ptr(Bool), Ptr(Memory)));
+  EXPECT_TRUE(CanCastExplicitly(BufPtr(Bool), Ptr(Memory)));
+  EXPECT_TRUE(CanCastExplicitly(NullPtr, Ptr(Memory)));
 
   EXPECT_TRUE(CanCastExplicitly(NullPtr, Ptr(Bool)));
   EXPECT_TRUE(CanCastExplicitly(NullPtr, BufPtr(Bool)));

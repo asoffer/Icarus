@@ -35,7 +35,9 @@ base::untyped_buffer EvaluateToBuffer(ir::NativeFn fn) {
   ExecutionContext ctx;
   StackFrame frame(fn, ctx.stack());
 
-  frame.regs_.set<ir::addr_t>(ir::Reg::Out(0), ret_buf.raw(0));
+  // TODO: Remove cast when untyped_buffer handles std::byte
+  frame.regs_.set<ir::addr_t>(ir::Reg::Out(0),
+                              reinterpret_cast<ir::addr_t>(ret_buf.raw(0)));
   ctx.Execute<InstSet>(fn, frame);
 
   LOG("EvaluateToBuffer", "Result buffer = %s", ret_buf.to_string());

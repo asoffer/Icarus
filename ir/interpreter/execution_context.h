@@ -223,7 +223,7 @@ struct ExecutionContext {
           type::Type t = fn_type->output()[i];
           ir::addr_t out_addr = t.is_big() ? ctx.resolve<ir::addr_t>(reg)
                                            : ctx.current_frame().regs_.raw(reg);
-          LOG("CallInstruction", "  %s: [%s]", ir::Reg::Out(i), out_addr);
+          LOG("CallInstruction", "  %s: [%p]", ir::Reg::Out(i), out_addr);
           frame.regs_.set(ir::Reg::Out(i), out_addr);
         }
 

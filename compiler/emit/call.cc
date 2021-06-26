@@ -75,7 +75,7 @@ ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       auto slice =
           std::get<base::untyped_buffer>(name_buffer).get<ir::Slice>(0);
 
-      std::string name(slice.data(), slice.length());
+      std::string name(slice);
       return ir::Value(c.current_block()->Append(ir::LoadSymbolInstruction{
           .name   = std::move(name),
           .type   = *maybe_foreign_type,

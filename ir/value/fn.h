@@ -5,14 +5,15 @@
 #include <iostream>
 
 #include "base/debug.h"
+#include "base/extend.h"
+#include "base/extend/absl_hash.h"
 #include "core/params.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
 #include "type/function.h"
+#include "type/pointer.h"
 #include "type/primitive.h"
-#include "base/extend.h"
-#include "base/extend/absl_hash.h"
 
 namespace ir {
 
@@ -59,7 +60,7 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
             return type::Func(
                 {core::AnonymousParam(type::QualType::Constant(type::U64)),
                  core::AnonymousParam(type::QualType::Constant(type::U64))},
-                {type::MemPtr});
+                {type::BufPtr(type::Memory)});
           case BuiltinFn::Which::Slice:
           case BuiltinFn::Which::Foreign:
             // Note: We do not allow passing `foreign` or `slice` around as a

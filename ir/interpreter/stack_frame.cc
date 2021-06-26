@@ -50,10 +50,10 @@ Stack::Stack() {
   auto& segment  = segments_.emplace_back();
   segment.buffer = base::untyped_buffer::MakeFull(kMinStackSegmentSizeInBytes);
   segment.capacity = segment.buffer.size();
-  end_             = segment.buffer.raw(0);
+  end_             = reinterpret_cast<std::byte*>(segment.buffer.raw(0));
 }
 
-char* Stack::Allocate(size_t bytes) {
+std::byte* Stack::Allocate(size_t bytes) {
   if (segments_.back().capacity >= bytes) {
     segments_.back().capacity -= bytes;
   } else {
@@ -61,17 +61,18 @@ char* Stack::Allocate(size_t bytes) {
     segment.buffer = base::untyped_buffer::MakeFull(
         std::max(kMinStackSegmentSizeInBytes, 2 * bytes));
     segment.capacity = segment.buffer.size() - bytes;
-    end_             = segment.buffer.raw(0);
+    end_             = reinterpret_cast<std::byte*>(segment.buffer.raw(0));
   }
 
-  char* result = end_;
-  end_         = result + bytes;
+  std::byte* result = end_;
+  end_              = result + bytes;
 
   return result;
 }
 
 void Stack::Deallocate(size_t bytes) {
-  ptrdiff_t distance = end_ - segments_.back().buffer.raw(0);
+  ptrdiff_t distance =
+      end_ - reinterpret_cast<std::byte*>(segments_.back().buffer.raw(0));
   ASSERT(distance >= bytes);
   if (distance > bytes) {
     segments_.back().capacity += bytes;
@@ -79,7 +80,8 @@ void Stack::Deallocate(size_t bytes) {
   } else if (bytes != 0) {
     if (segments_.size() != 1) { segments_.pop_back(); }
     auto& segment = segments_.back();
-    end_ = segment.buffer.raw(0) + (segment.buffer.size() - segment.capacity);
+    end_          = reinterpret_cast<std::byte*>(segment.buffer.raw(0)) +
+           (segment.buffer.size() - segment.capacity);
   }
 }
 

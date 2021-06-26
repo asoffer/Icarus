@@ -25,7 +25,8 @@ bool CanCastPointer(Pointer const *from, Pointer const *to) {
       return CanCastPointer(from_p, to_p);
     }
   }
-  return from->pointee() == to->pointee();
+  return from->pointee() == to->pointee() or from->pointee() == Memory or
+         to->pointee() == Memory;
 }
 
 bool CanCastFunction(Function const *from, Function const *to) {
@@ -67,7 +68,7 @@ bool CanCast(Type from, Type to) {
   if (to == from) { return true; }
 
   if (auto const *to_p = to.if_as<Pointer>()) {
-    if (from == NullPtr or from == MemPtr or
+    if (from == NullPtr or
         (to_p->pointee() == from and not to.is<BufferPointer>())) {
       return true;
     }
