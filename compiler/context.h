@@ -297,7 +297,8 @@ struct Context {
     ir::Value value() const {
       // TODO: Do we need to track constness of addresses in the type system
       // too?
-      return is_big ? ir::Value(const_cast<char *>(buffer_.raw(0)))
+      return is_big ? ir::Value(const_cast<std::byte *>(
+                          reinterpret_cast<std::byte const *>(buffer_.raw(0))))
                     : ir::Value(buffer_.get<ir::Value>(0));
     }
 

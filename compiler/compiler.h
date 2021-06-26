@@ -382,6 +382,7 @@ struct Compiler
   DEFINE_PATTERN_MATCH(ast::BindingDeclaration)
   DEFINE_PATTERN_MATCH(ast::Call)
   DEFINE_PATTERN_MATCH(ast::Declaration)
+  DEFINE_PATTERN_MATCH(ast::SliceType)
   DEFINE_PATTERN_MATCH(ast::Terminal)
   DEFINE_PATTERN_MATCH(ast::UnaryOperator)
 #undef DEFINE_PATTERN_MATCH

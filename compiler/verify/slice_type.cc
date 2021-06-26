@@ -21,6 +21,23 @@ struct SliceDataTypeNotAType {
   frontend::SourceRange range;
 };
 
+struct NonTypeSliceTypeMatch {
+  static constexpr std::string_view kCategory = "pattern-error";
+  static constexpr std::string_view kName     = "non-type-slice-type-match";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Attempting to match a slice type against a value of type `%s`.",
+            type),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+  type::Type type;
+};
+
+
 }  // namespace
 
 // Verifies that the slice data type expression is a type.
@@ -38,6 +55,15 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::SliceType const *node
   }
 
   return context().set_qual_type(node, qt);
+}
+
+bool Compiler::VerifyPatternType(ast::SliceType const *node, type::Type t) {
+  if (t != type::Type_) {
+    diag().Consume(NonTypeSliceTypeMatch{.range = node->range(), .type = t});
+    return false;
+  }
+
+  return VerifyPatternType(node->data_type(), type::Type_);
 }
 
 }  // namespace compiler

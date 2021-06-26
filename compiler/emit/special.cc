@@ -312,7 +312,7 @@ void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Pointer> to,
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Pointer> to,
                             type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
+  ASSERT(type::CanCastImplicitly(from.type(), to.type()) == true);
   builder().Store(from->get<ir::RegOr<ir::addr_t>>(), *to);
 }
 

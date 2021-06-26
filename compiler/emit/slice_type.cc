@@ -38,4 +38,13 @@ void Compiler::EmitMoveInit(
   builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
 }
 
+bool Compiler::PatternMatch(
+    ast::SliceType const *node, PatternMatchingContext &pmc,
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+  auto t = pmc.value.get<type::Type>(0);
+  if (not t.is<type::Slice>()) { return false; }
+  pmc.value.set(0, type::Type(t.as<type::Slice>().data_type()));
+  return PatternMatch(node->data_type(), pmc, bindings);
+}
+
 }  // namespace compiler

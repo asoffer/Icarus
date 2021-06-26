@@ -51,3 +51,7 @@ fill ::= (m: []memory, value: u8) -> () {
 Copy ::= (from: []memory, to: []memory) -> () {
   memcpy(to.data, from.data, to.length)
 }
+
+// TODO: If we don't require length to be a multiple of alignment, we need to account for that here.
+#{export}
+to_raw ::= (s: ~[]`T) => slice(s.data as [*]memory, s.length * T'bytes)

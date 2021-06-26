@@ -20,6 +20,9 @@ INSTANTIATE_TEST_SUITE_P(
         })(f32)
         )",
                        .expected = ir::Value(type::Type(type::Slc(type::F32)))},
+        test::TestCase{.context  = R"([]*i64 ~ []`T)",
+                       .expr     = "T",
+                       .expected = ir::Value(type::Type(type::Ptr(type::I64)))},
     }));
 
 }  // namespace

@@ -43,5 +43,24 @@ TEST(SliceType, NonTypeData) {
       UnorderedElementsAre(Pair("type-error", "slice-data-type-not-a-type")));
 }
 
+TEST(UnaryOperator, ValidPattern) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  []i64 ~ []`T
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+
+TEST(SliceType, InvalidPattern) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  true ~ []`T
+  )");
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("pattern-error", "non-type-slice-type-match")));
+}
+
 }  // namespace
 }  // namespace compiler

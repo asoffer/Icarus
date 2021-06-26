@@ -22,6 +22,8 @@ struct TerminalMatchError {
 };
 
 ir::Value Compiler::EmitValue(ast::Terminal const *node) {
+  LOG("", "%s %s", node->value().get_if<char *>() ? "true" : "false",
+      node->value());
   return node->value();
 }
 

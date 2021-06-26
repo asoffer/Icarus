@@ -51,6 +51,9 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
     c.builder().CurrentBlock() = fn.entry();
 
     auto val = c.EmitValue(expr);
+    LOG("", "%s %s %s", expr->DebugString(),
+        val.get_if<char *>() ? "true" : "false", val);
+
     if (type != type::Void) { ASSERT(val.empty() == false); }
     // TODO is_big()?
 
@@ -79,6 +82,7 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
     }
     c.builder().ReturnJump();
   }
+  LOG("MakeThunk", "%s", fn);
 
   return std::pair<ir::CompiledFn, base::untyped_buffer>(std::move(fn),
                                                          EmitByteCode(fn));
