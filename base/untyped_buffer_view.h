@@ -1,6 +1,7 @@
 #ifndef ICARUS_BASE_UNTYPED_BUFFER_VIEW_H
 #define ICARUS_BASE_UNTYPED_BUFFER_VIEW_H
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -13,8 +14,8 @@ namespace base {
 struct untyped_buffer_view {
   constexpr explicit untyped_buffer_view() = default;
 
-  explicit untyped_buffer_view(void const *data, size_t size)
-      : data_(reinterpret_cast<char const *>(data)), size_(size) {}
+  explicit untyped_buffer_view(std::byte const *data, size_t size)
+      : data_(data), size_(size) {}
 
   /* implicit */ untyped_buffer_view(untyped_buffer const &buf)
       : data_(buf.raw(0)), size_(buf.size()) {}
@@ -34,7 +35,7 @@ struct untyped_buffer_view {
 
   void remove_suffix(size_t num) { size_ -= num; }
 
-  constexpr char const *data() const { return data_; }
+  constexpr std::byte const *data() const { return data_; }
   constexpr size_t size() const { return size_; }
   constexpr bool empty() const { return size_ == 0; }
 
@@ -47,7 +48,7 @@ struct untyped_buffer_view {
     return result;
   }
 
-  char const *raw(size_t offset) const {
+  std::byte const *raw(size_t offset) const {
     ASSERT(offset <= size_);
     return data_ + offset;
   }
@@ -81,8 +82,8 @@ struct untyped_buffer_view {
   }
 
  private:
-  char const *data_ = nullptr;
-  size_t size_      = 0;
+  std::byte const *data_ = nullptr;
+  size_t size_           = 0;
 };
 
 }  // namespace base

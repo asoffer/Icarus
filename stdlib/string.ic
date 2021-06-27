@@ -100,9 +100,9 @@ append ::= (s: *string, character: char) -> () {
   } else core.if (s._capacity == s._length) then {
     resize_buffer(s, s._capacity * 2 as u64)
   }
-  s._data[s._length] = character
+  s._data[s._length] = init character
   s._length += 1 as u64
-  s._data[s._length] = !\0
+  s._data[s._length] = init !\0
 }
 
 #{export}

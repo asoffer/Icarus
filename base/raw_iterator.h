@@ -1,6 +1,7 @@
 #ifndef ICARUS_BASE_RAW_ITERATOR_H
 #define ICARUS_BASE_RAW_ITERATOR_H
 
+#include <string>
 #include <compare>
 
 #include "base/unaligned_ref.h"
@@ -8,7 +9,7 @@
 namespace base::internal {
 
 struct raw_const_iterator {
-  explicit constexpr raw_const_iterator(char const *ptr) : ptr_(ptr) {}
+  explicit constexpr raw_const_iterator(std::byte const *ptr) : ptr_(ptr) {}
   constexpr raw_const_iterator() : raw_const_iterator(nullptr) {}
 
   constexpr void skip(size_t n) { ptr_ += n; }
@@ -20,18 +21,26 @@ struct raw_const_iterator {
     return result;
   }
 
-  constexpr void const *raw() const { return ptr_; }
+  constexpr std::byte const *raw() const { return ptr_; }
 
   auto operator<=>(raw_const_iterator const &) const = default;
+
+  std::string read_bytes_as_string(size_t length) {
+    std::string result;
+    result.resize(length);
+    std::memcpy(result.data(), ptr_, length);
+    ptr_ += length;
+    return result;
+  }
 
  private:
   friend struct raw_iterator;
 
-  char const *ptr_;
+  std::byte const *ptr_;
 };
 
 struct raw_iterator : raw_const_iterator {
-  explicit constexpr raw_iterator(char *ptr) : raw_const_iterator(ptr) {}
+  explicit constexpr raw_iterator(std::byte *ptr) : raw_const_iterator(ptr) {}
 
   template <typename T>
   unaligned_ref<T> read() {
@@ -40,7 +49,7 @@ struct raw_iterator : raw_const_iterator {
     return result;
   }
 
-  constexpr void *raw() { return const_cast<char *>(ptr_); }
+  constexpr std::byte *raw() { return const_cast<std::byte *>(ptr_); }
 };
 
 }  // namespace base::internal

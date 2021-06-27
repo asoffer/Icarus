@@ -25,16 +25,8 @@ struct RegisterArray {
                                               sizes_.num_outputs) *
                                              value_size)) {}
 
-  std::byte const *raw(ir::Reg r) const {
-    // TODO: Technically not okay, but I don't want to refactor untyped_buffer
-    // right now.
-    return reinterpret_cast<std::byte const *>(data_.raw(offset(r)));
-  }
-  std::byte *raw(ir::Reg r) {
-    // TODO: Technically not okay, but I don't want to refactor untyped_buffer
-    // right now.
-    return reinterpret_cast<std::byte *>(data_.raw(offset(r)));
-  }
+  std::byte const *raw(ir::Reg r) const { return data_.raw(offset(r)); }
+  std::byte *raw(ir::Reg r) { return data_.raw(offset(r)); }
 
   template <typename T>
   auto get(ir::Reg r) const {

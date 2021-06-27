@@ -37,9 +37,7 @@ void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
   } else if constexpr (base::meta<T> == base::meta<std::string>) {
     ASSERT(ref.size() == 0u);
     uint16_t num_chars = iter->read<uint16_t>();
-    ref.reserve(num_chars);
-    ref = std::string(static_cast<char const*>(iter->raw()), num_chars);
-    iter->skip(num_chars);
+    ref                = iter->read_bytes_as_string(num_chars);
   } else {
     ref = iter->read<T>();
   }
@@ -63,7 +61,8 @@ struct ByteCodeWriter {
       Write(val.second);
     } else if constexpr (base::meta<T> == base::meta<std::string>) {
       buf_->append<uint16_t>(val.size());
-      for (char c : val) { Write(c); }
+      buf_->write(buf_->size(), reinterpret_cast<std::byte const*>(val.data()),
+                  val.size());
 
     } else if constexpr (base::meta<T>.template is_a<absl::flat_hash_map>()) {
       buf_->append<uint16_t>(val.size());

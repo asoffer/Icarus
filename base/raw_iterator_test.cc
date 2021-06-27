@@ -7,7 +7,7 @@
 namespace base::internal {
 
 TEST(Iterator, Read) {
-  char buf[10];
+  std::byte buf[10];
   int32_t n = 123;
   std::memcpy(&buf[0], &n, sizeof(n));
   bool b = true;
@@ -35,7 +35,7 @@ TEST(Iterator, Read) {
 }
 
 TEST(Iterator, Skip) {
-  char buf[10];
+  std::byte buf[10];
   int32_t n = 123;
   std::memcpy(&buf[0], &n, sizeof(n));
   bool b = true;
@@ -63,7 +63,7 @@ TEST(Iterator, Skip) {
 }
 
 TEST(Iterator, ComparisonMutable) {
-  char buf[10];
+  std::byte buf[10];
 
   raw_iterator lhs(buf);
   raw_iterator rhs(buf);
@@ -84,7 +84,7 @@ TEST(Iterator, ComparisonMutable) {
 }
 
 TEST(Iterator, ComparisonMutableToConst) {
-  char buf[10];
+  std::byte buf[10];
 
   raw_iterator lhs(buf);
   raw_const_iterator rhs(buf);
@@ -105,7 +105,7 @@ TEST(Iterator, ComparisonMutableToConst) {
 }
 
 TEST(Iterator, ComparisonConst) {
-  char buf[10];
+  std::byte buf[10];
 
   raw_iterator lhs(buf);
   raw_const_iterator rhs(buf);
