@@ -1,5 +1,5 @@
 core   ::= import "core.ic"
-memory ::= import "byte.ic"
+memory ::= import "memory.ic"
 
 // TODO: The precise types here are actually architecture dependent. We need to
 // provide some platform-querying capabilities so that we don't need to, for
@@ -113,8 +113,8 @@ append ::= (s: *string, char_slice: []char) -> () {
 
   core.if (char_slice.length > 0) then {
     len := char_slice.length + 1
-    memory.Copy(from = slice(char_slice.data as [*]byte, len),
-             to   = slice(s'at(s._length) as [*]byte, len))
+    memory.Copy(from = slice(char_slice.data, len),
+                to   = slice(s'at(s._length), len))
     s._length += char_slice.length
   }
 }
@@ -133,10 +133,11 @@ Print ::= (s: *string) -> () {
 #{export}
 at ::= (s: *string, n: u64) => &s._data[n]
 
+// TODO: The call to `at` here should be allowed because it couldn't possibly match itself.
 #{export}
 at ::= (s: *string, lo: u64, hi: u64) => slice(&s._data[lo], hi - lo)
 
 #{export}
 view ::= (s: *string) => slice(s'at(0), s._length)
 
-raw_null_terminated_view ::= (s: *string) => slice(s'at(0) as [*]byte, s._length + 1)
+raw_null_terminated_view ::= (s: *string) => slice(s'at(0), s._length + 1)

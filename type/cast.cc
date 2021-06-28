@@ -20,13 +20,7 @@ bool CanCastPointer(Pointer const *from, Pointer const *to) {
   if (to->is<BufferPointer>() and not from->is<BufferPointer>()) {
     return false;
   }
-  if (auto const *from_p = from->pointee().if_as<Pointer>()) {
-    if (auto const *to_p = to->pointee().if_as<Pointer>()) {
-      return CanCastPointer(from_p, to_p);
-    }
-  }
-  return from->pointee() == to->pointee() or from->pointee() == Byte or
-         to->pointee() == Byte;
+  return CanCastInPlace(from->pointee(), to->pointee());
 }
 
 bool CanCastFunction(Function const *from, Function const *to) {
@@ -97,6 +91,10 @@ bool CanCast(Type from, Type to) {
                CanCastInPlace(from_array->data_type(), to_array->data_type());
       }
     }
+  } else if (auto const *from_slice = from.if_as<Slice>()) {
+    if (auto const *to_slice = to.if_as<Slice>()) {
+      return CanCastInPlace(from_slice->data_type(), to_slice->data_type());
+    }
   }
 
   if constexpr (not IncludeExplicit) { 
@@ -135,7 +133,7 @@ bool CanCastImplicitly(Type from, Type to) { return CanCast<false>(from, to); }
 bool CanCastExplicitly(Type from, Type to) { return CanCast<true>(from, to); }
 
 bool CanCastInPlace(Type from, Type to) {
-  if (from == to) { return true; }
+  if (from == to or from == Byte or to == Byte) { return true; }
 
   if (auto const *from_p = from.if_as<Pointer>()) {
     if (auto const *to_p = to.if_as<Pointer>()) {

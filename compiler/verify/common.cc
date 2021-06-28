@@ -464,6 +464,9 @@ Compiler::VerifyCall(
         if (not type::CanCastImplicitly(expansion[i], params[i].value.type())) {
           // TODO: Currently as soon as we find an error with a call we move on.
           // It'd be nice to extract all the error information for each.
+        LOG("VerifyCall", "Cannot cast implicitly: parameter %s with argument %s",
+            expansion[i].to_string(), params[i].value.type().to_string());
+
           errors.emplace(callable_type, core::CallabilityResult::TypeMismatch{
                                             .parameter = i,
                                             .argument  = expansion[i],

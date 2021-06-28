@@ -115,7 +115,7 @@ INSTANTIATE_TEST_SUITE_P(
             .expected = type::QualType::Constant(type::Char),
         },
         TestCase{
-            .terminal = "memory",
+            .terminal = "byte",
             .expected = type::QualType::Constant(type::Type_),
         },
 

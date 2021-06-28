@@ -24,6 +24,9 @@ TEST(CanCast, InPlace) {
 
   EXPECT_FALSE(CanCastInPlace(Arr(3, BufPtr(U8)), Arr(3, Ptr(U8))));
   EXPECT_TRUE(CanCastInPlace(Slc(BufPtr(U8)), Slc(Ptr(U8))));
+
+  EXPECT_TRUE(CanCastInPlace(Slc(U8), Slc(Byte)));
+  EXPECT_TRUE(CanCastInPlace(Slc(Byte), Slc(U8)));
 }
 
 TEST(CanCast, Implicitly) {
@@ -42,6 +45,9 @@ TEST(CanCast, Implicitly) {
 
   EXPECT_TRUE(CanCastImplicitly(Arr(3, U64), Ptr(Arr(3, U64))));
   EXPECT_FALSE(CanCastImplicitly(Arr(3, U64), BufPtr(Arr(3, U64))));
+
+  EXPECT_TRUE(CanCastImplicitly(Arr(3, U64), Slc(Byte)));
+  EXPECT_TRUE(CanCastImplicitly(Slc(Char), Slc(Byte)));
 }
 
 TEST(CanCastExplicitly, Char) {

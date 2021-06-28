@@ -516,6 +516,8 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
   if (constant.empty()) {
     if (arg_type == param_type) {
       return compiler.EmitValue(expr);
+    } else if (arg_type.is<type::Slice>() and param_type.is<type::Slice>()) {
+      return compiler.EmitValue(expr);
     } else if (arg_type == type::Integer and type::IsIntegral(param_type)) {
       return param_type.as<type::Primitive>().Apply(
           [&]<typename T>()->ir::Value {
