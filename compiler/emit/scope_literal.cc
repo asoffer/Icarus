@@ -8,13 +8,14 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
+void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
+                            base::untyped_buffer &out) {
   LOG("ScopeLiteral", "State type = %p", node->state_type());
   type::Type state_type = nullptr;
   if (node->state_type()) {
-    ASSIGN_OR(return ir::Value(),  //
-                     state_type,
-                     EvaluateOrDiagnoseAs<type::Type>(node->state_type()));
+    ASSIGN_OR(return,  //
+                    state_type,
+                    EvaluateOrDiagnoseAs<type::Type>(node->state_type()));
   }
 
   absl::flat_hash_map<std::string_view, ir::Block> blocks;
@@ -33,9 +34,10 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
     }
   }
 
-  return ir::Value(builder().MakeScope(context().add_scope(state_type),
-                                       std::move(enters), std::move(exits),
-                                       std::move(blocks)));
+  ir::Scope s = context().add_scope(state_type);
+  builder().MakeScope(s, std::move(enters), std::move(exits),
+                      std::move(blocks));
+  out.append(ir::RegOr<ir::Scope>(s));
 }
 
 }  // namespace compiler

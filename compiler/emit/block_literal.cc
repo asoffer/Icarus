@@ -4,7 +4,8 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
+void Compiler::EmitToBuffer(ast::BlockLiteral const *node,
+                            base::untyped_buffer &out) {
   LOG("BlockLiteral", "Emitting value for %p: %s", node, node->DebugString());
   // TODO: The guarantee that body verification has already happened should be
   // handled by the work queue.
@@ -23,8 +24,9 @@ ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
     afters.push_back(EmitValue(decl).get<ir::RegOr<ir::Jump>>());
   }
 
-  return ir::Value(builder().MakeBlock(context().add_block(),
-                                       std::move(befores), std::move(afters)));
+  ir::Block b = context().add_block();
+  builder().MakeBlock(b, std::move(befores), std::move(afters));
+  out.append(ir::RegOr<ir::Block>(b));
 }
 
 }  // namespace compiler

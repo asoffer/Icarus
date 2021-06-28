@@ -350,56 +350,55 @@ struct TypeInfoInstruction
 };
 
 struct MakeBlockInstruction
-    : base::Extend<MakeBlockInstruction>::With<ByteCodeExtension,
-                                               InlineExtension> {
-  std::string to_string() const { return "make-block"; }  // TODO
+    : base::Extend<MakeBlockInstruction>::With<
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat =
+      "make-block(%1$s, ...)";  // TODO
 
-  Block Resolve() const {
+  void Apply(interpreter::ExecutionContext& ctx) const {
     std::vector<ir::Fn> resolved_befores;
     resolved_befores.reserve(befores.size());
-    for (auto const& fn : befores) { resolved_befores.push_back(fn.value()); }
+    for (auto const& fn : befores) {
+      resolved_befores.push_back(ctx.resolve(fn));
+    }
 
     absl::flat_hash_set<ir::Jump> resolved_afters;
     resolved_afters.reserve(afters.size());
-    for (auto const& jmp : afters) { resolved_afters.insert(jmp.value()); }
+    for (auto const& jmp : afters) { resolved_afters.insert(ctx.resolve(jmp)); }
 
     *CompiledBlock::From(block) = CompiledBlock(
         OverloadSet(std::move(resolved_befores)), std::move(resolved_afters));
-
-    return block;
   }
 
   Block block;
   std::vector<RegOr<Fn>> befores;
   std::vector<RegOr<Jump>> afters;
-  Reg result;
 };
 
 struct MakeScopeInstruction
-    : base::Extend<MakeScopeInstruction>::With<ByteCodeExtension,
-                                               InlineExtension> {
-  std::string to_string() const { return "make-scope"; }  // TODO
+    : base::Extend<MakeScopeInstruction>::With<
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat =
+      "make-scope(%1$s, %4$s, ...)";  // TODO
 
-  Scope Resolve() const {
+  void Apply(interpreter::ExecutionContext& ctx) const {
     absl::flat_hash_set<ir::Jump> resolved_inits;
     resolved_inits.reserve(inits.size());
-    for (auto const& init : inits) { resolved_inits.insert(init.value()); }
+    for (auto const& init : inits) { resolved_inits.insert(ctx.resolve(init)); }
 
     std::vector<ir::Fn> resolved_dones;
     resolved_dones.reserve(dones.size());
-    for (auto const& fn : dones) { resolved_dones.push_back(fn.value()); }
+    for (auto const& fn : dones) { resolved_dones.push_back(ctx.resolve(fn)); }
 
     CompiledScope::From(scope)->Initialize(
         std::move(resolved_inits), OverloadSet(std::move(resolved_dones)),
         blocks);
-    return scope;
   }
 
   Scope scope;
   std::vector<RegOr<Jump>> inits;
   std::vector<RegOr<Fn>> dones;
   absl::flat_hash_map<std::string_view, Block> blocks;
-  Reg result;
 };
 
 struct StructIndexInstruction

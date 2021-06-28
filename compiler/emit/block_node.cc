@@ -5,7 +5,8 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::BlockNode const *node) {
+void Compiler::EmitToBuffer(ast::BlockNode const *node,
+                            base::untyped_buffer &) {
   LOG("BlockNode", "EmitValue for block node named %s", node->name());
   EmitIrForStatements(*this, node->stmts());
   MakeAllDestructions(*this, &node->body_scope());
@@ -13,7 +14,6 @@ ir::Value Compiler::EmitValue(ast::BlockNode const *node) {
   if (termination == ir::Builder::BlockTerminationState::kMoreStatements) {
     termination = ir::Builder::BlockTerminationState::kNoTerminator;
   }
-  return ir::Value();
 }
 
 }  // namespace compiler

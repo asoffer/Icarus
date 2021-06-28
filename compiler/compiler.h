@@ -58,6 +58,7 @@ struct EmitRefTag {};
 struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
 struct EmitValueTag {};
+struct EmitToBufferTag {};
 struct VerifyTypeTag {};
 struct VerifyBodyTag {};
 struct EmitDestroyTag {};
@@ -95,6 +96,7 @@ struct Compiler
                    void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>,
       ast::Visitor<EmitRefTag, ir::Reg()>,
       ast::Visitor<EmitValueTag, ir::Value()>,
+      ast::Visitor<EmitToBufferTag, void(base::untyped_buffer *)>,
       ast::Visitor<VerifyTypeTag, absl::Span<type::QualType const>()>,
       ast::Visitor<VerifyBodyTag, WorkItem::Result()>,
       ast::Visitor<
@@ -188,6 +190,11 @@ struct Compiler
 
   ir::Value EmitValue(ast::Node const *node) {
     return ast::Visitor<EmitValueTag, ir::Value()>::Visit(node);
+  }
+
+  void EmitToBuffer(ast::Node const *node, base::untyped_buffer &buffer) {
+    ast::Visitor<EmitToBufferTag, void(base::untyped_buffer *)>::Visit(node,
+                                                                       &buffer);
   }
 
   void EmitMoveAssign(ast::Node const *node,
@@ -353,13 +360,98 @@ struct Compiler
     return VerifyBody(node);                                                   \
   }                                                                            \
                                                                                \
-  ir::Value EmitValue(ast::name const *node);                                  \
   ir::Value Visit(EmitValueTag, ast::name const *node) override {              \
     return EmitValue(node);                                                    \
+  }                                                                            \
+                                                                               \
+  void Visit(EmitToBufferTag, ast::name const *node,                           \
+             base::untyped_buffer *buffer) override {                          \
+    EmitToBuffer(node, *buffer);                                               \
   }
 
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
+
+#define DEFINE_EMIT(name)                                                      \
+  ir::Value EmitValue(name const *node);                                       \
+  void EmitToBuffer(name const *node, base::untyped_buffer &buffer) {          \
+    EmitValue(node)                                                            \
+        .apply<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t, \
+               uint8_t, uint16_t, uint32_t, uint64_t, float, double,           \
+               type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,        \
+               ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(      \
+            [&](auto value) {                                                  \
+              buffer.append(ir::RegOr<decltype(value)>(value));                \
+            });                                                                \
+  }
+
+#define DEFINE_EMIT_EXPR(name)                                                 \
+  void EmitToBuffer(name const *node, base::untyped_buffer &buffer);           \
+  ir::Value EmitValue(name const *node) {                                      \
+    base::untyped_buffer buffer;                                               \
+    EmitToBuffer(node, buffer);                                                \
+    auto qts = context().qual_types(node);                                     \
+    if (qts.empty()) { return ir::Value(); }                                   \
+    type::Type t = qts[0].type();                                              \
+    if (t == type::Void) { return ir::Value(); }                               \
+    return ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t,   \
+                      int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,   \
+                      double, type::Type, ir::addr_t, ir::ModuleId, ir::Scope, \
+                      ir::Fn, ir::Jump, ir::Block, ir::GenericFn,              \
+                      interface::Interface>(t, [&]<typename T>() {             \
+      return ir::Value(buffer.get<ir::RegOr<T>>(0));                           \
+    });                                                                        \
+  }
+
+#define DEFINE_EMIT_NODE(name)                                                 \
+  void EmitToBuffer(name const *node, base::untyped_buffer &buffer);           \
+  ir::Value EmitValue(name const *node) {                                      \
+    base::untyped_buffer buffer;                                               \
+    EmitToBuffer(node, buffer);                                                \
+    return ir::Value();                                                        \
+  }
+
+  DEFINE_EMIT(ast::Access)
+  DEFINE_EMIT_EXPR(ast::ArgumentType)
+  DEFINE_EMIT(ast::ArrayLiteral)
+  DEFINE_EMIT_EXPR(ast::ArrayType)
+  DEFINE_EMIT(ast::Assignment)
+  DEFINE_EMIT(ast::BinaryOperator)
+  DEFINE_EMIT(ast::BindingDeclaration)
+  DEFINE_EMIT_EXPR(ast::BlockLiteral)
+  DEFINE_EMIT_NODE(ast::BlockNode)
+  DEFINE_EMIT_EXPR(ast::BuiltinFn)
+  DEFINE_EMIT(ast::Call)
+  DEFINE_EMIT(ast::Cast)
+  DEFINE_EMIT(ast::ComparisonOperator)
+  DEFINE_EMIT_NODE(ast::ConditionalGoto)
+  DEFINE_EMIT(ast::Declaration)
+  DEFINE_EMIT(ast::Declaration_Id)
+  DEFINE_EMIT(ast::DesignatedInitializer)
+  DEFINE_EMIT(ast::EnumLiteral)
+  DEFINE_EMIT(ast::FunctionLiteral)
+  DEFINE_EMIT(ast::FunctionType)
+  DEFINE_EMIT(ast::Identifier)
+  DEFINE_EMIT_EXPR(ast::Import)
+  DEFINE_EMIT(ast::Index)
+  DEFINE_EMIT_EXPR(ast::InterfaceLiteral)
+  DEFINE_EMIT_EXPR(ast::Label)
+  DEFINE_EMIT_EXPR(ast::Jump)
+  DEFINE_EMIT(ast::ParameterizedStructLiteral)
+  DEFINE_EMIT_EXPR(ast::PatternMatch)
+  DEFINE_EMIT_NODE(ast::ReturnStmt)
+  DEFINE_EMIT_EXPR(ast::ScopeLiteral)
+  DEFINE_EMIT_EXPR(ast::ScopeNode)
+  DEFINE_EMIT_EXPR(ast::SliceType)
+  DEFINE_EMIT(ast::ShortFunctionLiteral)
+  DEFINE_EMIT(ast::StructLiteral)
+  DEFINE_EMIT(ast::Terminal)
+  DEFINE_EMIT(ast::UnaryOperator)
+  DEFINE_EMIT_NODE(ast::UnconditionalGoto)
+  DEFINE_EMIT_NODE(ast::YieldStmt)
+#undef DEFINE_EMIT_EXPR
+#undef DEFINE_EMIT_NODE
+#undef DEFINE_EMIT
 
 #define DEFINE_PATTERN_MATCH(name)                                             \
   bool PatternMatch(                                                           \

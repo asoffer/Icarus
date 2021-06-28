@@ -8,8 +8,7 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::InterfaceLiteral const *node) {
-  return ir::Value();
-}
+void Compiler::EmitToBuffer(ast::InterfaceLiteral const* node,
+                            base::untyped_buffer&) {}
 
 }  // namespace compiler

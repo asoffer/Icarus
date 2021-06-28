@@ -13,7 +13,8 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
+void Compiler::EmitToBuffer(ast::YieldStmt const *node,
+                            base::untyped_buffer &) {
   // Note: yields do not allow passing named arguments, so there's no need for a
   // full `core::Arguments` here. We can proceed direclty to a vector of the
   // positional arguments.
@@ -90,8 +91,6 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
 
   // TODO: store this as an exec_scope.
   MakeAllDestructions(*this, &node->scope()->as<ast::Scope>());
-
-  return ir::Value();
 }
 
 }  // namespace compiler

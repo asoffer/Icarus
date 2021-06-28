@@ -12,7 +12,8 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
+void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
+                            base::untyped_buffer &) {
   auto const &fn_type = context()
                             .qual_types(&node->function_literal())[0]
                             .type()
@@ -43,15 +44,15 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
       ApplyTypes<ir::Integer, bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
                  uint8_t, uint16_t, uint32_t, uint64_t, float, double,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::Jump, ir::Block, ir::GenericFn,
-                 interface::Interface>(ret_type, [&]<typename T>() {
-        auto value = builder().CastTo<T>(
-            type::Typed(EmitValue(expr), context().qual_types(expr)[0].type()));
-        builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
-            .index = static_cast<uint16_t>(i),
-            .value = value,
-        });
-      });
+                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
+          ret_type, [&]<typename T>() {
+            auto value = builder().CastTo<T>(type::Typed(
+                EmitValue(expr), context().qual_types(expr)[0].type()));
+            builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
+                .index = static_cast<uint16_t>(i),
+                .value = value,
+            });
+          });
     }
   }
 
@@ -66,7 +67,6 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   }
 
   builder().ReturnJump();
-  return ir::Value();
 }
 
 }  // namespace compiler

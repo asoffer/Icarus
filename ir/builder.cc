@@ -174,26 +174,22 @@ type::Typed<Reg> Builder::FieldRef(RegOr<addr_t> r, type::Struct const *t,
   return type::Typed<Reg>(result, t->fields()[n].type);
 }
 
-Reg Builder::MakeBlock(Block block, std::vector<RegOr<Fn>> befores,
-                       std::vector<RegOr<Jump>> afters) {
+void Builder::MakeBlock(Block block, std::vector<RegOr<Fn>> befores,
+                        std::vector<RegOr<Jump>> afters) {
   MakeBlockInstruction inst{.block   = block,
                             .befores = std::move(befores),
                             .afters  = std::move(afters)};
-  auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
-  return result;
 }
 
-Reg Builder::MakeScope(Scope scope, std::vector<RegOr<Jump>> inits,
-                       std::vector<RegOr<Fn>> dones,
-                       absl::flat_hash_map<std::string_view, Block> blocks) {
+void Builder::MakeScope(Scope scope, std::vector<RegOr<Jump>> inits,
+                        std::vector<RegOr<Fn>> dones,
+                        absl::flat_hash_map<std::string_view, Block> blocks) {
   MakeScopeInstruction inst{.scope  = scope,
                             .inits  = std::move(inits),
                             .dones  = std::move(dones),
                             .blocks = std::move(blocks)};
-  auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
-  return result;
 }
 
 }  // namespace ir

@@ -4,8 +4,11 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
-  auto t = EmitValue(node->data_type()).get<ir::RegOr<type::Type>>();
+void Compiler::EmitToBuffer(ast::ArrayType const *node,
+                            base::untyped_buffer &out) {
+  EmitToBuffer(node->data_type(), out);
+  ir::RegOr<type::Type> t = out.get<ir::RegOr<type::Type>>(0);
+  out.clear();
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
@@ -17,7 +20,7 @@ ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
         .data_type = t,
         .result    = builder().CurrentGroup()->Reserve()});
   }
-  return ir::Value(t);
+  out.append(t);
 }
 
 void Compiler::EmitCopyAssign(

@@ -25,28 +25,24 @@ struct PatternMatchFailure {
 
 }  // namespace
 
-ir::Value Compiler::EmitValue(ast::PatternMatch const *node) {
-  ir::Value result;
+void Compiler::EmitToBuffer(ast::PatternMatch const *node,
+                            base::untyped_buffer &out) {
   type::Type t;
-  base::untyped_buffer result_buffer;
   if (node->is_binary()) {
     t             = context().qual_types(node)[0].type();
-    result_buffer = std::get<base::untyped_buffer>(EvaluateToBufferOrDiagnose(
+    out           = std::get<base::untyped_buffer>(EvaluateToBufferOrDiagnose(
         type::Typed<ast::Expression const *>(&node->expr(), t)));
   } else {
     t = type::Type_;
     type::Type unary_result =
         context().arg_type(node->expr().as<ast::Declaration>().ids()[0].name());
-    result_buffer.append(unary_result);
-    result = ir::Value(unary_result);
+    out.append(ir::RegOr<type::Type>(unary_result));
   }
 
   auto &q         = pattern_match_queues_.emplace_back();
   absl::Cleanup c = [&] { pattern_match_queues_.pop_back(); };
 
-  q.emplace(
-      &node->pattern(),
-      PatternMatchingContext{.type = t, .value = std::move(result_buffer)});
+  q.emplace(&node->pattern(), PatternMatchingContext{.type = t, .value = out});
 
   absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> bindings;
   while (not q.empty()) {
@@ -58,11 +54,11 @@ ir::Value Compiler::EmitValue(ast::PatternMatch const *node) {
         NOT_YET(node->DebugString());
       } else {
         diag().Consume(PatternMatchFailure{
-            .type = result.get<type::Type>()
+            .type = out.get<type::Type>(0)
                         .to_string(),  // TODO: Use TypeForDiagnostic
             .range = node->pattern().range(),
         });
-        return ir::Value();
+        return;
       }
     }
   }
@@ -72,8 +68,6 @@ ir::Value Compiler::EmitValue(ast::PatternMatch const *node) {
         module::AllVisibleDeclsTowardsRoot(node->scope(), name->name())[0];
     context().SetConstant(id, std::move(buffer));
   }
-
-  return result;
 }
 
 }  // namespace compiler

@@ -255,7 +255,8 @@ void SetBeforeBlockPhi(
 
 }  // namespace
 
-ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
+void Compiler::EmitToBuffer(ast::ScopeNode const *node,
+                            base::untyped_buffer &out) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
   ir::Scope scope            = *EvaluateOrDiagnoseAs<ir::Scope>(node->name());
   auto const *compiled_scope = ir::CompiledScope::From(scope);
@@ -448,7 +449,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   builder().CurrentBlock() = landing_block;
   builder().block_termination_state() =
       ir::Builder::BlockTerminationState::kMoreStatements;
-  return result ? ir::Value(*result) : ir::Value();
+  if (result) { out.append(*result); }
 }
 
 void Compiler::EmitCopyInit(

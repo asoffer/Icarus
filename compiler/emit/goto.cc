@@ -58,7 +58,8 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
 
 }  // namespace
 
-ir::Value Compiler::EmitValue(ast::ConditionalGoto const *node) {
+void Compiler::EmitToBuffer(ast::ConditionalGoto const *node,
+                            base::untyped_buffer &) {
   auto condition    = EmitValue(node->condition());
   auto *true_block  = builder().AddBlock("ConditionalGoto-true");
   auto *false_block = builder().AddBlock("ConditionalGoto-false");
@@ -69,18 +70,16 @@ ir::Value Compiler::EmitValue(ast::ConditionalGoto const *node) {
 
   builder().CurrentBlock() = false_block;
   EmitJump(*this, node->false_options());
-
-  return ir::Value();
 }
 
-ir::Value Compiler::EmitValue(ast::UnconditionalGoto const *node) {
+void Compiler::EmitToBuffer(ast::UnconditionalGoto const *node,
+                            base::untyped_buffer &) {
   LOG("Goto", "Emit %s", node->DebugString());
   auto *block = builder().AddBlock("UncoditionalGoto");
   builder().UncondJump(block);
 
   builder().CurrentBlock() = block;
   EmitJump(*this, node->options());
-  return ir::Value();
 }
 
 }  // namespace compiler

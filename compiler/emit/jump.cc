@@ -9,7 +9,7 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::Jump const *node) {
+void Compiler::EmitToBuffer(ast::Jump const *node, base::untyped_buffer &out) {
   LOG("Jump", "Emit %s", node->DebugString());
   // TODO: Check the result of body verification.
   if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
@@ -23,7 +23,7 @@ ir::Value Compiler::EmitValue(ast::Jump const *node) {
         .resources = resources_,
     });
   }
-  return ir::Value(jmp);
+  out.append(ir::RegOr<ir::Jump>(jmp));
 }
 
 WorkItem::Result Compiler::EmitJumpBody(ast::Jump const *node) {

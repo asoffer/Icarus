@@ -4,10 +4,13 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::SliceType const *node) {
-  return ir::Value(current_block()->Append(type::SliceInstruction{
-      .data_type = EmitValue(node->data_type()).get<ir::RegOr<type::Type>>(),
-      .result    = builder().CurrentGroup()->Reserve()}));
+void Compiler::EmitToBuffer(ast::SliceType const *node, base::untyped_buffer&out) {
+  EmitToBuffer(node->data_type(), out);
+  auto t = out.get<ir::RegOr<type::Type>>(0);
+  out.clear();
+  out.append(
+      ir::RegOr<type::Type>(current_block()->Append(type::SliceInstruction{
+          .data_type = t, .result = builder().CurrentGroup()->Reserve()})));
 }
 
 void Compiler::EmitCopyAssign(
