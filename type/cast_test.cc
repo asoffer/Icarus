@@ -170,21 +170,21 @@ TEST(CanCastExplicitly, Arithmetic) {
 }
 
 TEST(CanCastExplicitly, Pointers) {
-  EXPECT_TRUE(CanCastExplicitly(BufPtr(Memory), Ptr(Bool)));
-  EXPECT_TRUE(CanCastExplicitly(BufPtr(Memory), BufPtr(Bool)));
-  EXPECT_FALSE(CanCastExplicitly(BufPtr(Memory), NullPtr));
+  EXPECT_TRUE(CanCastExplicitly(BufPtr(Byte), Ptr(Bool)));
+  EXPECT_TRUE(CanCastExplicitly(BufPtr(Byte), BufPtr(Bool)));
+  EXPECT_FALSE(CanCastExplicitly(BufPtr(Byte), NullPtr));
 
-  EXPECT_TRUE(CanCastExplicitly(Ptr(Bool), Ptr(Memory)));
-  EXPECT_TRUE(CanCastExplicitly(BufPtr(Bool), BufPtr(Memory)));
-  EXPECT_TRUE(CanCastExplicitly(NullPtr, BufPtr(Memory)));
+  EXPECT_TRUE(CanCastExplicitly(Ptr(Bool), Ptr(Byte)));
+  EXPECT_TRUE(CanCastExplicitly(BufPtr(Bool), BufPtr(Byte)));
+  EXPECT_TRUE(CanCastExplicitly(NullPtr, BufPtr(Byte)));
 
-  EXPECT_TRUE(CanCastExplicitly(Ptr(Memory), Ptr(Bool)));
-  EXPECT_FALSE(CanCastExplicitly(Ptr(Memory), BufPtr(Bool)));
-  EXPECT_FALSE(CanCastExplicitly(Ptr(Memory), NullPtr));
+  EXPECT_TRUE(CanCastExplicitly(Ptr(Byte), Ptr(Bool)));
+  EXPECT_FALSE(CanCastExplicitly(Ptr(Byte), BufPtr(Bool)));
+  EXPECT_FALSE(CanCastExplicitly(Ptr(Byte), NullPtr));
 
-  EXPECT_TRUE(CanCastExplicitly(Ptr(Bool), Ptr(Memory)));
-  EXPECT_TRUE(CanCastExplicitly(BufPtr(Bool), Ptr(Memory)));
-  EXPECT_TRUE(CanCastExplicitly(NullPtr, Ptr(Memory)));
+  EXPECT_TRUE(CanCastExplicitly(Ptr(Bool), Ptr(Byte)));
+  EXPECT_TRUE(CanCastExplicitly(BufPtr(Bool), Ptr(Byte)));
+  EXPECT_TRUE(CanCastExplicitly(NullPtr, Ptr(Byte)));
 
   EXPECT_TRUE(CanCastExplicitly(NullPtr, Ptr(Bool)));
   EXPECT_TRUE(CanCastExplicitly(NullPtr, BufPtr(Bool)));

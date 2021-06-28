@@ -19,7 +19,7 @@ TEST(BuiltinReserveMemory, FunctionSuccess) {
       mod.Append<ast::Call>(R"(reserve_memory(1 as u64, 1 as u64))");
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(
-      qt, type::QualType::NonConstant(type::Type(type::BufPtr(type::Memory))));
+      qt, type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -29,7 +29,7 @@ TEST(BuiltinReserveMemory, NonConstantArgument) {
   auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(n, 1 as u64))");
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(
-      qt, type::QualType::NonConstant(type::Type(type::BufPtr(type::Memory))));
+      qt, type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -39,7 +39,7 @@ TEST(BuiltinReserveMemory, WrongType) {
   auto const *call = mod.Append<ast::Call>(R"(reserve_memory(true, 1 as u64))");
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(
-      qt, type::QualType::NonConstant(type::Type(type::BufPtr(type::Memory))));
+      qt, type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }

@@ -25,8 +25,8 @@ bool CanCastPointer(Pointer const *from, Pointer const *to) {
       return CanCastPointer(from_p, to_p);
     }
   }
-  return from->pointee() == to->pointee() or from->pointee() == Memory or
-         to->pointee() == Memory;
+  return from->pointee() == to->pointee() or from->pointee() == Byte or
+         to->pointee() == Byte;
 }
 
 bool CanCastFunction(Function const *from, Function const *to) {

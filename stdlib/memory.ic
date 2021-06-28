@@ -1,7 +1,7 @@
 core ::= import "core.ic"
 
 io     ::= import "io.ic"
-memcpy ::= foreign("memcpy", ([*]memory, [*]memory, u64) -> [*]memory)
+memcpy ::= foreign("memcpy", ([*]byte, [*]byte, u64) -> [*]byte)
 
 #{export}
 allocate ::= (T :: type) -> *T {
@@ -32,26 +32,26 @@ reverse_destroy_buffer ::= (ptr: ~[*]`T, count: u64) -> () {
 }
 
 #{export}
-clone ::= (m: []memory) => expand(m, m.length)
+clone ::= (m: []byte) => expand(m, m.length)
 
 #{export}
-expand ::= (m: []memory, new_size: u64) -> []memory {
-  buffer := allocate(memory, new_size)
+expand ::= (m: []byte, new_size: u64) -> []byte {
+  buffer := allocate(byte, new_size)
   memcpy(buffer.data, m.data, m.length)
   return buffer
 }
 
 #{export}
-fill ::= (m: []memory, value: u8) -> () {
+fill ::= (m: []byte, value: u8) -> () {
   memset ::= foreign("memset", ([*]char, i32, u64) -> [*]char)
   memset(m.data, value as i32, m.length)
 }
 
 #{export}
-Copy ::= (from: []memory, to: []memory) -> () {
+Copy ::= (from: []byte, to: []byte) -> () {
   memcpy(to.data, from.data, to.length)
 }
 
 // TODO: If we don't require length to be a multiple of alignment, we need to account for that here.
 #{export}
-to_raw ::= (s: ~[]`T) => slice(s.data as [*]memory, s.length * T'bytes)
+to_raw ::= (s: ~[]`T) => slice(s.data as [*]byte, s.length * T'bytes)

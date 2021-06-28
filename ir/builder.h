@@ -486,7 +486,7 @@ struct Builder {
     } else if constexpr (base::meta<T> == base::meta<ir::Char>) {
       return type::Char;
     } else if constexpr (base::meta<T> == base::meta<ir::memory_t>) {
-      return type::Memory;
+      return type::Byte;
     } else if constexpr (base::meta<T> == base::meta<int8_t>) {
       return type::I8;
     } else if constexpr (base::meta<T> == base::meta<int16_t>) {

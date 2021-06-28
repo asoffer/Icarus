@@ -30,8 +30,8 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
   auto from_type = context().qual_types(node->expr())[0].type();
 
   if (to_type == from_type or
-          from_type == type::Type(type::BufPtr(type::Memory)) or
-          to_type == type::Type(type::BufPtr(type::Memory))) {
+      from_type == type::Type(type::BufPtr(type::Byte)) or
+      to_type == type::Type(type::BufPtr(type::Byte))) {
     return values;
   }
 

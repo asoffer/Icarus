@@ -78,7 +78,7 @@ inline base::Global kPrimitiveArray = std::array{
     Primitive(Primitive::BasicType::Char),
     Primitive(Primitive::BasicType::Type_),
     Primitive(Primitive::BasicType::Module),
-    Primitive(Primitive::BasicType::Memory),
+    Primitive(Primitive::BasicType::Byte),
     Primitive(Primitive::BasicType::NullPtr),
     Primitive(Primitive::BasicType::EmptyArray),
     Primitive(Primitive::BasicType::Scope),
@@ -119,7 +119,7 @@ inline Type Bool       = &(*internal::kPrimitiveArray)[11];
 inline Type Char       = &(*internal::kPrimitiveArray)[12];
 inline Type Type_      = &(*internal::kPrimitiveArray)[13];
 inline Type Module     = &(*internal::kPrimitiveArray)[14];
-inline Type Memory     = &(*internal::kPrimitiveArray)[15];
+inline Type Byte       = &(*internal::kPrimitiveArray)[15];
 inline Type NullPtr    = &(*internal::kPrimitiveArray)[16];
 inline Type EmptyArray = &(*internal::kPrimitiveArray)[17];
 inline Type Scope      = &(*internal::kPrimitiveArray)[18];

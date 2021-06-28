@@ -60,7 +60,7 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
             return type::Func(
                 {core::AnonymousParam(type::QualType::Constant(type::Integer)),
                  core::AnonymousParam(type::QualType::Constant(type::Integer))},
-                {type::BufPtr(type::Memory)});
+                {type::BufPtr(type::Byte)});
           case BuiltinFn::Which::Slice:
           case BuiltinFn::Which::Foreign:
             // Note: We do not allow passing `foreign` or `slice` around as a

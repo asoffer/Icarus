@@ -1,5 +1,5 @@
-core ::= import "core.ic"
-mem  ::= import "memory.ic"
+core   ::= import "core.ic"
+memory ::= import "memory.ic"
 
 // TODO: The precise types here are actually architecture dependent. We need to
 // provide some platform-querying capabilities so that we don't need to, for
@@ -14,7 +14,7 @@ array ::= struct (T :: type) {
 
   #{export}
   make ::= (fill: T, len: u64) -> array(T) {
-    buffer := mem.allocate(memory, len * T'bytes)
+    buffer := memory.allocate(byte, len * T'bytes)
     core.for (0, len as i64) do [i: i64] {
       (buffer.data as [*]T)[i] = init fill
     }
@@ -27,10 +27,10 @@ array ::= struct (T :: type) {
 
   #{export}
   make ::= (s: []T) -> array(T) {
-    raw := s'mem.to_raw
+    raw := s'memory.to_raw
     raw = slice(raw.data, raw.length)
     return array(T).{
-      _data     = mem.clone(raw).data
+      _data     = memory.clone(raw).data
       _length   = s.length
       _capacity = s.length
     }
@@ -38,7 +38,7 @@ array ::= struct (T :: type) {
 // 
 //   #{export}
 //   make ::= (capacity: u64) -> string {
-//     buffer := mem.allocate(memory, capacity + 1 as u64)
+//     buffer := memory.allocate(byte, capacity + 1 as u64)
 //     @(&buffer[0] as *char) = !\0
 //     return string.{
 //       _data     = buffer.data
@@ -61,14 +61,14 @@ array ::= struct (T :: type) {
     (to._capacity, from._capacity) = (from._capacity, 0 as u64)
   }
 
-  (destroy) ::= (self: *array(T)) -> () { mem.deallocate(self._data) }
+  (destroy) ::= (self: *array(T)) -> () { memory.deallocate(self._data) }
 }
 
 // Resizes the buffer, copying the string data to the new buffer, excluding the
 // null terminator. Assumes `new_capacity` is at least as large as`s._capacity`.
 // resize_buffer ::= (s: *string, new_capacity: u64) -> () {
-//   buffer := mem.expand(s'raw_null_terminated_view, new_capacity + 1 as u64)
-//   mem.deallocate(s._data)
+//   buffer := memory.expand(s'raw_null_terminated_view, new_capacity + 1 as u64)
+//   memory.deallocate(s._data)
 //   s._data = buffer.data
 //   s._capacity = new_capacity
 // }
@@ -99,8 +99,8 @@ array ::= struct (T :: type) {
 // 
 //   core.if (char_slice.length > 0 as u64) then {
 //     len := char_slice.length + 1 as u64
-//     mem.Copy(from = slice(char_slice.data as [*]memory, len),
-//              to   = slice(s'at(s._length) as [*]memory, len))
+//     memory.Copy(from = slice(char_slice.data as [*]byte, len),
+//              to   = slice(s'at(s._length) as [*]byte, len))
 //     s._length += char_slice.length
 //   }
 // }

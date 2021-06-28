@@ -306,9 +306,9 @@ Lexeme ConsumeWord(SourceLoc &cursor, SourceBuffer const &buffer) {
     return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(true)));
   } else if (word == "false") {
     return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(false)));
-  } else if (word == "memory") {
+  } else if (word == "byte") {
     return Lexeme(
-        std::make_unique<ast::Terminal>(range, ir::Value(type::Memory)));
+        std::make_unique<ast::Terminal>(range, ir::Value(type::Byte)));
   } else if (word == "null") {
     return Lexeme(
         std::make_unique<ast::Terminal>(range, ir::Value(ir::Null())));
