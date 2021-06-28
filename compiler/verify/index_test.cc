@@ -85,14 +85,15 @@ TEST(Index, ArrayConstantIndex) {
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][0])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
-                       type::QualType(type::I64, type::Quals::Const())));
+                       type::QualType(type::Integer, type::Quals::Const())));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(Index, ArrayNonConstantIndex) {
   test::TestModule mod;
   mod.AppendCode(R"(n: i64)");
-  auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][n])");
+  auto const *expr =
+      mod.Append<ast::Expression>(R"([1 as i64, 2 as i64, 3 as i64][n])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Unqualified())));
@@ -101,7 +102,7 @@ TEST(Index, ArrayNonConstantIndex) {
 
 TEST(Index, NonConstantArrayConstantIndex) {
   test::TestModule mod;
-  mod.AppendCode(R"(s := [1, 2, 3])");
+  mod.AppendCode(R"(s := [1 as i64, 2 as i64, 3 as i64])");
   auto const *expr = mod.Append<ast::Expression>(R"(s[0])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(
@@ -112,7 +113,7 @@ TEST(Index, NonConstantArrayConstantIndex) {
 TEST(Index, NonConstantArrayNonConstantIndex) {
   test::TestModule mod;
   mod.AppendCode(R"(
-  s := [1, 2, 3]
+  s := [1 as i64, 2 as i64, 3 as i64]
   n := 0
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(s[n])");
@@ -124,7 +125,7 @@ TEST(Index, NonConstantArrayNonConstantIndex) {
 
 TEST(Index, ArrayInvalidIndexType) {
   test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3]["def"])");
+  auto const *expr = mod.Append<ast::Expression>(R"([1 as i64]["def"])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Const())));
@@ -134,23 +135,23 @@ TEST(Index, ArrayInvalidIndexType) {
 
 TEST(Index, ArrayOutOfBoundsNegative) {
   test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][-1])");
+  auto const *expr = mod.Append<ast::Expression>(R"([1 as i64][-1])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Const())));
   EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "negative-array-index")));
+              UnorderedElementsAre(Pair("value-error", "negative-array-index")));
 }
 
 TEST(Index, ArrayOutOfBoundsLarge) {
   test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][3])");
+  auto const *expr = mod.Append<ast::Expression>(R"([1 as i64][3])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Const())));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "indexing-array-out-of-bounds")));
+      UnorderedElementsAre(Pair("value-error", "indexing-array-out-of-bounds")));
 }
 
 // TODO: BufferPtr tests

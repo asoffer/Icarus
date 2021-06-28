@@ -14,7 +14,7 @@ string ::= struct {
 
   #{export}
   make ::= (fill: char, len: u64) -> string {
-    buffer := mem.allocate(memory, len + 1 as u64)
+    buffer := mem.allocate(memory, len + 1)
     mem.fill(buffer, fill as u8)
     @(&buffer[len] as *char) = !\0
     return string.{
@@ -27,7 +27,7 @@ string ::= struct {
   #{export}
   make ::= (s: []char) -> string {
     raw := s'mem.to_raw
-    raw = slice(raw.data, raw.length + 1 as u64)
+    raw = slice(raw.data, raw.length + 1)
     return string.{
       _data     = mem.clone(raw).data
       _length   = s.length
@@ -37,11 +37,11 @@ string ::= struct {
 
   #{export}
   make ::= (capacity: u64) -> string {
-    buffer := mem.allocate(memory, capacity + 1 as u64)
+    buffer := mem.allocate(memory, capacity + 1)
     @(&buffer[0] as *char) = !\0
     return string.{
       _data     = buffer.data
-      _length   = 0 as u64
+      _length   = 0
       _capacity = capacity
     }
   }
@@ -49,15 +49,15 @@ string ::= struct {
   (move) ::= (to: *string) -> string {
     return string.{
       _data     = core.exchange(to._data, null)
-      _length   = core.exchange(to._length, 0 as u64)
-      _capacity = core.exchange(to._capacity, 0 as u64)
+      _length   = core.exchange(to._length, 0)
+      _capacity = core.exchange(to._capacity, 0)
     }
   }
 
   (move) ::= (to: *string, from: *string) -> () {
     (to._data,     from._data)     = (from._data,     null)
-    (to._length,   from._length)   = (from._length,   0 as u64)
-    (to._capacity, from._capacity) = (from._capacity, 0 as u64)
+    (to._length,   from._length)   = (from._length,   0)
+    (to._capacity, from._capacity) = (from._capacity, 0)
   }
 
   (copy) ::= (to: *string) -> string {
@@ -81,7 +81,7 @@ string ::= struct {
 // Resizes the buffer, copying the string data to the new buffer, excluding the
 // null terminator. Assumes `new_capacity` is at least as large as`s._capacity`.
 resize_buffer ::= (s: *string, new_capacity: u64) -> () {
-  buffer := mem.expand(s'raw_null_terminated_view, new_capacity + 1 as u64)
+  buffer := mem.expand(s'raw_null_terminated_view, new_capacity + 1)
   mem.deallocate(s._data)
   s._data = buffer.data
   s._capacity = new_capacity
@@ -91,17 +91,17 @@ resize_buffer ::= (s: *string, new_capacity: u64) -> () {
 length ::= (s: *string) => s._length
 
 #{export}
-is_empty ::= (s: *string) => s._length == 0 as u64
+is_empty ::= (s: *string) => s._length == 0
 
 #{export}
 append ::= (s: *string, character: char) -> () {
-  core.if (s._capacity == 0 as u64) then {
-    resize_buffer(s, 1 as u64)
+  core.if (s._capacity == 0) then {
+    resize_buffer(s, 1)
   } else core.if (s._capacity == s._length) then {
-    resize_buffer(s, s._capacity * 2 as u64)
+    resize_buffer(s, s._capacity * 2)
   }
   s._data[s._length] = init character
-  s._length += 1 as u64
+  s._length += 1
   s._data[s._length] = init !\0
 }
 
@@ -111,8 +111,8 @@ append ::= (s: *string, char_slice: []char) -> () {
     resize_buffer(s, s._length + char_slice.length)
   }
 
-  core.if (char_slice.length > 0 as u64) then {
-    len := char_slice.length + 1 as u64
+  core.if (char_slice.length > 0) then {
+    len := char_slice.length + 1
     mem.Copy(from = slice(char_slice.data as [*]memory, len),
              to   = slice(s'at(s._length) as [*]memory, len))
     s._length += char_slice.length
@@ -137,6 +137,6 @@ at ::= (s: *string, n: u64) => &s._data[n]
 at ::= (s: *string, lo: u64, hi: u64) => slice(&s._data[lo], hi - lo)
 
 #{export}
-view ::= (s: *string) => slice(s'at(0 as u64), s._length)
+view ::= (s: *string) => slice(s'at(0), s._length)
 
-raw_null_terminated_view ::= (s: *string) => slice(s'at(0 as u64) as [*]memory, s._length + 1 as u64)
+raw_null_terminated_view ::= (s: *string) => slice(s'at(0) as [*]memory, s._length + 1)

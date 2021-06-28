@@ -73,7 +73,15 @@ INSTANTIATE_TEST_SUITE_P(
                                return 10 * s1._a + s2._a
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{21})}}));
+                                      .expected = ir::Value(int64_t{21})},
+                       // Assignment from constants allows implicit conversion
+                       test::TestCase{.expr     = R"(((n: i64) -> i64 {
+                                  a: i64
+                                  a = a + 4
+                               return a
+                             })(3)
+                             )",
+                                      .expected = ir::Value(int64_t{7})}}));
 
 }  // namespace
 }  // namespace compiler

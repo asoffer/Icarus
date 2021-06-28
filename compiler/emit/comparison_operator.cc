@@ -63,56 +63,57 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
     }
 
   } else {
+    type::Type t = type::Meet(lhs.type(), rhs.type());
     switch (op) {
       case frontend::Operator::Lt:
-        return ApplyTypes<ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                          uint16_t, uint32_t, uint64_t, float, double,
-                          ir::addr_t>(lhs.type(), [&]<typename T>() {
-          return bldr.Lt(lhs->get<ir::RegOr<T>>(), rhs->get<ir::RegOr<T>>());
+        return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
+                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
+                          double, ir::addr_t>(t, [&]<typename T>() {
+          return bldr.Lt(bldr.CastTo<T>(lhs), bldr.CastTo<T>(rhs));
         });
       case frontend::Operator::Le:
-        return ApplyTypes<ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                          uint16_t, uint32_t, uint64_t, float, double,
-                          ir::addr_t>(lhs.type(), [&]<typename T>() {
-          return bldr.Le(lhs->get<ir::RegOr<T>>(), rhs->get<ir::RegOr<T>>());
+        return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
+                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
+                          double, ir::addr_t>(t, [&]<typename T>() {
+          return bldr.Le(bldr.CastTo<T>(lhs), bldr.CastTo<T>(rhs));
         });
       case frontend::Operator::Eq:
-        if (lhs.type() == type::Block) {
+        if (t == type::Block) {
           auto val1 = lhs->get<ir::RegOr<ir::Block>>();
           auto val2 = rhs->get<ir::RegOr<ir::Block>>();
           if (not val1.is_reg() and not val2.is_reg()) {
             return val1.value() == val2.value();
           }
         }
-        return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
-                          uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                          type::Type, ir::addr_t>(lhs.type(), [&]<typename T>() {
-          return bldr.Eq(lhs->get<ir::RegOr<T>>(), rhs->get<ir::RegOr<T>>());
+        return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
+                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
+                          double, type::Type, ir::addr_t>(t, [&]<typename T>() {
+          return bldr.Eq(bldr.CastTo<T>(lhs), bldr.CastTo<T>(rhs));
         });
       case frontend::Operator::Ne:
-        if (lhs.type() == type::Block) {
+        if (t == type::Block) {
           auto val1 = lhs->get<ir::RegOr<ir::Block>>();
           auto val2 = rhs->get<ir::RegOr<ir::Block>>();
           if (not val1.is_reg() and not val2.is_reg()) {
             return val1.value() == val2.value();
           }
         }
-        return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
-                          uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                          type::Type, ir::addr_t>(lhs.type(), [&]<typename T>() {
-          return bldr.Ne(lhs->get<ir::RegOr<T>>(), rhs->get<ir::RegOr<T>>());
+        return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
+                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
+                          double, type::Type, ir::addr_t>(t, [&]<typename T>() {
+          return bldr.Ne(bldr.CastTo<T>(lhs), bldr.CastTo<T>(rhs));
         });
       case frontend::Operator::Ge:
-        return ApplyTypes<ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                          uint16_t, uint32_t, uint64_t, float, double,
-                          ir::addr_t>(lhs.type(), [&]<typename T>() {
-          return bldr.Le(rhs->get<ir::RegOr<T>>(), lhs->get<ir::RegOr<T>>());
+        return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
+                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
+                          double, ir::addr_t>(t, [&]<typename T>() {
+          return bldr.Le(bldr.CastTo<T>(rhs), bldr.CastTo<T>(lhs));
         });
       case frontend::Operator::Gt:
-        return ApplyTypes<ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                          uint16_t, uint32_t, uint64_t, float, double,
-                          ir::addr_t>(lhs.type(), [&]<typename T>() {
-          return bldr.Lt(rhs->get<ir::RegOr<T>>(), lhs->get<ir::RegOr<T>>());
+        return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
+                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
+                          double, ir::addr_t>(t, [&]<typename T>() {
+          return bldr.Lt(bldr.CastTo<T>(rhs), bldr.CastTo<T>(lhs));
         });
         // TODO case frontend::Operator::And: cmp = *lhs; break;
       default: UNREACHABLE();

@@ -14,6 +14,7 @@ cc_library(
         "//frontend/source:buffer",
         "//ir/value:builtin_fn",
         "//ir/value:hashtag",
+        "//ir/value:integer",
         "//ir/value:string",
         "//type:primitive",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -51,7 +52,7 @@ cc_library(
     name = "numbers",
     hdrs = ["numbers.h"],
     srcs = ["numbers.cc"],
-    deps = [],
+    deps = ["//ir/value:integer"],
 )
 
 cc_test(

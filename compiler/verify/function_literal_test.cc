@@ -139,7 +139,7 @@ TEST(FunctionLiteral, TrivialInferred) {
 TEST(FunctionLiteral, OneValidReturnTypeInferred) {
   test::TestModule mod;
   auto qts = mod.context().qual_types(
-      mod.Append<ast::Expression>(R"(() -> { return 3 })"));
+      mod.Append<ast::Expression>(R"(() -> { return 3 as i64 })"));
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType::Constant(type::Func({}, {type::I64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -148,7 +148,7 @@ TEST(FunctionLiteral, OneValidReturnTypeInferred) {
 TEST(FunctionLiteral, MultipleValidReturnTypesInferred) {
   test::TestModule mod;
   auto qts = mod.context().qual_types(
-      mod.Append<ast::Expression>(R"(() -> { return 3, true })"));
+      mod.Append<ast::Expression>(R"(() -> { return 3 as i64, true })"));
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
                        type::Func({}, {type::I64, type::Bool}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -168,7 +168,7 @@ TEST(FunctionLiteral, OneParameterNoReturnInferred) {
 TEST(FunctionLiteral, OneParameterOneReturnTypeInferred) {
   test::TestModule mod;
   auto qts = mod.context().qual_types(
-      mod.Append<ast::Expression>(R"((b: bool) -> { return 3 })"));
+      mod.Append<ast::Expression>(R"((b: bool) -> { return 3 as i64 })"));
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool))},
@@ -191,7 +191,7 @@ TEST(FunctionLiteral, MultipleParametersNoReturnInferred) {
 TEST(FunctionLiteral, MultipleParametersOneReturnTypeInferred) {
   test::TestModule mod;
   auto qts = mod.context().qual_types(mod.Append<ast::Expression>(
-      R"((b: bool, n: i64) -> { return 3 })"));
+      R"((b: bool, n: i64) -> { return 3 as i64 })"));
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool)),

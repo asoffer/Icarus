@@ -58,8 +58,8 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
           case BuiltinFn::Which::Opaque: return type::Func({}, {type::Type_});
           case BuiltinFn::Which::ReserveMemory:
             return type::Func(
-                {core::AnonymousParam(type::QualType::Constant(type::U64)),
-                 core::AnonymousParam(type::QualType::Constant(type::U64))},
+                {core::AnonymousParam(type::QualType::Constant(type::Integer)),
+                 core::AnonymousParam(type::QualType::Constant(type::Integer))},
                 {type::BufPtr(type::Memory)});
           case BuiltinFn::Which::Slice:
           case BuiltinFn::Which::Foreign:

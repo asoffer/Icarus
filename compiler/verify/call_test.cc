@@ -313,7 +313,7 @@ TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
 
   frontend::SourceBuffer buffer(R"(
   #{export} S ::= struct {}
-  #{export} f ::= (s: S) => 3
+  #{export} f ::= (s: S) => true
   )");
   imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer), mod.consumer,
                            mod.importer);
@@ -342,7 +342,7 @@ TEST(Call, CrossModuleWithADLSucceed) {
 
   frontend::SourceBuffer buffer(R"(
   #{export} S ::= struct {}
-  #{export} f ::= (s: S) => 3
+  #{export} f ::= (s: S) => 3 as i64
   )");
   imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer), mod.consumer,
                            mod.importer);
@@ -370,7 +370,7 @@ TEST(Call, CrossModuleWithADLWithoutExport) {
 
   frontend::SourceBuffer buffer(R"(
   #{export} S ::= struct {}
-  f ::= (s: S) => 3
+  f ::= (s: S) => 3 as i64
   )");
   imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer), mod.consumer,
                            mod.importer);
@@ -411,7 +411,7 @@ INSTANTIATE_TEST_SUITE_P(
     All, CallTest,
     testing::ValuesIn({
         TestCase{
-            .context            = "f ::= () => 3",
+            .context            = "f ::= () => 3 as i64",
             .expr               = "f()",
             .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
@@ -575,13 +575,13 @@ INSTANTIATE_TEST_SUITE_P(
             f ::= (b: bool) => true
             f ::= (n: i64) => n
             )",
-            .expr               = "f(n = 0)",
+            .expr               = "f(n = 0 as i64)",  // TODO: Allow implicit conversion here
             .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         // Generic functions
         TestCase{
             .context            = "f ::= (x: ~`T) => x",
-            .expr               = "f(3)",
+            .expr               = "f(3 as i64)",
             .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         TestCase{

@@ -82,11 +82,12 @@ TEST(Declaration, DefaultInitNonConstantType) {
 // TODO Default initialization of non-default-initializable type (both const and
 // non-const).
 
+// TODO non-constant binding of compile-time only values.
 TEST(Declaration, InferredSuccess) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
-    n := 3
+    n := 3 as i64
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
     EXPECT_THAT(qts, UnorderedElementsAre(
@@ -101,7 +102,7 @@ TEST(Declaration, InferredSuccess) {
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
     EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType(type::I64, type::Quals::Const())));
+                         type::QualType(type::Integer, type::Quals::Const())));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }

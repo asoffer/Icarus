@@ -1,11 +1,11 @@
 -- ::= import "core.ic"
 io ::= import "io.ic"
 
-num := 0
+num: i64 = 0
 upper ::= 1_000
 for (2, upper) do [n: i64] {
   found_div := false
-  test := 2
+  test: i64 = 2
   while (test * test <= n) do {
     if (n % test == 0) then {
       found_div = true
@@ -21,5 +21,5 @@ for (2, upper) do [n: i64] {
 io.Print("There are ")
 io.Print(num)
 io.Print(" prime numbers less than or equal to ")
-io.Print(upper)
+io.Print(upper as i64)
 io.Print("\n")

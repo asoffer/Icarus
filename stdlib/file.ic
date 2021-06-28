@@ -43,7 +43,7 @@ With ::= scope(File) {
 #{export}
 read_to ::= (f: File, T :: type) -> T {
   result: T
-  CHUNK_SIZE ::= 1024 as u64
+  CHUNK_SIZE ::= 1024
   num_read := CHUNK_SIZE
   buffer: [CHUNK_SIZE; char]
   core.while (num_read == CHUNK_SIZE) do {

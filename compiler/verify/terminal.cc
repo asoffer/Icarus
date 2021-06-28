@@ -10,22 +10,8 @@ namespace compiler {
 absl::Span<type::QualType const> Compiler::VerifyType(ast::Terminal const *node) {
   type::Type t;
   base::MetaValue mv = node->value().type();
-  if (mv == base::meta<int8_t>) {
-    t = type::I8;
-  } else if (mv == base::meta<int16_t>) {
-    t = type::I16;
-  } else if (mv == base::meta<int32_t>) {
-    t = type::I32;
-  } else if (mv == base::meta<int64_t>) {
-    t = type::I64;
-  } else if (mv == base::meta<uint8_t>) {
-    t = type::U8;
-  } else if (mv == base::meta<uint16_t>) {
-    t = type::U16;
-  } else if (mv == base::meta<uint32_t>) {
-    t = type::U32;
-  } else if (mv == base::meta<uint64_t>) {
-    t = type::U64;
+  if (mv == base::meta<ir::Integer>) {
+    t = type::Integer;
   } else if (mv == base::meta<bool>) {
     t = type::Bool;
   } else if (mv == base::meta<ir::Char>) {

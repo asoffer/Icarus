@@ -44,28 +44,31 @@ using TypeConstructorInstructions = ir::InstructionSet<
 
 struct instruction_set_t
     : ir::InstructionSet<
-          ir::CoreInstructions<bool, ir::Char, uint8_t, int8_t, uint16_t,
-                               int16_t, uint32_t, int32_t, uint64_t, int64_t,
-                               float, double, type::Type, ir::addr_t, ir::String,
-                               ir::Fn, ir::Block, ir::Scope, ir::Jump,
-                               ir::ModuleId, interface::Interface>,
+          ir::CoreInstructions<bool, ir::Char, ir::Integer, uint8_t, int8_t,
+                               uint16_t, int16_t, uint32_t, int32_t, uint64_t,
+                               int64_t, float, double, type::Type, ir::addr_t,
+                               ir::String, ir::Fn, ir::Block, ir::Scope,
+                               ir::Jump, ir::ModuleId, interface::Interface>,
           ir::SetReturnInstruction<ir::GenericFn>,
-          ArithmeticInstructions<uint8_t, int8_t, uint16_t, int16_t, uint32_t,
-                                 int32_t, uint64_t, int64_t, float, double>,
-          ir::PtrDiffInstruction, ir::ModInstruction<uint8_t>,
-          ir::ModInstruction<int8_t>, ir::ModInstruction<uint16_t>,
-          ir::ModInstruction<int16_t>, ir::ModInstruction<uint32_t>,
-          ir::ModInstruction<int32_t>, ir::ModInstruction<uint64_t>,
-          ir::ModInstruction<int64_t>,
-          EqualityComparisonInstructions<
-              bool, uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t,
-              uint64_t, int64_t, float, double, type::Type, ir::addr_t>,
-          OrderedComparisonInstructions<ir::Char, uint8_t, int8_t, uint16_t,
-                                        int16_t, uint32_t, int32_t, uint64_t,
-                                        int64_t, float, double, ir::addr_t>,
-          ir::NegInstruction<int8_t>, ir::NegInstruction<int16_t>,
-          ir::NegInstruction<int32_t>, ir::NegInstruction<int64_t>,
-          ir::NegInstruction<float>, ir::NegInstruction<double>,
+          ArithmeticInstructions<ir::Integer, uint8_t, int8_t, uint16_t,
+                                 int16_t, uint32_t, int32_t, uint64_t, int64_t,
+                                 float, double>,
+          ir::PtrDiffInstruction, ir::ModInstruction<ir::Integer>,
+          ir::ModInstruction<uint8_t>, ir::ModInstruction<int8_t>,
+          ir::ModInstruction<uint16_t>, ir::ModInstruction<int16_t>,
+          ir::ModInstruction<uint32_t>, ir::ModInstruction<int32_t>,
+          ir::ModInstruction<uint64_t>, ir::ModInstruction<int64_t>,
+          EqualityComparisonInstructions<ir::Integer, bool, uint8_t, int8_t,
+                                         uint16_t, int16_t, uint32_t, int32_t,
+                                         uint64_t, int64_t, float, double,
+                                         type::Type, ir::addr_t>,
+          OrderedComparisonInstructions<
+              ir::Integer, ir::Char, uint8_t, int8_t, uint16_t, int16_t,
+              uint32_t, int32_t, uint64_t, int64_t, float, double, ir::addr_t>,
+          ir::NegInstruction<ir::Integer>, ir::NegInstruction<int8_t>,
+          ir::NegInstruction<int16_t>, ir::NegInstruction<int32_t>,
+          ir::NegInstruction<int64_t>, ir::NegInstruction<float>,
+          ir::NegInstruction<double>,
           CastInstructions<
               ir::Char(uint8_t), ir::Char(int8_t), int8_t(ir::Char),
               uint8_t(ir::Char), int16_t(ir::Char), uint16_t(ir::Char),
@@ -177,13 +180,14 @@ interpreter::EvaluationResult EvaluateAtCompileTime(ir::NativeFn fn) {
     } else if (t.is<type::GenericStruct>()) {
       values.push_back(ir::Value(t));
     } else {
-      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
-                 ir::GenericFn, interface::Interface>(t, [&]<typename T>() {
-        T val = iter.template read<T>();
-        values.push_back(ir::Value(val));
-      });
+      ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t, int64_t,
+                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
+                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
+          t, [&]<typename T>() {
+            T val = iter.template read<T>();
+            values.push_back(ir::Value(val));
+          });
     }
   }
 

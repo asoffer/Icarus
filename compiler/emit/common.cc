@@ -516,6 +516,16 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
   if (constant.empty()) {
     if (arg_type == param_type) {
       return compiler.EmitValue(expr);
+    } else if (arg_type == type::Integer and type::IsIntegral(param_type)) {
+      return param_type.as<type::Primitive>().Apply(
+          [&]<typename T>()->ir::Value {
+            if constexpr (std::is_integral_v<T>) {
+              return ir::Value(compiler.builder().CastTo<T>(
+                  type::Typed(constant, type::Integer)));
+            } else {
+              NOT_YET();
+            }
+          });
     } else if (auto [bufptr_arg_type, ptr_param_type] =
                    std::make_pair(arg_type.if_as<type::BufferPointer>(),
                                   param_type.if_as<type::Pointer>());
@@ -541,6 +551,16 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
   } else {
     if (arg_type == param_type) {
       return constant;
+    } else if (arg_type == type::Integer and type::IsIntegral(param_type)) {
+      return param_type.as<type::Primitive>().Apply(
+          [&]<typename T>()->ir::Value {
+            if constexpr (std::is_integral_v<T>) {
+              return ir::Value(compiler.builder().CastTo<T>(
+                  type::Typed(constant, type::Integer)));
+            } else {
+              NOT_YET();
+            }
+          });
     } else if (auto [bufptr_arg_type, ptr_param_type] =
                    std::make_pair(arg_type.if_as<type::BufferPointer>(),
                                   param_type.if_as<type::Pointer>());

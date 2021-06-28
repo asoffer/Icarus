@@ -42,12 +42,12 @@ bool IntRepresentableInBase(std::string_view s) {
 }
 
 template <int Base>
-std::variant<int64_t, double, NumberParsingError> ParseIntInBase(
+std::variant<ir::Integer, double, NumberParsingError> ParseIntInBase(
     std::string_view s) {
   if (not IntRepresentableInBase<Base>(s)) {
     return NumberParsingError::kTooLarge;
   }
-  int64_t result = 0;
+  ir::Integer result = 0;
   for (char c : s) {
     int64_t digit = DigitInBase<Base>(c);
     if (digit == -1) { return NumberParsingError::kInvalidDigit; }
@@ -57,7 +57,7 @@ std::variant<int64_t, double, NumberParsingError> ParseIntInBase(
 }
 
 template <int Base>
-std::variant<int64_t, double, NumberParsingError> ParseRealInBase(
+std::variant<ir::Integer, double, NumberParsingError> ParseRealInBase(
     std::string_view s, int dot) {
   int64_t int_part = 0;
   for (int i = 0; i < dot; ++i) {
@@ -78,7 +78,7 @@ std::variant<int64_t, double, NumberParsingError> ParseRealInBase(
 }
 
 template <int Base>
-std::variant<int64_t, double, NumberParsingError> ParseNumberInBase(
+std::variant<ir::Integer, double, NumberParsingError> ParseNumberInBase(
     std::string_view sv) {
   std::string copy;
   for (char c : sv) {
@@ -105,7 +105,7 @@ std::variant<int64_t, double, NumberParsingError> ParseNumberInBase(
 }
 }  // namespace
 
-std::variant<int64_t, double, NumberParsingError> ParseNumber(
+std::variant<ir::Integer, double, NumberParsingError> ParseNumber(
     std::string_view sv) {
   if (sv.size() > 1 and sv[0] == '0') {
     if (sv[1] == '.') { return ParseNumberInBase<10>(sv); }

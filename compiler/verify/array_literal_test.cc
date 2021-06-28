@@ -25,6 +25,12 @@ TEST(ArrayLiteral, OneElement) {
     auto const *expr = mod.Append<ast::Expression>(R"([0])");
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(
+                         type::QualType::Constant(type::Arr(1, type::Integer))));
+  }
+  {
+    auto const *expr = mod.Append<ast::Expression>(R"([0 as i64])");
+    auto qts         = mod.context().qual_types(expr);
+    EXPECT_THAT(qts, UnorderedElementsAre(
                          type::QualType::Constant(type::Arr(1, type::I64))));
   }
   {
@@ -53,8 +59,8 @@ TEST(ArrayLiteral, MultipleMatchingElements) {
   {
     auto const *expr = mod.Append<ast::Expression>(R"([0, 0])");
     auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType::Constant(type::Arr(2, type::I64))));
+    EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
+                         type::Arr(2, type::Integer))));
   }
   {
     auto const *expr = mod.Append<ast::Expression>(R"([true, false])");
@@ -79,7 +85,7 @@ TEST(ArrayLiteral, MultipleMatchingElements) {
 
 TEST(ArrayLiteral, ElementTypeMismatch) {
   test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([0, 0.0])");
+  auto const *expr = mod.Append<ast::Expression>(R"([0 as i64, 0.0])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(mod.consumer.diagnostics(),

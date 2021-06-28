@@ -4,6 +4,8 @@
 #include <string_view>
 #include <variant>
 
+#include "ir/value/integer.h"
+
 namespace frontend {
 
 // This is the maximum byte-width allowed in integer literals.
@@ -17,7 +19,7 @@ enum class NumberParsingError {
   kTooLarge,
 };
 
-std::variant<int64_t, double, NumberParsingError> ParseNumber(
+std::variant<ir::Integer, double, NumberParsingError> ParseNumber(
     std::string_view sv);
 
 }  // namespace frontend

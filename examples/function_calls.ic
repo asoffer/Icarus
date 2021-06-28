@@ -143,8 +143,8 @@ default_arguments ::= () -> () {
   // at the function definition site. The normal declaration rules apply. Here
   // we are specifying that the parameter `b` gets a default value of 2 if no
   // argument is provided. We can also infer the type of the parameter as is done
-  // with `c := 3`.
-  f ::= (a: i64, b: i64 = 2, c := 3) -> () {
+  // with `c := 3 as i64`.
+  f ::= (a: i64, b: i64 = 2 as i64, c := 3 as i64) -> () {
     io.Print("f(a = ")
     io.Print(a)
     io.Print(", b = ")
@@ -164,7 +164,7 @@ default_arguments ::= () -> () {
   // use the default if they have one, or be named. In the example below, only
   // `b` has a default, so if a value for `b` is not provided at the call site,
   // `c` must be explicitly named.
-  g ::= (a: i64, b := 2, c: i64) -> () {
+  g ::= (a: i64, b := 2 as i64, c: i64) -> () {
     io.Print("g(a = ")
     io.Print(a)
     io.Print(", b = ")

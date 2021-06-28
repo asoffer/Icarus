@@ -199,7 +199,9 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
     return c->context().set_qual_type(node, qt);
   } else if (type::IsNumeric(lhs_qual_type.type()) and
              type::IsNumeric(rhs_qual_type.type())) {
-    if (lhs_qual_type.type() == rhs_qual_type.type()) {
+    // TODO: This check makes sense for assignment versions of operators.
+    auto common_type = type::Meet(rhs_qual_type.type(), lhs_qual_type.type());
+    if (common_type) {
       return c->context().set_qual_type(node,
                                         type::QualType(return_type, quals));
     } else {
@@ -309,46 +311,57 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const 
       }
     } break;
     case Operator::Xor:
-      return VerifyLogicalOperator(this, "xor", node, lhs_qual_type,
-                                   rhs_qual_type, lhs_qual_type.type());
+      return VerifyLogicalOperator(
+          this, "xor", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     case Operator::And:
-      return VerifyLogicalOperator(this, "and", node, lhs_qual_type,
-                                   rhs_qual_type, lhs_qual_type.type());
+      return VerifyLogicalOperator(
+          this, "and", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     case Operator::Or: {
       // Note: Block pipes are extracted in the parser so there's no need to
       // type-check them here. They will never be expressed in the syntax tree
       // as a binary operator.
-      return VerifyLogicalOperator(this, "or", node, lhs_qual_type,
-                                   rhs_qual_type, lhs_qual_type.type());
+      return VerifyLogicalOperator(
+          this, "or", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     }
     case Operator::SymbolXor:
-      return VerifyFlagsOperator(this, "^", node, lhs_qual_type, rhs_qual_type,
-                                 lhs_qual_type.type());
+      return VerifyFlagsOperator(
+          this, "^", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     case Operator::SymbolAnd:
-      return VerifyFlagsOperator(this, "&", node, lhs_qual_type, rhs_qual_type,
-                                 lhs_qual_type.type());
+      return VerifyFlagsOperator(
+          this, "&", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     case Operator::SymbolOr: {
       // Note: Block pipes are extracted in the parser so there's no need to
       // type-check them here. They will never be expressed in the syntax tree
       // as a binary operator.
-      return VerifyFlagsOperator(this, "|", node, lhs_qual_type, rhs_qual_type,
-                                 lhs_qual_type.type());
+      return VerifyFlagsOperator(
+          this, "|", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     }
     case Operator::Add:
-      return VerifyArithmeticOperator(this, "+", node, lhs_qual_type,
-                                      rhs_qual_type, lhs_qual_type.type());
+      return VerifyArithmeticOperator(
+          this, "+", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     case Operator::Sub:
-      return VerifyArithmeticOperator(this, "-", node, lhs_qual_type,
-                                      rhs_qual_type, lhs_qual_type.type());
+      return VerifyArithmeticOperator(
+          this, "-", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     case Operator::Mul:
-      return VerifyArithmeticOperator(this, "*", node, lhs_qual_type,
-                                      rhs_qual_type, lhs_qual_type.type());
+      return VerifyArithmeticOperator(
+          this, "*", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     case Operator::Div:
-      return VerifyArithmeticOperator(this, "/", node, lhs_qual_type,
-                                      rhs_qual_type, lhs_qual_type.type());
+      return VerifyArithmeticOperator(
+          this, "/", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     case Operator::Mod:
-      return VerifyArithmeticOperator(this, "%", node, lhs_qual_type,
-                                      rhs_qual_type, lhs_qual_type.type());
+      return VerifyArithmeticOperator(
+          this, "%", node, lhs_qual_type, rhs_qual_type,
+          type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     case Operator::AddEq:
       return VerifyArithmeticAssignmentOperator(this, "+", node, lhs_qual_type,
                                                 rhs_qual_type, type::Void);

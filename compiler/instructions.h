@@ -55,6 +55,8 @@ bool Compare(::type::Type t) {
     return t == ::type::Bool;
   } else if constexpr (base::meta<T> == base::meta<ir::Char>) {
     return t == ::type::Char;
+  } else if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+    return t == ::type::Integer;
   } else if constexpr (base::meta<T> == base::meta<int8_t>) {
     return t == ::type::I8;
   } else if constexpr (base::meta<T> == base::meta<int16_t>) {

@@ -26,7 +26,7 @@ struct InvalidIndexType {
 };
 
 struct IndexingArrayOutOfBounds {
-  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kCategory = "value-error";
   static constexpr std::string_view kName     = "indexing-array-out-of-bounds";
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
@@ -40,11 +40,11 @@ struct IndexingArrayOutOfBounds {
 
   frontend::SourceRange range;
   type::Array const *array;
-  uint64_t index;
+  ir::Integer index;
 };
 
 struct NegativeArrayIndex {
-  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kCategory = "value-error";
   static constexpr std::string_view kName     = "negative-array-index";
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
@@ -57,7 +57,7 @@ struct NegativeArrayIndex {
 };
 
 struct InvalidIndexing {
-  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kCategory = "value-error";
   static constexpr std::string_view kName     = "invalid-indexing";
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
@@ -85,31 +85,6 @@ bool ValidIndexType(Compiler &c, ast::Index const *node, type::Type type,
     });
   }
   return false;
-}
-
-std::optional<uint64_t> IntegralToUint64(ir::Value const &value) {
-  if (auto const *val = value.get_if<int8_t>()) {
-    return *val >= 0 ? std::optional<uint64_t>(*val) : std::nullopt;
-  } else if (auto const *val = value.get_if<int16_t>()) {
-    return *val >= 0 ? std::optional<uint64_t>(*val) : std::nullopt;
-  } else if (auto const *val = value.get_if<int32_t>()) {
-    return *val >= 0 ? std::optional<uint64_t>(*val) : std::nullopt;
-  } else if (auto const *val = value.get_if<int64_t>()) {
-    return *val >= 0 ? std::optional<uint64_t>(*val) : std::nullopt;
-  } else if (auto const *val = value.get_if<uint8_t>()) {
-    return *val;
-  } else if (auto const *val = value.get_if<uint16_t>()) {
-    return *val;
-  } else if (auto const *val = value.get_if<uint32_t>()) {
-    return *val;
-  } else if (auto const *val = value.get_if<uint64_t>()) {
-    return *val;
-  } else {
-    UNREACHABLE(
-        "All possibilities considered, given the precondition that the value "
-        "holds an integral type: ",
-        value);
-  }
 }
 
 type::QualType VerifySliceIndex(Compiler &c, ast::Index const *node,
@@ -142,17 +117,21 @@ type::QualType VerifyArrayIndex(Compiler &c, ast::Index const *node,
         type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
     if (maybe_index_value.empty()) { return type::QualType::Error(); }
 
-    std::optional<uint64_t> maybe_index = IntegralToUint64(maybe_index_value);
-    if (not maybe_index.has_value()) {
+    ir::Integer index;
+    maybe_index_value.apply<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                            uint16_t, uint32_t, uint64_t, ir::Integer>(
+        [&](auto n) { index = n; });
+
+    if (index < 0) {
       c.diag().Consume(NegativeArrayIndex{
           .range = node->range(),
       });
       qt.MarkError();
-    } else if (*maybe_index >= array_type->length()) {
+    } else if (index >= array_type->length()) {
       c.diag().Consume(IndexingArrayOutOfBounds{
           .range = node->range(),
           .array = array_type,
-          .index = *maybe_index,
+          .index = index,
       });
       qt.MarkError();
     }

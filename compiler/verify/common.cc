@@ -459,8 +459,8 @@ Compiler::VerifyCall(
 
       ASSERT(expansion.pos().size() <= params.size());
       for (size_t i = 0; i < expansion.pos().size(); ++i) {
-        LOG("VerifyCall", "Comparing %s with %s", expansion[i].to_string(),
-            params[i].value.type().to_string());
+        LOG("VerifyCall", "Comparing parameter %s with argument %s",
+            expansion[i].to_string(), params[i].value.type().to_string());
         if (not type::CanCastImplicitly(expansion[i], params[i].value.type())) {
           // TODO: Currently as soon as we find an error with a call we move on.
           // It'd be nice to extract all the error information for each.

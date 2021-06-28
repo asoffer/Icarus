@@ -312,5 +312,13 @@ TEST(CanCastExplicitly, Function) {
       Func({core::AnonymousParam(QualType::NonConstant(Ptr(Bool)))}, {})));
 }
 
+TEST(Meet, Integral) {
+  EXPECT_EQ(Meet(Integer, Integer), Integer);
+  EXPECT_EQ(Meet(Integer, I8), I8);
+  EXPECT_EQ(Meet(Integer, U16), U16);
+  EXPECT_EQ(Meet(U16, Integer), U16);
+  EXPECT_EQ(Meet(I8, Integer), I8);
+}
+
 }  // namespace
 }  // namespace type

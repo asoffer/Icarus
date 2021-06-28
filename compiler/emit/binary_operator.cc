@@ -141,12 +141,12 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
             builder().CastTo<int64_t>(type::Typed<ir::Value>(lhs_ir, lhs_type)),
             rhs_buf_ptr_type));
       }
-      return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                        uint32_t, uint64_t, float, double>(
-          context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
+      return ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                        uint16_t, uint32_t, uint64_t, float, double>(
+          type::Meet(lhs_type, rhs_type), [&]<typename T>() {
             return ir::Value(current_block()->Append(ir::AddInstruction<T>{
-                .lhs    = lhs_ir.get<ir::RegOr<T>>(),
-                .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                .lhs    = builder().CastTo<T>(type::Typed(lhs_ir, lhs_type)),
+                .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
                 .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
@@ -178,48 +178,54 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
             .pointee_type = buf_ptr->pointee(),
             .result       = builder().CurrentGroup()->Reserve()}));
       }
-      return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                        uint32_t, uint64_t, float, double>(
-          context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
+      return ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                        uint16_t, uint32_t, uint64_t, float, double>(
+          type::Meet(lhs_type, rhs_type), [&]<typename T>() {
             return ir::Value(current_block()->Append(ir::SubInstruction<T>{
-                .lhs    = lhs_ir.get<ir::RegOr<T>>(),
-                .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                .lhs    = builder().CastTo<T>(type::Typed(lhs_ir, lhs_type)),
+                .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
                 .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
     case frontend::Operator::Mul: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
-      return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                        uint32_t, uint64_t, float, double>(
-          context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
+      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+      return ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                        uint16_t, uint32_t, uint64_t, float, double>(
+          type::Meet(lhs_type, rhs_type), [&]<typename T>() {
             return ir::Value(current_block()->Append(ir::MulInstruction<T>{
-                .lhs    = lhs_ir.get<ir::RegOr<T>>(),
-                .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                .lhs    = builder().CastTo<T>(type::Typed(lhs_ir, lhs_type)),
+                .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
                 .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
     case frontend::Operator::Div: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
-      return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                        uint32_t, uint64_t, float, double>(
-          context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
+      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+      return ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                        uint16_t, uint32_t, uint64_t, float, double>(
+          type::Meet(lhs_type, rhs_type), [&]<typename T>() {
             return ir::Value(current_block()->Append(ir::DivInstruction<T>{
-                .lhs    = lhs_ir.get<ir::RegOr<T>>(),
-                .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                .lhs    = builder().CastTo<T>(type::Typed(lhs_ir, lhs_type)),
+                .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
                 .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
     case frontend::Operator::Mod: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
-      return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                        uint32_t, uint64_t>(
-          context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
+      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+      return ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                        uint16_t, uint32_t, uint64_t>(
+          type::Meet(lhs_type, rhs_type), [&]<typename T>() {
             return ir::Value(current_block()->Append(ir::ModInstruction<T>{
-                .lhs    = lhs_ir.get<ir::RegOr<T>>(),
-                .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                .lhs    = builder().CastTo<T>(type::Typed(lhs_ir, lhs_type)),
+                .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
                 .result = builder().CurrentGroup()->Reserve()}));
           });
     } break;
@@ -324,13 +330,13 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                               lhs_buf_ptr_type),
             lhs_lval);
       } else {
-        ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double>(
+        ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                   uint16_t, uint32_t, uint64_t, float, double>(
             context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::AddInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
-                      .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                      .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
                       .result = builder().CurrentGroup()->Reserve()}),
                   lhs_lval);
             });
@@ -351,13 +357,13 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
                               lhs_buf_ptr_type),
             lhs_lval);
       } else {
-        ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double>(
-            context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
+        ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                   uint16_t, uint32_t, uint64_t, float, double>(
+            lhs_type, [&]<typename T>() {
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::SubInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
-                      .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                      .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
                       .result = builder().CurrentGroup()->Reserve()}),
                   lhs_lval);
             });
@@ -367,13 +373,15 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
     case frontend::Operator::MulEq: {
       auto lhs_lval = EmitRef(node->lhs());
       auto rhs_ir   = EmitValue(node->rhs());
+      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                  uint64_t, float, double>(
-          context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
+          lhs_type, [&]<typename T>() {
             builder().Store<ir::RegOr<T>>(
                 current_block()->Append(ir::MulInstruction<T>{
                     .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                    .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
                     .result = builder().CurrentGroup()->Reserve()}),
                 lhs_lval);
           });
@@ -382,13 +390,15 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
     case frontend::Operator::DivEq: {
       auto lhs_lval = EmitRef(node->lhs());
       auto rhs_ir   = EmitValue(node->rhs());
-      ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
-                 uint64_t, float, double>(
-          context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
+      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+      ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t, float, double>(
+          lhs_type, [&]<typename T>() {
             builder().Store<ir::RegOr<T>>(
                 current_block()->Append(ir::DivInstruction<T>{
                     .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                    .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
                     .result = builder().CurrentGroup()->Reserve()}),
                 lhs_lval);
           });
@@ -397,13 +407,15 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
     case frontend::Operator::ModEq: {
       auto lhs_lval = EmitRef(node->lhs());
       auto rhs_ir   = EmitValue(node->rhs());
-      ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
-                 uint64_t>(
-          context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
+      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+      ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t>(
+          lhs_type, [&]<typename T>() {
             builder().Store<ir::RegOr<T>>(
                 current_block()->Append(ir::ModInstruction<T>{
                     .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = rhs_ir.get<ir::RegOr<T>>(),
+                    .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
                     .result = builder().CurrentGroup()->Reserve()}),
                 lhs_lval);
           });

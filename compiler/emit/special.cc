@@ -390,10 +390,8 @@ void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Primitive> to,
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::addr_t>, type::Primitive> const &to,
     type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  to.type()->Apply([&]<typename T>() {
-    builder().Store(from->template get<ir::RegOr<T>>(), *to);
-  });
+  to.type()->Apply(
+      [&]<typename T>() { builder().Store(builder().CastTo<T>(from), *to); });
 }
 
 void Compiler::EmitMoveAssign(

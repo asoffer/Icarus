@@ -600,7 +600,7 @@ TEST_P(BufferPointerTest, Arithmetic) {
   // there's an ambiguity (there isn't).
   auto const *e  = mod.Append<ast::Expression>(absl::StrFormat(
       R"((() -> i64 {
-        a := [1, 2, 3]
+        a := [1 as i64, 2 as i64, 3 as i64]
         p: [*]i64 = &a[1]
         return %s
       })()

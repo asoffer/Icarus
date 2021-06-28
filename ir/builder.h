@@ -181,7 +181,10 @@ struct Builder {
 
   template <typename ToType>
   RegOr<ToType> CastTo(type::Typed<ir::Value> v) {
-    if (v.type() == type::I8) {
+    if (v.type() == GetType<ToType>()) { return v->get<RegOr<ToType>>(); }
+    if (v.type() == type::Integer) {
+      return Cast<ir::Integer, ToType>(v->get<RegOr<ir::Integer>>());
+    } else if (v.type() == type::I8) {
       return Cast<int8_t, ToType>(v->get<RegOr<int8_t>>());
     } else if (v.type() == type::U8) {
       return Cast<uint8_t, ToType>(v->get<RegOr<uint8_t>>());
@@ -478,6 +481,8 @@ struct Builder {
   static type::Type GetType() {
     if constexpr (base::meta<T> == base::meta<bool>) {
       return type::Bool;
+    } else if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      return type::Integer;
     } else if constexpr (base::meta<T> == base::meta<ir::Char>) {
       return type::Char;
     } else if constexpr (base::meta<T> == base::meta<ir::memory_t>) {
@@ -523,12 +528,18 @@ struct Builder {
   RegOr<ToType> Cast(RegOr<FromType> r) {
     if constexpr (base::meta<ToType> == base::meta<FromType>) {
       return r;
-    } else if constexpr (base::meta<FromType>.template converts_to<ToType>()) {
+    } else if constexpr ((base::meta<FromType> == base::meta<ir::Integer> and
+                          std::is_integral_v<ToType>) or
+                         base::meta<FromType>.template converts_to<ToType>()) {
       if (r.is_reg()) {
         return CurrentBlock()->Append(CastInstruction<ToType(FromType)>{
             .value = r.reg(), .result = CurrentGroup()->Reserve()});
       } else {
-        return static_cast<ToType>(r.value());
+        if constexpr (base::meta<FromType> == base::meta<ir::Integer>) {
+          return static_cast<ToType>(r.value().value());
+        } else {
+          return static_cast<ToType>(r.value());
+        }
       }
     } else {
       UNREACHABLE(base::meta<FromType>, " cannot be cast to ",

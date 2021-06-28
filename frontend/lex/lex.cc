@@ -11,6 +11,7 @@
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
 #include "ir/value/builtin_fn.h"
+#include "ir/value/integer.h"
 #include "ir/value/string.h"
 #include "type/primitive.h"
 
@@ -454,7 +455,7 @@ Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
   return std::visit(
       [&diag, r = range](auto num) {
         constexpr auto type = base::meta<decltype(num)>;
-        if constexpr (type == base::meta<int64_t>) {
+        if constexpr (type == base::meta<ir::Integer>) {
           return Lexeme(std::make_unique<ast::Terminal>(r, ir::Value(num)));
         } else if constexpr (type == base::meta<double>) {
           return Lexeme(std::make_unique<ast::Terminal>(r, ir::Value(num)));
@@ -464,7 +465,8 @@ Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
           // at compile-time (e.g., as an array extent). Generally proceeding
           // further if we can't lex the input is likely not going to be useful.
           diag.Consume(NumberParsingFailure{.error = num, .range = r});
-          return Lexeme(std::make_unique<ast::Terminal>(r, ir::Value(0)));
+          return Lexeme(
+              std::make_unique<ast::Terminal>(r, ir::Value(ir::Integer{})));
         } else {
           static_assert(base::always_false(type));
         }
