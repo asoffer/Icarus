@@ -19,7 +19,8 @@ void Compiler::EmitCopyInit(
                                       context().qual_types(node)[0].type()));
 }
 
-ir::Value Compiler::EmitValue(ast::Identifier const *node) {
+void Compiler::EmitToBuffer(ast::Identifier const *node,
+                            base::untyped_buffer &out) {
   LOG("Identifier", "%s on context %p", node->name(), &context());
   auto decl_span = context().decls(node);
   ASSERT(decl_span.size() != 0u);
@@ -30,26 +31,52 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
                            ->module()
                            ->as<CompiledModule>();
     if (mod != &context().module()) {
-      return mod->context(&context().module())
-          .Constant(&decl_span[0]->ids()[0])
-          ->value();
+      auto value = mod->context(&context().module())
+                       .Constant(&decl_span[0]->ids()[0])
+                       ->value();
+      ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
+                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
+                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
+          context().qual_types(node)[0].type(),
+          [&]<typename T>() { out.append(value.get<ir::RegOr<T>>()); });
     } else {
-      return EmitValue(decl_span[0]);
+      EmitToBuffer(decl_span[0], out);
     }
+    return;
   }
   if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
     auto t = context().qual_types(node)[0].type();
     // TODO: Support multiple declarations
     ir::Reg reg = builder().addr(&decl_span[0]->ids()[0]);
-    return (decl_span[0]->flags() & (ast::Declaration::f_IsBlockParam |
-                                     ast::Declaration::f_IsOutput)) and
-                   not t.get()->is_big()
-               ? builder().Load(reg, t)
-               : ir::Value(reg);
+    if ((decl_span[0]->flags() &
+         (ast::Declaration::f_IsBlockParam | ast::Declaration::f_IsOutput)) and
+        not t.get()->is_big()) {
+      ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
+                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
+                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
+          t, [&]<typename T>() {
+            out.append(builder().Load(reg, t).get<ir::RegOr<T>>());
+          });
+    } else {
+      ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
+                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
+                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
+          t, [&]<typename T>() {
+            out.append(ir::RegOr<T>(builder().PtrFix(reg, t)));
+          });
+    }
   } else {
     type::Type t = context().qual_types(node)[0].type();
     auto lval    = EmitRef(node);
-    return ir::Value(builder().PtrFix(lval, t));
+    ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
+               uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
+               ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+               ir::GenericFn, interface::Interface>(t, [&]<typename T>() {
+      out.append(ir::RegOr<T>(builder().PtrFix(lval, t)));
+    });
   }
 }
 

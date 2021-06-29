@@ -491,9 +491,8 @@ void ParameterizedStructLiteral::DebugStrAppend(std::string *out,
 }
 
 void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
-  std::stringstream ss;
-  ss << value_;
-  absl::StrAppend(out, ss.str());
+  // TODO: Make this better
+  absl::StrAppend(out, value().to_string());
 }
 
 void UnaryOperator::DebugStrAppend(std::string *out, size_t indent) const {

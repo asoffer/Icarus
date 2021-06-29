@@ -129,11 +129,12 @@ type::Typed<ir::Value> EmitTypedValue(Compiler &c,
 
 }  // namespace
 
-ir::Value Compiler::EmitValue(ast::ComparisonOperator const *node) {
+void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
+                            base::untyped_buffer &out) {
   if (node->ops().size() == 1) {
-    return ir::Value(EmitPair(*this, node, 0,
-                              EmitTypedValue(*this, node->exprs()[0]),
-                              EmitTypedValue(*this, node->exprs()[1])));
+    out.append(EmitPair(*this, node, 0, EmitTypedValue(*this, node->exprs()[0]),
+                        EmitTypedValue(*this, node->exprs()[1])));
+    return;
   }
 
   std::vector<ir::BasicBlock const *> phi_blocks;
@@ -161,8 +162,7 @@ ir::Value Compiler::EmitValue(ast::ComparisonOperator const *node) {
 
   builder().CurrentBlock() = land_block;
 
-  return ir::Value(
-      builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values)));
+  out.append(builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values)));
 }
 
 }  // namespace compiler

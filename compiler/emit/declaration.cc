@@ -13,13 +13,15 @@
 namespace compiler {
 namespace {
 
-ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
+void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
+                             base::untyped_buffer &out) {
   LOG("EmitConstantDeclaration", "%s", node->DebugString());
   if (node->flags() & ast::Declaration::f_IsFnParam) {
     // TODO: Support multiple declarations.
     auto val = c.context().LoadConstantParam(&node->ids()[0]);
     LOG("Declaration", "%s", val);
-    return val;
+    FromValue(val, out);
+    return;
   } else {
     // TODO: Support multiple declarations.
     if (auto *constant_value = c.context().Constant(&node->ids()[0])) {
@@ -34,7 +36,8 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
           });
         }
       }
-      return constant_value->value();
+      FromValue(constant_value->value(), out);
+      return;
     }
 
     // TODO: Support multiple declarations
@@ -52,14 +55,13 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
                 std::get_if<std::vector<diagnostic::ConsumedMessage>>(
                     &value_buffer)) {
           for (auto &d : *diagnostics) { c.diag().Consume(std::move(d)); }
-          return ir::Value();
+          return;
         }
 
         LOG("EmitConstantDeclaration", "Setting slot = %s", value_buffer);
-        // TODO: Support multiple declarations
-        return c.context().SetConstant(
-            &node->ids()[0],
-            std::get<base::untyped_buffer>(std::move(value_buffer)));
+        out = std::get<base::untyped_buffer>(std::move(value_buffer));
+        c.context().SetConstant(&node->ids()[0], out);
+        return;
       } else {
         auto maybe_val = c.Evaluate(
             type::Typed<ast::Expression const *>(node->initial_value(), t),
@@ -67,7 +69,7 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
         if (not maybe_val) {
           // TODO: we reserved a slot and haven't cleaned it up. Do we care?
           c.diag().Consume(maybe_val.error());
-          return ir::Value();
+          return;
         }
 
         LOG("EmitConstantDeclaration", "Setting slot = %s", *maybe_val);
@@ -78,23 +80,28 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
         if (type::Type *type_val = maybe_val->get_if<type::Type>()) {
           if (auto const *struct_type = type_val->if_as<type::Struct>()) {
             if (struct_type->completeness() != type::Completeness::Complete) {
-              return *maybe_val;
+              out.append(ir::RegOr<type::Type>(*type_val));
+              return;
             }
             // TODO: Support multiple declarations
             c.context().CompleteConstant(&node->ids()[0]);
           }
         }
 
-        return *maybe_val;
+        FromValue(*maybe_val, out);
+        return;
       }
     } else if (auto const * bd =node->if_as<ast::BindingDeclaration>()) {
       // TODO: Support multiple declarations
       if (auto const *constant = c.context().Constant(&node->ids()[0])) {
-        return constant->value();
+        FromValue(constant->value(), out);
       } else {
         c.EmitValue(&bd->pattern());
-        return ASSERT_NOT_NULL(c.context().Constant(&node->ids()[0]))->value();
+        FromValue(
+            ASSERT_NOT_NULL(c.context().Constant(&node->ids()[0]))->value(),
+            out);
       }
+      return;
     } else if (node->IsDefaultInitialized()) {
       UNREACHABLE(node->DebugString());
     } else {
@@ -103,9 +110,9 @@ ir::Value EmitConstantDeclaration(Compiler &c, ast::Declaration const *node) {
   }
 }
 
-ir::Value EmitNonConstantDeclaration(Compiler &c,
-                                     ast::Declaration const *node) {
-  if (node->IsUninitialized()) { return ir::Value(); }
+void EmitNonConstantDeclaration(Compiler &c, ast::Declaration const *node,
+                                base::untyped_buffer &out) {
+  if (node->IsUninitialized()) { return; }
   std::vector<type::Typed<ir::RegOr<ir::addr_t>>> addrs;
   addrs.reserve(node->ids().size());
   for (auto const &id : node->ids()) {
@@ -119,28 +126,31 @@ ir::Value EmitNonConstantDeclaration(Compiler &c,
       c.EmitDefaultInit(type::Typed<ir::Reg>(addrs[0]->reg(), addrs[0].type()));
     }
   }
-  return ir::Value(addrs[0]->reg());
+  out.append(addrs[0]);
 }
 
 }  // namespace
 
-ir::Value Compiler::EmitValue(ast::Declaration const *node) {
+void Compiler::EmitToBuffer(ast::Declaration const *node, base::untyped_buffer&out) {
   LOG("Declaration", "%s", node->DebugString());
   ASSERT(node->scope()->Containing<ast::ModuleScope>()->module() ==
          &context().module());
-  return (node->flags() & ast::Declaration::f_IsConst)
-             ? EmitConstantDeclaration(*this, node)
-             : EmitNonConstantDeclaration(*this, node);
+  if (node->flags() & ast::Declaration::f_IsConst) {
+    EmitConstantDeclaration(*this, node, out);
+  } else {
+    EmitNonConstantDeclaration(*this, node, out);}
 }
 
-ir::Value Compiler::EmitValue(ast::Declaration::Id const *node) {
+void Compiler::EmitToBuffer(ast::Declaration::Id const *node,
+                            base::untyped_buffer &out) {
   LOG("Declaration::Id", "%s", node->DebugString());
   return (node->declaration().flags() & ast::Declaration::f_IsConst)
-             ? EmitConstantDeclaration(*this, &node->declaration())
-             : EmitNonConstantDeclaration(*this, &node->declaration());
+             ? EmitConstantDeclaration(*this, &node->declaration(), out)
+             : EmitNonConstantDeclaration(*this, &node->declaration(), out);
 }
 
-ir::Value Compiler::EmitValue(ast::BindingDeclaration const *node) {
+void Compiler::EmitToBuffer(ast::BindingDeclaration const *node,
+                            base::untyped_buffer &) {
   UNREACHABLE();
 }
 

@@ -16,6 +16,7 @@
 #include "ast/scope.h"
 #include "ast/visitor_base.h"
 #include "base/ptr_span.h"
+#include "base/untyped_buffer.h"
 #include "core/arguments.h"
 #include "core/ordered_arguments.h"
 #include "core/params.h"
@@ -1208,14 +1209,19 @@ struct StructLiteral : Expression, WithScope<DeclScope> {
 // typically numeric literals, or expressions that are also keywords such as
 // `true`, `false`, or `null`.
 struct Terminal : Expression {
-  explicit Terminal(frontend::SourceRange const &range, ir::Value value)
-      : Expression(range), value_(std::move(value)) {}
-  ir::Value const &value() const { return value_; }
+  template <typename T>
+  explicit Terminal(frontend::SourceRange const &range, T const &value)
+      : Expression(range), type_(base::meta<T>) {
+    value_.append(ir::RegOr<T>(value));
+  }
+  base::untyped_buffer const &value() const { return value_; }
+  base::MetaValue type() const { return type_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  ir::Value value_;
+  base::untyped_buffer value_;
+  base::MetaValue type_;
 };
 
 // UnaryOperator:

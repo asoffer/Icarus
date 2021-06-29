@@ -9,7 +9,7 @@ namespace compiler {
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::Terminal const *node) {
   type::Type t;
-  base::MetaValue mv = node->value().type();
+  base::MetaValue mv = node->type();
   if (mv == base::meta<ir::Integer>) {
     t = type::Integer;
   } else if (mv == base::meta<bool>) {
@@ -21,7 +21,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Terminal const *node)
   } else if (mv == base::meta<double>) {
     t = type::F64;
   } else if (mv == base::meta<ir::addr_t>) {
-    if (node->value().get<ir::addr_t>() == ir::Null()) {
+    if (node->value().get<ir::addr_t>(0) == ir::Null()) {
       t = type::NullPtr;
     } else {
       t = type::Slc(type::Char);

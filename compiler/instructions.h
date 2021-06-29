@@ -82,7 +82,7 @@ bool Compare(::type::Type t) {
   } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {
     return t.is<::type::Struct>();
   } else if constexpr (base::meta<T> == base::meta<ir::addr_t>) {
-    return t.is<::type::Pointer>() or t == type::NullPtr;
+    return t.is<::type::Pointer>() or t == type::NullPtr or t.is<type::Slice>();
   } else if constexpr (base::meta<T> == base::meta<ir::Scope>) {
     return t == ::type::Scope;
   } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {
@@ -91,8 +91,10 @@ bool Compare(::type::Type t) {
     return t.is<::type::Function>();
   } else if constexpr (base::meta<T> == base::meta<ir::Jump>) {
     return t.is<::type::Jump>();
+  } else if constexpr (base::meta<T> == base::meta<ir::Slice>) {
+    return t.is<::type::Slice>();
   } else if constexpr (base::meta<T> == base::meta<ir::GenericFn>) {
-    return t.is<::type::GenericFunction>();
+    return t.is<::type::GenericFunction>() or t.is<::type::GenericStruct>();
   } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
     return t == ::type::Module;
   } else if constexpr (base::meta<T> == base::meta<ir::Block>) {

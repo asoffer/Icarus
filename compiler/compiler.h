@@ -372,19 +372,6 @@ struct Compiler
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-#define DEFINE_EMIT(name)                                                      \
-  ir::Value EmitValue(name const *node);                                       \
-  void EmitToBuffer(name const *node, base::untyped_buffer &buffer) {          \
-    EmitValue(node)                                                            \
-        .apply<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t, \
-               uint8_t, uint16_t, uint32_t, uint64_t, float, double,           \
-               type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,        \
-               ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(      \
-            [&](auto value) {                                                  \
-              buffer.append(ir::RegOr<decltype(value)>(value));                \
-            });                                                                \
-  }
-
 #define DEFINE_EMIT_EXPR(name)                                                 \
   void EmitToBuffer(name const *node, base::untyped_buffer &buffer);           \
   ir::Value EmitValue(name const *node) {                                      \
@@ -411,47 +398,46 @@ struct Compiler
     return ir::Value();                                                        \
   }
 
-  DEFINE_EMIT(ast::Access)
+  DEFINE_EMIT_EXPR(ast::Access)
   DEFINE_EMIT_EXPR(ast::ArgumentType)
-  DEFINE_EMIT(ast::ArrayLiteral)
+  DEFINE_EMIT_EXPR(ast::ArrayLiteral)
   DEFINE_EMIT_EXPR(ast::ArrayType)
-  DEFINE_EMIT(ast::Assignment)
-  DEFINE_EMIT(ast::BinaryOperator)
-  DEFINE_EMIT(ast::BindingDeclaration)
+  DEFINE_EMIT_NODE(ast::Assignment)
+  DEFINE_EMIT_EXPR(ast::BinaryOperator)
+  DEFINE_EMIT_EXPR(ast::BindingDeclaration)
   DEFINE_EMIT_EXPR(ast::BlockLiteral)
   DEFINE_EMIT_NODE(ast::BlockNode)
   DEFINE_EMIT_EXPR(ast::BuiltinFn)
-  DEFINE_EMIT(ast::Call)
-  DEFINE_EMIT(ast::Cast)
-  DEFINE_EMIT(ast::ComparisonOperator)
+  DEFINE_EMIT_EXPR(ast::Call)
+  DEFINE_EMIT_EXPR(ast::Cast)
+  DEFINE_EMIT_EXPR(ast::ComparisonOperator)
   DEFINE_EMIT_NODE(ast::ConditionalGoto)
-  DEFINE_EMIT(ast::Declaration)
-  DEFINE_EMIT(ast::Declaration_Id)
-  DEFINE_EMIT(ast::DesignatedInitializer)
-  DEFINE_EMIT(ast::EnumLiteral)
-  DEFINE_EMIT(ast::FunctionLiteral)
-  DEFINE_EMIT(ast::FunctionType)
-  DEFINE_EMIT(ast::Identifier)
+  DEFINE_EMIT_EXPR(ast::Declaration)
+  DEFINE_EMIT_EXPR(ast::Declaration_Id)
+  DEFINE_EMIT_EXPR(ast::DesignatedInitializer)
+  DEFINE_EMIT_EXPR(ast::EnumLiteral)
+  DEFINE_EMIT_EXPR(ast::FunctionLiteral)
+  DEFINE_EMIT_EXPR(ast::FunctionType)
+  DEFINE_EMIT_EXPR(ast::Identifier)
   DEFINE_EMIT_EXPR(ast::Import)
-  DEFINE_EMIT(ast::Index)
+  DEFINE_EMIT_EXPR(ast::Index)
   DEFINE_EMIT_EXPR(ast::InterfaceLiteral)
   DEFINE_EMIT_EXPR(ast::Label)
   DEFINE_EMIT_EXPR(ast::Jump)
-  DEFINE_EMIT(ast::ParameterizedStructLiteral)
+  DEFINE_EMIT_EXPR(ast::ParameterizedStructLiteral)
   DEFINE_EMIT_EXPR(ast::PatternMatch)
   DEFINE_EMIT_NODE(ast::ReturnStmt)
   DEFINE_EMIT_EXPR(ast::ScopeLiteral)
   DEFINE_EMIT_EXPR(ast::ScopeNode)
   DEFINE_EMIT_EXPR(ast::SliceType)
-  DEFINE_EMIT(ast::ShortFunctionLiteral)
-  DEFINE_EMIT(ast::StructLiteral)
-  DEFINE_EMIT(ast::Terminal)
-  DEFINE_EMIT(ast::UnaryOperator)
+  DEFINE_EMIT_EXPR(ast::ShortFunctionLiteral)
+  DEFINE_EMIT_EXPR(ast::StructLiteral)
+  DEFINE_EMIT_EXPR(ast::Terminal)
+  DEFINE_EMIT_EXPR(ast::UnaryOperator)
   DEFINE_EMIT_NODE(ast::UnconditionalGoto)
   DEFINE_EMIT_NODE(ast::YieldStmt)
 #undef DEFINE_EMIT_EXPR
 #undef DEFINE_EMIT_NODE
-#undef DEFINE_EMIT
 
 #define DEFINE_PATTERN_MATCH(name)                                             \
   bool PatternMatch(                                                           \
@@ -594,33 +580,35 @@ struct Compiler
 #undef DEFINE_EMIT_DESTROY
 
 #define DEFINE_EMIT(node_type)                                                 \
-  void EmitCopyInit(node_type const *node,                                     \
-                    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);  \
+  void EmitCopyInit(                                                           \
+      node_type const *node,                                                   \
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);              \
   void Visit(EmitCopyInitTag, node_type const *node,                           \
-             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)          \
+             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)        \
       override {                                                               \
     return EmitCopyInit(node, regs);                                           \
   }                                                                            \
-  void EmitMoveInit(node_type const *node,                                     \
-                    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);  \
+  void EmitMoveInit(                                                           \
+      node_type const *node,                                                   \
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);              \
   void Visit(EmitMoveInitTag, node_type const *node,                           \
-             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)          \
+             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)        \
       override {                                                               \
     return EmitMoveInit(node, regs);                                           \
   }                                                                            \
   void EmitMoveAssign(                                                         \
       node_type const *node,                                                   \
-      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);                \
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);              \
   void Visit(EmitMoveAssignTag, node_type const *node,                         \
-             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)          \
+             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)        \
       override {                                                               \
     return EmitMoveAssign(node, regs);                                         \
   }                                                                            \
   void EmitCopyAssign(                                                         \
       node_type const *node,                                                   \
-      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);                \
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);              \
   void Visit(EmitCopyAssignTag, node_type const *node,                         \
-             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)          \
+             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)        \
       override {                                                               \
     return EmitCopyAssign(node, regs);                                         \
   }

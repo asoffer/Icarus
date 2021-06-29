@@ -12,7 +12,8 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::Assignment const *node) {
+void Compiler::EmitToBuffer(ast::Assignment const *node,
+                            base::untyped_buffer &) {
   // This first case would be covered by the general case, but this allows us to
   // avoid unnecessary temporary allocations when we know they are not
   // necessary.
@@ -22,7 +23,7 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
     type::Typed<ir::RegOr<ir::addr_t>> ref(
         EmitRef(l), context().qual_types(l)[0].type());
     EmitMoveAssign(node->rhs()[0], absl::MakeConstSpan(&ref, 1));
-    return ir::Value();
+    return;
   }
 
   std::vector<type::Typed<ir::RegOr<ir::addr_t>>> lhs_refs;
@@ -56,7 +57,7 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
             ir::Value(builder().PtrFix((*temp_iter)->reg(), temp_iter->type())),
             temp_iter->type()));
   }
-  return ir::Value();
+  return;
 }
 
 }  // namespace compiler

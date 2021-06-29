@@ -16,7 +16,7 @@ namespace type {
 // `Array` is a type representing a fixed number (the `length`) of contiguous
 // values of a given type (the `data_type`).
 struct Array : LegacyType {
-  using length_t = uint64_t;
+  using length_t = uint64_t; // TODO: Replace this with ir::Integer.
   static type::Type LengthType() { return type::U64; }
 
   // Construct a new array from the given parameters, or if one already exists

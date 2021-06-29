@@ -3,7 +3,8 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
+void Compiler::EmitToBuffer(ast::EnumLiteral const *node,
+                            base::untyped_buffer &out) {
   // TODO: Check the result of body verification.
   if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
@@ -25,18 +26,20 @@ ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
   // TODO: allocate the type upfront so it can be used in incomplete contexts.
   switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum: {
-      return ir::Value(current_block()->Append(type::EnumInstruction{
-          .type              = type::Allocate<type::Enum>(&context().module()),
-          .names_            = std::move(names),
-          .specified_values_ = std::move(specified_values),
-          .result            = builder().CurrentGroup()->Reserve()}));
+      out.append(
+          ir::RegOr<type::Type>(current_block()->Append(type::EnumInstruction{
+              .type   = type::Allocate<type::Enum>(&context().module()),
+              .names_ = std::move(names),
+              .specified_values_ = std::move(specified_values),
+              .result            = builder().CurrentGroup()->Reserve()})));
     } break;
     case ast::EnumLiteral::Kind::Flags: {
-      return ir::Value(current_block()->Append(type::FlagsInstruction{
-          .type              = type::Allocate<type::Flags>(&context().module()),
-          .names_            = std::move(names),
-          .specified_values_ = std::move(specified_values),
-          .result            = builder().CurrentGroup()->Reserve()}));
+      out.append(
+          ir::RegOr<type::Type>(current_block()->Append(type::FlagsInstruction{
+              .type   = type::Allocate<type::Flags>(&context().module()),
+              .names_ = std::move(names),
+              .specified_values_ = std::move(specified_values),
+              .result            = builder().CurrentGroup()->Reserve()})));
     } break;
     default: UNREACHABLE();
   }

@@ -8,12 +8,13 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
+void Compiler::EmitToBuffer(ast::ParameterizedStructLiteral const *node,
+                            base::untyped_buffer &out) {
   // TODO: Check the result of body verification.
   if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
-  return ir::Value(ir::GenericFn(
+  out.append(ir::RegOr<ir::GenericFn>(ir::GenericFn(
       [](core::Arguments<type::Typed<ir::Value>> const &args) mutable
-      -> ir::NativeFn { NOT_YET(); }));
+      -> ir::NativeFn { NOT_YET(); })));
 }
 
 WorkItem::Result Compiler::CompleteStruct(

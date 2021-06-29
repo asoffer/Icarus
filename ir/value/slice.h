@@ -14,7 +14,7 @@ namespace ir {
 struct Slice : base::Extend<Slice, 2>::With<base::AbslFormatExtension,
                                             base::AbslHashExtension,
                                             base::TotalOrderExtension> {
-  static constexpr std::string_view kAbslFormatString = "Slice(%s, %u)";
+  static constexpr std::string_view kAbslFormatString = "Slice(%p, %u)";
 
   Slice() = default;
   explicit Slice(ir::addr_t data, uint64_t length)

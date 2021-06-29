@@ -9,7 +9,8 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
+void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
+                            base::untyped_buffer &out) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
         [c = Compiler(resources()),
@@ -35,7 +36,8 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
 
           return f;
         });
-    return ir::Value(gen_fn);
+    out.append(ir::RegOr<ir::GenericFn>(gen_fn));
+    return;
   }
 
   // TODO: Check the result of body verification.
@@ -50,7 +52,8 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
              .node      = node,
              .resources = resources_});
   }
-  return ir::Value(ir::Fn{f});
+  out.append(ir::RegOr<ir::Fn>(f));
+  return;
 }
 
 void Compiler::EmitMoveInit(

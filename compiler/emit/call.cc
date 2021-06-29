@@ -18,14 +18,17 @@ namespace {
 // ```
 // breaks.
 //
-ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
-                          absl::Span<ast::Call::Argument const> args) {
+void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
+                     absl::Span<ast::Call::Argument const> args,
+                     base::untyped_buffer &out) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::ReserveMemory: {
-      return ir::Value(c.builder().CurrentGroup()->Alloca(core::TypeContour(
-          core::Bytes(*c.EvaluateOrDiagnoseAs<uint64_t>(&args[0].expr())),
-          core::Alignment(
-              *c.EvaluateOrDiagnoseAs<uint64_t>(&args[1].expr())))));
+      out.append(ir::RegOr<ir::addr_t>(
+          c.builder().CurrentGroup()->Alloca(core::TypeContour(
+              core::Bytes(*c.EvaluateOrDiagnoseAs<uint64_t>(&args[0].expr())),
+              core::Alignment(
+                  *c.EvaluateOrDiagnoseAs<uint64_t>(&args[1].expr()))))));
+      return;
     } break;
     case ir::BuiltinFn::Which::Slice: {
       type::Slice const *slice_type =
@@ -56,7 +59,8 @@ ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
                                        type::BufPtr(slice_type->data_type())));
       c.EmitMoveAssign(length, type::Typed<ir::Value>(
                                    c.EmitValue(&args[1].expr()), type::U64));
-      return ir::Value(slice);
+      out.append(ir::RegOr<ir::addr_t>(slice));
+      return;
     } break;
     case ir::BuiltinFn::Which::Foreign: {
       auto name_buffer =
@@ -66,26 +70,36 @@ ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
               std::get_if<std::vector<diagnostic::ConsumedMessage>>(
                   &name_buffer)) {
         for (auto &d : *diagnostics) { c.diag().Consume(std::move(d)); }
-        return ir::Value();
+        return;
       }
 
       auto maybe_foreign_type =
           c.EvaluateOrDiagnoseAs<type::Type>(&args[1].expr());
-      if (not maybe_foreign_type) { return ir::Value(); }
+      if (not maybe_foreign_type) { return; }
       auto slice =
           std::get<base::untyped_buffer>(name_buffer).get<ir::Slice>(0);
 
       std::string name(slice);
-      return ir::Value(c.current_block()->Append(ir::LoadSymbolInstruction{
+      auto result = c.current_block()->Append(ir::LoadSymbolInstruction{
           .name   = std::move(name),
           .type   = *maybe_foreign_type,
-          .result = c.builder().CurrentGroup()->Reserve()}));
+          .result = c.builder().CurrentGroup()->Reserve()});
+      if (maybe_foreign_type->is<type::Pointer>()) {
+        out.append(ir::RegOr<ir::addr_t>(result));
+      } else if (maybe_foreign_type->is<type::Function>()) {
+        out.append(ir::RegOr<ir::Fn>(result));
+      } else {
+        UNREACHABLE();
+      }
+      return;
     } break;
 
     case ir::BuiltinFn::Which::Opaque:
-      return ir::Value(c.current_block()->Append(type::OpaqueTypeInstruction{
-          .mod    = &c.context().module(),
-          .result = c.builder().CurrentGroup()->Reserve()}));
+      out.append(ir::RegOr<type::Type>(
+          c.current_block()->Append(type::OpaqueTypeInstruction{
+              .mod    = &c.context().module(),
+              .result = c.builder().CurrentGroup()->Reserve()})));
+      return;
 
     case ir::BuiltinFn::Which::Bytes: {
       auto const &fn_type = *ir::Fn(ir::BuiltinFn::Bytes()).type();
@@ -96,11 +110,13 @@ ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
           {ir::Value(
               c.EmitValue(&args[0].expr()).get<ir::RegOr<type::Type>>())},
           std::move(outs));
-
-      return ir::Value(reg);
+      // TODO: Return an integer
+      out.append(ir::RegOr<uint64_t>(reg));
+      return;
     } break;
 
     case ir::BuiltinFn::Which::Alignment: {
+      // TODO: Return an integer
       auto const &fn_type = *ir::Fn(ir::BuiltinFn::Alignment()).type();
       ir::OutParams outs  = c.builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
@@ -109,13 +125,11 @@ ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
           {ir::Value(
               c.EmitValue(&args[0].expr()).get<ir::RegOr<type::Type>>())},
           std::move(outs));
-
-      return ir::Value(reg);
+      out.append(ir::RegOr<uint64_t>(reg));
+      return;
     } break;
 
-    case ir::BuiltinFn::Which::DebugIr:
-      c.builder().DebugIr();
-      return ir::Value();
+    case ir::BuiltinFn::Which::DebugIr: c.builder().DebugIr(); return;
 
     case ir::BuiltinFn::Which::Callable: {
       std::vector<ir::RegOr<type::Type>> pos;
@@ -128,30 +142,30 @@ ir::Value EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
           pos.push_back(c.EmitValue(&arg.expr()).get<ir::RegOr<type::Type>>());
         }
       }
-      return ir::Value(c.current_block()->Append(interface::CallableInstruction{
-          .positional = std::move(pos),
-          .named      = std::move(named),
-          .result     = c.builder().CurrentGroup()->Reserve(),
-      }));
+      out.append(ir::RegOr<interface::Interface>(
+          c.current_block()->Append(interface::CallableInstruction{
+              .positional = std::move(pos),
+              .named      = std::move(named),
+              .result     = c.builder().CurrentGroup()->Reserve(),
+          })));
+      return;
     }
     case ir::BuiltinFn::Which::Abort:
       c.current_block()->Append(ir::AbortInstruction{});
-      return ir::Value();
+      return;
   }
   UNREACHABLE();
 }
 
 }  // namespace
 
-ir::Value Compiler::EmitValue(ast::Call const *node) {
+void Compiler::EmitToBuffer(ast::Call const *node, base::untyped_buffer &out) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    return EmitBuiltinCall(*this, b, node->arguments());
+    EmitBuiltinCall(*this, b, node->arguments(), out);
   }
 
   auto qts = context().qual_types(node);
-  if (not qts.empty() and qts[0].type() == type::Interface) {
-    return ir::Value();
-  }
+  if (not qts.empty() and qts[0].type() == type::Interface) { return; }
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
@@ -163,8 +177,9 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    return ir::Value(
-        type::Type(gs_type->Instantiate(constant_arguments).second));
+    out.append(ir::RegOr<type::Type>(
+        type::Type(gs_type->Instantiate(constant_arguments).second)));
+    return;
   }
 
   auto const &os = context().ViableOverloads(node->callee());
@@ -178,9 +193,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   EmitCall(*this, os.members().front(), constant_arguments, node->arguments(),
            outs);
   if (qts.size() == 1) {
-    return ir::Value(builder().PtrFix(outs[0]->reg(), qts[0].type()));
-  } else {
-    return ir::Value();
+    FromValue(ir::Value(builder().PtrFix(outs[0]->reg(), qts[0].type())), out);
   }
 }
 
@@ -188,11 +201,12 @@ void Compiler::EmitMoveInit(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    auto result = EmitBuiltinCall(*this, b, node->arguments());
-    if (result.empty()) return;
-    EmitCopyAssign(to[0], type::Typed<ir::Value>(
+    base::untyped_buffer out;
+    EmitBuiltinCall(*this, b, node->arguments(), out);
+    if (out.empty()) { return; }
+    ir::Value result = ToValue(out, context().qual_types(node)[0].type());
+    EmitMoveAssign(to[0], type::Typed<ir::Value>(
                               result, context().qual_types(node)[0].type()));
-    return;
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -223,11 +237,12 @@ void Compiler::EmitCopyInit(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    auto result = EmitBuiltinCall(*this, b, node->arguments());
-    if (result.empty()) return;
+    base::untyped_buffer out;
+    EmitBuiltinCall(*this, b, node->arguments(), out);
+    if (out.empty()) { return; }
+    ir::Value result = ToValue(out, context().qual_types(node)[0].type());
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
                               result, context().qual_types(node)[0].type()));
-    return;
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -258,10 +273,12 @@ void Compiler::EmitMoveAssign(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    auto result = EmitBuiltinCall(*this, b, node->arguments());
-    if (result.empty()) return;
+    base::untyped_buffer out;
+    EmitBuiltinCall(*this, b, node->arguments(), out);
+    if (out.empty()) { return; }
+    ir::Value result = ToValue(out, context().qual_types(node)[0].type());
     EmitMoveAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_types(node)[0].type()));
+                            result, context().qual_types(node)[0].type()));
     return;
   }
 
@@ -293,10 +310,12 @@ void Compiler::EmitCopyAssign(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    auto result = EmitBuiltinCall(*this, b, node->arguments());
-    if (result.empty()) return;
+    base::untyped_buffer out;
+    EmitBuiltinCall(*this, b, node->arguments(), out);
+    if (out.empty()) { return; }
+    ir::Value result = ToValue(out, context().qual_types(node)[0].type());
     EmitCopyAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_types(node)[0].type()));
+                            result, context().qual_types(node)[0].type()));
     return;
   }
 

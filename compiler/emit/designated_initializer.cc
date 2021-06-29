@@ -11,13 +11,14 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
+void Compiler::EmitToBuffer(ast::DesignatedInitializer const *node,
+                            base::untyped_buffer &out) {
   auto t     = context().qual_types(node)[0].type();
   auto alloc = builder().TmpAlloca(t);
   auto typed_alloc =
       type::Typed<ir::RegOr<ir::addr_t>>(ir::RegOr<ir::addr_t>(alloc), t);
   EmitMoveInit(node, absl::MakeConstSpan(&typed_alloc, 1));
-  return ir::Value(alloc);
+  out.append(ir::RegOr<ir::addr_t>(alloc));
 }
 
 void Compiler::EmitMoveAssign(

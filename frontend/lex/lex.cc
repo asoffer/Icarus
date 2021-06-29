@@ -204,7 +204,7 @@ Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
     cursor += Offset(1);
   }
   return Lexeme(std::make_unique<ast::Terminal>(SourceRange(start_loc, cursor),
-                                                ir::Value(ir::Char(c))));
+                                                ir::Char(c)));
 }
 
 // Note: The order here is somewhat important. Because we choose the first
@@ -303,20 +303,17 @@ Lexeme ConsumeWord(SourceLoc &cursor, SourceBuffer const &buffer) {
       buffer.ConsumeChunkWhile(cursor, IsAlphaNumericOrUnderscore);
 
   if (word == "true") {
-    return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(true)));
+    return Lexeme(std::make_unique<ast::Terminal>(range, true));
   } else if (word == "false") {
-    return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(false)));
+    return Lexeme(std::make_unique<ast::Terminal>(range, false));
   } else if (word == "byte") {
-    return Lexeme(
-        std::make_unique<ast::Terminal>(range, ir::Value(type::Byte)));
+    return Lexeme(std::make_unique<ast::Terminal>(range, type::Byte));
   } else if (word == "null") {
-    return Lexeme(
-        std::make_unique<ast::Terminal>(range, ir::Value(ir::Null())));
+    return Lexeme(std::make_unique<ast::Terminal>(range, ir::Null()));
   }
 
   if (auto iter = kReservedTypes->find(word); iter != kReservedTypes->end()) {
-    return Lexeme(
-        std::make_unique<ast::Terminal>(range, ir::Value(iter->second)));
+    return Lexeme(std::make_unique<ast::Terminal>(range, iter->second));
   }
 
   if (auto maybe_builtin = ir::BuiltinFn::ByName(word)) {
@@ -456,17 +453,16 @@ Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
       [&diag, r = range](auto num) {
         constexpr auto type = base::meta<decltype(num)>;
         if constexpr (type == base::meta<ir::Integer>) {
-          return Lexeme(std::make_unique<ast::Terminal>(r, ir::Value(num)));
+          return Lexeme(std::make_unique<ast::Terminal>(r, num));
         } else if constexpr (type == base::meta<double>) {
-          return Lexeme(std::make_unique<ast::Terminal>(r, ir::Value(num)));
+          return Lexeme(std::make_unique<ast::Terminal>(r, num));
         } else if constexpr (type == base::meta<NumberParsingError>) {
           // Even though we could try to be helpful by guessing the type, it's
           // unlikely to be useful. The value may also be important if it's used
           // at compile-time (e.g., as an array extent). Generally proceeding
           // further if we can't lex the input is likely not going to be useful.
           diag.Consume(NumberParsingFailure{.error = num, .range = r});
-          return Lexeme(
-              std::make_unique<ast::Terminal>(r, ir::Value(ir::Integer{})));
+          return Lexeme(std::make_unique<ast::Terminal>(r, ir::Integer{}));
         } else {
           static_assert(base::always_false(type));
         }
@@ -528,8 +524,8 @@ restart:
         });
       }
 
-      return Lexeme(std::make_unique<ast::Terminal>(
-          range, ir::Value(ir::String(str).addr())));
+      return Lexeme(
+          std::make_unique<ast::Terminal>(range, ir::String(str).addr()));
 
     } break;
     case '#': {

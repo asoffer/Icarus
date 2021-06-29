@@ -21,8 +21,9 @@ struct TerminalMatchError {
   std::string matched_value;
 };
 
-ir::Value Compiler::EmitValue(ast::Terminal const *node) {
-  return node->value();
+void Compiler::EmitToBuffer(ast::Terminal const *node,
+                            base::untyped_buffer &out) {
+  out = node->value();
 }
 
 // TODO: Unit tests
@@ -67,7 +68,7 @@ bool Compiler::PatternMatch(
   auto t        = context().qual_types(node)[0].type();
   auto const &p = t.as<type::Primitive>();
   return p.Apply([&]<typename T>()->bool {
-    T pattern_value = node->value().template get<T>();
+    T pattern_value = node->value().template get<T>(0);
     T matched_value = pmc.value.template get<T>(0);
     if (matched_value == pattern_value) { return true; }
 

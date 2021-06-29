@@ -10,7 +10,8 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
+void Compiler::EmitToBuffer(ast::FunctionType const *node,
+                            base::untyped_buffer &out) {
   std::vector<std::pair<std::string, ir::RegOr<type::Type>>> param_vals;
   std::vector<ir::RegOr<type::Type>> out_vals;
   param_vals.reserve(node->params().size());
@@ -32,10 +33,11 @@ ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
     out_vals.push_back(EmitValue(o).get<ir::RegOr<type::Type>>());
   }
 
-  return ir::Value(current_block()->Append(type::FunctionTypeInstruction{
-      .inputs  = std::move(param_vals),
-      .outputs = std::move(out_vals),
-      .result  = builder().CurrentGroup()->Reserve()}));
+  out.append(ir::RegOr<type::Type>(
+      current_block()->Append(type::FunctionTypeInstruction{
+          .inputs  = std::move(param_vals),
+          .outputs = std::move(out_vals),
+          .result  = builder().CurrentGroup()->Reserve()})));
 }
 
 }  // namespace compiler

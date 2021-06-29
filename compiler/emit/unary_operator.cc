@@ -8,7 +8,8 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
+void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
+                            base::untyped_buffer &out) {
   // TODO: user-defined-types
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Copy: {
@@ -17,13 +18,14 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       EmitCopyInit(
           type::Typed<ir::Reg>(reg, operand_type),
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type));
-      return ir::Value(builder().PtrFix(reg, operand_type));
+      FromValue(ir::Value(builder().PtrFix(reg, operand_type)), out);
+      return;
     } break;
     case ast::UnaryOperator::Kind::Destroy: {
       EmitDestroy(
           type::Typed<ir::Reg>(EmitValue(node->operand()).get<ir::Reg>(),
                                context().qual_types(node->operand())[0].type()));
-      return ir::Value();
+      return;
     } break;
     case ast::UnaryOperator::Kind::Init:
       // TODO: Not entirely sure this is what the semantics ought to be.
@@ -33,7 +35,8 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       EmitMoveInit(
           type::Typed<ir::Reg>(reg, operand_type),
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type));
-      return ir::Value(builder().PtrFix(reg, operand_type));
+      FromValue(ir::Value(builder().PtrFix(reg, operand_type)), out);
+      return;
     } break;
     case ast::UnaryOperator::Kind::BufferPointer: {
       absl::Cleanup c = [b = state_.must_complete, this] {
@@ -41,54 +44,77 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       };
       state_.must_complete = false;
 
-      return ir::Value(current_block()->Append(type::BufPtrInstruction{
-          .operand = EmitValue(node->operand()).get<ir::RegOr<type::Type>>(),
-          .result  = builder().CurrentGroup()->Reserve(),
-      }));
+      EmitToBuffer(node->operand(), out);
+      auto value = out.get<ir::RegOr<type::Type>>(0);
+      out.clear();
+      out.append(
+          ir::RegOr<type::Type>(current_block()->Append(type::BufPtrInstruction{
+              .operand = value,
+              .result  = builder().CurrentGroup()->Reserve(),
+          })));
+      return;
     } break;
     case ast::UnaryOperator::Kind::Not: {
       auto operand_qt = context().qual_types(node->operand())[0];
       if (operand_qt.type() == type::Bool) {
-        return ir::Value(
-            builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
+        EmitToBuffer(node->operand(), out);
+        auto value = out.get<ir::RegOr<bool>>(0);
+        out.clear();
+        out.append(ir::RegOr<bool>(builder().Not(value)));
+        return;
       } else if (auto const *t = operand_qt.type().if_as<type::Flags>()) {
-        return ir::Value(current_block()->Append(type::XorFlagsInstruction{
-            .lhs = EmitValue(node->operand())
-                       .get<ir::RegOr<type::Flags::underlying_type>>(),
-            .rhs    = t->All,
-            .result = builder().CurrentGroup()->Reserve()}));
+        out.append(ir::RegOr<type::Flags::underlying_type>(
+            current_block()->Append(type::XorFlagsInstruction{
+                .lhs = EmitValue(node->operand())
+                           .get<ir::RegOr<type::Flags::underlying_type>>(),
+                .rhs    = t->All,
+                .result = builder().CurrentGroup()->Reserve()})));
+        return;
       } else {
         // TODO: Operator overloading
         NOT_YET();
       }
     } break;
     case ast::UnaryOperator::Kind::Negate: {
-      auto operand_ir = EmitValue(node->operand());
-      return ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, float,
-                        double>(
+      EmitToBuffer(node->operand(), out);
+      ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, float, double>(
           context().qual_types(node->operand())[0].type(), [&]<typename T>() {
-            return ir::Value(builder().Neg(operand_ir.get<ir::RegOr<T>>()));
+            auto value = out.get<ir::RegOr<T>>(0);
+            out.clear();
+            out.append(ir::RegOr<ir::RegOr<T>>(builder().Neg(value)));
           });
+      return;
     } break;
     case ast::UnaryOperator::Kind::TypeOf:
-      return ir::Value(context().qual_types(node->operand())[0].type());
+      out.append(ir::RegOr<type::Type>(
+          context().qual_types(node->operand())[0].type()));
+      return;
     case ast::UnaryOperator::Kind::Address:
-      return ir::Value(EmitRef(node->operand()));
+      out.append(ir::RegOr<ir::addr_t>(EmitRef(node->operand())));
+      return;
     case ast::UnaryOperator::Kind::Pointer: {
       absl::Cleanup c = [b = state_.must_complete, this] {
         state_.must_complete = b;
       };
       state_.must_complete = false;
-
-      return ir::Value(current_block()->Append(type::PtrInstruction{
-          .operand = EmitValue(node->operand()).get<ir::RegOr<type::Type>>(),
-          .result  = builder().CurrentGroup()->Reserve(),
-      }));
+      out.append(
+          ir::RegOr<type::Type>(current_block()->Append(type::PtrInstruction{
+              .operand =
+                  EmitValue(node->operand()).get<ir::RegOr<type::Type>>(),
+              .result = builder().CurrentGroup()->Reserve(),
+          })));
+      return;
     } break;
     case ast::UnaryOperator::Kind::At: {
-      return builder().Load(
-          EmitValue(node->operand()).get<ir::RegOr<ir::addr_t>>(),
-          context().qual_types(node)[0].type());
+      type::Type t = context().qual_types(node)[0].type();
+      EmitToBuffer(node->operand(), out);
+      auto result = builder().Load(out.get<ir::RegOr<ir::addr_t>>(0), t);
+      out.clear();
+      ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
+                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
+                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
+          t, [&]<typename T>() { out.append(result.get<ir::RegOr<T>>()); });
     }
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));
   }

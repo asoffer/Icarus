@@ -227,6 +227,29 @@ struct Builder {
     }
   }
 
+  template <typename FromType, typename ToType>
+  RegOr<ToType> Cast(RegOr<FromType> r) {
+    if constexpr (base::meta<ToType> == base::meta<FromType>) {
+      return r;
+    } else if constexpr ((base::meta<FromType> == base::meta<ir::Integer> and
+                          std::is_integral_v<ToType>) or
+                         base::meta<FromType>.template converts_to<ToType>()) {
+      if (r.is_reg()) {
+        return CurrentBlock()->Append(CastInstruction<ToType(FromType)>{
+            .value = r.reg(), .result = CurrentGroup()->Reserve()});
+      } else {
+        if constexpr (base::meta<FromType> == base::meta<ir::Integer>) {
+          return static_cast<ToType>(r.value().value());
+        } else {
+          return static_cast<ToType>(r.value());
+        }
+      }
+    } else {
+      UNREACHABLE(base::meta<FromType>, " cannot be cast to ",
+                  base::meta<ToType>);
+    }
+  }
+
   // Phi instruction. Takes a span of basic blocks and a span of (registers or)
   // values. As a precondition, the number of blocks must be equal to the number
   // of values. This instruction evaluates to the value `values[i]` if the
@@ -521,29 +544,6 @@ struct Builder {
       return type::Ptr(GetType<std::decay_t<decltype(*std::declval<T>())>>());
     } else {
       UNREACHABLE(typeid(T).name());
-    }
-  }
-
-  template <typename FromType, typename ToType>
-  RegOr<ToType> Cast(RegOr<FromType> r) {
-    if constexpr (base::meta<ToType> == base::meta<FromType>) {
-      return r;
-    } else if constexpr ((base::meta<FromType> == base::meta<ir::Integer> and
-                          std::is_integral_v<ToType>) or
-                         base::meta<FromType>.template converts_to<ToType>()) {
-      if (r.is_reg()) {
-        return CurrentBlock()->Append(CastInstruction<ToType(FromType)>{
-            .value = r.reg(), .result = CurrentGroup()->Reserve()});
-      } else {
-        if constexpr (base::meta<FromType> == base::meta<ir::Integer>) {
-          return static_cast<ToType>(r.value().value());
-        } else {
-          return static_cast<ToType>(r.value());
-        }
-      }
-    } else {
-      UNREACHABLE(base::meta<FromType>, " cannot be cast to ",
-                  base::meta<ToType>);
     }
   }
 
