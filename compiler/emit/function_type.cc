@@ -20,17 +20,16 @@ void Compiler::EmitToBuffer(ast::FunctionType const *node,
     if (auto const *decl = p->if_as<ast::Declaration>()) {
       ASSERT(decl->ids().size() == 1u);
       if (auto const *te = decl->type_expr()) {
-        param_vals.emplace_back(decl->ids()[0].name(),
-                                EmitValue(te).get<ir::RegOr<type::Type>>());
+        param_vals.emplace_back(decl->ids()[0].name(), EmitAs<type::Type>(te));
       } else {
         NOT_YET();
       }
     } else {
-      param_vals.emplace_back("", EmitValue(p).get<ir::RegOr<type::Type>>());
+      param_vals.emplace_back("", EmitAs<type::Type>(p));
     }
   }
   for (auto const *o : node->outputs()) {
-    out_vals.push_back(EmitValue(o).get<ir::RegOr<type::Type>>());
+    out_vals.push_back(EmitAs<type::Type>(o));
   }
 
   out.append(ir::RegOr<type::Type>(

@@ -193,7 +193,8 @@ void Compiler::EmitToBuffer(ast::Call const *node, base::untyped_buffer &out) {
   EmitCall(*this, os.members().front(), constant_arguments, node->arguments(),
            outs);
   if (qts.size() == 1) {
-    FromValue(ir::Value(builder().PtrFix(outs[0]->reg(), qts[0].type())), out);
+    FromValue(ir::Value(builder().PtrFix(outs[0]->reg(), qts[0].type())),
+              qts[0].type(), out);
   }
 }
 

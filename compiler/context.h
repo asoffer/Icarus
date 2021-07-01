@@ -301,6 +301,8 @@ struct Context {
                     : ir::Value(buffer_.get<ir::Value>(0));
     }
 
+    base::untyped_buffer const &buffer() const { return buffer_; }
+
     // Whether or not the held value is complete. This may be a struct or
     // function whose body has not been emit yet.
     bool complete;
@@ -473,21 +475,8 @@ struct Context {
   JumpMap jumps_;
 };
 
-inline ir::Value ToValue(base::untyped_buffer_view buffer, type::Type t) {
-  return ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t,
-                    int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                    double, type::Type, ir::addr_t, ir::ModuleId, ir::Scope,
-                    ir::Fn, ir::Jump, ir::Block, interface::Interface>(
-      t, [&]<typename T>() { return ir::Value(buffer.get<ir::RegOr<T>>(0)); });
-}
-
-inline void FromValue(ir::Value const &v, base::untyped_buffer &out) {
-  v.apply<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
-          uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
-          ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
-          interface::Interface>(
-      [&](auto value) { out.append(ir::RegOr<decltype(value)>(value)); });
-}
+ir::Value ToValue(base::untyped_buffer_view buffer, type::Type t);
+void FromValue(ir::Value const &v, type::Type t, base::untyped_buffer &out);
 
 }  // namespace compiler
 #endif  // ICARUS_COMPILER_CONTEXT_H

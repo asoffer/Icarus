@@ -36,7 +36,7 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
       &context());
   context().set_struct(node, s);
 
-  // Note: VerifyBody may end up triggering EmitValue calls for member types
+  // Note: VerifyBody may end up triggering EmitToBuffer calls for member types
   // that depend on this incomplete type. For this reason it is important that
   // we have already allocated the struct so we do not get a double-allocation.
   //

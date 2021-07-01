@@ -32,7 +32,8 @@ struct LibraryModule : CompiledModule {
       return;
     }
 
-    for (ast::Node const *node : nodes) { c.EmitValue(node); }
+    base::untyped_buffer buffer;
+    for (ast::Node const *node : nodes) { c.EmitToBuffer(node, buffer); }
     c.CompleteDeferredBodies();
 
     CompilationComplete();

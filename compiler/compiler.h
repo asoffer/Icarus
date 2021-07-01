@@ -187,9 +187,22 @@ struct Compiler
     return ast::Visitor<PatternTypeTag, bool(type::Type)>::Visit(node, t);
   }
 
+  template <typename T>
+  ir::RegOr<T> EmitAs(ast::Node const *node) {
+    base::untyped_buffer buffer;
+    EmitToBuffer(node, buffer);
+    return buffer.get<ir::RegOr<T>>(0);
+  }
 
   ir::Value EmitValue(ast::Node const *node) {
-    return ast::Visitor<EmitValueTag, ir::Value()>::Visit(node);
+    base::untyped_buffer buffer;
+    EmitToBuffer(node, buffer);
+    auto const *e = node->if_as<ast::Expression>();
+    if (not e) { return ir::Value(); }
+    auto qts = context().qual_types(e);
+    if (qts.empty()) { return ir::Value(); }
+    type::Type t = qts[0].type();
+    return ToValue(buffer, t);
   }
 
   void EmitToBuffer(ast::Node const *node, base::untyped_buffer &buffer) {
@@ -197,36 +210,34 @@ struct Compiler
                                                                        &buffer);
   }
 
-  void EmitMoveAssign(ast::Node const *node,
-                      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
-    ast::Visitor<
-        EmitMoveAssignTag,
-        void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::Visit(node,
-                                                                         regs);
+  void EmitMoveAssign(
+      ast::Node const *node,
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+    ast::Visitor<EmitMoveAssignTag,
+                 void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::
+        Visit(node, regs);
   }
 
-  void EmitCopyAssign(ast::Node const *node,
-                      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
-    ast::Visitor<
-        EmitCopyAssignTag,
-        void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::Visit(node,
-                                                                         regs);
+  void EmitCopyAssign(
+      ast::Node const *node,
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+    ast::Visitor<EmitCopyAssignTag,
+                 void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::
+        Visit(node, regs);
   }
 
   void EmitCopyInit(ast::Node const *node,
                     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
-    ast::Visitor<
-        EmitCopyInitTag,
-        void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::Visit(node,
-                                                                         regs);
+    ast::Visitor<EmitCopyInitTag,
+                 void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::
+        Visit(node, regs);
   }
 
   void EmitMoveInit(ast::Node const *node,
                     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
-    ast::Visitor<
-        EmitMoveInitTag,
-        void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::Visit(node,
-                                                                         regs);
+    ast::Visitor<EmitMoveInitTag,
+                 void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::
+        Visit(node, regs);
   }
 
   ir::Reg EmitRef(ast::Node const *node) {
@@ -360,10 +371,6 @@ struct Compiler
     return VerifyBody(node);                                                   \
   }                                                                            \
                                                                                \
-  ir::Value Visit(EmitValueTag, ast::name const *node) override {              \
-    return EmitValue(node);                                                    \
-  }                                                                            \
-                                                                               \
   void Visit(EmitToBufferTag, ast::name const *node,                           \
              base::untyped_buffer *buffer) override {                          \
     EmitToBuffer(node, *buffer);                                               \
@@ -372,72 +379,49 @@ struct Compiler
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-#define DEFINE_EMIT_EXPR(name)                                                 \
-  void EmitToBuffer(name const *node, base::untyped_buffer &buffer);           \
-  ir::Value EmitValue(name const *node) {                                      \
-    base::untyped_buffer buffer;                                               \
-    EmitToBuffer(node, buffer);                                                \
-    auto qts = context().qual_types(node);                                     \
-    if (qts.empty()) { return ir::Value(); }                                   \
-    type::Type t = qts[0].type();                                              \
-    if (t == type::Void) { return ir::Value(); }                               \
-    return ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t,   \
-                      int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,   \
-                      double, type::Type, ir::addr_t, ir::ModuleId, ir::Scope, \
-                      ir::Fn, ir::Jump, ir::Block, ir::GenericFn,              \
-                      interface::Interface>(t, [&]<typename T>() {             \
-      return ir::Value(buffer.get<ir::RegOr<T>>(0));                           \
-    });                                                                        \
-  }
+#define DEFINE_EMIT(name)                                                      \
+  void EmitToBuffer(name const *node, base::untyped_buffer &buffer);
 
-#define DEFINE_EMIT_NODE(name)                                                 \
-  void EmitToBuffer(name const *node, base::untyped_buffer &buffer);           \
-  ir::Value EmitValue(name const *node) {                                      \
-    base::untyped_buffer buffer;                                               \
-    EmitToBuffer(node, buffer);                                                \
-    return ir::Value();                                                        \
-  }
+  DEFINE_EMIT(ast::Access)
+  DEFINE_EMIT(ast::ArgumentType)
+  DEFINE_EMIT(ast::ArrayLiteral)
+  DEFINE_EMIT(ast::ArrayType)
+  DEFINE_EMIT(ast::Assignment)
+  DEFINE_EMIT(ast::BinaryOperator)
+  DEFINE_EMIT(ast::BindingDeclaration)
+  DEFINE_EMIT(ast::BlockLiteral)
+  DEFINE_EMIT(ast::BlockNode)
+  DEFINE_EMIT(ast::BuiltinFn)
+  DEFINE_EMIT(ast::Call)
+  DEFINE_EMIT(ast::Cast)
+  DEFINE_EMIT(ast::ComparisonOperator)
+  DEFINE_EMIT(ast::ConditionalGoto)
+  DEFINE_EMIT(ast::Declaration)
+  DEFINE_EMIT(ast::Declaration_Id)
+  DEFINE_EMIT(ast::DesignatedInitializer)
+  DEFINE_EMIT(ast::EnumLiteral)
+  DEFINE_EMIT(ast::FunctionLiteral)
+  DEFINE_EMIT(ast::FunctionType)
+  DEFINE_EMIT(ast::Identifier)
+  DEFINE_EMIT(ast::Import)
+  DEFINE_EMIT(ast::Index)
+  DEFINE_EMIT(ast::InterfaceLiteral)
+  DEFINE_EMIT(ast::Label)
+  DEFINE_EMIT(ast::Jump)
+  DEFINE_EMIT(ast::ParameterizedStructLiteral)
+  DEFINE_EMIT(ast::PatternMatch)
+  DEFINE_EMIT(ast::ReturnStmt)
+  DEFINE_EMIT(ast::ScopeLiteral)
+  DEFINE_EMIT(ast::ScopeNode)
+  DEFINE_EMIT(ast::SliceType)
+  DEFINE_EMIT(ast::ShortFunctionLiteral)
+  DEFINE_EMIT(ast::StructLiteral)
+  DEFINE_EMIT(ast::Terminal)
+  DEFINE_EMIT(ast::UnaryOperator)
+  DEFINE_EMIT(ast::UnconditionalGoto)
+  DEFINE_EMIT(ast::YieldStmt)
 
-  DEFINE_EMIT_EXPR(ast::Access)
-  DEFINE_EMIT_EXPR(ast::ArgumentType)
-  DEFINE_EMIT_EXPR(ast::ArrayLiteral)
-  DEFINE_EMIT_EXPR(ast::ArrayType)
-  DEFINE_EMIT_NODE(ast::Assignment)
-  DEFINE_EMIT_EXPR(ast::BinaryOperator)
-  DEFINE_EMIT_EXPR(ast::BindingDeclaration)
-  DEFINE_EMIT_EXPR(ast::BlockLiteral)
-  DEFINE_EMIT_NODE(ast::BlockNode)
-  DEFINE_EMIT_EXPR(ast::BuiltinFn)
-  DEFINE_EMIT_EXPR(ast::Call)
-  DEFINE_EMIT_EXPR(ast::Cast)
-  DEFINE_EMIT_EXPR(ast::ComparisonOperator)
-  DEFINE_EMIT_NODE(ast::ConditionalGoto)
-  DEFINE_EMIT_EXPR(ast::Declaration)
-  DEFINE_EMIT_EXPR(ast::Declaration_Id)
-  DEFINE_EMIT_EXPR(ast::DesignatedInitializer)
-  DEFINE_EMIT_EXPR(ast::EnumLiteral)
-  DEFINE_EMIT_EXPR(ast::FunctionLiteral)
-  DEFINE_EMIT_EXPR(ast::FunctionType)
-  DEFINE_EMIT_EXPR(ast::Identifier)
-  DEFINE_EMIT_EXPR(ast::Import)
-  DEFINE_EMIT_EXPR(ast::Index)
-  DEFINE_EMIT_EXPR(ast::InterfaceLiteral)
-  DEFINE_EMIT_EXPR(ast::Label)
-  DEFINE_EMIT_EXPR(ast::Jump)
-  DEFINE_EMIT_EXPR(ast::ParameterizedStructLiteral)
-  DEFINE_EMIT_EXPR(ast::PatternMatch)
-  DEFINE_EMIT_NODE(ast::ReturnStmt)
-  DEFINE_EMIT_EXPR(ast::ScopeLiteral)
-  DEFINE_EMIT_EXPR(ast::ScopeNode)
-  DEFINE_EMIT_EXPR(ast::SliceType)
-  DEFINE_EMIT_EXPR(ast::ShortFunctionLiteral)
-  DEFINE_EMIT_EXPR(ast::StructLiteral)
-  DEFINE_EMIT_EXPR(ast::Terminal)
-  DEFINE_EMIT_EXPR(ast::UnaryOperator)
-  DEFINE_EMIT_NODE(ast::UnconditionalGoto)
-  DEFINE_EMIT_NODE(ast::YieldStmt)
-#undef DEFINE_EMIT_EXPR
-#undef DEFINE_EMIT_NODE
+#undef DEFINE_EMIT
 
 #define DEFINE_PATTERN_MATCH(name)                                             \
   bool PatternMatch(                                                           \

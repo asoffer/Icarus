@@ -11,7 +11,7 @@ void Compiler::EmitToBuffer(ast::Index const *node, base::untyped_buffer &out) {
   } else if (auto const *s = qt.type().if_as<type::Slice>()) {
     auto data = builder().Load<ir::addr_t>(
         current_block()->Append(type::SliceDataInstruction{
-            .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::addr_t>>(),
+            .slice  = EmitAs<ir::addr_t>(node->lhs()),
             .result = builder().CurrentGroup()->Reserve(),
         }),
         type::BufPtr(s->data_type()));
@@ -25,7 +25,7 @@ void Compiler::EmitToBuffer(ast::Index const *node, base::untyped_buffer &out) {
         EmitValue(node->rhs()), context().qual_types(node->rhs())[0].type()));
     out.append(ir::RegOr<ir::addr_t>(builder().PtrFix(
         builder().Index(type::Ptr(context().qual_types(node->lhs())[0].type()),
-                        EmitValue(node->lhs()).get<ir::Reg>(), index),
+                        EmitAs<ir::addr_t>(node->lhs()), index),
         array_type->data_type())));
   } else if (auto const *buf_ptr_type =
                  qt.type().if_as<type::BufferPointer>()) {
@@ -33,8 +33,7 @@ void Compiler::EmitToBuffer(ast::Index const *node, base::untyped_buffer &out) {
         EmitValue(node->rhs()), context().qual_types(node->rhs())[0].type()));
 
     out.append(ir::RegOr<ir::addr_t>(builder().PtrFix(
-        builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(), index,
-                          buf_ptr_type),
+        builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()), index, buf_ptr_type),
         buf_ptr_type->pointee())));
   } else {
     UNREACHABLE(*this, *qt);
@@ -56,12 +55,12 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
     auto index = builder().CastTo<int64_t>(
         type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
 
-    return builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(), index,
+    return builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()), index,
                              type::Ptr(buf_ptr_type->pointee()));
   } else if (auto const *s = lhs_type.if_as<type::Slice>()) {
     auto data = builder().Load<ir::addr_t>(
         current_block()->Append(type::SliceDataInstruction{
-            .slice  = EmitValue(node->lhs()).get<ir::RegOr<ir::addr_t>>(),
+            .slice  = EmitAs<ir::addr_t>(node->lhs()),
             .result = builder().CurrentGroup()->Reserve(),
         }),
         type::BufPtr(s->data_type()));

@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/context.h"
 
 namespace compiler {
 
@@ -11,7 +12,8 @@ struct TerminalMatchError {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(R"(Pattern matching failed due to unequal values.
   Pattern value: %s
-  Matched value: %s)", pattern_value, matched_value),
+  Matched value: %s)",
+                         pattern_value, matched_value),
         diagnostic::SourceQuote(src).Highlighted(
             range, diagnostic::Style::ErrorText()));
   }
@@ -32,7 +34,9 @@ void Compiler::EmitCopyAssign(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(ToValue(buffer, t), t));
 }
 
 // TODO: Unit tests
@@ -41,25 +45,31 @@ void Compiler::EmitMoveAssign(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
+  EmitMoveAssign(to[0], type::Typed<ir::Value>(ToValue(buffer, t), t));
 }
 
 // TODO: Unit tests
 void Compiler::EmitCopyInit(
     ast::Terminal const *node,
-   absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(ToValue(buffer, t), t));
 }
 
 // TODO: Unit tests
 void Compiler::EmitMoveInit(
     ast::Terminal const *node,
-   absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
+  EmitMoveAssign(to[0], type::Typed<ir::Value>(ToValue(buffer, t), t));
 }
 
 bool Compiler::PatternMatch(

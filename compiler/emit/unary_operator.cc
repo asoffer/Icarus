@@ -18,13 +18,14 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       EmitCopyInit(
           type::Typed<ir::Reg>(reg, operand_type),
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type));
-      FromValue(ir::Value(builder().PtrFix(reg, operand_type)), out);
+      FromValue(ir::Value(builder().PtrFix(reg, operand_type)), operand_type,
+                out);
       return;
     } break;
     case ast::UnaryOperator::Kind::Destroy: {
-      EmitDestroy(
-          type::Typed<ir::Reg>(EmitValue(node->operand()).get<ir::Reg>(),
-                               context().qual_types(node->operand())[0].type()));
+      EmitDestroy(type::Typed<ir::Reg>(
+          EmitAs<ir::addr_t>(node->operand()).reg(),
+          context().qual_types(node->operand())[0].type()));
       return;
     } break;
     case ast::UnaryOperator::Kind::Init:
@@ -35,7 +36,8 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       EmitMoveInit(
           type::Typed<ir::Reg>(reg, operand_type),
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type));
-      FromValue(ir::Value(builder().PtrFix(reg, operand_type)), out);
+      FromValue(ir::Value(builder().PtrFix(reg, operand_type)), operand_type,
+                out);
       return;
     } break;
     case ast::UnaryOperator::Kind::BufferPointer: {
@@ -65,8 +67,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       } else if (auto const *t = operand_qt.type().if_as<type::Flags>()) {
         out.append(ir::RegOr<type::Flags::underlying_type>(
             current_block()->Append(type::XorFlagsInstruction{
-                .lhs = EmitValue(node->operand())
-                           .get<ir::RegOr<type::Flags::underlying_type>>(),
+                .lhs    = EmitAs<type::Flags::underlying_type>(node->operand()),
                 .rhs    = t->All,
                 .result = builder().CurrentGroup()->Reserve()})));
         return;
@@ -81,7 +82,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
           context().qual_types(node->operand())[0].type(), [&]<typename T>() {
             auto value = out.get<ir::RegOr<T>>(0);
             out.clear();
-            out.append(ir::RegOr<ir::RegOr<T>>(builder().Neg(value)));
+            out.append(ir::RegOr<T>(builder().Neg(value)));
           });
       return;
     } break;
@@ -100,7 +101,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       out.append(
           ir::RegOr<type::Type>(current_block()->Append(type::PtrInstruction{
               .operand =
-                  EmitValue(node->operand()).get<ir::RegOr<type::Type>>(),
+                  EmitAs<type::Type>(node->operand()),
               .result = builder().CurrentGroup()->Reserve(),
           })));
       return;
@@ -115,7 +116,8 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
                  ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
           t, [&]<typename T>() { out.append(result.get<ir::RegOr<T>>()); });
-    }
+      return;
+    } break;
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));
   }
 }
@@ -135,7 +137,7 @@ void Compiler::EmitCopyInit(
       break;
     case ast::UnaryOperator::Kind::Destroy:
       EmitDestroy(type::Typed<ir::Reg>(
-          EmitValue(node->operand()).get<ir::Reg>(),
+          EmitAs<ir::addr_t>(node->operand()).reg(),
           context().qual_types(node->operand())[0].type()));
       break;
     default: {
@@ -177,7 +179,7 @@ void Compiler::EmitMoveInit(
 
 ir::Reg Compiler::EmitRef(ast::UnaryOperator const *node) {
   ASSERT(node->kind() == ast::UnaryOperator::Kind::At);
-  return EmitValue(node->operand()).get<ir::Reg>();
+  return EmitAs<ir::addr_t>(node->operand()).reg();
 }
 
 // TODO: Unit tests

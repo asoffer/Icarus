@@ -16,12 +16,12 @@ void Compiler::EmitToBuffer(ast::BlockLiteral const *node,
   befores.reserve(node->before().size());
   for (auto const &decl : node->before()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
-    befores.push_back(EmitValue(decl).get<ir::RegOr<ir::Fn>>());
+    befores.push_back(EmitAs<ir::Fn>(decl));
   }
 
   for (auto const &decl : node->after()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
-    afters.push_back(EmitValue(decl).get<ir::RegOr<ir::Jump>>());
+    afters.push_back(EmitAs<ir::Jump>(decl));
   }
 
   ir::Block b = context().add_block();

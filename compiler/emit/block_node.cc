@@ -7,7 +7,7 @@ namespace compiler {
 
 void Compiler::EmitToBuffer(ast::BlockNode const *node,
                             base::untyped_buffer &) {
-  LOG("BlockNode", "EmitValue for block node named %s", node->name());
+  LOG("BlockNode", "EmitToBuffer for block node named %s", node->name());
   EmitIrForStatements(*this, node->stmts());
   MakeAllDestructions(*this, &node->body_scope());
   auto &termination = builder().block_termination_state();

@@ -62,7 +62,7 @@ void Compiler::EmitMoveInit(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
 void Compiler::EmitCopyInit(
@@ -71,7 +71,7 @@ void Compiler::EmitCopyInit(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
 void Compiler::EmitMoveAssign(
@@ -80,7 +80,7 @@ void Compiler::EmitMoveAssign(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
 void Compiler::EmitCopyAssign(
@@ -89,7 +89,7 @@ void Compiler::EmitCopyAssign(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
 WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
@@ -123,9 +123,12 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
         if (out_decl->IsDefaultInitialized()) {
           EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
         } else {
-          EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(alloc, out_decl_type),
-                         type::Typed<ir::Value>(EmitValue(out_decl->init_val()),
-                                                out_decl_type));
+          base::untyped_buffer buffer;
+          EmitToBuffer(out_decl->init_val(), buffer);
+          EmitCopyAssign(
+              type::Typed<ir::RegOr<ir::addr_t>>(alloc, out_decl_type),
+              type::Typed<ir::Value>(ToValue(buffer, out_decl_type),
+                                     out_decl_type));
         }
       }
     }

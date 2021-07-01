@@ -18,8 +18,7 @@ void Compiler::EmitToBuffer(ast::EnumLiteral const *node,
     if (auto iter = node->specified_values().find(names[i]);
         iter != node->specified_values().end()) {
       specified_values.emplace(
-          i, EmitValue(iter->second.get())
-                 .get<ir::RegOr<type::Enum::underlying_type>>());
+          i, EmitAs<type::Enum::underlying_type>(iter->second.get()));
     }
   }
 

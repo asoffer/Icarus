@@ -382,4 +382,40 @@ ir::NativeFn::Data const *Context::InsertFunction(
   return ASSERT_NOT_NULL(iter->second.get());
 }
 
+ir::Value ToValue(base::untyped_buffer_view buffer, type::Type t) {
+  if (t == type::Void) { return ir::Value(); }
+
+  if (t.is<type::Slice>()) {
+    return ir::Value(buffer.get<ir::RegOr<ir::Slice>>(0));
+  } else if (t.is_big()) {
+    auto result = buffer.get<ir::RegOr<ir::addr_t>>(0);
+    ASSERT(result.is_reg() == false);
+    return ir::Value(result);
+  }
+
+  return ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t,
+                    int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
+                    double, type::Type, ir::addr_t, ir::ModuleId, ir::Scope,
+                    ir::Slice, ir::Fn, ir::Jump, ir::Block,
+                    interface::Interface>(
+      t, [&]<typename T>() { return ir::Value(buffer.get<ir::RegOr<T>>(0)); });
+}
+
+void FromValue(ir::Value const &v, type::Type t, base::untyped_buffer &out) {
+  if (auto *r = v.get_if<ir::Reg>()) {
+    ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
+               uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
+               ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+               interface::Interface>(
+        t, [&]<typename T>() { return out.append(ir::RegOr<T>(*r)); });
+
+  } else {
+    v.apply<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
+            uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
+            ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+            interface::Interface>(
+        [&](auto value) { out.append(ir::RegOr<decltype(value)>(value)); });
+  }
+}
+
 }  // namespace compiler

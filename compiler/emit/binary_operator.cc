@@ -20,14 +20,16 @@ struct PatternMatchingFailed {
 };
 
 template <template <typename> typename Op, typename... Ts>
-void Apply(type::Typed<ir::Value> lhs, type::Typed<ir::Value> rhs,
-    Compiler& c
-, base::untyped_buffer &out) {
+void Apply(type::Typed<ast::Expression const *> lhs,
+           type::Typed<ast::Expression const *> rhs, Compiler &c,
+           base::untyped_buffer &out) {
   ApplyTypes<Ts...>(type::Meet(lhs.type(), rhs.type()), [&]<typename T>() {
-    out.append(ir::RegOr<T>(c.current_block()->Append(
-        Op<T>{.lhs    = c.builder().CastTo<T>(lhs),
-              .rhs    = c.builder().CastTo<T>(rhs),
-              .result = c.builder().CurrentGroup()->Reserve()})));
+    auto l = c.EmitAs<T>(*lhs);
+    auto r = c.EmitAs<T>(*rhs);
+    out.append(ir::RegOr<T>(c.current_block()->Append(Op<T>{
+        .lhs    = c.builder().CastTo<T>(type::Typed(ir::Value(l), lhs.type())),
+        .rhs    = c.builder().CastTo<T>(type::Typed(ir::Value(r), rhs.type())),
+        .result = c.builder().CurrentGroup()->Reserve()})));
   });
 }
 
@@ -37,65 +39,64 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                             base::untyped_buffer &out) {
   switch (node->op()) {
     case frontend::Operator::Or: {
-      auto lhs_ir      = EmitValue(node->lhs());
+      auto lhs_ir      = EmitAs<bool>(node->lhs());
       auto *land_block = builder().AddBlock();
 
       std::vector<ir::BasicBlock const *> phi_blocks;
 
       auto *next_block = builder().AddBlock();
-      builder().CondJump(lhs_ir.get<ir::RegOr<bool>>(), land_block, next_block);
+      builder().CondJump(lhs_ir, land_block, next_block);
       phi_blocks.push_back(builder().CurrentBlock());
       builder().CurrentBlock() = next_block;
 
-      auto rhs_ir = EmitValue(node->rhs());
+      auto rhs_ir = EmitAs<bool>(node->rhs());
       phi_blocks.push_back(builder().CurrentBlock());
       builder().UncondJump(land_block);
 
       builder().CurrentBlock() = land_block;
 
       out.append(ir::RegOr<bool>(builder().Phi<bool>(
-          std::move(phi_blocks), {true, rhs_ir.get<ir::RegOr<bool>>()})));
+          std::move(phi_blocks), {true, rhs_ir})));
       return;
     } break;
     case frontend::Operator::SymbolOr: {
-      auto lhs_ir = EmitValue(node->lhs());
-      auto rhs_ir = EmitValue(node->rhs());
+      auto lhs_ir = EmitAs<type::Flags::underlying_type>(node->lhs());
+      auto rhs_ir = EmitAs<type::Flags::underlying_type>(node->rhs());
       // `|` is not overloadable, and blocks piped together must be done
       // syntactically in a `goto` node and are handled by the parser.
       out.append(ir::RegOr<type::Flags::underlying_type>(
           current_block()->Append(type::OrFlagsInstruction{
-              .lhs    = lhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
-              .rhs    = rhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
+              .lhs    = lhs_ir,
+              .rhs    = rhs_ir,
               .result = builder().CurrentGroup()->Reserve()})));
       return;
     } break;
     case frontend::Operator::Xor: {
-      auto lhs_ir = EmitValue(node->lhs());
-      auto rhs_ir = EmitValue(node->rhs());
-      out.append(ir::RegOr<bool>(builder().Ne(lhs_ir.get<ir::RegOr<bool>>(),
-                                              rhs_ir.get<ir::RegOr<bool>>())));
+      auto lhs_ir = EmitAs<bool>(node->lhs());
+      auto rhs_ir = EmitAs<bool>(node->rhs());
+      out.append(ir::RegOr<bool>(builder().Ne(lhs_ir, rhs_ir)));
       return;
     } break;
     case frontend::Operator::SymbolXor: {
-      auto lhs_ir = EmitValue(node->lhs());
-      auto rhs_ir = EmitValue(node->rhs());
+      auto lhs_ir = EmitAs<type::Flags::underlying_type>(node->lhs());
+      auto rhs_ir = EmitAs<type::Flags::underlying_type>(node->rhs());
       out.append(ir::RegOr<type::Flags::underlying_type>(
           current_block()->Append(type::XorFlagsInstruction{
-              .lhs    = lhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
-              .rhs    = rhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
+              .lhs    = lhs_ir,
+              .rhs    = rhs_ir,
               .result = builder().CurrentGroup()->Reserve()})));
       return;
     } break;
     case frontend::Operator::And: {
-      auto lhs_ir = EmitValue(node->lhs());
-      auto rhs_ir = EmitValue(node->rhs());
+      auto lhs_ir = EmitAs<bool>(node->lhs());
+      auto rhs_ir = EmitAs<bool>(node->rhs());
 
       auto *land_block = builder().AddBlock();
 
       std::vector<ir::BasicBlock const *> phi_blocks;
 
       auto *next_block = builder().AddBlock();
-      builder().CondJump(lhs_ir.get<ir::RegOr<bool>>(), next_block, land_block);
+      builder().CondJump(lhs_ir, next_block, land_block);
       phi_blocks.push_back(builder().CurrentBlock());
       builder().CurrentBlock() = next_block;
 
@@ -104,41 +105,43 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
 
       builder().CurrentBlock() = land_block;
 
-      out.append(ir::RegOr<bool>(builder().Phi<bool>(
-          std::move(phi_blocks), {false, rhs_ir.get<ir::RegOr<bool>>()})));
+      out.append(ir::RegOr<bool>(
+          builder().Phi<bool>(std::move(phi_blocks), {false, rhs_ir})));
       return;
     } break;
     case frontend::Operator::SymbolAnd: {
-      auto lhs_ir = EmitValue(node->lhs());
-      auto rhs_ir = EmitValue(node->rhs());
       auto t      = context().qual_types(node)[0].type();
       if (t == type::Bool) {
+      auto lhs_ir = EmitAs<bool>(node->lhs());
+      auto rhs_ir = EmitAs<bool>(node->rhs());
+
         auto *land_block = builder().AddBlock();
 
         std::vector<ir::BasicBlock const *> phi_blocks;
 
         auto *next_block = builder().AddBlock();
-        builder().CondJump(lhs_ir.get<ir::RegOr<bool>>(), next_block,
-                           land_block);
+        builder().CondJump(lhs_ir, next_block, land_block);
         phi_blocks.push_back(builder().CurrentBlock());
         builder().CurrentBlock() = next_block;
 
-        auto rhs_ir = EmitValue(node->rhs());
         phi_blocks.push_back(builder().CurrentBlock());
         builder().UncondJump(land_block);
 
         builder().CurrentBlock() = land_block;
 
-        out.append(ir::RegOr<bool>(builder().Phi<bool>(
-            std::move(phi_blocks), {false, rhs_ir.get<ir::RegOr<bool>>()})));
+        out.append(ir::RegOr<bool>(
+            builder().Phi<bool>(std::move(phi_blocks), {false, rhs_ir})));
         return;
       } else if (t.is<type::Flags>()) {
+        auto lhs_ir = EmitAs<type::Flags::underlying_type>(node->lhs());
+        auto rhs_ir = EmitAs<type::Flags::underlying_type>(node->rhs());
+
         // `|` is not overloadable, and blocks piped together must be done
         // syntactically in a `goto` node and are handled by the parser.
         out.append(ir::RegOr<type::Flags::underlying_type>(
             current_block()->Append(type::AndFlagsInstruction{
-                .lhs    = lhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
-                .rhs    = rhs_ir.get<ir::RegOr<type::Flags::underlying_type>>(),
+                .lhs    = lhs_ir,
+                .rhs    = rhs_ir,
                 .result = builder().CurrentGroup()->Reserve()})));
         return;
       } else {
@@ -146,95 +149,94 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       }
     } break;
     case frontend::Operator::Add: {
-      auto lhs_ir         = EmitValue(node->lhs());
-      auto rhs_ir         = EmitValue(node->rhs());
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+        auto rhs_ir = EmitValue(node->rhs());
         out.append(ir::RegOr<ir::addr_t>(builder().PtrIncr(
-            lhs_ir.get<ir::RegOr<ir::addr_t>>(),
+            EmitAs<ir::addr_t>(node->lhs()),
             builder().CastTo<int64_t>(type::Typed<ir::Value>(rhs_ir, rhs_type)),
             lhs_buf_ptr_type)));
       } else if (auto const *rhs_buf_ptr_type =
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
+        auto lhs_ir = EmitValue(node->lhs());
+        auto rhs_ir = EmitAs<ir::addr_t>(node->rhs());
         out.append(ir::RegOr<ir::addr_t>(builder().PtrIncr(
-            rhs_ir.get<ir::RegOr<ir::addr_t>>(),
+            rhs_ir,
             builder().CastTo<int64_t>(type::Typed<ir::Value>(lhs_ir, lhs_type)),
             rhs_buf_ptr_type)));
       } else {
         Apply<ir::AddInstruction, ir::Integer, int8_t, int16_t, int32_t,
               int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-            type::Typed(lhs_ir, lhs_type), type::Typed(rhs_ir, rhs_type), *this,
-            out);
+            type::Typed(node->lhs(), lhs_type),
+            type::Typed(node->rhs(), rhs_type), *this, out);
       }
       return;
     } break;
     case frontend::Operator::Sub: {
-      auto lhs_ir         = EmitValue(node->lhs());
-      auto rhs_ir         = EmitValue(node->rhs());
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
-          lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+         lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+        auto lhs_ir = EmitAs<ir::addr_t>(node->lhs());
+        auto rhs_ir = EmitValue(node->rhs());
         out.append(ir::RegOr<ir::addr_t>(
-            builder().PtrIncr(lhs_ir.get<ir::RegOr<ir::addr_t>>(),
+            builder().PtrIncr(lhs_ir,
                               builder().Neg(builder().CastTo<int64_t>(
                                   type::Typed<ir::Value>(rhs_ir, rhs_type))),
                               lhs_buf_ptr_type)));
       } else if (auto const *rhs_buf_ptr_type =
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
+        auto lhs_ir = EmitValue(node->lhs());
+        auto rhs_ir = EmitAs<ir::addr_t>(node->rhs());
         out.append(ir::RegOr<ir::addr_t>(
-            builder().PtrIncr(rhs_ir.get<ir::RegOr<ir::addr_t>>(),
+            builder().PtrIncr(rhs_ir,
                               builder().Neg(builder().CastTo<int64_t>(
                                   type::Typed<ir::Value>(lhs_ir, lhs_type))),
                               rhs_buf_ptr_type)));
       } else if (auto const *buf_ptr = lhs_type.if_as<type::BufferPointer>();
                  lhs_type == rhs_type and buf_ptr) {
+        auto lhs_ir = EmitAs<ir::addr_t>(node->lhs());
+        auto rhs_ir = EmitAs<ir::addr_t>(node->rhs());
         out.append(ir::RegOr<ir::addr_t>(
             current_block()->Append(ir::PtrDiffInstruction{
-                .lhs          = lhs_ir.get<ir::RegOr<ir::addr_t>>(),
-                .rhs          = rhs_ir.get<ir::RegOr<ir::addr_t>>(),
+                .lhs          = lhs_ir,
+                .rhs          = rhs_ir,
                 .pointee_type = buf_ptr->pointee(),
                 .result       = builder().CurrentGroup()->Reserve()})));
       } else {
         Apply<ir::SubInstruction, ir::Integer, int8_t, int16_t, int32_t,
               int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-            type::Typed(lhs_ir, lhs_type), type::Typed(rhs_ir, rhs_type), *this,
-            out);
+            type::Typed(node->lhs(), lhs_type),
+            type::Typed(node->rhs(), rhs_type), *this, out);
       }
     } break;
     case frontend::Operator::Mul: {
-      auto lhs_ir = EmitValue(node->lhs());
-      auto rhs_ir = EmitValue(node->rhs());
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       Apply<ir::MulInstruction, ir::Integer, int8_t, int16_t, int32_t, int64_t,
             uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-          type::Typed(lhs_ir, lhs_type), type::Typed(rhs_ir, rhs_type), *this,
+          type::Typed(node->lhs(), lhs_type), type::Typed(node->rhs(), rhs_type), *this,
           out);
     } break;
     case frontend::Operator::Div: {
-      auto lhs_ir = EmitValue(node->lhs());
-      auto rhs_ir = EmitValue(node->rhs());
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       Apply<ir::DivInstruction, ir::Integer, int8_t, int16_t, int32_t, int64_t,
             uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-          type::Typed(lhs_ir, lhs_type), type::Typed(rhs_ir, rhs_type), *this,
-          out);
+          type::Typed(node->lhs(), lhs_type),
+          type::Typed(node->rhs(), rhs_type), *this, out);
     } break;
     case frontend::Operator::Mod: {
-      auto lhs_ir = EmitValue(node->lhs());
-      auto rhs_ir = EmitValue(node->rhs());
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       Apply<ir::ModInstruction, ir::Integer, int8_t, int16_t, int32_t, int64_t,
             uint8_t, uint16_t, uint32_t, uint64_t>(
-          type::Typed(lhs_ir, lhs_type), type::Typed(rhs_ir, rhs_type), *this,
-          out);
+          type::Typed(node->lhs(), lhs_type),
+          type::Typed(node->rhs(), rhs_type), *this, out);
     } break;
     case frontend::Operator::SymbolOrEq: {
       auto this_type = context().qual_types(node)[0].type();
@@ -248,8 +250,8 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         builder().CondJump(lhs_val, land_block, more_block);
 
         builder().CurrentBlock() = more_block;
-        auto rhs_val       = EmitValue(node->rhs()).get<ir::RegOr<bool>>();
-        auto rhs_end_block = builder().CurrentBlock();
+        auto rhs_val             = EmitAs<bool>(node->rhs());
+        auto rhs_end_block       = builder().CurrentBlock();
         builder().UncondJump(land_block);
 
         builder().CurrentBlock() = land_block;
@@ -260,8 +262,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         builder().Store<ir::RegOr<type::Flags::underlying_type>>(
             current_block()->Append(type::OrFlagsInstruction{
                 .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
-                .rhs = EmitValue(node->rhs())
-                           .get<ir::RegOr<type::Flags::underlying_type>>(),
+                .rhs = EmitAs<type::Flags::underlying_type>(node->rhs()),
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else {
@@ -276,8 +277,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         builder().Store<ir::RegOr<type::Flags::underlying_type>>(
             current_block()->Append(type::AndFlagsInstruction{
                 .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
-                .rhs = EmitValue(node->rhs())
-                           .get<ir::RegOr<type::Flags::underlying_type>>(),
+                .rhs = EmitAs<type::Flags::underlying_type>(node->rhs()),
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else if (this_type == type::Bool) {
@@ -289,7 +289,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         builder().CondJump(lhs_val, more_block, land_block);
 
         builder().CurrentBlock() = more_block;
-        auto rhs_val       = EmitValue(node->rhs()).get<ir::RegOr<bool>>();
+        auto rhs_val             = EmitAs<bool>(node->rhs());
         auto rhs_end_block = builder().CurrentBlock();
         builder().UncondJump(land_block);
 
@@ -306,8 +306,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       auto this_type = context().qual_types(node)[0].type();
       auto lhs_lval  = EmitRef(node->lhs());
       if (this_type.is<type::Flags>()) {
-        auto rhs_ir = EmitValue(node->rhs())
-                          .get<ir::RegOr<type::Flags::underlying_type>>();
+        auto rhs_ir = EmitAs<type::Flags::underlying_type>(node->rhs());
         builder().Store<ir::RegOr<type::Flags::underlying_type>>(
             current_block()->Append(type::XorFlagsInstruction{
                 .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
@@ -315,7 +314,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else if (this_type == type::Bool) {
-        auto rhs_ir = EmitValue(node->rhs()).get<ir::RegOr<bool>>();
+        auto rhs_ir = EmitAs<bool>(node->rhs());
         builder().Store(builder().Ne(builder().Load<bool>(lhs_lval), rhs_ir),
                         lhs_lval);
       } else {

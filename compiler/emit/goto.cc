@@ -60,10 +60,10 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
 
 void Compiler::EmitToBuffer(ast::ConditionalGoto const *node,
                             base::untyped_buffer &) {
-  auto condition    = EmitValue(node->condition());
+  auto condition    = EmitAs<bool>(node->condition());
   auto *true_block  = builder().AddBlock("ConditionalGoto-true");
   auto *false_block = builder().AddBlock("ConditionalGoto-false");
-  builder().CondJump(condition.get<ir::RegOr<bool>>(), true_block, false_block);
+  builder().CondJump(condition, true_block, false_block);
 
   builder().CurrentBlock() = true_block;
   EmitJump(*this, node->true_options());

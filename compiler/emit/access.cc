@@ -27,8 +27,7 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
       c.builder().Store(
           c.builder().Load<type::Slice::length_t>(
               c.current_block()->Append(type::SliceLengthInstruction{
-                  .slice =
-                      c.EmitValue(node->operand()).get<ir::RegOr<ir::addr_t>>(),
+                  .slice  = c.EmitAs<ir::addr_t>(node->operand()),
                   .result = c.builder().CurrentGroup()->Reserve(),
               })),
           to);
@@ -36,8 +35,7 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
       c.builder().Store(
           c.builder().Load<ir::addr_t>(
               c.current_block()->Append(type::SliceDataInstruction{
-                  .slice =
-                      c.EmitValue(node->operand()).get<ir::RegOr<ir::addr_t>>(),
+                  .slice  = c.EmitAs<ir::addr_t>(node->operand()),
                   .result = c.builder().CurrentGroup()->Reserve(),
               }),
               type::BufPtr(s->data_type())),
@@ -66,7 +64,10 @@ void Compiler::EmitToBuffer(ast::Access const *node,
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
-      case 1: FromValue(mod.ExportedValue(decl_ids[0]), out); return;
+      case 1:
+        FromValue(mod.ExportedValue(decl_ids[0]),
+                  context().qual_types(node->operand())[0].type(), out);
+        return;
       default: NOT_YET();
     }
   }
@@ -82,13 +83,13 @@ void Compiler::EmitToBuffer(ast::Access const *node,
     if (node->member_name() == "length") {
       out.append(builder().Load<type::Slice::length_t>(
           current_block()->Append(type::SliceLengthInstruction{
-              .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::addr_t>>(),
+              .slice  = EmitAs<ir::addr_t>(node->operand()),
               .result = builder().CurrentGroup()->Reserve(),
           })));
     } else if (node->member_name() == "data") {
       out.append(builder().Load<ir::addr_t>(
           current_block()->Append(type::SliceDataInstruction{
-              .slice  = EmitValue(node->operand()).get<ir::RegOr<ir::addr_t>>(),
+              .slice  = EmitAs<ir::addr_t>(node->operand()),
               .result = builder().CurrentGroup()->Reserve(),
           }),
           type::BufPtr(s->data_type())));
@@ -114,7 +115,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
       FromValue(ir::Value(builder().PtrFix(EmitRef(node), node_qt.type())),
-                out);
+                node_qt.type(), out);
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -122,7 +123,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       FromValue(*builder().FieldValue(*temp, &struct_type,
                                       struct_type.index(node->member_name())),
-                out);
+                node_qt.type(), out);
     }
   }
 }
@@ -207,8 +208,7 @@ void Compiler::EmitMoveInit(
                    type::Typed<ir::Value>(
                        ir::Value(builder().Load<type::Slice::length_t>(
                            current_block()->Append(type::SliceLengthInstruction{
-                               .slice = EmitValue(node->operand())
-                                            .get<ir::RegOr<ir::addr_t>>(),
+                               .slice  = EmitAs<ir::addr_t>(node->operand()),
                                .result = builder().CurrentGroup()->Reserve(),
                            }))),
                        type::U64));
@@ -217,8 +217,7 @@ void Compiler::EmitMoveInit(
                    type::Typed<ir::Value>(
                        ir::Value(builder().Load<ir::addr_t>(
                            current_block()->Append(type::SliceDataInstruction{
-                               .slice = EmitValue(node->operand())
-                                            .get<ir::RegOr<ir::addr_t>>(),
+                               .slice  = EmitAs<ir::addr_t>(node->operand()),
                                .result = builder().CurrentGroup()->Reserve(),
                            }))),
                        type::BufPtr(s->data_type())));
@@ -283,8 +282,7 @@ void Compiler::EmitCopyInit(
                    type::Typed<ir::Value>(
                        ir::Value(builder().Load<type::Slice::length_t>(
                            current_block()->Append(type::SliceLengthInstruction{
-                               .slice = EmitValue(node->operand())
-                                            .get<ir::RegOr<ir::addr_t>>(),
+                               .slice  = EmitAs<ir::addr_t>(node->operand()),
                                .result = builder().CurrentGroup()->Reserve(),
                            }))),
                        type::U64));
@@ -293,8 +291,7 @@ void Compiler::EmitCopyInit(
                    type::Typed<ir::Value>(
                        ir::Value(builder().Load<ir::addr_t>(
                            current_block()->Append(type::SliceDataInstruction{
-                               .slice = EmitValue(node->operand())
-                                            .get<ir::RegOr<ir::addr_t>>(),
+                               .slice  = EmitAs<ir::addr_t>(node->operand()),
                                .result = builder().CurrentGroup()->Reserve(),
                            }))),
                        type::BufPtr(s->data_type())));

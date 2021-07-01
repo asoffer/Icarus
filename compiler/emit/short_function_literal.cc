@@ -56,7 +56,7 @@ void Compiler::EmitMoveInit(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
 void Compiler::EmitCopyInit(
@@ -65,7 +65,7 @@ void Compiler::EmitCopyInit(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
 void Compiler::EmitMoveAssign(
@@ -74,7 +74,7 @@ void Compiler::EmitMoveAssign(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
 void Compiler::EmitCopyAssign(
@@ -83,7 +83,7 @@ void Compiler::EmitCopyAssign(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitValue(node).get<ir::RegOr<ir::Fn>>(), *to[0]);
+  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
 WorkItem::Result Compiler::EmitShortFunctionBody(
@@ -112,10 +112,10 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
     } else {
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
-                 ir::GenericFn,
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
+                 ir::Block, ir::GenericFn,
                  interface::Interface>(ret_type, [&]<typename T>() {
-        auto value = EmitValue(node->body()).get<ir::RegOr<T>>();
+        auto value = this->EmitAs<T>(node->body());
         builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
             .index = 0,
             .value = value,

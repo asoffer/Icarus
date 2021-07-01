@@ -193,7 +193,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler &c, ast::Expression const *fn,
                                     type::Function const *f_type,
                                     type::Quals quals) {
   if (type::Quals::Const() <= quals) {
-    return c.EmitValue(fn).get<ir::RegOr<ir::Fn>>();
+    return c.EmitAs<ir::Fn>(fn);
   } else {
     // NOTE: If the overload is a declaration, it's not because a
     // declaration is syntactically the callee. Rather, it's because the
@@ -205,8 +205,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler &c, ast::Expression const *fn,
     if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
       return c.builder().Load<ir::Fn>(c.builder().addr(&fn_decl->ids()[0]));
     } else {
-      return c.builder().Load<ir::Fn>(
-          c.EmitValue(fn).get<ir::RegOr<ir::addr_t>>(), f_type);
+      return c.builder().Load<ir::Fn>(c.EmitAs<ir::addr_t>(fn), f_type);
     }
   }
 }
@@ -215,8 +214,7 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     Compiler &c, ast::Expression const *fn, type::QualType qt,
     const core::Arguments<type::Typed<ir::Value>> &constant_arguments) {
   if (auto const *gf_type = qt.type().if_as<type::GenericFunction>()) {
-    ir::GenericFn gen_fn =
-        c.EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
+    ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(fn).value();
 
     // TODO: declarations aren't callable so we shouldn't have to check this
     // here.
@@ -264,8 +262,8 @@ std::optional<ir::CompiledFn> StructCompletionFn(
   ir::CompiledFn fn(type::Func({}, {}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
   ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
-    // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
-    // Factor these out together.
+    // TODO this is essentially a copy of the body of
+    // FunctionLiteral::EmitToBuffer. Factor these out together.
     c.builder().CurrentBlock() = fn.entry();
 
     std::vector<type::StructInstruction::Field> ir_fields, constants;
@@ -282,21 +280,21 @@ std::optional<ir::CompiledFn> StructCompletionFn(
         // export.
         if (id.name() == "destroy") {
           // TODO: handle potential errors here.
-          user_dtor = c.EmitValue(id.declaration().init_val()).get<ir::Fn>();
+          user_dtor = c.EmitAs<ir::Fn>(id.declaration().init_val()).value();
         } else if (id.name() == "move") {
           // TODO handle potential errors here.
-          auto f = c.EmitValue(id.declaration().init_val()).get<ir::Fn>();
-          switch (f.type()->params().size()) {
-            case 1: move_inits.push_back(f); break;
-            case 2: move_assignments.push_back(f); break;
+          auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
+          switch (f.value().type()->params().size()) {
+            case 1: move_inits.push_back(f.value()); break;
+            case 2: move_assignments.push_back(f.value()); break;
             default: UNREACHABLE();
           }
         } else if (id.name() == "copy") {
           // TODO handle potential errors here.
-          auto f = c.EmitValue(id.declaration().init_val()).get<ir::Fn>();
-          switch (f.type()->params().size()) {
-            case 1: copy_inits.push_back(f); break;
-            case 2: copy_assignments.push_back(f); break;
+          auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
+          switch (f.value().type()->params().size()) {
+            case 1: copy_inits.push_back(f.value()); break;
+            case 2: copy_assignments.push_back(f.value()); break;
             default: UNREACHABLE();
           }
         } else {
@@ -490,9 +488,10 @@ void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
 // if we exit early, so those need to be handled externally.
 void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
   ICARUS_SCOPE(ir::SetTemporaries(c.builder())) {
+    base::untyped_buffer buffer;
     for (auto *stmt : stmts) {
       LOG("EmitIrForStatements", "%s", stmt->DebugString());
-      c.EmitValue(stmt);
+      c.EmitToBuffer(stmt, buffer);
       c.builder().FinishTemporariesWith(
           [&c](type::Typed<ir::Reg> r) { c.EmitDestroy(r); });
       LOG("EmitIrForStatements", "%p %s", c.builder().CurrentBlock(),
@@ -533,7 +532,7 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
                                   param_type.if_as<type::Pointer>());
                bufptr_arg_type and ptr_param_type and
                type::CanCastImplicitly(bufptr_arg_type, ptr_param_type)) {
-      return ir::Value(compiler.EmitValue(expr));
+      return compiler.EmitValue(expr);
     } else if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
       if (ptr_param_type->pointee() == arg_type) {
         if (arg_qt.quals() >= type::Quals::Ref()) {

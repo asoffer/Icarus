@@ -499,50 +499,45 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Slice> to,
                             type::Typed<ir::Value> const &from) {
-  builder().Store(builder().Load<ir::addr_t>(
-                      current_block()->Append(type::SliceDataInstruction{
-                          .slice  = from->get<ir::RegOr<ir::addr_t>>(),
-                          .result = builder().CurrentGroup()->Reserve(),
-                      }),
-                      type::BufPtr(to.type()->data_type())),
-                  current_block()->Append(type::SliceDataInstruction{
-                      .slice  = *to,
-                      .result = builder().CurrentGroup()->Reserve(),
-                  }));
-  builder().Store(builder().Load<type::Slice::length_t>(
-                      current_block()->Append(type::SliceLengthInstruction{
-                          .slice  = from->get<ir::RegOr<ir::addr_t>>(),
-                          .result = builder().CurrentGroup()->Reserve(),
-                      })),
-                  current_block()->Append(type::SliceLengthInstruction{
-                      .slice  = *to,
-                      .result = builder().CurrentGroup()->Reserve(),
-                  }));
+  ir::RegOr<ir::Slice> s = from->get<ir::RegOr<ir::Slice>>();
+  ir::RegOr<ir::addr_t> data;
+  ir::RegOr<type::Slice::length_t> length;
+  if (s.is_reg()) {
+    data = builder().Load<ir::addr_t>(
+        current_block()->Append(type::SliceDataInstruction{
+            .slice  = from->get<ir::RegOr<ir::addr_t>>(),
+            .result = builder().CurrentGroup()->Reserve(),
+        }),
+        type::BufPtr(to.type()->data_type()));
+    length = builder().Load<type::Slice::length_t>(
+        current_block()->Append(type::SliceLengthInstruction{
+            .slice  = from->get<ir::RegOr<ir::addr_t>>(),
+            .result = builder().CurrentGroup()->Reserve(),
+        }));
+  } else {
+    data = builder().CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
+        .operand = s.value().data(),
+        .result  = builder().CurrentGroup()->Reserve()});
+    length = builder().CurrentBlock()->Append(
+        ir::RegisterInstruction<type::Slice::length_t>{
+            .operand = s.value().length(),
+            .result  = builder().CurrentGroup()->Reserve()});
+  }
+
+  builder().Store(data, current_block()->Append(type::SliceDataInstruction{
+                            .slice  = *to,
+                            .result = builder().CurrentGroup()->Reserve(),
+                        }));
+  builder().Store(length, current_block()->Append(type::SliceLengthInstruction{
+                              .slice  = *to,
+                              .result = builder().CurrentGroup()->Reserve(),
+                          }));
   current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Slice> to,
                             type::Typed<ir::Value> const &from) {
-  builder().Store(builder().Load<ir::addr_t>(
-                      current_block()->Append(type::SliceDataInstruction{
-                          .slice  = from->get<ir::RegOr<ir::addr_t>>(),
-                          .result = builder().CurrentGroup()->Reserve(),
-                      }),
-                      type::BufPtr(to.type()->data_type())),
-                  current_block()->Append(type::SliceDataInstruction{
-                      .slice  = *to,
-                      .result = builder().CurrentGroup()->Reserve(),
-                  }));
-  builder().Store(builder().Load<type::Slice::length_t>(
-                      current_block()->Append(type::SliceLengthInstruction{
-                          .slice  = from->get<ir::RegOr<ir::addr_t>>(),
-                          .result = builder().CurrentGroup()->Reserve(),
-                      })),
-                  current_block()->Append(type::SliceLengthInstruction{
-                      .slice  = *to,
-                      .result = builder().CurrentGroup()->Reserve(),
-                  }));
-  current_block()->load_store_cache().clear();
+  EmitMoveInit(to, from);
 }
 
 void Compiler::EmitCopyAssign(

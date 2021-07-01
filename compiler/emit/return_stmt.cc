@@ -13,7 +13,7 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
-                            base::untyped_buffer &) {
+                            base::untyped_buffer & out) {
   auto const &fn_type = context()
                             .qual_types(&node->function_literal())[0]
                             .type()
@@ -41,13 +41,16 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
           ir::RegOr<ir::addr_t>(ir::Reg::Out(i)), ret_type);
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
+      out.clear();
+      EmitToBuffer(expr, out);
       ApplyTypes<ir::Integer, bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
                  uint8_t, uint16_t, uint32_t, uint64_t, float, double,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
                  ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
           ret_type, [&]<typename T>() {
-            auto value = builder().CastTo<T>(type::Typed(
-                EmitValue(expr), context().qual_types(expr)[0].type()));
+            auto value = builder().CastTo<T>(
+                type::Typed(ToValue(out, context().qual_types(expr)[0].type()),
+                            context().qual_types(expr)[0].type()));
             builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
                 .index = static_cast<uint16_t>(i),
                 .value = value,

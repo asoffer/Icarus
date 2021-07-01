@@ -63,7 +63,6 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Import const *node) {
     return context().set_qual_type(node, qt);
   }
 
-
   auto source_locator =
       EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
           node->operand(), type::Slc(type::Char)));

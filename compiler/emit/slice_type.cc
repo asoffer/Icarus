@@ -17,28 +17,28 @@ void Compiler::EmitCopyAssign(
     ast::SliceType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
+  builder().Store(EmitAs<type::Type>(node), *to[0]);
 }
 
 void Compiler::EmitMoveAssign(
     ast::SliceType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
+  builder().Store(EmitAs<type::Type>(node), *to[0]);
 }
 
 void Compiler::EmitCopyInit(
     ast::SliceType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
+  builder().Store(EmitAs<type::Type>(node), *to[0]);
 }
 
 void Compiler::EmitMoveInit(
     ast::SliceType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
+  builder().Store(EmitAs<type::Type>(node), *to[0]);
 }
 
 bool Compiler::PatternMatch(

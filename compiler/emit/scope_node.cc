@@ -471,17 +471,20 @@ void Compiler::EmitCopyAssign(
   // TODO: Implement this properly.
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(ToValue(buffer, t), t));
 }
 
 void Compiler::EmitMoveAssign(
     ast::ScopeNode const *node,
-   absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   // TODO: Implement this properly.
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
+  EmitMoveAssign(to[0], type::Typed<ir::Value>(ToValue(buffer, t), t));
 }
-
 
 }  // namespace compiler

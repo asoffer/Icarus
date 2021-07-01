@@ -24,13 +24,12 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
   for (auto const &decl : node->decls()) {
     // TODO: Support multiple declarations;
     if (decl.ids()[0].name() == "enter") {
-      enters.push_back(EmitValue(&decl).get<ir::RegOr<ir::Jump>>());
+      enters.push_back(EmitAs<ir::Jump>(&decl));
       // TODO: Support multiple declarations;
     } else if (decl.ids()[0].name() == "exit") {
-      exits.push_back(EmitValue(&decl).get<ir::RegOr<ir::Fn>>());
+      exits.push_back(EmitAs<ir::Fn>(&decl));
     } else {
-      blocks.emplace(decl.ids()[0].name(),
-                     EmitValue(&decl).get<ir::RegOr<ir::Block>>().value());
+      blocks.emplace(decl.ids()[0].name(), EmitAs<ir::Block>(&decl).value());
     }
   }
 

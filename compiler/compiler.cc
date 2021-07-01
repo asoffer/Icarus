@@ -50,17 +50,23 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
     // Factor these out together.
     c.builder().CurrentBlock() = fn.entry();
 
-    auto val = c.EmitValue(expr);
+    base::untyped_buffer buffer;
+    c.EmitToBuffer(expr, buffer);
 
-    if (type != type::Void) { ASSERT(val.empty() == false); }
-    // TODO is_big()?
+    // TODO: Treating slices specially is a big hack. We need to fix treating
+    // these things special just because they're big.
+    if (type.is_big() and not type.is<type::Slice>()) {
+      // TODO: guaranteed move-elision
 
-    if (type.is_big()) {
-      // TODO must `r` be holding a register?
-      // TODO guaranteed move-elision
+      c.EmitMoveInit(
+          type::Typed<ir::Reg>(ir::Reg::Out(0), type),
+          type::Typed<ir::Value>(
+              ir::Value(buffer.get<ir::RegOr<ir::addr_t>>(0)), type));
 
+    } else if (auto const *s = type.if_as<type::Slice>()) {
       c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), type),
-                     type::Typed<ir::Value>(val, type));
+                     type::Typed<ir::Value>(
+                         ir::Value(buffer.get<ir::RegOr<ir::Slice>>(0)), type));
 
     } else if (auto const *gs = type.if_as<type::GenericStruct>()) {
       c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<type::Type>{
@@ -71,13 +77,13 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
       ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
                  uint8_t, uint16_t, uint32_t, uint64_t, float, double,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::Jump, ir::Block, ir::GenericFn,
-                 interface::Interface>(type, [&]<typename T>() {
-        c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
-            .index = 0,
-            .value = val.get<ir::RegOr<T>>(),
-        });
-      });
+                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
+          type, [&]<typename T>() {
+            c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
+                .index = 0,
+                .value = buffer.get<ir::RegOr<T>>(0),
+            });
+          });
     }
     c.builder().ReturnJump();
   }

@@ -123,8 +123,10 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
 
 type::Typed<ir::Value> EmitTypedValue(Compiler &c,
                                       ast::Expression const *expr) {
-  return type::Typed<ir::Value>(c.EmitValue(expr),
-                                c.context().qual_types(expr)[0].type());
+  base::untyped_buffer buffer;
+  c.EmitToBuffer(expr, buffer);
+  type::Type t = c.context().qual_types(expr)[0].type();
+  return type::Typed<ir::Value>(ToValue(buffer, t), t);
 }
 
 }  // namespace

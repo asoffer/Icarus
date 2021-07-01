@@ -12,11 +12,11 @@ void Compiler::EmitToBuffer(ast::ArrayType const *node,
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
-    ir::Value len = EmitValue(node->length(i));
+    auto len      = EmitAs<type::Array::length_t>(node->length(i));
     t             = current_block()->Append(type::ArrayInstruction{
         .length =
             builder().CastTo<type::Array::length_t>(type::Typed<ir::Value>(
-                len, context().qual_types(node->length(i))[0].type())),
+                ir::Value(len), context().qual_types(node->length(i))[0].type())),
         .data_type = t,
         .result    = builder().CurrentGroup()->Reserve()});
   }
@@ -27,34 +27,34 @@ void Compiler::EmitCopyAssign(
     ast::ArrayType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
+  builder().Store(EmitAs<type::Type>(node), *to[0]);
 }
 
 void Compiler::EmitMoveAssign(
     ast::ArrayType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
+  builder().Store(EmitAs<type::Type>(node), *to[0]);
 }
 
 void Compiler::EmitCopyInit(
     ast::ArrayType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
+  builder().Store(EmitAs<type::Type>(node), *to[0]);
 }
 
 void Compiler::EmitMoveInit(
     ast::ArrayType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
+  builder().Store(EmitAs<type::Type>(node), *to[0]);
 }
 
 bool Compiler::PatternMatch(
     ast::ArrayType const *node, PatternMatchingContext &pmc,
     absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
-  type::Type t         = pmc.value.get<type::Type>(0);
+  type::Type t = pmc.value.get<type::Type>(0);
 
   type::Array const *a = t.if_as<type::Array>();
   if (not a) { return false; }

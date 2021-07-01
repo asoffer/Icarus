@@ -525,7 +525,7 @@ restart:
       }
 
       return Lexeme(
-          std::make_unique<ast::Terminal>(range, ir::String(str).addr()));
+          std::make_unique<ast::Terminal>(range, ir::String(str).slice()));
 
     } break;
     case '#': {

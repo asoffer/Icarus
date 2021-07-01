@@ -15,12 +15,16 @@ namespace {
 
 void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
                              base::untyped_buffer &out) {
+  // TODO: Support multiple declarations
+  auto qts = c.context().qual_types(&node->ids()[0]);
+  auto t   = qts[0].type();
+
   LOG("EmitConstantDeclaration", "%s", node->DebugString());
   if (node->flags() & ast::Declaration::f_IsFnParam) {
     // TODO: Support multiple declarations.
     auto val = c.context().LoadConstantParam(&node->ids()[0]);
     LOG("Declaration", "%s", val);
-    FromValue(val, out);
+    FromValue(val, t, out);
     return;
   } else {
     // TODO: Support multiple declarations.
@@ -36,13 +40,9 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
           });
         }
       }
-      FromValue(constant_value->value(), out);
+      out = constant_value->buffer();
       return;
     }
-
-    // TODO: Support multiple declarations
-    auto qts = c.context().qual_types(&node->ids()[0]);
-    auto t   = qts[0].type();
 
     if (auto const *init_val = node->initial_value()) {
       LOG("Declaration", "Computing slot with %s",
@@ -59,7 +59,14 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
         }
 
         LOG("EmitConstantDeclaration", "Setting slot = %s", value_buffer);
-        out = std::get<base::untyped_buffer>(std::move(value_buffer));
+
+        if (t.is<type::Slice>()) {
+          out.append(ir::RegOr<ir::Slice>(
+              std::get<base::untyped_buffer>(value_buffer).get<ir::Slice>(0)));
+        } else {
+          out.append(ir::RegOr<ir::addr_t>(
+              std::get<base::untyped_buffer>(value_buffer).get<ir::addr_t>(0)));
+        }
         c.context().SetConstant(&node->ids()[0], out);
         return;
       } else {
@@ -88,17 +95,17 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
           }
         }
 
-        FromValue(*maybe_val, out);
+        FromValue(*maybe_val, t, out);
         return;
       }
     } else if (auto const * bd =node->if_as<ast::BindingDeclaration>()) {
       // TODO: Support multiple declarations
       if (auto const *constant = c.context().Constant(&node->ids()[0])) {
-        FromValue(constant->value(), out);
+        FromValue(constant->value(), t, out);
       } else {
         c.EmitValue(&bd->pattern());
         FromValue(
-            ASSERT_NOT_NULL(c.context().Constant(&node->ids()[0]))->value(),
+            ASSERT_NOT_NULL(c.context().Constant(&node->ids()[0]))->value(), t,
             out);
       }
       return;
