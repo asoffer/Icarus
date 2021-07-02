@@ -12,13 +12,12 @@ void Compiler::EmitToBuffer(ast::ArrayType const *node,
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
-    auto len      = EmitAs<type::Array::length_t>(node->length(i));
-    t             = current_block()->Append(type::ArrayInstruction{
-        .length =
-            builder().CastTo<type::Array::length_t>(type::Typed<ir::Value>(
-                ir::Value(len), context().qual_types(node->length(i))[0].type())),
-        .data_type = t,
-        .result    = builder().CurrentGroup()->Reserve()});
+    auto len = EmitWithCastTo<type::Array::length_t>(
+        context().qual_types(node->length(i))[0].type(), node->length(i));
+    t = current_block()->Append(
+        type::ArrayInstruction{.length    = len,
+                               .data_type = t,
+                               .result = builder().CurrentGroup()->Reserve()});
   }
   out.append(t);
 }

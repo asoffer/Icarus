@@ -188,10 +188,32 @@ struct Compiler
   }
 
   template <typename T>
+  ir::RegOr<T> EmitWithCastTo(type::Type t, ast::Node const *node,
+                              base::untyped_buffer &buffer) {
+    EmitToBuffer(node, buffer);
+    auto result = builder().CastTo<T>(t, buffer);
+    buffer.clear();
+    return result;
+  }
+
+  template <typename T>
+  ir::RegOr<T> EmitWithCastTo(type::Type t, ast::Node const *node) {
+    base::untyped_buffer buffer;
+    return EmitWithCastTo<T>(t, node, buffer);
+  }
+
+  template <typename T>
+  ir::RegOr<T> EmitAs(ast::Node const *node, base::untyped_buffer &buffer) {
+    EmitToBuffer(node, buffer);
+    auto result = buffer.get<ir::RegOr<T>>(0);
+    buffer.clear();
+    return result;
+  }
+
+  template <typename T>
   ir::RegOr<T> EmitAs(ast::Node const *node) {
     base::untyped_buffer buffer;
-    EmitToBuffer(node, buffer);
-    return buffer.get<ir::RegOr<T>>(0);
+    return EmitAs<T>(node, buffer);
   }
 
   ir::Value EmitValue(ast::Node const *node) {
@@ -478,18 +500,18 @@ struct Compiler
   }
 
 #define DEFINE_EMIT_ASSIGN(T)                                                  \
-  void Visit(EmitCopyAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,            \
+  void Visit(EmitCopyAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,          \
              type::Typed<ir::Value> const &tv) override {                      \
-    EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), tv);            \
+    EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), tv);          \
   }                                                                            \
-  void EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T> const &,             \
+  void EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T> const &,           \
                       type::Typed<ir::Value> const &);                         \
                                                                                \
-  void Visit(EmitMoveAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,            \
+  void Visit(EmitMoveAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,          \
              type::Typed<ir::Value> const &tv) override {                      \
-    EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), tv);            \
+    EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), tv);          \
   }                                                                            \
-  void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T> const &r,            \
+  void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T> const &r,          \
                       type::Typed<ir::Value> const &);
 
   DEFINE_EMIT_ASSIGN(type::Array);

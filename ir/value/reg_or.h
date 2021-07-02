@@ -18,23 +18,25 @@ struct RegOr {
   static_assert(not std::is_same_v<Reg, type>);
   static_assert(std::is_trivially_copyable_v<type>);
 
+  template <bool B                   = std::is_default_constructible_v<type>,
+            std::enable_if_t<B, int> = 0>
   constexpr RegOr() : val_{}, is_reg_(false) {}
   constexpr RegOr(Reg reg) : reg_(reg), is_reg_(true) {}
   constexpr RegOr(type val) : val_(val), is_reg_(false) {}
 
   constexpr bool is_reg() const { return is_reg_; }
 
-  ICARUS_CONSTEXPR Reg &reg() {
+  Reg &reg() {
     ASSERT(is_reg() == true);
     return reg_;
   }
 
-  ICARUS_CONSTEXPR Reg reg() const {
+  Reg reg() const {
     ASSERT(is_reg() == true);
     return reg_;
   }
 
-  ICARUS_CONSTEXPR type value() const {
+  type value() const {
     ASSERT(is_reg() == false);
     return val_;
   }

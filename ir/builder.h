@@ -142,13 +142,6 @@ struct Builder {
     }
   }
 
-  RegOr<bool> Eq(type::Type common_type, ir::Value const& lhs_val,
-                 ir::Value const& rhs_val) {
-    return common_type.as<type::Primitive>().Apply([&]<typename T>() {
-      return Eq(lhs_val.get<RegOr<T>>(), rhs_val.get<RegOr<T>>());
-    });
-  }
-
   template <typename Lhs, typename Rhs>
   RegOr<bool> Ne(Lhs const& lhs, Rhs const& rhs) {
     using type = reduced_type_t<Lhs>;
@@ -180,50 +173,30 @@ struct Builder {
   }
 
   template <typename ToType>
-  RegOr<ToType> CastTo(type::Typed<ir::Value> v) {
-    if (v.type() == GetType<ToType>()) { return v->get<RegOr<ToType>>(); }
-    if (v.type() == type::Integer) {
-      return Cast<ir::Integer, ToType>(v->get<RegOr<ir::Integer>>());
-    } else if (v.type() == type::I8) {
-      return Cast<int8_t, ToType>(v->get<RegOr<int8_t>>());
-    } else if (v.type() == type::U8) {
-      return Cast<uint8_t, ToType>(v->get<RegOr<uint8_t>>());
-    } else if (v.type() == type::I16) {
-      return Cast<int16_t, ToType>(v->get<RegOr<int16_t>>());
-    } else if (v.type() == type::U16) {
-      return Cast<uint16_t, ToType>(v->get<RegOr<uint16_t>>());
-    } else if (v.type() == type::I32) {
-      return Cast<int32_t, ToType>(v->get<RegOr<int32_t>>());
-    } else if (v.type() == type::U32) {
-      return Cast<uint32_t, ToType>(v->get<RegOr<uint32_t>>());
-    } else if (v.type() == type::I64) {
-      return Cast<int64_t, ToType>(v->get<RegOr<int64_t>>());
-    } else if (v.type() == type::U64) {
-      return Cast<uint64_t, ToType>(v->get<RegOr<uint64_t>>());
-    } else if (v.type() == type::F32) {
-      return Cast<float, ToType>(v->get<RegOr<float>>());
-    } else if (v.type() == type::F64) {
-      return Cast<double, ToType>(v->get<RegOr<double>>());
-    } else if (v.type() == type::Char) {
-      return Cast<ir::Char, ToType>(v->get<RegOr<ir::Char>>());
-    } else if (v.type().is<type::Enum>()) {
+  RegOr<ToType> CastTo(type::Type t, base::untyped_buffer_view buffer) {
+    if (t == GetType<ToType>()) { return buffer.get<RegOr<ToType>>(0); }
+    if (auto const* p = t.if_as<type::Primitive>()) {
+      return p->Apply([&]<typename T>()->RegOr<ToType> {
+        return Cast<T, ToType>(buffer.get<RegOr<T>>(0));
+      });
+    } else if (t.is<type::Enum>()) {
       if constexpr (base::meta<ToType> ==
                     base::meta<type::Enum::underlying_type>) {
-        return v->get<ir::RegOr<type::Enum::underlying_type>>();
+        return buffer.get<ir::RegOr<type::Enum::underlying_type>>(0);
       } else {
         return Cast<type::Enum::underlying_type, ToType>(
-            v->get<type::Enum::underlying_type>());
+            buffer.get<type::Enum::underlying_type>(0));
       }
-    } else if (v.type().is<type::Flags>()) {
+    } else if (t.is<type::Flags>()) {
       if constexpr (base::meta<ToType> ==
                     base::meta<type::Flags::underlying_type>) {
-        return v->get<ir::RegOr<type::Flags::underlying_type>>();
+        return buffer.get<ir::RegOr<type::Flags::underlying_type>>(0);
       } else {
         return Cast<type::Flags::underlying_type, ToType>(
-            v->get<type::Flags::underlying_type>());
+            buffer.get<type::Flags::underlying_type>(0));
       }
     } else {
-      UNREACHABLE(base::meta<ToType>, ", ", v.type());
+      UNREACHABLE(base::meta<ToType>, ", ", t);
     }
   }
 

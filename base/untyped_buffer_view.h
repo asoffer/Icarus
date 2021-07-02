@@ -43,9 +43,9 @@ struct untyped_buffer_view {
   T get(size_t offset) const {
     static_assert(std::is_trivially_copyable_v<T>);
     ASSERT(offset + sizeof(T) <= size_);
-    T result{};
-    std::memcpy(&result, data_ + offset, sizeof(T));
-    return result;
+    alignas(T) std::byte buffer[sizeof(T)];
+    std::memcpy(&buffer, data_ + offset, sizeof(T));
+    return *reinterpret_cast<T *>(buffer);
   }
 
   std::byte const *raw(size_t offset) const {

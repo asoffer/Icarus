@@ -24,12 +24,12 @@ void Apply(type::Typed<ast::Expression const *> lhs,
            type::Typed<ast::Expression const *> rhs, Compiler &c,
            base::untyped_buffer &out) {
   ApplyTypes<Ts...>(type::Meet(lhs.type(), rhs.type()), [&]<typename T>() {
-    auto l = c.EmitAs<T>(*lhs);
-    auto r = c.EmitAs<T>(*rhs);
+    base::untyped_buffer buffer;
+
+    ir::RegOr<T> l = c.EmitWithCastTo<T>(lhs.type(), *lhs);
+    ir::RegOr<T> r = c.EmitWithCastTo<T>(rhs.type(), *rhs);
     out.append(ir::RegOr<T>(c.current_block()->Append(Op<T>{
-        .lhs    = c.builder().CastTo<T>(type::Typed(ir::Value(l), lhs.type())),
-        .rhs    = c.builder().CastTo<T>(type::Typed(ir::Value(r), rhs.type())),
-        .result = c.builder().CurrentGroup()->Reserve()})));
+        .lhs = l, .rhs = r, .result = c.builder().CurrentGroup()->Reserve()})));
   });
 }
 
@@ -153,20 +153,17 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
-        auto rhs_ir = EmitValue(node->rhs());
-        out.append(ir::RegOr<ir::addr_t>(builder().PtrIncr(
-            EmitAs<ir::addr_t>(node->lhs()),
-            builder().CastTo<int64_t>(type::Typed<ir::Value>(rhs_ir, rhs_type)),
-            lhs_buf_ptr_type)));
+        auto lhs_ir = EmitAs<ir::addr_t>(node->lhs(), out);
+        auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, node->rhs(), out);
+        out.append(ir::RegOr<ir::addr_t>(
+            builder().PtrIncr(lhs_ir, rhs_ir, lhs_buf_ptr_type)));
       } else if (auto const *rhs_buf_ptr_type =
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
-        auto lhs_ir = EmitValue(node->lhs());
-        auto rhs_ir = EmitAs<ir::addr_t>(node->rhs());
-        out.append(ir::RegOr<ir::addr_t>(builder().PtrIncr(
-            rhs_ir,
-            builder().CastTo<int64_t>(type::Typed<ir::Value>(lhs_ir, lhs_type)),
-            rhs_buf_ptr_type)));
+        auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, node->lhs(), out);
+        auto rhs_ir = EmitAs<ir::addr_t>(node->rhs(), out);
+        out.append(ir::RegOr<ir::addr_t>(
+            builder().PtrIncr(rhs_ir, lhs_ir, rhs_buf_ptr_type)));
       } else {
         Apply<ir::AddInstruction, ir::Integer, int8_t, int16_t, int32_t,
               int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
@@ -180,23 +177,17 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
          lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
-        auto lhs_ir = EmitAs<ir::addr_t>(node->lhs());
-        auto rhs_ir = EmitValue(node->rhs());
-        out.append(ir::RegOr<ir::addr_t>(
-            builder().PtrIncr(lhs_ir,
-                              builder().Neg(builder().CastTo<int64_t>(
-                                  type::Typed<ir::Value>(rhs_ir, rhs_type))),
-                              lhs_buf_ptr_type)));
+        auto lhs_ir = EmitAs<ir::addr_t>(node->lhs(), out);
+        auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, node->rhs(), out);
+        out.append(ir::RegOr<ir::addr_t>(builder().PtrIncr(
+            lhs_ir, builder().Neg(rhs_ir), lhs_buf_ptr_type)));
       } else if (auto const *rhs_buf_ptr_type =
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
-        auto lhs_ir = EmitValue(node->lhs());
-        auto rhs_ir = EmitAs<ir::addr_t>(node->rhs());
-        out.append(ir::RegOr<ir::addr_t>(
-            builder().PtrIncr(rhs_ir,
-                              builder().Neg(builder().CastTo<int64_t>(
-                                  type::Typed<ir::Value>(lhs_ir, lhs_type))),
-                              rhs_buf_ptr_type)));
+        auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, node->lhs(), out);
+        auto rhs_ir = EmitAs<ir::addr_t>(node->rhs(), out);
+        out.append(ir::RegOr<ir::addr_t>(builder().PtrIncr(
+            rhs_ir, builder().Neg(lhs_ir), rhs_buf_ptr_type)));
       } else if (auto const *buf_ptr = lhs_type.if_as<type::BufferPointer>();
                  lhs_type == rhs_type and buf_ptr) {
         auto lhs_ir = EmitAs<ir::addr_t>(node->lhs());
@@ -324,16 +315,14 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
     } break;
     case frontend::Operator::AddEq: {
       auto lhs_lval       = EmitRef(node->lhs());
-      auto rhs_ir         = EmitValue(node->rhs());
+      EmitToBuffer(node->rhs(), out);
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         builder().Store<ir::RegOr<ir::addr_t>>(
             builder().PtrIncr(builder().Load<ir::addr_t>(lhs_lval),
-                              builder().CastTo<int64_t>(
-                                  type::Typed<ir::Value>(rhs_ir, rhs_type)),
-                              lhs_buf_ptr_type),
+                              out.get<ir::RegOr<int64_t>>(0), lhs_buf_ptr_type),
             lhs_lval);
       } else {
         ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -342,7 +331,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::AddInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
-                      .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
+                      .rhs    = builder().CastTo<T>(rhs_type, out),
                       .result = builder().CurrentGroup()->Reserve()}),
                   lhs_lval);
             });
@@ -351,15 +340,14 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
     } break;
     case frontend::Operator::SubEq: {
       auto lhs_lval       = EmitRef(node->lhs());
-      auto rhs_ir         = EmitValue(node->rhs());
+      EmitToBuffer(node->rhs(), out);
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         builder().Store<ir::RegOr<ir::addr_t>>(
             builder().PtrIncr(builder().Load<ir::addr_t>(lhs_lval),
-                              builder().Neg(builder().CastTo<int64_t>(
-                                  type::Typed<ir::Value>(rhs_ir, rhs_type))),
+                              builder().Neg(out.get<ir::RegOr<int64_t>>(0)),
                               lhs_buf_ptr_type),
             lhs_lval);
       } else {
@@ -369,7 +357,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::SubInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
-                      .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
+                      .rhs    = builder().CastTo<T>(rhs_type, out),
                       .result = builder().CurrentGroup()->Reserve()}),
                   lhs_lval);
             });
@@ -378,24 +366,23 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
     } break;
     case frontend::Operator::MulEq: {
       auto lhs_lval = EmitRef(node->lhs());
-      auto rhs_ir   = EmitValue(node->rhs());
+      EmitToBuffer(node->rhs(), out);
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
-                 uint64_t, float, double>(
-          lhs_type, [&]<typename T>() {
-            builder().Store<ir::RegOr<T>>(
-                current_block()->Append(ir::MulInstruction<T>{
-                    .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
-                    .result = builder().CurrentGroup()->Reserve()}),
-                lhs_lval);
-          });
+                 uint64_t, float, double>(lhs_type, [&]<typename T>() {
+        builder().Store<ir::RegOr<T>>(
+            current_block()->Append(ir::MulInstruction<T>{
+                .lhs    = builder().Load<T>(lhs_lval),
+                .rhs    = builder().CastTo<T>(rhs_type, out),
+                .result = builder().CurrentGroup()->Reserve()}),
+            lhs_lval);
+      });
       return;
     } break;
     case frontend::Operator::DivEq: {
       auto lhs_lval = EmitRef(node->lhs());
-      auto rhs_ir   = EmitValue(node->rhs());
+      EmitToBuffer(node->rhs(), out);
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -404,7 +391,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
             builder().Store<ir::RegOr<T>>(
                 current_block()->Append(ir::DivInstruction<T>{
                     .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
+                    .rhs    = builder().CastTo<T>(rhs_type, out),
                     .result = builder().CurrentGroup()->Reserve()}),
                 lhs_lval);
           });
@@ -412,7 +399,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
     } break;
     case frontend::Operator::ModEq: {
       auto lhs_lval = EmitRef(node->lhs());
-      auto rhs_ir   = EmitValue(node->rhs());
+      EmitToBuffer(node->rhs(), out);
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -421,7 +408,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
             builder().Store<ir::RegOr<T>>(
                 current_block()->Append(ir::ModInstruction<T>{
                     .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = builder().CastTo<T>(type::Typed(rhs_ir, rhs_type)),
+                    .rhs    = builder().CastTo<T>(rhs_type, out),
                     .result = builder().CurrentGroup()->Reserve()}),
                 lhs_lval);
           });

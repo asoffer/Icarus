@@ -16,22 +16,24 @@ void Compiler::EmitToBuffer(ast::Index const *node, base::untyped_buffer &out) {
         }),
         type::BufPtr(s->data_type()));
 
-    auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
-        EmitValue(node->rhs()), context().qual_types(node->rhs())[0].type()));
+    auto index = EmitWithCastTo<int64_t>(
+        context().qual_types(node->rhs())[0].type(), node->rhs(), out);
+    out.clear();
     out.append(ir::RegOr<ir::addr_t>(builder().PtrFix(
         builder().Index(type::Ptr(s), data, index), s->data_type())));
   } else if (auto const *array_type = qt.type().if_as<type::Array>()) {
-    auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
-        EmitValue(node->rhs()), context().qual_types(node->rhs())[0].type()));
+    auto index = EmitWithCastTo<int64_t>(
+        context().qual_types(node->rhs())[0].type(), node->rhs(), out);
+    out.clear();
     out.append(ir::RegOr<ir::addr_t>(builder().PtrFix(
         builder().Index(type::Ptr(context().qual_types(node->lhs())[0].type()),
                         EmitAs<ir::addr_t>(node->lhs()), index),
         array_type->data_type())));
   } else if (auto const *buf_ptr_type =
                  qt.type().if_as<type::BufferPointer>()) {
-    auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
-        EmitValue(node->rhs()), context().qual_types(node->rhs())[0].type()));
-
+    auto index = EmitWithCastTo<int64_t>(
+        context().qual_types(node->rhs())[0].type(), node->rhs(), out);
+    out.clear();
     out.append(ir::RegOr<ir::addr_t>(builder().PtrFix(
         builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()), index, buf_ptr_type),
         buf_ptr_type->pointee())));
@@ -45,16 +47,12 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
   type::Type rhs_type = context().qual_types(node->rhs())[0].type();
 
   if (lhs_type.is<type::Array>()) {
-    auto index = builder().CastTo<int64_t>(
-        type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
-
-    auto lval = EmitRef(node->lhs());
+    auto index = EmitWithCastTo<int64_t>(rhs_type, node->rhs());
+    auto lval  = EmitRef(node->lhs());
     return builder().Index(
         type::Ptr(context().qual_types(node->lhs())[0].type()), lval, index);
   } else if (auto *buf_ptr_type = lhs_type.if_as<type::BufferPointer>()) {
-    auto index = builder().CastTo<int64_t>(
-        type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
-
+    auto index = EmitWithCastTo<int64_t>(rhs_type, node->rhs());
     return builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()), index,
                              type::Ptr(buf_ptr_type->pointee()));
   } else if (auto const *s = lhs_type.if_as<type::Slice>()) {
@@ -65,9 +63,7 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
         }),
         type::BufPtr(s->data_type()));
 
-    auto index = builder().CastTo<int64_t>(
-        type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
-
+    auto index = EmitWithCastTo<int64_t>(rhs_type, node->rhs());
     return builder().PtrIncr(data, index, type::BufPtr(s->data_type()));
   }
   UNREACHABLE(*this, lhs_type.to_string());

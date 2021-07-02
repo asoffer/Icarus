@@ -505,84 +505,70 @@ void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
   }
 }
 
-ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
-                          ast::Expression const *expr,
-                          type::QualType param_qt) {
-  type::QualType arg_qt = *compiler.context().qual_types(expr)[0];
+void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
+                        type::QualType to, base::untyped_buffer &buffer) {
+  ASSERT(type::CanCastImplicitly(from, to.type()) == true);
+  if (from == to.type()) { return; }
+  if (from.is<type::Slice>() and to.type().is<type::Slice>()) { return; }
+
+  auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
+  auto const *ptr_to_type      = to.type().if_as<type::Pointer>();
+  if (bufptr_from_type and ptr_to_type and
+      type::CanCastImplicitly(bufptr_from_type, ptr_to_type)) {
+    return;
+  }
+
+  if (from == type::Integer and type::IsIntegral(to.type())) {
+    to.type().as<type::Primitive>().Apply([&]<typename T>() {
+      if constexpr (std::is_integral_v<T>) {
+        ir::RegOr<T> result =
+            builder.Cast<ir::Integer, T>(buffer.get<ir::RegOr<ir::Integer>>(0));
+        buffer.clear();
+        buffer.append(result);
+      } else {
+        UNREACHABLE(typeid(T).name());
+      }
+    });
+  }
+}
+
+base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
+                                     ast::Expression const *expr,
+                                     type::QualType param_qt) {
+  type::QualType arg_qt = *c.context().qual_types(expr)[0];
   type::Type arg_type   = arg_qt.type();
   type::Type param_type = param_qt.type();
 
   if (constant.empty()) {
-    if (arg_type == param_type) {
-      return compiler.EmitValue(expr);
-    } else if (arg_type.is<type::Slice>() and param_type.is<type::Slice>()) {
-      return compiler.EmitValue(expr);
-    } else if (arg_type == type::Integer and type::IsIntegral(param_type)) {
-      return param_type.as<type::Primitive>().Apply(
-          [&]<typename T>()->ir::Value {
-            if constexpr (std::is_integral_v<T>) {
-              return ir::Value(compiler.builder().CastTo<T>(
-                  type::Typed(constant, type::Integer)));
-            } else {
-              NOT_YET();
-            }
-          });
-    } else if (auto [bufptr_arg_type, ptr_param_type] =
-                   std::make_pair(arg_type.if_as<type::BufferPointer>(),
-                                  param_type.if_as<type::Pointer>());
-               bufptr_arg_type and ptr_param_type and
-               type::CanCastImplicitly(bufptr_arg_type, ptr_param_type)) {
-      return compiler.EmitValue(expr);
-    } else if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
-      if (ptr_param_type->pointee() == arg_type) {
+    if (auto const *ptr_to_type = arg_type.if_as<type::Pointer>()) {
+      if (ptr_to_type->pointee() == arg_type) {
         if (arg_qt.quals() >= type::Quals::Ref()) {
-          return ir::Value(compiler.EmitRef(expr));
+          base::untyped_buffer buffer;
+          buffer.append(ir::RegOr<ir::addr_t>(c.EmitRef(expr)));
+          return buffer;
         } else {
-          auto reg = compiler.builder().TmpAlloca(arg_type);
-          compiler.EmitMoveInit(
-              expr, {type::Typed<ir::RegOr<ir::addr_t>>(reg, arg_type)});
-          return ir::Value(reg);
+          auto reg = c.builder().TmpAlloca(arg_type);
+          c.EmitMoveInit(expr,
+                         {type::Typed<ir::RegOr<ir::addr_t>>(reg, param_type)});
+          base::untyped_buffer buffer;
+          buffer.append(ir::RegOr<ir::addr_t>(reg));
+          return buffer;
         }
       } else {
-        NOT_YET(arg_qt, " vs ", param_qt);
+        NOT_YET(arg_qt, " vs ", param_type);
       }
-    } else {
-      NOT_YET(arg_qt, " vs ", param_qt);
-    }
-  } else {
-    if (arg_type == param_type) {
-      return constant;
-    } else if (arg_type == type::Integer and type::IsIntegral(param_type)) {
-      return param_type.as<type::Primitive>().Apply(
-          [&]<typename T>()->ir::Value {
-            if constexpr (std::is_integral_v<T>) {
-              return ir::Value(compiler.builder().CastTo<T>(
-                  type::Typed(constant, type::Integer)));
-            } else {
-              NOT_YET();
-            }
-          });
-    } else if (auto [bufptr_arg_type, ptr_param_type] =
-                   std::make_pair(arg_type.if_as<type::BufferPointer>(),
-                                  param_type.if_as<type::Pointer>());
-               bufptr_arg_type and ptr_param_type and
-               ptr_param_type->pointee() == bufptr_arg_type->pointee()) {
-      return constant;
-    } else if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
-      if (ptr_param_type->pointee() == arg_type) {
-        auto reg = compiler.builder().TmpAlloca(arg_type);
-        compiler.EmitMoveInit(type::Typed<ir::Reg>(reg, arg_type),
-                              type::Typed<ir::Value>(constant, arg_type));
-        return ir::Value(reg);
-      } else if (arg_type == type::NullPtr) {
-        return ir::Value(ir::Null());
-      } else {
-        NOT_YET(arg_qt, " vs ", param_qt);
-      }
-    } else {
-      NOT_YET(arg_qt, " vs ", param_qt);
     }
   }
+
+  base::untyped_buffer buffer;
+  if (constant.empty()) {
+    c.EmitToBuffer(expr, buffer);
+  } else {
+    FromValue(constant, arg_type, buffer);
+  }
+
+  ApplyImplicitCasts(c.builder(), arg_type, param_qt, buffer);
+  return buffer;
 }
 
 // TODO: A good amount of this could probably be reused from the above
