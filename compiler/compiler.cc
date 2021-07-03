@@ -55,19 +55,9 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
 
     // TODO: Treating slices specially is a big hack. We need to fix treating
     // these things special just because they're big.
-    if (type.is_big() and not type.is<type::Slice>()) {
+    if (type.is_big() ) {
       // TODO: guaranteed move-elision
-
-      c.EmitMoveInit(
-          type::Typed<ir::Reg>(ir::Reg::Out(0), type),
-          type::Typed<ir::Value>(
-              ir::Value(buffer.get<ir::RegOr<ir::addr_t>>(0)), type));
-
-    } else if (auto const *s = type.if_as<type::Slice>()) {
-      c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), type),
-                     type::Typed<ir::Value>(
-                         ir::Value(buffer.get<ir::RegOr<ir::Slice>>(0)), type));
-
+      c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), type), buffer);
     } else if (auto const *gs = type.if_as<type::GenericStruct>()) {
       c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<type::Type>{
           .index = 0,

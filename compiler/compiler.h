@@ -105,10 +105,8 @@ struct Compiler
                absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> *)>,
       ast::Visitor<PatternTypeTag, bool(type::Type)>,
       type::Visitor<EmitDestroyTag, void(ir::Reg)>,
-      type::Visitor<EmitMoveInitTag,
-                    void(ir::Reg, type::Typed<ir::Value> const &)>,
-      type::Visitor<EmitCopyInitTag,
-                    void(ir::Reg, type::Typed<ir::Value> const &)>,
+      type::Visitor<EmitMoveInitTag, void(ir::Reg, base::untyped_buffer_view)>,
+      type::Visitor<EmitCopyInitTag, void(ir::Reg, base::untyped_buffer_view)>,
       type::Visitor<EmitDefaultInitTag, void(ir::Reg)>,
       type::Visitor<EmitMoveAssignTag, void(ir::RegOr<ir::addr_t>,
                                             type::Typed<ir::Value> const &)>,
@@ -276,18 +274,14 @@ struct Compiler
                                                             r.get());
   }
 
-  void EmitMoveInit(type::Typed<ir::Reg> to,
-                    type::Typed<ir::Value> const &from) {
-    type::Visitor<EmitMoveInitTag, void(ir::Reg, type::Typed<ir::Value> const
-                                                     &)>::Visit(to.type().get(),
-                                                                *to, from);
+  void EmitMoveInit(type::Typed<ir::Reg> to, base::untyped_buffer_view from) {
+    type::Visitor<EmitMoveInitTag, void(ir::Reg, base::untyped_buffer_view)>::
+        Visit(to.type().get(), *to, from);
   }
 
-  void EmitCopyInit(type::Typed<ir::Reg> to,
-                    type::Typed<ir::Value> const &from) {
-    type::Visitor<EmitCopyInitTag, void(ir::Reg, type::Typed<ir::Value> const
-                                                     &)>::Visit(to.type().get(),
-                                                                *to, from);
+  void EmitCopyInit(type::Typed<ir::Reg> to, base::untyped_buffer_view from) {
+    type::Visitor<EmitCopyInitTag, void(ir::Reg, base::untyped_buffer_view)>::
+        Visit(to.type().get(), *to, from);
   }
 
   void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
@@ -543,18 +537,17 @@ struct Compiler
 
 #define DEFINE_EMIT_INIT(T)                                                    \
   void Visit(EmitMoveInitTag, T const *ty, ir::Reg r,                          \
-             type::Typed<ir::Value> const &from) override {                    \
+             base::untyped_buffer_view from) override {                        \
     EmitMoveInit(type::Typed<ir::Reg, T>(r, ty), from);                        \
   }                                                                            \
   void EmitMoveInit(type::Typed<ir::Reg, T> to,                                \
-                    type::Typed<ir::Value> const &from);                       \
+                    base::untyped_buffer_view from);                           \
                                                                                \
   void Visit(EmitCopyInitTag, T const *ty, ir::Reg r,                          \
-             type::Typed<ir::Value> const &from) override {                    \
+             base::untyped_buffer_view from) override {                        \
     EmitCopyInit(type::Typed<ir::Reg, T>(r, ty), from);                        \
   }                                                                            \
-  void EmitCopyInit(type::Typed<ir::Reg, T> to,                                \
-                    type::Typed<ir::Value> const &from)
+  void EmitCopyInit(type::Typed<ir::Reg, T> to, base::untyped_buffer_view from);
 
   DEFINE_EMIT_INIT(type::Array);
   DEFINE_EMIT_INIT(type::Enum);

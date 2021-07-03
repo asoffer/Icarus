@@ -182,9 +182,9 @@ void Compiler::EmitMoveInit(
       case 0: NOT_YET();
       case 1: {
         type::QualType node_qt = context().qual_types(node)[0];
-        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                     type::Typed<ir::Value>(mod.ExportedValue(decl_ids[0]),
-                                            node_qt.type()));
+        base::untyped_buffer buffer;
+        FromValue(mod.ExportedValue(decl_ids[0]), node_qt.type(), buffer);
+        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
       }
         return;
       default: NOT_YET();
@@ -192,45 +192,41 @@ void Compiler::EmitMoveInit(
   }
 
   type::QualType node_qt = context().qual_types(node)[0];
+  type::Type to_type;
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
+    ir::RegOr r(*enum_type->EmitLiteral(node->member_name()));
     EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), enum_type),
-                 type::Typed<ir::Value>(
-                     ir::Value(*enum_type->EmitLiteral(node->member_name())),
-                     enum_type));
+                 base::untyped_buffer_view(&r));
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
+    ir::RegOr r(*flags_type->EmitLiteral(node->member_name()));
     EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), flags_type),
-                 type::Typed<ir::Value>(
-                     ir::Value(*flags_type->EmitLiteral(node->member_name())),
-                     flags_type));
+                 base::untyped_buffer_view(&r));
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
+      auto length = builder().Load<type::Slice::length_t>(
+          current_block()->Append(type::SliceLengthInstruction{
+              .slice  = EmitAs<ir::addr_t>(node->operand()),
+              .result = builder().CurrentGroup()->Reserve(),
+          }));
       EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                   type::Typed<ir::Value>(
-                       ir::Value(builder().Load<type::Slice::length_t>(
-                           current_block()->Append(type::SliceLengthInstruction{
-                               .slice  = EmitAs<ir::addr_t>(node->operand()),
-                               .result = builder().CurrentGroup()->Reserve(),
-                           }))),
-                       type::U64));
+                   base::untyped_buffer_view(&length));
     } else if (node->member_name() == "data") {
+      auto addr = builder().Load<ir::addr_t>(
+          current_block()->Append(type::SliceDataInstruction{
+              .slice  = EmitAs<ir::addr_t>(node->operand()),
+              .result = builder().CurrentGroup()->Reserve(),
+          }));
       EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                   type::Typed<ir::Value>(
-                       ir::Value(builder().Load<ir::addr_t>(
-                           current_block()->Append(type::SliceDataInstruction{
-                               .slice  = EmitAs<ir::addr_t>(node->operand()),
-                               .result = builder().CurrentGroup()->Reserve(),
-                           }))),
-                       type::BufPtr(s->data_type())));
+                   base::untyped_buffer_view(&addr));
     } else {
       UNREACHABLE(node->member_name());
     }
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
+      ir::RegOr<ir::addr_t> addr(
+          builder().PtrFix(EmitRef(node), node_qt.type()));
       EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                   type::Typed<ir::Value>(ir::Value(builder().PtrFix(
-                                              EmitRef(node), node_qt.type())),
-                                          node_qt.type()));
-
+                   base::untyped_buffer_view(&addr));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -256,45 +252,43 @@ void Compiler::EmitCopyInit(
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
-      case 1:
-        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                     type::Typed<ir::Value>(mod.ExportedValue(decl_ids[0]),
-                                            operand_qt.type()));
+      case 1: {
+        type::QualType node_qt = context().qual_types(node)[0];
+        base::untyped_buffer buffer;
+        FromValue(mod.ExportedValue(decl_ids[0]), node_qt.type(), buffer);
+        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
+      }
       default: NOT_YET();
     }
   }
 
   type::QualType node_qt = context().qual_types(node)[0];
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
+    ir::RegOr r = *enum_type->EmitLiteral(node->member_name());
     EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                 type::Typed<ir::Value>(
-                     ir::Value(*enum_type->EmitLiteral(node->member_name())),
-                     enum_type));
+                 base::untyped_buffer_view(&r));
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
+    ir::RegOr r  = *flags_type->EmitLiteral(node->member_name());
     EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                 type::Typed<ir::Value>(
-                     ir::Value(*flags_type->EmitLiteral(node->member_name())),
-                     flags_type));
+                 base::untyped_buffer_view(&r));
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
+      ir::RegOr length = builder().Load<type::Slice::length_t>(
+          current_block()->Append(type::SliceLengthInstruction{
+              .slice  = EmitAs<ir::addr_t>(node->operand()),
+              .result = builder().CurrentGroup()->Reserve(),
+          }));
       EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                   type::Typed<ir::Value>(
-                       ir::Value(builder().Load<type::Slice::length_t>(
-                           current_block()->Append(type::SliceLengthInstruction{
-                               .slice  = EmitAs<ir::addr_t>(node->operand()),
-                               .result = builder().CurrentGroup()->Reserve(),
-                           }))),
-                       type::U64));
+                   base::untyped_buffer_view(&length));
     } else if (node->member_name() == "data") {
+      ir::RegOr addr = builder().Load<ir::addr_t>(
+          current_block()->Append(type::SliceDataInstruction{
+              .slice  = EmitAs<ir::addr_t>(node->operand()),
+              .result = builder().CurrentGroup()->Reserve(),
+          }));
       EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                   type::Typed<ir::Value>(
-                       ir::Value(builder().Load<ir::addr_t>(
-                           current_block()->Append(type::SliceDataInstruction{
-                               .slice  = EmitAs<ir::addr_t>(node->operand()),
-                               .result = builder().CurrentGroup()->Reserve(),
-                           }))),
-                       type::BufPtr(s->data_type())));
+                   base::untyped_buffer_view(&addr));
     } else {
       UNREACHABLE(node->member_name());
     }
@@ -330,11 +324,13 @@ void Compiler::EmitMoveAssign(
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
-      case 1:
-        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                     type::Typed<ir::Value>(mod.ExportedValue(decl_ids[0]),
-                                            operand_qt.type()));
+      case 1: {
+        type::QualType node_qt = context().qual_types(node)[0];
+        base::untyped_buffer buffer;
+        FromValue(mod.ExportedValue(decl_ids[0]), node_qt.type(), buffer);
+        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
+      }
       default: NOT_YET();
     }
   }
@@ -370,11 +366,13 @@ void Compiler::EmitCopyAssign(
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
-      case 1:
-        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                     type::Typed<ir::Value>(mod.ExportedValue(decl_ids[0]),
-                                            operand_qt.type()));
+      case 1: {
+        type::QualType node_qt = context().qual_types(node)[0];
+        base::untyped_buffer buffer;
+        FromValue(mod.ExportedValue(decl_ids[0]), node_qt.type(), buffer);
+        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
+      }
       default: NOT_YET();
     }
   }

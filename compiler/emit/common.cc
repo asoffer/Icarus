@@ -54,9 +54,9 @@ ir::Fn InsertGeneratedMoveInit(
                 .struct_type = s,
                 .result      = c.builder().CurrentGroup()->Reserve()});
 
+        ir::RegOr<ir::addr_t> r(c.builder().PtrFix(from_val, t));
         c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, t),
-                       type::Typed<ir::Value>(
-                           ir::Value(c.builder().PtrFix(from_val, t)), t));
+                       base::untyped_buffer_view(&r));
         ++i;
       }
       c.builder().ReturnJump();
@@ -105,9 +105,9 @@ ir::Fn InsertGeneratedCopyInit(
                .struct_type = s,
                .result      = c.builder().CurrentGroup()->Reserve()});
 
+       ir::RegOr<ir::addr_t> r = c.builder().PtrFix(from_val, t);
        c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, t),
-                      type::Typed<ir::Value>(
-                          ir::Value(c.builder().PtrFix(from_val, t)), t));
+                      base::untyped_buffer_view(&r));
        ++i;
       }
       c.builder().ReturnJump();
@@ -599,8 +599,9 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
       auto reg = compiler.builder().TmpAlloca(arg_type);
       // TODO: Once EmitMoveInit is no longer a method on Compiler, we can
       // reduce the dependency here from being on Compiler to on Builder.
-      compiler.EmitMoveInit(type::Typed<ir::Reg>(reg, arg_type),
-                            type::Typed<ir::Value>(arg_value, arg_type));
+      base::untyped_buffer buffer;
+      FromValue(arg_value, arg_type, buffer);
+      compiler.EmitMoveInit(type::Typed<ir::Reg>(reg, arg_type), buffer);
       return ir::Value(reg);
     } else {
       NOT_YET(arg_qt, " vs ", param_qt);
@@ -717,9 +718,9 @@ void EmitCall(Compiler &compiler, ast::Expression const *callee,
   {
     size_t i = 0;
     for (; i < arg_exprs.size() and not arg_exprs[i].named(); ++i) {
-      prepared_arguments.push_back(
-          PrepareArgument(compiler, *constant_arguments[i],
-                          &arg_exprs[i].expr(), param_qts[i].value));
+      auto buffer = PrepareArgument(compiler, *constant_arguments[i],
+                          &arg_exprs[i].expr(), param_qts[i].value);
+      prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
     }
 
     absl::flat_hash_map<std::string_view, ast::Expression const *> named;
@@ -741,9 +742,10 @@ void EmitCall(Compiler &compiler, ast::Expression const *callee,
             callee_fn.value().native()->params()[j].value.get()->init_val());
       }
 
-      prepared_arguments.push_back(PrepareArgument(
+      auto buffer = PrepareArgument(
           compiler, constant_typed_value ? **constant_typed_value : ir::Value(),
-          expr ? expr : default_value, param_qts[i].value));
+          expr ? expr : default_value, param_qts[i].value);
+      prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
     }
   }
 

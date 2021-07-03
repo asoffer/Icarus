@@ -102,18 +102,16 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
                 land_block, loop_body);
 
   bldr.CurrentBlock() = loop_body;
+  base::untyped_buffer buffer;
+  FromValue(ir::Value(c.builder().PtrFix(from_phi->result, from->data_type())),
+            from->data_type(), buffer);
   if constexpr (K == Copy) {
-    c.EmitCopyInit(
-        type::Typed<ir::Reg>(to_phi->result, to->data_type()),
-        type::Typed<ir::Value>(
-            ir::Value(c.builder().PtrFix(from_phi->result, from->data_type())),
-            from->data_type()));
+    c.EmitCopyInit(type::Typed<ir::Reg>(to_phi->result, to->data_type()),
+                   buffer);
+
   } else if constexpr (K == Move) {
-    c.EmitMoveInit(
-        type::Typed<ir::Reg>(to_phi->result, to->data_type()),
-        type::Typed<ir::Value>(
-            ir::Value(c.builder().PtrFix(from_phi->result, from->data_type())),
-            from->data_type()));
+    c.EmitCopyInit(type::Typed<ir::Reg>(to_phi->result, to->data_type()),
+                   buffer);
   } else {
     UNREACHABLE();
   }
@@ -212,20 +210,22 @@ void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Array> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
+                            base::untyped_buffer_view from) {
   SetArrayInits(*this, to.type());
-  current_block()->Append(ir::MoveInitInstruction{
-      .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
+  current_block()->Append(
+      ir::MoveInitInstruction{.type = to.type(),
+                              .from = from.get<ir::RegOr<ir::addr_t>>(0),
+                              .to   = *to});
   current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Array> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
+                            base::untyped_buffer_view from) {
   SetArrayInits(*this, to.type());
-  current_block()->Append(ir::CopyInitInstruction{
-      .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
+  current_block()->Append(
+      ir::CopyInitInstruction{.type = to.type(),
+                              .from = from.get<ir::RegOr<ir::addr_t>>(0),
+                              .to   = *to});
   current_block()->load_store_cache().clear();
 }
 
@@ -246,15 +246,13 @@ void Compiler::EmitMoveAssign(
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Enum> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<type::Enum::underlying_type>>(), *to);
+                            base::untyped_buffer_view from) {
+  builder().Store(from.get<ir::RegOr<type::Enum::underlying_type>>(0), *to);
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Enum> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<type::Enum::underlying_type>>(), *to);
+                            base::untyped_buffer_view from) {
+  builder().Store(from.get<ir::RegOr<type::Enum::underlying_type>>(0), *to);
 }
 
 void Compiler::EmitCopyAssign(
@@ -275,15 +273,13 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Flags> const &r) {
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Flags> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<type::Flags::underlying_type>>(), *to);
+                            base::untyped_buffer_view from) {
+  builder().Store(from.get<ir::RegOr<type::Flags::underlying_type>>(0), *to);
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Flags> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<type::Flags::underlying_type>>(), *to);
+                            base::untyped_buffer_view from) {
+  builder().Store(from.get<ir::RegOr<type::Flags::underlying_type>>(0), *to);
 }
 
 void Compiler::EmitCopyAssign(
@@ -305,15 +301,13 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Pointer> const &r) {
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Pointer> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::CanCastImplicitly(from.type(), to.type()) == true);
-  builder().Store(from->get<ir::RegOr<ir::addr_t>>(), *to);
+                            base::untyped_buffer_view from) {
+  builder().Store(from.get<ir::RegOr<ir::addr_t>>(0), *to);
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Pointer> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::CanCastImplicitly(from.type(), to.type()) == true);
-  builder().Store(from->get<ir::RegOr<ir::addr_t>>(), *to);
+                            base::untyped_buffer_view from) {
+  builder().Store(from.get<ir::RegOr<ir::addr_t>>(0), *to);
 }
 
 void Compiler::EmitCopyAssign(
@@ -340,15 +334,13 @@ void Compiler::EmitDefaultInit(
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::BufferPointer> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<ir::addr_t>>(), *to);
+                            base::untyped_buffer_view from) {
+  builder().Store(from.get<ir::RegOr<ir::addr_t>>(0), *to);
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::BufferPointer> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<ir::addr_t>>(), *to);
+                            base::untyped_buffer_view from) {
+  builder().Store(from.get<ir::RegOr<ir::addr_t>>(0), *to);
 }
 
 void Compiler::EmitCopyAssign(
@@ -370,18 +362,16 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Primitive> const &r) {
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Primitive> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
+                            base::untyped_buffer_view from) {
   to.type()->Apply([&]<typename T>() {
-    builder().Store(from->template get<ir::RegOr<T>>(), *to);
+    builder().Store(from.template get<ir::RegOr<T>>(0), *to);
   });
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Primitive> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
+                            base::untyped_buffer_view from) {
   to.type()->Apply([&]<typename T>() {
-    builder().Store(from->template get<ir::RegOr<T>>(), *to);
+    builder().Store(from.template get<ir::RegOr<T>>(0), *to);
   });
 }
 
@@ -415,9 +405,9 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
         if (not field.initial_value.empty()) {
           // TODO: Support other initial value types.
           if (field.type == type::I64) {
-            EmitCopyInit(
-                builder().FieldRef(var, r.type(), i),
-                type::Typed<ir::Value>(field.initial_value, field.type));
+            base::untyped_buffer buffer;
+            FromValue(field.initial_value, field.type, buffer);
+            EmitCopyInit(builder().FieldRef(var, r.type(), i), buffer);
           } else {
             NOT_YET();
           }
@@ -442,15 +432,13 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Struct> const &r) {
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Function> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<ir::Fn>>(), *to);
+                            base::untyped_buffer_view from) {
+  builder().Store(from.get<ir::RegOr<ir::Fn>>(0), *to);
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Function> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  builder().Store(from->get<ir::RegOr<ir::Fn>>(), *to);
+                            base::untyped_buffer_view from) {
+  builder().Store(from.get<ir::RegOr<ir::Fn>>(0), *to);
 }
 
 void Compiler::EmitCopyAssign(
@@ -467,18 +455,20 @@ void Compiler::EmitMoveAssign(
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Struct> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  current_block()->Append(ir::MoveInitInstruction{
-      .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
+                            base::untyped_buffer_view from) {
+  current_block()->Append(
+      ir::MoveInitInstruction{.type = to.type(),
+                              .from = from.get<ir::RegOr<ir::addr_t>>(0),
+                              .to   = *to});
   current_block()->load_store_cache().clear();
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Struct> to,
-                            type::Typed<ir::Value> const &from) {
-  ASSERT(type::Type(to.type()) == from.type());
-  current_block()->Append(ir::CopyInitInstruction{
-      .type = to.type(), .from = from->get<ir::Reg>(), .to = *to});
+                            base::untyped_buffer_view from) {
+  current_block()->Append(
+      ir::CopyInitInstruction{.type = to.type(),
+                              .from = from.get<ir::RegOr<ir::addr_t>>(0),
+                              .to   = *to});
   current_block()->load_store_cache().clear();
 }
 
@@ -501,20 +491,20 @@ void Compiler::EmitMoveAssign(
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Slice> to,
-                            type::Typed<ir::Value> const &from) {
-  ir::RegOr<ir::Slice> s = from->get<ir::RegOr<ir::Slice>>();
+                            base::untyped_buffer_view from) {
+  ir::RegOr<ir::Slice> s = from.get<ir::RegOr<ir::Slice>>(0);
   ir::RegOr<ir::addr_t> data;
   ir::RegOr<type::Slice::length_t> length;
   if (s.is_reg()) {
     data = builder().Load<ir::addr_t>(
         current_block()->Append(type::SliceDataInstruction{
-            .slice  = from->get<ir::RegOr<ir::addr_t>>(),
+            .slice  = from.get<ir::RegOr<ir::addr_t>>(0),
             .result = builder().CurrentGroup()->Reserve(),
         }),
         type::BufPtr(to.type()->data_type()));
     length = builder().Load<type::Slice::length_t>(
         current_block()->Append(type::SliceLengthInstruction{
-            .slice  = from->get<ir::RegOr<ir::addr_t>>(),
+            .slice  = from.get<ir::RegOr<ir::addr_t>>(0),
             .result = builder().CurrentGroup()->Reserve(),
         }));
   } else {
@@ -539,7 +529,7 @@ void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Slice> to,
 }
 
 void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Slice> to,
-                            type::Typed<ir::Value> const &from) {
+                            base::untyped_buffer_view from) {
   EmitMoveInit(to, from);
 }
 

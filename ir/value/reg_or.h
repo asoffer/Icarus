@@ -83,6 +83,9 @@ bool operator!=(RegOr<T> const &lhs, RegOr<T> const &rhs) {
   return not(lhs == rhs);
 }
 
+template <typename T>
+RegOr(T)->RegOr<T>;
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_VALUE_REG_OR_H

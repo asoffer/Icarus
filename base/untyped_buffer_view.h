@@ -17,6 +17,13 @@ struct untyped_buffer_view {
   explicit untyped_buffer_view(std::byte const *data, size_t size)
       : data_(data), size_(size) {}
 
+  // TODO: With this constructor, the view here doesn't make as much sense. This
+  // is just a view for spans of bytes.
+  template <typename T>
+  explicit untyped_buffer_view(T const *data)
+      : untyped_buffer_view(reinterpret_cast<std::byte const *>(data),
+                            sizeof(T)) {}
+
   /* implicit */ untyped_buffer_view(untyped_buffer const &buf)
       : data_(buf.raw(0)), size_(buf.size()) {}
 

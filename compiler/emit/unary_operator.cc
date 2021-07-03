@@ -15,9 +15,9 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
     case ast::UnaryOperator::Kind::Copy: {
       auto operand_type = context().qual_types(node->operand())[0].type();
       auto reg          = builder().TmpAlloca(operand_type);
-      EmitCopyInit(
-          type::Typed<ir::Reg>(reg, operand_type),
-          type::Typed<ir::Value>(EmitValue(node->operand()), operand_type));
+      EmitToBuffer(node->operand(), out);
+      EmitCopyInit(type::Typed<ir::Reg>(reg, operand_type), out);
+      out.clear();
       FromValue(ir::Value(builder().PtrFix(reg, operand_type)), operand_type,
                 out);
       return;
@@ -33,9 +33,9 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
     case ast::UnaryOperator::Kind::Move: {
       auto operand_type = context().qual_types(node->operand())[0].type();
       auto reg = builder().TmpAlloca(operand_type);
-      EmitMoveInit(
-          type::Typed<ir::Reg>(reg, operand_type),
-          type::Typed<ir::Value>(EmitValue(node->operand()), operand_type));
+      EmitToBuffer(node->operand(), out);
+      EmitMoveInit(type::Typed<ir::Reg>(reg, operand_type), out);
+      out.clear();
       FromValue(ir::Value(builder().PtrFix(reg, operand_type)), operand_type,
                 out);
       return;
