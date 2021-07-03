@@ -539,29 +539,23 @@ base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
   type::Type arg_type   = arg_qt.type();
   type::Type param_type = param_qt.type();
 
+  base::untyped_buffer buffer;
   if (constant.empty()) {
-    if (auto const *ptr_to_type = arg_type.if_as<type::Pointer>()) {
+    if (auto const *ptr_to_type = param_type.if_as<type::Pointer>()) {
       if (ptr_to_type->pointee() == arg_type) {
         if (arg_qt.quals() >= type::Quals::Ref()) {
-          base::untyped_buffer buffer;
           buffer.append(ir::RegOr<ir::addr_t>(c.EmitRef(expr)));
           return buffer;
         } else {
           auto reg = c.builder().TmpAlloca(arg_type);
           c.EmitMoveInit(expr,
                          {type::Typed<ir::RegOr<ir::addr_t>>(reg, param_type)});
-          base::untyped_buffer buffer;
           buffer.append(ir::RegOr<ir::addr_t>(reg));
           return buffer;
         }
-      } else {
-        NOT_YET(arg_qt, " vs ", param_type);
       }
     }
-  }
 
-  base::untyped_buffer buffer;
-  if (constant.empty()) {
     c.EmitToBuffer(expr, buffer);
   } else {
     FromValue(constant, arg_type, buffer);
@@ -602,6 +596,7 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
       base::untyped_buffer buffer;
       FromValue(arg_value, arg_type, buffer);
       compiler.EmitMoveInit(type::Typed<ir::Reg>(reg, arg_type), buffer);
+
       return ir::Value(reg);
     } else {
       NOT_YET(arg_qt, " vs ", param_qt);

@@ -19,7 +19,8 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
     compiler->builder().CurrentBlock() = fn.entry();
 
     // TODO support multiple values computed simultaneously?
-    auto expr_val = compiler->EmitValue(expr);
+    base::untyped_buffer buffer;
+    compiler->EmitToBuffer(expr, buffer);
     if (compiler->diag().num_consumed() != 0) { return; }
     // TODO compiler->CompleteDeferredBodies();
     auto expr_type = compiler->context().qual_types(expr)[0].type();
@@ -40,6 +41,7 @@ void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
       .diagnostic_consumer = diag,
       .importer            = importer,
   });
+  base::untyped_buffer buffer;
   for (ast::Node const *node : nodes) {
     LOG("repl", "%s", node->DebugString());
     if (node->is<ast::Declaration>()) {
@@ -47,7 +49,8 @@ void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
 
       {
         c.VerifyType(decl);
-        c.EmitValue(decl);
+        buffer.clear();
+        c.EmitToBuffer(decl, buffer);
         // TODO c.CompleteDeferredBodies();
         if (c.diag().num_consumed() != 0) { return; }
       }

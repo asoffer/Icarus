@@ -406,14 +406,14 @@ void FromValue(ir::Value const &v, type::Type t, base::untyped_buffer &out) {
     ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
                uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
                ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
-               interface::Interface>(
+               ir::GenericFn, interface::Interface>(
         t, [&]<typename T>() { return out.append(ir::RegOr<T>(*r)); });
 
   } else {
     v.apply<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
             uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
             ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
-            interface::Interface>(
+            ir::GenericFn, interface::Interface>(
         [&](auto value) { out.append(ir::RegOr<decltype(value)>(value)); });
   }
 }

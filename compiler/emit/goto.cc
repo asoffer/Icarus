@@ -28,7 +28,7 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
 
     c.builder().CurrentBlock() = block;
 
-    // Note, jumps arguments cannot be completely evaluated with EmitValue
+    // Note, jumps arguments cannot be completely evaluated with EmitToBuffer
     // because they eventually need to be "prepared" before being passed to an
     // overload set on entry into a block node. This requires some implicit
     // casts which may only want to look at references rather than values, and

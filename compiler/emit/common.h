@@ -38,9 +38,9 @@ void MakeAllDestructions(Compiler &compiler, ast::Scope const *scope);
 // a reference and is being bound to a pointer to its own type, we emit the
 // reference rather than loading the corresponding value. Moreover non-referenc
 // types get placed in temporary stack allocations in this case.
-ir::Value PrepareArgument(Compiler &compiler, ir::Value constant,
-                          ast::Expression const *expr,
-                          type::QualType param_qt);
+base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
+                                     ast::Expression const *expr,
+                                     type::QualType param_qt);
 // Same as the above overload but rather than emitting the code for expressions
 // on the fly, this overload is to be used when the value has already been
 // computed, but you know the qualified type. In particular arg_value needs to

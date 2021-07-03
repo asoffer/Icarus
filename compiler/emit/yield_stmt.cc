@@ -70,9 +70,11 @@ void Compiler::EmitToBuffer(ast::YieldStmt const *node,
     prepared_arguments.reserve(yield_arg_types.size());
     size_t i = 0;
     for (auto const *expr : node->exprs()) {
-      prepared_arguments.push_back(
+      base::untyped_buffer buffer =
           PrepareArgument(*this, *constant_arguments[i], expr,
-                          exit_fn.type()->params()[i].value));
+                          exit_fn.type()->params()[i].value);
+      prepared_arguments.push_back(
+          ToValue(buffer, exit_fn.type()->params()[i].value.type()));
       ++i;
     }
 

@@ -162,6 +162,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
 void Compiler::EmitToBuffer(ast::Call const *node, base::untyped_buffer &out) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     EmitBuiltinCall(*this, b, node->arguments(), out);
+    return;
   }
 
   auto qts = context().qual_types(node);

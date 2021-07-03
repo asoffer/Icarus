@@ -105,7 +105,8 @@ BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node) {
 
   bldr.block_termination_state() =
       ir::Builder::BlockTerminationState::kMoreStatements;
-  c.EmitValue(node);
+  base::untyped_buffer buffer;
+  c.EmitToBuffer(node, buffer);
 
   return BlockNodeResult{.body        = body,
                          .termination = bldr.block_termination_state()};
@@ -154,8 +155,9 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
 
   // TODO: With expansions, args_exprs.pos().size() could be wrong.
   for (size_t i = 0; i < arg_exprs.pos().size(); ++i) {
-    prepared_arguments.push_back(PrepareArgument(
-        c, *constant_arguments[i], arg_exprs[i], param_qts[i].value));
+    base::untyped_buffer buffer = PrepareArgument(
+        c, *constant_arguments[i], arg_exprs[i], param_qts[i].value);
+    prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
   }
 
   for (size_t i = arg_exprs.pos().size(); i < param_qts.size(); ++i) {
@@ -169,9 +171,10 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
           ir::CompiledJump::From(init)->params()[i].value.get()->init_val());
     }
 
-    prepared_arguments.push_back(PrepareArgument(
+    base::untyped_buffer buffer = PrepareArgument(
         c, constant_typed_value ? **constant_typed_value : ir::Value(),
-        expr ? *expr : default_value, param_qts[i].value));
+        expr ? *expr : default_value, param_qts[i].value);
+    prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
   }
   return std::make_pair(init, std::move(prepared_arguments));
 }

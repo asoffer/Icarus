@@ -103,10 +103,7 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
       if (auto const *constant = c.context().Constant(&node->ids()[0])) {
         FromValue(constant->value(), t, out);
       } else {
-        c.EmitValue(&bd->pattern());
-        FromValue(
-            ASSERT_NOT_NULL(c.context().Constant(&node->ids()[0]))->value(), t,
-            out);
+        c.EmitToBuffer(&bd->pattern(), out);
       }
       return;
     } else if (node->IsDefaultInitialized()) {
