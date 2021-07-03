@@ -54,10 +54,27 @@ struct PatternMatchingContext {
   };
 };
 
+struct ValueView {
+  explicit ValueView(type::Type t, base::untyped_buffer_view v)
+      : type_(t), view_(v) {}
+
+  type::Type type() const { return type_; }
+  base::untyped_buffer_view const *operator->() const { return &view_; }
+  base::untyped_buffer_view operator*() const { return view_; }
+
+  template <typename T>
+  ir::RegOr<T> get() const {
+    return view_.get<ir::RegOr<T>>(0);
+  }
+
+ private:
+  type::Type type_;
+  base::untyped_buffer_view view_;
+};
+
 struct EmitRefTag {};
 struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
-struct EmitValueTag {};
 struct EmitToBufferTag {};
 struct VerifyTypeTag {};
 struct VerifyBodyTag {};
@@ -95,7 +112,6 @@ struct Compiler
       ast::Visitor<EmitCopyAssignTag,
                    void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>,
       ast::Visitor<EmitRefTag, ir::Reg()>,
-      ast::Visitor<EmitValueTag, ir::Value()>,
       ast::Visitor<EmitToBufferTag, void(base::untyped_buffer *)>,
       ast::Visitor<VerifyTypeTag, absl::Span<type::QualType const>()>,
       ast::Visitor<VerifyBodyTag, WorkItem::Result()>,
@@ -108,10 +124,10 @@ struct Compiler
       type::Visitor<EmitMoveInitTag, void(ir::Reg, base::untyped_buffer_view)>,
       type::Visitor<EmitCopyInitTag, void(ir::Reg, base::untyped_buffer_view)>,
       type::Visitor<EmitDefaultInitTag, void(ir::Reg)>,
-      type::Visitor<EmitMoveAssignTag, void(ir::RegOr<ir::addr_t>,
-                                            type::Typed<ir::Value> const &)>,
-      type::Visitor<EmitCopyAssignTag, void(ir::RegOr<ir::addr_t>,
-                                            type::Typed<ir::Value> const &)> {
+      type::Visitor<EmitMoveAssignTag,
+                    void(ir::RegOr<ir::addr_t>, ValueView const &)>,
+      type::Visitor<EmitCopyAssignTag,
+                    void(ir::RegOr<ir::addr_t>, ValueView const &)> {
   PersistentResources &resources() { return resources_; }
 
   template <typename... Args>
@@ -285,19 +301,17 @@ struct Compiler
   }
 
   void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
-                      type::Typed<ir::Value> const &from) {
-    type::Visitor<EmitMoveAssignTag,
-                  void(ir::RegOr<ir::addr_t>,
-                       type::Typed<ir::Value> const &)>::Visit(to.type().get(),
-                                                               to.get(), from);
+                      ValueView const &from) {
+    using V = type::Visitor<EmitMoveAssignTag,
+                            void(ir::RegOr<ir::addr_t>, ValueView const &)>;
+    V::Visit(to.type().get(), to.get(), from);
   }
 
   void EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
-                      type::Typed<ir::Value> const &from) {
-    type::Visitor<EmitCopyAssignTag,
-                  void(ir::RegOr<ir::addr_t>,
-                       type::Typed<ir::Value> const &)>::Visit(to.type().get(),
-                                                               to.get(), from);
+                      ValueView const &from) {
+    using V = type::Visitor<EmitCopyAssignTag,
+                            void(ir::RegOr<ir::addr_t>, ValueView const &)>;
+    V::Visit(to.type().get(), to.get(), from);
   }
 
   explicit Compiler(PersistentResources const &resources);
@@ -495,18 +509,18 @@ struct Compiler
 
 #define DEFINE_EMIT_ASSIGN(T)                                                  \
   void Visit(EmitCopyAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,          \
-             type::Typed<ir::Value> const &tv) override {                      \
-    EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), tv);          \
+             ValueView const &v) override {                                    \
+    EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), v);           \
   }                                                                            \
   void EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T> const &,           \
-                      type::Typed<ir::Value> const &);                         \
+                      ValueView const &);                                      \
                                                                                \
   void Visit(EmitMoveAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,          \
-             type::Typed<ir::Value> const &tv) override {                      \
-    EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), tv);          \
+             ValueView const &v) override {                                    \
+    EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), v);           \
   }                                                                            \
   void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T> const &r,          \
-                      type::Typed<ir::Value> const &);
+                      ValueView const &);
 
   DEFINE_EMIT_ASSIGN(type::Array);
   DEFINE_EMIT_ASSIGN(type::Enum);

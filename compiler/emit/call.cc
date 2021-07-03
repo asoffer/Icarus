@@ -54,11 +54,13 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
           }),
           type::U64);
 
+      base::untyped_buffer buffer;
+      c.EmitToBuffer(&args[0].expr(), buffer);
       c.EmitMoveAssign(
-          data, type::Typed<ir::Value>(c.EmitValue(&args[0].expr()),
-                                       type::BufPtr(slice_type->data_type())));
-      c.EmitMoveAssign(length, type::Typed<ir::Value>(
-                                   c.EmitValue(&args[1].expr()), type::U64));
+          data, ValueView(type::BufPtr(slice_type->data_type()), buffer));
+      buffer.clear();
+      c.EmitToBuffer(&args[1].expr(), buffer);
+      c.EmitMoveAssign(length, ValueView(type::U64, buffer));
       out.append(ir::RegOr<ir::addr_t>(slice));
       return;
     } break;
@@ -105,11 +107,9 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       auto const &fn_type = *ir::Fn(ir::BuiltinFn::Bytes()).type();
       ir::OutParams outs  = c.builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
-      c.builder().Call(
-          ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
-          {ir::Value(
-              c.EmitValue(&args[0].expr()).get<ir::RegOr<type::Type>>())},
-          std::move(outs));
+      auto t              = c.EmitAs<type::Type>(&args[0].expr());
+      c.builder().Call(ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type, {ir::Value(t)},
+                       std::move(outs));
       // TODO: Return an integer
       out.append(ir::RegOr<uint64_t>(reg));
       return;
@@ -120,11 +120,9 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       auto const &fn_type = *ir::Fn(ir::BuiltinFn::Alignment()).type();
       ir::OutParams outs  = c.builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
-      c.builder().Call(
-          ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
-          {ir::Value(
-              c.EmitValue(&args[0].expr()).get<ir::RegOr<type::Type>>())},
-          std::move(outs));
+      c.builder().Call(ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
+                       {ir::Value(c.EmitAs<type::Type>(&args[0].expr()))},
+                       std::move(outs));
       out.append(ir::RegOr<uint64_t>(reg));
       return;
     } break;
@@ -136,10 +134,9 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       absl::flat_hash_map<std::string, ir::RegOr<type::Type>> named;
       for (auto const &arg : args) {
         if (arg.named()) {
-          named.emplace(arg.name(),
-                        c.EmitValue(&arg.expr()).get<ir::RegOr<type::Type>>());
+          named.emplace(arg.name(), c.EmitAs<type::Type>(&arg.expr()));
         } else {
-          pos.push_back(c.EmitValue(&arg.expr()).get<ir::RegOr<type::Type>>());
+          pos.push_back(c.EmitAs<type::Type>(&arg.expr()));
         }
       }
       out.append(ir::RegOr<interface::Interface>(
@@ -206,9 +203,7 @@ void Compiler::EmitMoveInit(
     base::untyped_buffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    ir::Value result = ToValue(out, context().qual_types(node)[0].type());
-    EmitMoveAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_types(node)[0].type()));
+    EmitMoveAssign(to[0], ValueView(context().qual_types(node)[0].type(), out));
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -221,11 +216,10 @@ void Compiler::EmitMoveInit(
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
+    ir::RegOr<type::Type> t(
+        type::Type(gs_type->Instantiate(constant_arguments).second));
     EmitCopyAssign(to[0],
-                   type::Typed<ir::Value>(
-                       ir::Value(type::Type(
-                           gs_type->Instantiate(constant_arguments).second)),
-                       type::Type_));
+                   ValueView(type::Type_, base::untyped_buffer_view(&t)));
     return;
   }
 
@@ -242,9 +236,7 @@ void Compiler::EmitCopyInit(
     base::untyped_buffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    ir::Value result = ToValue(out, context().qual_types(node)[0].type());
-    EmitCopyAssign(to[0], type::Typed<ir::Value>(
-                              result, context().qual_types(node)[0].type()));
+    EmitCopyAssign(to[0], ValueView(context().qual_types(node)[0].type(), out));
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -257,11 +249,10 @@ void Compiler::EmitCopyInit(
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
+    ir::RegOr<type::Type> t(
+        type::Type(gs_type->Instantiate(constant_arguments).second));
     EmitCopyAssign(to[0],
-                   type::Typed<ir::Value>(
-                       ir::Value(type::Type(
-                           gs_type->Instantiate(constant_arguments).second)),
-                       type::Type_));
+                   ValueView(type::Type_, base::untyped_buffer_view(&t)));
     return;
   }
 
@@ -278,9 +269,7 @@ void Compiler::EmitMoveAssign(
     base::untyped_buffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    ir::Value result = ToValue(out, context().qual_types(node)[0].type());
-    EmitMoveAssign(to[0], type::Typed<ir::Value>(
-                            result, context().qual_types(node)[0].type()));
+    EmitMoveAssign(to[0], ValueView(context().qual_types(node)[0].type(), out));
     return;
   }
 
@@ -294,11 +283,10 @@ void Compiler::EmitMoveAssign(
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
+    ir::RegOr<type::Type> t(
+        type::Type(gs_type->Instantiate(constant_arguments).second));
     EmitMoveAssign(to[0],
-                   type::Typed<ir::Value>(
-                       ir::Value(type::Type(
-                           gs_type->Instantiate(constant_arguments).second)),
-                       type::Type_));
+                   ValueView(type::Type_, base::untyped_buffer_view(&t)));
   }
 
   auto const &os = context().ViableOverloads(node->callee());
@@ -315,9 +303,7 @@ void Compiler::EmitCopyAssign(
     base::untyped_buffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    ir::Value result = ToValue(out, context().qual_types(node)[0].type());
-    EmitCopyAssign(to[0], type::Typed<ir::Value>(
-                            result, context().qual_types(node)[0].type()));
+    EmitCopyAssign(to[0], ValueView(context().qual_types(node)[0].type(), out));
     return;
   }
 
@@ -330,11 +316,10 @@ void Compiler::EmitCopyAssign(
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
+    ir::RegOr<type::Type> t(
+        type::Type(gs_type->Instantiate(constant_arguments).second));
     EmitCopyAssign(to[0],
-                   type::Typed<ir::Value>(
-                       ir::Value(type::Type(
-                           gs_type->Instantiate(constant_arguments).second)),
-                       type::Type_));
+                   ValueView(type::Type_, base::untyped_buffer_view(&t)));
   }
 
   auto const &os = context().ViableOverloads(node->callee());

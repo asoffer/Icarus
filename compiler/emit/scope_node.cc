@@ -476,7 +476,7 @@ void Compiler::EmitCopyAssign(
   ASSERT(to.size() == 1u);
   base::untyped_buffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0], type::Typed<ir::Value>(ToValue(buffer, t), t));
+  EmitCopyAssign(to[0], ValueView(t, buffer));
 }
 
 void Compiler::EmitMoveAssign(
@@ -487,7 +487,7 @@ void Compiler::EmitMoveAssign(
   ASSERT(to.size() == 1u);
   base::untyped_buffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0], type::Typed<ir::Value>(ToValue(buffer, t), t));
+  EmitMoveAssign(to[0], ValueView(t, buffer));
 }
 
 }  // namespace compiler

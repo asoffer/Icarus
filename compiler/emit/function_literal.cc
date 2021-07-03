@@ -127,8 +127,7 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
           EmitToBuffer(out_decl->init_val(), buffer);
           EmitCopyAssign(
               type::Typed<ir::RegOr<ir::addr_t>>(alloc, out_decl_type),
-              type::Typed<ir::Value>(ToValue(buffer, out_decl_type),
-                                     out_decl_type));
+              ValueView(out_decl_type, buffer));
         }
       }
     }

@@ -49,13 +49,14 @@ void Compiler::EmitToBuffer(ast::Assignment const *node,
     temp_iter += num_rets;
   }
 
+  base::untyped_buffer buffer;
   for (auto temp_iter = temps.begin(), ref_iter = lhs_refs.begin();
        temp_iter != temps.end(); ++temp_iter, ++ref_iter) {
-    EmitMoveAssign(
-        *ref_iter,
-        type::Typed<ir::Value>(
-            ir::Value(builder().PtrFix((*temp_iter)->reg(), temp_iter->type())),
-            temp_iter->type()));
+    buffer.clear();
+    FromValue(
+        ir::Value(builder().PtrFix((*temp_iter)->reg(), temp_iter->type())),
+        temp_iter->type(), buffer);
+    EmitMoveAssign(*ref_iter, ValueView(temp_iter->type(), buffer));
   }
   return;
 }

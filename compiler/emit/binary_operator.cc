@@ -424,8 +424,10 @@ void Compiler::EmitCopyInit(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
   EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 type::Typed<ir::Value>(EmitValue(node), t));
+                 ValueView(t, buffer));
 }
 
 void Compiler::EmitMoveInit(
@@ -433,8 +435,10 @@ void Compiler::EmitMoveInit(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
   EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 type::Typed<ir::Value>(EmitValue(node), t));
+                 ValueView(t, buffer));
 }
 
 void Compiler::EmitMoveAssign(
@@ -442,8 +446,10 @@ void Compiler::EmitMoveAssign(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
   EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 type::Typed<ir::Value>(EmitValue(node), t));
+                 ValueView(t, buffer));
 }
 
 void Compiler::EmitCopyAssign(
@@ -451,8 +457,10 @@ void Compiler::EmitCopyAssign(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
   EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 type::Typed<ir::Value>(EmitValue(node), t));
+                 ValueView(t, buffer));
 }
 
 bool Compiler::PatternMatch(

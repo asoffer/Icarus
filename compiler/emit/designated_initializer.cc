@@ -25,18 +25,20 @@ void Compiler::EmitMoveAssign(
     ast::DesignatedInitializer const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
   EmitMoveAssign(to[0],
-                 type::Typed<ir::Value>(EmitValue(node),
-                                        context().qual_types(node)[0].type()));
+                 ValueView(context().qual_types(node)[0].type(), buffer));
 }
 
 void Compiler::EmitCopyAssign(
     ast::DesignatedInitializer const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
+  base::untyped_buffer buffer;
+  EmitToBuffer(node, buffer);
   EmitCopyAssign(to[0],
-                 type::Typed<ir::Value>(EmitValue(node),
-                                        context().qual_types(node)[0].type()));
+                 ValueView(context().qual_types(node)[0].type(), buffer));
 }
 
 void Compiler::EmitMoveInit(
@@ -63,8 +65,9 @@ void Compiler::EmitMoveInit(
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
       } else {
-        EmitCopyAssign(field_reg,
-                       type::Typed<ir::Value>(field.initial_value, field.type));
+        base::untyped_buffer buffer;
+        FromValue(field.initial_value, field.type, buffer);
+        EmitCopyAssign(field_reg, ValueView(field.type, buffer));
       }
     }
   next_field:;
@@ -107,8 +110,9 @@ void Compiler::EmitCopyInit(
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
       } else {
-        EmitCopyAssign(field_reg,
-                       type::Typed<ir::Value>(field.initial_value, field.type));
+        base::untyped_buffer buffer;
+        FromValue(field.initial_value, field.type, buffer);
+        EmitCopyAssign(field_reg, ValueView(field.type, buffer));
       }
     }
   next_field:;

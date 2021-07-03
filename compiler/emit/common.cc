@@ -138,12 +138,14 @@ ir::Fn InsertGeneratedMoveAssign(
             .index       = i,
             .struct_type = s,
             .result      = c.builder().CurrentGroup()->Reserve()});
-        c.EmitMoveAssign(
-            type::Typed<ir::RegOr<ir::addr_t>>(to_ref,
-                                             ir_fields[i].type().value()),
-            type::Typed<ir::Value>(ir::Value(c.builder().PtrFix(
-                                       from_ref, ir_fields[i].type().value())),
-                                   ir_fields[i].type().value()));
+
+        base::untyped_buffer buffer;
+        FromValue(ir::Value(c.builder().PtrFix(from_ref,
+                                               ir_fields[i].type().value())),
+                  ir_fields[i].type().value(), buffer);
+        c.EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(
+                             to_ref, ir_fields[i].type().value()),
+                         ValueView(ir_fields[i].type().value(), buffer));
       }
 
       c.builder().ReturnJump();
@@ -174,12 +176,13 @@ ir::Fn InsertGeneratedCopyAssign(
             .index       = i,
             .struct_type = s,
             .result      = c.builder().CurrentGroup()->Reserve()});
-        c.EmitCopyAssign(
-            type::Typed<ir::RegOr<ir::addr_t>>(to_ref,
-                                             ir_fields[i].type().value()),
-            type::Typed<ir::Value>(ir::Value(c.builder().PtrFix(
-                                       from_ref, ir_fields[i].type().value())),
-                                   ir_fields[i].type().value()));
+        base::untyped_buffer buffer;
+        FromValue(ir::Value(c.builder().PtrFix(from_ref,
+                                               ir_fields[i].type().value())),
+                  ir_fields[i].type().value(), buffer);
+        c.EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(
+                             to_ref, ir_fields[i].type().value()),
+                         ValueView(ir_fields[i].type().value(), buffer));
       }
 
       c.builder().ReturnJump();
@@ -751,8 +754,10 @@ void EmitCall(Compiler &compiler, ast::Expression const *callee,
   for (type::Type t : overload_type->output()) {
     ++i;
     if (t.get()->is_big()) { continue; }
-    compiler.EmitCopyAssign(
-        to[i], type::Typed<ir::Value>(ir::Value(out_params[i]), t));
+
+    base::untyped_buffer buffer;
+    FromValue(ir::Value(out_params[i]), t, buffer);
+    compiler.EmitCopyAssign(to[i], ValueView(t, buffer));
   }
 }
 

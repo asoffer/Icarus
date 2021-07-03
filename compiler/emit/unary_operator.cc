@@ -141,10 +141,11 @@ void Compiler::EmitCopyInit(
           context().qual_types(node->operand())[0].type()));
       break;
     default: {
-      auto from_val = EmitValue(node);
-      auto from_qt  = *context().qual_types(node)[0];
+      base::untyped_buffer buffer;
+      EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitCopyAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
+        EmitCopyAssign(to[0],
+                       ValueView(context().qual_types(node)[0].type(), buffer));
       } else {
         NOT_YET();
       }
@@ -166,10 +167,11 @@ void Compiler::EmitMoveInit(
       EmitCopyInit(node->operand(), to);
       break;
     default: {
-      auto from_val = EmitValue(node);
-      auto from_qt  = *context().qual_types(node)[0];
+      base::untyped_buffer buffer;
+      EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitMoveAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
+        EmitMoveAssign(to[0],
+                       ValueView(context().qual_types(node)[0].type(), buffer));
       } else {
         NOT_YET();
       }
@@ -197,10 +199,11 @@ void Compiler::EmitCopyAssign(
       EmitMoveAssign(node->operand(), to);
       break;
     default: {
-      auto from_val = EmitValue(node);
-      auto from_qt  = *context().qual_types(node)[0];
+      base::untyped_buffer buffer;
+      EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitMoveAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
+        EmitMoveAssign(to[0],
+                       ValueView(context().qual_types(node)[0].type(), buffer));
       } else {
         NOT_YET();
       }
@@ -223,10 +226,11 @@ void Compiler::EmitMoveAssign(
       EmitMoveAssign(node->operand(), to);
       break;
     default: {
-      auto from_val = EmitValue(node);
-      auto from_qt  = *context().qual_types(node)[0];
+      base::untyped_buffer buffer;
+      EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitMoveAssign(to[0], type::Typed<ir::Value>(from_val, from_qt.type()));
+        EmitMoveAssign(to[0],
+                       ValueView(context().qual_types(node)[0].type(), buffer));
       } else {
         NOT_YET();
       }
