@@ -657,26 +657,6 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
   }
 }
 
-core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
-    Compiler &c, core::Arguments<ast::Expression const *> const &args) {
-  return args.Transform([&](ast::Expression const *expr) {
-    auto qt = c.context().qual_types(expr)[0];
-    if (qt.constant()) {
-      if (qt.type().get()->is_big()) {
-        // TODO: Implement constant computation here.
-        return type::Typed<ir::Value>(ir::Value(), qt.type());
-      } else {
-        ir::Value result = c.EvaluateOrDiagnose(
-            type::Typed<ast::Expression const *>(expr, qt.type()));
-        if (result.empty()) { NOT_YET(); }
-        return type::Typed<ir::Value>(result, qt.type());
-      }
-    } else {
-      return type::Typed<ir::Value>(ir::Value(), qt.type());
-    }
-  });
-}
-
 core::Arguments<type::Typed<size_t>> EmitConstantArguments(
     Compiler &c, absl::Span<ast::Call::Argument const> args,
     base::untyped_buffer &buffer) {
@@ -701,35 +681,6 @@ core::Arguments<type::Typed<size_t>> EmitConstantArguments(
       arg_vals.pos_emplace(type::Typed(index, qt.type()));
     } else {
       arg_vals.named_emplace(arg.name(), type::Typed(index, qt.type()));
-    }
-  }
-  return arg_vals;
-}
-
-core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
-    Compiler &c, absl::Span<ast::Call::Argument const> args) {
-  core::Arguments<type::Typed<ir::Value>> arg_vals;
-  type::Typed<ir::Value> result;
-  for (auto const &arg : args) {
-    auto qt = c.context().qual_types(&arg.expr())[0];
-    if (qt.constant()) {
-      if (qt.type().get()->is_big()) {
-        // TODO: Implement constant computation here.
-        result = type::Typed<ir::Value>(ir::Value(), qt.type());
-      } else {
-        ir::Value value = c.EvaluateOrDiagnose(
-            type::Typed<ast::Expression const *>(&arg.expr(), qt.type()));
-        if (value.empty()) { NOT_YET(); }
-        result = type::Typed<ir::Value>(value, qt.type());
-      }
-    } else {
-      result = type::Typed<ir::Value>(ir::Value(), qt.type());
-    }
-
-    if (not arg.named()) {
-      arg_vals.pos_emplace(result);
-    } else {
-      arg_vals.named_emplace(arg.name(), result);
     }
   }
   return arg_vals;

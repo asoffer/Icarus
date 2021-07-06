@@ -233,7 +233,7 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
 
     LOG("JumpMap", "Visiting %s", node->DebugString());
     Visit(node->name());
-    for (auto const *expr : node->args()) { Visit(expr); }
+    for (auto const &argument : node->arguments()) { Visit(&argument.expr()); }
 
     ICARUS_SCOPE(SaveVar(node_stack_, node)) {
       for (auto const &block : node->blocks()) { Visit(&block); }

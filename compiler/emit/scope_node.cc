@@ -126,7 +126,7 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
     Compiler &c,
     core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
     std::optional<ir::Reg> state_ptr,
-    core::Arguments<ast::Expression const *> const &arg_exprs,
+    absl::Span<ast::Call::Argument const> const &args,
     ir::CompiledScope const &scope) {
   // TODO: Support dynamic dispatch.
   auto const &inits = scope.inits();
@@ -153,29 +153,15 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
 
   if (state_ptr) { prepared_arguments.emplace_back(*state_ptr); }
 
-  // TODO: With expansions, args_exprs.pos().size() could be wrong.
-  for (size_t i = 0; i < arg_exprs.pos().size(); ++i) {
+  size_t i = 0;
+  for (auto const& argument : args) {
+    absl::Cleanup cleanup = [&] { ++i; };
+    // TODO: Default arguments.
     base::untyped_buffer buffer = PrepareArgument(
-        c, *constant_arguments[i], arg_exprs[i], param_qts[i].value);
+        c, *constant_arguments[i], &argument.expr(), param_qts[i].value);
     prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
   }
 
-  for (size_t i = arg_exprs.pos().size(); i < param_qts.size(); ++i) {
-    std::string_view name                = param_qts[i].name;
-    auto const *constant_typed_value     = constant_arguments.at_or_null(name);
-    auto const *expr                     = arg_exprs.at_or_null(name);
-    ast::Expression const *default_value = nullptr;
-
-    if (not expr) {
-      default_value = ASSERT_NOT_NULL(
-          ir::CompiledJump::From(init)->params()[i].value.get()->init_val());
-    }
-
-    base::untyped_buffer buffer = PrepareArgument(
-        c, constant_typed_value ? **constant_typed_value : ir::Value(),
-        expr ? *expr : default_value, param_qts[i].value);
-    prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
-  }
   return std::make_pair(init, std::move(prepared_arguments));
 }
 
@@ -327,11 +313,22 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->args());
+  base::untyped_buffer buffer;
+  core::Arguments<type::Typed<size_t>> constant_argument_indices =
+      EmitConstantArguments(*this, node->arguments(), buffer);
+  auto constant_arguments =
+      constant_argument_indices.Transform([&](auto const &typed_index) {
+        if (*typed_index == static_cast<size_t>(-1)) {
+          return type::Typed<ir::Value>(ir::Value(), typed_index.type());
+        }
+        base::untyped_buffer_view view(buffer.raw(*typed_index),
+                                       buffer.size() - *typed_index);
+        return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
+                                      typed_index.type());
+      });
 
   auto [init, args] = EmitIrForJumpArguments(
-      *this, constant_arguments, state_ptr, node->args(), *compiled_scope);
+      *this, constant_arguments, state_ptr, node->arguments(), *compiled_scope);
   auto from_block = builder().CurrentBlock();
 
   auto args_by_name =

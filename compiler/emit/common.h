@@ -54,12 +54,6 @@ core::Arguments<type::Typed<size_t>> EmitConstantArguments(
     Compiler &c, absl::Span<ast::Call::Argument const> args,
     base::untyped_buffer &buffer);
 
-core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
-    Compiler &c, core::Arguments<ast::Expression const *> const &args);
-
-core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
-    Compiler &c, absl::Span<ast::Call::Argument const> args);
-
 void EmitCall(
     Compiler &compiler, ast::Expression const *callee,
     base::untyped_buffer_view constant_buffer,

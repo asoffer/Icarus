@@ -1080,8 +1080,7 @@ struct ScopeLiteral : Expression, WithScope<ScopeLitScope> {
 //
 struct ScopeNode : Expression {
   ScopeNode(frontend::SourceRange const &range,
-            std::unique_ptr<Expression> name,
-            core::OrderedArguments<Expression> args,
+            std::unique_ptr<Expression> name, std::vector<Call::Argument> args,
             std::vector<BlockNode> blocks)
       : Expression(range),
         name_(std::move(name)),
@@ -1089,14 +1088,7 @@ struct ScopeNode : Expression {
         blocks_(WithThisAsParent(std::move(blocks))) {}
 
   Expression const *name() const { return name_.get(); }
-  core::Arguments<Expression const *> const &args() const {
-    return args_.args();
-  }
-
-  template <typename Fn>
-  void Apply(Fn &&fn) const {
-    args_.Apply(std::forward<Fn>(fn));
-  }
+  absl::Span<Call::Argument const> arguments() const { return args_; }
 
   absl::Span<BlockNode const> blocks() const { return blocks_; }
 
@@ -1124,7 +1116,7 @@ struct ScopeNode : Expression {
 
   std::optional<Label> label_;
   std::unique_ptr<Expression> name_;
-  core::OrderedArguments<Expression> args_;
+  std::vector<Call::Argument> args_;
   std::vector<BlockNode> blocks_;
   ScopeNode *last_scope_node_ = nullptr;
 };

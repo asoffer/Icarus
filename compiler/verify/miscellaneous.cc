@@ -49,7 +49,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ScopeNode const *node
   // should not have early-exists.
 
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
-                   std::ignore, VerifyArguments(node->args()));
+                   std::ignore, VerifyArguments(node->arguments()));
 
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
                    std::ignore, VerifyType(node->name())[0]);

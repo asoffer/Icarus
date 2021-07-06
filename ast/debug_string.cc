@@ -1,3 +1,4 @@
+#include "absl/functional/bind_front.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
@@ -204,29 +205,25 @@ void BuiltinFn::DebugStrAppend(std::string *out, size_t indent) const {
   out->append(stringify(value()));
 }
 
+void AppendCallArgument(size_t indent, std::string *out,
+                        Call::Argument const &arg) {
+  if (arg.named()) { absl::StrAppend(out, arg.name(), " = "); }
+  arg.expr().DebugStrAppend(out, indent);
+}
+
 void Call::DebugStrAppend(std::string *out, size_t indent) const {
   std::string_view sep = "";
   if (not prefix_arguments().empty()) {
     absl::StrAppend(out, "(",
                     absl::StrJoin(prefix_arguments(), ", ",
-                                  [&](std::string *out, auto const &arg) {
-                                    if (arg.named()) {
-                                      absl::StrAppend(out, arg.name(), " = ");
-                                    }
-                                    arg.expr().DebugStrAppend(out, indent);
-                                  }),
+                                  absl::bind_front(AppendCallArgument, indent)),
                     ")'");
   }
   callee()->DebugStrAppend(out, indent);
   if (not postfix_arguments().empty() or arguments().empty()) {
     absl::StrAppend(out, "(",
                     absl::StrJoin(postfix_arguments(), ", ",
-                                  [&](std::string *out, auto const &arg) {
-                                    if (arg.named()) {
-                                      absl::StrAppend(out, arg.name(), " = ");
-                                    }
-                                    arg.expr().DebugStrAppend(out, indent);
-                                  }),
+                                  absl::bind_front(AppendCallArgument, indent)),
                     ")");
   }
 }
@@ -438,13 +435,10 @@ void ScopeLiteral::DebugStrAppend(std::string *out, size_t indent) const {
 
 void ScopeNode::DebugStrAppend(std::string *out, size_t indent) const {
   name()->DebugStrAppend(out, indent);
-  absl::StrAppend(out, " ");
-
-  if (not args().empty()) {
-    absl::StrAppend(out, "(");
-    DumpArguments(out, indent, args());
-    absl::StrAppend(out, ")");
-  }
+  absl::StrAppend(out, " (",
+                  absl::StrJoin(arguments(), ", ",
+                                absl::bind_front(AppendCallArgument, indent)),
+                  ") ");
   for (auto const &block : blocks()) { block.DebugStrAppend(out, indent); }
 }
 

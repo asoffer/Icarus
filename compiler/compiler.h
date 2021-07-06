@@ -660,8 +660,6 @@ struct Compiler
 
  private:
   std::optional<core::Arguments<type::Typed<ir::Value>>> VerifyArguments(
-      core::Arguments<ast::Expression const *> const &args);
-  std::optional<core::Arguments<type::Typed<ir::Value>>> VerifyArguments(
       absl::Span<ast::Call::Argument const> args);
 
   type::QualType VerifyUnaryOverload(char const *symbol,

@@ -279,25 +279,6 @@ Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args) {
   return arg_vals;
 }
 
-std::optional<core::Arguments<type::Typed<ir::Value>>>
-Compiler::VerifyArguments(
-    core::Arguments<ast::Expression const *> const &args) {
-  bool err      = false;
-  auto arg_vals = args.Transform([&](ast::Expression const *expr) {
-    auto expr_qual_type = VerifyType(expr)[0];
-    err |= not expr_qual_type.ok();
-    if (err) {
-      LOG("VerifyArguments", "Error with: %s", expr->DebugString());
-      return type::Typed<ir::Value>(ir::Value(), nullptr);
-    }
-    LOG("VerifyArguments", "constant: %s", expr->DebugString());
-    return EvaluateIfConstant(*this, expr, expr_qual_type);
-  });
-
-  if (err) { return std::nullopt; }
-  return arg_vals;
-}
-
 // TODO: Replace `symbol` with an enum.
 type::QualType Compiler::VerifyUnaryOverload(
     char const *symbol, ast::Expression const *node,

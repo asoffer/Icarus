@@ -1191,18 +1191,10 @@ std::unique_ptr<ast::Node> BuildScopeNode(
                     nodes.back()->range().end());
   auto [callee, args] = std::move(nodes[0]->as<ast::Call>()).extract();
 
-  // TODO: Simplify this by having ScopeNode take a vector of Argument directly.
-  std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> exprs;
-  for (auto &arg : args) {
-    auto [name, expr] = std::move(arg).extract();
-    exprs.emplace_back(std::move(name), std::move(expr));
-  }
   std::vector<ast::BlockNode> blocks;
   blocks.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
-  return std::make_unique<ast::ScopeNode>(
-      range, std::move(callee),
-      core::OrderedArguments<ast::Expression>(std::move(exprs)),
-      std::move(blocks));
+  return std::make_unique<ast::ScopeNode>(range, std::move(callee),
+                                          std::move(args), std::move(blocks));
 }
 
 std::unique_ptr<ast::Node> BuildBlockNode(
