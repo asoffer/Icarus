@@ -705,10 +705,11 @@ ir::ArgumentBuffer EmitConstantArgumentBuffer(
               std::get_if<base::untyped_buffer>(&result)) {
         // TODO: Support more than primitive types and pointers.
         if (qt.type().is<type::Pointer>()) {
-          arg_buffer.append(result_buffer->get<ir::RegOr<ir::addr_t>>(0));
+          arg_buffer.append(
+              ir::RegOr<ir::addr_t>(result_buffer->get<ir::addr_t>(0)));
         } else {
           qt.type().as<type::Primitive>().Apply([&]<typename T>() {
-            arg_buffer.append(result_buffer->template get<ir::RegOr<T>>(0));
+            arg_buffer.append(ir::RegOr<T>(result_buffer->template get<T>(0)));
           });
         }
       } else {
@@ -733,7 +734,15 @@ core::Arguments<type::Typed<size_t>> EmitConstantArguments(
       if (auto const *result_buffer =
               std::get_if<base::untyped_buffer>(&result)) {
         index = buffer.size();
-        buffer.write(buffer.size(), *result_buffer);
+        // TODO: Support more than primitive types and pointers.
+        if (qt.type().is<type::Pointer>()) {
+          buffer.append(
+              ir::RegOr<ir::addr_t>(result_buffer->get<ir::addr_t>(0)));
+        } else {
+          qt.type().as<type::Primitive>().Apply([&]<typename T>() {
+            buffer.append(ir::RegOr<T>(result_buffer->template get<T>(0)));
+          });
+        }
       } else {
         NOT_YET();
       }
