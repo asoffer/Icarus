@@ -219,6 +219,7 @@ cc_library(
         "//core:arguments",
         "//core:params",
         "//ir/value",
+        "//ir/value:argument_buffer",
         "//type",
         "//type:qual_type",
         "//type:typed_value",

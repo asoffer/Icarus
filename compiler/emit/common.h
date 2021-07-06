@@ -10,6 +10,7 @@
 #include "base/ptr_span.h"
 #include "compiler/compiler.h"
 #include "ir/compiled_fn.h"
+#include "ir/value/argument_buffer.h"
 #include "type/struct.h"
 
 namespace compiler {
@@ -49,6 +50,13 @@ base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
 // value itself.
 ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
                           type::QualType arg_qt, type::QualType param_qt);
+base::untyped_buffer PrepareArgument(Compiler &c,
+                                     base::untyped_buffer_view constant,
+                                     ast::Expression const *expr,
+                                     type::QualType param_qt);
+
+ir::ArgumentBuffer EmitConstantArgumentBuffer(
+    Compiler &c, absl::Span<ast::Call::Argument const> args);
 
 core::Arguments<type::Typed<size_t>> EmitConstantArguments(
     Compiler &c, absl::Span<ast::Call::Argument const> args,

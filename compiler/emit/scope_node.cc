@@ -123,8 +123,7 @@ std::optional<ir::Reg> InitializeScopeState(Compiler &c,
 }
 
 std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
-    Compiler &c,
-    core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
+    Compiler &c, ir::ArgumentBuffer const &constant_arguments,
     std::optional<ir::Reg> state_ptr,
     absl::Span<ast::Call::Argument const> const &args,
     ir::CompiledScope const &scope) {
@@ -158,7 +157,7 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
     absl::Cleanup cleanup = [&] { ++i; };
     // TODO: Default arguments.
     base::untyped_buffer buffer = PrepareArgument(
-        c, *constant_arguments[i], &argument.expr(), param_qts[i].value);
+        c, constant_arguments[i], &argument.expr(), param_qts[i].value);
     prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
   }
 
@@ -313,22 +312,9 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  base::untyped_buffer buffer;
-  core::Arguments<type::Typed<size_t>> constant_argument_indices =
-      EmitConstantArguments(*this, node->arguments(), buffer);
-  auto constant_arguments =
-      constant_argument_indices.Transform([&](auto const &typed_index) {
-        if (*typed_index == static_cast<size_t>(-1)) {
-          return type::Typed<ir::Value>(ir::Value(), typed_index.type());
-        }
-        base::untyped_buffer_view view(buffer.raw(*typed_index),
-                                       buffer.size() - *typed_index);
-        return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
-                                      typed_index.type());
-      });
-
-  auto [init, args] = EmitIrForJumpArguments(
-      *this, constant_arguments, state_ptr, node->arguments(), *compiled_scope);
+  auto constant_args = EmitConstantArgumentBuffer(*this, node->arguments());
+  auto [init, args]  = EmitIrForJumpArguments(
+      *this, constant_args, state_ptr, node->arguments(), *compiled_scope);
   auto from_block = builder().CurrentBlock();
 
   auto args_by_name =

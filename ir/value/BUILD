@@ -1,6 +1,18 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "argument_buffer",
+    hdrs = ["argument_buffer.h"],
+    deps = [
+        "//base:meta",
+        "//base:untyped_buffer",
+        "//base:untyped_buffer_view",
+    ]
+)
+
+#TODO: argument_buffer_test
+
+cc_library(
     name = "addr",
     hdrs = ["addr.h"],
 )

@@ -1,3 +1,5 @@
+#include "compiler/emit/common.h"
+
 #include <vector>
 
 #include "compiler/compiler.h"
@@ -83,36 +85,36 @@ ir::Fn InsertGeneratedCopyInit(
     absl::Span<type::StructInstruction::Field const> ir_fields) {
   auto [fn, inserted] = c.context().root().InsertCopyInit(s, s);
   if (inserted) {
-   ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
-     c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
+    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+      c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
-     auto from = ir::Reg::Arg(0);
-     auto to   = ir::Reg::Out(0);
+      auto from = ir::Reg::Arg(0);
+      auto to   = ir::Reg::Out(0);
 
-     size_t i = 0;
-     for (auto const &field : ir_fields) {
-       type::Type t = field.type().value();
-       auto to_ref =
-           c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
-               .addr        = to,
-               .index       = i,
-               .struct_type = s,
-               .result      = c.builder().CurrentGroup()->Reserve()});
-       auto from_val =
-           c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
-               .addr        = from,
-               .index       = i,
-               .struct_type = s,
-               .result      = c.builder().CurrentGroup()->Reserve()});
+      size_t i = 0;
+      for (auto const &field : ir_fields) {
+        type::Type t = field.type().value();
+        auto to_ref =
+            c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+                .addr        = to,
+                .index       = i,
+                .struct_type = s,
+                .result      = c.builder().CurrentGroup()->Reserve()});
+        auto from_val =
+            c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+                .addr        = from,
+                .index       = i,
+                .struct_type = s,
+                .result      = c.builder().CurrentGroup()->Reserve()});
 
-       ir::RegOr<ir::addr_t> r = c.builder().PtrFix(from_val, t);
-       c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, t),
-                      base::untyped_buffer_view(&r));
-       ++i;
+        ir::RegOr<ir::addr_t> r = c.builder().PtrFix(from_val, t);
+        c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, t),
+                       base::untyped_buffer_view(&r));
+        ++i;
       }
       c.builder().ReturnJump();
-   }
-   c.context().root().WriteByteCode(fn);
+    }
+    c.context().root().WriteByteCode(fn);
   }
   return fn;
 }
@@ -477,7 +479,6 @@ void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
       ordered_decl_ids;
   LOG("MakeAllDestructions", "decls in this scope:");
   for (auto &[name, ids] : scope->decls_) {
-
     if (ids[0]->declaration().flags() & ast::Declaration::f_IsConst) {
       continue;
     }
@@ -549,6 +550,40 @@ void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
   }
 }
 
+base::untyped_buffer PrepareArgument(Compiler &c,
+                                     base::untyped_buffer_view constant,
+                                     ast::Expression const *expr,
+                                     type::QualType param_qt) {
+  type::QualType arg_qt = *c.context().qual_types(expr)[0];
+  type::Type arg_type   = arg_qt.type();
+  type::Type param_type = param_qt.type();
+
+  base::untyped_buffer buffer;
+  if (constant.empty()) {
+    if (auto const *ptr_to_type = param_type.if_as<type::Pointer>()) {
+      if (ptr_to_type->pointee() == arg_type) {
+        if (arg_qt.quals() >= type::Quals::Ref()) {
+          buffer.append(ir::RegOr<ir::addr_t>(c.EmitRef(expr)));
+          return buffer;
+        } else {
+          auto reg = c.builder().TmpAlloca(arg_type);
+          c.EmitMoveInit(expr,
+                         {type::Typed<ir::RegOr<ir::addr_t>>(reg, param_type)});
+          buffer.append(ir::RegOr<ir::addr_t>(reg));
+          return buffer;
+        }
+      }
+    }
+
+    c.EmitToBuffer(expr, buffer);
+  } else {
+    buffer.write(0, constant.raw(0), constant.size());
+  }
+
+  ApplyImplicitCasts(c.builder(), arg_type, param_qt, buffer);
+  return buffer;
+}
+
 base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
                                      ast::Expression const *expr,
                                      type::QualType param_qt) {
@@ -615,7 +650,6 @@ base::untyped_buffer PrepareArgument(Compiler &c, ValueView constant,
   return buffer;
 }
 
-
 // TODO: A good amount of this could probably be reused from the above
 // PrepareArgument overload.
 ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
@@ -655,6 +689,34 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
   } else {
     NOT_YET(arg_qt, " vs ", param_qt);
   }
+}
+
+ir::ArgumentBuffer EmitConstantArgumentBuffer(
+    Compiler &c, absl::Span<ast::Call::Argument const> args) {
+  ir::ArgumentBuffer arg_buffer;
+
+  for (auto const &arg : args) {
+    size_t index = -1;
+    auto qt      = c.context().qual_types(&arg.expr())[0];
+    if (qt.constant()) {
+      auto result = c.EvaluateToBufferOrDiagnose(
+          type::Typed<ast::Expression const *>(&arg.expr(), qt.type()));
+      if (auto const *result_buffer =
+              std::get_if<base::untyped_buffer>(&result)) {
+        // TODO: Support more than primitive types and pointers.
+        if (qt.type().is<type::Pointer>()) {
+          arg_buffer.append(result_buffer->get<ir::RegOr<ir::addr_t>>(0));
+        } else {
+          qt.type().as<type::Primitive>().Apply([&]<typename T>() {
+            arg_buffer.append(result_buffer->template get<ir::RegOr<T>>(0));
+          });
+        }
+      } else {
+        NOT_YET();
+      }
+    }
+  }
+  return arg_buffer;
 }
 
 core::Arguments<type::Typed<size_t>> EmitConstantArguments(
@@ -758,7 +820,7 @@ void EmitCall(
     size_t i = 0;
     for (; i < arg_exprs.size() and not arg_exprs[i].named(); ++i) {
       auto buffer = PrepareArgument(compiler, *constant_arguments[i],
-                          &arg_exprs[i].expr(), param_qts[i].value);
+                                    &arg_exprs[i].expr(), param_qts[i].value);
       prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
     }
 
