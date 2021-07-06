@@ -50,16 +50,22 @@ base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
 ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
                           type::QualType arg_qt, type::QualType param_qt);
 
+core::Arguments<type::Typed<size_t>> EmitConstantArguments(
+    Compiler &c, absl::Span<ast::Call::Argument const> args,
+    base::untyped_buffer &buffer);
+
 core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
     Compiler &c, core::Arguments<ast::Expression const *> const &args);
 
 core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
     Compiler &c, absl::Span<ast::Call::Argument const> args);
 
-void EmitCall(Compiler &compiler, ast::Expression const *callee,
-              core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
-              absl::Span<ast::Call::Argument const> arg_exprs,
-              absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to);
+void EmitCall(
+    Compiler &compiler, ast::Expression const *callee,
+    base::untyped_buffer_view constant_buffer,
+    core::Arguments<type::Typed<size_t>> const &constant_argument_indices,
+    absl::Span<ast::Call::Argument const> arg_exprs,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to);
 
 }  // namespace compiler
 

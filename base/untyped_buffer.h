@@ -19,8 +19,7 @@ struct untyped_buffer {
   using iterator       = internal::raw_iterator;
 
   untyped_buffer(const_iterator iter, size_t len)
-      : data_(reinterpret_cast<std::byte const *>(iter.raw()),
-              reinterpret_cast<std::byte const *>(iter.raw()) + len) {}
+      : data_(iter.raw(), iter.raw() + len) {}
 
   untyped_buffer(size_t starting_capacity = 0) {
     data_.reserve(starting_capacity);

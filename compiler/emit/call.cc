@@ -167,16 +167,27 @@ void Compiler::EmitToBuffer(ast::Call const *node, base::untyped_buffer &out) {
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->arguments());
+  base::untyped_buffer buffer;
+  core::Arguments<type::Typed<size_t>> constant_argument_indices =
+      EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    out.append(ir::RegOr<type::Type>(
-        type::Type(gs_type->Instantiate(constant_arguments).second)));
+    auto args =
+        constant_argument_indices.Transform([&](auto const &typed_index) {
+          if (*typed_index == static_cast<size_t>(-1)) {
+            return type::Typed<ir::Value>(ir::Value(), typed_index.type());
+          }
+          base::untyped_buffer_view view(buffer.raw(*typed_index),
+                                         buffer.size() - *typed_index);
+          return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
+                                        typed_index.type());
+        });
+    out.append(
+        ir::RegOr<type::Type>(type::Type(gs_type->Instantiate(args).second)));
     return;
   }
 
@@ -188,8 +199,8 @@ void Compiler::EmitToBuffer(ast::Call const *node, base::untyped_buffer &out) {
   for (type::QualType const &qt : qts) {
     outs.emplace_back(builder().TmpAlloca(qt.type()), qt.type());
   }
-  EmitCall(*this, os.members().front(), constant_arguments, node->arguments(),
-           outs);
+  EmitCall(*this, os.members().front(), buffer, constant_argument_indices,
+           node->arguments(), outs);
   if (qts.size() == 1) {
     FromValue(ir::Value(builder().PtrFix(outs[0]->reg(), qts[0].type())),
               qts[0].type(), out);
@@ -208,16 +219,26 @@ void Compiler::EmitMoveInit(
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->arguments());
+  base::untyped_buffer buffer;
+  core::Arguments<type::Typed<size_t>> constant_argument_indices =
+      EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(constant_arguments).second));
+    auto args =
+        constant_argument_indices.Transform([&](auto const &typed_index) {
+          if (*typed_index == static_cast<size_t>(-1)) {
+            return type::Typed<ir::Value>(ir::Value(), typed_index.type());
+          }
+          base::untyped_buffer_view view(buffer.raw(*typed_index),
+                                         buffer.size() - *typed_index);
+          return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
+                                        typed_index.type());
+        });
+    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(args).second));
     EmitCopyAssign(to[0],
                    ValueView(type::Type_, base::untyped_buffer_view(&t)));
     return;
@@ -225,8 +246,8 @@ void Compiler::EmitMoveInit(
 
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-  EmitCall(*this, os.members().front(), constant_arguments, node->arguments(),
-           to);
+  EmitCall(*this, os.members().front(), buffer, constant_argument_indices,
+           node->arguments(), to);
 }
 
 void Compiler::EmitCopyInit(
@@ -241,16 +262,27 @@ void Compiler::EmitCopyInit(
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->arguments());
+  base::untyped_buffer buffer;
+  core::Arguments<type::Typed<size_t>> constant_argument_indices =
+      EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(constant_arguments).second));
+    auto args =
+        constant_argument_indices.Transform([&](auto const &typed_index) {
+          if (*typed_index == static_cast<size_t>(-1)) {
+            return type::Typed<ir::Value>(ir::Value(), typed_index.type());
+          }
+          base::untyped_buffer_view view(buffer.raw(*typed_index),
+                                         buffer.size() - *typed_index);
+          return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
+                                        typed_index.type());
+        });
+
+    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(args).second));
     EmitCopyAssign(to[0],
                    ValueView(type::Type_, base::untyped_buffer_view(&t)));
     return;
@@ -258,8 +290,8 @@ void Compiler::EmitCopyInit(
 
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-  return EmitCall(*this, os.members().front(), constant_arguments,
-                  node->arguments(), to);
+  return EmitCall(*this, os.members().front(), buffer,
+                  constant_argument_indices, node->arguments(), to);
 }
 
 void Compiler::EmitMoveAssign(
@@ -275,16 +307,27 @@ void Compiler::EmitMoveAssign(
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->arguments());
+  base::untyped_buffer buffer;
+  core::Arguments<type::Typed<size_t>> constant_argument_indices =
+      EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(constant_arguments).second));
+    auto args =
+        constant_argument_indices.Transform([&](auto const &typed_index) {
+          if (*typed_index == static_cast<size_t>(-1)) {
+            return type::Typed<ir::Value>(ir::Value(), typed_index.type());
+          }
+          base::untyped_buffer_view view(buffer.raw(*typed_index),
+                                         buffer.size() - *typed_index);
+          return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
+                                        typed_index.type());
+        });
+
+    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(args).second));
     EmitMoveAssign(to[0],
                    ValueView(type::Type_, base::untyped_buffer_view(&t)));
   }
@@ -292,8 +335,8 @@ void Compiler::EmitMoveAssign(
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
 
-  return EmitCall(*this, os.members().front(), constant_arguments,
-                  node->arguments(), to);
+  return EmitCall(*this, os.members().front(), buffer,
+                  constant_argument_indices, node->arguments(), to);
 }
 
 void Compiler::EmitCopyAssign(
@@ -309,15 +352,27 @@ void Compiler::EmitCopyAssign(
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  core::Arguments<type::Typed<ir::Value>> constant_arguments =
-      EmitConstantArguments(*this, node->arguments());
+  base::untyped_buffer buffer;
+  core::Arguments<type::Typed<size_t>> constant_argument_indices =
+      EmitConstantArguments(*this, node->arguments(), buffer);
+
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(constant_arguments).second));
+    auto args =
+        constant_argument_indices.Transform([&](auto const &typed_index) {
+          if (*typed_index == static_cast<size_t>(-1)) {
+            return type::Typed<ir::Value>(ir::Value(), typed_index.type());
+          }
+          base::untyped_buffer_view view(buffer.raw(*typed_index),
+                                         buffer.size() - *typed_index);
+          return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
+                                        typed_index.type());
+        });
+
+    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(args).second));
     EmitCopyAssign(to[0],
                    ValueView(type::Type_, base::untyped_buffer_view(&t)));
   }
@@ -325,8 +380,8 @@ void Compiler::EmitCopyAssign(
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
 
-  return EmitCall(*this, os.members().front(), constant_arguments,
-                  node->arguments(), to);
+  return EmitCall(*this, os.members().front(), buffer,
+                  constant_argument_indices, node->arguments(), to);
 }
 
 bool Compiler::PatternMatch(

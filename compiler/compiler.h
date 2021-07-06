@@ -58,6 +58,7 @@ struct ValueView {
   explicit ValueView(type::Type t, base::untyped_buffer_view v)
       : type_(t), view_(v) {}
 
+  bool empty() const { return view_.empty(); }
   type::Type type() const { return type_; }
   base::untyped_buffer_view const *operator->() const { return &view_; }
   base::untyped_buffer_view operator*() const { return view_; }

@@ -215,7 +215,8 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler &c, ast::Expression const *fn,
 
 std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     Compiler &c, ast::Expression const *fn, type::QualType qt,
-    const core::Arguments<type::Typed<ir::Value>> &constant_arguments) {
+    base::untyped_buffer_view constant_buffer,
+    const core::Arguments<type::Typed<size_t>> &constant_argument_indices) {
   if (auto const *gf_type = qt.type().if_as<type::GenericFunction>()) {
     ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(fn).value();
 
@@ -228,6 +229,17 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     }
 
     auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
+
+    auto constant_arguments =
+        constant_argument_indices.Transform([&](auto const &typed_index) {
+          if (*typed_index == static_cast<size_t>(-1)) {
+            return type::Typed<ir::Value>(ir::Value(), typed_index.type());
+          }
+          base::untyped_buffer_view view(constant_buffer.raw(*typed_index),
+                                         constant_buffer.size() - *typed_index);
+          return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
+                                        typed_index.type());
+        });
 
     auto find_subcontext_result =
         c.FindInstantiation(parameterized_expr, constant_arguments);
@@ -570,6 +582,40 @@ base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
   return buffer;
 }
 
+base::untyped_buffer PrepareArgument(Compiler &c, ValueView constant,
+                                     ast::Expression const *expr,
+                                     type::QualType param_qt) {
+  type::QualType arg_qt = *c.context().qual_types(expr)[0];
+  type::Type arg_type   = arg_qt.type();
+  type::Type param_type = param_qt.type();
+
+  base::untyped_buffer buffer;
+  if (constant.empty()) {
+    if (auto const *ptr_to_type = param_type.if_as<type::Pointer>()) {
+      if (ptr_to_type->pointee() == arg_type) {
+        if (arg_qt.quals() >= type::Quals::Ref()) {
+          buffer.append(ir::RegOr<ir::addr_t>(c.EmitRef(expr)));
+          return buffer;
+        } else {
+          auto reg = c.builder().TmpAlloca(arg_type);
+          c.EmitMoveInit(expr,
+                         {type::Typed<ir::RegOr<ir::addr_t>>(reg, param_type)});
+          buffer.append(ir::RegOr<ir::addr_t>(reg));
+          return buffer;
+        }
+      }
+    }
+
+    c.EmitToBuffer(expr, buffer);
+  } else {
+    buffer.write(0, constant->data(), constant->size());
+  }
+
+  ApplyImplicitCasts(c.builder(), arg_type, param_qt, buffer);
+  return buffer;
+}
+
+
 // TODO: A good amount of this could probably be reused from the above
 // PrepareArgument overload.
 ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
@@ -631,6 +677,35 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
   });
 }
 
+core::Arguments<type::Typed<size_t>> EmitConstantArguments(
+    Compiler &c, absl::Span<ast::Call::Argument const> args,
+    base::untyped_buffer &buffer) {
+  core::Arguments<type::Typed<size_t>> arg_vals;
+
+  for (auto const &arg : args) {
+    size_t index = -1;
+    auto qt      = c.context().qual_types(&arg.expr())[0];
+    if (qt.constant()) {
+      auto result = c.EvaluateToBufferOrDiagnose(
+          type::Typed<ast::Expression const *>(&arg.expr(), qt.type()));
+      if (auto const *result_buffer =
+              std::get_if<base::untyped_buffer>(&result)) {
+        index = buffer.size();
+        buffer.write(buffer.size(), *result_buffer);
+      } else {
+        NOT_YET();
+      }
+    }
+
+    if (not arg.named()) {
+      arg_vals.pos_emplace(type::Typed(index, qt.type()));
+    } else {
+      arg_vals.named_emplace(arg.name(), type::Typed(index, qt.type()));
+    }
+  }
+  return arg_vals;
+}
+
 core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
     Compiler &c, absl::Span<ast::Call::Argument const> args) {
   core::Arguments<type::Typed<ir::Value>> arg_vals;
@@ -660,10 +735,12 @@ core::Arguments<type::Typed<ir::Value>> EmitConstantArguments(
   return arg_vals;
 }
 
-void EmitCall(Compiler &compiler, ast::Expression const *callee,
-              core::Arguments<type::Typed<ir::Value>> const &constant_arguments,
-              absl::Span<ast::Call::Argument const> arg_exprs,
-              absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+void EmitCall(
+    Compiler &compiler, ast::Expression const *callee,
+    base::untyped_buffer_view constant_buffer,
+    core::Arguments<type::Typed<size_t>> const &constant_argument_indices,
+    absl::Span<ast::Call::Argument const> arg_exprs,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   CompiledModule *callee_mod = &callee->scope()
                                     ->Containing<ast::ModuleScope>()
                                     ->module()
@@ -676,7 +753,7 @@ void EmitCall(Compiler &compiler, ast::Expression const *callee,
   if (callee_mod == &compiler.context().module()) {
     results =
         EmitCallee(compiler, callee, compiler.context().qual_types(callee)[0],
-                   constant_arguments);
+                   constant_buffer, constant_argument_indices);
   } else {
     type::QualType callee_qual_type =
         callee_mod->context(&compiler.context().module()).qual_types(callee)[0];
@@ -687,7 +764,7 @@ void EmitCall(Compiler &compiler, ast::Expression const *callee,
         .importer            = compiler.importer(),
     });
     results = EmitCallee(callee_compiler, callee, callee_qual_type,
-                         constant_arguments);
+                         constant_buffer, constant_argument_indices);
   }
 
   auto &[callee_fn, overload_type, context] = results;
@@ -713,6 +790,17 @@ void EmitCall(Compiler &compiler, ast::Expression const *callee,
   std::vector<ir::Value> prepared_arguments;
 
   auto const &param_qts = overload_type->params();
+
+  auto constant_arguments =
+      constant_argument_indices.Transform([&](auto const &typed_index) {
+        if (*typed_index == static_cast<size_t>(-1)) {
+          return type::Typed<ir::Value>(ir::Value(), typed_index.type());
+        }
+        base::untyped_buffer_view view(constant_buffer.raw(*typed_index),
+                                       constant_buffer.size() - *typed_index);
+        return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
+                                      typed_index.type());
+      });
 
   // TODO: With expansions, this might be wrong.
   {
