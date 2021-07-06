@@ -46,7 +46,7 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
   ir::CompiledFn fn(type::Func({}, {type}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
   ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
-    // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
+    // TODO this is essentially a copy of the body of FunctionLiteral::EmitToBuffer
     // Factor these out together.
     c.builder().CurrentBlock() = fn.entry();
 

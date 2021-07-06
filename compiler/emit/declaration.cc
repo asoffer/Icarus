@@ -21,11 +21,7 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
 
   LOG("EmitConstantDeclaration", "%s", node->DebugString());
   if (node->flags() & ast::Declaration::f_IsFnParam) {
-    // TODO: Support multiple declarations.
-    auto val = c.context().LoadConstantParam(&node->ids()[0]);
-    LOG("Declaration", "%s", val);
-    FromValue(val, t, out);
-    return;
+    c.context().LoadConstant(&node->ids()[0], out);
   } else {
     // TODO: Support multiple declarations.
     if (auto *constant_value = c.context().Constant(&node->ids()[0])) {

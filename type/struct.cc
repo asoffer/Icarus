@@ -32,7 +32,8 @@ void Struct::AppendFields(std::vector<Struct::Field> fields) {
     ASSERT(field.type.valid() == true);
     field_indices_.emplace(field.name, i++);
     flags_.is_default_initializable &=
-        field.type.get()->IsDefaultInitializable() or not field.initial_value.empty();
+        field.type.get()->IsDefaultInitializable() or
+        not field.initial_value.empty();
     flags_.is_copyable &= field.type.get()->IsCopyable();
     flags_.is_movable &= field.type.get()->IsMovable();
     flags_.has_destructor |= field.type.get()->HasDestructor();
@@ -170,21 +171,21 @@ void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
     absl::flat_hash_set<ir::Hashtag> tags;
     if (constant.exported()) { tags.insert(ir::Hashtag::Export); }
 
-    if (ir::Value const *init_val = constant.initial_value()) {
+    if (base::untyped_buffer_view value = constant.initial_value();
+        not value.empty()) {
       // TODO: constant.type() can be null. If the type is inferred from the
       // initial value.
-      Type t = ctx.resolve(constant.type());
-      constant_fields.push_back(
-          Struct::Field{.name          = std::string(constant.name()),
-                        .type          = t,
-                        .initial_value = *init_val,
-                        .hashtags      = std::move(tags)});
+      Type t  = ctx.resolve(constant.type());
+      auto &f = constant_fields.emplace_back(Struct::Field{
+          .name          = std::string(constant.name()),
+          .type          = t,
+          .initial_value = base::untyped_buffer(value.begin(), value.size()),
+          .hashtags      = std::move(tags)});
     } else {
       constant_fields.push_back(
-          Struct::Field{.name          = std::string(constant.name()),
-                        .type          = ctx.resolve(constant.type()),
-                        .initial_value = ir::Value(),
-                        .hashtags      = std::move(tags)});
+          Struct::Field{.name     = std::string(constant.name()),
+                        .type     = ctx.resolve(constant.type()),
+                        .hashtags = std::move(tags)});
     }
   }
 
@@ -194,19 +195,20 @@ void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
     absl::flat_hash_set<ir::Hashtag> tags;
     if (field.exported()) { tags.insert(ir::Hashtag::Export); }
 
-    if (ir::Value const *init_val = field.initial_value()) {
+    if (base::untyped_buffer_view value = field.initial_value();
+        not value.empty()) {
       // TODO: field.type() can be null. If the field type is inferred from the
       // initial value.
-      Type t = ctx.resolve(field.type());
-      struct_fields.push_back(Struct::Field{.name = std::string(field.name()),
-                                            .type = t,
-                                            .initial_value = *init_val,
-                                            .hashtags      = std::move(tags)});
+      Type t  = ctx.resolve(field.type());
+      auto &f = struct_fields.emplace_back(Struct::Field{
+          .name          = std::string(field.name()),
+          .type          = t,
+          .initial_value = base::untyped_buffer(value.begin(), value.size()),
+          .hashtags      = std::move(tags)});
     } else {
       struct_fields.push_back(Struct::Field{.name = std::string(field.name()),
                                             .type = ctx.resolve(field.type()),
-                                            .initial_value = ir::Value(),
-                                            .hashtags      = std::move(tags)});
+                                            .hashtags = std::move(tags)});
     }
   }
 

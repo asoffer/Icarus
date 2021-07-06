@@ -21,8 +21,9 @@ struct CompiledModule : module::BasicModule {
   explicit CompiledModule() : data_(this) {}
   ~CompiledModule() override {}
 
-  ir::Value ExportedValue(ast::Declaration::Id const *id) const {
-    return context().LoadConstant(id);
+  void ExportedValue(ast::Declaration::Id const *id,
+                     base::untyped_buffer &out) const {
+    return context().LoadConstant(id, out);
   }
 
   // If we're requesting from a different module we need to ensure that we've

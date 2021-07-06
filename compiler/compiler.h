@@ -224,21 +224,15 @@ struct Compiler
     return result;
   }
 
+  void EmitVoid(ast::Node const *node) {
+    base::untyped_buffer buffer;
+    EmitToBuffer(node, buffer);
+  }
+
   template <typename T>
   ir::RegOr<T> EmitAs(ast::Node const *node) {
     base::untyped_buffer buffer;
     return EmitAs<T>(node, buffer);
-  }
-
-  ir::Value EmitValue(ast::Node const *node) {
-    base::untyped_buffer buffer;
-    EmitToBuffer(node, buffer);
-    auto const *e = node->if_as<ast::Expression>();
-    if (not e) { return ir::Value(); }
-    auto qts = context().qual_types(e);
-    if (qts.empty()) { return ir::Value(); }
-    type::Type t = qts[0].type();
-    return ToValue(buffer, t);
   }
 
   void EmitToBuffer(ast::Node const *node, base::untyped_buffer &buffer) {

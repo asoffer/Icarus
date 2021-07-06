@@ -65,9 +65,7 @@ void Compiler::EmitMoveInit(
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
       } else {
-        base::untyped_buffer buffer;
-        FromValue(field.initial_value, field.type, buffer);
-        EmitCopyAssign(field_reg, ValueView(field.type, buffer));
+        EmitCopyAssign(field_reg, ValueView(field.type, field.initial_value));
       }
     }
   next_field:;
@@ -110,9 +108,7 @@ void Compiler::EmitCopyInit(
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
       } else {
-        base::untyped_buffer buffer;
-        FromValue(field.initial_value, field.type, buffer);
-        EmitCopyAssign(field_reg, ValueView(field.type, buffer));
+        EmitCopyAssign(field_reg, ValueView(field.type, field.initial_value));
       }
     }
   next_field:;

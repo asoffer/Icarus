@@ -37,10 +37,15 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
     // the qualified type is itself a reference and values otherwise.
     args.push_back(opt.args().Transform([&c](auto const &expr) {
       auto qt = c.context().qual_types(expr.get())[0];
-      return std::pair<ir::Value, type::QualType>(
-          qt.quals() >= type::Quals::Ref() ? ir::Value(c.EmitRef(expr.get()))
-                                           : c.EmitValue(expr.get()),
-          qt);
+      if (qt.quals() >= type::Quals::Ref()) {
+        return std::pair<ir::Value, type::QualType>(
+            ir::Value(c.EmitRef(expr.get())), qt);
+      } else {
+        base::untyped_buffer buffer;
+        c.EmitToBuffer(expr.get(), buffer);
+        return std::pair<ir::Value, type::QualType>(ToValue(buffer, qt.type()),
+                                                    qt);
+      }
     }));
     c.builder().JumpExitJump(std::string(opt.block()), current_block);
   }

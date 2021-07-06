@@ -231,17 +231,12 @@ struct Context {
 
   void CompleteType(ast::Expression const *expr, bool success);
 
-  ir::Value LoadConstant(ast::Declaration::Id const *id) const {
+  void LoadConstant(ast::Declaration::Id const *id, base::untyped_buffer& out) const {
     if (auto iter = constants_.find(id); iter != constants_.end()) {
-      ir::Value val = iter->second.value();
-      if (not val.empty()) { return val; }
+      out = iter->second.buffer();
+    } else {
+      ASSERT_NOT_NULL(parent())->LoadConstant(id, out);
     }
-    if (parent()) { return parent()->LoadConstant(id); }
-    return ir::Value();
-  }
-
-  ir::Value LoadConstantParam(ast::Declaration::Id const *id) const {
-    return LoadConstant(id);
   }
 
   ir::NativeFn FindNativeFn(ast::ParameterizedExpression const *expr) {

@@ -64,10 +64,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
-      case 1:
-        FromValue(mod.ExportedValue(decl_ids[0]),
-                  context().qual_types(node->operand())[0].type(), out);
-        return;
+      case 1: mod.ExportedValue(decl_ids[0], out); return;
       default: NOT_YET();
     }
   }
@@ -148,22 +145,21 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
     ++deref_count;
   }
 
-  ir::Value reg = (op_qt.quals() >= type::Quals::Ref())
-                      ? ir::Value(ref)
-                      : EmitValue(node->operand());
+  ir::RegOr<ir::addr_t> reg = (op_qt.quals() >= type::Quals::Ref())
+                                  ? ref
+                                  : EmitAs<ir::addr_t>(node->operand());
   {
     auto t  = op_qt.type();
     auto tp = t.if_as<type::Pointer>();
     for (size_t i = 0; i < deref_count; ++i) {
-      reg = ir::Value(
-          builder().Load<ir::addr_t>(reg.get<ir::RegOr<ir::addr_t>>(), tp));
-      t  = tp->pointee();
-      tp = t.if_as<type::Pointer>();
+      reg = builder().Load<ir::addr_t>(reg, tp);
+      t   = tp->pointee();
+      tp  = t.if_as<type::Pointer>();
     }
   }
 
   auto const &struct_type = t.as<type::Struct>();
-  return *builder().FieldRef(reg.get<ir::RegOr<ir::addr_t>>(), &struct_type,
+  return *builder().FieldRef(reg, &struct_type,
                              struct_type.index(node->member_name()));
 }
 
@@ -183,7 +179,7 @@ void Compiler::EmitMoveInit(
       case 1: {
         type::QualType node_qt = context().qual_types(node)[0];
         base::untyped_buffer buffer;
-        FromValue(mod.ExportedValue(decl_ids[0]), node_qt.type(), buffer);
+        mod.ExportedValue(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
       }
         return;
@@ -255,9 +251,8 @@ void Compiler::EmitCopyInit(
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
-        type::QualType node_qt = context().qual_types(node)[0];
         base::untyped_buffer buffer;
-        FromValue(mod.ExportedValue(decl_ids[0]), node_qt.type(), buffer);
+        mod.ExportedValue(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
       }
@@ -327,9 +322,8 @@ void Compiler::EmitMoveAssign(
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
-        type::QualType node_qt = context().qual_types(node)[0];
         base::untyped_buffer buffer;
-        FromValue(mod.ExportedValue(decl_ids[0]), node_qt.type(), buffer);
+        mod.ExportedValue(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
       }
@@ -370,9 +364,8 @@ void Compiler::EmitCopyAssign(
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
-        type::QualType node_qt = context().qual_types(node)[0];
         base::untyped_buffer buffer;
-        FromValue(mod.ExportedValue(decl_ids[0]), node_qt.type(), buffer);
+        mod.ExportedValue(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
       }

@@ -309,7 +309,9 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           if (auto const *init_val = id.declaration().init_val()) {
             // TODO init_val type may not be the same.
             field_type = c.context().qual_types(init_val)[0].type();
-            fields.emplace_back(id.name(), field_type, c.EmitValue(init_val));
+            base::untyped_buffer buffer;
+            c.EmitToBuffer(init_val, buffer);
+            fields.emplace_back(id.name(), field_type, std::move(buffer));
             fields.back().set_export(
                 id.declaration().hashtags.contains(ir::Hashtag::Export));
           } else {
@@ -395,7 +397,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     if (auto result = VerifyBody(node); result != WorkItem::Result::Success) {
       return result;
     }
-    EmitValue(node);
+    EmitVoid(node);
 
     LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
         node, state_.must_complete ? "true" : "false");
@@ -412,7 +414,7 @@ WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
     if (auto result = VerifyBody(node); result != WorkItem::Result::Success) {
       return result;
     }
-    EmitValue(node);
+    EmitVoid(node);
 
     LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
         node, state_.must_complete ? "true" : "false");

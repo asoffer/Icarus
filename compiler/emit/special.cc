@@ -403,14 +403,8 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
       for (size_t i = 0; i < r.type()->fields().size(); ++i) {
         auto &field = r.type()->fields()[i];
         if (not field.initial_value.empty()) {
-          // TODO: Support other initial value types.
-          if (field.type == type::I64) {
-            base::untyped_buffer buffer;
-            FromValue(field.initial_value, field.type, buffer);
-            EmitCopyInit(builder().FieldRef(var, r.type(), i), buffer);
-          } else {
-            NOT_YET();
-          }
+          EmitCopyInit(builder().FieldRef(var, r.type(), i),
+                       field.initial_value);
         } else {
           EmitDefaultInit(
               type::Typed<ir::Reg>(builder().FieldRef(var, r.type(), i)));

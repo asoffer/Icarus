@@ -23,12 +23,12 @@
 namespace type {
 
 struct Struct : public LegacyType {
-  struct Field {
+  struct Field : base::Extend<Field, 4>::With<ir::ByteCodeExtension> {
     // TODO make a string_view but deal with trickiness of moving
 
     std::string name;
     Type type = nullptr;
-    ir::Value initial_value;
+    base::untyped_buffer initial_value;
     absl::flat_hash_set<ir::Hashtag> hashtags;
   };
 
@@ -102,16 +102,14 @@ struct Struct : public LegacyType {
 struct StructInstruction
     : base::Extend<StructInstruction>::With<ir::ByteCodeExtension,
                                             ir::InlineExtension> {
-  struct Field {
+  struct Field : base::Extend<Field, 4>::With<ir::ByteCodeExtension> {
     // TODO: Remove this once ByteCodeWriter supports non-default-constructible
     // types.
-    explicit Field() : name_(""), data_(ir::RegOr<Type>(nullptr)) {}
+    explicit Field() : name_(""), type_(ir::RegOr<Type>(nullptr)) {}
 
-    explicit Field(std::string_view name, ir::RegOr<Type> type)
-        : name_(name), data_(type) {}
-
-    explicit Field(std::string_view name, Type t, ir::Value val)
-        : name_(name), data_(WithInitialValue{.type_ = t, .val_ = val}) {}
+    explicit Field(std::string_view name, ir::RegOr<Type> t,
+                   base::untyped_buffer value = {})
+        : name_(name), type_(t), value_(std::move(value)) {}
 
     // Returns the name of the struct field.
     std::string_view name() const { return name_; }
@@ -121,52 +119,16 @@ struct StructInstruction
 
     // Returns a pointer to the register representing the type if it exists, and
     // a null pointer otherwise.
-    ir::Reg *type_reg() {
-      if (auto *reg_or = std::get_if<ir::RegOr<Type>>(&data_)) {
-        if (reg_or->is_reg()) { return &reg_or->reg(); }
-      }
-      return nullptr;
-    }
-
-    ir::RegOr<Type> type() const {
-      return std::visit(
-          [](auto const &data) -> ir::RegOr<Type> {
-            using data_type = std::decay_t<decltype(data)>;
-            if constexpr (base::meta<data_type> ==
-                          base::meta<WithInitialValue>) {
-              return data.type_;
-            } else {
-              return data;
-            }
-          },
-          data_);
-    }
-
-    // Returns a pointer to an initial value if one exists and a null pointer
-    // otherwise.
-    ir::Value const *initial_value() const {
-      if (auto *init_val = std::get_if<WithInitialValue>(&data_)) {
-        return &init_val->val_;
-      } else {
-        return nullptr;
-      }
-    }
-
-    ir::Value *initial_value() {
-      return const_cast<ir::Value *>(
-          static_cast<Field const *>(this)->initial_value());
-    }
+    ir::Reg *type_reg() { return type_.is_reg() ? &type_.reg() : nullptr; }
+    ir::RegOr<Type> type() const { return type_; }
+    base::untyped_buffer_view initial_value() const { return value_; }
 
    private:
+    friend base::EnableExtensions;
+
     std::string_view name_;
-
-    struct WithInitialValue {
-      Type type_;
-      ir::Value val_;
-    };
-
-    std::variant<WithInitialValue, ir::RegOr<Type>> data_;
-
+    ir::RegOr<Type> type_;
+    base::untyped_buffer value_;
     bool export_ = false;
   };
 
