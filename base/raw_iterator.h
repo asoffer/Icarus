@@ -4,6 +4,7 @@
 #include <string>
 #include <compare>
 
+#include "absl/types/span.h"
 #include "base/unaligned_ref.h"
 
 namespace base::internal {
@@ -53,5 +54,20 @@ struct raw_iterator : raw_const_iterator {
 };
 
 }  // namespace base::internal
+
+namespace base {
+
+template <typename T>
+absl::Span<std::byte const> RawConstSpanFrom(T const &value) {
+  return absl::MakeConstSpan(reinterpret_cast<std::byte const *>(&value),
+                             sizeof(T));
+}
+
+template <typename T>
+absl::Span<std::byte> RawSpanFrom(T &value) {
+  return absl::MakeSpan(reinterpret_cast<std::byte *>(&value), sizeof(T));
+}
+
+}  // namespace base
 
 #endif  // ICARUS_BASE_RAW_ITERATOR_H

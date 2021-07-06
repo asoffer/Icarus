@@ -168,6 +168,31 @@ cc_library(
 )
 
 cc_library(
+    name = "ptr_span",
+    hdrs = ["ptr_span.h"],
+    deps = [],
+)
+
+cc_library(
+    name = "ptr_union",
+    hdrs = ["ptr_union.h"],
+    deps = [
+        ":debug",
+        ":meta",
+    ],
+)
+
+cc_test(
+    name = "ptr_union_test",
+    srcs = ["ptr_union_test.cc"],
+    deps = [
+        ":ptr_union",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+
+cc_library(
     name = "raw_iterator",
     hdrs = ["raw_iterator.h"],
     deps = [":unaligned_ref"],
@@ -193,6 +218,25 @@ cc_test(
     srcs = ["scope_test.cc"],
     deps = [
         ":scope",
+        "@com_google_googletest//:gtest_main",
+    ]
+)
+
+cc_library(
+    name = "serialize",
+    hdrs = ["serialize.h"],
+    deps = [
+        ":meta",
+        ":raw_iterator",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "serialize_test",
+    srcs = ["serialize_test.cc"],
+    deps = [
+        ":serialize",
         "@com_google_googletest//:gtest_main",
     ]
 )
@@ -276,30 +320,6 @@ cc_test(
     deps = [
         ":untyped_buffer",
         ":untyped_buffer_view",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "ptr_span",
-    hdrs = ["ptr_span.h"],
-    deps = [],
-)
-
-cc_library(
-    name = "ptr_union",
-    hdrs = ["ptr_union.h"],
-    deps = [
-        ":debug",
-        ":meta",
-    ],
-)
-
-cc_test(
-    name = "ptr_union_test",
-    srcs = ["ptr_union_test.cc"],
-    deps = [
-        ":ptr_union",
         "@com_google_googletest//:gtest_main",
     ],
 )
