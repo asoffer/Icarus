@@ -8,10 +8,12 @@
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
 #include "base/extend.h"
-#include "ir/byte_code_writer.h"
+#include "base/extend/serialize.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
+#include "ir/interpreter/byte_code_reader.h"
+#include "ir/interpreter/byte_code_writer.h"
 #include "module/module.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -73,14 +75,31 @@ struct Flags : public type::LegacyType {
 };
 
 struct FlagsInstruction
-    : base::Extend<FlagsInstruction>::With<ir::ByteCodeExtension,
-                                           ir::InlineExtension> {
+    : base::Extend<FlagsInstruction>::With<ir::InlineExtension> {
   Type Resolve() const;
 
   std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = flags (",
                         absl::StrJoin(names_, ", "), ")");
+  }
+
+  friend void BaseSerialize(interpreter::ByteCodeWriter &w,
+                            FlagsInstruction const &inst) {
+    std::vector<std::pair<uint64_t, ir::RegOr<uint64_t>>> const_avoiding_hack(
+        inst.specified_values_.begin(), inst.specified_values_.end());
+    base::Serialize(w, inst.type, inst.names_, const_avoiding_hack,
+                    inst.result);
+  }
+
+  friend void BaseDeserialize(interpreter::ByteCodeReader &r,
+                              FlagsInstruction &inst) {
+    // TODO: When maps are fully supported, remove this hack and use the extension.
+    std::vector<std::pair<uint64_t, ir::RegOr<uint64_t>>> const_avoiding_hack;
+    base::Deserialize(r, inst.type, inst.names_, const_avoiding_hack,
+                      inst.result);
+    inst.specified_values_ = absl::flat_hash_map<uint64_t, ir::RegOr<uint64_t>>(
+        const_avoiding_hack.begin(), const_avoiding_hack.end());
   }
 
   type::Flags *type;
@@ -90,7 +109,7 @@ struct FlagsInstruction
 };
 
 struct XorFlagsInstruction
-    : base::Extend<XorFlagsInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<XorFlagsInstruction>::With<base::BaseSerializeExtension,
                                               ir::InlineExtension,
                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = xor-flags %1$s %2$s";
@@ -109,7 +128,7 @@ struct XorFlagsInstruction
 };
 
 struct AndFlagsInstruction
-    : base::Extend<AndFlagsInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<AndFlagsInstruction>::With<base::BaseSerializeExtension,
                                               ir::InlineExtension,
                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = and-flags %1$s %2$s";
@@ -128,7 +147,7 @@ struct AndFlagsInstruction
 };
 
 struct OrFlagsInstruction
-    : base::Extend<OrFlagsInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<OrFlagsInstruction>::With<base::BaseSerializeExtension,
                                              ir::InlineExtension,
                                              ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = or-flags %1$s %2$s";

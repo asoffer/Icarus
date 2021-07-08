@@ -204,6 +204,14 @@ constexpr bool always_false(Meta<T>) {
   return false;
 }
 
+template <typename T>
+concept Assignable = std::assignable_from<T&, T>;
+
+template <typename T>
+concept SatisfiesTupleProtocol = requires(T t) {
+  { std::tuple_size<T>::value } -> std::integral;
+};
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H

@@ -43,7 +43,7 @@ struct CastInstruction;
 template <typename ToType, typename FromType>
 struct CastInstruction<ToType(FromType)>
     : base::Extend<CastInstruction<ToType(FromType)>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using from_type                                = FromType;
   using to_type                                  = ToType;
   static constexpr std::string_view kDebugFormat = "%2$s = cast %1$s";
@@ -65,8 +65,8 @@ struct CastInstruction<ToType(FromType)>
 };
 
 struct PtrDiffInstruction
-    : base::Extend<PtrDiffInstruction>::With<ByteCodeExtension, InlineExtension,
-                                             DebugFormatExtension> {
+    : base::Extend<PtrDiffInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = ptrdiff %1$s %2$s";
 
   void Apply(interpreter::ExecutionContext& ctx) const {
@@ -82,8 +82,8 @@ struct PtrDiffInstruction
 };
 
 struct NotInstruction
-    : base::Extend<NotInstruction>::With<ByteCodeExtension, InlineExtension,
-                                         DebugFormatExtension> {
+    : base::Extend<NotInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = not %1$s";
 
   bool Resolve() const { return Apply(operand.value()); }
@@ -95,8 +95,8 @@ struct NotInstruction
 
 // TODO Morph this into interpreter break-point instructions.
 struct DebugIrInstruction
-    : base::Extend<DebugIrInstruction>::With<ByteCodeExtension, InlineExtension,
-                                             DebugFormatExtension> {
+    : base::Extend<DebugIrInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "debug-ir";
 
   void Apply(interpreter::ExecutionContext& ctx) const {
@@ -105,28 +105,27 @@ struct DebugIrInstruction
 };
 
 struct AbortInstruction
-    : base::Extend<AbortInstruction>::With<ByteCodeExtension, InlineExtension,
-                                           DebugFormatExtension> {
+    : base::Extend<AbortInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "abort";
 
   void Apply(interpreter::ExecutionContext&) const { std::abort(); }
 };
 
-
 struct InitInstruction
-    : base::Extend<InitInstruction>::With<ByteCodeExtension, InlineExtension,
-                                          DebugFormatExtension> {
+    : base::Extend<InitInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "init %2$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
-      ir::Fn f   = *s->init_;
+      ir::Fn f = *s->init_;
       interpreter::StackFrame frame(f.native(), ctx.stack());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
       return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
-      ir::Fn f   = a->Initializer();
+      ir::Fn f = a->Initializer();
       interpreter::StackFrame frame(f.native(), ctx.stack());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
       return frame;
@@ -141,8 +140,8 @@ struct InitInstruction
 };
 
 struct DestroyInstruction
-    : base::Extend<DestroyInstruction>::With<ByteCodeExtension, InlineExtension,
-                                             DebugFormatExtension> {
+    : base::Extend<DestroyInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "destroy %2$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
@@ -165,12 +164,11 @@ struct DestroyInstruction
       NOT_YET();
     }
   }
-
 };
 
 struct CopyInstruction
-    : base::Extend<CopyInstruction>::With<ByteCodeExtension, InlineExtension,
-                                          DebugFormatExtension> {
+    : base::Extend<CopyInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "copy %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
@@ -198,7 +196,7 @@ struct CopyInstruction
 
 struct CopyInitInstruction
     : base::Extend<CopyInitInstruction>::With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "copy-init %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
@@ -225,8 +223,8 @@ struct CopyInitInstruction
 };
 
 struct MoveInstruction
-    : base::Extend<MoveInstruction>::With<ByteCodeExtension, InlineExtension,
-                                          DebugFormatExtension> {
+    : base::Extend<MoveInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "move %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
@@ -254,7 +252,7 @@ struct MoveInstruction
 
 struct MoveInitInstruction
     : base::Extend<MoveInitInstruction>::With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "move-init %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
@@ -295,7 +293,7 @@ struct MoveInitInstruction
 
 struct LoadSymbolInstruction
     : base::Extend<LoadSymbolInstruction>::With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%3$s = load-symbol %1$s: %2$s";
 
@@ -323,7 +321,7 @@ struct LoadSymbolInstruction
 };
 
 struct TypeInfoInstruction
-    : base::Extend<TypeInfoInstruction>::With<ByteCodeExtension,
+    : base::Extend<TypeInfoInstruction>::With<base::BaseSerializeExtension,
                                               InlineExtension> {
   enum class Kind : uint8_t { Alignment = 0, Bytes = 2 };
 
@@ -351,7 +349,7 @@ struct TypeInfoInstruction
 
 struct MakeBlockInstruction
     : base::Extend<MakeBlockInstruction>::With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "make-block(%1$s, ...)";  // TODO
 
@@ -376,8 +374,8 @@ struct MakeBlockInstruction
 };
 
 struct MakeScopeInstruction
-    : base::Extend<MakeScopeInstruction>::With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<MakeScopeInstruction>::With<InlineExtension,
+                                               DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "make-scope(%1$s, %4$s, ...)";  // TODO
 
@@ -395,6 +393,25 @@ struct MakeScopeInstruction
         blocks);
   }
 
+  friend void BaseSerialize(interpreter::ByteCodeWriter &w,
+                            MakeScopeInstruction const &inst) {
+    std::vector<std::pair<std::string_view, Block>> const_avoiding_hack(
+        inst.blocks.begin(), inst.blocks.end());
+    base::Serialize(w, inst.scope, inst.inits, inst.dones, const_avoiding_hack);
+  }
+
+  friend void BaseDeserialize(interpreter::ByteCodeReader &r,
+                              MakeScopeInstruction &inst) {
+    // TODO: When maps are fully supported, remove this hack and use the extension.
+    std::vector<std::pair<std::string_view, Block>> const_avoiding_hack;
+    base::Deserialize(r, inst.scope, inst.inits, inst.dones,
+                      const_avoiding_hack);
+    inst.blocks = absl::flat_hash_map<std::string_view, Block>(
+        const_avoiding_hack.begin(), const_avoiding_hack.end());
+  }
+
+
+
   Scope scope;
   std::vector<RegOr<Jump>> inits;
   std::vector<RegOr<Fn>> dones;
@@ -403,7 +420,7 @@ struct MakeScopeInstruction
 
 struct StructIndexInstruction
     : base::Extend<StructIndexInstruction>::With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (struct %3$s)";
 
@@ -420,8 +437,8 @@ struct StructIndexInstruction
 };
 
 struct PtrIncrInstruction
-    : base::Extend<PtrIncrInstruction>::With<ByteCodeExtension, InlineExtension,
-                                             DebugFormatExtension> {
+    : base::Extend<PtrIncrInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (pointer %3$s)";
 
@@ -441,8 +458,8 @@ struct PtrIncrInstruction
 };
 
 struct AndInstruction
-    : base::Extend<AndInstruction>::With<ByteCodeExtension, InlineExtension,
-                                         DebugFormatExtension> {
+    : base::Extend<AndInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = and %1$s %2$s";
 
   bool Resolve() const { return Apply(lhs.value(), rhs.value()); }

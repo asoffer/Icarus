@@ -1,15 +1,77 @@
 #ifndef ICARUS_BASE_SERIALIZE_H
 #define ICARUS_BASE_SERIALIZE_H
 
+#include <concepts>
 #include <iterator>
 
+#include "absl/types/span.h"
 #include "base/meta.h"
 #include "base/raw_iterator.h"
 
 namespace base {
+
+template <typename S>
+concept Serializer = requires(S s) {
+  { (void)s.write_bytes(std::declval<absl::Span<std::byte const> >()) }
+  ->std::same_as<void>;
+};
+
+template <typename D>
+concept Deserializer = requires(D d) {
+  { d.read_bytes(std::declval<size_t>()) }
+  ->std::convertible_to<absl::Span<std::byte const>>;
+};
+
+// Primary entry-points to this library. `Serialize` accepts an object `s`
+// satisfying the `base::Serializer` concept, along with any number of values
+// which can be serialized, and will serialize them with `s` in the order
+// provided.
+//
+// `base::Deserialize` accepts an object satisfying the `base::Deserializer`
+// concept and any number of objects satisfying the `base::Assignable` concept
+// (can be assigned to from itself). The deserializer is read from, assigning to
+// each of the `values...` in order.
+void Serialize(::base::Serializer auto& s, auto const&... values);
+void Deserialize(::base::Deserializer auto& d,
+                 ::base::Assignable auto&... values);
+
 namespace internal_serialize {
 
-template <typename D, typename T>
+template <typename T, typename = void>
+struct AssignableTypeImpl {};
+
+template <typename T>
+struct AssignableTypeImpl<T, std::enable_if_t<std::is_const_v<T>>>
+    : AssignableTypeImpl<std::remove_const_t<T>> {};
+
+template <typename T>
+struct AssignableTypeImpl<T,
+                          std::enable_if_t<not std::is_const_v<T> and
+                                           (base::Assignable<T> or
+                                            std::is_trivially_copyable_v<T>)>> {
+  using type = T;
+};
+
+template <typename, typename>
+struct Tuplify {};
+
+template <typename T, int... Ints>
+struct Tuplify<T, std::index_sequence<Ints...>> {
+  using type = std::tuple<
+      typename AssignableTypeImpl<std::tuple_element_t<Ints, T>>::type...>;
+};
+
+template <typename T>
+struct AssignableTypeImpl<
+    T, std::enable_if_t<not std::is_const_v<T> and not base::Assignable<T> and
+                        not std::is_trivially_copyable_v<T> and
+                        ::base::SatisfiesTupleProtocol<T>>>
+    : Tuplify<T, std::make_index_sequence<std::tuple_size_v<T>>> {};
+
+template <typename T>
+using AssignableType = typename AssignableTypeImpl<T>::type;
+
+template <::base::Deserializer D, typename T>
 struct DeserializingIterator {
   using difference_type   = size_t;
   using value_type        = T;
@@ -19,17 +81,22 @@ struct DeserializingIterator {
 
   DeserializingIterator(D* deserializer, size_t num_elements)
       : deserializer_(deserializer), num_elements_(num_elements) {
+    new (get()) value_type();
     TryIncrement();
+  }
+
+  static DeserializingIterator FromContainer(D* deserializer) {
+    size_t num_elements;
+    ::base::Deserialize(*deserializer, num_elements);
+    return DeserializingIterator(deserializer, num_elements);
   }
 
   static DeserializingIterator End(D* deserializer) {
     return DeserializingIterator(deserializer, -1);
   }
 
-  static DeserializingIterator FromContainer(D* deserializer);
-
-  reference operator*() const { return value_; }
-  pointer operator->() const { return &value_; }
+  reference operator*() const { return *get(); }
+  pointer operator->() const { return get(); }
 
   DeserializingIterator& operator++() {
     TryIncrement();
@@ -48,126 +115,108 @@ struct DeserializingIterator {
   }
 
  private:
-  void TryIncrement();
+  void TryIncrement() {
+    if (num_elements_ == -1) { return; }
+    if constexpr (::base::Assignable<value_type>) {
+      ::base::Deserialize(*deserializer_, *get());
+    } else {
+      using type = AssignableType<value_type>;
+      type value;
+      ::base::Deserialize(*deserializer_, value);
+      get()->~value_type();
+      std::apply(
+          [&](auto&&... entries) {
+            new (get()) value_type(std::forward<decltype(entries)>(entries)...);
+          },
+          std::move(value));
+
+    }
+    --num_elements_;
+  }
+
+  value_type const* get() const { return reinterpret_cast<T const*>(buffer_); }
+  value_type* get() { return reinterpret_cast<T*>(buffer_); }
 
   D* deserializer_;
   ssize_t num_elements_;
-  value_type value_;
+  alignas(value_type) std::byte buffer_[sizeof(value_type)];
 };
 
-template < typename Seq>
-struct TupleElements {};
-
-template <size_t... Ints>
-struct TupleElements<std::index_sequence<Ints...>> {
-  template <typename D, typename T>
-  static void Deserialize(D& d, T& value);
-
-  template <typename S, typename T>
-  static void Serialize(S& s, T const& value);
-
-};
-
-template <typename T, typename = void>
-struct HasTupleSize : std::false_type {};
-
-template <typename T>
-struct HasTupleSize<T, std::void_t<typename std::tuple_size<T>::value_type>>
-    : std::true_type {};
-
-}  // namespace internal_serialize
-
-template <typename T>
-void Serialize(auto& output, T const& value) {
-  if constexpr (requires { BaseSerialize(output, value); }) {
-    BaseSerialize(output, value);
-  } else if constexpr (std::is_trivially_copyable_v<T>) {
-    output.write(RawConstSpanFrom(value));
-  } else if constexpr (::base::internal_serialize::HasTupleSize<T>::value) {
-    ::base::internal_serialize::TupleElements<
-        std::make_index_sequence<std::tuple_size_v<T>>>::Serialize(output, value);
-
+template <typename value_type>
+void SerializeOne(::base::Serializer auto& s, value_type const& value) {
+  if constexpr (requires { s.write(std::declval<value_type>()); }) {
+    s.write(value);
+  } else if constexpr (requires { BaseSerialize(s, value); }) {
+    BaseSerialize(s, value);
+  } else if constexpr (std::is_trivially_copyable_v<value_type>) {
+    s.write_bytes(RawConstSpanFrom(value));
+  } else if constexpr (::base::SatisfiesTupleProtocol<value_type>) {
+    std::apply([&](auto&... values) { ::base::Serialize(s, values...); },
+               value);
   } else if constexpr (requires {
                          value.begin();
                          value.end();
                          ++value.begin();
                        }) {
     size_t num_elements = std::distance(value.begin(), value.end());
-    output.write(RawSpanFrom(num_elements));
-    for (auto const& element : value) { Serialize(output, element); }
+    ::base::Serialize(s, num_elements);
+    for (auto const& element : value) { Serialize(s, element); }
   } else {
-    static_assert(base::always_false<T>());
+      static_assert(base::always_false<value_type>());
   }
 }
 
-template <typename T>
-void Deserialize(auto& input, T& value) {
-  using deserializer_type = std::decay_t<decltype(input)>;
+template <::base::Assignable value_type>
+void DeserializeOne(::base::Deserializer auto& d, value_type& value) {
+  using deserializer_type = std::decay_t<decltype(d)>;
 
-  if constexpr (requires { BaseDeserialize(input, value); }) {
-    BaseDeserialize(input, value);
-  } else if constexpr (std::is_trivially_copyable_v<T>) {
-    auto span = input.read(sizeof(value));
-    std::memcpy(&value, span.data(), sizeof(value));
-  } else if constexpr (::base::internal_serialize::HasTupleSize<T>::value) {
-    ::base::internal_serialize::TupleElements<
-        std::make_index_sequence<std::tuple_size_v<T>>>::Deserialize(input,
-                                                                     value);
-
+  if constexpr (requires { d.read(std::declval<value_type&>()); }) {
+    d.read(value);
+  } else if constexpr (requires { BaseDeserialize(d, value); }) {
+    BaseDeserialize(d, value);
+  } else if constexpr (std::is_trivially_copyable_v<value_type>) {
+    value.~value_type();
+    auto result = d.read_bytes(sizeof(value_type));
+    absl::Span<std::byte const> span(result);
+    std::memcpy(&value, span.data(), sizeof(value_type));
+  } else if constexpr (::base::SatisfiesTupleProtocol<value_type>) {
+    std::apply(
+        [&](::base::Assignable auto&... values) {
+          ::base::Deserialize(d, values...);
+        },
+        value);
   } else if constexpr (
       requires {
-        T(std::declval<internal_serialize::DeserializingIterator<
-              deserializer_type, typename T::value_type>>(),
+        value_type(std::declval<internal_serialize::DeserializingIterator<
+              deserializer_type, typename value_type::value_type>>(),
           std::declval<internal_serialize::DeserializingIterator<
-              deserializer_type, typename T::value_type>>());
+              deserializer_type, typename value_type::value_type>>());
       }) {
-    using iterator =
-        internal_serialize::DeserializingIterator<deserializer_type,
-                                                  typename T::value_type>;
-    value = T(iterator::FromContainer(&input), iterator::End(&input));
-  } else {
-    static_assert(base::always_false<T>());
+    using iterator = internal_serialize::DeserializingIterator<
+        deserializer_type, typename value_type::value_type>;
+    value = value_type(iterator::FromContainer(&d), iterator::End(&d));
+    //} else {
   }
-}
-
-template <typename T>
-T Deserialize(auto& input) {
-  T value;
-  Deserialize(input, value);
-  return value;
-}
-
-namespace internal_serialize {
-
-template <typename D, typename T>
-DeserializingIterator<D, T> DeserializingIterator<D, T>::FromContainer(
-    D* deserializer) {
-  size_t num_elements;
-  Deserialize(*deserializer, num_elements);
-  return DeserializingIterator(deserializer, num_elements);
-}
-
-template <typename D, typename T>
-void DeserializingIterator<D, T>::TryIncrement() {
-  if (num_elements_ == -1) { return; }
-  Deserialize(*deserializer_, value_);
-  --num_elements_;
-}
-
-template <size_t... Ints>
-template <typename D, typename T>
-void TupleElements<std::index_sequence<Ints...>>::Deserialize(D& d, T& value) {
-  (::base::Deserialize(d, std::get<Ints>(value)), ...);
-}
-
-template <size_t... Ints>
-template <typename S, typename T>
-void TupleElements<std::index_sequence<Ints...>>::Serialize(S& s,
-                                                            T const& value) {
-  (::base::Serialize(s, std::get<Ints>(value)), ...);
 }
 
 }  // namespace internal_serialize
+
+void Serialize(::base::Serializer auto& s, auto const&... values) {
+  (::base::internal_serialize::SerializeOne(s, values), ...);
+}
+
+void Deserialize(::base::Deserializer auto& d,
+                 ::base::Assignable auto&... values) {
+  (::base::internal_serialize::DeserializeOne(d, values), ...);
+}
+
+template <::base::Assignable value_type>
+value_type Deserialize(::base::Deserializer auto& d) {
+  value_type value;
+  ::base::internal_serialize::DeserializeOne(d, value);
+  return value;
+}
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_SERIALIZE_H

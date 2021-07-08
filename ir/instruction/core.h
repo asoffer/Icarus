@@ -7,12 +7,15 @@
 
 #include "absl/strings/str_cat.h"
 #include "base/extend.h"
+#include "base/extend/serialize.h"
+#include "base/serialize.h"
 #include "ir/blocks/basic.h"
-#include "ir/byte_code_writer.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
 #include "ir/interpreter/architecture.h"
+#include "ir/interpreter/byte_code_reader.h"
+#include "ir/interpreter/byte_code_writer.h"
 #include "ir/out_params.h"
 #include "ir/value/reg_or.h"
 
@@ -22,16 +25,10 @@ namespace ir {
 // memory.
 
 struct LoadInstruction
-    : base::Extend<LoadInstruction>::With<InlineExtension,
-                                          DebugFormatExtension> {
+    : base::Extend<LoadInstruction>::With<
+          InlineExtension, base::BaseSerializeExtension, DebugFormatExtension> {
   static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = load %2$s (%1$s)";
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write<uint16_t>(type.bytes(interpreter::kArchitecture).value());
-    writer->Write(addr);
-    writer->Write(result);
-  }
 
   type::Type type;
   RegOr<addr_t> addr;
@@ -40,7 +37,8 @@ struct LoadInstruction
 
 // TODO consider changing these to something like 'basic block arguments'
 template <typename T>
-struct PhiInstruction {
+struct PhiInstruction
+    : base::Extend<PhiInstruction<T>, 3>::template With<base::BaseSerializeExtension> {
   using type = T;
 
   PhiInstruction() = default;
@@ -61,13 +59,6 @@ struct PhiInstruction {
                       stringify(values[i]));
     }
     return s;
-  }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write<uint16_t>(values.size());
-    for (auto block : blocks) { writer->Write(block); }
-    for (auto value : values) { writer->Write(value); }
-    writer->Write(result);
   }
 
   void Inline(InstructionInliner const& inliner) {
@@ -93,7 +84,7 @@ struct PhiInstruction {
 template <typename T>
 struct RegisterInstruction
     : base::Extend<RegisterInstruction<T>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = %1$s";
 
   T Resolve() const { return Apply(operand.value()); }
@@ -106,7 +97,7 @@ struct RegisterInstruction
 template <typename T>
 struct SetReturnInstruction
     : base::Extend<SetReturnInstruction<T>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using type                                     = T;
   static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
 
@@ -117,7 +108,7 @@ struct SetReturnInstruction
 template <typename T>
 struct StoreInstruction
     : base::Extend<StoreInstruction<T>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "store %1$s into [%2$s]";
   using type                                     = T;
 
@@ -159,10 +150,9 @@ struct CallInstruction {
         }));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(fn_);
-    writer->Write(args_);
-    outs_.WriteByteCode(writer);
+  friend void BaseSerialize(interpreter::ByteCodeWriter& w,
+                            CallInstruction const& inst) {
+    base::Serialize(w, inst.fn_, inst.args_, inst.outs_);
   }
 
   type::Function const* func_type() const { return fn_type_; }
@@ -188,11 +178,11 @@ struct CommentInstruction
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "comment: %1$s";
 
-  static CommentInstruction ReadFromByteCode(
-      base::untyped_buffer::const_iterator*) {
-    return {};
-  }
-  void WriteByteCode(ByteCodeWriter*) const {}
+  friend void BaseSerialize(interpreter::ByteCodeWriter& w,
+                            CommentInstruction const&) {}
+  friend void BaseDeserialize(interpreter::ByteCodeReader&,
+                              CommentInstruction const&) {}
+
   template <typename ExecContext>
   void Apply(ExecContext&) const {}
 

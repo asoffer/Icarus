@@ -3,8 +3,9 @@
 
 #include "absl/container/node_hash_set.h"
 #include "base/extend.h"
+#include "base/extend/serialize.h"
 #include "core/arch.h"
-#include "ir/byte_code_writer.h"
+#include "ir/interpreter/byte_code_writer.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
@@ -73,7 +74,7 @@ struct Slice : LegacyType {
 Slice const *Slc(Type t);
 
 struct SliceInstruction
-    : base::Extend<SliceInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<SliceInstruction>::With<base::BaseSerializeExtension,
                                            ir::InlineExtension,
                                            ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = slice %1$s";
@@ -85,7 +86,7 @@ struct SliceInstruction
 };
 
 struct SliceLengthInstruction
-    : base::Extend<SliceLengthInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<SliceLengthInstruction>::With<base::BaseSerializeExtension,
                                                  ir::InlineExtension,
                                                  ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = slice-length %1$s";
@@ -100,7 +101,7 @@ struct SliceLengthInstruction
 };
 
 struct SliceDataInstruction
-    : base::Extend<SliceDataInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<SliceDataInstruction>::With<base::BaseSerializeExtension,
                                                ir::InlineExtension,
                                                ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =

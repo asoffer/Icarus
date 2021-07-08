@@ -195,7 +195,10 @@ cc_test(
 cc_library(
     name = "raw_iterator",
     hdrs = ["raw_iterator.h"],
-    deps = [":unaligned_ref"],
+    deps = [
+        ":unaligned_ref",
+        "@com_google_absl//absl/types:span",
+    ],
 )
 
 cc_test(
@@ -237,6 +240,7 @@ cc_test(
     srcs = ["serialize_test.cc"],
     deps = [
         ":serialize",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
     ]
 )

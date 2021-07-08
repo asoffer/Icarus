@@ -6,7 +6,9 @@
 
 #include "base/cast.h"
 #include "base/meta.h"
+#include "base/serialize.h"
 #include "base/untyped_buffer.h"
+#include "ir/interpreter/byte_code_writer.h"
 #include "ir/value/reg.h"
 
 // TODO rename this file so that when you forget that for dependency reasons you
@@ -15,7 +17,6 @@
 namespace ir {
 
 struct InstructionInliner;
-struct ByteCodeWriter;
 
 // clang-format off
 template <typename T>
@@ -24,7 +25,7 @@ concept Instruction = std::copy_constructible<T> and
                       std::assignable_from<T&, T&&> and 
                       std::destructible<T> and
                       requires(T t) {
-  { t.WriteByteCode(std::declval<ByteCodeWriter*>()) } -> std::same_as<void>;
+  { base::Serialize(std::declval<interpreter::ByteCodeWriter&>(), t) } -> std::same_as<void>;
   { t.Inline(std::declval<InstructionInliner const&>()) } -> std::same_as<void>;
 };
 
@@ -46,9 +47,10 @@ struct InstructionVTable {
   void (*move_assign)(void*, void*)       = [](void*, void*) {};
   void (*destroy)(void*)                  = [](void*) {};
 
-  void (*WriteByteCode)(void*, ByteCodeWriter*) = [](void*, ByteCodeWriter*) {
-    UNREACHABLE("WriteByteCode is unimplemented");
-  };
+  void (*Serialize)(void*, interpreter::ByteCodeWriter*) =
+      [](void*, interpreter::ByteCodeWriter*) {
+        UNREACHABLE("Serialize is unimplemented");
+      };
 
   std::string (*to_string)(void const*) = [](void const*) -> std::string {
     UNREACHABLE("to_string is unimplemented");
@@ -81,9 +83,9 @@ InstructionVTable InstructionVTableFor{
         },
     .destroy = [](void* self) { delete reinterpret_cast<T*>(self); },
 
-    .WriteByteCode =
-        [](void* self, ByteCodeWriter* writer) {
-          reinterpret_cast<T*>(self)->WriteByteCode(writer);
+    .Serialize =
+        [](void* self, interpreter::ByteCodeWriter* writer) {
+          base::Serialize(*writer, *reinterpret_cast<T*>(self));
         },
 
     .to_string =
@@ -177,8 +179,9 @@ struct Inst {
 
   ~Inst() { vtable_->destroy(data_); }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    vtable_->WriteByteCode(data_, writer);
+  friend void BaseSerialize(interpreter::ByteCodeWriter& writer,
+                            Inst const& i) {
+    i.vtable_->Serialize(i.data_, &writer);
   }
 
   std::string to_string() const { return vtable_->to_string(data_); }

@@ -3,6 +3,7 @@
 
 #include "absl/container/node_hash_set.h"
 #include "base/extend.h"
+#include "base/extend/serialize.h"
 #include "core/arch.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
@@ -93,7 +94,7 @@ struct Array : LegacyType {
 Array const *Arr(Array::length_t len, Type t);
 
 struct ArrayInstruction
-    : base::Extend<ArrayInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<ArrayInstruction>::With<base::BaseSerializeExtension,
                                            ir::InlineExtension,
                                            ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = array %1$s %2$s";

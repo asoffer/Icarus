@@ -4,8 +4,9 @@
 #include <vector>
 
 #include "base/extend.h"
+#include "base/extend/serialize.h"
 #include "core/params.h"
-#include "ir/byte_code_writer.h"
+#include "ir/interpreter/byte_code_writer.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
@@ -63,7 +64,7 @@ struct Function : public Callable {
 Function const *Func(core::Params<QualType> in, std::vector<Type> out);
 
 struct FunctionTypeInstruction
-    : base::Extend<FunctionTypeInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<FunctionTypeInstruction>::With<base::BaseSerializeExtension,
                                                   ir::InlineExtension> {
   Type Resolve() const {
     core::Params<QualType> params;

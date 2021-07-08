@@ -32,3 +32,9 @@ cc_library(
     hdrs = ["equality.h"],
     deps = ["//base:extend"],
 )
+
+cc_library(
+    name = "serialize",
+    hdrs = ["serialize.h"],
+    deps = ["//base:extend"],
+)

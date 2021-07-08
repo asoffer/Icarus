@@ -4,6 +4,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "ir/interpreter/byte_code_writer.h"
 
 namespace {
 
@@ -15,7 +16,8 @@ struct MockInstruction {
 
   void Inline(ir::InstructionInliner const& inliner) {}
 
-  void WriteByteCode(ir::ByteCodeWriter* writer) const {}
+  friend void BaseSerialize(interpreter::ByteCodeWriter& writer,
+                            MockInstruction const&) {}
 
  private:
   std::string str_;

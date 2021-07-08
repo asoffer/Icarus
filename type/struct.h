@@ -11,8 +11,11 @@
 #include "absl/types/span.h"
 #include "ast/scope.h"
 #include "base/extend.h"
+#include "base/extend/serialize.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/inliner.h"
+#include "ir/interpreter/byte_code_reader.h"
+#include "ir/interpreter/byte_code_writer.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/value/fn.h"
 #include "ir/value/hashtag.h"
@@ -23,7 +26,7 @@
 namespace type {
 
 struct Struct : public LegacyType {
-  struct Field : base::Extend<Field, 4>::With<ir::ByteCodeExtension> {
+  struct Field : base::Extend<Field, 4>::With<base::BaseSerializeExtension> {
     // TODO make a string_view but deal with trickiness of moving
 
     std::string name;
@@ -100,9 +103,8 @@ struct Struct : public LegacyType {
 // because it brings consistency whether the struct is parameterized or not, and
 // allows for more powerful metaprogramming.
 struct StructInstruction
-    : base::Extend<StructInstruction>::With<ir::ByteCodeExtension,
-                                            ir::InlineExtension> {
-  struct Field : base::Extend<Field, 4>::With<ir::ByteCodeExtension> {
+    : base::Extend<StructInstruction>::With<base::BaseSerializeExtension, ir::InlineExtension> {
+  struct Field {
     // TODO: Remove this once ByteCodeWriter supports non-default-constructible
     // types.
     explicit Field() : name_(""), type_(ir::RegOr<Type>(nullptr)) {}
@@ -123,9 +125,20 @@ struct StructInstruction
     ir::RegOr<Type> type() const { return type_; }
     base::untyped_buffer_view initial_value() const { return value_; }
 
-   private:
-    friend base::EnableExtensions;
+    friend void BaseSerialize(interpreter::ByteCodeWriter &w, Field const &f) {
+      base::Serialize(w, f.name_, f.type_, f.value_.size());
+      w.write_bytes(absl::MakeConstSpan(f.value_.raw(0), f.value_.size()));
+      base::Serialize(w, f.export_);
+    }
+    friend void BaseDeserialize(interpreter::ByteCodeReader &r, Field &f) {
+      size_t buffer_length;
+      base::Deserialize(r, f.name_, f.type_, buffer_length);
+      auto span = r.read_bytes(buffer_length);
+      f.value_.write(0, span.data(), span.size());
+      base::Deserialize(r, f.export_);
+    }
 
+   private:
     std::string_view name_;
     ir::RegOr<Type> type_;
     base::untyped_buffer value_;

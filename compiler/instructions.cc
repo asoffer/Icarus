@@ -113,27 +113,24 @@ struct instruction_set_t
           type::SliceDataInstruction, ir::DebugIrInstruction,
           ir::AbortInstruction, TypeConstructorInstructions> {};
 
-void WriteByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
-  writer.StartBlock(&block);
+void EmitByteCode(interpreter::ByteCodeWriter& writer,
+                  ir::BasicBlock const& block) {
+  writer.set_block(&block);
 
   for (auto const& inst : block.instructions()) {
     if (not inst) { continue; }
-    writer.Write(instruction_set_t::Index(inst));
-    inst.WriteByteCode(&writer);
+    base::Serialize(writer, instruction_set_t::Index(inst), inst);
   }
 
   block.jump().Visit([&](auto& j) {
     using type = std::decay_t<decltype(j)>;
     if constexpr (std::is_same_v<type, ir::JumpCmd::RetJump>) {
-      writer.Write(ir::internal::kReturnInstruction);
+      base::Serialize(writer, ir::internal::kReturnInstruction);
     } else if constexpr (std::is_same_v<type, ir::JumpCmd::UncondJump>) {
-      writer.Write(ir::internal::kUncondJumpInstruction);
-      writer.Write(j.block);
+      base::Serialize(writer, ir::internal::kUncondJumpInstruction, j.block);
     } else if constexpr (std::is_same_v<type, ir::JumpCmd::CondJump>) {
-      writer.Write(ir::internal::kCondJumpInstruction);
-      writer.Write(j.reg);
-      writer.Write(j.true_block);
-      writer.Write(j.false_block);
+      base::Serialize(writer, ir::internal::kCondJumpInstruction, j.reg,
+                      j.true_block, j.false_block);
     }
   });
 }
@@ -142,9 +139,9 @@ void WriteByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
 
 base::untyped_buffer EmitByteCode(ir::CompiledFn const& fn) {
   base::untyped_buffer byte_code;
-  ir::ByteCodeWriter writer(&byte_code);
-  for (auto const& block : fn.blocks()) { WriteByteCode(writer, *block); }
-  writer.MakeReplacements();
+  interpreter::ByteCodeWriter writer(&byte_code);
+  for (auto const& block : fn.blocks()) { EmitByteCode(writer, *block); }
+  writer.Finalize();
   return byte_code;
 }
 

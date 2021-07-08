@@ -2,7 +2,7 @@
 #define ICARUS_TYPE_POINTER_H
 
 #include "base/extend.h"
-#include "ir/byte_code_writer.h"
+#include "base/extend/serialize.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
@@ -62,7 +62,7 @@ Pointer const *Ptr(Type t);
 BufferPointer const *BufPtr(Type t);
 
 struct PtrInstruction
-    : base::Extend<PtrInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<PtrInstruction>::With<base::BaseSerializeExtension,
                                          ir::InlineExtension,
                                          ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = ptr %1$s";
@@ -75,7 +75,7 @@ struct PtrInstruction
 };
 
 struct BufPtrInstruction
-    : base::Extend<BufPtrInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<BufPtrInstruction>::With<base::BaseSerializeExtension,
                                             ir::InlineExtension,
                                             ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = buf-ptr %1$s";

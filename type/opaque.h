@@ -47,7 +47,7 @@ struct Opaque : public LegacyType {
 };
 
 struct OpaqueTypeInstruction
-    : base::Extend<OpaqueTypeInstruction>::With<ir::ByteCodeExtension,
+    : base::Extend<OpaqueTypeInstruction>::With<base::BaseSerializeExtension,
                                                 ir::InlineExtension,
                                                 ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = opaque %1$s";

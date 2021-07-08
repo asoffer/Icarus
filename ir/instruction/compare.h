@@ -4,16 +4,16 @@
 #include <string_view>
 
 #include "base/extend.h"
-#include "ir/byte_code_writer.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
+#include "ir/interpreter/byte_code_writer.h"
 
 namespace ir {
 
 template <typename NumType>
 struct EqInstruction
     : base::Extend<EqInstruction<NumType>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = eq %1$s %2$s";
 
@@ -28,7 +28,7 @@ struct EqInstruction
 template <typename NumType>
 struct NeInstruction
     : base::Extend<NeInstruction<NumType>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = ne %1$s %2$s";
 
@@ -43,7 +43,7 @@ struct NeInstruction
 template <typename NumType>
 struct LtInstruction
     : base::Extend<LtInstruction<NumType>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = lt %1$s %2$s";
 
@@ -58,7 +58,7 @@ struct LtInstruction
 template <typename NumType>
 struct LeInstruction
     : base::Extend<LeInstruction<NumType>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = le %1$s %2$s";
 

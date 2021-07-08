@@ -151,10 +151,11 @@ struct ExecutionContext {
           frame_iter.MoveTo(offset);
         } break;
         case ir::LoadInstruction::kIndex: {
-          uint16_t num_bytes = iter.read<uint16_t>();
-          ir::addr_t addr      = resolve(iter.read<ir::RegOr<ir::addr_t>>().get());
-          auto result_reg    = iter.read<ir::Reg>().get();
-          Load(result_reg, addr, core::Bytes(num_bytes));
+          type::Type t       = iter.read<type::Type>();
+          core::Bytes num_bytes = t.bytes(interpreter::kArchitecture);
+          ir::addr_t addr = resolve(iter.read<ir::RegOr<ir::addr_t>>().get());
+          auto result_reg = iter.read<ir::Reg>().get();
+          Load(result_reg, addr, num_bytes);
         } break;
 
         default: {
@@ -252,10 +253,10 @@ struct ExecutionContext {
         using type        = typename Inst::type;
         uint16_t n        = iter->read<uint16_t>();
         ir::addr_t ret_slot = ctx.resolve<ir::addr_t>(ir::Reg::Out(n));
-        type val          = ctx.resolve(iter->read<ir::RegOr<type>>().get());
+        type val            = ctx.resolve(iter->read<ir::RegOr<type>>().get());
         *ASSERT_NOT_NULL(reinterpret_cast<type *>(ret_slot)) = val;
       } else if constexpr (internal_execution::HasResolveMemberFunction<Inst>) {
-        auto inst = Inst::ReadFromByteCode(iter);
+        Inst inst = ByteCodeReader::DeserializeTo<Inst>(*iter);
         std::apply([&](auto &... fields) { (ctx.ResolveField(fields), ...); },
                    inst.field_refs());
 
@@ -263,9 +264,10 @@ struct ExecutionContext {
 
       } else if constexpr (base::meta<decltype(std::declval<Inst>().Apply(
                                ctx))> == base::meta<void>) {
-        Inst::ReadFromByteCode(iter).Apply(ctx);
+        ByteCodeReader::DeserializeTo<Inst>(*iter).Apply(ctx);
       } else {
-        StackFrame frame = Inst::ReadFromByteCode(iter).Apply(ctx);
+        StackFrame frame =
+            ByteCodeReader::DeserializeTo<Inst>(*iter).Apply(ctx);
         ctx.CallFn<InstSet>(frame.fn().native(), frame);
       }
     };

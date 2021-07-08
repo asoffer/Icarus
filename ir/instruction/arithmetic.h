@@ -4,7 +4,7 @@
 #include <string_view>
 
 #include "base/extend.h"
-#include "ir/byte_code_writer.h"
+#include "base/extend/serialize.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 
@@ -18,7 +18,7 @@ namespace ir {
 template <typename NumType>
 struct AddInstruction
     : base::Extend<AddInstruction<NumType>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = add %1$s %2$s";
 
@@ -32,7 +32,7 @@ struct AddInstruction
 template <typename NumType>
 struct SubInstruction
     : base::Extend<SubInstruction<NumType>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = sub %1$s %2$s";
 
@@ -45,7 +45,7 @@ struct SubInstruction
 template <typename NumType>
 struct MulInstruction
     : base::Extend<MulInstruction<NumType>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = mul %1$s %2$s";
 
@@ -59,7 +59,7 @@ struct MulInstruction
 template <typename NumType>
 struct DivInstruction
     : base::Extend<DivInstruction<NumType>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = div %1$s %2$s";
 
@@ -73,7 +73,7 @@ struct DivInstruction
 template <typename NumType>
 struct ModInstruction
     : base::Extend<ModInstruction<NumType>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = mod %1$s %2$s";
 
@@ -87,7 +87,7 @@ struct ModInstruction
 template <typename NumType>
 struct NegInstruction
     : base::Extend<NegInstruction<NumType>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
 

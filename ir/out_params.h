@@ -4,7 +4,8 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "ir/byte_code_writer.h"
+#include "base/extend.h"
+#include "base/extend/serialize.h"
 #include "ir/value/reg.h"
 
 namespace ir {
@@ -12,7 +13,8 @@ namespace ir {
 // jump. Outputs for register-sized values are returned in registers. For all
 // others, the caller allocates stack space and passes the address as the output
 // parameter.
-struct OutParams {
+struct OutParams
+    : base::Extend<OutParams, 1>::With<base::BaseSerializeExtension> {
   explicit OutParams() = default;
   explicit OutParams(std::vector<Reg> regs) : regs_(std::move(regs)) {}
 
@@ -23,12 +25,9 @@ struct OutParams {
   size_t size() const { return regs_.size(); }
   bool empty() const { return regs_.empty(); }
 
-  void WriteByteCode(ByteCodeWriter *writer) const {
-    writer->Write<uint16_t>(regs_.size());
-    for (Reg r : regs_) { writer->Write(r); }
-  }
-
  private:
+  friend base::EnableExtensions;
+
   std::vector<Reg> regs_;
 };
 }  // namespace ir

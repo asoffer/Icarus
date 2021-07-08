@@ -6,7 +6,6 @@
 #include "compiler/instructions.h"
 #include "core/arguments.h"
 #include "core/params.h"
-#include "ir/byte_code_writer.h"
 #include "ir/value/value.h"
 #include "type/qual_type.h"
 #include "type/type.h"

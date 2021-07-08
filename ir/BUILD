@@ -1,16 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "byte_code_writer",
-    hdrs = ["byte_code_writer.h"],
-    deps = [
-        "//base:debug",
-        "//base:untyped_buffer",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_library(
     name = "builder",
     hdrs = ["builder.h"],
     srcs = ["builder.cc"],
@@ -103,7 +93,8 @@ cc_library(
     name = "out_params",
     hdrs = ["out_params.h"],
     deps = [
-        ":byte_code_writer",
+        "//base:extend",
+        "//base/extend:serialize",
         "//ir/value:reg",
         "@com_google_absl//absl/types:span",
     ],

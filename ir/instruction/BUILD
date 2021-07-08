@@ -6,6 +6,7 @@ cc_library(
     deps = [
         ":inliner",
         "//base:extend",
+        "//base/extend:serialize",
     ],
 )
 
@@ -15,7 +16,9 @@ cc_library(
     deps = [
         "//base:cast",
         "//base:meta",
+        "//base:serialize",
         "//base:untyped_buffer",
+        "//ir/interpreter:byte_code_writer",
         "//ir/value:reg",
     ]
 )
@@ -35,6 +38,7 @@ cc_library(
     deps = [
         ":inliner",
         "//base:extend",
+        "//ir/interpreter:byte_code_writer",
     ],
 )
 
@@ -137,6 +141,8 @@ cc_library(
         ":debug",
         "//base:extend",
         "//ir/blocks:basic",
+        "//ir/interpreter:byte_code_reader",
+        "//ir/interpreter:byte_code_writer",
         "//ir:out_params",
         "//ir/value:reg_or",
         "@com_google_absl//absl/strings",
