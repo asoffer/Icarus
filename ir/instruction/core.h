@@ -37,8 +37,7 @@ struct LoadInstruction
 
 // TODO consider changing these to something like 'basic block arguments'
 template <typename T>
-struct PhiInstruction
-    : base::Extend<PhiInstruction<T>, 3>::template With<base::BaseSerializeExtension> {
+struct PhiInstruction {
   using type = T;
 
   PhiInstruction() = default;
@@ -49,6 +48,14 @@ struct PhiInstruction
   void add(BasicBlock const* block, RegOr<T> value) {
     blocks.push_back(block);
     values.push_back(value);
+  }
+
+  friend void BaseSerialize(interpreter::ByteCodeWriter& w,
+                            PhiInstruction const& inst) {
+    base::Serialize(w, static_cast<uint16_t>(inst.values.size()));
+    for (auto block : inst.blocks) { base::Serialize(w, block); }
+    for (auto value : inst.values) { base::Serialize(w, value); }
+    base::Serialize(w, inst.result);
   }
 
   std::string to_string() const {

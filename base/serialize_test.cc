@@ -41,7 +41,8 @@ struct Serializer {
 };
 
 struct Deserializer {
-  explicit Deserializer(std::string *input) : iter_(input->cbegin()) {}
+  explicit Deserializer(std::string *input)
+      : iter_(input->cbegin()), end_(input->cend()) {}
 
   absl::Span<std::byte const> read_bytes(size_t num_bytes) {
     auto start = std::exchange(iter_, iter_ + num_bytes);
@@ -55,6 +56,7 @@ struct Deserializer {
 
  private:
   std::string::const_iterator iter_;
+  std::string::const_iterator end_;
 };
 
 template <typename T>
@@ -127,6 +129,11 @@ TEST(RoundTrip, Primitives) {
 TEST(RoundTrip, TriviallyCopyable) {
   EXPECT_EQ(RoundTrip(TriviallyCopyable{.a = -4, .b = true, .c = 2.71828}),
             (TriviallyCopyable{.a = -4, .b = true, .c = 2.71828}));
+
+  std::string_view sv("abc");
+  std::string_view sv_round_tripped = RoundTrip(sv);
+  EXPECT_EQ(sv.data(), sv_round_tripped.data());
+  EXPECT_EQ(sv.size(), sv_round_tripped.size());
 }
 
 TEST(RoundTrip, AdlHook) {
@@ -142,12 +149,10 @@ TEST(RoundTrip, Containers) {
             (std::vector{std::vector{Twice(2), Twice(3), Twice(4)}}));
   EXPECT_EQ(RoundTrip(std::string("abc")), "abc");
   EXPECT_EQ(RoundTrip(std::string("")), "");
-
-  // TODO: The const key_type is causing problems.
-  // EXPECT_EQ(
-  //     RoundTrip(absl::flat_hash_map<std::string, int>(
-  //         {{"Aa", 1}, {"Bb", 4}, {"Cc", 9}})),
-  //     (absl::flat_hash_map<std::string, int>({{"Aa", 1}, {"Bb", 4}, {"Cc", 9}})));
+  EXPECT_EQ(RoundTrip(absl::flat_hash_map<std::string, int>(
+                {{"Aa", 1}, {"Bb", 4}, {"Cc", 9}})),
+            (absl::flat_hash_map<std::string, int>(
+                {{"Aa", 1}, {"Bb", 4}, {"Cc", 9}})));
 }
 
 TEST(RoundTrip, TupleProtocol) {

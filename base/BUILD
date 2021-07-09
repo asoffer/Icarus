@@ -229,6 +229,7 @@ cc_library(
     name = "serialize",
     hdrs = ["serialize.h"],
     deps = [
+        ":debug",
         ":meta",
         ":raw_iterator",
         "@com_google_absl//absl/types:span",

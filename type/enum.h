@@ -66,31 +66,13 @@ struct Enum : type::LegacyType {
 };
 
 struct EnumInstruction
-    : base::Extend<EnumInstruction>::With<ir::InlineExtension> {
+    : base::Extend<EnumInstruction>::With<base::BaseSerializeExtension, ir::InlineExtension> {
   Type Resolve() const;
 
   std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = enum (",
                         absl::StrJoin(names_, ", "), ")");
-  }
-
-  friend void BaseSerialize(interpreter::ByteCodeWriter &w,
-                            EnumInstruction const &inst) {
-    std::vector<std::pair<uint64_t, ir::RegOr<uint64_t>>> const_avoiding_hack(
-        inst.specified_values_.begin(), inst.specified_values_.end());
-    base::Serialize(w, inst.type, inst.names_, const_avoiding_hack,
-                    inst.result);
-  }
-
-  friend void BaseDeserialize(interpreter::ByteCodeReader &r,
-                              EnumInstruction &inst) {
-    // TODO: When maps are fully supported, remove this hack and use the extension.
-    std::vector<std::pair<uint64_t, ir::RegOr<uint64_t>>> const_avoiding_hack;
-    base::Deserialize(r, inst.type, inst.names_, const_avoiding_hack,
-                      inst.result);
-    inst.specified_values_ = absl::flat_hash_map<uint64_t, ir::RegOr<uint64_t>>(
-        const_avoiding_hack.begin(), const_avoiding_hack.end());
   }
 
   type::Enum *type;

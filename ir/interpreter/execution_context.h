@@ -191,8 +191,8 @@ struct ExecutionContext {
       auto *iter = &frame_iter.byte_code_iterator();
 
       if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
-        ir::Fn f = ctx.resolve(iter->read<ir::RegOr<ir::Fn>>().get());
-
+        ir::Fn f = ctx.resolve(
+            ByteCodeReader::DeserializeTo<ir::RegOr<ir::Fn>>(*iter));
         type::Function const *fn_type = f.type();
         LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
 
@@ -200,7 +200,7 @@ struct ExecutionContext {
 
         // TODO: you probably want interpreter::Arguments or something.
         size_t num_inputs = fn_type->params().size();
-        size_t num_args = iter->read<uint16_t>();
+        size_t num_args = iter->read<size_t>();
         for (size_t i = 0; i < num_args; ++i) {
           ir::Value arg = iter->read<ir::Value>();
           if (auto *reg = arg.get_if<ir::Reg>()) {
@@ -217,7 +217,7 @@ struct ExecutionContext {
           }
         }
 
-        uint16_t num_rets = iter->read<uint16_t>();
+        uint16_t num_rets = iter->read<size_t>();
 
         for (uint16_t i = 0; i < num_rets; ++i) {
           ir::Reg reg  = iter->read<ir::Reg>();
@@ -250,11 +250,11 @@ struct ExecutionContext {
         ctx.current_frame().regs_.set(iter->read<ir::Reg>(), *result);
       } else if constexpr (
           base::meta<Inst>.template is_a<ir::SetReturnInstruction>()) {
-        using type        = typename Inst::type;
-        uint16_t n        = iter->read<uint16_t>();
-        ir::addr_t ret_slot = ctx.resolve<ir::addr_t>(ir::Reg::Out(n));
-        type val            = ctx.resolve(iter->read<ir::RegOr<type>>().get());
-        *ASSERT_NOT_NULL(reinterpret_cast<type *>(ret_slot)) = val;
+        using type          = typename Inst::type;
+        auto inst = ByteCodeReader::DeserializeTo<Inst>(*iter);
+        ir::addr_t ret_slot = ctx.resolve<ir::addr_t>(ir::Reg::Out(inst.index));
+        auto value          = ctx.resolve(inst.value);
+        *ASSERT_NOT_NULL(reinterpret_cast<type *>(ret_slot)) = value;
       } else if constexpr (internal_execution::HasResolveMemberFunction<Inst>) {
         Inst inst = ByteCodeReader::DeserializeTo<Inst>(*iter);
         std::apply([&](auto &... fields) { (ctx.ResolveField(fields), ...); },

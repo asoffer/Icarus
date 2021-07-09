@@ -374,8 +374,8 @@ struct MakeBlockInstruction
 };
 
 struct MakeScopeInstruction
-    : base::Extend<MakeScopeInstruction>::With<InlineExtension,
-                                               DebugFormatExtension> {
+    : base::Extend<MakeScopeInstruction>::With<
+          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "make-scope(%1$s, %4$s, ...)";  // TODO
 
@@ -392,25 +392,6 @@ struct MakeScopeInstruction
         std::move(resolved_inits), OverloadSet(std::move(resolved_dones)),
         blocks);
   }
-
-  friend void BaseSerialize(interpreter::ByteCodeWriter &w,
-                            MakeScopeInstruction const &inst) {
-    std::vector<std::pair<std::string_view, Block>> const_avoiding_hack(
-        inst.blocks.begin(), inst.blocks.end());
-    base::Serialize(w, inst.scope, inst.inits, inst.dones, const_avoiding_hack);
-  }
-
-  friend void BaseDeserialize(interpreter::ByteCodeReader &r,
-                              MakeScopeInstruction &inst) {
-    // TODO: When maps are fully supported, remove this hack and use the extension.
-    std::vector<std::pair<std::string_view, Block>> const_avoiding_hack;
-    base::Deserialize(r, inst.scope, inst.inits, inst.dones,
-                      const_avoiding_hack);
-    inst.blocks = absl::flat_hash_map<std::string_view, Block>(
-        const_avoiding_hack.begin(), const_avoiding_hack.end());
-  }
-
-
 
   Scope scope;
   std::vector<RegOr<Jump>> inits;

@@ -30,7 +30,7 @@ struct GenericFn : base::Extend<GenericFn, 1>::With<base::EqualityExtension,
                                                     base::AbslHashExtension,
                                                     base::AbslFormatExtension> {
   static constexpr std::string_view kAbslFormatString = "GenericFn(id = %u)";
-
+  explicit GenericFn()                                = default;
   explicit GenericFn(
       base::any_invocable<NativeFn(core::Arguments<type::Typed<Value>> const &)>
           gen);
