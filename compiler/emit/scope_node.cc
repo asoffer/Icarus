@@ -156,6 +156,7 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
   for (auto const& argument : args) {
     absl::Cleanup cleanup = [&] { ++i; };
     // TODO: Default arguments.
+
     base::untyped_buffer buffer = PrepareArgument(
         c, constant_arguments[i], &argument.expr(), param_qts[i].value);
     prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));

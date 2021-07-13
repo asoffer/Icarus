@@ -549,8 +549,7 @@ void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
   }
 }
 
-base::untyped_buffer PrepareArgument(Compiler &c,
-                                     base::untyped_buffer_view constant,
+base::untyped_buffer PrepareArgument(Compiler &c, ir::ArgumentRef constant,
                                      ast::Expression const *expr,
                                      type::QualType param_qt) {
   type::QualType arg_qt = *c.context().qual_types(expr)[0];
@@ -576,7 +575,7 @@ base::untyped_buffer PrepareArgument(Compiler &c,
 
     c.EmitToBuffer(expr, buffer);
   } else {
-    buffer.write(0, constant.raw(0), constant.size());
+    buffer.write(0, constant.raw().raw(0), constant.raw().size());
   }
 
   ApplyImplicitCasts(c.builder(), arg_type, param_qt, buffer);
@@ -610,39 +609,6 @@ base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
     c.EmitToBuffer(expr, buffer);
   } else {
     FromValue(constant, arg_type, buffer);
-  }
-
-  ApplyImplicitCasts(c.builder(), arg_type, param_qt, buffer);
-  return buffer;
-}
-
-base::untyped_buffer PrepareArgument(Compiler &c, ValueView constant,
-                                     ast::Expression const *expr,
-                                     type::QualType param_qt) {
-  type::QualType arg_qt = *c.context().qual_types(expr)[0];
-  type::Type arg_type   = arg_qt.type();
-  type::Type param_type = param_qt.type();
-
-  base::untyped_buffer buffer;
-  if (constant.empty()) {
-    if (auto const *ptr_to_type = param_type.if_as<type::Pointer>()) {
-      if (ptr_to_type->pointee() == arg_type) {
-        if (arg_qt.quals() >= type::Quals::Ref()) {
-          buffer.append(ir::RegOr<ir::addr_t>(c.EmitRef(expr)));
-          return buffer;
-        } else {
-          auto reg = c.builder().TmpAlloca(arg_type);
-          c.EmitMoveInit(expr,
-                         {type::Typed<ir::RegOr<ir::addr_t>>(reg, param_type)});
-          buffer.append(ir::RegOr<ir::addr_t>(reg));
-          return buffer;
-        }
-      }
-    }
-
-    c.EmitToBuffer(expr, buffer);
-  } else {
-    buffer.write(0, constant->data(), constant->size());
   }
 
   ApplyImplicitCasts(c.builder(), arg_type, param_qt, buffer);
@@ -690,31 +656,30 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
   }
 }
 
+void AppendToArgumentBuffer(Compiler &c, type::QualType qt,
+                            ast::Expression const &expr,
+                            ir::ArgumentBuffer &buffer) {
+  if (not qt.constant()) {
+    buffer.append();
+    return;
+  }
+
+  auto result = c.EvaluateToBufferOrDiagnose(
+      type::Typed<ast::Expression const *>(&expr, qt.type()));
+  if (auto const *result_buffer = std::get_if<ir::ArgumentBuffer>(&result)) {
+    buffer.append(*result_buffer);
+  } else {
+    NOT_YET();
+  }
+}
+
 ir::ArgumentBuffer EmitConstantArgumentBuffer(
     Compiler &c, absl::Span<ast::Call::Argument const> args) {
   ir::ArgumentBuffer arg_buffer;
 
   for (auto const &arg : args) {
-    size_t index = -1;
-    auto qt      = c.context().qual_types(&arg.expr())[0];
-    if (qt.constant()) {
-      auto result = c.EvaluateToBufferOrDiagnose(
-          type::Typed<ast::Expression const *>(&arg.expr(), qt.type()));
-      if (auto const *result_buffer =
-              std::get_if<base::untyped_buffer>(&result)) {
-        // TODO: Support more than primitive types and pointers.
-        if (qt.type().is<type::Pointer>()) {
-          arg_buffer.append(
-              ir::RegOr<ir::addr_t>(result_buffer->get<ir::addr_t>(0)));
-        } else {
-          qt.type().as<type::Primitive>().Apply([&]<typename T>() {
-            arg_buffer.append(ir::RegOr<T>(result_buffer->template get<T>(0)));
-          });
-        }
-      } else {
-        NOT_YET();
-      }
-    }
+    auto qt = c.context().qual_types(&arg.expr())[0];
+    AppendToArgumentBuffer(c, qt, arg.expr(), arg_buffer);
   }
   return arg_buffer;
 }
@@ -731,15 +696,16 @@ core::Arguments<type::Typed<size_t>> EmitConstantArguments(
       auto result = c.EvaluateToBufferOrDiagnose(
           type::Typed<ast::Expression const *>(&arg.expr(), qt.type()));
       if (auto const *result_buffer =
-              std::get_if<base::untyped_buffer>(&result)) {
+              std::get_if<ir::ArgumentBuffer>(&result)) {
         index = buffer.size();
         // TODO: Support more than primitive types and pointers.
         if (qt.type().is<type::Pointer>()) {
-          buffer.append(
-              ir::RegOr<ir::addr_t>(result_buffer->get<ir::addr_t>(0)));
+          buffer.append(result_buffer->get<ir::addr_t>(0).value());
+        } else if (qt.type().is<type::Slice>()) {
+          buffer.append(result_buffer->get<ir::Slice>(0).value());
         } else {
           qt.type().as<type::Primitive>().Apply([&]<typename T>() {
-            buffer.append(ir::RegOr<T>(result_buffer->template get<T>(0)));
+            buffer.append(result_buffer->template get<T>(0).value());
           });
         }
       } else {
@@ -819,7 +785,7 @@ void EmitCall(
         }
         base::untyped_buffer_view view(constant_buffer.raw(*typed_index),
                                        constant_buffer.size() - *typed_index);
-        return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
+        return type::Typed<ir::Value>(ToCompleteValue(view, typed_index.type()),
                                       typed_index.type());
       });
 

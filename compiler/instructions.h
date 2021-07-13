@@ -5,6 +5,7 @@
 #include "base/untyped_buffer.h"
 #include "ir/interpreter/evaluation_result.h"
 #include "ir/value/addr.h"
+#include "ir/value/argument_buffer.h"
 #include "ir/value/block.h"
 #include "ir/value/char.h"
 #include "ir/value/generic_fn.h"
@@ -36,7 +37,7 @@ namespace compiler {
 
 void InterpretAtCompileTime(ir::NativeFn f);
 void InterpretAtCompileTime(ir::CompiledFn const &fn);
-base::untyped_buffer EvaluateAtCompileTimeToBuffer(ir::NativeFn fn);
+ir::ArgumentBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn fn);
 interpreter::EvaluationResult EvaluateAtCompileTime(ir::NativeFn fn);
 base::untyped_buffer EmitByteCode(ir::CompiledFn const &fn);
 

@@ -382,14 +382,14 @@ ir::NativeFn::Data const *Context::InsertFunction(
   return ASSERT_NOT_NULL(iter->second.get());
 }
 
-ir::Value ToValue(base::untyped_buffer_view buffer, type::Type t) {
+template <template <typename> typename F>
+ir::Value ToValueImpl(base::untyped_buffer_view buffer, type::Type t) {
   if (t == type::Void) { return ir::Value(); }
 
   if (t.is<type::Slice>()) {
-    return ir::Value(buffer.get<ir::RegOr<ir::Slice>>(0));
+    return ir::Value(buffer.get<F<ir::Slice>>(0));
   } else if (t.is_big()) {
-    auto result = buffer.get<ir::RegOr<ir::addr_t>>(0);
-    ASSERT(result.is_reg() == false);
+    auto result = buffer.get<F<ir::addr_t>>(0);
     return ir::Value(result);
   }
 
@@ -398,22 +398,30 @@ ir::Value ToValue(base::untyped_buffer_view buffer, type::Type t) {
                     double, type::Type, ir::addr_t, ir::ModuleId, ir::Scope,
                     ir::Slice, ir::Fn, ir::Jump, ir::Block,
                     interface::Interface>(
-      t, [&]<typename T>() { return ir::Value(buffer.get<ir::RegOr<T>>(0)); });
+      t, [&]<typename T>() { return ir::Value(buffer.get<F<T>>(0)); });
+}
+
+ir::Value ToCompleteValue(base::untyped_buffer_view buffer, type::Type t) {
+  return ToValueImpl<base::identity_t>(buffer, t);
+}
+
+ir::Value ToValue(base::untyped_buffer_view buffer, type::Type t) {
+  return ToValueImpl<ir::RegOr>(buffer, t);
 }
 
 void FromValue(ir::Value const &v, type::Type t, base::untyped_buffer &out) {
   if (auto *r = v.get_if<ir::Reg>()) {
     ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
                uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
-               ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
-               ir::GenericFn, interface::Interface>(
+               ir::Slice, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
+               ir::Block, ir::GenericFn, interface::Interface>(
         t, [&]<typename T>() { return out.append(ir::RegOr<T>(*r)); });
 
   } else {
     v.apply<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
             uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
-            ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
-            ir::GenericFn, interface::Interface>(
+            ir::Slice, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
+            ir::Block, ir::GenericFn, interface::Interface>(
         [&](auto value) { out.append(ir::RegOr<decltype(value)>(value)); });
   }
 }

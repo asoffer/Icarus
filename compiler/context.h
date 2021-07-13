@@ -471,6 +471,7 @@ struct Context {
 };
 
 ir::Value ToValue(base::untyped_buffer_view buffer, type::Type t);
+ir::Value ToCompleteValue(base::untyped_buffer_view buffer, type::Type t);
 void FromValue(ir::Value const &v, type::Type t, base::untyped_buffer &out);
 
 }  // namespace compiler

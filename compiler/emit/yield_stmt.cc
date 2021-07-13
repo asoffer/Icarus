@@ -19,19 +19,12 @@ void Compiler::EmitToBuffer(ast::YieldStmt const *node,
   // full `core::Arguments` here. We can proceed direclty to a vector of the
   // positional arguments.
 
+  ir::ArgumentBuffer arg_buffer;
   core::Arguments<type::QualType> yield_arg_types;
-  std::vector<type::Typed<ir::Value>> constant_arguments;
   for (auto const *expr : node->exprs()) {
     auto qt = context().qual_types(expr)[0];
     yield_arg_types.pos_emplace(qt);
-    if (qt.constant()) {
-      ir::Value result = EvaluateOrDiagnose(
-          type::Typed<ast::Expression const *>(expr, qt.type()));
-      if (result.empty()) { NOT_YET(); }
-      constant_arguments.emplace_back(result, qt.type());
-    } else {
-      constant_arguments.emplace_back(ir::Value(), qt.type());
-    }
+    AppendToArgumentBuffer(*this, qt, *expr, arg_buffer);
   }
 
   if (ast::Label const *lbl = node->label()) {
@@ -70,9 +63,8 @@ void Compiler::EmitToBuffer(ast::YieldStmt const *node,
     prepared_arguments.reserve(yield_arg_types.size());
     size_t i = 0;
     for (auto const *expr : node->exprs()) {
-      base::untyped_buffer buffer =
-          PrepareArgument(*this, *constant_arguments[i], expr,
-                          exit_fn.type()->params()[i].value);
+      base::untyped_buffer buffer = PrepareArgument(
+          *this, arg_buffer[i], expr, exit_fn.type()->params()[i].value);
       prepared_arguments.push_back(
           ToValue(buffer, exit_fn.type()->params()[i].value.type()));
       ++i;

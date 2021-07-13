@@ -98,9 +98,9 @@ interpreter::EvaluationResult Compiler::Evaluate(
   return EvaluateAtCompileTime(ir::NativeFn(&data));
 }
 
-std::variant<base::untyped_buffer, std::vector<diagnostic::ConsumedMessage>>
-Compiler::EvaluateToBufferOrDiagnose(
-    type::Typed<ast::Expression const *> expr, bool must_complete) {
+std::variant<ir::ArgumentBuffer, std::vector<diagnostic::ConsumedMessage>>
+Compiler::EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *> expr,
+                                     bool must_complete) {
   // TODO: The diagnosis part.
   diagnostic::BufferingConsumer buffering_consumer(&diag());
   Compiler c              = MakeChild(PersistentResources{

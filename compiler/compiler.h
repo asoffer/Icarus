@@ -346,7 +346,7 @@ struct Compiler
       for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
       return std::nullopt;
     } else {
-      return std::get<base::untyped_buffer>(result).template get<T>(0);
+      return std::get<ir::ArgumentBuffer>(result).template get<T>(0).value();
     }
   }
 
@@ -359,7 +359,7 @@ struct Compiler
     }
   }
 
-  std::variant<base::untyped_buffer, std::vector<diagnostic::ConsumedMessage>>
+  std::variant<ir::ArgumentBuffer, std::vector<diagnostic::ConsumedMessage>>
   EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *> expr,
                              bool must_complete = true);
 

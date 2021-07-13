@@ -60,6 +60,7 @@ cc_library(
         "//ir:compiled_fn",
         "//ir:compiled_jump",
         "//ir/instruction",
+        "//ir/value:argument_buffer",
     ],
 )
 

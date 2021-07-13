@@ -50,10 +50,13 @@ base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
 // value itself.
 ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
                           type::QualType arg_qt, type::QualType param_qt);
-base::untyped_buffer PrepareArgument(Compiler &c,
-                                     base::untyped_buffer_view constant,
+base::untyped_buffer PrepareArgument(Compiler &c, ir::ArgumentRef constant,
                                      ast::Expression const *expr,
                                      type::QualType param_qt);
+
+void AppendToArgumentBuffer(Compiler &c, type::QualType qt,
+                            ast::Expression const &expr,
+                            ir::ArgumentBuffer &buffer);
 
 ir::ArgumentBuffer EmitConstantArgumentBuffer(
     Compiler &c, absl::Span<ast::Call::Argument const> args);

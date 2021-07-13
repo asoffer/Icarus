@@ -57,11 +57,11 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
         LOG("EmitConstantDeclaration", "Setting slot = %s", value_buffer);
 
         if (t.is<type::Slice>()) {
-          out.append(ir::RegOr<ir::Slice>(
-              std::get<base::untyped_buffer>(value_buffer).get<ir::Slice>(0)));
+          out.append(
+              std::get<ir::ArgumentBuffer>(value_buffer).get<ir::Slice>(0));
         } else {
-          out.append(ir::RegOr<ir::addr_t>(
-              std::get<base::untyped_buffer>(value_buffer).get<ir::addr_t>(0)));
+          out.append(
+              std::get<ir::ArgumentBuffer>(value_buffer).get<ir::addr_t>(0));
         }
         c.context().SetConstant(&node->ids()[0], out);
         return;

@@ -79,7 +79,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
           c.EvaluateOrDiagnoseAs<type::Type>(&args[1].expr());
       if (not maybe_foreign_type) { return; }
       auto slice =
-          std::get<base::untyped_buffer>(name_buffer).get<ir::Slice>(0);
+          std::get<ir::ArgumentBuffer>(name_buffer).get<ir::Slice>(0).value();
 
       std::string name(slice);
       auto result = c.current_block()->Append(ir::LoadSymbolInstruction{

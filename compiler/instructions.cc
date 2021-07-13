@@ -159,13 +159,13 @@ void InterpretAtCompileTime(ir::NativeFn f) {
   interpreter::Execute<instruction_set_t>(f);
 }
 
-base::untyped_buffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f) {
+ir::ArgumentBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f) {
   return interpreter::EvaluateToBuffer<instruction_set_t>(f);
 }
 
 interpreter::EvaluationResult EvaluateAtCompileTime(ir::NativeFn fn) {
   LOG("EvaluateAtCompileTime", "%s", fn);
-  auto buf = interpreter::EvaluateToBuffer<instruction_set_t>(fn);
+  auto buf = interpreter::EvaluateToBuffer<instruction_set_t>(fn).buffer();
   std::vector<ir::Value> values;
   values.reserve(fn.type()->output().size());
 
