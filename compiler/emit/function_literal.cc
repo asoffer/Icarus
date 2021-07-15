@@ -10,7 +10,7 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
         [c = Compiler(resources()),
@@ -36,7 +36,7 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
 
           return f;
         });
-    out.append(ir::RegOr<ir::GenericFn>(gen_fn));
+    out.append(gen_fn);
     return;
   }
 
@@ -52,7 +52,7 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
              .node      = node,
              .resources = resources_});
   }
-  out.append(ir::RegOr<ir::Fn>(f));
+  out.append(f);
   return;
 }
 
@@ -123,7 +123,7 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
         if (out_decl->IsDefaultInitialized()) {
           EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
         } else {
-          base::untyped_buffer buffer;
+          ir::PartialResultBuffer buffer;
           EmitToBuffer(out_decl->init_val(), buffer);
           EmitCopyAssign(
               type::Typed<ir::RegOr<ir::addr_t>>(alloc, out_decl_type),

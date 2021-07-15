@@ -23,71 +23,71 @@ INSTANTIATE_TEST_SUITE_P(All, Test,
                                return b
                              })()
                              )",
-                                            .expected = ir::Value(false)},
+                                            .expected = false},
                              test::TestCase{.expr     = R"((() -> {
                                n: u8
                                return n
                              })()
                              )",
-                                            .expected = ir::Value(uint8_t{0})},
+                                            .expected = uint8_t{0}},
                              test::TestCase{.expr     = R"((() -> {
                                n: u16
                                return n
                              })()
                              )",
-                                            .expected = ir::Value(uint16_t{0})},
+                                            .expected = uint16_t{0}},
 
                              test::TestCase{.expr     = R"((() -> {
                                n: u32
                                return n
                              })()
                              )",
-                                            .expected = ir::Value(uint32_t{0})},
+                                            .expected = uint32_t{0}},
 
                              test::TestCase{.expr     = R"((() -> {
                                n: u64
                                return n
                              })()
                              )",
-                                            .expected = ir::Value(uint64_t{0})},
+                                            .expected = uint64_t{0}},
                              test::TestCase{.expr     = R"((() -> {
                                n: i8
                                return n
                              })()
                              )",
-                                            .expected = ir::Value(int8_t{0})},
+                                            .expected = int8_t{0}},
                              test::TestCase{.expr     = R"((() -> {
                                n: i16
                                return n
                              })()
                              )",
-                                            .expected = ir::Value(int16_t{0})},
+                                            .expected = int16_t{0}},
 
                              test::TestCase{.expr     = R"((() -> {
                                n: i32
                                return n
                              })()
                              )",
-                                            .expected = ir::Value(int32_t{0})},
+                                            .expected = int32_t{0}},
 
                              test::TestCase{.expr     = R"((() -> {
                                n: i64
                                return n
                              })()
                              )",
-                                            .expected = ir::Value(int64_t{0})},
+                                            .expected = int64_t{0}},
                              test::TestCase{.expr     = R"((() -> {
                                p: *i64
                                return p
                              })()
                              )",
-                                            .expected = ir::Value(ir::Null())},
+                                            .expected = ir::Null()},
                              test::TestCase{.expr     = R"((() -> {
                                p: [*]bool
                                return p
                              })()
                              )",
-                                            .expected = ir::Value(ir::Null())},
+                                            .expected = ir::Null()},
 
                              test::TestCase{.context  = Context(),
                                             .expr     = R"((() -> {
@@ -96,7 +96,7 @@ INSTANTIATE_TEST_SUITE_P(All, Test,
                                return s.p
                              })()
                              )",
-                                            .expected = ir::Value(ir::Null())},
+                                            .expected = ir::Null()},
 
                              test::TestCase{.context  = Context(),
                                             .expr     = R"((() -> {
@@ -105,7 +105,7 @@ INSTANTIATE_TEST_SUITE_P(All, Test,
                                return s.n
                              })()
                              )",
-                                            .expected = ir::Value(int64_t{3})},
+                                            .expected = int64_t{3}},
 
                              // TODO: Tests for tuples and arrays
                              // TODO: Tests for struct destructors, including

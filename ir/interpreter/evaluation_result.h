@@ -5,7 +5,7 @@
 
 #include "diagnostic/message.h"
 #include "frontend/source/buffer.h"
-#include "ir/value/value.h"
+#include "ir/value/result_buffer.h"
 
 namespace interpreter {
 
@@ -30,21 +30,28 @@ struct EvaluationResult {
     frontend::SourceRange range;
   };
 
-  EvaluationResult(ir::Value v) : data_(v) {}
+  EvaluationResult(ir::CompleteResultBuffer b) : data_(b) {}
   EvaluationResult(Failure &&f) : data_(std::move(f)) {}
   EvaluationResult(Failure const &f) : data_(f) {}
 
-
   Failure error() const { return std::get<Failure>(data_); }
 
-  operator bool() const { return std::holds_alternative<ir::Value>(data_); }
+  operator bool() const {
+    return std::holds_alternative<ir::CompleteResultBuffer>(data_);
+  }
 
-  ir::Value operator*() { return std::get<ir::Value>(data_); }
-  ir::Value *operator->() { return &std::get<ir::Value>(data_); }
-  ir::Value const *operator->() const { return &std::get<ir::Value>(data_); }
+  ir::CompleteResultBuffer operator*() {
+    return std::get<ir::CompleteResultBuffer>(data_);
+  }
+  ir::CompleteResultBuffer *operator->() {
+    return &std::get<ir::CompleteResultBuffer>(data_);
+  }
+  ir::CompleteResultBuffer const *operator->() const {
+    return &std::get<ir::CompleteResultBuffer>(data_);
+  }
 
  private:
-  std::variant<Failure, ir::Value> data_;
+  std::variant<Failure, ir::CompleteResultBuffer> data_;
 };
 
 }  // namespace interpreter

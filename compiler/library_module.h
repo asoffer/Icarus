@@ -32,7 +32,7 @@ struct LibraryModule : CompiledModule {
       return;
     }
 
-    base::untyped_buffer buffer;
+    ir::PartialResultBuffer buffer;
     for (ast::Node const *node : nodes) { c.EmitToBuffer(node, buffer); }
     c.CompleteDeferredBodies();
 

@@ -10,7 +10,7 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
         [c = Compiler(resources()),
@@ -36,7 +36,7 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
 
           return f;
         });
-    out.append(ir::RegOr<ir::GenericFn>(gen_fn));
+    out.append(gen_fn);
     return;
   }
 
@@ -46,7 +46,7 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
              .node      = node,
              .resources = resources_});
   }
-  out.append(ir::RegOr<ir::Fn>(f));
+  out.append(f);
   return;
 }
 

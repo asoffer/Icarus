@@ -5,13 +5,13 @@ namespace compiler {
 
 // TODO: With EmitToBuffer there's no longer a reason to allocate this.
 void Compiler::EmitToBuffer(ast::ArrayLiteral const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   auto t     = context().qual_types(node)[0].type();
   auto alloc = builder().TmpAlloca(t);
   auto typed_alloc =
       type::Typed<ir::RegOr<ir::addr_t>>(ir::RegOr<ir::addr_t>(alloc), t);
   EmitMoveInit(node, absl::MakeConstSpan(&typed_alloc, 1));
-  out.append(ir::RegOr<ir::addr_t>(alloc));
+  out.append(alloc);
 }
 
 void Compiler::EmitCopyInit(

@@ -159,40 +159,13 @@ void InterpretAtCompileTime(ir::NativeFn f) {
   interpreter::Execute<instruction_set_t>(f);
 }
 
-ir::ArgumentBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f) {
+ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f) {
   return interpreter::EvaluateToBuffer<instruction_set_t>(f);
 }
 
 interpreter::EvaluationResult EvaluateAtCompileTime(ir::NativeFn fn) {
   LOG("EvaluateAtCompileTime", "%s", fn);
-  auto buf = interpreter::EvaluateToBuffer<instruction_set_t>(fn).buffer();
-  std::vector<ir::Value> values;
-  values.reserve(fn.type()->output().size());
-
-  auto iter = buf.begin();
-  for (type::Type t : fn.type()->output()) {
-    if (t.get()->is_big()) {
-      ir::addr_t addr = iter.template read<ir::addr_t>();
-      values.push_back(ir::Value(addr));
-    } else if (t.is<type::GenericStruct>()) {
-      values.push_back(ir::Value(t));
-    } else {
-      ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t, int64_t,
-                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
-          t, [&]<typename T>() {
-            T val = iter.template read<T>();
-            values.push_back(ir::Value(val));
-          });
-    }
-  }
-
-  switch (values.size()) {
-    case 0: return ir::Value();
-    case 1: return values[0];
-    default: NOT_YET();
-  }
+  return interpreter::EvaluateToBuffer<instruction_set_t>(fn);
 }
 
 }  // namespace compiler

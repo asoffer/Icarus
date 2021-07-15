@@ -33,7 +33,7 @@ cc_library(
         ":module",
         "//type",
         "//type:typed_value",
-        "//ir/value",
+        "//ir/value:result_buffer",
         "@com_google_googletest//:gtest",
     ],
     testonly = True,

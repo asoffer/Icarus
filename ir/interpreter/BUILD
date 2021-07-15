@@ -60,7 +60,7 @@ cc_library(
         "//ir:compiled_fn",
         "//ir:compiled_jump",
         "//ir/instruction",
-        "//ir/value:argument_buffer",
+        "//ir/value:result_buffer",
     ],
 )
 
@@ -72,6 +72,7 @@ cc_library(
         "//diagnostic:message",
         "//diagnostic/consumer",
         "//frontend/source:buffer",
+        "//ir/value:result_buffer",
     ],
 )
 

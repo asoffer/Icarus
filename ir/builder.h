@@ -200,6 +200,11 @@ struct Builder {
     }
   }
 
+  template <typename ToType>
+  RegOr<ToType> CastTo(type::Typed<ir::PartialResultBuffer> const& buffer) {
+    return CastTo<ToType>(buffer.type(), (*buffer)[0].raw());
+  }
+
   template <typename FromType, typename ToType>
   RegOr<ToType> Cast(RegOr<FromType> r) {
     if constexpr (base::meta<ToType> == base::meta<FromType>) {

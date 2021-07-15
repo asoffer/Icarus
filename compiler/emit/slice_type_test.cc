@@ -11,18 +11,18 @@ INSTANTIATE_TEST_SUITE_P(
     All, Test,
     testing::ValuesIn({
         test::TestCase{.expr     = R"([]i32)",
-                       .expected = ir::Value(type::Type(type::Slc(type::I32)))},
-        test::TestCase{.expr     = R"([][]bool)",
-                       .expected = ir::Value(
-                           type::Type(type::Slc(type::Slc(type::Bool))))},
+                       .expected = type::Type(type::Slc(type::I32))},
+        test::TestCase{
+            .expr     = R"([][]bool)",
+            .expected = type::Type(type::Slc(type::Slc(type::Bool)))},
         test::TestCase{.expr     = R"(((t: type) -> type {
           return []t
         })(f32)
         )",
-                       .expected = ir::Value(type::Type(type::Slc(type::F32)))},
+                       .expected = type::Type(type::Slc(type::F32))},
         test::TestCase{.context  = R"([]*i64 ~ []`T)",
                        .expr     = "T",
-                       .expected = ir::Value(type::Type(type::Ptr(type::I64)))},
+                       .expected = type::Type(type::Ptr(type::I64))},
     }));
 
 }  // namespace

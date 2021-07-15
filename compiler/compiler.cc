@@ -50,7 +50,7 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
     // Factor these out together.
     c.builder().CurrentBlock() = fn.entry();
 
-    base::untyped_buffer buffer;
+    ir::PartialResultBuffer buffer;
     c.EmitToBuffer(expr, buffer);
 
     // TODO: Treating slices specially is a big hack. We need to fix treating
@@ -71,7 +71,7 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
           type, [&]<typename T>() {
             c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
                 .index = 0,
-                .value = buffer.get<ir::RegOr<T>>(0),
+                .value = buffer.get<T>(0),
             });
           });
     }
@@ -98,7 +98,7 @@ interpreter::EvaluationResult Compiler::Evaluate(
   return EvaluateAtCompileTime(ir::NativeFn(&data));
 }
 
-std::variant<ir::ArgumentBuffer, std::vector<diagnostic::ConsumedMessage>>
+std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
 Compiler::EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *> expr,
                                      bool must_complete) {
   // TODO: The diagnosis part.

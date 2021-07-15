@@ -21,9 +21,8 @@ TEST(BlockLiteral, Basic) {
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
   ASSERT_TRUE(result);
-  ir::Block *b = result->get_if<ir::Block>();
-  ASSERT_NE(b, nullptr);
-  EXPECT_THAT(ir::CompiledBlock::From(*b)->after(), SizeIs(2));
+  EXPECT_THAT(ir::CompiledBlock::From(result->get<ir::Block>(0))->after(),
+              SizeIs(2));
   // TODO: Test `before` overload set.
 }
 

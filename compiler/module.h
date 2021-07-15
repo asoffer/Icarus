@@ -22,7 +22,7 @@ struct CompiledModule : module::BasicModule {
   ~CompiledModule() override {}
 
   void ExportedValue(ast::Declaration::Id const *id,
-                     base::untyped_buffer &out) const {
+                     ir::PartialResultBuffer &out) const {
     return context().LoadConstant(id, out);
   }
 

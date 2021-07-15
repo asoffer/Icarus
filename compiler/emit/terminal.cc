@@ -24,8 +24,8 @@ struct TerminalMatchError {
 };
 
 void Compiler::EmitToBuffer(ast::Terminal const *node,
-                            base::untyped_buffer &out) {
-  out = node->value();
+                            ir::PartialResultBuffer &out) {
+  out.append(node->value());
 }
 
 // TODO: Unit tests
@@ -34,7 +34,7 @@ void Compiler::EmitCopyAssign(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyAssign(to[0], ValueView(t, buffer));
 }
@@ -45,7 +45,7 @@ void Compiler::EmitMoveAssign(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveAssign(to[0], ValueView(t, buffer));
 }
@@ -56,7 +56,7 @@ void Compiler::EmitCopyInit(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyAssign(to[0], ValueView(t, buffer));
 }
@@ -67,7 +67,7 @@ void Compiler::EmitMoveInit(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveAssign(to[0], ValueView(t, buffer));
 }
@@ -78,7 +78,7 @@ bool Compiler::PatternMatch(
   auto t        = context().qual_types(node)[0].type();
   auto const &p = t.as<type::Primitive>();
   return p.Apply([&]<typename T>()->bool {
-    T pattern_value = node->value().template get<T>(0);
+    T pattern_value = node->value().template get<T>();
     T matched_value = pmc.value.template get<T>(0);
     if (matched_value == pattern_value) { return true; }
 

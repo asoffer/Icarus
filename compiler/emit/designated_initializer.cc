@@ -12,20 +12,20 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::DesignatedInitializer const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   auto t     = context().qual_types(node)[0].type();
   auto alloc = builder().TmpAlloca(t);
   auto typed_alloc =
       type::Typed<ir::RegOr<ir::addr_t>>(ir::RegOr<ir::addr_t>(alloc), t);
   EmitMoveInit(node, absl::MakeConstSpan(&typed_alloc, 1));
-  out.append(ir::RegOr<ir::addr_t>(alloc));
+  out.append(alloc);
 }
 
 void Compiler::EmitMoveAssign(
     ast::DesignatedInitializer const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveAssign(to[0],
                  ValueView(context().qual_types(node)[0].type(), buffer));
@@ -35,7 +35,7 @@ void Compiler::EmitCopyAssign(
     ast::DesignatedInitializer const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyAssign(to[0],
                  ValueView(context().qual_types(node)[0].type(), buffer));

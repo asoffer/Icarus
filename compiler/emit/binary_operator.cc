@@ -22,21 +22,19 @@ struct PatternMatchingFailed {
 template <template <typename> typename Op, typename... Ts>
 void Apply(type::Typed<ast::Expression const *> lhs,
            type::Typed<ast::Expression const *> rhs, Compiler &c,
-           base::untyped_buffer &out) {
+           ir::PartialResultBuffer &out) {
   ApplyTypes<Ts...>(type::Meet(lhs.type(), rhs.type()), [&]<typename T>() {
-    base::untyped_buffer buffer;
-
     ir::RegOr<T> l = c.EmitWithCastTo<T>(lhs.type(), *lhs);
     ir::RegOr<T> r = c.EmitWithCastTo<T>(rhs.type(), *rhs);
-    out.append(ir::RegOr<T>(c.current_block()->Append(Op<T>{
-        .lhs = l, .rhs = r, .result = c.builder().CurrentGroup()->Reserve()})));
+    out.append(c.current_block()->Append(Op<T>{
+        .lhs = l, .rhs = r, .result = c.builder().CurrentGroup()->Reserve()}));
   });
 }
 
 }  // namespace
 
 void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   switch (node->op()) {
     case frontend::Operator::Or: {
       auto lhs_ir      = EmitAs<bool>(node->lhs());
@@ -55,8 +53,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
 
       builder().CurrentBlock() = land_block;
 
-      out.append(ir::RegOr<bool>(builder().Phi<bool>(
-          std::move(phi_blocks), {true, rhs_ir})));
+      out.append(builder().Phi<bool>(std::move(phi_blocks), {true, rhs_ir}));
       return;
     } break;
     case frontend::Operator::SymbolOr: {
@@ -64,27 +61,25 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       auto rhs_ir = EmitAs<type::Flags::underlying_type>(node->rhs());
       // `|` is not overloadable, and blocks piped together must be done
       // syntactically in a `goto` node and are handled by the parser.
-      out.append(ir::RegOr<type::Flags::underlying_type>(
-          current_block()->Append(type::OrFlagsInstruction{
-              .lhs    = lhs_ir,
-              .rhs    = rhs_ir,
-              .result = builder().CurrentGroup()->Reserve()})));
+      out.append(current_block()->Append(type::OrFlagsInstruction{
+          .lhs    = lhs_ir,
+          .rhs    = rhs_ir,
+          .result = builder().CurrentGroup()->Reserve()}));
       return;
     } break;
     case frontend::Operator::Xor: {
       auto lhs_ir = EmitAs<bool>(node->lhs());
       auto rhs_ir = EmitAs<bool>(node->rhs());
-      out.append(ir::RegOr<bool>(builder().Ne(lhs_ir, rhs_ir)));
+      out.append(builder().Ne(lhs_ir, rhs_ir));
       return;
     } break;
     case frontend::Operator::SymbolXor: {
       auto lhs_ir = EmitAs<type::Flags::underlying_type>(node->lhs());
       auto rhs_ir = EmitAs<type::Flags::underlying_type>(node->rhs());
-      out.append(ir::RegOr<type::Flags::underlying_type>(
-          current_block()->Append(type::XorFlagsInstruction{
-              .lhs    = lhs_ir,
-              .rhs    = rhs_ir,
-              .result = builder().CurrentGroup()->Reserve()})));
+      out.append(current_block()->Append(type::XorFlagsInstruction{
+          .lhs    = lhs_ir,
+          .rhs    = rhs_ir,
+          .result = builder().CurrentGroup()->Reserve()}));
       return;
     } break;
     case frontend::Operator::And: {
@@ -105,8 +100,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
 
       builder().CurrentBlock() = land_block;
 
-      out.append(ir::RegOr<bool>(
-          builder().Phi<bool>(std::move(phi_blocks), {false, rhs_ir})));
+      out.append(builder().Phi<bool>(std::move(phi_blocks), {false, rhs_ir}));
       return;
     } break;
     case frontend::Operator::SymbolAnd: {
@@ -129,8 +123,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
 
         builder().CurrentBlock() = land_block;
 
-        out.append(ir::RegOr<bool>(
-            builder().Phi<bool>(std::move(phi_blocks), {false, rhs_ir})));
+        out.append(builder().Phi<bool>(std::move(phi_blocks), {false, rhs_ir}));
         return;
       } else if (t.is<type::Flags>()) {
         auto lhs_ir = EmitAs<type::Flags::underlying_type>(node->lhs());
@@ -138,11 +131,10 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
 
         // `|` is not overloadable, and blocks piped together must be done
         // syntactically in a `goto` node and are handled by the parser.
-        out.append(ir::RegOr<type::Flags::underlying_type>(
-            current_block()->Append(type::AndFlagsInstruction{
-                .lhs    = lhs_ir,
-                .rhs    = rhs_ir,
-                .result = builder().CurrentGroup()->Reserve()})));
+        out.append(current_block()->Append(type::AndFlagsInstruction{
+            .lhs    = lhs_ir,
+            .rhs    = rhs_ir,
+            .result = builder().CurrentGroup()->Reserve()}));
         return;
       } else {
         UNREACHABLE();
@@ -155,15 +147,13 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         auto lhs_ir = EmitAs<ir::addr_t>(node->lhs(), out);
         auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, node->rhs(), out);
-        out.append(ir::RegOr<ir::addr_t>(
-            builder().PtrIncr(lhs_ir, rhs_ir, lhs_buf_ptr_type)));
+        out.append(builder().PtrIncr(lhs_ir, rhs_ir, lhs_buf_ptr_type));
       } else if (auto const *rhs_buf_ptr_type =
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
         auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, node->lhs(), out);
         auto rhs_ir = EmitAs<ir::addr_t>(node->rhs(), out);
-        out.append(ir::RegOr<ir::addr_t>(
-            builder().PtrIncr(rhs_ir, lhs_ir, rhs_buf_ptr_type)));
+        out.append(builder().PtrIncr(rhs_ir, lhs_ir, rhs_buf_ptr_type));
       } else {
         Apply<ir::AddInstruction, ir::Integer, int8_t, int16_t, int32_t,
               int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
@@ -179,25 +169,24 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
          lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         auto lhs_ir = EmitAs<ir::addr_t>(node->lhs(), out);
         auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, node->rhs(), out);
-        out.append(ir::RegOr<ir::addr_t>(builder().PtrIncr(
-            lhs_ir, builder().Neg(rhs_ir), lhs_buf_ptr_type)));
+        out.append(
+            builder().PtrIncr(lhs_ir, builder().Neg(rhs_ir), lhs_buf_ptr_type));
       } else if (auto const *rhs_buf_ptr_type =
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
         auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, node->lhs(), out);
         auto rhs_ir = EmitAs<ir::addr_t>(node->rhs(), out);
-        out.append(ir::RegOr<ir::addr_t>(builder().PtrIncr(
-            rhs_ir, builder().Neg(lhs_ir), rhs_buf_ptr_type)));
+        out.append(
+            builder().PtrIncr(rhs_ir, builder().Neg(lhs_ir), rhs_buf_ptr_type));
       } else if (auto const *buf_ptr = lhs_type.if_as<type::BufferPointer>();
                  lhs_type == rhs_type and buf_ptr) {
         auto lhs_ir = EmitAs<ir::addr_t>(node->lhs());
         auto rhs_ir = EmitAs<ir::addr_t>(node->rhs());
-        out.append(ir::RegOr<ir::addr_t>(
-            current_block()->Append(ir::PtrDiffInstruction{
-                .lhs          = lhs_ir,
-                .rhs          = rhs_ir,
-                .pointee_type = buf_ptr->pointee(),
-                .result       = builder().CurrentGroup()->Reserve()})));
+        out.append(current_block()->Append(ir::PtrDiffInstruction{
+            .lhs          = lhs_ir,
+            .rhs          = rhs_ir,
+            .pointee_type = buf_ptr->pointee(),
+            .result       = builder().CurrentGroup()->Reserve()}));
       } else {
         Apply<ir::SubInstruction, ir::Integer, int8_t, int16_t, int32_t,
               int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
@@ -322,7 +311,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         builder().Store<ir::RegOr<ir::addr_t>>(
             builder().PtrIncr(builder().Load<ir::addr_t>(lhs_lval),
-                              out.get<ir::RegOr<int64_t>>(0), lhs_buf_ptr_type),
+                              out.get<int64_t>(0), lhs_buf_ptr_type),
             lhs_lval);
       } else {
         ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -331,7 +320,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::AddInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
-                      .rhs    = builder().CastTo<T>(rhs_type, out),
+                      .rhs    = builder().CastTo<T>(type::Typed(out, rhs_type)),
                       .result = builder().CurrentGroup()->Reserve()}),
                   lhs_lval);
             });
@@ -347,7 +336,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         builder().Store<ir::RegOr<ir::addr_t>>(
             builder().PtrIncr(builder().Load<ir::addr_t>(lhs_lval),
-                              builder().Neg(out.get<ir::RegOr<int64_t>>(0)),
+                              builder().Neg(out.get<int64_t>(0)),
                               lhs_buf_ptr_type),
             lhs_lval);
       } else {
@@ -357,7 +346,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::SubInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
-                      .rhs    = builder().CastTo<T>(rhs_type, out),
+                      .rhs    = builder().CastTo<T>(type::Typed(out, rhs_type)),
                       .result = builder().CurrentGroup()->Reserve()}),
                   lhs_lval);
             });
@@ -374,7 +363,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         builder().Store<ir::RegOr<T>>(
             current_block()->Append(ir::MulInstruction<T>{
                 .lhs    = builder().Load<T>(lhs_lval),
-                .rhs    = builder().CastTo<T>(rhs_type, out),
+                .rhs    = builder().CastTo<T>(type::Typed(out, rhs_type)),
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       });
@@ -391,7 +380,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
             builder().Store<ir::RegOr<T>>(
                 current_block()->Append(ir::DivInstruction<T>{
                     .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = builder().CastTo<T>(rhs_type, out),
+                    .rhs    = builder().CastTo<T>(type::Typed(out, rhs_type)),
                     .result = builder().CurrentGroup()->Reserve()}),
                 lhs_lval);
           });
@@ -408,7 +397,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
             builder().Store<ir::RegOr<T>>(
                 current_block()->Append(ir::ModInstruction<T>{
                     .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = builder().CastTo<T>(rhs_type, out),
+                    .rhs    = builder().CastTo<T>(type::Typed(out, rhs_type)),
                     .result = builder().CurrentGroup()->Reserve()}),
                 lhs_lval);
           });
@@ -424,10 +413,10 @@ void Compiler::EmitCopyInit(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 ValueView(t, buffer));
+                 ValueView(t, buffer[0].raw()));
 }
 
 void Compiler::EmitMoveInit(
@@ -435,10 +424,10 @@ void Compiler::EmitMoveInit(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 ValueView(t, buffer));
+                 ValueView(t, buffer[0].raw()));
 }
 
 void Compiler::EmitMoveAssign(
@@ -446,10 +435,10 @@ void Compiler::EmitMoveAssign(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 ValueView(t, buffer));
+                 ValueView(t, buffer[0].raw()));
 }
 
 void Compiler::EmitCopyAssign(
@@ -457,16 +446,16 @@ void Compiler::EmitCopyAssign(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 ValueView(t, buffer));
+                 ValueView(t, buffer[0].raw()));
 }
 
 bool Compiler::PatternMatch(
     ast::BinaryOperator const *node, PatternMatchingContext &pmc,
     absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
-  std::optional<std::variant<ir::ArgumentBuffer,
+  std::optional<std::variant<ir::CompleteResultBuffer,
                              std::vector<diagnostic::ConsumedMessage>>>
       lhs_buffer, rhs_buffer;
   if (not node->lhs()->covers_binding()) {
@@ -484,23 +473,23 @@ bool Compiler::PatternMatch(
       auto const *p = pmc.type.if_as<type::Primitive>();
       if (p and lhs_buffer) {
         p->Apply([&]<typename T>() {
-          auto sum = pmc.value.template get<T>(0);
-          auto term = std::get<ir::ArgumentBuffer>(*lhs_buffer)
-                          .template get<T>(0)
-                          .value();
+          auto sum  = pmc.value.template get<T>(0);
+          auto term = std::get<ir::CompleteResultBuffer>(*lhs_buffer)
+                          .template get<T>(0);
           if constexpr (std::is_arithmetic_v<T>) {
-            pmc.value.set(0, static_cast<T>(sum - term));
+            pmc.value.clear();
+            pmc.value.append(static_cast<T>(sum - term));
           }
         });
         return PatternMatch(node->rhs(), pmc, bindings);
       } else if (p and rhs_buffer) {
         p->Apply([&]<typename T>() {
           auto sum = pmc.value.template get<T>(0);
-          auto term = std::get<ir::ArgumentBuffer>(*rhs_buffer)
-                          .template get<T>(0)
-                          .value();
+          auto term = std::get<ir::CompleteResultBuffer>(*rhs_buffer)
+                          .template get<T>(0);
           if constexpr (std::is_arithmetic_v<T>) {
-            pmc.value.set(0, static_cast<T>(sum - term));
+            pmc.value.clear();
+            pmc.value.append(static_cast<T>(sum - term));
           }
         });
         return PatternMatch(node->lhs(), pmc, bindings);
@@ -516,22 +505,22 @@ bool Compiler::PatternMatch(
       if (p and lhs_buffer) {
         p->Apply([&]<typename T>() {
           auto diff = pmc.value.template get<T>(0);
-          auto term = std::get<ir::ArgumentBuffer>(*lhs_buffer)
-                          .template get<T>(0)
-                          .value();
+          auto term = std::get<ir::CompleteResultBuffer>(*lhs_buffer)
+                          .template get<T>(0);
           if constexpr (std::is_integral_v<T>) {
-            pmc.value.set(0, static_cast<T>(term - diff));
+            pmc.value.clear();
+            pmc.value.append(static_cast<T>(term - diff));
           }
         });
         return PatternMatch(node->rhs(), pmc, bindings);
       } else if (p and rhs_buffer) {
         p->Apply([&]<typename T>() {
           auto diff = pmc.value.template get<T>(0);
-          auto term = std::get<ir::ArgumentBuffer>(*rhs_buffer)
-                          .template get<T>(0)
-                          .value();
+          auto term = std::get<ir::CompleteResultBuffer>(*rhs_buffer)
+                          .template get<T>(0);
           if constexpr (std::is_integral_v<T>) {
-            pmc.value.set(0, static_cast<T>(diff + term));
+            pmc.value.clear();
+            pmc.value.append(static_cast<T>(diff + term));
           }
         });
         return PatternMatch(node->lhs(), pmc, bindings);
@@ -548,14 +537,14 @@ bool Compiler::PatternMatch(
         expr = node->rhs();
         p->Apply([&]<typename T>() {
           auto product = pmc.value.template get<T>(0);
-          auto factor  = std::get<ir::ArgumentBuffer>(*lhs_buffer)
-                            .template get<T>(0)
-                            .value();
+          auto factor  = std::get<ir::CompleteResultBuffer>(*lhs_buffer)
+                            .template get<T>(0);
           if constexpr (std::is_integral_v<T>) {
             if (product % factor == 0) { expr = nullptr; }
           }
           if constexpr (std::is_arithmetic_v<T>) {
-            pmc.value.set(0, static_cast<T>(product / factor));
+            pmc.value.clear();
+            pmc.value.append(static_cast<T>(product / factor));
           }
         });
         return PatternMatch(node->rhs(), pmc, bindings);
@@ -563,14 +552,14 @@ bool Compiler::PatternMatch(
         expr = node->lhs();
         p->Apply([&]<typename T>() {
           auto product = pmc.value.template get<T>(0);
-          auto factor  = std::get<ir::ArgumentBuffer>(*rhs_buffer)
-                            .template get<T>(0)
-                            .value();
+          auto factor  = std::get<ir::CompleteResultBuffer>(*rhs_buffer)
+                            .template get<T>(0);
           if constexpr (std::is_integral_v<T>) {
             if (product % factor == 0) { expr = nullptr; }
           }
           if constexpr (std::is_arithmetic_v<T>) {
-            pmc.value.set(0, static_cast<T>(product / factor));
+            pmc.value.clear();
+            pmc.value.append(static_cast<T>(product / factor));
           }
         });
 

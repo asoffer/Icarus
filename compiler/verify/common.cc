@@ -16,19 +16,6 @@
 namespace compiler {
 namespace {
 
-type::Typed<ir::Value> EvaluateIfConstant(Compiler &c,
-                                          ast::Expression const *expr,
-                                          type::QualType qt) {
-  if (qt.constant()) {
-    LOG("EvaluateIfConstant", "Evaluating constant: %s", expr->DebugString());
-    auto maybe_val =
-        c.Evaluate(type::Typed<ast::Expression const *>(expr, qt.type()));
-    if (maybe_val) { return type::Typed<ir::Value>(*maybe_val, qt.type()); }
-    c.diag().Consume(maybe_val.error());
-  }
-  return type::Typed<ir::Value>(ir::Value(), qt.type());
-}
-
 void ExtractParams(
     ast::Expression const *callee, type::Callable const *callable,
     core::Arguments<type::Typed<ir::Value>> const &args,
@@ -144,10 +131,19 @@ Compiler::ComputeParamsFromArgs(
         } else {
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
           type::Type t         = context().arg_type(id);
-          auto maybe_val =
-              Evaluate(type::Typed<ast::Expression const *>(init_val, t));
-          if (not maybe_val) { NOT_YET(); }
-          val = *maybe_val;
+          auto maybe_result =
+              EvaluateToBufferOrDiagnose(type::Typed(init_val, t));
+          if (auto *diagnostics =
+                  std::get_if<std::vector<diagnostic::ConsumedMessage>>(
+                      &maybe_result)) {
+            for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
+            NOT_YET();
+          } else {
+            val = ToValue(
+                std::get<ir::CompleteResultBuffer>(std::move(maybe_result))
+                    .buffer(),
+                t);
+          }
         }
 
         // Erase values not known at compile-time.
@@ -210,10 +206,21 @@ Compiler::ComputeParamsFromArgs(
           arg = *a;
         } else {
           auto t         = context().qual_types(dep_node.node())[0].type();
-          auto maybe_val = Evaluate(type::Typed<ast::Expression const *>(
-              ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
-          if (not maybe_val) { diag().Consume(maybe_val.error()); }
-          arg = type::Typed<ir::Value>(*maybe_val, t);
+          auto maybe_result = EvaluateToBufferOrDiagnose(
+              type::Typed(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
+          if (auto *diagnostics =
+                  std::get_if<std::vector<diagnostic::ConsumedMessage>>(
+                      &maybe_result)) {
+            for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
+            NOT_YET();
+          } else {
+            arg = type::Typed<ir::Value>(
+                ToValue(
+                    std::get<ir::CompleteResultBuffer>(std::move(maybe_result))
+                        .buffer(),
+                    t),
+                t);
+          }
           LOG("generic-fn", "%s", dep_node.node()->DebugString());
         }
 
@@ -221,7 +228,9 @@ Compiler::ComputeParamsFromArgs(
         if (not context().Constant(&dep_node.node()->ids()[0])) {
           // TODO complete?
           // TODO: Support multiple declarations
-          context().SetConstant(&dep_node.node()->ids()[0], *arg);
+          ir::CompleteResultBuffer buffer;
+          FromValue(*arg, arg.type(), buffer);
+          context().SetConstant(&dep_node.node()->ids()[0], buffer);
         }
 
         size_t i = *ASSERT_NOT_NULL(node->params().at_or_null(id));
@@ -266,7 +275,23 @@ Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args) {
       result = type::Typed<ir::Value>(ir::Value(), nullptr);
     } else {
       LOG("VerifyArguments", "constant: %s", arg.expr().DebugString());
-      result = EvaluateIfConstant(*this, &arg.expr(), expr_qual_type);
+      if (expr_qual_type.constant()) {
+        auto maybe_result = EvaluateToBufferOrDiagnose(
+            type::Typed(&arg.expr(), expr_qual_type.type()));
+        if (auto *diagnostics =
+                std::get_if<std::vector<diagnostic::ConsumedMessage>>(
+                    &maybe_result)) {
+          for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
+        } else {
+          result = type::Typed(ToValue(std::get<ir::CompleteResultBuffer>(
+                                           std::move(maybe_result))
+                                           .buffer(),
+                                       expr_qual_type.type()),
+                               expr_qual_type.type());
+        }
+      } else {
+        result = type::Typed(ir::Value(), expr_qual_type.type());
+      }
     }
     if (not arg.named()) {
       arg_vals.pos_emplace(result);

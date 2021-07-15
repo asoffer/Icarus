@@ -46,10 +46,10 @@ cc_library(
         "//ir/instruction:set",
         "//ir/interpreter:evaluate",
         "//ir/value",
-        "//ir/value:argument_buffer",
         "//ir/value:char",
         "//ir/value:generic_fn",
         "//ir/value:module_id",
+        "//ir/value:result_buffer",
     ],
 )
 

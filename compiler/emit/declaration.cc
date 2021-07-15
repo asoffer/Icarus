@@ -14,7 +14,7 @@ namespace compiler {
 namespace {
 
 void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
-                             base::untyped_buffer &out) {
+                             ir::PartialResultBuffer &out) {
   // TODO: Support multiple declarations
   auto qts = c.context().qual_types(&node->ids()[0]);
   auto t   = qts[0].type();
@@ -27,7 +27,8 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
     if (auto *constant_value = c.context().Constant(&node->ids()[0])) {
       // TODO: This feels quite hacky.
       if (node->init_val()->is<ast::StructLiteral>()) {
-        if (not constant_value->complete and c.state().must_complete) {
+        // TODO:
+        if (not true /*constant_value->complete*/ and c.state().must_complete) {
           LOG("compile-work-queue", "Request work complete-struct: %p", node);
           c.Enqueue({
               .kind      = WorkItem::Kind::CompleteStructMembers,
@@ -36,7 +37,7 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
           });
         }
       }
-      out = constant_value->buffer();
+      out = *constant_value;
       return;
     }
 
@@ -56,48 +57,45 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
 
         LOG("EmitConstantDeclaration", "Setting slot = %s", value_buffer);
 
-        if (t.is<type::Slice>()) {
-          out.append(
-              std::get<ir::ArgumentBuffer>(value_buffer).get<ir::Slice>(0));
-        } else {
-          out.append(
-              std::get<ir::ArgumentBuffer>(value_buffer).get<ir::addr_t>(0));
-        }
-        c.context().SetConstant(&node->ids()[0], out);
+        out.append(std::get<ir::CompleteResultBuffer>(value_buffer));
+        c.context().SetConstant(
+            &node->ids()[0], std::get<ir::CompleteResultBuffer>(value_buffer));
         return;
       } else {
-        auto maybe_val = c.Evaluate(
-            type::Typed<ast::Expression const *>(node->initial_value(), t),
-            c.state().must_complete);
-        if (not maybe_val) {
-          // TODO: we reserved a slot and haven't cleaned it up. Do we care?
-          c.diag().Consume(maybe_val.error());
+        auto maybe_result = c.EvaluateToBufferOrDiagnose(
+            type::Typed<ast::Expression const *>(node->initial_value(), t));
+        if (auto const *diagnostics =
+                std::get_if<std::vector<diagnostic::ConsumedMessage>>(
+                    &maybe_result)) {
+          for (auto &d : *diagnostics) { c.diag().Consume(std::move(d)); }
           return;
         }
 
-        LOG("EmitConstantDeclaration", "Setting slot = %s", *maybe_val);
+        auto &result = std::get<ir::CompleteResultBuffer>(maybe_result);
+        LOG("EmitConstantDeclaration", "Setting slot = %s", result);
         // TODO: Support multiple declarations
-        c.context().SetConstant(&node->ids()[0], *maybe_val);
+        c.context().SetConstant(&node->ids()[0], result);
 
         // TODO: This is a struct-speficic hack.
-        if (type::Type *type_val = maybe_val->get_if<type::Type>()) {
-          if (auto const *struct_type = type_val->if_as<type::Struct>()) {
+        if (t == type::Type_) {
+          if (auto const *struct_type =
+                  result.get<type::Type>(0).if_as<type::Struct>()) {
             if (struct_type->completeness() != type::Completeness::Complete) {
-              out.append(ir::RegOr<type::Type>(*type_val));
+              out.append(result.get<type::Type>(0));
               return;
             }
             // TODO: Support multiple declarations
-            c.context().CompleteConstant(&node->ids()[0]);
+            // c.context().CompleteConstant(&node->ids()[0]);
           }
         }
 
-        FromValue(*maybe_val, t, out);
+        out = result;
         return;
       }
     } else if (auto const * bd =node->if_as<ast::BindingDeclaration>()) {
       // TODO: Support multiple declarations
       if (auto const *constant = c.context().Constant(&node->ids()[0])) {
-        FromValue(constant->value(), t, out);
+        out = *constant;
       } else {
         c.EmitToBuffer(&bd->pattern(), out);
       }
@@ -111,7 +109,7 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
 }
 
 void EmitNonConstantDeclaration(Compiler &c, ast::Declaration const *node,
-                                base::untyped_buffer &out) {
+                                ir::PartialResultBuffer &out) {
   if (node->IsUninitialized()) { return; }
   std::vector<type::Typed<ir::RegOr<ir::addr_t>>> addrs;
   addrs.reserve(node->ids().size());
@@ -131,18 +129,20 @@ void EmitNonConstantDeclaration(Compiler &c, ast::Declaration const *node,
 
 }  // namespace
 
-void Compiler::EmitToBuffer(ast::Declaration const *node, base::untyped_buffer&out) {
+void Compiler::EmitToBuffer(ast::Declaration const *node,
+                            ir::PartialResultBuffer &out) {
   LOG("Declaration", "%s", node->DebugString());
   ASSERT(node->scope()->Containing<ast::ModuleScope>()->module() ==
          &context().module());
   if (node->flags() & ast::Declaration::f_IsConst) {
     EmitConstantDeclaration(*this, node, out);
   } else {
-    EmitNonConstantDeclaration(*this, node, out);}
+    EmitNonConstantDeclaration(*this, node, out);
+  }
 }
 
 void Compiler::EmitToBuffer(ast::Declaration::Id const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   LOG("Declaration::Id", "%s", node->DebugString());
   return (node->declaration().flags() & ast::Declaration::f_IsConst)
              ? EmitConstantDeclaration(*this, &node->declaration(), out)
@@ -150,7 +150,7 @@ void Compiler::EmitToBuffer(ast::Declaration::Id const *node,
 }
 
 void Compiler::EmitToBuffer(ast::BindingDeclaration const *node,
-                            base::untyped_buffer &) {
+                            ir::PartialResultBuffer &) {
   UNREACHABLE();
 }
 

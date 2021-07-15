@@ -40,8 +40,10 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
     size_t i = 0;
     for (auto const &p : params) {
       if (p.value.first.empty()) { continue; }
+      ir::CompleteResultBuffer buffer;
+      FromValue(p.value.first, p.value.second.type(), buffer);
       iter->second->context.SetConstant(&node->params()[i++].value->ids()[0],
-                                        p.value.first);
+                                        std::move(buffer));
     }
 
     ASSERT(iter->second->context.parent() == this);
@@ -190,24 +192,13 @@ void Context::ClearVerifyBody(ast::Node const *node) {
   body_verification_complete_.erase(node);
 }
 
-void Context::CompleteConstant(ast::Declaration::Id const *id) {
-  auto iter = constants_.find(id);
-  ASSERT(iter != constants_.end());
-  iter->second.complete = true;
+ir::CompleteResultBuffer const &Context::SetConstant(
+    ast::Declaration::Id const *id, ir::CompleteResultBuffer const &buffer) {
+  return constants_.try_emplace(id, std::move(buffer)).first->second;
 }
 
-ir::Value Context::SetConstant(ast::Declaration::Id const *id,
-                               ir::Value const &value, bool complete) {
-  return constants_.try_emplace(id, value, complete).first->second.value();
-}
-
-ir::Value Context::SetConstant(ast::Declaration::Id const *id,
-                               base::untyped_buffer buffer, bool complete) {
-  return constants_.try_emplace(id, buffer, complete).first->second.value();
-}
-
-Context::ConstantValue const *Context::Constant(
-   ast::Declaration::Id const *id) const {
+ir::CompleteResultBuffer const *Context::Constant(
+    ast::Declaration::Id const *id) const {
   auto iter = constants_.find(id);
   return iter != constants_.end() ? &iter->second : nullptr;
 }
@@ -426,4 +417,29 @@ void FromValue(ir::Value const &v, type::Type t, base::untyped_buffer &out) {
   }
 }
 
+void FromValue(ir::Value const &v, type::Type t,
+               ir::CompleteResultBuffer &out) {
+  ASSERT(v.get_if<ir::Reg>() == nullptr);
+  v.apply<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
+          uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
+          ir::Slice, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
+          ir::Block, ir::GenericFn, interface::Interface>(
+      [&](auto value) { out.append(value); });
+}
+void FromValue(ir::Value const &v, type::Type t, ir::PartialResultBuffer &out) {
+  if (auto *r = v.get_if<ir::Reg>()) {
+    out.append(*r);
+  } else {
+    v.apply<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
+            uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
+            ir::Slice, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
+            ir::Block, ir::GenericFn, interface::Interface>(
+        [&](auto value) { out.append(value); });
+  }
+}
+
+void ToComplete(base::untyped_buffer_view buffer, type::Type t,
+                ir::CompleteResultBuffer &out) {
+  FromValue(ToValue(buffer, t), t, out);
+}
 }  // namespace compiler

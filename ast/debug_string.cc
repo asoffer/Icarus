@@ -486,7 +486,7 @@ void ParameterizedStructLiteral::DebugStrAppend(std::string *out,
 
 void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
   // TODO: Make this better
-  absl::StrAppend(out, value().to_string());
+  absl::StrAppend(out, value().raw().to_string());
 }
 
 void UnaryOperator::DebugStrAppend(std::string *out, size_t indent) const {

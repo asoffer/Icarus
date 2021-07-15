@@ -41,10 +41,10 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
         return std::pair<ir::Value, type::QualType>(
             ir::Value(c.EmitRef(expr.get())), qt);
       } else {
-        base::untyped_buffer buffer;
+        ir::PartialResultBuffer buffer;
         c.EmitToBuffer(expr.get(), buffer);
-        return std::pair<ir::Value, type::QualType>(ToValue(buffer, qt.type()),
-                                                    qt);
+        return std::pair<ir::Value, type::QualType>(
+            ToValue(buffer[0].raw(), qt.type()), qt);
       }
     }));
     c.builder().JumpExitJump(std::string(opt.block()), current_block);
@@ -64,7 +64,7 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
 }  // namespace
 
 void Compiler::EmitToBuffer(ast::ConditionalGoto const *node,
-                            base::untyped_buffer &) {
+                            ir::PartialResultBuffer &) {
   auto condition    = EmitAs<bool>(node->condition());
   auto *true_block  = builder().AddBlock("ConditionalGoto-true");
   auto *false_block = builder().AddBlock("ConditionalGoto-false");
@@ -78,7 +78,7 @@ void Compiler::EmitToBuffer(ast::ConditionalGoto const *node,
 }
 
 void Compiler::EmitToBuffer(ast::UnconditionalGoto const *node,
-                            base::untyped_buffer &) {
+                            ir::PartialResultBuffer &) {
   LOG("Goto", "Emit %s", node->DebugString());
   auto *block = builder().AddBlock("UncoditionalGoto");
   builder().UncondJump(block);

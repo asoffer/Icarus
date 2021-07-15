@@ -105,7 +105,7 @@ BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node) {
 
   bldr.block_termination_state() =
       ir::Builder::BlockTerminationState::kMoreStatements;
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   c.EmitToBuffer(node, buffer);
 
   return BlockNodeResult{.body        = body,
@@ -123,7 +123,7 @@ std::optional<ir::Reg> InitializeScopeState(Compiler &c,
 }
 
 std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
-    Compiler &c, ir::ArgumentBuffer const &constant_arguments,
+    Compiler &c, ir::PartialResultBuffer const &constant_arguments,
     std::optional<ir::Reg> state_ptr,
     absl::Span<ast::Call::Argument const> const &args,
     ir::CompiledScope const &scope) {
@@ -157,9 +157,10 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
     absl::Cleanup cleanup = [&] { ++i; };
     // TODO: Default arguments.
 
-    base::untyped_buffer buffer = PrepareArgument(
+    ir::PartialResultBuffer buffer = PrepareArgument(
         c, constant_arguments[i], &argument.expr(), param_qts[i].value);
-    prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
+    prepared_arguments.push_back(
+        ToValue(buffer[0].raw(), param_qts[i].value.type()));
   }
 
   return std::make_pair(init, std::move(prepared_arguments));
@@ -245,7 +246,7 @@ void SetBeforeBlockPhi(
 }  // namespace
 
 void Compiler::EmitToBuffer(ast::ScopeNode const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
   ir::Scope scope            = *EvaluateOrDiagnoseAs<ir::Scope>(node->name());
   auto const *compiled_scope = ir::CompiledScope::From(scope);
@@ -313,7 +314,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  auto constant_args = EmitConstantArgumentBuffer(*this, node->arguments());
+  auto constant_args = EmitConstantPartialResultBuffer(*this, node->arguments());
   auto [init, args]  = EmitIrForJumpArguments(
       *this, constant_args, state_ptr, node->arguments(), *compiled_scope);
   auto from_block = builder().CurrentBlock();
@@ -458,7 +459,7 @@ void Compiler::EmitCopyAssign(
   // TODO: Implement this properly.
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyAssign(to[0], ValueView(t, buffer));
 }
@@ -469,7 +470,7 @@ void Compiler::EmitMoveAssign(
   // TODO: Implement this properly.
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveAssign(to[0], ValueView(t, buffer));
 }

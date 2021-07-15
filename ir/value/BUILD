@@ -1,18 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "argument_buffer",
-    hdrs = ["argument_buffer.h"],
-    deps = [
-        "//base:meta",
-        "//base:untyped_buffer",
-        "//base:untyped_buffer_view",
-    ]
-)
-
-#TODO: argument_buffer_test
-
-cc_library(
     name = "addr",
     hdrs = ["addr.h"],
 )
@@ -253,6 +241,20 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "result_buffer",
+    hdrs = ["result_buffer.h"],
+    srcs = ["result_buffer.cc"],
+    deps = [
+        ":reg_or",
+        "//base:meta",
+        "//base:untyped_buffer",
+        "//base:untyped_buffer_view",
+    ]
+)
+
+#TODO: result_buffer_test
 
 cc_library(
     name = "scope",

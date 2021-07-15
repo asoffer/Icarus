@@ -10,7 +10,7 @@
 #include "base/ptr_span.h"
 #include "compiler/compiler.h"
 #include "ir/compiled_fn.h"
-#include "ir/value/argument_buffer.h"
+#include "ir/value/result_buffer.h"
 #include "type/struct.h"
 
 namespace compiler {
@@ -39,9 +39,9 @@ void MakeAllDestructions(Compiler &compiler, ast::Scope const *scope);
 // a reference and is being bound to a pointer to its own type, we emit the
 // reference rather than loading the corresponding value. Moreover non-referenc
 // types get placed in temporary stack allocations in this case.
-base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
-                                     ast::Expression const *expr,
-                                     type::QualType param_qt);
+ir::PartialResultBuffer PrepareArgument(Compiler &c, ir::Value constant,
+                                        ast::Expression const *expr,
+                                        type::QualType param_qt);
 // Same as the above overload but rather than emitting the code for expressions
 // on the fly, this overload is to be used when the value has already been
 // computed, but you know the qualified type. In particular arg_value needs to
@@ -50,25 +50,25 @@ base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
 // value itself.
 ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
                           type::QualType arg_qt, type::QualType param_qt);
-base::untyped_buffer PrepareArgument(Compiler &c, ir::ArgumentRef constant,
-                                     ast::Expression const *expr,
-                                     type::QualType param_qt);
+ir::PartialResultBuffer PrepareArgument(Compiler &c,
+                                        ir::PartialResultRef constant,
+                                        ast::Expression const *expr,
+                                        type::QualType param_qt);
 
-void AppendToArgumentBuffer(Compiler &c, type::QualType qt,
+void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
                             ast::Expression const &expr,
-                            ir::ArgumentBuffer &buffer);
+                            ir::PartialResultBuffer &buffer);
 
-ir::ArgumentBuffer EmitConstantArgumentBuffer(
+ir::PartialResultBuffer EmitConstantPartialResultBuffer(
     Compiler &c, absl::Span<ast::Call::Argument const> args);
 
-core::Arguments<type::Typed<size_t>> EmitConstantArguments(
+core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
     Compiler &c, absl::Span<ast::Call::Argument const> args,
-    base::untyped_buffer &buffer);
+    ir::CompleteResultBuffer &buffer);
 
 void EmitCall(
     Compiler &compiler, ast::Expression const *callee,
-    base::untyped_buffer_view constant_buffer,
-    core::Arguments<type::Typed<size_t>> const &constant_argument_indices,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants,
     absl::Span<ast::Call::Argument const> arg_exprs,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to);
 

@@ -6,7 +6,7 @@ namespace compiler {
 void Compiler::EmitMoveInit(
     ast::Identifier const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
 }
@@ -14,13 +14,13 @@ void Compiler::EmitMoveInit(
 void Compiler::EmitCopyInit(
     ast::Identifier const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
 }
 
 void Compiler::EmitToBuffer(ast::Identifier const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   LOG("Identifier", "%s on context %p", node->name(), &context());
   auto decl_span = context().decls(node);
   ASSERT(decl_span.size() != 0u);
@@ -31,15 +31,8 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
                            ->module()
                            ->as<CompiledModule>();
     if (mod != &context().module()) {
-      auto value = mod->context(&context().module())
-                       .Constant(&decl_span[0]->ids()[0])
-                       ->value();
-      ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
-                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
-          context().qual_types(node)[0].type(),
-          [&]<typename T>() { out.append(value.get<ir::RegOr<T>>()); });
+      out.append(
+          *mod->context(&context().module()).Constant(&decl_span[0]->ids()[0]));
     } else {
       EmitToBuffer(decl_span[0], out);
     }
@@ -85,7 +78,7 @@ void Compiler::EmitCopyAssign(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyAssign(to[0], ValueView(t, buffer));
 }
@@ -95,7 +88,7 @@ void Compiler::EmitMoveAssign(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = context().qual_types(node)[0].type();
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveAssign(to[0], ValueView(t, buffer));
 }

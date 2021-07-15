@@ -9,12 +9,12 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::ParameterizedStructLiteral const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   // TODO: Check the result of body verification.
   if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
-  out.append(ir::RegOr<ir::GenericFn>(ir::GenericFn(
+  out.append(ir::GenericFn(
       [](core::Arguments<type::Typed<ir::Value>> const &args) mutable
-      -> ir::NativeFn { NOT_YET(); })));
+      -> ir::NativeFn { NOT_YET(); }));
 }
 
 WorkItem::Result Compiler::CompleteStruct(

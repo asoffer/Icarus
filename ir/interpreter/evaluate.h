@@ -24,7 +24,7 @@ void Execute(ir::NativeFn fn) {
 }
 
 template <typename InstSet>
-ir::ArgumentBuffer  EvaluateToBuffer(ir::NativeFn fn) {
+ir::CompleteResultBuffer EvaluateToBuffer(ir::NativeFn fn) {
   // TODO: Support multiple outputs.
   LOG("EvaluateToBuffer", "%s", fn);
 
@@ -43,7 +43,7 @@ ir::ArgumentBuffer  EvaluateToBuffer(ir::NativeFn fn) {
 
   LOG("EvaluateToBuffer", "Result buffer = %s", ret_buf.to_string());
 
-  ir::ArgumentBuffer result;
+  ir::CompleteResultBuffer result;
   if (t.is<type::Pointer>()) {
     result.append(ret_buf.get<ir::addr_t>(0));
   } else if (t.is<type::Function>()) {

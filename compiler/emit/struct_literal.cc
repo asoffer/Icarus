@@ -15,13 +15,13 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::StructLiteral const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   LOG("StructLiteral", "Starting struct-literal emission: %p%s", node,
       state_.must_complete ? " (must complete)" : " (need not complete)");
 
   if (type::Struct *s = context().get_struct(node)) {
     LOG("StructLiteral", "Early return with possibly incomplete type %p", s);
-    out.append(ir::RegOr<type::Type>(type::Type(s)));
+    out.append(type::Type(s));
     return;
   }
 
@@ -58,7 +58,7 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
         .resources = resources_,
     });
   }
-  out.append(ir::RegOr<type::Type>(type::Type(s)));
+  out.append(type::Type(s));
 }
 
 WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {

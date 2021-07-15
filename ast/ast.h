@@ -24,6 +24,7 @@
 #include "ir/value/addr.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/label.h"
+#include "ir/value/result_buffer.h"
 #include "ir/value/value.h"
 
 namespace ast {
@@ -1204,15 +1205,15 @@ struct Terminal : Expression {
   template <typename T>
   explicit Terminal(frontend::SourceRange const &range, T const &value)
       : Expression(range), type_(base::meta<T>) {
-    value_.append(ir::RegOr<T>(value));
+    value_.append(value);
   }
-  base::untyped_buffer const &value() const { return value_; }
+  ir::CompleteResultRef value() const { return value_[0]; }
   base::MetaValue type() const { return type_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  base::untyped_buffer value_;
+  ir::CompleteResultBuffer value_;
   base::MetaValue type_;
 };
 

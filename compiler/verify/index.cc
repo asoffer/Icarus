@@ -113,14 +113,10 @@ type::QualType VerifyArrayIndex(Compiler &c, ast::Index const *node,
   }
 
   if (index_qt.constant()) {
-    ir::Value maybe_index_value = c.EvaluateOrDiagnose(
-        type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
-    if (maybe_index_value.empty()) { return type::QualType::Error(); }
-
-    ir::Integer index;
-    maybe_index_value.apply<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                            uint16_t, uint32_t, uint64_t, ir::Integer>(
-        [&](auto n) { index = n; });
+    std::optional<ir::Integer> maybe_index_value =
+        c.EvaluateOrDiagnoseAs<ir::Integer>(node->rhs());
+    if (not maybe_index_value.has_value()) { return type::QualType::Error(); }
+    ir::Integer index = *maybe_index_value;
 
     if (index < 0) {
       c.diag().Consume(NegativeArrayIndex{

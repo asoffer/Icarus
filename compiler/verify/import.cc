@@ -74,7 +74,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Import const *node) {
   }
 
   auto slice =
-      std::get<ir::ArgumentBuffer>(source_locator).get<ir::Slice>(0).value();
+      std::get<ir::CompleteResultBuffer>(source_locator).get<ir::Slice>(0);
 
   ir::ModuleId mod_id = importer().Import(slice);
   if (mod_id == ir::ModuleId::Invalid()) {

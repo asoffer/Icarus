@@ -25,7 +25,7 @@ INSTANTIATE_TEST_SUITE_P(
   return n
 })()
                                   )",
-            .expected = ir::Value(int64_t{0}),
+            .expected = int64_t{0},
         },
         test::TestCase{
             .expr     = R"((() -> i64 {
@@ -45,7 +45,7 @@ INSTANTIATE_TEST_SUITE_P(
   return n
 })()
                              )",
-            .expected = ir::Value(int64_t{1}),
+            .expected = int64_t{1},
         },
         test::TestCase{
             .expr     = R"((() -> i64 {
@@ -65,7 +65,7 @@ INSTANTIATE_TEST_SUITE_P(
   return n
 })()
                              )",
-            .expected = ir::Value(int64_t{12}),
+            .expected = int64_t{12},
         },
 
         test::TestCase{
@@ -94,7 +94,7 @@ INSTANTIATE_TEST_SUITE_P(
   return 1000 * a + 100 * b + 10 * c + d
 })()
                              )",
-            .expected = ir::Value(int64_t{1001}),
+            .expected = int64_t{1001},
         },
 
         // Early return
@@ -131,7 +131,7 @@ INSTANTIATE_TEST_SUITE_P(
   return 10 * b + a
 })()
                              )",
-            .expected = ir::Value(int64_t{31}),
+            .expected = int64_t{31},
         },
         test::TestCase{
             .expr     = R"((() -> i64 {
@@ -149,7 +149,7 @@ INSTANTIATE_TEST_SUITE_P(
   }
 })()
                              )",
-            .expected = ir::Value(int64_t{3}),
+            .expected = int64_t{3},
         },
         test::TestCase{
             .expr     = R"((() -> i64 {
@@ -175,7 +175,7 @@ INSTANTIATE_TEST_SUITE_P(
   return num
 })()
                              )",
-            .expected = ir::Value(int64_t{1024}),
+            .expected = int64_t{1024},
         },
         test::TestCase{
             .expr     = R"((() -> i64 {
@@ -204,7 +204,7 @@ INSTANTIATE_TEST_SUITE_P(
   return num
 })()
                              )",
-            .expected = ir::Value(int64_t{2}),
+            .expected = int64_t{2},
         },
         test::TestCase{
             .expr = R"((() -> i64 {
@@ -223,7 +223,7 @@ INSTANTIATE_TEST_SUITE_P(
 })()
                              )",
             // Really just checking that this compiles with a value
-            .expected = ir::Value(int64_t{0}),
+            .expected = int64_t{0},
         },
 
     }));

@@ -64,30 +64,30 @@ struct StringifyExpression : ast::Visitor<std::string()> {
 
   std::string Visit(ast::Terminal const *node) final {
     if (node->type() == base::meta<bool>) {
-      return absl::StrCat(node->value().get<bool>(0) ? "true" : "false");
+      return absl::StrCat(node->value().get<bool>() ? "true" : "false");
     } else if (node->type() == base::meta<ir::Char>) {
-      return std::string(static_cast<char>(node->value().get<ir::Char>(0)), 1);
+      return std::string(static_cast<char>(node->value().get<ir::Char>()), 1);
     } else if (node->type() == base::meta<int8_t>) {
-      return absl::StrCat(static_cast<int16_t>(node->value().get<int8_t>(0)));
+      return absl::StrCat(static_cast<int16_t>(node->value().get<int8_t>()));
     } else if (node->type() == base::meta<int16_t>) {
-      return absl::StrCat(node->value().get<int16_t>(0));
+      return absl::StrCat(node->value().get<int16_t>());
     } else if (node->type() == base::meta<int32_t>) {
-      return absl::StrCat(node->value().get<int32_t>(0));
+      return absl::StrCat(node->value().get<int32_t>());
     } else if (node->type() == base::meta<int64_t>) {
-      return absl::StrCat(node->value().get<int64_t>(0));
+      return absl::StrCat(node->value().get<int64_t>());
     } else if (node->type() == base::meta<uint8_t>) {
-      return absl::StrCat(static_cast<uint16_t>(node->value().get<uint8_t>(0)));
+      return absl::StrCat(static_cast<uint16_t>(node->value().get<uint8_t>()));
     } else if (node->type() == base::meta<uint16_t>) {
-      return absl::StrCat(node->value().get<uint16_t>(0));
+      return absl::StrCat(node->value().get<uint16_t>());
     } else if (node->type() == base::meta<uint32_t>) {
-      return absl::StrCat(node->value().get<uint32_t>(0));
+      return absl::StrCat(node->value().get<uint32_t>());
     } else if (node->type() == base::meta<uint64_t>) {
-      return absl::StrCat(node->value().get<uint64_t>(0));
+      return absl::StrCat(node->value().get<uint64_t>());
     } else if (node->type() == base::meta<type::Type>) {
-      return node->value().get<type::Type>(0).to_string();
+      return node->value().get<type::Type>().to_string();
     }
     // TODO: This is terrible.
-    return node->value().to_string();
+    return node->value().raw().to_string();
   }
 
   std::string Visit(ast::UnaryOperator const *node) final;

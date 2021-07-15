@@ -5,7 +5,7 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::BlockLiteral const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   LOG("BlockLiteral", "Emitting value for %p: %s", node, node->DebugString());
   // TODO: The guarantee that body verification has already happened should be
   // handled by the work queue.
@@ -26,7 +26,7 @@ void Compiler::EmitToBuffer(ast::BlockLiteral const *node,
 
   ir::Block b = context().add_block();
   builder().MakeBlock(b, std::move(befores), std::move(afters));
-  out.append(ir::RegOr<ir::Block>(b));
+  out.append(b);
 }
 
 }  // namespace compiler

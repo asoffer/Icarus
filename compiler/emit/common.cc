@@ -56,8 +56,9 @@ ir::Fn InsertGeneratedMoveInit(
                 .result      = c.builder().CurrentGroup()->Reserve()});
 
         ir::RegOr<ir::addr_t> r(c.builder().PtrFix(from_val, t));
-        c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, t),
-                       base::untyped_buffer_view(&r));
+        ir::PartialResultBuffer buffer;
+        buffer.append(r);
+        c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, t), buffer);
         ++i;
       }
       c.builder().ReturnJump();
@@ -106,9 +107,9 @@ ir::Fn InsertGeneratedCopyInit(
                 .struct_type = s,
                 .result      = c.builder().CurrentGroup()->Reserve()});
 
-        ir::RegOr<ir::addr_t> r = c.builder().PtrFix(from_val, t);
-        c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, t),
-                       base::untyped_buffer_view(&r));
+        ir::PartialResultBuffer buffer;
+        buffer.append(c.builder().PtrFix(from_val, t));
+        c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, t), buffer);
         ++i;
       }
       c.builder().ReturnJump();
@@ -140,13 +141,13 @@ ir::Fn InsertGeneratedMoveAssign(
             .struct_type = s,
             .result      = c.builder().CurrentGroup()->Reserve()});
 
-        base::untyped_buffer buffer;
-        FromValue(ir::Value(c.builder().PtrFix(from_ref,
-                                               ir_fields[i].type().value())),
-                  ir_fields[i].type().value(), buffer);
-        c.EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(
-                             to_ref, ir_fields[i].type().value()),
-                         ValueView(ir_fields[i].type().value(), buffer));
+        ir::PartialResultBuffer buffer;
+        buffer.append(
+            c.builder().PtrFix(from_ref, ir_fields[i].type().value()));
+        c.EmitCopyAssign(
+            type::Typed<ir::RegOr<ir::addr_t>>(to_ref,
+                                               ir_fields[i].type().value()),
+            ValueView(ir_fields[i].type().value(), buffer[0].raw()));
       }
 
       c.builder().ReturnJump();
@@ -177,13 +178,13 @@ ir::Fn InsertGeneratedCopyAssign(
             .index       = i,
             .struct_type = s,
             .result      = c.builder().CurrentGroup()->Reserve()});
-        base::untyped_buffer buffer;
-        FromValue(ir::Value(c.builder().PtrFix(from_ref,
-                                               ir_fields[i].type().value())),
-                  ir_fields[i].type().value(), buffer);
-        c.EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(
-                             to_ref, ir_fields[i].type().value()),
-                         ValueView(ir_fields[i].type().value(), buffer));
+        ir::PartialResultBuffer buffer;
+        buffer.append(
+            c.builder().PtrFix(from_ref, ir_fields[i].type().value()));
+        c.EmitCopyAssign(
+            type::Typed<ir::RegOr<ir::addr_t>>(to_ref,
+                                               ir_fields[i].type().value()),
+            ValueView(ir_fields[i].type().value(), buffer[0].raw()));
       }
 
       c.builder().ReturnJump();
@@ -216,8 +217,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler &c, ast::Expression const *fn,
 
 std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     Compiler &c, ast::Expression const *fn, type::QualType qt,
-    base::untyped_buffer_view constant_buffer,
-    const core::Arguments<type::Typed<size_t>> &constant_argument_indices) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
   if (auto const *gf_type = qt.type().if_as<type::GenericFunction>()) {
     ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(fn).value();
 
@@ -231,16 +231,14 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
 
     auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
 
-    auto constant_arguments =
-        constant_argument_indices.Transform([&](auto const &typed_index) {
-          if (*typed_index == static_cast<size_t>(-1)) {
-            return type::Typed<ir::Value>(ir::Value(), typed_index.type());
-          }
-          base::untyped_buffer_view view(constant_buffer.raw(*typed_index),
-                                         constant_buffer.size() - *typed_index);
-          return type::Typed<ir::Value>(ToValue(view, typed_index.type()),
-                                        typed_index.type());
-        });
+    auto constant_arguments = constants.Transform([&](auto const &constant) {
+      auto t = constant.type();
+      if (constant->empty()) {
+        return type::Typed<ir::Value>(ir::Value(), t);
+      } else {
+        return type::Typed<ir::Value>(ToValue(constant->raw(), t), t);
+      }
+    });
 
     auto find_subcontext_result =
         c.FindInstantiation(parameterized_expr, constant_arguments);
@@ -322,9 +320,10 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           if (auto const *init_val = id.declaration().init_val()) {
             // TODO init_val type may not be the same.
             field_type = c.context().qual_types(init_val)[0].type();
-            base::untyped_buffer buffer;
+            ir::PartialResultBuffer buffer;
             c.EmitToBuffer(init_val, buffer);
-            fields.emplace_back(id.name(), field_type, std::move(buffer));
+            fields.emplace_back(id.name(), field_type,
+                                std::move(buffer).buffer());
             fields.back().set_export(
                 id.declaration().hashtags.contains(ir::Hashtag::Export));
           } else {
@@ -505,7 +504,7 @@ void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
 // if we exit early, so those need to be handled externally.
 void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
   ICARUS_SCOPE(ir::SetTemporaries(c.builder())) {
-    base::untyped_buffer buffer;
+    ir::PartialResultBuffer buffer;
     for (auto *stmt : stmts) {
       LOG("EmitIrForStatements", "%s", stmt->DebugString());
       c.EmitToBuffer(stmt, buffer);
@@ -523,7 +522,7 @@ void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
 }
 
 void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
-                        type::QualType to, base::untyped_buffer &buffer) {
+                        type::QualType to, ir::PartialResultBuffer &buffer) {
   ASSERT(type::CanCastImplicitly(from, to.type()) == true);
   if (from == to.type()) { return; }
   if (from.is<type::Slice>() and to.type().is<type::Slice>()) { return; }
@@ -539,7 +538,7 @@ void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
     to.type().as<type::Primitive>().Apply([&]<typename T>() {
       if constexpr (std::is_integral_v<T>) {
         ir::RegOr<T> result =
-            builder.Cast<ir::Integer, T>(buffer.get<ir::RegOr<ir::Integer>>(0));
+            builder.Cast<ir::Integer, T>(buffer.get<ir::Integer>(0));
         buffer.clear();
         buffer.append(result);
       } else {
@@ -549,25 +548,25 @@ void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
   }
 }
 
-base::untyped_buffer PrepareArgument(Compiler &c, ir::ArgumentRef constant,
+ir::PartialResultBuffer PrepareArgument(Compiler &c, ir::PartialResultRef constant,
                                      ast::Expression const *expr,
                                      type::QualType param_qt) {
   type::QualType arg_qt = *c.context().qual_types(expr)[0];
   type::Type arg_type   = arg_qt.type();
   type::Type param_type = param_qt.type();
 
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   if (constant.empty()) {
     if (auto const *ptr_to_type = param_type.if_as<type::Pointer>()) {
       if (ptr_to_type->pointee() == arg_type) {
         if (arg_qt.quals() >= type::Quals::Ref()) {
-          buffer.append(ir::RegOr<ir::addr_t>(c.EmitRef(expr)));
+          buffer.append(c.EmitRef(expr));
           return buffer;
         } else {
           auto reg = c.builder().TmpAlloca(arg_type);
           c.EmitMoveInit(expr,
                          {type::Typed<ir::RegOr<ir::addr_t>>(reg, param_type)});
-          buffer.append(ir::RegOr<ir::addr_t>(reg));
+          buffer.append(reg);
           return buffer;
         }
       }
@@ -575,32 +574,32 @@ base::untyped_buffer PrepareArgument(Compiler &c, ir::ArgumentRef constant,
 
     c.EmitToBuffer(expr, buffer);
   } else {
-    buffer.write(0, constant.raw().raw(0), constant.raw().size());
+    buffer.append(constant);
   }
 
   ApplyImplicitCasts(c.builder(), arg_type, param_qt, buffer);
   return buffer;
 }
 
-base::untyped_buffer PrepareArgument(Compiler &c, ir::Value constant,
-                                     ast::Expression const *expr,
-                                     type::QualType param_qt) {
+ir::PartialResultBuffer PrepareArgument(Compiler &c, ir::Value constant,
+                                        ast::Expression const *expr,
+                                        type::QualType param_qt) {
   type::QualType arg_qt = *c.context().qual_types(expr)[0];
   type::Type arg_type   = arg_qt.type();
   type::Type param_type = param_qt.type();
 
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   if (constant.empty()) {
     if (auto const *ptr_to_type = param_type.if_as<type::Pointer>()) {
       if (ptr_to_type->pointee() == arg_type) {
         if (arg_qt.quals() >= type::Quals::Ref()) {
-          buffer.append(ir::RegOr<ir::addr_t>(c.EmitRef(expr)));
+          buffer.append(c.EmitRef(expr));
           return buffer;
         } else {
           auto reg = c.builder().TmpAlloca(arg_type);
           c.EmitMoveInit(expr,
                          {type::Typed<ir::RegOr<ir::addr_t>>(reg, param_type)});
-          buffer.append(ir::RegOr<ir::addr_t>(reg));
+          buffer.append(reg);
           return buffer;
         }
       }
@@ -643,7 +642,7 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
       auto reg = compiler.builder().TmpAlloca(arg_type);
       // TODO: Once EmitMoveInit is no longer a method on Compiler, we can
       // reduce the dependency here from being on Compiler to on Builder.
-      base::untyped_buffer buffer;
+      ir::PartialResultBuffer buffer;
       FromValue(arg_value, arg_type, buffer);
       compiler.EmitMoveInit(type::Typed<ir::Reg>(reg, arg_type), buffer);
 
@@ -656,9 +655,9 @@ ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
   }
 }
 
-void AppendToArgumentBuffer(Compiler &c, type::QualType qt,
+void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
                             ast::Expression const &expr,
-                            ir::ArgumentBuffer &buffer) {
+                            ir::PartialResultBuffer &buffer) {
   if (not qt.constant()) {
     buffer.append();
     return;
@@ -666,66 +665,55 @@ void AppendToArgumentBuffer(Compiler &c, type::QualType qt,
 
   auto result = c.EvaluateToBufferOrDiagnose(
       type::Typed<ast::Expression const *>(&expr, qt.type()));
-  if (auto const *result_buffer = std::get_if<ir::ArgumentBuffer>(&result)) {
+  if (auto const *result_buffer =
+          std::get_if<ir::CompleteResultBuffer>(&result)) {
     buffer.append(*result_buffer);
   } else {
     NOT_YET();
   }
 }
 
-ir::ArgumentBuffer EmitConstantArgumentBuffer(
+ir::PartialResultBuffer EmitConstantPartialResultBuffer(
     Compiler &c, absl::Span<ast::Call::Argument const> args) {
-  ir::ArgumentBuffer arg_buffer;
+  ir::PartialResultBuffer arg_buffer;
 
   for (auto const &arg : args) {
     auto qt = c.context().qual_types(&arg.expr())[0];
-    AppendToArgumentBuffer(c, qt, arg.expr(), arg_buffer);
+    AppendToPartialResultBuffer(c, qt, arg.expr(), arg_buffer);
   }
   return arg_buffer;
 }
 
-core::Arguments<type::Typed<size_t>> EmitConstantArguments(
+core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
     Compiler &c, absl::Span<ast::Call::Argument const> args,
-    base::untyped_buffer &buffer) {
-  core::Arguments<type::Typed<size_t>> arg_vals;
+    ir::CompleteResultBuffer &buffer) {
+  core::Arguments<type::Typed<ir::CompleteResultRef>> arg_refs;
 
   for (auto const &arg : args) {
-    size_t index = -1;
-    auto qt      = c.context().qual_types(&arg.expr())[0];
+    auto qt = c.context().qual_types(&arg.expr())[0];
     if (qt.constant()) {
       auto result = c.EvaluateToBufferOrDiagnose(
           type::Typed<ast::Expression const *>(&arg.expr(), qt.type()));
       if (auto const *result_buffer =
-              std::get_if<ir::ArgumentBuffer>(&result)) {
-        index = buffer.size();
-        // TODO: Support more than primitive types and pointers.
-        if (qt.type().is<type::Pointer>()) {
-          buffer.append(result_buffer->get<ir::addr_t>(0).value());
-        } else if (qt.type().is<type::Slice>()) {
-          buffer.append(result_buffer->get<ir::Slice>(0).value());
-        } else {
-          qt.type().as<type::Primitive>().Apply([&]<typename T>() {
-            buffer.append(result_buffer->template get<T>(0).value());
-          });
-        }
+              std::get_if<ir::CompleteResultBuffer>(&result)) {
+        buffer.append(*result_buffer);
       } else {
         NOT_YET();
       }
     }
 
     if (not arg.named()) {
-      arg_vals.pos_emplace(type::Typed(index, qt.type()));
+      arg_refs.pos_emplace(type::Typed(buffer.back(), qt.type()));
     } else {
-      arg_vals.named_emplace(arg.name(), type::Typed(index, qt.type()));
+      arg_refs.named_emplace(arg.name(), type::Typed(buffer.back(), qt.type()));
     }
   }
-  return arg_vals;
+  return arg_refs;
 }
 
 void EmitCall(
     Compiler &compiler, ast::Expression const *callee,
-    base::untyped_buffer_view constant_buffer,
-    core::Arguments<type::Typed<size_t>> const &constant_argument_indices,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants,
     absl::Span<ast::Call::Argument const> arg_exprs,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   CompiledModule *callee_mod = &callee->scope()
@@ -738,9 +726,8 @@ void EmitCall(
 
   std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> results;
   if (callee_mod == &compiler.context().module()) {
-    results =
-        EmitCallee(compiler, callee, compiler.context().qual_types(callee)[0],
-                   constant_buffer, constant_argument_indices);
+    results = EmitCallee(compiler, callee,
+                         compiler.context().qual_types(callee)[0], constants);
   } else {
     type::QualType callee_qual_type =
         callee_mod->context(&compiler.context().module()).qual_types(callee)[0];
@@ -750,8 +737,7 @@ void EmitCall(
         .diagnostic_consumer = compiler.diag(),
         .importer            = compiler.importer(),
     });
-    results = EmitCallee(callee_compiler, callee, callee_qual_type,
-                         constant_buffer, constant_argument_indices);
+    results = EmitCallee(callee_compiler, callee, callee_qual_type, constants);
   }
 
   auto &[callee_fn, overload_type, context] = results;
@@ -778,16 +764,14 @@ void EmitCall(
 
   auto const &param_qts = overload_type->params();
 
-  auto constant_arguments =
-      constant_argument_indices.Transform([&](auto const &typed_index) {
-        if (*typed_index == static_cast<size_t>(-1)) {
-          return type::Typed<ir::Value>(ir::Value(), typed_index.type());
-        }
-        base::untyped_buffer_view view(constant_buffer.raw(*typed_index),
-                                       constant_buffer.size() - *typed_index);
-        return type::Typed<ir::Value>(ToCompleteValue(view, typed_index.type()),
-                                      typed_index.type());
-      });
+  auto constant_arguments = constants.Transform([&](auto const &constant) {
+    auto t = constant.type();
+    if (constant->empty()) {
+      return type::Typed<ir::Value>(ir::Value(), t);
+    } else {
+      return type::Typed<ir::Value>(ToValue(constant->raw(), t), t);
+    }
+  });
 
   // TODO: With expansions, this might be wrong.
   {
@@ -795,7 +779,8 @@ void EmitCall(
     for (; i < arg_exprs.size() and not arg_exprs[i].named(); ++i) {
       auto buffer = PrepareArgument(compiler, *constant_arguments[i],
                                     &arg_exprs[i].expr(), param_qts[i].value);
-      prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
+      prepared_arguments.push_back(
+          ToValue(buffer[0].raw(), param_qts[i].value.type()));
     }
 
     absl::flat_hash_map<std::string_view, ast::Expression const *> named;
@@ -820,7 +805,8 @@ void EmitCall(
       auto buffer = PrepareArgument(
           compiler, constant_typed_value ? **constant_typed_value : ir::Value(),
           expr ? expr : default_value, param_qts[i].value);
-      prepared_arguments.push_back(ToValue(buffer, param_qts[i].value.type()));
+      prepared_arguments.push_back(
+          ToValue(buffer[0].raw(), param_qts[i].value.type()));
     }
   }
 
@@ -832,7 +818,7 @@ void EmitCall(
     ++i;
     if (t.get()->is_big()) { continue; }
 
-    base::untyped_buffer buffer;
+    ir::PartialResultBuffer buffer;
     FromValue(ir::Value(out_params[i]), t, buffer);
     compiler.EmitCopyAssign(to[i], ValueView(t, buffer));
   }

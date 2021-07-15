@@ -9,6 +9,6 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::InterfaceLiteral const* node,
-                            base::untyped_buffer&) {}
+                            ir::PartialResultBuffer&) {}
 
 }  // namespace compiler

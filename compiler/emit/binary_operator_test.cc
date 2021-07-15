@@ -1,6 +1,7 @@
 #include "absl/strings/str_format.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "test/evaluation.h"
 #include "test/module.h"
 #include "type/primitive.h"
 
@@ -16,7 +17,7 @@ struct TestData {
   std::string lhs;
   std::string rhs;
   std::string type;
-  ir::Value expected;
+  test::ExpectedValue expected;
 };
 
 constexpr char const *kCommonDefinitions = R"(
@@ -51,7 +52,7 @@ TEST_P(BinaryOperatorTest, NonConstants) {
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
   mod.AppendCode(kCommonDefinitions);
-  auto const *e  = mod.Append<ast::Expression>(absl::StrFormat(
+  auto const *e = mod.Append<ast::Expression>(absl::StrFormat(
       R"(
       (() -> %s {
         lhs := %s
@@ -60,7 +61,7 @@ TEST_P(BinaryOperatorTest, NonConstants) {
       })()
       )",
       test_case.type, test_data.lhs, test_data.rhs, test_case.op));
-  auto t = mod.context().qual_types(e)[0].type();
+  auto t        = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
@@ -78,7 +79,7 @@ TEST_P(BinaryOperatorTest, Assignment) {
   // there's an ambiguity (there isn't).
   mod.AppendCode(kCommonDefinitions);
   std::string s;
-  auto const *e  = mod.Append<ast::Expression>(absl::StrFormat(
+  auto const *e = mod.Append<ast::Expression>(absl::StrFormat(
       R"(
       (() -> %s {
         lhs := %s
@@ -87,7 +88,7 @@ TEST_P(BinaryOperatorTest, Assignment) {
       })()
       )",
       test_case.type, test_data.lhs, test_case.op, test_data.rhs));
-  auto t = mod.context().qual_types(e)[0].type();
+  auto t        = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
@@ -101,65 +102,59 @@ TEST_P(BinaryOperatorTest, Assignment) {
 // emission.
 INSTANTIATE_TEST_SUITE_P(
     BooleanOr, BinaryOperatorTest,
-    testing::Combine(
-        testing::ValuesIn({TestCase{.op = "or", .type = "bool"}}),
-        testing::ValuesIn(std::vector<TestData>{
-            {.lhs = "false", .rhs = "false", .expected = ir::Value(false)},
-            {.lhs = "true", .rhs = "false", .expected = ir::Value(true)},
-            {.lhs = "false", .rhs = "true", .expected = ir::Value(true)},
-            {.lhs = "true", .rhs = "true", .expected = ir::Value(true)},
-        })));
+    testing::Combine(testing::ValuesIn({TestCase{.op = "or", .type = "bool"}}),
+                     testing::ValuesIn(std::vector<TestData>{
+                         {.lhs = "false", .rhs = "false", .expected = false},
+                         {.lhs = "true", .rhs = "false", .expected = true},
+                         {.lhs = "false", .rhs = "true", .expected = true},
+                         {.lhs = "true", .rhs = "true", .expected = true},
+                     })));
 
 INSTANTIATE_TEST_SUITE_P(
     BooleanAnd, BinaryOperatorTest,
-    testing::Combine(
-        testing::ValuesIn({TestCase{.op = "and", .type = "bool"}}),
-        testing::ValuesIn(std::vector<TestData>{
-            {.lhs = "false", .rhs = "false", .expected = ir::Value(false)},
-            {.lhs = "true", .rhs = "false", .expected = ir::Value(false)},
-            {.lhs = "false", .rhs = "true", .expected = ir::Value(false)},
-            {.lhs = "true", .rhs = "true", .expected = ir::Value(true)},
-        })));
+    testing::Combine(testing::ValuesIn({TestCase{.op = "and", .type = "bool"}}),
+                     testing::ValuesIn(std::vector<TestData>{
+                         {.lhs = "false", .rhs = "false", .expected = false},
+                         {.lhs = "true", .rhs = "false", .expected = false},
+                         {.lhs = "false", .rhs = "true", .expected = false},
+                         {.lhs = "true", .rhs = "true", .expected = true},
+                     })));
 
 INSTANTIATE_TEST_SUITE_P(
     BooleanXor, BinaryOperatorTest,
-    testing::Combine(
-        testing::ValuesIn({TestCase{.op = "xor", .type = "bool"}}),
-        testing::ValuesIn(std::vector<TestData>{
-            {.lhs = "false", .rhs = "false", .expected = ir::Value(false)},
-            {.lhs = "true", .rhs = "false", .expected = ir::Value(true)},
-            {.lhs = "false", .rhs = "true", .expected = ir::Value(true)},
-            {.lhs = "true", .rhs = "true", .expected = ir::Value(false)},
-        })));
+    testing::Combine(testing::ValuesIn({TestCase{.op = "xor", .type = "bool"}}),
+                     testing::ValuesIn(std::vector<TestData>{
+                         {.lhs = "false", .rhs = "false", .expected = false},
+                         {.lhs = "true", .rhs = "false", .expected = true},
+                         {.lhs = "false", .rhs = "true", .expected = true},
+                         {.lhs = "true", .rhs = "true", .expected = false},
+                     })));
 
 // TODO: Short-circuiting test for boolean `|` and `&`.
 
 INSTANTIATE_TEST_SUITE_P(
     FlagsOr, BinaryOperatorTest,
-    testing::Combine(
-        testing::ValuesIn({TestCase{.op = "|", .type = "Color"}}),
-        testing::ValuesIn({TestData{
-            .lhs      = "Color.RED",
-            .rhs      = "Color.BLUE",
-            .expected = ir::Value(type::Flags::underlying_type(5))}})));
+    testing::Combine(testing::ValuesIn({TestCase{.op = "|", .type = "Color"}}),
+                     testing::ValuesIn({TestData{
+                         .lhs      = "Color.RED",
+                         .rhs      = "Color.BLUE",
+                         .expected = type::Flags::underlying_type(5)}})));
 
 INSTANTIATE_TEST_SUITE_P(
     FlagsAnd, BinaryOperatorTest,
-    testing::Combine(
-        testing::ValuesIn({TestCase{.op = "&", .type = "Color"}}),
-        testing::ValuesIn({TestData{
-            .lhs      = "Color.RED | Color.GREEN",
-            .rhs      = "Color.BLUE | Color.GREEN",
-            .expected = ir::Value(type::Flags::underlying_type(2))}})));
+    testing::Combine(testing::ValuesIn({TestCase{.op = "&", .type = "Color"}}),
+                     testing::ValuesIn({TestData{
+                         .lhs      = "Color.RED | Color.GREEN",
+                         .rhs      = "Color.BLUE | Color.GREEN",
+                         .expected = type::Flags::underlying_type(2)}})));
 
 INSTANTIATE_TEST_SUITE_P(
     FlagsXor, BinaryOperatorTest,
-    testing::Combine(
-        testing::ValuesIn({TestCase{.op = "^", .type = "Color"}}),
-        testing::ValuesIn({TestData{
-            .lhs      = "Color.RED | Color.GREEN",
-            .rhs      = "Color.BLUE | Color.GREEN",
-            .expected = ir::Value(type::Flags::underlying_type(5))}})));
+    testing::Combine(testing::ValuesIn({TestCase{.op = "^", .type = "Color"}}),
+                     testing::ValuesIn({TestData{
+                         .lhs      = "Color.RED | Color.GREEN",
+                         .rhs      = "Color.BLUE | Color.GREEN",
+                         .expected = type::Flags::underlying_type(5)}})));
 
 template <typename T>
 std::string_view TypeName() {
@@ -183,31 +178,31 @@ TestData MakeTestData(T lhs, T rhs) {
     return {
         .lhs      = absl::StrCat(lhs, " as ", TypeName<T>()),
         .rhs      = absl::StrCat(rhs, " as ", TypeName<T>()),
-        .expected = ir::Value(static_cast<T>(lhs + rhs)),
+        .expected = static_cast<T>(lhs + rhs),
     };
   } else if constexpr (Op == '-') {
     return {
         .lhs      = absl::StrCat(lhs, " as ", TypeName<T>()),
         .rhs      = absl::StrCat(rhs, " as ", TypeName<T>()),
-        .expected = ir::Value(static_cast<T>(lhs - rhs)),
+        .expected = static_cast<T>(lhs - rhs),
     };
   } else if constexpr (Op == '*') {
     return {
         .lhs      = absl::StrCat(lhs, " as ", TypeName<T>()),
         .rhs      = absl::StrCat(rhs, " as ", TypeName<T>()),
-        .expected = ir::Value(static_cast<T>(lhs * rhs)),
+        .expected = static_cast<T>(lhs * rhs),
     };
   } else if constexpr (Op == '/') {
     return {
         .lhs      = absl::StrCat(lhs, " as ", TypeName<T>()),
         .rhs      = absl::StrCat(rhs, " as ", TypeName<T>()),
-        .expected = ir::Value(static_cast<T>(lhs / rhs)),
+        .expected = static_cast<T>(lhs / rhs),
     };
   } else if constexpr (Op == '%') {
     return {
         .lhs      = absl::StrCat(lhs, " as ", TypeName<T>()),
         .rhs      = absl::StrCat(rhs, " as ", TypeName<T>()),
-        .expected = ir::Value(static_cast<T>(lhs % rhs)),
+        .expected = static_cast<T>(lhs % rhs),
     };
   }
 }
@@ -598,19 +593,20 @@ TEST_P(BufferPointerTest, Arithmetic) {
   test::TestModule mod;
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
-  auto const *e  = mod.Append<ast::Expression>(absl::StrFormat(
+  auto const *e = mod.Append<ast::Expression>(absl::StrFormat(
       R"((() -> i64 {
         a := [1 as i64, 2 as i64, 3 as i64]
         p: [*]i64 = &a[1]
         return %s
       })()
-      )", expr));
-  auto t         = mod.context().qual_types(e)[0].type();
+      )",
+      expr));
+  auto t        = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
   ASSERT_TRUE(result);
-  EXPECT_EQ(*result, ir::Value(expected_result));
+  EXPECT_EQ(result->get<int64_t>(0), expected_result);
 }
 
 INSTANTIATE_TEST_SUITE_P(

@@ -104,6 +104,7 @@ cc_test(
     srcs = ["binary_operator_test.cc"],
     deps = [
         "//compiler",
+        "//test:evaluation",
         "//test:module",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",
@@ -219,7 +220,7 @@ cc_library(
         "//core:arguments",
         "//core:params",
         "//ir/value",
-        "//ir/value:argument_buffer",
+        "//ir/value:result_buffer",
         "//type",
         "//type:qual_type",
         "//type:typed_value",

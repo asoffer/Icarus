@@ -6,7 +6,7 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::BlockNode const *node,
-                            base::untyped_buffer &) {
+                            ir::PartialResultBuffer &) {
   LOG("BlockNode", "EmitToBuffer for block node named %s", node->name());
   EmitIrForStatements(*this, node->stmts());
   MakeAllDestructions(*this, &node->body_scope());

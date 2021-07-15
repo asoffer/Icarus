@@ -231,9 +231,10 @@ struct Context {
 
   void CompleteType(ast::Expression const *expr, bool success);
 
-  void LoadConstant(ast::Declaration::Id const *id, base::untyped_buffer& out) const {
+  void LoadConstant(ast::Declaration::Id const *id,
+                    ir::PartialResultBuffer &out) const {
     if (auto iter = constants_.find(id); iter != constants_.end()) {
-      out = iter->second.buffer();
+      out.append(iter->second);
     } else {
       ASSERT_NOT_NULL(parent())->LoadConstant(id, out);
     }
@@ -279,40 +280,11 @@ struct Context {
   bool ShouldVerifyBody(ast::Node const *node);
   void ClearVerifyBody(ast::Node const *node);
 
-  struct ConstantValue {
-    explicit ConstantValue(base::untyped_buffer buffer, bool complete)
-        : complete(complete), is_big(true), buffer_(std::move(buffer)) {}
-    explicit ConstantValue(ir::Value const &v, bool complete)
-        : complete(complete), is_big(false) {
-      buffer_.append(v);
-    }
+  ir::CompleteResultBuffer const &SetConstant(
+      ast::Declaration::Id const *id, ir::CompleteResultBuffer const &buffer);
 
-    // TODO: This is essentially a small-buffer optimization for Value-sized
-    // things. Maybe we should do that explicitly.
-    ir::Value value() const {
-      // TODO: Do we need to track constness of addresses in the type system
-      // too?
-      return is_big ? ir::Value(const_cast<std::byte *>(buffer_.raw(0)))
-                    : ir::Value(buffer_.get<ir::Value>(0));
-    }
-
-    base::untyped_buffer const &buffer() const { return buffer_; }
-
-    // Whether or not the held value is complete. This may be a struct or
-    // function whose body has not been emit yet.
-    bool complete;
-    bool is_big;
-
-   private:
-    base::untyped_buffer buffer_;
-  };
-  void CompleteConstant(ast::Declaration::Id const *id);
-  ir::Value SetConstant(ast::Declaration::Id const *id, ir::Value const &value,
-                        bool complete = false);
-  ir::Value SetConstant(ast::Declaration::Id const *id,
-                        base::untyped_buffer buffer, bool complete = false);
-
-  ConstantValue const *Constant(ast::Declaration::Id const *id) const;
+  ir::CompleteResultBuffer const *Constant(
+      ast::Declaration::Id const *id) const;
 
   void SetAllOverloads(ast::Expression const *callee, ast::OverloadSet os);
   ast::OverloadSet const *AllOverloads(ast::Expression const *callee) const;
@@ -412,7 +384,8 @@ struct Context {
 
   // Map of all constant declarations to their values within this dependent
   // context.
-  absl::flat_hash_map<ast::Declaration::Id const *, ConstantValue> constants_;
+  absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+      constants_;
 
   absl::flat_hash_map<ast::StructLiteral const *, type::Struct *> structs_;
   absl::flat_hash_map<ast::ParameterizedStructLiteral const *, type::Struct *>
@@ -472,7 +445,10 @@ struct Context {
 
 ir::Value ToValue(base::untyped_buffer_view buffer, type::Type t);
 ir::Value ToCompleteValue(base::untyped_buffer_view buffer, type::Type t);
+void ToComplete(base::untyped_buffer_view buffer, type::Type t,
+                ir::CompleteResultBuffer &out);
 void FromValue(ir::Value const &v, type::Type t, base::untyped_buffer &out);
-
+void FromValue(ir::Value const &v, type::Type t, ir::PartialResultBuffer &out);
+void FromValue(ir::Value const &v, type::Type t, ir::CompleteResultBuffer &out);
 }  // namespace compiler
 #endif  // ICARUS_COMPILER_CONTEXT_H

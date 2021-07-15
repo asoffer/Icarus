@@ -49,6 +49,7 @@ cc_library(
         "//ir/value:addr",
         "//ir/value:builtin_fn",
         "//ir/value:label",
+        "//ir/value:result_buffer",
         "//ir/value:string",
         "//ir/value",
         "@com_google_absl//absl/cleanup",

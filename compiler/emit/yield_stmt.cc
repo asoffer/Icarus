@@ -14,17 +14,17 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::YieldStmt const *node,
-                            base::untyped_buffer &) {
+                            ir::PartialResultBuffer &) {
   // Note: yields do not allow passing named arguments, so there's no need for a
   // full `core::Arguments` here. We can proceed direclty to a vector of the
   // positional arguments.
 
-  ir::ArgumentBuffer arg_buffer;
+  ir::PartialResultBuffer arg_buffer;
   core::Arguments<type::QualType> yield_arg_types;
   for (auto const *expr : node->exprs()) {
     auto qt = context().qual_types(expr)[0];
     yield_arg_types.pos_emplace(qt);
-    AppendToArgumentBuffer(*this, qt, *expr, arg_buffer);
+    AppendToPartialResultBuffer(*this, qt, *expr, arg_buffer);
   }
 
   if (ast::Label const *lbl = node->label()) {
@@ -63,10 +63,10 @@ void Compiler::EmitToBuffer(ast::YieldStmt const *node,
     prepared_arguments.reserve(yield_arg_types.size());
     size_t i = 0;
     for (auto const *expr : node->exprs()) {
-      base::untyped_buffer buffer = PrepareArgument(
+      ir::PartialResultBuffer buffer = PrepareArgument(
           *this, arg_buffer[i], expr, exit_fn.type()->params()[i].value);
       prepared_arguments.push_back(
-          ToValue(buffer, exit_fn.type()->params()[i].value.type()));
+          ToValue(buffer[0].raw(), exit_fn.type()->params()[i].value.type()));
       ++i;
     }
 

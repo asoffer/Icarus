@@ -5,9 +5,9 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::ArrayType const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   EmitToBuffer(node->data_type(), out);
-  ir::RegOr<type::Type> t = out.get<ir::RegOr<type::Type>>(0);
+  ir::RegOr<type::Type> t = out.get<type::Type>(0);
   out.clear();
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
@@ -60,12 +60,12 @@ bool Compiler::PatternMatch(
 
   size_t index = pmc.array_type_index;
 
-  base::untyped_buffer length_buffer;
+  ir::CompleteResultBuffer length_buffer;
   length_buffer.append(a->length());
   EnqueuePatternMatch(node->length(index),
                       {.type = type::I64, .value = std::move(length_buffer)});
 
-  base::untyped_buffer data_type_buffer;
+  ir::CompleteResultBuffer data_type_buffer;
   data_type_buffer.append(a->data_type());
 
   if (index + 1 == node->lengths().size()) {

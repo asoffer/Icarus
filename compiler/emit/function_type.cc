@@ -11,7 +11,7 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::FunctionType const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   std::vector<std::pair<std::string, ir::RegOr<type::Type>>> param_vals;
   std::vector<ir::RegOr<type::Type>> out_vals;
   param_vals.reserve(node->params().size());
@@ -32,11 +32,10 @@ void Compiler::EmitToBuffer(ast::FunctionType const *node,
     out_vals.push_back(EmitAs<type::Type>(o));
   }
 
-  out.append(ir::RegOr<type::Type>(
-      current_block()->Append(type::FunctionTypeInstruction{
-          .inputs  = std::move(param_vals),
-          .outputs = std::move(out_vals),
-          .result  = builder().CurrentGroup()->Reserve()})));
+  out.append(current_block()->Append(type::FunctionTypeInstruction{
+      .inputs  = std::move(param_vals),
+      .outputs = std::move(out_vals),
+      .result  = builder().CurrentGroup()->Reserve()}));
 }
 
 }  // namespace compiler

@@ -26,23 +26,25 @@ struct PatternMatchFailure {
 }  // namespace
 
 void Compiler::EmitToBuffer(ast::PatternMatch const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
+  ir::CompleteResultBuffer buffer;
   type::Type t;
   if (node->is_binary()) {
-    t             = context().qual_types(node)[0].type();
-    out           = std::get<ir::ArgumentBuffer>(EvaluateToBufferOrDiagnose(
-        type::Typed<ast::Expression const *>(&node->expr(), t))).buffer();
+    t      = context().qual_types(node)[0].type();
+    buffer = std::get<ir::CompleteResultBuffer>(EvaluateToBufferOrDiagnose(
+        type::Typed<ast::Expression const *>(&node->expr(), t)));
   } else {
     t = type::Type_;
-    type::Type unary_result =
-        context().arg_type(node->expr().as<ast::Declaration>().ids()[0].name());
-    out.append(ir::RegOr<type::Type>(unary_result));
+    buffer.append(context().arg_type(
+        node->expr().as<ast::Declaration>().ids()[0].name()));
   }
+  out = buffer;
 
   auto &q         = pattern_match_queues_.emplace_back();
   absl::Cleanup c = [&] { pattern_match_queues_.pop_back(); };
 
-  q.emplace(&node->pattern(), PatternMatchingContext{.type = t, .value = out});
+  q.emplace(&node->pattern(),
+            PatternMatchingContext{.type = t, .value = buffer});
 
   absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> bindings;
   while (not q.empty()) {
@@ -54,7 +56,7 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
         NOT_YET(node->DebugString());
       } else {
         diag().Consume(PatternMatchFailure{
-            .type = out.get<type::Type>(0)
+            .type = buffer.get<type::Type>(0)
                         .to_string(),  // TODO: Use TypeForDiagnostic
             .range = node->pattern().range(),
         });
@@ -63,7 +65,7 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
     }
   }
 
-  for (auto &[name, buffer] : bindings) {
+  for (auto &[name, unused] : bindings) {
     auto const *id =
         module::AllVisibleDeclsTowardsRoot(node->scope(), name->name())[0];
     context().SetConstant(id, std::move(buffer));

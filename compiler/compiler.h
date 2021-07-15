@@ -48,7 +48,7 @@
 namespace compiler {
 struct PatternMatchingContext {
   type::Type type;
-  base::untyped_buffer value;
+  ir::CompleteResultBuffer value;
   union {
     size_t array_type_index = 0;
   };
@@ -57,7 +57,8 @@ struct PatternMatchingContext {
 struct ValueView {
   explicit ValueView(type::Type t, base::untyped_buffer_view v)
       : type_(t), view_(v) {}
-
+  explicit ValueView(type::Type t, ir::PartialResultBuffer const &v)
+      : type_(t), view_(v[0].raw()) {}
   bool empty() const { return view_.empty(); }
   type::Type type() const { return type_; }
   base::untyped_buffer_view const *operator->() const { return &view_; }
@@ -113,7 +114,7 @@ struct Compiler
       ast::Visitor<EmitCopyAssignTag,
                    void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>,
       ast::Visitor<EmitRefTag, ir::Reg()>,
-      ast::Visitor<EmitToBufferTag, void(base::untyped_buffer *)>,
+      ast::Visitor<EmitToBufferTag, void(ir::PartialResultBuffer *)>,
       ast::Visitor<VerifyTypeTag, absl::Span<type::QualType const>()>,
       ast::Visitor<VerifyBodyTag, WorkItem::Result()>,
       ast::Visitor<
@@ -122,8 +123,10 @@ struct Compiler
                absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> *)>,
       ast::Visitor<PatternTypeTag, bool(type::Type)>,
       type::Visitor<EmitDestroyTag, void(ir::Reg)>,
-      type::Visitor<EmitMoveInitTag, void(ir::Reg, base::untyped_buffer_view)>,
-      type::Visitor<EmitCopyInitTag, void(ir::Reg, base::untyped_buffer_view)>,
+      type::Visitor<EmitMoveInitTag,
+                    void(ir::Reg, ir::PartialResultBuffer const *)>,
+      type::Visitor<EmitCopyInitTag,
+                    void(ir::Reg, ir::PartialResultBuffer const *)>,
       type::Visitor<EmitDefaultInitTag, void(ir::Reg)>,
       type::Visitor<EmitMoveAssignTag,
                     void(ir::RegOr<ir::addr_t>, ValueView const &)>,
@@ -204,41 +207,41 @@ struct Compiler
 
   template <typename T>
   ir::RegOr<T> EmitWithCastTo(type::Type t, ast::Node const *node,
-                              base::untyped_buffer &buffer) {
+                              ir::PartialResultBuffer &buffer) {
     EmitToBuffer(node, buffer);
-    auto result = builder().CastTo<T>(t, buffer);
+    auto result = builder().CastTo<T>(type::Typed(buffer, t));
     buffer.clear();
     return result;
   }
 
   template <typename T>
   ir::RegOr<T> EmitWithCastTo(type::Type t, ast::Node const *node) {
-    base::untyped_buffer buffer;
+    ir::PartialResultBuffer buffer;
     return EmitWithCastTo<T>(t, node, buffer);
   }
 
   template <typename T>
-  ir::RegOr<T> EmitAs(ast::Node const *node, base::untyped_buffer &buffer) {
+  ir::RegOr<T> EmitAs(ast::Node const *node, ir::PartialResultBuffer &buffer) {
     EmitToBuffer(node, buffer);
-    auto result = buffer.get<ir::RegOr<T>>(0);
+    auto result = buffer.get<T>(0);
     buffer.clear();
     return result;
   }
 
   void EmitVoid(ast::Node const *node) {
-    base::untyped_buffer buffer;
+    ir::PartialResultBuffer buffer;
     EmitToBuffer(node, buffer);
   }
 
   template <typename T>
   ir::RegOr<T> EmitAs(ast::Node const *node) {
-    base::untyped_buffer buffer;
+    ir::PartialResultBuffer buffer;
     return EmitAs<T>(node, buffer);
   }
 
-  void EmitToBuffer(ast::Node const *node, base::untyped_buffer &buffer) {
-    ast::Visitor<EmitToBufferTag, void(base::untyped_buffer *)>::Visit(node,
-                                                                       &buffer);
+  void EmitToBuffer(ast::Node const *node, ir::PartialResultBuffer &buffer) {
+    ast::Visitor<EmitToBufferTag, void(ir::PartialResultBuffer *)>::Visit(
+        node, &buffer);
   }
 
   void EmitMoveAssign(
@@ -285,14 +288,18 @@ struct Compiler
                                                             r.get());
   }
 
-  void EmitMoveInit(type::Typed<ir::Reg> to, base::untyped_buffer_view from) {
-    type::Visitor<EmitMoveInitTag, void(ir::Reg, base::untyped_buffer_view)>::
-        Visit(to.type().get(), *to, from);
+  void EmitMoveInit(type::Typed<ir::Reg> to,
+                    ir::PartialResultBuffer const &from) {
+    type::Visitor<EmitMoveInitTag, void(ir::Reg, ir::PartialResultBuffer const
+                                                     *)>::Visit(to.type().get(),
+                                                                *to, &from);
   }
 
-  void EmitCopyInit(type::Typed<ir::Reg> to, base::untyped_buffer_view from) {
-    type::Visitor<EmitCopyInitTag, void(ir::Reg, base::untyped_buffer_view)>::
-        Visit(to.type().get(), *to, from);
+  void EmitCopyInit(type::Typed<ir::Reg> to,
+                    ir::PartialResultBuffer const &from) {
+    type::Visitor<EmitCopyInitTag, void(ir::Reg, ir::PartialResultBuffer const
+                                                     *)>::Visit(to.type().get(),
+                                                                *to, &from);
   }
 
   void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
@@ -335,6 +342,7 @@ struct Compiler
       if constexpr (type == base::meta<ir::Scope>) { return type::Scope; }
       if constexpr (type == base::meta<ir::ModuleId>) { return type::Module; }
       if constexpr (type == base::meta<uint64_t>) { return type::U64; }
+      if constexpr (type == base::meta<ir::Integer>) { return type::Integer; }
       if constexpr (type == base::meta<interface::Interface>) {
         return type::Interface;
       }
@@ -346,20 +354,12 @@ struct Compiler
       for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
       return std::nullopt;
     } else {
-      return std::get<ir::ArgumentBuffer>(result).template get<T>(0).value();
+      return std::get<ir::CompleteResultBuffer>(result).template get<T>(0);
     }
   }
 
-  ir::Value EvaluateOrDiagnose(type::Typed<ast::Expression const *> expr) {
-    if (auto maybe_value = Evaluate(expr)) {
-      return *maybe_value;
-    } else {
-      diag().Consume(maybe_value.error());
-      return ir::Value();
-    }
-  }
-
-  std::variant<ir::ArgumentBuffer, std::vector<diagnostic::ConsumedMessage>>
+  std::variant<ir::CompleteResultBuffer,
+               std::vector<diagnostic::ConsumedMessage>>
   EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *> expr,
                              bool must_complete = true);
 
@@ -397,7 +397,7 @@ struct Compiler
   }                                                                            \
                                                                                \
   void Visit(EmitToBufferTag, ast::name const *node,                           \
-             base::untyped_buffer *buffer) override {                          \
+             ir::PartialResultBuffer *buffer) override {                       \
     EmitToBuffer(node, *buffer);                                               \
   }
 
@@ -405,7 +405,7 @@ struct Compiler
 #undef ICARUS_AST_NODE_X
 
 #define DEFINE_EMIT(name)                                                      \
-  void EmitToBuffer(name const *node, base::untyped_buffer &buffer);
+  void EmitToBuffer(name const *node, ir::PartialResultBuffer &buffer);
 
   DEFINE_EMIT(ast::Access)
   DEFINE_EMIT(ast::ArgumentType)
@@ -546,17 +546,18 @@ struct Compiler
 
 #define DEFINE_EMIT_INIT(T)                                                    \
   void Visit(EmitMoveInitTag, T const *ty, ir::Reg r,                          \
-             base::untyped_buffer_view from) override {                        \
-    EmitMoveInit(type::Typed<ir::Reg, T>(r, ty), from);                        \
+             ir::PartialResultBuffer const *from) override {                   \
+    EmitMoveInit(type::Typed<ir::Reg, T>(r, ty), *from);                       \
   }                                                                            \
   void EmitMoveInit(type::Typed<ir::Reg, T> to,                                \
-                    base::untyped_buffer_view from);                           \
+                    ir::PartialResultBuffer const &from);                      \
                                                                                \
   void Visit(EmitCopyInitTag, T const *ty, ir::Reg r,                          \
-             base::untyped_buffer_view from) override {                        \
-    EmitCopyInit(type::Typed<ir::Reg, T>(r, ty), from);                        \
+             ir::PartialResultBuffer const *from) override {                   \
+    EmitCopyInit(type::Typed<ir::Reg, T>(r, ty), *from);                       \
   }                                                                            \
-  void EmitCopyInit(type::Typed<ir::Reg, T> to, base::untyped_buffer_view from);
+  void EmitCopyInit(type::Typed<ir::Reg, T> to,                                \
+                    ir::PartialResultBuffer const &from);
 
   DEFINE_EMIT_INIT(type::Array);
   DEFINE_EMIT_INIT(type::Enum);

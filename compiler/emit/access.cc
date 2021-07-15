@@ -53,7 +53,7 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
 }  // namespace
 
 void Compiler::EmitToBuffer(ast::Access const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   LOG("Access", "Emitting value for %s", node->DebugString());
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
@@ -71,11 +71,9 @@ void Compiler::EmitToBuffer(ast::Access const *node,
 
   type::QualType node_qt = context().qual_types(node)[0];
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
-    out.append(ir::RegOr<type::Enum::underlying_type>(
-        *enum_type->EmitLiteral(node->member_name())));
+    out.append(*enum_type->EmitLiteral(node->member_name()));
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
-    out.append(ir::RegOr<type::Flags::underlying_type>(
-        *flags_type->EmitLiteral(node->member_name())));
+    out.append(*flags_type->EmitLiteral(node->member_name()));
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
       out.append(builder().Load<type::Slice::length_t>(
@@ -97,9 +95,9 @@ void Compiler::EmitToBuffer(ast::Access const *node,
     if (auto t = EvaluateOrDiagnoseAs<type::Type>(node->operand())) {
       if (type::Array const *a = t->if_as<type::Array>()) {
         if (node->member_name() == "length") {
-          out.append(ir::RegOr<type::Array::length_t>(a->length()));
+          out.append(a->length());
         } else if (node->member_name() == "element_type") {
-          out.append(ir::RegOr<type::Type>(a->data_type()));
+          out.append(a->data_type());
         } else {
           UNREACHABLE(node->member_name());
         }
@@ -111,16 +109,14 @@ void Compiler::EmitToBuffer(ast::Access const *node,
     }
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      FromValue(ir::Value(builder().PtrFix(EmitRef(node), node_qt.type())),
-                node_qt.type(), out);
+      out.append(builder().PtrFix(EmitRef(node), node_qt.type()));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
-      FromValue(*builder().FieldValue(*temp, &struct_type,
-                                      struct_type.index(node->member_name())),
-                node_qt.type(), out);
+      out.append(*builder().FieldValue(*temp, &struct_type,
+                                       struct_type.index(node->member_name())));
     }
   }
 }
@@ -178,7 +174,7 @@ void Compiler::EmitMoveInit(
       case 0: NOT_YET();
       case 1: {
         type::QualType node_qt = context().qual_types(node)[0];
-        base::untyped_buffer buffer;
+        ir::PartialResultBuffer buffer;
         mod.ExportedValue(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
       }
@@ -190,39 +186,38 @@ void Compiler::EmitMoveInit(
   type::QualType node_qt = context().qual_types(node)[0];
   type::Type to_type;
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
-    ir::RegOr r(*enum_type->EmitLiteral(node->member_name()));
-    EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), enum_type),
-                 base::untyped_buffer_view(&r));
+    ir::PartialResultBuffer buffer;
+    buffer.append(*enum_type->EmitLiteral(node->member_name()));
+    EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), enum_type), buffer);
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
-    ir::RegOr r(*flags_type->EmitLiteral(node->member_name()));
-    EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), flags_type),
-                 base::untyped_buffer_view(&r));
+    ir::PartialResultBuffer buffer;
+    buffer.append(*flags_type->EmitLiteral(node->member_name()));
+    EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), flags_type), buffer);
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
-      auto length = builder().Load<type::Slice::length_t>(
-          current_block()->Append(type::SliceLengthInstruction{
-              .slice  = EmitAs<ir::addr_t>(node->operand()),
-              .result = builder().CurrentGroup()->Reserve(),
-          }));
-      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                   base::untyped_buffer_view(&length));
+     ir::PartialResultBuffer buffer;
+     buffer.append(builder().Load<type::Slice::length_t>(
+         current_block()->Append(type::SliceLengthInstruction{
+             .slice  = EmitAs<ir::addr_t>(node->operand()),
+             .result = builder().CurrentGroup()->Reserve(),
+         })));
+     EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else if (node->member_name() == "data") {
-      auto addr = builder().Load<ir::addr_t>(
-          current_block()->Append(type::SliceDataInstruction{
-              .slice  = EmitAs<ir::addr_t>(node->operand()),
-              .result = builder().CurrentGroup()->Reserve(),
-          }));
-      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                   base::untyped_buffer_view(&addr));
+     ir::PartialResultBuffer buffer;
+     buffer.append(builder().Load<ir::addr_t>(
+         current_block()->Append(type::SliceDataInstruction{
+             .slice  = EmitAs<ir::addr_t>(node->operand()),
+             .result = builder().CurrentGroup()->Reserve(),
+         })));
+     EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else {
       UNREACHABLE(node->member_name());
     }
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      ir::RegOr<ir::addr_t> addr(
-          builder().PtrFix(EmitRef(node), node_qt.type()));
-      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                   base::untyped_buffer_view(&addr));
+      ir::PartialResultBuffer buffer;
+      buffer.append(builder().PtrFix(EmitRef(node), node_qt.type()));
+      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -251,7 +246,7 @@ void Compiler::EmitCopyInit(
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
-        base::untyped_buffer buffer;
+        ir::PartialResultBuffer buffer;
         mod.ExportedValue(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
@@ -262,38 +257,37 @@ void Compiler::EmitCopyInit(
 
   type::QualType node_qt = context().qual_types(node)[0];
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
-    ir::RegOr r = *enum_type->EmitLiteral(node->member_name());
-    EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                 base::untyped_buffer_view(&r));
+    ir::PartialResultBuffer buffer;
+    buffer.append(*enum_type->EmitLiteral(node->member_name()));
+    EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
-    ir::RegOr r  = *flags_type->EmitLiteral(node->member_name());
-    EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                 base::untyped_buffer_view(&r));
+    ir::PartialResultBuffer buffer;
+    buffer.append(*flags_type->EmitLiteral(node->member_name()));
+    EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
-      ir::RegOr length = builder().Load<type::Slice::length_t>(
+      ir::PartialResultBuffer buffer;
+      buffer.append(builder().Load<type::Slice::length_t>(
           current_block()->Append(type::SliceLengthInstruction{
               .slice  = EmitAs<ir::addr_t>(node->operand()),
               .result = builder().CurrentGroup()->Reserve(),
-          }));
-      EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                   base::untyped_buffer_view(&length));
+          })));
+      EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else if (node->member_name() == "data") {
-      ir::RegOr addr = builder().Load<ir::addr_t>(
+      ir::PartialResultBuffer buffer;
+      buffer.append(builder().Load<ir::addr_t>(
           current_block()->Append(type::SliceDataInstruction{
               .slice  = EmitAs<ir::addr_t>(node->operand()),
               .result = builder().CurrentGroup()->Reserve(),
-          }));
-      EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()),
-                   base::untyped_buffer_view(&addr));
+          })));
+      EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else {
       UNREACHABLE(node->member_name());
     }
   } else {
-    base::untyped_buffer buffer;
+    ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      FromValue(ir::Value(builder().PtrFix(EmitRef(node), node_qt.type())),
-                node_qt.type(), buffer);
+      buffer.append(builder().PtrFix(EmitRef(node), node_qt.type()));
       EmitCopyAssign(to[0], ValueView(node_qt.type(), buffer));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
@@ -303,7 +297,7 @@ void Compiler::EmitCopyInit(
       auto val                = builder().FieldValue(*temp, &struct_type,
                                       struct_type.index(node->member_name()));
       FromValue(*val, val.type(), buffer);
-      EmitMoveAssign(to[0], ValueView(val.type(), buffer));
+      EmitMoveAssign(to[0], ValueView(val.type(), buffer[0].raw()));
     }
   }
 }
@@ -322,7 +316,7 @@ void Compiler::EmitMoveAssign(
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
-        base::untyped_buffer buffer;
+        ir::PartialResultBuffer buffer;
         mod.ExportedValue(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
@@ -364,7 +358,7 @@ void Compiler::EmitCopyAssign(
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
-        base::untyped_buffer buffer;
+        ir::PartialResultBuffer buffer;
         mod.ExportedValue(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
@@ -376,7 +370,7 @@ void Compiler::EmitCopyAssign(
   if (not EmitAssignForAlwaysCopyTypes(*this, node, operand_qt.type(),
                                        *to[0])) {
     type::Type t = context().qual_types(node)[0].type();
-    base::untyped_buffer buffer;
+    ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
       FromValue(ir::Value(builder().PtrFix(EmitRef(node), t)), t, buffer);
     } else {

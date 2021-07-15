@@ -29,7 +29,7 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                        .type     = type::I64,
-                       .expected = ir::Value(int64_t{3})},
+                       .expected = int64_t{3}},
         test::TestCase{.context  = Context(),
                        .expr     = R"((() -> i64 {
                                s: S
@@ -39,7 +39,7 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                        .type     = type::I64,
-                       .expected = ir::Value(int64_t{3})},
+                       .expected = int64_t{3}},
         test::TestCase{.context  = Context(),
                        .expr     = R"((() -> i64 {
                                s: S
@@ -50,7 +50,7 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                        .type     = type::I64,
-                       .expected = ir::Value(int64_t{3})},
+                       .expected = int64_t{3}},
         test::TestCase{.context  = Context(),
                        .expr     = R"((() -> i64 {
                                s: S
@@ -62,13 +62,13 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                        .type     = type::I64,
-                       .expected = ir::Value(int64_t{3})},
+                       .expected = int64_t{3}},
         test::TestCase{.expr     = R"((() -> u64 {
                                return "abc".length
                              })()
                              )",
                        .type     = type::I64,
-                       .expected = ir::Value(uint64_t{3})},
+                       .expected = uint64_t{3}},
         test::TestCase{.context  = Context(),
                        .expr     = R"((() -> i64 {
                                s := S.{n = 3}
@@ -77,7 +77,7 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                        .type     = type::I64,
-                       .expected = ir::Value(int64_t{3})},
+                       .expected = int64_t{3}},
         test::TestCase{.context  = Context(),
                        .expr     = R"((() -> i64 {
                                s := S.{n = 3}
@@ -86,7 +86,7 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                        .type     = type::I64,
-                       .expected = ir::Value(int64_t{3})},
+                       .expected = int64_t{3}},
         test::TestCase{.context = Context(),
                        .expr    = R"((() -> i64 {
                                s := S.{n = 3}
@@ -96,7 +96,7 @@ INSTANTIATE_TEST_SUITE_P(
                              )",
                        // Loading pointer from a parameter
                        .type     = type::I64,
-                       .expected = ir::Value(int64_t{9})},
+                       .expected = int64_t{9}},
         test::TestCase{.context  = Context(),
                        .expr     = R"((() -> i64 {
                                s := S.{n = 3}
@@ -105,20 +105,19 @@ INSTANTIATE_TEST_SUITE_P(
                              })()
                              )",
                        .type     = type::I64,
-                       .expected = ir::Value(int64_t{9})},
+                       .expected = int64_t{9}},
         test::TestCase{.expr     = R"([3; i64].length)",
                        .type     = type::I64,
-                       .expected = ir::Value(type::Array::length_t{3})},
+                       .expected = type::Array::length_t{3}},
         test::TestCase{.expr     = R"([4, 3; i64].length)",
                        .type     = type::I64,
-                       .expected = ir::Value(type::Array::length_t{4})},
-        test::TestCase{
-            .expr     = R"([4, 3; i64].element_type)",
-            .type     = type::Type_,
-            .expected = ir::Value(type::Type(type::Arr(3, type::I64)))},
+                       .expected = type::Array::length_t{4}},
+        test::TestCase{.expr     = R"([4, 3; i64].element_type)",
+                       .type     = type::Type_,
+                       .expected = type::Type(type::Arr(3, type::I64))},
         test::TestCase{.expr     = R"([4, 3; i64].element_type.element_type)",
                        .type     = type::Type_,
-                       .expected = ir::Value(type::Type(type::I64))},
+                       .expected = type::Type(type::I64)},
     }));
 
 // TODO: Add a test that covers pointer parameters.

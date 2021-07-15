@@ -9,7 +9,7 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
-                            base::untyped_buffer &out) {
+                            ir::PartialResultBuffer &out) {
   LOG("ScopeLiteral", "State type = %p", node->state_type());
   type::Type state_type = nullptr;
   if (node->state_type()) {
@@ -36,7 +36,7 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
   ir::Scope s = context().add_scope(state_type);
   builder().MakeScope(s, std::move(enters), std::move(exits),
                       std::move(blocks));
-  out.append(ir::RegOr<ir::Scope>(s));
+  out.append(s);
 }
 
 }  // namespace compiler

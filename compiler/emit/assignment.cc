@@ -13,7 +13,7 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::Assignment const *node,
-                            base::untyped_buffer &) {
+                            ir::PartialResultBuffer &) {
   // This first case would be covered by the general case, but this allows us to
   // avoid unnecessary temporary allocations when we know they are not
   // necessary.

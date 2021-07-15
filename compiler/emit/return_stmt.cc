@@ -13,7 +13,7 @@
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
-                            base::untyped_buffer & out) {
+                            ir::PartialResultBuffer &out) {
   auto const &fn_type = context()
                             .qual_types(&node->function_literal())[0]
                             .type()
@@ -49,7 +49,7 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
                  ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
           ret_type, [&]<typename T>() {
-            ir::RegOr<T> value = builder().CastTo<T>(t, out);
+            ir::RegOr<T> value = builder().CastTo<T>(type::Typed(out, t));
             builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
                 .index = static_cast<uint16_t>(i),
                 .value = value,
