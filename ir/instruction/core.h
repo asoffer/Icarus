@@ -129,20 +129,20 @@ struct StoreInstruction
 };
 
 struct CallInstruction {
+  CallInstruction() = default;
   CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
-                  std::vector<Value> args, OutParams outs)
+                  ir::PartialResultBuffer args, OutParams outs)
       : fn_type_(fn_type),
         fn_(fn),
         args_(std::move(args)),
         outs_(std::move(outs)) {
     ASSERT(this->outs_.size() == fn_type_->output().size());
-    ASSERT(args_.size() == fn_type_->params().size());
   }
 
   std::string to_string() const {
     using base::stringify;
     return absl::StrFormat(
-        "%scall %s: %s",
+        "%scall %s: ...",
         fn_type_->output().empty()
             ? ""
             : absl::StrCat("(",
@@ -151,10 +151,7 @@ struct CallInstruction {
                                            absl::StrAppend(s, stringify(out));
                                          }),
                            ") = "),
-        stringify(fn_),
-        absl::StrJoin(args_, ", ", [](std::string* s, auto const& arg) {
-          absl::StrAppend(s, stringify(arg));
-        }));
+        stringify(fn_));
   }
 
   friend void BaseSerialize(interpreter::ByteCodeWriter& w,
@@ -164,19 +161,19 @@ struct CallInstruction {
 
   type::Function const* func_type() const { return fn_type_; }
   RegOr<Fn> func() const { return fn_; }
-  absl::Span<Value const> arguments() const { return args_; }
+  PartialResultBuffer const& arguments() const { return args_; }
   OutParams const& outputs() const { return outs_; }
 
   void Inline(InstructionInliner const& inliner) {
     inliner.Inline(fn_);
-    for (auto& arg : args_) { inliner.Inline(arg); }
+    inliner.Inline(args_);
     for (auto& reg : outs_.regs()) { inliner.Inline(reg); }
   }
 
  private:
   type::Function const* fn_type_;
   RegOr<Fn> fn_;
-  std::vector<Value> args_;
+  PartialResultBuffer args_;
   OutParams outs_;
 };
 

@@ -278,9 +278,6 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
   }
 }
 
-// Note: Despite these all being primitives, we want the value-type of this map
-// to be `type::Type const*` rather than `type::Primitive const *` so that when
-// passed to an `ir::Value`, the write type tag is deduced.
 static base::Global kReservedTypes =
     absl::flat_hash_map<std::string_view, type::Type>{
         {"bool", type::Bool},  {"char", type::Char},    {"i8", type::I8},

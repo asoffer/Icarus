@@ -1,7 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "ir/value/module_id.h"
-#include "ir/value/value.h"
 
 namespace compiler {
 

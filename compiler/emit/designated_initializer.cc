@@ -6,7 +6,6 @@
 #include "ir/builder.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/value.h"
 #include "type/typed_value.h"
 
 namespace compiler {
@@ -65,9 +64,8 @@ void Compiler::EmitMoveInit(
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
       } else {
-        ir::CompleteResultBuffer buffer;
-        ToComplete(field.initial_value, field.type, buffer);
-        EmitCopyAssign(field_reg, type::Typed(buffer[0], field.type));
+        EmitCopyAssign(field_reg,
+                       type::Typed(field.initial_value[0], field.type));
       }
     }
   next_field:;
@@ -110,9 +108,7 @@ void Compiler::EmitCopyInit(
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
       } else {
-        ir::CompleteResultBuffer buffer;
-        ToComplete(field.initial_value, field.type, buffer);
-        EmitCopyAssign(field_reg, type::Typed(buffer[0], field.type));
+        EmitCopyAssign(field_reg, type::Typed(field.initial_value[0], field.type));
       }
     }
   next_field:;

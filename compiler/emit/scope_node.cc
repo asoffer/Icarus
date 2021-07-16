@@ -14,7 +14,6 @@
 #include "ir/value/char.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
-#include "ir/value/value.h"
 
 namespace compiler {
 namespace {
@@ -23,11 +22,11 @@ namespace {
 // register) held in `value`. If `t` is big, `value` is either another register
 // or the address of the big value and a new register referencing that address
 // (or register) is created.
-ir::Reg RegisterReferencing(ir::Builder& builder, type::Type t,
-                            ir::Value value) {
+ir::Reg RegisterReferencing(ir::Builder &builder, type::Type t,
+                            ir::PartialResultRef const &value) {
   if (t.is_big()) {
     return builder.CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
-        .operand = value.get<ir::RegOr<ir::addr_t>>(),
+        .operand = value.get<ir::addr_t>(),
         .result  = builder.CurrentGroup()->Reserve(),
     });
   } else {
@@ -37,7 +36,7 @@ ir::Reg RegisterReferencing(ir::Builder& builder, type::Type t,
                       ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
         t, [&]<typename T>() {
           return builder.CurrentBlock()->Append(ir::RegisterInstruction<T>{
-              .operand = value.get<ir::RegOr<T>>(),
+              .operand = value.get<T>(),
               .result  = builder.CurrentGroup()->Reserve(),
           });
         });
@@ -53,12 +52,10 @@ struct BeforeBlock : base::Extend<BeforeBlock>::With<base::AbslHashExtension> {
   ir::Fn fn;
 };
 
-absl::flat_hash_map<
-    std::string,
-    std::vector<std::pair<core::Arguments<std::pair<ir::Value, type::QualType>>,
-                          ir::BasicBlock *>>>
+absl::flat_hash_map<std::string,
+                    std::vector<std::pair<ir::Arguments, ir::BasicBlock *>>>
 InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
-                      absl::Span<ir::Value const> arguments,
+                      ir::PartialResultBuffer const &arguments,
                       ir::LocalBlockInterpretation const &block_interp) {
   auto const *jump           = ir::CompiledJump::From(to_be_inlined);
   auto *start_block          = bldr.CurrentBlock();
@@ -122,7 +119,7 @@ std::optional<ir::Reg> InitializeScopeState(Compiler &c,
   return std::nullopt;
 }
 
-std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
+std::pair<ir::Jump, ir::PartialResultBuffer> EmitIrForJumpArguments(
     Compiler &c, ir::PartialResultBuffer const &constant_arguments,
     std::optional<ir::Reg> state_ptr,
     absl::Span<ast::Call::Argument const> const &args,
@@ -145,22 +142,20 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
   // the value, we may end up loading the value from memory and no longer having
   // access to its address. Or worse, we may have a temporary and never have an
   // allocated address for it.
-  std::vector<ir::Value> prepared_arguments;
+  ir::PartialResultBuffer prepared_arguments;
 
   auto const &param_qts = ir::CompiledJump::From(init)->params().Transform(
       [](auto const &p) { return type::QualType::NonConstant(p.type()); });
 
-  if (state_ptr) { prepared_arguments.emplace_back(*state_ptr); }
+  if (state_ptr) { prepared_arguments.append(*state_ptr); }
 
   size_t i = 0;
   for (auto const& argument : args) {
     absl::Cleanup cleanup = [&] { ++i; };
     // TODO: Default arguments.
 
-    ir::PartialResultBuffer buffer = PrepareArgument(
-        c, constant_arguments[i], &argument.expr(), param_qts[i].value);
-    prepared_arguments.push_back(
-        ToValue(buffer[0].raw(), param_qts[i].value.type()));
+    PrepareArgument(c, constant_arguments[i], &argument.expr(),
+                    param_qts[i].value, prepared_arguments);
   }
 
   return std::make_pair(init, std::move(prepared_arguments));
@@ -168,13 +163,12 @@ std::pair<ir::Jump, std::vector<ir::Value>> EmitIrForJumpArguments(
 
 struct BlockAndPhis {
   ir::BasicBlock *block;
-  std::vector<ir::Value> phis;
+  ir::PartialResultBuffer phis;
 };
 void SetBeforeBlockPhi(
     Compiler &c, absl::flat_hash_map<BeforeBlock, BlockAndPhis> &before_blocks,
     ast::BlockNode const *block_node, ir::Fn before_fn,
-    ir::BasicBlock *incoming_block,
-    core::Arguments<std::pair<ir::Value, type::QualType>> const &args) {
+    ir::BasicBlock *incoming_block, ir::Arguments const &args) {
   LOG("SetBeforeBlockPhi", "SetBeforeBlockPhi: %s", block_node->name());
 
   auto *phi_block = std::exchange(c.builder().CurrentBlock(), incoming_block);
@@ -184,21 +178,15 @@ void SetBeforeBlockPhi(
   std::tie(iter, inserted) = before_blocks.try_emplace(
       BeforeBlock{.block = block_node, .fn = before_fn});
   auto const &before_block = iter->first;
-  std::vector<ir::Value> prepared_arguments;
 
   core::Params<type::QualType> const &param_qts =
       before_block.fn.type()->params();
 
-  for (size_t i = 0; i < args.pos().size(); ++i) {
-    prepared_arguments.push_back(
-        PrepareArgument(c, args[i].first, args[i].second, param_qts[i].value));
-  }
-
-  for (size_t i = args.pos().size(); i < param_qts.size(); ++i) {
-    // TODO: Default values.
-    auto const &[arg_val, arg_qt] = args[param_qts[i].name];
-    prepared_arguments.push_back(
-        PrepareArgument(c, arg_val, arg_qt, param_qts[i].value));
+  ir::PartialResultBuffer prepared_arguments;
+  auto param_iter = param_qts.begin();
+  for (auto arg_ref : args) {
+    PrepareArgument(c, arg_ref, nullptr, param_iter->value, prepared_arguments);
+    ++param_iter;
   }
 
   auto &phis = iter->second.phis;
@@ -219,9 +207,8 @@ void SetBeforeBlockPhi(
                           .CurrentBlock()
                           ->instructions()[i]
                           .template as<ir::PhiInstruction<ir::addr_t>>();
-      if (inserted) { phis.push_back(ir::Value(phi->result)); }
-      phi->add(incoming_block,
-               prepared_arguments[i].get<ir::RegOr<ir::addr_t>>());
+      if (inserted) { phis.append(phi->result); }
+      phi->add(incoming_block, prepared_arguments.get<ir::addr_t>(i));
     } else {
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
@@ -233,8 +220,8 @@ void SetBeforeBlockPhi(
                             .CurrentBlock()
                             ->instructions()[i]
                             .template as<ir::PhiInstruction<T>>();
-        if (inserted) { phis.push_back(ir::Value(phi->result)); }
-        phi->add(incoming_block, prepared_arguments[i].get<ir::RegOr<T>>());
+        if (inserted) { phis.append(phi->result); }
+        phi->add(incoming_block, prepared_arguments.get<T>(i));
       });
     }
     ++i;
@@ -330,11 +317,8 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
 
       auto *scope_block = ir::CompiledBlock::From(compiled_scope->block(name));
       ir::OverloadSet &before = scope_block->before();
-      auto arg_types =
-          args.Transform([](std::pair<ir::Value, type::QualType> const &v) {
-            return v.second;
-          });
-      ir::Fn before_fn = before.Lookup(arg_types).value();
+      // auto arg_types          = TODO;
+      ir::Fn before_fn        = before.Lookup({}/*arg_types*/).value();
       SetBeforeBlockPhi(*this, before_blocks, block_node, before_fn,
                         incoming_block, args);
     }
@@ -356,8 +340,8 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
         ASSERT(afters.size() == 1u);
         auto &after = *afters.begin();
 
-        std::vector<ir::Value> after_args;
-        if (state_ptr) { after_args.emplace(after_args.begin(), *state_ptr); }
+        ir::PartialResultBuffer after_args;
+        if (state_ptr) { after_args.append(*state_ptr); }
         auto args_by_name =
             InlineJumpIntoCurrent(builder(), after, after_args, local_interp);
         for (auto const &[name, args_and_incoming] : args_by_name) {
@@ -370,11 +354,8 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
             auto *scope_block =
                 ir::CompiledBlock::From(compiled_scope->block(name));
             ir::OverloadSet &before = scope_block->before();
-            auto arg_types          = args.Transform(
-                [](std::pair<ir::Value, type::QualType> const &v) {
-                  return v.second;
-                });
-            ir::Fn before_fn = before.Lookup(arg_types).value();
+            // auto arg_types          = TODO;
+            ir::Fn before_fn        = before.Lookup({} /*arg_types*/).value();
             SetBeforeBlockPhi(*this, before_blocks, block_node, before_fn,
                               incoming_block, args);
           }

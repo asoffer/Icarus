@@ -26,7 +26,7 @@
 #include "ir/value/module_id.h"
 #include "ir/value/native_fn.h"
 #include "ir/value/reg.h"
-#include "ir/value/value.h"
+#include "ir/value/result_buffer.h"
 #include "module/importer.h"
 #include "module/module.h"
 #include "type/array.h"
@@ -97,10 +97,10 @@ struct Compiler
       ast::Visitor<EmitToBufferTag, void(ir::PartialResultBuffer *)>,
       ast::Visitor<VerifyTypeTag, absl::Span<type::QualType const>()>,
       ast::Visitor<VerifyBodyTag, WorkItem::Result()>,
-      ast::Visitor<
-          PatternMatchTag,
-          bool(PatternMatchingContext *,
-               absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> *)>,
+      ast::Visitor<PatternMatchTag,
+                   bool(PatternMatchingContext *,
+                        absl::flat_hash_map<ast::Declaration::Id const *,
+                                            ir::CompleteResultBuffer> *)>,
       ast::Visitor<PatternTypeTag, bool(type::Type)>,
       type::Visitor<EmitDestroyTag, void(ir::Reg)>,
       type::Visitor<EmitMoveInitTag,
@@ -109,9 +109,11 @@ struct Compiler
                     void(ir::Reg, ir::PartialResultBuffer const *)>,
       type::Visitor<EmitDefaultInitTag, void(ir::Reg)>,
       type::Visitor<EmitMoveAssignTag,
-                    void(ir::RegOr<ir::addr_t>, type::Typed<ir::PartialResultRef> const &)>,
+                    void(ir::RegOr<ir::addr_t>,
+                         type::Typed<ir::PartialResultRef> const &)>,
       type::Visitor<EmitCopyAssignTag,
-                    void(ir::RegOr<ir::addr_t>, type::Typed<ir::PartialResultRef> const &)> {
+                    void(ir::RegOr<ir::addr_t>,
+                         type::Typed<ir::PartialResultRef> const &)> {
   PersistentResources &resources() { return resources_; }
 
   template <typename... Args>
@@ -161,14 +163,14 @@ struct Compiler
     return ast::Visitor<VerifyBodyTag, WorkItem::Result()>::Visit(node);
   }
 
-  bool PatternMatch(
-      ast::Node const *node, PatternMatchingContext &context,
-      absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
-    return ast::Visitor<
-        PatternMatchTag,
-        bool(PatternMatchingContext *,
-             absl::flat_hash_map<ast::Declaration::Id const *, ir::Value>
-                 *)>::Visit(node, &context, &bindings);
+  bool PatternMatch(ast::Node const *node, PatternMatchingContext &context,
+                    absl::flat_hash_map<ast::Declaration::Id const *,
+                                        ir::CompleteResultBuffer> &bindings) {
+    return ast::Visitor<PatternMatchTag,
+                        bool(PatternMatchingContext *,
+                             absl::flat_hash_map<ast::Declaration::Id const *,
+                                                 ir::CompleteResultBuffer>
+                                 *)>::Visit(node, &context, &bindings);
   }
 
   void EnqueuePatternMatch(ast::Node const *node,
@@ -430,13 +432,13 @@ struct Compiler
 #undef DEFINE_EMIT
 
 #define DEFINE_PATTERN_MATCH(name)                                             \
-  bool PatternMatch(                                                           \
-      name const *node, PatternMatchingContext &context,                       \
-      absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings); \
+  bool PatternMatch(name const *node, PatternMatchingContext &context,         \
+                    absl::flat_hash_map<ast::Declaration::Id const *,          \
+                                        ir::CompleteResultBuffer> &bindings);  \
   bool Visit(                                                                  \
       PatternMatchTag, name const *node, PatternMatchingContext *context,      \
-      absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> *bindings)  \
-      override {                                                               \
+      absl::flat_hash_map<ast::Declaration::Id const *,                        \
+                          ir::CompleteResultBuffer> *bindings) override {      \
     return PatternMatch(node, *context, *bindings);                            \
   }                                                                            \
                                                                                \

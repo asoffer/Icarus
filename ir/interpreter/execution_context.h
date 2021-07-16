@@ -17,7 +17,6 @@
 #include "ir/value/fn.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/value.h"
 
 namespace interpreter {
 namespace internal_execution {
@@ -191,37 +190,35 @@ struct ExecutionContext {
       auto *iter = &frame_iter.byte_code_iterator();
 
       if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
-        ir::Fn f = ctx.resolve(
-            ByteCodeReader::DeserializeTo<ir::RegOr<ir::Fn>>(*iter));
+        auto inst = ByteCodeReader::DeserializeTo<Inst>(*iter);
+        ir::Fn f  = ctx.resolve(inst.func());
         type::Function const *fn_type = f.type();
         LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
 
         StackFrame frame(f, ctx.stack());
 
-        // TODO: you probably want interpreter::Arguments or something.
         size_t num_inputs = fn_type->params().size();
-        size_t num_args = iter->read<size_t>();
-        for (size_t i = 0; i < num_args; ++i) {
-          ir::Value arg = iter->read<ir::Value>();
-          if (auto *reg = arg.get_if<ir::Reg>()) {
+        for (size_t i = 0; i < inst.arguments().num_entries(); ++i) {
+          auto argument = inst.arguments()[i];
+          if (argument.is_register()) {
+            ir::Reg reg = argument.template get<ir::Reg>();
             frame.regs_.set_raw(ir::Reg::Arg(i),
-                                ctx.current_frame().regs_.raw(*reg),
-                                ir::Value::value_size_v);
-            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i), *reg);
+                                ctx.current_frame().regs_.raw(reg),
+                                RegisterArray::value_size);
+            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i), reg);
           } else {
             type::Type t = fn_type->params()[i].value.type();
             core::Bytes size =
                 t.is_big() ? interpreter::kArchitecture.pointer().bytes()
                            : t.bytes(interpreter::kArchitecture);
-            frame.regs_.set_raw(ir::Reg::Arg(i), arg.raw(), size.value());
+            frame.regs_.set_raw(ir::Reg::Arg(i), argument.raw().data(),
+                                size.value());
           }
         }
 
-        uint16_t num_rets = iter->read<size_t>();
-
-        for (uint16_t i = 0; i < num_rets; ++i) {
-          ir::Reg reg  = iter->read<ir::Reg>();
-          type::Type t = fn_type->output()[i];
+        for (size_t i = 0; i < inst.outputs().size(); ++i) {
+          ir::Reg reg         = inst.outputs()[i];
+          type::Type t        = fn_type->output()[i];
           ir::addr_t out_addr = t.is_big() ? ctx.resolve<ir::addr_t>(reg)
                                            : ctx.current_frame().regs_.raw(reg);
           LOG("CallInstruction", "  %s: [%p]", ir::Reg::Out(i), out_addr);

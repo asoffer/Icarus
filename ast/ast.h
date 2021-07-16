@@ -25,7 +25,6 @@
 #include "ir/value/builtin_fn.h"
 #include "ir/value/label.h"
 #include "ir/value/result_buffer.h"
-#include "ir/value/value.h"
 
 namespace ast {
 

@@ -52,7 +52,8 @@ void Compiler::EmitMoveInit(
 
 bool Compiler::PatternMatch(
     ast::ArrayType const *node, PatternMatchingContext &pmc,
-    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+        &bindings) {
   type::Type t = pmc.value.get<type::Type>(0);
 
   type::Array const *a = t.if_as<type::Array>();

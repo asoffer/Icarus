@@ -46,7 +46,8 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
   q.emplace(&node->pattern(),
             PatternMatchingContext{.type = t, .value = buffer});
 
-  absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> bindings;
+  absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+      bindings;
   while (not q.empty()) {
     auto [n, pmc] = std::move(q.front());
     q.pop();

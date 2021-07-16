@@ -3,7 +3,6 @@
 #include "compiler/emit/common.h"
 #include "compiler/instructions.h"
 #include "core/arguments.h"
-#include "ir/value/value.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 

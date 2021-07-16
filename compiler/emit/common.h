@@ -39,21 +39,9 @@ void MakeAllDestructions(Compiler &compiler, ast::Scope const *scope);
 // a reference and is being bound to a pointer to its own type, we emit the
 // reference rather than loading the corresponding value. Moreover non-referenc
 // types get placed in temporary stack allocations in this case.
-ir::PartialResultBuffer PrepareArgument(Compiler &c, ir::Value constant,
-                                        ast::Expression const *expr,
-                                        type::QualType param_qt);
-// Same as the above overload but rather than emitting the code for expressions
-// on the fly, this overload is to be used when the value has already been
-// computed, but you know the qualified type. In particular arg_value needs to
-// be non-empty when arg_qt is constant. When arg_qt is a reference type,
-// arg_value holds a reference to the relevant value rather than the actual
-// value itself.
-ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
-                          type::QualType arg_qt, type::QualType param_qt);
-ir::PartialResultBuffer PrepareArgument(Compiler &c,
-                                        ir::PartialResultRef constant,
-                                        ast::Expression const *expr,
-                                        type::QualType param_qt);
+void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
+                     ast::Expression const *expr, type::QualType param_qt,
+                     ir::PartialResultBuffer &out);
 
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
                             ast::Expression const &expr,

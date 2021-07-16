@@ -13,7 +13,6 @@
 #include "ir/local_block_interpretation.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/value.h"
 
 namespace ir {
 struct BasicBlock;
@@ -39,8 +38,6 @@ struct InstructionInliner {
         Inline(copy);
         v = copy;
       }
-    } else if constexpr (type == base::meta<Value>) {
-      if (auto *r = v.template get_if<Reg>()) { Inline(*r); }
     } else if constexpr (type.template is_a<std::vector>()) {
       for (auto &elem : v) { Inline(elem); }
     } else if constexpr (type.template is_a<std::pair>()) {
@@ -54,10 +51,8 @@ struct InstructionInliner {
 
   BasicBlock *InlineAllBlocks();
 
-  absl::flat_hash_map<
-      std::string,
-      std::vector<std::pair<core::Arguments<std::pair<Value, type::QualType>>,
-                            BasicBlock *>>>
+  absl::flat_hash_map<std::string,
+                      std::vector<std::pair<Arguments, BasicBlock *>>>
   ArgumentsByName() && {
     return std::move(arguments_by_name_);
   }
@@ -71,14 +66,10 @@ struct InstructionInliner {
   internal::BlockGroupBase *into_;
   int register_offset_;
   absl::flat_hash_map<BasicBlock const *, BasicBlock *> blocks_;
-  absl::flat_hash_map<
-      std::string,
-      std::vector<std::pair<core::Arguments<std::pair<Value, type::QualType>>,
-                            BasicBlock *>>>
+  absl::flat_hash_map<std::string,
+                      std::vector<std::pair<Arguments, BasicBlock *>>>
       arguments_by_name_;
-  absl::flat_hash_map<BasicBlock const *,
-                      core::Arguments<std::pair<Value, type::QualType>>>
-      choose_argument_cache_;
+  absl::flat_hash_map<BasicBlock const *, Arguments> choose_argument_cache_;
   LocalBlockInterpretation block_interp_;
 };
 

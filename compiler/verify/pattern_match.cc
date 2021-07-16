@@ -25,7 +25,6 @@ absl::Span<type::QualType const> Compiler::VerifyType(
 
   q.emplace(&node->pattern(), match_type);
 
-  absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> bindings;
   while (not q.empty()) {
     auto [n, t] = std::move(q.front());
     q.pop();

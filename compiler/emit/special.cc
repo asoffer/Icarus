@@ -394,9 +394,8 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
       for (size_t i = 0; i < r.type()->fields().size(); ++i) {
         auto &field = r.type()->fields()[i];
         if (not field.initial_value.empty()) {
-          ir::CompleteResultBuffer buffer;
-          ToComplete(field.initial_value, r.type(), buffer);
-          EmitCopyInit(builder().FieldRef(var, r.type(), i), buffer);
+          EmitCopyInit(builder().FieldRef(var, r.type(), i),
+                       field.initial_value);
         } else {
           EmitDefaultInit(
               type::Typed<ir::Reg>(builder().FieldRef(var, r.type(), i)));

@@ -19,24 +19,6 @@ struct CompiledJump : BlockGroup<type::Jump> {
       : BlockGroup(jump_type, std::move(p), jump_type->state() ? 1 : 0) {
     LOG("CompiledJump", "Creating a jump of type %s", jump_type->to_string());
   }
-
-  absl::flat_hash_map<std::string_view,
-                      std::vector<core::Arguments<type::QualType>>>
-  ExtractExitPaths() const {
-    absl::flat_hash_map<std::string_view,
-                        std::vector<core::Arguments<type::QualType>>>
-        result;
-    // TODO no reason to repeat this work multiple times.
-    for (auto const *block : blocks()) {
-      if (auto const *j = block->jump().IfAsChooseJump()) {
-        for (size_t i = 0; i < j->size(); ++i) {
-          result[j->names()[i]].push_back(
-              j->args()[i].Transform([](auto const &a) { return a.second; }));
-        }
-      }
-    }
-    return result;
-  }
 };
 
 }  // namespace ir

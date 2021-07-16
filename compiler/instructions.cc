@@ -6,7 +6,6 @@
 #include "ir/instruction/set.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/value/char.h"
-#include "ir/value/value.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"

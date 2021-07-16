@@ -3,9 +3,10 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/meta.h"
+#include "base/unaligned_ref.h"
+#include "base/untyped_buffer.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/value.h"
 
 namespace ir {
 
@@ -21,13 +22,17 @@ namespace ir {
 // clearing caches at the appropriate times.
 struct LoadStoreCache {
   // Creates an entry in the cache if one did not already exist, and returns a
-  // reference to the value held in the cache whcih can be populated or read
-  // from.
+  // pair consisting of a reference to the value held in the cache which can be
+  // populated or read from, along with a bool indicating whether or not the
+  // slot was newly inserted.
   template <typename T>
-  Value &slot(RegOr<addr_t> r) {
+  std::pair<base::unaligned_ref<RegOr<T>>, bool> slot(RegOr<addr_t> r) {
     constexpr auto type = base::meta<T>;
     static_assert(not type.template is_a<ir::RegOr>());
-    return storage_[type][r];
+    auto& map_for_type = storage_[type];
+    auto [iter, inserted] = map_for_type.try_emplace(r);
+    if (inserted) { iter->second.append(RegOr<T>()); }
+    return std::pair(iter->second.begin().template read<RegOr<T>>(), inserted);
   }
 
   // If the template parameter is `void`, clears the entirety of the cache (for
@@ -66,7 +71,8 @@ struct LoadStoreCache {
   void clear(base::MetaValue m) { storage_.erase(m); }
 
  private:
-  absl::flat_hash_map<base::MetaValue, absl::flat_hash_map<RegOr<addr_t>, Value>>
+  absl::flat_hash_map<base::MetaValue,
+                      absl::flat_hash_map<RegOr<addr_t>, base::untyped_buffer>>
       storage_;
 };
 

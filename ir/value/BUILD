@@ -6,6 +6,15 @@ cc_library(
 )
 
 cc_library(
+    name = "arguments",
+    hdrs = ["arguments.h"],
+    deps = [
+        ":result_buffer",
+        "//core:arguments",
+    ],
+)
+
+cc_library(
     name = "block",
     hdrs = ["block.h"],
     deps = [],
@@ -251,6 +260,7 @@ cc_library(
         ":addr",
         ":reg_or",
         "//base:meta",
+        "//base:serialize",
         "//base:untyped_buffer",
         "//base:untyped_buffer_view",
     ]
@@ -306,27 +316,6 @@ cc_test(
     srcs = ["string_test.cc"],
     deps = [
         ":string",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "value",
-    hdrs = ["value.h"],
-    deps = [
-        ":reg",
-        ":reg_or",
-        "//base:debug",
-        "//base:meta",
-    ],
-)
-
-cc_test(
-    name = "value_test",
-    srcs = ["value_test.cc"],
-    deps = [
-        ":reg_or",
-        ":value",
         "@com_google_googletest//:gtest_main",
     ],
 )

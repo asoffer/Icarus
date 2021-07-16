@@ -43,7 +43,8 @@ void Compiler::EmitMoveInit(
 
 bool Compiler::PatternMatch(
     ast::SliceType const *node, PatternMatchingContext &pmc,
-    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+        &bindings) {
   auto t = pmc.value.get<type::Type>(0);
   if (not t.is<type::Slice>()) { return false; }
   pmc.value.clear();

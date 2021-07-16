@@ -14,7 +14,6 @@
 #include "ir/instruction/op_codes.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/value.h"
 
 namespace ir {
 

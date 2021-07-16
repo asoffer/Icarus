@@ -71,9 +71,6 @@ struct TransientState {
   std::vector<ScopeLandingState> scope_landings;
 
   WorkQueue work_queue;
-
-  absl::flat_hash_map<ast::YieldStmt const *, core::Arguments<ir::Value>>
-      yields;
   bool must_complete = true;
 };
 

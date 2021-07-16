@@ -41,7 +41,8 @@ cc_library(
     hdrs = ["load_store_cache.h"],
     deps = [
         "//base:meta",
-        "//ir/value",
+        "//base:unaligned_ref",
+        "//base:untyped_buffer",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "@com_google_absl//absl/container:flat_hash_map",

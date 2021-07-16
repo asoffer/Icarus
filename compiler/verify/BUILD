@@ -219,7 +219,6 @@ cc_library(
         "//compiler:module",
         "//core:dependency_node",
         "//core:arguments",
-        "//ir/value",
         "//type:callable",
         "//type:overload_set",
         "//type:provenance",

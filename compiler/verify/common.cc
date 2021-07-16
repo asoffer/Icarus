@@ -7,7 +7,6 @@
 #include "compiler/module.h"
 #include "core/arguments.h"
 #include "core/call.h"
-#include "ir/value/value.h"
 #include "type/callable.h"
 #include "type/overload_set.h"
 #include "type/provenance.h"
@@ -430,7 +429,6 @@ Compiler::VerifyCall(
   // TODO: Expansion is relevant too.
   std::vector<std::vector<type::Type>> return_types;
 
-  // TODO: Take a type::Typed<ir::Value> instead.
   type::Quals quals = type::Quals::Const();
   auto args_qt      = args.Transform([&](auto const &typed_value) {
     auto qt = typed_value->empty()

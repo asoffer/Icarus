@@ -58,7 +58,7 @@ ir::OutParams Builder::OutParams(
 }
 
 void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
-                   std::vector<Value> args, ir::OutParams outs) {
+                   PartialResultBuffer args, ir::OutParams outs) {
   // TODO: this call should return the constructed registers rather than forcing
   // the caller to do it.
   for (auto const &p : f->params()) {
@@ -72,7 +72,6 @@ void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
     }
   }
 
-  ASSERT(args.size() == f->params().size());
   CurrentBlock()->Append(
       CallInstruction(f, fn, std::move(args), std::move(outs)));
 }
@@ -112,17 +111,6 @@ void Builder::CondJump(RegOr<bool> cond, BasicBlock *true_block,
   } else {
     return UncondJump(cond.value() ? true_block : false_block);
   }
-}
-
-void Builder::ChooseJump(
-    std::vector<std::string_view> names, std::vector<BasicBlock *> blocks,
-    std::vector<core::Arguments<std::pair<Value, type::QualType>>> args) {
-  CurrentBlock()->set_jump(
-      JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args)));
-}
-
-void Builder::JumpExitJump(std::string name, BasicBlock *choose_block) {
-  CurrentBlock()->set_jump(JumpCmd::JumpExit(std::move(name), choose_block));
 }
 
 void Builder::Move(type::Typed<RegOr<addr_t>> to, type::Typed<Reg> from) {

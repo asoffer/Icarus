@@ -2,7 +2,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "frontend/lex/operators.h"
-#include "ir/value/value.h"
 #include "type/interface/ir.h"
 #include "type/pointer.h"
 
@@ -228,7 +227,8 @@ void Compiler::EmitMoveAssign(
 
 bool Compiler::PatternMatch(
     ast::UnaryOperator const *node, PatternMatchingContext &pmc,
-    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+        &bindings) {
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Pointer: {
       auto t = pmc.value.get<type::Type>(0);

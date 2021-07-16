@@ -6,7 +6,6 @@
 #include "compiler/instructions.h"
 #include "core/arguments.h"
 #include "core/params.h"
-#include "ir/value/value.h"
 #include "type/qual_type.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -309,10 +308,18 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           if (auto const *init_val = id.declaration().init_val()) {
             // TODO init_val type may not be the same.
             field_type = c.context().qual_types(init_val)[0].type();
-            ir::PartialResultBuffer buffer;
-            c.EmitToBuffer(init_val, buffer);
-            fields.emplace_back(id.name(), field_type,
-                                std::move(buffer).buffer());
+
+            auto result =
+                c.EvaluateToBufferOrDiagnose(type::Typed(init_val, field_type));
+            if (auto *diagnostics =
+                    std::get_if<std::vector<diagnostic::ConsumedMessage>>(
+                        &result)) {
+              NOT_YET();
+            } 
+
+            fields.emplace_back(
+                id.name(), field_type,
+                std::get<ir::CompleteResultBuffer>(std::move(result)));
             fields.back().set_export(
                 id.declaration().hashtags.contains(ir::Hashtag::Export));
           } else {
@@ -341,7 +348,9 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           auto var                   = ir::Reg::Arg(0);
           if (user_dtor) {
             // TODO: Should probably force-inline this.
-            c.builder().Call(*user_dtor, full_dtor.type(), {ir::Value(var)},
+            ir::PartialResultBuffer args;
+            args.append(var);
+            c.builder().Call(*user_dtor, full_dtor.type(), std::move(args),
                              ir::OutParams());
           }
           for (int i = ir_fields.size() - 1; i >= 0; --i) {
@@ -538,112 +547,35 @@ void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
   }
 }
 
-ir::PartialResultBuffer PrepareArgument(Compiler &c,
-                                        ir::PartialResultRef constant,
-                                        ast::Expression const *expr,
-                                        type::QualType param_qt) {
+void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
+                     ast::Expression const *expr, type::QualType param_qt,
+                     ir::PartialResultBuffer &out) {
   type::QualType arg_qt = *c.context().qual_types(expr)[0];
   type::Type arg_type   = arg_qt.type();
   type::Type param_type = param_qt.type();
 
-  ir::PartialResultBuffer buffer;
   if (constant.empty()) {
     if (auto const *ptr_to_type = param_type.if_as<type::Pointer>()) {
       if (ptr_to_type->pointee() == arg_type) {
         if (arg_qt.quals() >= type::Quals::Ref()) {
-          buffer.append(c.EmitRef(expr));
-          return buffer;
+          out.append(c.EmitRef(expr));
+          return;
         } else {
           auto reg = c.builder().TmpAlloca(arg_type);
           c.EmitMoveInit(expr,
                          {type::Typed<ir::RegOr<ir::addr_t>>(reg, param_type)});
-          buffer.append(reg);
-          return buffer;
+          out.append(reg);
+          return;
         }
       }
     }
 
-    c.EmitToBuffer(expr, buffer);
+    c.EmitToBuffer(expr, out);
   } else {
-    buffer.append(constant);
+    out.append(constant);
   }
 
-  ApplyImplicitCasts(c.builder(), arg_type, param_qt, buffer);
-  return buffer;
-}
-
-ir::PartialResultBuffer PrepareArgument(Compiler &c, ir::Value constant,
-                                        ast::Expression const *expr,
-                                        type::QualType param_qt) {
-  type::QualType arg_qt = *c.context().qual_types(expr)[0];
-  type::Type arg_type   = arg_qt.type();
-  type::Type param_type = param_qt.type();
-
-  ir::PartialResultBuffer buffer;
-  if (constant.empty()) {
-    if (auto const *ptr_to_type = param_type.if_as<type::Pointer>()) {
-      if (ptr_to_type->pointee() == arg_type) {
-        if (arg_qt.quals() >= type::Quals::Ref()) {
-          buffer.append(c.EmitRef(expr));
-          return buffer;
-        } else {
-          auto reg = c.builder().TmpAlloca(arg_type);
-          c.EmitMoveInit(expr,
-                         {type::Typed<ir::RegOr<ir::addr_t>>(reg, param_type)});
-          buffer.append(reg);
-          return buffer;
-        }
-      }
-    }
-
-    c.EmitToBuffer(expr, buffer);
-  } else {
-    FromValue(constant, arg_type, buffer);
-  }
-
-  ApplyImplicitCasts(c.builder(), arg_type, param_qt, buffer);
-  return buffer;
-}
-
-// TODO: A good amount of this could probably be reused from the above
-// PrepareArgument overload.
-ir::Value PrepareArgument(Compiler &compiler, ir::Value arg_value,
-                          type::QualType arg_qt, type::QualType param_qt) {
-  type::Type arg_type   = arg_qt.type();
-  type::Type param_type = param_qt.type();
-
-  if (arg_type == param_type) {
-    if (auto const *r = arg_value.get_if<ir::Reg>()) {
-      return ir::Value(compiler.builder().PtrFix(*r, param_type));
-    } else {
-      return arg_value;
-    }
-  }
-
-  if (auto [bufptr_arg_type, ptr_param_type] =
-          std::make_pair(arg_type.if_as<type::BufferPointer>(),
-                         param_type.if_as<type::Pointer>());
-      bufptr_arg_type and ptr_param_type and
-      ptr_param_type->pointee() == bufptr_arg_type->pointee()) {
-    return arg_value;
-  }
-
-  if (auto const *ptr_param_type = param_type.if_as<type::Pointer>()) {
-    if (ptr_param_type->pointee() == arg_type) {
-      auto reg = compiler.builder().TmpAlloca(arg_type);
-      // TODO: Once EmitMoveInit is no longer a method on Compiler, we can
-      // reduce the dependency here from being on Compiler to on Builder.
-      ir::PartialResultBuffer buffer;
-      FromValue(arg_value, arg_type, buffer);
-      compiler.EmitMoveInit(type::Typed<ir::Reg>(reg, arg_type), buffer);
-
-      return ir::Value(reg);
-    } else {
-      NOT_YET(arg_qt, " vs ", param_qt);
-    }
-  } else {
-    NOT_YET(arg_qt, " vs ", param_qt);
-  }
+  ApplyImplicitCasts(c.builder(), arg_type, param_qt, out);
 }
 
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
@@ -751,7 +683,7 @@ void EmitCall(
   // the value, we may end up loading the value from memory and no longer having
   // access to its address. Or worse, we may have a temporary and never have an
   // allocated address for it.
-  std::vector<ir::Value> prepared_arguments;
+  ir::PartialResultBuffer prepared_arguments;
 
   auto const &param_qts = overload_type->params();
 
@@ -759,10 +691,8 @@ void EmitCall(
   {
     size_t i = 0;
     for (; i < arg_exprs.size() and not arg_exprs[i].named(); ++i) {
-      auto buffer = PrepareArgument(compiler, *constants[i],
-                                    &arg_exprs[i].expr(), param_qts[i].value);
-      prepared_arguments.push_back(
-          ToValue(buffer[0].raw(), param_qts[i].value.type()));
+      PrepareArgument(compiler, *constants[i], &arg_exprs[i].expr(),
+                      param_qts[i].value, prepared_arguments);
     }
 
     absl::flat_hash_map<std::string_view, ast::Expression const *> named;
@@ -784,13 +714,11 @@ void EmitCall(
             callee_fn.value().native()->params()[j].value.get()->init_val());
       }
 
-      auto buffer =
-          PrepareArgument(compiler,
-                          constant_typed_value ? **constant_typed_value
-                                               : ir::PartialResultRef(),
-                          expr ? expr : default_value, param_qts[i].value);
-      prepared_arguments.push_back(
-          ToValue(buffer[0].raw(), param_qts[i].value.type()));
+      PrepareArgument(compiler,
+                      constant_typed_value ? **constant_typed_value
+                                           : ir::PartialResultRef(),
+                      expr ? expr : default_value, param_qts[i].value,
+                      prepared_arguments);
     }
   }
 
@@ -803,7 +731,7 @@ void EmitCall(
     if (t.get()->is_big()) { continue; }
 
     ir::PartialResultBuffer buffer;
-    FromValue(ir::Value(out_params[i]), t, buffer);
+    buffer.append(out_params[i]);
     compiler.EmitCopyAssign(to[i], type::Typed(buffer[0], t));
   }
 }

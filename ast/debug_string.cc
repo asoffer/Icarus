@@ -3,7 +3,6 @@
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
 #include "base/stringify.h"
-#include "ir/value/value.h"
 
 namespace ast {
 namespace {

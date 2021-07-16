@@ -7,7 +7,6 @@
 #include "ir/value/char.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/value.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -59,14 +58,11 @@ void Compiler::EmitToBuffer(ast::YieldStmt const *node,
           });
     }
 
-    std::vector<ir::Value> prepared_arguments;
-    prepared_arguments.reserve(yield_arg_types.size());
+    ir::PartialResultBuffer prepared_arguments;
     size_t i = 0;
     for (auto const *expr : node->exprs()) {
-      ir::PartialResultBuffer buffer = PrepareArgument(
-          *this, arg_buffer[i], expr, exit_fn.type()->params()[i].value);
-      prepared_arguments.push_back(
-          ToValue(buffer[0].raw(), exit_fn.type()->params()[i].value.type()));
+      PrepareArgument(*this, arg_buffer[i], expr,
+                      exit_fn.type()->params()[i].value, prepared_arguments);
       ++i;
     }
 

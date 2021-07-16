@@ -123,7 +123,7 @@ cc_library(
         "//base:meta",
         "//base:stringify",
         "//core:arguments",
-        "//ir/value",
+        "//ir/value:arguments",
         "//ir/value:reg",
         "//type:qual_type",
     ],

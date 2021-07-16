@@ -16,7 +16,7 @@ struct RegisterArray {
     size_t num_outputs;
   };
 
-  static constexpr size_t value_size = ir::Value::value_size_v;
+  static constexpr size_t value_size = 16;
 
   explicit RegisterArray(Sizes const &sizes)
       : sizes_(sizes),

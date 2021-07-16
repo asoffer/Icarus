@@ -10,7 +10,6 @@
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
 #include "ir/interpreter/evaluate.h"
-#include "ir/value/value.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"
 

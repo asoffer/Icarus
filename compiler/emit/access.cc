@@ -115,8 +115,8 @@ void Compiler::EmitToBuffer(ast::Access const *node,
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
-      out.append(*builder().FieldValue(*temp, &struct_type,
-                                       struct_type.index(node->member_name())));
+      builder().FieldValue(*temp, &struct_type,
+                           struct_type.index(node->member_name()), out);
     }
   }
 }
@@ -214,8 +214,8 @@ void Compiler::EmitMoveInit(
       UNREACHABLE(node->member_name());
     }
   } else {
+    ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      ir::PartialResultBuffer buffer;
       buffer.append(builder().PtrFix(EmitRef(node), node_qt.type()));
       EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else {
@@ -224,10 +224,9 @@ void Compiler::EmitMoveInit(
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       ir::PartialResultBuffer buffer;
       auto const &struct_type = operand_qt.type().as<type::Struct>();
-      auto val                = builder().FieldValue(*temp, &struct_type,
-                                      struct_type.index(node->member_name()));
-      FromValue(*val, val.type(), buffer);
-      EmitMoveAssign(to[0], type::Typed(buffer[0], val.type()));
+      auto t                  = builder().FieldValue(
+          *temp, &struct_type, struct_type.index(node->member_name()), buffer);
+      EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     }
   }
 }
@@ -294,10 +293,9 @@ void Compiler::EmitCopyInit(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
-      auto val                = builder().FieldValue(*temp, &struct_type,
-                                      struct_type.index(node->member_name()));
-      FromValue(*val, val.type(), buffer);
-      EmitMoveAssign(to[0], type::Typed(buffer[0], val.type()));
+      auto t                  = builder().FieldValue(
+          *temp, &struct_type, struct_type.index(node->member_name()), buffer);
+      EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     }
   }
 }
@@ -337,10 +335,9 @@ void Compiler::EmitMoveAssign(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
-      auto val                = builder().FieldValue(*temp, &struct_type,
-                                      struct_type.index(node->member_name()));
-      FromValue(*val, val.type(), buffer);
-      EmitMoveAssign(to[0], type::Typed(buffer[0], type::Type(&struct_type)));
+      auto t                  = builder().FieldValue(
+          *temp, &struct_type, struct_type.index(node->member_name()), buffer);
+      EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     }
   }
 }
@@ -372,15 +369,14 @@ void Compiler::EmitCopyAssign(
     type::Type t = context().qual_types(node)[0].type();
     ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      FromValue(ir::Value(builder().PtrFix(EmitRef(node), t)), t, buffer);
+      buffer.append(builder().PtrFix(EmitRef(node), t));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitCopyInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
-      auto val                = builder().FieldValue(*temp, &struct_type,
-                                      struct_type.index(node->member_name()));
-      FromValue(*val, t, buffer);
+      auto t                  = builder().FieldValue(
+          *temp, &struct_type, struct_type.index(node->member_name()), buffer);
     }
     EmitMoveAssign(to[0], type::Typed(buffer[0], t));
   }
@@ -388,7 +384,8 @@ void Compiler::EmitCopyAssign(
 
 bool Compiler::PatternMatch(
     ast::Access const *node, PatternMatchingContext &pmc,
-    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+        &bindings) {
   UNREACHABLE(node->DebugString());
 }
 

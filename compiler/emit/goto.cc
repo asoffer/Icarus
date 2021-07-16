@@ -11,11 +11,9 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
   std::vector<ir::BasicBlock *> blocks;
   blocks.reserve(options.size());
 
-  std::vector<core::Arguments<std::pair<ir::Value, type::QualType>>> args;
-  args.reserve(options.size());
-
   auto current_block = c.builder().CurrentBlock();
 
+  std::vector<ir::Arguments> all_args;
   LOG("EmitJump", "Emitting options...");
   for (auto const &opt : options) {
     ir::BasicBlock *block = c.builder().AddBlock(
@@ -35,19 +33,25 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
     // an extra load instruction will lose access to the reference we care
     // about. Thus, rather than emitting the values here, we emit references if
     // the qualified type is itself a reference and values otherwise.
-    args.push_back(opt.args().Transform([&c](auto const &expr) {
+    ir::Arguments arguments;
+    for (auto const &expr : opt.args().pos()) {
       auto qt = c.context().qual_types(expr.get())[0];
       if (qt.quals() >= type::Quals::Ref()) {
-        return std::pair<ir::Value, type::QualType>(
-            ir::Value(c.EmitRef(expr.get())), qt);
+        arguments.pos_insert(c.EmitRef(expr.get()));
       } else {
-        ir::PartialResultBuffer buffer;
-        c.EmitToBuffer(expr.get(), buffer);
-        return std::pair<ir::Value, type::QualType>(
-            ToValue(buffer[0].raw(), qt.type()), qt);
+        c.EmitToBuffer(expr.get(), arguments.buffer());
       }
-    }));
-    c.builder().JumpExitJump(std::string(opt.block()), current_block);
+    }
+    for (auto const &[name, expr] : opt.args().named()) {
+      auto qt = c.context().qual_types(expr.get())[0];
+      if (qt.quals() >= type::Quals::Ref()) {
+        arguments.named_insert(name, c.EmitRef(expr.get()));
+      } else {
+        c.EmitToBuffer(expr.get(), arguments.buffer());
+      }
+    }
+    c.builder().CurrentBlock()->set_jump(
+        ir::JumpCmd::JumpExit(std::string(opt.block()), current_block));
   }
 
   c.builder().CurrentBlock() = current_block;
@@ -58,7 +62,8 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
 
   c.builder().block_termination_state() =
       ir::Builder::BlockTerminationState::kReturn;
-  c.builder().ChooseJump(std::move(names), std::move(blocks), std::move(args));
+  c.builder().CurrentBlock()->set_jump(ir::JumpCmd::Choose(
+      std::move(names), std::move(blocks), std::move(all_args)));
 }
 
 }  // namespace

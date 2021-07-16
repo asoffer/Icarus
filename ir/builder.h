@@ -24,7 +24,6 @@
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
 #include "ir/value/string.h"
-#include "ir/value/value.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -310,18 +309,13 @@ struct Builder {
   RegOr<T> Load(RegOr<addr_t> addr, type::Type t = GetType<T>()) {
     auto& blk = *CurrentBlock();
 
-    // TODO Just take a Reg. RegOr<addr_t> is overkill and not possible because
-    // constants don't have addresses.
-    Value& cache_results = blk.load_store_cache().slot<T>(addr);
-    if (not cache_results.empty()) {
-      // TODO may not be Reg. could be anything of the right type.
-      return cache_results.get<RegOr<T>>();
-    }
+    auto [slot, inserted] = blk.load_store_cache().slot<T>(addr);
+    if (not inserted) { return slot; }
 
     LoadInstruction inst{.type = t, .addr = addr};
     auto result = inst.result = CurrentGroup()->Reserve();
 
-    cache_results = Value(result);
+    slot = result;
 
     blk.Append(std::move(inst));
     return result;
@@ -373,7 +367,7 @@ struct Builder {
   // `arguments` and output parameters. If output parameters are not present,
   // the function must return nothing.
   void Call(RegOr<Fn> const& fn, type::Function const* f,
-            std::vector<Value> args, ir::OutParams outs);
+            PartialResultBuffer args, ir::OutParams outs);
 
   // Jump instructions must be the last instruction in a basic block. They
   // handle control-flow, indicating which basic block control should be
@@ -392,11 +386,6 @@ struct Builder {
   void CondJump(RegOr<bool> cond, BasicBlock* true_block,
                 BasicBlock* false_block);
   void ReturnJump();
-  // TODO: Probably better to have a data structure for this.
-  void ChooseJump(
-      std::vector<std::string_view> names, std::vector<BasicBlock*> blocks,
-      std::vector<core::Arguments<std::pair<Value, type::QualType>>> args);
-  void JumpExitJump(std::string name, BasicBlock* choose_block);
 
   template <bool B>
   BasicBlock* EarlyExitOn(BasicBlock* exit_block, RegOr<bool> cond) {
@@ -421,11 +410,11 @@ struct Builder {
   // value is stored.
   type::Typed<Reg> FieldRef(RegOr<addr_t> r, type::Struct const* t, int64_t n);
 
-  type::Typed<Value> FieldValue(RegOr<addr_t> r, type::Struct const* t,
-                                int64_t n) {
+  type::Type FieldValue(RegOr<addr_t> r, type::Struct const* t, int64_t n,
+                        ir::PartialResultBuffer& out) {
     auto typed_reg = FieldRef(r, t, n);
-    return type::Typed<Value>(Value(PtrFix(*typed_reg, typed_reg.type())),
-                              typed_reg.type());
+    out.append(PtrFix(*typed_reg, typed_reg.type()));
+    return typed_reg.type();
   }
   Reg PtrIncr(RegOr<addr_t> ptr, RegOr<int64_t> inc, type::Pointer const* t);
 

@@ -6,7 +6,6 @@
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/value.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -157,17 +156,17 @@ void Compiler::EmitToBuffer(ast::BindingDeclaration const *node,
 
 bool Compiler::PatternMatch(
     ast::Declaration const *node, PatternMatchingContext &pmc,
-    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+        &bindings) {
   NOT_YET();
 }
 
 bool Compiler::PatternMatch(
     ast::BindingDeclaration const *node, PatternMatchingContext &pmc,
-    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+        &bindings) {
   if (auto const *p = pmc.type.if_as<type::Primitive>()) {
-    bindings.emplace(&node->ids()[0], p->Apply([&]<typename T>()->ir::Value {
-      return ir::Value(pmc.value.template get<T>(0));
-    }));
+    bindings.emplace(&node->ids()[0], pmc.value);
     return true;
   } else {
     NOT_YET(pmc.type.to_string());

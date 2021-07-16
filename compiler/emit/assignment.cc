@@ -6,7 +6,6 @@
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/value.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 

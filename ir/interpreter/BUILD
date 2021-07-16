@@ -41,7 +41,6 @@ cc_library(
     deps = [
         "//base:untyped_buffer",
         "//base:untyped_buffer_view",
-        "//ir/value",
         "//ir/value:reg",
     ],
 )
@@ -103,7 +102,6 @@ cc_library(
         "//base:untyped_buffer",
         "//ir/instruction:core",
         "//ir:read_only_data",
-        "//ir/value",
         "//ir/value:addr",
         "//ir/value:fn",
         "//ir/value:reg",
@@ -123,7 +121,6 @@ cc_library(
         "//base:untyped_buffer",
         "//base:untyped_buffer_view",
         "//ir:read_only_data",
-        "//ir/value",
         "//ir/value:addr",
         "//ir/value:foreign_fn",
         "//type:function",

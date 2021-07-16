@@ -105,9 +105,10 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       auto const &fn_type = *ir::Fn(ir::BuiltinFn::Bytes()).type();
       ir::OutParams outs  = c.builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
-      auto t              = c.EmitAs<type::Type>(&args[0].expr());
-      c.builder().Call(ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type, {ir::Value(t)},
-                       std::move(outs));
+      ir::PartialResultBuffer buffer;
+      c.EmitToBuffer(&args[0].expr(), buffer);
+      c.builder().Call(ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
+                       std::move(buffer), std::move(outs));
       // TODO: Return an integer
       out.append(reg);
       return;
@@ -118,9 +119,10 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       auto const &fn_type = *ir::Fn(ir::BuiltinFn::Alignment()).type();
       ir::OutParams outs  = c.builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
+      ir::PartialResultBuffer buffer;
+      c.EmitToBuffer(&args[0].expr(), buffer);
       c.builder().Call(ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
-                       {ir::Value(c.EmitAs<type::Type>(&args[0].expr()))},
-                       std::move(outs));
+                       std::move(buffer), std::move(outs));
       out.append(reg);
       return;
     } break;
@@ -325,7 +327,8 @@ void Compiler::EmitCopyAssign(
 
 bool Compiler::PatternMatch(
     ast::Call const *node, PatternMatchingContext &pmc,
-    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+        &bindings) {
   // TODO: Only supporting parameterized structs right now.
   if (pmc.type != type::Type_) { return false; }
 

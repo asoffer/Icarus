@@ -21,7 +21,6 @@
 #include "ir/value/block.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
-#include "ir/value/value.h"
 #include "module/module.h"
 #include "type/qual_type.h"
 
@@ -453,12 +452,5 @@ struct Context {
   JumpMap jumps_;
 };
 
-ir::Value ToValue(base::untyped_buffer_view buffer, type::Type t);
-ir::Value ToCompleteValue(base::untyped_buffer_view buffer, type::Type t);
-void ToComplete(base::untyped_buffer_view buffer, type::Type t,
-                ir::CompleteResultBuffer &out);
-void FromValue(ir::Value const &v, type::Type t, base::untyped_buffer &out);
-void FromValue(ir::Value const &v, type::Type t, ir::PartialResultBuffer &out);
-void FromValue(ir::Value const &v, type::Type t, ir::CompleteResultBuffer &out);
 }  // namespace compiler
 #endif  // ICARUS_COMPILER_CONTEXT_H

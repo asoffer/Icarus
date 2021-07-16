@@ -69,7 +69,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//ir/value",
         "//ir/value:addr",
         "//ir/value:reg",
         "//ir/value:reg_or",
@@ -117,7 +116,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//ir/value",
     ],
 )
 
@@ -139,7 +137,6 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//ir:builder",
-        "//ir/value",
     ],
 )
 
@@ -152,7 +149,6 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:resources",
         "//ir/instruction",
-        "//ir/value",
         "//type:instantiated_generic_struct",
     ],
 )
@@ -219,7 +215,6 @@ cc_library(
         "//compiler:instructions",
         "//core:arguments",
         "//core:params",
-        "//ir/value",
         "//ir/value:result_buffer",
         "//type",
         "//type:qual_type",
@@ -233,7 +228,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//ir/value",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",
@@ -251,7 +245,6 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//ir:builder",
-        "//ir/value",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type:typed_value",
@@ -287,7 +280,6 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//ir:builder",
-        "//ir/value",
         "//ir/value:reg_or",
         "//type",
     ],
@@ -312,7 +304,6 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:instructions",
         "//core:arguments",
-        "//ir/value",
         "//ir/value:reg",
         "//ir/value:reg_or",
         "//type",
@@ -378,7 +369,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//ir/value",
     ],
 )
 
@@ -393,7 +383,6 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:instructions",
         "//core:arguments",
-        "//ir/value",
         "//ir/value:reg",
         "//ir/value:reg_or",
         "//type",
@@ -409,7 +398,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//ir/value",
     ],
 )
 
@@ -423,7 +411,6 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:instructions",
         "//compiler/emit:common",
-        "//ir/value",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",
@@ -440,7 +427,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//ir/value",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",
@@ -464,7 +450,6 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler/emit:common",
-        "//ir/value",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",
@@ -481,7 +466,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//ir/value",
         "//ir/value:reg_or",
         "//type",
     ],
@@ -523,7 +507,6 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:instructions",
         "//core:arguments",
-        "//ir/value",
         "//ir/value:reg",
         "//ir/value:reg_or",
         "//type",
@@ -581,7 +564,6 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler/emit:common",
         "//compiler:instructions",
-        "//ir/value",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",
@@ -642,7 +624,6 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler/emit:common",
-        "//ir/value",
         "//ir/value:addr",
         "//ir/value:char",
         "//ir/value:reg_or",

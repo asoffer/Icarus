@@ -3,7 +3,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/value.h"
 #include "type/type.h"
 
 namespace compiler {

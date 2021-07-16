@@ -102,13 +102,7 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
           blocks_.at(j.choose_block));
 
       arguments_by_name_[j.name].emplace_back(
-          choose_argument_cache_.at(j.choose_block)
-              .Transform([&](std::pair<Value, type::QualType> const& r) {
-                auto copy = r;
-                Inline(copy.first);
-                return copy;
-              }),
-          block);
+          choose_argument_cache_.at(j.choose_block).Inline(*this), block);
 
       BasicBlock* b = block_interp_[j.name];
       block->jump_  = JumpCmd::Uncond(b);

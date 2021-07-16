@@ -191,29 +191,30 @@ bool EmitInstruction(LlvmEmitter &emitter, LlvmEmitter::context_type &context,
     // TODO: support multiple outputs
     if (inst.outputs().size() > 1) { NOT_YET(); }
     std::vector<typename LlvmEmitter::value_type *> args;
-    args.reserve(inst.arguments().size());
+    args.reserve(inst.arguments().num_entries());
     auto *fn_type = inst.func_type();
     auto param_iter = fn_type->params().begin();
-    for (auto const &arg : inst.arguments()) {
-      arg.template apply<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
-                         uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                         ir::Reg, ir::addr_t, ir::Fn>([&](auto v) {
-        using T = std::decay_t<decltype(v)>;
-        if constexpr (base::meta<T> == base::meta<ir::Reg>) {
-          if (param_iter->value.type().template is<type::Pointer>()) {
-            args.push_back(emitter.Resolve<ir::addr_t>(v, context));
-          } else {
-            param_iter->value.type().template as<type::Primitive>().Apply(
-                [&]<typename T>() {
-                  args.push_back(emitter.Resolve<T>(v, context));
-                });
-          }
-        } else {
-          args.push_back(emitter.Resolve<T>(v, context));
-        }
-      });
-      ++param_iter;
-    }
+    NOT_YET();
+    // for (auto const &arg : inst.arguments()) {
+    //   arg.template apply<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
+    //                      uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+    //                      ir::Reg, ir::addr_t, ir::Fn>([&](auto v) {
+    //     using T = std::decay_t<decltype(v)>;
+    //     if constexpr (base::meta<T> == base::meta<ir::Reg>) {
+    //       if (param_iter->value.type().template is<type::Pointer>()) {
+    //         args.push_back(emitter.Resolve<ir::addr_t>(v, context));
+    //       } else {
+    //         param_iter->value.type().template as<type::Primitive>().Apply(
+    //             [&]<typename T>() {
+    //               args.push_back(emitter.Resolve<T>(v, context));
+    //             });
+    //       }
+    //     } else {
+    //       args.push_back(emitter.Resolve<T>(v, context));
+    //     }
+    //   });
+    //   ++param_iter;
+    // }
     auto *result = emitter.builder().CreateCall(
         llvm::cast<llvm::FunctionType>(
             ToLlvmType(fn_type, emitter.builder().getContext())),

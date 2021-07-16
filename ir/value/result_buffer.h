@@ -4,10 +4,11 @@
 #include <vector>
 
 #include "base/meta.h"
+#include "base/serialize.h"
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
-#include "ir/value/reg_or.h"
 #include "ir/value/addr.h"
+#include "ir/value/reg_or.h"
 
 namespace ir {
 namespace internal_result_buffer {
@@ -69,6 +70,18 @@ struct PartialResultRef {
             view_.get<T>(sizeof(base::MetaValue) *
                          internal_result_buffer::kResultBufferDebug));
       }
+    }
+  }
+
+  template <typename I>
+  void Inline(I const &inliner) {
+    if (is_register()) {
+      Reg r = get<Reg>();
+      inliner.Inline(r);
+      std::memcpy(const_cast<std::byte *>(view_.data()) +
+                      sizeof(base::MetaValue) *
+                          internal_result_buffer::kResultBufferDebug,
+                  &r, sizeof(r));
     }
   }
 
@@ -155,10 +168,23 @@ struct CompleteResultBuffer {
 
   void append();
 
+  template <typename S>
+  friend void BaseSerialize(S &s, CompleteResultBuffer const &buffer) {
+    base::Serialize(s, buffer.offsets_, buffer.buffer_.size());
+    s.write_bytes(absl::Span<std::byte const>(buffer.buffer_.data(),
+                                              buffer.buffer_.size()));
+  }
+
+  template <typename D>
+  friend void BaseDeserialize(D &d, CompleteResultBuffer &buffer) {
+    size_t num_bytes;
+    base::Deserialize(d, buffer.offsets_, num_bytes);
+    buffer.buffer_.write(0, d.read_bytes(num_bytes).data(), num_bytes);
+  }
+
   base::untyped_buffer buffer() && { return std::move(buffer_); }
 
   bool empty() const { return offsets_.empty(); }
-
 
   friend bool operator==(CompleteResultBuffer const &lhs,
                          CompleteResultBuffer const &rhs);
@@ -245,11 +271,26 @@ struct PartialResultBuffer {
 
   void append();
 
+  template <typename S>
+  friend void BaseSerialize(S &s, PartialResultBuffer const &buffer) {
+    base::Serialize(s, buffer.offsets_, buffer.buffer_.size());
+    s.write_bytes(absl::Span<std::byte const>(buffer.buffer_.data(),
+                                              buffer.buffer_.size()));
+  }
+
+  template <typename D>
+  friend void BaseDeserialize(D &d, PartialResultBuffer &buffer) {
+    size_t num_bytes;
+    base::Deserialize(d, buffer.offsets_, num_bytes);
+    buffer.buffer_.write(0, d.read_bytes(num_bytes).data(), num_bytes);
+  }
+
   bool is_register(size_t i) const { return offsets_[i].is_register; }
 
   base::untyped_buffer buffer() && { return std::move(buffer_); }
 
   bool empty() const { return offsets_.empty(); }
+  size_t num_entries() const { return offsets_.size(); }
 
   template <typename T>
   auto get(size_t i) const {

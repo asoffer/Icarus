@@ -4,7 +4,6 @@
 #include "compiler/compiler.h"
 #include "ir/builder.h"
 #include "ir/value/reg_or.h"
-#include "ir/value/value.h"
 #include "type/function.h"
 #include "type/type.h"
 

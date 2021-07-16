@@ -7,7 +7,6 @@
 #include "base/any_invocable.h"
 #include "core/arch.h"
 #include "core/arguments.h"
-#include "ir/value/value.h"
 #include "type/callable.h"
 #include "type/function.h"
 #include "type/type.h"

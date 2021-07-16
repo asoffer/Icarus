@@ -453,7 +453,8 @@ void Compiler::EmitCopyAssign(
 
 bool Compiler::PatternMatch(
     ast::BinaryOperator const *node, PatternMatchingContext &pmc,
-    absl::flat_hash_map<ast::Declaration::Id const *, ir::Value> &bindings) {
+    absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+        &bindings) {
   std::optional<std::variant<ir::CompleteResultBuffer,
                              std::vector<diagnostic::ConsumedMessage>>>
       lhs_buffer, rhs_buffer;

@@ -171,16 +171,16 @@ void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
     absl::flat_hash_set<ir::Hashtag> tags;
     if (constant.exported()) { tags.insert(ir::Hashtag::Export); }
 
-    if (base::untyped_buffer_view value = constant.initial_value();
+    if (ir::CompleteResultRef value = constant.initial_value();
         not value.empty()) {
       // TODO: constant.type() can be null. If the type is inferred from the
       // initial value.
       Type t  = ctx.resolve(constant.type());
-      auto &f = constant_fields.emplace_back(Struct::Field{
-          .name          = std::string(constant.name()),
-          .type          = t,
-          .initial_value = base::untyped_buffer(value.begin(), value.size()),
-          .hashtags      = std::move(tags)});
+      auto &f = constant_fields.emplace_back(
+          Struct::Field{.name     = std::string(constant.name()),
+                        .type     = t,
+                        .hashtags = std::move(tags)});
+      f.initial_value.append(value);
     } else {
       constant_fields.push_back(
           Struct::Field{.name     = std::string(constant.name()),
@@ -195,16 +195,16 @@ void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
     absl::flat_hash_set<ir::Hashtag> tags;
     if (field.exported()) { tags.insert(ir::Hashtag::Export); }
 
-    if (base::untyped_buffer_view value = field.initial_value();
+    if (ir::CompleteResultRef value = field.initial_value();
         not value.empty()) {
       // TODO: field.type() can be null. If the field type is inferred from the
       // initial value.
       Type t  = ctx.resolve(field.type());
-      auto &f = struct_fields.emplace_back(Struct::Field{
-          .name          = std::string(field.name()),
-          .type          = t,
-          .initial_value = base::untyped_buffer(value.begin(), value.size()),
-          .hashtags      = std::move(tags)});
+      auto &f = struct_fields.emplace_back(
+          Struct::Field{.name     = std::string(field.name()),
+                        .type     = t,
+                        .hashtags = std::move(tags)});
+      f.initial_value.append(value);
     } else {
       struct_fields.push_back(Struct::Field{.name = std::string(field.name()),
                                             .type = ctx.resolve(field.type()),

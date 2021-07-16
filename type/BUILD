@@ -181,7 +181,6 @@ cc_library(
         "//base:any_invocable",
         "//core:arch",
         "//core:arguments",
-        "//ir/value",
     ],
 )
 
@@ -382,7 +381,6 @@ cc_library(
         "//ir/interpreter:byte_code_writer",
         "//ir/interpreter:byte_code_reader",
         "//ir/interpreter:execution_context",
-        "//ir/value",
         "//ir/value:fn",
         "//ir/value:hashtag",
         "//module:module",

@@ -20,18 +20,17 @@
 #include "ir/value/fn.h"
 #include "ir/value/hashtag.h"
 #include "ir/value/native_fn.h"
-#include "ir/value/value.h"
 #include "type/type.h"
 
 namespace type {
 
-struct Struct : public LegacyType {
+struct Struct : LegacyType {
   struct Field : base::Extend<Field, 4>::With<base::BaseSerializeExtension> {
     // TODO make a string_view but deal with trickiness of moving
 
     std::string name;
     Type type = nullptr;
-    base::untyped_buffer initial_value;
+    ir::CompleteResultBuffer initial_value;
     absl::flat_hash_set<ir::Hashtag> hashtags;
   };
 
@@ -104,13 +103,14 @@ struct Struct : public LegacyType {
 // allows for more powerful metaprogramming.
 struct StructInstruction
     : base::Extend<StructInstruction>::With<base::BaseSerializeExtension, ir::InlineExtension> {
-  struct Field {
-    // TODO: Remove this once ByteCodeWriter supports non-default-constructible
-    // types.
+  struct Field : base::Extend<Field, 4>::With<base::BaseSerializeExtension,
+                                              ir::InlineExtension> {
+    // TODO: Remove this once ByteCodeWriter supports
+    // non-default-constructible types.
     explicit Field() : name_(""), type_(ir::RegOr<Type>(nullptr)) {}
 
     explicit Field(std::string_view name, ir::RegOr<Type> t,
-                   base::untyped_buffer value = {})
+                   ir::CompleteResultBuffer value = {})
         : name_(name), type_(t), value_(std::move(value)) {}
 
     // Returns the name of the struct field.
@@ -119,29 +119,18 @@ struct StructInstruction
     void set_export(bool b) { export_ = b; }
     constexpr bool exported() const { return export_; }
 
-    // Returns a pointer to the register representing the type if it exists, and
-    // a null pointer otherwise.
+    // Returns a pointer to the register representing the type if it exists,
+    // and a null pointer otherwise.
     ir::Reg *type_reg() { return type_.is_reg() ? &type_.reg() : nullptr; }
     ir::RegOr<Type> type() const { return type_; }
-    base::untyped_buffer_view initial_value() const { return value_; }
-
-    friend void BaseSerialize(interpreter::ByteCodeWriter &w, Field const &f) {
-      base::Serialize(w, f.name_, f.type_, f.value_.size());
-      w.write_bytes(absl::MakeConstSpan(f.value_.raw(0), f.value_.size()));
-      base::Serialize(w, f.export_);
-    }
-    friend void BaseDeserialize(interpreter::ByteCodeReader &r, Field &f) {
-      size_t buffer_length;
-      base::Deserialize(r, f.name_, f.type_, buffer_length);
-      auto span = r.read_bytes(buffer_length);
-      f.value_.write(0, span.data(), span.size());
-      base::Deserialize(r, f.export_);
-    }
+    ir::CompleteResultRef initial_value() const { return value_[0]; }
 
    private:
+    friend base::EnableExtensions;
+
     std::string_view name_;
     ir::RegOr<Type> type_;
-    base::untyped_buffer value_;
+    ir::CompleteResultBuffer value_;
     bool export_ = false;
   };
 

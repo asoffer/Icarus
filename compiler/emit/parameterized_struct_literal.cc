@@ -2,7 +2,6 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/instructions.h"
-#include "ir/value/value.h"
 #include "type/struct.h"
 #include "type/type.h"
 
