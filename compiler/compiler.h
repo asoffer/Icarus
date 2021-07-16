@@ -54,26 +54,6 @@ struct PatternMatchingContext {
   };
 };
 
-struct ValueView {
-  explicit ValueView(type::Type t, base::untyped_buffer_view v)
-      : type_(t), view_(v) {}
-  explicit ValueView(type::Type t, ir::PartialResultBuffer const &v)
-      : type_(t), view_(v[0].raw()) {}
-  bool empty() const { return view_.empty(); }
-  type::Type type() const { return type_; }
-  base::untyped_buffer_view const *operator->() const { return &view_; }
-  base::untyped_buffer_view operator*() const { return view_; }
-
-  template <typename T>
-  ir::RegOr<T> get() const {
-    return view_.get<ir::RegOr<T>>(0);
-  }
-
- private:
-  type::Type type_;
-  base::untyped_buffer_view view_;
-};
-
 struct EmitRefTag {};
 struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
@@ -129,9 +109,9 @@ struct Compiler
                     void(ir::Reg, ir::PartialResultBuffer const *)>,
       type::Visitor<EmitDefaultInitTag, void(ir::Reg)>,
       type::Visitor<EmitMoveAssignTag,
-                    void(ir::RegOr<ir::addr_t>, ValueView const &)>,
+                    void(ir::RegOr<ir::addr_t>, type::Typed<ir::PartialResultRef> const &)>,
       type::Visitor<EmitCopyAssignTag,
-                    void(ir::RegOr<ir::addr_t>, ValueView const &)> {
+                    void(ir::RegOr<ir::addr_t>, type::Typed<ir::PartialResultRef> const &)> {
   PersistentResources &resources() { return resources_; }
 
   template <typename... Args>
@@ -209,7 +189,7 @@ struct Compiler
   ir::RegOr<T> EmitWithCastTo(type::Type t, ast::Node const *node,
                               ir::PartialResultBuffer &buffer) {
     EmitToBuffer(node, buffer);
-    auto result = builder().CastTo<T>(type::Typed(buffer, t));
+    auto result = builder().CastTo<T>(t, buffer[0]);
     buffer.clear();
     return result;
   }
@@ -303,16 +283,16 @@ struct Compiler
   }
 
   void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
-                      ValueView const &from) {
+                      type::Typed<ir::PartialResultRef> const &from) {
     using V = type::Visitor<EmitMoveAssignTag,
-                            void(ir::RegOr<ir::addr_t>, ValueView const &)>;
+                            void(ir::RegOr<ir::addr_t>, type::Typed<ir::PartialResultRef> const &)>;
     V::Visit(to.type().get(), to.get(), from);
   }
 
   void EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
-                      ValueView const &from) {
+                      type::Typed<ir::PartialResultRef> const &from) {
     using V = type::Visitor<EmitCopyAssignTag,
-                            void(ir::RegOr<ir::addr_t>, ValueView const &)>;
+                            void(ir::RegOr<ir::addr_t>, type::Typed<ir::PartialResultRef> const &)>;
     V::Visit(to.type().get(), to.get(), from);
   }
 
@@ -366,20 +346,21 @@ struct Compiler
   interpreter::EvaluationResult Evaluate(
       type::Typed<ast::Expression const *> expr, bool must_complete = true);
 
-  core::Params<std::pair<ir::Value, type::QualType>> ComputeParamsFromArgs(
+  core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>>
+  ComputeParamsFromArgs(
       ast::ParameterizedExpression const *node,
-      core::Arguments<type::Typed<ir::Value>> const &args);
+      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 
   // Attemnts to instantiate `node` with `args`, possibly creating a new
   // instantiation as a subcontext of `this->context()` if needed.
   Context::InsertSubcontextResult Instantiate(
       ast::ParameterizedExpression const *node,
-      core::Arguments<type::Typed<ir::Value>> const &args);
+      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
   // Finds an already existing instantiation of `node` with `args` as a
   // subcontext of `this->context()`. Behavior is undefined if none exists.
   Context::FindSubcontextResult FindInstantiation(
       ast::ParameterizedExpression const *node,
-      core::Arguments<type::Typed<ir::Value>> const &args);
+      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 
   TransientState &state() { return state_; }
 
@@ -504,18 +485,18 @@ struct Compiler
 
 #define DEFINE_EMIT_ASSIGN(T)                                                  \
   void Visit(EmitCopyAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,          \
-             ValueView const &v) override {                                    \
+             type::Typed<ir::PartialResultRef> const &v) override {            \
     EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), v);           \
   }                                                                            \
   void EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T> const &,           \
-                      ValueView const &);                                      \
+                      type::Typed<ir::PartialResultRef> const &);              \
                                                                                \
   void Visit(EmitMoveAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,          \
-             ValueView const &v) override {                                    \
+             type::Typed<ir::PartialResultRef> const &v) override {            \
     EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), v);           \
   }                                                                            \
   void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T> const &r,          \
-                      ValueView const &);
+                      type::Typed<ir::PartialResultRef> const &);
 
   DEFINE_EMIT_ASSIGN(type::Array);
   DEFINE_EMIT_ASSIGN(type::Enum);
@@ -638,10 +619,10 @@ struct Compiler
   DEFINE_EMIT(ast::UnaryOperator)
 #undef DEFINE_EMIT
 
-  type::QualType VerifyBinaryOverload(std::string_view symbol,
-                                      ast::Expression const *node,
-                                      type::Typed<ir::Value> const &lhs,
-                                      type::Typed<ir::Value> const &rhs);
+  type::QualType VerifyBinaryOverload(
+      std::string_view symbol, ast::Expression const *node,
+      type::Typed<ir::CompleteResultRef> const &lhs,
+      type::Typed<ir::CompleteResultRef> const &rhs);
 
   ir::ModuleId EvaluateModuleWithCache(ast::Expression const *expr);
 
@@ -660,12 +641,13 @@ struct Compiler
   WorkItem::Result EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
 
  private:
-  std::optional<core::Arguments<type::Typed<ir::Value>>> VerifyArguments(
-      absl::Span<ast::Call::Argument const> args);
+  std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>
+  VerifyArguments(absl::Span<ast::Call::Argument const> args,
+                  ir::CompleteResultBuffer &out);
 
-  type::QualType VerifyUnaryOverload(char const *symbol,
-                                     ast::Expression const *node,
-                                     type::Typed<ir::Value> const &operand);
+  type::QualType VerifyUnaryOverload(
+      char const *symbol, ast::Expression const *node,
+      type::Typed<ir::CompleteResultRef> const &operand);
 
   std::variant<
       std::vector<type::QualType>,
@@ -673,13 +655,12 @@ struct Compiler
   VerifyCall(ast::Call const *call_expr,
              absl::flat_hash_map<ast::Expression const *,
                                  type::Callable const *> const &overload_map,
-             core::Arguments<type::Typed<ir::Value>> const &args);
+             core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 
   std::pair<type::QualType, absl::flat_hash_map<ast::Expression const *,
                                                 type::Callable const *>>
   VerifyCallee(
       ast::Expression const *callee,
-      core::Arguments<type::Typed<ir::Value>> const &args,
       absl::flat_hash_set<type::Type> const &argument_dependent_lookup_types);
 
   PersistentResources resources_;

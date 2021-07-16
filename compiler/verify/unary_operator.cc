@@ -255,7 +255,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
       } else if (operand_type.is<type::Struct>()) {
         // TODO: support calling with constant arguments.
         qt = VerifyUnaryOverload(
-            "-", node, type::Typed<ir::Value>(ir::Value(), operand_qt.type()));
+            "-", node,
+            type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
+                                               operand_qt.type()));
         if (not qt.ok()) {
           diag().Consume(InvalidUnaryOperatorOverload{
               .op    = "-",
@@ -282,7 +284,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
         // TODO: support calling with constant arguments.
         qt = VerifyUnaryOverload(
             "not", node,
-            type::Typed<ir::Value>(ir::Value(), operand_qt.type()));
+            type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
+                                               operand_qt.type()));
         if (not qt.ok()) {
           diag().Consume(InvalidUnaryOperatorOverload{
               .op    = "not",

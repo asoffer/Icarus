@@ -121,7 +121,8 @@ struct Context {
   // parameter types and `Context` into which new computed data dependent on
   // this set of generic context can be added.
   struct InsertSubcontextResult {
-    core::Params<std::pair<ir::Value, type::QualType>> const &params;
+    core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> const
+        &params;
     std::vector<type::Type> &rets;
     Context &context;
     bool inserted;
@@ -129,7 +130,8 @@ struct Context {
 
   InsertSubcontextResult InsertSubcontext(
       ast::ParameterizedExpression const *node,
-      core::Params<std::pair<ir::Value, type::QualType>> const &params,
+      core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> const
+          &params,
       Context &&context);
 
   // FindSubcontext:
@@ -145,7 +147,8 @@ struct Context {
 
   FindSubcontextResult FindSubcontext(
       ast::ParameterizedExpression const *node,
-      core::Params<std::pair<ir::Value, type::QualType>> const &params);
+      core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> const
+          &params);
 
   // Returns a span over a the qualified types for this expression. The span may
   // be empty if the expression's type is nothing, but behavior is undefined if
@@ -234,7 +237,7 @@ struct Context {
   void LoadConstant(ast::Declaration::Id const *id,
                     ir::PartialResultBuffer &out) const {
     if (auto iter = constants_.find(id); iter != constants_.end()) {
-      out.append(iter->second);
+      out.append(iter->second.first);
     } else {
       ASSERT_NOT_NULL(parent())->LoadConstant(id, out);
     }
@@ -256,13 +259,14 @@ struct Context {
     arg_type_.emplace(name, t);
   }
 
-  ir::Value arg_value(std::string_view name) const {
+  ir::CompleteResultRef arg_value(std::string_view name) const {
     auto iter = arg_val_.find(name);
-    return iter == arg_val_.end() ? ir::Value() : iter->second;
+    return iter == arg_val_.end() ? ir::CompleteResultRef() : iter->second[0];
   }
 
-  void set_arg_value(std::string_view name, ir::Value const &value) {
-    arg_val_.emplace(name, value);
+  void set_arg_value(std::string_view name,
+                     ir::CompleteResultRef const &value) {
+    arg_val_[name].append(value);
   }
 
   // TODO: Use Declaration::Id instead
@@ -280,10 +284,14 @@ struct Context {
   bool ShouldVerifyBody(ast::Node const *node);
   void ClearVerifyBody(ast::Node const *node);
 
+  void CompleteConstant(ast::Declaration::Id const *id);
+  ir::CompleteResultBuffer const &SetConstant(
+      ast::Declaration::Id const *id, ir::CompleteResultRef const &buffer);
   ir::CompleteResultBuffer const &SetConstant(
       ast::Declaration::Id const *id, ir::CompleteResultBuffer const &buffer);
-
   ir::CompleteResultBuffer const *Constant(
+      ast::Declaration::Id const *id) const;
+  ir::CompleteResultBuffer const *ConstantIfComplete(
       ast::Declaration::Id const *id) const;
 
   void SetAllOverloads(ast::Expression const *callee, ast::OverloadSet os);
@@ -361,8 +369,9 @@ struct Context {
     Context *parent = nullptr;
     absl::flat_hash_map<
         ast::ParameterizedExpression const *,
-        absl::node_hash_map<core::Params<std::pair<ir::Value, type::QualType>>,
-                            std::unique_ptr<Subcontext>>>
+        absl::node_hash_map<
+            core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>>,
+            std::unique_ptr<Subcontext>>>
         children;
   } tree_;
   constexpr Context *parent() { return tree_.parent; }
@@ -374,7 +383,7 @@ struct Context {
 
   // Stores the types of argument bound to the parameter with the given name.
   absl::flat_hash_map<std::string_view, type::Type> arg_type_;
-  absl::flat_hash_map<std::string_view, ir::Value> arg_val_;
+  absl::flat_hash_map<std::string_view, ir::CompleteResultBuffer> arg_val_;
 
   // A map from each identifier to all possible declarations that the identifier
   // might refer to.
@@ -384,7 +393,8 @@ struct Context {
 
   // Map of all constant declarations to their values within this dependent
   // context.
-  absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+  absl::flat_hash_map<ast::Declaration::Id const *,
+                      std::pair<ir::CompleteResultBuffer, bool>>
       constants_;
 
   absl::flat_hash_map<ast::StructLiteral const *, type::Struct *> structs_;

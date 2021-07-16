@@ -36,7 +36,7 @@ void Compiler::EmitCopyAssign(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0], ValueView(t, buffer));
+  EmitCopyAssign(to[0], type::Typed(buffer[0], t));
 }
 
 // TODO: Unit tests
@@ -47,7 +47,7 @@ void Compiler::EmitMoveAssign(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0], ValueView(t, buffer));
+  EmitMoveAssign(to[0], type::Typed(buffer[0], t));
 }
 
 // TODO: Unit tests
@@ -58,7 +58,7 @@ void Compiler::EmitCopyInit(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0], ValueView(t, buffer));
+  EmitCopyAssign(to[0], type::Typed(buffer[0], t));
 }
 
 // TODO: Unit tests
@@ -69,7 +69,7 @@ void Compiler::EmitMoveInit(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0], ValueView(t, buffer));
+  EmitMoveAssign(to[0], type::Typed(buffer[0], t));
 }
 
 bool Compiler::PatternMatch(

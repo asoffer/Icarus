@@ -144,10 +144,9 @@ ir::Fn InsertGeneratedMoveAssign(
         ir::PartialResultBuffer buffer;
         buffer.append(
             c.builder().PtrFix(from_ref, ir_fields[i].type().value()));
-        c.EmitCopyAssign(
-            type::Typed<ir::RegOr<ir::addr_t>>(to_ref,
-                                               ir_fields[i].type().value()),
-            ValueView(ir_fields[i].type().value(), buffer[0].raw()));
+        c.EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(
+                             to_ref, ir_fields[i].type().value()),
+                         type::Typed(buffer[0], ir_fields[i].type().value()));
       }
 
       c.builder().ReturnJump();
@@ -181,10 +180,9 @@ ir::Fn InsertGeneratedCopyAssign(
         ir::PartialResultBuffer buffer;
         buffer.append(
             c.builder().PtrFix(from_ref, ir_fields[i].type().value()));
-        c.EmitCopyAssign(
-            type::Typed<ir::RegOr<ir::addr_t>>(to_ref,
-                                               ir_fields[i].type().value()),
-            ValueView(ir_fields[i].type().value(), buffer[0].raw()));
+        c.EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(
+                             to_ref, ir_fields[i].type().value()),
+                         type::Typed(buffer[0], ir_fields[i].type().value()));
       }
 
       c.builder().ReturnJump();
@@ -231,18 +229,9 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
 
     auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
 
-    auto constant_arguments = constants.Transform([&](auto const &constant) {
-      auto t = constant.type();
-      if (constant->empty()) {
-        return type::Typed<ir::Value>(ir::Value(), t);
-      } else {
-        return type::Typed<ir::Value>(ToValue(constant->raw(), t), t);
-      }
-    });
-
     auto find_subcontext_result =
-        c.FindInstantiation(parameterized_expr, constant_arguments);
-    return std::make_tuple(ir::Fn(gen_fn.concrete(constant_arguments)),
+        c.FindInstantiation(parameterized_expr, constants);
+    return std::make_tuple(ir::Fn(gen_fn.concrete(constants)),
                            find_subcontext_result.fn_type,
                            &find_subcontext_result.context);
   } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
@@ -507,6 +496,7 @@ void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
     ir::PartialResultBuffer buffer;
     for (auto *stmt : stmts) {
       LOG("EmitIrForStatements", "%s", stmt->DebugString());
+      buffer.clear();
       c.EmitToBuffer(stmt, buffer);
       c.builder().FinishTemporariesWith(
           [&c](type::Typed<ir::Reg> r) { c.EmitDestroy(r); });
@@ -548,9 +538,10 @@ void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
   }
 }
 
-ir::PartialResultBuffer PrepareArgument(Compiler &c, ir::PartialResultRef constant,
-                                     ast::Expression const *expr,
-                                     type::QualType param_qt) {
+ir::PartialResultBuffer PrepareArgument(Compiler &c,
+                                        ir::PartialResultRef constant,
+                                        ast::Expression const *expr,
+                                        type::QualType param_qt) {
   type::QualType arg_qt = *c.context().qual_types(expr)[0];
   type::Type arg_type   = arg_qt.type();
   type::Type param_type = param_qt.type();
@@ -764,20 +755,11 @@ void EmitCall(
 
   auto const &param_qts = overload_type->params();
 
-  auto constant_arguments = constants.Transform([&](auto const &constant) {
-    auto t = constant.type();
-    if (constant->empty()) {
-      return type::Typed<ir::Value>(ir::Value(), t);
-    } else {
-      return type::Typed<ir::Value>(ToValue(constant->raw(), t), t);
-    }
-  });
-
   // TODO: With expansions, this might be wrong.
   {
     size_t i = 0;
     for (; i < arg_exprs.size() and not arg_exprs[i].named(); ++i) {
-      auto buffer = PrepareArgument(compiler, *constant_arguments[i],
+      auto buffer = PrepareArgument(compiler, *constants[i],
                                     &arg_exprs[i].expr(), param_qts[i].value);
       prepared_arguments.push_back(
           ToValue(buffer[0].raw(), param_qts[i].value.type()));
@@ -790,7 +772,7 @@ void EmitCall(
 
     for (size_t j = i; j < param_qts.size(); ++j) {
       std::string_view name            = param_qts[j].name;
-      auto const *constant_typed_value = constant_arguments.at_or_null(name);
+      auto const *constant_typed_value = constants.at_or_null(name);
       auto iter                        = named.find(name);
       auto const *expr = iter == named.end() ? nullptr : iter->second;
       ast::Expression const *default_value = nullptr;
@@ -802,9 +784,11 @@ void EmitCall(
             callee_fn.value().native()->params()[j].value.get()->init_val());
       }
 
-      auto buffer = PrepareArgument(
-          compiler, constant_typed_value ? **constant_typed_value : ir::Value(),
-          expr ? expr : default_value, param_qts[i].value);
+      auto buffer =
+          PrepareArgument(compiler,
+                          constant_typed_value ? **constant_typed_value
+                                               : ir::PartialResultRef(),
+                          expr ? expr : default_value, param_qts[i].value);
       prepared_arguments.push_back(
           ToValue(buffer[0].raw(), param_qts[i].value.type()));
     }
@@ -820,7 +804,7 @@ void EmitCall(
 
     ir::PartialResultBuffer buffer;
     FromValue(ir::Value(out_params[i]), t, buffer);
-    compiler.EmitCopyAssign(to[i], ValueView(t, buffer));
+    compiler.EmitCopyAssign(to[i], type::Typed(buffer[0], t));
   }
 }
 

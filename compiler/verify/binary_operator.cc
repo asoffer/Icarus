@@ -125,8 +125,11 @@ absl::Span<type::QualType const> VerifyLogicalOperator(
   } else {
     // TODO: Calling with constants?
     auto qt = c->VerifyBinaryOverload(
-        op, node, type::Typed<ir::Value>(ir::Value(), lhs_qual_type.type()),
-        type::Typed<ir::Value>(ir::Value(), rhs_qual_type.type()));
+        op, node,
+        type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
+                                           lhs_qual_type.type()),
+        type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
+                                           rhs_qual_type.type()));
     if (not qt.ok()) {
       c->diag().Consume(InvalidBinaryOperatorOverload{
           .op    = std::string(op),
@@ -161,8 +164,11 @@ absl::Span<type::QualType const> VerifyFlagsOperator(
   } else {
     // TODO: Calling with constants?
     auto qt = c->VerifyBinaryOverload(
-        op, node, type::Typed<ir::Value>(ir::Value(), lhs_qual_type.type()),
-        type::Typed<ir::Value>(ir::Value(), rhs_qual_type.type()));
+        op, node,
+        type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
+                                           lhs_qual_type.type()),
+        type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
+                                           rhs_qual_type.type()));
     if (not qt.ok()) {
       c->diag().Consume(InvalidBinaryOperatorOverload{
           .op    = std::string(op),
@@ -187,8 +193,11 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
   if (check_user_overload) {
     // TODO: Calling with constants?
     auto qt = c->VerifyBinaryOverload(
-        op, node, type::Typed<ir::Value>(ir::Value(), lhs_qual_type.type()),
-        type::Typed<ir::Value>(ir::Value(), rhs_qual_type.type()));
+        op, node,
+        type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
+                                           lhs_qual_type.type()),
+        type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
+                                           rhs_qual_type.type()));
     if (not qt.ok()) {
       c->diag().Consume(InvalidBinaryOperatorOverload{
           .op    = std::string(op),

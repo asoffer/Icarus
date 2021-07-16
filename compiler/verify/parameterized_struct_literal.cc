@@ -25,7 +25,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(
 
   auto gen = [gen_struct, node, instantiation_compiler = Compiler(resources()),
               cg = builder().CurrentGroup()](
-                 core::Arguments<type::Typed<ir::Value>> const &args) mutable
+                 core::Arguments<type::Typed<ir::CompleteResultRef>> const
+                     &args) mutable
       -> std::pair<core::Params<type::QualType>, type::Struct *> {
     auto [params, rets_ref, context, inserted] =
         instantiation_compiler.Instantiate(node, args);
@@ -46,7 +47,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(
                                 .is_movable = not node->hashtags.contains(
                                     ir::Hashtag::Immovable)},
           gen_struct);
-      s->set_arguments(args);
+      s->set_arguments(args.Transform([](auto const &a) {
+        ir::CompleteResultBuffer buffer;
+        buffer.append(*a);
+        return type::Typed(buffer, a.type());
+      }));
 
       LOG("ParameterizedStructLiteral",
           "Allocating a new (parameterized) struct %p for %p", s, node);

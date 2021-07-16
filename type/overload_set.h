@@ -29,7 +29,8 @@ struct OverloadSet : Callable {
   core::Alignment alignment(core::Arch const &arch) const override;
 
   std::vector<type::Type> return_types(
-      core::Arguments<type::Typed<ir::Value>> const &args) const override;
+      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args)
+      const override;
 
   // Not considered big because it only makes sense to pass around at
   // compile-time anyway.

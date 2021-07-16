@@ -173,7 +173,7 @@ type::QualType VerifyDeclarationType(Compiler &compiler,
                                     ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto type_expr_qt,
-                   compiler.VerifyType(node->type_expr())[0]);
+                  compiler.VerifyType(node->type_expr())[0]);
   if (type_expr_qt.type() == type::Type_) {
     if (not type_expr_qt.constant()) {
       compiler.diag().Consume(NonConstantTypeInDeclaration{

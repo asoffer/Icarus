@@ -14,8 +14,8 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
         [c = Compiler(resources()),
-         node](core::Arguments<type::Typed<ir::Value>> const &args) mutable
-        -> ir::NativeFn {
+         node](core::Arguments<type::Typed<ir::CompleteResultRef>> const
+                   &args) mutable -> ir::NativeFn {
           auto find_subcontext_result = c.FindInstantiation(node, args);
           auto &context               = find_subcontext_result.context;
 
@@ -46,7 +46,7 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
              .node      = node,
              .resources = resources_});
   }
-  out.append(f);
+  out.append(ir::Fn(f));
   return;
 }
 

@@ -28,7 +28,8 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
       // TODO: This feels quite hacky.
       if (node->init_val()->is<ast::StructLiteral>()) {
         // TODO:
-        if (not true /*constant_value->complete*/ and c.state().must_complete) {
+        if (not c.context().ConstantIfComplete(&node->ids()[0]) and
+            c.state().must_complete) {
           LOG("compile-work-queue", "Request work complete-struct: %p", node);
           c.Enqueue({
               .kind      = WorkItem::Kind::CompleteStructMembers,
@@ -85,7 +86,7 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
               return;
             }
             // TODO: Support multiple declarations
-            // c.context().CompleteConstant(&node->ids()[0]);
+            c.context().CompleteConstant(&node->ids()[0]);
           }
         }
 

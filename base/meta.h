@@ -212,6 +212,11 @@ concept SatisfiesTupleProtocol = requires(T t) {
   { std::tuple_size<T>::value } -> std::integral;
 };
 
+template <typename T>
+concept HasErasureWrapper = requires {
+  typename T::prefer_wrapper_for_type_erasure;
+};
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H

@@ -18,8 +18,8 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
   ICARUS_SCOPE(ir::SetCurrent(fn, compiler->builder())) {
     compiler->builder().CurrentBlock() = fn.entry();
 
-    // TODO support multiple values computed simultaneously?
-    base::untyped_buffer buffer;
+    // TODO: support multiple values computed simultaneously?
+    ir::PartialResultBuffer buffer;
     compiler->EmitToBuffer(expr, buffer);
     if (compiler->diag().num_consumed() != 0) { return; }
     // TODO compiler->CompleteDeferredBodies();
@@ -41,7 +41,7 @@ void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
       .diagnostic_consumer = diag,
       .importer            = importer,
   });
-  base::untyped_buffer buffer;
+  ir::PartialResultBuffer buffer;
   for (ast::Node const *node : nodes) {
     LOG("repl", "%s", node->DebugString());
     if (node->is<ast::Declaration>()) {

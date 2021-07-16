@@ -56,10 +56,11 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(&args[0].expr(), buffer);
       c.EmitMoveAssign(
-          data, ValueView(type::BufPtr(slice_type->data_type()), buffer));
+          data, type::Typed(buffer[0],
+                            type::Type(type::BufPtr(slice_type->data_type()))));
       buffer.clear();
       c.EmitToBuffer(&args[1].expr(), buffer);
-      c.EmitMoveAssign(length, ValueView(type::U64, buffer));
+      c.EmitMoveAssign(length, type::Typed(buffer[0], type::U64));
       out.append(slice);
       return;
     } break;
@@ -165,16 +166,13 @@ void Compiler::EmitToBuffer(ast::Call const *node, ir::PartialResultBuffer &out)
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
   auto args = EmitConstantArguments(*this, node->arguments(), buffer);
-  auto value_args = args.Transform([](auto const &arg) {
-    return type::Typed(ToCompleteValue(arg->raw(), arg.type()), arg.type());
-  });
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    out.append(type::Type(gs_type->Instantiate(value_args).second));
+    out.append(type::Type(gs_type->Instantiate(args).second));
     return;
   }
 
@@ -200,24 +198,22 @@ void Compiler::EmitMoveInit(
     ir::PartialResultBuffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    EmitMoveAssign(to[0], ValueView(context().qual_types(node)[0].type(), out));
+    EmitMoveAssign(to[0], type::Typed(out[0], context().qual_types(node)[0].type()));
   }
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
   auto args = EmitConstantArguments(*this, node->arguments(), buffer);
-  auto value_args = args.Transform([](auto const &arg) {
-    return type::Typed(ToCompleteValue(arg->raw(), arg.type()), arg.type());
-  });
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(value_args).second));
-    EmitCopyAssign(to[0],
-                   ValueView(type::Type_, base::untyped_buffer_view(&t)));
+    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(args).second));
+    ir::PartialResultBuffer t_buf;
+    t_buf.append(t);
+    EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
     return;
   }
 
@@ -233,25 +229,24 @@ void Compiler::EmitCopyInit(
     ir::PartialResultBuffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    EmitCopyAssign(to[0], ValueView(context().qual_types(node)[0].type(), out));
+    EmitCopyAssign(to[0],
+                   type::Typed(out[0], context().qual_types(node)[0].type()));
   }
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
   auto args = EmitConstantArguments(*this, node->arguments(), buffer);
-  auto value_args = args.Transform([](auto const &arg) {
-    return type::Typed(ToCompleteValue(arg->raw(), arg.type()), arg.type());
-  });
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(value_args).second));
-    EmitCopyAssign(to[0],
-                   ValueView(type::Type_, base::untyped_buffer_view(&t)));
+    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(args).second));
+    ir::PartialResultBuffer t_buf;
+    t_buf.append(t);
+    EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
     return;
   }
 
@@ -267,7 +262,8 @@ void Compiler::EmitMoveAssign(
     ir::PartialResultBuffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    EmitMoveAssign(to[0], ValueView(context().qual_types(node)[0].type(), out));
+    EmitMoveAssign(to[0],
+                   type::Typed(out[0], context().qual_types(node)[0].type()));
     return;
   }
 
@@ -275,18 +271,16 @@ void Compiler::EmitMoveAssign(
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
   auto args = EmitConstantArguments(*this, node->arguments(), buffer);
-  auto value_args = args.Transform([](auto const &arg) {
-    return type::Typed(ToCompleteValue(arg->raw(), arg.type()), arg.type());
-  });
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(value_args).second));
-    EmitMoveAssign(to[0],
-                   ValueView(type::Type_, base::untyped_buffer_view(&t)));
+    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(args).second));
+    ir::PartialResultBuffer t_buf;
+    t_buf.append(t);
+    EmitMoveAssign(to[0], type::Typed(t_buf[0], type::Type_));
   }
 
   auto const &os = context().ViableOverloads(node->callee());
@@ -302,7 +296,8 @@ void Compiler::EmitCopyAssign(
     ir::PartialResultBuffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    EmitCopyAssign(to[0], ValueView(context().qual_types(node)[0].type(), out));
+    EmitCopyAssign(to[0],
+                   type::Typed(out[0], context().qual_types(node)[0].type()));
     return;
   }
 
@@ -310,18 +305,16 @@ void Compiler::EmitCopyAssign(
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
   auto args = EmitConstantArguments(*this, node->arguments(), buffer);
-  auto value_args = args.Transform([](auto const &arg) {
-    return type::Typed(ToCompleteValue(arg->raw(), arg.type()), arg.type());
-  });
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(value_args).second));
-    EmitCopyAssign(to[0],
-                   ValueView(type::Type_, base::untyped_buffer_view(&t)));
+    ir::RegOr<type::Type> t(type::Type(gs_type->Instantiate(args).second));
+    ir::PartialResultBuffer t_buf;
+    t_buf.append(t);
+    EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
   }
 
   auto const &os = context().ViableOverloads(node->callee());
@@ -346,7 +339,7 @@ bool Compiler::PatternMatch(
   for (auto const &a : i->arguments().pos()) {
     // TODO: Check that the type is what we expect.
     ir::CompleteResultBuffer buffer;
-    buffer.append(a->get<type::Type>());
+    buffer.append(a->get<type::Type>(0));
 
     // TODO: Support non-type parameters.
     EnqueuePatternMatch(&node->arguments()[index].expr(),

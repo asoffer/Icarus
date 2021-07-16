@@ -18,10 +18,11 @@ namespace type {
 struct GenericFunction : Callable {
   struct EmptyStruct {};
 
-  explicit GenericFunction(core::Params<EmptyStruct> params,
-                           base::any_invocable<Function const *(
-                               core::Arguments<Typed<ir::Value>> const &)>
-                               fn)
+  explicit GenericFunction(
+      core::Params<EmptyStruct> params,
+      base::any_invocable<Function const *(
+          core::Arguments<Typed<ir::CompleteResultRef>> const &)>
+          fn)
       : gen_fn_(std::move(fn)), params_(std::move(params)) {}
 
   void WriteTo(std::string *result) const override {
@@ -30,10 +31,12 @@ struct GenericFunction : Callable {
 
   bool is_big() const override { return false; }
 
-  Function const *concrete(core::Arguments<Typed<ir::Value>> const &) const;
+  Function const *concrete(
+      core::Arguments<Typed<ir::CompleteResultRef>> const &) const;
 
   std::vector<type::Type> return_types(
-      core::Arguments<type::Typed<ir::Value>> const &args) const override;
+      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args)
+      const override;
 
   core::Params<EmptyStruct> const &params() const { return params_; }
 
@@ -49,7 +52,7 @@ struct GenericFunction : Callable {
  private:
   // TODO: Eventually we will want a serializable version of this.
   base::any_invocable<Function const *(
-      core::Arguments<Typed<ir::Value>> const &)>
+      core::Arguments<Typed<ir::CompleteResultRef>> const &)>
       gen_fn_;
 
   // TODO: Shouldn't use space for the empty struct.

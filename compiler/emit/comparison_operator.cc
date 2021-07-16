@@ -69,13 +69,15 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Lt(bldr.CastTo<T>(lhs), bldr.CastTo<T>(rhs));
+          return bldr.Lt(bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
+                         bldr.CastTo<T>(rhs.type(), (*rhs)[0]));
         });
       case frontend::Operator::Le:
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Le(bldr.CastTo<T>(lhs), bldr.CastTo<T>(rhs));
+          return bldr.Le(bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
+                         bldr.CastTo<T>(rhs.type(), (*rhs)[0]));
         });
       case frontend::Operator::Eq:
         if (t == type::Block) {
@@ -88,7 +90,8 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, type::Type, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Eq(bldr.CastTo<T>(lhs), bldr.CastTo<T>(rhs));
+          return bldr.Eq(bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
+                         bldr.CastTo<T>(rhs.type(), (*rhs)[0]));
         });
       case frontend::Operator::Ne:
         if (t == type::Block) {
@@ -101,19 +104,22 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, type::Type, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Ne(bldr.CastTo<T>(lhs), bldr.CastTo<T>(rhs));
+          return bldr.Ne(bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
+                         bldr.CastTo<T>(rhs.type(), (*rhs)[0]));
         });
       case frontend::Operator::Ge:
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Le(bldr.CastTo<T>(rhs), bldr.CastTo<T>(lhs));
+          return bldr.Le(bldr.CastTo<T>(rhs.type(), (*rhs)[0]),
+                         bldr.CastTo<T>(lhs.type(), (*lhs)[0]));
         });
       case frontend::Operator::Gt:
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Lt(bldr.CastTo<T>(rhs), bldr.CastTo<T>(lhs));
+          return bldr.Lt(bldr.CastTo<T>(rhs.type(), (*rhs)[0]),
+                         bldr.CastTo<T>(lhs.type(), (*lhs)[0]));
         });
         // TODO case frontend::Operator::And: cmp = *lhs; break;
       default: UNREACHABLE();

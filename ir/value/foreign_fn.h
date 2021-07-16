@@ -20,6 +20,7 @@ struct ForeignFn : base::Extend<ForeignFn, 1>::With<base::AbslFormatExtension,
 
  public:
   static constexpr std::string_view kAbslFormatString = "ForeignFn(id = %u)";
+  using prefer_wrapper_for_type_erasure               = void;
 
   explicit ForeignFn(void (*fn)(), type::Function const *t);
 

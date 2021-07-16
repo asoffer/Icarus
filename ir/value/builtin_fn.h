@@ -14,6 +14,7 @@ namespace ir {
 // Represents a function that comes built-in to the language
 struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
   friend struct Fn;
+  using prefer_wrapper_for_type_erasure = void;
   enum class Which : uint8_t {
     Abort,
     Alignment,

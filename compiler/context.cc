@@ -29,7 +29,8 @@ std::string Context::DebugString() const {
 
 Context::InsertSubcontextResult Context::InsertSubcontext(
     ast::ParameterizedExpression const *node,
-    core::Params<std::pair<ir::Value, type::QualType>> const &params,
+    core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> const
+        &params,
     Context &&context) {
   auto &map = tree_.children[node];
   auto [iter, inserted] =
@@ -40,10 +41,8 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
     size_t i = 0;
     for (auto const &p : params) {
       if (p.value.first.empty()) { continue; }
-      ir::CompleteResultBuffer buffer;
-      FromValue(p.value.first, p.value.second.type(), buffer);
       iter->second->context.SetConstant(&node->params()[i++].value->ids()[0],
-                                        std::move(buffer));
+                                        std::move(p.value.first));
     }
 
     ASSERT(iter->second->context.parent() == this);
@@ -64,7 +63,8 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
 
 Context::FindSubcontextResult Context::FindSubcontext(
     ast::ParameterizedExpression const *node,
-    core::Params<std::pair<ir::Value, type::QualType>> const &params) {
+    core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> const
+        &params) {
   auto children_iter = tree_.children.find(node);
   if (children_iter == tree_.children.end()) {
     return ASSERT_NOT_NULL(parent())->FindSubcontext(node, params);
@@ -192,15 +192,38 @@ void Context::ClearVerifyBody(ast::Node const *node) {
   body_verification_complete_.erase(node);
 }
 
+void Context::CompleteConstant(ast::Declaration::Id const *id) {
+  auto iter = constants_.find(id);
+  ASSERT(iter != constants_.end());
+  iter->second.second = true;
+}
+
+
+ir::CompleteResultBuffer const &Context::SetConstant(
+    ast::Declaration::Id const *id, ir::CompleteResultRef const &ref) {
+  ir::CompleteResultBuffer buffer;
+  buffer.append(ref);
+  return SetConstant(id, buffer);
+}
+
 ir::CompleteResultBuffer const &Context::SetConstant(
     ast::Declaration::Id const *id, ir::CompleteResultBuffer const &buffer) {
-  return constants_.try_emplace(id, std::move(buffer)).first->second;
+  return constants_.try_emplace(id, std::move(buffer), false)
+      .first->second.first;
 }
+
 
 ir::CompleteResultBuffer const *Context::Constant(
     ast::Declaration::Id const *id) const {
   auto iter = constants_.find(id);
-  return iter != constants_.end() ? &iter->second : nullptr;
+  return iter != constants_.end() ? &iter->second.first : nullptr;
+}
+
+ir::CompleteResultBuffer const *Context::ConstantIfComplete(
+    ast::Declaration::Id const *id) const {
+  auto iter = constants_.find(id);
+  return iter != constants_.end() and iter->second.second ? &iter->second.first
+                                                          : nullptr;
 }
 
 void Context::SetAllOverloads(ast::Expression const *callee,
@@ -264,18 +287,19 @@ std::pair<ir::NativeFn, bool> Context::InsertCopyAssign(type::Type to,
   auto &entry           = iter->second;
 
   if (inserted) {
-  auto const *data = InsertFunction(
-      type::Func(
-          core::Params<type::QualType>{
-              core::AnonymousParam(type::QualType::NonConstant(type::Ptr(to))),
-              core::AnonymousParam(
-                  type::QualType::NonConstant(type::Ptr(from)))},
-          {}),
-      core::Params<type::Typed<ast::Declaration const *>>{
-          core::AnonymousParam(
-              type::Typed<ast::Declaration const *>(nullptr, to)),
-          core::AnonymousParam(
-              type::Typed<ast::Declaration const *>(nullptr, from))});
+    auto const *data = InsertFunction(
+        type::Func(
+            core::Params<type::QualType>{
+                core::AnonymousParam(
+                    type::QualType::NonConstant(type::Ptr(to))),
+                core::AnonymousParam(
+                    type::QualType::NonConstant(type::Ptr(from)))},
+            {}),
+        core::Params<type::Typed<ast::Declaration const *>>{
+            core::AnonymousParam(
+                type::Typed<ast::Declaration const *>(nullptr, to)),
+            core::AnonymousParam(
+                type::Typed<ast::Declaration const *>(nullptr, from))});
     entry = ir::NativeFn(data);
   }
 

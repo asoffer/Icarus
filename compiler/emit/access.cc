@@ -222,12 +222,12 @@ void Compiler::EmitMoveInit(
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
-      base::untyped_buffer buffer;
+      ir::PartialResultBuffer buffer;
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       auto val                = builder().FieldValue(*temp, &struct_type,
                                       struct_type.index(node->member_name()));
       FromValue(*val, val.type(), buffer);
-      EmitMoveAssign(to[0], ValueView(val.type(), buffer));
+      EmitMoveAssign(to[0], type::Typed(buffer[0], val.type()));
     }
   }
 }
@@ -288,7 +288,7 @@ void Compiler::EmitCopyInit(
     ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
       buffer.append(builder().PtrFix(EmitRef(node), node_qt.type()));
-      EmitCopyAssign(to[0], ValueView(node_qt.type(), buffer));
+      EmitCopyAssign(to[0], type::Typed(buffer[0], node_qt.type()));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -297,7 +297,7 @@ void Compiler::EmitCopyInit(
       auto val                = builder().FieldValue(*temp, &struct_type,
                                       struct_type.index(node->member_name()));
       FromValue(*val, val.type(), buffer);
-      EmitMoveAssign(to[0], ValueView(val.type(), buffer[0].raw()));
+      EmitMoveAssign(to[0], type::Typed(buffer[0], val.type()));
     }
   }
 }
@@ -327,11 +327,11 @@ void Compiler::EmitMoveAssign(
 
   if (not EmitAssignForAlwaysCopyTypes(*this, node, operand_qt.type(),
                                        *to[0])) {
-    base::untyped_buffer buffer;
+    ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
       type::Type t = context().qual_types(node)[0].type();
-      FromValue(ir::Value(builder().PtrFix(EmitRef(node), t)), t, buffer);
-      EmitMoveAssign(to[0], ValueView(t, buffer));
+      buffer.append(builder().PtrFix(EmitRef(node), t));
+      EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           builder().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -340,7 +340,7 @@ void Compiler::EmitMoveAssign(
       auto val                = builder().FieldValue(*temp, &struct_type,
                                       struct_type.index(node->member_name()));
       FromValue(*val, val.type(), buffer);
-      EmitMoveAssign(to[0], ValueView(&struct_type, buffer));
+      EmitMoveAssign(to[0], type::Typed(buffer[0], type::Type(&struct_type)));
     }
   }
 }
@@ -382,7 +382,7 @@ void Compiler::EmitCopyAssign(
                                       struct_type.index(node->member_name()));
       FromValue(*val, t, buffer);
     }
-    EmitMoveAssign(to[0], ValueView(t, buffer));
+    EmitMoveAssign(to[0], type::Typed(buffer[0], t));
   }
 }
 

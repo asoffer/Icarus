@@ -49,7 +49,7 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
                  ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
           ret_type, [&]<typename T>() {
-            ir::RegOr<T> value = builder().CastTo<T>(type::Typed(out, t));
+            ir::RegOr<T> value = builder().CastTo<T>(t, out[0]);
             builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
                 .index = static_cast<uint16_t>(i),
                 .value = value,

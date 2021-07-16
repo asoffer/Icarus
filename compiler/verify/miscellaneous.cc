@@ -48,8 +48,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ScopeNode const *node
   // TODO: The type of the arguments and the scope name are independent and
   // should not have early-exists.
 
+  ir::CompleteResultBuffer buffer;
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
-                   std::ignore, VerifyArguments(node->arguments()));
+                   std::ignore, VerifyArguments(node->arguments(), buffer));
 
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
                    std::ignore, VerifyType(node->name())[0]);

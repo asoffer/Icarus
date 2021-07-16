@@ -42,7 +42,7 @@
 
 namespace ir {
 
-// TODO: Remove as much as possible from ir::Builder. I'm not exactly sure what
+// TODO: Remove as much as possible from Builder. I'm not exactly sure what
 // I want to do with this, but we should really limit it only to core
 // instructions and/or instructions that can only be optimized in the streaming
 // approach by carrying around extra state (like loads/store-caching).
@@ -54,19 +54,19 @@ struct Builder {
 
   ir::OutParams OutParams(
       absl::Span<type::Type const> types,
-      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to = {});
+      absl::Span<type::Typed<RegOr<addr_t>> const> to = {});
 
   template <typename KeyType, typename ValueType>
-  absl::flat_hash_map<KeyType, ir::BasicBlock*> AddBlocks(
+  absl::flat_hash_map<KeyType, BasicBlock*> AddBlocks(
       absl::flat_hash_map<KeyType, ValueType> const& table) {
-    absl::flat_hash_map<KeyType, ir::BasicBlock*> result;
+    absl::flat_hash_map<KeyType, BasicBlock*> result;
     for (auto const& [key, val] : table) { result.emplace(key, AddBlock()); }
     return result;
   }
 
-  absl::flat_hash_map<ast::Expression const*, ir::BasicBlock*> AddBlocks(
+  absl::flat_hash_map<ast::Expression const*, BasicBlock*> AddBlocks(
       ast::OverloadSet const& os) {
-    absl::flat_hash_map<ast::Expression const*, ir::BasicBlock*> result;
+    absl::flat_hash_map<ast::Expression const*, BasicBlock*> result;
     for (auto const* overload : os.members()) {
       result.emplace(overload, AddBlock());
     }
@@ -95,8 +95,8 @@ struct Builder {
   template <typename Lhs, typename Rhs>
   RegOr<bool> Lt(Lhs const& lhs, Rhs const& rhs) {
     using type = reduced_type_t<Lhs>;
-    if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
-                  base::meta<Rhs>.template is_a<ir::RegOr>()) {
+    if constexpr (base::meta<Lhs>.template is_a<RegOr>() and
+                  base::meta<Rhs>.template is_a<RegOr>()) {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return LtInstruction<type>::Apply(lhs.value(), rhs.value());
       }
@@ -111,8 +111,8 @@ struct Builder {
   template <typename Lhs, typename Rhs>
   RegOr<bool> Le(Lhs const& lhs, Rhs const& rhs) {
     using type = reduced_type_t<Lhs>;
-    if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
-                  base::meta<Rhs>.template is_a<ir::RegOr>()) {
+    if constexpr (base::meta<Lhs>.template is_a<RegOr>() and
+                  base::meta<Rhs>.template is_a<RegOr>()) {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return LeInstruction<type>::Apply(lhs.value(), rhs.value());
       }
@@ -130,8 +130,8 @@ struct Builder {
     using type = reduced_type_t<Lhs>;
     if constexpr (base::meta<type> == base::meta<bool>) {
       return EqBool(lhs, rhs);
-    } else if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
-                         base::meta<Rhs>.template is_a<ir::RegOr>()) {
+    } else if constexpr (base::meta<Lhs>.template is_a<RegOr>() and
+                         base::meta<Rhs>.template is_a<RegOr>()) {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return EqInstruction<type>::Apply(lhs.value(), rhs.value());
       }
@@ -147,8 +147,8 @@ struct Builder {
     using type = reduced_type_t<Lhs>;
     if constexpr (std::is_same_v<type, bool>) {
       return NeBool(lhs, rhs);
-    } else if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
-                         base::meta<Rhs>.template is_a<ir::RegOr>()) {
+    } else if constexpr (base::meta<Lhs>.template is_a<RegOr>() and
+                         base::meta<Rhs>.template is_a<RegOr>()) {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return NeInstruction<type>::Apply(lhs.value(), rhs.value());
       }
@@ -173,50 +173,45 @@ struct Builder {
   }
 
   template <typename ToType>
-  RegOr<ToType> CastTo(type::Type t, base::untyped_buffer_view buffer) {
-    if (t == GetType<ToType>()) { return buffer.get<RegOr<ToType>>(0); }
+  RegOr<ToType> CastTo(type::Type t, PartialResultRef const& buffer) {
+    if (t == GetType<ToType>()) { return buffer.get<ToType>(); }
     if (auto const* p = t.if_as<type::Primitive>()) {
       return p->Apply([&]<typename T>()->RegOr<ToType> {
-        return Cast<T, ToType>(buffer.get<RegOr<T>>(0));
+        return Cast<T, ToType>(buffer.get<T>());
       });
     } else if (t.is<type::Enum>()) {
       if constexpr (base::meta<ToType> ==
                     base::meta<type::Enum::underlying_type>) {
-        return buffer.get<ir::RegOr<type::Enum::underlying_type>>(0);
+        return buffer.get<type::Enum::underlying_type>();
       } else {
         return Cast<type::Enum::underlying_type, ToType>(
-            buffer.get<type::Enum::underlying_type>(0));
+            buffer.get<type::Enum::underlying_type>());
       }
     } else if (t.is<type::Flags>()) {
       if constexpr (base::meta<ToType> ==
                     base::meta<type::Flags::underlying_type>) {
-        return buffer.get<ir::RegOr<type::Flags::underlying_type>>(0);
+        return buffer.get<type::Flags::underlying_type>();
       } else {
         return Cast<type::Flags::underlying_type, ToType>(
-            buffer.get<type::Flags::underlying_type>(0));
+            buffer.get<type::Flags::underlying_type>());
       }
     } else {
       UNREACHABLE(base::meta<ToType>, ", ", t);
     }
   }
 
-  template <typename ToType>
-  RegOr<ToType> CastTo(type::Typed<ir::PartialResultBuffer> const& buffer) {
-    return CastTo<ToType>(buffer.type(), (*buffer)[0].raw());
-  }
-
   template <typename FromType, typename ToType>
   RegOr<ToType> Cast(RegOr<FromType> r) {
     if constexpr (base::meta<ToType> == base::meta<FromType>) {
       return r;
-    } else if constexpr ((base::meta<FromType> == base::meta<ir::Integer> and
+    } else if constexpr ((base::meta<FromType> == base::meta<Integer> and
                           std::is_integral_v<ToType>) or
                          base::meta<FromType>.template converts_to<ToType>()) {
       if (r.is_reg()) {
         return CurrentBlock()->Append(CastInstruction<ToType(FromType)>{
             .value = r.reg(), .result = CurrentGroup()->Reserve()});
       } else {
-        if constexpr (base::meta<FromType> == base::meta<ir::Integer>) {
+        if constexpr (base::meta<FromType> == base::meta<Integer>) {
           return static_cast<ToType>(r.value().value());
         } else {
           return static_cast<ToType>(r.value());
@@ -275,8 +270,7 @@ struct Builder {
     auto* data_ptr_type = type::Ptr(t->data_type());
 
     auto ptr = PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
-    auto end_ptr =
-        PtrIncr(ptr, static_cast<int32_t>(t->length()), data_ptr_type);
+    auto end_ptr = PtrIncr(ptr, t->length().value(), data_ptr_type);
 
     auto* start_block = CurrentBlock();
     auto* loop_body   = AddBlock();
@@ -306,7 +300,10 @@ struct Builder {
 
   Reg PtrFix(Reg r, type::Type desired_type) {
     // TODO must this be a register if it's loaded?
-    return desired_type.get()->is_big() ? r : Load(r, desired_type).get<Reg>();
+    if (desired_type.get()->is_big()) { return r; }
+    ir::PartialResultBuffer buffer;
+    Load(r, desired_type, buffer);
+    return buffer.get<Reg>(0);
   }
 
   template <typename T>
@@ -330,24 +327,25 @@ struct Builder {
     return result;
   }
 
-  Value Load(RegOr<addr_t> r, type::Type t) {
-    using base::stringify;
+  void Load(RegOr<addr_t> r, type::Type t, PartialResultBuffer& out) {
     LOG("Load", "Calling Load(%s, %s)", r, t.to_string());
-    if (t.is<type::Function>()) { return Value(Load<Fn>(r, t)); }
-    if (t.is<type::Pointer>()) { return Value(Load<addr_t>(r, t)); }
-    if (t.is<type::Enum>()) {
-      return Value(Load<type::Enum::underlying_type>(r, t));
+    if (t.is<type::Function>()) {
+      out.append(Load<Fn>(r, t));
+    } else if (t.is<type::Pointer>()) {
+      out.append(Load<addr_t>(r, t));
+    } else if (t.is<type::Enum>()) {
+      out.append(Load<type::Enum::underlying_type>(r, t));
+    } else if (t.is<type::Flags>()) {
+      out.append(Load<type::Flags::underlying_type>(r, t));
+    } else {
+      t.as<type::Primitive>().Apply(
+          [&]<typename T>() { return out.append(Load<T>(r, t)); });
     }
-    if (t.is<type::Flags>()) {
-      return Value(Load<type::Flags::underlying_type>(r, t));
-    }
-    return t.as<type::Primitive>().Apply(
-        [&]<typename T>() { return Value(Load<T>(r, t)); });
   }
 
   template <typename T>
   void Store(T r, RegOr<addr_t> addr) {
-    if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
+    if constexpr (base::meta<T>.template is_a<RegOr>()) {
       auto& blk = *CurrentBlock();
       blk.load_store_cache().clear<typename T::type>();
       blk.Append(
@@ -440,7 +438,7 @@ struct Builder {
 
   void MakeBlock(Block block, std::vector<RegOr<Fn>> befores,
                  std::vector<RegOr<Jump>> afters);
-  void MakeScope(ir::Scope scope, std::vector<RegOr<Jump>> inits,
+  void MakeScope(Scope scope, std::vector<RegOr<Jump>> inits,
                  std::vector<RegOr<Fn>> dones,
                  absl::flat_hash_map<std::string_view, Block> blocks);
 
@@ -472,8 +470,8 @@ struct Builder {
     return current_.block_termination_state_;
   }
 
-  ir::Reg addr(ast::Declaration::Id const* id) const { return addr_.at(id); }
-  void set_addr(ast::Declaration::Id const* id, ir::Reg addr) {
+  Reg addr(ast::Declaration::Id const* id) const { return addr_.at(id); }
+  void set_addr(ast::Declaration::Id const* id, Reg addr) {
     addr_.emplace(id, addr);
   }
 
@@ -482,11 +480,11 @@ struct Builder {
   static type::Type GetType() {
     if constexpr (base::meta<T> == base::meta<bool>) {
       return type::Bool;
-    } else if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+    } else if constexpr (base::meta<T> == base::meta<Integer>) {
       return type::Integer;
-    } else if constexpr (base::meta<T> == base::meta<ir::Char>) {
+    } else if constexpr (base::meta<T> == base::meta<Char>) {
       return type::Char;
-    } else if constexpr (base::meta<T> == base::meta<ir::memory_t>) {
+    } else if constexpr (base::meta<T> == base::meta<memory_t>) {
       return type::Byte;
     } else if constexpr (base::meta<T> == base::meta<int8_t>) {
       return type::I8;
@@ -508,13 +506,13 @@ struct Builder {
       return type::F32;
     } else if constexpr (base::meta<T> == base::meta<double>) {
       return type::F64;
-    } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
+    } else if constexpr (base::meta<T> == base::meta<Block>) {
       return type::Block;
     } else if constexpr (base::meta<T> == base::meta<type::Type>) {
       return type::Type_;
-    } else if constexpr (base::meta<T> == base::meta<ir::Scope>) {
+    } else if constexpr (base::meta<T> == base::meta<Scope>) {
       return type::Scope;
-    } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
+    } else if constexpr (base::meta<T> == base::meta<ModuleId>) {
       return type::Module;
     } else if constexpr (base::meta<T> == base::meta<interface::Interface>) {
       return type::Interface;
@@ -555,7 +553,7 @@ struct Builder {
   } current_;
 
   // Stores addresses of local identifiers
-  absl::flat_hash_map<ast::Declaration::Id const *, ir::Reg> addr_;
+  absl::flat_hash_map<ast::Declaration::Id const *, Reg> addr_;
 };
 
 struct SetCurrent : public base::UseWithScope {

@@ -12,11 +12,11 @@ void PartialResultBuffer::append(PartialResultBuffer const &value) {
   buffer_.write(buffer_.size(), value.buffer_);
 }
 
-void PartialResultBuffer::append(PartialResultRef const &value) {
+void PartialResultBuffer::append(PartialResultRef value) {
   offsets_.push_back(internal_result_buffer::Offset{
       .index       = static_cast<uint32_t>(buffer_.size()),
       .is_register = value.is_register()});
-  buffer_.write(buffer_.size(), value.raw().data(), value.raw().size());
+  buffer_.write(buffer_.size(), value.view_.data(), value.view_.size());
 }
 
 void PartialResultBuffer::append(CompleteResultBuffer const &value) {
@@ -30,12 +30,15 @@ void PartialResultBuffer::append(CompleteResultBuffer const &value) {
   buffer_.write(buffer_.size(), value.buffer_);
 }
 
-void CompleteResultBuffer::append(CompleteResultRef const &value) {
+void CompleteResultBuffer::append(CompleteResultRef value) {
   offsets_.push_back(buffer_.size());
-  buffer_.write(buffer_.size(), value.raw().data(), value.raw().size());
+  buffer_.write(buffer_.size(), value.view_.data(), value.view_.size());
 }
 
 void PartialResultBuffer::append() {
+  if constexpr (internal_result_buffer::kResultBufferDebug) {
+    buffer_.append(base::meta<void>.value());
+  }
   offsets_.push_back(
       offsets_.empty()
           ? internal_result_buffer::Offset{.index = 0, .is_register = 0}
@@ -67,6 +70,9 @@ void CompleteResultBuffer::append(CompleteResultBuffer const &value) {
 }
 
 void CompleteResultBuffer::append() {
+  if constexpr (internal_result_buffer::kResultBufferDebug) {
+    buffer_.append(base::meta<void>.value());
+  }
   offsets_.push_back(offsets_.empty() ? 0 : offsets_.back());
 }
 
@@ -90,4 +96,39 @@ PartialResultBuffer::PartialResultBuffer(CompleteResultBuffer buffer)
         internal_result_buffer::Offset{.index = offset, .is_register = 0});
   }
 }
+
+addr_t CompleteResultBuffer::append_slot(size_t slot_size) {
+  offsets_.push_back(buffer_.size());
+  if constexpr (internal_result_buffer::kResultBufferDebug) {
+    buffer_.append(base::meta<internal_result_buffer::UnknownTag>.value());
+  }
+  size_t size = buffer_.size();
+  buffer_.append_bytes(slot_size);
+
+  return buffer_.raw(size);
+}
+
+void CompleteResultBuffer::reserve_bytes(size_t num_entries, size_t num_bytes) {
+  offsets_.reserve(num_entries);
+  if constexpr (internal_result_buffer::kResultBufferDebug) {
+    num_bytes += sizeof(base::MetaValue) * num_entries;
+  }
+  buffer_.reserve(num_bytes);
+}
+
+bool operator==(CompleteResultBuffer const &lhs,
+                CompleteResultBuffer const &rhs) {
+  if (lhs.offsets_ != rhs.offsets_) { return false; }
+  if (lhs.buffer_.size() != rhs.buffer_.size()) { return false; }
+  auto lhs_iter = lhs.buffer_.begin();
+  auto rhs_iter = rhs.buffer_.begin();
+  while (lhs_iter != lhs.buffer_.end()) {
+    if (lhs_iter.read<std::byte>().get() != lhs_iter.read<std::byte>().get()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 }  // namespace ir

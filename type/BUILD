@@ -72,7 +72,7 @@ cc_library(
         ":type",
         ":typed_value",
         "//core:arguments",
-        "//ir/value",
+        "//ir/value:result_buffer",
     ],
 )
 

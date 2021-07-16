@@ -31,7 +31,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       // TODO: Not entirely sure this is what the semantics ought to be.
     case ast::UnaryOperator::Kind::Move: {
       auto operand_type = context().qual_types(node->operand())[0].type();
-      auto reg = builder().TmpAlloca(operand_type);
+      auto reg          = builder().TmpAlloca(operand_type);
       EmitToBuffer(node->operand(), out);
       EmitMoveInit(type::Typed<ir::Reg>(reg, operand_type), out);
       out.clear();
@@ -101,14 +101,9 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
     } break;
     case ast::UnaryOperator::Kind::At: {
       type::Type t = context().qual_types(node)[0].type();
-      EmitToBuffer(node->operand(), out);
-      auto result = builder().Load(out.get<ir::addr_t>(0), t);
-      out.clear();
-      ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
-                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
-          t, [&]<typename T>() { out.append(result.get<T>()); });
+      ir::PartialResultBuffer buffer;
+      EmitToBuffer(node->operand(), buffer);
+      builder().Load(out.get<ir::addr_t>(0), t, out);
       return;
     } break;
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));
@@ -137,8 +132,8 @@ void Compiler::EmitCopyInit(
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitCopyAssign(to[0],
-                       ValueView(context().qual_types(node)[0].type(), buffer));
+        EmitCopyAssign(
+            to[0], type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }
@@ -163,8 +158,8 @@ void Compiler::EmitMoveInit(
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitMoveAssign(to[0],
-                       ValueView(context().qual_types(node)[0].type(), buffer));
+        EmitMoveAssign(
+            to[0], type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }
@@ -195,8 +190,8 @@ void Compiler::EmitCopyAssign(
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitMoveAssign(to[0],
-                       ValueView(context().qual_types(node)[0].type(), buffer));
+        EmitMoveAssign(
+            to[0], type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }
@@ -222,8 +217,8 @@ void Compiler::EmitMoveAssign(
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitMoveAssign(to[0],
-                       ValueView(context().qual_types(node)[0].type(), buffer));
+        EmitMoveAssign(
+            to[0], type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }

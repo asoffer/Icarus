@@ -28,7 +28,7 @@ void Compiler::EmitMoveAssign(
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveAssign(to[0],
-                 ValueView(context().qual_types(node)[0].type(), buffer));
+                 type::Typed(buffer[0], context().qual_types(node)[0].type()));
 }
 
 void Compiler::EmitCopyAssign(
@@ -38,7 +38,7 @@ void Compiler::EmitCopyAssign(
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyAssign(to[0],
-                 ValueView(context().qual_types(node)[0].type(), buffer));
+                 type::Typed(buffer[0], context().qual_types(node)[0].type()));
 }
 
 void Compiler::EmitMoveInit(
@@ -65,7 +65,9 @@ void Compiler::EmitMoveInit(
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
       } else {
-        EmitCopyAssign(field_reg, ValueView(field.type, field.initial_value));
+        ir::CompleteResultBuffer buffer;
+        ToComplete(field.initial_value, field.type, buffer);
+        EmitCopyAssign(field_reg, type::Typed(buffer[0], field.type));
       }
     }
   next_field:;
@@ -108,7 +110,9 @@ void Compiler::EmitCopyInit(
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
       } else {
-        EmitCopyAssign(field_reg, ValueView(field.type, field.initial_value));
+        ir::CompleteResultBuffer buffer;
+        ToComplete(field.initial_value, field.type, buffer);
+        EmitCopyAssign(field_reg, type::Typed(buffer[0], field.type));
       }
     }
   next_field:;

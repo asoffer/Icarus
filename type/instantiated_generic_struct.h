@@ -14,17 +14,19 @@ struct InstantiatedGenericStruct : Struct {
 
   GenericStruct const &generic() const { return *generic_; }
 
-  void set_arguments(core::Arguments<type::Typed<ir::Value>> args) {
+  void set_arguments(
+      core::Arguments<type::Typed<ir::CompleteResultBuffer>> args) {
     arguments_ = std::move(args);
   }
 
-  core::Arguments<type::Typed<ir::Value>> const &arguments() const {
+  core::Arguments<type::Typed<ir::CompleteResultBuffer>> const &arguments()
+      const {
     return arguments_;
   }
 
  private:
   GenericStruct const *generic_;
-  core::Arguments<type::Typed<ir::Value>> arguments_;
+  core::Arguments<type::Typed<ir::CompleteResultBuffer>> arguments_;
 };
 
 }  // namespace type

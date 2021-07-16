@@ -94,6 +94,7 @@ cc_library(
     srcs = ["generic_fn.cc"],
     deps = [
         ":native_fn",
+        ":result_buffer",
         "//base:any_invocable",
         "//base:extend",
         "//base/extend:absl_hash",
@@ -111,7 +112,7 @@ cc_test(
     deps = [
         ":generic_fn",
         ":reg_or",
-        ":value",
+        ":result_buffer",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -247,6 +248,7 @@ cc_library(
     hdrs = ["result_buffer.h"],
     srcs = ["result_buffer.cc"],
     deps = [
+        ":addr",
         ":reg_or",
         "//base:meta",
         "//base:untyped_buffer",

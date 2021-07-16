@@ -45,13 +45,7 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
     if ((decl_span[0]->flags() &
          (ast::Declaration::f_IsBlockParam | ast::Declaration::f_IsOutput)) and
         not t.get()->is_big()) {
-      ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
-                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
-          t, [&]<typename T>() {
-            out.append(builder().Load(reg, t).get<ir::RegOr<T>>());
-          });
+      builder().Load(reg, t, out);
     } else {
       ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
                  uint8_t, uint16_t, uint32_t, uint64_t, float, double,
@@ -80,7 +74,7 @@ void Compiler::EmitCopyAssign(
   auto t = context().qual_types(node)[0].type();
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0], ValueView(t, buffer));
+  EmitCopyAssign(to[0], type::Typed(buffer[0], t));
 }
 
 void Compiler::EmitMoveAssign(
@@ -90,7 +84,7 @@ void Compiler::EmitMoveAssign(
   auto t = context().qual_types(node)[0].type();
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0], ValueView(t, buffer));
+  EmitMoveAssign(to[0], type::Typed(buffer[0], t));
 }
 
 ir::Reg Compiler::EmitRef(ast::Identifier const *node) {

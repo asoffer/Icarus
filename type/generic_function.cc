@@ -14,12 +14,12 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
 }
 
 Function const *GenericFunction::concrete(
-    core::Arguments<Typed<ir::Value>> const &args) const {
+    core::Arguments<Typed<ir::CompleteResultRef>> const &args) const {
   return gen_fn_(args);
 }
 
 std::vector<type::Type> GenericFunction::return_types(
-    core::Arguments<type::Typed<ir::Value>> const &args) const {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) const {
   return concrete(args)->return_types(args);
 }
 

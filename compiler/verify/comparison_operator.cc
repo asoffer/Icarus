@@ -143,8 +143,10 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ComparisonOperator co
       // TODO: Calling with constants?
       auto result = VerifyBinaryOverload(
           token, node,
-          type::Typed<ir::Value>(ir::Value(), lhs_qual_type.type()),
-          type::Typed<ir::Value>(ir::Value(), rhs_qual_type.type()));
+          type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
+                                             lhs_qual_type.type()),
+          type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
+                                             rhs_qual_type.type()));
       qt.remove_constant();
 
       if (not result.ok()) {

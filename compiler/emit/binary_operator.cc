@@ -320,7 +320,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::AddInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
-                      .rhs    = builder().CastTo<T>(type::Typed(out, rhs_type)),
+                      .rhs    = builder().CastTo<T>(rhs_type, out[0]),
                       .result = builder().CurrentGroup()->Reserve()}),
                   lhs_lval);
             });
@@ -346,7 +346,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::SubInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
-                      .rhs    = builder().CastTo<T>(type::Typed(out, rhs_type)),
+                      .rhs    = builder().CastTo<T>(rhs_type, out[0]),
                       .result = builder().CurrentGroup()->Reserve()}),
                   lhs_lval);
             });
@@ -363,7 +363,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         builder().Store<ir::RegOr<T>>(
             current_block()->Append(ir::MulInstruction<T>{
                 .lhs    = builder().Load<T>(lhs_lval),
-                .rhs    = builder().CastTo<T>(type::Typed(out, rhs_type)),
+                .rhs    = builder().CastTo<T>(rhs_type, out[0]),
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       });
@@ -380,7 +380,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
             builder().Store<ir::RegOr<T>>(
                 current_block()->Append(ir::DivInstruction<T>{
                     .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = builder().CastTo<T>(type::Typed(out, rhs_type)),
+                    .rhs    = builder().CastTo<T>(rhs_type, out[0]),
                     .result = builder().CurrentGroup()->Reserve()}),
                 lhs_lval);
           });
@@ -392,15 +392,14 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       type::Type lhs_type = context().qual_types(node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(node->rhs())[0].type();
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                 uint16_t, uint32_t, uint64_t>(
-          lhs_type, [&]<typename T>() {
-            builder().Store<ir::RegOr<T>>(
-                current_block()->Append(ir::ModInstruction<T>{
-                    .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = builder().CastTo<T>(type::Typed(out, rhs_type)),
-                    .result = builder().CurrentGroup()->Reserve()}),
-                lhs_lval);
-          });
+                 uint16_t, uint32_t, uint64_t>(lhs_type, [&]<typename T>() {
+        builder().Store<ir::RegOr<T>>(
+            current_block()->Append(ir::ModInstruction<T>{
+                .lhs    = builder().Load<T>(lhs_lval),
+                .rhs    = builder().CastTo<T>(rhs_type, out[0]),
+                .result = builder().CurrentGroup()->Reserve()}),
+            lhs_lval);
+      });
       return;
     } break;
 
@@ -416,7 +415,7 @@ void Compiler::EmitCopyInit(
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 ValueView(t, buffer[0].raw()));
+                 type::Typed(buffer[0], t));
 }
 
 void Compiler::EmitMoveInit(
@@ -427,7 +426,7 @@ void Compiler::EmitMoveInit(
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 ValueView(t, buffer[0].raw()));
+                 type::Typed(buffer[0], t));
 }
 
 void Compiler::EmitMoveAssign(
@@ -438,7 +437,7 @@ void Compiler::EmitMoveAssign(
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 ValueView(t, buffer[0].raw()));
+                 type::Typed(buffer[0], t));
 }
 
 void Compiler::EmitCopyAssign(
@@ -449,7 +448,7 @@ void Compiler::EmitCopyAssign(
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
   EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(*to[0], t),
-                 ValueView(t, buffer[0].raw()));
+                 type::Typed(buffer[0], t));
 }
 
 bool Compiler::PatternMatch(

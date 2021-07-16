@@ -216,8 +216,8 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
   auto gen = [node, instantiation_compiler = Compiler(c.resources()),
               cg = c.builder().CurrentGroup()](
-                 core::Arguments<type::Typed<ir::Value>> const &args) mutable
-      -> type::Function const * {
+                 core::Arguments<type::Typed<ir::CompleteResultRef>> const
+                     &args) mutable -> type::Function const * {
     auto [params, rets_ref, context, inserted] =
         instantiation_compiler.Instantiate(node, args);
 

@@ -17,8 +17,8 @@ namespace type {
 // `Array` is a type representing a fixed number (the `length`) of contiguous
 // values of a given type (the `data_type`).
 struct Array : LegacyType {
-  using length_t = uint64_t; // TODO: Replace this with ir::Integer.
-  static type::Type LengthType() { return type::U64; }
+  using length_t = ir::Integer;
+  static type::Type LengthType() { return type::Integer; }
 
   // Construct a new array from the given parameters, or if one already exists
   // in the cache, return that.
@@ -32,7 +32,7 @@ struct Array : LegacyType {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  constexpr length_t length() const { return len_; }
+  length_t length() const { return len_; }
   Type data_type() const { return data_type_; }
 
   Completeness completeness() const override {

@@ -25,7 +25,7 @@ void Array::WriteTo(std::string *result) const {
 
 core::Bytes Array::bytes(core::Arch const &a) const {
   return core::FwdAlign(data_type().bytes(a), data_type().alignment(a)) *
-         length();
+         length().value();
 }
 
 core::Alignment Array::alignment(core::Arch const &a) const {

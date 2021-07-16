@@ -20,7 +20,7 @@ struct GenericStruct : Callable {
 
   void set_invocable(
       base::any_invocable<std::pair<core::Params<QualType>, Struct const *>(
-          core::Arguments<Typed<ir::Value>> const &)>
+          core::Arguments<Typed<ir::CompleteResultRef>> const &)>
           fn) {
     gen_ = std::move(fn);
   }
@@ -32,11 +32,13 @@ struct GenericStruct : Callable {
   }
 
   std::vector<type::Type> return_types(
-      core::Arguments<type::Typed<ir::Value>> const &args) const override {
+      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args)
+      const override {
     return {Type(Type_)};
   }
 
-  auto Instantiate(core::Arguments<Typed<ir::Value>> const &args) const {
+  auto Instantiate(
+      core::Arguments<Typed<ir::CompleteResultRef>> const &args) const {
     return gen_(args);
   }
 
@@ -50,7 +52,7 @@ struct GenericStruct : Callable {
  private:
   // TODO: Eventually we will want a serializable version of this.
   base::any_invocable<std::pair<core::Params<QualType>, Struct const *>(
-      core::Arguments<Typed<ir::Value>> const &)>
+      core::Arguments<Typed<ir::CompleteResultRef>> const &)>
       gen_;
 };
 

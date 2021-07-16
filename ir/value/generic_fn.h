@@ -11,10 +11,10 @@
 #include "base/extend/equality.h"
 #include "core/arguments.h"
 #include "ir/value/native_fn.h"
+#include "ir/value/result_buffer.h"
 #include "type/typed_value.h"
 
 namespace ir {
-struct Value;
 
 // A `GenericFn` is a callable object which either requires some of the
 // arguments passed in to be known at compile-time and/or deduces the types of
@@ -32,10 +32,12 @@ struct GenericFn : base::Extend<GenericFn, 1>::With<base::EqualityExtension,
   static constexpr std::string_view kAbslFormatString = "GenericFn(id = %u)";
   explicit GenericFn()                                = default;
   explicit GenericFn(
-      base::any_invocable<NativeFn(core::Arguments<type::Typed<Value>> const &)>
+      base::any_invocable<
+          NativeFn(core::Arguments<type::Typed<CompleteResultRef>> const &)>
           gen);
 
-  NativeFn concrete(core::Arguments<type::Typed<Value>> const &args) const;
+  NativeFn concrete(
+      core::Arguments<type::Typed<CompleteResultRef>> const &args) const;
 
  private:
   friend base::EnableExtensions;

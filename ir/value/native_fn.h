@@ -19,6 +19,7 @@ namespace ir {
 // distinguished from foreign functions.
 struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslHashExtension> {
   static constexpr std::string_view kAbslFormatString = "NativeFn(data = %p)";
+  using prefer_wrapper_for_type_erasure               = void;
 
   struct Data {
     CompiledFn *fn;

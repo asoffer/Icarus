@@ -15,7 +15,7 @@ INSTANTIATE_TEST_SUITE_P(
                                return a
                              })(3)
                              )",
-                                      .expected = ir::Value(int64_t{3})},
+                                      .expected = int64_t{3}},
                        test::TestCase{.expr     = R"(((n: i64, m: i64) -> i64 {
                                  a: i64
                                  b: i64
@@ -23,7 +23,7 @@ INSTANTIATE_TEST_SUITE_P(
                                return 10 * a + b
                              })(1, 2)
                              )",
-                                      .expected = ir::Value(int64_t{12})},
+                                      .expected = int64_t{12}},
                        test::TestCase{.expr     = R"((() -> i64 {
                                 a := 1
                                 b := 2
@@ -31,7 +31,7 @@ INSTANTIATE_TEST_SUITE_P(
                                return 10 * a + b
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{21})},
+                                      .expected = int64_t{21}},
                        // Auto-generated assignment
                        test::TestCase{.expr     = R"((() -> i64 {
                                   S ::= struct {
@@ -43,7 +43,7 @@ INSTANTIATE_TEST_SUITE_P(
                                return 10 * s1._a + s2._a
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{21})},
+                                      .expected = int64_t{21}},
                        // User-specified copy-assign
                        test::TestCase{.expr     = R"((() -> i64 {
                                   S ::= struct {
@@ -58,7 +58,7 @@ INSTANTIATE_TEST_SUITE_P(
                                return 10 * s1._a + s2._a
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{21})},
+                                      .expected = int64_t{21}},
                        // User-specified move-assign
                        test::TestCase{.expr     = R"((() -> i64 {
                                   S ::= struct {
@@ -73,7 +73,7 @@ INSTANTIATE_TEST_SUITE_P(
                                return 10 * s1._a + s2._a
                              })()
                              )",
-                                      .expected = ir::Value(int64_t{21})},
+                                      .expected = int64_t{21}},
                        // Assignment from constants allows implicit conversion
                        test::TestCase{.expr     = R"(((n: i64) -> i64 {
                                   a: i64
@@ -81,7 +81,7 @@ INSTANTIATE_TEST_SUITE_P(
                                return a
                              })(3)
                              )",
-                                      .expected = ir::Value(int64_t{7})}}));
+                                      .expected = int64_t{7}}}));
 
 }  // namespace
 }  // namespace compiler

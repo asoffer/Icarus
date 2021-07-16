@@ -25,45 +25,26 @@ void Execute(ir::NativeFn fn) {
 
 template <typename InstSet>
 ir::CompleteResultBuffer EvaluateToBuffer(ir::NativeFn fn) {
-  // TODO: Support multiple outputs.
   LOG("EvaluateToBuffer", "%s", fn);
 
   ASSERT(fn.type()->output().size() != 0u);
-  auto t               = fn.type()->output()[0];
-  core::Bytes required = t.bytes(kArchitecture);
-  auto ret_buf         = base::untyped_buffer::MakeFull(required.value());
 
   ExecutionContext ctx;
   StackFrame frame(fn, ctx.stack());
 
-  // TODO: Remove cast when untyped_buffer handles std::byte
-  frame.regs_.set<ir::addr_t>(ir::Reg::Out(0),
-                              reinterpret_cast<ir::addr_t>(ret_buf.raw(0)));
-  ctx.Execute<InstSet>(fn, frame);
-
-  LOG("EvaluateToBuffer", "Result buffer = %s", ret_buf.to_string());
-
   ir::CompleteResultBuffer result;
-  if (t.is<type::Pointer>()) {
-    result.append(ret_buf.get<ir::addr_t>(0));
-  } else if (t.is<type::Function>()) {
-    result.append(ret_buf.get<ir::Fn>(0));
-  } else if (t.is<type::Slice>()) {
-    result.append(ret_buf.get<ir::Slice>(0));
-  } else if (t.is<type::Enum>()) {
-    result.append(ret_buf.get<type::Enum::underlying_type>(0));
-  } else if (t.is<type::Flags>()) {
-    result.append(ret_buf.get<type::Flags::underlying_type>(0));
-  } else if (t.is<type::Jump>()) {
-    result.append(ret_buf.get<ir::Jump>(0));
-  } else if (t.is<type::GenericStruct>()) {
-    result.append(ret_buf.get<ir::GenericFn>(0));
-  } else if (auto const *p = t.if_as<type::Primitive>()) {
-    p->Apply([&]<typename T>() { result.append(ret_buf.template get<T>(0)); });
-  } else {
-    NOT_YET(t);
+  auto outputs = fn.type()->output();
+
+  core::Bytes total;
+  for (auto t : outputs) { total += t.bytes(kArchitecture); }
+  result.reserve_bytes(outputs.size(), total.value());
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    frame.regs_.set<ir::addr_t>(
+        ir::Reg::Out(i),
+        result.append_slot(outputs[i].bytes(kArchitecture).value()));
   }
 
+  ctx.Execute<InstSet>(fn, frame);
   return result;
 }
 

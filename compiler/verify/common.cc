@@ -18,7 +18,7 @@ namespace {
 
 void ExtractParams(
     ast::Expression const *callee, type::Callable const *callable,
-    core::Arguments<type::Typed<ir::Value>> const &args,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args,
     std::vector<std::tuple<ast::Expression const *, type::Callable const *,
                            core::Params<type::QualType>>> &overload_params,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
@@ -106,14 +106,14 @@ void AddOverloads(Context const &context, ast::Expression const *callee,
 
 // TODO: There's something strange about this: We want to work on a temporary
 // data/compiler, but using `this` makes it feel more permanent.
-core::Params<std::pair<ir::Value, type::QualType>>
+core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>>
 Compiler::ComputeParamsFromArgs(
     ast::ParameterizedExpression const *node,
-    core::Arguments<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
   LOG("generic-fn", "Creating a concrete implementation with %s",
       args.Transform([](auto const &a) { return a.type().to_string(); }));
 
-  core::Params<std::pair<ir::Value, type::QualType>> parameters(
+  core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> parameters(
       node->params().size());
 
   for (auto [index, dep_node] : node->ordered_dependency_nodes()) {
@@ -123,7 +123,7 @@ Compiler::ComputeParamsFromArgs(
         id);
     switch (dep_node.kind()) {
       case core::DependencyNodeKind::ArgValue: {
-        ir::Value val;
+        ir::CompleteResultRef val;
         if (index < args.pos().size()) {
           val = *args[index];
         } else if (auto const *a = args.at_or_null(id)) {
@@ -139,15 +139,9 @@ Compiler::ComputeParamsFromArgs(
             for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
             NOT_YET();
           } else {
-            val = ToValue(
-                std::get<ir::CompleteResultBuffer>(std::move(maybe_result))
-                    .buffer(),
-                t);
+            val = std::get<ir::CompleteResultBuffer>(maybe_result)[0];
           }
         }
-
-        // Erase values not known at compile-time.
-        if (val.get_if<ir::Reg>()) { val = ir::Value(); }
 
         LOG("generic-fn", "... %s", val);
         context().set_arg_value(id, val);
@@ -190,15 +184,16 @@ Compiler::ComputeParamsFromArgs(
         // implicit casts are allowed.
         LOG("generic-fn", "... %s", qt.to_string());
         size_t i = *ASSERT_NOT_NULL(node->params().at_or_null(id));
-        parameters.set(i, core::Param<std::pair<ir::Value, type::QualType>>(
-                              id, std::make_pair(ir::Value(), qt),
-                              node->params()[i].flags));
+        parameters.set(
+            i, core::Param<std::pair<ir::CompleteResultBuffer, type::QualType>>(
+                   id, std::make_pair(ir::CompleteResultBuffer(), qt),
+                   node->params()[i].flags));
       } break;
       case core::DependencyNodeKind::ParamValue: {
         // Find the argument associated with this parameter.
         // TODO, if the type is wrong but there is an implicit cast, deal with
         // that.
-        type::Typed<ir::Value> arg;
+        type::Typed<ir::CompleteResultRef> arg;
         if (index < args.pos().size()) {
           arg = args[index];
           LOG("generic-fn", "%s %s", *arg, arg.type().to_string());
@@ -214,12 +209,8 @@ Compiler::ComputeParamsFromArgs(
             for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
             NOT_YET();
           } else {
-            arg = type::Typed<ir::Value>(
-                ToValue(
-                    std::get<ir::CompleteResultBuffer>(std::move(maybe_result))
-                        .buffer(),
-                    t),
-                t);
+            arg = type::Typed(
+                std::get<ir::CompleteResultBuffer>(maybe_result)[0], t);
           }
           LOG("generic-fn", "%s", dep_node.node()->DebugString());
         }
@@ -228,13 +219,11 @@ Compiler::ComputeParamsFromArgs(
         if (not context().Constant(&dep_node.node()->ids()[0])) {
           // TODO complete?
           // TODO: Support multiple declarations
-          ir::CompleteResultBuffer buffer;
-          FromValue(*arg, arg.type(), buffer);
-          context().SetConstant(&dep_node.node()->ids()[0], buffer);
+          context().SetConstant(&dep_node.node()->ids()[0], *arg);
         }
 
         size_t i = *ASSERT_NOT_NULL(node->params().at_or_null(id));
-        parameters[i].value.first = *arg;
+        parameters[i].value.first.append(*arg);
       } break;
     }
   }
@@ -262,17 +251,19 @@ std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
   return type_params;
 }
 
-std::optional<core::Arguments<type::Typed<ir::Value>>>
-Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args) {
+std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>
+Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args,
+                          ir::CompleteResultBuffer &out) {
   bool err = false;
-  core::Arguments<type::Typed<ir::Value>> arg_vals;
+  core::Arguments<type::Typed<ir::CompleteResultRef>> arg_vals;
   for (auto const &arg : args) {
-    type::Typed<ir::Value> result;
+    type::Typed<ir::CompleteResultRef> result;
     auto expr_qual_type = VerifyType(&arg.expr())[0];
     err |= not expr_qual_type.ok();
     if (err) {
       LOG("VerifyArguments", "Error with: %s", arg.expr().DebugString());
-      result = type::Typed<ir::Value>(ir::Value(), nullptr);
+      result =
+          type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(), nullptr);
     } else {
       LOG("VerifyArguments", "constant: %s", arg.expr().DebugString());
       if (expr_qual_type.constant()) {
@@ -283,14 +274,11 @@ Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args) {
                     &maybe_result)) {
           for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
         } else {
-          result = type::Typed(ToValue(std::get<ir::CompleteResultBuffer>(
-                                           std::move(maybe_result))
-                                           .buffer(),
-                                       expr_qual_type.type()),
-                               expr_qual_type.type());
+          out.append(std::get<ir::CompleteResultBuffer>(maybe_result));
+          result = type::Typed(out.back(), expr_qual_type.type());
         }
       } else {
-        result = type::Typed(ir::Value(), expr_qual_type.type());
+        result = type::Typed(ir::CompleteResultRef(), expr_qual_type.type());
       }
     }
     if (not arg.named()) {
@@ -307,7 +295,7 @@ Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args) {
 // TODO: Replace `symbol` with an enum.
 type::QualType Compiler::VerifyUnaryOverload(
     char const *symbol, ast::Expression const *node,
-    type::Typed<ir::Value> const &operand) {
+    type::Typed<ir::CompleteResultRef> const &operand) {
   absl::flat_hash_set<type::Callable const *> member_types;
 
   node->scope()->ForEachDeclIdTowardsRoot(
@@ -323,13 +311,13 @@ type::QualType Compiler::VerifyUnaryOverload(
   if (member_types.empty()) {
     return context().set_qual_type(node, type::QualType::Error())[0];
   }
-  std::vector<type::Typed<ir::Value>> pos_args;
+  std::vector<type::Typed<ir::CompleteResultRef>> pos_args;
   pos_args.emplace_back(operand);
 
   // TODO: Check that we only have one return type on each of these overloads.
   return type::QualType(
       type::MakeOverloadSet(std::move(member_types))
-          ->return_types(core::Arguments<type::Typed<ir::Value>>(
+          ->return_types(core::Arguments<type::Typed<ir::CompleteResultRef>>(
               std::move(pos_args), {}))[0],
       type::Quals::Unqualified());
 }
@@ -337,7 +325,8 @@ type::QualType Compiler::VerifyUnaryOverload(
 // TODO: Replace `symbol` with an enum.
 type::QualType Compiler::VerifyBinaryOverload(
     std::string_view symbol, ast::Expression const *node,
-    type::Typed<ir::Value> const &lhs, type::Typed<ir::Value> const &rhs) {
+    type::Typed<ir::CompleteResultRef> const &lhs,
+    type::Typed<ir::CompleteResultRef> const &rhs) {
   absl::flat_hash_set<type::Callable const *> member_types;
 
   node->scope()->ForEachDeclIdTowardsRoot(
@@ -351,13 +340,13 @@ type::QualType Compiler::VerifyBinaryOverload(
       });
 
   if (member_types.empty()) { return type::QualType::Error(); }
-  std::vector<type::Typed<ir::Value>> pos_args;
+  std::vector<type::Typed<ir::CompleteResultRef>> pos_args;
   pos_args.emplace_back(lhs);
   pos_args.emplace_back(rhs);
   // TODO: Check that we only have one return type on each of these overloads.
   return type::QualType(
       type::MakeOverloadSet(std::move(member_types))
-          ->return_types(core::Arguments<type::Typed<ir::Value>>(
+          ->return_types(core::Arguments<type::Typed<ir::CompleteResultRef>>(
               std::move(pos_args), {}))[0],
       type::Quals::Unqualified());
 }
@@ -366,7 +355,6 @@ std::pair<type::QualType,
           absl::flat_hash_map<ast::Expression const *, type::Callable const *>>
 Compiler::VerifyCallee(
     ast::Expression const *callee,
-    core::Arguments<type::Typed<ir::Value>> const &args,
     absl::flat_hash_set<type::Type> const &argument_dependent_lookup_types) {
   using return_type =
       std::pair<type::QualType, absl::flat_hash_map<ast::Expression const *,
@@ -417,7 +405,7 @@ Compiler::VerifyCall(
     ast::Call const *call_expr,
     absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
         &overload_map,
-    core::Arguments<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
   LOG("VerifyCall", "%s", call_expr->DebugString());
   absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
   std::vector<std::tuple<ast::Expression const *, type::Callable const *,
@@ -502,7 +490,6 @@ Compiler::VerifyCall(
       }
 
       os.insert(callee);
-      LOG("VerifyCall", "Inserting, %s", callable_type->return_types(args));
       if (not callable_type->is<type::GenericStruct>()) {
         quals &= ~type::Quals::Const();
       }

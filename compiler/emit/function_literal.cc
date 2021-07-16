@@ -14,8 +14,8 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
         [c = Compiler(resources()),
-         node](core::Arguments<type::Typed<ir::Value>> const &args) mutable
-        -> ir::NativeFn {
+         node](core::Arguments<type::Typed<ir::CompleteResultRef>> const
+                   &args) mutable -> ir::NativeFn {
           auto find_subcontext_result = c.FindInstantiation(node, args);
           auto &context               = find_subcontext_result.context;
 
@@ -52,7 +52,7 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
              .node      = node,
              .resources = resources_});
   }
-  out.append(f);
+  out.append(ir::Fn(f));
   return;
 }
 
@@ -127,7 +127,7 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
           EmitToBuffer(out_decl->init_val(), buffer);
           EmitCopyAssign(
               type::Typed<ir::RegOr<ir::addr_t>>(alloc, out_decl_type),
-              ValueView(out_decl_type, buffer));
+              type::Typed(buffer[0], out_decl_type));
         }
       }
     }

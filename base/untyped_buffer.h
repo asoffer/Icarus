@@ -21,9 +21,9 @@ struct untyped_buffer {
   untyped_buffer(const_iterator iter, size_t len)
       : data_(iter.raw(), iter.raw() + len) {}
 
-  untyped_buffer(size_t starting_capacity = 0) {
-    data_.reserve(starting_capacity);
-  }
+  untyped_buffer(size_t starting_capacity = 0) { reserve(starting_capacity); }
+
+  void reserve(size_t capacity) { data_.reserve(capacity); }
 
   constexpr iterator begin() { return iterator(&*data_.begin()); }
   constexpr iterator end() { return iterator(&*data_.end()); }
@@ -53,6 +53,7 @@ struct untyped_buffer {
   untyped_buffer &operator=(untyped_buffer &&that) noexcept = default;
   untyped_buffer &operator=(untyped_buffer const &that) noexcept =default;
 
+  constexpr std::byte const *data() const { return data_.data(); }
   constexpr size_t size() const { return data_.size(); }
   constexpr bool empty() const { return data_.empty(); }
 

@@ -36,8 +36,9 @@ void Compiler::EmitMoveInit(
     ast::ArrayLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  type::Array const &array_type =
-      context().qual_types(node)[0].type().as<type::Array>();
+  type::Type t = context().qual_types(node)[0].type();
+  if (t == type::EmptyArray) { return; }
+  type::Array const &array_type = t.as<type::Array>();
   auto *data_type_ptr = type::Ptr(array_type.data_type());
   auto elem = builder().Index(type::Ptr(&array_type), to[0]->reg(), 0);
   // Skip the last entry so we don't increment past the end of the array.

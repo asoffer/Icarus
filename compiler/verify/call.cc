@@ -119,7 +119,7 @@ struct UncallableWithArguments {
 
 type::QualType VerifySliceCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
     c->diag().Consume(BuiltinError{
@@ -168,7 +168,7 @@ type::QualType VerifySliceCall(
 
 type::QualType VerifyForeignCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
     c->diag().Consume(BuiltinError{
@@ -227,9 +227,9 @@ type::QualType VerifyForeignCall(
 
   if (error) { return type::QualType::Error(); }
 
-  auto const *foreign_type = arg_vals[1]->get_if<type::Type>();
-  if (not foreign_type or not(foreign_type->is<type::Function>() or
-                              foreign_type->is<type::Pointer>())) {
+  type::Type foreign_type = arg_vals[1]->get<type::Type>();
+  if (not foreign_type.is<type::Function>() and
+      not foreign_type.is<type::Pointer>()) {
     c->diag().Consume(BuiltinError{
         .range   = range,
         .message = "Builtin `foreign` may only be called when the second "
@@ -238,12 +238,12 @@ type::QualType VerifyForeignCall(
     return type::QualType::Error();
   }
 
-  return type::QualType::Constant(*foreign_type);
+  return type::QualType::Constant(foreign_type);
 }
 
 type::QualType VerifyReserveMemoryCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   type::QualType qt = type::QualType::NonConstant(type::BufPtr(type::Byte));
   size_t size       = arg_vals.size();
   if (size != 2u) {
@@ -281,7 +281,7 @@ type::QualType VerifyReserveMemoryCall(
 
 type::QualType VerifyOpaqueCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   type::QualType qt = type::QualType::Constant(
       ir::Fn(ir::BuiltinFn::Opaque()).type()->output()[0]);
   if (not arg_vals.empty()) {
@@ -295,7 +295,7 @@ type::QualType VerifyOpaqueCall(
 
 type::QualType VerifyBytesCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   auto qt = type::QualType::Constant(
       ir::Fn(ir::BuiltinFn::Bytes()).type()->output()[0]);
 
@@ -331,7 +331,7 @@ type::QualType VerifyBytesCall(
 
 type::QualType VerifyAlignmentCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   auto qt = type::QualType::Constant(
       ir::Fn(ir::BuiltinFn::Alignment()).type()->output()[0]);
 
@@ -367,7 +367,7 @@ type::QualType VerifyAlignmentCall(
 
 type::QualType VerifyCallableCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   type::Quals quals = type::Quals::Const();
   bool error = false;
 
@@ -400,7 +400,7 @@ type::QualType VerifyCallableCall(
 
 type::QualType VerifyAbortCall(
     Compiler *c, frontend::SourceRange const &range,
-    core::Arguments<type::Typed<ir::Value>> const &arg_vals) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   auto qt = type::QualType::NonConstant(type::Void);
 
   if (not arg_vals.empty()) {
@@ -436,8 +436,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
 
 not_an_interface:
 
+  ir::CompleteResultBuffer buffer;
   ASSIGN_OR(return type::QualType::ErrorSpan(),  //
-                   auto arg_vals, VerifyArguments(node->arguments()));
+                   auto arg_vals, VerifyArguments(node->arguments(), buffer));
   // TODO: consider having `foreign` be a generic type. This would allow for the
   // possibility of overlading builtins. That's a dangerous yet principled idea.
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
@@ -489,7 +490,7 @@ not_an_interface:
         context().qual_types(&arg.expr())[0].type());
   }
   auto [callee_qt, overload_map] =
-      VerifyCallee(node->callee(), arg_vals, argument_dependent_lookup_types);
+      VerifyCallee(node->callee(), argument_dependent_lookup_types);
   LOG("Call", "Callee's qual-type is %s", callee_qt);
   if (not callee_qt.ok()) {
     return context().set_qual_type(node, type::QualType::Error());

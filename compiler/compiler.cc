@@ -136,7 +136,7 @@ ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
 
 Context::InsertSubcontextResult Compiler::Instantiate(
     ast::ParameterizedExpression const *node,
-    core::Arguments<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
   auto &ctx = node->scope()
                   ->Containing<ast::ModuleScope>()
                   ->module()
@@ -157,7 +157,7 @@ Context::InsertSubcontextResult Compiler::Instantiate(
 
 Context::FindSubcontextResult Compiler::FindInstantiation(
     ast::ParameterizedExpression const *node,
-    core::Arguments<type::Typed<ir::Value>> const &args) {
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
   auto &ctx = node->scope()
                   ->Containing<ast::ModuleScope>()
                   ->module()
