@@ -28,9 +28,7 @@ std::string Context::DebugString() const {
 }
 
 Context::InsertSubcontextResult Context::InsertSubcontext(
-    ast::ParameterizedExpression const *node,
-    core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> const
-        &params,
+    ast::ParameterizedExpression const *node, BoundParameters const &params,
     Context &&context) {
   auto &map = tree_.children[node];
   auto [iter, inserted] =
@@ -38,17 +36,18 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
 
   if (inserted) {
     LOG("Instantiate", "Context inserted as %p", &iter->second->context);
-    size_t i = 0;
-    for (auto const &p : params) {
-      if (p.value.first.empty()) { continue; }
-      iter->second->context.SetConstant(&node->params()[i++].value->ids()[0],
-                                        std::move(p.value.first));
+    for (size_t i = 0; i < params.size(); ++i) {
+      auto [qt, ref] = params[i];
+      if (not qt.constant()) { continue; }
+      iter->second->context.SetConstant(&node->params()[i].value->ids()[0],
+                                        ref);
     }
 
     ASSERT(iter->second->context.parent() == this);
     for (size_t i = 0; i < node->params().size(); ++i) {
       auto const *decl = node->params()[i].value.get();
-      iter->second->context.set_qual_type(decl, params[i].value.second);
+      auto [qt, ref]   = params[i];
+      iter->second->context.set_qual_type(decl, qt);
     }
   }
   auto &[rets, ctx] = *iter->second;
@@ -62,9 +61,7 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
 }
 
 Context::FindSubcontextResult Context::FindSubcontext(
-    ast::ParameterizedExpression const *node,
-    core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> const
-        &params) {
+    ast::ParameterizedExpression const *node, BoundParameters const &params) {
   auto children_iter = tree_.children.find(node);
   if (children_iter == tree_.children.end()) {
     return ASSERT_NOT_NULL(parent())->FindSubcontext(node, params);
@@ -74,8 +71,7 @@ Context::FindSubcontextResult Context::FindSubcontext(
   ASSERT(iter != map.end());
   auto &[rets, context] = *iter->second;
   return FindSubcontextResult{
-      .fn_type = type::Func(
-          params.Transform([](auto const &p) { return p.second; }), rets),
+      .fn_type = type::Func(params.types(), rets),
       .context = context,
   };
 }

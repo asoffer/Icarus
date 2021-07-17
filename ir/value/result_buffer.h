@@ -83,6 +83,19 @@ struct CompleteResultRef {
 
   operator PartialResultRef() const { return PartialResultRef(view_, false); }
 
+  friend absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+  AbslFormatConvert(CompleteResultRef const &ref,
+                    const absl::FormatConversionSpec &spec,
+                    absl::FormatSink *s) {
+    s->Append(ref.view_.to_string());
+    return {true};
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, CompleteResultRef const &ref) {
+    absl::Format(&os, "%s", ref);
+    return os;
+  }
+
  private:
   friend CompleteResultBuffer;
 
@@ -130,21 +143,6 @@ struct CompleteResultBuffer {
   base::untyped_buffer buffer() && { return std::move(buffer_); }
 
   bool empty() const { return offsets_.empty(); }
-
-  friend bool operator==(CompleteResultBuffer const &lhs,
-                         CompleteResultBuffer const &rhs);
-
-  friend bool operator!=(CompleteResultBuffer const &lhs,
-                         CompleteResultBuffer const &rhs) {
-    return not(lhs == rhs);
-  }
-
-  template <typename H>
-  friend H AbslHashValue(H h, CompleteResultBuffer const &b) {
-    h = H::combine(std::move(h), b.offsets_);
-    return H::combine_contiguous(std::move(h), b.buffer_.data(),
-                                 b.buffer_.size());
-  }
 
   template <typename T>
   T get(size_t i) const {

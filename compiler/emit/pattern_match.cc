@@ -31,8 +31,8 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
   type::Type t;
   if (node->is_binary()) {
     t      = context().qual_types(node)[0].type();
-    buffer = std::get<ir::CompleteResultBuffer>(EvaluateToBufferOrDiagnose(
-        type::Typed<ast::Expression const *>(&node->expr(), t)));
+    buffer = *EvaluateToBufferOrDiagnose(
+        type::Typed<ast::Expression const *>(&node->expr(), t));
   } else {
     t = type::Type_;
     buffer.append(context().arg_type(

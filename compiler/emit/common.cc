@@ -309,17 +309,12 @@ std::optional<ir::CompiledFn> StructCompletionFn(
             // TODO init_val type may not be the same.
             field_type = c.context().qual_types(init_val)[0].type();
 
-            auto result =
-                c.EvaluateToBufferOrDiagnose(type::Typed(init_val, field_type));
-            if (auto *diagnostics =
-                    std::get_if<std::vector<diagnostic::ConsumedMessage>>(
-                        &result)) {
-              NOT_YET();
-            } 
+            ASSIGN_OR(NOT_YET(),  //
+                      auto result,
+                      c.EvaluateToBufferOrDiagnose(
+                          type::Typed(init_val, field_type)));
 
-            fields.emplace_back(
-                id.name(), field_type,
-                std::get<ir::CompleteResultBuffer>(std::move(result)));
+            fields.emplace_back(id.name(), field_type, std::move(result));
             fields.back().set_export(
                 id.declaration().hashtags.contains(ir::Hashtag::Export));
           } else {
@@ -579,21 +574,18 @@ void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
 }
 
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
-                            ast::Expression const &expr,
-                            ir::PartialResultBuffer &buffer) {
+                                 ast::Expression const &expr,
+                                 ir::PartialResultBuffer &buffer) {
   if (not qt.constant()) {
     buffer.append();
     return;
   }
 
-  auto result = c.EvaluateToBufferOrDiagnose(
-      type::Typed<ast::Expression const *>(&expr, qt.type()));
-  if (auto const *result_buffer =
-          std::get_if<ir::CompleteResultBuffer>(&result)) {
-    buffer.append(*result_buffer);
-  } else {
-    NOT_YET();
-  }
+  ASSIGN_OR(NOT_YET(),  //
+            auto result,
+            c.EvaluateToBufferOrDiagnose(
+                type::Typed<ast::Expression const *>(&expr, qt.type())));
+  buffer.append(result);
 }
 
 ir::PartialResultBuffer EmitConstantPartialResultBuffer(
@@ -615,14 +607,12 @@ core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
   for (auto const &arg : args) {
     auto qt = c.context().qual_types(&arg.expr())[0];
     if (qt.constant()) {
-      auto result = c.EvaluateToBufferOrDiagnose(
-          type::Typed<ast::Expression const *>(&arg.expr(), qt.type()));
-      if (auto const *result_buffer =
-              std::get_if<ir::CompleteResultBuffer>(&result)) {
-        buffer.append(*result_buffer);
-      } else {
-        NOT_YET();
-      }
+      ASSIGN_OR(
+          NOT_YET(),  //
+          auto result,
+          c.EvaluateToBufferOrDiagnose(
+              type::Typed<ast::Expression const *>(&arg.expr(), qt.type())));
+      buffer.append(result);
     }
 
     if (not arg.named()) {

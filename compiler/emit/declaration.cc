@@ -46,32 +46,23 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
           node->initial_value()->DebugString());
 
       if (t.is_big()) {
-        auto value_buffer = c.EvaluateToBufferOrDiagnose(
-            type::Typed<ast::Expression const *>(node->initial_value(), t));
-        if (auto *diagnostics =
-                std::get_if<std::vector<diagnostic::ConsumedMessage>>(
-                    &value_buffer)) {
-          for (auto &d : *diagnostics) { c.diag().Consume(std::move(d)); }
+        ASSIGN_OR(return,//
+        auto value_buffer , c.EvaluateToBufferOrDiagnose(
+            type::Typed<ast::Expression const *>(node->initial_value(), t)));
           return;
-        }
 
         LOG("EmitConstantDeclaration", "Setting slot = %s", value_buffer);
 
-        out.append(std::get<ir::CompleteResultBuffer>(value_buffer));
-        c.context().SetConstant(
-            &node->ids()[0], std::get<ir::CompleteResultBuffer>(value_buffer));
+        out.append(value_buffer);
+        c.context().SetConstant(&node->ids()[0], std::move(value_buffer));
         return;
       } else {
-        auto maybe_result = c.EvaluateToBufferOrDiagnose(
-            type::Typed<ast::Expression const *>(node->initial_value(), t));
-        if (auto const *diagnostics =
-                std::get_if<std::vector<diagnostic::ConsumedMessage>>(
-                    &maybe_result)) {
-          for (auto &d : *diagnostics) { c.diag().Consume(std::move(d)); }
-          return;
-        }
+        ASSIGN_OR(return,  //
+                        auto result,
+                        c.EvaluateToBufferOrDiagnose(
+                            type::Typed<ast::Expression const *>(
+                                node->initial_value(), t)));
 
-        auto &result = std::get<ir::CompleteResultBuffer>(maybe_result);
         LOG("EmitConstantDeclaration", "Setting slot = %s", result);
         // TODO: Support multiple declarations
         c.context().SetConstant(&node->ids()[0], result);

@@ -12,6 +12,7 @@
 #include "ast/visitor.h"
 #include "base/debug.h"
 #include "base/log.h"
+#include "compiler/bound_parameters.h"
 #include "compiler/context.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/module.h"
@@ -331,25 +332,22 @@ struct Compiler
     }();
     auto result = EvaluateToBufferOrDiagnose(
         type::Typed<ast::Expression const *>(expr, t), must_complete);
-    if (auto *diagnostics =
-            std::get_if<std::vector<diagnostic::ConsumedMessage>>(&result)) {
-      for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
-      return std::nullopt;
-    } else {
-      return std::get<ir::CompleteResultBuffer>(result).template get<T>(0);
-    }
+    if (not result) return std::nullopt;
+    return result->get<T>(0);
   }
 
   std::variant<ir::CompleteResultBuffer,
                std::vector<diagnostic::ConsumedMessage>>
-  EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *> expr,
-                             bool must_complete = true);
+  EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
+                   bool must_complete = true);
+
+  std::optional<ir::CompleteResultBuffer> EvaluateToBufferOrDiagnose(
+      type::Typed<ast::Expression const *> expr, bool must_complete = true);
 
   interpreter::EvaluationResult Evaluate(
       type::Typed<ast::Expression const *> expr, bool must_complete = true);
 
-  core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>>
-  ComputeParamsFromArgs(
+  BoundParameters ComputeParamsFromArgs(
       ast::ParameterizedExpression const *node,
       core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 

@@ -29,6 +29,8 @@ struct ParamDependencyGraphBuilder
       if (decl->flags() & Declaration::f_IsConst) {
         graph_.add_edge(core::DependencyNode<Declaration>::MakeValue(decl),
                         core::DependencyNode<Declaration>::MakeArgValue(decl));
+        graph_.add_edge(core::DependencyNode<Declaration>::MakeType(decl),
+                        core::DependencyNode<Declaration>::MakeArgType(decl));
       }
     }
 

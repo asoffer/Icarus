@@ -68,18 +68,12 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       auto name_buffer =
           c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
               &args[0].expr(), type::Slc(type::Char)));
-      if (auto *diagnostics =
-              std::get_if<std::vector<diagnostic::ConsumedMessage>>(
-                  &name_buffer)) {
-        for (auto &d : *diagnostics) { c.diag().Consume(std::move(d)); }
-        return;
-      }
+      if (not name_buffer) { return; }
 
       auto maybe_foreign_type =
           c.EvaluateOrDiagnoseAs<type::Type>(&args[1].expr());
       if (not maybe_foreign_type) { return; }
-      auto slice =
-          std::get<ir::CompleteResultBuffer>(name_buffer).get<ir::Slice>(0);
+      auto slice = name_buffer->get<ir::Slice>(0);
 
       std::string name(slice);
       auto result = c.current_block()->Append(ir::LoadSymbolInstruction{

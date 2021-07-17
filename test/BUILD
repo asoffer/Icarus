@@ -27,13 +27,21 @@ cc_library(
 )
 
 cc_library(
+    name = "expected_value",
+    hdrs = ["expected_value.h"],
+    deps = [
+        "//ir/value:result_buffer",
+    ],
+)
+
+cc_library(
     name = "evaluation",
     hdrs = ["evaluation.h"],
     deps = [
+        ":expected_value",
         ":module",
         "//type",
         "//type:typed_value",
-        "//ir/value:result_buffer",
         "@com_google_googletest//:gtest",
     ],
     testonly = True,

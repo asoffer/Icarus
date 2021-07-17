@@ -14,6 +14,28 @@
 
 namespace compiler {
 namespace {
+type::Typed<ir::CompleteResultRef> const *ArgumentFromIndex(
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments,
+    int index, std::string_view id) {
+  if (index < arguments.pos().size()) { return &arguments[index]; }
+  return arguments.at_or_null(id);
+}
+
+std::optional<type::Type> ComputeParameterTypeOrDiagnose(
+    Compiler &c, ast::Declaration const *decl) {
+  if (auto const *type_expr = decl->type_expr()) {
+    auto type_expr_type = c.VerifyType(type_expr)[0].type();
+    if (type_expr_type != type::Type_) {
+      c.diag().Consume(
+          NotAType{.range = type_expr->range(), .type = type_expr_type});
+      NOT_YET("Exit out of this computation.");
+    }
+
+    return c.EvaluateOrDiagnoseAs<type::Type>(type_expr);
+  } else {
+    return c.VerifyType(decl->init_val())[0].type();
+  }
+}
 
 void ExtractParams(
     ast::Expression const *callee, type::Callable const *callable,
@@ -105,128 +127,107 @@ void AddOverloads(Context const &context, ast::Expression const *callee,
 
 // TODO: There's something strange about this: We want to work on a temporary
 // data/compiler, but using `this` makes it feel more permanent.
-core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>>
-Compiler::ComputeParamsFromArgs(
+
+BoundParameters Compiler::ComputeParamsFromArgs(
     ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
-  LOG("generic-fn", "Creating a concrete implementation with %s",
+  LOG("ComputeParamsFromArgs", "Creating a concrete implementation with %s",
       args.Transform([](auto const &a) { return a.type().to_string(); }));
 
-  core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> parameters(
-      node->params().size());
+  std::vector<ir::CompleteResultBuffer> buffers(node->params().size());
+  std::vector<core::Param<type::QualType>> qts(node->params().size());
+  std::vector<type::Type> argument_types(node->params().size());
 
   for (auto [index, dep_node] : node->ordered_dependency_nodes()) {
     ASSERT(dep_node.node()->ids().size() == 1u);
     std::string_view id = dep_node.node()->ids()[0].name();
-    LOG("generic-fn", "Handling dep-node %s`%s`", ToString(dep_node.kind()),
-        id);
+    LOG("ComputeParamsFromArgs", "Handling dep-node %s`%s` (index = %u)",
+        ToString(dep_node.kind()), id, index);
     switch (dep_node.kind()) {
       case core::DependencyNodeKind::ArgValue: {
-        ir::CompleteResultRef val;
-        if (index < args.pos().size()) {
-          val = *args[index];
-        } else if (auto const *a = args.at_or_null(id)) {
-          val = **a;
+        ir::CompleteResultBuffer buffer;
+        ir::CompleteResultRef value;
+        if (auto const *argument = ArgumentFromIndex(args, index, id)) {
+          value = **argument;
         } else {
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
           type::Type t         = context().arg_type(id);
-          auto maybe_result =
-              EvaluateToBufferOrDiagnose(type::Typed(init_val, t));
-          if (auto *diagnostics =
-                  std::get_if<std::vector<diagnostic::ConsumedMessage>>(
-                      &maybe_result)) {
-            for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
-            NOT_YET();
-          } else {
-            val = std::get<ir::CompleteResultBuffer>(maybe_result)[0];
-          }
+          ASSIGN_OR(NOT_YET("bail out of this computation)"),  //
+                    buffer,
+                    EvaluateToBufferOrDiagnose(type::Typed(init_val, t)));
+          value = buffer[0];
         }
 
-        LOG("generic-fn", "... %s", val);
-        context().set_arg_value(id, val);
+        LOG("ComputeParamsFromArgs", "... %s", value);
+        context().set_arg_value(id, value);
       } break;
       case core::DependencyNodeKind::ArgType: {
-        type::Type arg_type = nullptr;
-        if (index < args.pos().size()) {
-          arg_type = args[index].type();
-        } else if (auto const *a = args.at_or_null(id)) {
-          arg_type = a->type();
-        } else {
-          // TODO: What if this is a bug and you don't have an initial value?
-          auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          arg_type       = VerifyType(init_val)[0].type();
-        }
-        LOG("generic-fn", "... %s", arg_type.to_string());
+        auto const *argument      = ArgumentFromIndex(args, index, id);
+        auto const *initial_value = dep_node.node()->init_val();
+        type::Type arg_type =
+            argument ? argument->type()
+                     : VerifyType(ASSERT_NOT_NULL(initial_value))[0].type();
+        argument_types[index] = arg_type;
         context().set_arg_type(id, arg_type);
+        LOG("ComputeParamsFromArgs", "... %s", arg_type.to_string());
       } break;
       case core::DependencyNodeKind::ParamType: {
-        type::Type t;
-        if (auto const *type_expr = dep_node.node()->type_expr()) {
-          auto type_expr_type = VerifyType(type_expr)[0].type();
-          if (type_expr_type != type::Type_) {
-            NOT_YET("log an error: ", type_expr->DebugString(), ": ",
-                    type_expr_type);
-          }
-
-          ASSIGN_OR(NOT_YET(),  //
-                    t, EvaluateOrDiagnoseAs<type::Type>(type_expr));
-        } else {
-          t = VerifyType(dep_node.node()->init_val())[0].type();
-        }
+        ASSIGN_OR(NOT_YET("bail out of this computation"),  //
+                  type::Type t,
+                  ComputeParameterTypeOrDiagnose(*this, dep_node.node()));
 
         auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
                       ? type::QualType::Constant(t)
                       : type::QualType::NonConstant(t);
 
-        // TODO: Once a parameter type has been computed, we know it's
-        // argument type has already been computed so we can verify that the
-        // implicit casts are allowed.
-        LOG("generic-fn", "... %s", qt.to_string());
-        size_t i = *ASSERT_NOT_NULL(node->params().at_or_null(id));
-        parameters.set(
-            i, core::Param<std::pair<ir::CompleteResultBuffer, type::QualType>>(
-                   id, std::make_pair(ir::CompleteResultBuffer(), qt),
-                   node->params()[i].flags));
+        LOG("ComputeParamsFromArgs", "... %s", qt.to_string());
+
+        if (not type::CanCastImplicitly(argument_types[index], t)) {
+          LOG("ComputeParamsFromArgs", "No cast %s -> %s",
+              argument_types[index], t);
+          NOT_YET("Log an error and bail out of this computation");
+        }
+
+        qts[index] =
+            core::Param<type::QualType>(id, qt, node->params()[index].flags);
       } break;
       case core::DependencyNodeKind::ParamValue: {
         // Find the argument associated with this parameter.
         // TODO, if the type is wrong but there is an implicit cast, deal with
         // that.
-        type::Typed<ir::CompleteResultRef> arg;
-        if (index < args.pos().size()) {
-          arg = args[index];
-          LOG("generic-fn", "%s %s", *arg, arg.type().to_string());
-        } else if (auto const *a = args.at_or_null(id)) {
-          arg = *a;
+        type::Typed<ir::CompleteResultRef> argument;
+        if (auto const *a = ArgumentFromIndex(args, index, id)) {
+          argument = *a;
         } else {
-          auto t         = context().qual_types(dep_node.node())[0].type();
-          auto maybe_result = EvaluateToBufferOrDiagnose(
-              type::Typed(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
-          if (auto *diagnostics =
-                  std::get_if<std::vector<diagnostic::ConsumedMessage>>(
-                      &maybe_result)) {
-            for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
-            NOT_YET();
-          } else {
-            arg = type::Typed(
-                std::get<ir::CompleteResultBuffer>(maybe_result)[0], t);
-          }
-          LOG("generic-fn", "%s", dep_node.node()->DebugString());
+          auto t            = context().qual_types(dep_node.node())[0].type();
+          ASSIGN_OR(NOT_YET("bail out of this computation"),  //
+                    auto result,
+                    EvaluateToBufferOrDiagnose(type::Typed(
+                        ASSERT_NOT_NULL(dep_node.node()->init_val()), t)));
+          argument = type::Typed(result[0], t);
+          LOG("ComputeParamsFromArgs", "%s", dep_node.node()->DebugString());
         }
 
         // TODO: Support multiple declarations
         if (not context().Constant(&dep_node.node()->ids()[0])) {
           // TODO complete?
           // TODO: Support multiple declarations
-          context().SetConstant(&dep_node.node()->ids()[0], *arg);
-        }
+          context().SetConstant(&dep_node.node()->ids()[0], *argument);
+         }
 
-        size_t i = *ASSERT_NOT_NULL(node->params().at_or_null(id));
-        parameters[i].value.first.append(*arg);
+         LOG("ComputeParamsFromArgs", "... %s", *argument);
+
+         // TODO: We end up stasting arguments both in BoundParameters and in
+         // the context's Constant map. We should probably only use the latter.
+         buffers[index].append(*argument);
       } break;
     }
+    // switch (dep_node.kind()) {
+    //   case core::DependencyNodeKind::ArgValue: {
+    // } break;
+    // }
   }
-  return parameters;
+  return BoundParameters(std::move(qts), buffers);
 }
 
 std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
@@ -266,14 +267,9 @@ Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args,
     } else {
       LOG("VerifyArguments", "constant: %s", arg.expr().DebugString());
       if (expr_qual_type.constant()) {
-        auto maybe_result = EvaluateToBufferOrDiagnose(
-            type::Typed(&arg.expr(), expr_qual_type.type()));
-        if (auto *diagnostics =
-                std::get_if<std::vector<diagnostic::ConsumedMessage>>(
-                    &maybe_result)) {
-          for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
-        } else {
-          out.append(std::get<ir::CompleteResultBuffer>(maybe_result));
+        if (auto maybe_result = EvaluateToBufferOrDiagnose(
+                type::Typed(&arg.expr(), expr_qual_type.type()))) {
+          out.append(*maybe_result);
           result = type::Typed(out.back(), expr_qual_type.type());
         }
       } else {

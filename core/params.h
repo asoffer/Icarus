@@ -99,14 +99,15 @@ struct Params {
   Params() {}
   explicit Params(size_t n) : params_(n) {
     for (auto& p : params_) { p = Param<T>("", T{}, MUST_NOT_NAME); }
+    ComputeNameLookup();
+  }
+
+  Params(std::vector<Param<T>> params) : params_(std::move(params)) {
+    ComputeNameLookup();
   }
 
   Params(std::initializer_list<Param<T>> params) : params_(params) {
-    size_t i = 0;
-    for (auto const& p : params_) {
-      if (not p.name.empty()) { lookup_.emplace(p.name, i); }
-      ++i;
-    }
+    ComputeNameLookup();
   }
 
   template <typename U, std::enable_if_t<not std::is_same_v<T, U> and
@@ -117,11 +118,7 @@ struct Params {
     for (auto const& p : params) {
       params_.push_back(static_cast<Param<T>>(p));
     }
-    size_t i = 0;
-    for (auto const& p : params_) {
-      if (not p.name.empty()) { lookup_.emplace(p.name, i); }
-      ++i;
-    }
+    ComputeNameLookup();
   }
 
   void set(size_t index, Param<T> param) {
@@ -203,6 +200,14 @@ struct Params {
   }
 
  private:
+  void ComputeNameLookup() {
+    size_t i = 0;
+    for (auto const& p : params_) {
+      if (not p.name.empty()) { lookup_.emplace(p.name, i); }
+      ++i;
+    }
+  }
+
   template <typename U>
   friend struct Params;
   template <typename U, typename AmbiguityFn>

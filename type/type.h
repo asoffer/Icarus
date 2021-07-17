@@ -263,6 +263,15 @@ struct Type {
     return vptr_->alignment(&data_, arch);
   }
 
+  bool EqualsValue(ir::CompleteResultRef const &lhs,
+                   ir::CompleteResultRef const &rhs) const {
+    return vptr_->EqualsValue(&data_, lhs, rhs);
+  }
+
+  size_t HashValue(ir::CompleteResultRef const &value) const {
+    return vptr_->HashValue(&data_, value);
+  }
+
   std::string to_string() const { return vptr_->to_string(&data_); }
 
   bool is_big() const { return vptr_->is_big(&data_); }

@@ -459,12 +459,12 @@ bool Compiler::PatternMatch(
                              std::vector<diagnostic::ConsumedMessage>>>
       lhs_buffer, rhs_buffer;
   if (not node->lhs()->covers_binding()) {
-    lhs_buffer = EvaluateToBufferOrDiagnose(
+    lhs_buffer = EvaluateToBuffer(
         type::Typed<ast::Expression const *>(node->lhs(), pmc.type));
   }
 
   if (not node->rhs()->covers_binding()) {
-    rhs_buffer = EvaluateToBufferOrDiagnose(
+    rhs_buffer = EvaluateToBuffer(
         type::Typed<ast::Expression const *>(node->rhs(), pmc.type));
   }
 

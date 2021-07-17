@@ -45,8 +45,8 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
   ir::CompiledFn fn(type::Func({}, {type}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
   ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
-    // TODO this is essentially a copy of the body of FunctionLiteral::EmitToBuffer
-    // Factor these out together.
+    // TODO this is essentially a copy of the body of
+    // FunctionLiteral::EmitToBuffer Factor these out together.
     c.builder().CurrentBlock() = fn.entry();
 
     ir::PartialResultBuffer buffer;
@@ -54,7 +54,8 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
 
     // TODO: Treating slices specially is a big hack. We need to fix treating
     // these things special just because they're big.
-    if (type.is_big() ) {
+    if (type.is_big()) {
+      ASSERT(buffer.num_entries() != 0);
       // TODO: guaranteed move-elision
       c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), type), buffer);
     } else if (auto const *gs = type.if_as<type::GenericStruct>()) {
@@ -84,7 +85,7 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
 
 interpreter::EvaluationResult Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr, bool must_complete) {
-  Compiler c             = MakeChild(resources_);
+  Compiler c              = MakeChild(resources_);
   c.state_.must_complete  = must_complete;
   auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
   ir::NativeFn::Data data{
@@ -97,17 +98,29 @@ interpreter::EvaluationResult Compiler::Evaluate(
   return EvaluateAtCompileTime(ir::NativeFn(&data));
 }
 
+std::optional<ir::CompleteResultBuffer> Compiler::EvaluateToBufferOrDiagnose(
+    type::Typed<ast::Expression const *> expr, bool must_complete) {
+  auto maybe_result = EvaluateToBuffer(expr);
+  if (auto *diagnostics = std::get_if<std::vector<diagnostic::ConsumedMessage>>(
+          &maybe_result)) {
+    for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
+    return std::nullopt;
+  } else {
+    return std::get<ir::CompleteResultBuffer>(std::move(maybe_result));
+  }
+}
+
 std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
-Compiler::EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *> expr,
-                                     bool must_complete) {
+Compiler::EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
+                           bool must_complete) {
   // TODO: The diagnosis part.
   diagnostic::BufferingConsumer buffering_consumer(&diag());
-  Compiler c              = MakeChild(PersistentResources{
+  Compiler c             = MakeChild(PersistentResources{
       .data                = context(),
       .diagnostic_consumer = buffering_consumer,
       .importer            = importer(),
   });
-  c.state_.must_complete  = must_complete;
+  c.state_.must_complete = must_complete;
 
   auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
   ir::NativeFn::Data data{

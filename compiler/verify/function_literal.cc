@@ -242,8 +242,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
       return &qt.type().as<type::Function>();
     } else {
       LOG("FunctionLiteral", "cached! %s", node->DebugString());
-      type::Function const *ft = type::Func(
-          params.Transform([](auto const &p) { return p.second; }), rets_ref);
+      type::Function const *ft = type::Func(params.types(), rets_ref);
       context.set_qual_type(node, type::QualType::Constant(ft));
       return ft;
     }

@@ -7,33 +7,13 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "ir/value/result_buffer.h"
+#include "test/expected_value.h"
 #include "test/module.h"
 #include "type/primitive.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
 namespace test {
-
-struct ExpectedValue {
-  template <typename T>
-  ExpectedValue(T &&value)
-      : compare_([expected = std::forward<T>(value)](
-                     ir::CompleteResultBuffer const &actual) {
-          return expected == actual.get<std::decay_t<T>>(0);
-        }) {}
-
-  friend bool operator==(ExpectedValue const &lhs,
-                         ir::CompleteResultBuffer const &rhs) {
-    return lhs.compare_(rhs);
-  }
-  friend bool operator==(ir::CompleteResultBuffer const &lhs,
-                         ExpectedValue const &rhs) {
-    return rhs.compare_(lhs);
-  }
-
- private:
-  std::function<bool(ir::CompleteResultBuffer const &actual)> compare_;
-};
 
 struct TestCase {
   std::string context;

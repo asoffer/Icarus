@@ -1,6 +1,16 @@
 package(default_visibility = ["//visibility:public"])
 load("//:common.bzl", "LLVM_LINKOPTS")
 
+
+cc_library(
+    name = "bound_parameters",
+    hdrs = ["bound_parameters.h"],
+    deps = [
+        "//core:params",
+        "//ir/value:result_buffer",
+        "//type:qual_type",
+    ],
+)
 cc_library(
     name = "cyclic_dependency_tracker",
     hdrs = ["cyclic_dependency_tracker.h"],
@@ -148,6 +158,7 @@ cc_library(
     name = "compiler_header",
     hdrs = ["compiler.h"],
     deps = [
+        ":bound_parameters",
         ":context",
         ":cyclic_dependency_tracker",
         ":instructions",
@@ -200,6 +211,7 @@ cc_library(
     hdrs = ["context.h"],
     srcs = ["context.cc"],
     deps = [
+        ":bound_parameters",
         ":instructions",
         ":jump_map",
         "//ast:ast",

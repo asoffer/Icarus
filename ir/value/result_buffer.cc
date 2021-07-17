@@ -104,19 +104,4 @@ void CompleteResultBuffer::reserve_bytes(size_t num_entries, size_t num_bytes) {
   buffer_.reserve(num_bytes);
 }
 
-bool operator==(CompleteResultBuffer const &lhs,
-                CompleteResultBuffer const &rhs) {
-  if (lhs.offsets_ != rhs.offsets_) { return false; }
-  if (lhs.buffer_.size() != rhs.buffer_.size()) { return false; }
-  auto lhs_iter = lhs.buffer_.begin();
-  auto rhs_iter = rhs.buffer_.begin();
-  while (lhs_iter != lhs.buffer_.end()) {
-    if (lhs_iter.read<std::byte>().get() != lhs_iter.read<std::byte>().get()) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 }  // namespace ir

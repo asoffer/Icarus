@@ -11,6 +11,7 @@
 #include "absl/hash/hash.h"
 #include "ast/ast.h"
 #include "base/guarded.h"
+#include "compiler/bound_parameters.h"
 #include "compiler/instructions.h"
 #include "compiler/jump_map.h"
 #include "ir/builder.h"
@@ -120,17 +121,14 @@ struct Context {
   // parameter types and `Context` into which new computed data dependent on
   // this set of generic context can be added.
   struct InsertSubcontextResult {
-    core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> const
-        &params;
+    BoundParameters const &params;
     std::vector<type::Type> &rets;
     Context &context;
     bool inserted;
   };
 
   InsertSubcontextResult InsertSubcontext(
-      ast::ParameterizedExpression const *node,
-      core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> const
-          &params,
+      ast::ParameterizedExpression const *node, BoundParameters const &params,
       Context &&context);
 
   // FindSubcontext:
@@ -144,10 +142,8 @@ struct Context {
     Context &context;
   };
 
-  FindSubcontextResult FindSubcontext(
-      ast::ParameterizedExpression const *node,
-      core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>> const
-          &params);
+  FindSubcontextResult FindSubcontext(ast::ParameterizedExpression const *node,
+                                      BoundParameters const &params);
 
   // Returns a span over a the qualified types for this expression. The span may
   // be empty if the expression's type is nothing, but behavior is undefined if
@@ -368,9 +364,7 @@ struct Context {
     Context *parent = nullptr;
     absl::flat_hash_map<
         ast::ParameterizedExpression const *,
-        absl::node_hash_map<
-            core::Params<std::pair<ir::CompleteResultBuffer, type::QualType>>,
-            std::unique_ptr<Subcontext>>>
+        absl::node_hash_map<BoundParameters, std::unique_ptr<Subcontext>>>
         children;
   } tree_;
   constexpr Context *parent() { return tree_.parent; }
