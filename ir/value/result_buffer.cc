@@ -36,9 +36,6 @@ void CompleteResultBuffer::append(CompleteResultRef value) {
 }
 
 void PartialResultBuffer::append() {
-  if constexpr (internal_result_buffer::kResultBufferDebug) {
-    buffer_.append(base::meta<void>.value());
-  }
   offsets_.push_back(
       offsets_.empty()
           ? internal_result_buffer::Offset{.index = 0, .is_register = 0}
@@ -70,9 +67,6 @@ void CompleteResultBuffer::append(CompleteResultBuffer const &value) {
 }
 
 void CompleteResultBuffer::append() {
-  if constexpr (internal_result_buffer::kResultBufferDebug) {
-    buffer_.append(base::meta<void>.value());
-  }
   offsets_.push_back(offsets_.empty() ? 0 : offsets_.back());
 }
 
@@ -99,9 +93,6 @@ PartialResultBuffer::PartialResultBuffer(CompleteResultBuffer buffer)
 
 addr_t CompleteResultBuffer::append_slot(size_t slot_size) {
   offsets_.push_back(buffer_.size());
-  if constexpr (internal_result_buffer::kResultBufferDebug) {
-    buffer_.append(base::meta<internal_result_buffer::UnknownTag>.value());
-  }
   size_t size = buffer_.size();
   buffer_.append_bytes(slot_size);
 
@@ -110,9 +101,6 @@ addr_t CompleteResultBuffer::append_slot(size_t slot_size) {
 
 void CompleteResultBuffer::reserve_bytes(size_t num_entries, size_t num_bytes) {
   offsets_.reserve(num_entries);
-  if constexpr (internal_result_buffer::kResultBufferDebug) {
-    num_bytes += sizeof(base::MetaValue) * num_entries;
-  }
   buffer_.reserve(num_bytes);
 }
 

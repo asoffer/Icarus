@@ -13,13 +13,6 @@
 namespace ir {
 namespace internal_result_buffer {
 
-struct UnknownTag {};
-#if defined(ICARUS_DEBUG)
-inline constexpr bool kResultBufferDebug = true;
-#else
-inline constexpr bool kResultBufferDebug = false;
-#endif  // defined(ICARUS_DEBUG)
-
 struct Offset {
   uint32_t index : 31;
   uint32_t is_register : 1;
@@ -38,37 +31,12 @@ struct PartialResultRef {
   auto get() const {
     if constexpr (base::meta<T> == base::meta<Reg>) {
       ASSERT(is_register_ == true);
-
-      if constexpr (internal_result_buffer::kResultBufferDebug) {
-        if (view_.get<base::MetaValue>(0) !=
-            base::meta<internal_result_buffer::UnknownTag>) {
-          ASSERT(view_.get<base::MetaValue>(0) == base::meta<Reg>);
-        }
-      }
-      return Reg(view_.get<Reg>(sizeof(base::MetaValue) *
-                                internal_result_buffer::kResultBufferDebug));
+      return Reg(view_.get<Reg>(0));
     } else {
       if (is_register_) {
-        if constexpr (internal_result_buffer::kResultBufferDebug) {
-          if (view_.get<base::MetaValue>(0) !=
-              base::meta<internal_result_buffer::UnknownTag>) {
-            ASSERT(view_.get<base::MetaValue>(0) == base::meta<Reg>);
-          }
-        }
-        return RegOr<T>(
-            view_.get<Reg>(sizeof(base::MetaValue) *
-                           internal_result_buffer::kResultBufferDebug));
+        return RegOr<T>(view_.get<Reg>(0));
       } else {
-        if constexpr (internal_result_buffer::kResultBufferDebug) {
-          if (view_.get<base::MetaValue>(0) !=
-              base::meta<internal_result_buffer::UnknownTag>) {
-            ASSERT(view_.get<base::MetaValue>(0) == base::meta<T>);
-          }
-        }
-
-        return RegOr<T>(
-            view_.get<T>(sizeof(base::MetaValue) *
-                         internal_result_buffer::kResultBufferDebug));
+        return RegOr<T>(view_.get<T>(0));
       }
     }
   }
@@ -78,20 +46,13 @@ struct PartialResultRef {
     if (is_register()) {
       Reg r = get<Reg>();
       inliner.Inline(r);
-      std::memcpy(const_cast<std::byte *>(view_.data()) +
-                      sizeof(base::MetaValue) *
-                          internal_result_buffer::kResultBufferDebug,
-                  &r, sizeof(r));
+      std::memcpy(const_cast<std::byte *>(view_.data()), &r, sizeof(r));
     }
   }
 
   bool empty() const { return view_.empty(); }
   base::untyped_buffer_view raw() const {
-    return base::untyped_buffer_view(
-        view_.data() + sizeof(base::MetaValue) *
-                           internal_result_buffer::kResultBufferDebug,
-        view_.size() - sizeof(base::MetaValue) *
-                           internal_result_buffer::kResultBufferDebug);
+    return base::untyped_buffer_view(view_.data(), view_.size());
   }
 
   bool is_register() const { return is_register_; }
@@ -112,24 +73,12 @@ struct CompleteResultRef {
 
   template <typename T>
   T get() const {
-    if constexpr (internal_result_buffer::kResultBufferDebug) {
-      if (view_.get<base::MetaValue>(0) !=
-          base::meta<internal_result_buffer::UnknownTag>) {
-        ASSERT(view_.get<base::MetaValue>(0) == base::meta<T>);
-      }
-    }
-
-    return view_.get<T>(sizeof(base::MetaValue) *
-                        internal_result_buffer::kResultBufferDebug);
+    return view_.get<T>(0);
   }
 
   bool empty() const { return view_.empty(); }
   base::untyped_buffer_view raw() const {
-    return base::untyped_buffer_view(
-        view_.data() + sizeof(base::MetaValue) *
-                           internal_result_buffer::kResultBufferDebug,
-        view_.size() - sizeof(base::MetaValue) *
-                           internal_result_buffer::kResultBufferDebug);
+    return base::untyped_buffer_view(view_.data(), view_.size());
   }
 
   operator PartialResultRef() const { return PartialResultRef(view_, false); }
@@ -159,10 +108,6 @@ struct CompleteResultBuffer {
   void append(T const &value) {
     static_assert(not base::HasErasureWrapper<T>);
     offsets_.push_back(buffer_.size());
-
-    if constexpr (internal_result_buffer::kResultBufferDebug) {
-      buffer_.append(base::meta<T>.value());
-    }
     buffer_.append(value);
   }
 
@@ -240,31 +185,19 @@ struct PartialResultBuffer {
           .index       = static_cast<uint32_t>(buffer_.size()),
           .is_register = value.is_reg()});
       if (value.is_reg()) {
-        if constexpr (internal_result_buffer::kResultBufferDebug) {
-          buffer_.append(base::meta<Reg>.value());
-        }
         buffer_.append(value.reg());
       } else {
-        if constexpr (internal_result_buffer::kResultBufferDebug) {
-          buffer_.append(base::meta<typename T::type>.value());
-        }
         buffer_.append(value.value());
       }
     } else if constexpr (base::meta<T> == base::meta<Reg>) {
       offsets_.push_back(internal_result_buffer::Offset{
           .index = static_cast<uint32_t>(buffer_.size()), .is_register = true});
-      if constexpr (internal_result_buffer::kResultBufferDebug) {
-        buffer_.append(base::meta<Reg>.value());
-      }
       buffer_.append(value);
     } else {
       static_assert(not base::HasErasureWrapper<T>);
       offsets_.push_back(internal_result_buffer::Offset{
           .index       = static_cast<uint32_t>(buffer_.size()),
           .is_register = false});
-      if constexpr (internal_result_buffer::kResultBufferDebug) {
-        buffer_.append(base::meta<T>.value());
-      }
       buffer_.append(value);
     }
   }
