@@ -406,6 +406,7 @@ cc_library(
         "//base:meta",
         "//core:arch",
         "//ir/value:reg",
+        "//ir/value:result_buffer",
     ],
 )
 

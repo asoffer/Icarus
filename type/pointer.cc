@@ -42,4 +42,17 @@ core::Alignment Pointer::alignment(core::Arch const &a) const {
   return a.pointer().alignment();
 }
 
+bool Pointer::EqualsValue(ir::CompleteResultRef const &lhs,
+                          ir::CompleteResultRef const &rhs) const {
+  base::untyped_buffer_view lhs_view = lhs.raw();
+  base::untyped_buffer_view rhs_view = rhs.raw();
+  if (lhs_view.size() != rhs_view.size()) { return false; }
+  return std::memcmp(lhs_view.data(), lhs_view.data(), lhs_view.size()) == 0;
+}
+
+size_t Pointer::HashValue(ir::CompleteResultRef const &value) const {
+  return absl::Hash<absl::Span<std::byte const>>()(
+      absl::Span<std::byte const>(value.raw().data(), value.raw().size()));
+}
+
 }  // namespace type

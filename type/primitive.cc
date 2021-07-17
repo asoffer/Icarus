@@ -1,6 +1,8 @@
 #include "type/primitive.h"
 
-#include "ir/value/string.h"
+#include <cstring>
+
+#include "absl/hash/hash.h"
 
 namespace type {
 
@@ -79,6 +81,19 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     default:;
   }
   UNREACHABLE(to_string());
+}
+
+bool Primitive::EqualsValue(ir::CompleteResultRef const &lhs,
+                            ir::CompleteResultRef const &rhs) const {
+  base::untyped_buffer_view lhs_view = lhs.raw();
+  base::untyped_buffer_view rhs_view = rhs.raw();
+  if (lhs_view.size() != rhs_view.size()) { return false; }
+  return std::memcmp(lhs_view.data(), lhs_view.data(), lhs_view.size()) == 0;
+}
+
+size_t Primitive::HashValue(ir::CompleteResultRef const &value) const {
+  return absl::Hash<absl::Span<std::byte const>>()(
+      absl::Span<std::byte const>(value.raw().data(), value.raw().size()));
 }
 
 }  // namespace type

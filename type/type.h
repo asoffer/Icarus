@@ -6,6 +6,7 @@
 #include "base/cast.h"
 #include "base/meta.h"
 #include "core/arch.h"
+#include "ir/value/result_buffer.h"
 #include "type/visitor_base.h"
 
 namespace type {
@@ -63,6 +64,12 @@ struct LegacyType : base::Cast<LegacyType> {
   // // TODO make this pure virtual
   virtual bool is_big() const { return false; }
 
+  virtual size_t HashValue(ir::CompleteResultRef const &) const { UNREACHABLE(); }
+  virtual bool EqualsValue(ir::CompleteResultRef const &,
+                           ir::CompleteResultRef const &) const {
+    UNREACHABLE();
+  }
+
   // TODO: Can we ensure structs are complete before we set these?
   struct Flags {
     uint8_t is_default_initializable : 1;
@@ -82,12 +89,17 @@ struct Type;
 
 // clang-format off
 template <typename T>
-concept TypeFamilyRequirements = requires(T t) {
+concept TypeFamilyRequirements = requires(T const t) {
   { t.bytes(std::declval<core::Arch>()) }     -> std::same_as<core::Bytes>;
   { t.alignment(std::declval<core::Arch>()) } -> std::same_as<core::Alignment>;
   { t.to_string() }                           -> std::same_as<std::string>;
   { t == t }                                  -> std::same_as<bool>;
   { absl::Hash<T>{}(t) }                      -> std::same_as<size_t>;
+  { t.HashValue(std::declval<ir::CompleteResultRef>()) }
+                                              -> std::same_as<size_t>;
+  { t.EqualsValue(std::declval<ir::CompleteResultRef>(),
+                  std::declval<ir::CompleteResultRef>()) }
+                                              -> std::same_as<bool>;
 };
 // clang-format on
 
@@ -114,6 +126,13 @@ struct TypeVTable {
   size_t (*Hash)(void const *) = [](void const *) -> size_t { return 0; };
   void (*Accept)(void const *, VisitorBase &, void *,
                  void *) = [](void const *, VisitorBase &, void *, void *) {};
+
+  bool (*EqualsValue)(void const *, ir::CompleteResultRef const &,
+                      ir::CompleteResultRef const &) =
+      [](void const *, ir::CompleteResultRef const &,
+         ir::CompleteResultRef const &) -> bool { UNREACHABLE(); };
+  size_t (*HashValue)(void const *, ir::CompleteResultRef const &) =
+      [](void const *, ir::CompleteResultRef const &) -> size_t { return 0; };
 };
 
 inline TypeVTable DefaultTypeVTable{};
@@ -150,6 +169,15 @@ inline TypeVTable TypeVTableFor =
             [](void const *self, VisitorBase &v, void *ret, void *args) {
               reinterpret_cast<T const *>(self)->Accept(v, ret, args);
             },
+        .EqualsValue =
+            [](void const *self, ir::CompleteResultRef const &lhs,
+               ir::CompleteResultRef const &rhs) {
+              return reinterpret_cast<T const *>(self)->EqualsValue(lhs, rhs);
+            },
+        .HashValue =
+            [](void const *self, ir::CompleteResultRef const &value) {
+              return reinterpret_cast<T const *>(self)->HashValue(value);
+            },
     };
 
 struct LegacyTypeWrapper {
@@ -176,6 +204,15 @@ struct LegacyTypeWrapper {
   friend bool operator==(LegacyTypeWrapper const &lhs,
                          LegacyTypeWrapper const &rhs) {
     return lhs.get() == rhs.get();
+  }
+
+  bool EqualsValue(ir::CompleteResultRef const &lhs,
+                   ir::CompleteResultRef const &rhs) const {
+    return t_->EqualsValue(lhs, rhs);
+  }
+
+  size_t HashValue(ir::CompleteResultRef const &value) const {
+    return t_->HashValue(value);
   }
 
  private:

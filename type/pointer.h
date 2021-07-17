@@ -27,6 +27,10 @@ struct Pointer : LegacyType {
 
   Type pointee() const { return pointee_; }
 
+  bool EqualsValue(ir::CompleteResultRef const &lhs,
+                   ir::CompleteResultRef const &rhs) const override;
+  size_t HashValue(ir::CompleteResultRef const &value) const override;
+
   Completeness completeness() const override { return Completeness::Complete; }
 
  protected:

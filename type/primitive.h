@@ -46,6 +46,10 @@ struct Primitive : public LegacyType {
 
   Completeness completeness() const override { return Completeness::Complete; }
 
+  bool EqualsValue(ir::CompleteResultRef const &lhs,
+                   ir::CompleteResultRef const &rhs) const override;
+  size_t HashValue(ir::CompleteResultRef const &value) const override;
+
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;

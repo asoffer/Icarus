@@ -23,6 +23,13 @@ void Array::WriteTo(std::string *result) const {
   result->append("]");
 }
 
+bool Array::EqualsValue(ir::CompleteResultRef const &lhs,
+                        ir::CompleteResultRef const &rhs) const {
+  NOT_YET();
+}
+
+size_t Array::HashValue(ir::CompleteResultRef const &value) const { NOT_YET(); }
+
 core::Bytes Array::bytes(core::Arch const &a) const {
   return core::FwdAlign(data_type().bytes(a), data_type().alignment(a)) *
          length().value();

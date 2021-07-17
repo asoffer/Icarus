@@ -1,6 +1,5 @@
 #ifndef ICARUS_TYPE_ARRAY_H
-#define ICARUS_TYPE_ARRAY_H
-
+#define ICARUS_TYPE_ARRAY_H 
 #include "absl/container/node_hash_set.h"
 #include "base/extend.h"
 #include "base/extend/serialize.h"
@@ -27,6 +26,10 @@ struct Array : LegacyType {
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
+
+  bool EqualsValue(ir::CompleteResultRef const &lhs,
+                   ir::CompleteResultRef const &rhs) const override;
+  size_t HashValue(ir::CompleteResultRef const &value) const override;
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);

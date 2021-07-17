@@ -123,7 +123,9 @@ struct StructInstruction
     // and a null pointer otherwise.
     ir::Reg *type_reg() { return type_.is_reg() ? &type_.reg() : nullptr; }
     ir::RegOr<Type> type() const { return type_; }
-    ir::CompleteResultRef initial_value() const { return value_[0]; }
+    ir::CompleteResultRef initial_value() const {
+      return value_.empty() ? ir::CompleteResultRef() : value_[0];
+    }
 
    private:
     friend base::EnableExtensions;
