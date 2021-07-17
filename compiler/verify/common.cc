@@ -222,10 +222,6 @@ BoundParameters Compiler::ComputeParamsFromArgs(
          buffers[index].append(*argument);
       } break;
     }
-    // switch (dep_node.kind()) {
-    //   case core::DependencyNodeKind::ArgValue: {
-    // } break;
-    // }
   }
   return BoundParameters(std::move(qts), buffers);
 }

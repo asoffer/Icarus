@@ -24,17 +24,12 @@ namespace compiler {
 // only its type.
 struct BoundParameters {
   explicit BoundParameters(std::vector<core::Param<type::QualType>> qts,
-                           absl::Span<ir::CompleteResultBuffer const> buffers)
-      : types_(std::move(qts)) {
-    for (auto const &buffer : buffers) { buffer_.append(buffers); }
-  }
+                           absl::Span<ir::CompleteResultBuffer const> buffers);
+
 
   void append(ir::CompleteResultRef const &ref,
-              core::Param<type::QualType> const &param) {
-    types_.append(param);
-    buffer_.append(ref);
-  }
-  
+              core::Param<type::QualType> const &param);
+
   core::Params<type::QualType> const &types() const { return types_; }
 
   size_t size() const { return types_.size(); }
@@ -43,19 +38,7 @@ struct BoundParameters {
   }
 
   friend bool operator==(BoundParameters const &lhs,
-                         BoundParameters const &rhs) {
-    if (lhs.types_ != rhs.types_) { return false; }
-    for (size_t i = 0; i < lhs.types_.size(); ++i) {
-      auto qt = lhs.types_[i].value;
-      ASSERT(qt.constant() != lhs.buffer_[i].empty());
-      ASSERT(qt.constant() != rhs.buffer_[i].empty());
-      if (not qt.constant()) { continue; }
-      if (not qt.type().EqualsValue(lhs.buffer_[i], rhs.buffer_[i])) {
-        return false;
-      }
-    }
-    return true;
-  }
+                         BoundParameters const &rhs);
 
   friend bool operator!=(BoundParameters const &lhs,
                          BoundParameters const &rhs) {

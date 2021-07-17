@@ -45,45 +45,32 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
       LOG("Declaration", "Computing slot with %s",
           node->initial_value()->DebugString());
 
-      if (t.is_big()) {
-        ASSIGN_OR(return,//
-        auto value_buffer , c.EvaluateToBufferOrDiagnose(
-            type::Typed<ast::Expression const *>(node->initial_value(), t)));
-          return;
+      ASSIGN_OR(return,  //
+                      auto value_buffer,
+                      c.EvaluateToBufferOrDiagnose(
+                          type::Typed<ast::Expression const *>(
+                              node->initial_value(), t)));
+      LOG("EmitConstantDeclaration", "Setting slot = %s", value_buffer);
 
-        LOG("EmitConstantDeclaration", "Setting slot = %s", value_buffer);
+      // TODO: Support multiple declarations
+      out.append(value_buffer);
+      c.context().SetConstant(&node->ids()[0], value_buffer);
 
-        out.append(value_buffer);
-        c.context().SetConstant(&node->ids()[0], std::move(value_buffer));
-        return;
-      } else {
-        ASSIGN_OR(return,  //
-                        auto result,
-                        c.EvaluateToBufferOrDiagnose(
-                            type::Typed<ast::Expression const *>(
-                                node->initial_value(), t)));
-
-        LOG("EmitConstantDeclaration", "Setting slot = %s", result);
-        // TODO: Support multiple declarations
-        c.context().SetConstant(&node->ids()[0], result);
-
-        // TODO: This is a struct-speficic hack.
-        if (t == type::Type_) {
-          if (auto const *struct_type =
-                  result.get<type::Type>(0).if_as<type::Struct>()) {
-            if (struct_type->completeness() != type::Completeness::Complete) {
-              out.append(result.get<type::Type>(0));
-              return;
-            }
-            // TODO: Support multiple declarations
-            c.context().CompleteConstant(&node->ids()[0]);
+      // TODO: This is a struct-speficic hack.
+      if (t == type::Type_) {
+        if (auto const *struct_type =
+                value_buffer.get<type::Type>(0).if_as<type::Struct>()) {
+          if (struct_type->completeness() != type::Completeness::Complete) {
+            out.append(value_buffer.get<type::Type>(0));
+            return;
           }
+          // TODO: Support multiple declarations
+          c.context().CompleteConstant(&node->ids()[0]);
         }
-
-        out = result;
-        return;
       }
-    } else if (auto const * bd =node->if_as<ast::BindingDeclaration>()) {
+
+      return;
+    } else if (auto const *bd = node->if_as<ast::BindingDeclaration>()) {
       // TODO: Support multiple declarations
       if (auto const *constant = c.context().Constant(&node->ids()[0])) {
         out = *constant;

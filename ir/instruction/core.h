@@ -158,6 +158,10 @@ struct CallInstruction {
                             CallInstruction const& inst) {
     base::Serialize(w, inst.fn_, inst.args_, inst.outs_);
   }
+  friend void BaseDeserialize(interpreter::ByteCodeReader& r,
+                              CallInstruction& inst) {
+    base::Deserialize(r, inst.fn_, inst.args_, inst.outs_);
+  }
 
   type::Function const* func_type() const { return fn_type_; }
   RegOr<Fn> func() const { return fn_; }

@@ -5,6 +5,7 @@ load("//:common.bzl", "LLVM_LINKOPTS")
 cc_library(
     name = "bound_parameters",
     hdrs = ["bound_parameters.h"],
+    srcs = ["bound_parameters.cc"],
     deps = [
         "//core:params",
         "//ir/value:result_buffer",

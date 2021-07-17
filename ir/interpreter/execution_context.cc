@@ -156,6 +156,7 @@ void ExecutionContext::CallFn(ir::BuiltinFn fn, StackFrame &frame) {
 
 void ExecutionContext::Load(ir::Reg result, ir::addr_t addr,
                             core::Bytes num_bytes) {
+  LOG("Load", "%s %p %u", result, addr, num_bytes.value());
   current_frame().regs_.set_raw(result, addr, num_bytes.value());
 }
 

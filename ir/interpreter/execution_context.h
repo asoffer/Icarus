@@ -153,10 +153,9 @@ struct ExecutionContext {
           type::Type t       = iter.read<type::Type>();
           core::Bytes num_bytes = t.bytes(interpreter::kArchitecture);
           ir::addr_t addr = resolve(iter.read<ir::RegOr<ir::addr_t>>().get());
-          auto result_reg = iter.read<ir::Reg>().get();
+          ir::Reg result_reg = iter.read<ir::Reg>();
           Load(result_reg, addr, num_bytes);
         } break;
-
         default: {
           static constexpr std::array ExecutionArray =
               MakeExecuteFunctions<InstSet>(typename InstSet::instructions_t{});
@@ -191,17 +190,17 @@ struct ExecutionContext {
 
       if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
         auto inst = ByteCodeReader::DeserializeTo<Inst>(*iter);
+        LOG("CallInstruction", "%s", inst.to_string());
         ir::Fn f  = ctx.resolve(inst.func());
         type::Function const *fn_type = f.type();
         LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
 
         StackFrame frame(f, ctx.stack());
 
-        size_t num_inputs = fn_type->params().size();
         for (size_t i = 0; i < inst.arguments().num_entries(); ++i) {
-          auto argument = inst.arguments()[i];
+          ir::PartialResultRef argument = inst.arguments()[i];
           if (argument.is_register()) {
-            ir::Reg reg = argument.template get<ir::Reg>();
+            ir::Reg reg = argument.get<ir::Reg>();
             frame.regs_.set_raw(ir::Reg::Arg(i),
                                 ctx.current_frame().regs_.raw(reg),
                                 RegisterArray::value_size);
@@ -213,6 +212,9 @@ struct ExecutionContext {
                            : t.bytes(interpreter::kArchitecture);
             frame.regs_.set_raw(ir::Reg::Arg(i), argument.raw().data(),
                                 size.value());
+
+            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i),
+                argument.raw().to_string());
           }
         }
 

@@ -143,6 +143,7 @@ struct CompleteResultBuffer {
   base::untyped_buffer buffer() && { return std::move(buffer_); }
 
   bool empty() const { return offsets_.empty(); }
+  size_t num_entries() const { return offsets_.size(); }
 
   template <typename T>
   T get(size_t i) const {

@@ -102,7 +102,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       type::Type t = context().qual_types(node)[0].type();
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node->operand(), buffer);
-      builder().Load(out.get<ir::addr_t>(0), t, out);
+      builder().Load(buffer.get<ir::addr_t>(0), t, out);
       return;
     } break;
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));
