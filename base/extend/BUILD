@@ -36,5 +36,17 @@ cc_library(
 cc_library(
     name = "serialize",
     hdrs = ["serialize.h"],
-    deps = ["//base:extend"],
+    deps = [
+        "//base:extend",
+        "//base:serialize",
+    ],
+)
+
+cc_library(
+    name = "traverse",
+    hdrs = ["traverse.h"],
+    deps = [
+        "//base:extend",
+        "//base:traverse",
+    ],
 )

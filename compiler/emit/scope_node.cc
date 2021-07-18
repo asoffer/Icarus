@@ -10,7 +10,7 @@
 #include "compiler/emit/common.h"
 #include "ir/compiled_scope.h"
 #include "ir/instruction/core.h"
-#include "ir/instruction/inliner.h"
+#include "ir/instruction/inst_inliner.h"
 #include "ir/value/char.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"

@@ -532,8 +532,8 @@ void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
     to.type().as<type::Primitive>().Apply([&]<typename T>() {
       if constexpr (std::is_integral_v<T>) {
         ir::RegOr<T> result =
-            builder.Cast<ir::Integer, T>(buffer.get<ir::Integer>(0));
-        buffer.clear();
+            builder.Cast<ir::Integer, T>(buffer.back().get<ir::Integer>());
+        buffer.pop_back();
         buffer.append(result);
       } else {
         UNREACHABLE(typeid(T).name());

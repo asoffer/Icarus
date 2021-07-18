@@ -4,9 +4,9 @@ cc_library(
     name = "arithmetic",
     hdrs = ["arithmetic.h"],
     deps = [
-        ":inliner",
         "//base:extend",
         "//base/extend:serialize",
+        "//base/extend:traverse",
     ],
 )
 
@@ -17,7 +17,9 @@ cc_library(
         "//base:cast",
         "//base:meta",
         "//base:serialize",
+        "//base:traverse",
         "//base:untyped_buffer",
+        "//ir/instruction:inliner",
         "//ir/interpreter:byte_code_writer",
         "//ir/value:reg",
     ]
@@ -36,7 +38,6 @@ cc_library(
     name = "compare",
     hdrs = ["compare.h"],
     deps = [
-        ":inliner",
         "//base:extend",
         "//ir/interpreter:byte_code_writer",
     ],
@@ -52,12 +53,25 @@ cc_library(
     ],
 )
 
+
 cc_library(
     name = "inliner",
     hdrs = ["inliner.h"],
-    srcs = ["inliner.cc"],
+    deps = [
+        "//base:meta",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//ir/value:result_buffer",
+    ]
+)
+
+cc_library(
+    name = "inst_inliner",
+    hdrs = ["inst_inliner.h"],
+    srcs = ["inst_inliner.cc"],
     deps = [
         ":base",
+        ":inliner",
         "//base:debug",
         "//base:meta",
         "//ir:compiled_jump",
@@ -76,14 +90,10 @@ cc_test(
     name = "inliner_test",
     srcs = ["inliner_test.cc"],
     deps = [
-        ":arithmetic",
         ":inliner",
-        "//ir:builder",
-        "//ir:compiled_fn",
-        "//ir:compiled_jump",
-        "//type",
-        "//type:function",
-        "//type:jump",
+        "//base:traverse",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -94,9 +104,10 @@ cc_library(
     deps = [
         ":base",
         ":debug",
-        ":inliner",
         "//ast:scope",
         "//base:extend",
+        "//base/extend:serialize",
+        "//base/extend:traverse",
         "//ir:compiled_block",
         "//ir:compiled_scope",
         "//ir/interpreter:execution_context",

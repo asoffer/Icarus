@@ -10,12 +10,12 @@
 #include "absl/strings/str_join.h"
 #include "ast/scope.h"
 #include "base/extend.h"
+#include "base/extend/traverse.h"
 #include "base/meta.h"
 #include "ir/compiled_block.h"
 #include "ir/compiled_scope.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
-#include "ir/instruction/inliner.h"
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/interpreter/foreign.h"
@@ -43,7 +43,8 @@ struct CastInstruction;
 template <typename ToType, typename FromType>
 struct CastInstruction<ToType(FromType)>
     : base::Extend<CastInstruction<ToType(FromType)>>::template With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseTraverseExtension, base::BaseSerializeExtension,
+          DebugFormatExtension> {
   using from_type                                = FromType;
   using to_type                                  = ToType;
   static constexpr std::string_view kDebugFormat = "%2$s = cast %1$s";
@@ -65,14 +66,18 @@ struct CastInstruction<ToType(FromType)>
 };
 
 struct PtrDiffInstruction
-    : base::Extend<PtrDiffInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<PtrDiffInstruction>::With<base::BaseSerializeExtension,
+                                             DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = ptrdiff %1$s %2$s";
 
   void Apply(interpreter::ExecutionContext& ctx) const {
     ctx.current_frame().regs_.set(
         result, (ctx.resolve(lhs) - ctx.resolve(rhs)) /
                     pointee_type.bytes(interpreter::kArchitecture).value());
+  }
+
+  friend void BaseTraverse(Inliner& inl, PtrDiffInstruction& inst) {
+    base::Traverse(inl, inst.lhs, inst.rhs, inst.result);
   }
 
   RegOr<addr_t> lhs;
@@ -82,8 +87,9 @@ struct PtrDiffInstruction
 };
 
 struct NotInstruction
-    : base::Extend<NotInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<NotInstruction>::With<base::BaseTraverseExtension,
+                                         base::BaseSerializeExtension,
+                                         DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = not %1$s";
 
   bool Resolve() const { return Apply(operand.value()); }
@@ -95,8 +101,9 @@ struct NotInstruction
 
 // TODO Morph this into interpreter break-point instructions.
 struct DebugIrInstruction
-    : base::Extend<DebugIrInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<DebugIrInstruction>::With<base::BaseTraverseExtension,
+                                             base::BaseSerializeExtension,
+                                             DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "debug-ir";
 
   void Apply(interpreter::ExecutionContext& ctx) const {
@@ -105,16 +112,17 @@ struct DebugIrInstruction
 };
 
 struct AbortInstruction
-    : base::Extend<AbortInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<AbortInstruction>::With<base::BaseTraverseExtension,
+                                           base::BaseSerializeExtension,
+                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "abort";
 
   void Apply(interpreter::ExecutionContext&) const { std::abort(); }
 };
 
 struct InitInstruction
-    : base::Extend<InitInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<InitInstruction>::With<base::BaseSerializeExtension,
+                                          DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "init %2$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
@@ -135,19 +143,27 @@ struct InitInstruction
     }
   }
 
+  friend void BaseTraverse(Inliner& inl, InitInstruction& inst) {
+    inl(inst.reg);
+  }
+
   type::Type type;
   Reg reg;
 };
 
 struct DestroyInstruction
-    : base::Extend<DestroyInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<DestroyInstruction>::With<base::BaseSerializeExtension,
+                                             DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "destroy %2$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
     frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
     return frame;
+  }
+
+  friend void BaseTraverse(Inliner& inl, DestroyInstruction& inst) {
+    inl(inst.reg);
   }
 
   type::Type type;
@@ -167,8 +183,8 @@ struct DestroyInstruction
 };
 
 struct CopyInstruction
-    : base::Extend<CopyInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<CopyInstruction>::With<base::BaseSerializeExtension,
+                                          DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "copy %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
@@ -176,6 +192,10 @@ struct CopyInstruction
     frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(to));
     frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::addr_t>(from));
     return frame;
+  }
+
+  friend void BaseTraverse(Inliner& inl, CopyInstruction& inst) {
+    base::Traverse(inl, inst.from, inst.to);
   }
 
   type::Type type;
@@ -195,8 +215,8 @@ struct CopyInstruction
 };
 
 struct CopyInitInstruction
-    : base::Extend<CopyInitInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<CopyInitInstruction>::With<base::BaseSerializeExtension,
+                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "copy-init %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
@@ -204,6 +224,10 @@ struct CopyInitInstruction
     frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(from));
     frame.regs_.set(ir::Reg::Out(0), ctx.resolve<ir::addr_t>(to));
     return frame;
+  }
+
+  friend void BaseTraverse(Inliner& inl, CopyInitInstruction& inst) {
+    base::Traverse(inl, inst.from, inst.to);
   }
 
   type::Type type;
@@ -223,8 +247,8 @@ struct CopyInitInstruction
 };
 
 struct MoveInstruction
-    : base::Extend<MoveInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<MoveInstruction>::With<base::BaseSerializeExtension,
+                                          DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "move %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
@@ -232,6 +256,10 @@ struct MoveInstruction
     frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(to));
     frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::addr_t>(from));
     return frame;
+  }
+
+  friend void BaseTraverse(Inliner& inl, MoveInstruction& inst) {
+    base::Traverse(inl, inst.from, inst.to);
   }
 
   type::Type type;
@@ -251,8 +279,8 @@ struct MoveInstruction
 };
 
 struct MoveInitInstruction
-    : base::Extend<MoveInitInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<MoveInitInstruction>::With<base::BaseSerializeExtension,
+                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "move-init %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
@@ -260,6 +288,10 @@ struct MoveInitInstruction
     frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(from));
     frame.regs_.set(ir::Reg::Out(0), ctx.resolve<ir::addr_t>(to));
     return frame;
+  }
+
+  friend void BaseTraverse(Inliner& inl, MoveInitInstruction& inst) {
+    base::Traverse(inl, inst.from, inst.to);
   }
 
   type::Type type;
@@ -292,8 +324,8 @@ struct MoveInitInstruction
 }
 
 struct LoadSymbolInstruction
-    : base::Extend<LoadSymbolInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<LoadSymbolInstruction>::With<base::BaseSerializeExtension,
+                                                DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%3$s = load-symbol %1$s: %2$s";
 
@@ -315,14 +347,18 @@ struct LoadSymbolInstruction
     }
   }
 
+  friend void BaseTraverse(Inliner& inl, LoadSymbolInstruction& inst) {
+    inl(inst.result);
+  }
+
   std::string name;
   type::Type type;
   Reg result;
 };
 
 struct TypeInfoInstruction
-    : base::Extend<TypeInfoInstruction>::With<base::BaseSerializeExtension,
-                                              InlineExtension> {
+    : base::Extend<TypeInfoInstruction>::With<base::BaseTraverseExtension,
+                                              base::BaseSerializeExtension> {
   enum class Kind : uint8_t { Alignment = 0, Bytes = 2 };
 
   std::string to_string() const {
@@ -348,8 +384,8 @@ struct TypeInfoInstruction
 };
 
 struct MakeBlockInstruction
-    : base::Extend<MakeBlockInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<MakeBlockInstruction>::With<base::BaseSerializeExtension,
+                                               DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "make-block(%1$s, ...)";  // TODO
 
@@ -368,14 +404,18 @@ struct MakeBlockInstruction
         OverloadSet(std::move(resolved_befores)), std::move(resolved_afters));
   }
 
+  friend void BaseTraverse(Inliner& inl, MakeBlockInstruction& inst) {
+    base::Traverse(inl, inst.befores, inst.afters);
+  }
+
   Block block;
   std::vector<RegOr<Fn>> befores;
   std::vector<RegOr<Jump>> afters;
 };
 
 struct MakeScopeInstruction
-    : base::Extend<MakeScopeInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<MakeScopeInstruction>::With<base::BaseSerializeExtension,
+                                               DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "make-scope(%1$s, %4$s, ...)";  // TODO
 
@@ -393,6 +433,10 @@ struct MakeScopeInstruction
         blocks);
   }
 
+  friend void BaseTraverse(Inliner& inl, MakeScopeInstruction& inst) {
+    base::Traverse(inl, inst.inits, inst.dones);
+  }
+
   Scope scope;
   std::vector<RegOr<Jump>> inits;
   std::vector<RegOr<Fn>> dones;
@@ -400,8 +444,9 @@ struct MakeScopeInstruction
 };
 
 struct StructIndexInstruction
-    : base::Extend<StructIndexInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<StructIndexInstruction>::With<base::BaseTraverseExtension,
+                                                 base::BaseSerializeExtension,
+                                                 DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (struct %3$s)";
 
@@ -418,8 +463,9 @@ struct StructIndexInstruction
 };
 
 struct PtrIncrInstruction
-    : base::Extend<PtrIncrInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<PtrIncrInstruction>::With<base::BaseTraverseExtension,
+                                             base::BaseSerializeExtension,
+                                             DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (pointer %3$s)";
 
@@ -439,8 +485,9 @@ struct PtrIncrInstruction
 };
 
 struct AndInstruction
-    : base::Extend<AndInstruction>::With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<AndInstruction>::With<base::BaseTraverseExtension,
+                                         base::BaseSerializeExtension,
+                                         DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = and %1$s %2$s";
 
   bool Resolve() const { return Apply(lhs.value(), rhs.value()); }

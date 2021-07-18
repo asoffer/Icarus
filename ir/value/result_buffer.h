@@ -41,6 +41,8 @@ struct PartialResultRef {
     }
   }
 
+  CompleteResultRef AsComplete() const;
+
   template <typename I>
   void Inline(I const &inliner) {
     if (is_register()) {
@@ -97,6 +99,7 @@ struct CompleteResultRef {
   }
 
  private:
+  friend PartialResultRef;
   friend CompleteResultBuffer;
 
   explicit CompleteResultRef(base::untyped_buffer_view view) : view_(view) {}
@@ -148,6 +151,12 @@ struct CompleteResultBuffer {
   template <typename T>
   T get(size_t i) const {
     return (*this)[i].get<T>();
+  }
+
+  void pop_back() {
+    size_t index = offsets_.back();
+    buffer_.resize(index);
+    offsets_.pop_back();
   }
 
   CompleteResultRef operator[](size_t i) const;
@@ -228,6 +237,14 @@ struct PartialResultBuffer {
   auto get(size_t i) const {
     return (*this)[i].get<T>();
   }
+
+  void pop_back() {
+    size_t index = offsets_.back().index;
+    buffer_.resize(index);
+    offsets_.pop_back();
+  }
+
+  void set_register(size_t i, Reg r);
 
   PartialResultRef operator[](size_t i) const;
   PartialResultRef back() const;

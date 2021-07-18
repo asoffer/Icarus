@@ -59,6 +59,8 @@ ir::OutParams Builder::OutParams(
 
 void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
                    PartialResultBuffer args, ir::OutParams outs) {
+  ASSERT(args.num_entries() == f->params().size());
+
   // TODO: this call should return the constructed registers rather than forcing
   // the caller to do it.
   for (auto const &p : f->params()) {

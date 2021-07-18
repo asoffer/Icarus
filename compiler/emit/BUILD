@@ -482,6 +482,7 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:instructions",
         "//ir:compiled_scope",
+        "//ir/instruction:inst_inliner",
         "//ir/value:scope",
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/strings:str_format",

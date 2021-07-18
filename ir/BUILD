@@ -84,7 +84,6 @@ cc_library(
     deps = [
         "//ast:ast",
         "//base:macros",
-        "//ir/blocks:basic",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

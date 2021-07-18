@@ -3,9 +3,10 @@
 
 #include "base/debug.h"
 #include "base/extend.h"
+#include "base/extend/serialize.h"
+#include "base/extend/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
-#include "ir/instruction/inliner.h"
 #include "module/module.h"
 #include "type/type.h"
 
@@ -48,7 +49,7 @@ struct Opaque : public LegacyType {
 
 struct OpaqueTypeInstruction
     : base::Extend<OpaqueTypeInstruction>::With<base::BaseSerializeExtension,
-                                                ir::InlineExtension,
+                                                base::BaseTraverseExtension,
                                                 ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = opaque %1$s";
 

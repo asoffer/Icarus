@@ -4,16 +4,17 @@
 #include <string_view>
 
 #include "base/extend.h"
+#include "base/extend/serialize.h"
+#include "base/extend/traverse.h"
 #include "ir/instruction/debug.h"
-#include "ir/instruction/inliner.h"
 #include "ir/interpreter/byte_code_writer.h"
 
 namespace ir {
 
 template <typename NumType>
-struct EqInstruction
-    : base::Extend<EqInstruction<NumType>>::template With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+struct EqInstruction : base::Extend<EqInstruction<NumType>>::template With<
+                           base::BaseTraverseExtension,
+                           base::BaseSerializeExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = eq %1$s %2$s";
 
@@ -26,9 +27,9 @@ struct EqInstruction
 };
 
 template <typename NumType>
-struct NeInstruction
-    : base::Extend<NeInstruction<NumType>>::template With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+struct NeInstruction : base::Extend<NeInstruction<NumType>>::template With<
+                           base::BaseTraverseExtension,
+                           base::BaseSerializeExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = ne %1$s %2$s";
 
@@ -41,9 +42,9 @@ struct NeInstruction
 };
 
 template <typename NumType>
-struct LtInstruction
-    : base::Extend<LtInstruction<NumType>>::template With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+struct LtInstruction : base::Extend<LtInstruction<NumType>>::template With<
+                           base::BaseTraverseExtension,
+                           base::BaseSerializeExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = lt %1$s %2$s";
 
@@ -56,9 +57,9 @@ struct LtInstruction
 };
 
 template <typename NumType>
-struct LeInstruction
-    : base::Extend<LeInstruction<NumType>>::template With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+struct LeInstruction : base::Extend<LeInstruction<NumType>>::template With<
+                           base::BaseTraverseExtension,
+                           base::BaseSerializeExtension, DebugFormatExtension> {
   using num_type                                 = NumType;
   static constexpr std::string_view kDebugFormat = "%3$s = le %1$s %2$s";
 

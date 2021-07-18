@@ -213,9 +213,23 @@ concept SatisfiesTupleProtocol = requires(T t) {
 };
 
 template <typename T>
+concept Container = requires(T t) {
+  typename T::value_type;
+  t.begin() == t.end();
+  *t.begin();
+  ++std::declval<typename T::iterator>();
+};
+
+template <typename T>
 concept HasErasureWrapper = requires {
   typename T::prefer_wrapper_for_type_erasure;
 };
+
+template <typename T, template <typename> typename Template>
+concept is_a = base::meta<T>.template is_a<Template>();
+
+template <typename T>
+concept is_enum = std::is_enum_v<T>;
 
 }  // namespace base
 

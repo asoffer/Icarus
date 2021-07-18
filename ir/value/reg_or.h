@@ -79,7 +79,48 @@ bool operator==(RegOr<T> const &lhs, RegOr<T> const &rhs) {
 }
 
 template <typename T>
+bool operator==(Reg const &lhs, RegOr<T> const &rhs) {
+  return rhs.is_reg() and lhs == rhs.reg();
+}
+
+template <typename T>
+bool operator==(RegOr<T> const &lhs, Reg const &rhs) {
+  return lhs.is_reg() and lhs.reg() == rhs;
+}
+
+template <typename T>
+bool operator==(T const &lhs, RegOr<T> const &rhs) {
+  return not rhs.is_reg() and lhs == rhs.value();
+}
+
+template <typename T>
+bool operator==(RegOr<T> const &lhs, T const &rhs) {
+  return not lhs.is_reg() and lhs.value() == rhs;
+}
+
+
+template <typename T>
 bool operator!=(RegOr<T> const &lhs, RegOr<T> const &rhs) {
+  return not(lhs == rhs);
+}
+
+template <typename T>
+bool operator!=(Reg const &lhs, RegOr<T> const &rhs) {
+  return not(lhs == rhs);
+}
+
+template <typename T>
+bool operator!=(RegOr<T> const &lhs, Reg const &rhs) {
+  return not(lhs == rhs);
+}
+
+template <typename T>
+bool operator!=(T const &lhs, RegOr<T> const &rhs) {
+  return not(lhs == rhs);
+}
+
+template <typename T>
+bool operator!=(RegOr<T> const &lhs, T const &rhs) {
   return not(lhs == rhs);
 }
 

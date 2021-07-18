@@ -62,27 +62,31 @@ struct RegisterAllocator {
 
   // Merge allocations from another RegisterAllocator. This method is used when
   // inlining another group into this one. The callable `f` is applied to each
-  // allocated register in the to-be-inlined group to update it so that it's
-  // value does not conflict with that a register value in `*this`. Typically
-  // this is just incrementing it by a particular offset.
-  template <std::invocable<ir::Reg> Fn>
-  void MergeFrom(RegisterAllocator const& a, Fn&& f) {
+  // allocated register from `a`, so that its value does not conflict with a
+  // register in `*this`. It is up to the caller to ensure register values do
+  // not consflict.
+  void MergeFrom(RegisterAllocator const& a, std::invocable<ir::Reg&> auto&& f) {
     num_regs_ += a.num_regs_;
-    for (auto const& [t, reg] : a.allocs_) { allocs_.emplace_back(t, f(reg)); }
+    for (auto const& [t, reg] : a.allocs_) {
+      Reg r = reg;
+      f(r);
+      allocs_.emplace_back(t, r);
+    }
     for (auto const& [tc, reg] : a.raw_allocs_) {
-      raw_allocs_.emplace_back(tc, f(reg));
+      Reg r = reg;
+      f(r);
+      raw_allocs_.emplace_back(tc, r);
     }
   }
 
   // Iterate through each allocation, calling `f` on each allocated register
-  template <std::invocable<type::Type, ir::Reg> Fn>
-  void for_each_alloc(Fn&& f) const {
+  void for_each_alloc(std::invocable<type::Type, ir::Reg> auto&& f) const {
     for (auto const& [t, reg] : allocs_) { f(t, reg); }
     // TODO: raw allocs
   }
 
-  template <std::invocable<core::TypeContour, ir::Reg> Fn>
-  void for_each_alloc(core::Arch a, Fn&& f) const {
+  void for_each_alloc(
+      core::Arch a, std::invocable<core::TypeContour, ir::Reg> auto&& f) const {
     for (auto const& [t, reg] : allocs_) {
       f(core::TypeContour(t.bytes(a), t.alignment(a)), reg);
     }

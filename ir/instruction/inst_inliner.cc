@@ -1,3 +1,5 @@
+#include "ir/instruction/inst_inliner.h"
+
 #include <atomic>
 #include <queue>
 #include <string_view>
@@ -17,7 +19,8 @@ InstructionInliner::InstructionInliner(
     : to_be_inlined_(to_be_inlined),
       into_(into),
       register_offset_(into->num_regs()),
-      block_interp_(std::move(block_interp)) {
+      block_interp_(std::move(block_interp)),
+      inliner_(register_offset_, to_be_inlined_->num_args()) {
   LOG("InstructionInliner", "Inlining: %s", *to_be_inlined);
   LOG("InstructionInliner", "Into: %s", *into);
 
@@ -101,15 +104,16 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
       LOG("InlineJump", "%s %p %p", j.name, j.choose_block,
           blocks_.at(j.choose_block));
 
-      arguments_by_name_[j.name].emplace_back(
-          choose_argument_cache_.at(j.choose_block).Inline(*this), block);
+      auto args = choose_argument_cache_.at(j.choose_block);
+      base::Traverse(inliner_, args);
+      arguments_by_name_[j.name].emplace_back(args, block);
 
       BasicBlock* b = block_interp_[j.name];
       block->jump_  = JumpCmd::Uncond(b);
     } else if constexpr (type == base::meta<JumpCmd::UncondJump>) {
       Inline(j.block, block);
     } else if constexpr (type == base::meta<JumpCmd::CondJump>) {
-      Inline(j.reg);
+      base::Traverse(inliner_, j.reg);
       Inline(j.true_block, block);
       Inline(j.false_block, block);
     } else if constexpr (type == base::meta<JumpCmd::ChooseJump>) {
@@ -141,13 +145,10 @@ BasicBlock* InstructionInliner::InlineAllBlocks() {
   // Update the register count. This must be done after we've added the
   // register-forwarding instructions which use this count to choose a register
   // number.
-  into_->alloc_.MergeFrom(to_be_inlined_->alloc_, [&](Reg r) {
-    Inline(r);
-    return r;
-  });
+  into_->alloc_.MergeFrom(to_be_inlined_->alloc_, inliner_);
 
   for (auto [ignored, block] : blocks_) {
-    for (auto& inst : block->instructions_) { inst->Inline(*this); }
+    base::Traverse(inliner_, *block);
     InlineJump(block);
   }
 

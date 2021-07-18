@@ -69,6 +69,9 @@ struct LegacyType : base::Cast<LegacyType> {
                            ir::CompleteResultRef const &) const {
     UNREACHABLE();
   }
+  virtual void ShowValue(std::ostream &, ir::CompleteResultRef const &) const {
+    UNREACHABLE();
+  }
 
   // TODO: Can we ensure structs are complete before we set these?
   struct Flags {
@@ -100,6 +103,9 @@ concept TypeFamilyRequirements = requires(T const t) {
   { t.EqualsValue(std::declval<ir::CompleteResultRef>(),
                   std::declval<ir::CompleteResultRef>()) }
                                               -> std::same_as<bool>;
+  { t.ShowValue(std::declval<std::ostream&>(), 
+                std::declval<ir::CompleteResultRef>()) }
+                                              -> std::same_as<void>;
 };
 // clang-format on
 
@@ -133,6 +139,9 @@ struct TypeVTable {
          ir::CompleteResultRef const &) -> bool { UNREACHABLE(); };
   size_t (*HashValue)(void const *, ir::CompleteResultRef const &) =
       [](void const *, ir::CompleteResultRef const &) -> size_t { return 0; };
+  void (*ShowValue)(void const *, std::ostream &,
+                    ir::CompleteResultRef const &) =
+      [](void const *, std::ostream &, ir::CompleteResultRef const &) {};
 };
 
 inline TypeVTable DefaultTypeVTable{};
@@ -178,6 +187,11 @@ inline TypeVTable TypeVTableFor =
             [](void const *self, ir::CompleteResultRef const &value) {
               return reinterpret_cast<T const *>(self)->HashValue(value);
             },
+        .ShowValue =
+            [](void const *self, std::ostream &os,
+               ir::CompleteResultRef const &value) {
+              reinterpret_cast<T const *>(self)->ShowValue(os, value);
+            },
     };
 
 struct LegacyTypeWrapper {
@@ -213,6 +227,9 @@ struct LegacyTypeWrapper {
 
   size_t HashValue(ir::CompleteResultRef const &value) const {
     return t_->HashValue(value);
+  }
+  void ShowValue(std::ostream &os, ir::CompleteResultRef const &value) const {
+    t_->ShowValue(os, value);
   }
 
  private:
@@ -270,6 +287,9 @@ struct Type {
 
   size_t HashValue(ir::CompleteResultRef const &value) const {
     return vptr_->HashValue(&data_, value);
+  }
+  void ShowValue(std::ostream &os, ir::CompleteResultRef const &value) const {
+    vptr_->ShowValue(&data_, os, value);
   }
 
   std::string to_string() const { return vptr_->to_string(&data_); }

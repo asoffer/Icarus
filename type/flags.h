@@ -9,6 +9,8 @@
 #include "base/debug.h"
 #include "base/extend.h"
 #include "base/extend/serialize.h"
+#include "base/extend/traverse.h"
+#include "base/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
@@ -75,14 +77,19 @@ struct Flags : public type::LegacyType {
 };
 
 struct FlagsInstruction
-    : base::Extend<FlagsInstruction>::With<base::BaseSerializeExtension,
-                                           ir::InlineExtension> {
+    : base::Extend<FlagsInstruction>::With<base::BaseSerializeExtension> {
   Type Resolve() const;
 
   std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = flags (",
                         absl::StrJoin(names_, ", "), ")");
+  }
+
+  friend void BaseTraverse(ir::Inliner &inliner, FlagsInstruction &inst) {
+    for (auto &[unused, value] : inst.specified_values_) {
+      base::Traverse(inliner, value);
+    }
   }
 
   type::Flags *type;
@@ -93,7 +100,7 @@ struct FlagsInstruction
 
 struct XorFlagsInstruction
     : base::Extend<XorFlagsInstruction>::With<base::BaseSerializeExtension,
-                                              ir::InlineExtension,
+                                              base::BaseTraverseExtension,
                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = xor-flags %1$s %2$s";
 
@@ -112,7 +119,7 @@ struct XorFlagsInstruction
 
 struct AndFlagsInstruction
     : base::Extend<AndFlagsInstruction>::With<base::BaseSerializeExtension,
-                                              ir::InlineExtension,
+                                              base::BaseTraverseExtension,
                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = and-flags %1$s %2$s";
 
@@ -131,7 +138,7 @@ struct AndFlagsInstruction
 
 struct OrFlagsInstruction
     : base::Extend<OrFlagsInstruction>::With<base::BaseSerializeExtension,
-                                             ir::InlineExtension,
+                                             base::BaseTraverseExtension,
                                              ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = or-flags %1$s %2$s";
 

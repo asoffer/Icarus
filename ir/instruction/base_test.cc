@@ -14,10 +14,10 @@ struct MockInstruction {
 
   std::string to_string() const { return str_; }
 
-  void Inline(ir::InstructionInliner const& inliner) {}
-
   friend void BaseSerialize(interpreter::ByteCodeWriter& writer,
                             MockInstruction const&) {}
+
+  friend void BaseTraverse(ir::Inliner&, MockInstruction const&) {}
 
  private:
   std::string str_;

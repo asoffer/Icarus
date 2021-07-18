@@ -4,9 +4,10 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "base/macros.h"
-#include "ir/blocks/basic.h"
 
 namespace ir {
+struct BasicBlock;
+
 // LocalBlockInterpretation:
 //
 // Represents a mapping between blocks (i.e., targets of the `goto` keyword) and

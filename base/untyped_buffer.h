@@ -24,6 +24,7 @@ struct untyped_buffer {
   untyped_buffer(size_t starting_capacity = 0) { reserve(starting_capacity); }
 
   void reserve(size_t capacity) { data_.reserve(capacity); }
+  void resize(size_t n) { data_.resize(n); }
 
   constexpr iterator begin() { return iterator(&*data_.begin()); }
   constexpr iterator end() { return iterator(&*data_.end()); }

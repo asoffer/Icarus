@@ -10,12 +10,14 @@
 #include "ir/blocks/load_store_cache.h"
 #include "ir/blocks/offset_cache.h"
 #include "ir/instruction/base.h"
+#include "ir/instruction/inliner.h"
 #include "ir/instruction/jump.h"
 #include "ir/instruction/op_codes.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
 
 namespace ir {
+struct InstructionInliner;
 
 // BasicBlock:
 //
@@ -74,6 +76,10 @@ struct BasicBlock {
     Reg r = inst.result;
     instructions_.push_back(Inst{std::move(inst)});
     return r;
+  }
+
+  friend void BaseTraverse(Inliner& inliner, BasicBlock& block) {
+    base::Traverse(inliner, block.instructions_);
   }
 
   void set_jump(JumpCmd j) { jump_ = std::move(j); }

@@ -3,6 +3,7 @@
 
 #include <cstddef>
 
+#include "base/traverse.h"
 #include "core/arguments.h"
 #include "ir/value/result_buffer.h"
 
@@ -29,11 +30,9 @@ struct Arguments {
 
   PartialResultBuffer& buffer() & { return buffer_; }
 
-  template <typename I>
-  Arguments& Inline(I const& inliner) {
-    size_t num_entries = buffer_.num_entries();
-    for (size_t i = 0; i < num_entries; ++i) { buffer_[i].Inline(inliner); }
-    return *this;
+  template <typename Tr>
+  friend void BaseTraverse(Tr& t, Arguments& arguments) {
+    base::Traverse(t, arguments.buffer_);
   }
 
   size_t size() const { return indices_.size(); }

@@ -49,6 +49,8 @@ struct Primitive : public LegacyType {
   bool EqualsValue(ir::CompleteResultRef const &lhs,
                    ir::CompleteResultRef const &rhs) const override;
   size_t HashValue(ir::CompleteResultRef const &value) const override;
+  void ShowValue(std::ostream &os,
+                 ir::CompleteResultRef const &value) const override;
 
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;

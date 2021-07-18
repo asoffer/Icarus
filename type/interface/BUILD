@@ -35,6 +35,8 @@ cc_library(
     deps = [
         ":interface",
         "//base:extend",
+        "//base/extend:serialize",
+        "//base/extend:traverse",
         "//ir/value:reg",
         "//ir/value:reg_or",
         "//type",

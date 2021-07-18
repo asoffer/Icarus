@@ -9,6 +9,7 @@
 #include "base/debug.h"
 #include "base/extend.h"
 #include "base/extend/serialize.h"
+#include "base/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
@@ -66,13 +67,19 @@ struct Enum : type::LegacyType {
 };
 
 struct EnumInstruction
-    : base::Extend<EnumInstruction>::With<base::BaseSerializeExtension, ir::InlineExtension> {
+    : base::Extend<EnumInstruction>::With<base::BaseSerializeExtension> {
   Type Resolve() const;
 
   std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = enum (",
                         absl::StrJoin(names_, ", "), ")");
+  }
+
+  friend void BaseTraverse(ir::Inliner &inliner, EnumInstruction &inst) {
+    for (auto &[unused, value] : inst.specified_values_) {
+      base::Traverse(inliner, value);
+    }
   }
 
   type::Enum *type;

@@ -7,7 +7,9 @@
 #include "base/cast.h"
 #include "base/meta.h"
 #include "base/serialize.h"
+#include "base/traverse.h"
 #include "base/untyped_buffer.h"
+#include "ir/instruction/inliner.h"
 #include "ir/interpreter/byte_code_writer.h"
 #include "ir/value/reg.h"
 
@@ -16,18 +18,14 @@
 // anyway.
 namespace ir {
 
-struct InstructionInliner;
-
 // clang-format off
 template <typename T>
 concept Instruction = std::copy_constructible<T> and 
                       std::assignable_from<T&, T const&> and
                       std::assignable_from<T&, T&&> and 
                       std::destructible<T> and
-                      requires(T t) {
-  { base::Serialize(std::declval<interpreter::ByteCodeWriter&>(), t) } -> std::same_as<void>;
-  { t.Inline(std::declval<InstructionInliner const&>()) } -> std::same_as<void>;
-};
+                      base::TraversableBy<T, Inliner> and 
+                      base::SerializableBy<T, interpreter::ByteCodeWriter>;
 
 template <typename T>
 concept ReturningInstruction = Instruction<T> and requires (T t) {
@@ -56,10 +54,9 @@ struct InstructionVTable {
     UNREACHABLE("to_string is unimplemented");
   };
 
-  void (*Inline)(void*, InstructionInliner const&) =
-      [](void*, InstructionInliner const&) {
-        UNREACHABLE("Inline is unimplemented");
-      };
+  void (*Inline)(void*, Inliner&) = [](void*, Inliner&) {
+    UNREACHABLE("Inlineis unimplemented");
+  };
 
   base::MetaValue rtti;
 };
@@ -94,8 +91,8 @@ InstructionVTable InstructionVTableFor{
         },
 
     .Inline =
-        [](void* self, InstructionInliner const& inliner) {
-          return reinterpret_cast<T*>(self)->Inline(inliner);
+        [](void* self, Inliner& inliner) {
+          base::Traverse(inliner, *reinterpret_cast<T*>(self));
         },
     .rtti = base::meta<T>,
 };
@@ -184,11 +181,11 @@ struct Inst {
     i.vtable_->Serialize(i.data_, &writer);
   }
 
-  std::string to_string() const { return vtable_->to_string(data_); }
-
-  void Inline(InstructionInliner const& inliner) {
-    vtable_->Inline(data_, inliner);
+  friend void BaseTraverse(Inliner& inliner, Inst& inst) {
+    inst.vtable_->Inline(inst.data_, inliner);
   }
+
+  std::string to_string() const { return vtable_->to_string(data_); }
 
   base::MetaValue rtti() const { return vtable_->rtti; }
 

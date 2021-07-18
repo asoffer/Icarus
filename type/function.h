@@ -5,11 +5,11 @@
 
 #include "base/extend.h"
 #include "base/extend/serialize.h"
+#include "base/extend/traverse.h"
 #include "core/params.h"
-#include "ir/interpreter/byte_code_writer.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
-#include "ir/instruction/inliner.h"
+#include "ir/interpreter/byte_code_writer.h"
 #include "type/callable.h"
 #include "type/qual_type.h"
 #include "type/type.h"
@@ -66,7 +66,7 @@ Function const *Func(core::Params<QualType> in, std::vector<Type> out);
 
 struct FunctionTypeInstruction
     : base::Extend<FunctionTypeInstruction>::With<base::BaseSerializeExtension,
-                                                  ir::InlineExtension> {
+                                                  base::BaseTraverseExtension> {
   Type Resolve() const {
     core::Params<QualType> params;
     params.reserve(inputs.size());

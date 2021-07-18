@@ -12,8 +12,8 @@
 #include "ast/scope.h"
 #include "base/extend.h"
 #include "base/extend/serialize.h"
+#include "base/traverse.h"
 #include "ir/instruction/base.h"
-#include "ir/instruction/inliner.h"
 #include "ir/interpreter/byte_code_reader.h"
 #include "ir/interpreter/byte_code_writer.h"
 #include "ir/interpreter/execution_context.h"
@@ -102,9 +102,8 @@ struct Struct : LegacyType {
 // because it brings consistency whether the struct is parameterized or not, and
 // allows for more powerful metaprogramming.
 struct StructInstruction
-    : base::Extend<StructInstruction>::With<base::BaseSerializeExtension, ir::InlineExtension> {
-  struct Field : base::Extend<Field, 4>::With<base::BaseSerializeExtension,
-                                              ir::InlineExtension> {
+    : base::Extend<StructInstruction>::With<base::BaseSerializeExtension> {
+  struct Field : base::Extend<Field, 4>::With<base::BaseSerializeExtension> {
     // TODO: Remove this once ByteCodeWriter supports
     // non-default-constructible types.
     explicit Field() : name_(""), type_(ir::RegOr<Type>(nullptr)) {}
@@ -127,6 +126,10 @@ struct StructInstruction
       return value_.empty() ? ir::CompleteResultRef() : value_[0];
     }
 
+    friend void BaseTraverse(ir::Inliner &inliner, Field &f) {
+      base::Traverse(inliner, f.type_);
+    }
+
    private:
     friend base::EnableExtensions;
 
@@ -135,6 +138,10 @@ struct StructInstruction
     ir::CompleteResultBuffer value_;
     bool export_ = false;
   };
+
+  friend void BaseTraverse(ir::Inliner &inliner, StructInstruction &s) {
+    base::Traverse(inliner, s.constants, s.fields);
+  }
 
   void Apply(interpreter::ExecutionContext &ctx) const;
 

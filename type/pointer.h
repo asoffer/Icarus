@@ -3,9 +3,9 @@
 
 #include "base/extend.h"
 #include "base/extend/serialize.h"
+#include "base/extend/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
-#include "ir/instruction/inliner.h"
 #include "type/type.h"
 
 namespace type {
@@ -30,6 +30,8 @@ struct Pointer : LegacyType {
   bool EqualsValue(ir::CompleteResultRef const &lhs,
                    ir::CompleteResultRef const &rhs) const override;
   size_t HashValue(ir::CompleteResultRef const &value) const override;
+  void ShowValue(std::ostream &os,
+                 ir::CompleteResultRef const &value) const override;
 
   Completeness completeness() const override { return Completeness::Complete; }
 
@@ -67,7 +69,7 @@ BufferPointer const *BufPtr(Type t);
 
 struct PtrInstruction
     : base::Extend<PtrInstruction>::With<base::BaseSerializeExtension,
-                                         ir::InlineExtension,
+                                         base::BaseTraverseExtension,
                                          ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = ptr %1$s";
 
@@ -80,7 +82,7 @@ struct PtrInstruction
 
 struct BufPtrInstruction
     : base::Extend<BufPtrInstruction>::With<base::BaseSerializeExtension,
-                                            ir::InlineExtension,
+                                            base::BaseTraverseExtension,
                                             ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = buf-ptr %1$s";
 

@@ -96,4 +96,18 @@ size_t Primitive::HashValue(ir::CompleteResultRef const &value) const {
       absl::Span<std::byte const>(value.raw().data(), value.raw().size()));
 }
 
+void Primitive::ShowValue(std::ostream &os,
+                          ir::CompleteResultRef const &value) const {
+  Apply([&]<typename T>() {
+    if constexpr (requires {
+                    { (void)(os << std::declval<T>()) }
+                    ->std::same_as<void>;
+                  }) {
+      os << value.get<T>();
+    } else {
+      NOT_YET();
+    }
+  });
+}
+
 }  // namespace type

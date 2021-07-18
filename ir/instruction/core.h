@@ -8,10 +8,10 @@
 #include "absl/strings/str_cat.h"
 #include "base/extend.h"
 #include "base/extend/serialize.h"
+#include "base/extend/traverse.h"
 #include "base/serialize.h"
 #include "ir/blocks/basic.h"
 #include "ir/instruction/debug.h"
-#include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/byte_code_reader.h"
@@ -25,10 +25,14 @@ namespace ir {
 // memory.
 
 struct LoadInstruction
-    : base::Extend<LoadInstruction>::With<
-          InlineExtension, base::BaseSerializeExtension, DebugFormatExtension> {
+    : base::Extend<LoadInstruction>::With<base::BaseSerializeExtension,
+                                          DebugFormatExtension> {
   static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = load %2$s (%1$s)";
+
+  friend void BaseTraverse(Inliner& inliner, LoadInstruction& inst) {
+    base::Traverse(inliner, inst.addr, inst.result);
+  }
 
   type::Type type;
   RegOr<addr_t> addr;
@@ -37,7 +41,8 @@ struct LoadInstruction
 
 // TODO consider changing these to something like 'basic block arguments'
 template <typename T>
-struct PhiInstruction {
+struct PhiInstruction : base::Extend<PhiInstruction<T>, 3>::template With<
+                            base::BaseTraverseExtension> {
   using type = T;
 
   PhiInstruction() = default;
@@ -68,11 +73,7 @@ struct PhiInstruction {
     return s;
   }
 
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(values);
-    inliner.Inline(result);
-  }
-
+  friend base::EnableExtensions;
   std::vector<BasicBlock const*> blocks;
   std::vector<RegOr<T>> values;
   Reg result;
@@ -91,7 +92,8 @@ struct PhiInstruction {
 template <typename T>
 struct RegisterInstruction
     : base::Extend<RegisterInstruction<T>>::template With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseTraverseExtension, base::BaseSerializeExtension,
+          DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = %1$s";
 
   T Resolve() const { return Apply(operand.value()); }
@@ -104,7 +106,8 @@ struct RegisterInstruction
 template <typename T>
 struct SetReturnInstruction
     : base::Extend<SetReturnInstruction<T>>::template With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseTraverseExtension, base::BaseSerializeExtension,
+          DebugFormatExtension> {
   using type                                     = T;
   static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
 
@@ -115,7 +118,8 @@ struct SetReturnInstruction
 template <typename T>
 struct StoreInstruction
     : base::Extend<StoreInstruction<T>>::template With<
-          base::BaseSerializeExtension, InlineExtension, DebugFormatExtension> {
+          base::BaseTraverseExtension, base::BaseSerializeExtension,
+          DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "store %1$s into [%2$s]";
   using type                                     = T;
 
@@ -128,7 +132,8 @@ struct StoreInstruction
   RegOr<addr_t> location;
 };
 
-struct CallInstruction {
+struct CallInstruction
+    : base::Extend<CallInstruction, 4>::With<base::BaseSerializeExtension> {
   CallInstruction() = default;
   CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
                   ir::PartialResultBuffer args, OutParams outs)
@@ -136,13 +141,28 @@ struct CallInstruction {
         fn_(fn),
         args_(std::move(args)),
         outs_(std::move(outs)) {
+    ASSERT(args_.num_entries() == fn_type_->params().size());
     ASSERT(this->outs_.size() == fn_type_->output().size());
   }
 
   std::string to_string() const {
     using base::stringify;
+
+    std::string_view separator = "";
+    std::string arg_str;
+    for (size_t i = 0; i < args_.num_entries(); ++i) {
+      absl::StrAppendFormat(
+          &arg_str, "%s%s", std::exchange(separator, ", "),
+          args_[i].is_register() ? stringify(args_[i].get<Reg>()) : [&] {
+            std::stringstream ss;
+            fn_type_->params()[i].value.type().ShowValue(ss,
+                                                         args_[i].AsComplete());
+            return ss.str();
+          }());
+    }
+
     return absl::StrFormat(
-        "%scall %s: ...",
+        "%scall %s: %s",
         fn_type_->output().empty()
             ? ""
             : absl::StrCat("(",
@@ -151,16 +171,12 @@ struct CallInstruction {
                                            absl::StrAppend(s, stringify(out));
                                          }),
                            ") = "),
-        stringify(fn_));
+        stringify(fn_), arg_str);
   }
 
-  friend void BaseSerialize(interpreter::ByteCodeWriter& w,
-                            CallInstruction const& inst) {
-    base::Serialize(w, inst.fn_, inst.args_, inst.outs_);
-  }
-  friend void BaseDeserialize(interpreter::ByteCodeReader& r,
-                              CallInstruction& inst) {
-    base::Deserialize(r, inst.fn_, inst.args_, inst.outs_);
+  friend void BaseTraverse(Inliner& inliner, CallInstruction& inst) {
+    base::Traverse(inliner, inst.fn_, inst.args_);
+    for (auto& reg : inst.outs_.regs()) { base::Traverse(inliner, inst.args_); }
   }
 
   type::Function const* func_type() const { return fn_type_; }
@@ -168,13 +184,9 @@ struct CallInstruction {
   PartialResultBuffer const& arguments() const { return args_; }
   OutParams const& outputs() const { return outs_; }
 
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(fn_);
-    inliner.Inline(args_);
-    for (auto& reg : outs_.regs()) { inliner.Inline(reg); }
-  }
-
  private:
+  friend base::EnableExtensions;
+
   type::Function const* fn_type_;
   RegOr<Fn> fn_;
   PartialResultBuffer args_;
@@ -182,7 +194,7 @@ struct CallInstruction {
 };
 
 struct CommentInstruction
-    : base::Extend<CommentInstruction>::With<InlineExtension,
+    : base::Extend<CommentInstruction>::With<base::BaseTraverseExtension,
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "comment: %1$s";
 

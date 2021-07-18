@@ -104,4 +104,14 @@ void CompleteResultBuffer::reserve_bytes(size_t num_entries, size_t num_bytes) {
   buffer_.reserve(num_bytes);
 }
 
+CompleteResultRef PartialResultRef::AsComplete() const {
+  ASSERT(is_register() == false);
+  return CompleteResultRef(view_);
+}
+
+void PartialResultBuffer::set_register(size_t i, Reg r) {
+  ASSERT((*this)[i].is_register() == true);
+  buffer_.set(offsets_[i].index, r);
+}
+
 }  // namespace ir

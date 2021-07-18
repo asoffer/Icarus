@@ -55,4 +55,9 @@ size_t Pointer::HashValue(ir::CompleteResultRef const &value) const {
       absl::Span<std::byte const>(value.raw().data(), value.raw().size()));
 }
 
+void Pointer::ShowValue(std::ostream &os,
+                        ir::CompleteResultRef const &value) const {
+  absl::Format(&os, "%p", value.get<ir::addr_t>());
+}
+
 }  // namespace type

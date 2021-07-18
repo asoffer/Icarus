@@ -273,6 +273,26 @@ cc_library(
 )
 
 cc_library(
+    name = "traverse",
+    hdrs = ["traverse.h"],
+    deps = [
+        ":debug",
+        ":meta",
+    ],
+)
+
+cc_test(
+    name = "traverse_test",
+    srcs = ["traverse_test.cc"],
+    deps = [
+        ":traverse",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_googletest//:gtest_main",
+    ]
+)
+
+
+cc_library(
     name = "unaligned_ref",
     hdrs = ["unaligned_ref.h"],
     deps = [],

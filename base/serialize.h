@@ -37,6 +37,11 @@ void Serialize(::base::Serializer auto& s, auto const&... values);
 void Deserialize(::base::Deserializer auto& d,
                  ::base::Assignable auto&... values);
 
+template <typename T, typename S>
+concept SerializableBy = Serializer<S>and requires(T t, S s) {
+  ::base::Serialize(s, t);
+};
+
 namespace internal_serialize {
 
 template <typename T, typename = void>
@@ -74,7 +79,6 @@ struct AssignableTypeImpl<
   using type = T;
 };
 
-
 template <typename T>
 using AssignableType = typename AssignableTypeImpl<T>::type;
 
@@ -87,8 +91,7 @@ struct DeserializingIterator {
   using iterator_category = std::input_iterator_tag;
 
   DeserializingIterator(D* deserializer, size_t num_elements)
-      : deserializer_(deserializer), num_elements_(num_elements) {
-  }
+      : deserializer_(deserializer), num_elements_(num_elements) {}
 
   static DeserializingIterator FromContainer(D* deserializer) {
     size_t num_elements;
@@ -126,7 +129,6 @@ struct DeserializingIterator {
   }
 
  private:
-
   void ReadValue() {
     ASSERT(value_.has_value() == false);
     if constexpr (::base::Assignable<value_type>) {
@@ -176,7 +178,7 @@ void SerializeOne(::base::Serializer auto& s, value_type const& value) {
     ::base::Serialize(s, num_elements);
     for (auto const& element : value) { Serialize(s, element); }
   } else {
-      static_assert(base::always_false<value_type>());
+    static_assert(base::always_false<value_type>());
   }
 }
 
@@ -202,9 +204,9 @@ void DeserializeOne(::base::Deserializer auto& d, value_type& value) {
   } else if constexpr (
       requires {
         value_type(std::declval<internal_serialize::DeserializingIterator<
-              deserializer_type, typename value_type::value_type>>(),
-          std::declval<internal_serialize::DeserializingIterator<
-              deserializer_type, typename value_type::value_type>>());
+                       deserializer_type, typename value_type::value_type>>(),
+                   std::declval<internal_serialize::DeserializingIterator<
+                       deserializer_type, typename value_type::value_type>>());
       }) {
     using iterator = internal_serialize::DeserializingIterator<
         deserializer_type, typename value_type::value_type>;

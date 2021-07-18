@@ -1,12 +1,13 @@
 #ifndef ICARUS_TYPE_ARRAY_H
 #define ICARUS_TYPE_ARRAY_H 
+
 #include "absl/container/node_hash_set.h"
 #include "base/extend.h"
 #include "base/extend/serialize.h"
+#include "base/extend/traverse.h"
 #include "core/arch.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
-#include "ir/instruction/inliner.h"
 #include "ir/value/fn.h"
 #include "type/primitive.h"
 #include "type/type.h"
@@ -98,7 +99,7 @@ Array const *Arr(Array::length_t len, Type t);
 
 struct ArrayInstruction
     : base::Extend<ArrayInstruction>::With<base::BaseSerializeExtension,
-                                           ir::InlineExtension,
+                                           base::BaseTraverseExtension,
                                            ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = array %1$s %2$s";
   using length_t                                 = Array::length_t;

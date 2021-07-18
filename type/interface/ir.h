@@ -2,10 +2,11 @@
 #define ICARUS_TYPE_INTERFACE_IR_H
 
 #include "base/extend.h"
-#include "ir/interpreter/byte_code_writer.h"
+#include "base/extend/serialize.h"
+#include "base/extend/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
-#include "ir/instruction/inliner.h"
+#include "ir/interpreter/byte_code_writer.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
 #include "type/interface/interface.h"
@@ -15,7 +16,7 @@ namespace interface {
 
 struct ConvertsToInstruction
     : base::Extend<ConvertsToInstruction>::With<base::BaseSerializeExtension,
-                                                ir::InlineExtension,
+                                                base::BaseTraverseExtension,
                                                 ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = converts-to %1$s";
 
@@ -27,7 +28,7 @@ struct ConvertsToInstruction
 
 struct JustInstruction
     : base::Extend<JustInstruction>::With<base::BaseSerializeExtension,
-                                          ir::InlineExtension,
+                                          base::BaseTraverseExtension,
                                           ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = just %1$s";
 
@@ -39,7 +40,7 @@ struct JustInstruction
 
 struct CallableInstruction
     : base::Extend<CallableInstruction>::With<base::BaseSerializeExtension,
-                                              ir::InlineExtension,
+                                              base::BaseTraverseExtension,
                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = callable %1$s %2$s";
 
