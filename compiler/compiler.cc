@@ -58,11 +58,6 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
       ASSERT(buffer.num_entries() != 0);
       // TODO: guaranteed move-elision
       c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), type), buffer);
-    } else if (auto const *gs = type.if_as<type::GenericStruct>()) {
-      c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<type::Type>{
-          .index = 0,
-          .value = ir::RegOr<type::Type>(gs),
-      });
     } else {
       ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
                  uint8_t, uint16_t, uint32_t, uint64_t, float, double,

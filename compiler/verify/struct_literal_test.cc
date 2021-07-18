@@ -64,7 +64,7 @@ TEST(StructLiteral, SelfReferential) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(StructLiteral, SelfReferentialError) {
+TEST(StructLiteral, DISABLED_SelfReferentialError) {
   test::TestModule mod;
   mod.AppendCode(R"(
   list ::= struct {

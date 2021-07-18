@@ -613,6 +613,8 @@ core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
           c.EvaluateToBufferOrDiagnose(
               type::Typed<ast::Expression const *>(&arg.expr(), qt.type())));
       buffer.append(result);
+    } else {
+      buffer.append();
     }
 
     if (not arg.named()) {
