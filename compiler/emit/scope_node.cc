@@ -52,17 +52,18 @@ struct BeforeBlock : base::Extend<BeforeBlock>::With<base::AbslHashExtension> {
   ir::Fn fn;
 };
 
-absl::flat_hash_map<std::string,
+absl::flat_hash_map<std::string_view,
                     std::vector<std::pair<ir::Arguments, ir::BasicBlock *>>>
-InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
-                      ir::PartialResultBuffer const &arguments,
-                      ir::LocalBlockInterpretation const &block_interp) {
+InlineJumpIntoCurrent(
+    ir::Builder &bldr, ir::Jump to_be_inlined,
+    ir::PartialResultBuffer const &arguments,
+    absl::flat_hash_map<std::string_view, ir::BasicBlock *> names) {
   auto const *jump           = ir::CompiledJump::From(to_be_inlined);
   auto *start_block          = bldr.CurrentBlock();
   size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
 
   auto *into = bldr.CurrentGroup();
-  ir::InstructionInliner inl(jump, into, block_interp);
+  ir::InstructionInliner inl(jump, into,  std::move(names));
 
   bldr.CurrentBlock() = start_block;
   size_t i            = 0;
@@ -74,10 +75,8 @@ InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
     RegisterReferencing(bldr, p.value, arguments[i++]);
   }
 
-  auto *entry = inl.InlineAllBlocks();
+  inl.InlineAllBlocks();
 
-  bldr.CurrentBlock() = start_block;
-  bldr.UncondJump(entry);
   return std::move(inl).ArgumentsByName();
 }
 
@@ -285,16 +284,21 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   absl::Cleanup c = [&] { state().scope_landings.pop_back(); };
 
   // Add new blocks
-  absl::flat_hash_map<ast::BlockNode const *, ir::BasicBlock *> interp_map;
+  absl::flat_hash_map<std::string_view, ast::BlockNode const *> node_by_name;
+  absl::flat_hash_map<std::string_view, ir::BasicBlock *> names;
+  names.reserve(node->blocks().size());
+  node_by_name.reserve(node->blocks().size());
   for (auto const &block : node->blocks()) {
-    interp_map.emplace(&block, builder().AddBlock(absl::StrCat(
-                                   "Start of block `", block.name(), "`.")));
+    node_by_name.emplace(block.name(), &block);
+    names.emplace(block.name(), builder().AddBlock(absl::StrCat(
+                                    "Start of block `", block.name(), "`.")));
   }
 
-  absl::flat_hash_map<BeforeBlock, BlockAndPhis> before_blocks;
+  names.emplace("start", args_block);
+  // TODO: Does this ignore exit handlers?
+  names.emplace("done", landing_block);
 
-  ir::LocalBlockInterpretation local_interp(std::move(interp_map), args_block,
-                                            landing_block);
+  absl::flat_hash_map<BeforeBlock, BlockAndPhis> before_blocks;
 
   builder().UncondJump(args_block);
   builder().CurrentBlock() = args_block;
@@ -304,16 +308,14 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   auto constant_args = EmitConstantPartialResultBuffer(*this, node->arguments());
   auto [init, args]  = EmitIrForJumpArguments(
       *this, constant_args, state_ptr, node->arguments(), *compiled_scope);
-  auto from_block = builder().CurrentBlock();
 
-  auto args_by_name =
-      InlineJumpIntoCurrent(builder(), init, args, local_interp);
+  auto args_by_name = InlineJumpIntoCurrent(builder(), init, args, names);
   for (auto const &[name, args_and_incoming] : args_by_name) {
     for (auto const &[args, incoming_block] : args_and_incoming) {
       // TODO: Handle arguments for start/done blocks.
       if (name == "done" or name == "start") { continue; }
-      builder().CurrentBlock()         = local_interp[name];
-      ast::BlockNode const *block_node = local_interp.block_node(name);
+      builder().CurrentBlock()         = names.at(name);
+      ast::BlockNode const *block_node = node_by_name.at(name);
 
       auto *scope_block = ir::CompiledBlock::From(compiled_scope->block(name));
       ir::OverloadSet &before = scope_block->before();
@@ -343,13 +345,13 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
         ir::PartialResultBuffer after_args;
         if (state_ptr) { after_args.append(*state_ptr); }
         auto args_by_name =
-            InlineJumpIntoCurrent(builder(), after, after_args, local_interp);
+            InlineJumpIntoCurrent(builder(), after, after_args, names);
         for (auto const &[name, args_and_incoming] : args_by_name) {
           for (auto const &[args, incoming_block] : args_and_incoming) {
             // TODO: Handle arguments for start/done blocks.
             if (name == "done" or name == "start") { continue; }
-            builder().CurrentBlock()         = local_interp[name];
-            ast::BlockNode const *block_node = local_interp.block_node(name);
+            builder().CurrentBlock()         = names.at(name);
+            ast::BlockNode const *block_node = node_by_name.at(name);
 
             auto *scope_block =
                 ir::CompiledBlock::From(compiled_scope->block(name));

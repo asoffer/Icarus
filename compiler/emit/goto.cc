@@ -11,18 +11,17 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
   std::vector<ir::BasicBlock *> blocks;
   blocks.reserve(options.size());
 
+  std::vector<ir::Arguments> all_args;
+  blocks.reserve(options.size());
+
   auto current_block = c.builder().CurrentBlock();
 
-  std::vector<ir::Arguments> all_args;
   LOG("EmitJump", "Emitting options...");
   for (auto const &opt : options) {
     ir::BasicBlock *block = c.builder().AddBlock(
         absl::StrCat("Args computation for block `", opt.block(), "`."));
 
     LOG("EmitJump", "... %s (%p)", opt.block(), block);
-
-    blocks.push_back(block);
-    names.push_back(opt.block());
 
     c.builder().CurrentBlock() = block;
 
@@ -50,6 +49,11 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
         c.EmitToBuffer(expr.get(), arguments.buffer());
       }
     }
+
+    blocks.push_back(block);
+    names.push_back(opt.block());
+    all_args.emplace_back(std::move(arguments));
+
     c.builder().CurrentBlock()->set_jump(
         ir::JumpCmd::JumpExit(std::string(opt.block()), current_block));
   }

@@ -64,7 +64,10 @@ struct JumpCmd {
                         std::vector<Arguments> args)
         : names_(std::move(names)),
           blocks_(std::move(blocks)),
-          args_(std::move(args)) {}
+          args_(std::move(args)) {
+      ASSERT(names_.size() == blocks_.size());
+      ASSERT(names_.size() == args_.size());
+    }
 
     size_t size() const { return names_.size(); }
     absl::Span<std::string_view const> names() const { return names_; }

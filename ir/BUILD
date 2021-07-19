@@ -5,7 +5,6 @@ cc_library(
     hdrs = ["builder.h"],
     srcs = ["builder.cc"],
     deps = [
-        ":local_block_interpretation",
         "//ast:overload_set",
         "//base:debug",
         "//base:scope",
@@ -74,17 +73,6 @@ cc_library(
         "//type",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-    ],
-)
-
-cc_library(
-    name = "local_block_interpretation",
-    hdrs = ["local_block_interpretation.h"],
-    srcs = [],
-    deps = [
-        "//ast:ast",
-        "//base:macros",
-        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

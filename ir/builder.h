@@ -15,7 +15,6 @@
 #include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
 #include "ir/instruction/instructions.h"
-#include "ir/local_block_interpretation.h"
 #include "ir/out_params.h"
 #include "ir/value/addr.h"
 #include "ir/value/block.h"

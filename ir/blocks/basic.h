@@ -84,6 +84,7 @@ struct BasicBlock {
 
   void set_jump(JumpCmd j) { jump_ = std::move(j); }
   JumpCmd const &jump() const { return jump_; }
+  JumpCmd &jump() { return jump_; }
 
   friend std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
 

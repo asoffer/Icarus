@@ -75,7 +75,6 @@ cc_library(
         "//base:debug",
         "//base:meta",
         "//ir:compiled_jump",
-        "//ir:local_block_interpretation",
         "//ir/blocks:basic",
         "//ir/blocks:group",
         "//ir/value:reg",
