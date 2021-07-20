@@ -53,7 +53,6 @@ struct Integer {
     return os;
   }
 
-
   // TODO: Remove
   int64_t value() const { return data_; }
 
