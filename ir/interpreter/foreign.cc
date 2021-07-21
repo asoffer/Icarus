@@ -9,7 +9,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/debug.h"
-#include "ir/read_only_data.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/primitive.h"

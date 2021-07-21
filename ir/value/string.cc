@@ -5,7 +5,6 @@
 #include "core/alignment.h"
 #include "core/arch.h"
 #include "core/bytes.h"
-#include "ir/read_only_data.h"
 #include "ir/value/char.h"
 
 namespace ir {

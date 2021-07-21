@@ -11,7 +11,6 @@
 #include "base/meta.h"
 #include "ir/compiled_jump.h"
 #include "ir/instruction/core.h"
-#include "ir/read_only_data.h"
 #include "ir/value/addr.h"
 #include "ir/value/block.h"
 #include "ir/value/char.h"

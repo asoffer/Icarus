@@ -3,7 +3,6 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
-#include "ir/read_only_data.h"
 
 namespace {
 

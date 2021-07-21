@@ -153,7 +153,6 @@ cc_library(
         "//ir/interpreter:architecture",
         "//ir/interpreter:foreign",
         "//ir/interpreter:stack_frame",
-        "//ir:read_only_data",
         "//ir/value:addr",
         "//ir/value:block",
         "//ir/value:char",

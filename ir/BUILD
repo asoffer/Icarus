@@ -87,12 +87,3 @@ cc_library(
         "@com_google_absl//absl/types:span",
     ],
 )
-
-cc_library(
-    name = "read_only_data",
-    hdrs = ["read_only_data.h"],
-    deps = [
-        "//base:global",
-        "//base:untyped_buffer",
-    ],
-)

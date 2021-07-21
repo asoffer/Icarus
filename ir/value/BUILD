@@ -303,11 +303,11 @@ cc_library(
         ":addr",
         ":char",
         ":slice",
+        "//base:guarded",
         "//base:no_destructor",
         "//core:alignment",
         "//core:arch",
         "//core:bytes",
-        "//ir:read_only_data",
         "@com_google_absl//absl/container:node_hash_map",
     ],
 )

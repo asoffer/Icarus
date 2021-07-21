@@ -12,7 +12,6 @@
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/foreign.h"
 #include "ir/interpreter/stack_frame.h"
-#include "ir/read_only_data.h"
 #include "ir/value/addr.h"
 #include "ir/value/fn.h"
 #include "ir/value/reg.h"
