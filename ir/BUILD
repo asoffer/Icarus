@@ -8,6 +8,7 @@ cc_library(
         "//ast:overload_set",
         "//base:debug",
         "//base:scope",
+        "//base:traverse",
         "//ir/blocks:basic",
         "//ir/blocks:group",
         "//ir/instruction",

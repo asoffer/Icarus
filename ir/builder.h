@@ -46,6 +46,10 @@ namespace ir {
 // approach by carrying around extra state (like loads/store-caching).
 
 struct Builder {
+  void InlineJumpIntoCurrent(
+      ir::Jump to_be_inlined, ir::PartialResultBuffer const& arguments,
+      absl::flat_hash_map<std::string_view, ir::BasicBlock*> const& names);
+
   BasicBlock* AddBlock();
   BasicBlock* AddBlock(std::string header);
   BasicBlock* AddBlock(BasicBlock const& to_copy);

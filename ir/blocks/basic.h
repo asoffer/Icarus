@@ -17,7 +17,6 @@
 #include "ir/value/reg_or.h"
 
 namespace ir {
-struct InstructionInliner;
 
 // BasicBlock:
 //
@@ -89,8 +88,6 @@ struct BasicBlock {
   friend std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
 
  private:
-  friend struct ir::InstructionInliner;
-
   void RemoveOutgoingJumps();
   void AddOutgoingJumps(JumpCmd const &jump);
   void ExchangeJumps(BasicBlock const *b);

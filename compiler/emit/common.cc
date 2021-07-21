@@ -543,13 +543,21 @@ void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
 }
 
 void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
+                     type::QualType arg_qt, type::QualType param_qt,
+                     ir::PartialResultBuffer &out) {
+  type::Type param_type = param_qt.type();
+  out.append(constant);
+  ApplyImplicitCasts(c.builder(), arg_qt.type(), param_qt, out);
+}
+
+void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
                      ast::Expression const *expr, type::QualType param_qt,
                      ir::PartialResultBuffer &out) {
   type::QualType arg_qt = *c.context().qual_types(expr)[0];
   type::Type arg_type   = arg_qt.type();
   type::Type param_type = param_qt.type();
 
-  if (constant.empty()) {
+  if (not arg_qt.constant()) {
     if (auto const *ptr_to_type = param_type.if_as<type::Pointer>()) {
       if (ptr_to_type->pointee() == arg_type) {
         if (arg_qt.quals() >= type::Quals::Ref()) {

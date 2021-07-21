@@ -20,10 +20,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Terminal const *node)
     t = type::F32;
   } else if (mv == base::meta<double>) {
     t = type::F64;
-  } else if (mv == base::meta<ir::Slice>) {
-    t = type::Slc(type::Char);
   } else if (mv == base::meta<ir::addr_t>) {
-    t = type::NullPtr;
+    t = node->value().get<ir::addr_t>() ? type::Slc(type::Char) : type::NullPtr;
   } else if (mv == base::meta<type::Type>) {
     t = type::Type_;
   } else {

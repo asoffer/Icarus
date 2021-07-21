@@ -42,6 +42,9 @@ void MakeAllDestructions(Compiler &compiler, ast::Scope const *scope);
 void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
                      ast::Expression const *expr, type::QualType param_qt,
                      ir::PartialResultBuffer &out);
+void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
+                     type::QualType arg_qt, type::QualType param_qt,
+                     ir::PartialResultBuffer &out);
 
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
                             ast::Expression const &expr,

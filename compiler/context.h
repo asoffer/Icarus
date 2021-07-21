@@ -347,6 +347,10 @@ struct Context {
   absl::Span<ast::YieldStmt const *const> YieldsTo(
       base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node) const;
 
+  absl::Span<base::PtrUnion<ast::UnconditionalGoto const,
+                            ast::ConditionalGoto const> const>
+  GoesTo(ast::Jump const *node) const;
+
  private:
   explicit Context(CompiledModule *mod, Context *parent);
 

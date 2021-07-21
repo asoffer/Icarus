@@ -65,26 +65,6 @@ cc_library(
     ]
 )
 
-cc_library(
-    name = "inst_inliner",
-    hdrs = ["inst_inliner.h"],
-    srcs = ["inst_inliner.cc"],
-    deps = [
-        ":base",
-        ":inliner",
-        "//base:debug",
-        "//base:meta",
-        "//ir:compiled_jump",
-        "//ir/blocks:basic",
-        "//ir/blocks:group",
-        "//ir/value:reg",
-        "//ir/value:reg_or",
-        "//type:typed_value",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/strings:str_format",
-    ]
-)
-
 cc_test(
     name = "inliner_test",
     srcs = ["inliner_test.cc"],
@@ -147,10 +127,13 @@ cc_library(
 cc_library(
     name = "core",
     hdrs = ["core.h"],
+    srcs = ["core.cc"],
     deps = [
         ":debug",
         "//base:extend",
+        "//base/extend:traverse",
         "//ir/blocks:basic",
+        "//ir/interpreter:architecture",
         "//ir/interpreter:byte_code_reader",
         "//ir/interpreter:byte_code_writer",
         "//ir:out_params",

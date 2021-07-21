@@ -190,6 +190,7 @@ cc_test(
 cc_library(
     name = "overload_set",
     hdrs = ["overload_set.h"],
+    srcs = ["overload_set.cc"],
     deps = [
         "//core:call",
         "//ir/value:fn",

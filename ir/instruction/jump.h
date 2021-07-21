@@ -12,6 +12,7 @@
 
 #include "base/meta.h"
 #include "base/stringify.h"
+#include "core/arguments.h"
 #include "ir/value/arguments.h"
 #include "ir/value/reg.h"
 #include "type/qual_type.h"
@@ -25,8 +26,10 @@ struct JumpCmd {
   static JumpCmd Uncond(BasicBlock* block) {
     return JumpCmd(UncondJump{block});
   }
-  static JumpCmd JumpExit(std::string name, BasicBlock* choose_block) {
-    return JumpCmd(JumpExitJump{std::move(name), choose_block});
+  static JumpCmd JumpExit(std::string name, BasicBlock* choose_block,
+                          core::Arguments<type::QualType> argument_types) {
+    return JumpCmd(
+        JumpExitJump{std::move(name), choose_block, std::move(argument_types)});
   }
   static JumpCmd Cond(Reg r, BasicBlock* true_block, BasicBlock* false_block) {
     return JumpCmd(CondJump{r, true_block, false_block});
@@ -57,6 +60,7 @@ struct JumpCmd {
   struct JumpExitJump {
     std::string name;
     BasicBlock* choose_block;
+    core::Arguments<type::QualType> argument_types;
   };
   struct ChooseJump {
     explicit ChooseJump(std::vector<std::string_view> names,

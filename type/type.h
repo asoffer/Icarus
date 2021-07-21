@@ -1,6 +1,7 @@
 #ifndef ICARUS_TYPE_TYPE_H
 #define ICARUS_TYPE_TYPE_H
 
+#include <sstream>
 #include <string>
 
 #include "base/cast.h"
@@ -290,6 +291,12 @@ struct Type {
   }
   void ShowValue(std::ostream &os, ir::CompleteResultRef const &value) const {
     vptr_->ShowValue(&data_, os, value);
+  }
+
+  std::string Representation(ir::CompleteResultRef const &value) const {
+    std::stringstream ss;
+    ShowValue(ss, value);
+    return ss.str();
   }
 
   std::string to_string() const { return vptr_->to_string(&data_); }

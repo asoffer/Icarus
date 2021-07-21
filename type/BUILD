@@ -354,6 +354,7 @@ cc_library(
         "//ir/instruction:base",
         "//ir/instruction:debug",
         "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 

@@ -18,6 +18,8 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
 
   LOG("EmitJump", "Emitting options...");
   for (auto const &opt : options) {
+    core::Arguments<type::QualType> argument_types;
+
     ir::BasicBlock *block = c.builder().AddBlock(
         absl::StrCat("Args computation for block `", opt.block(), "`."));
 
@@ -35,6 +37,7 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
     ir::Arguments arguments;
     for (auto const &expr : opt.args().pos()) {
       auto qt = c.context().qual_types(expr.get())[0];
+      argument_types.pos_emplace(qt);
       if (qt.quals() >= type::Quals::Ref()) {
         arguments.pos_insert(c.EmitRef(expr.get()));
       } else {
@@ -43,6 +46,7 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
     }
     for (auto const &[name, expr] : opt.args().named()) {
       auto qt = c.context().qual_types(expr.get())[0];
+      argument_types.named_emplace(name, qt);
       if (qt.quals() >= type::Quals::Ref()) {
         arguments.named_insert(name, c.EmitRef(expr.get()));
       } else {
@@ -54,8 +58,8 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
     names.push_back(opt.block());
     all_args.emplace_back(std::move(arguments));
 
-    c.builder().CurrentBlock()->set_jump(
-        ir::JumpCmd::JumpExit(std::string(opt.block()), current_block));
+    c.builder().CurrentBlock()->set_jump(ir::JumpCmd::JumpExit(
+        std::string(opt.block()), current_block, std::move(argument_types)));
   }
 
   c.builder().CurrentBlock() = current_block;

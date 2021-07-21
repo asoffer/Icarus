@@ -473,30 +473,18 @@ void Compiler::EmitMoveAssign(
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Slice> to,
                             ir::PartialResultBuffer const &from) {
-  ir::RegOr<ir::Slice> s = from.get<ir::Slice>(0);
-  ir::RegOr<ir::addr_t> data;
-  ir::RegOr<type::Slice::length_t> length;
-  if (s.is_reg()) {
-    data = builder().Load<ir::addr_t>(
-        current_block()->Append(type::SliceDataInstruction{
-            .slice  = from.get<ir::addr_t>(0),
-            .result = builder().CurrentGroup()->Reserve(),
-        }),
-        type::BufPtr(to.type()->data_type()));
-    length = builder().Load<type::Slice::length_t>(
-        current_block()->Append(type::SliceLengthInstruction{
-            .slice  = from.get<ir::addr_t>(0),
-            .result = builder().CurrentGroup()->Reserve(),
-        }));
-  } else {
-    data = builder().CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
-        .operand = s.value().data(),
-        .result  = builder().CurrentGroup()->Reserve()});
-    length = builder().CurrentBlock()->Append(
-        ir::RegisterInstruction<type::Slice::length_t>{
-            .operand = s.value().length(),
-            .result  = builder().CurrentGroup()->Reserve()});
-  }
+  ir::RegOr<ir::addr_t> data = builder().Load<ir::addr_t>(
+      current_block()->Append(type::SliceDataInstruction{
+          .slice  = from.get<ir::addr_t>(0),
+          .result = builder().CurrentGroup()->Reserve(),
+      }),
+      type::BufPtr(to.type()->data_type()));
+  ir::RegOr<type::Slice::length_t> length =
+      builder().Load<type::Slice::length_t>(
+          current_block()->Append(type::SliceLengthInstruction{
+              .slice  = from.get<ir::addr_t>(0),
+              .result = builder().CurrentGroup()->Reserve(),
+          }));
 
   builder().Store(data, current_block()->Append(type::SliceDataInstruction{
                             .slice  = *to,

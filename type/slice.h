@@ -34,6 +34,9 @@ struct Slice : LegacyType {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  void ShowValue(std::ostream &os,
+                 ir::CompleteResultRef const &value) const override;
+
   Type data_type() const { return data_type_; }
 
   Completeness completeness() const override {

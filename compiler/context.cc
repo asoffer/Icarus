@@ -376,6 +376,13 @@ absl::Span<ast::YieldStmt const *const> Context::YieldsTo(
   return v ? *v : ASSERT_NOT_NULL(parent())->YieldsTo(node);
 }
 
+absl::Span<base::PtrUnion<ast::UnconditionalGoto const,
+                          ast::ConditionalGoto const> const>
+Context::GoesTo(ast::Jump const *node) const {
+  auto const *v = jumps_[node];
+  return v ? *v : ASSERT_NOT_NULL(parent())->GoesTo(node);
+}
+
 ir::NativeFn::Data const *Context::InsertFunction(
     type::Function const *fn_type,
     core::Params<type::Typed<ast::Declaration const *>> params) {

@@ -1,47 +1,33 @@
 #include <optional>
+#include <queue>
+#include <string_view>
+#include <type_traits>
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_format.h"
+#include "absl/types/span.h"
 #include "ast/ast.h"
+#include "base/debug.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
+#include "base/meta.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "ir/blocks/basic.h"
+#include "ir/blocks/group.h"
 #include "ir/compiled_scope.h"
 #include "ir/instruction/core.h"
-#include "ir/instruction/inst_inliner.h"
+#include "ir/instruction/jump.h"
 #include "ir/value/char.h"
 #include "ir/value/reg.h"
+#include "ir/value/reg_or.h"
 #include "ir/value/scope.h"
 
 namespace compiler {
 namespace {
-
-// If the type `t` is not big, creates a new register referencing the value (or
-// register) held in `value`. If `t` is big, `value` is either another register
-// or the address of the big value and a new register referencing that address
-// (or register) is created.
-ir::Reg RegisterReferencing(ir::Builder &builder, type::Type t,
-                            ir::PartialResultRef const &value) {
-  if (t.is_big()) {
-    return builder.CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
-        .operand = value.get<ir::addr_t>(),
-        .result  = builder.CurrentGroup()->Reserve(),
-    });
-  } else {
-    return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
-                      uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                      type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                      ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
-        t, [&]<typename T>() {
-          return builder.CurrentBlock()->Append(ir::RegisterInstruction<T>{
-              .operand = value.get<T>(),
-              .result  = builder.CurrentGroup()->Reserve(),
-          });
-        });
-  }
-}
 
 // Many different gotos may end up at the same block node, some from the same
 // jump, some from different jumps. They may end up calling different overloads
@@ -52,44 +38,15 @@ struct BeforeBlock : base::Extend<BeforeBlock>::With<base::AbslHashExtension> {
   ir::Fn fn;
 };
 
-absl::flat_hash_map<std::string_view,
-                    std::vector<std::pair<ir::Arguments, ir::BasicBlock *>>>
-InlineJumpIntoCurrent(
-    ir::Builder &bldr, ir::Jump to_be_inlined,
-    ir::PartialResultBuffer const &arguments,
-    absl::flat_hash_map<std::string_view, ir::BasicBlock *> names) {
-  auto const *jump           = ir::CompiledJump::From(to_be_inlined);
-  auto *start_block          = bldr.CurrentBlock();
-  size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
 
-  auto *into = bldr.CurrentGroup();
-  ir::InstructionInliner inl(jump, into,  std::move(names));
-
-  bldr.CurrentBlock() = start_block;
-  size_t i            = 0;
-  if (type::Type state_type = jump->type()->state()) {
-    RegisterReferencing(bldr, state_type, arguments[i++]);
-  }
-
-  for (auto const &p : jump->type()->params()) {
-    RegisterReferencing(bldr, p.value, arguments[i++]);
-  }
-
-  inl.InlineAllBlocks();
-
-  return std::move(inl).ArgumentsByName();
-}
-
-struct BlockNodeResult {
-  ir::BasicBlock *body;
-  ir::Builder::BlockTerminationState termination;
+struct BlockMetadata {
+  ast::BlockNode const *block_node;
+  ir::BasicBlock *block;
 };
 
-BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node) {
-  auto &bldr = c.builder();
-  auto *body =
-      bldr.AddBlock(absl::StrFormat("body block for `%s`.", node->name()));
-
+void EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node,
+                        ir::BasicBlock *body) {
+  auto &bldr          = c.builder();
   bldr.CurrentBlock() = body;
 
   for (auto const &decl : node->params()) {
@@ -103,9 +60,6 @@ BlockNodeResult EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node) {
       ir::Builder::BlockTerminationState::kMoreStatements;
   ir::PartialResultBuffer buffer;
   c.EmitToBuffer(node, buffer);
-
-  return BlockNodeResult{.body        = body,
-                         .termination = bldr.block_termination_state()};
 }
 
 std::optional<ir::Reg> InitializeScopeState(Compiler &c,
@@ -143,13 +97,16 @@ std::pair<ir::Jump, ir::PartialResultBuffer> EmitIrForJumpArguments(
   // allocated address for it.
   ir::PartialResultBuffer prepared_arguments;
 
+  if (state_ptr) { prepared_arguments.append(*state_ptr); }
+
+  auto const &params = ir::CompiledJump::From(init)->params();
+  size_t i = 0;
+
+  // TODO: Some of them could be constant.
   auto const &param_qts = ir::CompiledJump::From(init)->params().Transform(
       [](auto const &p) { return type::QualType::NonConstant(p.type()); });
 
-  if (state_ptr) { prepared_arguments.append(*state_ptr); }
-
-  size_t i = 0;
-  for (auto const& argument : args) {
+  for (auto const &argument : args) {
     absl::Cleanup cleanup = [&] { ++i; };
     // TODO: Default arguments.
 
@@ -160,81 +117,11 @@ std::pair<ir::Jump, ir::PartialResultBuffer> EmitIrForJumpArguments(
   return std::make_pair(init, std::move(prepared_arguments));
 }
 
-struct BlockAndPhis {
-  ir::BasicBlock *block;
-  ir::PartialResultBuffer phis;
-};
-void SetBeforeBlockPhi(
-    Compiler &c, absl::flat_hash_map<BeforeBlock, BlockAndPhis> &before_blocks,
-    ast::BlockNode const *block_node, ir::Fn before_fn,
-    ir::BasicBlock *incoming_block, ir::Arguments const &args) {
-  LOG("SetBeforeBlockPhi", "SetBeforeBlockPhi: %s", block_node->name());
-
-  auto *phi_block = std::exchange(c.builder().CurrentBlock(), incoming_block);
-
-  decltype(before_blocks.begin()) iter;
-  bool inserted;
-  std::tie(iter, inserted) = before_blocks.try_emplace(
-      BeforeBlock{.block = block_node, .fn = before_fn});
-  auto const &before_block = iter->first;
-
-  core::Params<type::QualType> const &param_qts =
-      before_block.fn.type()->params();
-
-  ir::PartialResultBuffer prepared_arguments;
-  auto param_iter = param_qts.begin();
-  for (auto arg_ref : args) {
-    PrepareArgument(c, arg_ref, nullptr, param_iter->value, prepared_arguments);
-    ++param_iter;
-  }
-
-  auto &phis = iter->second.phis;
-  if (inserted) {
-    iter->second.block = c.builder().AddBlock(
-        absl::StrFormat("Before block for `%s`", block_node->name()));
-  }
-
-  c.builder().CurrentBlock() = phi_block;
-
-  size_t i = 0;
-  for (auto const &param : param_qts) {
-    auto t = before_block.fn.type()->params()[i].value.type();
-    if (t.is_big()) {
-      ir::PhiInstruction<ir::addr_t> *phi =
-          inserted ? c.builder().PhiInst<ir::addr_t>()
-                   : &c.builder()
-                          .CurrentBlock()
-                          ->instructions()[i]
-                          .template as<ir::PhiInstruction<ir::addr_t>>();
-      if (inserted) { phis.append(phi->result); }
-      phi->add(incoming_block, prepared_arguments.get<ir::addr_t>(i));
-    } else {
-      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
-                 ir::GenericFn, interface::Interface>(t, [&]<typename T>() {
-        ir::PhiInstruction<T> *phi =
-            inserted ? c.builder().PhiInst<T>()
-                     : &c.builder()
-                            .CurrentBlock()
-                            ->instructions()[i]
-                            .template as<ir::PhiInstruction<T>>();
-        if (inserted) { phis.append(phi->result); }
-        phi->add(incoming_block, prepared_arguments.get<T>(i));
-      });
-    }
-    ++i;
-  }
-
-  c.builder().UncondJump(iter->second.block);
-};
-
-}  // namespace
-
-void Compiler::EmitToBuffer(ast::ScopeNode const *node,
-                            ir::PartialResultBuffer &out) {
-  LOG("ScopeNode", "Emitting IR for ScopeNode");
-  ir::Scope scope            = *EvaluateOrDiagnoseAs<ir::Scope>(node->name());
+void InlineStartIntoCurrent(Compiler &c, ir::Scope scope,
+                            ir::BasicBlock *entry_block,
+                            ir::BasicBlock *starting_block,
+                            absl::Span<ast::Call::Argument const> arguments) {
+  c.builder().CurrentBlock() = entry_block;
   auto const *compiled_scope = ir::CompiledScope::From(scope);
 
   // If the scope is stateful, stack-allocate space for the state and
@@ -242,185 +129,83 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   //
   // TODO: This interface isn't great beacuse it requires default-initializable
   // state and no way to call any other initializer.
-  std::optional<ir::Reg> state_ptr =
-      InitializeScopeState(*this, *compiled_scope);
+  std::optional<ir::Reg> state_ptr = InitializeScopeState(c, *compiled_scope);
+
+  c.builder().UncondJump(starting_block);
+  c.builder().CurrentBlock() = starting_block;
+
+  auto constant_args = EmitConstantPartialResultBuffer(c, arguments);
+  auto [init, args]  = EmitIrForJumpArguments(c, constant_args, state_ptr,
+                                             arguments, *compiled_scope);
+  c.builder().InlineJumpIntoCurrent(init, args,
+                                    c.state().scope_landings.back().names);
+}
+
+}  // namespace
+
+void Compiler::EmitToBuffer(ast::ScopeNode const *node,
+                            ir::PartialResultBuffer &out) {
+  LOG("ScopeNode", "Emitting IR for ScopeNode");
+  ir::Scope scope = *EvaluateOrDiagnoseAs<ir::Scope>(node->name());
+
+  auto *entry_block = builder().CurrentBlock();
+
+  // Emit IR for each block node, emission for each block node handles jumping
+  // to the correct location, including jumps as well as subsequent calls to
+  // before. This means that we have to ensure the body blocks already exist.
+  absl::flat_hash_map<std::string_view, BlockMetadata> blocks_by_name;
+  absl::flat_hash_map<std::string_view, ir::BasicBlock *> names;
 
   // Arguments to the scope's start must be re-evaluated on each call to `goto
   // start()`, so we need a block to which we can jump for this purpose.
-  auto *args_block =
-      builder().AddBlock(absl::StrFormat("args block for scope %p", node));
+  auto *starting_block = builder().AddBlock("scope-start");
+  blocks_by_name.emplace(
+      "start", BlockMetadata{.block_node = nullptr, .block = starting_block});
+  names.emplace("start", starting_block);
 
   // If a scope has a path that exits normally along some path (a call to exit
-  // rather than a return or labelled yield), then this is the block on which we land.
-  auto *landing_block =
-      builder().AddBlock(absl::StrFormat("landing block for scope %p", node));
+  // rather than a return or labelled yield), then this is the block on which we
+  // land.
+  auto *landing_block = builder().AddBlock("scope-done");
+  blocks_by_name.emplace(
+      "done", BlockMetadata{.block_node = nullptr, .block = landing_block});
+  names.emplace("done", landing_block);
 
-  // Insert empty phi-instructions for each return type. Any labeled yields will
-  // inject their result values here.
-  // TODO: Support more than one return type.
-  // TODO: Support all types
-  type::QualType const qt = context().qual_types(node)[0];
-  std::optional<ir::Reg> result;
-  if (qt.type() != type::Void) {
-    ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-               uint16_t, uint32_t, uint64_t, float, double>(
-        qt.type(), [&]<typename T>() {
-          ir::PhiInstruction<T> phi;
-          phi.result = builder().CurrentGroup()->Reserve();
-          result     = phi.result;
-          landing_block->Append(std::move(phi));
-        });
+  absl::Cleanup c = [&] { state().scope_landings.pop_back(); };
+
+  for (auto const &block_node : node->blocks()) {
+    auto *b = builder().AddBlock(
+        absl::StrFormat("Body of block `%s`.", block_node.name()));
+    blocks_by_name.emplace(
+        block_node.name(),
+        BlockMetadata{.block_node = &block_node, .block = b});
+    names.emplace(block_node.name(), b);
+    // TODO: Add Phi nodes onto each of these blocks.
   }
 
   // Push the scope landing state onto the the vector. Any nested scopes will be
   // able to lookup the label in this vector to determine where they should jump
   // to.
-  state().scope_landings.push_back(TransientState::ScopeLandingState{
-      .label       = node->label() ? node->label()->value() : ir::Label(),
-      .scope       = scope,
-      .result_type = qt,
+  state().scope_landings.push_back(TransientState::ScopeState{
+      .label = node->label() ? node->label()->value() : ir::Label(),
+      .scope = scope,
+      // TODO: Implement me
+      .result_type = type::QualType::NonConstant(type::Void),
       .block       = landing_block,
+      .names       = std::move(std::move(names)),
   });
-  absl::Cleanup c = [&] { state().scope_landings.pop_back(); };
 
-  // Add new blocks
-  absl::flat_hash_map<std::string_view, ast::BlockNode const *> node_by_name;
-  absl::flat_hash_map<std::string_view, ir::BasicBlock *> names;
-  names.reserve(node->blocks().size());
-  node_by_name.reserve(node->blocks().size());
-  for (auto const &block : node->blocks()) {
-    node_by_name.emplace(block.name(), &block);
-    names.emplace(block.name(), builder().AddBlock(absl::StrCat(
-                                    "Start of block `", block.name(), "`.")));
+  for (auto [name, metadata] : blocks_by_name) {
+    if (not metadata.block_node) { continue; }
+    EmitIrForBlockNode(*this, metadata.block_node, metadata.block);
   }
 
-  names.emplace("start", args_block);
-  // TODO: Does this ignore exit handlers?
-  names.emplace("done", landing_block);
-
-  absl::flat_hash_map<BeforeBlock, BlockAndPhis> before_blocks;
-
-  builder().UncondJump(args_block);
-  builder().CurrentBlock() = args_block;
-
-  // Constant arguments need to be computed entirely before being used to
-  // instantiate a generic function.
-  auto constant_args = EmitConstantPartialResultBuffer(*this, node->arguments());
-  auto [init, args]  = EmitIrForJumpArguments(
-      *this, constant_args, state_ptr, node->arguments(), *compiled_scope);
-
-  auto args_by_name = InlineJumpIntoCurrent(builder(), init, args, names);
-  for (auto const &[name, args_and_incoming] : args_by_name) {
-    for (auto const &[args, incoming_block] : args_and_incoming) {
-      // TODO: Handle arguments for start/done blocks.
-      if (name == "done" or name == "start") { continue; }
-      builder().CurrentBlock()         = names.at(name);
-      ast::BlockNode const *block_node = node_by_name.at(name);
-
-      auto *scope_block = ir::CompiledBlock::From(compiled_scope->block(name));
-      ir::OverloadSet &before = scope_block->before();
-      // auto arg_types          = TODO;
-      ir::Fn before_fn        = before.Lookup({}/*arg_types*/).value();
-      SetBeforeBlockPhi(*this, before_blocks, block_node, before_fn,
-                        incoming_block, args);
-    }
-  }
-
-  absl::flat_hash_map<ast::BlockNode const *, ir::BasicBlock *> bodies;
-  for (auto const &block_node : node->blocks()) {
-    auto const *scope_block =
-        ir::CompiledBlock::From(compiled_scope->block(block_node.name()));
-
-    auto [body_block, termination] = EmitIrForBlockNode(*this, &block_node);
-    bodies.emplace(&block_node, body_block);
-
-    switch (termination) {
-      case ir::Builder::BlockTerminationState::kMoreStatements: UNREACHABLE();
-      case ir::Builder::BlockTerminationState::kNoTerminator: {
-        auto const &afters = scope_block->after();
-        // TODO: Choose the right jump.
-        ASSERT(afters.size() == 1u);
-        auto &after = *afters.begin();
-
-        ir::PartialResultBuffer after_args;
-        if (state_ptr) { after_args.append(*state_ptr); }
-        auto args_by_name =
-            InlineJumpIntoCurrent(builder(), after, after_args, names);
-        for (auto const &[name, args_and_incoming] : args_by_name) {
-          for (auto const &[args, incoming_block] : args_and_incoming) {
-            // TODO: Handle arguments for start/done blocks.
-            if (name == "done" or name == "start") { continue; }
-            builder().CurrentBlock()         = names.at(name);
-            ast::BlockNode const *block_node = node_by_name.at(name);
-
-            auto *scope_block =
-                ir::CompiledBlock::From(compiled_scope->block(name));
-            ir::OverloadSet &before = scope_block->before();
-            // auto arg_types          = TODO;
-            ir::Fn before_fn        = before.Lookup({} /*arg_types*/).value();
-            SetBeforeBlockPhi(*this, before_blocks, block_node, before_fn,
-                              incoming_block, args);
-          }
-        }
-
-      } break;
-      case ir::Builder::BlockTerminationState::kGoto: 
-      case ir::Builder::BlockTerminationState::kReturn: 
-      case ir::Builder::BlockTerminationState::kLabeledYield:
-      case ir::Builder::BlockTerminationState::kYield: continue;
-    }
-  }
-
-  for (auto const &[before_block, block_and_phis] : before_blocks) {
-    auto const &[block, phis] = block_and_phis;
-    builder().CurrentBlock()  = block;
-    LOG("ScopeNode", "%s: before %s", before_block.block->name(),
-        before_block.fn.type()->to_string());
-
-    absl::Span<type::Type const> types = before_block.fn.type()->return_types();
-    std::vector<ir::Reg> out_regs;
-    out_regs.reserve(types.size());
-    for (type::Type type : types) {
-      absl::Span<ast::Declaration::Id const> ids =
-          before_block.block->params()[out_regs.size()].value->ids();
-      ASSERT(ids.size() == 1u);
-      auto reg = builder().CurrentGroup()->Reserve();
-      if (type.is_big()) {
-        reg =
-            builder().CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
-                .operand = builder().addr(&ids[0]),
-                .result  = reg,
-            });
-      }
-      out_regs.push_back(reg);
-    }
-    ir::OutParams out_params(std::move(out_regs));
-
-    builder().Call(before_block.fn, before_block.fn.type(), phis, out_params);
-    ASSERT(out_params.size() == before_block.block->params().size());
-
-    for (size_t i = 0; i < out_params.size(); ++i) {
-      absl::Span<ast::Declaration::Id const> ids  = before_block.block->params()[i].value->ids();
-      ASSERT(ids.size() == 1u);
-      auto t = before_block.fn.type()->params()[i].value.type();
-      if (not t.is_big()) {
-        ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                   uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                   ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
-                   ir::Block, ir::GenericFn, interface::Interface>(
-            t, [&]<typename T>() {
-              builder().Store(ir::RegOr<T>(out_params[i]),
-                              builder().addr(&ids[0]));
-            });
-      }
-    }
-    builder().UncondJump(bodies.at(before_block.block));
-  }
+  InlineStartIntoCurrent(*this, scope, entry_block, starting_block, node->arguments());
 
   builder().CurrentBlock() = landing_block;
   builder().block_termination_state() =
       ir::Builder::BlockTerminationState::kMoreStatements;
-  if (result) { out.append(*result); }
+  // TODO: Do you need to add a phi node here?
 }
 
 void Compiler::EmitCopyInit(
@@ -438,7 +223,7 @@ void Compiler::EmitMoveInit(
 }
 void Compiler::EmitCopyAssign(
     ast::ScopeNode const *node,
-   absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   // TODO: Implement this properly.
   auto t = context().qual_types(node)[0].type();
   ASSERT(to.size() == 1u);

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "absl/strings/str_format.h"
 #include "base/global.h"
 
 namespace type {
@@ -24,6 +25,14 @@ core::Bytes Slice::bytes(core::Arch const &a) const {
 
 core::Alignment Slice::alignment(core::Arch const &a) const {
   return std::max(a.pointer().alignment(), core::Alignment::Get<length_t>());
+}
+
+void Slice::ShowValue(std::ostream &os,
+                      ir::CompleteResultRef const &value) const {
+  auto iter       = value.raw().begin();
+  ir::addr_t addr = iter.read<ir::addr_t>();
+  length_t length = iter.read<length_t>();
+  absl::Format(&os, "slice(%p, %u)", addr, length);
 }
 
 }  // namespace type

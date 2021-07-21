@@ -29,6 +29,7 @@ struct Arguments {
   }
 
   PartialResultBuffer& buffer() & { return buffer_; }
+  PartialResultBuffer const& buffer() const& { return buffer_; }
 
   template <typename Tr>
   friend void BaseTraverse(Tr& t, Arguments& arguments) {

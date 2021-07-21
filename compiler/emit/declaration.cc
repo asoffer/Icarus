@@ -50,11 +50,19 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
                       c.EvaluateToBufferOrDiagnose(
                           type::Typed<ast::Expression const *>(
                               node->initial_value(), t)));
-      LOG("EmitConstantDeclaration", "Setting slot = %s", value_buffer);
+      LOG("EmitConstantDeclaration", "Setting slot = %s",
+          t.Representation(value_buffer[0]));
 
       // TODO: Support multiple declarations
-      out.append(value_buffer);
-      c.context().SetConstant(&node->ids()[0], value_buffer);
+      auto const &buf = c.context().SetConstant(&node->ids()[0], value_buffer);
+      if (t.is_big()) {
+        // TODO: We shouldn't have to make an allocation for this.
+        ir::CompleteResultBuffer buffer;
+        buffer.append(buf[0].raw().data());
+        out.append(buffer);
+      } else {
+        out.append(value_buffer);
+      }
 
       // TODO: This is a struct-speficic hack.
       if (t == type::Type_) {

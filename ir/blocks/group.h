@@ -72,6 +72,11 @@ struct BlockGroupBase {
   Reg Alloca(type::Type t);
   Reg Alloca(core::TypeContour tc);
 
+  void MergeAllocationsFrom(BlockGroupBase const &from,
+                            std::invocable<ir::Reg &> auto &&f) {
+    alloc_.MergeFrom(from.alloc_, std::forward<decltype(f)>(f));
+  }
+
   constexpr size_t num_regs() const { return alloc_.num_regs(); }
   constexpr size_t num_args() const { return alloc_.num_args(); }
   size_t num_allocs() const { return alloc_.num_allocs(); }
@@ -79,8 +84,6 @@ struct BlockGroupBase {
   friend std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b);
 
  private:
-  friend struct ir::InstructionInliner;
-
   core::Params<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   RegisterAllocator alloc_;

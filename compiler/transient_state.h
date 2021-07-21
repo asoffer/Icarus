@@ -62,13 +62,18 @@ struct TransientState {
     while (not work_queue.empty()) { work_queue.ProcessOneItem(); }
   }
 
-  struct ScopeLandingState {
+  struct ScopeState {
+    // A (possibly trivial) label for this block so that yield statements nested
+    // inside this scope can jump to it.
     ir::Label label;
     ir::Scope scope;
     type::QualType result_type;
     ir::BasicBlock *block;
+    // A map keyed on the names of blocks that appear in this ScopeNode and
+    // whose mapped values are the corresponding entry block for that scope.
+    absl::flat_hash_map<std::string_view, ir::BasicBlock *> names;
   };
-  std::vector<ScopeLandingState> scope_landings;
+  std::vector<ScopeState> scope_landings;
 
   WorkQueue work_queue;
   bool must_complete = true;
