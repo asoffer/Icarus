@@ -30,21 +30,22 @@ struct MappedBlock {
 // (or register) is created.
 ir::Reg RegisterReferencing(ir::Builder &builder, type::Type t,
                             ir::PartialResultRef const &value) {
-  if (t.is_big()) {
+  if (t.is_big() or t.is<type::Pointer>()) {
     return builder.CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
         .operand = value.get<ir::addr_t>(),
         .result  = builder.CurrentGroup()->Reserve(),
     });
   } else {
     if (auto const *p = t.if_as<type::Primitive>()) {
-      p->Apply([&]<typename T>() {
+      return p->Apply([&]<typename T>() {
         return builder.CurrentBlock()->Append(ir::RegisterInstruction<T>{
             .operand = value.get<T>(),
             .result  = builder.CurrentGroup()->Reserve(),
         });
       });
+    } else {
+      NOT_YET(t);
     }
-    NOT_YET();
   }
 }
 
@@ -232,11 +233,14 @@ void Builder::InlineJumpIntoCurrent(
   size_t inlined_start_index = CurrentGroup()->blocks().size();
 
   auto *into = CurrentGroup();
-
-  LOG("", "%s", *CurrentGroup());
-
   CurrentBlock() = start_block;
-  size_t i       = 0;
+
+  // Update the register count. This must be done after we've added the
+  // register-forwarding instructions which use this count to choose a register
+  // number.
+  Inliner inliner(into->num_regs(), jump->num_args());
+
+  size_t i = 0;
   if (type::Type state_type = jump->type()->state()) {
     RegisterReferencing(*this, state_type, arguments[i++]);
   }
@@ -245,10 +249,6 @@ void Builder::InlineJumpIntoCurrent(
     RegisterReferencing(*this, p.value, arguments[i++]);
   }
 
-  // Update the register count. This must be done after we've added the
-  // register-forwarding instructions which use this count to choose a register
-  // number.
-  Inliner inliner(into->num_regs(), jump->num_args());
   into->MergeAllocationsFrom(*jump, inliner);
 
   absl::flat_hash_map<BasicBlock const *, Arguments const *>
@@ -261,6 +261,15 @@ void Builder::InlineJumpIntoCurrent(
   std::queue<BasicBlock const *> to_process;
   to_process.push(jump->entry());
 
+  auto try_enqueue = [&](ir::BasicBlock *&b) {
+    auto [iter, inserted] = rename_map.try_emplace(b);
+    if (inserted) {
+      to_process.push(b);
+      iter->second = AddBlock(*b);  // TODO: DebugInfo
+    }
+    b = iter->second.get();
+  };
+
   while (not to_process.empty()) {
     auto const *block = to_process.front();
     to_process.pop();
@@ -270,7 +279,6 @@ void Builder::InlineJumpIntoCurrent(
     mapped_block.visit();
 
     base::Traverse(inliner, *mapped_block);
-    LOG("", "Traversing %p => %p\n%s", block, mapped_block.get(), *block);
     mapped_block->jump().Visit([&](auto &j) {
       constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
       if constexpr (type == base::meta<JumpCmd::JumpExitJump>) {
@@ -281,36 +289,15 @@ void Builder::InlineJumpIntoCurrent(
         base::Traverse(inliner, arguments);
 
         // TODO: Call(___, ____, arguments.buffer(), ___);
-        LOG("", "Jumping to preexisting %p => %p", mapped_block.get(), b);
         CurrentBlock()->set_jump(JumpCmd::Uncond(b));
 
       } else if constexpr (type == base::meta<JumpCmd::UncondJump>) {
-        auto [iter, inserted] = rename_map.try_emplace(j.block);
-        if (inserted) {
-          to_process.push(j.block);
-          iter->second = AddBlock(*j.block);  // TODO: DebugInfo
-        }
-        j.block = iter->second.get();
-        j.block->insert_incoming(mapped_block.get());
+        try_enqueue(j.block);
       } else if constexpr (type == base::meta<JumpCmd::CondJump>) {
-        auto [true_iter, true_inserted] = rename_map.try_emplace(j.true_block);
-        if (true_inserted) {
-          to_process.push(j.true_block);
-          true_iter->second = AddBlock(*j.true_block);  // TODO: DebugInfo
-        }
-
-        j.true_block = rename_map.at(true_iter->second.get()).get();
-        j.true_block->insert_incoming(mapped_block.get());
-
-        auto [false_iter, false_inserted] =
-            rename_map.try_emplace(j.false_block);
-        if (false_inserted) {
-          to_process.push(j.false_block);
-          false_iter->second = AddBlock(*j.false_block);  // TODO: DebugInfo
-        }
-
-        j.false_block = rename_map.at(false_iter->second.get()).get();
-        j.false_block->insert_incoming(mapped_block.get());
+        auto old = j.reg;
+        base::Traverse(inliner, j.reg);
+        try_enqueue(j.true_block);
+        try_enqueue(j.false_block);
       } else if constexpr (type == base::meta<JumpCmd::ChooseJump>) {
         size_t index = std::distance(
             j.names().begin(), std::find_if(j.names().begin(), j.names().end(),
@@ -318,12 +305,11 @@ void Builder::InlineJumpIntoCurrent(
                                               return names.contains(name);
                                             }));
         BasicBlock const *b = j.blocks()[index];
-        // TODO: DebugInfo
-        auto [iter, inserted] =
-            rename_map.try_emplace(b, AddBlock(*b));
+        auto [iter, inserted] = rename_map.try_emplace(b);
         ASSERT(inserted == true);
         to_process.push(b);
-
+        iter->second = AddBlock(*b);  // TODO: DebugInfo
+        b            = iter->second.get();
         choose_argument_cache.emplace(mapped_block.get(), &j.args()[index]);
         mapped_block->set_jump(JumpCmd::Uncond(iter->second.get()));
       } else {

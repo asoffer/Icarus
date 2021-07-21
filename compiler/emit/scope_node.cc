@@ -117,26 +117,17 @@ std::pair<ir::Jump, ir::PartialResultBuffer> EmitIrForJumpArguments(
   return std::make_pair(init, std::move(prepared_arguments));
 }
 
-void InlineStartIntoCurrent(Compiler &c, ir::Scope scope,
-                            ir::BasicBlock *entry_block,
+void InlineStartIntoCurrent(Compiler &c, ir::BasicBlock *entry_block,
+                            std::optional<ir::Reg> state_ptr,
+                            ir::CompiledScope const &compiled_scope,
                             ir::BasicBlock *starting_block,
                             absl::Span<ast::Call::Argument const> arguments) {
-  c.builder().CurrentBlock() = entry_block;
-  auto const *compiled_scope = ir::CompiledScope::From(scope);
-
-  // If the scope is stateful, stack-allocate space for the state and
-  // default-initialize it.
-  //
-  // TODO: This interface isn't great beacuse it requires default-initializable
-  // state and no way to call any other initializer.
-  std::optional<ir::Reg> state_ptr = InitializeScopeState(c, *compiled_scope);
-
   c.builder().UncondJump(starting_block);
   c.builder().CurrentBlock() = starting_block;
 
   auto constant_args = EmitConstantPartialResultBuffer(c, arguments);
   auto [init, args]  = EmitIrForJumpArguments(c, constant_args, state_ptr,
-                                             arguments, *compiled_scope);
+                                             arguments, compiled_scope);
   c.builder().InlineJumpIntoCurrent(init, args,
                                     c.state().scope_landings.back().names);
 }
@@ -171,8 +162,6 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
       "done", BlockMetadata{.block_node = nullptr, .block = landing_block});
   names.emplace("done", landing_block);
 
-  absl::Cleanup c = [&] { state().scope_landings.pop_back(); };
-
   for (auto const &block_node : node->blocks()) {
     auto *b = builder().AddBlock(
         absl::StrFormat("Body of block `%s`.", block_node.name()));
@@ -186,6 +175,19 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   // Push the scope landing state onto the the vector. Any nested scopes will be
   // able to lookup the label in this vector to determine where they should jump
   // to.
+
+  builder().CurrentBlock() = entry_block;
+  auto const *compiled_scope = ir::CompiledScope::From(scope);
+
+  // If the scope is stateful, stack-allocate space for the state and
+  // default-initialize it.
+  //
+  // TODO: This interface isn't great beacuse it requires default-initializable
+  // state and no way to call any other initializer.
+  std::optional<ir::Reg> state_ptr = InitializeScopeState(*this, *compiled_scope);
+  ir::PartialResultBuffer buffer;
+  if (state_ptr) { buffer.append(*state_ptr); }
+
   state().scope_landings.push_back(TransientState::ScopeState{
       .label = node->label() ? node->label()->value() : ir::Label(),
       .scope = scope,
@@ -193,14 +195,17 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
       .result_type = type::QualType::NonConstant(type::Void),
       .block       = landing_block,
       .names       = std::move(std::move(names)),
+      .state       = std::move(buffer),
   });
+  absl::Cleanup c = [&] { state().scope_landings.pop_back(); };
+
+  InlineStartIntoCurrent(*this, entry_block, state_ptr, *compiled_scope,
+                         starting_block, node->arguments());
 
   for (auto [name, metadata] : blocks_by_name) {
     if (not metadata.block_node) { continue; }
     EmitIrForBlockNode(*this, metadata.block_node, metadata.block);
   }
-
-  InlineStartIntoCurrent(*this, scope, entry_block, starting_block, node->arguments());
 
   builder().CurrentBlock() = landing_block;
   builder().block_termination_state() =

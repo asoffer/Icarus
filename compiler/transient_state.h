@@ -72,6 +72,7 @@ struct TransientState {
     // A map keyed on the names of blocks that appear in this ScopeNode and
     // whose mapped values are the corresponding entry block for that scope.
     absl::flat_hash_map<std::string_view, ir::BasicBlock *> names;
+    ir::PartialResultBuffer state;
   };
   std::vector<ScopeState> scope_landings;
 
