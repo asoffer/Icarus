@@ -8,12 +8,6 @@
 
 namespace ast {
 
-// TODO: Remove this overload
-OverloadSet::OverloadSet(absl::Span<Declaration const *const> decls) {
-  members_.reserve(decls.size());
-  for (auto const *decl : decls) { members_.push_back(decl); }
-}
-
 OverloadSet::OverloadSet(absl::Span<Declaration::Id const *const> ids) {
   members_.reserve(ids.size());
   for (auto const *id : ids) { members_.push_back(id); }
