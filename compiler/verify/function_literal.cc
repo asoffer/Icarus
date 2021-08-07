@@ -270,7 +270,8 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "function-literal body verification: %s %p",
       node->DebugString(), &context());
 
-  auto const &fn_type = context().qual_types(node)[0].type().as<type::Function>();
+  auto const &fn_type =
+      context().qual_types(node)[0].type().as<type::Function>();
   for (auto const &param : fn_type.params()) {
     if (param.value.type().get()->completeness() ==
         type::Completeness::Incomplete) {
@@ -289,9 +290,6 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
         node->DebugString());
     return WorkItem::Result::Success;
   }
-
-  // TODO: Get the params and check them for completeness, deferring if they're
-  // not yet complete.
 
   auto maybe_return_types = VerifyBodyOnly(*this, node);
   if (not maybe_return_types) {
