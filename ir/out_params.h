@@ -25,6 +25,11 @@ struct OutParams
   size_t size() const { return regs_.size(); }
   bool empty() const { return regs_.empty(); }
 
+  auto begin() const { return regs_.begin(); }
+  auto begin() { return regs_.begin(); }
+  auto end() const { return regs_.end(); }
+  auto end() { return regs_.end(); }
+
  private:
   friend base::EnableExtensions;
 

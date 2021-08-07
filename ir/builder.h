@@ -16,6 +16,7 @@
 #include "ir/instruction/core.h"
 #include "ir/instruction/instructions.h"
 #include "ir/out_params.h"
+#include "ir/scope_state.h"
 #include "ir/value/addr.h"
 #include "ir/value/block.h"
 #include "ir/value/char.h"
@@ -46,9 +47,9 @@ namespace ir {
 // approach by carrying around extra state (like loads/store-caching).
 
 struct Builder {
-  void InlineJumpIntoCurrent(
-      ir::Jump to_be_inlined, ir::PartialResultBuffer const& arguments,
-      absl::flat_hash_map<std::string_view, ir::BasicBlock*> const& names);
+  void InlineJumpIntoCurrent(ir::Jump to_be_inlined,
+                             ir::PartialResultBuffer const& arguments,
+                             ScopeState const& state);
 
   BasicBlock* AddBlock();
   BasicBlock* AddBlock(std::string header);
@@ -91,6 +92,9 @@ struct Builder {
 
   template <typename T>
   using reduced_type_t = typename reduced_type<T>::type;
+
+  void ApplyImplicitCasts(type::Type from, type::QualType to,
+                          PartialResultBuffer& buffer);
 
   // INSTRUCTIONS
 
@@ -370,7 +374,8 @@ struct Builder {
   // `arguments` and output parameters. If output parameters are not present,
   // the function must return nothing.
   void Call(RegOr<Fn> const& fn, type::Function const* f,
-            PartialResultBuffer args, ir::OutParams outs);
+            PartialResultBuffer args, CompleteResultBuffer constants,
+            ir::OutParams outs);
 
   // Jump instructions must be the last instruction in a basic block. They
   // handle control-flow, indicating which basic block control should be

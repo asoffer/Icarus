@@ -15,6 +15,13 @@
 
 namespace compiler {
 
+// Structure storing all information about callables, including the values of
+// any constants.
+struct CallableArgumentData {
+  ir::CompleteResultBuffer constants;
+  core::Arguments<type::Typed<ir::CompleteResultRef>> arguments;
+};
+
 // Returns A function which can be executed to complete the incomplete struct
 // type pointed to by `s`.
 std::optional<ir::CompiledFn> StructCompletionFn(
@@ -52,16 +59,13 @@ void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
 
 ir::PartialResultBuffer EmitConstantPartialResultBuffer(
     Compiler &c, absl::Span<ast::Call::Argument const> args);
+CallableArgumentData EmitConstantArguments(
+    Compiler &c, absl::Span<ast::Call::Argument const> args);
 
-core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
-    Compiler &c, absl::Span<ast::Call::Argument const> args,
-    ir::CompleteResultBuffer &buffer);
-
-void EmitCall(
-    Compiler &compiler, ast::Expression const *callee,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants,
-    absl::Span<ast::Call::Argument const> arg_exprs,
-    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to);
+void EmitCall(Compiler &compiler, ast::Expression const *callee,
+              CallableArgumentData argument_data,
+              absl::Span<ast::Call::Argument const> arg_exprs,
+              absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to);
 
 }  // namespace compiler
 

@@ -345,7 +345,8 @@ std::optional<ir::CompiledFn> StructCompletionFn(
             // TODO: Should probably force-inline this.
             ir::PartialResultBuffer args;
             args.append(var);
-            c.builder().Call(*user_dtor, full_dtor.type(), std::move(args),
+            // TODO: Constants
+            c.builder().Call(*user_dtor, full_dtor.type(), std::move(args), {},
                              ir::OutParams());
           }
           for (int i = ir_fields.size() - 1; i >= 0; --i) {
@@ -515,39 +516,17 @@ void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
   }
 }
 
-void ApplyImplicitCasts(ir::Builder &builder, type::Type from,
-                        type::QualType to, ir::PartialResultBuffer &buffer) {
-  ASSERT(type::CanCastImplicitly(from, to.type()) == true);
-  if (from == to.type()) { return; }
-  if (from.is<type::Slice>() and to.type().is<type::Slice>()) { return; }
-
-  auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
-  auto const *ptr_to_type      = to.type().if_as<type::Pointer>();
-  if (bufptr_from_type and ptr_to_type and
-      type::CanCastImplicitly(bufptr_from_type, ptr_to_type)) {
-    return;
-  }
-
-  if (from == type::Integer and type::IsIntegral(to.type())) {
-    to.type().as<type::Primitive>().Apply([&]<typename T>() {
-      if constexpr (std::is_integral_v<T>) {
-        ir::RegOr<T> result =
-            builder.Cast<ir::Integer, T>(buffer.back().get<ir::Integer>());
-        buffer.pop_back();
-        buffer.append(result);
-      } else {
-        UNREACHABLE(typeid(T).name());
-      }
-    });
-  }
-}
 
 void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
                      type::QualType arg_qt, type::QualType param_qt,
                      ir::PartialResultBuffer &out) {
   type::Type param_type = param_qt.type();
-  out.append(constant);
-  ApplyImplicitCasts(c.builder(), arg_qt.type(), param_qt, out);
+  if (arg_qt.type().is_big()) {
+    out.append(constant.raw().data());
+  } else {
+    out.append(constant);
+  }
+  c.builder().ApplyImplicitCasts(arg_qt.type(), param_qt, out);
 }
 
 void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
@@ -578,7 +557,7 @@ void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
     out.append(constant);
   }
 
-  ApplyImplicitCasts(c.builder(), arg_type, param_qt, out);
+  c.builder().ApplyImplicitCasts(arg_type, param_qt, out);
 }
 
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
@@ -607,10 +586,17 @@ ir::PartialResultBuffer EmitConstantPartialResultBuffer(
   return arg_buffer;
 }
 
-core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
-    Compiler &c, absl::Span<ast::Call::Argument const> args,
-    ir::CompleteResultBuffer &buffer) {
-  core::Arguments<type::Typed<ir::CompleteResultRef>> arg_refs;
+CallableArgumentData EmitConstantArguments(
+    Compiler &c, absl::Span<ast::Call::Argument const> args) {
+  CallableArgumentData arg_data;
+
+  struct Offset {
+    ptrdiff_t direct;
+    ptrdiff_t indirect;
+    size_t width;
+    type::QualType qt;
+  };
+  std::vector<Offset> value_offsets;
 
   for (auto const &arg : args) {
     auto qt = c.context().qual_types(&arg.expr())[0];
@@ -620,25 +606,55 @@ core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
           auto result,
           c.EvaluateToBufferOrDiagnose(
               type::Typed<ast::Expression const *>(&arg.expr(), qt.type())));
-      buffer.append(result);
+      arg_data.constants.append(result);
+      ptrdiff_t direct_value_offset =
+          arg_data.constants.back().raw().data() - arg_data.constants.data();
+      if (qt.type().is_big()) {
+        arg_data.constants.append(ir::addr_t{});
+        ptrdiff_t indirect_value_offset =
+            arg_data.constants.back().raw().data() - arg_data.constants.data();
+        value_offsets.push_back({.direct   = direct_value_offset,
+                                 .indirect = indirect_value_offset,
+                                 .width    = sizeof(ir::addr_t),
+                                 .qt       = qt});
+      } else {
+        value_offsets.push_back(
+            {.direct   = direct_value_offset,
+             .indirect = direct_value_offset,
+             .width    = arg_data.constants.back().raw().size(),
+             .qt       = qt});
+      }
     } else {
-      buffer.append();
-    }
-
-    if (not arg.named()) {
-      arg_refs.pos_emplace(type::Typed(buffer.back(), qt.type()));
-    } else {
-      arg_refs.named_emplace(arg.name(), type::Typed(buffer.back(), qt.type()));
+      value_offsets.push_back(
+          {.direct = 0, .indirect = 0, .width = 0, .qt = qt});
     }
   }
-  return arg_refs;
+
+  for (auto const &[direct, indirect, width, qt] : value_offsets) {
+    if (direct == indirect) { continue; }
+    arg_data.constants.buffer().set<ir::addr_t>(
+        indirect, arg_data.constants.buffer().raw(direct));
+  }
+
+  auto iter = value_offsets.begin();
+  for (auto const &arg : args) {
+    ir::CompleteResultRef ref(base::untyped_buffer_view(
+        arg_data.constants.buffer().raw(iter->indirect), iter->width));
+    if (not arg.named()) {
+      arg_data.arguments.pos_emplace(type::Typed(ref, iter->qt.type()));
+    } else {
+      arg_data.arguments.named_emplace(arg.name(),
+                                       type::Typed(ref, iter->qt.type()));
+    }
+    ++iter;
+  }
+  return arg_data;
 }
 
-void EmitCall(
-    Compiler &compiler, ast::Expression const *callee,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants,
-    absl::Span<ast::Call::Argument const> arg_exprs,
-    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+void EmitCall(Compiler &compiler, ast::Expression const *callee,
+              CallableArgumentData argument_data,
+              absl::Span<ast::Call::Argument const> arg_exprs,
+              absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   CompiledModule *callee_mod = &callee->scope()
                                     ->Containing<ast::ModuleScope>()
                                     ->module()
@@ -649,8 +665,9 @@ void EmitCall(
 
   std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> results;
   if (callee_mod == &compiler.context().module()) {
-    results = EmitCallee(compiler, callee,
-                         compiler.context().qual_types(callee)[0], constants);
+    results =
+        EmitCallee(compiler, callee, compiler.context().qual_types(callee)[0],
+                   argument_data.arguments);
   } else {
     type::QualType callee_qual_type =
         callee_mod->context(&compiler.context().module()).qual_types(callee)[0];
@@ -660,7 +677,8 @@ void EmitCall(
         .diagnostic_consumer = compiler.diag(),
         .importer            = compiler.importer(),
     });
-    results = EmitCallee(callee_compiler, callee, callee_qual_type, constants);
+    results = EmitCallee(callee_compiler, callee, callee_qual_type,
+                         argument_data.arguments);
   }
 
   auto &[callee_fn, overload_type, context] = results;
@@ -691,7 +709,8 @@ void EmitCall(
   {
     size_t i = 0;
     for (; i < arg_exprs.size() and not arg_exprs[i].named(); ++i) {
-      PrepareArgument(compiler, *constants[i], &arg_exprs[i].expr(),
+
+      PrepareArgument(compiler, *argument_data.arguments[i], &arg_exprs[i].expr(),
                       param_qts[i].value, prepared_arguments);
     }
 
@@ -702,7 +721,8 @@ void EmitCall(
 
     for (size_t j = i; j < param_qts.size(); ++j) {
       std::string_view name            = param_qts[j].name;
-      auto const *constant_typed_value = constants.at_or_null(name);
+      auto const *constant_typed_value =
+          argument_data.arguments.at_or_null(name);
       auto iter                        = named.find(name);
       auto const *expr = iter == named.end() ? nullptr : iter->second;
       ast::Expression const *default_value = nullptr;
@@ -721,10 +741,10 @@ void EmitCall(
                       prepared_arguments);
     }
   }
-
   auto out_params = SetReturns(c.builder(), overload_type, to);
   compiler.builder().Call(callee_fn, overload_type,
-                          std::move(prepared_arguments), out_params);
+                          std::move(prepared_arguments),
+                          std::move(argument_data).constants, out_params);
   int i = -1;
   for (type::Type t : overload_type->output()) {
     ++i;

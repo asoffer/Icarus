@@ -244,6 +244,7 @@ struct ExecutionContext {
             iter->read<ir::RegOr<type>>();
           }
         }
+        using base::stringify;
 
         ctx.current_frame().regs_.set(iter->read<ir::Reg>(), *result);
       } else if constexpr (

@@ -8,11 +8,15 @@ namespace compiler {
 void Compiler::EmitToBuffer(ast::BlockNode const *node,
                             ir::PartialResultBuffer &) {
   LOG("BlockNode", "EmitToBuffer for block node named %s", node->name());
+
+  builder().block_termination_state() =
+      ir::Builder::BlockTerminationState::kMoreStatements;
+
   EmitIrForStatements(*this, node->stmts());
   MakeAllDestructions(*this, &node->body_scope());
   auto &termination = builder().block_termination_state();
   if (termination == ir::Builder::BlockTerminationState::kMoreStatements) {
-    termination = ir::Builder::BlockTerminationState::kNoTerminator;
+    termination       = ir::Builder::BlockTerminationState::kNoTerminator;
     auto &scope_state = state().scope_landings.back();
     auto &jumps =
         ir::CompiledBlock::From(
@@ -20,10 +24,9 @@ void Compiler::EmitToBuffer(ast::BlockNode const *node,
             ->after();
     // TODO: Do overload lookup.
     ASSERT(jumps.size() == 1u);
-    ir::Jump j = *jumps.begin();
+    ir::Jump j                   = *jumps.begin();
     ir::PartialResultBuffer args = scope_state.state;
-    builder().InlineJumpIntoCurrent(j, args,
-                                    state().scope_landings.back().names);
+    builder().InlineJumpIntoCurrent(j, args, state().scope_landings.back());
   }
 }
 

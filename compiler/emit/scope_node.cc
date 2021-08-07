@@ -29,38 +29,10 @@
 namespace compiler {
 namespace {
 
-// Many different gotos may end up at the same block node, some from the same
-// jump, some from different jumps. They may end up calling different overloads
-// of the before/entry function. BeforeBlock describes one such possible entry
-// path.
-struct BeforeBlock : base::Extend<BeforeBlock>::With<base::AbslHashExtension> {
-  ast::BlockNode const *block;
-  ir::Fn fn;
-};
-
-
 struct BlockMetadata {
   ast::BlockNode const *block_node;
   ir::BasicBlock *block;
 };
-
-void EmitIrForBlockNode(Compiler &c, ast::BlockNode const *node,
-                        ir::BasicBlock *body) {
-  auto &bldr          = c.builder();
-  bldr.CurrentBlock() = body;
-
-  for (auto const &decl : node->params()) {
-    auto const *param = decl.value.get();
-    auto addr = c.builder().Alloca(c.context().qual_types(param)[0].type());
-    // TODO: Support multiple declarations?
-    c.builder().set_addr(&param->ids()[0], addr);
-  }
-
-  bldr.block_termination_state() =
-      ir::Builder::BlockTerminationState::kMoreStatements;
-  ir::PartialResultBuffer buffer;
-  c.EmitToBuffer(node, buffer);
-}
 
 std::optional<ir::Reg> InitializeScopeState(Compiler &c,
                                             ir::CompiledScope const &scope) {
@@ -129,7 +101,7 @@ void InlineStartIntoCurrent(Compiler &c, ir::BasicBlock *entry_block,
   auto [init, args]  = EmitIrForJumpArguments(c, constant_args, state_ptr,
                                              arguments, compiled_scope);
   c.builder().InlineJumpIntoCurrent(init, args,
-                                    c.state().scope_landings.back().names);
+                                    c.state().scope_landings.back());
 }
 
 }  // namespace
@@ -188,7 +160,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   ir::PartialResultBuffer buffer;
   if (state_ptr) { buffer.append(*state_ptr); }
 
-  state().scope_landings.push_back(TransientState::ScopeState{
+  state().scope_landings.push_back(ir::ScopeState{
       .label = node->label() ? node->label()->value() : ir::Label(),
       .scope = scope,
       // TODO: Implement me
@@ -199,12 +171,52 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   });
   absl::Cleanup c = [&] { state().scope_landings.pop_back(); };
 
+  // Allocations for block parameters need to happen before we emit IR for any
+  // block itself.
+  for (auto [name, metadata] : blocks_by_name) {
+    builder().CurrentBlock() = metadata.block;
+    // TODO: start/done blocks need to be processed too.
+    if (not metadata.block_node) { continue; }
+    auto const &params = metadata.block_node->params();
+    for (auto const &decl : params) {
+      auto const *param = decl.value.get();
+      auto addr = builder().Alloca(context().qual_types(param)[0].type());
+      // TODO: Support multiple declarations?
+      builder().set_addr(&param->ids()[0], addr);
+      type::Type t = context().qual_types(param)[0].type();
+      if (t.is_big()) {
+        ir::PhiInstruction<ir::addr_t> *phi = builder().PhiInst<ir::addr_t>();
+        state().scope_landings.back().set_phis[name].push_back(
+            [phi](ir::BasicBlock const *block, ir::Reg r) {
+              phi->add(block, r);
+            });
+
+        // TODO: Storage.
+      } else if (auto const *p = t.if_as<type::Primitive>()) {
+        p->Apply([ this, addr, name = std::string_view(name) ]<typename T>() {
+          ir::PhiInstruction<T> *phi = builder().PhiInst<T>();
+          state().scope_landings.back().set_phis[name].push_back(
+              [phi](ir::BasicBlock const *block, ir::Reg r) {
+                phi->add(block, r);
+              });
+
+          builder().Store<ir::RegOr<T>>(phi->result, addr);
+        });
+      } else {
+        NOT_YET();
+      }
+    }
+  }
+
+  builder().CurrentBlock() = entry_block;
   InlineStartIntoCurrent(*this, entry_block, state_ptr, *compiled_scope,
                          starting_block, node->arguments());
 
   for (auto [name, metadata] : blocks_by_name) {
     if (not metadata.block_node) { continue; }
-    EmitIrForBlockNode(*this, metadata.block_node, metadata.block);
+    builder().CurrentBlock() = metadata.block;
+    buffer.clear();
+    EmitToBuffer(metadata.block_node, buffer);
   }
 
   builder().CurrentBlock() = landing_block;

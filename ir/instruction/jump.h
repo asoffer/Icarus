@@ -76,6 +76,7 @@ struct JumpCmd {
     size_t size() const { return names_.size(); }
     absl::Span<std::string_view const> names() const { return names_; }
     absl::Span<BasicBlock* const> blocks() const { return blocks_; }
+    std::vector<Arguments>&& arguments() && { return std::move(args_); }
     absl::Span<Arguments const> args() const {
       return args_;
     }  // TODO: rename `arguments()`

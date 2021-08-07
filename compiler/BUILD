@@ -79,6 +79,7 @@ cc_library(
     deps = [
         ":resources",
         "//ast",
+        "//ir:scope_state",
         "//ir/blocks:basic",
         "//ir/instruction:core",
         "//ir/value:label",

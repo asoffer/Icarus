@@ -55,6 +55,7 @@ struct untyped_buffer {
   untyped_buffer &operator=(untyped_buffer const &that) noexcept =default;
 
   constexpr std::byte const *data() const { return data_.data(); }
+  constexpr std::byte *data() { return data_.data(); }
   constexpr size_t size() const { return data_.size(); }
   constexpr bool empty() const { return data_.empty(); }
 

@@ -265,6 +265,8 @@ Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args,
       if (expr_qual_type.constant()) {
         if (auto maybe_result = EvaluateToBufferOrDiagnose(
                 type::Typed(&arg.expr(), expr_qual_type.type()))) {
+          LOG("VerifyArguments", "%s",
+              expr_qual_type.type().Representation((*maybe_result)[0]));
           out.append(*maybe_result);
           result = type::Typed(out.back(), expr_qual_type.type());
         }

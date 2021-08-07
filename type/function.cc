@@ -49,4 +49,11 @@ core::Alignment Function::alignment(core::Arch const &a) const {
   return a.function().alignment();
 }
 
+void Function::ShowValue(std::ostream &os,
+                         ir::CompleteResultRef const &value) const {
+  // TODO: Invert the dependency on //ir/value:fn so this can be implemented
+  // correctly.
+  os << "<<function>>";
+}
+
 }  // namespace type

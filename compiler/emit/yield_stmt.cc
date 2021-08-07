@@ -66,7 +66,8 @@ void Compiler::EmitToBuffer(ast::YieldStmt const *node,
       ++i;
     }
 
-    builder().Call(exit_fn, exit_fn.type(), std::move(prepared_arguments),
+    // TODO: Constant arguments
+    builder().Call(exit_fn, exit_fn.type(), std::move(prepared_arguments), {},
                    std::move(out_params));
 
     builder().UncondJump(iter->block);

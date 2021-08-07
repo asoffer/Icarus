@@ -5,6 +5,7 @@ cc_library(
     hdrs = ["builder.h"],
     srcs = ["builder.cc"],
     deps = [
+        ":scope_state",
         "//ast:overload_set",
         "//base:debug",
         "//base:scope",
@@ -85,5 +86,18 @@ cc_library(
         "//base/extend:serialize",
         "//ir/value:reg",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "scope_state",
+    hdrs = ["scope_state.h"],
+    deps = [
+        "//ir/blocks:basic",
+        "//ir/value:label",
+        "//ir/value:result_buffer",
+        "//ir/value:scope",
+        "//type:qual_type",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

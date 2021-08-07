@@ -10,6 +10,7 @@
 #include "compiler/resources.h"
 #include "ir/blocks/basic.h"
 #include "ir/instruction/core.h"
+#include "ir/scope_state.h"
 #include "ir/value/label.h"
 
 namespace compiler {
@@ -62,19 +63,7 @@ struct TransientState {
     while (not work_queue.empty()) { work_queue.ProcessOneItem(); }
   }
 
-  struct ScopeState {
-    // A (possibly trivial) label for this block so that yield statements nested
-    // inside this scope can jump to it.
-    ir::Label label;
-    ir::Scope scope;
-    type::QualType result_type;
-    ir::BasicBlock *block;
-    // A map keyed on the names of blocks that appear in this ScopeNode and
-    // whose mapped values are the corresponding entry block for that scope.
-    absl::flat_hash_map<std::string_view, ir::BasicBlock *> names;
-    ir::PartialResultBuffer state;
-  };
-  std::vector<ScopeState> scope_landings;
+  std::vector<ir::ScopeState> scope_landings;
 
   WorkQueue work_queue;
   bool must_complete = true;

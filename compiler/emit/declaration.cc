@@ -37,7 +37,13 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
           });
         }
       }
-      out = *constant_value;
+
+      if (t.is_big()) {
+        out.clear();
+        out.append((*constant_value)[0].raw().data());
+      } else {
+        out = *constant_value;
+      }
       return;
     }
 
@@ -50,17 +56,20 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
                       c.EvaluateToBufferOrDiagnose(
                           type::Typed<ast::Expression const *>(
                               node->initial_value(), t)));
-      LOG("EmitConstantDeclaration", "Setting slot = %s",
-          t.Representation(value_buffer[0]));
+      if (not t.is_big()) {
+        LOG("EmitConstantDeclaration", "Setting slot = %s",
+            t.Representation(value_buffer[0]));
+      }
 
       // TODO: Support multiple declarations
-      auto const &buf = c.context().SetConstant(&node->ids()[0], value_buffer);
       if (t.is_big()) {
-        // TODO: We shouldn't have to make an allocation for this.
-        ir::CompleteResultBuffer buffer;
-        buffer.append(buf[0].raw().data());
-        out.append(buffer);
+        auto addr = c.context()
+                        .SetConstant(&node->ids()[0], value_buffer)[0]
+                        .raw()
+                        .data();
+        out.append(addr);
       } else {
+        c.context().SetConstant(&node->ids()[0], value_buffer);
         out.append(value_buffer);
       }
 

@@ -38,6 +38,7 @@ struct Function : public Callable {
   }
 
   bool is_big() const override { return false; }
+  void ShowValue(std::ostream &, ir::CompleteResultRef const &) const override;
 
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;

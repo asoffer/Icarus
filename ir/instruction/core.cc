@@ -1,6 +1,19 @@
 #include "ir/instruction/core.h"
 
+#include "ir/value/slice.h"
 namespace ir {
+namespace {
+
+std::string Representation(ir::CompleteResultRef ref, type::Type t) {
+  if (t.is_big()) {
+    return t.Representation(ir::CompleteResultRef(base::untyped_buffer_view(
+        ref.get<ir::addr_t>(), t.bytes(core::Host).value())));
+  } else {
+    return t.Representation(ref);
+  }
+}
+
+}  // namespace
 
 std::string CallInstruction::to_string() const {
   using base::stringify;
@@ -10,12 +23,11 @@ std::string CallInstruction::to_string() const {
   for (size_t i = 0; i < args_.num_entries(); ++i) {
     absl::StrAppendFormat(
         &arg_str, "%s%s", std::exchange(separator, ", "),
-        args_[i].is_register() ? stringify(args_[i].get<Reg>()) : [&] {
-          std::stringstream ss;
-          fn_type_->params()[i].value.type().ShowValue(ss,
-                                                       args_[i].AsComplete());
-          return ss.str();
-        }());
+        args_[i].is_register()
+            ? stringify(args_[i].get<Reg>())
+            : Representation(args_[i].AsComplete(),
+                             fn_type_->params()[i].value.type()));
+    ;
   }
 
   return absl::StrFormat(

@@ -72,6 +72,7 @@ struct PartialResultRef {
 
 struct CompleteResultRef {
   CompleteResultRef() = default;
+  explicit CompleteResultRef(base::untyped_buffer_view view) : view_(view) {}
 
   template <typename T>
   T get() const {
@@ -102,8 +103,6 @@ struct CompleteResultRef {
   friend PartialResultRef;
   friend CompleteResultBuffer;
 
-  explicit CompleteResultRef(base::untyped_buffer_view view) : view_(view) {}
-
   base::untyped_buffer_view view_;
 };
 
@@ -116,6 +115,8 @@ struct CompleteResultBuffer {
     buffer_.clear();
     offsets_.clear();
   }
+
+  ir::addr_t data() { return buffer_.data(); }
 
   void append(CompleteResultBuffer const &value);
   void append(CompleteResultRef value);
@@ -143,7 +144,8 @@ struct CompleteResultBuffer {
     buffer.buffer_.write(0, d.read_bytes(num_bytes).data(), num_bytes);
   }
 
-  base::untyped_buffer buffer() && { return std::move(buffer_); }
+  base::untyped_buffer &&buffer() && { return std::move(buffer_); }
+  base::untyped_buffer &buffer() & { return buffer_; }
 
   bool empty() const { return offsets_.empty(); }
   size_t num_entries() const { return offsets_.size(); }

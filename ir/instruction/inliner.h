@@ -33,6 +33,7 @@ struct Inliner {
       if (not buffer[i].is_register()) { continue; }
       Reg reg = buffer[i].get<Reg>();
       (*this)(reg);
+      buffer.set_register(i, reg);
     }
   }
 

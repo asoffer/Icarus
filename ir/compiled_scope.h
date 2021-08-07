@@ -32,7 +32,14 @@ struct CompiledScope {
     auto iter = blocks_.find(name);
     return iter != blocks_.end() ? &iter->second : nullptr;
   }
-  Block block(std::string_view name) const { return blocks_.at(name); }
+  Block block(std::string_view name) const {
+    auto iter = blocks_.find(name);
+    if (iter == blocks_.end()) {
+      LOG("", "No block found named '%s'", name);
+      ASSERT(iter != blocks_.end());
+    }
+    return iter->second;
+    return blocks_.at(name); }
 
   type::Type state_type() const { return state_; }
 
@@ -40,7 +47,7 @@ struct CompiledScope {
   OverloadSet const &exit() const { return exit_; }
   OverloadSet &exit() { return exit_; }
 
- private:
+ // private:
   type::Type state_ = nullptr;
   // Entries in this map are created from declarations in a `scope { ... }`
   // node. Because a block is only added here if it is associated with a
