@@ -267,7 +267,14 @@ cc_library(
     ]
 )
 
-#TODO: result_buffer_test
+cc_test(
+    name = "result_buffer_test",
+    srcs = ["result_buffer_test.cc"],
+    deps = [
+        ":result_buffer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_library(
     name = "scope",

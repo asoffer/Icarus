@@ -217,7 +217,7 @@ BoundParameters Compiler::ComputeParamsFromArgs(
 
          LOG("ComputeParamsFromArgs", "... %s", *argument);
 
-         // TODO: We end up stasting arguments both in BoundParameters and in
+         // TODO: We end up stashing arguments both in BoundParameters and in
          // the context's Constant map. We should probably only use the latter.
          buffers[index].append(*argument);
       } break;

@@ -36,10 +36,15 @@ void CompleteResultBuffer::append(CompleteResultRef value) {
 }
 
 void PartialResultBuffer::append() {
-  offsets_.push_back(
-      offsets_.empty()
-          ? internal_result_buffer::Offset{.index = 0, .is_register = 0}
-          : offsets_.back());
+  if (offsets_.empty()) {
+    offsets_.push_back(
+        internal_result_buffer::Offset{.index = 0, .is_register = 0});
+  } else {
+    offsets_.push_back(internal_result_buffer::Offset{
+        .index = static_cast<uint32_t>(buffer_.size()), .is_register = 0});
+  }
+
+  ASSERT(back().empty()==true);
 }
 
 PartialResultRef PartialResultBuffer::operator[](size_t i) const {
@@ -67,7 +72,7 @@ void CompleteResultBuffer::append(CompleteResultBuffer const &value) {
 }
 
 void CompleteResultBuffer::append() {
-  offsets_.push_back(offsets_.empty() ? 0 : offsets_.back());
+  offsets_.push_back(offsets_.empty() ? 0 : buffer_.size());
 }
 
 CompleteResultRef CompleteResultBuffer::operator[](size_t i) const {

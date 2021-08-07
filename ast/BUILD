@@ -53,6 +53,7 @@ cc_library(
         "//ir/value:label",
         "//ir/value:result_buffer",
         "//ir/value:slice",
+        "//type",
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/functional:bind_front",

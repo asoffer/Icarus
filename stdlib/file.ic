@@ -5,13 +5,15 @@ memory ::= import "memory.ic"
 
 #{export}
 File ::= struct {
-  #{export}
-  make ::= (f: *cstdio.File) -> File {
-    return File.{ _handle = f }
-  }
-
   #{export} _handle: *cstdio.File
 }
+
+
+#{export}
+make ::= (f: *cstdio.File) -> File {
+  return File.{ _handle = f }
+}
+
 
 #{export}
 CFileHandle ::= (f: File) => f._handle

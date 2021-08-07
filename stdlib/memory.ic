@@ -1,6 +1,5 @@
 core ::= import "core.ic"
 
-io     ::= import "io.ic"
 memcpy ::= foreign("memcpy", ([*]byte, [*]byte, u64) -> [*]byte)
 
 #{export}
