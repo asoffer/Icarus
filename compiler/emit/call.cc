@@ -198,6 +198,7 @@ void Compiler::EmitMoveInit(
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
     EmitMoveAssign(to[0], type::Typed(out[0], context().qual_types(node)[0].type()));
+    return;
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -230,6 +231,7 @@ void Compiler::EmitCopyInit(
     if (out.empty()) { return; }
     EmitCopyAssign(to[0],
                    type::Typed(out[0], context().qual_types(node)[0].type()));
+    return;
   }
 
   // Constant arguments need to be computed entirely before being used to

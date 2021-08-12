@@ -202,8 +202,28 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
 
           builder().Store<ir::RegOr<T>>(phi->result, addr);
         });
+      } else if (t.is<type::Enum>()) {
+        ir::PhiInstruction<type::Enum::underlying_type> *phi =
+            builder().PhiInst<type::Enum::underlying_type>();
+        state().scope_landings.back().set_phis[name].push_back(
+            [phi](ir::BasicBlock const *block, ir::Reg r) {
+              phi->add(block, r);
+            });
+
+        builder().Store<ir::RegOr<type::Enum::underlying_type>>(phi->result,
+                                                                addr);
+      } else if (t.is<type::Flags>()) {
+        ir::PhiInstruction<type::Flags::underlying_type> *phi =
+            builder().PhiInst<type::Flags::underlying_type>();
+        state().scope_landings.back().set_phis[name].push_back(
+            [phi](ir::BasicBlock const *block, ir::Reg r) {
+              phi->add(block, r);
+            });
+
+        builder().Store<ir::RegOr<type::Flags::underlying_type>>(phi->result,
+                                                                 addr);
       } else {
-        NOT_YET();
+        NOT_YET(t);
       }
     }
   }

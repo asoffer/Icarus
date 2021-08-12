@@ -400,4 +400,13 @@ ir::NativeFn::Data const *Context::InsertFunction(
   return ASSERT_NOT_NULL(iter->second.get());
 }
 
+void Context::LoadConstant(ast::Declaration::Id const *id,
+                           ir::PartialResultBuffer &out) const {
+  if (auto iter = constants_.find(id); iter != constants_.end()) {
+    out.append(iter->second.first);
+  } else {
+    ASSERT_NOT_NULL(parent())->LoadConstant(id, out);
+  }
+}
+
 }  // namespace compiler

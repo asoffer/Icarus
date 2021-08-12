@@ -277,7 +277,6 @@ void Builder::InlineJumpIntoCurrent(Jump to_be_inlined,
     auto &mapped_block = rename_map.at(block);
     if (mapped_block.seen()) { continue; }
     mapped_block.visit();
-
     base::Traverse(inliner, *mapped_block);
     mapped_block->jump().Visit([&](auto &j) {
       constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
@@ -286,6 +285,7 @@ void Builder::InlineJumpIntoCurrent(Jump to_be_inlined,
         CurrentBlock() = mapped_block.get();
 
         auto arguments = choose_argument_cache.at(j.choose_block);
+        ASSERT(arguments.size() == j.argument_types.size());
         base::Traverse(inliner, arguments);
 
         auto &s = *ir::CompiledScope::From(state.scope);
@@ -309,7 +309,7 @@ void Builder::InlineJumpIntoCurrent(Jump to_be_inlined,
               if (j.argument_types[i].quals() >= type::Quals::Ref()) {
                 RegOr<addr_t> addr = buffer.get<addr_t>(0);
                 buffer.clear();
-                Load(addr, j.argument_types[i].type(), buffer);
+                buffer.append(PtrFix(addr, j.argument_types[i].type()));
               }
               ApplyImplicitCasts(j.argument_types[i].type(), param.value,
                                  buffer);

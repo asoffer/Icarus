@@ -38,11 +38,11 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
   if (to_type == type::Char) {
     if (from_type == type::U8) {
       auto result = builder().Cast<uint8_t, ir::Char>(out.get<uint8_t>(0));
-      out.clear();
+      out.pop_back();
       out.append(result);
     } else if (from_type == type::I8) {
       auto result = builder().Cast<int8_t, ir::Char>(out.get<int8_t>(0));
-      out.clear();
+      out.pop_back();
       out.append(result);
     } else {
       UNREACHABLE(from_type);
@@ -52,7 +52,7 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
     ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                uint64_t>(to_type, [&]<typename T>() {
       auto result = builder().Cast<ir::Char, T>(out.get<ir::Char>(0));
-      out.clear();
+      out.pop_back();
       out.append(result);
     });
   } else if (type::IsNumeric(from_type)) {
@@ -64,7 +64,7 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
                        uint16_t, uint32_t, uint64_t>(
                 from_type, [&]<typename From>() {
                   auto result = builder().Cast<From, To>(out.get<From>(0));
-                  out.clear();
+                  out.pop_back();
                   out.append(result);
                 });
           });
@@ -74,20 +74,20 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
                    uint32_t, uint64_t, float, double>(
             from_type, [&]<typename From>() {
               auto result = builder().Cast<From, To>(out.get<From>(0));
-              out.clear();
+              out.pop_back();
               out.append(result);
             });
       });
     }
   } else if (from_type == type::NullPtr) {
-    out.clear();
+    out.pop_back();
     out.append(ir::Null());
   } else if (auto const *enum_type = from_type.if_as<type::Enum>()) {
     ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                uint64_t>(to_type, [&]<typename T>() {
       auto result = builder().Cast<type::Enum::underlying_type, T>(
           out.get<type::Enum::underlying_type>(0));
-      out.clear();
+      out.pop_back();
       out.append(result);
     });
   } else if (auto const *flags_type = from_type.if_as<type::Flags>()) {
@@ -95,7 +95,7 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
                       uint32_t, uint64_t>(to_type, [&]<typename T>() {
       auto result = builder().Cast<type::Flags::underlying_type, T>(
           out.get<type::Flags::underlying_type>(0));
-      out.clear();
+      out.pop_back();
       out.append(result);
     });
   } else {

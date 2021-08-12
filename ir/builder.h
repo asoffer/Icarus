@@ -304,11 +304,11 @@ struct Builder {
     CurrentBlock()->Append(CommentInstruction{.comment = std::move(s)});
   }
 
-  Reg PtrFix(Reg r, type::Type desired_type) {
+  Reg PtrFix(RegOr<addr_t> addr, type::Type desired_type) {
     // TODO must this be a register if it's loaded?
-    if (desired_type.get()->is_big()) { return r; }
+    if (desired_type.get()->is_big()) { return addr.reg(); }
     ir::PartialResultBuffer buffer;
-    Load(r, desired_type, buffer);
+    Load(addr, desired_type, buffer);
     return buffer.get<Reg>(0);
   }
 

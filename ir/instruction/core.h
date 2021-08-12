@@ -151,7 +151,7 @@ struct CallInstruction
 
   friend void BaseTraverse(Inliner& inliner, CallInstruction& inst) {
     base::Traverse(inliner, inst.fn_, inst.args_);
-    for (auto& reg : inst.outs_.regs()) { base::Traverse(inliner, inst.args_); }
+    for (auto& reg : inst.outs_.regs()) { base::Traverse(inliner, reg); }
   }
 
   type::Function const* func_type() const { return fn_type_; }

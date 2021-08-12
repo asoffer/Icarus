@@ -230,13 +230,7 @@ struct Context {
   void CompleteType(ast::Expression const *expr, bool success);
 
   void LoadConstant(ast::Declaration::Id const *id,
-                    ir::PartialResultBuffer &out) const {
-    if (auto iter = constants_.find(id); iter != constants_.end()) {
-      out.append(iter->second.first);
-    } else {
-      ASSERT_NOT_NULL(parent())->LoadConstant(id, out);
-    }
-  }
+                    ir::PartialResultBuffer &out) const;
 
   ir::NativeFn FindNativeFn(ast::ParameterizedExpression const *expr) {
     auto iter = ir_funcs_.find(expr);

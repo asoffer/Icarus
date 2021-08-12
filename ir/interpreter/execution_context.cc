@@ -74,7 +74,6 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
       ir::addr_t addr = frame.regs_.get<ir::addr_t>(ir::Reg::Arg(i));
-
       LOG("CallFn", "Pushing pointer addr = %p stored in %s", addr,
           ir::Reg::Arg(i));
       pointer_values.push_back(addr);

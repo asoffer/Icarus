@@ -158,7 +158,8 @@ BoundParameters Compiler::ComputeParamsFromArgs(
           value = buffer[0];
         }
 
-        LOG("ComputeParamsFromArgs", "... %s", value);
+        LOG("ComputeParamsFromArgs", "... %s",
+            context().arg_type(id).Representation(value));
         context().set_arg_value(id, value);
       } break;
       case core::DependencyNodeKind::ArgType: {
@@ -251,15 +252,13 @@ std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>
 Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args,
                           ir::CompleteResultBuffer &out) {
   bool err = false;
-  core::Arguments<type::Typed<ir::CompleteResultRef>> arg_vals;
+  std::vector<std::tuple<type::Type, ssize_t>> refs;
   for (auto const &arg : args) {
-    type::Typed<ir::CompleteResultRef> result;
     auto expr_qual_type = VerifyType(&arg.expr())[0];
     err |= not expr_qual_type.ok();
     if (err) {
       LOG("VerifyArguments", "Error with: %s", arg.expr().DebugString());
-      result =
-          type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(), nullptr);
+      refs.emplace_back(nullptr, -1);
     } else {
       LOG("VerifyArguments", "constant: %s", arg.expr().DebugString());
       if (expr_qual_type.constant()) {
@@ -267,21 +266,30 @@ Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args,
                 type::Typed(&arg.expr(), expr_qual_type.type()))) {
           LOG("VerifyArguments", "%s",
               expr_qual_type.type().Representation((*maybe_result)[0]));
-          out.append(*maybe_result);
-          result = type::Typed(out.back(), expr_qual_type.type());
+          out.append((*maybe_result)[0]);
+          refs.emplace_back(expr_qual_type.type(), out.num_entries() - 1);
         }
       } else {
-        result = type::Typed(ir::CompleteResultRef(), expr_qual_type.type());
+        refs.emplace_back(expr_qual_type.type(), out.num_entries() - 1);
       }
-    }
-    if (not arg.named()) {
-      arg_vals.pos_emplace(result);
-    } else {
-      arg_vals.named_emplace(arg.name(), result);
     }
   }
 
   if (err) { return std::nullopt; }
+
+  core::Arguments<type::Typed<ir::CompleteResultRef>> arg_vals;
+
+  size_t i = 0;
+  for (auto const &[t, index] : refs) {
+    absl::Cleanup c = [&] { ++i; };
+    auto ref        = index == -1 ? ir::CompleteResultRef() : out[index];
+    if (not args[i].named()) {
+      arg_vals.pos_emplace(ref, t);
+    } else {
+      arg_vals.named_emplace(args[i].name(), type::Typed(ref, t));
+    }
+  }
+
   return arg_vals;
 }
 
