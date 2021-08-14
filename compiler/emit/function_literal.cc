@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/instantiate.h"
 #include "compiler/instructions.h"
 #include "core/arguments.h"
 #include "type/type.h"
@@ -15,7 +16,7 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
         [c = Compiler(resources()),
          node](core::Arguments<type::Typed<ir::CompleteResultRef>> const
                    &args) mutable -> ir::NativeFn {
-          auto find_subcontext_result = c.FindInstantiation(node, args);
+          auto find_subcontext_result = FindInstantiation(c, node, args);
           auto &context               = find_subcontext_result.context;
 
           auto [f, inserted] = context.add_func(node);

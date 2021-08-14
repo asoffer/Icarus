@@ -78,14 +78,7 @@ std::pair<ir::Jump, ir::PartialResultBuffer> EmitIrForJumpArguments(
   auto const &param_qts = ir::CompiledJump::From(init)->params().Transform(
       [](auto const &p) { return type::QualType::NonConstant(p.type()); });
 
-  for (auto const &argument : args) {
-    absl::Cleanup cleanup = [&] { ++i; };
-    // TODO: Default arguments.
-
-    PrepareArgument(c, constant_arguments[i], &argument.expr(),
-                    param_qts[i].value, prepared_arguments);
-  }
-
+  EmitArguments(c, param_qts, args, prepared_arguments);
   return std::make_pair(init, std::move(prepared_arguments));
 }
 

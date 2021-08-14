@@ -3,6 +3,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/context.h"
+#include "compiler/instantiate.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
 #include "compiler/verify/common.h"
@@ -219,7 +220,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Function const * {
     auto [params, rets_ref, context, inserted] =
-        instantiation_compiler.Instantiate(node, args);
+        Instantiate(instantiation_compiler, node, args);
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());

@@ -241,7 +241,7 @@ struct ParamDependencyGraphBuilder
 
   void Visit(YieldStmt const *node,
              core::DependencyNode<Declaration const *> d) {
-    for (auto *expr : node->exprs()) { Visit(expr, d); }
+    for (auto const &arg : node->arguments()) { Visit(&arg.expr(), d); }
   }
 
   void Visit(ScopeLiteral const *node,

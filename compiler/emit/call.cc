@@ -2,6 +2,7 @@
 #include "base/meta.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/instantiate.h"
 #include "compiler/resources.h"
 #include "ir/instruction/instructions.h"
 #include "type/instantiated_generic_struct.h"
@@ -9,6 +10,39 @@
 
 namespace compiler {
 namespace {
+
+core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
+    Compiler &c, absl::Span<ast::Call::Argument const> args,
+    ir::CompleteResultBuffer &buffer) {
+  core::Arguments<type::Typed<size_t>> indices;
+
+  size_t i = 0;
+  for (auto const &arg : args) {
+    absl::Cleanup cleanup = [&] { ++i; };
+
+    auto qt = c.context().qual_types(&arg.expr())[0];
+    if (qt.constant()) {
+      ASSIGN_OR(
+          NOT_YET(),  //
+          auto result,
+          c.EvaluateToBufferOrDiagnose(
+              type::Typed<ast::Expression const *>(&arg.expr(), qt.type())));
+      buffer.append(result);
+      if (arg.named()) {
+        indices.pos_emplace(
+            type::Typed<size_t>(buffer.num_entries() - 1, qt.type()));
+      } else {
+        indices.named_emplace(
+            arg.name(),
+            type::Typed<size_t>(buffer.num_entries() - 1, qt.type()));
+      }
+    }
+  }
+
+  return indices.Transform([&](auto const &i) {
+    return type::Typed<ir::CompleteResultRef>(buffer[*i], i.type());
+  });
+}
 
 // TODO: Checking if an AST node is a builtin is problematic because something
 // as simple as
@@ -105,7 +139,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(&args[0].expr(), buffer);
       c.builder().Call(ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
-                       std::move(buffer), {}, std::move(outs));
+                       std::move(buffer), std::move(outs));
       // TODO: Return an integer
       out.append(reg);
       return;
@@ -119,7 +153,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(&args[0].expr(), buffer);
       c.builder().Call(ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
-                       std::move(buffer), {}, std::move(outs));
+                       std::move(buffer), std::move(outs));
       out.append(reg);
       return;
     } break;
@@ -146,14 +180,15 @@ void Compiler::EmitToBuffer(ast::Call const *node, ir::PartialResultBuffer &out)
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  auto args = EmitConstantArguments(*this, node->arguments());
+  ir::CompleteResultBuffer buffer;
+  auto constant_arguments = EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    out.append(type::Type(gs_type->Instantiate(args.arguments).second));
+    out.append(type::Type(gs_type->Instantiate(constant_arguments).second));
     return;
   }
 
@@ -166,8 +201,10 @@ void Compiler::EmitToBuffer(ast::Call const *node, ir::PartialResultBuffer &out)
     outs.emplace_back(builder().TmpAlloca(qt.type()), qt.type());
   }
 
-  EmitCall(*this, os.members().front(), std::move(args), node->arguments(),
-           outs);
+  EmitCall(*this, os.members().front(),
+           TypedConstants{.constants = std::move(buffer),
+                          .arguments = std::move(constant_arguments)},
+           node->arguments(), outs);
   if (qts.size() == 1) {
     out.append(builder().PtrFix(outs[0]->reg(), qts[0].type()));
   }
@@ -186,14 +223,15 @@ void Compiler::EmitMoveInit(
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  auto args = EmitConstantArguments(*this, node->arguments());
+  ir::CompleteResultBuffer buffer;
+  auto constant_arguments = EmitConstantArguments(*this, node->arguments(), buffer);
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
     ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(args.arguments).second));
+        type::Type(gs_type->Instantiate(constant_arguments).second));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -202,7 +240,10 @@ void Compiler::EmitMoveInit(
 
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-  EmitCall(*this, os.members().front(), std::move(args), node->arguments(), to);
+  EmitCall(*this, os.members().front(),
+           TypedConstants{.constants = std::move(buffer),
+                          .arguments = std::move(constant_arguments)},
+           node->arguments(), to);
 }
 
 void Compiler::EmitCopyInit(
@@ -219,7 +260,8 @@ void Compiler::EmitCopyInit(
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  auto args = EmitConstantArguments(*this, node->arguments());
+  ir::CompleteResultBuffer buffer;
+  auto constant_arguments = EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
@@ -227,7 +269,7 @@ void Compiler::EmitCopyInit(
                                 .type()
                                 .if_as<type::GenericStruct>()) {
     ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(args.arguments).second));
+        type::Type(gs_type->Instantiate(constant_arguments).second));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -236,7 +278,9 @@ void Compiler::EmitCopyInit(
 
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-  return EmitCall(*this, os.members().front(), std::move(args),
+  return EmitCall(*this, os.members().front(),
+                  TypedConstants{.constants = std::move(buffer),
+                                 .arguments = std::move(constant_arguments)},
                   node->arguments(), to);
 }
 
@@ -254,7 +298,8 @@ void Compiler::EmitMoveAssign(
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  auto args = EmitConstantArguments(*this, node->arguments());
+  ir::CompleteResultBuffer buffer;
+  auto constant_arguments = EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
@@ -262,7 +307,7 @@ void Compiler::EmitMoveAssign(
                                 .type()
                                 .if_as<type::GenericStruct>()) {
     ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(args.arguments).second));
+        type::Type(gs_type->Instantiate(constant_arguments).second));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitMoveAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -271,7 +316,9 @@ void Compiler::EmitMoveAssign(
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
 
-  return EmitCall(*this, os.members().front(), std::move(args),
+  return EmitCall(*this, os.members().front(),
+                  TypedConstants{.constants = std::move(buffer),
+                                 .arguments = std::move(constant_arguments)},
                   node->arguments(), to);
 }
 
@@ -289,7 +336,8 @@ void Compiler::EmitCopyAssign(
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
-  auto args = EmitConstantArguments(*this, node->arguments());
+  ir::CompleteResultBuffer buffer;
+  auto constant_arguments = EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
@@ -297,7 +345,7 @@ void Compiler::EmitCopyAssign(
                                 .type()
                                 .if_as<type::GenericStruct>()) {
     ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(args.arguments).second));
+        type::Type(gs_type->Instantiate(constant_arguments).second));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -306,7 +354,9 @@ void Compiler::EmitCopyAssign(
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
 
-  return EmitCall(*this, os.members().front(), std::move(args),
+  return EmitCall(*this, os.members().front(),
+                  TypedConstants{.constants = std::move(buffer),
+                                 .arguments = std::move(constant_arguments)},
                   node->arguments(), to);
 }
 

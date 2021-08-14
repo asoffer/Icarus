@@ -332,6 +332,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instantiate",
         "//compiler:resources",
         "//compiler/verify:common",
         "//type:cast",
@@ -512,6 +513,7 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instantiate",
         "//compiler:instructions",
         "//compiler:module",
         "//compiler:resources",
@@ -599,6 +601,7 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:instantiate",
         "//compiler:resources",
         "//type:qual_type",
     ],

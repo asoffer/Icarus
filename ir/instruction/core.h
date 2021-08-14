@@ -133,15 +133,13 @@ struct StoreInstruction
 };
 
 struct CallInstruction
-    : base::Extend<CallInstruction, 5>::With<base::BaseSerializeExtension> {
+    : base::Extend<CallInstruction, 4>::With<base::BaseSerializeExtension> {
   CallInstruction() = default;
   CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
-                  ir::PartialResultBuffer args,
-                  ir::CompleteResultBuffer constants, OutParams outs)
+                  ir::PartialResultBuffer args, OutParams outs)
       : fn_type_(fn_type),
         fn_(fn),
         args_(std::move(args)),
-        constants_(std::move(constants)),
         outs_(std::move(outs)) {
     ASSERT(args_.num_entries() == fn_type_->params().size());
     ASSERT(this->outs_.size() == fn_type_->output().size());
@@ -165,7 +163,6 @@ struct CallInstruction
   type::Function const* fn_type_;
   RegOr<Fn> fn_;
   PartialResultBuffer args_;
-  CompleteResultBuffer constants_;
   OutParams outs_;
 };
 

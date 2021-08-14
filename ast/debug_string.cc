@@ -419,11 +419,9 @@ void ReturnStmt::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void YieldStmt::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(
-      out, label_ ? std::string_view(*label_->value()) : "", "<< ",
-      absl::StrJoin(exprs(), ", ", [&](std::string *out, auto const &elem) {
-        return Joiner(elem, out, indent);
-      }));
+  absl::StrAppend(out, label_ ? std::string_view(*label_->value()) : "", "<< ",
+                  absl::StrJoin(arguments(), ", ",
+                                absl::bind_front(AppendCallArgument, indent)));
 }
 
 void ScopeLiteral::DebugStrAppend(std::string *out, size_t indent) const {

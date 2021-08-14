@@ -358,7 +358,11 @@ void ReturnStmt::Initialize(Initializer& initializer) {
 
 void YieldStmt::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  InitializeAll(exprs_, initializer, &covers_binding_, &is_dependent_);
+  for (auto& arg : args_) {
+    arg.expr().Initialize(initializer);
+    covers_binding_ |= arg.expr().covers_binding();
+    is_dependent_ |= arg.expr().is_dependent();
+  }
 }
 
 void ScopeLiteral::Initialize(Initializer& initializer) {

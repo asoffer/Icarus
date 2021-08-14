@@ -20,10 +20,10 @@ void Compiler::EmitToBuffer(ast::YieldStmt const *node,
 
   ir::PartialResultBuffer arg_buffer;
   core::Arguments<type::QualType> yield_arg_types;
-  for (auto const *expr : node->exprs()) {
-    auto qt = context().qual_types(expr)[0];
+  for (auto const & arg : node->arguments()) {
+    auto qt = context().qual_types(&arg.expr())[0];
     yield_arg_types.pos_emplace(qt);
-    AppendToPartialResultBuffer(*this, qt, *expr, arg_buffer);
+    AppendToPartialResultBuffer(*this, qt, arg.expr(), arg_buffer);
   }
 
   if (ast::Label const *lbl = node->label()) {
@@ -59,15 +59,11 @@ void Compiler::EmitToBuffer(ast::YieldStmt const *node,
     }
 
     ir::PartialResultBuffer prepared_arguments;
-    size_t i = 0;
-    for (auto const *expr : node->exprs()) {
-      PrepareArgument(*this, arg_buffer[i], expr,
-                      exit_fn.type()->params()[i].value, prepared_arguments);
-      ++i;
-    }
+    EmitArguments(*this, exit_fn.type()->params(), node->arguments(),
+                  prepared_arguments);
 
     // TODO: Constant arguments
-    builder().Call(exit_fn, exit_fn.type(), std::move(prepared_arguments), {},
+    builder().Call(exit_fn, exit_fn.type(), std::move(prepared_arguments),
                    std::move(out_params));
 
     builder().UncondJump(iter->block);

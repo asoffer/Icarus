@@ -191,57 +191,134 @@ ir::Fn InsertGeneratedCopyAssign(
   return fn;
 }
 
-ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler &c, ast::Expression const *fn,
-                                    type::Function const *f_type,
-                                    type::Quals quals) {
-  if (type::Quals::Const() <= quals) {
-    return c.EmitAs<ir::Fn>(fn);
-  } else {
-    // NOTE: If the overload is a declaration, it's not because a
-    // declaration is syntactically the callee. Rather, it's because the
-    // callee is an identifier (or module_name.identifier, etc.) and this
-    // is one possible resolution of that identifier. We cannot directly
-    // ask to emit IR for the declaration because that will emit the
-    // initialization for the declaration. Instead, we need load the
-    // address.
-    if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
-      return c.builder().Load<ir::Fn>(c.builder().addr(&fn_decl->ids()[0]));
-    } else {
-      return c.builder().Load<ir::Fn>(c.EmitAs<ir::addr_t>(fn), f_type);
-    }
-  }
-}
-
-std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
-    Compiler &c, ast::Expression const *fn, type::QualType qt,
+std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCalleeImpl(
+    Compiler &c, ast::Expression const *callable, type::QualType qt,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
   if (auto const *gf_type = qt.type().if_as<type::GenericFunction>()) {
-    ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(fn).value();
+    ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(callable).value();
 
     // TODO: declarations aren't callable so we shouldn't have to check this
     // here.
-    if (auto const *id = fn->if_as<ast::Declaration::Id>()) {
+    if (auto const *id = callable->if_as<ast::Declaration::Id>()) {
       // TODO: make this more robust.
       // TODO: support multiple declarations
-      fn = id->declaration().init_val();
+      callable = id->declaration().init_val();
     }
 
-    auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
+    auto *parameterized_expr = &callable->as<ast::ParameterizedExpression>();
 
     auto find_subcontext_result =
-        c.FindInstantiation(parameterized_expr, constants);
+        FindInstantiation(c, parameterized_expr, constants);
     return std::make_tuple(ir::Fn(gen_fn.concrete(constants)),
                            find_subcontext_result.fn_type,
                            &find_subcontext_result.context);
   } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
-    return std::make_tuple(ComputeConcreteFn(c, fn, f_type, qt.quals()), f_type,
-                           nullptr);
+    if (type::Quals::Const() <= qt.quals()) {
+      return std::make_tuple(c.EmitAs<ir::Fn>(callable), f_type, nullptr);
+    } else {
+      // NOTE: If the overload is a declaration, it's not because a
+      // declaration is syntactically the callee. Rather, it's because the
+      // callee is an identifier (or module_name.identifier, etc.) and this
+      // is one possible resolution of that identifier. We cannot directly
+      // ask to emit IR for the declaration because that will emit the
+      // initialization for the declaration. Instead, we need load the
+      // address.
+      if (auto *fn_decl = callable->if_as<ast::Declaration>()) {
+        return std::make_tuple(
+            c.builder().Load<ir::Fn>(c.builder().addr(&fn_decl->ids()[0])),
+            f_type, nullptr);
+      } else {
+        return std::make_tuple(
+            c.builder().Load<ir::Fn>(c.EmitAs<ir::addr_t>(callable), f_type),
+            f_type, nullptr);
+      }
+    }
   } else {
-    UNREACHABLE(fn->DebugString(), "\n", qt.type().to_string());
+    UNREACHABLE(callable->DebugString(), "\n", qt.type().to_string());
   }
 }
 
+std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
+    Compiler &c, ast::Expression const *callee,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
+  CompiledModule *callee_mod = &callee->scope()
+                                    ->Containing<ast::ModuleScope>()
+                                    ->module()
+                                    ->as<CompiledModule>();
+  // Note: We only need to wait on the module if it's not this one, so even
+  // though `callee_mod->context()` would be sufficient, we want to ensure that
+  // we call the non-const overload if `callee_mod == &module()`.
+
+  if (callee_mod == &c.context().module()) {
+    return EmitCalleeImpl(c, callee, c.context().qual_types(callee)[0],
+                          constants);
+  } else {
+    type::QualType callee_qual_type =
+        callee_mod->context(&c.context().module()).qual_types(callee)[0];
+
+    Compiler callee_compiler(PersistentResources{
+        .data                = callee_mod->context(&c.context().module()),
+        .diagnostic_consumer = c.diag(),
+        .importer            = c.importer(),
+    });
+
+    return EmitCalleeImpl(callee_compiler, callee, callee_qual_type, constants);
+  }
+}
+
+void EmitAndCast(Compiler &c, ast::Expression const &expr, type::QualType to,
+                 ir::PartialResultBuffer &buffer) {
+  type::QualType arg_qt = c.context().qual_types(&expr)[0];
+  if (auto const *ptr_to_type = to.type().if_as<type::Pointer>()) {
+    if (ptr_to_type->pointee() == arg_qt.type()) {
+      if (arg_qt.quals() >= type::Quals::Ref()) {
+        buffer.append(c.EmitRef(&expr));
+      } else {
+        auto reg = c.builder().TmpAlloca(arg_qt.type());
+        c.EmitMoveInit(&expr,
+                       {type::Typed<ir::RegOr<ir::addr_t>>(reg, to.type())});
+        buffer.append(reg);
+      }
+      return;
+    }
+  }
+
+  c.EmitToBuffer(&expr, buffer);
+  c.builder().ApplyImplicitCasts(arg_qt.type(), to, buffer);
+}
+
 }  // namespace
+
+void EmitArguments(Compiler &c, core::Params<type::QualType> const &param_qts,
+                   absl::Span<ast::Call::Argument const> arg_exprs,
+                   ir::PartialResultBuffer &buffer) {
+  size_t i = 0;
+  while (i < arg_exprs.size() and not arg_exprs[i].named()) {
+    absl::Cleanup cleanup = [&] { ++i; };
+    auto const &param     = param_qts[i];
+    if (param.value.constant()) {
+      buffer.append();
+    } else {
+      EmitAndCast(c, arg_exprs[i].expr(), param.value, buffer);
+    }
+  }
+
+  size_t named_start = i;
+  for (; i < param_qts.size(); ++i) {
+    auto const &param = param_qts[i];
+    if (param.value.constant()) {
+      buffer.append();
+    } else {
+      // TODO: Encapsulate the argument name finding.
+      std::string_view name = param_qts[i].name;
+      size_t j              = named_start;
+      for (; j < arg_exprs.size(); ++j) {
+        if (arg_exprs[j].name() == name) { break; }
+      }
+      EmitAndCast(c, arg_exprs[j].expr(), param.value, buffer);
+    }
+  }
+}
 
 std::optional<ir::CompiledFn> StructCompletionFn(
     Compiler &c, type::Struct *s,
@@ -346,7 +423,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
             ir::PartialResultBuffer args;
             args.append(var);
             // TODO: Constants
-            c.builder().Call(*user_dtor, full_dtor.type(), std::move(args), {},
+            c.builder().Call(*user_dtor, full_dtor.type(), std::move(args),
                              ir::OutParams());
           }
           for (int i = ir_fields.size() - 1; i >= 0; --i) {
@@ -516,50 +593,6 @@ void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
   }
 }
 
-
-void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
-                     type::QualType arg_qt, type::QualType param_qt,
-                     ir::PartialResultBuffer &out) {
-  type::Type param_type = param_qt.type();
-  if (arg_qt.type().is_big()) {
-    out.append(constant.raw().data());
-  } else {
-    out.append(constant);
-  }
-  c.builder().ApplyImplicitCasts(arg_qt.type(), param_qt, out);
-}
-
-void PrepareArgument(Compiler &c, ir::PartialResultRef constant,
-                     ast::Expression const *expr, type::QualType param_qt,
-                     ir::PartialResultBuffer &out) {
-  type::QualType arg_qt = *c.context().qual_types(expr)[0];
-  type::Type arg_type   = arg_qt.type();
-  type::Type param_type = param_qt.type();
-
-  if (not arg_qt.constant()) {
-    if (auto const *ptr_to_type = param_type.if_as<type::Pointer>()) {
-      if (ptr_to_type->pointee() == arg_type) {
-        if (arg_qt.quals() >= type::Quals::Ref()) {
-          out.append(c.EmitRef(expr));
-          return;
-        } else {
-          auto reg = c.builder().TmpAlloca(arg_type);
-          c.EmitMoveInit(expr,
-                         {type::Typed<ir::RegOr<ir::addr_t>>(reg, param_type)});
-          out.append(reg);
-          return;
-        }
-      }
-    }
-
-    c.EmitToBuffer(expr, out);
-  } else {
-    out.append(constant);
-  }
-
-  c.builder().ApplyImplicitCasts(arg_type, param_qt, out);
-}
-
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
                                  ast::Expression const &expr,
                                  ir::PartialResultBuffer &buffer) {
@@ -586,106 +619,16 @@ ir::PartialResultBuffer EmitConstantPartialResultBuffer(
   return arg_buffer;
 }
 
-CallableArgumentData EmitConstantArguments(
-    Compiler &c, absl::Span<ast::Call::Argument const> args) {
-  CallableArgumentData arg_data;
-
-  struct Offset {
-    ptrdiff_t direct;
-    ptrdiff_t indirect;
-    size_t width;
-    type::QualType qt;
-  };
-  std::vector<Offset> value_offsets;
-
-  for (auto const &arg : args) {
-    auto qt = c.context().qual_types(&arg.expr())[0];
-    if (qt.constant()) {
-      ASSIGN_OR(
-          NOT_YET(),  //
-          auto result,
-          c.EvaluateToBufferOrDiagnose(
-              type::Typed<ast::Expression const *>(&arg.expr(), qt.type())));
-      arg_data.constants.append(result);
-      ptrdiff_t direct_value_offset =
-          arg_data.constants.back().raw().data() - arg_data.constants.data();
-      if (qt.type().is_big()) {
-        arg_data.constants.append(ir::addr_t{});
-        ptrdiff_t indirect_value_offset =
-            arg_data.constants.back().raw().data() - arg_data.constants.data();
-        value_offsets.push_back({.direct   = direct_value_offset,
-                                 .indirect = indirect_value_offset,
-                                 .width    = sizeof(ir::addr_t),
-                                 .qt       = qt});
-      } else {
-        value_offsets.push_back(
-            {.direct   = direct_value_offset,
-             .indirect = direct_value_offset,
-             .width    = arg_data.constants.back().raw().size(),
-             .qt       = qt});
-      }
-    } else {
-      value_offsets.push_back(
-          {.direct = 0, .indirect = 0, .width = 0, .qt = qt});
-    }
-  }
-
-  for (auto const &[direct, indirect, width, qt] : value_offsets) {
-    if (direct == indirect) { continue; }
-    arg_data.constants.buffer().set<ir::addr_t>(
-        indirect, arg_data.constants.buffer().raw(direct));
-  }
-
-  auto iter = value_offsets.begin();
-  for (auto const &arg : args) {
-    ir::CompleteResultRef ref(base::untyped_buffer_view(
-        arg_data.constants.buffer().raw(iter->indirect), iter->width));
-    if (not arg.named()) {
-      arg_data.arguments.pos_emplace(type::Typed(ref, iter->qt.type()));
-    } else {
-      arg_data.arguments.named_emplace(arg.name(),
-                                       type::Typed(ref, iter->qt.type()));
-    }
-    ++iter;
-  }
-  return arg_data;
-}
-
-void EmitCall(Compiler &compiler, ast::Expression const *callee,
-              CallableArgumentData argument_data,
+void EmitCall(Compiler &c, ast::Expression const *callee,
+              TypedConstants typed_constants,
               absl::Span<ast::Call::Argument const> arg_exprs,
               absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
-  CompiledModule *callee_mod = &callee->scope()
-                                    ->Containing<ast::ModuleScope>()
-                                    ->module()
-                                    ->as<CompiledModule>();
-  // Note: We only need to wait on the module if it's not this one, so even
-  // though `callee_mod->context()` would be sufficient, we want to ensure that
-  // we call the non-const overload if `callee_mod == &module()`.
-
-  std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> results;
-  if (callee_mod == &compiler.context().module()) {
-    results =
-        EmitCallee(compiler, callee, compiler.context().qual_types(callee)[0],
-                   argument_data.arguments);
-  } else {
-    type::QualType callee_qual_type =
-        callee_mod->context(&compiler.context().module()).qual_types(callee)[0];
-
-    Compiler callee_compiler(PersistentResources{
-        .data = callee_mod->context(&compiler.context().module()),
-        .diagnostic_consumer = compiler.diag(),
-        .importer            = compiler.importer(),
-    });
-    results = EmitCallee(callee_compiler, callee, callee_qual_type,
-                         argument_data.arguments);
-  }
-
-  auto &[callee_fn, overload_type, context] = results;
-  Compiler c = compiler.MakeChild(PersistentResources{
-      .data                = context ? *context : compiler.context(),
-      .diagnostic_consumer = compiler.diag(),
-      .importer            = compiler.importer(),
+  auto [callee_fn, overload_type, context] =
+      EmitCallee(c, callee, typed_constants.arguments);
+  Compiler child = c.MakeChild(PersistentResources{
+      .data                = context ? *context : c.context(),
+      .diagnostic_consumer = c.diag(),
+      .importer            = c.importer(),
   });
 
   // Arguments provided to a function call need to be "prepared" in the sense
@@ -701,50 +644,15 @@ void EmitCall(Compiler &compiler, ast::Expression const *callee,
   // the value, we may end up loading the value from memory and no longer having
   // access to its address. Or worse, we may have a temporary and never have an
   // allocated address for it.
-  ir::PartialResultBuffer prepared_arguments;
 
   auto const &param_qts = overload_type->params();
+  ir::PartialResultBuffer prepared_arguments;
+  EmitArguments(c, param_qts, arg_exprs, prepared_arguments);
 
   // TODO: With expansions, this might be wrong.
-  {
-    size_t i = 0;
-    for (; i < arg_exprs.size() and not arg_exprs[i].named(); ++i) {
-
-      PrepareArgument(compiler, *argument_data.arguments[i], &arg_exprs[i].expr(),
-                      param_qts[i].value, prepared_arguments);
-    }
-
-    absl::flat_hash_map<std::string_view, ast::Expression const *> named;
-    for (size_t j = i; j < arg_exprs.size(); ++j) {
-      named.emplace(arg_exprs[j].name(), &arg_exprs[j].expr());
-    }
-
-    for (size_t j = i; j < param_qts.size(); ++j) {
-      std::string_view name            = param_qts[j].name;
-      auto const *constant_typed_value =
-          argument_data.arguments.at_or_null(name);
-      auto iter                        = named.find(name);
-      auto const *expr = iter == named.end() ? nullptr : iter->second;
-      ast::Expression const *default_value = nullptr;
-
-      if (not expr) {
-        ASSERT(callee_fn.is_reg() == false);
-        ASSERT(callee_fn.value().kind() == ir::Fn::Kind::Native);
-        default_value = ASSERT_NOT_NULL(
-            callee_fn.value().native()->params()[j].value.get()->init_val());
-      }
-
-      PrepareArgument(compiler,
-                      constant_typed_value ? **constant_typed_value
-                                           : ir::PartialResultRef(),
-                      expr ? expr : default_value, param_qts[i].value,
-                      prepared_arguments);
-    }
-  }
-  auto out_params = SetReturns(c.builder(), overload_type, to);
-  compiler.builder().Call(callee_fn, overload_type,
-                          std::move(prepared_arguments),
-                          std::move(argument_data).constants, out_params);
+  auto out_params = SetReturns(child.builder(), overload_type, to);
+  c.builder().Call(callee_fn, overload_type, std::move(prepared_arguments),
+                   out_params);
   int i = -1;
   for (type::Type t : overload_type->output()) {
     ++i;
@@ -752,7 +660,7 @@ void EmitCall(Compiler &compiler, ast::Expression const *callee,
 
     ir::PartialResultBuffer buffer;
     buffer.append(out_params[i]);
-    compiler.EmitCopyAssign(to[i], type::Typed(buffer[0], t));
+    c.EmitCopyAssign(to[i], type::Typed(buffer[0], t));
   }
 }
 

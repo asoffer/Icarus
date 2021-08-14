@@ -14,28 +14,6 @@
 
 namespace compiler {
 namespace {
-type::Typed<ir::CompleteResultRef> const *ArgumentFromIndex(
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments,
-    int index, std::string_view id) {
-  if (index < arguments.pos().size()) { return &arguments[index]; }
-  return arguments.at_or_null(id);
-}
-
-std::optional<type::Type> ComputeParameterTypeOrDiagnose(
-    Compiler &c, ast::Declaration const *decl) {
-  if (auto const *type_expr = decl->type_expr()) {
-    auto type_expr_type = c.VerifyType(type_expr)[0].type();
-    if (type_expr_type != type::Type_) {
-      c.diag().Consume(
-          NotAType{.range = type_expr->range(), .type = type_expr_type});
-      NOT_YET("Exit out of this computation.");
-    }
-
-    return c.EvaluateOrDiagnoseAs<type::Type>(type_expr);
-  } else {
-    return c.VerifyType(decl->init_val())[0].type();
-  }
-}
 
 void ExtractParams(
     ast::Expression const *callee, type::Callable const *callable,
@@ -124,108 +102,6 @@ void AddOverloads(Context const &context, ast::Expression const *callee,
 }
 
 }  // namespace
-
-// TODO: There's something strange about this: We want to work on a temporary
-// data/compiler, but using `this` makes it feel more permanent.
-
-BoundParameters Compiler::ComputeParamsFromArgs(
-    ast::ParameterizedExpression const *node,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
-  LOG("ComputeParamsFromArgs", "Creating a concrete implementation with %s",
-      args.Transform([](auto const &a) { return a.type().to_string(); }));
-
-  std::vector<ir::CompleteResultBuffer> buffers(node->params().size());
-  std::vector<core::Param<type::QualType>> qts(node->params().size());
-  std::vector<type::Type> argument_types(node->params().size());
-
-  for (auto [index, dep_node] : node->ordered_dependency_nodes()) {
-    ASSERT(dep_node.node()->ids().size() == 1u);
-    std::string_view id = dep_node.node()->ids()[0].name();
-    LOG("ComputeParamsFromArgs", "Handling dep-node %s`%s` (index = %u)",
-        ToString(dep_node.kind()), id, index);
-    switch (dep_node.kind()) {
-      case core::DependencyNodeKind::ArgValue: {
-        ir::CompleteResultBuffer buffer;
-        ir::CompleteResultRef value;
-        if (auto const *argument = ArgumentFromIndex(args, index, id)) {
-          value = **argument;
-        } else {
-          auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          type::Type t         = context().arg_type(id);
-          ASSIGN_OR(NOT_YET("bail out of this computation)"),  //
-                    buffer,
-                    EvaluateToBufferOrDiagnose(type::Typed(init_val, t)));
-          value = buffer[0];
-        }
-
-        LOG("ComputeParamsFromArgs", "... %s",
-            context().arg_type(id).Representation(value));
-        context().set_arg_value(id, value);
-      } break;
-      case core::DependencyNodeKind::ArgType: {
-        auto const *argument      = ArgumentFromIndex(args, index, id);
-        auto const *initial_value = dep_node.node()->init_val();
-        type::Type arg_type =
-            argument ? argument->type()
-                     : VerifyType(ASSERT_NOT_NULL(initial_value))[0].type();
-        argument_types[index] = arg_type;
-        context().set_arg_type(id, arg_type);
-        LOG("ComputeParamsFromArgs", "... %s", arg_type.to_string());
-      } break;
-      case core::DependencyNodeKind::ParamType: {
-        ASSIGN_OR(NOT_YET("bail out of this computation"),  //
-                  type::Type t,
-                  ComputeParameterTypeOrDiagnose(*this, dep_node.node()));
-
-        auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
-                      ? type::QualType::Constant(t)
-                      : type::QualType::NonConstant(t);
-
-        LOG("ComputeParamsFromArgs", "... %s", qt.to_string());
-
-        if (not type::CanCastImplicitly(argument_types[index], t)) {
-          LOG("ComputeParamsFromArgs", "No cast %s -> %s",
-              argument_types[index], t);
-          NOT_YET("Log an error and bail out of this computation");
-        }
-
-        qts[index] =
-            core::Param<type::QualType>(id, qt, node->params()[index].flags);
-      } break;
-      case core::DependencyNodeKind::ParamValue: {
-        // Find the argument associated with this parameter.
-        // TODO, if the type is wrong but there is an implicit cast, deal with
-        // that.
-        type::Typed<ir::CompleteResultRef> argument;
-        if (auto const *a = ArgumentFromIndex(args, index, id)) {
-          argument = *a;
-        } else {
-          auto t            = context().qual_types(dep_node.node())[0].type();
-          ASSIGN_OR(NOT_YET("bail out of this computation"),  //
-                    auto result,
-                    EvaluateToBufferOrDiagnose(type::Typed(
-                        ASSERT_NOT_NULL(dep_node.node()->init_val()), t)));
-          argument = type::Typed(result[0], t);
-          LOG("ComputeParamsFromArgs", "%s", dep_node.node()->DebugString());
-        }
-
-        // TODO: Support multiple declarations
-        if (not context().Constant(&dep_node.node()->ids()[0])) {
-          // TODO complete?
-          // TODO: Support multiple declarations
-          context().SetConstant(&dep_node.node()->ids()[0], *argument);
-         }
-
-         LOG("ComputeParamsFromArgs", "... %s", *argument);
-
-         // TODO: We end up stashing arguments both in BoundParameters and in
-         // the context's Constant map. We should probably only use the latter.
-         buffers[index].append(*argument);
-      } break;
-    }
-  }
-  return BoundParameters(std::move(qts), buffers);
-}
 
 std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
     core::Params<std::unique_ptr<ast::Declaration>> const &params) {
@@ -520,10 +396,10 @@ std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
 
   for (auto const *yield_stmt : yields) {
     auto &yielded = yield_types.emplace_back();
-    for (const auto *expr : yield_stmt->exprs()) {
+    for (auto const &argument : yield_stmt->arguments()) {
       // TODO: Determine whether or not you want to support named yields. If
       // not, reduce this to a vector or some other positional arguments type.
-      yielded.pos_emplace(context.qual_types(expr)[0]);
+      yielded.pos_emplace(context.qual_types(&argument.expr())[0]);
     }
   }
   return yield_types;

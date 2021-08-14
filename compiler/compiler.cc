@@ -141,47 +141,6 @@ ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
   }
 }
 
-Context::InsertSubcontextResult Compiler::Instantiate(
-    ast::ParameterizedExpression const *node,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
-  auto &ctx = node->scope()
-                  ->Containing<ast::ModuleScope>()
-                  ->module()
-                  ->as<CompiledModule>()
-                  .context(&context().module());
-  LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
-      ctx.DebugString());
-  Context scratchpad = ctx.ScratchpadSubcontext();
-  Compiler c({
-      .data                = scratchpad,
-      .diagnostic_consumer = diag(),
-      .importer            = importer(),
-  });
-
-  return ctx.InsertSubcontext(node, c.ComputeParamsFromArgs(node, args),
-                              std::move(scratchpad));
-}
-
-Context::FindSubcontextResult Compiler::FindInstantiation(
-    ast::ParameterizedExpression const *node,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
-  auto &ctx = node->scope()
-                  ->Containing<ast::ModuleScope>()
-                  ->module()
-                  ->as<CompiledModule>()
-                  .context(&context().module());
-  LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
-      ctx.DebugString());
-  Context scratchpad = ctx.ScratchpadSubcontext();
-  Compiler c({
-      .data                = scratchpad,
-      .diagnostic_consumer = diag(),
-      .importer            = importer(),
-  });
-
-  return ctx.FindSubcontext(node, c.ComputeParamsFromArgs(node, args));
-}
-
 void Compiler::ProcessExecutableBody(base::PtrSpan<ast::Node const> nodes,
                                      ir::CompiledFn *main_fn) {
   if (nodes.empty()) {

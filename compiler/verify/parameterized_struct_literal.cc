@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/instantiate.h"
 #include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "compiler/resources.h"
@@ -29,7 +30,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
                      &args) mutable
       -> std::pair<core::Params<type::QualType>, type::Struct *> {
     auto [params, rets_ref, context, inserted] =
-        instantiation_compiler.Instantiate(node, args);
+        Instantiate(instantiation_compiler, node, args);
 
     if (inserted) {
       LOG("ParameterizedStructLiteral", "inserted! %s", node->DebugString());

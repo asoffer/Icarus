@@ -230,6 +230,19 @@ cc_library(
 )
 
 cc_library(
+    name = "instantiate",
+    hdrs = ["instantiate.h"],
+    srcs = ["instantiate.cc"],
+    deps = [
+        ":context",
+        ":compiler_header",
+        "//core:arguments",
+        "//ir/value:result_buffer",
+        "//type:typed_value",
+    ],
+)
+
+cc_library(
     name = "jump_map",
     hdrs = ["jump_map.h"],
     srcs = ["jump_map.cc"],

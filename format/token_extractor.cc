@@ -135,7 +135,7 @@ void TokenExtractor::Visit(ast::ReturnStmt const *node) {
 }
 
 void TokenExtractor::Visit(ast::YieldStmt const *node) {
-  Join(this, node->exprs(), ",");
+  // TODO
 }
 
 void TokenExtractor::Visit(ast::ScopeLiteral const *node) {

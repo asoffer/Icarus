@@ -193,7 +193,7 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
   }
 
   void Visit(ast::YieldStmt const *node) final {
-    for (auto *expr : node->exprs()) { Visit(expr); }
+    for (auto const &argument : node->arguments()) { Visit(&argument.expr()); }
     if (auto *label = node->label()) {
       ir::Label yield_label_val = label->value();
       LOG("JumpMap", "Labeled yield: %s", label->DebugString());

@@ -47,6 +47,23 @@
 #include "type/visitor.h"
 
 namespace compiler {
+
+struct NotAType {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "not-a-type";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Expression was expected to be a type, but instead "
+                         "was a value of type `%s`.",
+                         type),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+  type::Type type;
+};
+
 struct PatternMatchingContext {
   type::Type type;
   ir::CompleteResultBuffer value;
@@ -288,14 +305,16 @@ struct Compiler
   void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
                       type::Typed<ir::PartialResultRef> const &from) {
     using V = type::Visitor<EmitMoveAssignTag,
-                            void(ir::RegOr<ir::addr_t>, type::Typed<ir::PartialResultRef> const &)>;
+                            void(ir::RegOr<ir::addr_t>,
+                                 type::Typed<ir::PartialResultRef> const &)>;
     V::Visit(to.type().get(), to.get(), from);
   }
 
   void EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
                       type::Typed<ir::PartialResultRef> const &from) {
     using V = type::Visitor<EmitCopyAssignTag,
-                            void(ir::RegOr<ir::addr_t>, type::Typed<ir::PartialResultRef> const &)>;
+                            void(ir::RegOr<ir::addr_t>,
+                                 type::Typed<ir::PartialResultRef> const &)>;
     V::Visit(to.type().get(), to.get(), from);
   }
 
@@ -346,21 +365,6 @@ struct Compiler
 
   interpreter::EvaluationResult Evaluate(
       type::Typed<ast::Expression const *> expr, bool must_complete = true);
-
-  BoundParameters ComputeParamsFromArgs(
-      ast::ParameterizedExpression const *node,
-      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
-
-  // Attemnts to instantiate `node` with `args`, possibly creating a new
-  // instantiation as a subcontext of `this->context()` if needed.
-  Context::InsertSubcontextResult Instantiate(
-      ast::ParameterizedExpression const *node,
-      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
-  // Finds an already existing instantiation of `node` with `args` as a
-  // subcontext of `this->context()`. Behavior is undefined if none exists.
-  Context::FindSubcontextResult FindInstantiation(
-      ast::ParameterizedExpression const *node,
-      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 
   TransientState &state() { return state_; }
 

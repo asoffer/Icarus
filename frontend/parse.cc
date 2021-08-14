@@ -755,10 +755,14 @@ std::unique_ptr<ast::Node> BuildLabeledYield(
     ASSERT(nodes.size() == 3);
     exprs = ExtractIfCommaList<ast::Expression>(std::move(nodes[2]));
   }
+  // TODO: Go directly to arguments.
+  std::vector<ast::Call::Argument> args;
+  for (auto &e : exprs) { args.emplace_back("", std::move(e)); }
+  exprs.clear();
 
   auto stmts = std::make_unique<Statements>(range);
   stmts->append(std::make_unique<ast::YieldStmt>(
-      range, std::move(exprs), move_as<ast::Label>(nodes[0])));
+      range, std::move(args), move_as<ast::Label>(nodes[0])));
   return stmts;
 }
 
@@ -767,11 +771,15 @@ std::unique_ptr<ast::Node> BuildUnlabeledYield(
     diagnostic::DiagnosticConsumer &diag) {
   auto range =
       SourceRange(nodes.front()->range().begin(), nodes.back()->range().end());
+  // TODO: Go directly to arguments.
   std::vector<std::unique_ptr<ast::Expression>> exprs =
       ExtractIfCommaList<ast::Expression>(std::move(nodes[1]));
+  std::vector<ast::Call::Argument> args;
+  for (auto &e : exprs) { args.emplace_back("", std::move(e)); }
+  exprs.clear();
 
   auto stmts = std::make_unique<Statements>(range);
-  stmts->append(std::make_unique<ast::YieldStmt>(range, std::move(exprs)));
+  stmts->append(std::make_unique<ast::YieldStmt>(range, std::move(args)));
   return stmts;
 }
 

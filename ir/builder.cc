@@ -101,8 +101,7 @@ ir::OutParams Builder::OutParams(
 }
 
 void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
-                   PartialResultBuffer args, CompleteResultBuffer constants,
-                   ir::OutParams outs) {
+                   PartialResultBuffer args, ir::OutParams outs) {
   ASSERT(args.num_entries() == f->params().size());
 
   // TODO: this call should return the constructed registers rather than forcing
@@ -118,8 +117,8 @@ void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
     }
   }
 
-  CurrentBlock()->Append(CallInstruction(
-      f, fn, std::move(args), std::move(constants), std::move(outs)));
+  CurrentBlock()->Append(
+      CallInstruction(f, fn, std::move(args), std::move(outs)));
 }
 
 static void ClearJumps(JumpCmd const &jump, BasicBlock *from) {
@@ -330,7 +329,7 @@ void Builder::InlineJumpIntoCurrent(Jump to_be_inlined,
           }
 
           auto out_params = OutParams(overload->type()->return_types());
-          Call(*overload, overload->type(), prepared_arguments.buffer(), {},
+          Call(*overload, overload->type(), prepared_arguments.buffer(),
                out_params);
           if (not out_params.empty()) {
             auto &phis = state.set_phis.at(j.name);

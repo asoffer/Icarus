@@ -37,8 +37,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ReturnStmt const *nod
 }
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::YieldStmt const *node) {
-  ASSIGN_OR(return type::QualType::ErrorSpan(),  //
-                   auto quals, VerifyAndGetQuals(this, node->exprs()));
+  ir::CompleteResultBuffer buffer;
+  VerifyArguments(node->arguments(), buffer);
   return {};
 }
 

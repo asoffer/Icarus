@@ -1366,17 +1366,17 @@ struct UnconditionalGoto : Node {
 //
 struct YieldStmt : Node {
   explicit YieldStmt(frontend::SourceRange const &range,
-                     std::vector<std::unique_ptr<Expression>> exprs,
+                     std::vector<Call::Argument> args,
                      std::unique_ptr<Label> label = nullptr)
-      : Node(range), exprs_(std::move(exprs)), label_(std::move(label)) {}
-  base::PtrSpan<Expression const> exprs() const { return exprs_; }
+      : Node(range), args_(std::move(args)), label_(std::move(label)) {}
 
+  absl::Span<Call::Argument const> arguments() const { return args_; }
   Label const *label() const { return label_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  std::vector<std::unique_ptr<Expression>> exprs_;
+  std::vector<Call::Argument> args_;
   std::unique_ptr<Label> label_;
 };
 
