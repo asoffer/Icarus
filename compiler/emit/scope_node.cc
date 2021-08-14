@@ -45,9 +45,8 @@ std::optional<ir::Reg> InitializeScopeState(Compiler &c,
 }
 
 std::pair<ir::Jump, ir::PartialResultBuffer> EmitIrForJumpArguments(
-    Compiler &c, ir::PartialResultBuffer const &constant_arguments,
-    std::optional<ir::Reg> state_ptr,
-    absl::Span<ast::Call::Argument const> const &args,
+    Compiler &c, std::optional<ir::Reg> state_ptr,
+    absl::Span<ast::Call::Argument const> const &arguments,
     ir::CompiledScope const &scope) {
   // TODO: Support dynamic dispatch.
   auto const &inits = scope.inits();
@@ -78,7 +77,11 @@ std::pair<ir::Jump, ir::PartialResultBuffer> EmitIrForJumpArguments(
   auto const &param_qts = ir::CompiledJump::From(init)->params().Transform(
       [](auto const &p) { return type::QualType::NonConstant(p.type()); });
 
-  EmitArguments(c, param_qts, args, prepared_arguments);
+  ir::CompleteResultBuffer buffer;
+  auto constant_arguments = EmitConstantArguments(c, arguments, buffer);
+
+  EmitArguments(c, param_qts, arguments, constant_arguments,
+                prepared_arguments);
   return std::make_pair(init, std::move(prepared_arguments));
 }
 
@@ -90,9 +93,8 @@ void InlineStartIntoCurrent(Compiler &c, ir::BasicBlock *entry_block,
   c.builder().UncondJump(starting_block);
   c.builder().CurrentBlock() = starting_block;
 
-  auto constant_args = EmitConstantPartialResultBuffer(c, arguments);
-  auto [init, args]  = EmitIrForJumpArguments(c, constant_args, state_ptr,
-                                             arguments, compiled_scope);
+  auto [init, args] =
+      EmitIrForJumpArguments(c, state_ptr, arguments, compiled_scope);
   c.builder().InlineJumpIntoCurrent(init, args,
                                     c.state().scope_landings.back());
 }

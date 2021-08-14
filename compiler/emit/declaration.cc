@@ -41,7 +41,7 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
       if (t.is_big()) {
         out.append((*constant_value)[0].raw().data());
       } else {
-        out = *constant_value;
+        out.append(*constant_value);
       }
       return;
     }

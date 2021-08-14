@@ -280,11 +280,14 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
 
 static base::Global kReservedTypes =
     absl::flat_hash_map<std::string_view, type::Type>{
-        {"bool", type::Bool},  {"char", type::Char},    {"i8", type::I8},
-        {"i16", type::I16},    {"i32", type::I32},      {"i64", type::I64},
-        {"u8", type::U8},      {"u16", type::U16},      {"u32", type::U32},
-        {"u64", type::U64},    {"f32", type::F32},      {"f64", type::F64},
-        {"type", type::Type_}, {"module", type::Module}};
+        {"bool", type::Bool},       {"char", type::Char},
+        {"i8", type::I8},           {"i16", type::I16},
+        {"i32", type::I32},         {"i64", type::I64},
+        {"u8", type::U8},           {"u16", type::U16},
+        {"u32", type::U32},         {"u64", type::U64},
+        {"f32", type::F32},         {"f64", type::F64},
+        {"integer", type::Integer}, {"type", type::Type_},
+        {"module", type::Module}};
 
 // Consumes as many alpha-numeric or underscore characters as possible, assuming
 // the character under the cursor is an alpha or underscore character. Returns a

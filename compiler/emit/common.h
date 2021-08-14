@@ -36,17 +36,20 @@ void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
                             ast::Expression const &expr,
                             ir::PartialResultBuffer &buffer);
 
-ir::PartialResultBuffer EmitConstantPartialResultBuffer(
-    Compiler &c, absl::Span<ast::Call::Argument const> args);
-
 void EmitCall(Compiler &compiler, ast::Expression const *callee,
               TypedConstants argument_data,
               absl::Span<ast::Call::Argument const> arg_exprs,
               absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to);
 
-void EmitArguments(Compiler &c, core::Params<type::QualType> const &param_qts,
-                   absl::Span<ast::Call::Argument const> arg_exprs,
-                   ir::PartialResultBuffer &buffer);
+core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
+    Compiler &c, absl::Span<ast::Call::Argument const> args,
+    ir::CompleteResultBuffer &buffer);
+
+void EmitArguments(
+    Compiler &c, core::Params<type::QualType> const &param_qts,
+    absl::Span<ast::Call::Argument const> arg_exprs,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants,
+    ir::PartialResultBuffer &buffer);
 
 }  // namespace compiler
 

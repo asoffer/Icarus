@@ -289,15 +289,17 @@ void EmitAndCast(Compiler &c, ast::Expression const &expr, type::QualType to,
 
 }  // namespace
 
-void EmitArguments(Compiler &c, core::Params<type::QualType> const &param_qts,
-                   absl::Span<ast::Call::Argument const> arg_exprs,
-                   ir::PartialResultBuffer &buffer) {
+void EmitArguments(
+    Compiler &c, core::Params<type::QualType> const &param_qts,
+    absl::Span<ast::Call::Argument const> arg_exprs,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants,
+    ir::PartialResultBuffer &buffer) {
   size_t i = 0;
   while (i < arg_exprs.size() and not arg_exprs[i].named()) {
     absl::Cleanup cleanup = [&] { ++i; };
     auto const &param     = param_qts[i];
     if (param.value.constant()) {
-      buffer.append();
+      buffer.append(constants[i]);
     } else {
       EmitAndCast(c, arg_exprs[i].expr(), param.value, buffer);
     }
@@ -306,11 +308,11 @@ void EmitArguments(Compiler &c, core::Params<type::QualType> const &param_qts,
   size_t named_start = i;
   for (; i < param_qts.size(); ++i) {
     auto const &param = param_qts[i];
+    std::string_view name = param_qts[i].name;
     if (param.value.constant()) {
-      buffer.append();
+      buffer.append(constants[name]);
     } else {
       // TODO: Encapsulate the argument name finding.
-      std::string_view name = param_qts[i].name;
       size_t j              = named_start;
       for (; j < arg_exprs.size(); ++j) {
         if (arg_exprs[j].name() == name) { break; }
@@ -608,17 +610,6 @@ void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
   buffer.append(result);
 }
 
-ir::PartialResultBuffer EmitConstantPartialResultBuffer(
-    Compiler &c, absl::Span<ast::Call::Argument const> args) {
-  ir::PartialResultBuffer arg_buffer;
-
-  for (auto const &arg : args) {
-    auto qt = c.context().qual_types(&arg.expr())[0];
-    AppendToPartialResultBuffer(c, qt, arg.expr(), arg_buffer);
-  }
-  return arg_buffer;
-}
-
 void EmitCall(Compiler &c, ast::Expression const *callee,
               TypedConstants typed_constants,
               absl::Span<ast::Call::Argument const> arg_exprs,
@@ -647,7 +638,8 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
 
   auto const &param_qts = overload_type->params();
   ir::PartialResultBuffer prepared_arguments;
-  EmitArguments(c, param_qts, arg_exprs, prepared_arguments);
+  EmitArguments(c, param_qts, arg_exprs, typed_constants.arguments,
+                prepared_arguments);
 
   // TODO: With expansions, this might be wrong.
   auto out_params = SetReturns(child.builder(), overload_type, to);
@@ -662,6 +654,49 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
     buffer.append(out_params[i]);
     c.EmitCopyAssign(to[i], type::Typed(buffer[0], t));
   }
+}
+
+core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
+    Compiler &c, absl::Span<ast::Call::Argument const> args,
+    ir::CompleteResultBuffer &buffer) {
+  core::Arguments<type::Typed<size_t>> indices;
+
+  size_t i = 0;
+  for (auto const &arg : args) {
+    absl::Cleanup cleanup = [&] { ++i; };
+
+    auto qt = c.context().qual_types(&arg.expr())[0];
+    if (qt.constant()) {
+      ASSIGN_OR(
+          NOT_YET(),  //
+          auto result,
+          c.EvaluateToBufferOrDiagnose(
+              type::Typed<ast::Expression const *>(&arg.expr(), qt.type())));
+      buffer.append(result);
+      if (not arg.named()) {
+        indices.pos_emplace(
+            type::Typed<size_t>(buffer.num_entries() - 1, qt.type()));
+      } else {
+        indices.named_emplace(
+            arg.name(),
+            type::Typed<size_t>(buffer.num_entries() - 1, qt.type()));
+      }
+    } else {
+      buffer.append();
+      if (not arg.named()) {
+        indices.pos_emplace(
+            type::Typed<size_t>(buffer.num_entries() - 1, qt.type()));
+      } else {
+        indices.named_emplace(
+            arg.name(),
+            type::Typed<size_t>(buffer.num_entries() - 1, qt.type()));
+      }
+    }
+  }
+
+  return indices.Transform([&](auto const &i) {
+    return type::Typed<ir::CompleteResultRef>(buffer[*i], i.type());
+  });
 }
 
 }  // namespace compiler

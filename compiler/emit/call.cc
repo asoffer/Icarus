@@ -11,39 +11,6 @@
 namespace compiler {
 namespace {
 
-core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
-    Compiler &c, absl::Span<ast::Call::Argument const> args,
-    ir::CompleteResultBuffer &buffer) {
-  core::Arguments<type::Typed<size_t>> indices;
-
-  size_t i = 0;
-  for (auto const &arg : args) {
-    absl::Cleanup cleanup = [&] { ++i; };
-
-    auto qt = c.context().qual_types(&arg.expr())[0];
-    if (qt.constant()) {
-      ASSIGN_OR(
-          NOT_YET(),  //
-          auto result,
-          c.EvaluateToBufferOrDiagnose(
-              type::Typed<ast::Expression const *>(&arg.expr(), qt.type())));
-      buffer.append(result);
-      if (arg.named()) {
-        indices.pos_emplace(
-            type::Typed<size_t>(buffer.num_entries() - 1, qt.type()));
-      } else {
-        indices.named_emplace(
-            arg.name(),
-            type::Typed<size_t>(buffer.num_entries() - 1, qt.type()));
-      }
-    }
-  }
-
-  return indices.Transform([&](auto const &i) {
-    return type::Typed<ir::CompleteResultRef>(buffer[*i], i.type());
-  });
-}
-
 // TODO: Checking if an AST node is a builtin is problematic because something
 // as simple as
 // ```
