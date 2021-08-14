@@ -140,50 +140,6 @@ TEST(BuiltinForeign, SecondParameterType) {
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
-TEST(BuiltinCallable, Empty) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(callable())");
-  type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(qt, type::QualType::Constant(type::Interface));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
-}
-
-TEST(BuiltinCallable, ConstantTypes) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(callable(bool))");
-  type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(qt, type::QualType::Constant(type::Interface));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
-}
-
-TEST(BuiltinCallable, NamedTypes) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(callable(b = bool))");
-  type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(qt, type::QualType::Constant(type::Interface));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
-}
-
-TEST(BuiltinCallable, NamedNonConstantTypes) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
-  b := bool
-  )");
-  auto const *call  = mod.Append<ast::Call>(R"(callable(bool, b = b))");
-  type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(qt, type::QualType::NonConstant(type::Interface));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
-}
-
-TEST(BuiltinCallable, NonType) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(callable(b = 3))");
-  type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(qt, type::QualType::Constant(type::Interface));
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "builtin-error")));
-}
-
 TEST(BuiltinOpaque, Success) {
   test::TestModule mod;
   auto const *call  = mod.Append<ast::Call>("opaque()");
@@ -594,11 +550,6 @@ INSTANTIATE_TEST_SUITE_P(
             .expr                 = "f()",
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
-        },
-        TestCase{
-            .context            = "S ::= struct (N :: i64) {}",
-            .expr               = "S(n :: i64)",
-            .expected_qual_type = type::QualType::Constant(type::Interface),
         },
     }));
 

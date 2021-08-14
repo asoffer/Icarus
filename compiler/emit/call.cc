@@ -126,23 +126,6 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
 
     case ir::BuiltinFn::Which::DebugIr: c.builder().DebugIr(); return;
 
-    case ir::BuiltinFn::Which::Callable: {
-      std::vector<ir::RegOr<type::Type>> pos;
-      absl::flat_hash_map<std::string, ir::RegOr<type::Type>> named;
-      for (auto const &arg : args) {
-        if (arg.named()) {
-          named.emplace(arg.name(), c.EmitAs<type::Type>(&arg.expr()));
-        } else {
-          pos.push_back(c.EmitAs<type::Type>(&arg.expr()));
-        }
-      }
-      out.append(c.current_block()->Append(interface::CallableInstruction{
-          .positional = std::move(pos),
-          .named      = std::move(named),
-          .result     = c.builder().CurrentGroup()->Reserve(),
-      }));
-      return;
-    }
     case ir::BuiltinFn::Which::Abort:
       c.current_block()->Append(ir::AbortInstruction{});
       return;

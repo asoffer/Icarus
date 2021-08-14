@@ -54,7 +54,6 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
             return type::Func(
                 {core::AnonymousParam(type::QualType::Constant(type::Type_))},
                 {type::U64});
-          case BuiltinFn::Which::Callable: return nullptr;
           case BuiltinFn::Which::Opaque: return type::Func({}, {type::Type_});
           case BuiltinFn::Which::ReserveMemory:
             return type::Func(
