@@ -44,7 +44,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       state_.must_complete = false;
 
       EmitToBuffer(node->operand(), out);
-      auto value = out.get<type::Type>(0);
+      auto value = out.back().get<type::Type>();
       out.pop_back();
       out.append(current_block()->Append(type::BufPtrInstruction{
           .operand = value,
@@ -56,7 +56,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       auto operand_qt = context().qual_types(node->operand())[0];
       if (operand_qt.type() == type::Bool) {
         EmitToBuffer(node->operand(), out);
-        auto value = out.get<bool>(0);
+        auto value = out.back().get<bool>();
         out.pop_back();
         out.append(builder().Not(value));
         return;
@@ -75,7 +75,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       EmitToBuffer(node->operand(), out);
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, float, double>(
           context().qual_types(node->operand())[0].type(), [&]<typename T>() {
-            auto value = out.get<T>(0);
+            auto value = out.back().get<T>();
             out.pop_back();
             out.append(builder().Neg(value));
           });

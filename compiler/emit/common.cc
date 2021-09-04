@@ -306,7 +306,6 @@ void EmitArguments(
   }
 
   size_t named_start = i;
-  LOG("", "named_start = %u, qts = %u", named_start, param_qts.size());
   for (; i < param_qts.size(); ++i) {
     auto const &param = param_qts[i];
     std::string_view name = param_qts[i].name;
