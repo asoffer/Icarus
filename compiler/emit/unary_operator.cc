@@ -16,7 +16,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       auto reg          = builder().TmpAlloca(operand_type);
       EmitToBuffer(node->operand(), out);
       EmitCopyInit(type::Typed<ir::Reg>(reg, operand_type), out);
-      out.clear();
+      out.pop_back();
       out.append(builder().PtrFix(reg, operand_type));
       return;
     } break;
@@ -33,7 +33,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       auto reg          = builder().TmpAlloca(operand_type);
       EmitToBuffer(node->operand(), out);
       EmitMoveInit(type::Typed<ir::Reg>(reg, operand_type), out);
-      out.clear();
+      out.pop_back();
       out.append(builder().PtrFix(reg, operand_type));
       return;
     } break;
@@ -45,7 +45,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
 
       EmitToBuffer(node->operand(), out);
       auto value = out.get<type::Type>(0);
-      out.clear();
+      out.pop_back();
       out.append(current_block()->Append(type::BufPtrInstruction{
           .operand = value,
           .result  = builder().CurrentGroup()->Reserve(),
@@ -57,7 +57,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       if (operand_qt.type() == type::Bool) {
         EmitToBuffer(node->operand(), out);
         auto value = out.get<bool>(0);
-        out.clear();
+        out.pop_back();
         out.append(builder().Not(value));
         return;
       } else if (auto const *t = operand_qt.type().if_as<type::Flags>()) {
@@ -76,7 +76,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, float, double>(
           context().qual_types(node->operand())[0].type(), [&]<typename T>() {
             auto value = out.get<T>(0);
-            out.clear();
+            out.pop_back();
             out.append(builder().Neg(value));
           });
       return;

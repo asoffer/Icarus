@@ -251,6 +251,8 @@ struct PartialResultBuffer {
   PartialResultRef operator[](size_t i) const;
   PartialResultRef back() const;
 
+  size_t size() const { return offsets_.size(); }
+
  private:
   std::vector<internal_result_buffer::Offset> offsets_;
   base::untyped_buffer buffer_;
