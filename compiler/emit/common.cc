@@ -191,7 +191,35 @@ ir::Fn InsertGeneratedCopyAssign(
   return fn;
 }
 
-std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCalleeImpl(
+core::Params<ast::Expression const *> DefaultsFor(
+    ast::Expression const *expr, Context const &context) {
+  if (auto const *id = expr->if_as<ast::Identifier>()) {
+    auto decl_span = context.decls(id);
+    switch (decl_span.size()) {
+      case 0: UNREACHABLE();
+      case 1: return DefaultsFor(decl_span[0]->init_val(), context);
+      default: UNREACHABLE();
+    }
+  } else if (auto const *id = expr->if_as<ast::Declaration::Id>()) {
+    return DefaultsFor(id->declaration().init_val(), context);
+  } else if (auto const *p = expr->if_as<ast::ParameterizedExpression>()) {
+    return p->params().Transform(
+        [](auto const &decl) -> ast::Expression const * {
+          return decl->init_val();
+        });
+  } else {
+    return {};
+  }
+}
+
+struct CalleeResult {
+  ir::RegOr<ir::Fn> callee;
+  type::Function const *type;
+  core::Params<ast::Expression const *> defaults;
+  Context *context;
+};
+
+CalleeResult EmitCalleeImpl(
     Compiler &c, ast::Expression const *callable, type::QualType qt,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
   if (auto const *gf_type = qt.type().if_as<type::GenericFunction>()) {
@@ -206,15 +234,18 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCalleeImpl(
     }
 
     auto *parameterized_expr = &callable->as<ast::ParameterizedExpression>();
-
     auto find_subcontext_result =
         FindInstantiation(c, parameterized_expr, constants);
-    return std::make_tuple(ir::Fn(gen_fn.concrete(constants)),
-                           find_subcontext_result.fn_type,
-                           &find_subcontext_result.context);
+    return {.callee   = ir::Fn(gen_fn.concrete(constants)),
+            .type     = find_subcontext_result.fn_type,
+            .defaults = DefaultsFor(callable, find_subcontext_result.context),
+            .context  = &find_subcontext_result.context};
   } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
     if (type::Quals::Const() <= qt.quals()) {
-      return std::make_tuple(c.EmitAs<ir::Fn>(callable), f_type, nullptr);
+      return {.callee   = c.EmitAs<ir::Fn>(callable),
+              .type     = f_type,
+              .defaults = DefaultsFor(callable, c.context()),
+              .context  = nullptr};
     } else {
       // NOTE: If the overload is a declaration, it's not because a
       // declaration is syntactically the callee. Rather, it's because the
@@ -224,13 +255,15 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCalleeImpl(
       // initialization for the declaration. Instead, we need load the
       // address.
       if (auto *fn_decl = callable->if_as<ast::Declaration>()) {
-        return std::make_tuple(
-            c.builder().Load<ir::Fn>(c.builder().addr(&fn_decl->ids()[0])),
-            f_type, nullptr);
+        return {.callee = c.builder().Load<ir::Fn>(
+                    c.builder().addr(&fn_decl->ids()[0])),
+                .type    = f_type,
+                .context = nullptr};
       } else {
-        return std::make_tuple(
-            c.builder().Load<ir::Fn>(c.EmitAs<ir::addr_t>(callable), f_type),
-            f_type, nullptr);
+        return {.callee = c.builder().Load<ir::Fn>(
+                    c.EmitAs<ir::addr_t>(callable), f_type),
+                .type    = f_type,
+                .context = nullptr};
       }
     }
   } else {
@@ -238,7 +271,7 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCalleeImpl(
   }
 }
 
-std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
+CalleeResult EmitCallee(
     Compiler &c, ast::Expression const *callee,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
   CompiledModule *callee_mod = &callee->scope()
@@ -291,6 +324,7 @@ void EmitAndCast(Compiler &c, ast::Expression const &expr, type::QualType to,
 
 void EmitArguments(
     Compiler &c, core::Params<type::QualType> const &param_qts,
+    core::Params<ast::Expression const *> const &defaults,
     absl::Span<ast::Call::Argument const> arg_exprs,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants,
     ir::PartialResultBuffer &buffer) {
@@ -317,7 +351,14 @@ void EmitArguments(
       for (; j < arg_exprs.size(); ++j) {
         if (arg_exprs[j].name() == name) { break; }
       }
-      EmitAndCast(c, arg_exprs[j].expr(), param.value, buffer);
+      ast::Expression const *expr;
+      if (j == arg_exprs.size()) {
+        size_t default_index = *ASSERT_NOT_NULL(defaults.at_or_null(name));
+        expr                 = defaults[default_index].value;
+      } else {
+        expr = &arg_exprs[j].expr();
+      }
+      EmitAndCast(c, *expr, param.value, buffer);
     }
   }
 }
@@ -614,7 +655,7 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
               TypedConstants typed_constants,
               absl::Span<ast::Call::Argument const> arg_exprs,
               absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
-  auto [callee_fn, overload_type, context] =
+  auto [callee_fn, overload_type, defaults, context] =
       EmitCallee(c, callee, typed_constants.arguments);
   Compiler child = c.MakeChild(PersistentResources{
       .data                = context ? *context : c.context(),
@@ -638,7 +679,7 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
 
   auto const &param_qts = overload_type->params();
   ir::PartialResultBuffer prepared_arguments;
-  EmitArguments(c, param_qts, arg_exprs, typed_constants.arguments,
+  EmitArguments(c, param_qts, defaults, arg_exprs, typed_constants.arguments,
                 prepared_arguments);
 
   // TODO: With expansions, this might be wrong.

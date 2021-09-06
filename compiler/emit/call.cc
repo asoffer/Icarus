@@ -172,6 +172,7 @@ void Compiler::EmitToBuffer(ast::Call const *node, ir::PartialResultBuffer &out)
            TypedConstants{.constants = std::move(buffer),
                           .arguments = std::move(constant_arguments)},
            node->arguments(), outs);
+  // TODO: Why is this conditional on the size of qts?
   if (qts.size() == 1) {
     out.append(builder().PtrFix(outs[0]->reg(), qts[0].type()));
   }

@@ -80,8 +80,8 @@ std::pair<ir::Jump, ir::PartialResultBuffer> EmitIrForJumpArguments(
   ir::CompleteResultBuffer buffer;
   auto constant_arguments = EmitConstantArguments(c, arguments, buffer);
 
-  EmitArguments(c, param_qts, arguments, constant_arguments,
-                prepared_arguments);
+  EmitArguments(c, param_qts, {/* TODO: Defaults */}, arguments,
+                constant_arguments, prepared_arguments);
   return std::make_pair(init, std::move(prepared_arguments));
 }
 
@@ -186,7 +186,9 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
               phi->add(block, r);
             });
 
-        // TODO: Storage.
+        ir::PartialResultBuffer from_buffer;
+        from_buffer.append(phi->result);
+        EmitMoveInit(type::Typed(addr, t), from_buffer);
       } else if (auto const *p = t.if_as<type::Primitive>()) {
         p->Apply([ this, addr, name = std::string_view(name) ]<typename T>() {
           ir::PhiInstruction<T> *phi = builder().PhiInst<T>();

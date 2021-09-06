@@ -41,16 +41,21 @@ void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
       if (qt.quals() >= type::Quals::Ref()) {
         arguments.pos_insert(c.EmitRef(expr.get()));
       } else {
+        size_t size = arguments.buffer().num_entries();
         c.EmitToBuffer(expr.get(), arguments.buffer());
+        arguments.pos_set_in_place(size);
       }
     }
+
     for (auto const &[name, expr] : opt.args().named()) {
       auto qt = c.context().qual_types(expr.get())[0];
       argument_types.named_emplace(name, qt);
       if (qt.quals() >= type::Quals::Ref()) {
         arguments.named_insert(name, c.EmitRef(expr.get()));
       } else {
+        size_t size = arguments.buffer().num_entries();
         c.EmitToBuffer(expr.get(), arguments.buffer());
+        arguments.named_set_in_place(name, size);
       }
     }
 

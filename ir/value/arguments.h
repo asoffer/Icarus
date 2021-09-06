@@ -31,6 +31,14 @@ struct Arguments {
   PartialResultBuffer& buffer() & { return buffer_; }
   PartialResultBuffer const& buffer() const& { return buffer_; }
 
+  void pos_set_in_place(size_t index) {
+    indices_.pos_emplace(index);
+  }
+
+  void named_set_in_place(std::string_view name, size_t index) {
+    indices_.named_emplace(name, index);
+  }
+
   template <typename Tr>
   friend void BaseTraverse(Tr& t, Arguments& arguments) {
     base::Traverse(t, arguments.buffer_);

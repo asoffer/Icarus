@@ -59,8 +59,8 @@ void Compiler::EmitToBuffer(ast::YieldStmt const *node,
     }
 
     ir::PartialResultBuffer prepared_arguments;
-    EmitArguments(*this, exit_fn.type()->params(), node->arguments(), {},
-                  prepared_arguments);
+    EmitArguments(*this, exit_fn.type()->params(), {/* TODO: Defaults */},
+                  node->arguments(), {}, prepared_arguments);
 
     // TODO: Constant arguments
     builder().Call(exit_fn, exit_fn.type(), std::move(prepared_arguments),
