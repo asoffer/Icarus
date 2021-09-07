@@ -99,6 +99,68 @@ void InlineStartIntoCurrent(Compiler &c, ir::BasicBlock *entry_block,
                                     c.state().scope_landings.back());
 }
 
+struct ScopeBlockDescription {
+  // The begining of the `start` block. We need to be able to jump here in case
+  // the block arguments need to be reevaluated.
+  ir::BasicBlock *starting_block;
+
+  // If a scope has a path that exits normally along some path (a call to exit
+  // rather than a return or labelled yield), then this is the block on which
+  // we land.
+  ir::BasicBlock *landing_block;
+
+  // Block metadata keyed on the names of the block. The string names are all
+  // effectively ephemeral: They are either string literals or they are owned by
+  // the AST which outlives this struct.
+  absl::flat_hash_map<std::string_view, BlockMetadata> blocks_by_name;
+
+  // A map that holds a subset of the information in `blocks_by_name` that is
+  // required by ScopeState.
+  absl::flat_hash_map<std::string_view, ir::BasicBlock *> names;
+};
+
+// Returns a description of all blocks present in this scope, relating their
+// names, AST nodes, and generated `ir::BasicBlocks`. This function does not
+// modify `builder().CurrentBlock()`.
+ScopeBlockDescription MakeScopeBlockDescription(
+    ir::Builder& builder,
+    absl::Span<ast::BlockNode const> blocks) {
+  ScopeBlockDescription result;
+  result.starting_block = builder.AddBlock("scope-start");
+  result.landing_block  = builder.AddBlock("scope-done");
+
+  result.blocks_by_name.emplace(
+      "start",
+      BlockMetadata{.block_node = nullptr, .block = result.starting_block});
+  result.blocks_by_name.emplace(
+      "done",
+      BlockMetadata{.block_node = nullptr, .block = result.landing_block});
+
+  result.names.emplace("start", result.starting_block);
+  result.names.emplace("done", result.landing_block);
+
+  for (auto const &block_node : blocks) {
+    auto *b = builder.AddBlock(
+        absl::StrFormat("Body of block `%s`.", block_node.name()));
+    result.blocks_by_name.emplace(
+        block_node.name(),
+        BlockMetadata{.block_node = &block_node, .block = b});
+    result.names.emplace(block_node.name(), b);
+
+    // TODO: Add Phi nodes onto each of these blocks.
+  }
+  return result;
+}
+
+template <typename T>
+void MakePhi(ir::Builder &builder, std::string_view name,
+             ir::RegOr<ir::addr_t> addr, ir::ScopeState &state) {
+  ir::PhiInstruction<T> *phi = builder.PhiInst<T>();
+  state.set_phis[name].push_back(
+      [phi](ir::BasicBlock const *block, ir::Reg r) { phi->add(block, r); });
+  builder.Store<ir::RegOr<T>>(phi->result, addr);
+}
+
 }  // namespace
 
 void Compiler::EmitToBuffer(ast::ScopeNode const *node,
@@ -106,44 +168,15 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   LOG("ScopeNode", "Emitting IR for ScopeNode");
   ir::Scope scope = *EvaluateOrDiagnoseAs<ir::Scope>(node->name());
 
-  auto *entry_block = builder().CurrentBlock();
-
   // Emit IR for each block node, emission for each block node handles jumping
   // to the correct location, including jumps as well as subsequent calls to
   // before. This means that we have to ensure the body blocks already exist.
-  absl::flat_hash_map<std::string_view, BlockMetadata> blocks_by_name;
-  absl::flat_hash_map<std::string_view, ir::BasicBlock *> names;
-
-  // Arguments to the scope's start must be re-evaluated on each call to `goto
-  // start()`, so we need a block to which we can jump for this purpose.
-  auto *starting_block = builder().AddBlock("scope-start");
-  blocks_by_name.emplace(
-      "start", BlockMetadata{.block_node = nullptr, .block = starting_block});
-  names.emplace("start", starting_block);
-
-  // If a scope has a path that exits normally along some path (a call to exit
-  // rather than a return or labelled yield), then this is the block on which we
-  // land.
-  auto *landing_block = builder().AddBlock("scope-done");
-  blocks_by_name.emplace(
-      "done", BlockMetadata{.block_node = nullptr, .block = landing_block});
-  names.emplace("done", landing_block);
-
-  for (auto const &block_node : node->blocks()) {
-    auto *b = builder().AddBlock(
-        absl::StrFormat("Body of block `%s`.", block_node.name()));
-    blocks_by_name.emplace(
-        block_node.name(),
-        BlockMetadata{.block_node = &block_node, .block = b});
-    names.emplace(block_node.name(), b);
-    // TODO: Add Phi nodes onto each of these blocks.
-  }
+  auto [starting_block, landing_block, blocks_by_name, names] =
+      MakeScopeBlockDescription(builder(), node->blocks());
 
   // Push the scope landing state onto the the vector. Any nested scopes will be
   // able to lookup the label in this vector to determine where they should jump
   // to.
-
-  builder().CurrentBlock() = entry_block;
   auto const *compiled_scope = ir::CompiledScope::From(scope);
 
   // If the scope is stateful, stack-allocate space for the state and
@@ -151,9 +184,8 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   //
   // TODO: This interface isn't great beacuse it requires default-initializable
   // state and no way to call any other initializer.
+  auto *entry_block = builder().CurrentBlock();
   std::optional<ir::Reg> state_ptr = InitializeScopeState(*this, *compiled_scope);
-  ir::PartialResultBuffer buffer;
-  if (state_ptr) { buffer.append(*state_ptr); }
 
   state().scope_landings.push_back(ir::ScopeState{
       .label = node->label() ? node->label()->value() : ir::Label(),
@@ -161,8 +193,8 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
       // TODO: Implement me
       .result_type = type::QualType::NonConstant(type::Void),
       .block       = landing_block,
-      .names       = std::move(std::move(names)),
-      .state       = std::move(buffer),
+      .names       = std::move(names),
+      .state       = state_ptr,
   });
   absl::Cleanup c = [&] { state().scope_landings.pop_back(); };
 
@@ -191,34 +223,14 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
         EmitMoveInit(type::Typed(addr, t), from_buffer);
       } else if (auto const *p = t.if_as<type::Primitive>()) {
         p->Apply([ this, addr, name = std::string_view(name) ]<typename T>() {
-          ir::PhiInstruction<T> *phi = builder().PhiInst<T>();
-          state().scope_landings.back().set_phis[name].push_back(
-              [phi](ir::BasicBlock const *block, ir::Reg r) {
-                phi->add(block, r);
-              });
-
-          builder().Store<ir::RegOr<T>>(phi->result, addr);
+          MakePhi<T>(builder(), name, addr, state().scope_landings.back());
         });
       } else if (t.is<type::Enum>()) {
-        ir::PhiInstruction<type::Enum::underlying_type> *phi =
-            builder().PhiInst<type::Enum::underlying_type>();
-        state().scope_landings.back().set_phis[name].push_back(
-            [phi](ir::BasicBlock const *block, ir::Reg r) {
-              phi->add(block, r);
-            });
-
-        builder().Store<ir::RegOr<type::Enum::underlying_type>>(phi->result,
-                                                                addr);
+        MakePhi<type::Enum::underlying_type>(builder(), name, addr,
+                                             state().scope_landings.back());
       } else if (t.is<type::Flags>()) {
-        ir::PhiInstruction<type::Flags::underlying_type> *phi =
-            builder().PhiInst<type::Flags::underlying_type>();
-        state().scope_landings.back().set_phis[name].push_back(
-            [phi](ir::BasicBlock const *block, ir::Reg r) {
-              phi->add(block, r);
-            });
-
-        builder().Store<ir::RegOr<type::Flags::underlying_type>>(phi->result,
-                                                                 addr);
+        MakePhi<type::Flags::underlying_type>(builder(), name, addr,
+                                              state().scope_landings.back());
       } else {
         NOT_YET(t);
       }
@@ -232,8 +244,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   for (auto [name, metadata] : blocks_by_name) {
     if (not metadata.block_node) { continue; }
     builder().CurrentBlock() = metadata.block;
-    buffer.clear();
-    EmitToBuffer(metadata.block_node, buffer);
+    EmitVoid(metadata.block_node);
   }
 
   builder().CurrentBlock() = landing_block;

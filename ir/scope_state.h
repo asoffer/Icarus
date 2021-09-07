@@ -22,7 +22,10 @@ struct ScopeState {
   // A map keyed on the names of blocks that appear in this ScopeNode and
   // whose mapped values are the corresponding entry block for that scope.
   absl::flat_hash_map<std::string_view, BasicBlock*> names;
-  PartialResultBuffer state;
+
+  // If present, the register is the address of the scope state.
+  std::optional<ir::Reg> state;
+
   // TODO: The callable should probably take an ir::PartialResultRef rather than
   // an ir::Reg.
   absl::flat_hash_map<

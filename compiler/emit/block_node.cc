@@ -25,7 +25,8 @@ void Compiler::EmitToBuffer(ast::BlockNode const *node,
     // TODO: Do overload lookup.
     ASSERT(jumps.size() == 1u);
     ir::Jump j                   = *jumps.begin();
-    ir::PartialResultBuffer args = scope_state.state;
+    ir::PartialResultBuffer args;
+    if (scope_state.state) { args.append(*scope_state.state); }
     builder().InlineJumpIntoCurrent(j, args, state().scope_landings.back());
   }
 }
