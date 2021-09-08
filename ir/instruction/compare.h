@@ -7,7 +7,6 @@
 #include "base/extend/serialize.h"
 #include "base/extend/traverse.h"
 #include "ir/instruction/debug.h"
-#include "ir/interpreter/byte_code_writer.h"
 
 namespace ir {
 

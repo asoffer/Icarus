@@ -7,13 +7,10 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/synchronization/notification.h"
 #include "ast/ast_fwd.h"
-#include "base/guarded.h"
-#include "base/no_destructor.h"
 #include "compiler/context.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
 #include "module/module.h"
-#include "type/type_fwd.h"
 
 namespace compiler {
 

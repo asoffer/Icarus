@@ -9,7 +9,6 @@
 #include "core/params.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
-#include "ir/interpreter/byte_code_writer.h"
 #include "type/callable.h"
 #include "type/qual_type.h"
 #include "type/type.h"

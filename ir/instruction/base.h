@@ -9,8 +9,8 @@
 #include "base/serialize.h"
 #include "base/traverse.h"
 #include "base/untyped_buffer.h"
+#include "ir/byte_code/writer.h"
 #include "ir/instruction/inliner.h"
-#include "ir/interpreter/byte_code_writer.h"
 #include "ir/value/reg.h"
 
 // TODO rename this file so that when you forget that for dependency reasons you
@@ -25,7 +25,7 @@ concept Instruction = std::copy_constructible<T> and
                       std::assignable_from<T&, T&&> and 
                       std::destructible<T> and
                       base::TraversableBy<T, Inliner> and 
-                      base::SerializableBy<T, interpreter::ByteCodeWriter>;
+                      base::SerializableBy<T, ir::ByteCodeWriter>;
 
 template <typename T>
 concept ReturningInstruction = Instruction<T> and requires (T t) {
@@ -45,10 +45,10 @@ struct InstructionVTable {
   void (*move_assign)(void*, void*)       = [](void*, void*) {};
   void (*destroy)(void*)                  = [](void*) {};
 
-  void (*Serialize)(void*, interpreter::ByteCodeWriter*) =
-      [](void*, interpreter::ByteCodeWriter*) {
-        UNREACHABLE("Serialize is unimplemented");
-      };
+  void (*Serialize)(void*, ir::ByteCodeWriter*) = [](void*,
+                                                     ir::ByteCodeWriter*) {
+    UNREACHABLE("Serialize is unimplemented");
+  };
 
   std::string (*to_string)(void const*) = [](void const*) -> std::string {
     UNREACHABLE("to_string is unimplemented");
@@ -81,7 +81,7 @@ InstructionVTable InstructionVTableFor{
     .destroy = [](void* self) { delete reinterpret_cast<T*>(self); },
 
     .Serialize =
-        [](void* self, interpreter::ByteCodeWriter* writer) {
+        [](void* self, ir::ByteCodeWriter* writer) {
           base::Serialize(*writer, *reinterpret_cast<T*>(self));
         },
 
@@ -176,8 +176,7 @@ struct Inst {
 
   ~Inst() { vtable_->destroy(data_); }
 
-  friend void BaseSerialize(interpreter::ByteCodeWriter& writer,
-                            Inst const& i) {
+  friend void BaseSerialize(ir::ByteCodeWriter& writer, Inst const& i) {
     i.vtable_->Serialize(i.data_, &writer);
   }
 

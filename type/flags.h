@@ -14,8 +14,6 @@
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
-#include "ir/interpreter/byte_code_reader.h"
-#include "ir/interpreter/byte_code_writer.h"
 #include "module/module.h"
 #include "type/type.h"
 #include "type/typed_value.h"

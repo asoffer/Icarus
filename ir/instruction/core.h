@@ -11,11 +11,11 @@
 #include "base/extend/traverse.h"
 #include "base/serialize.h"
 #include "ir/blocks/basic.h"
+#include "ir/byte_code/reader.h"
+#include "ir/byte_code/writer.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/op_codes.h"
 #include "ir/interpreter/architecture.h"
-#include "ir/interpreter/byte_code_reader.h"
-#include "ir/interpreter/byte_code_writer.h"
 #include "ir/out_params.h"
 #include "ir/value/reg_or.h"
 
@@ -55,8 +55,7 @@ struct PhiInstruction : base::Extend<PhiInstruction<T>, 3>::template With<
     values.push_back(value);
   }
 
-  friend void BaseSerialize(interpreter::ByteCodeWriter& w,
-                            PhiInstruction const& inst) {
+  friend void BaseSerialize(ByteCodeWriter& w, PhiInstruction const& inst) {
     base::Serialize(w, static_cast<uint16_t>(inst.values.size()));
     for (auto block : inst.blocks) { base::Serialize(w, block); }
     for (auto value : inst.values) { base::Serialize(w, value); }
@@ -136,7 +135,7 @@ struct CallInstruction
     : base::Extend<CallInstruction, 4>::With<base::BaseSerializeExtension> {
   CallInstruction() = default;
   CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
-                  ir::PartialResultBuffer args, OutParams outs)
+                  PartialResultBuffer args, OutParams outs)
       : fn_type_(fn_type),
         fn_(fn),
         args_(std::move(args)),
@@ -171,10 +170,8 @@ struct CommentInstruction
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "comment: %1$s";
 
-  friend void BaseSerialize(interpreter::ByteCodeWriter& w,
-                            CommentInstruction const&) {}
-  friend void BaseDeserialize(interpreter::ByteCodeReader&,
-                              CommentInstruction const&) {}
+  friend void BaseSerialize(ByteCodeWriter& w, CommentInstruction const&) {}
+  friend void BaseDeserialize(ByteCodeReader&, CommentInstruction const&) {}
 
   template <typename ExecContext>
   void Apply(ExecContext&) const {}

@@ -14,8 +14,6 @@
 #include "base/extend/serialize.h"
 #include "base/traverse.h"
 #include "ir/instruction/base.h"
-#include "ir/interpreter/byte_code_reader.h"
-#include "ir/interpreter/byte_code_writer.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/value/fn.h"
 #include "ir/value/hashtag.h"

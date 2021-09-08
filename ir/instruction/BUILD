@@ -19,8 +19,8 @@ cc_library(
         "//base:serialize",
         "//base:traverse",
         "//base:untyped_buffer",
+        "//ir/byte_code:writer",
         "//ir/instruction:inliner",
-        "//ir/interpreter:byte_code_writer",
         "//ir/value:reg",
     ]
 )
@@ -37,10 +37,7 @@ cc_test(
 cc_library(
     name = "compare",
     hdrs = ["compare.h"],
-    deps = [
-        "//base:extend",
-        "//ir/interpreter:byte_code_writer",
-    ],
+    deps = ["//base:extend"],
 )
 
 cc_library(
@@ -134,8 +131,8 @@ cc_library(
         "//base/extend:traverse",
         "//ir/blocks:basic",
         "//ir/interpreter:architecture",
-        "//ir/interpreter:byte_code_reader",
-        "//ir/interpreter:byte_code_writer",
+        "//ir/byte_code:reader",
+        "//ir/byte_code:writer",
         "//ir:out_params",
         "//ir/value:reg_or",
         "@com_google_absl//absl/strings",

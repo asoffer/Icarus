@@ -8,7 +8,6 @@
 #include "core/arch.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
-#include "ir/interpreter/byte_code_writer.h"
 #include "ir/value/slice.h"
 #include "type/primitive.h"
 #include "type/type.h"

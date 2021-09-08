@@ -4,10 +4,10 @@
 namespace ir {
 namespace {
 
-std::string Representation(ir::CompleteResultRef ref, type::Type t) {
+std::string Representation(CompleteResultRef ref, type::Type t) {
   if (t.is_big()) {
-    return t.Representation(ir::CompleteResultRef(base::untyped_buffer_view(
-        ref.get<ir::addr_t>(), t.bytes(core::Host).value())));
+    return t.Representation(CompleteResultRef(base::untyped_buffer_view(
+        ref.get<addr_t>(), t.bytes(core::Host).value())));
   } else {
     return t.Representation(ref);
   }

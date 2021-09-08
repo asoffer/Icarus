@@ -8,6 +8,7 @@
 #include "absl/types/span.h"
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
+#include "ir/byte_code/reader.h"
 #include "ir/instruction/core.h"
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/foreign.h"
@@ -188,7 +189,7 @@ struct ExecutionContext {
       auto *iter = &frame_iter.byte_code_iterator();
 
       if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
-        auto inst = ByteCodeReader::DeserializeTo<Inst>(*iter);
+        auto inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
         LOG("CallInstruction", "%s", inst.to_string());
         ir::Fn f  = ctx.resolve(inst.func());
         type::Function const *fn_type = f.type();
@@ -250,12 +251,12 @@ struct ExecutionContext {
       } else if constexpr (
           base::meta<Inst>.template is_a<ir::SetReturnInstruction>()) {
         using type          = typename Inst::type;
-        auto inst = ByteCodeReader::DeserializeTo<Inst>(*iter);
+        auto inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
         ir::addr_t ret_slot = ctx.resolve<ir::addr_t>(ir::Reg::Out(inst.index));
         auto value          = ctx.resolve(inst.value);
         *ASSERT_NOT_NULL(reinterpret_cast<type *>(ret_slot)) = value;
       } else if constexpr (internal_execution::HasResolveMemberFunction<Inst>) {
-        Inst inst = ByteCodeReader::DeserializeTo<Inst>(*iter);
+        Inst inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
         std::apply([&](auto &... fields) { (ctx.ResolveField(fields), ...); },
                    inst.field_refs());
 
@@ -263,10 +264,10 @@ struct ExecutionContext {
 
       } else if constexpr (base::meta<decltype(std::declval<Inst>().Apply(
                                ctx))> == base::meta<void>) {
-        ByteCodeReader::DeserializeTo<Inst>(*iter).Apply(ctx);
+        ir::ByteCodeReader::DeserializeTo<Inst>(*iter).Apply(ctx);
       } else {
         StackFrame frame =
-            ByteCodeReader::DeserializeTo<Inst>(*iter).Apply(ctx);
+            ir::ByteCodeReader::DeserializeTo<Inst>(*iter).Apply(ctx);
         ctx.CallFn<InstSet>(frame.fn().native(), frame);
       }
     };

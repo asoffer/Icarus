@@ -69,7 +69,6 @@ BoundParameters ComputeParamsFromArgs(
 
         LOG("ComputeParamsFromArgs", "... %s",
             c.context().arg_type(id).Representation(value));
-        c.context().set_arg_value(id, value);
       } break;
       case core::DependencyNodeKind::ArgType: {
         auto const *argument      = ArgumentFromIndex(args, index, id);

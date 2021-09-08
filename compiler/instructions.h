@@ -3,6 +3,7 @@
 
 #include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
+#include "ir/byte_code/byte_code.h"
 #include "ir/interpreter/evaluation_result.h"
 #include "ir/value/addr.h"
 #include "ir/value/block.h"
@@ -38,7 +39,7 @@ void InterpretAtCompileTime(ir::NativeFn f);
 void InterpretAtCompileTime(ir::CompiledFn const &fn);
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn fn);
 interpreter::EvaluationResult EvaluateAtCompileTime(ir::NativeFn fn);
-base::untyped_buffer EmitByteCode(ir::CompiledFn const &fn);
+ir::ByteCode EmitByteCode(ir::CompiledFn const &fn);
 
 namespace internal_type {
 template <typename T>

@@ -12,30 +12,6 @@ cc_library(
 )
 
 cc_library(
-    name = "byte_code_reader",
-    hdrs = ["byte_code_reader.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//base:serialize",
-        "//base:untyped_buffer",
-        "@com_google_absl//absl/types:span",
-    ]
-)
-
-cc_library(
-    name = "byte_code_writer",
-    hdrs = ["byte_code_writer.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//base:debug",
-        "//base:serialize",
-        "//base:untyped_buffer",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/types:span",
-    ]
-)
-
-cc_library(
     name = "register_array",
     hdrs = ["register_array.h"],
     deps = [
@@ -100,6 +76,7 @@ cc_library(
         ":foreign",
         ":stack_frame",
         "//base:untyped_buffer",
+        "//ir/byte_code:reader",
         "//ir/instruction:core",
         "//ir/value:addr",
         "//ir/value:fn",

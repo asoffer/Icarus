@@ -112,8 +112,7 @@ struct instruction_set_t
           type::SliceDataInstruction, ir::DebugIrInstruction,
           ir::AbortInstruction, TypeConstructorInstructions> {};
 
-void EmitByteCode(interpreter::ByteCodeWriter& writer,
-                  ir::BasicBlock const& block) {
+void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
   writer.set_block(&block);
 
   for (auto const& inst : block.instructions()) {
@@ -136,16 +135,16 @@ void EmitByteCode(interpreter::ByteCodeWriter& writer,
 
 }  // namespace
 
-base::untyped_buffer EmitByteCode(ir::CompiledFn const& fn) {
-  base::untyped_buffer byte_code;
-  interpreter::ByteCodeWriter writer(&byte_code);
+ir::ByteCode EmitByteCode(ir::CompiledFn const& fn) {
+  ir::ByteCode byte_code;
+  ir::ByteCodeWriter writer(&byte_code);
   for (auto const& block : fn.blocks()) { EmitByteCode(writer, *block); }
-  writer.Finalize();
+  std::move(writer).Finalize();
   return byte_code;
 }
 
 void InterpretAtCompileTime(ir::CompiledFn const& fn) {
-  auto byte_code = EmitByteCode(fn);
+  ir::ByteCode byte_code = EmitByteCode(fn);
   ir::NativeFn::Data data{
       .fn        = &const_cast<ir::CompiledFn&>(fn),
       .type      = fn.type(),

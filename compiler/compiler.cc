@@ -39,7 +39,7 @@ Compiler::Compiler(PersistentResources const &resources)
 
 void Compiler::CompleteDeferredBodies() { state_.Complete(); }
 
-static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
+static std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(
     Compiler &c, ast::Expression const *expr, type::Type type) {
   LOG("MakeThunk", "Thunk for %s: %s", expr->DebugString(), type.to_string());
   ir::CompiledFn fn(type::Func({}, {type}),
@@ -74,8 +74,7 @@ static std::pair<ir::CompiledFn, base::untyped_buffer> MakeThunk(
   }
   LOG("MakeThunk", "%s", fn);
 
-  return std::pair<ir::CompiledFn, base::untyped_buffer>(std::move(fn),
-                                                         EmitByteCode(fn));
+  return std::pair(std::move(fn), EmitByteCode(fn));
 }
 
 interpreter::EvaluationResult Compiler::Evaluate(

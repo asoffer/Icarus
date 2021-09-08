@@ -51,6 +51,7 @@ cc_library(
         "//type:generic_struct",
         "//type:generic_function",
         "//type",
+        "//ir/byte_code",
         "//ir/instruction:arithmetic",
         "//ir/instruction:compare",
         "//ir/instruction:core",
@@ -219,6 +220,7 @@ cc_library(
         "//ast:ast",
         "//base:guarded",
         "//ir:builder",
+        "//ir/byte_code",
         "//ir:compiled_block",
         "//ir:compiled_fn",
         "//ir:compiled_jump",
@@ -268,7 +270,6 @@ cc_library(
         "//ir:compiled_fn",
         "//ir:compiled_jump",
         "//module",
-        "//type:type_fwd",
         "@com_google_absl//absl/synchronization",
     ],
 )

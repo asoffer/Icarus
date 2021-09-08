@@ -6,7 +6,6 @@
 #include "base/extend/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
-#include "ir/interpreter/byte_code_writer.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
 #include "type/interface/interface.h"
