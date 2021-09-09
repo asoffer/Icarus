@@ -246,13 +246,10 @@ std::pair<ir::NativeFn, bool> Context::InsertInit(type::Type t) {
   auto &entry           = iter->second;
 
   if (inserted) {
-    auto const *data = InsertFunction(
-        type::Func(core::Params<type::QualType>{core::AnonymousParam(
-                       type::QualType::NonConstant(type::Ptr(t)))},
-                   {}),
-        core::Params<type::Typed<ast::Declaration const *>>{
-            core::AnonymousParam(
-                type::Typed<ast::Declaration const *>(nullptr, t))});
+    auto const *data = InsertFunction(type::Func(
+        core::Params<type::QualType>{
+            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(t)))},
+        {}));
     entry = ir::NativeFn(data);
   }
 
@@ -264,13 +261,10 @@ std::pair<ir::NativeFn, bool> Context::InsertDestroy(type::Type t) {
   auto &entry           = iter->second;
 
   if (inserted) {
-    auto const *data = InsertFunction(
-        type::Func(core::Params<type::QualType>{core::AnonymousParam(
-                       type::QualType::NonConstant(type::Ptr(t)))},
-                   {}),
-        core::Params<type::Typed<ast::Declaration const *>>{
-            core::AnonymousParam(
-                type::Typed<ast::Declaration const *>(nullptr, t))});
+    auto const *data = InsertFunction(type::Func(
+        core::Params<type::QualType>{
+            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(t)))},
+        {}));
     entry = ir::NativeFn(data);
   }
 
@@ -283,19 +277,11 @@ std::pair<ir::NativeFn, bool> Context::InsertCopyAssign(type::Type to,
   auto &entry           = iter->second;
 
   if (inserted) {
-    auto const *data = InsertFunction(
-        type::Func(
-            core::Params<type::QualType>{
-                core::AnonymousParam(
-                    type::QualType::NonConstant(type::Ptr(to))),
-                core::AnonymousParam(
-                    type::QualType::NonConstant(type::Ptr(from)))},
-            {}),
-        core::Params<type::Typed<ast::Declaration const *>>{
-            core::AnonymousParam(
-                type::Typed<ast::Declaration const *>(nullptr, to)),
-            core::AnonymousParam(
-                type::Typed<ast::Declaration const *>(nullptr, from))});
+    auto const *data = InsertFunction(type::Func(
+        core::Params<type::QualType>{
+            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(to))),
+            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
+        {}));
     entry = ir::NativeFn(data);
   }
 
@@ -308,19 +294,11 @@ std::pair<ir::NativeFn, bool> Context::InsertMoveAssign(type::Type to,
   auto &entry           = iter->second;
 
   if (inserted) {
-    auto const *data = InsertFunction(
-        type::Func(
-            core::Params<type::QualType>{
-                core::AnonymousParam(
-                    type::QualType::NonConstant(type::Ptr(to))),
-                core::AnonymousParam(
-                    type::QualType::NonConstant(type::Ptr(from)))},
-            {}),
-        core::Params<type::Typed<ast::Declaration const *>>{
-            core::AnonymousParam(
-                type::Typed<ast::Declaration const *>(nullptr, to)),
-            core::AnonymousParam(
-                type::Typed<ast::Declaration const *>(nullptr, from))});
+    auto const *data = InsertFunction(type::Func(
+        core::Params<type::QualType>{
+            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(to))),
+            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
+        {}));
     entry = ir::NativeFn(data);
   }
 
@@ -333,13 +311,10 @@ std::pair<ir::NativeFn, bool> Context::InsertMoveInit(type::Type to,
   auto &entry           = iter->second;
 
   if (inserted) {
-    auto const *data = InsertFunction(
-        type::Func(core::Params<type::QualType>{core::AnonymousParam(
-                       type::QualType::NonConstant(type::Ptr(from)))},
-                   {to}),
-        core::Params<type::Typed<ast::Declaration const *>>{
-            core::AnonymousParam(
-                type::Typed<ast::Declaration const *>(nullptr, from))});
+    auto const *data = InsertFunction(type::Func(
+        core::Params<type::QualType>{
+            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
+        {to}));
     entry = ir::NativeFn(data);
   }
   return std::pair(entry, inserted);
@@ -351,13 +326,10 @@ std::pair<ir::NativeFn, bool> Context::InsertCopyInit(type::Type to,
   auto &entry           = iter->second;
 
   if (inserted) {
-    auto const *data = InsertFunction(
-        type::Func(core::Params<type::QualType>{core::AnonymousParam(
-                       type::QualType::NonConstant(type::Ptr(from)))},
-                   {to}),
-        core::Params<type::Typed<ast::Declaration const *>>{
-            core::AnonymousParam(
-                type::Typed<ast::Declaration const *>(nullptr, from))});
+    auto const *data = InsertFunction(type::Func(
+        core::Params<type::QualType>{
+            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
+        {to}));
     entry = ir::NativeFn(data);
   }
   return std::pair(entry, inserted);
@@ -384,11 +356,8 @@ Context::GoesTo(ast::Jump const *node) const {
 }
 
 ir::NativeFn::Data const *Context::InsertFunction(
-    type::Function const *fn_type,
-    core::Params<type::Typed<ast::Declaration const *>> params) {
-  auto *f = fns_.emplace_back(std::make_unique<ir::CompiledFn>(
-                                  fn_type, std::move(params)))
-                .get();
+    type::Function const *fn_type) {
+  auto *f = fns_.emplace_back(std::make_unique<ir::CompiledFn>(fn_type)).get();
   auto data      = std::make_unique<ir::NativeFn::Data>(ir::NativeFn::Data{
       .fn   = f,
       .type = fn_type,

@@ -65,7 +65,6 @@ cc_library(
     deps = [
         ":basic",
         ":register_allocator",
-        "//ast:ast",
         "//base:ptr_span",
         "//base:strong_types",
         "//core:alignment",

@@ -3,7 +3,7 @@
 
 #include "absl/types/span.h"
 #include "core/params.h"
-#include "type.h"
+#include "type/qual_type.h"
 
 namespace type {
 
@@ -12,7 +12,8 @@ namespace type {
 // context. `Jump`s are one of the primary building-block types for user-defined
 // scopes.
 struct Jump : LegacyType {
-  friend Jump const *Jmp(type::Type state, core::Params<Type> const &params);
+  friend Jump const *Jmp(type::Type state,
+                         core::Params<QualType> const &params);
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -27,7 +28,7 @@ struct Jump : LegacyType {
   Completeness completeness() const override { return Completeness::Complete; }
 
   // Returns the parameters with which a a value of this type can be called.
-  core::Params<type::Type> const &params() const { return params_; }
+  core::Params<QualType> const &params() const { return params_; }
 
   // Returns the state type, if this jump is stateful, or a null-pointer
   // otherwise.
@@ -47,7 +48,7 @@ struct Jump : LegacyType {
   }
 
  private:
-  Jump(type::Type state, core::Params<Type> const &ts)
+  Jump(type::Type state, core::Params<QualType> const &ts)
       : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 0,
                                      .is_movable               = 0,
@@ -56,12 +57,12 @@ struct Jump : LegacyType {
         params_(std::move(ts)) {}
 
   type::Type state_;
-  core::Params<Type> params_;
+  core::Params<QualType> params_;
 };
 
 // Constructs a jump type with the state and parameters, or retrieves an
 // equivalent one from the cachec if necessary.
-Jump const *Jmp(type::Type state, core::Params<Type> const &params);
+Jump const *Jmp(type::Type state, core::Params<QualType> const &params);
 
 }  // namespace type
 #endif  // ICARUS_TYPE_JUMP_H

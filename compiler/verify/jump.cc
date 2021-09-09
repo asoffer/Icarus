@@ -117,11 +117,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Jump const *node) {
     }
   }
 
-  core::Params<type::Type> param_types =
+  core::Params<type::QualType> param_qts =
       node->params().Transform([&](auto const &param) {
         auto qt = VerifyType(param.get())[0];
         err |= not qt.ok();
-        return qt.type();
+        return qt;
       });
 
   if (err) { return context().set_qual_type(node, type::QualType::Error()); }
@@ -132,7 +132,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Jump const *node) {
   }
 
   return context().set_qual_type(
-      node, type::QualType::Constant(type::Jmp(state, param_types)));
+      node, type::QualType::Constant(type::Jmp(state, param_qts)));
 }
 
 }  // namespace compiler

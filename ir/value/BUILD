@@ -106,6 +106,7 @@ cc_library(
         ":result_buffer",
         "//base:any_invocable",
         "//base:extend",
+        "//base/extend:absl_format",
         "//base/extend:absl_hash",
         "//base/extend:equality",
         "//base:global",

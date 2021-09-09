@@ -9,7 +9,7 @@ namespace type {
 
 static base::Global<absl::node_hash_set<Jump>> jmps;
 
-Jump const *Jmp(Type state, core::Params<Type> const &params) {
+Jump const *Jmp(Type state, core::Params<QualType> const &params) {
   return &*jmps.lock()->insert(Jump(state, params)).first;
 }
 
@@ -29,7 +29,7 @@ void Jump::WriteTo(std::string *r) const {
                                     out->append(p.name);
                                     out->append(": ");
                                   }
-                                  p.value.get()->WriteTo(out);
+                                  out->append(p.value.type().to_string());
                                 }),
                   ")");
 }

@@ -42,8 +42,7 @@ void Compiler::CompleteDeferredBodies() { state_.Complete(); }
 static std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(
     Compiler &c, ast::Expression const *expr, type::Type type) {
   LOG("MakeThunk", "Thunk for %s: %s", expr->DebugString(), type.to_string());
-  ir::CompiledFn fn(type::Func({}, {type}),
-                    core::Params<type::Typed<ast::Declaration const *>>{});
+  ir::CompiledFn fn(type::Func({}, {type}));
   ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
     // TODO this is essentially a copy of the body of
     // FunctionLiteral::EmitToBuffer Factor these out together.

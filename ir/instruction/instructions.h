@@ -104,11 +104,10 @@ struct DebugIrInstruction
     : base::Extend<DebugIrInstruction>::With<base::BaseTraverseExtension,
                                              base::BaseSerializeExtension,
                                              DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "debug-ir";
+  static constexpr std::string_view kDebugFormat = "debug-ir(%s)";
 
-  void Apply(interpreter::ExecutionContext& ctx) const {
-    std::cerr << *ctx.current_frame().fn().native();
-  }
+  void Apply(interpreter::ExecutionContext&) const { std::cerr << *fn; }
+  internal::BlockGroupBase const* fn;
 };
 
 struct AbortInstruction

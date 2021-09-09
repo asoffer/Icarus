@@ -1,13 +1,9 @@
 #include "ir/blocks/group.h"
 
-#include "ast/ast.h"
-#include "core/arch.h"
-
 namespace ir::internal {
 
-BlockGroupBase::BlockGroupBase(
-    core::Params<type::Typed<ast::Declaration const *>> params,
-    size_t num_state_args)
+BlockGroupBase::BlockGroupBase(core::Params<type::QualType> params,
+                               size_t num_state_args)
     : params_(std::move(params)), alloc_(params_.size() + num_state_args) {
   // Ensure the existence of an entry block. The entry block marks itself as
   // incoming so it is never accidentally cleaned up.

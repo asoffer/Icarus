@@ -221,6 +221,7 @@ cc_library(
         "//base:guarded",
         "//ir:builder",
         "//ir/byte_code",
+        "//ir/byte_code:context",
         "//ir:compiled_block",
         "//ir:compiled_fn",
         "//ir:compiled_jump",

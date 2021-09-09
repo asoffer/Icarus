@@ -438,7 +438,9 @@ struct Builder {
                  std::vector<RegOr<Fn>> dones,
                  absl::flat_hash_map<std::string_view, Block> blocks);
 
-  void DebugIr() { CurrentBlock()->Append(DebugIrInstruction{}); }
+  void DebugIr() {
+    CurrentBlock()->Append(DebugIrInstruction{.fn = CurrentGroup()});
+  }
 
   // Apply the callable to each temporary in reverse order, and clear the list
   // of temporaries.
@@ -552,7 +554,7 @@ struct Builder {
   absl::flat_hash_map<ast::Declaration::Id const *, Reg> addr_;
 };
 
-struct SetCurrent : public base::UseWithScope {
+struct SetCurrent : base::UseWithScope {
   explicit SetCurrent(internal::BlockGroupBase& fn, Builder& builder);
   explicit SetCurrent(NativeFn fn, Builder& builder)
       : SetCurrent(*fn, builder) {}
@@ -565,7 +567,7 @@ struct SetCurrent : public base::UseWithScope {
   Builder::BlockTerminationState old_termination_state_;
 };
 
-struct SetTemporaries : public base::UseWithScope {
+struct SetTemporaries : base::UseWithScope {
   SetTemporaries(Builder& bldr) : bldr_(bldr) {
     old_temporaries_ = std::exchange(bldr_.current_.temporaries_to_destroy_,
                                      std::vector<type::Typed<Reg>>{});

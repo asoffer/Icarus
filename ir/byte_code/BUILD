@@ -10,6 +10,16 @@ cc_library(
 )
 
 cc_library(
+    name = "context",
+    hdrs = ["context.h"],
+    deps = [
+        ":byte_code",
+        "//ir/value:native_fn",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_library(
     name = "reader",
     hdrs = ["reader.h"],
     deps = [

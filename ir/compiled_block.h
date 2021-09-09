@@ -22,8 +22,7 @@ inline NativeFn TrivialFunction() {
   }();
   static base::NoDestructor<NativeFn::Data> data = [] {
     auto fn_type = type::Func({}, {});
-    auto *f      = new CompiledFn(
-        fn_type, core::Params<type::Typed<ast::Declaration const *>>{});
+    auto *f      = new CompiledFn(fn_type);
     f->entry()->set_jump(JumpCmd::Return());
     return NativeFn::Data{
         .fn        = f,

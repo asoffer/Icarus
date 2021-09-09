@@ -70,12 +70,8 @@ std::pair<ir::Jump, ir::PartialResultBuffer> EmitIrForJumpArguments(
 
   if (state_ptr) { prepared_arguments.append(*state_ptr); }
 
-  auto const &params = ir::CompiledJump::From(init)->params();
+  auto const &param_qts = ir::CompiledJump::From(init)->params();
   size_t i = 0;
-
-  // TODO: Some of them could be constant.
-  auto const &param_qts = ir::CompiledJump::From(init)->params().Transform(
-      [](auto const &p) { return type::QualType::NonConstant(p.type()); });
 
   ir::CompleteResultBuffer buffer;
   auto constant_arguments = EmitConstantArguments(c, arguments, buffer);

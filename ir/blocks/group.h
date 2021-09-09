@@ -6,12 +6,12 @@
 #include <memory>
 #include <vector>
 
-#include "ast/ast_fwd.h"
 #include "base/ptr_span.h"
 #include "base/strong_types.h"
 #include "core/alignment.h"
 #include "core/bytes.h"
 #include "core/params.h"
+#include "core/type_contour.h"
 #include "ir/blocks/basic.h"
 #include "ir/blocks/register_allocator.h"
 #include "ir/value/reg.h"
@@ -36,9 +36,8 @@ struct BlockGroupBase {
   BlockGroupBase &operator=(BlockGroupBase const &) = delete;
   BlockGroupBase &operator=(BlockGroupBase &&) = default;
 
-  explicit BlockGroupBase(
-      core::Params<type::Typed<ast::Declaration const *>> params,
-      size_t num_state_args = 0);
+  explicit BlockGroupBase(core::Params<type::QualType> params,
+                          size_t num_state_args = 0);
 
   base::PtrSpan<BasicBlock const> blocks() const { return blocks_; }
   base::PtrSpan<BasicBlock> blocks() { return blocks_; }
@@ -54,9 +53,8 @@ struct BlockGroupBase {
         .get();
   }
 
-  core::Params<type::Typed<ast::Declaration const *>> const &params() const {
-    return params_;
-  }
+  // TODO: should be qualified?
+  core::Params<type::QualType> const &params() const { return params_; }
 
   template <std::invocable<type::Type, ir::Reg> Fn>
   void for_each_alloc(Fn &&f) const {
@@ -84,7 +82,7 @@ struct BlockGroupBase {
   friend std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b);
 
  private:
-  core::Params<type::Typed<ast::Declaration const *>> params_;
+  core::Params<type::QualType> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   RegisterAllocator alloc_;
 };
@@ -93,10 +91,8 @@ struct BlockGroupBase {
 
 template <typename T>
 struct BlockGroup : internal::BlockGroupBase {
-  BlockGroup(T const *t,
-             core::Params<type::Typed<ast::Declaration const *>> params,
-             size_t num_state_args = 0)
-      : internal::BlockGroupBase(std::move(params), num_state_args), type_(t) {}
+  BlockGroup(T const *t, size_t num_state_args = 0)
+      : internal::BlockGroupBase(t->params(), num_state_args), type_(t) {}
 
   T const *type() const { return type_; }
 

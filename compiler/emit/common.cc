@@ -381,8 +381,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 
   if (field_error) { return std::nullopt; }
 
-  ir::CompiledFn fn(type::Func({}, {}),
-                    core::Params<type::Typed<ast::Declaration const *>>{});
+  ir::CompiledFn fn(type::Func({}, {}));
   ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
     // TODO this is essentially a copy of the body of
     // FunctionLiteral::EmitToBuffer. Factor these out together.

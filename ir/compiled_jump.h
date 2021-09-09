@@ -14,9 +14,8 @@ namespace ir {
 struct CompiledJump : BlockGroup<type::Jump> {
   static constexpr CompiledJump const *From(Jump j) { return j.jump_; }
 
-  explicit CompiledJump(type::Jump const *jump_type,
-                        core::Params<type::Typed<ast::Declaration const *>> p)
-      : BlockGroup(jump_type, std::move(p), jump_type->state() ? 1 : 0) {
+  explicit CompiledJump(type::Jump const *jump_type)
+      : BlockGroup(jump_type, jump_type->state() ? 1 : 0) {
     LOG("CompiledJump", "Creating a jump of type %s", jump_type->to_string());
   }
 };

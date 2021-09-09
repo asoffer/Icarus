@@ -210,6 +210,7 @@ cc_library(
     srcs = ["jump.cc"],
     deps = [
         ":type",
+        ":qual_type",
         "//base:global",
         "//core:params",
         "@com_google_absl//absl/container:node_hash_set",

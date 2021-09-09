@@ -246,7 +246,7 @@ void Builder::InlineJumpIntoCurrent(Jump to_be_inlined,
   }
 
   for (auto const &p : jump->type()->params()) {
-    RegisterReferencing(*this, p.value, arguments[i++]);
+    RegisterReferencing(*this, p.value.type(), arguments[i++]);
   }
 
   into->MergeAllocationsFrom(*jump, inliner);
