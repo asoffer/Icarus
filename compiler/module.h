@@ -11,11 +11,12 @@
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
 #include "module/module.h"
+#include "ir/module.h"
 
 namespace compiler {
 
 struct CompiledModule : module::BasicModule {
-  explicit CompiledModule() : data_(this) {}
+  explicit CompiledModule() : data_(this, &module_) {}
   ~CompiledModule() override {}
 
   void ExportedValue(ast::Declaration::Id const *id,
@@ -53,6 +54,7 @@ struct CompiledModule : module::BasicModule {
   void CompilationComplete() { notification_.Notify(); }
 
  private:
+  ir::Module module_;
   Context data_;
   absl::Notification notification_;
 

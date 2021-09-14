@@ -30,7 +30,7 @@ struct IncompleteField {
 ir::Fn InsertGeneratedMoveInit(
     Compiler &c, type::Struct *s,
     absl::Span<type::StructInstruction::Field const> ir_fields) {
-  auto [fn, inserted] = c.context().root().InsertMoveInit(s, s);
+  auto [fn, inserted] = c.context().ir().InsertMoveInit(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
       c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
@@ -62,7 +62,7 @@ ir::Fn InsertGeneratedMoveInit(
       }
       c.builder().ReturnJump();
     }
-    c.context().root().WriteByteCode(fn);
+    c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
 }
@@ -82,7 +82,7 @@ ir::OutParams SetReturns(
 ir::Fn InsertGeneratedCopyInit(
     Compiler &c, type::Struct *s,
     absl::Span<type::StructInstruction::Field const> ir_fields) {
-  auto [fn, inserted] = c.context().root().InsertCopyInit(s, s);
+  auto [fn, inserted] = c.context().ir().InsertCopyInit(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
       c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
@@ -113,7 +113,7 @@ ir::Fn InsertGeneratedCopyInit(
       }
       c.builder().ReturnJump();
     }
-    c.context().root().WriteByteCode(fn);
+    c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
 }
@@ -121,7 +121,7 @@ ir::Fn InsertGeneratedCopyInit(
 ir::Fn InsertGeneratedMoveAssign(
     Compiler &c, type::Struct *s,
     absl::Span<type::StructInstruction::Field const> ir_fields) {
-  auto [fn, inserted] = c.context().root().InsertMoveAssign(s, s);
+  auto [fn, inserted] = c.context().ir().InsertMoveAssign(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
       c.builder().CurrentBlock() = fn->entry();
@@ -150,7 +150,7 @@ ir::Fn InsertGeneratedMoveAssign(
 
       c.builder().ReturnJump();
     }
-    c.context().root().WriteByteCode(fn);
+    c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
 }
@@ -158,7 +158,7 @@ ir::Fn InsertGeneratedMoveAssign(
 ir::Fn InsertGeneratedCopyAssign(
     Compiler &c, type::Struct *s,
     absl::Span<type::StructInstruction::Field const> ir_fields) {
-  auto [fn, inserted] = c.context().root().InsertCopyAssign(s, s);
+  auto [fn, inserted] = c.context().ir().InsertCopyAssign(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
       c.builder().CurrentBlock() = fn->entry();
@@ -186,7 +186,7 @@ ir::Fn InsertGeneratedCopyAssign(
 
       c.builder().ReturnJump();
     }
-    c.context().root().WriteByteCode(fn);
+    c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
 }
@@ -455,7 +455,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 
     std::optional<ir::Fn> dtor;
     if (has_field_needing_destruction) {
-      auto [full_dtor, inserted] = c.context().InsertDestroy(s);
+      auto [full_dtor, inserted] = c.context().ir().InsertDestroy(s);
       if (inserted) {
         ICARUS_SCOPE(ir::SetCurrent(full_dtor, c.builder())) {
           c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
@@ -476,7 +476,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
           }
 
           c.builder().ReturnJump();
-          c.context().WriteByteCode(full_dtor);
+          c.context().ir().WriteByteCode<EmitByteCode>(full_dtor);
 
           dtor = full_dtor;
         }

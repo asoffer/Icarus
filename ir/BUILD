@@ -90,6 +90,23 @@ cc_library(
 )
 
 cc_library(
+    name = "module",
+    hdrs = ["module.h"],
+    srcs = ["module.cc"],
+    deps = [
+        ":compiled_fn",
+        "//base:debug",
+        "//base:iterator",
+        "//ir/byte_code",
+        "//ir/value:native_fn",
+        "//type:function",
+        "//type:pointer",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+
+cc_library(
     name = "scope_state",
     hdrs = ["scope_state.h"],
     deps = [

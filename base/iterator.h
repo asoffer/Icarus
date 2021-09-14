@@ -14,6 +14,9 @@ struct iterator_range {
   I begin_, end_;
 };
 
+template <typename I>
+iterator_range(I, I)->iterator_range<I>;
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_ITERATOR_H

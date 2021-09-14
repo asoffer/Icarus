@@ -131,7 +131,7 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
     builder().ReturnJump();
   }
 
-  context().WriteByteCode(ir_func);
+  context().ir().WriteByteCode<EmitByteCode>(ir_func);
   return WorkItem::Result::Success;
 }
 

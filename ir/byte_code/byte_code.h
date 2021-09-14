@@ -9,7 +9,6 @@
 namespace ir {
 
 struct ByteCode {
- public:
   auto begin() const { return buffer_.begin(); }
   size_t size() const { return buffer_.size(); }
 

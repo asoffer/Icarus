@@ -9,11 +9,14 @@ struct Context::Subcontext {
   Context context;
 };
 
-Context::Context(CompiledModule *mod) : mod_(*ASSERT_NOT_NULL(mod)) {}
+Context::Context(CompiledModule *mod, ir::Module *ir_mod)
+    : mod_(*ASSERT_NOT_NULL(mod)), ir_module_(*ASSERT_NOT_NULL(ir_mod)) {}
+
 Context::Context(Context &&) = default;
 Context::~Context()          = default;
 
-Context::Context(CompiledModule *mod, Context *parent) : Context(mod) {
+Context::Context(CompiledModule *mod, Context *parent)
+    : Context(mod, &ASSERT_NOT_NULL(parent)->ir()) {
   tree_.parent = parent;
 }
 
@@ -241,100 +244,6 @@ ast::OverloadSet const *Context::AllOverloads(
   }
 }
 
-std::pair<ir::NativeFn, bool> Context::InsertInit(type::Type t) {
-  auto [iter, inserted] = init_.try_emplace(t);
-  auto &entry           = iter->second;
-
-  if (inserted) {
-    auto const *data = InsertFunction(type::Func(
-        core::Params<type::QualType>{
-            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(t)))},
-        {}));
-    entry = ir::NativeFn(data);
-  }
-
-  return std::pair(entry, inserted);
-}
-
-std::pair<ir::NativeFn, bool> Context::InsertDestroy(type::Type t) {
-  auto [iter, inserted] = destroy_.try_emplace(t);
-  auto &entry           = iter->second;
-
-  if (inserted) {
-    auto const *data = InsertFunction(type::Func(
-        core::Params<type::QualType>{
-            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(t)))},
-        {}));
-    entry = ir::NativeFn(data);
-  }
-
-  return std::pair(entry, inserted);
-}
-
-std::pair<ir::NativeFn, bool> Context::InsertCopyAssign(type::Type to,
-                                                        type::Type from) {
-  auto [iter, inserted] = copy_assign_.try_emplace(std::pair(to, from));
-  auto &entry           = iter->second;
-
-  if (inserted) {
-    auto const *data = InsertFunction(type::Func(
-        core::Params<type::QualType>{
-            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(to))),
-            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
-        {}));
-    entry = ir::NativeFn(data);
-  }
-
-  return std::pair(entry, inserted);
-}
-
-std::pair<ir::NativeFn, bool> Context::InsertMoveAssign(type::Type to,
-                                                        type::Type from) {
-  auto [iter, inserted] = move_assign_.try_emplace(std::pair(to, from));
-  auto &entry           = iter->second;
-
-  if (inserted) {
-    auto const *data = InsertFunction(type::Func(
-        core::Params<type::QualType>{
-            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(to))),
-            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
-        {}));
-    entry = ir::NativeFn(data);
-  }
-
-  return std::pair(entry, inserted);
-}
-
-std::pair<ir::NativeFn, bool> Context::InsertMoveInit(type::Type to,
-                                                      type::Type from) {
-  auto [iter, inserted] = move_init_.try_emplace(std::pair(to, from));
-  auto &entry           = iter->second;
-
-  if (inserted) {
-    auto const *data = InsertFunction(type::Func(
-        core::Params<type::QualType>{
-            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
-        {to}));
-    entry = ir::NativeFn(data);
-  }
-  return std::pair(entry, inserted);
-}
-
-std::pair<ir::NativeFn, bool> Context::InsertCopyInit(type::Type to,
-                                                      type::Type from) {
-  auto [iter, inserted] = copy_init_.try_emplace(std::pair(to, from));
-  auto &entry           = iter->second;
-
-  if (inserted) {
-    auto const *data = InsertFunction(type::Func(
-        core::Params<type::QualType>{
-            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
-        {to}));
-    entry = ir::NativeFn(data);
-  }
-  return std::pair(entry, inserted);
-}
-
 absl::Span<ast::ReturnStmt const *const> Context::ReturnsTo(
     base::PtrUnion<ast::FunctionLiteral const, ast::ShortFunctionLiteral const>
         node) const {
@@ -353,20 +262,6 @@ absl::Span<base::PtrUnion<ast::UnconditionalGoto const,
 Context::GoesTo(ast::Jump const *node) const {
   auto const *v = jumps_[node];
   return v ? *v : ASSERT_NOT_NULL(parent())->GoesTo(node);
-}
-
-ir::NativeFn::Data const *Context::InsertFunction(
-    type::Function const *fn_type) {
-  auto *f = fns_.emplace_back(std::make_unique<ir::CompiledFn>(fn_type)).get();
-  auto data      = std::make_unique<ir::NativeFn::Data>(ir::NativeFn::Data{
-      .fn   = f,
-      .type = fn_type,
-  });
-  auto *data_ptr = data.get();
-  auto [iter, inserted] =
-      fn_data_.emplace(ir::NativeFn(data_ptr), std::move(data));
-  ASSERT(inserted == true);
-  return ASSERT_NOT_NULL(iter->second.get());
 }
 
 void Context::LoadConstant(ast::Declaration::Id const *id,
