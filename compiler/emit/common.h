@@ -36,8 +36,11 @@ void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
                             ast::Expression const &expr,
                             ir::PartialResultBuffer &buffer);
 
+// Note: The `CompleteResultRef`s passed in `constant_arguments` must refer to a
+// buffer that outlives the call to this function.
 void EmitCall(Compiler &compiler, ast::Expression const *callee,
-              TypedConstants argument_data,
+              core::Arguments<type::Typed<ir::CompleteResultRef>> const
+                  &constant_arguments,
               absl::Span<ast::Call::Argument const> arg_exprs,
               absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to);
 

@@ -168,10 +168,8 @@ void Compiler::EmitToBuffer(ast::Call const *node, ir::PartialResultBuffer &out)
     outs.emplace_back(builder().TmpAlloca(qt.type()), qt.type());
   }
 
-  EmitCall(*this, os.members().front(),
-           TypedConstants{.constants = std::move(buffer),
-                          .arguments = std::move(constant_arguments)},
-           node->arguments(), outs);
+  EmitCall(*this, os.members().front(), constant_arguments, node->arguments(),
+           outs);
   // TODO: Why is this conditional on the size of qts?
   if (qts.size() == 1) {
     out.append(builder().PtrFix(outs[0]->reg(), qts[0].type()));
@@ -208,10 +206,8 @@ void Compiler::EmitMoveInit(
 
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-  EmitCall(*this, os.members().front(),
-           TypedConstants{.constants = std::move(buffer),
-                          .arguments = std::move(constant_arguments)},
-           node->arguments(), to);
+  EmitCall(*this, os.members().front(), constant_arguments, node->arguments(),
+           to);
 }
 
 void Compiler::EmitCopyInit(
@@ -246,9 +242,7 @@ void Compiler::EmitCopyInit(
 
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-  return EmitCall(*this, os.members().front(),
-                  TypedConstants{.constants = std::move(buffer),
-                                 .arguments = std::move(constant_arguments)},
+  return EmitCall(*this, os.members().front(), constant_arguments,
                   node->arguments(), to);
 }
 
@@ -284,9 +278,7 @@ void Compiler::EmitMoveAssign(
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
 
-  return EmitCall(*this, os.members().front(),
-                  TypedConstants{.constants = std::move(buffer),
-                                 .arguments = std::move(constant_arguments)},
+  return EmitCall(*this, os.members().front(), constant_arguments,
                   node->arguments(), to);
 }
 
@@ -322,9 +314,7 @@ void Compiler::EmitCopyAssign(
   auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
 
-  return EmitCall(*this, os.members().front(),
-                  TypedConstants{.constants = std::move(buffer),
-                                 .arguments = std::move(constant_arguments)},
+  return EmitCall(*this, os.members().front(), constant_arguments,
                   node->arguments(), to);
 }
 

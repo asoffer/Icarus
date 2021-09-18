@@ -10,19 +10,14 @@
 
 namespace compiler {
 
-struct TypedConstants {
-  ir::CompleteResultBuffer constants;
-  core::Arguments<type::Typed<ir::CompleteResultRef>> arguments;
-};
-
-// Attemnts to instantiate `node` with `args`, possibly creating a new
-// instantiation as a subcontext of `this->context()` if needed.
+// Attempts to instantiate `node` with `args`, possibly creating a new
+// instantiation as a subcontext of `c.context()` if needed.
 Context::InsertSubcontextResult Instantiate(
     Compiler &c, ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 
-// Finds an already existing instantiation of `node` with `args` as a
-// subcontext of `this->context()`. Behavior is undefined if none exists.
+// Finds an already existing instantiation of `node` with `args` as a subcontext
+// of `c.context()`. Behavior is undefined if none exists.
 Context::FindSubcontextResult FindInstantiation(
     Compiler &c, ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);

@@ -28,7 +28,6 @@
 #include "type/qual_type.h"
 
 namespace compiler {
-struct LibraryModule;
 struct CompiledModule;
 
 // Context holds all data that the compiler computes about the program by

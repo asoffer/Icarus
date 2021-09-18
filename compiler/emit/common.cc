@@ -191,8 +191,8 @@ ir::Fn InsertGeneratedCopyAssign(
   return fn;
 }
 
-core::Params<ast::Expression const *> DefaultsFor(
-    ast::Expression const *expr, Context const &context) {
+core::Params<ast::Expression const *> DefaultsFor(ast::Expression const *expr,
+                                                  Context const &context) {
   if (auto const *id = expr->if_as<ast::Identifier>()) {
     auto decl_span = context.decls(id);
     switch (decl_span.size()) {
@@ -341,13 +341,13 @@ void EmitArguments(
 
   size_t named_start = i;
   for (; i < param_qts.size(); ++i) {
-    auto const &param = param_qts[i];
+    auto const &param     = param_qts[i];
     std::string_view name = param_qts[i].name;
     if (param.value.constant()) {
       buffer.append(constants[name]);
     } else {
       // TODO: Encapsulate the argument name finding.
-      size_t j              = named_start;
+      size_t j = named_start;
       for (; j < arg_exprs.size(); ++j) {
         if (arg_exprs[j].name() == name) { break; }
       }
@@ -651,11 +651,12 @@ void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
 }
 
 void EmitCall(Compiler &c, ast::Expression const *callee,
-              TypedConstants typed_constants,
+              core::Arguments<type::Typed<ir::CompleteResultRef>> const
+                  &constant_arguments,
               absl::Span<ast::Call::Argument const> arg_exprs,
               absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto [callee_fn, overload_type, defaults, context] =
-      EmitCallee(c, callee, typed_constants.arguments);
+      EmitCallee(c, callee, constant_arguments);
   Compiler child = c.MakeChild(PersistentResources{
       .data                = context ? *context : c.context(),
       .diagnostic_consumer = c.diag(),
@@ -678,7 +679,7 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
 
   auto const &param_qts = overload_type->params();
   ir::PartialResultBuffer prepared_arguments;
-  EmitArguments(c, param_qts, defaults, arg_exprs, typed_constants.arguments,
+  EmitArguments(c, param_qts, defaults, arg_exprs, constant_arguments,
                 prepared_arguments);
 
   // TODO: With expansions, this might be wrong.
