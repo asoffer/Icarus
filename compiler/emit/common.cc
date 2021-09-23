@@ -290,9 +290,10 @@ CalleeResult EmitCallee(
         callee_mod->context(&c.context().module()).qual_types(callee)[0];
 
     Compiler callee_compiler(PersistentResources{
-        .data                = callee_mod->context(&c.context().module()),
+        .context             = callee_mod->context(&c.context().module()),
         .diagnostic_consumer = c.diag(),
         .importer            = c.importer(),
+        .work_queue          = c.work_queue(),
     });
 
     return EmitCalleeImpl(callee_compiler, callee, callee_qual_type, constants);
@@ -658,9 +659,10 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
   auto [callee_fn, overload_type, defaults, context] =
       EmitCallee(c, callee, constant_arguments);
   Compiler child = c.MakeChild(PersistentResources{
-      .data                = context ? *context : c.context(),
+      .context             = context ? *context : c.context(),
       .diagnostic_consumer = c.diag(),
       .importer            = c.importer(),
+      .work_queue          = c.work_queue(),
   });
 
   // Arguments provided to a function call need to be "prepared" in the sense

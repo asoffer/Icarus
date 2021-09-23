@@ -21,18 +21,14 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
 
           auto [f, inserted] = context.add_func(node);
           Compiler compiler({
-              .data                = context,
+              .context             = context,
               .diagnostic_consumer = c.diag(),
               .importer            = c.importer(),
+              .work_queue          = c.work_queue(),
           });
           if (inserted) {
-            compiler.Enqueue({.kind      = WorkItem::Kind::EmitFunctionBody,
-                              .node      = node,
-                              .resources = compiler.resources()});
+            compiler.Enqueue(WorkItem::Kind::EmitFunctionBody, node);
           }
-
-          compiler.CompleteWorkQueue();
-          compiler.CompleteDeferredBodies();
 
           return f;
         });
@@ -47,11 +43,7 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
 
   // TODO Use correct constants
   auto [f, inserted] = context().add_func(node);
-  if (inserted) {
-    Enqueue({.kind      = WorkItem::Kind::EmitFunctionBody,
-             .node      = node,
-             .resources = resources_});
-  }
+  if (inserted) { Enqueue(WorkItem::Kind::EmitFunctionBody, node); }
   out.append(ir::Fn(f));
   return;
 }

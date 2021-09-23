@@ -51,11 +51,8 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
 
   if (state_.must_complete) {
     LOG("compile-work-queue", "Request work complete struct: %p", node);
-    state_.work_queue.Enqueue({
-        .kind      = WorkItem::Kind::CompleteStructMembers,
-        .node      = node,
-        .resources = resources_,
-    });
+    Enqueue(WorkItem::Kind::CompleteStructMembers, node,
+            {WorkItem{.kind = WorkItem::Kind::VerifyStructBody, .node = node}});
   }
   out.append(type::Type(s));
 }
@@ -64,9 +61,8 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Completing struct-literal emission: %p must-complete = %s",
       node, state_.must_complete ? "true" : "false");
 
-  // TODO: Check the result of body verification.
-  if (state_.must_complete and context().ShouldVerifyBody(node)) {
-    VerifyBody(node);
+  if (state_.must_complete and not context().BodyIsVerified(node)) {
+    return WorkItem::Result::Deferred;
   }
 
   type::Struct *s = context().get_struct(node);

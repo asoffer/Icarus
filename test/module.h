@@ -23,12 +23,12 @@ namespace test {
 struct TestModule : compiler::CompiledModule {
   TestModule()
       : compiler({
-            .data                = context(),
+            .context             = context(),
             .diagnostic_consumer = consumer,
             .importer            = importer,
+            .work_queue          = work_queue,
         }),
         source("\n") {}
-  ~TestModule() { compiler.CompleteDeferredBodies(); }
 
   void AppendCode(std::string code) {
     code.push_back('\n');
@@ -56,6 +56,7 @@ struct TestModule : compiler::CompiledModule {
     }
   }
 
+  compiler::WorkQueue work_queue;
   module::MockImporter importer;
   diagnostic::TrackingConsumer consumer;
   compiler::Compiler compiler;
@@ -65,7 +66,7 @@ struct TestModule : compiler::CompiledModule {
                     diagnostic::DiagnosticConsumer& diag,
                     module::Importer&) override {
     compiler.VerifyAll(nodes);
-    compiler.CompleteDeferredBodies();
+    work_queue.Complete();
   }
 
  private:

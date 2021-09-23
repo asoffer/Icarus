@@ -67,8 +67,11 @@ cc_library(
 cc_library(
     name = "resources",
     hdrs = ["resources.h"],
+    srcs = ["resources.cc"],
     deps = [
         ":context",
+        ":transient_state",
+        "//ast:node",
         "//diagnostic/consumer",
         "//module:importer",
     ],
@@ -77,15 +80,7 @@ cc_library(
 cc_library(
     name = "transient_state",
     hdrs = ["transient_state.h"],
-    deps = [
-        ":resources",
-        "//ast",
-        "//ir:scope_state",
-        "//ir/blocks:basic",
-        "//ir/instruction:core",
-        "//ir/value:label",
-        "@com_google_absl//absl/types:span",
-    ],
+    deps = ["//ir:scope_state"],
 )
 
 TYPE_VERIFICATION = [
@@ -166,6 +161,7 @@ cc_library(
         ":cyclic_dependency_tracker",
         ":instructions",
         ":module",
+        ":resources",
         ":transient_state",
         "//ast",
         "//ast:overload_set",
@@ -215,7 +211,6 @@ cc_library(
     srcs = ["context.cc"],
     deps = [
         ":bound_parameters",
-        ":instructions",
         ":jump_map",
         "//ast:ast",
         "//base:guarded",
@@ -281,6 +276,7 @@ cc_library(
     deps = [
         ":compiler",
         ":module",
+        ":resources",
         "//diagnostic/consumer",
         "//module:importer",
     ],

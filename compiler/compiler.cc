@@ -15,8 +15,9 @@
 
 namespace compiler {
 
-WorkItem::Result WorkItem::Process() const {
-  Compiler c(resources);
+WorkItem::Result WorkItem::Process(PersistentResources resources,
+                                   TransientState const &state) const {
+  Compiler c(resources, state);
   switch (kind) {
     case Kind::VerifyEnumBody:
       return c.VerifyBody(&node->as<ast::EnumLiteral>());
@@ -26,8 +27,9 @@ WorkItem::Result WorkItem::Process() const {
       return c.VerifyBody(&node->as<ast::StructLiteral>());
     case Kind::CompleteStructMembers:
       return c.CompleteStruct(&node->as<ast::StructLiteral>());
-    case Kind::EmitJumpBody: return c.EmitJumpBody(&node->as<ast::Jump>());
-    case Kind::EmitFunctionBody:
+    case Kind::EmitJumpBody:
+      return c.EmitJumpBody(&node->as<ast::Jump>());
+   case Kind::EmitFunctionBody:
       return c.EmitFunctionBody(&node->as<ast::FunctionLiteral>());
     case Kind::EmitShortFunctionBody:
       return c.EmitShortFunctionBody(&node->as<ast::ShortFunctionLiteral>());
@@ -37,7 +39,8 @@ WorkItem::Result WorkItem::Process() const {
 Compiler::Compiler(PersistentResources const &resources)
     : resources_(resources) {}
 
-void Compiler::CompleteDeferredBodies() { state_.Complete(); }
+Compiler::Compiler(PersistentResources const &resources, TransientState state)
+    : resources_(resources), state_(std::move(state)) {}
 
 static std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(
     Compiler &c, ast::Expression const *expr, type::Type type) {
@@ -86,8 +89,6 @@ interpreter::EvaluationResult Compiler::Evaluate(
       .type      = thunk.type(),
       .byte_code = byte_code.begin(),
   };
-  c.CompleteWorkQueue();
-  c.CompleteDeferredBodies();
   return EvaluateAtCompileTime(ir::NativeFn(&data));
 }
 
@@ -108,10 +109,12 @@ Compiler::EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
                            bool must_complete) {
   // TODO: The diagnosis part.
   diagnostic::BufferingConsumer buffering_consumer(&diag());
+  WorkQueue work_queue;
   Compiler c             = MakeChild(PersistentResources{
-      .data                = context(),
+      .context             = context(),
       .diagnostic_consumer = buffering_consumer,
       .importer            = importer(),
+      .work_queue          = work_queue,
   });
   c.state_.must_complete = must_complete;
 
@@ -121,8 +124,8 @@ Compiler::EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
       .type      = thunk.type(),
       .byte_code = byte_code.begin(),
   };
-  c.CompleteWorkQueue();
-  c.CompleteDeferredBodies();
+  work_queue.Complete();
+
   if (buffering_consumer.empty()) {
     return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
   } else {
@@ -159,7 +162,6 @@ void Compiler::ProcessExecutableBody(base::PtrSpan<ast::Node const> nodes,
       builder().ReturnJump();
     }
   }
-  CompleteDeferredBodies();
 }
 
 }  // namespace compiler

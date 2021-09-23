@@ -23,7 +23,6 @@ TEST(Enum, NonIntegralEnumerator) {
   auto const *e =
       mod.Append<ast::EnumLiteral>(R"(enum { A \\ B ::= "x" \\ C ::= 3.1 })");
   auto qts = mod.context().qual_types(e);
-  mod.compiler.CompleteWorkQueue();
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -36,7 +35,6 @@ TEST(Enum, NonConstantEnumerator) {
   mod.AppendCode("n := 3");
   auto const *e = mod.Append<ast::EnumLiteral>(R"(enum { A \\ B \\ C ::= n })");
   auto qts      = mod.context().qual_types(e);
-  mod.compiler.CompleteWorkQueue();
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -56,7 +54,6 @@ TEST(Flags, NonIntegralEnumerator) {
   auto const *e =
       mod.Append<ast::EnumLiteral>(R"(flags { A \\ B ::= "x" \\ C ::= 3.1 })");
   auto qts = mod.context().qual_types(e);
-  mod.compiler.CompleteWorkQueue();
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -69,7 +66,6 @@ TEST(Flags, NonConstantEnumerator) {
   mod.AppendCode("n := 3");
   auto const *e = mod.Append<ast::EnumLiteral>(R"(enum { A \\ B \\ C ::= n })");
   auto qts      = mod.context().qual_types(e);
-  mod.compiler.CompleteWorkQueue();
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
   EXPECT_THAT(
       mod.consumer.diagnostics(),

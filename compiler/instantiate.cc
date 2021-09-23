@@ -149,9 +149,10 @@ Context::InsertSubcontextResult Instantiate(
       ctx.DebugString());
   Context scratchpad = ctx.ScratchpadSubcontext();
   Compiler child({
-      .data                = scratchpad,
+      .context             = scratchpad,
       .diagnostic_consumer = c.diag(),
       .importer            = c.importer(),
+      .work_queue          = c.work_queue(),
   });
 
   return ctx.InsertSubcontext(node, ComputeParamsFromArgs(child, node, args),
@@ -170,9 +171,10 @@ Context::FindSubcontextResult FindInstantiation(
       ctx.DebugString());
   Context scratchpad = ctx.ScratchpadSubcontext();
   Compiler child({
-      .data                = scratchpad,
+      .context             = scratchpad,
       .diagnostic_consumer = c.diag(),
       .importer            = c.importer(),
+      .work_queue          = c.work_queue(),
   });
 
   return ctx.FindSubcontext(node, ComputeParamsFromArgs(child, node, args));

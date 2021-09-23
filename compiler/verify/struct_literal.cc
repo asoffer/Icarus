@@ -26,12 +26,13 @@ WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
     }
   }
 
-  LOG("struct", "Struct-literal body verification complete: %p", node);
+  LOG("StructLiteral", "Struct-literal body verification complete: %p", node);
   return error ? WorkItem::Result::Failure : WorkItem::Result::Success;
 }
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Verify type %p %s", node, node->DebugString());
+  Enqueue(WorkItem::Kind::VerifyStructBody, node);
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 

@@ -199,9 +199,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
     }
 
     LOG("FunctionLiteral", "Request work fn-lit: %p", node);
-    c.Enqueue({.kind      = WorkItem::Kind::VerifyFunctionBody,
-               .node      = node,
-               .resources = c.resources()});
+    c.Enqueue(WorkItem::Kind::VerifyFunctionBody, node);
     return type::QualType::Constant(
         type::Func(std::move(params), std::move(output_type_vec)));
   } else {
@@ -225,9 +223,10 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
       auto compiler = instantiation_compiler.MakeChild(PersistentResources{
-          .data                = context,
+          .context             = context,
           .diagnostic_consumer = instantiation_compiler.diag(),
           .importer            = instantiation_compiler.importer(),
+          .work_queue          = instantiation_compiler.work_queue(),
       });
       compiler.builder().CurrentGroup() = cg;
       auto qt                           = VerifyConcrete(compiler, node);
@@ -239,7 +238,6 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
       context.set_qual_type(node, qt);
       // TODO: We shouldn't have a queue per compiler. We may not be able to
       // verify these yet.
-      compiler.CompleteWorkQueue();
       return &qt.type().as<type::Function>();
     } else {
       LOG("FunctionLiteral", "cached! %s", node->DebugString());

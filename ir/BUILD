@@ -110,6 +110,7 @@ cc_library(
     name = "scope_state",
     hdrs = ["scope_state.h"],
     deps = [
+        "//base:any_invocable",
         "//ir/blocks:basic",
         "//ir/value:label",
         "//ir/value:result_buffer",

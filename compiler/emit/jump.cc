@@ -16,11 +16,7 @@ void Compiler::EmitToBuffer(ast::Jump const *node, ir::PartialResultBuffer &out)
   auto [jmp, inserted] = context().add_jump(node);
   if (inserted) {
     LOG("compile-work-queue", "Request work complete struct: %p", node);
-    Enqueue({
-        .kind      = WorkItem::Kind::EmitJumpBody,
-        .node      = node,
-        .resources = resources_,
-    });
+    Enqueue(WorkItem::Kind::EmitJumpBody, node);
   }
   out.append(jmp);
 }

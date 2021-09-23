@@ -12,7 +12,6 @@
 #include "ast/ast.h"
 #include "base/guarded.h"
 #include "compiler/bound_parameters.h"
-#include "compiler/instructions.h"
 #include "compiler/jump_map.h"
 #include "ir/builder.h"
 #include "ir/byte_code/byte_code.h"
@@ -250,6 +249,9 @@ struct Context {
   void set_struct(ast::ParameterizedStructLiteral const *sl, type::Struct *s);
   ast::Expression const *ast_struct(type::Struct const *s) const;
 
+  bool BodyIsVerified(ast::Node const *node) const {
+    return body_verification_complete_.contains(node);
+  }
   bool ShouldVerifyBody(ast::Node const *node);
   void ClearVerifyBody(ast::Node const *node);
 

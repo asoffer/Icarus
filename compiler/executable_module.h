@@ -4,6 +4,7 @@
 #include "compiler/compiler.h"
 #include "compiler/library_module.h"
 #include "compiler/module.h"
+#include "compiler/resources.h"
 #include "diagnostic/consumer/consumer.h"
 #include "ir/compiled_fn.h"
 #include "module/importer.h"
@@ -21,10 +22,12 @@ struct ExecutableModule : CompiledModule {
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                     diagnostic::DiagnosticConsumer &diag,
                     module::Importer &importer) override {
+    WorkQueue work_queue;
     Compiler c({
-        .data                = context(this),
+        .context             = context(this),
         .diagnostic_consumer = diag,
         .importer            = importer,
+        .work_queue          = work_queue,
     });
 
     // TODO: It's conceivable that there's an early return from the implicit
@@ -39,6 +42,8 @@ struct ExecutableModule : CompiledModule {
     }
 
     c.ProcessExecutableBody(nodes, &main());
+
+    work_queue.Complete();
     CompilationComplete();
   }
 

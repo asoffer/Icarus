@@ -8,6 +8,7 @@ cc_library(
         "//ast",
         "//base:ptr_span",
         "//compiler",
+        "//compiler:resources",
         "//ir:compiled_fn",
         "@com_google_absl//absl/strings:str_format",
     ],

@@ -7,6 +7,7 @@
 #include "base/log.h"
 #include "base/ptr_span.h"
 #include "compiler/instructions.h"
+#include "compiler/resources.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 
@@ -22,7 +23,6 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
     ir::PartialResultBuffer buffer;
     compiler->EmitToBuffer(expr, buffer);
     if (compiler->diag().num_consumed() != 0) { return; }
-    // TODO compiler->CompleteDeferredBodies();
     auto expr_type = compiler->context().qual_types(expr)[0].type();
     if (expr_type != type::Void) { NOT_YET(); }
     compiler->builder().ReturnJump();
@@ -36,10 +36,12 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
 void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                           diagnostic::DiagnosticConsumer &diag,
                           module::Importer &importer) {
+  compiler::WorkQueue work_queue;
   compiler::Compiler c({
-      .data                = context(),
+      .context             = context(),
       .diagnostic_consumer = diag,
       .importer            = importer,
+      .work_queue          = work_queue,
   });
   ir::PartialResultBuffer buffer;
   for (ast::Node const *node : nodes) {
@@ -51,7 +53,7 @@ void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
         c.VerifyType(decl);
         buffer.clear();
         c.EmitToBuffer(decl, buffer);
-        // TODO c.CompleteDeferredBodies();
+        work_queue.Complete();
         if (c.diag().num_consumed() != 0) { return; }
       }
 

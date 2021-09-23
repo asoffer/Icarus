@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_SCOPE_STATE_H
 #define ICARUS_IR_SCOPE_STATE_H
 
+#include <functional>
 #include <string_view>
 
 #include "absl/container/flat_hash_map.h"
@@ -30,7 +31,7 @@ struct ScopeState {
   // an ir::Reg.
   absl::flat_hash_map<
       std::string,
-      std::vector<base::any_invocable<void(ir::BasicBlock const*, ir::Reg)>>>
+      std::vector<std::function<void(ir::BasicBlock const*, ir::Reg)>>>
       set_phis;
 };
 

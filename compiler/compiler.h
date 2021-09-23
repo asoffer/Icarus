@@ -15,6 +15,7 @@
 #include "compiler/bound_parameters.h"
 #include "compiler/context.h"
 #include "compiler/cyclic_dependency_tracker.h"
+#include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
@@ -101,7 +102,6 @@ struct PatternMatchTag {};
 // surface from separation are from separating parsing from these two stages
 // rather than separating all stages. In time we will see if this belief holds
 // water.
-
 struct Compiler
     : ast::Visitor<EmitMoveInitTag,
                    void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>,
@@ -159,17 +159,12 @@ struct Compiler
 
       VerifyType(node);
     }
-
-    CompleteWorkQueue();
-  }
-  void CompleteWorkQueue() {
-    while (not state_.work_queue.empty()) {
-      state_.work_queue.ProcessOneItem();
-    }
   }
 
-  void Enqueue(WorkItem work_item) {
-    state_.work_queue.Enqueue(std::move(work_item));
+  void Enqueue(WorkItem::Kind kind, ast::Node const *node,
+               absl::flat_hash_set<WorkItem> prerequisites = {}) {
+    resources_.work_queue.Enqueue({.kind = kind, .node = node}, resources(),
+                                  state(), std::move(prerequisites));
   }
 
   absl::Span<type::QualType const> VerifyType(ast::Node const *node) {
@@ -319,10 +314,12 @@ struct Compiler
   }
 
   explicit Compiler(PersistentResources const &resources);
+  explicit Compiler(PersistentResources const &resources, TransientState state);
   Compiler(Compiler const &) = delete;
   Compiler(Compiler &&)      = default;
 
-  Context &context() const { return resources_.data; }
+  Context &context() const { return resources_.context; }
+  WorkQueue &work_queue() const { return resources_.work_queue; }
   ir::Builder &builder() { return builder_; };
   diagnostic::DiagnosticConsumer &diag() const {
     return resources_.diagnostic_consumer;
@@ -367,8 +364,6 @@ struct Compiler
       type::Typed<ast::Expression const *> expr, bool must_complete = true);
 
   TransientState &state() { return state_; }
-
-  void CompleteDeferredBodies();
 
 #define ICARUS_AST_NODE_X(name)                                                \
   absl::Span<type::QualType const> VerifyType(ast::name const *node);          \
@@ -680,22 +675,6 @@ struct Compiler
   // TODO: Should be persistent, but also needs on some local context.
   CyclicDependencyTracker cylcic_dependency_tracker_;
 };
-
-inline void WorkQueue::ProcessOneItem() {
-  ASSERT(items_.empty() == false);
-  WorkItem item = std::move(items_.front());
-  items_.pop();
-  WorkItem::Result result = item.Process();
-  bool deferred           = (result == WorkItem::Result::Deferred);
-  if (deferred) { items_.push(std::move(item)); }
-#if defined(ICARUS_DEBUG)
-  if (deferred) {
-    LOG("", "Deferring %s", item.node->DebugString());
-    cycle_breaker_count_ = deferred ? cycle_breaker_count_ + 1 : 0;
-  }
-  ASSERT(cycle_breaker_count_ <= items_.size());
-#endif
-}
 
 }  // namespace compiler
 

@@ -35,9 +35,10 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     if (inserted) {
       LOG("ParameterizedStructLiteral", "inserted! %s", node->DebugString());
       auto compiler = instantiation_compiler.MakeChild(PersistentResources{
-          .data                = context,
+          .context             = context,
           .diagnostic_consumer = instantiation_compiler.diag(),
           .importer            = instantiation_compiler.importer(),
+          .work_queue          = instantiation_compiler.work_queue(),
       });
       compiler.builder().CurrentGroup() = cg;
 

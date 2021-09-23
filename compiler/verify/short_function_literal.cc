@@ -29,9 +29,10 @@ type::QualType VerifyGeneric(Compiler &c,
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
       auto compiler = instantiation_compiler.MakeChild(PersistentResources{
-          .data                = context,
+          .context             = context,
           .diagnostic_consumer = instantiation_compiler.diag(),
           .importer            = instantiation_compiler.importer(),
+          .work_queue          = instantiation_compiler.work_queue(),
       });
       compiler.builder().CurrentGroup() = cg;
       auto qt                           = VerifyConcrete(compiler, node);
@@ -43,7 +44,6 @@ type::QualType VerifyGeneric(Compiler &c,
       context.set_qual_type(node, qt);
       // TODO: We shouldn't have a queue per compiler. We may not be able to
       // verify these yet.
-      compiler.CompleteWorkQueue();
       return &qt.type().as<type::Function>();
     }
 

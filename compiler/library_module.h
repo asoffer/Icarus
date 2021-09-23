@@ -1,9 +1,9 @@
 #ifndef ICARUS_COMPILER_LIBRARY_MODULE_H
 #define ICARUS_COMPILER_LIBRARY_MODULE_H
 
-#include "absl/functional/function_ref.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"
+#include "compiler/resources.h"
 #include "diagnostic/consumer/consumer.h"
 #include "ir/value/module_id.h"
 #include "module/importer.h"
@@ -19,10 +19,12 @@ struct LibraryModule : CompiledModule {
                     module::Importer &importer) override {
     ParsingComplete();
 
+    WorkQueue work_queue;
     Compiler c({
-        .data                = context(this),
+        .context             = context(this),
         .diagnostic_consumer = diagnostic_consumer(),
         .importer            = importer,
+        .work_queue          = work_queue,
     });
 
     c.VerifyAll(nodes);
@@ -34,7 +36,8 @@ struct LibraryModule : CompiledModule {
 
     ir::PartialResultBuffer buffer;
     for (ast::Node const *node : nodes) { c.EmitToBuffer(node, buffer); }
-    c.CompleteDeferredBodies();
+
+    work_queue.Complete();
 
     CompilationComplete();
   }
