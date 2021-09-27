@@ -16,7 +16,7 @@ void Compiler::EmitToBuffer(ast::ParameterizedStructLiteral const *node,
                            &args) mutable -> ir::NativeFn { NOT_YET(); }));
 }
 
-WorkItem::Result Compiler::CompleteStruct(
+bool Compiler::CompleteStruct(
     ast::ParameterizedStructLiteral const *node) {
   LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
       node, state_.must_complete ? "true" : "false");
@@ -24,17 +24,17 @@ WorkItem::Result Compiler::CompleteStruct(
   type::Struct *s = context().get_struct(node);
   if (s->completeness() == type::Completeness::Complete) {
     LOG("struct", "Already complete, exiting: %p", node);
-    return WorkItem::Result::Success;
+    return true;
   }
 
-  ASSIGN_OR(return WorkItem::Result::Failure,  //
+  ASSIGN_OR(return false,  //
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
   InterpretAtCompileTime(fn);
   s->complete();
   LOG("struct", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());
-  return WorkItem::Result::Success;
+  return true;
 }
 
 }  // namespace compiler

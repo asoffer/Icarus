@@ -5,6 +5,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/instructions.h"
+#include "compiler/module.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
@@ -51,34 +52,34 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
 
   if (state_.must_complete) {
     LOG("compile-work-queue", "Request work complete struct: %p", node);
-    Enqueue(WorkItem::Kind::CompleteStructMembers, node,
+    Enqueue({.kind = WorkItem::Kind::CompleteStructMembers, .node = node},
             {WorkItem{.kind = WorkItem::Kind::VerifyStructBody, .node = node}});
   }
   out.append(type::Type(s));
 }
 
-WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
+bool Compiler::CompleteStruct(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Completing struct-literal emission: %p must-complete = %s",
       node, state_.must_complete ? "true" : "false");
 
   if (state_.must_complete and not context().BodyIsVerified(node)) {
-    return WorkItem::Result::Deferred;
+    NOT_YET();
   }
 
   type::Struct *s = context().get_struct(node);
   if (s->completeness() == type::Completeness::Complete) {
     LOG("StructLiteral", "Already complete, exiting: %p", node);
-    return WorkItem::Result::Success;
+    return true;
   }
 
-  ASSIGN_OR(return WorkItem::Result::Failure,  //
+  ASSIGN_OR(return false,  //
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
   InterpretAtCompileTime(fn);
   s->complete();
   LOG("StructLiteral", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());
-  return WorkItem::Result::Success;
+  return true;
 }
 
 }  // namespace compiler

@@ -4,6 +4,7 @@
 
 #include "compiler/compiler.h"
 #include "compiler/instructions.h"
+#include "compiler/module.h"
 #include "core/arguments.h"
 #include "core/params.h"
 #include "type/qual_type.h"
@@ -289,12 +290,9 @@ CalleeResult EmitCallee(
     type::QualType callee_qual_type =
         callee_mod->context(&c.context().module()).qual_types(callee)[0];
 
-    Compiler callee_compiler(PersistentResources{
-        .context             = callee_mod->context(&c.context().module()),
-        .diagnostic_consumer = c.diag(),
-        .importer            = c.importer(),
-        .work_queue          = c.work_queue(),
-    });
+    auto resources    = c.resources();
+    resources.context = &callee_mod->context(&c.context().module());
+    Compiler callee_compiler(resources);
 
     return EmitCalleeImpl(callee_compiler, callee, callee_qual_type, constants);
   }
@@ -511,48 +509,42 @@ std::optional<ir::CompiledFn> StructCompletionFn(
   return fn;
 }
 
-WorkItem::Result Compiler::EnsureDataCompleteness(type::Struct *s) {
-  if (s->completeness() >= type::Completeness::DataComplete) {
-    return WorkItem::Result::Success;
-  }
+bool Compiler::EnsureDataCompleteness(type::Struct *s) {
+  if (s->completeness() >= type::Completeness::DataComplete) { return true; }
 
   ast::Expression const &expr = *ASSERT_NOT_NULL(context().ast_struct(s));
   // TODO: Deal with repetition between ast::StructLiteral and
   // ast::ParameterizedStructLiteral
   if (auto const *node = expr.if_as<ast::StructLiteral>()) {
-    if (auto result = VerifyBody(node); result != WorkItem::Result::Success) {
-      return result;
-    }
+    if (not VerifyBody(node)) { return false; }
     EmitVoid(node);
 
     LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
         node, state_.must_complete ? "true" : "false");
 
-    ASSIGN_OR(return WorkItem::Result::Failure,  //
+    ASSIGN_OR(return false,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
     InterpretAtCompileTime(fn);
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());
-    return WorkItem::Result::Success;
+    return true;
   } else if (auto const *node = expr.if_as<ast::ParameterizedStructLiteral>()) {
-    if (auto result = VerifyBody(node); result != WorkItem::Result::Success) {
-      return result;
-    }
+    if (not VerifyBody(node)) { return false; }
     EmitVoid(node);
 
     LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
         node, state_.must_complete ? "true" : "false");
 
-    ASSIGN_OR(return WorkItem::Result::Failure,  //
+    ASSIGN_OR(return false,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
     InterpretAtCompileTime(fn);
     s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());
-    return WorkItem::Result::Success;
+    return true;
   } else {
     // TODO Should we encode that it's one of these two in the type?
     NOT_YET();
@@ -658,12 +650,9 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
               absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto [callee_fn, overload_type, defaults, context] =
       EmitCallee(c, callee, constant_arguments);
-  Compiler child = c.MakeChild(PersistentResources{
-      .context             = context ? *context : c.context(),
-      .diagnostic_consumer = c.diag(),
-      .importer            = c.importer(),
-      .work_queue          = c.work_queue(),
-  });
+  PersistentResources resources = c.resources();
+  resources.context             = context ? context : &c.context();
+  Compiler child                = c.MakeChild(resources);
 
   // Arguments provided to a function call need to be "prepared" in the sense
   // that they need to be

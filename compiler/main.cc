@@ -70,7 +70,7 @@ struct InvalidTargetTriple {
   std::string message;
 };
 
-int CompileToObjectFile(ExecutableModule const &module,
+int CompileToObjectFile(CompiledModule const &module, ir::CompiledFn const &fn,
                         llvm::TargetMachine *target_machine) {
   llvm::LLVMContext context;
   llvm::Module llvm_module("module", context);
@@ -95,7 +95,7 @@ int CompileToObjectFile(ExecutableModule const &module,
   backend::LlvmEmitter emitter(builder, &llvm_module);
 
   emitter.EmitModule(module);
-  auto *f = emitter.EmitFunction(&module.main(), module::Linkage::External);
+  auto *f = emitter.EmitFunction(&fn, module::Linkage::External);
   f->setName("main");
 
   pass.run(llvm_module);
@@ -154,10 +154,26 @@ int Compile(frontend::FileName const &file_name) {
     exec_mod.embed(importer.get(embedded_id));
   }
 
-  exec_mod.AppendNodes(frontend::Parse(src->buffer(), diag), diag, importer);
-  if (diag.num_consumed() != 0) { return 1; }
+  compiler::PersistentResources resources{
+      .context             = std::ref(exec_mod.context(&exec_mod)),
+      .diagnostic_consumer = std::ref(diag),
+      .importer            = std::ref(importer),
+  };
 
-  return CompileToObjectFile(exec_mod, target_machine);
+  auto nodes = frontend::Parse(src->buffer(), diag);
+  exec_mod.InitializeNodes(nodes);
+
+  auto node_span = WorkGraph(resources).ExecuteCompilationSequence(
+      std::move(nodes),
+      absl::bind_front(compiler::VerifyNodesSatisfying, IsConstantDeclaration),
+      absl::bind_front(compiler::VerifyNodesSatisfying,
+                       IsNotConstantDeclaration),
+      compiler::EmitIrForNodes);
+
+  ir::CompiledFn main_fn = ir::CompiledFn(type::Func({}, {}), {});
+  ProcessExecutableBody(resources, node_span, main_fn);
+
+  return CompileToObjectFile(exec_mod, main_fn, target_machine);
 }
 
 }  // namespace

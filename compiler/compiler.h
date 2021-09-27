@@ -16,9 +16,9 @@
 #include "compiler/context.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/instructions.h"
-#include "compiler/module.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
+#include "compiler/work_item.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/source.h"
 #include "ir/builder.h"
@@ -114,7 +114,7 @@ struct Compiler
       ast::Visitor<EmitRefTag, ir::Reg()>,
       ast::Visitor<EmitToBufferTag, void(ir::PartialResultBuffer *)>,
       ast::Visitor<VerifyTypeTag, absl::Span<type::QualType const>()>,
-      ast::Visitor<VerifyBodyTag, WorkItem::Result()>,
+      ast::Visitor<VerifyBodyTag, bool()>,
       ast::Visitor<PatternMatchTag,
                    bool(PatternMatchingContext *,
                         absl::flat_hash_map<ast::Declaration::Id const *,
@@ -142,9 +142,6 @@ struct Compiler
     return c;
   }
 
-  void ProcessExecutableBody(base::PtrSpan<ast::Node const> nodes,
-                             ir::CompiledFn *main_fn);
-
   void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
     for (ast::Node const *node : nodes) {
       if (auto const *decl = node->if_as<ast::Declaration>()) {
@@ -161,10 +158,8 @@ struct Compiler
     }
   }
 
-  void Enqueue(WorkItem::Kind kind, ast::Node const *node,
-               absl::flat_hash_set<WorkItem> prerequisites = {}) {
-    resources_.work_queue.Enqueue({.kind = kind, .node = node}, resources(),
-                                  state(), std::move(prerequisites));
+  void Enqueue(WorkItem w, absl::flat_hash_set<WorkItem> prerequisites = {}) {
+    resources_.enqueue(w, std::move(prerequisites));
   }
 
   absl::Span<type::QualType const> VerifyType(ast::Node const *node) {
@@ -172,8 +167,8 @@ struct Compiler
                         absl::Span<type::QualType const>()>::Visit(node);
   }
 
-  WorkItem::Result VerifyBody(ast::Node const *node) {
-    return ast::Visitor<VerifyBodyTag, WorkItem::Result()>::Visit(node);
+  bool VerifyBody(ast::Node const *node) {
+    return ast::Visitor<VerifyBodyTag, bool()>::Visit(node);
   }
 
   bool PatternMatch(ast::Node const *node, PatternMatchingContext &context,
@@ -318,15 +313,14 @@ struct Compiler
   Compiler(Compiler const &) = delete;
   Compiler(Compiler &&)      = default;
 
-  Context &context() const { return resources_.context; }
-  WorkQueue &work_queue() const { return resources_.work_queue; }
+  Context &context() const { return *resources_.context; }
   ir::Builder &builder() { return builder_; };
   diagnostic::DiagnosticConsumer &diag() const {
-    return resources_.diagnostic_consumer;
+    return *resources_.diagnostic_consumer;
   }
   ir::BasicBlock *current_block() { return builder().CurrentBlock(); }
 
-  module::Importer &importer() const { return resources_.importer; }
+  module::Importer &importer() const { return *resources_.importer; }
 
   // Evaluates `expr` in the current context as a value of type `T`. If
   // evaluation succeeds, returns the vaule, otherwise adds a diagnostic for the
@@ -372,7 +366,7 @@ struct Compiler
     return VerifyType(node);                                                   \
   }                                                                            \
                                                                                \
-  WorkItem::Result Visit(VerifyBodyTag, ast::name const *node) override {      \
+  bool Visit(VerifyBodyTag, ast::name const *node) override {                  \
     return VerifyBody(node);                                                   \
   }                                                                            \
                                                                                \
@@ -457,13 +451,11 @@ struct Compiler
   // The reason to separate out type/body verification is if the body might
   // transitively have identifiers referring to a declaration that is assigned
   // directly to this node.
-  WorkItem::Result VerifyBody(ast::Expression const *node) {
-    return WorkItem::Result::Success;
-  }
-  WorkItem::Result VerifyBody(ast::EnumLiteral const *node);
-  WorkItem::Result VerifyBody(ast::FunctionLiteral const *node);
-  WorkItem::Result VerifyBody(ast::ParameterizedStructLiteral const *node);
-  WorkItem::Result VerifyBody(ast::StructLiteral const *node);
+  bool VerifyBody(ast::Expression const *node) { return true; }
+  bool VerifyBody(ast::EnumLiteral const *node);
+  bool VerifyBody(ast::FunctionLiteral const *node);
+  bool VerifyBody(ast::ParameterizedStructLiteral const *node);
+  bool VerifyBody(ast::StructLiteral const *node);
 
   ir::Reg EmitRef(ast::Access const *node);
   ir::Reg Visit(EmitRefTag, ast::Access const *node) override {
@@ -628,16 +620,14 @@ struct Compiler
   std::optional<core::Params<type::QualType>> VerifyParams(
       core::Params<std::unique_ptr<ast::Declaration>> const &params);
 
-  friend struct WorkItem;
-
   // TODO: The implementation here has some overlap with CompleteStruct.
-  WorkItem::Result EnsureDataCompleteness(type::Struct *s);
+  bool EnsureDataCompleteness(type::Struct *s);
 
-  WorkItem::Result CompleteStruct(ast::StructLiteral const *node);
-  WorkItem::Result CompleteStruct(ast::ParameterizedStructLiteral const *node);
-  WorkItem::Result EmitJumpBody(ast::Jump const *node);
-  WorkItem::Result EmitFunctionBody(ast::FunctionLiteral const *node);
-  WorkItem::Result EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
+  bool CompleteStruct(ast::StructLiteral const *node);
+  bool CompleteStruct(ast::ParameterizedStructLiteral const *node);
+  bool EmitJumpBody(ast::Jump const *node);
+  bool EmitFunctionBody(ast::FunctionLiteral const *node);
+  bool EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
 
  private:
   std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>

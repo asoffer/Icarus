@@ -13,6 +13,9 @@
 #include "type/typed_value.h"
 
 namespace compiler {
+// TODO: Remove need for forward declaration.
+struct CompiledModule;
+
 namespace {
 
 void ExtractParams(

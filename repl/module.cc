@@ -36,12 +36,11 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
 void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                           diagnostic::DiagnosticConsumer &diag,
                           module::Importer &importer) {
-  compiler::WorkQueue work_queue;
+  compiler::WorkGraph work_graph;
   compiler::Compiler c({
-      .context             = context(),
-      .diagnostic_consumer = diag,
-      .importer            = importer,
-      .work_queue          = work_queue,
+      .context             = std::ref(context()),
+      .diagnostic_consumer = std::ref(diag),
+      .importer            = std::ref(importer),
   });
   ir::PartialResultBuffer buffer;
   for (ast::Node const *node : nodes) {
@@ -53,7 +52,7 @@ void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
         c.VerifyType(decl);
         buffer.clear();
         c.EmitToBuffer(decl, buffer);
-        work_queue.Complete();
+        work_graph.complete();
         if (c.diag().num_consumed() != 0) { return; }
       }
 

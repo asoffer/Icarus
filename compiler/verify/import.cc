@@ -3,7 +3,6 @@
 
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/module.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"
 

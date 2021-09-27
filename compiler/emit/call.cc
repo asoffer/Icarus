@@ -3,6 +3,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/instantiate.h"
+#include "compiler/module.h"
 #include "compiler/resources.h"
 #include "ir/instruction/instructions.h"
 #include "type/instantiated_generic_struct.h"

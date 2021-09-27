@@ -5,7 +5,7 @@
 
 namespace compiler {
 
-WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
+bool Compiler::VerifyBody(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Struct-literal body verification: %p %s", node,
       node->DebugString());
 
@@ -27,12 +27,12 @@ WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
   }
 
   LOG("StructLiteral", "Struct-literal body verification complete: %p", node);
-  return error ? WorkItem::Result::Failure : WorkItem::Result::Success;
+  return not error;
 }
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Verify type %p %s", node, node->DebugString());
-  Enqueue(WorkItem::Kind::VerifyStructBody, node);
+  Enqueue({.kind = WorkItem::Kind::VerifyStructBody, .node = node});
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 

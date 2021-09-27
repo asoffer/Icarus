@@ -26,7 +26,6 @@ struct TestModule : compiler::CompiledModule {
             .context             = context(),
             .diagnostic_consumer = consumer,
             .importer            = importer,
-            .work_queue          = work_queue,
         }),
         source("\n") {}
 
@@ -56,7 +55,7 @@ struct TestModule : compiler::CompiledModule {
     }
   }
 
-  compiler::WorkQueue work_queue;
+  compiler::WorkGraph work_graph;
   module::MockImporter importer;
   diagnostic::TrackingConsumer consumer;
   compiler::Compiler compiler;
@@ -66,7 +65,7 @@ struct TestModule : compiler::CompiledModule {
                     diagnostic::DiagnosticConsumer& diag,
                     module::Importer&) override {
     compiler.VerifyAll(nodes);
-    work_queue.Complete();
+    work_graph.complete();
   }
 
  private:

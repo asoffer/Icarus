@@ -71,6 +71,7 @@ cc_library(
     deps = [
         ":context",
         ":transient_state",
+        ":work_item",
         "//ast:node",
         "//diagnostic/consumer",
         "//module:importer",
@@ -160,9 +161,9 @@ cc_library(
         ":context",
         ":cyclic_dependency_tracker",
         ":instructions",
-        ":module",
         ":resources",
         ":transient_state",
+        ":work_item",
         "//ast",
         "//ast:overload_set",
         "//ast:visitor",
@@ -192,7 +193,6 @@ cc_library(
         ":compiler_header",
         ":context",
         ":instructions",
-        ":module",
         "//ast",
         "//base:log",
         "//compiler/emit:common",
@@ -221,7 +221,7 @@ cc_library(
         "//ir:compiled_jump",
         "//ir:compiled_scope",
         "//ir:module",
-        "//module:module",
+        "//module",
         "//type:qual_type",
         "@com_google_absl//absl/strings:str_format",
     ],
@@ -234,6 +234,7 @@ cc_library(
     deps = [
         ":context",
         ":compiler_header",
+        ":module",
         "//core:arguments",
         "//ir/value:result_buffer",
         "//type:typed_value",
@@ -274,7 +275,6 @@ cc_library(
     name = "library_module",
     hdrs = ["library_module.h"],
     deps = [
-        ":compiler",
         ":module",
         ":resources",
         "//diagnostic/consumer",
@@ -286,7 +286,6 @@ cc_library(
     name = "executable_module",
     hdrs = ["executable_module.h"],
     deps = [
-        ":compiler",
         ":library_module",
         ":module",
         "//ast:scope",
@@ -302,7 +301,6 @@ cc_library(
     srcs = ["type_for_diagnostic.cc"],
     deps = [
         ":context",
-        ":module",
         "//ast",
         "//ast:visitor",
         "@com_google_absl//absl/strings",
@@ -353,6 +351,7 @@ cc_binary(
     linkopts = LLVM_LINKOPTS,
     deps = [
         ":executable_module",
+        ":work_graph",
         "//base:log",
         "//backend:llvm",
         "//base:no_destructor",
@@ -379,6 +378,7 @@ cc_binary(
     deps = [
         ":executable_module",
         ":instructions",
+        ":work_graph",
         "//base:log",
         "//base:no_destructor",
         "//base:untyped_buffer",
@@ -391,9 +391,32 @@ cc_binary(
         "//opt",
         "@com_google_absl//absl/debugging:failure_signal_handler",
         "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/functional:bind_front",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
+    name = "work_graph",
+    hdrs = ["work_graph.h"],
+    deps = [
+        ":compiler",
+        ":resources",
+        ":work_item",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
+)
+
+cc_library(
+    name = "work_item",
+    hdrs = ["work_item.h"],
+    deps = [
+        "//base:extend",
+        "//base/extend:absl_hash",
+        "//base:meta",
     ],
 )

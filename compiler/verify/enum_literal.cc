@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/work_item.h"
 
 namespace compiler {
 
@@ -32,7 +33,7 @@ struct NonIntegralEnumerator {
   type::Type type;
 };
 
-WorkItem::Result Compiler::VerifyBody(ast::EnumLiteral const *node) {
+bool Compiler::VerifyBody(ast::EnumLiteral const *node) {
   bool success = true;
   for (auto const &[name, value] : node->specified_values()) {
     auto qts = VerifyType(value.get());
@@ -48,12 +49,12 @@ WorkItem::Result Compiler::VerifyBody(ast::EnumLiteral const *node) {
       });
     }
   }
-  return success ? WorkItem::Result::Success : WorkItem::Result::Failure;
+  return success;
 }
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::EnumLiteral const *node) {
   LOG("compile-work-queue", "Request work enum: %p", node);
-  Enqueue(WorkItem::Kind::VerifyEnumBody, node);
+  Enqueue(WorkItem::VerifyBodyOf(node));
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 

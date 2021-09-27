@@ -28,12 +28,9 @@ type::QualType VerifyGeneric(Compiler &c,
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
-      auto compiler = instantiation_compiler.MakeChild(PersistentResources{
-          .context             = context,
-          .diagnostic_consumer = instantiation_compiler.diag(),
-          .importer            = instantiation_compiler.importer(),
-          .work_queue          = instantiation_compiler.work_queue(),
-      });
+      PersistentResources resources = instantiation_compiler.resources();
+      resources.context             = &context;
+      auto compiler = instantiation_compiler.MakeChild(resources);
       compiler.builder().CurrentGroup() = cg;
       auto qt                           = VerifyConcrete(compiler, node);
       auto outs = qt.type().as<type::Function>().output();

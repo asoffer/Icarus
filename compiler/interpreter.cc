@@ -19,7 +19,9 @@
 #include "base/untyped_buffer.h"
 #include "compiler/executable_module.h"
 #include "compiler/instructions.h"
+#include "compiler/library_module.h"
 #include "compiler/module.h"
+#include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "frontend/source/file_name.h"
@@ -70,11 +72,27 @@ int Interpret(frontend::FileName const &file_name) {
     exec_mod.embed(importer.get(embedded_id));
   }
 
-  exec_mod.AppendNodes(frontend::Parse(src->buffer(), diag), diag, importer);
-  if (diag.num_consumed() != 0 or exec_mod.has_error_in_dependent_module()) {
-    return 1;
-  }
-  auto &main_fn = exec_mod.main();
+  compiler::PersistentResources resources{
+      .context             = &exec_mod.context(&exec_mod),
+      .diagnostic_consumer = &diag,
+      .importer            = &importer,
+  };
+
+  auto nodes = frontend::Parse(src->buffer(), diag);
+  exec_mod.InitializeNodes(nodes);
+
+  auto node_span = WorkGraph(resources).ExecuteCompilationSequence(
+      std::move(nodes),
+      [](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
+        VerifyNodesSatisfying(IsConstantDeclaration, w, nodes);
+      },
+      [](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
+        VerifyNodesSatisfying(IsNotConstantDeclaration, w, nodes);
+      });
+
+  ir::CompiledFn main_fn = ir::CompiledFn(type::Func({}, {}), {});
+  ProcessExecutableBody(resources, node_span, main_fn);
+  exec_mod.CompilationComplete();
 
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }

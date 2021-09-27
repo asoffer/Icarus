@@ -14,10 +14,9 @@
 
 namespace compiler {
 
-WorkItem::Result Compiler::VerifyBody(
-    ast::ParameterizedStructLiteral const *node) {
+bool Compiler::VerifyBody(ast::ParameterizedStructLiteral const *node) {
   // NOT_YET();
-  return WorkItem::Result::Success;
+  return true;
 }
 
 absl::Span<type::QualType const> Compiler::VerifyType(
@@ -34,12 +33,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(
 
     if (inserted) {
       LOG("ParameterizedStructLiteral", "inserted! %s", node->DebugString());
-      auto compiler = instantiation_compiler.MakeChild(PersistentResources{
-          .context             = context,
-          .diagnostic_consumer = instantiation_compiler.diag(),
-          .importer            = instantiation_compiler.importer(),
-          .work_queue          = instantiation_compiler.work_queue(),
-      });
+      PersistentResources resources = instantiation_compiler.resources();
+      resources.context             = &context;
+      auto compiler = instantiation_compiler.MakeChild(resources);
       compiler.builder().CurrentGroup() = cg;
 
       auto *s = type::Allocate<type::InstantiatedGenericStruct>(

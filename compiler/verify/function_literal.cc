@@ -199,7 +199,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
     }
 
     LOG("FunctionLiteral", "Request work fn-lit: %p", node);
-    c.Enqueue(WorkItem::Kind::VerifyFunctionBody, node);
+    c.Enqueue({.kind = WorkItem::Kind::VerifyFunctionBody, .node = node});
     return type::QualType::Constant(
         type::Func(std::move(params), std::move(output_type_vec)));
   } else {
@@ -222,12 +222,9 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
-      auto compiler = instantiation_compiler.MakeChild(PersistentResources{
-          .context             = context,
-          .diagnostic_consumer = instantiation_compiler.diag(),
-          .importer            = instantiation_compiler.importer(),
-          .work_queue          = instantiation_compiler.work_queue(),
-      });
+      PersistentResources resources = instantiation_compiler.resources();
+      resources.context             = &context;
+      auto compiler = instantiation_compiler.MakeChild(resources);
       compiler.builder().CurrentGroup() = cg;
       auto qt                           = VerifyConcrete(compiler, node);
       auto outs = qt.type().as<type::Function>().output();
@@ -265,7 +262,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::FunctionLiteral const
 
 // TODO: Nothing about this has been comprehensively tested. Especially the
 // generic bits.
-WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
+bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "function-literal body verification: %s %p",
       node->DebugString(), &context());
 
@@ -274,12 +271,12 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   for (auto const &param : fn_type.params()) {
     if (param.value.type().get()->completeness() ==
         type::Completeness::Incomplete) {
-      return WorkItem::Result::Deferred;
+      NOT_YET();
     }
   }
   for (type::Type ret : fn_type.return_types()) {
     if (ret.get()->completeness() == type::Completeness::Incomplete) {
-      return WorkItem::Result::Deferred;
+      NOT_YET();
     }
   }
 
@@ -287,13 +284,13 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   if (not context().ShouldVerifyBody(node)) {
     LOG("FunctionLiteral", "Ignoring subsequent verification of %s",
         node->DebugString());
-    return WorkItem::Result::Success;
+    return true;
   }
 
   auto maybe_return_types = VerifyBodyOnly(*this, node);
   if (not maybe_return_types) {
     LOG("FunctionLiteral", "Body verification was a failure.");
-    return WorkItem::Result::Failure;
+    return false;
   }
   if (maybe_return_types->size() != fn_type.output().size()) {
     diag().Consume(ReturningWrongNumber{
@@ -301,7 +298,7 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
         .expected = fn_type.output().size(),
         // TODO: The location specified here is really wide.
         .range = node->range()});
-    return WorkItem::Result::Failure;
+    return false;
   }
 
   bool error = false;
@@ -314,7 +311,7 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
     }
   }
 
-  return error ? WorkItem::Result::Failure : WorkItem::Result::Success;
+  return not error;
 }
 
 }  // namespace compiler

@@ -5,7 +5,6 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/instructions.h"
-#include "compiler/module.h"
 #include "diagnostic/consumer/buffering.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
@@ -14,27 +13,6 @@
 #include "type/jump.h"
 
 namespace compiler {
-
-WorkItem::Result WorkItem::Process(PersistentResources resources,
-                                   TransientState const &state) const {
-  Compiler c(resources, state);
-  switch (kind) {
-    case Kind::VerifyEnumBody:
-      return c.VerifyBody(&node->as<ast::EnumLiteral>());
-    case Kind::VerifyFunctionBody:
-      return c.VerifyBody(&node->as<ast::FunctionLiteral>());
-    case Kind::VerifyStructBody:
-      return c.VerifyBody(&node->as<ast::StructLiteral>());
-    case Kind::CompleteStructMembers:
-      return c.CompleteStruct(&node->as<ast::StructLiteral>());
-    case Kind::EmitJumpBody:
-      return c.EmitJumpBody(&node->as<ast::Jump>());
-   case Kind::EmitFunctionBody:
-      return c.EmitFunctionBody(&node->as<ast::FunctionLiteral>());
-    case Kind::EmitShortFunctionBody:
-      return c.EmitShortFunctionBody(&node->as<ast::ShortFunctionLiteral>());
-  }
-}
 
 Compiler::Compiler(PersistentResources const &resources)
     : resources_(resources) {}
@@ -81,7 +59,7 @@ static std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(
 
 interpreter::EvaluationResult Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr, bool must_complete) {
-  Compiler c              = MakeChild(resources_);
+  Compiler c              = MakeChild(resources());
   c.state_.must_complete  = must_complete;
   auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
   ir::NativeFn::Data data{
@@ -109,22 +87,19 @@ Compiler::EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
                            bool must_complete) {
   // TODO: The diagnosis part.
   diagnostic::BufferingConsumer buffering_consumer(&diag());
-  WorkQueue work_queue;
-  Compiler c             = MakeChild(PersistentResources{
-      .context             = context(),
-      .diagnostic_consumer = buffering_consumer,
-      .importer            = importer(),
-      .work_queue          = work_queue,
-  });
+  auto r                 = resources();
+  r.diagnostic_consumer  = &buffering_consumer;
+  Compiler c             = MakeChild(r);
   c.state_.must_complete = must_complete;
 
   auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
   ir::NativeFn::Data data{
-      .fn        = &thunk,
+    .fn        = &thunk,
       .type      = thunk.type(),
       .byte_code = byte_code.begin(),
   };
-  work_queue.Complete();
+  // TODO: We don't need to complete everything, just this node.
+  // work_graph.complete();
 
   if (buffering_consumer.empty()) {
     return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
@@ -139,28 +114,6 @@ ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
     return *maybe_mod;
   } else {
     return ir::ModuleId::Invalid();
-  }
-}
-
-void Compiler::ProcessExecutableBody(base::PtrSpan<ast::Node const> nodes,
-                                     ir::CompiledFn *main_fn) {
-  if (nodes.empty()) {
-    ICARUS_SCOPE(ir::SetCurrent(*main_fn, builder())) {
-      EmitIrForStatements(*this, nodes);
-      builder().ReturnJump();
-    }
-  } else {
-    ICARUS_SCOPE(ir::SetCurrent(*main_fn, builder())) {
-      ast::ModuleScope *mod_scope =
-          &nodes.front()->scope()->as<ast::ModuleScope>();
-
-      MakeAllStackAllocations(*this, mod_scope);
-      EmitIrForStatements(*this, nodes);
-      MakeAllDestructions(*this, mod_scope);
-      // TODO determine under which scenarios destructors can be skipped.
-
-      builder().ReturnJump();
-    }
   }
 }
 

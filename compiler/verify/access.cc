@@ -181,17 +181,17 @@ std::pair<type::Type, int> DereferenceAll(type::Type t) {
 // diagnostic, rather than using the returned value when this function is
 // called.
 absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
-                                                  ast::Access const *node,
-                                                  type::QualType operand_qt) {
+    ast::Access const *node,
+    type::QualType operand_qt) {
   if (not operand_qt.constant()) {
     c.diag().Consume(NonConstantTypeMemberAccess{
         .range = node->range(),
-    });
+        });
     return c.context().set_qual_type(node, type::QualType::Error());
   }
   ASSIGN_OR(return c.context().set_qual_type(node, type::QualType::Error()),
-                   auto evaled_type,
-                   c.EvaluateOrDiagnoseAs<type::Type>(node->operand()));
+      auto evaled_type,
+      c.EvaluateOrDiagnoseAs<type::Type>(node->operand()));
   auto qt = type::QualType::Constant(evaled_type);
 
   // TODO: Choosing the type here to be i64 to match the length type for
@@ -202,14 +202,14 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
           node, type::QualType::Constant(type::Array::LengthType()));
     } else if (node->member_name() == "element_type") {
       return c.context().set_qual_type(node,
-                                       type::QualType::Constant(type::Type_));
+          type::QualType::Constant(type::Type_));
     } else {
       auto qts = c.context().set_qual_type(node, type::QualType::Error());
       c.diag().Consume(MissingConstantMember{
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
           .member       = std::string{node->member_name()},
-      });
+          });
       return qts;
     }
   }
@@ -228,7 +228,7 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
           .member       = std::string{node->member_name()},
-      });
+          });
       return qts;
     } else {
       return c.context().set_qual_type(node, qt);
@@ -246,7 +246,7 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
           .expr_range   = node->operand()->range(),
           .member_range = node->member_range(),
           .member       = std::string(node->member_name()),
-      });
+          });
       return qts;
     } else {
       return c.context().set_qual_type(node, qt);
@@ -299,15 +299,11 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
 type::QualType AccessStructMember(Compiler &c, ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
   // TODO: Figure out how to remove const_cast here.
-  switch (c.EnsureDataCompleteness(const_cast<type::Struct *>(s))) {
-    case WorkItem::Result::Success: break;
-    case WorkItem::Result::Deferred:
-      c.diag().Consume(IncompleteTypeMemberAccess{
-          .member_range = node->member_range(),
-          .type         = s,
-      });
-      [[fallthrough]];
-    case WorkItem::Result::Failure: return type::QualType::Error();
+  if (not c.EnsureDataCompleteness(const_cast<type::Struct *>(s))) {
+    c.diag().Consume(IncompleteTypeMemberAccess{
+        .member_range = node->member_range(),
+        .type         = s,
+    });
   }
   ASSERT(s->completeness() >= type::Completeness::DataComplete);
 

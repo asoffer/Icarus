@@ -148,6 +148,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instantiate",
+        "//compiler:module",
         "//compiler:resources",
         "//ir/instruction",
         "//type:instantiated_generic_struct",
@@ -215,6 +216,7 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:instantiate",
         "//compiler:instructions",
+        "//compiler:module",
         "//core:arguments",
         "//core:params",
         "//ir/value:result_buffer",
@@ -230,6 +232,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:module",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",
@@ -270,6 +273,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:module",
     ],
 )
 
@@ -335,6 +339,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:module",
     ],
 )
 
@@ -570,6 +575,7 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler/emit:common",
         "//compiler:instructions",
+        "//compiler:module",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",

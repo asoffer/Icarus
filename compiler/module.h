@@ -10,8 +10,8 @@
 #include "compiler/context.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
-#include "module/module.h"
 #include "ir/module.h"
+#include "module/module.h"
 
 namespace compiler {
 
@@ -25,8 +25,8 @@ struct CompiledModule : module::BasicModule {
   }
 
   // If we're requesting from a different module we need to ensure that we've
-  // waited for that module to complete processing. But from the same module we
-  // node processing order to dictates safety.
+  // waited for that module to complete processing. But from the same module
+  // we node processing order to dictates safety.
   Context const &context(module::BasicModule const *requestor) const {
     if (requestor != this) { notification_.WaitForNotification(); }
     return data_;
@@ -47,10 +47,11 @@ struct CompiledModule : module::BasicModule {
     depends_on_module_with_errors_ = true;
   }
 
- protected:
-  // Child classes must call this when compilation of this module is complete
-  // to notify other modules which may be waiting on data for their own
-  // compilation.
+  // TODO: virtual method is no longer needed.
+  void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
+                    diagnostic::DiagnosticConsumer &diag,
+                    module::Importer &importer) override {}
+
   void CompilationComplete() { notification_.Notify(); }
 
  private:
@@ -62,7 +63,7 @@ struct CompiledModule : module::BasicModule {
   // another which has errors, even if those errors do not effect
   // code-generation in this module.
   bool depends_on_module_with_errors_ = false;
-};
+  };
 
 }  // namespace compiler
 

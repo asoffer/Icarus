@@ -9,7 +9,6 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
-#include "absl/synchronization/notification.h"
 #include "ast/scope.h"
 #include "base/cast.h"
 #include "base/guarded.h"
@@ -44,12 +43,7 @@ struct BasicModule : base::Cast<BasicModule> {
   void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
                    diagnostic::DiagnosticConsumer &diag, Importer &importer);
 
-  void ParsingComplete() { done_parsing_.Notify(); }
-
-  ast::ModuleScope const &scope() const {
-    done_parsing_.WaitForNotification();
-    return scope_;
-  }
+  ast::ModuleScope const &scope() const { return scope_; }
 
   diagnostic::DiagnosticConsumer &diagnostic_consumer() {
     return *ASSERT_NOT_NULL(diagnostic_consumer_);
@@ -65,22 +59,23 @@ struct BasicModule : base::Cast<BasicModule> {
 
   void embed(BasicModule const &module) { scope_.embed(&module.scope_); }
 
+  template <typename Iter>
+  base::PtrSpan<ast::Node const> insert(Iter begin, Iter end) {
+    size_t i = nodes_.size();
+    while (begin != end) { nodes_.push_back(std::move(*begin++)); }
+    return base::PtrSpan<ast::Node const>(nodes_.data() + i, nodes_.size() - i);
+  }
+
+  void InitializeNodes(base::PtrSpan<ast::Node> nodes);
+
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
                             diagnostic::DiagnosticConsumer &, Importer &) = 0;
 
  private:
-  void InitializeNodes(base::PtrSpan<ast::Node> nodes);
 
   ast::ModuleScope scope_;
   std::vector<std::unique_ptr<ast::Node>> nodes_;
-
-  // This notification is notified when parsing is complete. It is not possible
-  // to access `scope()` without this notification having been notified, thus
-  // ensuring that any external access to the scope happens after parsing is
-  // complete.
-  absl::Notification done_parsing_;
-
   std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer_;
 };
 

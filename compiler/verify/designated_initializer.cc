@@ -2,6 +2,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"

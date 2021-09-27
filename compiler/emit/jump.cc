@@ -16,12 +16,12 @@ void Compiler::EmitToBuffer(ast::Jump const *node, ir::PartialResultBuffer &out)
   auto [jmp, inserted] = context().add_jump(node);
   if (inserted) {
     LOG("compile-work-queue", "Request work complete struct: %p", node);
-    Enqueue(WorkItem::Kind::EmitJumpBody, node);
+    Enqueue({.kind = WorkItem::Kind::EmitJumpBody, .node = node});
   }
   out.append(jmp);
 }
 
-WorkItem::Result Compiler::EmitJumpBody(ast::Jump const *node) {
+bool Compiler::EmitJumpBody(ast::Jump const *node) {
   LOG("EmitJumpBody", "Jump %s", node->DebugString());
   ir::CompiledJump &jmp = *ASSERT_NOT_NULL(context().jump(node));
 
@@ -47,7 +47,7 @@ WorkItem::Result Compiler::EmitJumpBody(ast::Jump const *node) {
     MakeAllDestructions(*this, &node->body_scope());
   }
 
-  return WorkItem::Result::Success;
+  return true;
 }
 
 }  // namespace compiler

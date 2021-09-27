@@ -285,6 +285,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:module",
         "//compiler:type_for_diagnostic",
         "//type:primitive",
         "//type:qual_type",
@@ -311,6 +312,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:work_item",
         "//type:primitive",
         "//type:qual_type",
     ],
@@ -398,6 +400,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:cyclic_dependency_tracker",
+        "//compiler:module",
         "//type:overload_set",
         "//type:qual_type",
         "//type:typed_value",
@@ -420,7 +423,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//compiler:module",
         "//ir/value:module_id",
     ],
 )
@@ -515,7 +517,6 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:instantiate",
         "//compiler:instructions",
-        "//compiler:module",
         "//compiler:resources",
         "//compiler/emit:common",
         "//type:qual_type",

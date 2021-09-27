@@ -7,6 +7,7 @@
 #include "base/debug.h"
 #include "compiler/bound_parameters.h"
 #include "compiler/compiler.h"
+#include "compiler/module.h"
 #include "core/params.h"
 #include "ir/value/result_buffer.h"
 #include "type/type.h"
@@ -148,12 +149,9 @@ Context::InsertSubcontextResult Instantiate(
   LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
       ctx.DebugString());
   Context scratchpad = ctx.ScratchpadSubcontext();
-  Compiler child({
-      .context             = scratchpad,
-      .diagnostic_consumer = c.diag(),
-      .importer            = c.importer(),
-      .work_queue          = c.work_queue(),
-  });
+  PersistentResources resources = c.resources();
+  resources.context             = &scratchpad;
+  Compiler child(resources);
 
   return ctx.InsertSubcontext(node, ComputeParamsFromArgs(child, node, args),
                               std::move(scratchpad));
@@ -170,12 +168,9 @@ Context::FindSubcontextResult FindInstantiation(
   LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
       ctx.DebugString());
   Context scratchpad = ctx.ScratchpadSubcontext();
-  Compiler child({
-      .context             = scratchpad,
-      .diagnostic_consumer = c.diag(),
-      .importer            = c.importer(),
-      .work_queue          = c.work_queue(),
-  });
+  PersistentResources resources = c.resources();
+  resources.context             = &scratchpad;
+  Compiler child(resources);
 
   return ctx.FindSubcontext(node, ComputeParamsFromArgs(child, node, args));
 }

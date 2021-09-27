@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/cyclic_dependency_tracker.h"
+#include "compiler/module.h"
 #include "type/overload_set.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"

@@ -19,15 +19,13 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
           auto find_subcontext_result = FindInstantiation(c, node, args);
           auto &context               = find_subcontext_result.context;
 
-          auto [f, inserted] = context.add_func(node);
-          Compiler compiler({
-              .context             = context,
-              .diagnostic_consumer = c.diag(),
-              .importer            = c.importer(),
-              .work_queue          = c.work_queue(),
-          });
+          auto [f, inserted]            = context.add_func(node);
+          PersistentResources resources = c.resources();
+          resources.context             = &context;
+          Compiler compiler(resources);
           if (inserted) {
-            compiler.Enqueue(WorkItem::Kind::EmitShortFunctionBody, node);
+            compiler.Enqueue(
+                {.kind = WorkItem::Kind::EmitShortFunctionBody, .node = node});
           }
 
           return f;
@@ -37,7 +35,9 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
   }
 
   auto [f, inserted] = context().add_func(node);
-  if (inserted) { Enqueue(WorkItem::Kind::EmitShortFunctionBody, node); }
+  if (inserted) {
+    Enqueue({.kind = WorkItem::Kind::EmitShortFunctionBody, .node = node});
+  }
   out.append(ir::Fn(f));
   return;
 }
@@ -78,8 +78,7 @@ void Compiler::EmitCopyAssign(
   builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
-WorkItem::Result Compiler::EmitShortFunctionBody(
-    ast::ShortFunctionLiteral const *node) {
+bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
   ir::NativeFn ir_func = context().FindNativeFn(node);
   ASSERT(static_cast<bool>(ir_func) == true);
 
@@ -124,7 +123,7 @@ WorkItem::Result Compiler::EmitShortFunctionBody(
   }
 
   context().ir().WriteByteCode<EmitByteCode>(ir_func);
-  return WorkItem::Result::Success;
+  return true;
 }
 
 }  // namespace compiler

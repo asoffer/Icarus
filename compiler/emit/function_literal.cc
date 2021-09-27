@@ -20,14 +20,13 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
           auto &context               = find_subcontext_result.context;
 
           auto [f, inserted] = context.add_func(node);
-          Compiler compiler({
-              .context             = context,
-              .diagnostic_consumer = c.diag(),
-              .importer            = c.importer(),
-              .work_queue          = c.work_queue(),
-          });
+
+          PersistentResources resources = c.resources();
+          resources.context             = &context;
+          Compiler compiler(resources);
           if (inserted) {
-            compiler.Enqueue(WorkItem::Kind::EmitFunctionBody, node);
+            compiler.Enqueue(
+                {.kind = WorkItem::Kind::EmitFunctionBody, .node = node});
           }
 
           return f;
@@ -43,7 +42,9 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
 
   // TODO Use correct constants
   auto [f, inserted] = context().add_func(node);
-  if (inserted) { Enqueue(WorkItem::Kind::EmitFunctionBody, node); }
+  if (inserted) {
+    Enqueue({.kind = WorkItem::Kind::EmitFunctionBody, .node = node});
+  }
   out.append(ir::Fn(f));
   return;
 }
@@ -84,7 +85,7 @@ void Compiler::EmitCopyAssign(
   builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
-WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
+bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   LOG("EmitFunctionBody", "%s", node->DebugString());
 
   ir::NativeFn ir_func = context().FindNativeFn(node);
@@ -133,7 +134,7 @@ WorkItem::Result Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   }
 
   context().ir().WriteByteCode<EmitByteCode>(ir_func);
-  return WorkItem::Result::Success;
+  return true;
 }
 
 }  // namespace compiler
