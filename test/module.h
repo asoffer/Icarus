@@ -72,6 +72,12 @@ struct TestModule : compiler::CompiledModule {
   frontend::StringSource source;
 };
 
+
+struct TestResources {
+  diagnostic::TrackingConsumer consumer;
+  module::MockImporter importer;
+};
+
 }  // namespace test
 
 #endif  // ICARUS_TEST_MODULE_H

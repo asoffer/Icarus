@@ -28,6 +28,7 @@ cc_library(
     srcs = ["importer.cc"],
     deps = [
         ":module",
+        "//base:any_invocable",
         "//diagnostic/consumer:streaming",
         "//frontend/source",
         "//frontend/source:file",

@@ -6,6 +6,7 @@
 #include <thread>
 #include <vector>
 
+#include "base/any_invocable.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "frontend/source/file.h"
@@ -44,6 +45,11 @@ frontend::CanonicalFileName ResolveModulePath(
 
 template <typename ModuleType>
 struct FileImporter : Importer {
+  explicit FileImporter(
+      base::any_invocable<void(ModuleType*, base::PtrSpan<ast::Node const>)>
+          compile)
+      : compile_(std::move(compile)) {}
+
   ~FileImporter() { CompleteWork(); }
 
   ir::ModuleId Import(std::string_view module_locator) override {
@@ -56,9 +62,9 @@ struct FileImporter : Importer {
     auto maybe_file_src = frontend::FileSource::Make(
         ResolveModulePath(file_name, module_lookup_paths));
 
+    diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
     if (not maybe_file_src.ok()) {
       modules_.erase(iter);
-      diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
       diag.Consume(frontend::MissingModule{
           .source    = file_name,
           .requestor = "",
@@ -68,22 +74,28 @@ struct FileImporter : Importer {
     }
 
     id  = ir::ModuleId::New();
-    mod = std::make_unique<ModuleType>();
-    modules_by_id_.emplace(id, mod.get());
+    mod                 = std::make_unique<ModuleType>();
+    ModuleType* mod_ptr = mod.get();
+    ir::ModuleId id_copy = id;
+    modules_by_id_.emplace(id_copy, mod_ptr);
 
     for (ir::ModuleId embedded_id : implicitly_embedded_modules()) {
-      mod->embed(get(embedded_id));
+      mod_ptr->embed(get(embedded_id));
     }
 
-    work_.emplace_back([this, mod = mod.get(),
-                        file_src = std::move(*maybe_file_src)]() mutable {
-      mod->template set_diagnostic_consumer<diagnostic::StreamingConsumer>(
-          stderr, &file_src);
-      mod->AppendNodes(
-          frontend::Parse(file_src.buffer(), mod->diagnostic_consumer()),
-          mod->diagnostic_consumer(), *this);
-    });
-    return id;
+    auto nodes =
+        mod_ptr->InitializeNodes(frontend::Parse(maybe_file_src->buffer(), diag));
+
+    // work_.emplace_back(
+    //    [this, mod = mod.get(), nodes,
+    //     file_src = std::move(*maybe_file_src)]() mutable {
+    mod_ptr->template set_diagnostic_consumer<diagnostic::StreamingConsumer>(
+        stderr, &*maybe_file_src);
+    compile_(mod_ptr, nodes);
+    //    });
+    // TODO: We're running this serially.  We're okay with this because the plan
+    // is to separate these into separate tool invocations.
+    return id_copy;
   }
 
   void CompleteWork() override {
@@ -105,6 +117,9 @@ struct FileImporter : Importer {
                       std::pair<ir::ModuleId, std::unique_ptr<ModuleType>>>
       modules_;
   absl::flat_hash_map<ir::ModuleId, ModuleType*> modules_by_id_;
+  // TODO: Our any_invocable implementation doesn't handle references yet.
+  base::any_invocable<void(ModuleType*, base::PtrSpan<ast::Node const>)>
+      compile_;
 };
 
 }  // namespace module

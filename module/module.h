@@ -66,7 +66,8 @@ struct BasicModule : base::Cast<BasicModule> {
     return base::PtrSpan<ast::Node const>(nodes_.data() + i, nodes_.size() - i);
   }
 
-  void InitializeNodes(base::PtrSpan<ast::Node> nodes);
+  base::PtrSpan<ast::Node const> InitializeNodes(
+      std::vector<std::unique_ptr<ast::Node>> nodes);
 
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,

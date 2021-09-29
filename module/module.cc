@@ -9,10 +9,12 @@ namespace module {
 BasicModule::BasicModule() : scope_(this) {}
 BasicModule::~BasicModule() {}
 
-void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
+base::PtrSpan<ast::Node const> BasicModule::InitializeNodes(
+    std::vector<std::unique_ptr<ast::Node>> nodes) {
   ast::Node::Initializer initializer{.scope = &scope_};
   ast::InitializeNodes(nodes, initializer);
-  for (ast::Node const *node : nodes) {
+
+  for (auto const &node : nodes) {
     auto *decl = node->if_as<ast::Declaration>();
     if (not decl) { continue; }
 
@@ -22,16 +24,16 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
     }
   }
 
+  size_t prev_size = nodes_.size();
+  nodes_.insert(nodes_.end(), std::make_move_iterator(nodes.begin()),
+                std::make_move_iterator(nodes.end()));
+  return base::PtrSpan<ast::Node const>(nodes_.data() + prev_size,
+                                        nodes_.size() - prev_size);
 }
 
 void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
                               diagnostic::DiagnosticConsumer &diag,
-                              Importer &importer) {
-  InitializeNodes(nodes);
-  ProcessNodes(nodes, diag, importer);
-  nodes_.insert(nodes_.end(), std::make_move_iterator(nodes.begin()),
-                std::make_move_iterator(nodes.end()));
-}
+                              Importer &importer) {}
 
 // TODO: Add a version of this function that also gives the declarations that
 // are inaccessible. Particularly interesting would be the case of an overlaod

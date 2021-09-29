@@ -59,40 +59,37 @@ int Interpret(frontend::FileName const &file_name) {
 
   auto *src = &*maybe_file_src;
   diag      = diagnostic::StreamingConsumer(stderr, src);
-  module::FileImporter<LibraryModule> importer;
+
+  module::FileImporter<LibraryModule> importer(
+      [&](LibraryModule *mod, base::PtrSpan<ast::Node const> nodes) {
+        PersistentResources resources{
+            .context             = &mod->context(mod),
+            .diagnostic_consumer = &mod->diagnostic_consumer(),
+            .importer            = &importer,
+        };
+        CompileLibrary(resources, std::move(nodes));
+      });
+
   importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;
   }
 
-  compiler::ExecutableModule exec_mod;
+  ExecutableModule exec_mod;
   exec_mod.set_diagnostic_consumer<diagnostic::StreamingConsumer>(stderr, src);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.embed(importer.get(embedded_id));
   }
 
-  compiler::PersistentResources resources{
+  PersistentResources resources{
       .context             = &exec_mod.context(&exec_mod),
       .diagnostic_consumer = &diag,
       .importer            = &importer,
   };
 
-  auto nodes = frontend::Parse(src->buffer(), diag);
-  exec_mod.InitializeNodes(nodes);
-
-  auto node_span = WorkGraph(resources).ExecuteCompilationSequence(
-      std::move(nodes),
-      [](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        VerifyNodesSatisfying(IsConstantDeclaration, w, nodes);
-      },
-      [](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        VerifyNodesSatisfying(IsNotConstantDeclaration, w, nodes);
-      });
-
-  ir::CompiledFn main_fn = ir::CompiledFn(type::Func({}, {}), {});
-  ProcessExecutableBody(resources, node_span, main_fn);
-  exec_mod.CompilationComplete();
+  auto nodes = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
+  auto main_fn = CompileExecutable(resources, nodes);
 
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }

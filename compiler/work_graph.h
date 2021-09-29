@@ -8,6 +8,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/module.h"
 #include "compiler/resources.h"
 #include "compiler/work_item.h"
 
@@ -32,12 +33,12 @@ struct WorkGraph {
     };
   }
 
-  base::PtrSpan<ast::Node const> ExecuteCompilationSequence(
-      std::vector<std::unique_ptr<ast::Node>> nodes,
+  void ExecuteCompilationSequence(
+      base::PtrSpan<ast::Node const> nodes,
       std::invocable<WorkGraph &, base::PtrSpan<ast::Node const>> auto
           &&... steps) {
-    ((steps(*this, nodes), this->complete()), ...);
-    return resources().context->module().insert(nodes.begin(), nodes.end());
+    ((steps(*this, nodes), complete()), ...);
+    resources().context->module().CompilationComplete();
   }
 
   void emplace(WorkItem const &w,
@@ -108,44 +109,10 @@ struct WorkGraph {
   absl::flat_hash_map<WorkItem, bool> work_;
 };
 
-inline bool IsConstantDeclaration(ast::Node const *n) {
-  auto const *decl = n->if_as<ast::Declaration>();
-  if (not decl) { return false; }
-  return (decl->flags() & ast::Declaration::f_IsConst);
-}
-
-inline bool IsNotConstantDeclaration(ast::Node const *n) {
-  return not IsConstantDeclaration(n);
-}
-
-void VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
-                           WorkGraph &work_graph,
-                           base::PtrSpan<ast::Node const> nodes) {
-  for (ast::Node const *node : nodes) {
-    if (not predicate(node)) { continue; }
-    work_graph.emplace(WorkItem::VerifyTypeOf(node));
-  }
-}
-
-inline void ProcessExecutableBody(PersistentResources const &resources,
-                                  base::PtrSpan<ast::Node const> nodes,
-                                  ir::CompiledFn &main_fn) {
-  Compiler c(resources);
-
-  ICARUS_SCOPE(ir::SetCurrent(main_fn, c.builder())) {
-    if (nodes.empty()) {
-      EmitIrForStatements(c, nodes);
-    } else {
-      ast::ModuleScope *mod_scope =
-          &nodes.front()->scope()->as<ast::ModuleScope>();
-      MakeAllStackAllocations(c, mod_scope);
-      EmitIrForStatements(c, nodes);
-      MakeAllDestructions(c, mod_scope);
-      // TODO determine under which scenarios destructors can be skipped.
-    }
-    c.builder().ReturnJump();
-  }
-}
+void CompileLibrary(PersistentResources const &resources,
+                    base::PtrSpan<ast::Node const> nodes);
+ir::CompiledFn CompileExecutable(PersistentResources const &resources,
+                                 base::PtrSpan<ast::Node const> nodes);
 
 }  // namespace compiler
 

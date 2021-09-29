@@ -402,6 +402,7 @@ cc_binary(
 cc_library(
     name = "work_graph",
     hdrs = ["work_graph.h"],
+    srcs = ["work_graph.cc"],
     deps = [
         ":compiler",
         ":resources",
