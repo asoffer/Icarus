@@ -74,6 +74,7 @@ cc_library(
         ":work_item",
         "//ast:node",
         "//diagnostic/consumer",
+        "//diagnostic/consumer:buffering",
         "//module:importer",
     ],
 )
@@ -325,6 +326,7 @@ cc_binary(
     srcs = ["dump_cfg.cc"],
     deps = [
         ":executable_module",
+        ":work_graph",
         "//base:log",
         "//base:no_destructor",
         "//base:untyped_buffer",
@@ -405,6 +407,7 @@ cc_library(
     srcs = ["work_graph.cc"],
     deps = [
         ":compiler",
+        ":instructions",
         ":resources",
         ":work_item",
         "@com_google_absl//absl/container:flat_hash_map",

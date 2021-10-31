@@ -8,7 +8,6 @@
 namespace compiler {
 namespace {
 
-using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
@@ -240,26 +239,14 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
 }
 
 TEST(DesignatedInitializer, CrossModule) {
-  auto id = ir::ModuleId::New();
-  LibraryModule imported_mod;
-  imported_mod.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
-
   test::TestModule mod;
-  ON_CALL(mod.importer, Import(Eq("imported")))
-      .WillByDefault([id](std::string_view) { return id; });
-  ON_CALL(mod.importer, get(id))
-      .WillByDefault(
-          [&](ir::ModuleId) -> module::BasicModule & { return imported_mod; });
-
-  frontend::SourceBuffer buffer(R"(
+  LibraryModule imported_mod;
+  mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {
     #{export} n: i64
   }
   )");
-  imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer),
-                                    mod.consumer, mod.importer);
-
-  mod.AppendCode("-- ::= import \"imported\"");
+  mod.AppendCode(R"(-- ::= import "imported")");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_TRUE(qts[0].type().is<type::Struct>());
@@ -267,26 +254,14 @@ TEST(DesignatedInitializer, CrossModule) {
 }
 
 TEST(DesignatedInitializer, NotExported) {
-  auto id = ir::ModuleId::New();
-  LibraryModule imported_mod;
-  imported_mod.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
-
   test::TestModule mod;
-  ON_CALL(mod.importer, Import(Eq("imported")))
-      .WillByDefault([id](std::string_view) { return id; });
-  ON_CALL(mod.importer, get(id))
-      .WillByDefault(
-          [&](ir::ModuleId) -> module::BasicModule & { return imported_mod; });
-
-  frontend::SourceBuffer buffer(R"(
+  LibraryModule imported_mod;
+  mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {
     n: i64
   }
   )");
-  imported_mod.AppendNodes(frontend::Parse(buffer, mod.consumer), mod.consumer,
-                           mod.importer);
-
-  mod.AppendCode("-- ::= import \"imported\"");
+  mod.AppendCode(R"(-- ::= import "imported")");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_TRUE(qts[0].type().is<type::Struct>());

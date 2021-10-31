@@ -31,8 +31,9 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
         if (not c.context().ConstantIfComplete(&node->ids()[0]) and
             c.state().must_complete) {
           LOG("compile-work-queue", "Request work complete-struct: %p", node);
-          c.Enqueue({.kind = WorkItem::Kind::CompleteStructMembers,
-                     .node = node->init_val()});
+          c.Enqueue({.kind    = WorkItem::Kind::CompleteStructMembers,
+                     .node    = node->init_val(),
+                     .context = &c.context()});
         }
       }
 

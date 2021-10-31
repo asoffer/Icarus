@@ -162,6 +162,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
     return context().set_qual_type(node, type::QualType::Error());
   }
 
+  if (auto *ast_struct = context().ast_struct(struct_type)) {
+    EnsureComplete({.kind    = WorkItem::Kind::CompleteStructMembers,
+                    .node    = ast_struct,
+                    .context = &context()});
+  }
   ASSERT(struct_type->completeness() >= type::Completeness::DataComplete);
 
   bool recovered_error  = false;

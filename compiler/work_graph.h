@@ -1,16 +1,22 @@
 #ifndef ICARUS_COMPILER_WORK_GRAPH_H
 #define ICARUS_COMPILER_WORK_GRAPH_H
 
-#include <utility>
+#include <functional>
 #include <type_traits>
+#include <utility>
+#include <variant>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "ast/expression.h"
+#include "ast/node.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/module.h"
 #include "compiler/resources.h"
 #include "compiler/work_item.h"
+#include "diagnostic/consumer/buffering.h"
+#include "type/typed_value.h"
 
 namespace compiler {
 
@@ -29,8 +35,11 @@ struct WorkGraph {
       : resources_(resources) {
     resources_.enqueue = [this](WorkItem item,
                                 absl::flat_hash_set<WorkItem> prerequisites) {
+      ASSERT(item.context != nullptr);
       this->emplace(item, std::move(prerequisites));
     };
+    resources_.evaluate = std::bind_front(&WorkGraph::EvaluateToBuffer, this);
+    resources_.complete = std::bind_front(&WorkGraph::Execute, this);
   }
 
   void ExecuteCompilationSequence(
@@ -55,55 +64,21 @@ struct WorkGraph {
   // previously been executed, nothing happens. If the item has not been
   // previously executed, this function will also ensure that all transitively
   // depended-on `WorkItem`s are executed before executing `w`.
-  bool Execute(WorkItem const &w) {
-    auto dep_iter = dependencies_.find(w);
-    if (dep_iter != dependencies_.end()) {
-      auto nh = dependencies_.extract(dep_iter);
-      for (auto const &n : nh.mapped()) {
-        if (not Execute(n)) {
-          work_[w] = false;
-          return false;
-        }
-      }
-    }
-
-    auto [work_iter, inserted] = work_.try_emplace(w);
-    if (not inserted) { return work_iter->second; }
-    Compiler c(resources_);
-    return work_iter->second = [&] {
-      switch (w.kind) {
-        case WorkItem::Kind::VerifyType:
-          c.VerifyType(w.node);
-          return resources().diagnostic_consumer->num_consumed() == 0;
-        case WorkItem::Kind::VerifyEnumBody:
-          return c.VerifyBody(&w.node->as<ast::EnumLiteral>());
-        case WorkItem::Kind::VerifyFunctionBody:
-          return c.VerifyBody(&w.node->as<ast::FunctionLiteral>());
-        case WorkItem::Kind::VerifyStructBody:
-          return c.VerifyBody(&w.node->as<ast::StructLiteral>());
-        case WorkItem::Kind::CompleteStructMembers:
-          return c.CompleteStruct(&w.node->as<ast::StructLiteral>());
-        case WorkItem::Kind::EmitJumpBody: return c.EmitJumpBody(&w.node->as<ast::Jump>());
-        case WorkItem::Kind::EmitFunctionBody:
-          return c.EmitFunctionBody(&w.node->as<ast::FunctionLiteral>());
-        case WorkItem::Kind::EmitShortFunctionBody:
-          return c.EmitShortFunctionBody(
-              &w.node->as<ast::ShortFunctionLiteral>());
-      }
-    }();
-  }
+  bool Execute(WorkItem const &w);
 
   // Complete all work in the work queue.
   void complete() {
-    while (not dependencies_.empty()) {
-      auto node = dependencies_.begin()->first;
-      Execute(node);
-    }
+    while (not dependencies_.empty()) { Execute(dependencies_.begin()->first); }
   }
 
   PersistentResources const &resources() const { return resources_; }
 
- private:
+  std::variant<ir::CompleteResultBuffer,
+               std::vector<diagnostic::ConsumedMessage>>
+  EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
+                   bool must_complete);
+
+// private:
   PersistentResources resources_;
   absl::flat_hash_map<WorkItem, absl::flat_hash_set<WorkItem>> dependencies_;
   absl::flat_hash_map<WorkItem, bool> work_;

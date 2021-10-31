@@ -22,10 +22,11 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
           auto [f, inserted]            = context.add_func(node);
           PersistentResources resources = c.resources();
           resources.context             = &context;
-          Compiler compiler(resources);
           if (inserted) {
-            compiler.Enqueue(
-                {.kind = WorkItem::Kind::EmitShortFunctionBody, .node = node});
+            resources.enqueue({.kind    = WorkItem::Kind::EmitShortFunctionBody,
+                               .node    = node,
+                               .context = &context},
+                              {});
           }
 
           return f;
@@ -36,7 +37,9 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
 
   auto [f, inserted] = context().add_func(node);
   if (inserted) {
-    Enqueue({.kind = WorkItem::Kind::EmitShortFunctionBody, .node = node});
+    Enqueue({.kind    = WorkItem::Kind::EmitShortFunctionBody,
+             .node    = node,
+             .context = &context()});
   }
   out.append(ir::Fn(f));
   return;

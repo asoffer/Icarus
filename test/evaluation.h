@@ -32,8 +32,14 @@ TEST_P(EvaluationTest, Test) {
   auto qts      = mod.context().qual_types(e);
   ASSERT_EQ(qts.size(), 1);
   ASSERT_EQ(qts[0].type(), type);
-  auto result =
-      mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, type));
+
+  compiler::Compiler c(compiler::PersistentResources{
+      .context             = &mod.context(),
+      .diagnostic_consumer = &mod.consumer,
+      .importer            = &mod.importer,
+  });
+
+  auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, type));
   ASSERT_TRUE(result);
   EXPECT_EQ(expected, *result);
 }

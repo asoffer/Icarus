@@ -379,6 +379,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
                 EvaluateOrDiagnoseAs<ir::ModuleId>(node->init_val())) {
           // TODO: In generic contexts it doesn't make sense to place this on
           // the AST.
+
           node->scope()->embed(
               &importer().get(*maybe_mod).as<CompiledModule>().scope());
         } else {

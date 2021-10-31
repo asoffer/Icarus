@@ -32,8 +32,8 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),
       });
 
-  LOG("struct", "Allocating a new struct %p for %p on context %p", s, node,
-      &context());
+  LOG("StructLiteral", "Allocating a new struct %p for %p on context %p", s,
+      node, &context());
   context().set_struct(node, s);
 
   // Note: VerifyBody may end up triggering EmitToBuffer calls for member types
@@ -52,8 +52,12 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
 
   if (state_.must_complete) {
     LOG("compile-work-queue", "Request work complete struct: %p", node);
-    Enqueue({.kind = WorkItem::Kind::CompleteStructMembers, .node = node},
-            {WorkItem{.kind = WorkItem::Kind::VerifyStructBody, .node = node}});
+    Enqueue({.kind    = WorkItem::Kind::CompleteStructMembers,
+             .node    = node,
+             .context = &context()},
+            {WorkItem{.kind    = WorkItem::Kind::VerifyStructBody,
+                      .node    = node,
+                      .context = &context()}});
   }
   out.append(type::Type(s));
 }

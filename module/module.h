@@ -69,12 +69,13 @@ struct BasicModule : base::Cast<BasicModule> {
   base::PtrSpan<ast::Node const> InitializeNodes(
       std::vector<std::unique_ptr<ast::Node>> nodes);
 
+  base::PtrSpan<ast::Node const> nodes() const { return nodes_; }
+
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
                             diagnostic::DiagnosticConsumer &, Importer &) = 0;
 
  private:
-
   ast::ModuleScope scope_;
   std::vector<std::unique_ptr<ast::Node>> nodes_;
   std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer_;

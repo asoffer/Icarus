@@ -23,10 +23,10 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
 
           PersistentResources resources = c.resources();
           resources.context             = &context;
-          Compiler compiler(resources);
           if (inserted) {
-            compiler.Enqueue(
-                {.kind = WorkItem::Kind::EmitFunctionBody, .node = node});
+            c.Enqueue({.kind    = WorkItem::Kind::EmitFunctionBody,
+                       .node    = node,
+                       .context = &context});
           }
 
           return f;
@@ -43,7 +43,9 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
   // TODO Use correct constants
   auto [f, inserted] = context().add_func(node);
   if (inserted) {
-    Enqueue({.kind = WorkItem::Kind::EmitFunctionBody, .node = node});
+    Enqueue({.kind    = WorkItem::Kind::EmitFunctionBody,
+             .node    = node,
+             .context = &context()});
   }
   out.append(ir::Fn(f));
   return;

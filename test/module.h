@@ -5,14 +5,11 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/types/span.h"
-#include "ast/ast.h"
-#include "ast/expression.h"
-#include "ast/overload_set.h"
-#include "base/log.h"
+#include "ast/node.h"
 #include "base/ptr_span.h"
 #include "compiler/compiler.h"
+#include "compiler/resources.h"
+#include "compiler/work_graph.h"
 #include "diagnostic/consumer/aborting.h"
 #include "diagnostic/consumer/tracking.h"
 #include "module/mock_importer.h"
@@ -22,60 +19,102 @@ namespace test {
 
 struct TestModule : compiler::CompiledModule {
   TestModule()
-      : compiler({
-            .context             = context(),
-            .diagnostic_consumer = consumer,
-            .importer            = importer,
-        }),
-        source("\n") {}
+      : source_("\n"),
+        work_graph_(compiler::PersistentResources{
+            .context             = &context(),
+            .diagnostic_consumer = &consumer,
+            .importer            = &importer,
+        }) {}
 
   void AppendCode(std::string code) {
     code.push_back('\n');
-    source.buffer().AppendChunk(std::move(code));
-    AppendNodes(frontend::Parse(source.buffer(), consumer,
-                                source.buffer().num_chunks() - 1),
-                consumer, importer);
+    source_.buffer().AppendChunk(std::move(code));
+    diagnostic::AbortingConsumer diag(&source_);
+    auto stmts = frontend::Parse(source_.buffer(), diag,
+                                 source_.buffer().num_chunks() - 1);
+    auto nodes = InitializeNodes(std::move(stmts));
+    compiler::Compiler c(resources());
+    for (auto const* node : nodes) {
+      auto const* decl = node->if_as<ast::Declaration>();
+      if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
+        c.VerifyType(node);
+      }
+    }
+    for (auto const* node : nodes) {
+      auto const* decl = node->if_as<ast::Declaration>();
+      if (not decl or not(decl->flags() & ast::Declaration::f_IsConst)) {
+        c.VerifyType(node);
+      }
+    }
+    work_graph_.complete();
   }
 
   template <typename NodeType>
   NodeType const* Append(std::string code) {
     code.push_back('\n');
-    source.buffer().AppendChunk(std::move(code));
+    source_.buffer().AppendChunk(std::move(code));
 
-    diagnostic::AbortingConsumer diag(&source);
-    auto stmts = frontend::Parse(source.buffer(), diag,
-                                 source.buffer().num_chunks() - 1);
+    diagnostic::AbortingConsumer diag(&source_);
+    auto stmts = frontend::Parse(source_.buffer(), diag,
+                                 source_.buffer().num_chunks() - 1);
     if (auto* ptr = stmts[0]->template if_as<NodeType>()) {
-      std::vector<std::unique_ptr<ast::Node>> nodes;
-      nodes.push_back(std::move(stmts[0]));
-      AppendNodes(std::move(nodes), consumer, importer);
+      std::vector<std::unique_ptr<ast::Node>> ns;
+      ns.push_back(std::move(stmts[0]));
+      auto nodes = InitializeNodes(std::move(ns));
+      compiler::Compiler c(resources());
+      for (auto const* node : nodes) {
+        auto const* decl = node->if_as<ast::Declaration>();
+        if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
+          c.VerifyType(node);
+        }
+      }
+      for (auto const* node : nodes) {
+        auto const* decl = node->if_as<ast::Declaration>();
+        if (not decl or not(decl->flags() & ast::Declaration::f_IsConst)) {
+          c.VerifyType(node);
+        }
+      }
+      work_graph_.complete();
       return ptr;
     } else {
       return nullptr;
     }
   }
 
-  compiler::WorkGraph work_graph;
-  module::MockImporter importer;
-  diagnostic::TrackingConsumer consumer;
-  compiler::Compiler compiler;
-
- protected:
-  void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
-                    diagnostic::DiagnosticConsumer& diag,
-                    module::Importer&) override {
-    compiler.VerifyAll(nodes);
-    work_graph.complete();
+  compiler::PersistentResources const& resources() {
+    return work_graph_.resources();
   }
 
- private:
-  frontend::StringSource source;
-};
+  void CompileImportedLibrary(compiler::CompiledModule& imported_mod,
+                              std::string_view name, std::string content) {
+    auto id = ir::ModuleId::New();
 
+    compiler::PersistentResources import_resources{
+        .context             = &imported_mod.context(&imported_mod),
+        .diagnostic_consumer = &consumer,
+        .importer            = &importer,
+    };
+    imported_mod.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
 
-struct TestResources {
-  diagnostic::TrackingConsumer consumer;
+    frontend::SourceBuffer buffer(std::move(content));
+    compiler::CompileLibrary(
+        import_resources,
+        imported_mod.InitializeNodes(frontend::Parse(buffer, consumer)));
+
+    ON_CALL(importer, Import(testing::Eq(name)))
+        .WillByDefault([id](std::string_view) { return id; });
+    ON_CALL(importer, get(id))
+        .WillByDefault([&imported_mod](ir::ModuleId) -> module::BasicModule& {
+          return imported_mod;
+        });
+  }
+
   module::MockImporter importer;
+  diagnostic::TrackingConsumer consumer;
+
+ private:
+  frontend::StringSource source_;
+  compiler::WorkGraph work_graph_;
 };
 
 }  // namespace test

@@ -20,54 +20,19 @@ Compiler::Compiler(PersistentResources const &resources)
 Compiler::Compiler(PersistentResources const &resources, TransientState state)
     : resources_(resources), state_(std::move(state)) {}
 
-static std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(
-    Compiler &c, ast::Expression const *expr, type::Type type) {
-  LOG("MakeThunk", "Thunk for %s: %s", expr->DebugString(), type.to_string());
-  ir::CompiledFn fn(type::Func({}, {type}));
-  ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
-    // TODO this is essentially a copy of the body of
-    // FunctionLiteral::EmitToBuffer Factor these out together.
-    c.builder().CurrentBlock() = fn.entry();
-
-    ir::PartialResultBuffer buffer;
-    c.EmitToBuffer(expr, buffer);
-
-    // TODO: Treating slices specially is a big hack. We need to fix treating
-    // these things special just because they're big.
-    if (type.is_big()) {
-      ASSERT(buffer.num_entries() != 0);
-      // TODO: guaranteed move-elision
-      c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), type), buffer);
-    } else {
-      ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
-                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::Jump, ir::Block, ir::GenericFn, interface::Interface>(
-          type, [&]<typename T>() {
-            c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
-                .index = 0,
-                .value = buffer.get<T>(0),
-            });
-          });
-    }
-    c.builder().ReturnJump();
-  }
-  LOG("MakeThunk", "%s", fn);
-
-  return std::pair(std::move(fn), EmitByteCode(fn));
-}
-
 interpreter::EvaluationResult Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr, bool must_complete) {
-  Compiler c              = MakeChild(resources());
-  c.state_.must_complete  = must_complete;
-  auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
-  ir::NativeFn::Data data{
-      .fn        = &thunk,
-      .type      = thunk.type(),
-      .byte_code = byte_code.begin(),
-  };
-  return EvaluateAtCompileTime(ir::NativeFn(&data));
+  auto maybe_result = EvaluateToBuffer(expr);
+  if (auto *diagnostics = std::get_if<std::vector<diagnostic::ConsumedMessage>>(
+          &maybe_result)) {
+    for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
+    return interpreter::EvaluationResult{interpreter::EvaluationResult::Failure{
+        .failure = interpreter::EvaluationResult::Failure::Reason ::Unknown,
+        .range   = (*expr)->range(),
+    }};
+  } else {
+    return std::get<ir::CompleteResultBuffer>(std::move(maybe_result));
+  }
 }
 
 std::optional<ir::CompleteResultBuffer> Compiler::EvaluateToBufferOrDiagnose(
@@ -79,32 +44,6 @@ std::optional<ir::CompleteResultBuffer> Compiler::EvaluateToBufferOrDiagnose(
     return std::nullopt;
   } else {
     return std::get<ir::CompleteResultBuffer>(std::move(maybe_result));
-  }
-}
-
-std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
-Compiler::EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
-                           bool must_complete) {
-  // TODO: The diagnosis part.
-  diagnostic::BufferingConsumer buffering_consumer(&diag());
-  auto r                 = resources();
-  r.diagnostic_consumer  = &buffering_consumer;
-  Compiler c             = MakeChild(r);
-  c.state_.must_complete = must_complete;
-
-  auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
-  ir::NativeFn::Data data{
-    .fn        = &thunk,
-      .type      = thunk.type(),
-      .byte_code = byte_code.begin(),
-  };
-  // TODO: We don't need to complete everything, just this node.
-  // work_graph.complete();
-
-  if (buffering_consumer.empty()) {
-    return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
-  } else {
-    return std::move(buffering_consumer).extract();
   }
 }
 

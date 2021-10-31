@@ -32,7 +32,9 @@ bool Compiler::VerifyBody(ast::StructLiteral const *node) {
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Verify type %p %s", node, node->DebugString());
-  Enqueue({.kind = WorkItem::Kind::VerifyStructBody, .node = node});
+  Enqueue({.kind    = WorkItem::Kind::VerifyStructBody,
+           .node    = node,
+           .context = &context()});
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 

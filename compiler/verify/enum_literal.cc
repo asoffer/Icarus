@@ -54,7 +54,7 @@ bool Compiler::VerifyBody(ast::EnumLiteral const *node) {
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::EnumLiteral const *node) {
   LOG("compile-work-queue", "Request work enum: %p", node);
-  Enqueue(WorkItem::VerifyBodyOf(node));
+  Enqueue(WorkItem::VerifyBodyOf(node, &context()));
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 

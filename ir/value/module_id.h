@@ -11,7 +11,7 @@
 namespace ir {
 namespace internal_module {
 
-inline constinit std::atomic<size_t> generator;
+inline constinit std::atomic<size_t> generator{0};
 
 }  // namespace internal_module
 

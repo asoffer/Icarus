@@ -21,18 +21,14 @@ struct WorkItem : base::Extend<WorkItem>::With<base::AbslHashExtension> {
     EmitJumpBody,
   };
 
-  static WorkItem VerifyTypeOf(ast::Node const *n) {
-    return {.kind = Kind::VerifyType, .node = n};
-  }
-
-  static WorkItem VerifyBodyOf(auto const *n) {
+  static WorkItem VerifyBodyOf(auto const *n, Context *ctx) {
     constexpr auto type = base::meta<std::decay_t<decltype(*n)>>;
     if constexpr (type == base::meta<ast::EnumLiteral>) {
-      return {.kind = Kind::VerifyEnumBody, .node = n};
+      return {.kind = Kind::VerifyEnumBody, .node = n, .context = ctx};
     } else if constexpr (type == base::meta<ast::FunctionLiteral>) {
-      return {.kind = Kind::VerifyFunctionBody, .node = n};
+      return {.kind = Kind::VerifyFunctionBody, .node = n, .context = ctx};
     } else if constexpr (type == base::meta<ast::StructLiteral>) {
-      return {.kind = Kind::VerifyStructBody, .node = n};
+      return {.kind = Kind::VerifyStructBody, .node = n, .context = ctx};
     } else {
       static_assert(base::always_false(type));
     }
@@ -40,6 +36,7 @@ struct WorkItem : base::Extend<WorkItem>::With<base::AbslHashExtension> {
 
   Kind kind;
   ast::Node const *node;
+  Context *context;
 };
 
 }  // namespace compiler

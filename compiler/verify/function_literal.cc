@@ -161,8 +161,6 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
   return JoinReturnTypes(c.diag(), InferReturnTypes(c, node));
 }
 
-}  // namespace
-
 type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "VerifyConcrete %s", node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
@@ -198,8 +196,10 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
       }
     }
 
-    LOG("FunctionLiteral", "Request work fn-lit: %p", node);
-    c.Enqueue({.kind = WorkItem::Kind::VerifyFunctionBody, .node = node});
+    LOG("FunctionLiteral", "Request work fn-lit: %p, %p", node, &c.context());
+    c.Enqueue({.kind    = WorkItem::Kind::VerifyFunctionBody,
+               .node    = node,
+               .context = &c.context()});
     return type::QualType::Constant(
         type::Func(std::move(params), std::move(output_type_vec)));
   } else {
@@ -211,6 +211,8 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
     }
   }
 }
+
+}  // namespace
 
 type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
   auto gen = [node, instantiation_compiler = Compiler(c.resources()),
@@ -268,13 +270,24 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
 
   auto const &fn_type =
       context().qual_types(node)[0].type().as<type::Function>();
+
   for (auto const &param : fn_type.params()) {
-    if (param.value.type().get()->completeness() ==
-        type::Completeness::Incomplete) {
+    type::Type t = param.value.type();
+    if (const auto *s = t.if_as<type::Struct>()) {
+      EnsureComplete({.kind    = WorkItem::Kind::CompleteStructMembers,
+                      .node    = context().ast_struct(s),
+                      .context = &context()});
+    }
+    if (t.get()->completeness() == type::Completeness::Incomplete) {
       NOT_YET();
     }
   }
   for (type::Type ret : fn_type.return_types()) {
+    if (const auto *s = ret.if_as<type::Struct>()) {
+      EnsureComplete({.kind    = WorkItem::Kind::CompleteStructMembers,
+                      .node    = context().ast_struct(s),
+                      .context = &context()});
+    }
     if (ret.get()->completeness() == type::Completeness::Incomplete) {
       NOT_YET();
     }

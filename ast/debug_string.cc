@@ -41,7 +41,7 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::MulEq: return " *= ";
     case frontend::Operator::DivEq: return " /= ";
     case frontend::Operator::ModEq: return " %= ";
-    case frontend::Operator::Or: return " or";
+    case frontend::Operator::Or: return " or ";
     case frontend::Operator::Xor: return " xor ";
     case frontend::Operator::And: return " and ";
     case frontend::Operator::SymbolOr: return " | ";
@@ -488,6 +488,8 @@ void ParameterizedStructLiteral::DebugStrAppend(std::string *out,
 void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
   if (type() == base::meta<ir::Integer>) {
     absl::StrAppend(out, value().get<ir::Integer>().value());
+  } else if (type() == base::meta<bool>) {
+    absl::StrAppend(out, value().get<bool>() ? "true" : "false");
   } else if (type() == base::meta<ir::Char>) {
     char c = value().get<ir::Char>();
     out->push_back('!');

@@ -16,6 +16,8 @@ cc_library(
         "//ast:overload_set",
         "//base:ptr_span",
         "//compiler",
+        "//compiler:resources",
+        "//compiler:work_graph",
         "//diagnostic/consumer:aborting",
         "//diagnostic/consumer:tracking",
         "//module:module",

@@ -19,6 +19,7 @@
 #include "base/untyped_buffer.h"
 #include "compiler/executable_module.h"
 #include "compiler/module.h"
+#include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "frontend/source/file_name.h"
@@ -141,7 +142,16 @@ int Compile(frontend::FileName const &file_name) {
 
   auto *src = &*maybe_file_src;
   diag      = diagnostic::StreamingConsumer(stderr, src);
-  module::FileImporter<LibraryModule> importer;
+  module::FileImporter<compiler::CompiledModule> importer(
+      [&](compiler::CompiledModule *mod, base::PtrSpan<ast::Node const> nodes) {
+        PersistentResources resources{
+            .context             = &mod->context(mod),
+            .diagnostic_consumer = &mod->diagnostic_consumer(),
+            .importer            = &importer,
+        };
+        CompileLibrary(resources, std::move(nodes));
+      });
+
   importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
@@ -155,24 +165,13 @@ int Compile(frontend::FileName const &file_name) {
   }
 
   compiler::PersistentResources resources{
-      .context             = std::ref(exec_mod.context(&exec_mod)),
-      .diagnostic_consumer = std::ref(diag),
-      .importer            = std::ref(importer),
+      .context             = &exec_mod.context(&exec_mod),
+      .diagnostic_consumer = &diag,
+      .importer            = &importer,
   };
 
-  auto nodes = frontend::Parse(src->buffer(), diag);
-  exec_mod.InitializeNodes(nodes);
-
-  auto node_span = WorkGraph(resources).ExecuteCompilationSequence(
-      std::move(nodes),
-      absl::bind_front(compiler::VerifyNodesSatisfying, IsConstantDeclaration),
-      absl::bind_front(compiler::VerifyNodesSatisfying,
-                       IsNotConstantDeclaration),
-      compiler::EmitIrForNodes);
-
-  ir::CompiledFn main_fn = ir::CompiledFn(type::Func({}, {}), {});
-  ProcessExecutableBody(resources, node_span, main_fn);
-
+  auto nodes = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
+  auto main_fn = CompileExecutable(resources, nodes);
   return CompileToObjectFile(exec_mod, main_fn, target_machine);
 }
 

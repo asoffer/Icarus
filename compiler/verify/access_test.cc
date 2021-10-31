@@ -196,29 +196,15 @@ TEST(Access, ArrayInvalidMember) {
 }
 
 TEST(Access, IntoModuleWithError) {
-  auto id = ir::ModuleId::New();
-  LibraryModule imported_module;
-  imported_module.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
-
   test::TestModule mod;
-  ON_CALL(mod.importer, Import(Eq("imported")))
-      .WillByDefault([id](std::string_view) { return id; });
-  ON_CALL(mod.importer, get(id))
-      .WillByDefault([&](ir::ModuleId) -> module::BasicModule & {
-        return imported_module;
-      });
-
-  frontend::SourceBuffer buffer(R"(
+  LibraryModule imported_module;
+  mod.CompileImportedLibrary(imported_module, "imported", R"(
   #{export} N :: bool = 3
   )");
-  imported_module.AppendNodes(frontend::Parse(buffer, mod.consumer),
-                              mod.consumer, mod.importer);
 
   mod.AppendCode("mod ::= import \"imported\"");
   auto const *expr = mod.Append<ast::Expression>(R"(mod.N)");
-  EXPECT_THAT(imported_module.diagnostic_consumer()
-                  .as<diagnostic::TrackingConsumer>()
-                  .diagnostics(),
+  EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "invalid-cast")));
 }
 

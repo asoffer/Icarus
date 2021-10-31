@@ -158,9 +158,11 @@ struct Compiler
     }
   }
 
-  void Enqueue(WorkItem w, absl::flat_hash_set<WorkItem> prerequisites = {}) {
+  void Enqueue(WorkItem const &w,
+               absl::flat_hash_set<WorkItem> prerequisites = {}) {
     resources_.enqueue(w, std::move(prerequisites));
   }
+  void EnsureComplete(WorkItem const &w) { resources_.complete(w); }
 
   absl::Span<type::QualType const> VerifyType(ast::Node const *node) {
     return ast::Visitor<VerifyTypeTag,
@@ -349,7 +351,9 @@ struct Compiler
   std::variant<ir::CompleteResultBuffer,
                std::vector<diagnostic::ConsumedMessage>>
   EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
-                   bool must_complete = true);
+                   bool must_complete = true) {
+    return resources().evaluate(expr, must_complete);
+  }
 
   std::optional<ir::CompleteResultBuffer> EvaluateToBufferOrDiagnose(
       type::Typed<ast::Expression const *> expr, bool must_complete = true);

@@ -18,8 +18,8 @@ TEST(BlockLiteral, Basic) {
   )");
   auto t         = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
-  auto result =
-      mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
+  auto result = Compiler(mod.resources())
+                    .Evaluate(type::Typed<ast::Expression const *>(e, t));
   ASSERT_TRUE(result);
   EXPECT_THAT(ir::CompiledBlock::From(result->get<ir::Block>(0))->after(),
               SizeIs(2));
