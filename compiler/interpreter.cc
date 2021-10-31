@@ -136,5 +136,6 @@ int main(int argc, char *argv[]) {
     std::cerr << "Too many positional arguments." << std::endl;
     return 1;
   }
+
   return compiler::Interpret(frontend::FileName(args[1]));
 }

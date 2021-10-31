@@ -1,15 +1,18 @@
 core ::= import "core.ic"
 
+// TODO: This should get moved to cstdlib.ic
 memcpy ::= foreign("memcpy", ([*]byte, [*]byte, u64) -> [*]byte)
 
 #{export}
 allocate ::= (T :: type) -> *T {
+  // TODO: This should get moved to cstdlib.ic
   malloc ::= foreign("malloc", u64 -> *T)
   return malloc(T'bytes)
 }
 
 #{export}
 allocate ::= (T :: type, l: u64) -> []T {
+  // TODO: This should get moved to cstdlib.ic
   malloc ::= foreign("malloc", u64 -> [*]T)
   return slice(malloc(T'bytes * l), l)
 }
@@ -17,6 +20,7 @@ allocate ::= (T :: type, l: u64) -> []T {
 #{export}
 // TODO: Accept either a pointer or a buffer pointer.
 deallocate ::= (ptr: ~`T) -> () {
+  // TODO: This should get moved to cstdlib.ic
   free ::= foreign("free", T -> ())
   free(ptr)
 }
@@ -42,6 +46,7 @@ expand ::= (m: []byte, new_size: u64) -> []byte {
 
 #{export}
 fill ::= (m: []byte, value: u8) -> () {
+  // TODO: This should get moved to cstdlib.ic
   memset ::= foreign("memset", ([*]char, i32, u64) -> [*]char)
   memset(m.data, value as i32, m.length)
 }
