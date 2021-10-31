@@ -15,7 +15,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
 #include "base/log.h"
-#include "compiler/library_module.h"
+#include "compiler/module.h"
 #include "diagnostic/consumer/streaming.h"
 #include "repl/module.h"
 #include "repl/source.h"
@@ -63,11 +63,8 @@ int main(int argc, char *argv[]) {
   repl::Source source(&std::cin, &std::cout);
   diagnostic::StreamingConsumer diag(stderr, &source);
 
-  module::FileImporter<compiler::LibraryModule> importer;
+  module::FileImporter<compiler::CompiledModule> importer;
   repl::Module mod;
-  // TODO: Handle parse failures
-  while (true) {
-    mod.AppendNodes(frontend::Parse(source.buffer(), diag), diag, importer);
-  }
+  // TODO: Implement
   return 0;
 }

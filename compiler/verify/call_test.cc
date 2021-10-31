@@ -1,5 +1,5 @@
 #include "compiler/compiler.h"
-#include "compiler/library_module.h"
+#include "compiler/module.h"
 #include "frontend/source/buffer.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -256,7 +256,7 @@ TEST(Call, Uncallable) {
 
 TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
   test::TestModule mod;
-  LibraryModule imported_mod;
+  CompiledModule imported_mod;
   mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {}
   #{export} f ::= (s: S) => true
@@ -275,7 +275,7 @@ TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
 
 TEST(Call, CrossModuleWithADLSucceed) {
   test::TestModule mod;
-  LibraryModule imported_mod;
+  CompiledModule imported_mod;
   mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {}
   #{export} f ::= (s: S) => 3 as i64
@@ -292,7 +292,7 @@ TEST(Call, CrossModuleWithADLSucceed) {
 
 TEST(Call, CrossModuleWithADLWithoutExport) {
   test::TestModule mod;
-  LibraryModule imported_mod;
+  CompiledModule imported_mod;
   mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {}
   f ::= (s: S) => 3 as i64

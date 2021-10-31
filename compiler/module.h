@@ -47,11 +47,6 @@ struct CompiledModule : module::BasicModule {
     depends_on_module_with_errors_ = true;
   }
 
-  // TODO: virtual method is no longer needed.
-  void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
-                    diagnostic::DiagnosticConsumer &diag,
-                    module::Importer &importer) override {}
-
   void CompilationComplete() { notification_.Notify(); }
 
  private:

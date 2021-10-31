@@ -273,30 +273,6 @@ cc_library(
 )
 
 cc_library(
-    name = "library_module",
-    hdrs = ["library_module.h"],
-    deps = [
-        ":module",
-        ":resources",
-        "//diagnostic/consumer",
-        "//module:importer",
-    ],
-)
-
-cc_library(
-    name = "executable_module",
-    hdrs = ["executable_module.h"],
-    deps = [
-        ":library_module",
-        ":module",
-        "//ast:scope",
-        "//diagnostic/consumer",
-        "//ir:compiled_fn",
-        "//module:importer",
-    ],
-)
-
-cc_library(
     name = "type_for_diagnostic",
     hdrs = ["type_for_diagnostic.h"],
     srcs = ["type_for_diagnostic.cc"],
@@ -312,7 +288,7 @@ cc_test(
     name = "type_for_diagnostic_test",
     srcs = ["type_for_diagnostic_test.cc"],
     deps = [
-        ":library_module",
+        ":module",
         ":type_for_diagnostic",
         ":context",
         "//test:module",
@@ -325,12 +301,11 @@ cc_binary(
     name = "dump_cfg",
     srcs = ["dump_cfg.cc"],
     deps = [
-        ":executable_module",
+        ":module",
         ":work_graph",
         "//base:log",
         "//base:no_destructor",
         "//base:untyped_buffer",
-        "//compiler:library_module",
         "//diagnostic/consumer:streaming",
         "//frontend/source:file_name",
         "//frontend/source:shared",
@@ -352,7 +327,7 @@ cc_binary(
     srcs = ["main.cc"],
     linkopts = LLVM_LINKOPTS,
     deps = [
-        ":executable_module",
+        ":module",
         ":work_graph",
         "//base:log",
         "//backend:llvm",
@@ -378,7 +353,7 @@ cc_binary(
     name = "interpret",
     srcs = ["interpreter.cc"],
     deps = [
-        ":executable_module",
+        ":module",
         ":instructions",
         ":work_graph",
         "//base:log",

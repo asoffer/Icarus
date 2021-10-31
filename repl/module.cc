@@ -33,37 +33,4 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
 
 }  // namespace
 
-void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
-                          diagnostic::DiagnosticConsumer &diag,
-                          module::Importer &importer) {
-  compiler::WorkGraph work_graph;
-  compiler::Compiler c({
-      .context             = std::ref(context()),
-      .diagnostic_consumer = std::ref(diag),
-      .importer            = std::ref(importer),
-  });
-  ir::PartialResultBuffer buffer;
-  for (ast::Node const *node : nodes) {
-    LOG("repl", "%s", node->DebugString());
-    if (node->is<ast::Declaration>()) {
-      auto *decl = &node->as<ast::Declaration>();
-
-      {
-        c.VerifyType(decl);
-        buffer.clear();
-        c.EmitToBuffer(decl, buffer);
-        work_graph.complete();
-        if (c.diag().num_consumed() != 0) { return; }
-      }
-
-    } else if (node->is<ast::Expression>()) {
-      auto *expr = &node->as<ast::Expression>();
-      ReplEval(expr, &c);
-      absl::FPrintF(stderr, "\n");
-    } else {
-      NOT_YET(*node);
-    }
-  }
-}
-
 }  // namespace repl

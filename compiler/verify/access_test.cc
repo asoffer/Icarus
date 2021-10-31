@@ -1,5 +1,5 @@
 #include "compiler/compiler.h"
-#include "compiler/library_module.h"
+#include "compiler/module.h"
 #include "frontend/source/buffer.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -197,7 +197,7 @@ TEST(Access, ArrayInvalidMember) {
 
 TEST(Access, IntoModuleWithError) {
   test::TestModule mod;
-  LibraryModule imported_module;
+  CompiledModule imported_module;
   mod.CompileImportedLibrary(imported_module, "imported", R"(
   #{export} N :: bool = 3
   )");

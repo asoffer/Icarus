@@ -61,7 +61,7 @@ cc_test(
     srcs = ["access_test.cc"],
     deps = [
         "//compiler",
-        "//compiler:library_module",
+        "//compiler:module",
         "//frontend/source:buffer",
         "//test:module",
         "@com_google_googletest//:gtest_main",
@@ -179,7 +179,7 @@ cc_test(
     srcs = ["call_test.cc"],
     deps = [
         "//compiler",
-        "//compiler:library_module",
+        "//compiler:module",
         "//frontend/source:buffer",
         "//test:module",
         "@com_google_googletest//:gtest_main",
@@ -299,7 +299,7 @@ cc_test(
     srcs = ["designated_initializer_test.cc"],
     deps = [
         "//compiler",
-        "//compiler:library_module",
+        "//compiler:module",
         "//frontend/source:buffer",
         "//test:module",
         "@com_google_googletest//:gtest_main",

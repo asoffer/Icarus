@@ -17,9 +17,7 @@
 #include "base/log.h"
 #include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
-#include "compiler/executable_module.h"
 #include "compiler/instructions.h"
-#include "compiler/library_module.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
@@ -60,8 +58,8 @@ int Interpret(frontend::FileName const &file_name) {
   auto *src = &*maybe_file_src;
   diag      = diagnostic::StreamingConsumer(stderr, src);
 
-  module::FileImporter<LibraryModule> importer(
-      [&](LibraryModule *mod, base::PtrSpan<ast::Node const> nodes) {
+  module::FileImporter<CompiledModule> importer(
+      [&](CompiledModule *mod, base::PtrSpan<ast::Node const> nodes) {
         PersistentResources resources{
             .context             = &mod->context(mod),
             .diagnostic_consumer = &mod->diagnostic_consumer(),
@@ -69,14 +67,13 @@ int Interpret(frontend::FileName const &file_name) {
         };
         CompileLibrary(resources, std::move(nodes));
       });
-
   importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;
   }
 
-  ExecutableModule exec_mod;
+  CompiledModule exec_mod;
   exec_mod.set_diagnostic_consumer<diagnostic::StreamingConsumer>(stderr, src);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.embed(importer.get(embedded_id));

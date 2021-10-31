@@ -31,10 +31,6 @@ base::PtrSpan<ast::Node const> BasicModule::InitializeNodes(
                                         nodes_.size() - prev_size);
 }
 
-void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
-                              diagnostic::DiagnosticConsumer &diag,
-                              Importer &importer) {}
-
 // TODO: Add a version of this function that also gives the declarations that
 // are inaccessible. Particularly interesting would be the case of an overlaod
 // set mixing constant and non-constants. It should also be an error to

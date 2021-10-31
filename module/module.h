@@ -17,7 +17,6 @@
 #include "diagnostic/consumer/consumer.h"
 
 namespace module {
-struct Importer;
 
 enum class Linkage { Internal, External };
 
@@ -39,9 +38,6 @@ struct BasicModule : base::Cast<BasicModule> {
   // anyway for reasons similar to those explaining why we disallow moves.
   BasicModule(BasicModule const &) = delete;
   BasicModule &operator=(BasicModule const &) = delete;
-
-  void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
-                   diagnostic::DiagnosticConsumer &diag, Importer &importer);
 
   ast::ModuleScope const &scope() const { return scope_; }
 
@@ -70,10 +66,6 @@ struct BasicModule : base::Cast<BasicModule> {
       std::vector<std::unique_ptr<ast::Node>> nodes);
 
   base::PtrSpan<ast::Node const> nodes() const { return nodes_; }
-
- protected:
-  virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
-                            diagnostic::DiagnosticConsumer &, Importer &) = 0;
 
  private:
   ast::ModuleScope scope_;

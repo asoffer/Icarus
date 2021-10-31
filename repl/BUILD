@@ -22,7 +22,7 @@ package(default_visibility = ["//visibility:private"])
 #         ":source",
 #         "//ast:ast",
 #         "//compiler:instructions",
-#         "//compiler:library_module",
+#         "//compiler:module",
 #         "//diagnostic/consumer:streaming",
 #         "@com_google_absl//absl/debugging:failure_signal_handler",
 #         "@com_google_absl//absl/debugging:symbolize",

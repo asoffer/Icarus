@@ -1,6 +1,6 @@
 #include "compiler/type_for_diagnostic.h"
 
-#include "compiler/library_module.h"
+#include "compiler/module.h"
 #include "diagnostic/consumer/tracking.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -139,37 +139,18 @@ INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
                          }));
 
 TEST(CrossModule, TypeForDiagnostic) {
-  auto id1 = ir::ModuleId::New();
-  auto id2 = ir::ModuleId::New();
-  LibraryModule imported_mod1;
-  LibraryModule imported_mod2;
-  imported_mod1.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
-  imported_mod2.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
-
   test::TestModule mod;
-  ON_CALL(mod.importer, Import(Eq("imported1")))
-      .WillByDefault([id1](std::string_view) { return id1; });
-  ON_CALL(mod.importer, Import(Eq("imported2")))
-      .WillByDefault([id2](std::string_view) { return id2; });
-  ON_CALL(mod.importer, get(id1))
-      .WillByDefault(
-          [&](ir::ModuleId) -> module::BasicModule & { return imported_mod1; });
-  ON_CALL(mod.importer, get(id2))
-      .WillByDefault(
-          [&](ir::ModuleId) -> module::BasicModule & { return imported_mod2; });
 
-  frontend::SourceBuffer buffer1(R"(
+  CompiledModule imported_mod1;
+  mod.CompileImportedLibrary(imported_mod1, "imported1", R"(
   #{export} S ::= struct {}
   )");
-  imported_mod1.AppendNodes(frontend::Parse(buffer1, mod.consumer),
-                            mod.consumer, mod.importer);
 
-  frontend::SourceBuffer buffer2(R"(
+  CompiledModule imported_mod2;
+  mod.CompileImportedLibrary(imported_mod2, "imported2", R"(
   #{export} S ::= struct {}
   #{export} P ::= struct (T :: type) {}
   )");
-  imported_mod2.AppendNodes(frontend::Parse(buffer2, mod.consumer),
-                            mod.consumer, mod.importer);
 
   mod.AppendCode(R"(
   --  ::= import "imported1"

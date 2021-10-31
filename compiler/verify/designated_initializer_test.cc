@@ -1,5 +1,5 @@
 #include "compiler/compiler.h"
-#include "compiler/library_module.h"
+#include "compiler/module.h"
 #include "frontend/source/buffer.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -240,7 +240,7 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
 
 TEST(DesignatedInitializer, CrossModule) {
   test::TestModule mod;
-  LibraryModule imported_mod;
+  CompiledModule imported_mod;
   mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {
     #{export} n: i64
@@ -255,7 +255,7 @@ TEST(DesignatedInitializer, CrossModule) {
 
 TEST(DesignatedInitializer, NotExported) {
   test::TestModule mod;
-  LibraryModule imported_mod;
+  CompiledModule imported_mod;
   mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {
     n: i64

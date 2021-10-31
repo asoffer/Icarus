@@ -17,7 +17,6 @@
 #include "base/log.h"
 #include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
-#include "compiler/executable_module.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
@@ -158,7 +157,7 @@ int Compile(frontend::FileName const &file_name) {
     return 1;
   }
 
-  compiler::ExecutableModule exec_mod;
+  compiler::CompiledModule exec_mod;
   exec_mod.set_diagnostic_consumer<diagnostic::StreamingConsumer>(stderr, src);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.embed(importer.get(embedded_id));

@@ -9,7 +9,7 @@
 
 namespace compiler {
 // TODO: Remove
-using LibraryModule = CompiledModule;
+using CompiledModule = CompiledModule;
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_LIBRARY_MODULE_H
