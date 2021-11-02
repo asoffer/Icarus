@@ -16,16 +16,17 @@ bool IsNotConstantDeclaration(ast::Node const *n) {
 }
 
 void VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
+    Context& context,
                            WorkGraph &work_graph,
                            base::PtrSpan<ast::Node const> nodes) {
-  Compiler c(work_graph.resources());
+  Compiler c(&context, work_graph.resources());
   for (ast::Node const *node : nodes) {
     if (not predicate(node)) { continue; }
     c.VerifyType(node);
   }
 }
 
-std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(WorkGraph &w, Compiler &c,
+std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
                                                   ast::Expression const *expr,
                                                   type::Type type) {
   LOG("MakeThunk", "Thunk for %s: %s", expr->DebugString(), type.to_string());
@@ -65,41 +66,41 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(WorkGraph &w, Compiler &c,
 
 }  // namespace
 
-void CompileLibrary(PersistentResources const &resources,
+void CompileLibrary(Context &context, PersistentResources const &resources,
                     base::PtrSpan<ast::Node const> nodes) {
   WorkGraph w(resources);
   w.ExecuteCompilationSequence(
-      nodes,
-      [](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        VerifyNodesSatisfying(IsConstantDeclaration, w, nodes);
-        VerifyNodesSatisfying(IsNotConstantDeclaration, w, nodes);
+      context, nodes,
+      [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
+        VerifyNodesSatisfying(IsConstantDeclaration, context, w, nodes);
+        VerifyNodesSatisfying(IsNotConstantDeclaration, context, w, nodes);
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
         for (auto const *node : nodes) {
-          Compiler(w.resources()).EmitVoid(node);
+          Compiler(&context, w.resources()).EmitVoid(node);
         }
       });
 }
 
-ir::CompiledFn CompileExecutable(PersistentResources const &resources,
+ir::CompiledFn CompileExecutable(Context &context,
+                                 PersistentResources const &resources,
                                  base::PtrSpan<ast::Node const> nodes) {
   WorkGraph w(resources);
   ir::CompiledFn f = ir::CompiledFn(type::Func({}, {}), {});
 
   w.ExecuteCompilationSequence(
-      nodes,
-      [](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        VerifyNodesSatisfying(IsConstantDeclaration, w, nodes);
-        VerifyNodesSatisfying(IsNotConstantDeclaration, w, nodes);
+      context, nodes,
+      [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
+        VerifyNodesSatisfying(IsConstantDeclaration, context, w, nodes);
+        VerifyNodesSatisfying(IsNotConstantDeclaration, context, w, nodes);
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        Compiler c(w.resources());
+        Compiler c(&context, w.resources());
         ICARUS_SCOPE(ir::SetCurrent(f, c.builder())) {
           if (nodes.empty()) {
             EmitIrForStatements(c, nodes);
           } else {
-            ast::ModuleScope const &mod_scope =
-                w.resources().context->module().scope();
+            ast::ModuleScope const &mod_scope = context.module().scope();
             MakeAllStackAllocations(c, &mod_scope);
             EmitIrForStatements(c, nodes);
             MakeAllDestructions(c, &mod_scope);
@@ -125,9 +126,7 @@ bool WorkGraph::Execute(WorkItem const &w) {
 
   auto [work_iter, inserted] = work_.try_emplace(w);
   if (not inserted) { return work_iter->second; }
-  auto old_ctx          = std::exchange(resources_.context, w.context);
-  absl::Cleanup cleanup = [&] { resources_.context = old_ctx; };
-  Compiler c(resources_);
+  Compiler c(w.context, resources_);
   work_iter->second = [&] {
     switch (w.kind) {
       case WorkItem::Kind::VerifyType:
@@ -154,7 +153,8 @@ bool WorkGraph::Execute(WorkItem const &w) {
 }
 
 std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
-WorkGraph::EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
+WorkGraph::EvaluateToBuffer(Context &context,
+                            type::Typed<ast::Expression const *> expr,
                             bool must_complete) {
   // TODO: The diagnosis part.
   diagnostic::BufferingConsumer buffering_consumer(
@@ -163,10 +163,10 @@ WorkGraph::EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
   r.diagnostic_consumer = &buffering_consumer;
   WorkGraph w(r);
 
-  Compiler c(w.resources());
+  Compiler c(&context, w.resources());
   // c.state_.must_complete = must_complete;
 
-  auto [thunk, byte_code] = MakeThunk(w, c, *expr, expr.type());
+  auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
   ir::NativeFn::Data data{
       .fn        = &thunk,
       .type      = thunk.type(),

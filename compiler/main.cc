@@ -144,11 +144,9 @@ int Compile(frontend::FileName const &file_name) {
   module::FileImporter<compiler::CompiledModule> importer(
       [&](compiler::CompiledModule *mod, base::PtrSpan<ast::Node const> nodes) {
         PersistentResources resources{
-            .context             = &mod->context(mod),
             .diagnostic_consumer = &mod->diagnostic_consumer(),
-            .importer            = &importer,
-        };
-        CompileLibrary(resources, std::move(nodes));
+            .importer            = &importer};
+        CompileLibrary(mod->context(mod), resources, std::move(nodes));
       });
 
   importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
@@ -163,14 +161,12 @@ int Compile(frontend::FileName const &file_name) {
     exec_mod.embed(importer.get(embedded_id));
   }
 
-  compiler::PersistentResources resources{
-      .context             = &exec_mod.context(&exec_mod),
-      .diagnostic_consumer = &diag,
-      .importer            = &importer,
-  };
+  compiler::PersistentResources resources{.diagnostic_consumer = &diag,
+                                          .importer            = &importer};
 
   auto nodes = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
-  auto main_fn = CompileExecutable(resources, nodes);
+  auto main_fn =
+      CompileExecutable(exec_mod.context(&exec_mod), resources, nodes);
   return CompileToObjectFile(exec_mod, main_fn, target_machine);
 }
 

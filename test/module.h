@@ -21,7 +21,6 @@ struct TestModule : compiler::CompiledModule {
   TestModule()
       : source_("\n"),
         work_graph_(compiler::PersistentResources{
-            .context             = &context(),
             .diagnostic_consumer = &consumer,
             .importer            = &importer,
         }) {}
@@ -33,7 +32,7 @@ struct TestModule : compiler::CompiledModule {
     auto stmts = frontend::Parse(source_.buffer(), diag,
                                  source_.buffer().num_chunks() - 1);
     auto nodes = InitializeNodes(std::move(stmts));
-    compiler::Compiler c(resources());
+    compiler::Compiler c(&context(), resources());
     for (auto const* node : nodes) {
       auto const* decl = node->if_as<ast::Declaration>();
       if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
@@ -61,7 +60,7 @@ struct TestModule : compiler::CompiledModule {
       std::vector<std::unique_ptr<ast::Node>> ns;
       ns.push_back(std::move(stmts[0]));
       auto nodes = InitializeNodes(std::move(ns));
-      compiler::Compiler c(resources());
+      compiler::Compiler c(&context(), resources());
       for (auto const* node : nodes) {
         auto const* decl = node->if_as<ast::Declaration>();
         if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
@@ -90,7 +89,6 @@ struct TestModule : compiler::CompiledModule {
     auto id = ir::ModuleId::New();
 
     compiler::PersistentResources import_resources{
-        .context             = &imported_mod.context(&imported_mod),
         .diagnostic_consumer = &consumer,
         .importer            = &importer,
     };
@@ -98,7 +96,7 @@ struct TestModule : compiler::CompiledModule {
 
     frontend::SourceBuffer buffer(std::move(content));
     compiler::CompileLibrary(
-        import_resources,
+        imported_mod.context(&imported_mod), import_resources,
         imported_mod.InitializeNodes(frontend::Parse(buffer, consumer)));
 
     ON_CALL(importer, Import(testing::Eq(name)))

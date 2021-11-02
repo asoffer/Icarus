@@ -14,11 +14,14 @@
 
 namespace compiler {
 
-Compiler::Compiler(PersistentResources const &resources)
-    : resources_(resources) {}
+Compiler::Compiler(Context *context, PersistentResources const &resources)
+    : context_(*ASSERT_NOT_NULL(context)), resources_(resources) {}
 
-Compiler::Compiler(PersistentResources const &resources, TransientState state)
-    : resources_(resources), state_(std::move(state)) {}
+Compiler::Compiler(Context *context, PersistentResources const &resources,
+                   TransientState state)
+    : context_(*ASSERT_NOT_NULL(context)),
+      resources_(resources),
+      state_(std::move(state)) {}
 
 interpreter::EvaluationResult Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr, bool must_complete) {

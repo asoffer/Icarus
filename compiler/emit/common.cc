@@ -290,9 +290,8 @@ CalleeResult EmitCallee(
     type::QualType callee_qual_type =
         callee_mod->context(&c.context().module()).qual_types(callee)[0];
 
-    auto resources    = c.resources();
-    resources.context = &callee_mod->context(&c.context().module());
-    Compiler callee_compiler(resources);
+    Compiler callee_compiler(&callee_mod->context(&c.context().module()),
+                             c.resources());
 
     return EmitCalleeImpl(callee_compiler, callee, callee_qual_type, constants);
   }
@@ -651,8 +650,7 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
   auto [callee_fn, overload_type, defaults, context] =
       EmitCallee(c, callee, constant_arguments);
   PersistentResources resources = c.resources();
-  resources.context             = context ? context : &c.context();
-  Compiler child                = c.MakeChild(resources);
+  Compiler child = c.MakeChild(context ? context : &c.context(), resources);
 
   // Arguments provided to a function call need to be "prepared" in the sense
   // that they need to be

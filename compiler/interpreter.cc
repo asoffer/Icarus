@@ -61,11 +61,10 @@ int Interpret(frontend::FileName const &file_name) {
   module::FileImporter<CompiledModule> importer(
       [&](CompiledModule *mod, base::PtrSpan<ast::Node const> nodes) {
         PersistentResources resources{
-            .context             = &mod->context(mod),
             .diagnostic_consumer = &mod->diagnostic_consumer(),
             .importer            = &importer,
         };
-        CompileLibrary(resources, std::move(nodes));
+        CompileLibrary(mod->context(mod), resources, std::move(nodes));
       });
   importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
   if (not importer.SetImplicitlyEmbeddedModules(
@@ -80,13 +79,13 @@ int Interpret(frontend::FileName const &file_name) {
   }
 
   PersistentResources resources{
-      .context             = &exec_mod.context(&exec_mod),
       .diagnostic_consumer = &diag,
       .importer            = &importer,
   };
 
-  auto nodes = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
-  auto main_fn = CompileExecutable(resources, nodes);
+  auto nodes   = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
+  auto main_fn =
+      CompileExecutable(exec_mod.context(&exec_mod), resources, nodes);
 
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }

@@ -23,8 +23,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
   auto *gen_struct = type::Allocate<type::GenericStruct>();
 
-  auto gen = [gen_struct, node, instantiation_compiler = Compiler(resources()),
-              cg = builder().CurrentGroup()](
+  auto gen = [gen_struct, node,
+              instantiation_compiler = Compiler(&context(), resources()),
+              cg                     = builder().CurrentGroup()](
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable
       -> std::pair<core::Params<type::QualType>, type::Struct *> {
@@ -34,8 +35,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     if (inserted) {
       LOG("ParameterizedStructLiteral", "inserted! %s", node->DebugString());
       PersistentResources resources = instantiation_compiler.resources();
-      resources.context             = &context;
-      auto compiler = instantiation_compiler.MakeChild(resources);
+      auto compiler                 = instantiation_compiler.MakeChild(
+          &instantiation_compiler.context(), resources);
       compiler.builder().CurrentGroup() = cg;
 
       auto *s = type::Allocate<type::InstantiatedGenericStruct>(

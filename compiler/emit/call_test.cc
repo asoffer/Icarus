@@ -140,7 +140,7 @@ TEST(CallTest, Foreign) {
     auto const *e = mod.Append<ast::Expression>("f_ptr()");
     auto t        = mod.context().qual_types(e)[0].type();
     ASSERT_TRUE(t.valid());
-    auto result = Compiler(mod.resources())
+    auto result = Compiler(&mod.context(), mod.resources())
                       .Evaluate(type::Typed<ast::Expression const *>(e, t));
     ASSERT_TRUE(result);
     EXPECT_EQ(result->get<ir::addr_t>(0), ir::Addr(ForeignFunctionPtr()));
@@ -150,7 +150,7 @@ TEST(CallTest, Foreign) {
     auto const *e = mod.Append<ast::Expression>("f_i8()");
     auto t        = mod.context().qual_types(e)[0].type();
     ASSERT_TRUE(t.valid());
-    auto result = Compiler(mod.resources())
+    auto result = Compiler(&mod.context(), mod.resources())
                       .Evaluate(type::Typed<ast::Expression const *>(e, t));
     ASSERT_TRUE(result);
     EXPECT_EQ(result->get<int8_t>(0), ForeignFunctionI8());
@@ -160,7 +160,7 @@ TEST(CallTest, Foreign) {
     auto const *e = mod.Append<ast::Expression>("f_i64()");
     auto t        = mod.context().qual_types(e)[0].type();
     ASSERT_TRUE(t.valid());
-    auto result = Compiler(mod.resources())
+    auto result = Compiler(&mod.context(), mod.resources())
                       .Evaluate(type::Typed<ast::Expression const *>(e, t));
     ASSERT_TRUE(result);
     EXPECT_EQ(result->get<int64_t>(0), ForeignFunctionI64());

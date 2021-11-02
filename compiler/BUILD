@@ -394,6 +394,7 @@ cc_library(
     name = "work_item",
     hdrs = ["work_item.h"],
     deps = [
+        ":context",
         "//base:extend",
         "//base/extend:absl_hash",
         "//base:meta",

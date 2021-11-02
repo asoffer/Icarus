@@ -33,11 +33,10 @@ TEST_P(EvaluationTest, Test) {
   ASSERT_EQ(qts.size(), 1);
   ASSERT_EQ(qts[0].type(), type);
 
-  compiler::Compiler c(compiler::PersistentResources{
-      .context             = &mod.context(),
-      .diagnostic_consumer = &mod.consumer,
-      .importer            = &mod.importer,
-  });
+  compiler::Compiler c(&mod.context(), compiler::PersistentResources{
+                                           .diagnostic_consumer = &mod.consumer,
+                                           .importer            = &mod.importer,
+                                       });
 
   auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, type));
   ASSERT_TRUE(result);

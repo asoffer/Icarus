@@ -310,12 +310,13 @@ struct Compiler
     V::Visit(to.type().get(), to.get(), from);
   }
 
-  explicit Compiler(PersistentResources const &resources);
-  explicit Compiler(PersistentResources const &resources, TransientState state);
+  explicit Compiler(Context *context, PersistentResources const &resources);
+  explicit Compiler(Context *context, PersistentResources const &resources,
+                    TransientState state);
   Compiler(Compiler const &) = delete;
   Compiler(Compiler &&)      = default;
 
-  Context &context() const { return *resources_.context; }
+  Context &context() const { return context_; }
   ir::Builder &builder() { return builder_; };
   diagnostic::DiagnosticConsumer &diag() const {
     return *resources_.diagnostic_consumer;
@@ -352,7 +353,7 @@ struct Compiler
                std::vector<diagnostic::ConsumedMessage>>
   EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
                    bool must_complete = true) {
-    return resources().evaluate(expr, must_complete);
+    return resources().evaluate(context(), expr, must_complete);
   }
 
   std::optional<ir::CompleteResultBuffer> EvaluateToBufferOrDiagnose(
@@ -656,6 +657,7 @@ struct Compiler
       ast::Expression const *callee,
       absl::flat_hash_set<type::Type> const &argument_dependent_lookup_types);
 
+  Context &context_;
   PersistentResources resources_;
   TransientState state_;
   ir::Builder builder_;

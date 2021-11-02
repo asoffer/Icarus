@@ -39,7 +39,7 @@ TEST(StructLiteral, FieldError) {
     n: 3
     b := true
   })");
-  Compiler(mod.resources()).VerifyBody(s);
+  Compiler(&mod.context(), mod.resources()).VerifyBody(s);
   auto qts  = mod.context().qual_types(s);
   EXPECT_THAT(qts, UnorderedElementsAre( type::QualType::Constant(type::Type_)));
   EXPECT_THAT(mod.consumer.diagnostics(),

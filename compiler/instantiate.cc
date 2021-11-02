@@ -150,8 +150,7 @@ Context::InsertSubcontextResult Instantiate(
       ctx.DebugString());
   Context scratchpad = ctx.ScratchpadSubcontext();
   PersistentResources resources = c.resources();
-  resources.context             = &scratchpad;
-  Compiler child(resources);
+  Compiler child(&scratchpad, resources);
 
   return ctx.InsertSubcontext(node, ComputeParamsFromArgs(child, node, args),
                               std::move(scratchpad));
@@ -169,8 +168,7 @@ Context::FindSubcontextResult FindInstantiation(
       ctx.DebugString());
   Context scratchpad = ctx.ScratchpadSubcontext();
   PersistentResources resources = c.resources();
-  resources.context             = &scratchpad;
-  Compiler child(resources);
+  Compiler child(&scratchpad, resources);
 
   return ctx.FindSubcontext(node, ComputeParamsFromArgs(child, node, args));
 }

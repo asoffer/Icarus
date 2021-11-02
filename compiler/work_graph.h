@@ -35,7 +35,6 @@ struct WorkGraph {
       : resources_(resources) {
     resources_.enqueue = [this](WorkItem item,
                                 absl::flat_hash_set<WorkItem> prerequisites) {
-      ASSERT(item.context != nullptr);
       this->emplace(item, std::move(prerequisites));
     };
     resources_.evaluate = std::bind_front(&WorkGraph::EvaluateToBuffer, this);
@@ -43,11 +42,11 @@ struct WorkGraph {
   }
 
   void ExecuteCompilationSequence(
-      base::PtrSpan<ast::Node const> nodes,
+      Context &context, base::PtrSpan<ast::Node const> nodes,
       std::invocable<WorkGraph &, base::PtrSpan<ast::Node const>> auto
           &&... steps) {
     ((steps(*this, nodes), complete()), ...);
-    resources().context->module().CompilationComplete();
+    context.module().CompilationComplete();
   }
 
   void emplace(WorkItem const &w,
@@ -75,18 +74,18 @@ struct WorkGraph {
 
   std::variant<ir::CompleteResultBuffer,
                std::vector<diagnostic::ConsumedMessage>>
-  EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
+  EvaluateToBuffer(Context &context, type::Typed<ast::Expression const *> expr,
                    bool must_complete);
 
-// private:
+ private:
   PersistentResources resources_;
   absl::flat_hash_map<WorkItem, absl::flat_hash_set<WorkItem>> dependencies_;
   absl::flat_hash_map<WorkItem, bool> work_;
 };
 
-void CompileLibrary(PersistentResources const &resources,
+void CompileLibrary(Context &context, PersistentResources const &resources,
                     base::PtrSpan<ast::Node const> nodes);
-ir::CompiledFn CompileExecutable(PersistentResources const &resources,
+ir::CompiledFn CompileExecutable(Context& context, PersistentResources const &resources,
                                  base::PtrSpan<ast::Node const> nodes);
 
 }  // namespace compiler

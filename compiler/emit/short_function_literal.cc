@@ -13,7 +13,7 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
                             ir::PartialResultBuffer &out) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
-        [c = Compiler(resources()),
+        [c = Compiler(&context(), resources()),
          node](core::Arguments<type::Typed<ir::CompleteResultRef>> const
                    &args) mutable -> ir::NativeFn {
           auto find_subcontext_result = FindInstantiation(c, node, args);
@@ -21,7 +21,6 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
 
           auto [f, inserted]            = context.add_func(node);
           PersistentResources resources = c.resources();
-          resources.context             = &context;
           if (inserted) {
             resources.enqueue({.kind    = WorkItem::Kind::EmitShortFunctionBody,
                                .node    = node,

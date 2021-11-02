@@ -4,6 +4,7 @@
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "base/meta.h"
+#include "compiler/context.h"
 
 namespace compiler {
 // A `WorkItem` is a description of a task to be completed by the compiler

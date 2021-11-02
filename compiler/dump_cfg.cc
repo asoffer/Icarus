@@ -132,11 +132,10 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
   module::FileImporter<compiler::CompiledModule> importer(
       [&](compiler::CompiledModule *mod, base::PtrSpan<ast::Node const> nodes) {
         compiler::PersistentResources resources{
-            .context             = &mod->context(mod),
             .diagnostic_consumer = &mod->diagnostic_consumer(),
             .importer            = &importer,
         };
-        compiler::CompileLibrary(resources, std::move(nodes));
+        compiler::CompileLibrary(mod->context(), resources, std::move(nodes));
       });
   importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
 
@@ -147,13 +146,13 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
   }
 
   compiler::PersistentResources resources{
-      .context             = &exec_mod.context(&exec_mod),
       .diagnostic_consumer = &diag,
       .importer            = &importer,
   };
 
   auto nodes = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
-  auto main_fn = compiler::CompileExecutable(resources, nodes);
+  auto main_fn = compiler::CompileExecutable(exec_mod.context(&exec_mod),
+                                             resources, nodes);
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
 
   output << "digraph {\n";
