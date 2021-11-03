@@ -28,15 +28,9 @@ cc_library(
     srcs = ["importer.cc"],
     deps = [
         ":module",
-        "//base:any_invocable",
         "//diagnostic/consumer:streaming",
-        "//frontend/source",
-        "//frontend/source:file",
-        "//frontend/source:file_name",
-        "//frontend/source:shared",
-        "//frontend:parse",
         "//ir/value:module_id",
-        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

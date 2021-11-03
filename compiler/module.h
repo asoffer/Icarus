@@ -16,49 +16,22 @@
 namespace compiler {
 
 struct CompiledModule : module::BasicModule {
-  explicit CompiledModule() : data_(this, &module_) {}
+  explicit CompiledModule(Context *context = nullptr)
+      : context_(ASSERT_NOT_NULL(context)), data_(&module_) {}
   ~CompiledModule() override {}
 
-  void ExportedValue(ast::Declaration::Id const *id,
-                     ir::PartialResultBuffer &out) const {
-    return context().LoadConstant(id, out);
+  Context const &context(module::BasicModule const *unused = nullptr) const {
+    return *context_;
   }
-
-  // If we're requesting from a different module we need to ensure that we've
-  // waited for that module to complete processing. But from the same module
-  // we node processing order to dictates safety.
-  Context const &context(module::BasicModule const *requestor) const {
-    if (requestor != this) { notification_.WaitForNotification(); }
-    return data_;
+  Context &context(module::BasicModule const *unused = nullptr) {
+    return *context_;
   }
-  Context &context(module::BasicModule const *requestor) {
-    // TODO: We really probably want to assert if it's a different module. You
-    // shouldn't be able to modify the context of a different module.
-    if (requestor != this) { notification_.WaitForNotification(); }
-    return data_;
-  }
-  Context const &context() const { return context(this); }
-  Context &context() { return context(this); }
-
-  bool has_error_in_dependent_module() const {
-    return depends_on_module_with_errors_;
-  }
-  void set_dependent_module_with_errors() {
-    depends_on_module_with_errors_ = true;
-  }
-
-  void CompilationComplete() { notification_.Notify(); }
 
  private:
   ir::Module module_;
+  Context *context_;
   Context data_;
-  absl::Notification notification_;
-
-  // This flag should be set to true if this module is ever found to depend on
-  // another which has errors, even if those errors do not effect
-  // code-generation in this module.
-  bool depends_on_module_with_errors_ = false;
-  };
+};
 
 }  // namespace compiler
 

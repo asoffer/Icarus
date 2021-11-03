@@ -100,7 +100,7 @@ ir::CompiledFn CompileExecutable(Context &context,
           if (nodes.empty()) {
             EmitIrForStatements(c, nodes);
           } else {
-            ast::ModuleScope const &mod_scope = context.module().scope();
+            ast::ModuleScope const &mod_scope = w.resources().module->scope();
             MakeAllStackAllocations(c, &mod_scope);
             EmitIrForStatements(c, nodes);
             MakeAllDestructions(c, &mod_scope);

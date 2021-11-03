@@ -16,6 +16,7 @@ namespace compiler {
 // Resources and pointers/references to data that are guaranteed to outlive
 // any Compiler construction.
 struct PersistentResources {
+  CompiledModule *module;
   diagnostic::DiagnosticConsumer* diagnostic_consumer;
   module::Importer* importer;
   std::function<void(WorkItem, absl::flat_hash_set<WorkItem>)> enqueue;

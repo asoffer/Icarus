@@ -256,7 +256,7 @@ TEST(Call, Uncallable) {
 
 TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
   test::TestModule mod;
-  CompiledModule imported_mod;
+  test::TestModule imported_mod;
   mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {}
   #{export} f ::= (s: S) => true
@@ -275,7 +275,7 @@ TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
 
 TEST(Call, CrossModuleWithADLSucceed) {
   test::TestModule mod;
-  CompiledModule imported_mod;
+  test::TestModule imported_mod;
   mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {}
   #{export} f ::= (s: S) => 3 as i64
@@ -292,7 +292,7 @@ TEST(Call, CrossModuleWithADLSucceed) {
 
 TEST(Call, CrossModuleWithADLWithoutExport) {
   test::TestModule mod;
-  CompiledModule imported_mod;
+  test::TestModule imported_mod;
   mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {}
   f ::= (s: S) => 3 as i64

@@ -98,7 +98,7 @@ void AddOverloads(Context const &context, ast::Expression const *callee,
   if (not overloads) { return; }
   for (auto const *overload : overloads->members()) {
     LOG("AddOverloads", "Callee: %p %s", overload, overload->DebugString());
-    type::QualType qt = RetrieveQualTypes(context, overload)[0];
+    type::QualType qt = RetrieveQualTypes(overload)[0];
 
     if (qt) { overload_map.emplace(overload, &qt.type().as<type::Callable>()); }
   }
@@ -251,7 +251,7 @@ Compiler::VerifyCallee(
     absl::flat_hash_set<compiler::CompiledModule const *> adl_modules;
     for (type::Type t : argument_dependent_lookup_types) {
       if (auto const *mod = type::Provenance(t)) {
-        if (mod == &context().module()) { continue; }
+        if (mod == resources().module) { continue; }
         adl_modules.insert(&mod->as<compiler::CompiledModule>());
       }
     }
@@ -269,9 +269,9 @@ Compiler::VerifyCallee(
   for (type::Type t : argument_dependent_lookup_types) {
     // TODO: Generic structs? Arrays? Pointers?
     if (auto const *s = t.if_as<type::Struct>()) {
-      AddOverloads(s->defining_module()->as<compiler::CompiledModule>().context(
-                       &context().module()),
-                   callee, overload_map);
+      AddOverloads(
+          s->defining_module()->as<compiler::CompiledModule>().context(),
+          callee, overload_map);
     }
   }
 
@@ -299,7 +299,7 @@ Compiler::VerifyCall(
   // indirection in the overload set. Do we really want to rely on this?!
   if (auto const *overloads = context().AllOverloads(call_expr->callee())) {
     for (auto const *callee : overloads->members()) {
-      type::QualType qt = RetrieveQualTypes(context(), callee)[0];
+      type::QualType qt = RetrieveQualTypes(callee)[0];
       ExtractParams(callee, &qt.type().as<type::Callable>(), args,
                     overload_params, errors);
     }
@@ -409,14 +409,12 @@ std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
 }
 
 absl::Span<type::QualType const> RetrieveQualTypes(
-    Context const &c, ast::Expression const *expr) {
+    ast::Expression const *expr) {
   auto const &expr_mod = expr->scope()
                              ->Containing<ast::ModuleScope>()
                              ->module()
                              ->as<CompiledModule>();
-  auto &mod = c.module();
-  return (&mod == &expr_mod) ? c.qual_types(expr)
-                             : expr_mod.context(&mod).qual_types(expr);
+  return expr_mod.context().qual_types(expr);
 }
 
 }  // namespace compiler

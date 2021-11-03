@@ -96,7 +96,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
 
     case ir::BuiltinFn::Which::Opaque:
       out.append(c.current_block()->Append(type::OpaqueTypeInstruction{
-          .mod    = &c.context().module(),
+          .mod    = c.resources().module,
           .result = c.builder().CurrentGroup()->Reserve()}));
       return;
 

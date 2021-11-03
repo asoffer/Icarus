@@ -27,14 +27,14 @@ void Compiler::EmitToBuffer(ast::EnumLiteral const *node,
   switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum: {
       out.append(current_block()->Append(type::EnumInstruction{
-          .type              = type::Allocate<type::Enum>(&context().module()),
+          .type              = type::Allocate<type::Enum>(resources().module),
           .names_            = std::move(names),
           .specified_values_ = std::move(specified_values),
           .result            = builder().CurrentGroup()->Reserve()}));
     } break;
     case ast::EnumLiteral::Kind::Flags: {
       out.append(current_block()->Append(type::FlagsInstruction{
-          .type              = type::Allocate<type::Flags>(&context().module()),
+          .type              = type::Allocate<type::Flags>(resources().module),
           .names_            = std::move(names),
           .specified_values_ = std::move(specified_values),
           .result            = builder().CurrentGroup()->Reserve()}));

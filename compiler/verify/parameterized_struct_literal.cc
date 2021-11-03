@@ -40,7 +40,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       compiler.builder().CurrentGroup() = cg;
 
       auto *s = type::Allocate<type::InstantiatedGenericStruct>(
-          &compiler.context().module(),
+          compiler.resources().module,
           type::Struct::Options{.is_copyable = not node->hashtags.contains(
                                     ir::Hashtag::Uncopyable),
                                 .is_movable = not node->hashtags.contains(

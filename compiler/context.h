@@ -85,7 +85,7 @@ struct CompiledModule;
 // two different call-sites, there is exactly one callee (namely, `pow2`) and it
 // lives in the root context.
 struct Context {
-  Context(CompiledModule *mod, ir::Module *ir_mod);
+  Context(ir::Module *ir_mod);
   Context(Context const &) = delete;
 
   // Even though these special members are defaulted, they need to be defined
@@ -95,8 +95,6 @@ struct Context {
   ~Context();
 
   std::string DebugString() const;
-
-  CompiledModule &module() const { return mod_; }
 
   Context &root() & { return tree_.parent ? tree_.parent->root() : *this; }
   Context const &root() const & {
@@ -315,9 +313,7 @@ struct Context {
   GoesTo(ast::Jump const *node) const;
 
  private:
-  explicit Context(CompiledModule *mod, Context *parent);
-
-  CompiledModule &mod_;
+  explicit Context(Context *parent);
 
   // Each Context is an intrusive node in a tree structure. Each Context has a
   // pointer to it's parent (accessible via `this->parent()`, and each node owns

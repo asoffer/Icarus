@@ -67,10 +67,25 @@ struct BasicModule : base::Cast<BasicModule> {
 
   base::PtrSpan<ast::Node const> nodes() const { return nodes_; }
 
+  bool has_error_in_dependent_module() const {
+    return depends_on_module_with_errors_;
+  }
+  void set_dependent_module_with_errors() {
+    depends_on_module_with_errors_ = true;
+  }
+
  private:
   ast::ModuleScope scope_;
   std::vector<std::unique_ptr<ast::Node>> nodes_;
   std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer_;
+
+  // This flag should be set to true if this module is ever found to depend on
+  // another which has errors, even if those errors do not effect
+  // code-generation in this module.
+  //
+  // TODO: As we move towards separate compilation in separate processes, this
+  // will become irrelevant.
+  bool depends_on_module_with_errors_ = false;
 };
 
 // Returns a container of all visible declarations in this scope  with the given

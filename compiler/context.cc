@@ -9,18 +9,16 @@ struct Context::Subcontext {
   Context context;
 };
 
-Context::Context(CompiledModule *mod, ir::Module *ir_mod)
-    : mod_(*ASSERT_NOT_NULL(mod)), ir_module_(*ASSERT_NOT_NULL(ir_mod)) {}
+Context::Context(ir::Module *ir_mod) : ir_module_(*ASSERT_NOT_NULL(ir_mod)) {}
 
 Context::Context(Context &&) = default;
 Context::~Context()          = default;
 
-Context::Context(CompiledModule *mod, Context *parent)
-    : Context(mod, &ASSERT_NOT_NULL(parent)->ir()) {
+Context::Context(Context *parent) : Context(&ASSERT_NOT_NULL(parent)->ir()) {
   tree_.parent = parent;
 }
 
-Context Context::ScratchpadSubcontext() { return Context(&mod_, this); }
+Context Context::ScratchpadSubcontext() { return Context(this); }
 
 std::string Context::DebugString() const {
   std::string out = "context[";

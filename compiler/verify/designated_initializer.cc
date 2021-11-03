@@ -184,7 +184,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
     for (auto const *field : assignment->lhs()) {
       std::string_view field_name = field->as<ast::Identifier>().name();
       if (auto *struct_field = struct_type->field(field_name)) {
-        if (struct_type->defining_module() == &context().module() or
+        if (struct_type->defining_module() == resources().module or
             struct_field->hashtags.contains(ir::Hashtag::Export)) {
           name_to_field.emplace(field_name, struct_field);
         } else {

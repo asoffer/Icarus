@@ -139,14 +139,11 @@ INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
                          }));
 
 TEST(CrossModule, TypeForDiagnostic) {
-  test::TestModule mod;
-
-  CompiledModule imported_mod1;
+  test::TestModule mod, imported_mod1, imported_mod2;
   mod.CompileImportedLibrary(imported_mod1, "imported1", R"(
   #{export} S ::= struct {}
   )");
 
-  CompiledModule imported_mod2;
   mod.CompileImportedLibrary(imported_mod2, "imported2", R"(
   #{export} S ::= struct {}
   #{export} P ::= struct (T :: type) {}

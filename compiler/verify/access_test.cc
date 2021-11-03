@@ -197,7 +197,7 @@ TEST(Access, ArrayInvalidMember) {
 
 TEST(Access, IntoModuleWithError) {
   test::TestModule mod;
-  CompiledModule imported_module;
+  test::TestModule imported_module;
   mod.CompileImportedLibrary(imported_module, "imported", R"(
   #{export} N :: bool = 3
   )");

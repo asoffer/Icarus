@@ -26,7 +26,7 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
   }
 
   type::Struct *s = type::Allocate<type::Struct>(
-      &context().module(),
+      resources().module,
       type::Struct::Options{
           .is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),

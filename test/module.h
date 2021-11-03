@@ -12,6 +12,8 @@
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/aborting.h"
 #include "diagnostic/consumer/tracking.h"
+#include "frontend/parse.h"
+#include "frontend/source/string.h"
 #include "module/mock_importer.h"
 #include "module/module.h"
 
@@ -19,8 +21,11 @@ namespace test {
 
 struct TestModule : compiler::CompiledModule {
   TestModule()
-      : source_("\n"),
+      : compiler::CompiledModule(&context_),
+        source_("\n"),
+        context_(&ir_module_),
         work_graph_(compiler::PersistentResources{
+            .module              = this,
             .diagnostic_consumer = &consumer,
             .importer            = &importer,
         }) {}
@@ -89,6 +94,7 @@ struct TestModule : compiler::CompiledModule {
     auto id = ir::ModuleId::New();
 
     compiler::PersistentResources import_resources{
+        .module              = &imported_mod,
         .diagnostic_consumer = &consumer,
         .importer            = &importer,
     };
@@ -109,9 +115,10 @@ struct TestModule : compiler::CompiledModule {
 
   module::MockImporter importer;
   diagnostic::TrackingConsumer consumer;
-
  private:
   frontend::StringSource source_;
+  ir::Module ir_module_;
+  compiler::Context context_;
   compiler::WorkGraph work_graph_;
 };
 

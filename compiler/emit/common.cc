@@ -283,15 +283,14 @@ CalleeResult EmitCallee(
   // though `callee_mod->context()` would be sufficient, we want to ensure that
   // we call the non-const overload if `callee_mod == &module()`.
 
-  if (callee_mod == &c.context().module()) {
+  if (callee_mod == c.resources().module) {
     return EmitCalleeImpl(c, callee, c.context().qual_types(callee)[0],
                           constants);
   } else {
     type::QualType callee_qual_type =
-        callee_mod->context(&c.context().module()).qual_types(callee)[0];
+        callee_mod->context().qual_types(callee)[0];
 
-    Compiler callee_compiler(&callee_mod->context(&c.context().module()),
-                             c.resources());
+    Compiler callee_compiler(&callee_mod->context(), c.resources());
 
     return EmitCalleeImpl(callee_compiler, callee, callee_qual_type, constants);
   }

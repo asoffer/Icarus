@@ -113,8 +113,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
                              ->Containing<ast::ModuleScope>()
                              ->module()
                              ->as<CompiledModule>();
-      if (mod != &context().module()) {
-        qt = mod->context(&context().module()).qual_types(id)[0];
+      if (mod != resources().module) {
+        qt = mod->context().qual_types(id)[0];
       } else {
         qt = VerifyType(id)[0];
       }
@@ -127,9 +127,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
     for (auto const *mod : *adl_modules) {
       auto ids = mod->scope().ExportedDeclarationIds(node->name());
       for (auto const *id : ids) {
-        potential_decl_ids.emplace_back(id,
-                                        mod->context(&context().module())
-                                            .qual_types(&id->declaration())[0]);
+        potential_decl_ids.emplace_back(
+            id, mod->context().qual_types(&id->declaration())[0]);
       }
     }
   }

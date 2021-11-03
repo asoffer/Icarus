@@ -258,17 +258,16 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
       std::vector<ast::Declaration::Id const *> ids;
 
       auto &s_mod = s->defining_module()->as<compiler::CompiledModule>();
-      auto const *ast_struct =
-          s_mod.context(&c.context().module()).ast_struct(s);
+      auto const *ast_struct = s_mod.context().ast_struct(s);
 
       if (s_mod.diagnostic_consumer().num_consumed() != 0) {
-        c.context().module().set_dependent_module_with_errors();
+        c.resources().module->set_dependent_module_with_errors();
       }
 
       for (auto const &decl : ast_struct->as<ast::StructLiteral>().fields()) {
         if (not(decl.flags() & ast::Declaration::f_IsConst)) { continue; }
 
-        if (&c.context().module() != &s_mod and
+        if (c.resources().module != &s_mod and
             not decl.hashtags.contains(ir::Hashtag::Export)) {
           continue;
         }
@@ -321,7 +320,7 @@ type::QualType AccessStructMember(Compiler &c, ast::Access const *node,
   type::QualType qt(member->type, quals | type::Quals::Ref());
 
   // Struct field members need to be exported in addition to the struct itself.
-  if (&c.context().module() != s->defining_module() and
+  if (c.resources().module != s->defining_module() and
       not member->hashtags.contains(ir::Hashtag::Export)) {
     c.diag().Consume(NonExportedMember{
         .member = std::string{node->member_name()},
@@ -355,7 +354,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
   // a deadlock as this module waits for the notification that it's declarations
   // can be exported, so we would prefer to abort.
   auto const &mod = c.importer().get(mod_id).as<CompiledModule>();
-  ASSERT(&mod != &c.context().module());
+  ASSERT(&mod != c.resources().module);
 
   // Note: for any declarations read across module boundaries, we set the
   // QualType of the imported declaration on the importing module context. This
@@ -371,11 +370,10 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       return type::QualType::Error();
     } break;
     case 1: {
-      type::QualType qt =
-          mod.context(&c.context().module()).qual_types(ids[0])[0];
+      type::QualType qt = mod.context().qual_types(ids[0])[0];
 
       if (mod.diagnostic_consumer().num_consumed() != 0) {
-        c.context().module().set_dependent_module_with_errors();
+        c.resources().module->set_dependent_module_with_errors();
       }
 
       if (not qt.ok()) {
@@ -393,10 +391,10 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       // TODO: these may also be an overload set of scopes
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Callable const *> member_types;
-      auto const &ctx = mod.context(&c.context().module());
+      auto const &ctx = mod.context();
 
       if (mod.diagnostic_consumer().num_consumed() != 0) {
-        c.context().module().set_dependent_module_with_errors();
+        c.resources().module->set_dependent_module_with_errors();
       }
 
       for (auto const *id : ids) {

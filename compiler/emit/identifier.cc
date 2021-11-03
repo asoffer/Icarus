@@ -31,9 +31,8 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
                            ->Containing<ast::ModuleScope>()
                            ->module()
                            ->as<CompiledModule>();
-    if (mod != &context().module()) {
-      out.append(
-          *mod->context(&context().module()).Constant(&decl_span[0]->ids()[0]));
+    if (mod != resources().module) {
+      out.append(*mod->context().Constant(&decl_span[0]->ids()[0]));
     } else {
       EmitToBuffer(decl_span[0], out);
     }

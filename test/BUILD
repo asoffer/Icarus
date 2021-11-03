@@ -20,6 +20,8 @@ cc_library(
         "//compiler:work_graph",
         "//diagnostic/consumer:aborting",
         "//diagnostic/consumer:tracking",
+        "//frontend/source:string",
+        "//frontend:parse",
         "//module:module",
         "//module:mock_importer",
         "@com_google_absl//absl/types:span",

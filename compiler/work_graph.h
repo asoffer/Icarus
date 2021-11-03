@@ -46,7 +46,6 @@ struct WorkGraph {
       std::invocable<WorkGraph &, base::PtrSpan<ast::Node const>> auto
           &&... steps) {
     ((steps(*this, nodes), complete()), ...);
-    context.module().CompilationComplete();
   }
 
   void emplace(WorkItem const &w,

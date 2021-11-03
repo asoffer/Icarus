@@ -126,7 +126,7 @@ void Compiler::EmitToBuffer(ast::Declaration const *node,
                             ir::PartialResultBuffer &out) {
   LOG("Declaration", "%s", node->DebugString());
   ASSERT(node->scope()->Containing<ast::ModuleScope>()->module() ==
-         &context().module());
+         resources().module);
   if (node->flags() & ast::Declaration::f_IsConst) {
     EmitConstantDeclaration(*this, node, out);
   } else {

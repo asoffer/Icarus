@@ -34,6 +34,27 @@ cc_test(
 )
 
 cc_library(
+    name = "importer",
+    hdrs = ["importer.h"],
+    srcs = ["importer.cc"],
+    deps = [
+        ":context",
+        ":module",
+        ":resources",
+        ":work_graph",
+        "//module",
+        "//diagnostic/consumer:streaming",
+        "//frontend/source",
+        "//frontend/source:file",
+        "//frontend/source:file_name",
+        "//frontend/source:shared",
+        "//frontend:parse",
+        "//ir/value:module_id",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "instructions",
     hdrs = ["instructions.h"],
     srcs = ["instructions.cc"],
@@ -67,7 +88,6 @@ cc_library(
 cc_library(
     name = "resources",
     hdrs = ["resources.h"],
-    srcs = ["resources.cc"],
     deps = [
         ":context",
         ":transient_state",
@@ -302,6 +322,7 @@ cc_binary(
     srcs = ["dump_cfg.cc"],
     deps = [
         ":module",
+        ":importer",
         ":work_graph",
         "//base:log",
         "//base:no_destructor",
@@ -328,6 +349,7 @@ cc_binary(
     linkopts = LLVM_LINKOPTS,
     deps = [
         ":module",
+        ":importer",
         ":work_graph",
         "//base:log",
         "//backend:llvm",
@@ -354,6 +376,7 @@ cc_binary(
     srcs = ["interpreter.cc"],
     deps = [
         ":module",
+        ":importer",
         ":instructions",
         ":work_graph",
         "//base:log",

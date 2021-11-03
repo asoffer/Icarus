@@ -17,10 +17,12 @@
 #include "base/log.h"
 #include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
+#include "compiler/importer.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
+#include "frontend/source/file.h"
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
 #include "ir/compiled_fn.h"
@@ -141,32 +143,29 @@ int Compile(frontend::FileName const &file_name) {
 
   auto *src = &*maybe_file_src;
   diag      = diagnostic::StreamingConsumer(stderr, src);
-  module::FileImporter<compiler::CompiledModule> importer(
-      [&](compiler::CompiledModule *mod, base::PtrSpan<ast::Node const> nodes) {
-        PersistentResources resources{
-            .diagnostic_consumer = &mod->diagnostic_consumer(),
-            .importer            = &importer};
-        CompileLibrary(mod->context(mod), resources, std::move(nodes));
-      });
-
-  importer.module_lookup_paths = absl::GetFlag(FLAGS_module_paths);
+  compiler::FileImporter importer(absl::GetFlag(FLAGS_module_paths));
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;
   }
 
-  compiler::CompiledModule exec_mod;
+  ir::Module ir_module;
+  compiler::Context context(&ir_module);
+  compiler::CompiledModule exec_mod(&context);
   exec_mod.set_diagnostic_consumer<diagnostic::StreamingConsumer>(stderr, src);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.embed(importer.get(embedded_id));
   }
 
-  compiler::PersistentResources resources{.diagnostic_consumer = &diag,
-                                          .importer            = &importer};
+  compiler::PersistentResources resources{
+      .module              = &exec_mod,
+      .diagnostic_consumer = &diag,
+      .importer            = &importer,
+  };
 
   auto nodes = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
   auto main_fn =
-      CompileExecutable(exec_mod.context(&exec_mod), resources, nodes);
+      CompileExecutable(context, resources, nodes);
   return CompileToObjectFile(exec_mod, main_fn, target_machine);
 }
 

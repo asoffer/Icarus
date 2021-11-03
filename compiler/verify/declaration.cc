@@ -298,7 +298,7 @@ type::QualType VerifyUninitialized(Compiler &compiler,
 absl::Span<type::QualType const> Compiler::VerifyType(
     ast::Declaration const *node) {
   ASSERT(node->scope()->Containing<ast::ModuleScope>()->module() ==
-         &context().module());
+         resources().module);
   // Declarations can be seen out of order if they're constants and we happen to
   // verify an identifier referencing the declaration before the declaration is
   // processed in source-order.

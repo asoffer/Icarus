@@ -240,7 +240,7 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
 
 TEST(DesignatedInitializer, CrossModule) {
   test::TestModule mod;
-  CompiledModule imported_mod;
+  test::TestModule imported_mod;
   mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {
     #{export} n: i64
@@ -255,7 +255,7 @@ TEST(DesignatedInitializer, CrossModule) {
 
 TEST(DesignatedInitializer, NotExported) {
   test::TestModule mod;
-  CompiledModule imported_mod;
+  test::TestModule imported_mod;
   mod.CompileImportedLibrary(imported_mod, "imported", R"(
   #{export} S ::= struct {
     n: i64

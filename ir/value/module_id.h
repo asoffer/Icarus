@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_VALUE_MODULE_ID_H
 #define ICARUS_IR_VALUE_MODULE_ID_H
 
+#include <atomic>
 #include <cstddef>
 #include <memory>
 

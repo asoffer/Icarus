@@ -64,7 +64,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
-      case 1: mod.ExportedValue(decl_ids[0], out); return;
+      case 1: mod.context().LoadConstant(decl_ids[0], out); return;
       default: NOT_YET();
     }
   }
@@ -175,7 +175,7 @@ void Compiler::EmitMoveInit(
       case 1: {
         type::QualType node_qt = context().qual_types(node)[0];
         ir::PartialResultBuffer buffer;
-        mod.ExportedValue(decl_ids[0], buffer);
+        mod.context().LoadConstant(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
       }
         return;
@@ -246,7 +246,7 @@ void Compiler::EmitCopyInit(
       case 0: NOT_YET();
       case 1: {
         ir::PartialResultBuffer buffer;
-        mod.ExportedValue(decl_ids[0], buffer);
+        mod.context().LoadConstant(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
       }
@@ -315,7 +315,7 @@ void Compiler::EmitMoveAssign(
       case 0: NOT_YET();
       case 1: {
         ir::PartialResultBuffer buffer;
-        mod.ExportedValue(decl_ids[0], buffer);
+        mod.context().LoadConstant(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
       }
@@ -356,7 +356,7 @@ void Compiler::EmitCopyAssign(
       case 0: NOT_YET();
       case 1: {
         ir::PartialResultBuffer buffer;
-        mod.ExportedValue(decl_ids[0], buffer);
+        mod.context().LoadConstant(decl_ids[0], buffer);
         EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
         return;
       }
