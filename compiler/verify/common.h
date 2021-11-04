@@ -78,6 +78,4 @@ std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
     Context const &context,
     base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node);
 
-absl::Span<type::QualType const> RetrieveQualTypes(ast::Expression const *expr);
-
 }  // namespace compiler

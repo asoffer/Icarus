@@ -92,14 +92,27 @@ std::vector<core::Arguments<type::Type>> ExpandedArguments(
   return all_expanded_options;
 }
 
-void AddOverloads(Context const &context, ast::Expression const *callee,
+absl::Span<type::QualType const> RetrieveQualTypes(
+    Context const &context, PersistentResources const &resources,
+    ast::Expression const *expr) {
+  auto const &expr_mod = expr->scope()
+                             ->Containing<ast::ModuleScope>()
+                             ->module()
+                             ->as<CompiledModule>();
+  auto &mod = *resources.module;
+  return (&mod == &expr_mod) ? context.qual_types(expr)
+                             : expr_mod.context(&mod).qual_types(expr);
+}
+
+void AddOverloads(Context const &context, PersistentResources const &resources,
+                  ast::Expression const *callee,
                   absl::flat_hash_map<ast::Expression const *,
                                       type::Callable const *> &overload_map) {
   auto const *overloads = context.AllOverloads(callee);
   if (not overloads) { return; }
   for (auto const *overload : overloads->members()) {
     LOG("AddOverloads", "Callee: %p %s", overload, overload->DebugString());
-    type::QualType qt = RetrieveQualTypes(overload)[0];
+    type::QualType qt = RetrieveQualTypes(context, resources, overload)[0];
 
     if (qt) { overload_map.emplace(overload, &qt.type().as<type::Callable>()); }
   }
@@ -266,13 +279,13 @@ Compiler::VerifyCallee(
   ASSIGN_OR(return return_type(qt, {}),  //
                    auto const &callable, qt.type().if_as<type::Callable>());
 
-  AddOverloads(context(), callee, overload_map);
+  AddOverloads(context(), resources(), callee, overload_map);
   for (type::Type t : argument_dependent_lookup_types) {
     // TODO: Generic structs? Arrays? Pointers?
     if (auto const *s = t.if_as<type::Struct>()) {
       AddOverloads(
           s->defining_module()->as<compiler::CompiledModule>().context(),
-          callee, overload_map);
+          resources(), callee, overload_map);
     }
   }
 
@@ -300,7 +313,7 @@ Compiler::VerifyCall(
   // indirection in the overload set. Do we really want to rely on this?!
   if (auto const *overloads = context().AllOverloads(call_expr->callee())) {
     for (auto const *callee : overloads->members()) {
-      type::QualType qt = RetrieveQualTypes(callee)[0];
+      type::QualType qt = RetrieveQualTypes(context(), resources(), callee)[0];
       ExtractParams(*this, callee, &qt.type().as<type::Callable>(), args,
                     overload_params, errors);
     }
@@ -338,8 +351,9 @@ Compiler::VerifyCall(
         if (not type::CanCastImplicitly(expansion[i], params[i].value.type())) {
           // TODO: Currently as soon as we find an error with a call we move on.
           // It'd be nice to extract all the error information for each.
-        LOG("VerifyCall", "Cannot cast implicitly: parameter %s with argument %s",
-            expansion[i].to_string(), params[i].value.type().to_string());
+          LOG("VerifyCall",
+              "Cannot cast implicitly: parameter %s with argument %s",
+              expansion[i].to_string(), params[i].value.type().to_string());
 
           errors.emplace(callable_type, core::CallabilityResult::TypeMismatch{
                                             .parameter = i,
@@ -407,15 +421,6 @@ std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
     }
   }
   return yield_types;
-}
-
-absl::Span<type::QualType const> RetrieveQualTypes(
-    ast::Expression const *expr) {
-  auto const &expr_mod = expr->scope()
-                             ->Containing<ast::ModuleScope>()
-                             ->module()
-                             ->as<CompiledModule>();
-  return expr_mod.context().qual_types(expr);
 }
 
 }  // namespace compiler
