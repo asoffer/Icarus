@@ -19,7 +19,8 @@ struct CompiledModule;
 namespace {
 
 void ExtractParams(
-    ast::Expression const *callee, type::Callable const *callable,
+    Compiler &compiler, ast::Expression const *callee,
+    type::Callable const *callable,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args,
     std::vector<std::tuple<ast::Expression const *, type::Callable const *,
                            core::Params<type::QualType>>> &overload_params,
@@ -37,7 +38,7 @@ void ExtractParams(
   } else if (auto const *os = callable->if_as<type::OverloadSet>()) {
     for (auto const *overload : os->members()) {
       // TODO: Callee provenance is wrong here.
-      ExtractParams(callee, overload, args, overload_params, errors);
+      ExtractParams(compiler, callee, overload, args, overload_params, errors);
     }
     if (overload_params.empty()) { return; }
   } else if (auto const *gf = callable->if_as<type::GenericFunction>()) {
@@ -47,7 +48,7 @@ void ExtractParams(
     if (result.ok()) {
       // TODO: But this could fail and when it fails we want to capture failure
       // reasons.
-      auto const *f = gf->concrete(args);
+      auto const *f = gf->concrete(compiler.work_resources(), args);
       overload_params.emplace_back(callee, f, f->params());
     } else {
       errors.emplace(gf, std::move(result));
@@ -56,7 +57,7 @@ void ExtractParams(
   } else if (auto const *gs = callable->if_as<type::GenericStruct>()) {
     // TODO: But this could fail and when it fails we want to capture failure
     // reasons.
-    auto [params, s] = gs->Instantiate(args);
+    auto [params, s] = gs->Instantiate(compiler.work_resources(), args);
     overload_params.emplace_back(callee, gs, params);
   } else {
     UNREACHABLE();
@@ -300,7 +301,7 @@ Compiler::VerifyCall(
   if (auto const *overloads = context().AllOverloads(call_expr->callee())) {
     for (auto const *callee : overloads->members()) {
       type::QualType qt = RetrieveQualTypes(callee)[0];
-      ExtractParams(callee, &qt.type().as<type::Callable>(), args,
+      ExtractParams(*this, callee, &qt.type().as<type::Callable>(), args,
                     overload_params, errors);
     }
   }

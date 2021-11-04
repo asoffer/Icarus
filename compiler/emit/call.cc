@@ -156,7 +156,8 @@ void Compiler::EmitToBuffer(ast::Call const *node, ir::PartialResultBuffer &out)
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    out.append(type::Type(gs_type->Instantiate(constant_arguments).second));
+    out.append(type::Type(
+        gs_type->Instantiate(work_resources(), constant_arguments).second));
     return;
   }
 
@@ -197,8 +198,8 @@ void Compiler::EmitMoveInit(
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(constant_arguments).second));
+    ir::RegOr<type::Type> t(type::Type(
+        gs_type->Instantiate(work_resources(), constant_arguments).second));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -233,8 +234,8 @@ void Compiler::EmitCopyInit(
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(constant_arguments).second));
+    ir::RegOr<type::Type> t(type::Type(
+        gs_type->Instantiate(work_resources(), constant_arguments).second));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -269,8 +270,8 @@ void Compiler::EmitMoveAssign(
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(constant_arguments).second));
+    ir::RegOr<type::Type> t(type::Type(
+        gs_type->Instantiate(work_resources(), constant_arguments).second));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitMoveAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -305,8 +306,8 @@ void Compiler::EmitCopyAssign(
                                 .qual_types(node->callee())[0]
                                 .type()
                                 .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(
-        type::Type(gs_type->Instantiate(constant_arguments).second));
+    ir::RegOr<type::Type> t(type::Type(
+        gs_type->Instantiate(work_resources(), constant_arguments).second));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));

@@ -5,6 +5,7 @@
 
 #include "ast/scope.h"
 #include "base/any_invocable.h"
+#include "compiler/work_resources.h"
 #include "core/arguments.h"
 #include "type/callable.h"
 #include "type/primitive.h"
@@ -20,6 +21,7 @@ struct GenericStruct : Callable {
 
   void set_invocable(
       base::any_invocable<std::pair<core::Params<QualType>, Struct const *>(
+          compiler::WorkResources const &,
           core::Arguments<Typed<ir::CompleteResultRef>> const &)>
           fn) {
     gen_ = std::move(fn);
@@ -38,8 +40,9 @@ struct GenericStruct : Callable {
   }
 
   auto Instantiate(
+      compiler::WorkResources const &wr,
       core::Arguments<Typed<ir::CompleteResultRef>> const &args) const {
-    return gen_(args);
+    return gen_(wr, args);
   }
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
@@ -52,6 +55,7 @@ struct GenericStruct : Callable {
  private:
   // TODO: Eventually we will want a serializable version of this.
   base::any_invocable<std::pair<core::Params<QualType>, Struct const *>(
+      compiler::WorkResources const &,
       core::Arguments<Typed<ir::CompleteResultRef>> const &)>
       gen_;
 };

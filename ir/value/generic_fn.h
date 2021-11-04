@@ -9,6 +9,7 @@
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
 #include "base/extend/equality.h"
+#include "compiler/work_resources.h"
 #include "core/arguments.h"
 #include "ir/value/native_fn.h"
 #include "ir/value/result_buffer.h"
@@ -33,10 +34,12 @@ struct GenericFn : base::Extend<GenericFn, 1>::With<base::EqualityExtension,
   explicit GenericFn()                                = default;
   explicit GenericFn(
       base::any_invocable<
-          NativeFn(core::Arguments<type::Typed<CompleteResultRef>> const &)>
+          NativeFn(compiler::WorkResources const &wr,
+                   core::Arguments<type::Typed<CompleteResultRef>> const &)>
           gen);
 
   NativeFn concrete(
+      compiler::WorkResources const &wr,
       core::Arguments<type::Typed<CompleteResultRef>> const &args) const;
 
  private:

@@ -7,11 +7,13 @@ namespace {
 
 TEST(GenericFn, Equality) {
   ir::GenericFn f1(
-      [](core::Arguments<type::Typed<ir::CompleteResultRef>> const&) {
+      [](compiler::WorkResources const &,
+         core::Arguments<type::Typed<ir::CompleteResultRef>> const &) {
         return ir::NativeFn(nullptr);
       });
   ir::GenericFn f2(
-      [](core::Arguments<type::Typed<ir::CompleteResultRef>> const&) {
+      [](compiler::WorkResources const &,
+         core::Arguments<type::Typed<ir::CompleteResultRef>> const &) {
         return ir::NativeFn(nullptr);
       });
   EXPECT_EQ(f1, f1);

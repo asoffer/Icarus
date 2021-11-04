@@ -16,10 +16,11 @@ bool IsNotConstantDeclaration(ast::Node const *n) {
 }
 
 void VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
-    Context& context,
-                           WorkGraph &work_graph,
+                           Context &context, WorkGraph &work_graph,
                            base::PtrSpan<ast::Node const> nodes) {
   Compiler c(&context, work_graph.resources());
+  c.set_work_resources(work_graph.work_resources());
+
   for (ast::Node const *node : nodes) {
     if (not predicate(node)) { continue; }
     c.VerifyType(node);
@@ -77,7 +78,9 @@ void CompileLibrary(Context &context, PersistentResources const &resources,
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
         for (auto const *node : nodes) {
-          Compiler(&context, w.resources()).EmitVoid(node);
+          Compiler c(&context, w.resources());
+          c.set_work_resources(w.work_resources());
+          c.EmitVoid(node);
         }
       });
 }
@@ -96,6 +99,7 @@ ir::CompiledFn CompileExecutable(Context &context,
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
         Compiler c(&context, w.resources());
+        c.set_work_resources(w.work_resources());
         ICARUS_SCOPE(ir::SetCurrent(f, c.builder())) {
           if (nodes.empty()) {
             EmitIrForStatements(c, nodes);
@@ -127,6 +131,7 @@ bool WorkGraph::Execute(WorkItem const &w) {
   auto [work_iter, inserted] = work_.try_emplace(w);
   if (not inserted) { return work_iter->second; }
   Compiler c(w.context, resources_);
+  c.set_work_resources(work_resources());
   work_iter->second = [&] {
     switch (w.kind) {
       case WorkItem::Kind::VerifyType:
@@ -164,6 +169,8 @@ WorkGraph::EvaluateToBuffer(Context &context,
   WorkGraph w(r);
 
   Compiler c(&context, w.resources());
+  c.set_work_resources(w.work_resources());
+
   // c.state_.must_complete = must_complete;
 
   auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());

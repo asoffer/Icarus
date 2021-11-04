@@ -175,6 +175,7 @@ cc_library(
         ":type",
         ":typed_value",
         "//base:any_invocable",
+        "//compiler:work_resources",
         "//core:arch",
         "//core:arguments",
     ],
@@ -190,6 +191,7 @@ cc_library(
         "//ast:scope",
         "//base:any_invocable",
         "//core:arguments",
+        "//compiler:work_resources",
         "//module",
     ],
 )

@@ -110,6 +110,7 @@ cc_library(
         "//base/extend:absl_hash",
         "//base/extend:equality",
         "//base:global",
+        "//compiler:work_resources",
         "//core:arguments",
         "//type",
         "//type:typed_value",

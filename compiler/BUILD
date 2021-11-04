@@ -417,9 +417,22 @@ cc_library(
     name = "work_item",
     hdrs = ["work_item.h"],
     deps = [
-        ":context",
         "//base:extend",
         "//base/extend:absl_hash",
         "//base:meta",
     ],
 )
+
+cc_library(
+    name = "work_resources",
+    hdrs = ["work_resources.h"],
+    deps = [
+        ":work_item",
+        "//ast:expression",
+        "//diagnostic/consumer",
+        "//ir/value:result_buffer",
+        "//type:typed_value",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
+)
+

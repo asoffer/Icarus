@@ -1,6 +1,7 @@
 #ifndef ICARUS_COMPILER_COMPILER_H
 #define ICARUS_COMPILER_COMPILER_H
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <queue>
@@ -10,6 +11,7 @@
 #include "ast/ast.h"
 #include "ast/overload_set.h"
 #include "ast/visitor.h"
+#include "base/any_invocable.h"
 #include "base/debug.h"
 #include "base/log.h"
 #include "compiler/bound_parameters.h"
@@ -132,11 +134,15 @@ struct Compiler
       type::Visitor<EmitCopyAssignTag,
                     void(ir::RegOr<ir::addr_t>,
                          type::Typed<ir::PartialResultRef> const &)> {
+
   PersistentResources &resources() { return resources_; }
+  void set_work_resources(WorkResources wr) { work_resources_ = std::move(wr); }
+  WorkResources const &work_resources() { return work_resources_; }
 
   template <typename... Args>
   Compiler MakeChild(Args &&... args) {
     Compiler c(std::forward<Args>(args)...);
+    c.set_work_resources(work_resources());
     c.builder().CurrentGroup() = builder().CurrentGroup();
     c.builder().CurrentBlock() = builder().CurrentBlock();
     return c;
@@ -160,9 +166,9 @@ struct Compiler
 
   void Enqueue(WorkItem const &w,
                absl::flat_hash_set<WorkItem> prerequisites = {}) {
-    resources_.enqueue(w, std::move(prerequisites));
+    work_resources_.enqueue(w, std::move(prerequisites));
   }
-  void EnsureComplete(WorkItem const &w) { resources_.complete(w); }
+  void EnsureComplete(WorkItem const &w) { work_resources_.complete(w); }
 
   absl::Span<type::QualType const> VerifyType(ast::Node const *node) {
     return ast::Visitor<VerifyTypeTag,
@@ -316,7 +322,8 @@ struct Compiler
   Compiler(Compiler const &) = delete;
   Compiler(Compiler &&)      = default;
 
-  Context &context() const { return context_; }
+  void set_context(Context *context) { context_ = ASSERT_NOT_NULL(context); }
+  Context &context() const { return *context_; }
   ir::Builder &builder() { return builder_; };
   diagnostic::DiagnosticConsumer &diag() const {
     return *resources_.diagnostic_consumer;
@@ -353,7 +360,8 @@ struct Compiler
                std::vector<diagnostic::ConsumedMessage>>
   EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
                    bool must_complete = true) {
-    return resources().evaluate(context(), expr, must_complete);
+    ASSERT(work_resources_.evaluate != nullptr);
+    return work_resources_.evaluate(context(), expr, must_complete);
   }
 
   std::optional<ir::CompleteResultBuffer> EvaluateToBufferOrDiagnose(
@@ -657,7 +665,8 @@ struct Compiler
       ast::Expression const *callee,
       absl::flat_hash_set<type::Type> const &argument_dependent_lookup_types);
 
-  Context &context_;
+  Context *context_;
+  WorkResources work_resources_;
   PersistentResources resources_;
   TransientState state_;
   ir::Builder builder_;

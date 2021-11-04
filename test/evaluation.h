@@ -38,6 +38,7 @@ TEST_P(EvaluationTest, Test) {
                                            .diagnostic_consumer = &mod.consumer,
                                            .importer            = &mod.importer,
                                        });
+  c.set_work_resources(mod.work_resources());
 
   auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, type));
   ASSERT_TRUE(result);

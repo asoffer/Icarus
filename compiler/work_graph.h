@@ -32,14 +32,7 @@ struct WorkGraph {
   WorkGraph &operator=(WorkGraph &&) = delete;
 
   explicit WorkGraph(PersistentResources const &resources)
-      : resources_(resources) {
-    resources_.enqueue = [this](WorkItem item,
-                                absl::flat_hash_set<WorkItem> prerequisites) {
-      this->emplace(item, std::move(prerequisites));
-    };
-    resources_.evaluate = std::bind_front(&WorkGraph::EvaluateToBuffer, this);
-    resources_.complete = std::bind_front(&WorkGraph::Execute, this);
-  }
+      : resources_(resources) {}
 
   void ExecuteCompilationSequence(
       Context &context, base::PtrSpan<ast::Node const> nodes,
@@ -66,7 +59,12 @@ struct WorkGraph {
 
   // Complete all work in the work queue.
   void complete() {
-    while (not dependencies_.empty()) { Execute(dependencies_.begin()->first); }
+    while (not dependencies_.empty()) {
+      // It's important to copy the item because calling `execute` might cause
+      // `dependencies_` to rehash.
+      auto item = dependencies_.begin()->first;
+      Execute(item);
+    }
   }
 
   PersistentResources const &resources() const { return resources_; }
@@ -75,6 +73,17 @@ struct WorkGraph {
                std::vector<diagnostic::ConsumedMessage>>
   EvaluateToBuffer(Context &context, type::Typed<ast::Expression const *> expr,
                    bool must_complete);
+
+  WorkResources work_resources() {
+    return {
+      .enqueue = [this](WorkItem item,
+                        absl::flat_hash_set<WorkItem> prerequisites) {
+        emplace(item, std::move(prerequisites));
+      },
+      .evaluate = std::bind_front(&WorkGraph::EvaluateToBuffer, this),
+      .complete = std::bind_front(&WorkGraph::Execute, this),
+    };
+  }
 
  private:
   PersistentResources resources_;

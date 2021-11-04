@@ -22,16 +22,18 @@ type::QualType VerifyGeneric(Compiler &c,
   auto gen = [node,
               instantiation_compiler = Compiler(&c.context(), c.resources()),
               cg                     = c.builder().CurrentGroup()](
+                 WorkResources const &wr,
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Function const * {
+    instantiation_compiler.set_work_resources(wr);
     auto [params, rets_ref, context, inserted] =
         Instantiate(instantiation_compiler, node, args);
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
       PersistentResources resources = instantiation_compiler.resources();
-      auto compiler                 = instantiation_compiler.MakeChild(
-          &instantiation_compiler.context(), resources);
+      auto compiler = instantiation_compiler.MakeChild(&context, resources);
+      compiler.set_work_resources(wr);
       compiler.builder().CurrentGroup() = cg;
       auto qt                           = VerifyConcrete(compiler, node);
       auto outs = qt.type().as<type::Function>().output();

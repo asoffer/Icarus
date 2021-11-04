@@ -237,7 +237,7 @@ CalleeResult EmitCalleeImpl(
     auto *parameterized_expr = &callable->as<ast::ParameterizedExpression>();
     auto find_subcontext_result =
         FindInstantiation(c, parameterized_expr, constants);
-    return {.callee   = ir::Fn(gen_fn.concrete(constants)),
+    return {.callee   = ir::Fn(gen_fn.concrete(c.work_resources(), constants)),
             .type     = find_subcontext_result.fn_type,
             .defaults = DefaultsFor(callable, find_subcontext_result.context),
             .context  = &find_subcontext_result.context};
@@ -291,7 +291,7 @@ CalleeResult EmitCallee(
         callee_mod->context().qual_types(callee)[0];
 
     Compiler callee_compiler(&callee_mod->context(), c.resources());
-
+    callee_compiler.set_work_resources(c.work_resources());
     return EmitCalleeImpl(callee_compiler, callee, callee_qual_type, constants);
   }
 }

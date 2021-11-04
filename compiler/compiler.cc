@@ -15,11 +15,11 @@
 namespace compiler {
 
 Compiler::Compiler(Context *context, PersistentResources const &resources)
-    : context_(*ASSERT_NOT_NULL(context)), resources_(resources) {}
+    : context_(ASSERT_NOT_NULL(context)), resources_(resources) {}
 
 Compiler::Compiler(Context *context, PersistentResources const &resources,
                    TransientState state)
-    : context_(*ASSERT_NOT_NULL(context)),
+    : context_(ASSERT_NOT_NULL(context)),
       resources_(resources),
       state_(std::move(state)) {}
 

@@ -19,7 +19,7 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
   auto qts = c.context().qual_types(&node->ids()[0]);
   auto t   = qts[0].type();
 
-  LOG("EmitConstantDeclaration", "%s", node->DebugString());
+  LOG("EmitConstantDeclaration", "%s %p", node->DebugString(), &c.context());
   if (node->flags() & ast::Declaration::f_IsFnParam) {
     c.context().LoadConstant(&node->ids()[0], out);
   } else {

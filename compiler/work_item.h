@@ -4,9 +4,10 @@
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "base/meta.h"
-#include "compiler/context.h"
 
 namespace compiler {
+struct Context;
+
 // A `WorkItem` is a description of a task to be completed by the compiler
 // infrastructure. Each `WorkItem` consists of an enumerator describing the kind
 // of work to be done, along with the AST node on which the work should be done.

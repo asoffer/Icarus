@@ -12,7 +12,8 @@ void Compiler::EmitToBuffer(ast::ParameterizedStructLiteral const *node,
   // TODO: Check the result of body verification.
   if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
   out.append(
-      ir::GenericFn([](core::Arguments<type::Typed<ir::CompleteResultRef>> const
+      ir::GenericFn([](WorkResources const &,
+                       core::Arguments<type::Typed<ir::CompleteResultRef>> const
                            &args) mutable -> ir::NativeFn { NOT_YET(); }));
 }
 

@@ -14,13 +14,15 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
 }
 
 Function const *GenericFunction::concrete(
+    compiler::WorkResources const &wr,
     core::Arguments<Typed<ir::CompleteResultRef>> const &args) const {
-  return gen_fn_(args);
+  return gen_fn_(wr, args);
 }
 
 std::vector<type::Type> GenericFunction::return_types(
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) const {
-  return concrete(args)->return_types(args);
+  compiler::WorkResources wr;
+  return concrete(wr, args)->return_types(args);
 }
 
 }  // namespace type

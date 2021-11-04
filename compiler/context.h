@@ -119,9 +119,9 @@ struct Context {
   //
   // Returns an `InsertSubcontext`. The `inserted` bool member indicates whether
   // a dependency was inserted. In either case (inserted or already present) the
-  // reference members `params` and `data` refer to the correspondingly computed
-  // parameter types and `Context` into which new computed data dependent on
-  // this set of generic context can be added.
+  // reference members `params` and `context` refer to the correspondingly
+  // computed parameter types and `Context` into which new computed data
+  // dependent on this set of generic context can be added.
   struct InsertSubcontextResult {
     BoundParameters const &params;
     std::vector<type::Type> &rets;

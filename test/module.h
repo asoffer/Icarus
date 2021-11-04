@@ -38,6 +38,7 @@ struct TestModule : compiler::CompiledModule {
                                  source_.buffer().num_chunks() - 1);
     auto nodes = InitializeNodes(std::move(stmts));
     compiler::Compiler c(&context(), resources());
+    c.set_work_resources(work_graph_.work_resources());
     for (auto const* node : nodes) {
       auto const* decl = node->if_as<ast::Declaration>();
       if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
@@ -66,6 +67,7 @@ struct TestModule : compiler::CompiledModule {
       ns.push_back(std::move(stmts[0]));
       auto nodes = InitializeNodes(std::move(ns));
       compiler::Compiler c(&context(), resources());
+      c.set_work_resources(work_graph_.work_resources());
       for (auto const* node : nodes) {
         auto const* decl = node->if_as<ast::Declaration>();
         if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
@@ -85,8 +87,12 @@ struct TestModule : compiler::CompiledModule {
     }
   }
 
-  compiler::PersistentResources const& resources() {
+  compiler::PersistentResources const& resources() const {
     return work_graph_.resources();
+  }
+
+  compiler::WorkResources work_resources() {
+    return work_graph_.work_resources();
   }
 
   void CompileImportedLibrary(compiler::CompiledModule& imported_mod,
