@@ -84,7 +84,9 @@ struct MetaValue {
   template <typename T>
   friend struct Meta;
 
-  friend char const* stringify(MetaValue m) { return m.name(); }
+  friend std::ostream& operator<<(std::ostream& os, MetaValue m) {
+    return os << m.name();
+  }
 
  private:
   explicit constexpr MetaValue(uintptr_t val) : value_(val) {}
@@ -109,7 +111,9 @@ struct Meta {
 
   char const* name() const { return name_; }
 
-  friend char const* stringify(Meta<T>) { return name_; }
+  friend std::ostream& operator<<(std::ostream& os, Meta) {
+    return os << name_;
+  }
 
   template <template <typename...> typename P>
   constexpr bool is_a() const {

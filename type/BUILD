@@ -389,7 +389,6 @@ cc_library(
     name = "typed_value", 
     hdrs = ["typed_value.h"],
     deps = [
-        "//base:stringify",
         "@com_google_absl//absl/strings",
     ],
 )

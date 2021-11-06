@@ -65,7 +65,7 @@ cc_library(
     hdrs = ["arguments.h"],
     deps = [
         "//base:meta",
-        "//base:stringify",
+        "//base:universal_print",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -86,6 +86,7 @@ cc_library(
         ":arguments",
         "//base:debug",
         "//base:macros",
+        "//base:universal_print",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -104,7 +105,6 @@ cc_library(
     hdrs = ["ordered_arguments.h"],
     deps = [
         ":arguments",
-        "//base:stringify",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/types:span",
     ],

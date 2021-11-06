@@ -1,7 +1,11 @@
 #ifndef ICARUS_IR_VALUE_REG_OR_H
 #define ICARUS_IR_VALUE_REG_OR_H
 
-#include "base/stringify.h"
+#include <ostream>
+#include <type_traits>
+#include <utility>
+
+#include "base/universal_print.h"
 #include "ir/value/reg.h"
 
 namespace ir {
@@ -58,9 +62,9 @@ struct RegOr {
                       : H::combine(std::move(h), false, r.value());
   }
 
-  friend std::string stringify(RegOr const &r) {
-    using base::stringify;
-    return r.is_reg() ? stringify(r.reg()) : stringify(r.value());
+  friend std::ostream &operator<<(std::ostream &os, RegOr const &r) {
+    return r.is_reg() ? os << r.reg()
+                      : os << base::UniversalPrintToString(r.value());
   }
 
  private:

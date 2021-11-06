@@ -2,7 +2,7 @@
 #define ICARUS_BASE_DEBUG_H
 
 #include "base/log.h"
-#include "base/stringify.h"
+#include "base/universal_print.h"
 
 #if defined(ICARUS_DEBUG)
 
@@ -93,20 +93,24 @@ struct Asserter {
       std::experimental::source_location src_loc =
           std::experimental::source_location::current()) const {
     if (not result.matched) {
-      using ::base::stringify;
       base::internal_logging::Log(
           ::base::internal_logging::kLogWithoutFunctionNameFormat, src_loc, "",
           "\033[0;1;31mAssertion failed\n"
           "    \033[0;1;37mExpected:\033[0m %s\n"
           "         \033[0;1;37mLHS:\033[0m %s\n"
           "         \033[0;1;37mRHS:\033[0m %s\n",
-          result.expr_string, stringify(result.lhs), stringify(result.rhs));
+          result.expr_string, ::base::UniversalPrintToString(result.lhs),
+          ::base::UniversalPrintToString(result.rhs));
     }
     return result.matched;
   }
 };
 
 }  // namespace debug
+
+// TODO: On both of the calls below, we could improve performance. Rather than
+// UniversalPrintToString, we could add a LogPrinter that printed directly to
+// the log without the intermediate string type.
 
 #define ASSERT_NOT_NULL(expr)                                                  \
   ([](auto &&ptr,                                                              \
@@ -120,9 +124,8 @@ struct Asserter {
 
 #define UNREACHABLE(...)                                                       \
   do {                                                                         \
-    using ::base::stringify;                                                   \
     LOG("", "Unreachable code-path.\n%s",                                      \
-        stringify(std::forward_as_tuple(__VA_ARGS__)));                        \
+        ::base::UniversalPrintToString(std::forward_as_tuple(__VA_ARGS__)));   \
     std::abort();                                                              \
   } while (false)
 
@@ -141,9 +144,8 @@ struct Asserter {
 
 #define NOT_YET(...)                                                           \
   do {                                                                         \
-    using ::base::stringify;                                                   \
     LOG("", "Not yet implemented.\n%s",                                        \
-        stringify(std::forward_as_tuple(__VA_ARGS__)));                        \
+        ::base::UniversalPrintToString(std::forward_as_tuple(__VA_ARGS__)));   \
     std::abort();                                                              \
   } while (false)
 

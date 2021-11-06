@@ -5,7 +5,6 @@
 
 namespace frontend {
 
-// TODO debug stringify.
 enum Tag : uint64_t {
   empty_parens = 1ull << 0,
   eof          = 1ull << 1,

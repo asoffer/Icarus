@@ -23,7 +23,10 @@ cc_library(
 cc_library(
     name = "debug",
     hdrs = ["debug.h"],
-    deps = [":log", ":stringify"],
+    deps = [
+        ":log",
+        ":universal_print",
+    ],
 )
 
 cc_library(
@@ -117,7 +120,6 @@ cc_library(
     srcs = ["log.cc"],
     deps = [
         ":global",
-        ":stringify",
         ":universal_print",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -248,27 +250,11 @@ cc_test(
 )
 
 cc_library(
-    name = "stringify",
-    hdrs = ["stringify.h"],
-    deps = [":unaligned_ref"],
-)
-
-cc_test(
-    name = "stringify_test",
-    srcs = ["stringify_test.cc"],
-    deps = [
-        ":stringify",
-        "@com_google_googletest//:gtest_main",
-    ]
-)
-
-cc_library(
     name = "strong_types",
     hdrs = ["strong_types.h"],
     deps = [
         ":debug",
         ":meta",
-        ":stringify",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -313,6 +299,7 @@ cc_library(
     hdrs = ["universal_print.h"],
     deps = [
         ":meta",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
 

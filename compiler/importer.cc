@@ -62,7 +62,7 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
     diag.Consume(frontend::MissingModule{
         .source    = file_name,
         .requestor = "",
-        .reason    = stringify(maybe_file_src),
+        .reason    = std::string(maybe_file_src.status().message()),
     });
     return ir::ModuleId::Invalid();
   }

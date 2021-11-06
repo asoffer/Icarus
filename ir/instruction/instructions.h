@@ -360,12 +360,17 @@ struct TypeInfoInstruction
                                               base::BaseSerializeExtension> {
   enum class Kind : uint8_t { Alignment = 0, Bytes = 2 };
 
+  friend std::ostream& operator<<(std::ostream& os,
+                                  TypeInfoInstruction const& inst) {
+    return os << inst.result
+              << (inst.kind == Kind::Alignment ? " = alignment " : " = bytes ")
+              << inst.type.value();
+  }
+
   std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(
-        stringify(result),
-        kind == Kind::Alignment ? " = alignment " : " = bytes ",
-        type.is_reg() ? stringify(type.reg()) : type.value().to_string());
+    std::stringstream ss;
+    ss << *this;
+    return std::move(ss).str();
   }
 
   uint64_t Resolve() const {

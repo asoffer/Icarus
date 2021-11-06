@@ -10,6 +10,7 @@
 #include "absl/strings/str_join.h"
 #include "base/debug.h"
 #include "base/macros.h"
+#include "base/universal_print.h"
 #include "core/arguments.h"
 
 namespace core {
@@ -57,8 +58,7 @@ struct Param {
   }
 
   friend std::ostream& operator<<(std::ostream& os, Param const& param) {
-    using base::stringify;
-    return os << param.name << ": " << stringify(param.value)
+    return os << param.name << ": " << base::UniversalPrintToString(param.value)
               << "(flags = " << static_cast<int>(param.flags) << ")";
   }
 
@@ -192,9 +192,9 @@ struct Params {
     return os << "params["
               << absl::StrJoin(fn_params, ", ",
                                [](std::string* out, auto const& param) {
-                                 using base::stringify;
-                                 absl::StrAppend(out, param.name, ": ",
-                                                 stringify(param.value));
+                                 absl::StrAppend(
+                                     out, param.name, ": ",
+                                     base::UniversalPrintToString(param.value));
                                })
               << "]";
   }

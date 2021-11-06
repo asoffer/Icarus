@@ -1,4 +1,5 @@
 #include "ast/ast.h"
+#include "base/universal_print.h"
 #include "compiler/compiler.h"
 #include "compiler/context.h"
 
@@ -89,8 +90,8 @@ bool Compiler::PatternMatch(
 
     diag().Consume(TerminalMatchError{
         .range         = node->range(),
-        .pattern_value = base::stringify(pattern_value),
-        .matched_value = base::stringify(matched_value),
+        .pattern_value = base::UniversalPrintToString(pattern_value),
+        .matched_value = base::UniversalPrintToString(matched_value),
     });
     return false;
   });

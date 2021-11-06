@@ -389,7 +389,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const 
 
     default: UNREACHABLE();
   }
-  UNREACHABLE(stringify(node->op()));
+  UNREACHABLE(node->op());
 }
 
 bool Compiler::VerifyPatternType(ast::BinaryOperator const *node,

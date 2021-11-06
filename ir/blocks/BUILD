@@ -79,7 +79,6 @@ cc_library(
     name = "register_allocator",
     hdrs = ["register_allocator.h"],
     deps = [
-        "//base:stringify",
         "//ir/value:addr",
         "//ir/value:reg",
         "//type",

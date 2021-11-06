@@ -1,6 +1,5 @@
 #include "type/generic_function.h"
 
-#include "base/stringify.h"
 #include "type/function.h"
 
 namespace type {

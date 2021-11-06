@@ -20,7 +20,7 @@ namespace internal_logging {
 uintptr_t CurrentThreadId();
 
 template <typename T>
-auto maybe_stringify(const T &arg) {
+decltype(auto) maybe_stringify(const T &arg) {
   if constexpr (std::is_arithmetic_v<T>) {
     return arg;
   } else if constexpr (std::is_pointer_v<T>) {

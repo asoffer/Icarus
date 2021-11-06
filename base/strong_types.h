@@ -7,7 +7,6 @@
 
 #include "absl/strings/str_cat.h"
 #include "base/meta.h"
-#include "base/stringify.h"
 
 namespace base {
 
@@ -29,10 +28,6 @@ struct Strong {
 
   constexpr Strong() = default;
   constexpr explicit Strong(UnderlyingType num) : value(num) {}
-  std::string to_string() const {
-    using base::stringify;
-    return stringify(value);
-  }
 
   UnderlyingType value{};
 };
@@ -253,10 +248,6 @@ constexpr bool operator!=(Strong<Tag, UnderlyingType, CrtpTags> lhs,
                                                                                \
     friend std::ostream& operator<<(std::ostream& os, name val) {              \
       return os << absl::StrCat(#name, "(", val.value, ")");                   \
-    }                                                                          \
-                                                                               \
-    friend std::string stringify(name val) {                                   \
-      return absl::StrCat(#name, "(", val.value, ")");                         \
     }                                                                          \
   };                                                                           \
                                                                                \

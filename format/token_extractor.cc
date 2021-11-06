@@ -50,9 +50,7 @@ void TokenExtractor::Visit(ast::Assignment const *node) {
 }
 
 void TokenExtractor::Visit(ast::BinaryOperator const *node) {
-  Visit(node->lhs());
-  line_builder_.write(stringify(node->op()));
-  Visit(node->rhs());
+  // TODO
 }
 
 void TokenExtractor::Visit(ast::BlockLiteral const *node) { UNREACHABLE(); }

@@ -3,7 +3,7 @@
 
 #include "absl/strings/str_format.h"
 #include "base/extend.h"
-#include "base/stringify.h"
+#include "base/universal_print.h"
 
 namespace ir {
 
@@ -16,8 +16,8 @@ struct DebugFormatExtension {
   std::string to_string() const {
     return std::apply(
         [](auto const&... args) {
-          using base::stringify;
-          return absl::StrFormat(T::kDebugFormat, stringify(args)...);
+          return absl::StrFormat(T::kDebugFormat,
+                                 base::UniversalPrintToString(args)...);
         },
         static_cast<T const*>(this)->field_refs());
   }

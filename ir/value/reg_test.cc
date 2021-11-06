@@ -1,6 +1,6 @@
 #include "ir/value/reg.h"
 
-#include "base/stringify.h"
+#include "base/universal_print.h"
 #include "gtest/gtest.h"
 
 namespace ir {
@@ -20,11 +20,10 @@ TEST(Reg, OutConstruction) {
   EXPECT_EQ(r.out_value(), 17);
 }
 
-TEST(Reg, Stringify) {
-  using base::stringify;
-  EXPECT_EQ(stringify(Reg(17)), "r.17");
-  EXPECT_EQ(stringify(Reg::Arg(17)), "arg.17");
-  EXPECT_EQ(stringify(Reg::Out(17)), "out.17");
+TEST(Reg, UniversalPrintToString) {
+  EXPECT_EQ(base::UniversalPrintToString(Reg(17)), "r.17");
+  EXPECT_EQ(base::UniversalPrintToString(Reg::Arg(17)), "arg.17");
+  EXPECT_EQ(base::UniversalPrintToString(Reg::Out(17)), "out.17");
 }
 
 TEST(Reg, Compare) {

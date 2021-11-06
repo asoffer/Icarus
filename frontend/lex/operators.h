@@ -1,9 +1,8 @@
 #ifndef ICARUS_OPERATORS_H
 #define ICARUS_OPERATORS_H
 
-#include <string>
+#include <ostream>
 
-#include "base/debug.h"
 #include "frontend/lex/tag.h"
 
 namespace frontend {
@@ -14,15 +13,15 @@ enum class Operator : uint64_t {
 #undef OPERATOR_MACRO
 };
 
-inline std::string stringify(Operator op) {
+inline std::ostream& operator<<(std::ostream& os, Operator op) {
   switch (op) {
 #define OPERATOR_MACRO(name, symbol, tag, prec, assoc)                         \
   case Operator::name:                                                         \
-    return symbol;
+    return os << symbol;
 #include "frontend/lex/operators.xmacro.h"
 #undef OPERATOR_MACRO
   }
-  return "<<!>>";
+  return os << "<<!>>";
 }
 
 inline Tag TagFrom(Operator op) {

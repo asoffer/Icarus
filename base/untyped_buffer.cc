@@ -1,6 +1,5 @@
 #include "base/untyped_buffer.h"
 
-#include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 
 namespace base {
@@ -27,14 +26,6 @@ std::string untyped_buffer::to_string(size_t width, size_t indent) const {
     lines.push_back(std::move(line));
   }
   return absl::StrJoin(lines, "\n");
-}
-
-std::string stringify(untyped_buffer::iterator iter) {
-  return absl::StrCat("iter[", reinterpret_cast<uintptr_t>(iter.raw()), "]");
-}
-
-std::string stringify(untyped_buffer::const_iterator iter) {
-  return absl::StrCat("iter[", reinterpret_cast<uintptr_t>(iter.raw()), "]");
 }
 
 }  // namespace base

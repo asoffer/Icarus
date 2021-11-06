@@ -6,7 +6,6 @@
 
 #include "absl/strings/str_cat.h"
 #include "base/meta.h"
-#include "base/stringify.h"
 
 namespace type {
 struct Type;
@@ -62,18 +61,6 @@ struct Typed {
   template <typename U>
   Typed<V, U> as_type() const {
     return Typed<V, U>(value_, &type_->template as<U>());
-  }
-
-  friend std::string stringify(Typed const& t) {
-    using base::stringify;
-    ASSERT(Type(t.type()).valid() == true);
-    std::string type_string;
-    if constexpr (base::meta<type_t> == base::meta<Type>) {
-      type_string = t.type().to_string();
-    } else {
-      type_string = t.type()->to_string();
-    }
-    return absl::StrCat(stringify(t.get()), ": ", type_string);
   }
 
  private:

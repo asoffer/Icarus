@@ -10,6 +10,7 @@
 #include <string_view>
 #include <variant>
 
+#include "absl/status/statusor.h"
 #include "base/meta.h"
 
 namespace base {
@@ -29,9 +30,7 @@ concept Printer = (std::invocable<P, int64_t> and
 // representation will be printed that is not meaningful.
 void UniversalPrint(Printer auto& printer, auto const& t) {
   using type = std::decay_t<decltype(t)>;
-  if constexpr (std::is_arithmetic_v<type> or std::is_pointer_v<type> or
-                meta<type> == meta<std::string> or
-                meta<type> == meta<std::string_view>) {
+  if constexpr (std::invocable<std::decay_t<decltype(printer)>, type>) {
     printer(t);
 
   } else if constexpr (::base::Streamable<type>) {
@@ -63,6 +62,14 @@ void UniversalPrint(Printer auto& printer, auto const& t) {
     } else {
       ::base::UniversalPrint(printer, std::nullopt);
     }
+
+  } else if constexpr (meta<type>.template is_a<absl::StatusOr>()) {
+    if (t.ok()) {
+      ::base::UniversalPrint(*t);
+    } else {
+      ::base::UniversalPrint(t.status());
+    }
+
   } else if constexpr (base::Container<type>) {
     std::string_view separator = "";
     printer("[");
@@ -96,6 +103,11 @@ namespace internal_universal_print {
 struct StringStreamPrinter {
   StringStreamPrinter() { ss_ << std::boolalpha; }
 
+  void operator()(is_enum auto n) {
+    using type = std::decay_t<decltype(n)>;
+    ss_ << "(" << typeid(type).name() << ")"
+        << static_cast<std::underlying_type_t<type>>(n);
+  }
   void operator()(std::integral auto n) { ss_ << n; }
   void operator()(double x) { ss_ << x; }
   void operator()(std::string_view s) { ss_ << s; }

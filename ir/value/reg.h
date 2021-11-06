@@ -1,7 +1,7 @@
 #ifndef ICARUS_IR_VALUE_REG_H
 #define ICARUS_IR_VALUE_REG_H
 
-#include <iostream>
+#include <ostream>
 #include <string>
 
 #include "base/debug.h"
@@ -65,10 +65,10 @@ struct Reg : base::Extend<Reg, 1>::With<base::AbslHashExtension> {
     return val_;
   }
 
-  friend std::string stringify(Reg r);
-
   friend std::ostream& operator<<(std::ostream& os, Reg r) {
-    return os << stringify(r);
+    if (r.is_arg()) { return os << "arg." << r.arg_value(); }
+    if (r.is_out()) { return os << "out." << r.out_value(); }
+    return os << "r." << r.value();
   }
 
  private:

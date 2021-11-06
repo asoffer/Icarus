@@ -124,7 +124,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
     diag.Consume(frontend::MissingModule{
         .source    = canonical_file_name,
         .requestor = "",
-        .reason    = stringify(maybe_file_src),
+        .reason    = std::string(maybe_file_src.status().message()),
     });
     return 1;
   }

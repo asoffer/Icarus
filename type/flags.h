@@ -2,6 +2,8 @@
 #define ICARUS_TYPE_FLAGS_H
 
 #include <optional>
+#include <ostream>
+#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -78,10 +80,15 @@ struct FlagsInstruction
     : base::Extend<FlagsInstruction>::With<base::BaseSerializeExtension> {
   Type Resolve() const;
 
+  friend std::ostream &operator<<(std::ostream &os, FlagsInstruction const &f) {
+    return os << f.result << " = flags(" << absl::StrJoin(f.names_, ", ")
+              << ")";
+  }
+
   std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = flags (",
-                        absl::StrJoin(names_, ", "), ")");
+    std::stringstream ss;
+    ss << *this;
+    return std::move(ss).str();
   }
 
   friend void BaseTraverse(ir::Inliner &inliner, FlagsInstruction &inst) {

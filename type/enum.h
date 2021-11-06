@@ -2,6 +2,8 @@
 #define ICARUS_TYPE_ENUM_H
 
 #include <optional>
+#include <ostream>
+#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -68,10 +70,14 @@ struct EnumInstruction
     : base::Extend<EnumInstruction>::With<base::BaseSerializeExtension> {
   Type Resolve() const;
 
+  friend std::ostream &operator<<(std::ostream &os, EnumInstruction const &e) {
+    return os << e.result << " = enum(" << absl::StrJoin(e.names_, ", ") << ")";
+  }
+
   std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = enum (",
-                        absl::StrJoin(names_, ", "), ")");
+    std::stringstream ss;
+    ss << *this;
+    return std::move(ss).str();
   }
 
   friend void BaseTraverse(ir::Inliner &inliner, EnumInstruction &inst) {

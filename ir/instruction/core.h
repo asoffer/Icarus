@@ -1,6 +1,8 @@
 #ifndef ICARUS_IR_INSTRUCTION_CORE_H
 #define ICARUS_IR_INSTRUCTION_CORE_H
 
+#include <ostream>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -62,14 +64,20 @@ struct PhiInstruction : base::Extend<PhiInstruction<T>, 3>::template With<
     base::Serialize(w, inst.result);
   }
 
-  std::string to_string() const {
-    using base::stringify;
-    std::string s = absl::StrCat(stringify(result), " = phi ");
-    for (size_t i = 0; i < blocks.size(); ++i) {
-      absl::StrAppend(&s, "\n      ", stringify(blocks[i]), ": ",
-                      stringify(values[i]));
+  friend std::ostream& operator<<(std::ostream& os,
+                                  PhiInstruction const& inst) {
+    os << inst.result << " = phi ";
+    for (size_t i = 0; i < inst.blocks.size(); ++i) {
+      os << "\n    " << inst.blocks[i] << ": " << inst.values[i];
     }
-    return s;
+
+    return os;
+  }
+
+  std::string to_string() const {
+    std::stringstream ss;
+    ss << *this;
+    return std::move(ss).str();
   }
 
   friend base::EnableExtensions;

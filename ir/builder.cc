@@ -124,7 +124,6 @@ void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
 static void ClearJumps(JumpCmd const &jump, BasicBlock *from) {
   jump.Visit([&](auto &j) {
     using type = std::decay_t<decltype(j)>;
-    using base::stringify;
     if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
       j.block->erase_incoming(from);
     } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {

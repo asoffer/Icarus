@@ -1,6 +1,7 @@
 #include "ir/instruction/core.h"
 
 #include "ir/value/slice.h"
+
 namespace ir {
 namespace {
 
@@ -16,20 +17,23 @@ std::string Representation(CompleteResultRef ref, type::Type t) {
 }  // namespace
 
 std::string CallInstruction::to_string() const {
-  using base::stringify;
-
   std::string_view separator = "";
   std::string arg_str;
   for (size_t i = 0; i < args_.num_entries(); ++i) {
-    absl::StrAppendFormat(
-        &arg_str, "%s%s", std::exchange(separator, ", "),
-        args_[i].is_register()
-            ? stringify(args_[i].get<Reg>())
-            : Representation(args_[i].AsComplete(),
-                             fn_type_->params()[i].value.type()));
-    ;
+    std::string a;
+    if (args_[i].is_register()) {
+      std::stringstream ss;
+      ss << args_[i].get<Reg>();
+      a = ss.str();
+    } else {
+      a = Representation(args_[i].AsComplete(),
+                         fn_type_->params()[i].value.type());
+    }
+    absl::StrAppend(&arg_str, std::exchange(separator, ", "), a);
   }
 
+  std::stringstream fn_ss;
+  fn_ss << fn_;
   return absl::StrFormat(
       "%scall %s: %s",
       fn_type_->output().empty()
@@ -37,10 +41,12 @@ std::string CallInstruction::to_string() const {
           : absl::StrCat("(",
                          absl::StrJoin(outs_.regs(), ", ",
                                        [](std::string* s, auto const& out) {
-                                         absl::StrAppend(s, stringify(out));
+                                         std::stringstream ss;
+                                         ss << out;
+                                         absl::StrAppend(s, ss.str());
                                        }),
                          ") = "),
-      stringify(fn_), arg_str);
+      fn_ss.str(), arg_str);
 }
 
 }  // namespace ir

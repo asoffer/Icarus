@@ -220,7 +220,6 @@ cc_test(
 cc_library(
     name = "reg",
     hdrs = ["reg.h"],
-    srcs = ["reg.cc"],
     deps = [
         "//base:debug",
         "//base:extend",
@@ -234,7 +233,7 @@ cc_test(
     srcs = ["reg_test.cc"],
     deps = [
         ":reg",
-        "//base:stringify",
+        "//base:universal_print",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -250,7 +249,7 @@ cc_test(
     srcs = ["reg_or_test.cc"],
     deps = [
         ":reg_or",
-        "//base:stringify",
+        "//base:universal_print",
         "@com_google_googletest//:gtest_main",
     ],
 )

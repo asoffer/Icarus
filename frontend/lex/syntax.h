@@ -30,15 +30,15 @@ inline Tag TagFrom(Syntax s) {
   UNREACHABLE();
 }
 
-inline std::string stringify(Syntax s) {
+inline std::ostream& operator<<(std::ostream& os, Syntax s) {
   switch (s) {
 #define SYNTAX_MACRO(name, symbol, tag)                                        \
   case Syntax::name:                                                           \
-    return symbol;
+    return os << symbol;
 #include "frontend/lex/syntax.xmacro.h"
 #undef SYNTAX_MACRO
   }
-  return "<<!>>";
+  return os << "<<!>>";
 }
 
 }  // namespace frontend

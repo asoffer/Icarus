@@ -1,6 +1,5 @@
 #include "type/generic_struct.h"
 
-#include "base/stringify.h"
 #include "type/struct.h"
 
 namespace type {

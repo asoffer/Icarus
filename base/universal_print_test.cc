@@ -14,6 +14,8 @@ struct Unprintable {
   int64_t field = 27;
 };
 
+enum class Color { Red, Green = 3, Blue };
+
 namespace {
 
 TEST(UniversalPrint, Strings) {
@@ -138,6 +140,12 @@ TEST(UniversalPrint, Unprintable) {
             "[01 00 00 00 00 00 00 00],"
             " (Unprintable value of type N4base11UnprintableE)"
             "[02 00 00 00 00 00 00 00]]");
+}
+
+TEST(UniversalPrint, Enum) {
+  EXPECT_EQ(UniversalPrintToString(Color::Red), "(N4base5ColorE)0");
+  EXPECT_EQ(UniversalPrintToString(Color::Green), "(N4base5ColorE)3");
+  EXPECT_EQ(UniversalPrintToString(Color::Blue), "(N4base5ColorE)4");
 }
 
 }  // namespace

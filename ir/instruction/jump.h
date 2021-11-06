@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "base/meta.h"
-#include "base/stringify.h"
+#include "base/universal_print.h"
 #include "core/arguments.h"
 #include "ir/value/arguments.h"
 #include "ir/value/reg.h"
@@ -142,17 +142,16 @@ struct JumpCmd {
   std::string DebugString() const {
     return Visit([](auto const& j) -> std::string {
       using type = std::decay_t<decltype(j)>;
-      using base::stringify;
       if constexpr (std::is_same_v<type, UnreachableJump>) {
         return "unreachable";
       } else if constexpr (std::is_same_v<type, RetJump>) {
         return "return";
       } else if constexpr (std::is_same_v<type, UncondJump>) {
-        return absl::StrCat("uncond ", stringify(j.block));
+        return absl::StrFormat("uncond %p", j.block);
       } else if constexpr (std::is_same_v<type, CondJump>) {
-        return absl::StrCat("cond ", stringify(j.reg),
-                            " false: ", stringify(j.false_block),
-                            ", true: ", stringify(j.true_block));
+        return absl::StrFormat("cond %s false: %p, true: %p",
+                               base::UniversalPrintToString(j.reg),
+                               j.false_block, j.true_block);
       } else if constexpr (std::is_same_v<type, JumpExitJump>) {
         return absl::StrCat("jump-exit ", j.name);
       } else if constexpr (std::is_same_v<type, ChooseJump>) {

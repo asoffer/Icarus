@@ -45,7 +45,7 @@ cc_library(
     hdrs = ["debug.h"],
     deps = [
         "//base:extend",
-        "//base:stringify",
+        "//base:universal_print",
         "@com_google_absl//absl/strings:str_format",
     ],
 )
@@ -108,7 +108,7 @@ cc_library(
     hdrs = ["jump.h"],
     deps = [
         "//base:meta",
-        "//base:stringify",
+        "//base:universal_print",
         "//core:arguments",
         "//ir/value:arguments",
         "//ir/value:reg",

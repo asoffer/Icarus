@@ -1,6 +1,8 @@
 #ifndef ICARUS_TYPE_FUNCTION_H
 #define ICARUS_TYPE_FUNCTION_H
 
+#include <ostream>
+#include <sstream>
 #include <vector>
 
 #include "base/extend.h"
@@ -85,25 +87,24 @@ struct FunctionTypeInstruction
     return Func(std::move(params), std::move(outputs_types));
   }
 
+  friend std::ostream &operator<<(std::ostream &os,
+                                  FunctionTypeInstruction const &f) {
+    os << f.result << " = (";
+    char const *separator = "";
+    for (auto const &[name, type] : f.inputs) {
+      os << std::exchange(separator, ", ") << name << ": " << type;
+    }
+    os << ") -> (";
+    for (auto const &output : f.outputs) {
+      os << std::exchange(separator, ", ") << output;
+    }
+    return os << ")";
+  }
+
   std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(
-        stringify(result), " = (",
-        absl::StrJoin(inputs, ", ",
-                      [](std::string *out,
-                         std::pair<std::string, ir::RegOr<Type>> const &r) {
-                        if (not r.first.empty()) {
-                          out->append(r.first);
-                          out->append(": ");
-                        }
-                        out->append(stringify(r.second));
-                      }),
-        ") -> (",
-        absl::StrJoin(outputs, ", ",
-                      [](std::string *out, ir::RegOr<Type> const &r) {
-                        out->append(stringify(r));
-                      }),
-        ")");
+    std::stringstream ss;
+    ss << *this;
+    return std::move(ss).str();
   }
 
   std::vector<std::pair<std::string, ir::RegOr<Type>>> inputs;

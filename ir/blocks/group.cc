@@ -19,9 +19,7 @@ Reg BlockGroupBase::Alloca(core::TypeContour tc) {
 std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b) {
   os << "\n" << b.alloc_;
   for (size_t i = 0; i < b.blocks().size(); ++i) {
-    using base::stringify;
-    os << "\n block #" << i << " (" << stringify(b.blocks()[i]) << ")\n"
-       << *b.blocks()[i];
+    os << "\n block #" << i << " (" << b.blocks()[i] << ")\n" << *b.blocks()[i];
   }
   return os;
 }

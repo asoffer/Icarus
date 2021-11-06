@@ -10,7 +10,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
 #include "base/meta.h"
-#include "base/stringify.h"
+#include "base/universal_print.h"
 
 namespace core {
 template <typename T>
@@ -69,16 +69,15 @@ struct Arguments {
   }
 
   std::string to_string() const {
-    using base::stringify;
     std::string result = "fnargs[";
     char const *sep    = "";
-    for (auto &&val : pos_) {
-      absl::StrAppend(&result, sep, stringify(val));
-      sep = ", ";
+    for (auto const &val : pos_) {
+      absl::StrAppend(&result, std::exchange(sep, ", "),
+                      base::UniversalPrintToString(val));
     }
     for (auto &&[key, val] : named_) {
-      absl::StrAppend(&result, sep, key, ": ", stringify(val));
-      sep = ", ";
+      absl::StrAppend(&result, std::exchange(sep, ", "), key, ": ",
+                      base::UniversalPrintToString(val));
     }
     absl::StrAppend(&result, "]");
     return result;

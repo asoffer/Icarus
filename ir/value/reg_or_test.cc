@@ -1,6 +1,6 @@
 #include "ir/value/reg_or.h"
 
-#include "base/stringify.h"
+#include "base/universal_print.h"
 #include "gtest/gtest.h"
 
 namespace ir {
@@ -34,10 +34,11 @@ TEST(RegOr, Apply) {
   EXPECT_EQ(RegOr<int>(2).apply(f), 4);
 }
 
-TEST(RegOr, Stringify) {
-  EXPECT_EQ(stringify(RegOr<int>(3)), "3");
-  EXPECT_EQ(stringify(RegOr<bool>(true)), "true");
-  EXPECT_EQ(stringify(RegOr<bool>(Reg(4))), stringify(Reg(4)));
+TEST(RegOr, UniversalPrintToString) {
+  EXPECT_EQ(base::UniversalPrintToString(RegOr<int>(3)), "3");
+  EXPECT_EQ(base::UniversalPrintToString(RegOr<bool>(true)), "true");
+  EXPECT_EQ(base::UniversalPrintToString(RegOr<bool>(Reg(4))),
+            base::UniversalPrintToString(Reg(4)));
 }
 
 TEST(RegOr, Comparison) {

@@ -2,7 +2,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
-#include "base/stringify.h"
 #include "ir/value/char.h"
 #include "ir/value/integer.h"
 #include "ir/value/slice.h"
@@ -204,8 +203,9 @@ void Jump::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void BuiltinFn::DebugStrAppend(std::string *out, size_t indent) const {
-  using base::stringify;
-  out->append(stringify(value()));
+  std::stringstream ss;
+  ss << value();
+  out->append(ss.str());
 }
 
 void AppendCallArgument(size_t indent, std::string *out,
