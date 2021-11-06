@@ -34,11 +34,15 @@ struct WorkGraph {
   explicit WorkGraph(PersistentResources const &resources)
       : resources_(resources) {}
 
-  void ExecuteCompilationSequence(
+  bool ExecuteCompilationSequence(
       Context &context, base::PtrSpan<ast::Node const> nodes,
       std::invocable<WorkGraph &, base::PtrSpan<ast::Node const>> auto
           &&... steps) {
-    ((steps(*this, nodes), complete()), ...);
+    bool should_continue = true;
+    (void)((should_continue = steps(*this, nodes), complete(),
+            should_continue) and
+           ...);
+    return should_continue;
   }
 
   void emplace(WorkItem const &w,
@@ -91,10 +95,11 @@ struct WorkGraph {
   absl::flat_hash_map<WorkItem, bool> work_;
 };
 
-void CompileLibrary(Context &context, PersistentResources const &resources,
+bool CompileLibrary(Context &context, PersistentResources const &resources,
                     base::PtrSpan<ast::Node const> nodes);
-ir::CompiledFn CompileExecutable(Context& context, PersistentResources const &resources,
-                                 base::PtrSpan<ast::Node const> nodes);
+std::optional<ir::CompiledFn> CompileExecutable(
+    Context &context, PersistentResources const &resources,
+    base::PtrSpan<ast::Node const> nodes);
 
 }  // namespace compiler
 

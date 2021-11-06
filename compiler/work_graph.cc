@@ -15,16 +15,23 @@ bool IsNotConstantDeclaration(ast::Node const *n) {
   return not IsConstantDeclaration(n);
 }
 
-void VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
+bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
                            Context &context, WorkGraph &work_graph,
-                           base::PtrSpan<ast::Node const> nodes) {
+                           base::PtrSpan<ast::Node const> nodes,
+                           bool stop_on_first_error = false) {
   Compiler c(&context, work_graph.resources());
   c.set_work_resources(work_graph.work_resources());
 
   for (ast::Node const *node : nodes) {
     if (not predicate(node)) { continue; }
-    c.VerifyType(node);
+    auto qts = c.VerifyType(node);
+    if (stop_on_first_error) {
+      for (auto const &qt : qts) {
+        if (qt.HasErrorMark()) { return false; }
+      }
+    }
   }
+  return true;
 }
 
 std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
@@ -67,14 +74,18 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
 
 }  // namespace
 
-void CompileLibrary(Context &context, PersistentResources const &resources,
+bool CompileLibrary(Context &context, PersistentResources const &resources,
                     base::PtrSpan<ast::Node const> nodes) {
   WorkGraph w(resources);
-  w.ExecuteCompilationSequence(
+  return w.ExecuteCompilationSequence(
       context, nodes,
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        VerifyNodesSatisfying(IsConstantDeclaration, context, w, nodes);
-        VerifyNodesSatisfying(IsNotConstantDeclaration, context, w, nodes);
+        if (not VerifyNodesSatisfying(IsConstantDeclaration, context, w, nodes,
+                                      true)) {
+          return false;
+        }
+        return VerifyNodesSatisfying(IsNotConstantDeclaration, context, w,
+                                     nodes);
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
         for (auto const *node : nodes) {
@@ -82,20 +93,25 @@ void CompileLibrary(Context &context, PersistentResources const &resources,
           c.set_work_resources(w.work_resources());
           c.EmitVoid(node);
         }
+        return true;
       });
 }
 
-ir::CompiledFn CompileExecutable(Context &context,
-                                 PersistentResources const &resources,
-                                 base::PtrSpan<ast::Node const> nodes) {
+std::optional<ir::CompiledFn> CompileExecutable(
+    Context &context, PersistentResources const &resources,
+    base::PtrSpan<ast::Node const> nodes) {
   WorkGraph w(resources);
   ir::CompiledFn f = ir::CompiledFn(type::Func({}, {}), {});
 
-  w.ExecuteCompilationSequence(
+  bool success = w.ExecuteCompilationSequence(
       context, nodes,
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        VerifyNodesSatisfying(IsConstantDeclaration, context, w, nodes);
-        VerifyNodesSatisfying(IsNotConstantDeclaration, context, w, nodes);
+        if (not VerifyNodesSatisfying(IsConstantDeclaration, context, w,
+                                      nodes, true)) {
+          return false;
+        }
+        return VerifyNodesSatisfying(IsNotConstantDeclaration, context, w,
+                                     nodes);
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
         Compiler c(&context, w.resources());
@@ -112,7 +128,9 @@ ir::CompiledFn CompileExecutable(Context &context,
           }
           c.builder().ReturnJump();
         }
+        return true;
       });
+  if (not success) { return std::nullopt; }
   return f;
 }
 
@@ -161,7 +179,12 @@ std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
 WorkGraph::EvaluateToBuffer(Context &context,
                             type::Typed<ast::Expression const *> expr,
                             bool must_complete) {
-  // TODO: The diagnosis part.
+  if (resources().diagnostic_consumer->num_consumed() != 0) {
+    // TODO: Give some explanation about failing to evaluate due to preexisting
+    // errors. This probably shouldn't be an error itself.
+    return std::vector<diagnostic::ConsumedMessage>{};
+  }
+
   diagnostic::BufferingConsumer buffering_consumer(
       resources().diagnostic_consumer);
   auto r                = resources();

@@ -1,7 +1,9 @@
 #include "base/meta.h"
 
 #include <type_traits>
+#include <vector>
 
+#include "absl/types/span.h"
 #include "gtest/gtest.h"
 
 namespace base {
@@ -51,6 +53,17 @@ TEST(Meta, TypeListConcatenation) {
 TEST(Meta, Comparison) {
   EXPECT_EQ(meta<int>, meta<int>);
   EXPECT_NE(meta<int>, meta<bool>);
+}
+
+TEST(Meta, Container) {
+  struct S {
+    void begin() {}
+    void end() {}
+  };
+  EXPECT_TRUE(Container<std::vector<int>>);
+  EXPECT_TRUE(Container<absl::Span<int>>);
+  EXPECT_TRUE(Container<absl::Span<int const>>);
+  EXPECT_FALSE(Container<S>);
 }
 
 }  // namespace

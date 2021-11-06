@@ -17,8 +17,10 @@
 namespace compiler {
 
 struct FileImporter : module::Importer {
-  explicit FileImporter(std::vector<std::string> module_lookup_paths)
-      : module_lookup_paths_(std::move(module_lookup_paths)) {}
+  explicit FileImporter(diagnostic::DiagnosticConsumer* diagnostic_consumer,
+                        std::vector<std::string> module_lookup_paths)
+      : diagnostic_consumer_(ASSERT_NOT_NULL(diagnostic_consumer)),
+        module_lookup_paths_(std::move(module_lookup_paths)) {}
   ~FileImporter() override {}
 
   ir::ModuleId Import(std::string_view module_locator) override;
@@ -42,6 +44,7 @@ struct FileImporter : module::Importer {
   absl::flat_hash_map<frontend::CanonicalFileName, std::unique_ptr<ModuleData>>
       modules_;
   absl::flat_hash_map<ir::ModuleId, CompiledModule*> modules_by_id_;
+  diagnostic::DiagnosticConsumer* diagnostic_consumer_;
   std::vector<std::string> module_lookup_paths_;
 };
 

@@ -56,10 +56,9 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
   auto maybe_file_src = frontend::FileSource::Make(
       ResolveModulePath(file_name, module_lookup_paths_));
 
-  diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
   if (not maybe_file_src.ok()) {
     modules_.erase(iter);
-    diag.Consume(frontend::MissingModule{
+    diagnostic_consumer_->Consume(frontend::MissingModule{
         .source    = file_name,
         .requestor = "",
         .reason    = std::string(maybe_file_src.status().message()),
@@ -75,8 +74,8 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
     module.embed(get(embedded_id));
   }
 
-  auto nodes =
-      module.InitializeNodes(frontend::Parse(maybe_file_src->buffer(), diag));
+  auto nodes = module.InitializeNodes(
+      frontend::Parse(maybe_file_src->buffer(), *diagnostic_consumer_));
 
   module.set_diagnostic_consumer<diagnostic::StreamingConsumer>(
       stderr, &*maybe_file_src);

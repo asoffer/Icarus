@@ -146,6 +146,7 @@ cc_test(
     srcs = ["meta_test.cc"],
     deps = [
         ":meta",
+        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -308,6 +309,7 @@ cc_test(
     srcs = ["universal_print_test.cc"],
     deps = [
         ":universal_print",
+        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ]
 )

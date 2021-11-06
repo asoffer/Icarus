@@ -131,7 +131,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
 
   auto *src = &*maybe_file_src;
   diag      = diagnostic::StreamingConsumer(stderr, src);
-  compiler::FileImporter importer(absl::GetFlag(FLAGS_module_paths));
+  compiler::FileImporter importer(&diag, absl::GetFlag(FLAGS_module_paths));
 
   ir::Module ir_module;
   compiler::Context context(&ir_module);

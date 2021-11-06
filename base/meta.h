@@ -222,7 +222,7 @@ concept Container = requires(T t) {
   typename T::value_type;
   t.begin() == t.end();
   *t.begin();
-  ++std::declval<typename T::iterator>();
+  ++std::declval<typename T::iterator&>();
 };
 
 template <typename T>

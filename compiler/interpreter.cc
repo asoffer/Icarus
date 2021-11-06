@@ -61,7 +61,7 @@ int Interpret(frontend::FileName const &file_name) {
   auto *src = &*maybe_file_src;
   diag      = diagnostic::StreamingConsumer(stderr, src);
 
-  FileImporter importer(absl::GetFlag(FLAGS_module_paths));
+  FileImporter importer(&diag, absl::GetFlag(FLAGS_module_paths));
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;
@@ -81,8 +81,9 @@ int Interpret(frontend::FileName const &file_name) {
       .importer            = &importer,
   };
 
-  auto nodes   = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
-  auto main_fn = CompileExecutable(context, resources, nodes);
+  auto nodes = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
+  ASSIGN_OR(return 1,  //
+                   auto main_fn, CompileExecutable(context, resources, nodes));
 
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }

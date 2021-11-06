@@ -6,6 +6,7 @@
 #include <set>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "gtest/gtest.h"
 
 namespace base {
@@ -146,6 +147,12 @@ TEST(UniversalPrint, Enum) {
   EXPECT_EQ(UniversalPrintToString(Color::Red), "(N4base5ColorE)0");
   EXPECT_EQ(UniversalPrintToString(Color::Green), "(N4base5ColorE)3");
   EXPECT_EQ(UniversalPrintToString(Color::Blue), "(N4base5ColorE)4");
+}
+
+TEST(UniversalPrint, AbslSpan) {
+  std::vector v{1, 2, 3, 4};
+  absl::Span<int const> span = v;
+  EXPECT_EQ(UniversalPrintToString(span), "[1, 2, 3, 4]");
 }
 
 }  // namespace
