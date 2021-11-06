@@ -54,7 +54,7 @@ cc_toolchain(
 
 cc_toolchain_config(
     name = 'clang_toolchain_config',
-    compiler_path = '/usr/bin/clang++-10',
+    compiler_path = '/usr/bin/clang++-12',
     warnings = [
         "all",
         "error",
