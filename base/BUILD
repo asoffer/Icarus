@@ -118,6 +118,7 @@ cc_library(
     deps = [
         ":global",
         ":stringify",
+        ":universal_print",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
@@ -305,6 +306,23 @@ cc_test(
         ":unaligned_ref",
         "@com_google_googletest//:gtest_main",
     ],
+)
+
+cc_library(
+    name = "universal_print",
+    hdrs = ["universal_print.h"],
+    deps = [
+        ":meta",
+    ],
+)
+
+cc_test(
+    name = "universal_print_test",
+    srcs = ["universal_print_test.cc"],
+    deps = [
+        ":universal_print",
+        "@com_google_googletest//:gtest_main",
+    ]
 )
 
 cc_library(

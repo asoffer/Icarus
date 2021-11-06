@@ -3,6 +3,7 @@
 
 #include <concepts>
 #include <cstdint>
+#include <ostream>
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
@@ -230,6 +231,11 @@ concept is_a = base::meta<T>.template is_a<Template>();
 
 template <typename T>
 concept is_enum = std::is_enum_v<T>;
+
+template <typename T>
+concept Streamable = requires(T t) {
+  { std::declval<std::ostream&>() << t } -> std::same_as<std::ostream&>;
+};
 
 }  // namespace base
 

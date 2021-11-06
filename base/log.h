@@ -11,7 +11,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/synchronization/mutex.h"
 #include "base/global.h"
-#include "base/stringify.h"
+#include "base/universal_print.h"
 
 namespace base {
 
@@ -26,8 +26,7 @@ auto maybe_stringify(const T &arg) {
   } else if constexpr (std::is_pointer_v<T>) {
     return arg;
   } else {
-    using ::base::stringify;
-    return stringify(arg);
+    return ::base::UniversalPrintToString(arg);
   }
 }
 
