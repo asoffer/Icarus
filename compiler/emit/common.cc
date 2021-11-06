@@ -257,8 +257,13 @@ CalleeResult EmitCalleeImpl(
       // address.
       if (auto *fn_decl = callable->if_as<ast::Declaration>()) {
         return {.callee = c.builder().Load<ir::Fn>(
-                    c.builder().addr(&fn_decl->ids()[0])),
+                    c.builder().addr(&fn_decl->ids()[0]), f_type),
                 .type    = f_type,
+                .context = nullptr};
+      } else if (auto *fn_decl_id = callable->if_as<ast::Declaration::Id>()) {
+        return {.callee = c.builder().Load<ir::Fn>(c.builder().addr(fn_decl_id),
+                                                   f_type),
+                .type   = f_type,
                 .context = nullptr};
       } else {
         return {.callee = c.builder().Load<ir::Fn>(

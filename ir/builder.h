@@ -314,6 +314,7 @@ struct Builder {
 
   template <typename T>
   RegOr<T> Load(RegOr<addr_t> addr, type::Type t = GetType<T>()) {
+    ASSERT(addr != Null());
     auto& blk = *CurrentBlock();
 
     auto [slot, inserted] = blk.load_store_cache().slot<T>(addr);
@@ -330,6 +331,7 @@ struct Builder {
 
   void Load(RegOr<addr_t> r, type::Type t, PartialResultBuffer& out) {
     LOG("Load", "Calling Load(%s, %s)", r, t.to_string());
+    ASSERT(r != Null());
     if (t.is<type::Function>()) {
       out.append(Load<Fn>(r, t));
     } else if (t.is<type::Pointer>()) {
