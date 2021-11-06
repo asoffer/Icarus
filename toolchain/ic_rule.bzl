@@ -55,10 +55,14 @@ def _ic_interpret_impl(ctx):
         is_executable = True,
     )
 
+    data_deps = depset()
+    if hasattr(ctx.attr, "data"):
+        data_deps = depset([src for f in depset(ctx.attr.data).to_list() for src in f.files.to_list()])
+
     runfiles = ctx.runfiles(
         files = ctx.attr.src[DefaultInfo].files.to_list(),
         transitive_files = depset(
-            transitive = [dep[IcarusInfo].sources for dep in ctx.attr.deps]
+            transitive = [dep[IcarusInfo].sources for dep in ctx.attr.deps] + [data_deps]
         ),
     )
     runfiles = runfiles.merge(ctx.attr._interpreter[0].default_runfiles)
@@ -74,6 +78,7 @@ ic_interpret = rule(
     executable = True,
     attrs = {
         "src": attr.label(allow_single_file = [".ic"], mandatory = True),
+        "data": attr.label_list(providers = [DefaultInfo]),
         "deps": attr.label_list(providers = [IcarusInfo]),
         "_interpreter": attr.label(
             default = Label("//:interpreter"),

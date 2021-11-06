@@ -1,0 +1,23 @@
+-- ::= import "core.ic"
+cstdio ::= import "cstdio.ic"
+errno ::= import "errno.ic"
+io ::= import "io.ic"
+
+// TODO: This can be called directly, but there is a bug in memory.deallocate
+// which crashes the compiler if you try to call through that.
+free ::= foreign("free", [*]char -> ())
+
+f := cstdio.fopen("examples/example_file.txt".data, "r".data)
+if (errno.get() as u64 == 0) then {
+  io.Print("First line of file is:\n")
+  p: [*]char
+  num: u64
+  cstdio.getline(&p, &num, f)
+  io.Print(slice(p, num))
+  free(p)
+  cstdio.fclose(f)
+} else {
+  io.Print("Error when loading file: errno = ")
+  io.Print(errno.get() as u64)
+}
+io.Print("\n")

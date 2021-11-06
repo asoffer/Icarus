@@ -1,5 +1,22 @@
 load('//toolchain:ic_rule.bzl', 'ic_library', 'ic_interpret')
 
+filegroup(
+    name = 'example_file',
+    srcs = ['example_file.txt'],
+)
+
+ic_interpret(
+    name = 'c_file',
+    src = 'c_file.ic',
+    data = [':example_file'],
+    deps = [
+        '//stdlib:core',
+        '//stdlib:cstdio',
+        '//stdlib:errno',
+        '//stdlib:io',
+    ],
+)
+
 ic_interpret(
     name = 'enum',
     src = 'enum.ic',
