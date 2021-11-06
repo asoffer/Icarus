@@ -1,5 +1,4 @@
 package(default_visibility = ["//visibility:public"])
-load("//:common.bzl", "LLVM_LINKOPTS")
 
 
 cc_library(
@@ -12,6 +11,7 @@ cc_library(
         "//type:qual_type",
     ],
 )
+
 cc_library(
     name = "cyclic_dependency_tracker",
     hdrs = ["cyclic_dependency_tracker.h"],
@@ -346,7 +346,6 @@ cc_binary(
 cc_binary(
     name = "compile",
     srcs = ["main.cc"],
-    linkopts = LLVM_LINKOPTS,
     deps = [
         ":module",
         ":importer",

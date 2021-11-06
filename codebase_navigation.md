@@ -39,26 +39,13 @@ This section describes the design of the Icarus codebase, both in its current st
 * `//ast` -- Holds the entirety of the abstract syntaxt tree.
 * `//ir` -- Holds everything needed for the intermediate representation (values in `//ir/value`, instructions in `//ir/instruction`, basic blocks and functions in `//ir/blocks`, and an interpreter in `//ir/interpreter`). Ideally, nothing in `//ir` would depend on anything outside `//base`, `//core`, other than `type::Type`.
 * `//frontend` -- All lexing and parsing.
+* `//compiler` -- All type-checking and bytecode generation is done in this package. There are two subpackage, `//compiler/verify` and `//compiler/emit` which handle type-checking and bytecode generation respectively. Each package has roughly one target for each AST node type.
 
 ### Expected directory structure changes
-
-#### Interpreter changes
-
-As a long-term goal, we want to make the IR interpreter highly extensible, by having the interpreter templated on the set of instructions available. The interpreter will come with several core instructions (phi-nodes, loads, stores, function calls, and jumps). All other instructions will depend on the interpreter infrastructure and must themselves describe how to be executed. To achieve this goal we intend to move most instructions out of `//ir/instruction` and closer to their use. For example, `ArrayInstruction` which constructs an array type from a type and a length has been moved already to `//type:array`, adjacent to the `type::Array` struct.
-
-There are several benefits to this extensibility, even if the interpreter is only ever used for the Icarus language:
-
-* Long-term changes to the language are made easier.
-* We can add mock/fake instructions to be used during testing to inspect the IR.
-* We can more easily add compile-time-only instructions (for example, baking in a debugger to the interpreter that executes code at compile-time).
 
 #### Type system changes
 
 One oddity you may have noticed in the layering described above is that `//ir` is allowed to depend on `//base`, `//core`, and also one particular target in the `//type` package (the one defining the struct `type::Type`). We would like this rule to be clearer by removing this one exception. To do this, we will move `type::Type` into `//core`. This makes sense because `type::Type` (to be renamed to `core::Type`) is a type-erased container for any type used in the language. Instructions and IR values in general need to know about types but not about any specific kind of types, so the type-erased wrapper makes sense here. This migration has been started but is far from finished. We used to have all types represented by a pointer (now named `type::LegacyType*`). One of the changes that needs to be made is to remove the inheritance hierarchy of types, replacing them with a simple type-erasure mechanism, none of which has been started yet.
-
-#### Compilation changes
-
-Currently, `//compiler/verify` has one build target for each AST node's type verification code. We wish to do the same thing for code generation in `//compiler/emit`. There are still some parts of this migration that are not yet complete. In particular, some code generating functions are still in `//compiler/emit_value.cc` and `//compiler/emit_function_call_infrastructure.cc`.
 
 #### Frontend changes
 

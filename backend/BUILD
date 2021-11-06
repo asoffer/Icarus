@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:common.bzl", "LLVM_LINKOPTS")
+load("//backend:common.bzl", "LLVM_LINKOPTS")
 
 cc_library(
     name = "emit",

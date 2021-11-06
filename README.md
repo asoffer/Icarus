@@ -7,19 +7,17 @@ fast to compile, fast to run, and easy to migrate.
 
 [![CI badge](https://github.com/asoffer/Icarus/workflows/CI/badge.svg)](https://github.com/asoffer/Icarus/actions?query=workflow%3ACI)
 
-Compiling from source requires one of the following compilers:
+Compiling from source requires:
 
-* g++ version >= 8.3.0
-* clang++ version >= 10.0.0
-
-You will also need [Bazel](http://bazel.build) version >= 2.0.0.
+* clang++ version >= 12.0.0
+* [Bazel](http://bazel.build) version >= 4.2.1.
 
 To compile this project from source:
 
 ```
 $ git clone https://github.com/asoffer/Icarus.git
 $ cd Icarus
-$ bazel build -c opt :icarus
+$ bazel build -c opt ...
 ```
 
 ## Language Documentation

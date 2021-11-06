@@ -947,15 +947,14 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   if (error) { return MakeInvalidNode(decl_range); }
 
   std::unique_ptr<ast::Expression> type_expr, init_val;
+  bool initial_value_is_hole = false;
   if (op == Operator::Colon or op == Operator::DoubleColon) {
     type_expr = move_as<ast::Expression>(nodes[2]);
   } else {
     init_val = move_as<ast::Expression>(nodes[2]);
-  }
-
-  bool initial_value_is_hole = false;
-  if (auto const *init_id = init_val->if_as<ast::Identifier>()) {
-    if (init_id->name() == "") { initial_value_is_hole = true; }
+    if (auto const *init_id = init_val->if_as<ast::Identifier>()) {
+      if (init_id->name() == "") { initial_value_is_hole = true; }
+    }
   }
 
   return std::make_unique<ast::Declaration>(
@@ -2150,7 +2149,9 @@ void Shift(ParseState *ps) {
 template <auto &RuleSet>
 bool Reduce(ParseState *ps) {
   LOG("parse", "reducing");
+  size_t i = 0; 
   for (auto const &rule : *RuleSet) {
+    ++i;
     if (rule.match(ps->tag_stack_)) {
       auto nodes_to_reduce = absl::MakeSpan(
           std::addressof(*(ps->node_stack_.end() - rule.match.size())),

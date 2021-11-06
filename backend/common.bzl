@@ -1,5 +1,10 @@
 LLVM_LINKOPTS = [
-    "-ldl", "-lz", "-lm", "-lrt", "-lpthread",
+    "-ldl",
+    "-lz",
+    "-lm",
+    "-lrt",
+    "-lpthread",
+    "-L/usr/local/lib",
     "-lLLVMLTO",
     "-lLLVMPasses",
     "-lLLVMObjCARCOpts",

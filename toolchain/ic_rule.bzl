@@ -45,10 +45,6 @@ ic_library = rule(
 def _ic_interpret_impl(ctx):
     executable = ctx.actions.declare_file(ctx.label.name)
 
-    args = ctx.actions.args()
-    args.add('--module_paths')
-    args.add('stdlib')
-
     ctx.actions.write(
         output = executable,
         content = ('./' +

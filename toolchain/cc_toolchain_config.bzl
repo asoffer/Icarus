@@ -91,6 +91,7 @@ def _impl(ctx):
         std_lib_version("2a"),
         compiler_warnings(ctx.attr.warnings),
         compiler_features([
+            "bracket-depth=1024",
             "diagnostics-color=always",
             "no-exceptions",
         ]),
