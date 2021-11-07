@@ -152,7 +152,7 @@ bool WorkGraph::Execute(WorkItem const &w) {
   if (not inserted) { return work_iter->second; }
   Compiler c(w.context, resources_);
   c.set_work_resources(work_resources());
-  work_iter->second = [&] {
+  auto result = [&] {
     switch (w.kind) {
       case WorkItem::Kind::VerifyType:
         c.VerifyType(w.node);
@@ -174,7 +174,10 @@ bool WorkGraph::Execute(WorkItem const &w) {
             &w.node->as<ast::ShortFunctionLiteral>());
     }
   }();
-  return work_iter->second;
+  // Note: The computation for `result` may add more work into `work_`
+  // potentially causing a rehash and thereby invalidating `work_iter`. we need
+  // to recompute it here.
+  return work_[w] = result;
 }
 
 std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
