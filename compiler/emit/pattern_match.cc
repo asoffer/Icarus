@@ -69,6 +69,10 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
   for (auto &[name, unused] : bindings) {
     auto const *id =
         module::AllVisibleDeclsTowardsRoot(node->scope(), name->name())[0];
+
+    LOG("PatternMatch", "Binding %s (%p) to %s on %s", name->name(), id,
+        context().qual_types(id)[0].type().Representation(buffer[0]),
+        context().DebugString());
     context().SetConstant(id, std::move(buffer));
   }
 }

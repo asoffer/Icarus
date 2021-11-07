@@ -100,6 +100,7 @@ struct Context {
   Context const &root() const & {
     return tree_.parent ? tree_.parent->root() : *this;
   }
+  bool is_root() const { return tree_.parent == nullptr; }
 
   // Returns a Context object which has `this` as it's parent, but for which
   // `this` is not aware of the returned subcontext. This allows us to use the

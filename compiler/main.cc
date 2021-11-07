@@ -166,7 +166,7 @@ int Compile(frontend::FileName const &file_name) {
   auto nodes = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
   auto main_fn =
       CompileExecutable(context, resources, nodes);
-  return CompileToObjectFile(exec_mod, main_fn, target_machine);
+  return CompileToObjectFile(exec_mod, *main_fn, target_machine);
 }
 
 }  // namespace

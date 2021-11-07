@@ -149,10 +149,10 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
 
   auto nodes   = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
   auto main_fn = compiler::CompileExecutable(context, resources, nodes);
-  if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
+  if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }
 
   output << "digraph {\n";
-  DumpControlFlowGraph(&main_fn, output);
+  DumpControlFlowGraph(&*main_fn, output);
   context.ForEachCompiledFn(
       [&](ir::CompiledFn const *f) { DumpControlFlowGraph(f, output); });
   output << "}";

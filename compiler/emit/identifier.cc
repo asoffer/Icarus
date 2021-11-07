@@ -26,16 +26,7 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
   auto decl_span = context().decls(node);
   ASSERT(decl_span.size() != 0u);
   if (decl_span[0]->flags() & ast::Declaration::f_IsConst) {
-    auto const *mod = &decl_span[0]
-                           ->scope()
-                           ->Containing<ast::ModuleScope>()
-                           ->module()
-                           ->as<CompiledModule>();
-    if (mod != resources().module) {
-      out.append(*mod->context().Constant(&decl_span[0]->ids()[0]));
-    } else {
-      EmitToBuffer(decl_span[0], out);
-    }
+    EmitToBuffer(decl_span[0], out);
     return;
   }
   if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {

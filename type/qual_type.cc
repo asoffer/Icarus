@@ -22,7 +22,7 @@ absl::Span<type::QualType const> QualType::ErrorSpan() {
 
 std::ostream &operator<<(std::ostream &os, QualType q) {
   if (not q) { return os << "error"; }
-  return os << q.quals() << "(" << q.type().to_string() << ")";
+  return os << q.quals() << "(" << q.type() << ")";
 }
 
 }  // namespace type

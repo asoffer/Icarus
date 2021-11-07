@@ -58,7 +58,7 @@ TEST(BlockNode, LabeledJumpSkipBlock) {
   mod.AppendCode(R"(
   s ::= scope (i64) {
     b ::= block {}
-    exit ::= (b: bool) -> () {}
+    exit ::= (x: bool) -> () {}
   }
   )");
   absl::Span<ast::BlockNode const> blocks =

@@ -145,7 +145,8 @@ std::optional<std::vector<type::Type>> JoinReturnTypes(
 // * From Compiler::VerifyType if the return types are inferred.
 std::optional<std::vector<type::Type>> VerifyBodyOnly(
     Compiler &c, ast::FunctionLiteral const *node) {
-  LOG("FunctionLiteral", "VerifyBodyOnly for %s", node->DebugString());
+  LOG("FunctionLiteral", "VerifyBodyOnly for %s on %s", node->DebugString(),
+      c.context().DebugString());
   c.context().TrackJumps(node);
   bool found_error = false;
   for (auto *stmt : node->stmts()) {
@@ -226,7 +227,8 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
         Instantiate(instantiation_compiler, node, args);
 
     if (inserted) {
-      LOG("FunctionLiteral", "inserted! %s", node->DebugString());
+      LOG("FunctionLiteral", "inserted! %s into %s", node->DebugString(),
+          context.DebugString());
       PersistentResources resources = instantiation_compiler.resources();
       auto compiler = instantiation_compiler.MakeChild(&context, resources);
       compiler.set_work_resources(wr);

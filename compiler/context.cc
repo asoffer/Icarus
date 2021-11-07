@@ -40,6 +40,10 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
     for (size_t i = 0; i < params.size(); ++i) {
       auto [qt, ref] = params[i];
       if (not qt.constant()) { continue; }
+
+      LOG("Instantiate", "    Parameter %u has type %s and value %s", i, qt,
+          qt.type().Representation(ref));
+
       iter->second->context.SetConstant(&node->params()[i].value->ids()[0],
                                         ref);
     }
@@ -209,11 +213,12 @@ ir::CompleteResultBuffer const &Context::SetConstant(
       .first->second.first;
 }
 
-
 ir::CompleteResultBuffer const *Context::Constant(
     ast::Declaration::Id const *id) const {
   auto iter = constants_.find(id);
-  return iter != constants_.end() ? &iter->second.first : nullptr;
+  if (iter != constants_.end()) { return &iter->second.first; }
+  if (parent() != nullptr) { return parent()->Constant(id); }
+  return nullptr;
 }
 
 ir::CompleteResultBuffer const *Context::ConstantIfComplete(

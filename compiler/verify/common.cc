@@ -92,27 +92,25 @@ std::vector<core::Arguments<type::Type>> ExpandedArguments(
   return all_expanded_options;
 }
 
-absl::Span<type::QualType const> RetrieveQualTypes(
-    Context const &context, PersistentResources const &resources,
-    ast::Expression const *expr) {
-  auto const &expr_mod = expr->scope()
-                             ->Containing<ast::ModuleScope>()
-                             ->module()
-                             ->as<CompiledModule>();
-  auto &mod = *resources.module;
-  return (&mod == &expr_mod) ? context.qual_types(expr)
-                             : expr_mod.context(&mod).qual_types(expr);
-}
-
 void AddOverloads(Context const &context, PersistentResources const &resources,
                   ast::Expression const *callee,
                   absl::flat_hash_map<ast::Expression const *,
                                       type::Callable const *> &overload_map) {
   auto const *overloads = context.AllOverloads(callee);
   if (not overloads) { return; }
+  Context const &context_root = context.root();
   for (auto const *overload : overloads->members()) {
     LOG("AddOverloads", "Callee: %p %s", overload, overload->DebugString());
-    type::QualType qt = RetrieveQualTypes(context, resources, overload)[0];
+    Context const &overload_root = overload->scope()
+                                       ->Containing<ast::ModuleScope>()
+                                       ->module()
+                                       ->as<CompiledModule>()
+                                       .context();
+    // TODO: This is fraught, because we still don't have access to instantiated
+    // contexts if that's what's needed here.
+    type::QualType qt = (&context_root == &overload_root)
+                            ? context.qual_types(overload)[0]
+                            : overload_root.qual_types(overload)[0];
 
     if (qt) { overload_map.emplace(overload, &qt.type().as<type::Callable>()); }
   }
@@ -312,8 +310,18 @@ Compiler::VerifyCall(
   // the iterator into members is still valid because there's an extra layer of
   // indirection in the overload set. Do we really want to rely on this?!
   if (auto const *overloads = context().AllOverloads(call_expr->callee())) {
+    Context const &context_root = context().root();
     for (auto const *callee : overloads->members()) {
-      type::QualType qt = RetrieveQualTypes(context(), resources(), callee)[0];
+      Context const &callee_root = callee->scope()
+                                       ->Containing<ast::ModuleScope>()
+                                       ->module()
+                                       ->as<CompiledModule>()
+                                       .context();
+      // TODO: This is fraught, because we still don't have access to
+      // instantiated contexts if that's what's needed here.
+      type::QualType qt = (&context_root == &callee_root)
+                              ? context().qual_types(callee)[0]
+                              : callee_root.qual_types(callee)[0];
       ExtractParams(*this, callee, &qt.type().as<type::Callable>(), args,
                     overload_params, errors);
     }

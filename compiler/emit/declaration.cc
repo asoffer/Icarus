@@ -15,25 +15,32 @@ namespace {
 
 void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
                              ir::PartialResultBuffer &out) {
+  Context& compilation_root = c.context().root();
+  Context &node_root        = node->scope()
+                           ->Containing<ast::ModuleScope>()
+                           ->module()
+                           ->as<CompiledModule>()
+                           .context();
+  Context &ctx = (&compilation_root == &node_root) ? c.context() : node_root;
   // TODO: Support multiple declarations
-  auto qts = c.context().qual_types(&node->ids()[0]);
-  auto t   = qts[0].type();
+  type::Type t = ctx.qual_types(&node->ids()[0])[0].type();
 
-  LOG("EmitConstantDeclaration", "%s %p", node->DebugString(), &c.context());
+  LOG("EmitConstantDeclaration", "%s %s", node->DebugString(),
+      c.context().DebugString());
   if (node->flags() & ast::Declaration::f_IsFnParam) {
-    c.context().LoadConstant(&node->ids()[0], out);
+    ctx.LoadConstant(&node->ids()[0], out);
   } else {
     // TODO: Support multiple declarations.
-    if (auto *constant_value = c.context().Constant(&node->ids()[0])) {
+    if (auto *constant_value = ctx.Constant(&node->ids()[0])) {
       // TODO: This feels quite hacky.
       if (node->init_val()->is<ast::StructLiteral>()) {
         // TODO:
-        if (not c.context().ConstantIfComplete(&node->ids()[0]) and
+        if (not ctx.ConstantIfComplete(&node->ids()[0]) and
             c.state().must_complete) {
           LOG("compile-work-queue", "Request work complete-struct: %p", node);
           c.Enqueue({.kind    = WorkItem::Kind::CompleteStructMembers,
                      .node    = node->init_val(),
-                     .context = &c.context()});
+                     .context = &ctx});
         }
       }
 
@@ -54,11 +61,6 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
                       c.EvaluateToBufferOrDiagnose(
                           type::Typed<ast::Expression const *>(
                               node->initial_value(), t)));
-      if (not t.is_big()) {
-        LOG("EmitConstantDeclaration", "Setting slot = %s",
-            t.Representation(value_buffer[0]));
-      }
-
       // TODO: Support multiple declarations
       if (t.is_big()) {
         auto addr = c.context()
@@ -124,7 +126,7 @@ void EmitNonConstantDeclaration(Compiler &c, ast::Declaration const *node,
 
 void Compiler::EmitToBuffer(ast::Declaration const *node,
                             ir::PartialResultBuffer &out) {
-  LOG("Declaration", "%s", node->DebugString());
+  LOG("Declaration", "%s on %s", node->DebugString(), context().DebugString());
   if (node->flags() & ast::Declaration::f_IsConst) {
     EmitConstantDeclaration(*this, node, out);
   } else {
@@ -156,12 +158,10 @@ bool Compiler::PatternMatch(
     ast::BindingDeclaration const *node, PatternMatchingContext &pmc,
     absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
         &bindings) {
-  if (auto const *p = pmc.type.if_as<type::Primitive>()) {
-    bindings.emplace(&node->ids()[0], pmc.value);
-    return true;
-  } else {
-    NOT_YET(pmc.type.to_string());
-  }
+  // TODO: If the expression evaluates to multiple types or void, we should
+  // return false.
+  bindings.emplace(&node->ids()[0], pmc.value);
+  return true;
 }
 
 }  // namespace compiler

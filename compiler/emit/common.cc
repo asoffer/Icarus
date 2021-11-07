@@ -220,9 +220,21 @@ struct CalleeResult {
   Context *context;
 };
 
-CalleeResult EmitCalleeImpl(
-    Compiler &c, ast::Expression const *callable, type::QualType qt,
+CalleeResult EmitCallee(
+    Compiler &c, ast::Expression const *callable,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
+  Context const &context_root  = c.context().root();
+  Context const &callable_root = callable->scope()
+                                     ->Containing<ast::ModuleScope>()
+                                     ->module()
+                                     ->as<CompiledModule>()
+                                     .context();
+  // TODO: This is fraught, because we still don't have access to
+  // instantiated contexts if that's what's needed here.
+  type::QualType qt = (&context_root == &callable_root)
+                          ? c.context().qual_types(callable)[0]
+                          : callable_root.qual_types(callable)[0];
+
   if (auto const *gf_type = qt.type().if_as<type::GenericFunction>()) {
     ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(callable).value();
 
@@ -274,30 +286,6 @@ CalleeResult EmitCalleeImpl(
     }
   } else {
     UNREACHABLE(callable->DebugString(), "\n", qt.type().to_string());
-  }
-}
-
-CalleeResult EmitCallee(
-    Compiler &c, ast::Expression const *callee,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
-  CompiledModule *callee_mod = &callee->scope()
-                                    ->Containing<ast::ModuleScope>()
-                                    ->module()
-                                    ->as<CompiledModule>();
-  // Note: We only need to wait on the module if it's not this one, so even
-  // though `callee_mod->context()` would be sufficient, we want to ensure that
-  // we call the non-const overload if `callee_mod == &module()`.
-
-  if (callee_mod == c.resources().module) {
-    return EmitCalleeImpl(c, callee, c.context().qual_types(callee)[0],
-                          constants);
-  } else {
-    type::QualType callee_qual_type =
-        callee_mod->context().qual_types(callee)[0];
-
-    Compiler callee_compiler(&callee_mod->context(), c.resources());
-    callee_compiler.set_work_resources(c.work_resources());
-    return EmitCalleeImpl(callee_compiler, callee, callee_qual_type, constants);
   }
 }
 
