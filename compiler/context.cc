@@ -276,4 +276,29 @@ void Context::LoadConstant(ast::Declaration::Id const *id,
   }
 }
 
+type::Type TerminalType(ast::Terminal const &node) {
+  type::Type t;
+  base::MetaValue mv = node.type();
+  if (mv == base::meta<ir::Integer>) {
+    t = type::Integer;
+  } else if (mv == base::meta<bool>) {
+    t = type::Bool;
+  } else if (mv == base::meta<ir::Char>) {
+    t = type::Char;
+  } else if (mv == base::meta<float>) {
+    t = type::F32;
+  } else if (mv == base::meta<double>) {
+    t = type::F64;
+  } else if (mv == base::meta<ir::Slice>) {
+    t = type::Slc(type::Char);
+  } else if (mv == base::meta<ir::addr_t>) {
+    t = type::NullPtr;
+  } else if (mv == base::meta<type::Type>) {
+    t = type::Type_;
+  } else {
+    UNREACHABLE(mv.name());
+  }
+  return t;
+}
+
 }  // namespace compiler

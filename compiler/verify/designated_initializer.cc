@@ -110,45 +110,52 @@ struct MissingStructField {
   frontend::SourceRange range;
 };
 
+// Returns whether `qt` is a const type, emitting diagnostics for both constness
+// and type-ness if it is not.
+bool ValidateConstType(ast::DesignatedInitializer const &node,
+                       type::QualType qt, Context const &context,
+                       diagnostic::DiagnosticConsumer &diagnostic_consumer) {
+  bool result = true;
+
+  if (not qt.constant()) {
+    diagnostic_consumer.Consume(NonConstantDesignatedInitializerType{
+        .range = node.type()->range(),
+    });
+    result = false;
+  }
+
+  if (qt.type() != type::Type_) {
+    diagnostic_consumer.Consume(NonTypeDesignatedInitializerType{
+        .type  = TypeForDiagnostic(&node, context),
+        .range = node.type()->range(),
+    });
+    result = false;
+  }
+  return result;
+}
+
 }  // namespace
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer const *node) {
   auto type_qt = VerifyType(node->type())[0];
-  if (type_qt.HasErrorMark()) {
+  if (not ValidateConstType(*node, type_qt, context(), diag())) {
     return context().set_qual_type(node, type::QualType::Error());
   }
 
-  bool error = false;
-  // Check for constness and type-ness separately so we can emit different error
-  // messages (potentially both). Then, if either failed, exit early.
-  if (not type_qt.constant()) {
-    diag().Consume(NonConstantDesignatedInitializerType{
-        .range = node->range(),
-    });
-    error = true;
-  }
-
-  if (type_qt.type() != type::Type_) {
-    diag().Consume(NonTypeDesignatedInitializerType{
-        .type  = TypeForDiagnostic(node, context()),
-        .range = node->range(),
-    });
-    error = true;
-  }
-  if (error) { return context().set_qual_type(node, type::QualType::Error()); }
-
-  std::vector<std::vector<type::QualType>> initializer_qts;
-  initializer_qts.reserve(node->assignments().size());
+  std::vector<std::vector<type::QualType>> initializer_qts(
+      node->assignments().size());
+  auto iter = initializer_qts.begin();
   for (auto const *assignment : node->assignments()) {
-    auto &back = initializer_qts.emplace_back();
+    auto &initializer_qt = *iter++;
     for (auto const *expr : assignment->rhs()) {
       auto span = VerifyType(expr);
-      back.insert(back.end(), span.begin(), span.end());
+      initializer_qt.insert(initializer_qt.end(), span.begin(), span.end());
     }
   }
 
   // Evaluate the type next so that the default ordering of error messages makes
   // sense (roughly top-to-bottom).
+
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
                    type::Type t,
                    EvaluateOrDiagnoseAs<type::Type>(node->type()));
@@ -156,9 +163,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
   auto *struct_type = t.if_as<type::Struct>();
   if (not struct_type) {
     diag().Consume(NonStructDesignatedInitializer{
-        .type  = TypeForDiagnostic(node->type(), context()),
+        .type  = t.to_string(),
         .range = node->type()->range(),
-    });
+   });
     return context().set_qual_type(node, type::QualType::Error());
   }
 

@@ -192,7 +192,7 @@ struct StringifyType : ast::Visitor<std::string()> {
   }
 
   std::string Visit(ast::Terminal const *node) final {
-    return context_.qual_types(node)[0].type().to_string();
+    return TerminalType(*node).to_string();
   }
 
   std::string Visit(ast::UnaryOperator const *node) final {

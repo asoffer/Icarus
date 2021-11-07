@@ -394,5 +394,8 @@ struct Context {
   JumpMap jumps_;
 };
 
+// TODO: Probably deserves it's own translation unit?
+type::Type TerminalType(ast::Terminal const &node);
+
 }  // namespace compiler
 #endif  // ICARUS_COMPILER_CONTEXT_H

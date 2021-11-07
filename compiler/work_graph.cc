@@ -22,16 +22,18 @@ bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
   Compiler c(&context, work_graph.resources());
   c.set_work_resources(work_graph.work_resources());
 
+  bool found_error = false;
   for (ast::Node const *node : nodes) {
     if (not predicate(node)) { continue; }
     auto qts = c.VerifyType(node);
-    if (stop_on_first_error) {
-      for (auto const &qt : qts) {
-        if (qt.HasErrorMark()) { return false; }
+    for (auto const &qt : qts) {
+      if (qt.HasErrorMark()) {
+        found_error = true;
+        if (stop_on_first_error) { return false; }
       }
     }
   }
-  return true;
+  return not found_error;
 }
 
 std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
@@ -179,7 +181,8 @@ std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
 WorkGraph::EvaluateToBuffer(Context &context,
                             type::Typed<ast::Expression const *> expr,
                             bool must_complete) {
-  if (resources().diagnostic_consumer->num_consumed() != 0) {
+  if (auto qt = context.qual_types(*expr)[0];
+      qt == type::QualType::Error() or qt.HasErrorMark()) {
     // TODO: Give some explanation about failing to evaluate due to preexisting
     // errors. This probably shouldn't be an error itself.
     return std::vector<diagnostic::ConsumedMessage>{};

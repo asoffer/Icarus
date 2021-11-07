@@ -7,29 +7,10 @@
 
 namespace compiler {
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::Terminal const *node) {
-  type::Type t;
-  base::MetaValue mv = node->type();
-  if (mv == base::meta<ir::Integer>) {
-    t = type::Integer;
-  } else if (mv == base::meta<bool>) {
-    t = type::Bool;
-  } else if (mv == base::meta<ir::Char>) {
-    t = type::Char;
-  } else if (mv == base::meta<float>) {
-    t = type::F32;
-  } else if (mv == base::meta<double>) {
-    t = type::F64;
-  } else if (mv == base::meta<ir::Slice>) {
-    t = type::Slc(type::Char);
-  } else if (mv == base::meta<ir::addr_t>) {
-    t = type::NullPtr;
-  } else if (mv == base::meta<type::Type>) {
-    t = type::Type_;
-  } else {
-    UNREACHABLE(mv.name());
-  }
-  return context().set_qual_type(node, type::QualType::Constant(t));
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::Terminal const *node) {
+  return context().set_qual_type(node,
+                                 type::QualType::Constant(TerminalType(*node)));
 }
 
 bool Compiler::VerifyPatternType(ast::Terminal const *node, type::Type t) {
