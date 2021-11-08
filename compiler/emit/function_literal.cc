@@ -36,11 +36,6 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
     return;
   }
 
-  // TODO: Check the result of body verification.
-  // TODO: Check for whether or not we actually need to do the verification is
-  // handled inside VerifyBody, at least for now.
-  VerifyBody(node);
-
   // TODO Use correct constants
   auto [f, inserted] = context().add_func(node);
   if (inserted) {

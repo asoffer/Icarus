@@ -18,6 +18,7 @@ struct WorkItem : base::Extend<WorkItem>::With<base::AbslHashExtension> {
     VerifyFunctionBody,
     VerifyStructBody,
     CompleteStructMembers,
+    CompleteEnum,
     EmitFunctionBody,
     EmitShortFunctionBody,
     EmitJumpBody,

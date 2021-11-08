@@ -244,11 +244,27 @@ struct Context {
   void set_decls(ast::Identifier const *id,
                  std::vector<ast::Declaration const *> decls);
 
+  // TODO: Move these to using `type_`.
   type::Struct *get_struct(ast::StructLiteral const *s) const;
   void set_struct(ast::StructLiteral const *sl, type::Struct *s);
   type::Struct *get_struct(ast::ParameterizedStructLiteral const *s) const;
   void set_struct(ast::ParameterizedStructLiteral const *sl, type::Struct *s);
   ast::Expression const *ast_struct(type::Struct const *s) const;
+
+  template <typename T, typename... Args>
+  std::pair<type::Type, bool> EmplaceType(ast::Expression const *expr,
+                                          Args &&... args) {
+    auto [iter, inserted] = types_.try_emplace(expr);
+    if (not inserted) { return std::pair(iter->second, inserted); }
+    iter->second = type::Type(type::Allocate<T>(std::forward<Args>(args)...));
+    return std::pair(iter->second, inserted);
+  }
+
+  type::Type LoadType(ast::Expression const *expr) {
+    auto iter = types_.find(expr);
+    ASSERT(iter != types_.end());
+    return iter->second;
+  }
 
   ir::CompleteResultBuffer const &SetConstant(
       ast::Declaration::Id const *id, ir::CompleteResultRef const &buffer);
@@ -371,6 +387,10 @@ struct Context {
   absl::flat_hash_map<ast::Identifier const *,
                       absl::flat_hash_set<CompiledModule const *>>
       adl_modules_;
+
+  // For types defined by a single literal expression, (e.g., enums, flags, and
+  // structs), this map encodes that definition.
+  absl::flat_hash_map<ast::Expression const *, type::Type> types_;
 
   // This forward_list is never iterated over, we only require pointer
   // stability.

@@ -172,6 +172,9 @@ bool WorkGraph::Execute(WorkItem const &w) {
     case WorkItem::Kind::CompleteStructMembers:
       result = c.CompleteStruct(&w.node->as<ast::StructLiteral>());
       break;
+    case WorkItem::Kind::CompleteEnum:
+      result = c.CompleteEnum(&w.node->as<ast::EnumLiteral>());
+      break;
     case WorkItem::Kind::EmitJumpBody:
       result = c.EmitJumpBody(&w.node->as<ast::Jump>());
       break;

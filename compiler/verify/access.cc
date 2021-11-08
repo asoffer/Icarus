@@ -183,6 +183,7 @@ std::pair<type::Type, int> DereferenceAll(type::Type t) {
 absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
     ast::Access const *node,
     type::QualType operand_qt) {
+  LOG("Access", "%s", node->DebugString());
   if (not operand_qt.constant()) {
     c.diag().Consume(NonConstantTypeMemberAccess{
         .range = node->range(),
