@@ -41,22 +41,25 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       compiler.set_work_resources(wr);
       compiler.builder().CurrentGroup() = cg;
 
-      auto *s = type::Allocate<type::InstantiatedGenericStruct>(
-          compiler.resources().module,
-          type::Struct::Options{.is_copyable = not node->hashtags.contains(
-                                    ir::Hashtag::Uncopyable),
-                                .is_movable = not node->hashtags.contains(
-                                    ir::Hashtag::Immovable)},
-          gen_struct);
-      s->set_arguments(args.Transform([](auto const &a) {
-        ir::CompleteResultBuffer buffer;
-        buffer.append(*a);
-        return type::Typed(buffer, a.type());
-      }));
+      auto [t, inserted] =
+          compiler.context().EmplaceType<type::InstantiatedGenericStruct>(
+              node, compiler.resources().module,
+              type::Struct::Options{.is_copyable = not node->hashtags.contains(
+                                        ir::Hashtag::Uncopyable),
+                                    .is_movable = not node->hashtags.contains(
+                                        ir::Hashtag::Immovable)},
+              gen_struct);
 
-      LOG("ParameterizedStructLiteral",
-          "Allocating a new (parameterized) struct %p for %p", s, node);
-      compiler.context().set_struct(node, s);
+      auto *s = &const_cast<type::InstantiatedGenericStruct &>(
+          t.as<type::InstantiatedGenericStruct>());
+      if (inserted) {
+        s->set_arguments(args.Transform([](auto const &a) {
+          ir::CompleteResultBuffer buffer;
+          buffer.append(*a);
+          return type::Typed(buffer, a.type());
+        }));
+      }
+
       for (auto const &field : node->fields()) { compiler.VerifyType(&field); }
 
       auto maybe_fn = StructCompletionFn(compiler, s, node->fields());
@@ -74,9 +77,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(
                             s);
     } else {
       LOG("ParameterizedStructLiteral", "cached! %s", node->DebugString());
-      return std::make_pair(core::Params<type::QualType>{core::AnonymousParam(
-                                type::QualType::Constant(type::Type_))},
-                            context.get_struct(node));
+      return std::make_pair(
+          core::Params<type::QualType>{
+              core::AnonymousParam(type::QualType::Constant(type::Type_))},
+          &const_cast<type::InstantiatedGenericStruct &>(
+              context.LoadType(node).as<type::InstantiatedGenericStruct>()));
     }
   };
 

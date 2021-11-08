@@ -19,7 +19,9 @@ bool Compiler::CompleteStruct(
     ast::ParameterizedStructLiteral const *node) {
   LOG("struct", "Completing struct-literal emission: %p", node);
 
-  type::Struct *s = context().get_struct(node);
+  // TODO: Find a way around these const casts.
+  type::Struct *s =
+      &const_cast<type::Struct &>(context().LoadType(node).as<type::Struct>());
   if (s->completeness() == type::Completeness::Complete) {
     LOG("struct", "Already complete, exiting: %p", node);
     return true;

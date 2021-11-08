@@ -244,26 +244,27 @@ struct Context {
   void set_decls(ast::Identifier const *id,
                  std::vector<ast::Declaration const *> decls);
 
-  // TODO: Move these to using `type_`.
-  type::Struct *get_struct(ast::StructLiteral const *s) const;
-  void set_struct(ast::StructLiteral const *sl, type::Struct *s);
-  type::Struct *get_struct(ast::ParameterizedStructLiteral const *s) const;
-  void set_struct(ast::ParameterizedStructLiteral const *sl, type::Struct *s);
-  ast::Expression const *ast_struct(type::Struct const *s) const;
+  ast::Expression const *ast_struct(type::Struct const *s) const {
+    // TODO: Store a bidirectional map. This could be made way more efficient.
+    type::Type struct_type(s);
+    for (auto const &[expr, t] : types_) {
+      if (t == struct_type) { return &expr->as<ast::StructLiteral>(); }
+    }
+    if (auto *p = parent()) { return p->ast_struct(s); }
+    return nullptr;
+  }
 
   template <typename T, typename... Args>
   std::pair<type::Type, bool> EmplaceType(ast::Expression const *expr,
                                           Args &&... args) {
-    auto [iter, inserted] = types_.try_emplace(expr);
-    if (not inserted) { return std::pair(iter->second, inserted); }
-    iter->second = type::Type(type::Allocate<T>(std::forward<Args>(args)...));
-    return std::pair(iter->second, inserted);
+    if (type::Type *t = TryLoadType(expr)) { return std::pair(*t, false); }
+    auto [iter, inserted] =
+        types_.emplace(expr, type::Allocate<T>(std::forward<Args>(args)...));
+    return std::pair(iter->second, true);
   }
 
   type::Type LoadType(ast::Expression const *expr) {
-    auto iter = types_.find(expr);
-    ASSERT(iter != types_.end());
-    return iter->second;
+    return *ASSERT_NOT_NULL(TryLoadType(expr));
   }
 
   ir::CompleteResultBuffer const &SetConstant(
@@ -339,6 +340,13 @@ struct Context {
   constexpr Context *parent() { return tree_.parent; }
   constexpr Context const *parent() const { return tree_.parent; }
 
+  type::Type *TryLoadType(ast::Expression const *expr) {
+    auto iter = types_.find(expr);
+    if (iter != types_.end()) { return &iter->second; }
+    if (parent() == nullptr) { return nullptr; }
+    return parent()->TryLoadType(expr);
+  }
+
   // Types of the expressions in this context.
   absl::flat_hash_map<ast::Expression const *, std::vector<type::QualType>>
       qual_types_;
@@ -356,11 +364,6 @@ struct Context {
   // context.
   absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
       constants_;
-
-  absl::flat_hash_map<ast::StructLiteral const *, type::Struct *> structs_;
-  absl::flat_hash_map<ast::ParameterizedStructLiteral const *, type::Struct *>
-      param_structs_;
-  absl::flat_hash_map<type::Struct *, ast::Expression const *> reverse_structs_;
 
   // Colleciton of modules imported by this one.
   absl::flat_hash_map<ast::Import const *, ir::ModuleId> imported_modules_;
@@ -407,4 +410,5 @@ struct Context {
 type::Type TerminalType(ast::Terminal const &node);
 
 }  // namespace compiler
+
 #endif  // ICARUS_COMPILER_CONTEXT_H

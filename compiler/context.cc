@@ -150,41 +150,6 @@ void Context::set_decls(ast::Identifier const *id,
   decls_.emplace(id, std::move(decls));
 }
 
-type::Struct *Context::get_struct(ast::StructLiteral const *s) const {
-  auto iter = structs_.find(s);
-  if (iter != structs_.end()) { return iter->second; }
-  if (not parent()) { return nullptr; }
-  return parent()->get_struct(s);
-}
-
-void Context::set_struct(ast::StructLiteral const *sl, type::Struct *s) {
-  structs_.emplace(sl, s);
-  reverse_structs_.emplace(s, sl);
-}
-
-type::Struct *Context::get_struct(
-    ast::ParameterizedStructLiteral const *s) const {
-  if (auto iter = param_structs_.find(s); iter != param_structs_.end()) {
-    return iter->second;
-  }
-  if (not parent()) { return nullptr; }
-  return parent()->get_struct(s);
-}
-
-void Context::set_struct(ast::ParameterizedStructLiteral const *sl,
-                         type::Struct *s) {
-  param_structs_.emplace(sl, s);
-  reverse_structs_.emplace(s, sl);
-}
-
-ast::Expression const *Context::ast_struct(type::Struct const *s) const {
-  if (auto iter = reverse_structs_.find(s); iter != reverse_structs_.end()) {
-    return iter->second;
-  }
-  if (not parent()) { return nullptr; }
-  return parent()->ast_struct(s);
-}
-
 ir::CompleteResultBuffer const &Context::SetConstant(
     ast::Declaration::Id const *id, ir::CompleteResultRef const &ref) {
   ir::CompleteResultBuffer buffer;

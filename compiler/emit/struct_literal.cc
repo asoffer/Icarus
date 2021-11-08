@@ -18,51 +18,32 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
                             ir::PartialResultBuffer &out) {
   LOG("StructLiteral", "Starting struct-literal emission: %p", node);
 
-  if (type::Struct *s = context().get_struct(node)) {
-    LOG("StructLiteral", "Early return with possibly incomplete type %p", s);
-    out.append(type::Type(s));
-    return;
-  }
-
-  type::Struct *s = type::Allocate<type::Struct>(
-      resources().module,
+  auto [t, inserted] = context().EmplaceType<type::Struct>(
+      node, resources().module,
       type::Struct::Options{
           .is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),
       });
 
-  LOG("StructLiteral", "Allocating a new struct %p for %p on context %p", s,
-      node, &context());
-  context().set_struct(node, s);
-
-  // Note: VerifyBody may end up triggering EmitToBuffer calls for member types
-  // that depend on this incomplete type. For this reason it is important that
-  // we have already allocated the struct so we do not get a double-allocation.
-  //
-  // The process, as you can see above is to
-  // 1. Check if it has already been allocated. Return if it has been.
-  // 2. Allocate ourselves.
-  // 3. Start body verification.
-  // 4. Schedule completion.
-  //
-  // Notably, steps 1 and 2 must not be separated. Moreover, because body
-  // verification could end up calling this function again, we must "set up
-  // guards" (i.e., steps 1 and 2) before step 3 runs.
-
-  LOG("compile-work-queue", "Request work complete struct: %p", node);
-  Enqueue({.kind    = WorkItem::Kind::CompleteStructMembers,
-           .node    = node,
-           .context = &context()},
-          {WorkItem{.kind    = WorkItem::Kind::VerifyStructBody,
-                    .node    = node,
-                    .context = &context()}});
-  out.append(type::Type(s));
+  if (inserted) {
+    // Strictly speaking this conditional is not needed. Enqueuing the same work
+    // item twice will be deduplicated.
+    Enqueue({.kind    = WorkItem::Kind::CompleteStructMembers,
+             .node    = node,
+             .context = &context()},
+            {WorkItem{.kind    = WorkItem::Kind::VerifyStructBody,
+                      .node    = node,
+                      .context = &context()}});
+  }
+  out.append(t);
 }
 
 bool Compiler::CompleteStruct(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Completing struct-literal emission: %p", node);
 
-  type::Struct *s = context().get_struct(node);
+  // TODO: Find a way around these const casts.
+  type::Struct *s =
+      &const_cast<type::Struct &>(context().LoadType(node).as<type::Struct>());
   if (s->completeness() == type::Completeness::Complete) {
     LOG("StructLiteral", "Already complete, exiting: %p", node);
     return true;
