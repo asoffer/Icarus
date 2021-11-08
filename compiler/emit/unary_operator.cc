@@ -1,4 +1,3 @@
-#include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "frontend/lex/operators.h"
@@ -38,11 +37,6 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       return;
     } break;
     case ast::UnaryOperator::Kind::BufferPointer: {
-      absl::Cleanup c = [b = state_.must_complete, this] {
-        state_.must_complete = b;
-      };
-      state_.must_complete = false;
-
       EmitToBuffer(node->operand(), out);
       auto value = out.back().get<type::Type>();
       out.pop_back();
@@ -88,10 +82,6 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       out.append(EmitRef(node->operand()));
       return;
     case ast::UnaryOperator::Kind::Pointer: {
-      absl::Cleanup c = [b = state_.must_complete, this] {
-        state_.must_complete = b;
-      };
-      state_.must_complete = false;
       out.append(current_block()->Append(type::PtrInstruction{
           .operand = EmitAs<type::Type>(node->operand()),
           .result  = builder().CurrentGroup()->Reserve(),

@@ -14,6 +14,7 @@ namespace compiler {
 // Resources and pointers/references to data that are guaranteed to outlive
 // any Compiler construction.
 struct PersistentResources {
+  WorkSet* work;
   CompiledModule* module;
   diagnostic::DiagnosticConsumer* diagnostic_consumer;
   module::Importer* importer;

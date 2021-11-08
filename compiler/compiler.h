@@ -337,8 +337,7 @@ struct Compiler
   // failure and returns `nullopt`. If the expresison is no tof type `T`, the
   // behavior is undefined.
   template <typename T>
-  std::optional<T> EvaluateOrDiagnoseAs(ast::Expression const *expr,
-                                        bool must_complete = true) {
+  std::optional<T> EvaluateOrDiagnoseAs(ast::Expression const *expr) {
     type::Type t = [] {
       constexpr auto type = base::meta<T>;
       if constexpr (type == base::meta<type::Type>) { return type::Type_; }
@@ -351,24 +350,23 @@ struct Compiler
       }
     }();
     auto result = EvaluateToBufferOrDiagnose(
-        type::Typed<ast::Expression const *>(expr, t), must_complete);
+        type::Typed<ast::Expression const *>(expr, t));
     if (not result) return std::nullopt;
     return result->get<T>(0);
   }
 
   std::variant<ir::CompleteResultBuffer,
                std::vector<diagnostic::ConsumedMessage>>
-  EvaluateToBuffer(type::Typed<ast::Expression const *> expr,
-                   bool must_complete = true) {
+  EvaluateToBuffer(type::Typed<ast::Expression const *> expr) {
     ASSERT(work_resources_.evaluate != nullptr);
-    return work_resources_.evaluate(context(), expr, must_complete);
+    return work_resources_.evaluate(context(), expr);
   }
 
   std::optional<ir::CompleteResultBuffer> EvaluateToBufferOrDiagnose(
-      type::Typed<ast::Expression const *> expr, bool must_complete = true);
+      type::Typed<ast::Expression const *> expr);
 
   interpreter::EvaluationResult Evaluate(
-      type::Typed<ast::Expression const *> expr, bool must_complete = true);
+      type::Typed<ast::Expression const *> expr);
 
   TransientState &state() { return state_; }
 

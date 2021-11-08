@@ -24,7 +24,7 @@ Compiler::Compiler(Context *context, PersistentResources const &resources,
       state_(std::move(state)) {}
 
 interpreter::EvaluationResult Compiler::Evaluate(
-    type::Typed<ast::Expression const *> expr, bool must_complete) {
+    type::Typed<ast::Expression const *> expr) {
   auto maybe_result = EvaluateToBuffer(expr);
   if (auto *diagnostics = std::get_if<std::vector<diagnostic::ConsumedMessage>>(
           &maybe_result)) {
@@ -39,7 +39,7 @@ interpreter::EvaluationResult Compiler::Evaluate(
 }
 
 std::optional<ir::CompleteResultBuffer> Compiler::EvaluateToBufferOrDiagnose(
-    type::Typed<ast::Expression const *> expr, bool must_complete) {
+    type::Typed<ast::Expression const *> expr) {
   auto maybe_result = EvaluateToBuffer(expr);
   if (auto *diagnostics = std::get_if<std::vector<diagnostic::ConsumedMessage>>(
           &maybe_result)) {

@@ -52,6 +52,7 @@ TEST_P(BinaryOperatorTest, NonConstants) {
   test::TestModule mod;
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
+  base::EnableLogging("WorkGraph");
   mod.AppendCode(kCommonDefinitions);
   auto const *e = mod.Append<ast::Expression>(absl::StrFormat(
       R"(

@@ -81,6 +81,7 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
       stderr, &*maybe_file_src);
 
   PersistentResources resources{
+      .work                = work_set_,
       .module              = &module,
       .diagnostic_consumer = &module.diagnostic_consumer(),
       .importer            = this,

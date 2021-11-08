@@ -41,6 +41,22 @@ struct WorkItem : base::Extend<WorkItem>::With<base::AbslHashExtension> {
   Context *context;
 };
 
+// Represents a possibly non-exhaustive collection of work items that need to be
+// completed, along with an indicator of whether or not it has been completed
+// yet.
+struct WorkSet {
+  // Inserts the work item if it was not already present and returns whether or
+  // not that item has previously been completed.
+  bool AddWorkItem(WorkItem w) {
+    return work_.try_emplace(w, false).first->second;
+  }
+
+  void MarkAsComplete(WorkItem w) { work_.insert_or_assign(w, true); }
+
+ private:
+  absl::flat_hash_map<WorkItem, bool> work_;
+};
+
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_WORK_ITEM_H

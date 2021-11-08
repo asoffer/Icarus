@@ -25,6 +25,7 @@ struct TestModule : compiler::CompiledModule {
         source_("\n"),
         context_(&ir_module_),
         work_graph_(compiler::PersistentResources{
+            .work                = &work_set,
             .module              = this,
             .diagnostic_consumer = &consumer,
             .importer            = &importer,
@@ -51,8 +52,10 @@ struct TestModule : compiler::CompiledModule {
         c.VerifyType(node);
       }
     }
-    work_graph_.complete();
+    Complete();
   }
+
+  void Complete() { work_graph_.complete(); }
 
   template <typename NodeType>
   NodeType const* Append(std::string code) {
@@ -80,7 +83,7 @@ struct TestModule : compiler::CompiledModule {
           c.VerifyType(node);
         }
       }
-      work_graph_.complete();
+      Complete();
       return ptr;
     } else {
       return nullptr;
@@ -100,6 +103,7 @@ struct TestModule : compiler::CompiledModule {
     auto id = ir::ModuleId::New();
 
     compiler::PersistentResources import_resources{
+        .work                = &work_set,
         .module              = &imported_mod,
         .diagnostic_consumer = &consumer,
         .importer            = &importer,
@@ -121,6 +125,7 @@ struct TestModule : compiler::CompiledModule {
 
   module::MockImporter importer;
   diagnostic::TrackingConsumer consumer;
+  compiler::WorkSet work_set;
  private:
   frontend::StringSource source_;
   ir::Module ir_module_;

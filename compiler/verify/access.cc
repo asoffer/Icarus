@@ -308,6 +308,9 @@ type::QualType AccessStructMember(Compiler &c, ast::Access const *node,
 
   auto const *member = s->field(node->member_name());
   if (not member) {
+    // TODO: The type we're using here isn't correct. We're using the expression
+    // itself rather than its type. What we ought to do is find the expression
+    // that makes sens for this type and pass that in.
     c.diag().Consume(MissingMember{
         .expr_range   = node->operand()->range(),
         .member_range = node->member_range(),

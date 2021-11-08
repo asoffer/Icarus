@@ -16,8 +16,7 @@ namespace compiler {
 
 void Compiler::EmitToBuffer(ast::StructLiteral const *node,
                             ir::PartialResultBuffer &out) {
-  LOG("StructLiteral", "Starting struct-literal emission: %p%s", node,
-      state_.must_complete ? " (must complete)" : " (need not complete)");
+  LOG("StructLiteral", "Starting struct-literal emission: %p", node);
 
   if (type::Struct *s = context().get_struct(node)) {
     LOG("StructLiteral", "Early return with possibly incomplete type %p", s);
@@ -50,25 +49,18 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
   // verification could end up calling this function again, we must "set up
   // guards" (i.e., steps 1 and 2) before step 3 runs.
 
-  if (state_.must_complete) {
-    LOG("compile-work-queue", "Request work complete struct: %p", node);
-    Enqueue({.kind    = WorkItem::Kind::CompleteStructMembers,
-             .node    = node,
-             .context = &context()},
-            {WorkItem{.kind    = WorkItem::Kind::VerifyStructBody,
-                      .node    = node,
-                      .context = &context()}});
-  }
+  LOG("compile-work-queue", "Request work complete struct: %p", node);
+  Enqueue({.kind    = WorkItem::Kind::CompleteStructMembers,
+           .node    = node,
+           .context = &context()},
+          {WorkItem{.kind    = WorkItem::Kind::VerifyStructBody,
+                    .node    = node,
+                    .context = &context()}});
   out.append(type::Type(s));
 }
 
 bool Compiler::CompleteStruct(ast::StructLiteral const *node) {
-  LOG("StructLiteral", "Completing struct-literal emission: %p must-complete = %s",
-      node, state_.must_complete ? "true" : "false");
-
-  if (state_.must_complete and not context().BodyIsVerified(node)) {
-    NOT_YET();
-  }
+  LOG("StructLiteral", "Completing struct-literal emission: %p", node);
 
   type::Struct *s = context().get_struct(node);
   if (s->completeness() == type::Completeness::Complete) {

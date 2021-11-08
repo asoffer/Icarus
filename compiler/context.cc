@@ -185,21 +185,6 @@ ast::Expression const *Context::ast_struct(type::Struct const *s) const {
   return parent()->ast_struct(s);
 }
 
-bool Context::ShouldVerifyBody(ast::Node const *node) {
-  return body_verification_complete_.insert(node).second;
-}
-
-void Context::ClearVerifyBody(ast::Node const *node) {
-  body_verification_complete_.erase(node);
-}
-
-void Context::CompleteConstant(ast::Declaration::Id const *id) {
-  auto iter = constants_.find(id);
-  ASSERT(iter != constants_.end());
-  iter->second.second = true;
-}
-
-
 ir::CompleteResultBuffer const &Context::SetConstant(
     ast::Declaration::Id const *id, ir::CompleteResultRef const &ref) {
   ir::CompleteResultBuffer buffer;
@@ -209,23 +194,15 @@ ir::CompleteResultBuffer const &Context::SetConstant(
 
 ir::CompleteResultBuffer const &Context::SetConstant(
     ast::Declaration::Id const *id, ir::CompleteResultBuffer const &buffer) {
-  return constants_.try_emplace(id, std::move(buffer), false)
-      .first->second.first;
+  return constants_.try_emplace(id, std::move(buffer)).first->second;
 }
 
 ir::CompleteResultBuffer const *Context::Constant(
     ast::Declaration::Id const *id) const {
   auto iter = constants_.find(id);
-  if (iter != constants_.end()) { return &iter->second.first; }
+  if (iter != constants_.end()) { return &iter->second; }
   if (parent() != nullptr) { return parent()->Constant(id); }
   return nullptr;
-}
-
-ir::CompleteResultBuffer const *Context::ConstantIfComplete(
-    ast::Declaration::Id const *id) const {
-  auto iter = constants_.find(id);
-  return iter != constants_.end() and iter->second.second ? &iter->second.first
-                                                          : nullptr;
 }
 
 void Context::SetAllOverloads(ast::Expression const *callee,
@@ -270,10 +247,21 @@ Context::GoesTo(ast::Jump const *node) const {
 void Context::LoadConstant(ast::Declaration::Id const *id,
                            ir::PartialResultBuffer &out) const {
   if (auto iter = constants_.find(id); iter != constants_.end()) {
-    out.append(iter->second.first);
+    out.append(iter->second);
   } else {
     ASSERT_NOT_NULL(parent())->LoadConstant(id, out);
   }
+}
+
+bool Context::TryLoadConstant(ast::Declaration::Id const *id,
+                              ir::PartialResultBuffer &out) const {
+  if (auto iter = constants_.find(id); iter != constants_.end()) {
+    out.append(iter->second);
+    return true;
+  } else if (parent() != nullptr) {
+    return parent()->TryLoadConstant(id, out);
+  }
+  return false;
 }
 
 type::Type TerminalType(ast::Terminal const &node) {

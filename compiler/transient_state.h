@@ -11,7 +11,6 @@ namespace compiler {
 // function or jump, but otherwise does not need to be saved.
 struct TransientState {
   std::vector<ir::ScopeState> scope_landings;
-  bool must_complete = true;
 };
 
 }  // namespace compiler

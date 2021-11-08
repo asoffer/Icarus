@@ -9,9 +9,6 @@ bool Compiler::VerifyBody(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Struct-literal body verification: %p %s", node,
       node->DebugString());
 
-  // Ensure that we only verify the body once.
-  (void)context().ShouldVerifyBody(node);
-
   bool error = false;
   for (auto const &field : node->fields()) {
     auto field_qt = VerifyType(&field)[0];

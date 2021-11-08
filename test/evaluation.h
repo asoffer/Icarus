@@ -34,7 +34,8 @@ TEST_P(EvaluationTest, Test) {
   ASSERT_EQ(qts[0].type(), type);
 
   compiler::Compiler c(&mod.context(), compiler::PersistentResources{
-                                           .module              = &mod,
+                                           .work   = &mod.work_set,
+                                           .module = &mod,
                                            .diagnostic_consumer = &mod.consumer,
                                            .importer            = &mod.importer,
                                        });

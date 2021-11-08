@@ -219,6 +219,8 @@ struct Context {
 
   void LoadConstant(ast::Declaration::Id const *id,
                     ir::PartialResultBuffer &out) const;
+  bool TryLoadConstant(ast::Declaration::Id const *id,
+                       ir::PartialResultBuffer &out) const;
 
   ir::NativeFn FindNativeFn(ast::ParameterizedExpression const *expr) {
     auto iter = ir_funcs_.find(expr);
@@ -248,20 +250,11 @@ struct Context {
   void set_struct(ast::ParameterizedStructLiteral const *sl, type::Struct *s);
   ast::Expression const *ast_struct(type::Struct const *s) const;
 
-  bool BodyIsVerified(ast::Node const *node) const {
-    return body_verification_complete_.contains(node);
-  }
-  bool ShouldVerifyBody(ast::Node const *node);
-  void ClearVerifyBody(ast::Node const *node);
-
-  void CompleteConstant(ast::Declaration::Id const *id);
   ir::CompleteResultBuffer const &SetConstant(
       ast::Declaration::Id const *id, ir::CompleteResultRef const &buffer);
   ir::CompleteResultBuffer const &SetConstant(
       ast::Declaration::Id const *id, ir::CompleteResultBuffer const &buffer);
   ir::CompleteResultBuffer const *Constant(
-      ast::Declaration::Id const *id) const;
-  ir::CompleteResultBuffer const *ConstantIfComplete(
       ast::Declaration::Id const *id) const;
 
   void SetAllOverloads(ast::Expression const *callee, ast::OverloadSet os);
@@ -345,8 +338,7 @@ struct Context {
 
   // Map of all constant declarations to their values within this dependent
   // context.
-  absl::flat_hash_map<ast::Declaration::Id const *,
-                      std::pair<ir::CompleteResultBuffer, bool>>
+  absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
       constants_;
 
   absl::flat_hash_map<ast::StructLiteral const *, type::Struct *> structs_;
@@ -356,9 +348,6 @@ struct Context {
 
   // Colleciton of modules imported by this one.
   absl::flat_hash_map<ast::Import const *, ir::ModuleId> imported_modules_;
-
-  // TODO: I'm not sure anymore if this is necessary/what we want.
-  absl::flat_hash_set<ast::Node const *> body_verification_complete_;
 
   // Overloads for a callable expression, including overloads that are not
   // callable based on the call-site arguments.

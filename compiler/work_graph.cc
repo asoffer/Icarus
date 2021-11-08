@@ -137,53 +137,61 @@ std::optional<ir::CompiledFn> CompileExecutable(
 }
 
 bool WorkGraph::Execute(WorkItem const &w) {
-  auto dep_iter = dependencies_.find(w);
-  if (dep_iter != dependencies_.end()) {
-    auto nh = dependencies_.extract(dep_iter);
-    for (auto const &n : nh.mapped()) {
-      if (not Execute(n)) {
-        work_[w] = false;
-        return false;
-      }
+  if (auto dep_iter = dependencies_.find(w); dep_iter != dependencies_.end()) {
+    absl::Cleanup c = [&] { dependencies_.erase(w); };
+    auto deps       = std::move(dep_iter->second);
+    for (auto const &n : deps) {
+      if (not Execute(n)) { return false; }
     }
   }
 
-  auto [work_iter, inserted] = work_.try_emplace(w);
-  if (not inserted) { return work_iter->second; }
+  if (resources_.work->AddWorkItem(w)) {
+    LOG("WorkGraph", "Ignoring work %u on %s", (int)w.kind,
+        w.node->DebugString());
+    return true;
+  }
+
   Compiler c(w.context, resources_);
   c.set_work_resources(work_resources());
-  auto result = [&] {
-    switch (w.kind) {
-      case WorkItem::Kind::VerifyType:
-        c.VerifyType(w.node);
-        return resources().diagnostic_consumer->num_consumed() == 0;
-      case WorkItem::Kind::VerifyEnumBody:
-        return c.VerifyBody(&w.node->as<ast::EnumLiteral>());
-      case WorkItem::Kind::VerifyFunctionBody:
-        return c.VerifyBody(&w.node->as<ast::FunctionLiteral>());
-      case WorkItem::Kind::VerifyStructBody:
-        return c.VerifyBody(&w.node->as<ast::StructLiteral>());
-      case WorkItem::Kind::CompleteStructMembers:
-        return c.CompleteStruct(&w.node->as<ast::StructLiteral>());
-      case WorkItem::Kind::EmitJumpBody:
-        return c.EmitJumpBody(&w.node->as<ast::Jump>());
-      case WorkItem::Kind::EmitFunctionBody:
-        return c.EmitFunctionBody(&w.node->as<ast::FunctionLiteral>());
-      case WorkItem::Kind::EmitShortFunctionBody:
-        return c.EmitShortFunctionBody(
-            &w.node->as<ast::ShortFunctionLiteral>());
-    }
-  }();
-  // Note: The computation for `result` may add more work into `work_`
-  // potentially causing a rehash and thereby invalidating `work_iter`. we need
-  // to recompute it here.
-  return work_[w] = result;
+  bool result;
+  LOG("WorkGraph", "Starting work %u on %s", (int)w.kind, w.node->DebugString());
+  switch (w.kind) {
+    case WorkItem::Kind::VerifyType:
+      c.VerifyType(w.node);
+      result = resources().diagnostic_consumer->num_consumed() == 0;
+      break;
+    case WorkItem::Kind::VerifyEnumBody:
+      result = c.VerifyBody(&w.node->as<ast::EnumLiteral>());
+      break;
+    case WorkItem::Kind::VerifyFunctionBody:
+      result = c.VerifyBody(&w.node->as<ast::FunctionLiteral>());
+      break;
+    case WorkItem::Kind::VerifyStructBody:
+      result = c.VerifyBody(&w.node->as<ast::StructLiteral>());
+      break;
+    case WorkItem::Kind::CompleteStructMembers:
+      result = c.CompleteStruct(&w.node->as<ast::StructLiteral>());
+      break;
+    case WorkItem::Kind::EmitJumpBody:
+      result = c.EmitJumpBody(&w.node->as<ast::Jump>());
+      break;
+    case WorkItem::Kind::EmitFunctionBody:
+      result = c.EmitFunctionBody(&w.node->as<ast::FunctionLiteral>());
+      break;
+    case WorkItem::Kind::EmitShortFunctionBody:
+      result =
+          c.EmitShortFunctionBody(&w.node->as<ast::ShortFunctionLiteral>());
+      break;
+  }
+  if (result) { resources_.work->MarkAsComplete(w); }
+  LOG("WorkGraph", "Ending work %u on %s (result = %s)", (int)w.kind,
+      w.node->DebugString(), result ? "true" : "false");
+  return result;
 }
 
 std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
 WorkGraph::EvaluateToBuffer(Context &context,
-                            type::Typed<ast::Expression const *> expr,
-                            bool must_complete) {
+                            type::Typed<ast::Expression const *> expr) {
   if (auto qt = context.qual_types(*expr)[0];
       qt == type::QualType::Error() or qt.HasErrorMark()) {
     // TODO: Give some explanation about failing to evaluate due to preexisting
@@ -200,8 +208,6 @@ WorkGraph::EvaluateToBuffer(Context &context,
   Compiler c(&context, w.resources());
   c.set_work_resources(w.work_resources());
 
-  // c.state_.must_complete = must_complete;
-
   auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
   ir::NativeFn::Data data{
       .fn        = &thunk,
@@ -212,9 +218,7 @@ WorkGraph::EvaluateToBuffer(Context &context,
   w.complete();
 
   if (buffering_consumer.empty()) {
-    auto result = EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
-    w.complete();
-    return result;
+    return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
   } else {
     return std::move(buffering_consumer).extract();
   }

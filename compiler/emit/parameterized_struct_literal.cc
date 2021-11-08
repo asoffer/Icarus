@@ -9,8 +9,6 @@ namespace compiler {
 
 void Compiler::EmitToBuffer(ast::ParameterizedStructLiteral const *node,
                             ir::PartialResultBuffer &out) {
-  // TODO: Check the result of body verification.
-  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
   out.append(
       ir::GenericFn([](WorkResources const &,
                        core::Arguments<type::Typed<ir::CompleteResultRef>> const
@@ -19,8 +17,7 @@ void Compiler::EmitToBuffer(ast::ParameterizedStructLiteral const *node,
 
 bool Compiler::CompleteStruct(
     ast::ParameterizedStructLiteral const *node) {
-  LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
-      node, state_.must_complete ? "true" : "false");
+  LOG("struct", "Completing struct-literal emission: %p", node);
 
   type::Struct *s = context().get_struct(node);
   if (s->completeness() == type::Completeness::Complete) {

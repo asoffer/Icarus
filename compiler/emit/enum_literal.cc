@@ -6,9 +6,6 @@ namespace compiler {
 
 void Compiler::EmitToBuffer(ast::EnumLiteral const *node,
                             ir::PartialResultBuffer &out) {
-  // TODO: Check the result of body verification.
-  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
-
   std::vector<std::string_view> names(node->enumerators().begin(),
                                       node->enumerators().end());
   absl::flat_hash_map<uint64_t, ir::RegOr<type::Enum::underlying_type>>

@@ -510,8 +510,7 @@ bool Compiler::EnsureDataCompleteness(type::Struct *s) {
     if (not VerifyBody(node)) { return false; }
     EmitVoid(node);
 
-    LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
-        node, state_.must_complete ? "true" : "false");
+    LOG("struct", "Completing struct-literal emission: %p", node);
 
     ASSIGN_OR(return false,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));
@@ -525,8 +524,7 @@ bool Compiler::EnsureDataCompleteness(type::Struct *s) {
     if (not VerifyBody(node)) { return false; }
     EmitVoid(node);
 
-    LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
-        node, state_.must_complete ? "true" : "false");
+    LOG("struct", "Completing struct-literal emission: %p ", node);
 
     ASSIGN_OR(return false,  //
                      auto fn, StructCompletionFn(*this, s, node->fields()));

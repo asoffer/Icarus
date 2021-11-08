@@ -615,7 +615,6 @@ cc_library(
         "//frontend/lex:operators",
         "//compiler:compiler_header",
         "//type/interface:ir",
-        "@com_google_absl//absl/cleanup",
     ],
 )
 

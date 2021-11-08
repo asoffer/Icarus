@@ -19,7 +19,7 @@ struct WorkResources {
   std::function<void(WorkItem, absl::flat_hash_set<WorkItem>)> enqueue;
   std::function<std::variant<ir::CompleteResultBuffer,
                              std::vector<diagnostic::ConsumedMessage>>(
-      Context &, type::Typed<ast::Expression const *>, bool)>
+      Context &, type::Typed<ast::Expression const *>)>
       evaluate;
   std::function<void(WorkItem const &)> complete;
 };

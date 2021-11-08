@@ -131,7 +131,9 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
 
   auto *src = &*maybe_file_src;
   diag      = diagnostic::StreamingConsumer(stderr, src);
-  compiler::FileImporter importer(&diag, absl::GetFlag(FLAGS_module_paths));
+  compiler::WorkSet work_set;
+  compiler::FileImporter importer(&work_set, &diag,
+                                  absl::GetFlag(FLAGS_module_paths));
 
   ir::Module ir_module;
   compiler::Context context(&ir_module);
@@ -142,6 +144,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
   }
 
   compiler::PersistentResources resources{
+      .work                = &work_set,
       .module              = &exec_mod,
       .diagnostic_consumer = &diag,
       .importer            = &importer,

@@ -143,7 +143,9 @@ int Compile(frontend::FileName const &file_name) {
 
   auto *src = &*maybe_file_src;
   diag      = diagnostic::StreamingConsumer(stderr, src);
-  compiler::FileImporter importer(&diag, absl::GetFlag(FLAGS_module_paths));
+  compiler::WorkSet work_set;
+  compiler::FileImporter importer(&work_set, &diag,
+                                  absl::GetFlag(FLAGS_module_paths));
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;
@@ -158,6 +160,7 @@ int Compile(frontend::FileName const &file_name) {
   }
 
   compiler::PersistentResources resources{
+      .work                = &work_set,
       .module              = &exec_mod,
       .diagnostic_consumer = &diag,
       .importer            = &importer,

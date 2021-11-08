@@ -30,6 +30,7 @@ struct WorkGraph {
   WorkGraph(WorkGraph &&)      = delete;
   WorkGraph &operator=(WorkGraph const &) = delete;
   WorkGraph &operator=(WorkGraph &&) = delete;
+  ~WorkGraph() { ASSERT(dependencies_.empty() == true); }
 
   explicit WorkGraph(PersistentResources const &resources)
       : resources_(resources) {}
@@ -61,22 +62,11 @@ struct WorkGraph {
   // depended-on `WorkItem`s are executed before executing `w`.
   bool Execute(WorkItem const &w);
 
-  // Complete all work in the work queue.
-  void complete() {
-    while (not dependencies_.empty()) {
-      // It's important to copy the item because calling `execute` might cause
-      // `dependencies_` to rehash.
-      auto item = dependencies_.begin()->first;
-      Execute(item);
-    }
-  }
-
   PersistentResources const &resources() const { return resources_; }
 
   std::variant<ir::CompleteResultBuffer,
                std::vector<diagnostic::ConsumedMessage>>
-  EvaluateToBuffer(Context &context, type::Typed<ast::Expression const *> expr,
-                   bool must_complete);
+  EvaluateToBuffer(Context &context, type::Typed<ast::Expression const *> expr);
 
   WorkResources work_resources() {
     return {
@@ -89,10 +79,19 @@ struct WorkGraph {
     };
   }
 
+  // Complete all work in the work queue.
+  void complete() {
+    while (not dependencies_.empty()) {
+      // It's important to copy the item because calling `execute` might cause
+      // `dependencies_` to rehash.
+      auto item = dependencies_.begin()->first;
+      Execute(item);
+    }
+  }
+
  private:
   PersistentResources resources_;
   absl::flat_hash_map<WorkItem, absl::flat_hash_set<WorkItem>> dependencies_;
-  absl::flat_hash_map<WorkItem, bool> work_;
 };
 
 bool CompileLibrary(Context &context, PersistentResources const &resources,

@@ -6,10 +6,6 @@ namespace compiler {
 void Compiler::EmitToBuffer(ast::BlockLiteral const *node,
                             ir::PartialResultBuffer &out) {
   LOG("BlockLiteral", "Emitting value for %p: %s", node, node->DebugString());
-  // TODO: The guarantee that body verification has already happened should be
-  // handled by the work queue.
-  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
-
   std::vector<ir::RegOr<ir::Fn>> befores;
   std::vector<ir::RegOr<ir::Jump>> afters;
   befores.reserve(node->before().size());

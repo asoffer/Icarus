@@ -10,9 +10,6 @@ namespace compiler {
 
 void Compiler::EmitToBuffer(ast::Jump const *node, ir::PartialResultBuffer &out) {
   LOG("Jump", "Emit %s", node->DebugString());
-  // TODO: Check the result of body verification.
-  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
-
   auto [jmp, inserted] = context().add_jump(node);
   if (inserted) {
     LOG("compile-work-queue", "Request work complete struct: %p", node);

@@ -192,7 +192,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
         output_type_vec[i] = c.context().qual_types(decl)[0].type();
       } else if (auto maybe_type =
-                     c.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i], false)) {
+                     c.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i])) {
         output_type_vec[i] = *maybe_type;
       }
     }
@@ -296,13 +296,6 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
     if (ret.get()->completeness() == type::Completeness::Incomplete) {
       NOT_YET();
     }
-  }
-
-  // TODO: Move this check out to the ProcessOneItem code?
-  if (not context().ShouldVerifyBody(node)) {
-    LOG("FunctionLiteral", "Ignoring subsequent verification of %s",
-        node->DebugString());
-    return true;
   }
 
   auto maybe_return_types = VerifyBodyOnly(*this, node);
