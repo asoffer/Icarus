@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# TODO: Use `bazel run //examples:foo` for these tests, once that works more reliably.
 bazel build //compiler:interpret
 
-examples=$(realpath $(dirname "$BASH_SOURCE"))
+examples=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
 root=$(dirname "$examples")
 binary="$root/bazel-bin/compiler/interpret"
 export ICARUS_MODULE_PATH="$root/stdlib"

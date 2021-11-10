@@ -1,9 +1,9 @@
 name: CI
 on:
   push:
-    branches: [ master, main ]
+    branches: [master, main]
   pull_request:
-    branches: [ master, main ]
+    branches: [master, main]
 jobs:
   test:
     runs-on: ubuntu-20.04
@@ -20,18 +20,5 @@ jobs:
           ast/... base/... compiler/verify/... compiler/emit/... core/...
           diagnostic/... format/... frontend/... ir/... match/...
           module/... opt/... repl/... type/...
-      - name: Build
-        run: "bazel build //compiler:interpret"
-      - name: Run Enum Example
-        run: "./bazel-bin/compiler/interpret examples/enum.ic"
-      - name: Run Factorial Example
-        run: "./bazel-bin/compiler/interpret examples/factorial.ic"
-      - name: Run Fibonacci Example
-        run: "./bazel-bin/compiler/interpret examples/fibonacci.ic"
-      - name: Run Fizz Buzz Example
-        run: "./bazel-bin/compiler/interpret examples/fizzbuzz.ic"
-      - name: Run Function Calls Example
-        run: "./bazel-bin/compiler/interpret examples/function_calls.ic"
-      - name: Run Primes Example
-        run: "./bazel-bin/compiler/interpret examples/primes.ic"
-
+      - name: Smoke Tests
+        run: "./examples/smoke_test.sh"
