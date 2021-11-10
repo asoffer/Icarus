@@ -1,0 +1,197 @@
+// This file generates syntax highlighter definitions, via https://eeyo.io/iro/
+name = icarus
+file_extensions [] = ic;
+
+__KEYWORDS \= (\b(import|struct|scope|jump|block|before|after|done|return|goto|move|copy|destroy|as|and|or|xor|not)\b)
+__OPERATORS \= ([*@&'.,+/|;:=<>-]|\\\\)
+__BUILTINS \= (\b(bool|char|byte|type|slice|[iuf](?:8|16|32|64))\b)
+
+contexts [] {
+   main : context {
+      : include "multi_line_comment";
+      : pattern {
+         regex \= (//.*)
+         styles [] = .comment;
+      }
+
+      : pattern {
+         regex \= (!(?:[^\\]|\\[abfnrtv0]))
+         styles [] = .text;
+      }
+
+      : pattern {
+         regex \= $${__KEYWORDS}
+         styles [] = .keyword;
+      }
+
+      : pattern {
+         regex \= $${__OPERATORS}
+         styles [] = .operator;
+      }
+
+      : pattern {
+         regex \= $${__BUILTINS}
+         styles [] = .builtin;
+      }
+
+      : include "numeric";
+      : include "hashtag";
+      : include "string";
+
+      : pattern {
+         regex \= (\b[a-zA-Z_]\w*\b)
+         styles [] = .identifier;
+      }
+
+      : inline_push {
+         regex \= (\{)
+         styles [] = .punctuation;
+         : pop {
+            regex \= (\})
+            styles [] = .punctuation;
+         }
+         : include "main" ;
+      }
+
+      : inline_push {
+         regex \= (\()
+         styles [] = .punctuation;
+         : pop {
+            regex \= (\))
+            styles [] = .punctuation;
+         }
+         : include "main" ;
+      }
+
+      : inline_push {
+         regex \= (\[)
+         styles [] = .punctuation;
+         : pop {
+            regex \= (\])
+            styles [] = .punctuation;
+         }
+         : include "main" ;
+      }
+
+      // Catch-all for any non-whitespace that isn't matched.
+      : pattern {
+         regex \= ([^\s])
+         styles [] = .illegal;
+      }
+   }
+
+   numeric : context {
+      : pattern {
+         regex \= (\b\d+\.?\d*\b)
+         styles [] = .numeric;
+      }
+   }
+
+   multi_line_comment : context {
+      description = multiline
+      : inline_push {
+         regex \= (/\*)
+         styles [] = .comment;
+         default_style = .comment
+         : pop {
+            regex \= (\*/)
+            styles [] = .comment;
+         }
+      }
+   }
+
+   hashtag : context {
+      : inline_push {
+         regex \= (\#\{)
+         styles [] = .keyword;
+         default_style = .keyword
+         : pop {
+            regex \= (\})
+            styles [] = .keyword;
+         }
+      }
+   }
+
+   string : context {
+      : inline_push {
+         regex \= (\")
+         styles [] = .punctuation;
+         : pop {
+            regex \= (\")
+            styles [] = .punctuation;
+         }
+         : pattern {
+            regex \= ((?:\\u[0-9a-f]{4})|(?:\\["\\/bfnrt]))
+            styles [] = .escape_char;
+         }
+         : pattern {
+            regex \= ([^\"\\]+)
+            styles [] = .text;
+         }
+      }
+   }
+}
+
+
+styles [] {
+   .comment : style {
+      color = light_green
+      italic = true
+      textmate_scope = comment
+      pygments_scope = Comment
+   }
+
+   .keyword : style {
+      color = cyan
+      textmate_scope = keyword.control
+      pygments_scope = Keyword
+   }
+
+   .operator : style {
+      color = orange
+      textmate_scope = keyword.operator
+      pygments_scope = Operator
+   }
+
+   .builtin : style {
+      color = purple
+      textmate_scope = entity.other
+      pygments_scope = Name.Builtin
+   }
+
+   .numeric : style {
+      color = gold
+      textmate_scope = constant.numeric
+      pygments_scope = Number
+   }
+
+   .punctuation : style {
+      color = red_2
+      textmate_scope = punctuation
+      pygments_scope = Punctuation
+   }
+
+   .text : style {
+      color = brown
+      textmate_scope = string
+      pygments_scope = String
+   }
+
+   .escape_char : style {
+      color = pink
+      textmate_scope = constant.character.escape
+      pygments_scope = String.Escape
+   }
+
+   .identifier : style {
+      textmate_scope = entity.name
+      pygments_scope = Name
+   }
+
+   .illegal : style {
+      color = white
+      background_color = red
+      textmate_scope = invalid.illegal
+      pygments_scope = Generic.Error
+   }
+}
