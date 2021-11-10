@@ -160,6 +160,9 @@ bool WorkGraph::Execute(WorkItem const &w) {
       c.VerifyType(w.node);
       result = resources().diagnostic_consumer->num_consumed() == 0;
       break;
+    case WorkItem::Kind::VerifyDesignatedInitializerBody:
+      result = c.VerifyBody(&w.node->as<ast::DesignatedInitializer>());
+      break;
     case WorkItem::Kind::VerifyEnumBody:
       result = c.VerifyBody(&w.node->as<ast::EnumLiteral>());
       break;

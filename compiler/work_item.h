@@ -14,6 +14,7 @@ struct Context;
 struct WorkItem : base::Extend<WorkItem>::With<base::AbslHashExtension> {
   enum class Kind {
     VerifyType,
+    VerifyDesignatedInitializerBody,
     VerifyEnumBody,
     VerifyFunctionBody,
     VerifyStructBody,

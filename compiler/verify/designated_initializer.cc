@@ -136,12 +136,43 @@ bool ValidateConstType(ast::DesignatedInitializer const &node,
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::DesignatedInitializer const *node) {
   auto type_qt = VerifyType(node->type())[0];
   if (not ValidateConstType(*node, type_qt, context(), diag())) {
     return context().set_qual_type(node, type::QualType::Error());
   }
 
+  ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
+                   type::Type t,
+                   EvaluateOrDiagnoseAs<type::Type>(node->type()));
+
+  auto *struct_type = t.if_as<type::Struct>();
+  type::QualType qt;
+  if (not struct_type) {
+    diag().Consume(NonStructDesignatedInitializer{
+        .type  = t.to_string(),
+        .range = node->type()->range(),
+    });
+    qt = type::QualType::Error();
+  } else {
+    qt = type::QualType::NonConstant(struct_type);
+  }
+
+  Enqueue({.kind    = WorkItem::Kind::VerifyDesignatedInitializerBody,
+           .node    = node,
+           .context = &context()});
+
+  return context().set_qual_type(node, qt);
+}
+
+// TODO: We can do type verification of the initializers *even if the struct
+// name itself had an error*.
+bool Compiler::VerifyBody(ast::DesignatedInitializer const *node) {
+  type::Type t                    = context().qual_types(node)[0].type();
+  type::Struct const *struct_type = t.if_as<type::Struct>();
+
+  bool error = false;
   std::vector<std::vector<type::QualType>> initializer_qts(
       node->assignments().size());
   auto iter = initializer_qts.begin();
@@ -153,31 +184,14 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
     }
   }
 
-  // Evaluate the type next so that the default ordering of error messages makes
-  // sense (roughly top-to-bottom).
-
-  ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
-                   type::Type t,
-                   EvaluateOrDiagnoseAs<type::Type>(node->type()));
-
-  auto *struct_type = t.if_as<type::Struct>();
-  if (not struct_type) {
-    diag().Consume(NonStructDesignatedInitializer{
-        .type  = t.to_string(),
-        .range = node->type()->range(),
-   });
-    return context().set_qual_type(node, type::QualType::Error());
-  }
+  if (not struct_type) { return false; }
 
   if (auto *ast_struct = context().ast_struct(struct_type)) {
     EnsureComplete({.kind    = WorkItem::Kind::CompleteStructMembers,
                     .node    = ast_struct,
                     .context = &context()});
   }
-  ASSERT(struct_type->completeness() >= type::Completeness::DataComplete);
 
-  bool recovered_error  = false;
-  type::Quals quals     = type::Quals::Const();
   auto initializer_iter = initializer_qts.begin();
   for (auto const *assignment : node->assignments()) {
     auto const &initializer_qt_vec = *initializer_iter;
@@ -200,8 +214,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
               .struct_type = struct_type,
               .range       = field->range(),
           });
-          recovered_error = true;
-          quals           = type::Quals::Unqualified();
+          error = true;
         }
       } else {
         diag().Consume(MissingStructField{
@@ -209,15 +222,14 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
             .struct_type = TypeForDiagnostic(node, context()),
             .range       = field->range(),
         });
-        recovered_error = true;
-        quals           = type::Quals::Unqualified();
+        error = true;
       }
     }
 
     auto qt_iter = initializer_iter->begin();
 
     for (auto const *field : assignment->lhs()) {
-      std::string_view field_name   = field->as<ast::Identifier>().name();
+      std::string_view field_name = field->as<ast::Identifier>().name();
       ASSERT(qt_iter != initializer_iter->end());
       type::QualType initializer_qt = *qt_iter;
       ++qt_iter;
@@ -226,8 +238,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
         // If there was an error we still want to verify all other initializers
         // and we still want to claim this expression has the same type, but
         // we'll just give up on it being a constant.
-        recovered_error = true;
-        quals           = type::Quals::Unqualified();
+        error = true;
         goto next_assignment;
       }
 
@@ -242,19 +253,14 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
             .actual   = lhs_type,
             .range    = field->range(),
         });
-        recovered_error = true;
-        quals           = type::Quals::Unqualified();
-      } else {
-        quals &= initializer_qt.quals();
+        error = true;
       }
     }
 
   next_assignment:;
   }
 
-  type::QualType qt(struct_type, quals);
-  if (recovered_error) { qt.MarkError(); }
-  return context().set_qual_type(node, qt);
+  return not error;
 }
 
 }  // namespace compiler

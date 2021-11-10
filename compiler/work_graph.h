@@ -39,11 +39,16 @@ struct WorkGraph {
       Context &context, base::PtrSpan<ast::Node const> nodes,
       std::invocable<WorkGraph &, base::PtrSpan<ast::Node const>> auto
           &&... steps) {
-    bool should_continue = true;
-    (void)((should_continue = steps(*this, nodes), complete(),
-            should_continue) and
-           ...);
-    return should_continue;
+    bool result = (([&] {
+                     // Note: Storing the value in `result` guarantees the steps
+                     // are evaluated before their corresponding call to
+                     // `complete()`.
+                     bool result = steps(*this, nodes);
+                     return result & complete();
+                   }()) and
+                   ...);
+    dependencies_.clear();
+    return result;
   }
 
   void emplace(WorkItem const &w,
@@ -80,13 +85,17 @@ struct WorkGraph {
   }
 
   // Complete all work in the work queue.
-  void complete() {
+  bool complete() {
     while (not dependencies_.empty()) {
       // It's important to copy the item because calling `execute` might cause
       // `dependencies_` to rehash.
       auto item = dependencies_.begin()->first;
-      Execute(item);
+      if (not Execute(item)) {
+        dependencies_.clear();
+        return false;
+      }
     }
+    return true;
   }
 
  private:

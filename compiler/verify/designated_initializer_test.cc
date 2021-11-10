@@ -146,7 +146,6 @@ TEST(DesignatedInitializer, Valid) {
   )");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_TRUE(qts[0].type().is<type::Struct>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Const());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 

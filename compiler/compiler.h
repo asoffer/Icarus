@@ -467,6 +467,7 @@ struct Compiler
   bool VerifyBody(ast::FunctionLiteral const *node);
   bool VerifyBody(ast::ParameterizedStructLiteral const *node);
   bool VerifyBody(ast::StructLiteral const *node);
+  bool VerifyBody(ast::DesignatedInitializer const *node);
 
   ir::Reg EmitRef(ast::Access const *node);
   ir::Reg Visit(EmitRefTag, ast::Access const *node) override {
