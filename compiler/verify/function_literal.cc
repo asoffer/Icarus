@@ -279,8 +279,8 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   for (auto const &param : fn_type.params()) {
     type::Type t = param.value.type();
     if (const auto *s = t.if_as<type::Struct>()) {
-      EnsureComplete({.kind    = WorkItem::Kind::CompleteStructMembers,
-                      .node    = context().ast_struct(s),
+      EnsureComplete({.kind    = WorkItem::Kind::CompleteStruct,
+                      .node    = context().AstLiteral(s),
                       .context = &context()});
     }
     if (t.get()->completeness() == type::Completeness::Incomplete) {
@@ -289,8 +289,8 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   }
   for (type::Type ret : fn_type.return_types()) {
     if (const auto *s = ret.if_as<type::Struct>()) {
-      EnsureComplete({.kind    = WorkItem::Kind::CompleteStructMembers,
-                      .node    = context().ast_struct(s),
+      EnsureComplete({.kind    = WorkItem::Kind::CompleteStruct,
+                      .node    = context().AstLiteral(s),
                       .context = &context()});
     }
     if (ret.get()->completeness() == type::Completeness::Incomplete) {

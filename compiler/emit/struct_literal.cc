@@ -28,7 +28,7 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
   if (inserted) {
     // Strictly speaking this conditional is not needed. Enqueuing the same work
     // item twice will be deduplicated.
-    Enqueue({.kind    = WorkItem::Kind::CompleteStructMembers,
+    Enqueue({.kind    = WorkItem::Kind::CompleteStructData,
              .node    = node,
              .context = &context()},
             {WorkItem{.kind    = WorkItem::Kind::VerifyStructBody,
@@ -36,6 +36,37 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
                       .context = &context()}});
   }
   out.append(t);
+}
+
+bool Compiler::CompleteStructData(ast::StructLiteral const *node) {
+  LOG("StructLiteral", "Completing struct data: %p", node);
+
+  // TODO: One of here or above should be responsible for EmplaceType, but not
+  // both. If we could enqueue code emission, that would make sense.
+  auto [t, inserted] = context().EmplaceType<type::Struct>(
+      node, resources().module,
+      type::Struct::Options{
+          .is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
+          .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),
+      });
+  // TODO: Find a way around these const casts.
+  type::Struct *s = &const_cast<type::Struct &>(t.as<type::Struct>());
+  ASSERT(s->completeness() == type::Completeness::Incomplete);
+
+  ASSIGN_OR(return false,  //
+                   auto fn, StructDataCompletionFn(*this, s, node->fields()));
+
+  // TODO: What if execution fails.
+  InterpretAtCompileTime(fn);
+
+  Enqueue({.kind    = WorkItem::Kind::CompleteStruct,
+           .node    = node,
+           .context = &context()});
+
+  LOG("StructLiteral",
+      "Completed data for %s which is a struct %s with %u field(s).",
+      node->DebugString(), *s, s->fields().size());
+  return true;
 }
 
 bool Compiler::CompleteStruct(ast::StructLiteral const *node) {
@@ -53,7 +84,7 @@ bool Compiler::CompleteStruct(ast::StructLiteral const *node) {
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
   InterpretAtCompileTime(fn);
-  s->complete();
+
   LOG("StructLiteral", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());
   return true;

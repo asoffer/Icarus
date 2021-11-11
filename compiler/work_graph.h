@@ -52,12 +52,12 @@ struct WorkGraph {
   }
 
   void emplace(WorkItem const &w,
-               absl::flat_hash_set<WorkItem> const &dependencies = {}) {
+               absl::flat_hash_set<WorkItem> const &dependencies) {
     dependencies_.emplace(w, dependencies);
   }
 
   void emplace(WorkItem const &w,
-               absl::flat_hash_set<WorkItem> &&dependencies) {
+               absl::flat_hash_set<WorkItem> &&dependencies = {}) {
     dependencies_.emplace(w, std::move(dependencies));
   }
 
@@ -73,13 +73,18 @@ struct WorkGraph {
                std::vector<diagnostic::ConsumedMessage>>
   EvaluateToBuffer(Context &context, type::Typed<ast::Expression const *> expr);
 
+  std::variant<ir::CompleteResultBuffer,
+               std::vector<diagnostic::ConsumedMessage>>
+  EvaluateToBufferAndComplete(Context &context,
+                              type::Typed<ast::Expression const *> expr);
+
   WorkResources work_resources() {
     return {
       .enqueue = [this](WorkItem item,
                         absl::flat_hash_set<WorkItem> prerequisites) {
         emplace(item, std::move(prerequisites));
       },
-      .evaluate = std::bind_front(&WorkGraph::EvaluateToBuffer, this),
+      .evaluate = std::bind_front(&WorkGraph::EvaluateToBufferAndComplete, this),
       .complete = std::bind_front(&WorkGraph::Execute, this),
     };
   }

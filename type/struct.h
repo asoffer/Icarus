@@ -23,7 +23,7 @@
 namespace type {
 
 struct Struct : LegacyType {
-  struct Field : base::Extend<Field, 4>::With<base::BaseSerializeExtension> {
+  struct Field : base::Extend<Field>::With<base::BaseSerializeExtension> {
     // TODO make a string_view but deal with trickiness of moving
 
     std::string name;
@@ -57,6 +57,7 @@ struct Struct : LegacyType {
   }
 
   Completeness completeness() const override { return completeness_; }
+  void data_complete() { completeness_ = Completeness::DataComplete; }
   void complete() { completeness_ = Completeness::Complete; }
 
   Field const *field(std::string_view name) const;
@@ -79,6 +80,7 @@ struct Struct : LegacyType {
   std::optional<ir::Fn> init_, user_dtor_, dtor_;
 
  private:
+  friend struct StructDataInstruction;
   friend struct StructInstruction;
 
   void AppendConstants(std::vector<Struct::Field> constants);
@@ -94,51 +96,56 @@ struct Struct : LegacyType {
   absl::flat_hash_map<std::string, size_t> field_indices_;
 };
 
+struct StructField
+    : base::Extend<StructField, 4>::With<base::BaseSerializeExtension> {
+  // TODO: Remove this once ByteCodeWriter supports
+  // non-default-constructible types.
+  explicit StructField() : name_(""), type_(ir::RegOr<Type>(nullptr)) {}
+
+  explicit StructField(std::string_view name, ir::RegOr<Type> t,
+                       ir::CompleteResultBuffer value = {})
+      : name_(name), type_(t), value_(std::move(value)) {}
+
+  // Returns the name of the struct field.
+  std::string_view name() const { return name_; }
+
+  void set_export(bool b) { export_ = b; }
+  constexpr bool exported() const { return export_; }
+
+  // Returns a pointer to the register representing the type if it exists,
+  // and a null pointer otherwise.
+  ir::Reg *type_reg() { return type_.is_reg() ? &type_.reg() : nullptr; }
+  ir::RegOr<Type> type() const { return type_; }
+  ir::CompleteResultRef initial_value() const {
+    return value_.empty() ? ir::CompleteResultRef() : value_[0];
+  }
+
+  friend void BaseTraverse(ir::Inliner &inliner, StructField &f) {
+    base::Traverse(inliner, f.type_);
+  }
+
+ private:
+  friend base::EnableExtensions;
+
+  std::string_view name_;
+  ir::RegOr<Type> type_;
+  ir::CompleteResultBuffer value_;
+  bool export_ = false;
+};
+
 // When compiling a struct definition, we build up a function to be
-// intepretted at compile-time which returns the newly created struct type. This
-// provides benefit over directly emitting struct types from the syntax tree
-// because it brings consistency whether the struct is parameterized or not, and
-// allows for more powerful metaprogramming.
-struct StructInstruction
-    : base::Extend<StructInstruction>::With<base::BaseSerializeExtension> {
-  struct Field : base::Extend<Field, 4>::With<base::BaseSerializeExtension> {
-    // TODO: Remove this once ByteCodeWriter supports
-    // non-default-constructible types.
-    explicit Field() : name_(""), type_(ir::RegOr<Type>(nullptr)) {}
+// intepretted at compile-time which returns the data members of the newly
+// created struct type. This provides benefit over directly emitting struct
+// types from the syntax tree because it brings consistency whether the struct
+// is parameterized or not, and allows for more powerful metaprogramming. Note
+// that this instruction does nothing regarding special functions such as
+// destruction or assignment.
+struct StructDataInstruction
+    : base::Extend<StructDataInstruction>::With<base::BaseSerializeExtension> {
+  using Field = StructField;
 
-    explicit Field(std::string_view name, ir::RegOr<Type> t,
-                   ir::CompleteResultBuffer value = {})
-        : name_(name), type_(t), value_(std::move(value)) {}
-
-    // Returns the name of the struct field.
-    std::string_view name() const { return name_; }
-
-    void set_export(bool b) { export_ = b; }
-    constexpr bool exported() const { return export_; }
-
-    // Returns a pointer to the register representing the type if it exists,
-    // and a null pointer otherwise.
-    ir::Reg *type_reg() { return type_.is_reg() ? &type_.reg() : nullptr; }
-    ir::RegOr<Type> type() const { return type_; }
-    ir::CompleteResultRef initial_value() const {
-      return value_.empty() ? ir::CompleteResultRef() : value_[0];
-    }
-
-    friend void BaseTraverse(ir::Inliner &inliner, Field &f) {
-      base::Traverse(inliner, f.type_);
-    }
-
-   private:
-    friend base::EnableExtensions;
-
-    std::string_view name_;
-    ir::RegOr<Type> type_;
-    ir::CompleteResultBuffer value_;
-    bool export_ = false;
-  };
-
-  friend void BaseTraverse(ir::Inliner &inliner, StructInstruction &s) {
-    base::Traverse(inliner, s.constants, s.fields);
+  friend void BaseTraverse(ir::Inliner &inliner, StructDataInstruction &s) {
+    base::Traverse(inliner, s.fields);
   }
 
   void Apply(interpreter::ExecutionContext &ctx) const;
@@ -148,10 +155,31 @@ struct StructInstruction
     return "struct TODO";
   }
 
-  // TODO: Store a special type indicating that the struct is incomplete.
+  Struct *struct_;
+  std::vector<Field> fields;
+};
+
+// When compiling a struct definition, we build up a function to be
+// intepretted at compile-time which returns the newly created struct type. This
+// provides benefit over directly emitting struct types from the syntax tree
+// because it brings consistency whether the struct is parameterized or not, and
+// allows for more powerful metaprogramming.
+struct StructInstruction
+    : base::Extend<StructInstruction>::With<base::BaseSerializeExtension> {
+      using Field = StructField;
+  friend void BaseTraverse(ir::Inliner &inliner, StructInstruction &s) {
+    base::Traverse(inliner, s.constants);
+  }
+
+  void Apply(interpreter::ExecutionContext &ctx) const;
+
+  std::string to_string() const {
+    // TODO
+    return "struct TODO";
+  }
+
   Struct *struct_;
   std::vector<Field> constants;
-  std::vector<Field> fields;
   std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
       copy_assignments;
   std::optional<ir::Fn> dtor;

@@ -635,6 +635,7 @@ struct Compiler
   // TODO: The implementation here has some overlap with CompleteStruct.
   bool EnsureDataCompleteness(type::Struct *s);
 
+  bool CompleteStructData(ast::StructLiteral const *node);
   bool CompleteStruct(ast::StructLiteral const *node);
   bool CompleteStruct(ast::ParameterizedStructLiteral const *node);
   bool CompleteEnum(ast::EnumLiteral const *node);

@@ -32,6 +32,18 @@ ic_low_level_library(
 )
 
 ic_low_level_library(
+    name = "file",
+    visibility = ["//visibility:public"],
+    srcs = ["file.ic"],
+    deps = [
+        ":core",
+        ":cstdio",
+        ":errno",
+        ":memory",
+    ],
+)
+
+ic_low_level_library(
     name = "memory",
     visibility = ["//visibility:public"],
     srcs = ["memory.ic"],
@@ -56,6 +68,7 @@ ic_low_level_library(
         ":cstdlib",
         ":cstdio",
         ":errno",
+        ":file",
         ":io",
         ":memory",
         ":string",

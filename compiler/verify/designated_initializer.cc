@@ -186,8 +186,11 @@ bool Compiler::VerifyBody(ast::DesignatedInitializer const *node) {
 
   if (not struct_type) { return false; }
 
-  if (auto *ast_struct = context().ast_struct(struct_type)) {
-    EnsureComplete({.kind    = WorkItem::Kind::CompleteStructMembers,
+  if (auto *ast_struct = context().AstLiteral(struct_type)) {
+    EnsureComplete({.kind    = WorkItem::Kind::CompleteStructData,
+                    .node    = ast_struct,
+                    .context = &context()});
+    EnsureComplete({.kind    = WorkItem::Kind::CompleteStruct,
                     .node    = ast_struct,
                     .context = &context()});
   }

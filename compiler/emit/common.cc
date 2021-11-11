@@ -28,9 +28,7 @@ struct IncompleteField {
   frontend::SourceRange range;
 };
 
-ir::Fn InsertGeneratedMoveInit(
-    Compiler &c, type::Struct *s,
-    absl::Span<type::StructInstruction::Field const> ir_fields) {
+ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveInit(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
@@ -40,8 +38,7 @@ ir::Fn InsertGeneratedMoveInit(
       auto to   = ir::Reg::Out(0);
 
       size_t i = 0;
-      for (auto const &field : ir_fields) {
-        type::Type t = field.type().value();
+      for (auto const &field : s->fields()) {
         auto to_ref =
             c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
                 .addr        = to,
@@ -55,10 +52,10 @@ ir::Fn InsertGeneratedMoveInit(
                 .struct_type = s,
                 .result      = c.builder().CurrentGroup()->Reserve()});
 
-        ir::RegOr<ir::addr_t> r(c.builder().PtrFix(from_val, t));
+        ir::RegOr<ir::addr_t> r(c.builder().PtrFix(from_val, field.type));
         ir::PartialResultBuffer buffer;
         buffer.append(r);
-        c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, t), buffer);
+        c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
         ++i;
       }
       c.builder().ReturnJump();
@@ -80,9 +77,7 @@ ir::OutParams SetReturns(
   }
 }
 
-ir::Fn InsertGeneratedCopyInit(
-    Compiler &c, type::Struct *s,
-    absl::Span<type::StructInstruction::Field const> ir_fields) {
+ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyInit(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
@@ -92,8 +87,7 @@ ir::Fn InsertGeneratedCopyInit(
       auto to   = ir::Reg::Out(0);
 
       size_t i = 0;
-      for (auto const &field : ir_fields) {
-        type::Type t = field.type().value();
+      for (auto const &field : s->fields()) {
         auto to_ref =
             c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
                 .addr        = to,
@@ -108,8 +102,8 @@ ir::Fn InsertGeneratedCopyInit(
                 .result      = c.builder().CurrentGroup()->Reserve()});
 
         ir::PartialResultBuffer buffer;
-        buffer.append(c.builder().PtrFix(from_val, t));
-        c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, t), buffer);
+        buffer.append(c.builder().PtrFix(from_val, field.type));
+        c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
         ++i;
       }
       c.builder().ReturnJump();
@@ -119,9 +113,7 @@ ir::Fn InsertGeneratedCopyInit(
   return fn;
 }
 
-ir::Fn InsertGeneratedMoveAssign(
-    Compiler &c, type::Struct *s,
-    absl::Span<type::StructInstruction::Field const> ir_fields) {
+ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveAssign(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
@@ -129,7 +121,7 @@ ir::Fn InsertGeneratedMoveAssign(
       auto var                   = ir::Reg::Arg(0);
       auto val                   = ir::Reg::Arg(1);
 
-      for (size_t i = 0; i < ir_fields.size(); ++i) {
+      for (size_t i = 0; i < s->fields().size(); ++i) {
         ir::Reg to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
             .addr        = var,
             .index       = i,
@@ -142,11 +134,10 @@ ir::Fn InsertGeneratedMoveAssign(
             .result      = c.builder().CurrentGroup()->Reserve()});
 
         ir::PartialResultBuffer buffer;
-        buffer.append(
-            c.builder().PtrFix(from_ref, ir_fields[i].type().value()));
-        c.EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(
-                             to_ref, ir_fields[i].type().value()),
-                         type::Typed(buffer[0], ir_fields[i].type().value()));
+        buffer.append(c.builder().PtrFix(from_ref, s->fields()[i].type));
+        c.EmitCopyAssign(
+            type::Typed<ir::RegOr<ir::addr_t>>(to_ref, s->fields()[i].type),
+            type::Typed(buffer[0], s->fields()[i].type));
       }
 
       c.builder().ReturnJump();
@@ -156,9 +147,7 @@ ir::Fn InsertGeneratedMoveAssign(
   return fn;
 }
 
-ir::Fn InsertGeneratedCopyAssign(
-    Compiler &c, type::Struct *s,
-    absl::Span<type::StructInstruction::Field const> ir_fields) {
+ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyAssign(s, s);
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
@@ -166,7 +155,7 @@ ir::Fn InsertGeneratedCopyAssign(
       auto var                   = ir::Reg::Arg(0);
       auto val                   = ir::Reg::Arg(1);
 
-      for (size_t i = 0; i < ir_fields.size(); ++i) {
+      for (size_t i = 0; i < s->fields().size(); ++i) {
         ir::Reg to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
             .addr        = var,
             .index       = i,
@@ -178,11 +167,10 @@ ir::Fn InsertGeneratedCopyAssign(
             .struct_type = s,
             .result      = c.builder().CurrentGroup()->Reserve()});
         ir::PartialResultBuffer buffer;
-        buffer.append(
-            c.builder().PtrFix(from_ref, ir_fields[i].type().value()));
-        c.EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(
-                             to_ref, ir_fields[i].type().value()),
-                         type::Typed(buffer[0], ir_fields[i].type().value()));
+        buffer.append(c.builder().PtrFix(from_ref, s->fields()[i].type));
+        c.EmitCopyAssign(
+            type::Typed<ir::RegOr<ir::addr_t>>(to_ref, s->fields()[i].type),
+            type::Typed(buffer[0], s->fields()[i].type));
       }
 
       c.builder().ReturnJump();
@@ -353,16 +341,17 @@ void EmitArguments(
   }
 }
 
-std::optional<ir::CompiledFn> StructCompletionFn(
+std::optional<ir::CompiledFn> StructDataCompletionFn(
     Compiler &c, type::Struct *s,
     absl::Span<ast::Declaration const> field_decls) {
-  ASSERT(s->completeness() != type::Completeness::Complete);
+  ASSERT(s->completeness() == type::Completeness::Incomplete);
   bool field_error = false;
   for (auto const &field_decl : field_decls) {
+    if (field_decl.flags() & ast::Declaration::f_IsConst) { continue; }
     for (auto const &id : field_decl.ids()) {
       type::QualType qt = c.context().qual_types(&id)[0];
       if (not qt or
-          qt.type().get()->completeness() != type::Completeness::Complete) {
+          qt.type().get()->completeness() == type::Completeness::Incomplete) {
         c.diag().Consume(IncompleteField{.range = id.range()});
         field_error = true;
       }
@@ -373,27 +362,81 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 
   ir::CompiledFn fn(type::Func({}, {}));
   ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
-    // TODO this is essentially a copy of the body of
-    // FunctionLiteral::EmitToBuffer. Factor these out together.
     c.builder().CurrentBlock() = fn.entry();
 
-    std::vector<type::StructInstruction::Field> ir_fields, constants;
+    std::vector<type::StructDataInstruction::Field> fields;
 
-    bool has_field_needing_destruction = false;
-    std::optional<ir::Fn> user_dtor;
-    std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
-        copy_assignments;
     for (auto const &field_decl : field_decls) {
+      if (field_decl.flags() & ast::Declaration::f_IsConst) { continue; }
       // TODO: Access to init_val is not correct here because that may
       // initialize multiple values.
       for (auto const &id : field_decl.ids()) {
         // TODO: Decide whether to support all hashtags. For now just covering
         // export.
+        if (auto const *init_val = id.declaration().init_val()) {
+          // TODO init_val type may not be the same.
+          type::Type field_type = c.context().qual_types(init_val)[0].type();
+
+          ASSIGN_OR(
+              NOT_YET(),  //
+              auto result,
+              c.EvaluateToBufferOrDiagnose(type::Typed(init_val, field_type)));
+
+          fields.emplace_back(id.name(), field_type, std::move(result))
+              .set_export(
+                  id.declaration().hashtags.contains(ir::Hashtag::Export));
+        } else {
+          // TODO: Failed evaluation
+          // TODO: Type expression actually refers potentially to multiple
+          // declaration ids.
+          type::Type field_type =
+              c.EvaluateOrDiagnoseAs<type::Type>(id.declaration().type_expr())
+                  .value();
+          fields.emplace_back(id.name(), field_type)
+              .set_export(
+                  id.declaration().hashtags.contains(ir::Hashtag::Export));
+        }
+      }
+    }
+
+    c.current_block()->Append(
+        type::StructDataInstruction{.struct_ = s, .fields = std::move(fields)});
+    c.builder().ReturnJump();
+  }
+
+  return fn;
+}
+
+std::optional<ir::CompiledFn> StructCompletionFn(
+    Compiler &c, type::Struct *s,
+    absl::Span<ast::Declaration const> field_decls) {
+  ASSERT(s->completeness() == type::Completeness::DataComplete);
+
+  ir::CompiledFn fn(type::Func({}, {}));
+  ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+    // TODO this is essentially a copy of the body of
+    // FunctionLiteral::EmitToBuffer. Factor these out together.
+    c.builder().CurrentBlock() = fn.entry();
+
+    std::vector<type::StructInstruction::Field> constants;
+    bool needs_dtor = false;
+    for (auto const &field : s->fields()) {
+      needs_dtor = needs_dtor or field.type.get()->HasDestructor();
+    }
+
+    std::optional<ir::Fn> user_dtor;
+    std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
+        copy_assignments;
+    for (auto const &field_decl : field_decls) {
+      if (not(field_decl.flags() & ast::Declaration::f_IsConst)) { continue; }
+
+      // TODO: Access to init_val is not correct here because that may
+      // initialize multiple values.
+      for (auto const &id : field_decl.ids()) {
+        // TODO: handle potential errors on each of these.
         if (id.name() == "destroy") {
-          // TODO: handle potential errors here.
           user_dtor = c.EmitAs<ir::Fn>(id.declaration().init_val()).value();
         } else if (id.name() == "move") {
-          // TODO handle potential errors here.
           auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
           switch (f.value().type()->params().size()) {
             case 1: move_inits.push_back(f.value()); break;
@@ -401,7 +444,6 @@ std::optional<ir::CompiledFn> StructCompletionFn(
             default: UNREACHABLE();
           }
         } else if (id.name() == "copy") {
-          // TODO handle potential errors here.
           auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
           switch (f.value().type()->params().size()) {
             case 1: copy_inits.push_back(f.value()); break;
@@ -409,42 +451,35 @@ std::optional<ir::CompiledFn> StructCompletionFn(
             default: UNREACHABLE();
           }
         } else {
-          type::Type field_type;
-          auto &fields =
-              (id.declaration().flags() & ast::Declaration::f_IsConst)
-                  ? constants
-                  : ir_fields;
           if (auto const *init_val = id.declaration().init_val()) {
             // TODO init_val type may not be the same.
-            field_type = c.context().qual_types(init_val)[0].type();
+            type::Type field_type = c.context().qual_types(init_val)[0].type();
 
             ASSIGN_OR(NOT_YET(),  //
                       auto result,
                       c.EvaluateToBufferOrDiagnose(
                           type::Typed(init_val, field_type)));
 
-            fields.emplace_back(id.name(), field_type, std::move(result));
-            fields.back().set_export(
-                id.declaration().hashtags.contains(ir::Hashtag::Export));
+            constants.emplace_back(id.name(), field_type, std::move(result))
+                .set_export(
+                    id.declaration().hashtags.contains(ir::Hashtag::Export));
           } else {
             // TODO: Failed evaluation
             // TODO: Type expression actually refers potentially to multiple
             // declaration ids.
-            field_type =
+            type::Type field_type =
                 c.EvaluateOrDiagnoseAs<type::Type>(id.declaration().type_expr())
                     .value();
-            fields.emplace_back(id.name(), field_type);
-            fields.back().set_export(
-                id.declaration().hashtags.contains(ir::Hashtag::Export));
+            constants.emplace_back(id.name(), field_type)
+                .set_export(
+                    id.declaration().hashtags.contains(ir::Hashtag::Export));
           }
-          has_field_needing_destruction = has_field_needing_destruction or
-                                          field_type.get()->HasDestructor();
         }
       }
     }
 
     std::optional<ir::Fn> dtor;
-    if (has_field_needing_destruction) {
+    if (needs_dtor) {
       auto [full_dtor, inserted] = c.context().ir().InsertDestroy(s);
       if (inserted) {
         ICARUS_SCOPE(ir::SetCurrent(full_dtor, c.builder())) {
@@ -458,7 +493,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
             c.builder().Call(*user_dtor, full_dtor.type(), std::move(args),
                              ir::OutParams());
           }
-          for (int i = ir_fields.size() - 1; i >= 0; --i) {
+          for (int i = s->fields().size() - 1; i >= 0; --i) {
             // TODO: Avoid emitting IR if the type doesn't need to be
             // destroyed.
             c.EmitDestroy(
@@ -476,19 +511,18 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     }
 
     if (move_inits.empty() and copy_inits.empty()) {
-      move_inits.push_back(InsertGeneratedMoveInit(c, s, ir_fields));
-      copy_inits.push_back(InsertGeneratedCopyInit(c, s, ir_fields));
+      move_inits.push_back(InsertGeneratedMoveInit(c, s));
+      copy_inits.push_back(InsertGeneratedCopyInit(c, s));
     }
 
     if (move_assignments.empty() and copy_assignments.empty()) {
-      move_assignments.push_back(InsertGeneratedMoveAssign(c, s, ir_fields));
-      copy_assignments.push_back(InsertGeneratedCopyAssign(c, s, ir_fields));
+      move_assignments.push_back(InsertGeneratedMoveAssign(c, s));
+      copy_assignments.push_back(InsertGeneratedCopyAssign(c, s));
     }
 
     c.current_block()->Append(
         type::StructInstruction{.struct_          = s,
                                 .constants        = std::move(constants),
-                                .fields           = std::move(ir_fields),
                                 .move_inits       = std::move(move_inits),
                                 .copy_inits       = std::move(copy_inits),
                                 .move_assignments = std::move(move_assignments),
@@ -503,7 +537,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 bool Compiler::EnsureDataCompleteness(type::Struct *s) {
   if (s->completeness() >= type::Completeness::DataComplete) { return true; }
 
-  ast::Expression const &expr = *ASSERT_NOT_NULL(context().ast_struct(s));
+  ast::Expression const &expr = *ASSERT_NOT_NULL(context().AstLiteral(s));
   // TODO: Deal with repetition between ast::StructLiteral and
   // ast::ParameterizedStructLiteral
   if (auto const *node = expr.if_as<ast::StructLiteral>()) {

@@ -28,6 +28,11 @@ ic_interpret(
 )
 
 ic_interpret(
+    name = "file",
+    src = "file.ic",
+)
+
+ic_interpret(
     name = "fizzbuzz",
     src = "fizzbuzz.ic",
 )

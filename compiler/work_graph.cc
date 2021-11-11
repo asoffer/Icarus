@@ -154,7 +154,8 @@ bool WorkGraph::Execute(WorkItem const &w) {
   Compiler c(w.context, resources_);
   c.set_work_resources(work_resources());
   bool result;
-  LOG("WorkGraph", "Starting work %u on %s", (int)w.kind, w.node->DebugString());
+  LOG("WorkGraph", "Starting work %u on %s (%p)", (int)w.kind,
+      w.node->DebugString(), this);
   switch (w.kind) {
     case WorkItem::Kind::VerifyType:
       c.VerifyType(w.node);
@@ -172,7 +173,10 @@ bool WorkGraph::Execute(WorkItem const &w) {
     case WorkItem::Kind::VerifyStructBody:
       result = c.VerifyBody(&w.node->as<ast::StructLiteral>());
       break;
-    case WorkItem::Kind::CompleteStructMembers:
+    case WorkItem::Kind::CompleteStructData:
+      result = c.CompleteStructData(&w.node->as<ast::StructLiteral>());
+      break;
+    case WorkItem::Kind::CompleteStruct:
       result = c.CompleteStruct(&w.node->as<ast::StructLiteral>());
       break;
     case WorkItem::Kind::CompleteEnum:
@@ -195,9 +199,47 @@ bool WorkGraph::Execute(WorkItem const &w) {
   return result;
 }
 
+// Factor out the common bits of these two functions.
 std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
 WorkGraph::EvaluateToBuffer(Context &context,
                             type::Typed<ast::Expression const *> expr) {
+  if (auto qt = context.qual_types(*expr)[0];
+      qt == type::QualType::Error() or qt.HasErrorMark()) {
+    // TODO: Give some explanation about failing to evaluate due to preexisting
+    // errors. This probably shouldn't be an error itself.
+    return std::vector<diagnostic::ConsumedMessage>{};
+  }
+
+  diagnostic::BufferingConsumer buffering_consumer(
+      resources().diagnostic_consumer);
+  auto r                = resources();
+  r.diagnostic_consumer = &buffering_consumer;
+  WorkGraph w(r);
+
+  Compiler c(&context, w.resources());
+  c.set_work_resources(w.work_resources());
+
+  auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
+  ir::NativeFn::Data data{
+      .fn        = &thunk,
+      .type      = thunk.type(),
+      .byte_code = byte_code.begin(),
+  };
+
+  // Anything that hasn't been completed gets shunted to the parent.
+  for (auto &[item, deps] : w.dependencies_) { emplace(item, std::move(deps)); }
+  w.dependencies_.clear();
+
+  if (buffering_consumer.empty()) {
+    return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
+  } else {
+    return std::move(buffering_consumer).extract();
+  }
+}
+
+std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
+WorkGraph::EvaluateToBufferAndComplete(
+    Context &context, type::Typed<ast::Expression const *> expr) {
   if (auto qt = context.qual_types(*expr)[0];
       qt == type::QualType::Error() or qt.HasErrorMark()) {
     // TODO: Give some explanation about failing to evaluate due to preexisting

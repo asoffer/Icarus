@@ -6,7 +6,8 @@ namespace compiler {
 
 void Compiler::EmitToBuffer(ast::EnumLiteral const *node,
                             ir::PartialResultBuffer &out) {
-  LOG("EnumLiteral", "Starting enum-literal emission: %p", node);
+  LOG("EnumLiteral", "Starting enum-literal emission: %p on %s", node,
+      context().DebugString());
 
   type::Type t;
   bool inserted;

@@ -164,6 +164,34 @@ core::Alignment Struct::alignment(core::Arch const &a) const {
   return align;
 }
 
+void StructDataInstruction::Apply(interpreter::ExecutionContext &ctx) const {
+  std::vector<Struct::Field> struct_fields;
+  struct_fields.reserve(fields.size());
+  for (auto const &field : fields) {
+    absl::flat_hash_set<ir::Hashtag> tags;
+    if (field.exported()) { tags.insert(ir::Hashtag::Export); }
+
+    if (ir::CompleteResultRef value = field.initial_value();
+        not value.empty()) {
+      // TODO: field.type() can be null. If the field type is inferred from the
+      // initial value.
+      Type t  = ctx.resolve(field.type());
+      auto &f = struct_fields.emplace_back(
+          Struct::Field{.name     = std::string(field.name()),
+                        .type     = t,
+                        .hashtags = std::move(tags)});
+      f.initial_value.append(value);
+    } else {
+      struct_fields.push_back(Struct::Field{.name = std::string(field.name()),
+                                            .type = ctx.resolve(field.type()),
+                                            .hashtags = std::move(tags)});
+    }
+  }
+
+  struct_->AppendFields(std::move(struct_fields));
+  struct_->data_complete();
+}
+
 void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
   std::vector<Struct::Field> constant_fields;
   constant_fields.reserve(constants.size());
@@ -189,34 +217,11 @@ void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
     }
   }
 
-  std::vector<Struct::Field> struct_fields;
-  struct_fields.reserve(fields.size());
-  for (auto const &field : fields) {
-    absl::flat_hash_set<ir::Hashtag> tags;
-    if (field.exported()) { tags.insert(ir::Hashtag::Export); }
-
-    if (ir::CompleteResultRef value = field.initial_value();
-        not value.empty()) {
-      // TODO: field.type() can be null. If the field type is inferred from the
-      // initial value.
-      Type t  = ctx.resolve(field.type());
-      auto &f = struct_fields.emplace_back(
-          Struct::Field{.name     = std::string(field.name()),
-                        .type     = t,
-                        .hashtags = std::move(tags)});
-      f.initial_value.append(value);
-    } else {
-      struct_fields.push_back(Struct::Field{.name = std::string(field.name()),
-                                            .type = ctx.resolve(field.type()),
-                                            .hashtags = std::move(tags)});
-    }
-  }
-
   struct_->AppendConstants(std::move(constant_fields));
-  struct_->AppendFields(std::move(struct_fields));
   struct_->SetInits(move_inits, copy_inits);
   struct_->SetAssignments(move_assignments, copy_assignments);
   if (dtor) { struct_->SetDestructor(*dtor); }
+  struct_->complete();
 }
 
 }  // namespace type

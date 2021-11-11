@@ -27,6 +27,17 @@
 #include "type/qual_type.h"
 
 namespace compiler {
+namespace internal_context {
+
+template <typename T>
+using DefiningAstNodeType = std::conditional_t<
+    (base::meta<T> == base::meta<type::Struct>), ast::StructLiteral,
+    std::conditional_t<(base::meta<T> == base::meta<type::Enum> or
+                        base::meta<T> == base::meta<type::Flags>),
+                       ast::EnumLiteral, void>>;
+
+}  // namespace internal_context
+
 struct CompiledModule;
 
 // Context holds all data that the compiler computes about the program by
@@ -244,13 +255,18 @@ struct Context {
   void set_decls(ast::Identifier const *id,
                  std::vector<ast::Declaration const *> decls);
 
-  ast::Expression const *ast_struct(type::Struct const *s) const {
+  template <typename T>
+  internal_context::DefiningAstNodeType<T> const *AstLiteral(T const *p) const {
     // TODO: Store a bidirectional map. This could be made way more efficient.
-    type::Type struct_type(s);
+    type::Type erased_type = p;
     for (auto const &[expr, t] : types_) {
-      if (t == struct_type) { return &expr->as<ast::StructLiteral>(); }
+      if (t == erased_type) {
+        return &expr->template as<internal_context::DefiningAstNodeType<T>>();
+      }
     }
-    if (auto *p = parent()) { return p->ast_struct(s); }
+    if (auto *parent_context = parent()) {
+      return parent_context->AstLiteral(p);
+    }
     return nullptr;
   }
 
