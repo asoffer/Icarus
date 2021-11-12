@@ -108,7 +108,6 @@ struct TestModule : compiler::CompiledModule {
         .diagnostic_consumer = &consumer,
         .importer            = &importer,
     };
-    imported_mod.set_diagnostic_consumer<diagnostic::TrackingConsumer>();
 
     frontend::SourceBuffer buffer(std::move(content));
     compiler::CompileLibrary(

@@ -14,7 +14,6 @@ cc_library(
         "//base:guarded",
         "//base:macros",
         "//base:ptr_span",
-        "//diagnostic/consumer",
         "//frontend:parse",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:node_hash_set",
@@ -28,7 +27,6 @@ cc_library(
     srcs = ["importer.cc"],
     deps = [
         ":module",
-        "//diagnostic/consumer:streaming",
         "//ir/value:module_id",
         "@com_google_absl//absl/types:span",
     ],

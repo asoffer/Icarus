@@ -71,7 +71,6 @@ int Interpret(frontend::FileName const &file_name) {
   ir::Module ir_module;
   Context context(&ir_module);
   CompiledModule exec_mod(&context);
-  exec_mod.set_diagnostic_consumer<diagnostic::StreamingConsumer>(stderr, src);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.embed(importer.get(embedded_id));
   }

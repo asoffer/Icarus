@@ -275,7 +275,7 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
       auto &s_mod = s->defining_module()->as<compiler::CompiledModule>();
       auto const *struct_lit = s_mod.context().AstLiteral(s);
 
-      if (s_mod.diagnostic_consumer().num_consumed() != 0) {
+      if (c.diag().num_consumed() != 0) {
         c.resources().module->set_dependent_module_with_errors();
       }
 
@@ -390,7 +390,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
     case 1: {
       type::QualType qt = mod.context().qual_types(ids[0])[0];
 
-      if (mod.diagnostic_consumer().num_consumed() != 0) {
+      if (c.diag().num_consumed() != 0) {
         c.resources().module->set_dependent_module_with_errors();
       }
 
@@ -411,7 +411,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
       absl::flat_hash_set<type::Callable const *> member_types;
       auto const &ctx = mod.context();
 
-      if (mod.diagnostic_consumer().num_consumed() != 0) {
+      if (c.diag().num_consumed() != 0) {
         c.resources().module->set_dependent_module_with_errors();
       }
 

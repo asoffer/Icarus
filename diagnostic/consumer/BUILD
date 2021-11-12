@@ -5,6 +5,7 @@ cc_library(
     hdrs = ["buffering.h"],
     deps = [
         ":consumer",
+        "//diagnostic:console_renderer",
         "//diagnostic:message",
     ],
 )

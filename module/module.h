@@ -14,7 +14,6 @@
 #include "base/guarded.h"
 #include "base/macros.h"
 #include "base/ptr_span.h"
-#include "diagnostic/consumer/consumer.h"
 
 namespace module {
 
@@ -41,18 +40,6 @@ struct BasicModule : base::Cast<BasicModule> {
 
   ast::ModuleScope const &scope() const { return scope_; }
 
-  diagnostic::DiagnosticConsumer &diagnostic_consumer() {
-    return *ASSERT_NOT_NULL(diagnostic_consumer_);
-  }
-  diagnostic::DiagnosticConsumer const &diagnostic_consumer() const {
-    return *ASSERT_NOT_NULL(diagnostic_consumer_);
-  }
-
-  template <typename T, typename... Args>
-  void set_diagnostic_consumer(Args &&... args) {
-    diagnostic_consumer_ = std::make_unique<T>(std::forward<Args>(args)...);
-  }
-
   void embed(BasicModule const &module) { scope_.embed(&module.scope_); }
 
   template <typename Iter>
@@ -77,7 +64,6 @@ struct BasicModule : base::Cast<BasicModule> {
  private:
   ast::ModuleScope scope_;
   std::vector<std::unique_ptr<ast::Node>> nodes_;
-  std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer_;
 
   // This flag should be set to true if this module is ever found to depend on
   // another which has errors, even if those errors do not effect

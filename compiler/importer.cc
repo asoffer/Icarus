@@ -77,13 +77,10 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
   auto nodes = module.InitializeNodes(
       frontend::Parse(maybe_file_src->buffer(), *diagnostic_consumer_));
 
-  module.set_diagnostic_consumer<diagnostic::StreamingConsumer>(
-      stderr, &*maybe_file_src);
-
   PersistentResources resources{
       .work                = work_set_,
       .module              = &module,
-      .diagnostic_consumer = &module.diagnostic_consumer(),
+      .diagnostic_consumer = diagnostic_consumer_,
       .importer            = this,
   };
   CompileLibrary(context, resources, nodes);
