@@ -1,0 +1,130 @@
+%YAML 1.2
+---
+name: icarus
+scope: source.icarus
+file_extensions: [ic]
+
+contexts:
+  main:
+    - include: multi_line_comment
+    - match: "(//.*)"
+      captures:
+        0: comment.icarus
+    - match: '(!(?:[^\x{005c}]|\\[abfnrtv0]))'
+      captures:
+        0: string.icarus
+    - match: '(\b(import|struct|scope|jump|block|before|after|done|return|goto|move|copy|destroy|as|and|or|xor|not)\b)'
+      captures:
+        0: keyword.control.icarus
+    - match: '([\x{002a}\x{0040}\x{0026}\x{0027}.\x{002c}\x{002b}\x{002f}\x{007c}\x{003b}\x{003a}\x{003d}\x{003c}\x{003e}-]|\\\\)'
+      captures:
+        0: keyword.operator.icarus
+    - match: '(\b(bool|char|byte|type|slice|[iuf](?:8|16|32|64))\b)'
+      captures:
+        0: entity.other.icarus
+    - include: numeric
+    - include: hashtag
+    - include: string
+    - match: '(\b[a-zA-Z_]\w*\b)'
+      captures:
+        0: entity.name.icarus
+    - match: '(\{)'
+      captures:
+        0: punctuation.icarus
+      push:
+        - match: '(\})'
+          pop: true
+          captures:
+            0: punctuation.icarus
+        - include: main
+        - match: "(.)"
+          captures:
+            0: text.icarus
+    - match: '(\()'
+      captures:
+        0: punctuation.icarus
+      push:
+        - match: '(\))'
+          pop: true
+          captures:
+            0: punctuation.icarus
+        - include: main
+        - match: "(.)"
+          captures:
+            0: text.icarus
+    - match: '(\[)'
+      captures:
+        0: punctuation.icarus
+      push:
+        - match: '(\])'
+          pop: true
+          captures:
+            0: punctuation.icarus
+        - include: main
+        - match: "(.)"
+          captures:
+            0: text.icarus
+    - match: '([^\s])'
+      captures:
+        0: invalid.illegal.icarus
+    - match: "(.)"
+      captures:
+        0: text.icarus
+  numeric:
+    - match: '(\b\d+\.?\d*\b)'
+      captures:
+        0: constant.numeric.icarus
+    - match: "(.)"
+      captures:
+        0: text.icarus
+  multi_line_comment:
+    - match: '(/\*)'
+      captures:
+        0: comment.icarus
+      push:
+        - match: '(\*/)'
+          pop: true
+          captures:
+            0: comment.icarus
+        - match: "(.)"
+          captures:
+            0: comment.icarus
+    - match: "(.)"
+      captures:
+        0: text.icarus
+  hashtag:
+    - match: '(\#\{)'
+      captures:
+        0: keyword.control.icarus
+      push:
+        - match: '(\})'
+          pop: true
+          captures:
+            0: keyword.control.icarus
+        - match: "(.)"
+          captures:
+            0: keyword.control.icarus
+    - match: "(.)"
+      captures:
+        0: text.icarus
+  string:
+    - match: '(\")'
+      captures:
+        0: punctuation.icarus
+      push:
+        - match: '(\")'
+          pop: true
+          captures:
+            0: punctuation.icarus
+        - match: '((?:\\u[0-9a-f]{4})|(?:\\[\x{0022}\x{005c}\x{002f}bfnrt]))'
+          captures:
+            0: constant.character.escape.icarus
+        - match: '([^\"\x{005c}]+)'
+          captures:
+            0: string.icarus
+        - match: "(.)"
+          captures:
+            0: text.icarus
+    - match: "(.)"
+      captures:
+        0: text.icarus
