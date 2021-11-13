@@ -101,25 +101,6 @@ cc_test(
 )
 
 cc_library(
-    name = "ordered_arguments",
-    hdrs = ["ordered_arguments.h"],
-    deps = [
-        ":arguments",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_test(
-    name = "ordered_arguments_test",
-    srcs = ["ordered_arguments_test.cc"],
-    deps = [
-        ":ordered_arguments",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "type_contour",
     hdrs = ["type_contour.h"],
     deps = [

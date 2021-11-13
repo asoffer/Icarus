@@ -43,7 +43,6 @@ cc_library(
         "//base:untyped_buffer",
         "//core:arguments",
         "//core:dependency_node",
-        "//core:ordered_arguments",
         "//core:params",
         "//frontend/lex:operators",
         "//ir/value:addr",

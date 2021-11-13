@@ -25,8 +25,7 @@ concept StringLike = (base::meta<T> == base::meta<std::string> or
 // Note that Arguments do not remember ordering; the named arguments are stored
 // in a container that does not guarantee any consistent ordering. For this
 // reason, this struct alone is unsuitable for use in situations where
-// text-based user-input must be preserved. In those situations, something like
-// OrderedArguments is usually more appropriate.
+// text-based user-input must be preserved.
 template <typename T, StringLike StringType = std::string>
 struct Arguments {
   Arguments() = default;

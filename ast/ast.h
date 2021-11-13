@@ -18,7 +18,6 @@
 #include "base/ptr_span.h"
 #include "base/untyped_buffer.h"
 #include "core/arguments.h"
-#include "core/ordered_arguments.h"
 #include "core/params.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/addr.h"
