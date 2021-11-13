@@ -46,7 +46,7 @@ cc_test(
 
 cc_library(
     name = "flyweight_map",
-    hdrs =["flyweight_map.h"],
+    hdrs = ["flyweight_map.h"],
     deps = [
         ":debug",
         "@com_google_absl//absl/container:node_hash_map",
@@ -70,9 +70,9 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
- 
+
 cc_library(
-    name = "guarded", 
+    name = "guarded",
     hdrs = ["guarded.h"],
     deps = [
         "@com_google_absl//absl/synchronization",
@@ -96,7 +96,7 @@ cc_library(
 
 cc_library(
     name = "iterator",
-    hdrs = ["iterator.h"]
+    hdrs = ["iterator.h"],
 )
 
 cc_test(
@@ -109,15 +109,9 @@ cc_test(
 )
 
 cc_library(
-    name = "lazy", 
-    hdrs = ["lazy.h"],
-    deps = [":debug"],
-)
-
-cc_library(
     name = "log",
-    hdrs = ["log.h"],
     srcs = ["log.cc"],
+    hdrs = ["log.h"],
     deps = [
         ":global",
         ":universal_print",
@@ -166,7 +160,7 @@ cc_test(
 )
 
 cc_library(
-    name = "permutation", 
+    name = "permutation",
     hdrs = ["permutation.h"],
     deps = ["@com_google_absl//absl/random"],
 )
@@ -195,7 +189,6 @@ cc_test(
     ],
 )
 
-
 cc_library(
     name = "raw_iterator",
     hdrs = ["raw_iterator.h"],
@@ -211,7 +204,7 @@ cc_test(
     deps = [
         ":raw_iterator",
         "@com_google_googletest//:gtest_main",
-    ]
+    ],
 )
 
 cc_library(
@@ -226,7 +219,7 @@ cc_test(
     deps = [
         ":scope",
         "@com_google_googletest//:gtest_main",
-    ]
+    ],
 )
 
 cc_library(
@@ -247,7 +240,7 @@ cc_test(
         ":serialize",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
-    ]
+    ],
 )
 
 cc_library(
@@ -276,9 +269,8 @@ cc_test(
         ":traverse",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
-    ]
+    ],
 )
-
 
 cc_library(
     name = "unaligned_ref",
@@ -311,13 +303,13 @@ cc_test(
         ":universal_print",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
-    ]
+    ],
 )
 
 cc_library(
     name = "untyped_buffer",
-    hdrs = ["untyped_buffer.h"],
     srcs = ["untyped_buffer.cc"],
+    hdrs = ["untyped_buffer.h"],
     deps = [
         ":debug",
         ":raw_iterator",
