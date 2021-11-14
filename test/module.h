@@ -37,7 +37,7 @@ struct TestModule : compiler::CompiledModule {
     diagnostic::AbortingConsumer diag(&source_);
     auto stmts = frontend::Parse(source_.buffer(), diag,
                                  source_.buffer().num_chunks() - 1);
-    auto nodes = InitializeNodes(std::move(stmts));
+    auto nodes = insert(stmts.begin(), stmts.end());
     compiler::Compiler c(&context(), resources());
     c.set_work_resources(work_graph_.work_resources());
     for (auto const* node : nodes) {
@@ -68,7 +68,7 @@ struct TestModule : compiler::CompiledModule {
     if (auto* ptr = stmts[0]->template if_as<NodeType>()) {
       std::vector<std::unique_ptr<ast::Node>> ns;
       ns.push_back(std::move(stmts[0]));
-      auto nodes = InitializeNodes(std::move(ns));
+      auto nodes = insert(ns.begin(), ns.end());
       compiler::Compiler c(&context(), resources());
       c.set_work_resources(work_graph_.work_resources());
       for (auto const* node : nodes) {
@@ -110,9 +110,10 @@ struct TestModule : compiler::CompiledModule {
     };
 
     frontend::SourceBuffer buffer(std::move(content));
+    auto parsed_nodes = frontend::Parse(buffer, consumer);
     compiler::CompileLibrary(
-        imported_mod.context(&imported_mod), import_resources,
-        imported_mod.InitializeNodes(frontend::Parse(buffer, consumer)));
+        imported_mod.context(), import_resources,
+        imported_mod.insert(parsed_nodes.begin(), parsed_nodes.end()));
 
     ON_CALL(importer, Import(testing::Eq(name)))
         .WillByDefault([id](std::string_view) { return id; });

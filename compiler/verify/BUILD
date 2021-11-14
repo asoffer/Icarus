@@ -495,6 +495,17 @@ cc_test(
 )
 
 cc_library(
+    name = "module",
+    srcs = ["module.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//type:qual_type",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "miscellaneous",
     srcs = ["miscellaneous.cc"],
     deps = [

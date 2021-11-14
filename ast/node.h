@@ -1,7 +1,7 @@
 #ifndef ICARUS_AST_NODE_H
 #define ICARUS_AST_NODE_H
 
-#include <utility>
+#include <string>
 
 #include "ast/visitor_base.h"
 #include "base/cast.h"

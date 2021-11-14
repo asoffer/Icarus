@@ -85,11 +85,6 @@ static void InitializeAll(std::vector<std::unique_ptr<T>>& nodes,
   }
 }
 
-void InitializeNodes(base::PtrSpan<Node> nodes,
-                     Node::Initializer& initializer) {
-  for (auto* n : nodes) { n->Initialize(initializer); }
-}
-
 void Access::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   operand_->Initialize(initializer);

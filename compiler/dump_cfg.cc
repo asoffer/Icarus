@@ -139,7 +139,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
   compiler::Context context(&ir_module);
   compiler::CompiledModule exec_mod(&context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
-    exec_mod.embed(importer.get(embedded_id));
+    exec_mod.scope().embed(&importer.get(embedded_id).scope());
   }
 
   compiler::PersistentResources resources{
@@ -149,7 +149,8 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
       .importer            = &importer,
   };
 
-  auto nodes   = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
+  auto parsed_nodes = frontend::Parse(src->buffer(), diag);
+  auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   auto main_fn = compiler::CompileExecutable(context, resources, nodes);
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }
 

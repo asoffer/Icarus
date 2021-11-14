@@ -155,7 +155,8 @@ struct FnScope : Scope {
 // out the semantically correct solution here, probably extracting some of the
 // functionality of FnScope.
 struct ModuleScope : FnScope {
-  ModuleScope(module::BasicModule *mod) : FnScope(nullptr), module_(mod) {}
+  explicit ModuleScope(module::BasicModule *mod)
+      : FnScope(nullptr), module_(mod) {}
 
   module::BasicModule *module() { return module_; }
   module::BasicModule const *module() const { return module_; }

@@ -168,7 +168,7 @@ cc_library(
 cc_library(
     name = "ptr_span",
     hdrs = ["ptr_span.h"],
-    deps = [],
+    deps = [":meta"],
 )
 
 cc_library(

@@ -71,11 +71,12 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
   modules_by_id_.emplace(id, &module);
 
   for (ir::ModuleId embedded_id : implicitly_embedded_modules()) {
-    module.embed(get(embedded_id));
+    module.scope().embed(&get(embedded_id).scope());
   }
 
-  auto nodes = module.InitializeNodes(
-      frontend::Parse(maybe_file_src->buffer(), *diagnostic_consumer_));
+  auto parsed_nodes =
+      frontend::Parse(maybe_file_src->buffer(), *diagnostic_consumer_);
+  auto nodes = module.insert(parsed_nodes.begin(), parsed_nodes.end());
 
   PersistentResources resources{
       .work                = work_set_,

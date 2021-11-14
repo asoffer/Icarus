@@ -31,11 +31,12 @@ cc_library(
         "initialize.cc",
     ],
     deps = [
-        ":scope",
         ":declaration",
         ":expression",
         ":jump_options",
+        ":module",
         ":node",
+        ":scope",
         ":visitor_base",
         "//base:debug",
         "//base:graph",
@@ -78,6 +79,18 @@ cc_library(
 )
 
 cc_library(
+    name = "module",
+    hdrs = ["module.h"],
+    deps = [
+        ":node",
+        ":declaration",
+        ":scope",
+        "//base:ptr_span",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "node",
     hdrs = ["node.h"],
     deps = [
@@ -86,6 +99,7 @@ cc_library(
         "//frontend/source:buffer",
     ],
 )
+
 
 cc_library(
     name = "overload_set",

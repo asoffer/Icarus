@@ -27,8 +27,6 @@
 
 namespace ast {
 
-void InitializeNodes(base::PtrSpan<Node> nodes, Node::Initializer &initializer);
-
 #define ICARUS_AST_VIRTUAL_METHODS                                             \
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple)                \
       const override {                                                         \

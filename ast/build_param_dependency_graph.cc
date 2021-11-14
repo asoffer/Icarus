@@ -2,6 +2,7 @@
 
 #include "absl/container/node_hash_map.h"
 #include "ast/ast.h"
+#include "ast/module.h"
 #include "ast/visitor.h"
 
 namespace ast {
@@ -231,6 +232,8 @@ struct ParamDependencyGraphBuilder
     for (auto const &param : node->params()) { Visit(param.value.get(), d); }
     for (auto const *stmt : node->stmts()) { Visit(stmt, d); }
   }
+
+  void Visit(Module const *node, core::DependencyNode<Declaration const *> d) {}
 
   void Visit(Label const *node, core::DependencyNode<Declaration const *> d) {}
 

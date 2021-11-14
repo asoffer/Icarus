@@ -1,8 +1,11 @@
 #ifndef ICARUS_BASE_PTR_SPAN_H
 #define ICARUS_BASE_PTR_SPAN_H
 
+#include <concepts>
 #include <memory>
 #include <type_traits>
+
+#include "base/meta.h"
 
 namespace base {
 
@@ -70,14 +73,20 @@ struct PtrSpan {
 
   template <
       typename Container,
-      std::enable_if_t<not std::is_same_v<PtrSpan<T>, std::decay_t<Container>>>
-          * = nullptr>
+      std::enable_if_t<
+          not meta<std::decay_t<Container>>.template is_a<PtrSpan>(), int> = 0>
   PtrSpan(Container &&c)
       : ptr_(c.empty() ? nullptr : std::addressof(c[0])), size_(c.size()) {}
-  template <typename Iter>
+
+  template <PtrConvertibleTo<T> U>
+  PtrSpan(PtrSpan<U> span)
+      : ptr_(std::addressof(span.get_front())), size_(span.size()) {}
+
+  template <std::contiguous_iterator Iter>
   explicit PtrSpan(Iter b, Iter e)
       : ptr_(std::addressof(*b)),
         size_(std::addressof(*e) - std::addressof(*b)) {}
+
   explicit PtrSpan(pointer_type *p, size_t num) : ptr_(p), size_(num) {}
 
  private:

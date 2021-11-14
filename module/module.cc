@@ -4,32 +4,6 @@
 #include "ast/ast.h"
 
 namespace module {
-// Can't declare this in header because unique_ptr's destructor needs to know
-// the size of ir::CompiledFn which we want to forward declare.
-BasicModule::BasicModule() : scope_(this) {}
-BasicModule::~BasicModule() {}
-
-base::PtrSpan<ast::Node const> BasicModule::InitializeNodes(
-    std::vector<std::unique_ptr<ast::Node>> nodes) {
-  ast::Node::Initializer initializer{.scope = &scope_};
-  ast::InitializeNodes(nodes, initializer);
-
-  for (auto const &node : nodes) {
-    auto *decl = node->if_as<ast::Declaration>();
-    if (not decl) { continue; }
-
-    // TODO: This presumes we don't have conditional exports.
-    if (decl->hashtags.contains(ir::Hashtag::Export)) {
-      for (auto const &id : decl->ids()) { scope_.insert_exported(&id); }
-    }
-  }
-
-  size_t prev_size = nodes_.size();
-  nodes_.insert(nodes_.end(), std::make_move_iterator(nodes.begin()),
-                std::make_move_iterator(nodes.end()));
-  return base::PtrSpan<ast::Node const>(nodes_.data() + prev_size,
-                                        nodes_.size() - prev_size);
-}
 
 // TODO: Add a version of this function that also gives the declarations that
 // are inaccessible. Particularly interesting would be the case of an overlaod

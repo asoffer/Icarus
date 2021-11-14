@@ -7,6 +7,7 @@ cc_library(
     deps = [
         "//ast:ast",
         "//ast:ast_fwd",
+        "//ast:module",
         "//ast:scope",
         "//base:cast",
         "//base:debug",

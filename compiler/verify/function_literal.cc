@@ -149,7 +149,7 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
       c.context().DebugString());
   c.context().TrackJumps(node);
   bool found_error = false;
-  for (auto *stmt : node->stmts()) {
+  for (auto const *stmt : node->stmts()) {
     absl::Span<type::QualType const>  qts = c.VerifyType(stmt);
     bool current_was_error = (qts.size() == 1 and not qts[0].ok());
     if (current_was_error) {

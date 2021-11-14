@@ -241,6 +241,11 @@ concept Streamable = requires(T t) {
   { std::declval<std::ostream&>() << t } -> std::same_as<std::ostream&>;
 };
 
+template <typename From, typename To>
+concept PtrConvertibleTo = requires(From* f) {
+  { static_cast<To*>(f) } -> std::same_as<To*>;
+};
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H

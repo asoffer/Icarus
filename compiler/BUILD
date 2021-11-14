@@ -128,6 +128,7 @@ TYPE_VERIFICATION = [
     "//compiler/verify:interface_literal",
     "//compiler/verify:jump",
     "//compiler/verify:miscellaneous",
+    "//compiler/verify:module",
     "//compiler/verify:parameterized_struct_literal",
     "//compiler/verify:pattern_match",
     "//compiler/verify:short_function_literal",

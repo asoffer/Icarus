@@ -72,7 +72,7 @@ int Interpret(frontend::FileName const &file_name) {
   Context context(&ir_module);
   CompiledModule exec_mod(&context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
-    exec_mod.embed(importer.get(embedded_id));
+    exec_mod.scope().embed(&importer.get(embedded_id).scope());
   }
 
   PersistentResources resources{
@@ -82,7 +82,8 @@ int Interpret(frontend::FileName const &file_name) {
       .importer            = &importer,
   };
 
-  auto nodes = exec_mod.InitializeNodes(frontend::Parse(src->buffer(), diag));
+  auto parsed_nodes = frontend::Parse(src->buffer(), diag);
+  auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   ASSIGN_OR(return 1,  //
                    auto main_fn, CompileExecutable(context, resources, nodes));
 

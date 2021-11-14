@@ -9,6 +9,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
+#include "ast/module.h"
 #include "ast/scope.h"
 #include "base/cast.h"
 #include "base/guarded.h"
@@ -24,8 +25,8 @@ enum class Linkage { Internal, External };
 // Represents a unit of compilation, beyond which all intercommunication must be
 // explicit.
 struct BasicModule : base::Cast<BasicModule> {
-  BasicModule();
-  virtual ~BasicModule();
+  BasicModule() : module_(this) {}
+  virtual ~BasicModule() {}
 
   // Pointers to modules are passed around, so moving a module is not safe.
   BasicModule(BasicModule &&) noexcept = delete;
@@ -38,21 +39,13 @@ struct BasicModule : base::Cast<BasicModule> {
   BasicModule(BasicModule const &) = delete;
   BasicModule &operator=(BasicModule const &) = delete;
 
-  ast::ModuleScope const &scope() const { return scope_; }
+  ast::ModuleScope const &scope() const { return module_.body_scope(); }
+  ast::ModuleScope &scope() { return module_.body_scope(); }
 
-  void embed(BasicModule const &module) { scope_.embed(&module.scope_); }
-
-  template <typename Iter>
-  base::PtrSpan<ast::Node const> insert(Iter begin, Iter end) {
-    size_t i = nodes_.size();
-    while (begin != end) { nodes_.push_back(std::move(*begin++)); }
-    return base::PtrSpan<ast::Node const>(nodes_.data() + i, nodes_.size() - i);
+  template <std::input_iterator Iter>
+  base::PtrSpan<ast::Node const> insert(Iter b, Iter e) {
+    return module_.insert(b, e);
   }
-
-  base::PtrSpan<ast::Node const> InitializeNodes(
-      std::vector<std::unique_ptr<ast::Node>> nodes);
-
-  base::PtrSpan<ast::Node const> nodes() const { return nodes_; }
 
   bool has_error_in_dependent_module() const {
     return depends_on_module_with_errors_;
@@ -62,8 +55,7 @@ struct BasicModule : base::Cast<BasicModule> {
   }
 
  private:
-  ast::ModuleScope scope_;
-  std::vector<std::unique_ptr<ast::Node>> nodes_;
+  ast::Module module_;
 
   // This flag should be set to true if this module is ever found to depend on
   // another which has errors, even if those errors do not effect
