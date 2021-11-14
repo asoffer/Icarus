@@ -33,11 +33,6 @@ void UniversalPrint(Printer auto& printer, auto const& t) {
   if constexpr (std::invocable<std::decay_t<decltype(printer)>, type>) {
     printer(t);
 
-  } else if constexpr (::base::Streamable<type>) {
-    std::stringstream ss;
-    ss << t;
-    printer(std::move(ss).str());
-
   } else if constexpr (base::SatisfiesTupleProtocol<type>) {
     std::string_view separator = "";
     printer("(");
@@ -108,11 +103,7 @@ struct StringStreamPrinter {
     ss_ << "(" << typeid(type).name() << ")"
         << static_cast<std::underlying_type_t<type>>(n);
   }
-  void operator()(std::integral auto n) { ss_ << n; }
-  void operator()(double x) { ss_ << x; }
-  void operator()(std::string_view s) { ss_ << s; }
-  void operator()(char const* s) { ss_ << s; }
-  void operator()(void const* p) { ss_ << p; }
+  void operator()(::base::Streamable auto&& x) { ss_ << x; }
 
   std::string str() && { return std::move(ss_).str(); }
 
