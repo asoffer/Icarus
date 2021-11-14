@@ -6,6 +6,7 @@
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/type_for_diagnostic.h"
 #include "type/callable.h"
 #include "type/qual_type.h"
 
@@ -75,18 +76,15 @@ struct UncallableWithArguments {
                 absl::StrCat("at index ", std::get<size_t>(err.parameter));
           }
 
-          std::string arg_str;
-          if (auto const *arg_as_str =
-                  std::get_if<std::string>(&err.argument)) {
-            arg_str = absl::StrCat("named `", *arg_as_str, "`");
-          } else {
-            arg_str =
-                absl::StrCat("at index ", std::get<size_t>(err.parameter));
-          }
+          std::string_view argument = std::visit(
+              [&](auto const &key) -> std::string_view {
+                return arguments[key];
+              },
+              err.parameter);
 
           items.push_back(absl::StrFormat(
               "%s -- Parameter %s cannot accept an argument of type `%s`",
-              callable_type->to_string(), param_str, arg_str));
+              callable_type->to_string(), param_str, argument));
         } else if constexpr (type == base::meta<call_error::NoParameterNamed>) {
           items.push_back(absl::StrFormat("%s -- No parameter named `%s`.",
                                           callable_type->to_string(),
@@ -113,6 +111,7 @@ struct UncallableWithArguments {
         diagnostic::List(std::move(items)));
   }
 
+  core::Arguments<std::string> arguments;
   absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
   frontend::SourceRange range;
 };
@@ -464,9 +463,20 @@ not_an_interface:
     auto qts_or_errors = VerifyCall(node, overload_map, arg_vals);
     if (auto *errors = std::get_if<absl::flat_hash_map<
             type::Callable const *, core::CallabilityResult>>(&qts_or_errors)) {
+      core::Arguments<std::string> argument_type_strings;
+      for (auto const &arg : node->positional_arguments()) {
+        argument_type_strings.pos_emplace(
+            TypeForDiagnostic(&arg.expr(), context()));
+      }
+      for (auto const &arg : node->named_arguments()) {
+        argument_type_strings.named_emplace(
+            arg.name(), TypeForDiagnostic(&arg.expr(), context()));
+      }
+
       diag().Consume(UncallableWithArguments{
-          .errors = std::move(*errors),
-          .range = node->callee()->range(),
+          .arguments = std::move(argument_type_strings),
+          .errors    = std::move(*errors),
+          .range     = node->callee()->range(),
       });
       return context().set_qual_type(node, type::QualType::Error());
     }

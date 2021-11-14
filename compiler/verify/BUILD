@@ -165,6 +165,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:type_for_diagnostic",
         "//type:callable",
         "//type:generic_struct",
         "//type:qual_type",
