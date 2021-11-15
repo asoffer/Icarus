@@ -160,12 +160,6 @@ cc_test(
 )
 
 cc_library(
-    name = "permutation",
-    hdrs = ["permutation.h"],
-    deps = ["@com_google_absl//absl/random"],
-)
-
-cc_library(
     name = "ptr_span",
     hdrs = ["ptr_span.h"],
     deps = [":meta"],
