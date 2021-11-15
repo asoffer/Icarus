@@ -11,15 +11,26 @@ bool Compiler::VerifyBody(ast::StructLiteral const *node) {
 
   bool error = false;
   for (auto const &field : node->fields()) {
-    auto field_qt = VerifyType(&field)[0];
-    if (not field_qt.ok()) {
-      error = true;
-    } else if (field_qt.type().get()->completeness() ==
-               type::Completeness::Incomplete) {
-      LOG("StructLiteral",
-          "Setting error due to incomplete field. Diagnostics should have "
-          "already been emit.");
-      error = true;
+    if (field.flags() & ast::Declaration::f_IsConst) {
+      Enqueue({.kind    = WorkItem::Kind::VerifyType,
+               .node    = &field,
+               .context = &context()},
+              {WorkItem{
+                  .kind    = WorkItem::Kind::CompleteStructData,
+                  .node    = node,
+                  .context = &context(),
+              }});
+    } else {
+      auto field_qt = VerifyType(&field)[0];
+      if (not field_qt.ok()) {
+        error = true;
+      } else if (field_qt.type().get()->completeness() ==
+                 type::Completeness::Incomplete) {
+        LOG("StructLiteral",
+            "Setting error due to incomplete field. Diagnostics should have "
+            "already been emit.");
+        error = true;
+      }
     }
   }
 
