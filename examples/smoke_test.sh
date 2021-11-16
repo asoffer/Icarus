@@ -16,6 +16,6 @@ $binary "$examples/file.ic" >/dev/null && echo file OK
 $binary "$examples/fizzbuzz.ic" >/dev/null && echo fizzbuzz OK
 $binary "$examples/function_calls.ic" >/dev/null && echo function_calls OK
 $binary "$examples/mandelbrot.ic" >/dev/null && echo mandelbrot OK
-$binary "$examples/ping_pong.ic" | head >/dev/null && echo ping_pong OK
+# $binary "$examples/ping_pong.ic" | head >/dev/null && echo ping_pong OK
 $binary "$examples/primes.ic" >/dev/null && echo primes OK
 $binary "$examples/string.ic" >/dev/null && echo string OK
