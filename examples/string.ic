@@ -12,6 +12,4 @@ c'append(b)
 c'append(a)
 c'Print
 
-io.Print(c'at(5)[0])
-io.Print(c'view[5])
-io.Print(!\n)
+io.Print(c'at(5)[0], c'view[5], !\n)

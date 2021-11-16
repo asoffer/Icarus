@@ -36,3 +36,33 @@ core ::= import "core.ic"
   printf ::= foreign("printf", ([*]char, f64) -> i32)
   printf("%f".data, f)
 }
+
+#{export}
+Print ::= (a0: ~`A0, a1: ~`A1) -> () {
+  Print(a0)
+  Print(a1)
+}
+
+#{export}
+Print ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2) -> () {
+  Print(a0)
+  Print(a1)
+  Print(a2)
+}
+
+#{export}
+Print ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2, a3: ~`A3) -> () {
+  Print(a0)
+  Print(a1)
+  Print(a2)
+  Print(a3)
+}
+
+#{export}
+Print ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2, a3: ~`A3, a4: ~`A4) -> () {
+  Print(a0)
+  Print(a1)
+  Print(a2)
+  Print(a3)
+  Print(a4)
+}

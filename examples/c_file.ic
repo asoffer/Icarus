@@ -17,7 +17,6 @@ if (errno.get() as u64 == 0) then {
   free(p)
   cstdio.fclose(f)
 } else {
-  io.Print("Error when loading file: errno = ")
-  io.Print(errno.get() as u64)
+  io.Print("Error when loading file: errno = ", errno.get() as u64)
 }
 io.Print("\n")

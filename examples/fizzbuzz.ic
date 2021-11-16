@@ -9,7 +9,6 @@ for (0, 100) do [i: i64] {
   } else if (i % 5 == 0) then {
     io.Print("Buzz\n")
   } else {
-    io.Print(i)
-    io.Print("\n")
+    io.Print(i, "\n")
   }
 }
