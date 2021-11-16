@@ -246,4 +246,9 @@ std::string TypeForDiagnostic(ast::Expression const *expr,
   return StringifyType(&context, VisitationKind::Type).Visit(expr);
 }
 
+std::string ExpressionForDiagnostic(ast::Expression const *expr,
+                                    Context const &context) {
+  return StringifyExpression(&context, VisitationKind::Type).Visit(expr);
+}
+
 }  // namespace compiler

@@ -56,3 +56,8 @@ ic_interpret(
     name = "primes",
     src = "primes.ic",
 )
+
+ic_interpret(
+    name = "string",
+    src = "string.ic",
+)

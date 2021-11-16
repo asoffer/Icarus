@@ -12,40 +12,6 @@ string ::= struct {
   _length:   u64
   _capacity: u64
 
-  #{export}
-  make ::= (fill: char, len: u64) -> string {
-    buffer := memory.allocate(byte, len + 1)
-    memory.fill(buffer, fill as u8)
-    @(&buffer[len] as *char) = !\0
-    return string.{
-      _data     = buffer.data
-      _length   = len
-      _capacity = len
-    }
-  }
-
-  #{export}
-  make ::= (s: []char) -> string {
-    raw := s'memory.to_raw
-    raw = slice(raw.data, raw.length + 1)
-    return string.{
-      _data     = memory.clone(raw).data
-      _length   = s.length
-      _capacity = s.length
-    }
-  }
-
-  #{export}
-  make ::= (capacity: u64) -> string {
-    buffer := memory.allocate(byte, capacity + 1)
-    @(&buffer[0] as *char) = !\0
-    return string.{
-      _data     = buffer.data
-      _length   = 0
-      _capacity = capacity
-    }
-  }
-
   (move) ::= (to: *string) -> string {
     return string.{
       _data     = core.exchange(to._data, null)
@@ -86,6 +52,42 @@ resize_buffer ::= (s: *string, new_capacity: u64) -> () {
   s._data = buffer.data
   s._capacity = new_capacity
 }
+
+// TODO: These functions should be defined inside `string`
+#{export}
+make ::= (fill: char, len: u64) -> string {
+  buffer := memory.allocate(byte, len + 1)
+  memory.fill(buffer, fill as u8)
+  @(&buffer[len] as *char) = !\0
+  return string.{
+    _data     = buffer.data
+    _length   = len
+    _capacity = len
+  }
+}
+
+#{export}
+make ::= (s: []char) -> string {
+  raw := s'memory.to_raw
+  raw = slice(raw.data, raw.length + 1)
+  return string.{
+    _data     = memory.clone(raw).data
+    _length   = s.length
+    _capacity = s.length
+  }
+}
+
+#{export}
+make ::= (capacity: u64) -> string {
+  buffer := memory.allocate(byte, capacity + 1)
+  @(&buffer[0] as *char) = !\0
+  return string.{
+    _data     = buffer.data
+    _length   = 0
+    _capacity = capacity
+  }
+}
+
 
 #{export}
 length ::= (s: *string) => s._length

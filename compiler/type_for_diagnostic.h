@@ -25,6 +25,12 @@ namespace compiler {
 std::string TypeForDiagnostic(ast::Expression const* expr,
                               Context const& context);
 
+// Returns a human readable string representation of the expression suitable for
+// use in diagnostics. The choice of string is intended to be the most relevant
+// for the given situation.
+std::string ExpressionForDiagnostic(ast::Expression const* expr,
+                                    Context const& context);
+
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_TYPE_FOR_DIAGNOSTIC_H

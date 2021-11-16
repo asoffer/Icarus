@@ -269,6 +269,11 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
   }
 
   if (auto *s = evaled_type.if_as<type::Struct>()) {
+    c.EnsureComplete({
+        .kind = WorkItem::Kind::CompleteStruct,
+        .node    = c.context().AstLiteral(s),
+        .context = &c.context(),
+    });
     if (auto const *member = s->constant(node->member_name())) {
       std::vector<ast::Declaration::Id const *> ids;
 
@@ -301,7 +306,7 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
   // accessible through the type-name. At the moment this is not allowed.
   auto qts = c.context().set_qual_type(node, type::QualType::Error());
   c.diag().Consume(TypeHasNoMembers{
-      .type   = TypeForDiagnostic(node->operand(), c.context()),
+      .type   = ExpressionForDiagnostic(node->operand(), c.context()),
       .member = std::string(node->member_name()),
       .range  = node->member_range(),
   });
