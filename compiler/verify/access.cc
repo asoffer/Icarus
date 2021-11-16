@@ -109,7 +109,7 @@ struct TypeHasNoMembers {
             range, diagnostic::Style::ErrorText()));
   }
 
-  type::Type type;
+  std::string type;
   std::string member;
   frontend::SourceRange range;
 };
@@ -301,7 +301,7 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
   // accessible through the type-name. At the moment this is not allowed.
   auto qts = c.context().set_qual_type(node, type::QualType::Error());
   c.diag().Consume(TypeHasNoMembers{
-      .type   = evaled_type,
+      .type   = TypeForDiagnostic(node->operand(), c.context()),
       .member = std::string(node->member_name()),
       .range  = node->member_range(),
   });
