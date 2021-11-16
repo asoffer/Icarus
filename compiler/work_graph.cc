@@ -1,4 +1,5 @@
 #include "compiler/work_graph.h"
+
 #include "compiler/instructions.h"
 #include "ir/builder.h"
 
@@ -39,7 +40,8 @@ bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
 std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
                                                   ast::Expression const *expr,
                                                   type::Type type) {
-  LOG("MakeThunk", "Thunk for %s: %s %p", expr->DebugString(), type.to_string(), &c.context());
+  LOG("MakeThunk", "Thunk for %s: %s %p", expr->DebugString(), type.to_string(),
+      &c.context());
   ir::CompiledFn fn(type::Func({}, {type}));
   ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
     // TODO this is essentially a copy of the body of
@@ -161,23 +163,28 @@ bool WorkGraph::Execute(WorkItem const &w) {
       c.VerifyType(w.node);
       result = resources().diagnostic_consumer->num_consumed() == 0;
       break;
-    case WorkItem::Kind::VerifyDesignatedInitializerBody:
-      result = c.VerifyBody(&w.node->as<ast::DesignatedInitializer>());
-      break;
     case WorkItem::Kind::VerifyEnumBody:
       result = c.VerifyBody(&w.node->as<ast::EnumLiteral>());
       break;
     case WorkItem::Kind::VerifyFunctionBody:
-      result = c.VerifyBody(&w.node->as<ast::FunctionLiteral>());
+      result = not w.context->ClaimVerifyBodyTask(
+                   &w.node->as<ast::FunctionLiteral>()) or
+               c.VerifyBody(&w.node->as<ast::FunctionLiteral>());
       break;
     case WorkItem::Kind::VerifyStructBody:
       result = c.VerifyBody(&w.node->as<ast::StructLiteral>());
       break;
     case WorkItem::Kind::CompleteStructData:
-      result = c.CompleteStructData(&w.node->as<ast::StructLiteral>());
+      result = Execute({.kind    = WorkItem::Kind::VerifyStructBody,
+                        .node    = w.node,
+                        .context = w.context}) and
+               c.CompleteStructData(&w.node->as<ast::StructLiteral>());
       break;
     case WorkItem::Kind::CompleteStruct:
-      result = c.CompleteStruct(&w.node->as<ast::StructLiteral>());
+      result = Execute({.kind    = WorkItem::Kind::CompleteStructData,
+                        .node    = w.node,
+                        .context = w.context}) and
+               c.CompleteStruct(&w.node->as<ast::StructLiteral>());
       break;
     case WorkItem::Kind::CompleteEnum:
       result = c.CompleteEnum(&w.node->as<ast::EnumLiteral>());
@@ -186,7 +193,10 @@ bool WorkGraph::Execute(WorkItem const &w) {
       result = c.EmitJumpBody(&w.node->as<ast::Jump>());
       break;
     case WorkItem::Kind::EmitFunctionBody:
-      result = c.EmitFunctionBody(&w.node->as<ast::FunctionLiteral>());
+      result = Execute({.kind    = WorkItem::Kind::VerifyFunctionBody,
+                        .node    = w.node,
+                        .context = w.context}) and
+               c.EmitFunctionBody(&w.node->as<ast::FunctionLiteral>());
       break;
     case WorkItem::Kind::EmitShortFunctionBody:
       result =
@@ -226,44 +236,13 @@ WorkGraph::EvaluateToBuffer(Context &context,
       .byte_code = byte_code.begin(),
   };
 
+  for (auto const &[item, deps] : w.dependencies_) {
+    if (item.kind == WorkItem::Kind::EmitFunctionBody) { Execute(item); }
+  }
+
   // Anything that hasn't been completed gets shunted to the parent.
   for (auto &[item, deps] : w.dependencies_) { emplace(item, std::move(deps)); }
   w.dependencies_.clear();
-
-  if (buffering_consumer.empty()) {
-    return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
-  } else {
-    return std::move(buffering_consumer).extract();
-  }
-}
-
-std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
-WorkGraph::EvaluateToBufferAndComplete(
-    Context &context, type::Typed<ast::Expression const *> expr) {
-  if (auto qt = context.qual_types(*expr)[0];
-      qt == type::QualType::Error() or qt.HasErrorMark()) {
-    // TODO: Give some explanation about failing to evaluate due to preexisting
-    // errors. This probably shouldn't be an error itself.
-    return std::vector<diagnostic::ConsumedMessage>{};
-  }
-
-  diagnostic::BufferingConsumer buffering_consumer(
-      resources().diagnostic_consumer);
-  auto r                = resources();
-  r.diagnostic_consumer = &buffering_consumer;
-  WorkGraph w(r);
-
-  Compiler c(&context, w.resources());
-  c.set_work_resources(w.work_resources());
-
-  auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
-  ir::NativeFn::Data data{
-      .fn        = &thunk,
-      .type      = thunk.type(),
-      .byte_code = byte_code.begin(),
-  };
-
-  w.complete();
 
   if (buffering_consumer.empty()) {
     return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));

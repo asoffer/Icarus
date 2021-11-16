@@ -547,7 +547,7 @@ bool Compiler::EnsureDataCompleteness(type::Struct *s) {
     LOG("struct", "Completing struct-literal emission: %p", node);
 
     ASSIGN_OR(return false,  //
-                     auto fn, StructCompletionFn(*this, s, node->fields()));
+                     auto fn, StructDataCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
     InterpretAtCompileTime(fn);
     s->complete();
@@ -561,7 +561,7 @@ bool Compiler::EnsureDataCompleteness(type::Struct *s) {
     LOG("struct", "Completing struct-literal emission: %p ", node);
 
     ASSIGN_OR(return false,  //
-                     auto fn, StructCompletionFn(*this, s, node->fields()));
+                     auto fn, StructDataCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
     InterpretAtCompileTime(fn);
     s->complete();

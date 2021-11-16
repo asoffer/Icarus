@@ -51,7 +51,7 @@ bool Compiler::CompleteStructData(ast::StructLiteral const *node) {
       });
   // TODO: Find a way around these const casts.
   type::Struct *s = &const_cast<type::Struct &>(t.as<type::Struct>());
-  ASSERT(s->completeness() == type::Completeness::Incomplete);
+  if (s->completeness() != type::Completeness::Incomplete) { return true; }
 
   ASSIGN_OR(return false,  //
                    auto fn, StructDataCompletionFn(*this, s, node->fields()));
@@ -59,9 +59,19 @@ bool Compiler::CompleteStructData(ast::StructLiteral const *node) {
   // TODO: What if execution fails.
   InterpretAtCompileTime(fn);
 
+  absl::flat_hash_set<WorkItem> prerequisites;
+
+  for (auto const &field : node->fields()) {
+    if (field.flags() & ast::Declaration::f_IsConst) {
+      prerequisites.insert({.kind    = WorkItem::Kind::VerifyType,
+                            .node    = &field,
+                            .context = &context()});
+    }
+  }
+
   Enqueue({.kind    = WorkItem::Kind::CompleteStruct,
            .node    = node,
-           .context = &context()});
+           .context = &context()}, std::move(prerequisites));
 
   LOG("StructLiteral",
       "Completed data for %s which is a struct %s with %u field(s).",

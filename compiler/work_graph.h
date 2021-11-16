@@ -30,7 +30,7 @@ struct WorkGraph {
   WorkGraph(WorkGraph &&)      = delete;
   WorkGraph &operator=(WorkGraph const &) = delete;
   WorkGraph &operator=(WorkGraph &&) = delete;
-  ~WorkGraph() { ASSERT(dependencies_.empty() == true); }
+  ~WorkGraph() { complete(); }
 
   explicit WorkGraph(PersistentResources const &resources)
       : resources_(resources) {}
@@ -73,19 +73,14 @@ struct WorkGraph {
                std::vector<diagnostic::ConsumedMessage>>
   EvaluateToBuffer(Context &context, type::Typed<ast::Expression const *> expr);
 
-  std::variant<ir::CompleteResultBuffer,
-               std::vector<diagnostic::ConsumedMessage>>
-  EvaluateToBufferAndComplete(Context &context,
-                              type::Typed<ast::Expression const *> expr);
-
   WorkResources work_resources() {
     return {
-      .enqueue = [this](WorkItem item,
-                        absl::flat_hash_set<WorkItem> prerequisites) {
-        emplace(item, std::move(prerequisites));
-      },
-      .evaluate = std::bind_front(&WorkGraph::EvaluateToBufferAndComplete, this),
-      .complete = std::bind_front(&WorkGraph::Execute, this),
+        .enqueue =
+            [this](WorkItem item, absl::flat_hash_set<WorkItem> prerequisites) {
+              emplace(item, std::move(prerequisites));
+            },
+        .evaluate = std::bind_front(&WorkGraph::EvaluateToBuffer, this),
+        .complete = std::bind_front(&WorkGraph::Execute, this),
     };
   }
 

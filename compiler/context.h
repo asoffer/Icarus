@@ -339,6 +339,10 @@ struct Context {
                             ast::ConditionalGoto const> const>
   GoesTo(ast::Jump const *node) const;
 
+  bool ClaimVerifyBodyTask(ast::FunctionLiteral const *node) {
+    return body_is_verified_.insert(node).second;
+  }
+
  private:
   explicit Context(Context *parent);
 
@@ -362,6 +366,8 @@ struct Context {
     if (parent() == nullptr) { return nullptr; }
     return parent()->TryLoadType(expr);
   }
+
+  absl::flat_hash_set<ast::FunctionLiteral const *> body_is_verified_;
 
   // Types of the expressions in this context.
   absl::flat_hash_map<ast::Expression const *, std::vector<type::QualType>>
