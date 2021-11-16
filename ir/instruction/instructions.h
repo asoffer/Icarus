@@ -204,6 +204,7 @@ struct CopyInstruction
  private:
   ir::Fn function() const {
     if (auto* s = type.if_as<type::Struct>()) {
+      ASSERT(s->completeness() == type::Completeness::Complete);
       return *ASSERT_NOT_NULL(s->CopyAssignment(s));
     } else if (auto* a = type.if_as<type::Array>()) {
       return a->CopyAssign();
@@ -236,6 +237,7 @@ struct CopyInitInstruction
  private:
   ir::Fn function() const {
     if (auto* s = type.if_as<type::Struct>()) {
+      ASSERT(s->completeness() == type::Completeness::Complete);
       return *ASSERT_NOT_NULL(s->CopyInit(s));
     } else if (auto* a = type.if_as<type::Array>()) {
       return a->CopyInit();
@@ -268,6 +270,7 @@ struct MoveInstruction
  private:
   ir::Fn function() const {
     if (auto* s = type.if_as<type::Struct>()) {
+      ASSERT(s->completeness() == type::Completeness::Complete);
       return *ASSERT_NOT_NULL(s->MoveAssignment(s));
     } else if (auto* a = type.if_as<type::Array>()) {
       return a->MoveAssign();
@@ -300,6 +303,7 @@ struct MoveInitInstruction
  private:
   ir::Fn function() const {
     if (auto* s = type.if_as<type::Struct>()) {
+      ASSERT(s->completeness() == type::Completeness::Complete);
       return *ASSERT_NOT_NULL(s->MoveInit(s));
     } else if (auto* a = type.if_as<type::Array>()) {
       return a->MoveInit();

@@ -159,6 +159,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
 
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Copy: {
+      if (auto const *s = operand_type.if_as<type::Struct>()) {
+        EnsureComplete({.kind    = WorkItem::Kind::CompleteStruct,
+                        .node    = context().AstLiteral(s),
+                        .context = &context()});
+      }
       ASSERT(operand_type.get()->completeness() ==
              type::Completeness::Complete);
       if (not operand_type.get()->IsCopyable()) {
@@ -179,6 +184,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
       qt = type::QualType::NonConstant(type::Void);
     } break;
     case ast::UnaryOperator::Kind::Move: {
+      if (auto const *s = operand_type.if_as<type::Struct>()) {
+        EnsureComplete({.kind    = WorkItem::Kind::CompleteStruct,
+                        .node    = context().AstLiteral(s),
+                        .context = &context()});
+      }
       ASSERT(operand_type.get()->completeness() ==
              type::Completeness::Complete);
       if (not operand_type.get()->IsMovable()) {

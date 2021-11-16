@@ -550,7 +550,6 @@ bool Compiler::EnsureDataCompleteness(type::Struct *s) {
                      auto fn, StructDataCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
     InterpretAtCompileTime(fn);
-    s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());
     return true;
@@ -564,7 +563,6 @@ bool Compiler::EnsureDataCompleteness(type::Struct *s) {
                      auto fn, StructDataCompletionFn(*this, s, node->fields()));
     // TODO: What if execution fails.
     InterpretAtCompileTime(fn);
-    s->complete();
     LOG("struct", "Completed %s which is a struct %s with %u field(s).",
         node->DebugString(), *s, s->fields().size());
     return true;
