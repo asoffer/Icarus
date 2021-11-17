@@ -61,12 +61,6 @@ struct WorkGraph {
     dependencies_.emplace(w, std::move(dependencies));
   }
 
-  // Ensure that the given `WorkItem` has been completed. If the item had
-  // previously been executed, nothing happens. If the item has not been
-  // previously executed, this function will also ensure that all transitively
-  // depended-on `WorkItem`s are executed before executing `w`.
-  bool Execute(WorkItem const &w);
-
   PersistentResources const &resources() const { return resources_; }
 
   std::variant<ir::CompleteResultBuffer,
@@ -99,6 +93,12 @@ struct WorkGraph {
   }
 
  private:
+  // Ensure that the given `WorkItem` has been completed. If the item had
+  // previously been executed, nothing happens. If the item has not been
+  // previously executed, this function will also ensure that all transitively
+  // depended-on `WorkItem`s are executed before executing `w`.
+  bool Execute(WorkItem const &w);
+
   PersistentResources resources_;
   absl::flat_hash_map<WorkItem, absl::flat_hash_set<WorkItem>> dependencies_;
 };

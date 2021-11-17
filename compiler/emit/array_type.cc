@@ -8,7 +8,7 @@ void Compiler::EmitToBuffer(ast::ArrayType const *node,
                             ir::PartialResultBuffer &out) {
   EmitToBuffer(node->data_type(), out);
   ir::RegOr<type::Type> t = out.get<type::Type>(0);
-  out.clear();
+  out.pop_back();
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {

@@ -6,17 +6,27 @@ memory ::= import "memory.ic"
 // example hard-code malloc's parameter to u64 when in reality it is
 // `std::size_t` which may be 32-bits on some platforms.
 
+
+// TODO: This exists inside the core module, but for some reason we calling it
+// is causing compiler crashes.
+exchange ::= (x: *~`T, y: T) -> T {
+  result: T
+  result = @x
+  @x = y
+  return result
+}
+
 #{export}
 string ::= struct {
   _data:     [*]char
   _length:   u64
   _capacity: u64
 
-  (move) ::= (to: *string) -> string {
+  (move) ::= (from: *string) -> string {
     return string.{
-      _data     = core.exchange(to._data, null)
-      _length   = core.exchange(to._length, 0)
-      _capacity = core.exchange(to._capacity, 0)
+      _data     = exchange(from._data, null)
+      _length   = exchange(from._length, 0)
+      _capacity = exchange(from._capacity, 0)
     }
   }
 
@@ -26,11 +36,11 @@ string ::= struct {
     (to._capacity, from._capacity) = (from._capacity, 0)
   }
 
-  (copy) ::= (to: *string) -> string {
+  (copy) ::= (from: *string) -> string {
     return string.{
-      _data     = memory.clone(to'raw_null_terminated_view).data
-      _length   = to._length
-      _capacity = to._capacity
+      _data     = memory.clone(from'raw_null_terminated_view).data
+      _length   = from._length
+      _capacity = from._capacity
     }
   }
 

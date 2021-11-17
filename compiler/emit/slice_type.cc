@@ -8,7 +8,7 @@ namespace compiler {
       ir::PartialResultBuffer &out) {
     EmitToBuffer(node->data_type(), out);
     auto t = out.get<type::Type>(0);
-    out.clear();
+    out.pop_back();
     out.append(current_block()->Append(type::SliceInstruction{
         .data_type = t, .result = builder().CurrentGroup()->Reserve()}));
   }

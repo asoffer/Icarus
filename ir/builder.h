@@ -180,7 +180,10 @@ struct Builder {
 
   template <typename ToType>
   RegOr<ToType> CastTo(type::Type t, PartialResultRef const& buffer) {
-    if (t == GetType<ToType>()) { return buffer.get<ToType>(); }
+    if (t == GetType<ToType>() or
+        (t.is<type::Pointer>() and base::meta<ToType> == base::meta<addr_t>)) {
+      return buffer.get<ToType>();
+    }
     if (auto const* p = t.if_as<type::Primitive>()) {
       return p->Apply([&]<typename T>()->RegOr<ToType> {
         return Cast<T, ToType>(buffer.get<T>());

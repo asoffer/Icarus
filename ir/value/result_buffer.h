@@ -156,6 +156,7 @@ struct CompleteResultBuffer {
   }
 
   void pop_back() {
+    ASSERT(offsets_.size() != 0);
     size_t index = offsets_.back();
     buffer_.resize(index);
     offsets_.pop_back();

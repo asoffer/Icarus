@@ -429,6 +429,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
         copy_assignments;
     for (auto const &field_decl : field_decls) {
       if (not(field_decl.flags() & ast::Declaration::f_IsConst)) { continue; }
+      c.VerifyType(&field_decl);
 
       // TODO: Access to init_val is not correct here because that may
       // initialize multiple values.

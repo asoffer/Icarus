@@ -17,14 +17,12 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
         type::BufPtr(s->data_type()));
 
     auto index = EmitWithCastTo<int64_t>(
-        context().qual_types(node->rhs())[0].type(), node->rhs(), out);
-    out.clear();
+        context().qual_types(node->rhs())[0].type(), node->rhs());
     out.append(builder().PtrFix(builder().Index(type::Ptr(s), data, index),
                                 s->data_type()));
   } else if (auto const *array_type = qt.type().if_as<type::Array>()) {
     auto index = EmitWithCastTo<int64_t>(
-        context().qual_types(node->rhs())[0].type(), node->rhs(), out);
-    out.clear();
+        context().qual_types(node->rhs())[0].type(), node->rhs());
     out.append(builder().PtrFix(
         builder().Index(type::Ptr(context().qual_types(node->lhs())[0].type()),
                         EmitAs<ir::addr_t>(node->lhs()), index),
@@ -32,8 +30,7 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
   } else if (auto const *buf_ptr_type =
                  qt.type().if_as<type::BufferPointer>()) {
     auto index = EmitWithCastTo<int64_t>(
-        context().qual_types(node->rhs())[0].type(), node->rhs(), out);
-    out.clear();
+        context().qual_types(node->rhs())[0].type(), node->rhs());
     out.append(builder().PtrFix(
         builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()), index, buf_ptr_type),
         buf_ptr_type->pointee()));
