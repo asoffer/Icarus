@@ -70,6 +70,23 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
                   out.append(result);
                 });
           });
+    } else if (auto const *enum_type = to_type.if_as<type::Enum>()) {
+      ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
+                 uint64_t>(from_type, [&]<typename T>() {
+        auto result =
+            builder().Cast<T, type::Enum::underlying_type>(out.back().get<T>());
+        out.pop_back();
+        out.append(result);
+      });
+    } else if (auto const *flags_type = to_type.if_as<type::Flags>()) {
+      return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                        uint32_t, uint64_t>(from_type, [&]<typename T>() {
+        auto result = builder().Cast<T, type::Flags::underlying_type>(
+            out.back().get<T>());
+        out.pop_back();
+        out.append(result);
+      });
+
     } else {
       ApplyTypes<float, double>(to_type, [&]<typename To>() {
         ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
