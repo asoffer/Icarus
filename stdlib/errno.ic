@@ -1,3 +1,5 @@
+c ::= import "c_types.ic"
+
 #{export}
 error ::= enum {
   SUCCESS ::=  0
@@ -38,5 +40,5 @@ error ::= enum {
 }
 
 #{export} get ::= () -> error {
-  return @foreign("errno", *i32) as error
+  return @foreign("errno", *c.int) as error
 }

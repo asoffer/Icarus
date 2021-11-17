@@ -1,0 +1,30 @@
+// This module provides an interface to functions in the <string.h> C-header
+// file.
+
+// Locale-aware functions are intentionally omitted.
+
+c ::= import "c_types.ic"
+
+#{export} strcpy   ::= foreign("strcpy", ([*]char, [*]char) -> [*]char)
+#{export} strncpy  ::= foreign("strcpy", ([*]char, [*]char, c.size_t) -> [*]char)
+#{export} strcat   ::= foreign("strcat", ([*]char, [*]char) -> [*]char)
+#{export} strncat  ::= foreign("strcat", ([*]char, [*]char, c.size_t) -> [*]char)
+
+#{export} strlen   ::= foreign("strlen", [*]char -> c.size_t)
+#{export} strcmp   ::= foreign("strcmp", ([*]char, [*]char) -> c.int)
+#{export} strncmp  ::= foreign("strncmp", ([*]char, [*]char, c.size_t) -> c.int)
+#{export} strchr   ::= foreign("strchr", ([*]char, c.int) -> [*]char)
+#{export} strrchr  ::= foreign("strrchr", ([*]char, c.int) -> [*]char)
+#{export} strspn   ::= foreign("strspn", ([*]char, [*]char) -> c.size_t)
+#{export} strcspn  ::= foreign("strcspn", ([*]char, [*]char) -> c.size_t)
+#{export} strpbrk  ::= foreign("strpbrk", ([*]char, [*]char) -> c.size_t)
+#{export} strstr   ::= foreign("strstr", ([*]char, [*]char) -> [*]char)
+#{export} strtok   ::= foreign("strtok", ([*]char, [*]char) -> [*]char)
+
+#{export} strerror ::= foreign("strerror", c.int -> [*]char)
+
+#{export} memchr   ::= foreign("memchr", ([*]byte, c.int, c.size_t) -> [*]byte)
+#{export} memcmp   ::= foreign("memcmp", ([*]byte, [*]byte, c.size_t) -> c.int)
+#{export} memset   ::= foreign("memset", ([*]byte, c.int, c.size_t) -> [*]byte)
+#{export} memcpy   ::= foreign("memcpy", ([*]byte, [*]byte, c.size_t) -> [*]byte)
+#{export} memmove  ::= foreign("memmove", ([*]byte, [*]byte, c.size_t) -> [*]byte)

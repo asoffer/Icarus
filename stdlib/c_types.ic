@@ -1,0 +1,6 @@
+// Types aliases for compatibility with C.
+
+// TODO: This is a platform-dependent value and should be made configurable.
+#{export} int    ::= i32
+#{export} size_t ::= u64
+#{export} long   ::= i64

@@ -1,7 +1,7 @@
 core ::= import "core.ic"
 
-// TODO: This should get moved to cstdlib.ic
-memcpy ::= foreign("memcpy", ([*]byte, [*]byte, u64) -> [*]byte)
+c ::= import "c_types.ic"
+cstr ::= import "cstring.ic"
 
 #{export}
 allocate ::= (T :: type) -> *T {
@@ -40,20 +40,18 @@ clone ::= (m: []byte) => expand(m, m.length)
 #{export}
 expand ::= (m: []byte, new_size: u64) -> []byte {
   buffer := allocate(byte, new_size)
-  memcpy(buffer.data, m.data, m.length)
+  cstr.memcpy(buffer.data, m.data, m.length)
   return buffer
 }
 
 #{export}
 fill ::= (m: []byte, value: u8) -> () {
-  // TODO: This should get moved to cstdlib.ic
-  memset ::= foreign("memset", ([*]char, i32, u64) -> [*]char)
-  memset(m.data, value as i32, m.length)
+  cstr.memset(m.data, value as c.int, m.length)
 }
 
 #{export}
 Copy ::= (from: []byte, to: []byte) -> () {
-  memcpy(to.data, from.data, to.length)
+  cstr.memcpy(to.data, from.data, to.length)
 }
 
 // TODO: If we don't require length to be a multiple of alignment, we need to account for that here.

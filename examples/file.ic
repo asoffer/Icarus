@@ -1,3 +1,4 @@
+cstdio ::= import "cstdio.ic"
 errno  ::= import "errno.ic"
 file   ::= import "file.ic"
 io     ::= import "io.ic"
@@ -13,5 +14,5 @@ file.With("examples/file.ic") open [f: file.File] {
     io.Print(line)
   }
 } error [e: errno.error] {
-  io.Print("Error opening file: ", e as u64, "\n")
+  cstdio.perror("Error opening file".data)
 }
