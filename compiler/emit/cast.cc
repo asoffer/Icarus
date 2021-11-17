@@ -37,11 +37,12 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
 
   if (to_type == type::Char) {
     if (from_type == type::U8) {
-      auto result = builder().Cast<uint8_t, ir::Char>(out.get<uint8_t>(0));
+      auto result =
+          builder().Cast<uint8_t, ir::Char>(out.back().get<uint8_t>());
       out.pop_back();
       out.append(result);
     } else if (from_type == type::I8) {
-      auto result = builder().Cast<int8_t, ir::Char>(out.get<int8_t>(0));
+      auto result = builder().Cast<int8_t, ir::Char>(out.back().get<int8_t>());
       out.pop_back();
       out.append(result);
     } else {
@@ -51,19 +52,20 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
     ASSERT(type::IsIntegral(to_type) == true);
     ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                uint64_t>(to_type, [&]<typename T>() {
-      auto result = builder().Cast<ir::Char, T>(out.get<ir::Char>(0));
+      auto result = builder().Cast<ir::Char, T>(out.back().get<ir::Char>());
       out.pop_back();
       out.append(result);
     });
   } else if (type::IsNumeric(from_type)) {
-    if (type::IsIntegral(from_type)) {
+    if (type::IsIntegral(to_type)) {
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double>(
           to_type, [&]<typename To>() {
             ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                        uint16_t, uint32_t, uint64_t>(
                 from_type, [&]<typename From>() {
-                  auto result = builder().Cast<From, To>(out.get<From>(0));
+                  auto result =
+                      builder().Cast<From, To>(out.back().get<From>());
                   out.pop_back();
                   out.append(result);
                 });
@@ -73,7 +75,7 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
         ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                    uint32_t, uint64_t, float, double>(
             from_type, [&]<typename From>() {
-              auto result = builder().Cast<From, To>(out.get<From>(0));
+              auto result = builder().Cast<From, To>(out.back().get<From>());
               out.pop_back();
               out.append(result);
             });
@@ -86,7 +88,7 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
     ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                uint64_t>(to_type, [&]<typename T>() {
       auto result = builder().Cast<type::Enum::underlying_type, T>(
-          out.get<type::Enum::underlying_type>(0));
+          out.back().get<type::Enum::underlying_type>());
       out.pop_back();
       out.append(result);
     });
@@ -94,7 +96,7 @@ void Compiler::EmitToBuffer(ast::Cast const *node, ir::PartialResultBuffer &out)
     return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                       uint32_t, uint64_t>(to_type, [&]<typename T>() {
       auto result = builder().Cast<type::Flags::underlying_type, T>(
-          out.get<type::Flags::underlying_type>(0));
+          out.back().get<type::Flags::underlying_type>());
       out.pop_back();
       out.append(result);
     });
