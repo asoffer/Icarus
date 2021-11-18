@@ -1,16 +1,16 @@
+c      ::= import "c/stdio.ic"
 core   ::= import "core.ic"
 errno  ::= import "errno.ic"
-cstdio ::= import "cstdio.ic"
 memory ::= import "memory.ic"
 
 #{export}
 File ::= struct {
-  #{export} _handle: *cstdio.File
+  #{export} _handle: *c.File
 }
 
 
 #{export}
-make ::= (f: *cstdio.File) -> File {
+make ::= (f: *c.File) -> File {
   return File.{ _handle = f }
 }
 
@@ -21,7 +21,7 @@ CFileHandle ::= (f: File) => f._handle
 #{export}
 With ::= scope(File) {
   enter ::= jump [f: *File] (name: []char) {
-    f._handle = cstdio.fopen(name.data, "r".data)
+    f._handle = c.fopen(name.data, "r".data)
     e := errno.get()
     goto e == errno.error.SUCCESS, open(@f), error(e) | done()
   }
@@ -29,7 +29,7 @@ With ::= scope(File) {
   open ::= block {
     before ::= (f: File) => f
     after ::= jump [f: *File] () {
-      cstdio.fclose(f._handle)
+      c.fclose(f._handle)
       goto done()
     }
   }
@@ -49,14 +49,14 @@ read_to ::= (f: File, T :: type) -> T {
   num_read := CHUNK_SIZE
   buffer: [CHUNK_SIZE; char]
   core.while (num_read == CHUNK_SIZE) do {
-    num_read = cstdio.fread(&buffer[0], char'bytes, CHUNK_SIZE, f._handle)
+    num_read = c.fread(&buffer[0], char'bytes, CHUNK_SIZE, f._handle)
     result'append(slice(&buffer[0], num_read))
   }
   return result
 }
 
 LinesState ::= struct {
-  handle: *cstdio.File
+  handle: *c.File
   line: [*]char
   bufsize: u64
   line_length: i64
@@ -67,7 +67,7 @@ LinesState ::= struct {
 }
 
 next_line ::= (s: *LinesState) -> bool {
-  s.line_length = cstdio.getline(&s.line, &s.bufsize, s.handle)
+  s.line_length = c.getline(&s.line, &s.bufsize, s.handle)
   return s.line_length > 0
 }
 

@@ -9,7 +9,6 @@ ic_interpret(
     name = "c_file",
     src = "c_file.ic",
     data = [":example_file"],
-    deps = ["//stdlib:memory"]
 )
 
 ic_interpret(

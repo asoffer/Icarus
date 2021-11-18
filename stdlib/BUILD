@@ -1,43 +1,16 @@
 load("//toolchain:ic_rule.bzl", "ic_low_level_library")
 
 ic_low_level_library(
-    name = "c_types",
-    visibility = ["//visibility:public"],
-    srcs = ["c_types.ic"],
-)
-
-ic_low_level_library(
     name = "core",
     visibility = ["//visibility:public"],
     srcs = ["core.ic"],
 )
 
 ic_low_level_library(
-    name = "cstdlib",
-    visibility = ["//visibility:public"],
-    srcs = ["cstdlib.ic"],
-    deps = [":c_types"],
-)
-
-ic_low_level_library(
-    name = "cstdio",
-    visibility = ["//visibility:public"],
-    srcs = ["cstdio.ic"],
-    deps = [":c_types"],
-)
-
-ic_low_level_library(
-    name = "cstring",
-    visibility = ["//visibility:public"],
-    srcs = ["cstring.ic"],
-    deps = [":c_types"],
-)
-
-ic_low_level_library(
     name = "errno",
     visibility = ["//visibility:public"],
     srcs = ["errno.ic"],
-    deps = [":c_types"],
+    deps = ["//stdlib/c:types"],
 )
 
 ic_low_level_library(
@@ -53,9 +26,9 @@ ic_low_level_library(
     srcs = ["file.ic"],
     deps = [
         ":core",
-        ":cstdio",
         ":errno",
         ":memory",
+        "//stdlib/c:stdio",
     ],
 )
 
@@ -65,7 +38,8 @@ ic_low_level_library(
     srcs = ["memory.ic"],
     deps = [
         ":core",
-        ":cstring",
+        "//stdlib/c:string",
+        "//stdlib/c:types",
     ],
 )
 
@@ -84,13 +58,14 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     deps = [
         ":core",
-        ":cstdlib",
-        ":cstdio",
         ":errno",
         ":file",
         ":io",
         ":memory",
         ":string",
+        "//stdlib/c:stdlib",
+        "//stdlib/c:stdio",
+        "//stdlib/c:string",
         "//stdlib/math",
     ],
 )

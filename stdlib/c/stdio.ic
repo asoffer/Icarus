@@ -1,7 +1,7 @@
 // This module provides an interface to functions in the <stdio.h> C-header
 // file.
 
-c ::= import "c_types.ic"
+c ::= import "c/types.ic"
 
 // TODO: Opaque is insufficient here because C allows for construction of values
 // of this type.

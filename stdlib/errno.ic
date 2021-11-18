@@ -1,4 +1,4 @@
-c ::= import "c_types.ic"
+c ::= import "c/types.ic"
 
 #{export}
 error ::= enum {

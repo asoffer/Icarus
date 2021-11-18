@@ -1,7 +1,7 @@
 core ::= import "core.ic"
 
-c ::= import "c_types.ic"
-cstr ::= import "cstring.ic"
+c ::= import "c/types.ic"
+cstr ::= import "c/string.ic"
 
 #{export}
 allocate ::= (T :: type) -> *T {

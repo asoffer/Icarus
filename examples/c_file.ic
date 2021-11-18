@@ -1,21 +1,22 @@
--- ::= import "core.ic"
-cstdio ::= import "cstdio.ic"
+--    ::= import "core.ic"
+c     ::= import "c/stdio.ic"
 errno ::= import "errno.ic"
-io ::= import "io.ic"
+io    ::= import "io.ic"
+mem   ::= import "memory.ic"
 
-// TODO: This can be called directly, but there is a bug in memory.deallocate
-// which crashes the compiler if you try to call through that.
-free ::= foreign("free", [*]char -> ())
+// This example uses the C API to access a file. In particular, it opens
+// attempts to open a file, print the first line, and then close the file. If
+// the file cannot be opened, an error is printed instead.
 
-f := cstdio.fopen("examples/example_file.txt".data, "r".data)
+f := c.fopen("examples/example_file.txt".data, "r".data)
 if (errno.get() as u64 == 0) then {
   io.Print("First line of file is:\n")
   p: [*]char
   num: u64
-  cstdio.getline(&p, &num, f)
+  c.getline(&p, &num, f)
   io.Print(slice(p, num))
-  free(p)
-  cstdio.fclose(f)
+  mem.deallocate(p)
+  c.fclose(f)
 } else {
   io.Print("Error when loading file: errno = ", errno.get() as u64)
 }
