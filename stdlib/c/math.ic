@@ -1,0 +1,30 @@
+c ::= import "c/types.ic"
+
+#{export} acos  ::= foreign("acos", c.double -> c.double)
+#{export} asin  ::= foreign("asin", c.double -> c.double)
+#{export} atan  ::= foreign("atan", c.double -> c.double)
+#{export} atan2 ::= foreign("atan2", (c.double, c.double) -> c.double)
+
+#{export} cos   ::= foreign("cos", c.double -> c.double)
+#{export} cosh  ::= foreign("cosh", c.double -> c.double)
+#{export} sin   ::= foreign("sin", c.double -> c.double)
+#{export} sinh  ::= foreign("sinh", c.double -> c.double)
+#{export} tan   ::= foreign("tan", c.double -> c.double)
+#{export} tanh  ::= foreign("tanh", c.double -> c.double)
+
+#{export} exp   ::= foreign("exp", c.double -> c.double)
+#{export} frexp ::= foreign("frexp", (c.double, *c.int) -> c.double)
+#{export} ldexp ::= foreign("ldexp", (c.double, c.int) -> c.double)
+
+#{export} log   ::= foreign("log", c.double -> c.double)
+#{export} log10 ::= foreign("log10", c.double -> c.double)
+
+#{export} modf  ::= foreign("modf", (c.double, *c.int) -> c.double)
+
+#{export} pow   ::= foreign("pow", (c.double, c.double) -> c.double)
+#{export} sqrt  ::= foreign("sqrt", c.double -> c.double)
+
+#{export} ceil  ::= foreign("ceil", c.double -> c.double)
+#{export} fabs  ::= foreign("fabs", c.double -> c.double)
+#{export} floor ::= foreign("floor", c.double -> c.double)
+#{export} fmod  ::= foreign("fmod", (c.double, c.double) -> c.double)

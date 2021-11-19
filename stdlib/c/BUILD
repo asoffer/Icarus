@@ -1,9 +1,17 @@
 load("//toolchain:ic_rule.bzl", "ic_low_level_library")
 
 ic_low_level_library(
-    name = "types",
+    name = "ctype",
     visibility = ["//visibility:public"],
-    srcs = ["types.ic"],
+    srcs = ["ctype.ic"],
+    deps = [":types"],
+)
+
+ic_low_level_library(
+    name = "math",
+    visibility = ["//visibility:public"],
+    srcs = ["math.ic"],
+    deps = [":types"],
 )
 
 ic_low_level_library(
@@ -25,4 +33,10 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["string.ic"],
     deps = [":types"],
+)
+
+ic_low_level_library(
+    name = "types",
+    visibility = ["//visibility:public"],
+    srcs = ["types.ic"],
 )
