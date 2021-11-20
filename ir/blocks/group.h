@@ -29,8 +29,6 @@ namespace internal {
 // for a Jump is largely similar to that of a function with a few differences. A
 // `BlockGroupBase` represents the parts common to both.
 struct BlockGroupBase {
-  // TODO We should not need to store anything to do with the AST here.
-  // TODO blocks need to know how to handle initial values for their parameters.
   BlockGroupBase(BlockGroupBase const &) = delete;
   BlockGroupBase(BlockGroupBase &&)      = default;
   BlockGroupBase &operator=(BlockGroupBase const &) = delete;
@@ -53,7 +51,6 @@ struct BlockGroupBase {
         .get();
   }
 
-  // TODO: should be qualified?
   core::Params<type::QualType> const &params() const { return params_; }
 
   template <std::invocable<type::Type, ir::Reg> Fn>
