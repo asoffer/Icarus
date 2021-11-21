@@ -8,3 +8,4 @@ docs/Gemfile.lock
 .gdbinit
 compile_commands.json
 external
+.vscode/
