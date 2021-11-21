@@ -5,5 +5,6 @@ perf.data*
 docs/_site/*
 docs/Gemfile.lock
 .cache
+.gdbinit
 compile_commands.json
 external
