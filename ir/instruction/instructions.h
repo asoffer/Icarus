@@ -51,13 +51,15 @@ struct CastInstruction<ToType(FromType)>
 
   ToType Resolve() const {
     if constexpr (base::meta<ToType> == base::meta<ir::Char>) {
-      if constexpr (sizeof(FromType) == 1) {
-        return static_cast<uint8_t>(value.value());
-      } else {
-        UNREACHABLE();
-      }
+      static_assert(sizeof(FromType) == 1, "Invalid cast to ir::Char");
+      return static_cast<uint8_t>(value.value());
+    }
+    FromType from = value.value();
+    if constexpr (std::is_integral_v<FromType> or
+                  std::is_floating_point_v<FromType>) {
+      return from;
     } else {
-      return value.value();
+      return from.template as_type<ToType>();
     }
   }
 

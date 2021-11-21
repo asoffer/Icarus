@@ -1,4 +1,5 @@
 #include "compiler/instructions.h"
+
 #include "ir/instruction/arithmetic.h"
 #include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
@@ -69,38 +70,56 @@ struct instruction_set_t
           ir::NegInstruction<int64_t>, ir::NegInstruction<float>,
           ir::NegInstruction<double>,
           CastInstructions<
-              ir::Char(uint8_t), ir::Char(int8_t), int8_t(ir::Char),
-              uint8_t(ir::Char), int16_t(ir::Char), uint16_t(ir::Char),
-              int32_t(ir::Char), uint32_t(ir::Char), int64_t(ir::Char),
-              uint64_t(ir::Char), uint8_t(int8_t), uint8_t(uint16_t),
-              uint8_t(int16_t), uint8_t(uint32_t), uint8_t(int32_t),
-              uint8_t(uint64_t), uint8_t(int64_t), uint8_t(float),
-              uint8_t(double), int8_t(uint8_t), int8_t(uint16_t),
-              int8_t(int16_t), int8_t(uint32_t), int8_t(int32_t),
-              int8_t(uint64_t), int8_t(int64_t), int8_t(float), int8_t(double),
-              uint16_t(uint8_t), uint16_t(int8_t), uint16_t(int16_t),
-              uint16_t(uint32_t), uint16_t(int32_t), uint16_t(uint64_t),
-              uint16_t(int64_t), uint16_t(float), uint16_t(double),
-              int16_t(uint8_t), int16_t(int8_t), int16_t(uint16_t),
-              int16_t(uint32_t), int16_t(int32_t), int16_t(uint64_t),
-              int16_t(int64_t), int16_t(float), int16_t(double),
-              uint32_t(uint8_t), uint32_t(int8_t), uint32_t(uint16_t),
-              uint32_t(int16_t), uint32_t(int32_t), uint32_t(uint64_t),
-              uint32_t(int64_t), uint32_t(float), uint32_t(double),
-              uint32_t(uint8_t), int32_t(int8_t), int32_t(uint16_t),
-              int32_t(int16_t), int32_t(uint32_t), int32_t(uint64_t),
-              int32_t(int64_t), int32_t(float), int32_t(double),
-              int32_t(uint8_t), uint64_t(int8_t), uint64_t(uint16_t),
-              uint64_t(int16_t), uint64_t(uint32_t), uint64_t(int32_t),
-              uint64_t(int64_t), uint64_t(float), uint64_t(double),
-              uint64_t(uint8_t), int64_t(int8_t), int64_t(uint16_t),
-              int64_t(int16_t), int64_t(uint32_t), int64_t(int32_t),
-              int64_t(uint64_t), int64_t(float), int64_t(double),
-              int64_t(uint8_t), float(int8_t), float(uint16_t), float(int16_t),
+              // ir::Char from bytes (signed or unsigned)
+              ir::Char(uint8_t), ir::Char(int8_t),
+              // u8 from any numeric primitive
+              uint8_t(ir::Integer), uint8_t(ir::Char), uint8_t(int8_t),
+              uint8_t(uint16_t), uint8_t(int16_t), uint8_t(uint32_t),
+              uint8_t(int32_t), uint8_t(uint64_t), uint8_t(int64_t),
+              uint8_t(float), uint8_t(double),
+              // i8 from any numeric primitive
+              int8_t(ir::Integer), int8_t(ir::Char), int8_t(uint8_t),
+              int8_t(uint16_t), int8_t(int16_t), int8_t(uint32_t),
+              int8_t(int32_t), int8_t(uint64_t), int8_t(int64_t), int8_t(float),
+              int8_t(double),
+              // u16 from any numeric primitive
+              uint16_t(ir::Integer), uint16_t(ir::Char), uint16_t(uint8_t),
+              uint16_t(int8_t), uint16_t(int16_t), uint16_t(uint32_t),
+              uint16_t(int32_t), uint16_t(uint64_t), uint16_t(int64_t),
+              uint16_t(float), uint16_t(double),
+              // i16 from any numeric primitive
+              int16_t(ir::Integer), int16_t(ir::Char), int16_t(uint8_t),
+              int16_t(int8_t), int16_t(uint16_t), int16_t(uint32_t),
+              int16_t(int32_t), int16_t(uint64_t), int16_t(int64_t),
+              int16_t(float), int16_t(double),
+              // u32 from any numeric primitive
+              uint32_t(ir::Integer), uint32_t(ir::Char), uint32_t(uint8_t),
+              uint32_t(int8_t), uint32_t(uint16_t), uint32_t(int16_t),
+              uint32_t(int32_t), uint32_t(uint64_t), uint32_t(int64_t),
+              uint32_t(float), uint32_t(double),
+              // i32 from any numeric primitive
+              int32_t(ir::Integer), int32_t(ir::Char), int32_t(uint8_t),
+              int32_t(int8_t), int32_t(uint16_t), int32_t(int16_t),
+              int32_t(uint32_t), int32_t(uint64_t), int32_t(int64_t),
+              int32_t(float), int32_t(double),
+              // u64 from any numeric primitive
+              uint64_t(ir::Integer), uint64_t(ir::Char), uint64_t(uint8_t),
+              uint64_t(int8_t), uint64_t(uint16_t), uint64_t(int16_t),
+              uint64_t(uint32_t), uint64_t(int32_t), uint64_t(int64_t),
+              uint64_t(float), uint64_t(double),
+              // i64 from any numeric primitive
+              int64_t(ir::Integer), int64_t(ir::Char), int64_t(uint8_t),
+              int64_t(int8_t), int64_t(uint16_t), int64_t(int16_t),
+              int64_t(uint32_t), int64_t(int32_t), int64_t(uint64_t),
+              int64_t(float), int64_t(double),
+              // f32 from regular numeric primitives
+              float(uint8_t), float(int8_t), float(uint16_t), float(int16_t),
               float(uint32_t), float(int32_t), float(uint64_t), float(int64_t),
-              float(double), double(int8_t), double(uint16_t), double(int16_t),
-              double(uint32_t), double(int32_t), double(uint64_t),
-              double(int64_t), double(float)>,
+              float(double),
+              // f64 from regular numeric primitives
+              double(uint8_t), double(int8_t), double(uint16_t),
+              double(int16_t), double(uint32_t), double(int32_t),
+              double(uint64_t), double(int64_t), double(float)>,
           ir::AndInstruction, ir::NotInstruction, type::XorFlagsInstruction,
           type::AndFlagsInstruction, type::OrFlagsInstruction,
           ir::LoadSymbolInstruction, type::ArrayInstruction,

@@ -44,13 +44,17 @@ struct Integer {
   AbslFormatConvert(Integer const &n, const absl::FormatConversionSpec &spec,
                     absl::FormatSink *s) {
     s->Append(absl::StrCat(n.data_));
-
     return {true};
   }
 
   friend std::ostream &operator<<(std::ostream &os, Integer const &n) {
     absl::Format(&os, "%d", n);
     return os;
+  }
+
+  template <std::integral T>
+  T as_type() {
+    return data_;
   }
 
   // TODO: Remove

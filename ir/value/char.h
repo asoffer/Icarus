@@ -22,6 +22,11 @@ struct Char {
     return data_;
   }
 
+  template <std::integral T>
+  T as_type() {
+    return data_;
+  }
+
   template <typename H>
   friend H AbslHashValue(H h, Char c) {
     return H::combine(std::move(h), c.data_);
