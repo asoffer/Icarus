@@ -8,11 +8,16 @@ string ::= struct {
   _capacity: u64
 
   (move) ::= (from: *string) -> string {
-    return string.{
-      _data     = core.exchange(from._data, null)
-      _length   = core.exchange(from._length, 0)
-      _capacity = core.exchange(from._capacity, 0)
+    // TODO: use core.exchange here when the cross-module generics bug is fixed.
+    result := string.{
+      _data     = from._data
+      _length   = from._length
+      _capacity = from._capacity
     }
+    from._data = null
+    from._length = 0
+    from._capacity = 0
+    return result
   }
 
   (move) ::= (to: *string, from: *string) -> () {
