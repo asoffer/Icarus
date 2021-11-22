@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # TODO: Use `bazel run //examples:foo` for these tests, once that works more reliably.
-bazel build //compiler:interpret
+bazel build -c dbg //compiler:interpret
 
 examples=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
 root=$(dirname "$examples")
