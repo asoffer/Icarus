@@ -1,9 +1,17 @@
+-- ::= import "core.ic"
 io ::= import "io.ic"
 
-foo () ping {
-  io.Print("sending...")
-} pong {
-  io.Print("received!\n")
+run_demo ::= (max_iters: i64) -> bool {
+  iter := 0
+  foo () ping {
+    io.Print("sending...")
+  } pong {
+    io.Print("received!\n")
+    iter += 1
+    if (iter >= max_iters) then {
+      return true
+    }
+  }
 }
 
 foo ::= scope {
@@ -18,3 +26,5 @@ foo ::= scope {
   }
   exit ::= () -> {}
 }
+
+run_demo(10)
