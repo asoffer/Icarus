@@ -1,6 +1,6 @@
---     ::= import "core.ic"
-str    ::= import "string.ic"
-io     ::= import "io.ic"
+--  ::= import "core.ic"
+str ::= import "string.ic"
+io  ::= import "io.ic"
 
 a := str.make("this is a string\n")
 a'Print

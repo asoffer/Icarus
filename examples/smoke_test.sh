@@ -18,4 +18,4 @@ $binary "$examples/function_calls.ic" >/dev/null && echo function_calls OK
 $binary "$examples/mandelbrot.ic" >/dev/null && echo mandelbrot OK
 # $binary "$examples/ping_pong.ic" | head >/dev/null && echo ping_pong OK
 $binary "$examples/primes.ic" >/dev/null && echo primes OK
-$binary "$examples/string.ic" >/dev/null && echo string OK
+$binary "$examples/string_demo.ic" >/dev/null && echo string_demo OK

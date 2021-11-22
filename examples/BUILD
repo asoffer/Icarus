@@ -1,4 +1,4 @@
-load("//toolchain:ic_rule.bzl", "ic_library", "ic_interpret")
+load("//toolchain:ic_rule.bzl", "ic_interpret")
 
 filegroup(
     name = "example_file",
@@ -57,6 +57,6 @@ ic_interpret(
 )
 
 ic_interpret(
-    name = "string",
-    src = "string.ic",
+    name = "string_demo",
+    src = "string_demo.ic",
 )

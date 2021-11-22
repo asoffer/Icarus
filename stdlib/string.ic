@@ -1,21 +1,6 @@
 core   ::= import "core.ic"
 memory ::= import "memory.ic"
 
-// TODO: The precise types here are actually architecture dependent. We need to
-// provide some platform-querying capabilities so that we don't need to, for
-// example hard-code malloc's parameter to u64 when in reality it is
-// `std::size_t` which may be 32-bits on some platforms.
-
-
-// TODO: This exists inside the core module, but for some reason we calling it
-// is causing compiler crashes.
-exchange ::= (x: *~`T, y: T) -> T {
-  result: T
-  result = @x
-  @x = y
-  return result
-}
-
 #{export}
 string ::= struct {
   _data:     [*]char
@@ -24,9 +9,9 @@ string ::= struct {
 
   (move) ::= (from: *string) -> string {
     return string.{
-      _data     = exchange(from._data, null)
-      _length   = exchange(from._length, 0)
-      _capacity = exchange(from._capacity, 0)
+      _data     = core.exchange(from._data, null)
+      _length   = core.exchange(from._length, 0)
+      _capacity = core.exchange(from._capacity, 0)
     }
   }
 
@@ -97,7 +82,6 @@ make ::= (capacity: u64) -> string {
     _capacity = capacity
   }
 }
-
 
 #{export}
 length ::= (s: *string) => s._length
