@@ -14,31 +14,30 @@ using ::testing::UnorderedElementsAre;
 
 TEST(BuiltinReserveMemory, FunctionSuccess) {
   test::TestModule mod;
-  auto const *call =
-      mod.Append<ast::Call>(R"(reserve_memory(1 as u64, 1 as u64))");
+  auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(1, 1))");
   type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(
-      qt, type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
+  EXPECT_EQ(qt,
+            type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinReserveMemory, NonConstantArgument) {
   test::TestModule mod;
   mod.AppendCode(R"(n := 3 as u64)");
-  auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(n, 1 as u64))");
+  auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(n, 1))");
   type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(
-      qt, type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
+  EXPECT_EQ(qt,
+            type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinReserveMemory, WrongType) {
   test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(reserve_memory(true, 1 as u64))");
+  auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(true, 1))");
   type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(
-      qt, type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
+  EXPECT_EQ(qt,
+            type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
@@ -495,16 +494,14 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
         },
         TestCase{
-            .context            = R"(
+            .context = R"(
             f ::= (b: bool) => true
             f ::= (n: i64) => n
             )",
-            .expr               = "f(n = 0 as i64)",  // TODO: Allow implicit conversion here
+            .expr = "f(n = 0 as i64)",  // TODO: Allow implicit conversion here
             .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         // Generic functions
-        // TODO: Reenable these tests
-#if 0
         TestCase{
             .context            = "f ::= (x: ~`T) => x",
             .expr               = "f(3 as i64)",
@@ -521,7 +518,6 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_diagnostics = UnorderedElementsAre(
                 Pair("type-error", "uncallable-with-arguments")),
         },
-#endif
     }));
 
 }  // namespace

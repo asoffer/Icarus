@@ -260,12 +260,13 @@ type::QualType VerifyReserveMemoryCall(
     qt.MarkError();
   } else {
     for (size_t i : {0, 1}) {
-      if (arg_vals[i].type() != type::U64) {
+      if (!type::CanCastImplicitly(arg_vals[i].type(), type::U64)) {
         c->diag().Consume(BuiltinError{
-            .range   = range,
-            .message = absl::StrCat("Arguments to `reserve_memory` must be a "
-                                    "u64 (You provided a(n) ",
-                                    arg_vals[i].type().to_string(), ")."),
+            .range = range,
+            .message =
+                absl::StrCat("Arguments to `reserve_memory` must be "
+                             "implicitly convertible to `u64` (You provided `",
+                             arg_vals[i].type().to_string(), "`)."),
         });
         qt.MarkError();
         break;
