@@ -90,7 +90,7 @@ struct CompleteResultRef {
   AbslFormatConvert(CompleteResultRef const &ref,
                     const absl::FormatConversionSpec &spec,
                     absl::FormatSink *s) {
-    s->Append(ref.view_.to_string());
+    s->Append(base::UniversalPrintToString(ref.view_));
     return {true};
   }
 

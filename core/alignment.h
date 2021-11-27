@@ -6,9 +6,6 @@
 namespace core {
 
 struct Alignment {
-  // Returns the alignment on the host.
-  // TODO at some point we'll want a better way to spell this so the
-  // interpreter and the host can be different.
   template <typename T>
   static constexpr Alignment Get() {
     return Alignment{alignof(T)};

@@ -16,13 +16,8 @@ struct Interval {
     ASSERT(b <= e);
   }
 
-  // TODO make these conditionally constexpr
   constexpr T begin() const { return begin_; }
   constexpr T end() const { return end_; }
-
-  // TODO I'm not sure these are good ideas.
-  constexpr T &begin() { return begin_; }
-  constexpr T &end() { return end_; }
 
   constexpr bool empty() const { return begin_ == end_; }
 

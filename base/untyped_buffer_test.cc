@@ -14,6 +14,23 @@ TEST(UntypedBuffer, DefaultConstructorInvariants) {
   EXPECT_THAT(buf, IsEmpty());
 }
 
+TEST(UntypedBuffer, Conversion) {
+  untyped_buffer buf;
+  {
+    untyped_buffer_view view(buf);
+    EXPECT_EQ(view.size(), 0);
+    EXPECT_TRUE(view.empty());
+  }
+
+  buf.append(1);
+  buf.append(2);
+  {
+    untyped_buffer_view view(buf);
+    EXPECT_EQ(view.size(), sizeof(int) * 2);
+    EXPECT_FALSE(view.empty());
+  }
+}
+
 TEST(UntypedBuffer, MakeFull) {
   untyped_buffer buf = untyped_buffer::MakeFull(10);
   EXPECT_EQ(buf.size(), 10);
@@ -58,25 +75,22 @@ TEST(UntypedBuffer, Access) {
 }
 
 TEST(UntypedBuffer, ToString) {
-  EXPECT_EQ(untyped_buffer{}.to_string(), "");
-  EXPECT_EQ(untyped_buffer{10}.to_string(), "");
+  EXPECT_EQ(UniversalPrintToString(untyped_buffer{}), "");
+  EXPECT_EQ(UniversalPrintToString(untyped_buffer{10}), "");
 
   {
     untyped_buffer buf;
     buf.append(char{0});
     buf.append(char{1});
-    EXPECT_EQ(buf.to_string(), "00 01");
+    EXPECT_EQ(UniversalPrintToString(buf), "00 01\n");
   }
 
   {
     untyped_buffer buf;
     for (char i = 0; i < 13; ++i) { buf.append(i); }
-    EXPECT_EQ(buf.to_string(3, 4),
-              "    00 01 02\n"
-              "    03 04 05\n"
-              "    06 07 08\n"
-              "    09 0a 0b\n"
-              "    0c");
+    EXPECT_EQ(UniversalPrintToString(buf),
+              "00 01 02 03 04 05 06 07\n"
+              "08 09 0a 0b 0c\n");
   }
 }
 

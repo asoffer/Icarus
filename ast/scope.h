@@ -150,10 +150,9 @@ struct FnScope : Scope {
   std::vector<Scope *> descendants_;
 };
 
-// TODO using FnScope for modules makes sense for executable modules and isn't
-// super harmful for library modules, but also isn't entirely correct. Figure
-// out the semantically correct solution here, probably extracting some of the
-// functionality of FnScope.
+// `ModuleScope`s are always FnScope`s because, even for imported library
+// modules, the body of the module is evaluated according to some linear
+// extension of the dependency partial order.
 struct ModuleScope : FnScope {
   explicit ModuleScope(module::BasicModule *mod)
       : FnScope(nullptr), module_(mod) {}

@@ -60,9 +60,8 @@ struct LegacyType : base::Cast<LegacyType> {
 
   virtual Completeness completeness() const = 0;
 
-  // TODO length-0 arrays and length-1 arrays of small types should be
+  // TODO: length-0 arrays and length-1 arrays of small types should be
   // considered small too. Similarly with simple variants and tuples.
-  // // TODO make this pure virtual
   virtual bool is_big() const { return false; }
 
   virtual size_t HashValue(ir::CompleteResultRef const &) const { UNREACHABLE(); }

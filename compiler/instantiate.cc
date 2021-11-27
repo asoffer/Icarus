@@ -51,10 +51,10 @@ BoundParameters ComputeParamsFromArgs(
   for (auto [index, dep_node] : node->ordered_dependency_nodes()) {
     ASSERT(dep_node.node()->ids().size() == 1u);
     std::string_view id = dep_node.node()->ids()[0].name();
-    LOG("ComputeParamsFromArgs", "Handling dep-node %s`%s` (index = %u)",
-        ToString(dep_node.kind()), id, index);
+    LOG("ComputeParamsFromArgs", "Handling %s`%s` (index = %u)", dep_node, id,
+        index);
     switch (dep_node.kind()) {
-      case core::DependencyNodeKind::ArgValue: {
+      case core::DependencyNodeKind::ArgumentValue: {
         ir::CompleteResultBuffer buffer;
         ir::CompleteResultRef value;
         if (auto const *argument = ArgumentFromIndex(args, index, id)) {
@@ -71,7 +71,7 @@ BoundParameters ComputeParamsFromArgs(
         LOG("ComputeParamsFromArgs", "... %s",
             c.context().arg_type(id).Representation(value));
       } break;
-      case core::DependencyNodeKind::ArgType: {
+      case core::DependencyNodeKind::ArgumentType: {
         auto const *argument      = ArgumentFromIndex(args, index, id);
         auto const *initial_value = dep_node.node()->init_val();
         type::Type arg_type =
@@ -81,7 +81,7 @@ BoundParameters ComputeParamsFromArgs(
         c.context().set_arg_type(id, arg_type);
         LOG("ComputeParamsFromArgs", "... %s", arg_type.to_string());
       } break;
-      case core::DependencyNodeKind::ParamType: {
+      case core::DependencyNodeKind::ParameterType: {
         ASSIGN_OR(NOT_YET("bail out of this computation"),  //
                   type::Type t,
                   ComputeParameterTypeOrDiagnose(c, dep_node.node()));
@@ -101,7 +101,7 @@ BoundParameters ComputeParamsFromArgs(
         qts[index] =
             core::Param<type::QualType>(id, qt, node->params()[index].flags);
       } break;
-      case core::DependencyNodeKind::ParamValue: {
+      case core::DependencyNodeKind::ParameterValue: {
         // Find the argument associated with this parameter.
         // TODO, if the type is wrong but there is an implicit cast, deal with
         // that.
@@ -120,8 +120,6 @@ BoundParameters ComputeParamsFromArgs(
 
         // TODO: Support multiple declarations
         if (not c.context().Constant(&dep_node.node()->ids()[0])) {
-          // TODO complete?
-          // TODO: Support multiple declarations
           c.context().SetConstant(&dep_node.node()->ids()[0], *argument);
         }
 

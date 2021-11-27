@@ -55,10 +55,20 @@ cc_test(
 cc_library(
     name = "dependency_node",
     hdrs = ["dependency_node.h"],
-    deps = []
+    deps = [
+        "//base:extend",
+        "//base/extend:absl_hash",
+    ]
 )
 
-# TODO dependency_node_test
+cc_test(
+    name = "dependency_node_test",
+    srcs = ["dependency_node_test.cc"],
+    deps = [
+        ":dependency_node",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_library(
     name = "arguments",

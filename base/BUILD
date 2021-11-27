@@ -302,13 +302,12 @@ cc_test(
 
 cc_library(
     name = "untyped_buffer",
-    srcs = ["untyped_buffer.cc"],
     hdrs = ["untyped_buffer.h"],
     deps = [
         ":debug",
         ":raw_iterator",
         ":unaligned_ref",
-        "@com_google_absl//absl/strings",
+        ":untyped_buffer_view",
     ],
 )
 
@@ -327,8 +326,6 @@ cc_library(
     deps = [
         ":debug",
         ":raw_iterator",
-        ":untyped_buffer",
-        "@com_google_absl//absl/strings",
     ],
 )
 

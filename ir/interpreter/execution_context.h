@@ -190,10 +190,10 @@ struct ExecutionContext {
 
       if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
         auto inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
-        LOG("CallInstruction", "%s", inst.to_string());
+        LOG("CallInstruction", "%s", inst);
         ir::Fn f  = ctx.resolve(inst.func());
         type::Function const *fn_type = f.type();
-        LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
+        LOG("CallInstruction", "%s: %s", f, *fn_type);
 
         StackFrame frame(f, ctx.stack());
 
@@ -214,7 +214,7 @@ struct ExecutionContext {
                                 size.value());
 
             LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i),
-                argument.raw().to_string());
+                argument.raw());
           }
         }
 

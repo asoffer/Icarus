@@ -19,14 +19,14 @@ OrderedDependencyNodes(ast::ParameterizedExpression const* node) {
   absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
   for (auto const& p : node->params()) {
     deps.insert(
-        core::DependencyNode<ast::Declaration>::MakeArgType(p.value.get()));
+        core::DependencyNode<ast::Declaration>::ArgumentType(p.value.get()));
     deps.insert(
-        core::DependencyNode<ast::Declaration>::MakeType(p.value.get()));
+        core::DependencyNode<ast::Declaration>::ParameterType(p.value.get()));
     if (p.value->flags() & ast::Declaration::f_IsConst) {
+      deps.insert(core::DependencyNode<ast::Declaration>::ParameterValue(
+          p.value.get()));
       deps.insert(
-          core::DependencyNode<ast::Declaration>::MakeValue(p.value.get()));
-      deps.insert(
-          core::DependencyNode<ast::Declaration>::MakeArgValue(p.value.get()));
+          core::DependencyNode<ast::Declaration>::ArgumentValue(p.value.get()));
     }
   }
 
@@ -35,7 +35,7 @@ OrderedDependencyNodes(ast::ParameterizedExpression const* node) {
   ordered_nodes.reserve(4 * deps.size());
   BuildParamDependencyGraph(node->params()).topologically([&](auto dep_node) {
     if (not deps.contains(dep_node)) { return; }
-    LOG("OrderedDependencyNodes", "adding %s`%s`", ToString(dep_node.kind()),
+    LOG("OrderedDependencyNodes", "adding %s`%s`", dep_node,
         absl::StrJoin(dep_node.node()->ids(), ", ",
                       [](std::string* out, ast::Declaration::Id const& id) {
                         absl::StrAppend(out, id.name());

@@ -10,6 +10,7 @@
 #include "base/debug.h"
 #include "base/raw_iterator.h"
 #include "base/unaligned_ref.h"
+#include "base/untyped_buffer_view.h"
 
 namespace base {
 constexpr inline std::byte kUnusedByte{0xaa};
@@ -53,6 +54,10 @@ struct untyped_buffer {
   untyped_buffer(untyped_buffer const &that) noexcept = default;
   untyped_buffer &operator=(untyped_buffer &&that) noexcept = default;
   untyped_buffer &operator=(untyped_buffer const &that) noexcept =default;
+
+  operator untyped_buffer_view() const {
+    return untyped_buffer_view(data(), size());
+  }
 
   constexpr std::byte const *data() const { return data_.data(); }
   constexpr std::byte *data() { return data_.data(); }
@@ -122,9 +127,6 @@ struct untyped_buffer {
     static_assert(std::is_trivially_copyable_v<T>);
     return append_bytes(sizeof(T));
   }
-
-  std::string to_string() const { return to_string(8, 0); }
-  std::string to_string(size_t width, size_t indent) const;
 
  private:
   std::vector<std::byte> data_;

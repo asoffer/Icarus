@@ -86,8 +86,6 @@ Param<std::decay_t<T>> AnonymousParam(T&& val) {
   return Param<type>("", std::forward<T>(val), MUST_NOT_NAME);
 }
 
-// TODO ParamRef would be useful here.
-
 template <typename T>
 struct Params {
   using value_type     = Param<T>;

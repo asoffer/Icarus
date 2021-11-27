@@ -23,29 +23,29 @@ struct ParamDependencyGraphBuilder
 
   base::Graph<core::DependencyNode<Declaration>> Visit() && {
     for (auto [id, decl] : relevant_decls_) {
-      graph_.add_edge(core::DependencyNode<Declaration>::MakeValue(decl),
-                      core::DependencyNode<Declaration>::MakeType(decl));
-      graph_.add_edge(core::DependencyNode<Declaration>::MakeArgValue(decl),
-                      core::DependencyNode<Declaration>::MakeArgType(decl));
-      graph_.add_edge(core::DependencyNode<Declaration>::MakeType(decl),
-                      core::DependencyNode<Declaration>::MakeArgType(decl));
+      graph_.add_edge(core::DependencyNode<Declaration>::ParameterValue(decl),
+                      core::DependencyNode<Declaration>::ParameterType(decl));
+      graph_.add_edge(core::DependencyNode<Declaration>::ArgumentValue(decl),
+                      core::DependencyNode<Declaration>::ArgumentType(decl));
+      graph_.add_edge(core::DependencyNode<Declaration>::ParameterType(decl),
+                      core::DependencyNode<Declaration>::ArgumentType(decl));
       if (decl->flags() & Declaration::f_IsConst) {
-        graph_.add_edge(core::DependencyNode<Declaration>::MakeValue(decl),
-                        core::DependencyNode<Declaration>::MakeArgValue(decl));
+        graph_.add_edge(core::DependencyNode<Declaration>::ParameterValue(decl),
+                        core::DependencyNode<Declaration>::ArgumentValue(decl));
       }
     }
 
     for (auto const *decl : to_process_) {
       if (auto const *n = decl->type_expr()) {
-        Visit(n, core::DependencyNode<Declaration const *>::MakeType(
+        Visit(n, core::DependencyNode<Declaration const *>::ParameterType(
                      &relevant_decls_.at(decl->ids()[0].name())));
       } else {
-        graph_.add_edge(core::DependencyNode<Declaration>::MakeType(decl),
-                        core::DependencyNode<Declaration>::MakeArgType(decl));
+        graph_.add_edge(core::DependencyNode<Declaration>::ParameterType(decl),
+                        core::DependencyNode<Declaration>::ArgumentType(decl));
       }
 
       if (auto const *n = decl->init_val()) {
-        Visit(n, core::DependencyNode<Declaration const *>::MakeValue(
+        Visit(n, core::DependencyNode<Declaration const *>::ParameterValue(
                      &relevant_decls_.at(decl->ids()[0].name())));
       }
     }
@@ -66,10 +66,13 @@ struct ParamDependencyGraphBuilder
     auto [iter, inserted] =
         relevant_decls_.try_emplace(node->ids()[0].name(), node);
     edges_.emplace_back(
-        d, core::DependencyNode<Declaration const *>::MakeValue(&iter->second));
+        d, core::DependencyNode<Declaration const *>::ParameterValue(
+               &iter->second));
     edges_.emplace_back(
-        core::DependencyNode<Declaration const *>::MakeValue(&iter->second),
-        core::DependencyNode<Declaration const *>::MakeType(&iter->second));
+        core::DependencyNode<Declaration const *>::ParameterValue(
+            &iter->second),
+        core::DependencyNode<Declaration const *>::ParameterType(
+            &iter->second));
   }
 
   void Visit(Node const *node, core::DependencyNode<Declaration const *> d) {
@@ -85,7 +88,7 @@ struct ParamDependencyGraphBuilder
     auto [iter, inserted] = relevant_decls_.try_emplace(node->name());
     edges_.emplace_back(
         d,
-        core::DependencyNode<Declaration const *>::MakeArgType(&iter->second));
+        core::DependencyNode<Declaration const *>::ArgumentType(&iter->second));
   }
 
   void Visit(ArrayLiteral const *node,
@@ -183,7 +186,8 @@ struct ParamDependencyGraphBuilder
              core::DependencyNode<Declaration const *> d) {
     auto [iter, inserted] = relevant_decls_.try_emplace(node->name());
     edges_.emplace_back(
-        d, core::DependencyNode<Declaration const *>::MakeValue(&iter->second));
+        d, core::DependencyNode<Declaration const *>::ParameterValue(
+               &iter->second));
   }
 
   void Visit(Import const *node, core::DependencyNode<Declaration const *> d) {
@@ -291,7 +295,7 @@ struct ParamDependencyGraphBuilder
 
  private:
   base::Graph<core::DependencyNode<Declaration>> graph_;
-  std::vector<Declaration const*> to_process_;
+  std::vector<Declaration const *> to_process_;
   absl::node_hash_map<std::string_view, Declaration const *> relevant_decls_;
   std::vector<std::pair<core::DependencyNode<Declaration const *>,
                         core::DependencyNode<Declaration const *>>>

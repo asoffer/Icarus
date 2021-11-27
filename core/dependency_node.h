@@ -1,52 +1,45 @@
 #ifndef ICARUS_CORE_DEPENDENCY_NODE_H
 #define ICARUS_CORE_DEPENDENCY_NODE_H
 
+#include <ostream>
 #include <utility>
+
+#include "base/extend.h"
+#include "base/extend/absl_hash.h"
 
 namespace core {
 
 enum class DependencyNodeKind {
-  ParamType  = 0,
-  ParamValue = 1,
-  ArgType    = 2,
-  ArgValue   = 3
+  ParameterType  = 0,
+  ParameterValue = 1,
+  ArgumentType   = 2,
+  ArgumentValue  = 3
 };
 
 template <typename T>
-struct DependencyNode {
+struct DependencyNode
+    : base::Extend<DependencyNode<T>,
+                   1>::template With<base::AbslHashExtension> {
   using node_type = T;
   static_assert(alignof(node_type) >= 4);
 
   explicit DependencyNode(node_type const *node, DependencyNodeKind k)
       : node_(reinterpret_cast<uintptr_t>(node) | static_cast<uintptr_t>(k)) {}
 
-  static DependencyNode MakeType(node_type const *decl) {
-    return DependencyNode(decl, DependencyNodeKind::ParamType);
+  static DependencyNode ParameterType(node_type const *decl) {
+    return DependencyNode(decl, DependencyNodeKind::ParameterType);
   }
 
-  static DependencyNode MakeValue(node_type const *decl) {
-    return DependencyNode(decl, DependencyNodeKind::ParamValue);
+  static DependencyNode ParameterValue(node_type const *decl) {
+    return DependencyNode(decl, DependencyNodeKind::ParameterValue);
   }
 
-  static DependencyNode MakeArgType(node_type const *decl) {
-    return DependencyNode(decl, DependencyNodeKind::ArgType);
+  static DependencyNode ArgumentType(node_type const *decl) {
+    return DependencyNode(decl, DependencyNodeKind::ArgumentType);
   }
 
-  static DependencyNode MakeArgValue(node_type const *decl) {
-    return DependencyNode(decl, DependencyNodeKind::ArgValue);
-  }
-
-  template <typename H>
-  friend H AbslHashValue(H h, DependencyNode n) {
-    return H::combine(std::move(h), n.node_);
-  }
-
-  friend bool operator==(DependencyNode lhs, DependencyNode rhs) {
-    return lhs.node_ == rhs.node_;
-  }
-
-  friend bool operator!=(DependencyNode lhs, DependencyNode rhs) {
-    return not(lhs == rhs);
+  static DependencyNode ArgumentValue(node_type const *decl) {
+    return DependencyNode(decl, DependencyNodeKind::ArgumentValue);
   }
 
   node_type const *node() const {
@@ -57,18 +50,16 @@ struct DependencyNode {
     return static_cast<DependencyNodeKind>(node_ & 3);
   }
 
+  friend std::ostream &operator<<(std::ostream &os, DependencyNode n) {
+    static constexpr std::array<char const *, 4> prefixes = {
+        "param-type-", "param-value-", "arg-type-", "arg-value-"};
+    return os << prefixes[static_cast<int>(n.kind())] << n.node();
+  }
+
  private:
+  friend base::EnableExtensions;
   uintptr_t node_;
 };
-
-inline constexpr char const *ToString(DependencyNodeKind k) {
-  switch (k) {
-    case DependencyNodeKind::ParamType: return "param-type";
-    case DependencyNodeKind::ParamValue: return "param-value";
-    case DependencyNodeKind::ArgType: return "arg-type";
-    case DependencyNodeKind::ArgValue: return "arg-value";
-  }
-}
 
 }  // namespace core
 
