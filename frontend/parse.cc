@@ -1086,12 +1086,13 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
                                                      std::move(ret_vals[0]));
 }
 
-void ExtractRightChainImpl(Operator op, std::unique_ptr<ast::Expression> node,
+void ExtractRightChainImpl(ast::BinaryOperator::Kind kind,
+                           std::unique_ptr<ast::Expression> node,
                            std::vector<std::unique_ptr<ast::Expression>> &out) {
   if (auto *b = node->if_as<ast::BinaryOperator>();
-      b and b->op() == op and b->num_parentheses() == 0) {
+      b and b->kind() == kind and b->num_parentheses() == 0) {
     auto [lhs, rhs] = std::move(*b).extract();
-    ExtractRightChainImpl(op, std::move(lhs), out);
+    ExtractRightChainImpl(kind, std::move(lhs), out);
     out.push_back(std::move(rhs));
   } else {
     out.push_back(std::move(node));
@@ -1099,9 +1100,9 @@ void ExtractRightChainImpl(Operator op, std::unique_ptr<ast::Expression> node,
 }
 
 std::vector<std::unique_ptr<ast::Expression>> ExtractRightChain(
-    Operator op, std::unique_ptr<ast::Expression> node) {
+    ast::BinaryOperator::Kind kind, std::unique_ptr<ast::Expression> node) {
   std::vector<std::unique_ptr<ast::Expression>> exprs;
-  ExtractRightChainImpl(op, std::move(node), exprs);
+  ExtractRightChainImpl(kind, std::move(node), exprs);
   return exprs;
 }
 
@@ -1109,7 +1110,8 @@ std::vector<std::unique_ptr<ast::Call>> BuildJumpOptions(
     std::unique_ptr<ast::Expression> node,
     diagnostic::DiagnosticConsumer &diag) {
   std::vector<std::unique_ptr<ast::Call>> call_exprs;
-  auto exprs = ExtractRightChain(Operator::SymbolOr, std::move(node));
+  auto exprs =
+      ExtractRightChain(ast::BinaryOperator::Kind::SymbolOr, std::move(node));
   for (auto &expr : exprs) {
     if (expr->is<ast::Call>()) {
       call_exprs.push_back(move_as<ast::Call>(expr));
@@ -1332,17 +1334,26 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   }
 
   static base::Global kSymbols =
-      absl::flat_hash_map<std::string_view, Operator>{
-          {"|=", Operator::SymbolOrEq},  {"&=", Operator::SymbolAndEq},
-          {"^=", Operator::SymbolXorEq}, {"+=", Operator::AddEq},
-          {"-=", Operator::SubEq},       {"*=", Operator::MulEq},
-          {"/=", Operator::DivEq},       {"%=", Operator::ModEq},
-          {"+", Operator::Add},          {"-", Operator::Sub},
-          {"*", Operator::Mul},          {"/", Operator::Div},
-          {"%", Operator::Mod},          {"xor", Operator::Xor},
-          {"and", Operator::And},        {"or", Operator::Or},
-          {"^", Operator::SymbolXor},    {"&", Operator::SymbolAnd},
-          {"|", Operator::SymbolOr}};
+      absl::flat_hash_map<std::string_view, ast::BinaryOperator::Kind>{
+          {"|=", ast::BinaryOperator::Kind::SymbolOrEq},
+          {"&=", ast::BinaryOperator::Kind::SymbolAndEq},
+          {"^=", ast::BinaryOperator::Kind::SymbolXorEq},
+          {"+=", ast::BinaryOperator::Kind::AddEq},
+          {"-=", ast::BinaryOperator::Kind::SubEq},
+          {"*=", ast::BinaryOperator::Kind::MulEq},
+          {"/=", ast::BinaryOperator::Kind::DivEq},
+          {"%=", ast::BinaryOperator::Kind::ModEq},
+          {"+", ast::BinaryOperator::Kind::Add},
+          {"-", ast::BinaryOperator::Kind::Sub},
+          {"*", ast::BinaryOperator::Kind::Mul},
+          {"/", ast::BinaryOperator::Kind::Div},
+          {"%", ast::BinaryOperator::Kind::Mod},
+          {"xor", ast::BinaryOperator::Kind::Xor},
+          {"and", ast::BinaryOperator::Kind::And},
+          {"or", ast::BinaryOperator::Kind::Or},
+          {"^", ast::BinaryOperator::Kind::SymbolXor},
+          {"&", ast::BinaryOperator::Kind::SymbolAnd},
+          {"|", ast::BinaryOperator::Kind::SymbolOr}};
   return std::make_unique<ast::BinaryOperator>(
       move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
       move_as<ast::Expression>(nodes[2]));

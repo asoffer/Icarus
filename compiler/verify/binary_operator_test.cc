@@ -246,7 +246,7 @@ TEST_P(BinaryOperator, Success) {
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
     auto qts = mod.context().qual_types(expr);
     EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
-    EXPECT_EQ(qts[0].type(), mod.context().qual_types(expr->lhs())[0].type());
+    EXPECT_EQ(qts[0].type(), mod.context().qual_types(&expr->lhs())[0].type());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
   {
@@ -257,7 +257,7 @@ TEST_P(BinaryOperator, Success) {
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
     auto qts = mod.context().qual_types(expr);
     EXPECT_EQ(qts[0].quals(), type::Quals::Const());
-    EXPECT_EQ(qts[0].type(), mod.context().qual_types(expr->lhs())[0].type());
+    EXPECT_EQ(qts[0].type(), mod.context().qual_types(&expr->lhs())[0].type());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }

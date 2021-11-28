@@ -35,9 +35,9 @@ void Apply(type::Typed<ast::Expression const *> lhs,
 
 void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                             ir::PartialResultBuffer &out) {
-  switch (node->op()) {
-    case frontend::Operator::Or: {
-      auto lhs_ir      = EmitAs<bool>(node->lhs());
+  switch (node->kind()) {
+    case ast::BinaryOperator::Kind::Or: {
+      auto lhs_ir      = EmitAs<bool>(&node->lhs());
       auto *land_block = builder().AddBlock();
 
       std::vector<ir::BasicBlock const *> phi_blocks;
@@ -47,7 +47,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       phi_blocks.push_back(builder().CurrentBlock());
       builder().CurrentBlock() = next_block;
 
-      auto rhs_ir = EmitAs<bool>(node->rhs());
+      auto rhs_ir = EmitAs<bool>(&node->rhs());
       phi_blocks.push_back(builder().CurrentBlock());
       builder().UncondJump(land_block);
 
@@ -56,9 +56,9 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       out.append(builder().Phi<bool>(std::move(phi_blocks), {true, rhs_ir}));
       return;
     } break;
-    case frontend::Operator::SymbolOr: {
-      auto lhs_ir = EmitAs<type::Flags::underlying_type>(node->lhs());
-      auto rhs_ir = EmitAs<type::Flags::underlying_type>(node->rhs());
+    case ast::BinaryOperator::Kind::SymbolOr: {
+      auto lhs_ir = EmitAs<type::Flags::underlying_type>(&node->lhs());
+      auto rhs_ir = EmitAs<type::Flags::underlying_type>(&node->rhs());
       // `|` is not overloadable, and blocks piped together must be done
       // syntactically in a `goto` node and are handled by the parser.
       out.append(current_block()->Append(type::OrFlagsInstruction{
@@ -67,24 +67,24 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
           .result = builder().CurrentGroup()->Reserve()}));
       return;
     } break;
-    case frontend::Operator::Xor: {
-      auto lhs_ir = EmitAs<bool>(node->lhs());
-      auto rhs_ir = EmitAs<bool>(node->rhs());
+    case ast::BinaryOperator::Kind::Xor: {
+      auto lhs_ir = EmitAs<bool>(&node->lhs());
+      auto rhs_ir = EmitAs<bool>(&node->rhs());
       out.append(builder().Ne(lhs_ir, rhs_ir));
       return;
     } break;
-    case frontend::Operator::SymbolXor: {
-      auto lhs_ir = EmitAs<type::Flags::underlying_type>(node->lhs());
-      auto rhs_ir = EmitAs<type::Flags::underlying_type>(node->rhs());
+    case ast::BinaryOperator::Kind::SymbolXor: {
+      auto lhs_ir = EmitAs<type::Flags::underlying_type>(&node->lhs());
+      auto rhs_ir = EmitAs<type::Flags::underlying_type>(&node->rhs());
       out.append(current_block()->Append(type::XorFlagsInstruction{
           .lhs    = lhs_ir,
           .rhs    = rhs_ir,
           .result = builder().CurrentGroup()->Reserve()}));
       return;
     } break;
-    case frontend::Operator::And: {
-      auto lhs_ir = EmitAs<bool>(node->lhs());
-      auto rhs_ir = EmitAs<bool>(node->rhs());
+    case ast::BinaryOperator::Kind::And: {
+      auto lhs_ir = EmitAs<bool>(&node->lhs());
+      auto rhs_ir = EmitAs<bool>(&node->rhs());
 
       auto *land_block = builder().AddBlock();
 
@@ -103,11 +103,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       out.append(builder().Phi<bool>(std::move(phi_blocks), {false, rhs_ir}));
       return;
     } break;
-    case frontend::Operator::SymbolAnd: {
+    case ast::BinaryOperator::Kind::SymbolAnd: {
       auto t      = context().qual_types(node)[0].type();
       if (t == type::Bool) {
-      auto lhs_ir = EmitAs<bool>(node->lhs());
-      auto rhs_ir = EmitAs<bool>(node->rhs());
+      auto lhs_ir = EmitAs<bool>(&node->lhs());
+      auto rhs_ir = EmitAs<bool>(&node->rhs());
 
         auto *land_block = builder().AddBlock();
 
@@ -126,8 +126,8 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         out.append(builder().Phi<bool>(std::move(phi_blocks), {false, rhs_ir}));
         return;
       } else if (t.is<type::Flags>()) {
-        auto lhs_ir = EmitAs<type::Flags::underlying_type>(node->lhs());
-        auto rhs_ir = EmitAs<type::Flags::underlying_type>(node->rhs());
+        auto lhs_ir = EmitAs<type::Flags::underlying_type>(&node->lhs());
+        auto rhs_ir = EmitAs<type::Flags::underlying_type>(&node->rhs());
 
         // `|` is not overloadable, and blocks piped together must be done
         // syntactically in a `goto` node and are handled by the parser.
@@ -140,48 +140,48 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         UNREACHABLE();
       }
     } break;
-    case frontend::Operator::Add: {
-      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+    case ast::BinaryOperator::Kind::Add: {
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
-        auto lhs_ir = EmitAs<ir::addr_t>(node->lhs(), out);
-        auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, node->rhs(), out);
+        auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs(), out);
+        auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, &node->rhs(), out);
         out.append(builder().PtrIncr(lhs_ir, rhs_ir, lhs_buf_ptr_type));
       } else if (auto const *rhs_buf_ptr_type =
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
-        auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, node->lhs(), out);
-        auto rhs_ir = EmitAs<ir::addr_t>(node->rhs(), out);
+        auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, &node->lhs(), out);
+        auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs(), out);
         out.append(builder().PtrIncr(rhs_ir, lhs_ir, rhs_buf_ptr_type));
       } else {
         Apply<ir::AddInstruction, ir::Integer, int8_t, int16_t, int32_t,
               int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-            type::Typed(node->lhs(), lhs_type),
-            type::Typed(node->rhs(), rhs_type), *this, out);
+            type::Typed(&node->lhs(), lhs_type),
+            type::Typed(&node->rhs(), rhs_type), *this, out);
       }
       return;
     } break;
-    case frontend::Operator::Sub: {
-      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+    case ast::BinaryOperator::Kind::Sub: {
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
          lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
-        auto lhs_ir = EmitAs<ir::addr_t>(node->lhs(), out);
-        auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, node->rhs(), out);
+        auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs(), out);
+        auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, &node->rhs(), out);
         out.append(
             builder().PtrIncr(lhs_ir, builder().Neg(rhs_ir), lhs_buf_ptr_type));
       } else if (auto const *rhs_buf_ptr_type =
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
-        auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, node->lhs(), out);
-        auto rhs_ir = EmitAs<ir::addr_t>(node->rhs(), out);
+        auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, &node->lhs(), out);
+        auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs(), out);
         out.append(
             builder().PtrIncr(rhs_ir, builder().Neg(lhs_ir), rhs_buf_ptr_type));
       } else if (auto const *buf_ptr = lhs_type.if_as<type::BufferPointer>();
                  lhs_type == rhs_type and buf_ptr) {
-        auto lhs_ir = EmitAs<ir::addr_t>(node->lhs());
-        auto rhs_ir = EmitAs<ir::addr_t>(node->rhs());
+        auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs());
+        auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs());
         out.append(current_block()->Append(ir::PtrDiffInstruction{
             .lhs          = lhs_ir,
             .rhs          = rhs_ir,
@@ -190,37 +190,37 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       } else {
         Apply<ir::SubInstruction, ir::Integer, int8_t, int16_t, int32_t,
               int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-            type::Typed(node->lhs(), lhs_type),
-            type::Typed(node->rhs(), rhs_type), *this, out);
+            type::Typed(&node->lhs(), lhs_type),
+            type::Typed(&node->rhs(), rhs_type), *this, out);
       }
     } break;
-    case frontend::Operator::Mul: {
-      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+    case ast::BinaryOperator::Kind::Mul: {
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       Apply<ir::MulInstruction, ir::Integer, int8_t, int16_t, int32_t, int64_t,
             uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-          type::Typed(node->lhs(), lhs_type), type::Typed(node->rhs(), rhs_type), *this,
+          type::Typed(&node->lhs(), lhs_type), type::Typed(&node->rhs(), rhs_type), *this,
           out);
     } break;
-    case frontend::Operator::Div: {
-      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+    case ast::BinaryOperator::Kind::Div: {
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       Apply<ir::DivInstruction, ir::Integer, int8_t, int16_t, int32_t, int64_t,
             uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-          type::Typed(node->lhs(), lhs_type),
-          type::Typed(node->rhs(), rhs_type), *this, out);
+          type::Typed(&node->lhs(), lhs_type),
+          type::Typed(&node->rhs(), rhs_type), *this, out);
     } break;
-    case frontend::Operator::Mod: {
-      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+    case ast::BinaryOperator::Kind::Mod: {
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       Apply<ir::ModInstruction, ir::Integer, int8_t, int16_t, int32_t, int64_t,
             uint8_t, uint16_t, uint32_t, uint64_t>(
-          type::Typed(node->lhs(), lhs_type),
-          type::Typed(node->rhs(), rhs_type), *this, out);
+          type::Typed(&node->lhs(), lhs_type),
+          type::Typed(&node->rhs(), rhs_type), *this, out);
     } break;
-    case frontend::Operator::SymbolOrEq: {
+    case ast::BinaryOperator::Kind::SymbolOrEq: {
       auto this_type = context().qual_types(node)[0].type();
-      auto lhs_lval  = EmitRef(node->lhs());
+      auto lhs_lval  = EmitRef(&node->lhs());
       if (this_type == type::Bool) {
         auto *land_block = builder().AddBlock();
         auto *more_block = builder().AddBlock();
@@ -230,7 +230,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         builder().CondJump(lhs_val, land_block, more_block);
 
         builder().CurrentBlock() = more_block;
-        auto rhs_val             = EmitAs<bool>(node->rhs());
+        auto rhs_val             = EmitAs<bool>(&node->rhs());
         auto rhs_end_block       = builder().CurrentBlock();
         builder().UncondJump(land_block);
 
@@ -242,7 +242,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         builder().Store<ir::RegOr<type::Flags::underlying_type>>(
             current_block()->Append(type::OrFlagsInstruction{
                 .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
-                .rhs = EmitAs<type::Flags::underlying_type>(node->rhs()),
+                .rhs = EmitAs<type::Flags::underlying_type>(&node->rhs()),
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else {
@@ -250,14 +250,14 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       }
       return;
     } break;
-    case frontend::Operator::SymbolAndEq: {
+    case ast::BinaryOperator::Kind::SymbolAndEq: {
       auto this_type = context().qual_types(node)[0].type();
-      auto lhs_lval  = EmitRef(node->lhs());
+      auto lhs_lval  = EmitRef(&node->lhs());
       if (this_type.is<type::Flags>()) {
         builder().Store<ir::RegOr<type::Flags::underlying_type>>(
             current_block()->Append(type::AndFlagsInstruction{
                 .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
-                .rhs = EmitAs<type::Flags::underlying_type>(node->rhs()),
+                .rhs = EmitAs<type::Flags::underlying_type>(&node->rhs()),
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else if (this_type == type::Bool) {
@@ -269,7 +269,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         builder().CondJump(lhs_val, more_block, land_block);
 
         builder().CurrentBlock() = more_block;
-        auto rhs_val             = EmitAs<bool>(node->rhs());
+        auto rhs_val             = EmitAs<bool>(&node->rhs());
         auto rhs_end_block = builder().CurrentBlock();
         builder().UncondJump(land_block);
 
@@ -282,11 +282,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       }
       return;
     } break;
-    case frontend::Operator::SymbolXorEq: {
+    case ast::BinaryOperator::Kind::SymbolXorEq: {
       auto this_type = context().qual_types(node)[0].type();
-      auto lhs_lval  = EmitRef(node->lhs());
+      auto lhs_lval  = EmitRef(&node->lhs());
       if (this_type.is<type::Flags>()) {
-        auto rhs_ir = EmitAs<type::Flags::underlying_type>(node->rhs());
+        auto rhs_ir = EmitAs<type::Flags::underlying_type>(&node->rhs());
         builder().Store<ir::RegOr<type::Flags::underlying_type>>(
             current_block()->Append(type::XorFlagsInstruction{
                 .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
@@ -294,7 +294,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else if (this_type == type::Bool) {
-        auto rhs_ir = EmitAs<bool>(node->rhs());
+        auto rhs_ir = EmitAs<bool>(&node->rhs());
         builder().Store(builder().Ne(builder().Load<bool>(lhs_lval), rhs_ir),
                         lhs_lval);
       } else {
@@ -302,11 +302,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       }
       return;
     } break;
-    case frontend::Operator::AddEq: {
-      auto lhs_lval       = EmitRef(node->lhs());
-      EmitToBuffer(node->rhs(), out);
-      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+    case ast::BinaryOperator::Kind::AddEq: {
+      auto lhs_lval       = EmitRef(&node->lhs());
+      EmitToBuffer(&node->rhs(), out);
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         builder().Store<ir::RegOr<ir::addr_t>>(
@@ -316,7 +316,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       } else {
         ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                    uint16_t, uint32_t, uint64_t, float, double>(
-            context().qual_types(node->lhs())[0].type(), [&]<typename T>() {
+            context().qual_types(&node->lhs())[0].type(), [&]<typename T>() {
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::AddInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
@@ -327,11 +327,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       }
       return;
     } break;
-    case frontend::Operator::SubEq: {
-      auto lhs_lval       = EmitRef(node->lhs());
-      EmitToBuffer(node->rhs(), out);
-      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+    case ast::BinaryOperator::Kind::SubEq: {
+      auto lhs_lval       = EmitRef(&node->lhs());
+      EmitToBuffer(&node->rhs(), out);
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         builder().Store<ir::RegOr<ir::addr_t>>(
@@ -353,11 +353,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       }
       return;
     } break;
-    case frontend::Operator::MulEq: {
-      auto lhs_lval = EmitRef(node->lhs());
-      EmitToBuffer(node->rhs(), out);
-      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+    case ast::BinaryOperator::Kind::MulEq: {
+      auto lhs_lval = EmitRef(&node->lhs());
+      EmitToBuffer(&node->rhs(), out);
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                  uint64_t, float, double>(lhs_type, [&]<typename T>() {
         builder().Store<ir::RegOr<T>>(
@@ -369,11 +369,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       });
       return;
     } break;
-    case frontend::Operator::DivEq: {
-      auto lhs_lval = EmitRef(node->lhs());
-      EmitToBuffer(node->rhs(), out);
-      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+    case ast::BinaryOperator::Kind::DivEq: {
+      auto lhs_lval = EmitRef(&node->lhs());
+      EmitToBuffer(&node->rhs(), out);
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double>(
           lhs_type, [&]<typename T>() {
@@ -386,11 +386,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
           });
       return;
     } break;
-    case frontend::Operator::ModEq: {
-      auto lhs_lval = EmitRef(node->lhs());
-      EmitToBuffer(node->rhs(), out);
-      type::Type lhs_type = context().qual_types(node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(node->rhs())[0].type();
+    case ast::BinaryOperator::Kind::ModEq: {
+      auto lhs_lval = EmitRef(&node->lhs());
+      EmitToBuffer(&node->rhs(), out);
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t>(lhs_type, [&]<typename T>() {
         builder().Store<ir::RegOr<T>>(
@@ -458,18 +458,18 @@ bool Compiler::PatternMatch(
   std::optional<std::variant<ir::CompleteResultBuffer,
                              std::vector<diagnostic::ConsumedMessage>>>
       lhs_buffer, rhs_buffer;
-  if (not node->lhs()->covers_binding()) {
+  if (not node->lhs().covers_binding()) {
     lhs_buffer = EvaluateToBuffer(
-        type::Typed<ast::Expression const *>(node->lhs(), pmc.type));
+        type::Typed<ast::Expression const *>(&node->lhs(), pmc.type));
   }
 
-  if (not node->rhs()->covers_binding()) {
+  if (not node->rhs().covers_binding()) {
     rhs_buffer = EvaluateToBuffer(
-        type::Typed<ast::Expression const *>(node->rhs(), pmc.type));
+        type::Typed<ast::Expression const *>(&node->rhs(), pmc.type));
   }
 
-  switch (node->op()) {
-    case frontend::Operator::Add: {
+  switch (node->kind()) {
+    case ast::BinaryOperator::Kind::Add: {
       auto const *p = pmc.type.if_as<type::Primitive>();
       if (p and lhs_buffer) {
         p->Apply([&]<typename T>() {
@@ -481,7 +481,7 @@ bool Compiler::PatternMatch(
             pmc.value.append(static_cast<T>(sum - term));
           }
         });
-        return PatternMatch(node->rhs(), pmc, bindings);
+        return PatternMatch(&node->rhs(), pmc, bindings);
       } else if (p and rhs_buffer) {
         p->Apply([&]<typename T>() {
           auto sum = pmc.value.template get<T>(0);
@@ -492,7 +492,7 @@ bool Compiler::PatternMatch(
             pmc.value.append(static_cast<T>(sum - term));
           }
         });
-        return PatternMatch(node->lhs(), pmc, bindings);
+        return PatternMatch(&node->lhs(), pmc, bindings);
       } else {
         // TODO: Explain that we cannot match because the pattern is not
         // sufficiently simple.
@@ -500,7 +500,7 @@ bool Compiler::PatternMatch(
         return false;
       }
     } break;
-    case frontend::Operator::Sub: {
+    case ast::BinaryOperator::Kind::Sub: {
       auto const *p = pmc.type.if_as<type::Primitive>();
       if (p and lhs_buffer) {
         p->Apply([&]<typename T>() {
@@ -512,7 +512,7 @@ bool Compiler::PatternMatch(
             pmc.value.append(static_cast<T>(term - diff));
           }
         });
-        return PatternMatch(node->rhs(), pmc, bindings);
+        return PatternMatch(&node->rhs(), pmc, bindings);
       } else if (p and rhs_buffer) {
         p->Apply([&]<typename T>() {
           auto diff = pmc.value.template get<T>(0);
@@ -523,18 +523,18 @@ bool Compiler::PatternMatch(
             pmc.value.append(static_cast<T>(diff + term));
           }
         });
-        return PatternMatch(node->lhs(), pmc, bindings);
+        return PatternMatch(&node->lhs(), pmc, bindings);
       } else {
         // TODO: Explain that we cannot match because the pattern is not
         // sufficiently simple.
         diag().Consume(PatternMatchingFailed{.range = node->range()});
       }
     } break;
-    case frontend::Operator::Mul: {
+    case ast::BinaryOperator::Kind::Mul: {
       ast::Expression const *expr;
       auto const *p = pmc.type.if_as<type::Primitive>();
       if (p and lhs_buffer) {
-        expr = node->rhs();
+        expr = &node->rhs();
         p->Apply([&]<typename T>() {
           auto product = pmc.value.template get<T>(0);
           auto factor  = std::get<ir::CompleteResultBuffer>(*lhs_buffer)
@@ -547,9 +547,9 @@ bool Compiler::PatternMatch(
             pmc.value.append(static_cast<T>(product / factor));
           }
         });
-        return PatternMatch(node->rhs(), pmc, bindings);
+        return PatternMatch(&node->rhs(), pmc, bindings);
       } else if (p and rhs_buffer) {
-        expr = node->lhs();
+        expr = &node->lhs();
         p->Apply([&]<typename T>() {
           auto product = pmc.value.template get<T>(0);
           auto factor  = std::get<ir::CompleteResultBuffer>(*rhs_buffer)

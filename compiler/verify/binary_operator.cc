@@ -46,20 +46,22 @@ struct LogicalAssignmentNeedsBoolOrFlags {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Operator '%s' must take boolean or flags arguments.",
-                         OperatorToString(op)),
+                         OperatorToString(kind)),
         diagnostic::SourceQuote(src).Highlighted(
             range, diagnostic::Style::ErrorText()));
   }
 
-  frontend::Operator op;
+  ast::BinaryOperator::Kind kind;
   frontend::SourceRange range;
 
  private:
-  static std::string_view OperatorToString(frontend::Operator op) {
-    if (op == frontend::Operator::SymbolXorEq) { return "^="; }
-    if (op == frontend::Operator::SymbolAndEq) { return "&="; }
-    if (op == frontend::Operator::SymbolOrEq) { return "|="; }
-    UNREACHABLE();
+  static std::string_view OperatorToString(ast::BinaryOperator::Kind kind) {
+    switch (kind) {
+      case ast::BinaryOperator::Kind::SymbolXorEq: return "^=";
+      case ast::BinaryOperator::Kind::SymbolAndEq: return "&=";
+      case ast::BinaryOperator::Kind::SymbolOrEq: return "|=";
+      default: UNREACHABLE();
+    }
   }
 };
 
@@ -133,8 +135,8 @@ absl::Span<type::QualType const> VerifyLogicalOperator(
     if (not qt.ok()) {
       c->diag().Consume(InvalidBinaryOperatorOverload{
           .op    = std::string(op),
-          .range = frontend::SourceRange(node->lhs()->range().end(),
-                                         node->rhs()->range().begin()),
+          .range = frontend::SourceRange(node->lhs().range().end(),
+                                         node->rhs().range().begin()),
       });
     }
     return c->context().set_qual_type(node, qt);
@@ -156,8 +158,8 @@ absl::Span<type::QualType const> VerifyFlagsOperator(
       c->diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qual_type.type(),
           .rhs_type = rhs_qual_type.type(),
-          .range    = frontend::SourceRange(node->lhs()->range().end(),
-                                         node->rhs()->range().begin()),
+          .range    = frontend::SourceRange(node->lhs().range().end(),
+                                         node->rhs().range().begin()),
       });
       return c->context().set_qual_type(node, type::QualType::Error());
     }
@@ -172,8 +174,8 @@ absl::Span<type::QualType const> VerifyFlagsOperator(
     if (not qt.ok()) {
       c->diag().Consume(InvalidBinaryOperatorOverload{
           .op    = std::string(op),
-          .range = frontend::SourceRange(node->lhs()->range().end(),
-                                         node->rhs()->range().begin()),
+          .range = frontend::SourceRange(node->lhs().range().end(),
+                                         node->rhs().range().begin()),
       });
     }
     return c->context().set_qual_type(node, qt);
@@ -201,8 +203,8 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
     if (not qt.ok()) {
       c->diag().Consume(InvalidBinaryOperatorOverload{
           .op    = std::string(op),
-          .range = frontend::SourceRange(node->lhs()->range().end(),
-                                         node->rhs()->range().begin()),
+          .range = frontend::SourceRange(node->lhs().range().end(),
+                                         node->rhs().range().begin()),
       });
     }
     return c->context().set_qual_type(node, qt);
@@ -217,8 +219,8 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
       c->diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qual_type.type(),
           .rhs_type = rhs_qual_type.type(),
-          .range    = frontend::SourceRange(node->lhs()->range().end(),
-                                         node->rhs()->range().begin()),
+          .range    = frontend::SourceRange(node->lhs().range().end(),
+                                         node->rhs().range().begin()),
       });
       return c->context().set_qual_type(node,type::QualType::Error());
     }
@@ -242,8 +244,8 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
     c->diag().Consume(NoMatchingBinaryOperator{
         .lhs_type = lhs_qual_type.type(),
         .rhs_type = rhs_qual_type.type(),
-        .range    = frontend::SourceRange(node->lhs()->range().end(),
-                                       node->rhs()->range().begin()),
+        .range    = frontend::SourceRange(node->lhs().range().end(),
+                                       node->rhs().range().begin()),
     });
     return c->context().set_qual_type(node,type::QualType::Error());
   }
@@ -256,7 +258,7 @@ absl::Span<type::QualType const> VerifyArithmeticAssignmentOperator(
   if (lhs_qual_type.quals() >= type::Quals::Const() or
       not(lhs_qual_type.quals() >= type::Quals::Ref())) {
     c->diag().Consume(InvalidAssignmentOperatorLhsValueCategory{
-        .range = node->lhs()->range(),
+        .range = node->lhs().range(),
     });
   }
   return VerifyArithmeticOperator(c, op, node, lhs_qual_type, rhs_qual_type,
@@ -266,14 +268,14 @@ absl::Span<type::QualType const> VerifyArithmeticAssignmentOperator(
 }  // namespace
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const *node) {
-  auto lhs_qts = VerifyType(node->lhs());
-  auto rhs_qts = VerifyType(node->rhs());
+  auto lhs_qts = VerifyType(&node->lhs());
+  auto rhs_qts = VerifyType(&node->rhs());
 
   bool error = false;
   if (lhs_qts.size() != 1) {
     diag().Consume(UnexpandedBinaryOperatorArgument{
         .num_arguments = lhs_qts.size(),
-        .range         = node->lhs()->range(),
+        .range         = node->lhs().range(),
     });
     error = true;
   }
@@ -281,7 +283,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const 
   if (rhs_qts.size() != 1) {
     diag().Consume(UnexpandedBinaryOperatorArgument{
         .num_arguments = rhs_qts.size(),
-        .range         = node->rhs()->range(),
+        .range         = node->rhs().range(),
     });
     error = true;
   }
@@ -295,15 +297,15 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const 
     return context().set_qual_type(node, type::QualType::Error());
   }
 
-  switch (node->op()) {
+  switch (node->kind()) {
     using frontend::Operator;
-    case Operator::SymbolXorEq:
-    case Operator::SymbolAndEq:
-    case Operator::SymbolOrEq: {
+    case ast::BinaryOperator::Kind::SymbolXorEq:
+    case ast::BinaryOperator::Kind::SymbolAndEq:
+    case ast::BinaryOperator::Kind::SymbolOrEq: {
       if (lhs_qual_type.quals() >= type::Quals::Const() or
           not(lhs_qual_type.quals() >= type::Quals::Ref())) {
         diag().Consume(InvalidAssignmentOperatorLhsValueCategory{
-            .range = node->lhs()->range(),
+            .range = node->lhs().range(),
         });
       }
       if (lhs_qual_type.type() == rhs_qual_type.type() and
@@ -312,22 +314,22 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const 
         return context().set_qual_type(node, lhs_qual_type);
       } else {
         diag().Consume(LogicalAssignmentNeedsBoolOrFlags{
-            .op    = node->op(),
-            .range = frontend::SourceRange(node->lhs()->range().end(),
-                                           node->rhs()->range().begin()),
+            .kind  = node->kind(),
+            .range = frontend::SourceRange(node->lhs().range().end(),
+                                           node->rhs().range().begin()),
         });
         return context().set_qual_type(node, type::QualType::Error());
       }
     } break;
-    case Operator::Xor:
+    case ast::BinaryOperator::Kind::Xor:
       return VerifyLogicalOperator(
           this, "xor", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
-    case Operator::And:
+    case ast::BinaryOperator::Kind::And:
       return VerifyLogicalOperator(
           this, "and", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
-    case Operator::Or: {
+    case ast::BinaryOperator::Kind::Or: {
       // Note: Block pipes are extracted in the parser so there's no need to
       // type-check them here. They will never be expressed in the syntax tree
       // as a binary operator.
@@ -335,15 +337,15 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const 
           this, "or", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     }
-    case Operator::SymbolXor:
+    case ast::BinaryOperator::Kind::SymbolXor:
       return VerifyFlagsOperator(
           this, "^", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
-    case Operator::SymbolAnd:
+    case ast::BinaryOperator::Kind::SymbolAnd:
       return VerifyFlagsOperator(
           this, "&", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
-    case Operator::SymbolOr: {
+    case ast::BinaryOperator::Kind::SymbolOr: {
       // Note: Block pipes are extracted in the parser so there's no need to
       // type-check them here. They will never be expressed in the syntax tree
       // as a binary operator.
@@ -351,69 +353,69 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BinaryOperator const 
           this, "|", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
     }
-    case Operator::Add:
+    case ast::BinaryOperator::Kind::Add:
       return VerifyArithmeticOperator(
           this, "+", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
-    case Operator::Sub:
+    case ast::BinaryOperator::Kind::Sub:
       return VerifyArithmeticOperator(
           this, "-", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
-    case Operator::Mul:
+    case ast::BinaryOperator::Kind::Mul:
       return VerifyArithmeticOperator(
           this, "*", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
-    case Operator::Div:
+    case ast::BinaryOperator::Kind::Div:
       return VerifyArithmeticOperator(
           this, "/", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
-    case Operator::Mod:
+    case ast::BinaryOperator::Kind::Mod:
       return VerifyArithmeticOperator(
           this, "%", node, lhs_qual_type, rhs_qual_type,
           type::Meet(lhs_qual_type.type(), rhs_qual_type.type()));
-    case Operator::AddEq:
+    case ast::BinaryOperator::Kind::AddEq:
       return VerifyArithmeticAssignmentOperator(this, "+", node, lhs_qual_type,
                                                 rhs_qual_type, type::Void);
-    case Operator::SubEq:
+    case ast::BinaryOperator::Kind::SubEq:
       return VerifyArithmeticAssignmentOperator(this, "-", node, lhs_qual_type,
                                                 rhs_qual_type, type::Void);
-    case Operator::MulEq:
+    case ast::BinaryOperator::Kind::MulEq:
       return VerifyArithmeticAssignmentOperator(this, "*", node, lhs_qual_type,
                                                 rhs_qual_type, type::Void);
-    case Operator::DivEq:
+    case ast::BinaryOperator::Kind::DivEq:
       return VerifyArithmeticAssignmentOperator(this, "/", node, lhs_qual_type,
                                                 rhs_qual_type, type::Void);
-    case Operator::ModEq:
+    case ast::BinaryOperator::Kind::ModEq:
       return VerifyArithmeticAssignmentOperator(this, "%", node, lhs_qual_type,
                                                 rhs_qual_type, type::Void);
 
     default: UNREACHABLE();
   }
-  UNREACHABLE(node->op());
+  UNREACHABLE(node->kind());
 }
 
 bool Compiler::VerifyPatternType(ast::BinaryOperator const *node,
                                  type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
-  switch (node->op()) {
+  switch (node->kind()) {
     using frontend::Operator;
-    case Operator::Add:
-    case Operator::Sub:
-    case Operator::Mul: {
+    case ast::BinaryOperator::Kind::Add:
+    case ast::BinaryOperator::Kind::Sub:
+    case ast::BinaryOperator::Kind::Mul: {
       // TODO: Support non-builtin types.
-      if (node->rhs()->covers_binding()) {
-        if (node->lhs()->covers_binding()) {
+      if (node->rhs().covers_binding()) {
+        if (node->lhs().covers_binding()) {
           NOT_YET();
         } else {
-          VerifyType(node->lhs());
-          EnqueueVerifyPatternMatchType(node->rhs(), t);
+          VerifyType(&node->lhs());
+          EnqueueVerifyPatternMatchType(&node->rhs(), t);
         }
       }
 
-      if (node->lhs()->covers_binding()) {
-        if (node->lhs()->covers_binding()) {
-          VerifyType(node->rhs());
-          EnqueueVerifyPatternMatchType(node->lhs(), t);
+      if (node->lhs().covers_binding()) {
+        if (node->lhs().covers_binding()) {
+          VerifyType(&node->rhs());
+          EnqueueVerifyPatternMatchType(&node->lhs(), t);
         } else {
           NOT_YET();
         }

@@ -104,8 +104,8 @@ struct StringifyType : ast::Visitor<std::string()> {
   std::string Visit(ast::ArrayType const *node) final { return "type"; }
 
   std::string Visit(ast::BinaryOperator const *node) final {
-    type::Type operand_type = context_.qual_types(node->lhs())[0].type();
-    if (operand_type.is<type::Primitive>()) { return Visit(node->lhs()); }
+    type::Type operand_type = context_.qual_types(&node->lhs())[0].type();
+    if (operand_type.is<type::Primitive>()) { return Visit(&node->lhs()); }
     // TODO: Look at return type of overloaded operators once operator
     // overloading is implemented.
     return context_.qual_types(node)[0].type().to_string();

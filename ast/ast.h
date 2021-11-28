@@ -216,24 +216,45 @@ struct ArrayType : Expression {
 // such as `==` allow chains so that `x == y == z` can evaluate to `true` if and
 // only if both `x == y` and `y == z`.
 struct BinaryOperator : Expression {
-  explicit BinaryOperator(std::unique_ptr<Expression> lhs,
-                          frontend::Operator op,
+  enum class Kind {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    And,
+    Or,
+    Xor,
+    SymbolAnd,
+    SymbolOr,
+    SymbolXor,
+    AddEq,
+    SubEq,
+    MulEq,
+    DivEq,
+    ModEq,
+    SymbolOrEq,
+    SymbolXorEq,
+    SymbolAndEq,
+  };
+
+  explicit BinaryOperator(std::unique_ptr<Expression> lhs, Kind kind,
                           std::unique_ptr<Expression> rhs)
       : Expression(
             frontend::SourceRange(lhs->range().begin(), rhs->range().end())),
-        op_(op),
+        kind_(kind),
         lhs_(std::move(lhs)),
         rhs_(std::move(rhs)) {}
-  Expression const *lhs() const { return lhs_.get(); }
-  Expression const *rhs() const { return rhs_.get(); }
-  frontend::Operator op() const { return op_; }
+  Expression const &lhs() const { return *lhs_; }
+  Expression const &rhs() const { return *rhs_; }
+  Kind kind() const { return kind_; }
 
   auto extract() && { return std::pair{std::move(lhs_), std::move(rhs_)}; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  frontend::Operator op_;
+  Kind kind_;
   std::unique_ptr<Expression> lhs_, rhs_;
 };
 

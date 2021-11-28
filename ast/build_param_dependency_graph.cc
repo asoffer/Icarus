@@ -110,8 +110,8 @@ struct ParamDependencyGraphBuilder
 
   void Visit(BinaryOperator const *node,
              core::DependencyNode<Declaration const *> d) {
-    Visit(node->lhs(), d);
-    Visit(node->rhs(), d);
+    Visit(&node->lhs(), d);
+    Visit(&node->rhs(), d);
   }
 
   void Visit(BlockLiteral const *node,
