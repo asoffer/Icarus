@@ -167,7 +167,7 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",
         "//type:callable",
-        "//type:generic_struct",
+        "//type:cast",
         "//type:qual_type",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",

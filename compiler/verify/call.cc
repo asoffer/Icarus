@@ -8,6 +8,7 @@
 #include "compiler/compiler.h"
 #include "compiler/type_for_diagnostic.h"
 #include "type/callable.h"
+#include "type/cast.h"
 #include "type/qual_type.h"
 
 namespace compiler {
@@ -152,10 +153,14 @@ type::QualType VerifySliceCall(
     error = true;
   }
 
-  if (arg_vals[1].type() != type::U64) {
-    c->diag().Consume(
-        BuiltinError{.range   = range,
-                     .message = "Second argument to `slice` must be `u64`."});
+  if (!type::CanCastImplicitly(arg_vals[1].type(), type::U64)) {
+    c->diag().Consume(BuiltinError{
+        .range   = range,
+        .message = absl::StrCat("Second argument to `slice` must be "
+                                "implicitly convertible to `u64` (You "
+                                "provided `",
+                                arg_vals[1].type().to_string(), "`)."),
+    });
     error = true;
   }
 
@@ -255,12 +260,13 @@ type::QualType VerifyReserveMemoryCall(
     qt.MarkError();
   } else {
     for (size_t i : {0, 1}) {
-      if (arg_vals[i].type() != type::U64) {
+      if (!type::CanCastImplicitly(arg_vals[i].type(), type::U64)) {
         c->diag().Consume(BuiltinError{
-            .range   = range,
-            .message = absl::StrCat("Arguments to `reserve_memory` must be a "
-                                    "u64 (You provided a(n) ",
-                                    arg_vals[i].type().to_string(), ")."),
+            .range = range,
+            .message =
+                absl::StrCat("Arguments to `reserve_memory` must be "
+                             "implicitly convertible to `u64` (You provided `",
+                             arg_vals[i].type().to_string(), "`)."),
         });
         qt.MarkError();
         break;

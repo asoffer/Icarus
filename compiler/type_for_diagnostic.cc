@@ -88,8 +88,9 @@ struct StringifyType : ast::Visitor<std::string()> {
         (qts[0].type().is<type::Enum>() or qts[0].type().is<type::Flags>())) {
       return StringifyExpression(&context_, kind_).Visit(node->operand());
     }
-    return absl::StrCat(StringifyExpression(&context_, kind_).Visit(node->operand()),
-                        ".", node->member_name());
+    return absl::StrCat(
+        StringifyExpression(&context_, kind_).Visit(node->operand()), ".",
+        node->member_name());
   }
 
   std::string Visit(ast::ArrayLiteral const *node) final {
@@ -139,7 +140,6 @@ struct StringifyType : ast::Visitor<std::string()> {
     return StringifyExpression(&context_, kind_).Visit(node->type());
   }
 
-
   std::string Visit(ast::FunctionLiteral const *node) final {
     switch (kind_) {
       case VisitationKind::ReturnType: {
@@ -181,6 +181,8 @@ struct StringifyType : ast::Visitor<std::string()> {
       case ast::UnaryOperator::Kind::Destroy: UNREACHABLE();
       case ast::UnaryOperator::Kind::BufferPointer: return "type";
       case ast::UnaryOperator::Kind::TypeOf: return "type";
+      case ast::UnaryOperator::Kind::At:
+        return absl::StrCat("@", Visit(node->operand()));
       case ast::UnaryOperator::Kind::Pointer: return "type";
       case ast::UnaryOperator::Kind::Address:
         return absl::StrCat("*", Visit(node->operand()));
@@ -196,7 +198,6 @@ struct StringifyType : ast::Visitor<std::string()> {
         // overloading is implemented.
         return context_.qual_types(node)[0].type().to_string();
       } break;
-      default: NOT_YET();
     }
   }
 
