@@ -99,6 +99,7 @@ TEST_P(BinaryOperatorTest, Assignment) {
   EXPECT_EQ(*result, test_data.expected);
 }
 
+
 // Note: We test both with literals and with a unary-operator applied directly
 // to a function call. The former helps cover the constant-folding mechanisms
 // built in to the ir::Builder. The latter helps cover the common case for code
@@ -585,6 +586,34 @@ INSTANTIATE_TEST_SUITE_P(
     U64Mod, BinaryOperatorTest,
     testing::Combine(testing::ValuesIn({TestCase{.op = "%", .type = "u64"}}),
                      testing::ValuesIn(MakeModTestDataSet<uint64_t>())));
+
+TEST(BinaryOperator, Overload) {
+  test::TestModule mod;
+  std::string s;
+  auto const *e = mod.Append<ast::Expression>(
+      R"((() -> i64 {
+        S ::= struct {
+          n: i64
+        }
+
+        (+) ::= (lhs: *S, rhs: *S) -> S {
+          return S.{ n = lhs.n + rhs.n }
+        }
+
+        a := S.{ n = 3 }
+        b := S.{ n = 4 }
+
+        return (a + b).n
+      })())");
+  auto t = mod.context().qual_types(e)[0].type();
+  ASSERT_TRUE(t.valid());
+  Compiler c(&mod.context(), mod.resources());
+  c.set_work_resources(mod.work_resources());
+  auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, t));
+  ASSERT_TRUE(result);
+  EXPECT_EQ(result->get<int64_t>(0), 7);
+}
+
 
 struct BufferPointerTestData {
   std::string expr;

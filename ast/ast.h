@@ -238,6 +238,15 @@ struct BinaryOperator : Expression {
     SymbolAndEq,
   };
 
+  static std::string_view Symbol(Kind k) {
+    constexpr std::array<std::string_view, 19> kSymbols{
+        "+", "-",  "*",  "/",  "%",  "and", "or", "xor", "&",  "|",
+        "^", "+=", "-=", "*=", "/=", "%=",  "|=", "^=",  "&=",
+    };
+    return kSymbols[static_cast<int>(k)];
+
+  }
+
   explicit BinaryOperator(std::unique_ptr<Expression> lhs, Kind kind,
                           std::unique_ptr<Expression> rhs)
       : Expression(

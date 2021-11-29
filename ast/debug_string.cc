@@ -25,30 +25,6 @@ char const *OpStr(UnaryOperator::Kind op) {
   }
 }
 
-char const *OpStr(BinaryOperator::Kind op) {
-  switch (op) {
-    case BinaryOperator::Kind::Add: return "+";
-    case BinaryOperator::Kind::Sub: return "-";
-    case BinaryOperator::Kind::Mul: return "*";
-    case BinaryOperator::Kind::Div: return "/";
-    case BinaryOperator::Kind::Mod: return "%";
-    case BinaryOperator::Kind::And: return "and";
-    case BinaryOperator::Kind::Or: return "or";
-    case BinaryOperator::Kind::Xor: return "xor";
-    case BinaryOperator::Kind::SymbolAnd: return "&";
-    case BinaryOperator::Kind::SymbolOr: return "|";
-    case BinaryOperator::Kind::SymbolXor: return "^";
-    case BinaryOperator::Kind::AddEq: return "+=";
-    case BinaryOperator::Kind::SubEq: return "-=";
-    case BinaryOperator::Kind::MulEq: return "*=";
-    case BinaryOperator::Kind::DivEq: return "/=";
-    case BinaryOperator::Kind::ModEq: return "%=";
-    case BinaryOperator::Kind::SymbolOrEq: return "|=";
-    case BinaryOperator::Kind::SymbolXorEq: return "^=";
-    case BinaryOperator::Kind::SymbolAndEq: return "&=";
-  }
-}
-
 char const *OpStr(frontend::Operator op) {
   switch (op) {
     case frontend::Operator::Add: return " + ";
@@ -166,7 +142,7 @@ void Assignment::DebugStrAppend(std::string *out, size_t indent) const {
 void BinaryOperator::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "(");
   lhs().DebugStrAppend(out, indent);
-  absl::StrAppend(out, OpStr(kind()));
+  absl::StrAppend(out, Symbol(kind()));
   rhs().DebugStrAppend(out, indent);
   absl::StrAppend(out, ")");
 }

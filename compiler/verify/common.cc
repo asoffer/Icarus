@@ -214,7 +214,6 @@ type::QualType Compiler::VerifyUnaryOverload(
       type::Quals::Unqualified());
 }
 
-// TODO: Replace `symbol` with an enum.
 type::QualType Compiler::VerifyBinaryOverload(
     std::string_view symbol, ast::Expression const *node,
     type::Typed<ir::CompleteResultRef> const &lhs,
