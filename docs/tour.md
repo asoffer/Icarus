@@ -349,53 +349,39 @@ f ::= (constant_type :: type, nonconstant_type: type) -> () {
 }
 ```
 
-## Type Deduction
+## Compile-time Pattern matching
 
-Rather than use some complex predefined rules for type deduction, Icarus lets
-generic functions dictate which types should be deduced. This is done via `$`,
-which computes the type of the argument bound to the given parameter. Let's see
-an example:
+Icarus supports pattern matching for builtin types (user-defined pattern
+matching is planned), provided that patterns can be matched entirely at
+compile-time. A pattern is can be matched against an expression with the
+binary `~` operator. The left-hand side expression is compared to the pattern on
+the right-hand side. A compiler error is emitted if the pattern cannot be
+matched. If the pattern does match any bound variables (declared with a single
+backtick) are brought into scope.
 
 ```
-square ::= (x: $x) => x * x
+42 ~ 6 * `N  // Matches, declaring N to be the constant 7.
+42 ~ 9 * `M  // Compiler error.
+
+some_type ~ [3; `T]  // Matches some_type against an arry of size 3.
+```
+
+## Type Deduction
+
+Type deduction for generic functions uses pattern matching as described in the
+previous section. Rather than the binary `~` operator, a unary version can be
+used. The pattern will be matched against the type of the argument passed to the
+function.
+
+```
+// Accepts an argument of any type T and returns the product of that number with
+// itself.
+square ::= (x: ~`T) ->  T {
+  return x * x
+}
 
 square(3) // Evaluates to 9
 square(1.1) // Evaluates to 1.21
-```
-
-In this example, when the argument `3` is bound to the parameter `x`, we deduce
-that `$x` must be `i64`, the type of `3`. From there the entire function must
-have type `i64 -> i64`. Similarly, when `1.1` is bound, `$x` is deduced as
-`f64` meaning the entire function type is deduced as `f64 -> f64`.
-
-This can be used in a variety of ways. Below we show the same generic function
-five times implemented with slightly different deduction semantics.
-```
-// Deduce the type of the parameters from $x
-max ::= (x: $x, y: $x) -> $x {
-  if (x < y) then { return y } else { return x }
-}
-
-// Deduce the type of the parameters from $y
-max ::= (x: $y, y: $y) -> $y { ... }
-
-// Deduce the type of the parameters from $x, but allow it to be explicitly
-// overridden by specifying a value for `T`
-max ::= (x: T, y: T, T ::= $x) -> $y { ... }
-
-
-common_type ::= (lhs: type, rhs: type) -> type { ... }
-
-// Looking at the types of both arguments passed in, find a common type that
-both convert to and use that.
-max ::= (x: common_type($x, $y),
-         y: common_type($x, $y)) -> common_type($x, $y) { ... }
-
-eq ::= (lhs: type, rhs: type) {
-  if (lhs == rhs) then { return lhs } else { return error("Type mismatch") }
-}
-// Fail to compile if the types do not match.
-max ::= (x: $x, y: eq($x, $y)) -> $x { ... }
 ```
 
 # Parameterized Structs
