@@ -163,11 +163,11 @@ Note that buffer pointers must point into arrays or slices (see below). You may 
 A slice is another reference-type like pointers. It holds effectively is a
 buffer pointer and a length, allowing you refer to subsequences of contiguous
 blocks of memory. A slice of objects of type `T` is written as `[]T`. Slices
-can be indexed and dereferenced just as buffer pointers.
+can be indexed and dereferenced just like buffer pointers.
 
 ```
 a := [1, 2, 3, 4, 5]
-s := slice(&a[1], 3)  // A slice refering to the elements in `a` whose values
+s := slice(&a[1], 3)  // A slice referring to the elements in `a` whose values
                       // are currently 2, 3, and 4.
 s[1] = 30
 
@@ -176,7 +176,7 @@ s[1] = 30
 
 ## Enums and Flags
 
-An enum is a type whose value can be listed as exactly one value from a set of
+An enum is a type whose value can be listed as exactly one item from a set of
 alternatives. For instance, we might use an enum to represent the suit in a
 card game.
 
@@ -290,7 +290,7 @@ my_private_struct ::= struct {
 # Control Flow
 
 Perhaps the most distinguishing feature of Icarus is that the core language has
-neither `if` statements nor `while` loops. It turns out that both of these are
+neither `if` statements nor `while` loops. Both of these are
 definable in libraries via user-defined scopes.
 
 ```
@@ -353,10 +353,10 @@ f ::= (constant_type :: type, nonconstant_type: type) -> () {
 
 Icarus supports pattern matching for builtin types (user-defined pattern
 matching is planned), provided that patterns can be matched entirely at
-compile-time. A pattern is can be matched against an expression with the
+compile-time. A pattern can be matched against an expression with the
 binary `~` operator. The left-hand side expression is compared to the pattern on
-the right-hand side. A compiler error is emitted if the pattern cannot be
-matched. If the pattern does match any bound variables (declared with a single
+the right-hand side, resulting in a compiler error if the pattern cannot be
+matched. If the pattern does match, any bound variables (declared with a single
 backtick) are brought into scope.
 
 ```
