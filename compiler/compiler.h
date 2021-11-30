@@ -398,6 +398,7 @@ struct Compiler
   DEFINE_EMIT(ast::ArrayType)
   DEFINE_EMIT(ast::Assignment)
   DEFINE_EMIT(ast::BinaryOperator)
+  DEFINE_EMIT(ast::BinaryAssignmentOperator)
   DEFINE_EMIT(ast::BindingDeclaration)
   DEFINE_EMIT(ast::BlockLiteral)
   DEFINE_EMIT(ast::BlockNode)

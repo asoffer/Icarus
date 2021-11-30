@@ -228,23 +228,12 @@ struct BinaryOperator : Expression {
     SymbolAnd,
     SymbolOr,
     SymbolXor,
-    AddEq,
-    SubEq,
-    MulEq,
-    DivEq,
-    ModEq,
-    SymbolOrEq,
-    SymbolXorEq,
-    SymbolAndEq,
   };
 
   static std::string_view Symbol(Kind k) {
-    constexpr std::array<std::string_view, 19> kSymbols{
-        "+", "-",  "*",  "/",  "%",  "and", "or", "xor", "&",  "|",
-        "^", "+=", "-=", "*=", "/=", "%=",  "|=", "^=",  "&=",
-    };
+    constexpr std::array<std::string_view, 11> kSymbols{
+        "+", "-", "*", "/", "%", "and", "or", "xor", "&", "|", "^"};
     return kSymbols[static_cast<int>(k)];
-
   }
 
   explicit BinaryOperator(std::unique_ptr<Expression> lhs, Kind kind,
@@ -265,6 +254,26 @@ struct BinaryOperator : Expression {
  private:
   Kind kind_;
   std::unique_ptr<Expression> lhs_, rhs_;
+};
+
+// BinaryAssignmentOperator:
+// Represents a call to a binary assignment operator.
+//
+// Examples:
+//  * `x += y`
+//  * `n *= m`
+//
+struct BinaryAssignmentOperator : BinaryOperator {
+  static std::string_view Symbol(Kind k) {
+    constexpr std::array<std::string_view, 11> kSymbols{
+        "+=", "-=", "*=", "/=", "%=", "", "", "", "&=", "|=", "^"};
+    return kSymbols[static_cast<int>(k)];
+  }
+
+  explicit BinaryAssignmentOperator(std::unique_ptr<Expression> lhs, Kind kind,
+                                    std::unique_ptr<Expression> rhs)
+      : BinaryOperator(std::move(lhs), kind, std::move(rhs)) {}
+  ICARUS_AST_VIRTUAL_METHODS;
 };
 
 // ParameterizedExpression:

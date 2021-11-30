@@ -141,6 +141,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:type_for_diagnostic",
         "//type:overload_set",
         "//type:pointer",
         "//type:primitive",

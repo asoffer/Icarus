@@ -266,92 +266,43 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         EmitBinaryOverload(*this, node, out);
       }
     } break;
-    case ast::BinaryOperator::Kind::SymbolOrEq: {
-      auto this_type = context().qual_types(node)[0].type();
-      auto lhs_lval  = EmitRef(&node->lhs());
-      if (this_type == type::Bool) {
-        auto *land_block = builder().AddBlock();
-        auto *more_block = builder().AddBlock();
+  }
+}
 
-        auto lhs_val       = builder().Load<bool>(lhs_lval);
-        auto lhs_end_block = builder().CurrentBlock();
-        builder().CondJump(lhs_val, land_block, more_block);
+void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
+                            ir::PartialResultBuffer &out) {
+  auto lhs_lval  = EmitRef(&node->lhs());
 
-        builder().CurrentBlock() = more_block;
-        auto rhs_val             = EmitAs<bool>(&node->rhs());
-        auto rhs_end_block       = builder().CurrentBlock();
-        builder().UncondJump(land_block);
-
-        builder().CurrentBlock() = land_block;
-        builder().Store(builder().Phi<bool>({lhs_end_block, rhs_end_block},
-                                            {ir::RegOr<bool>(true), rhs_val}),
-                        lhs_lval);
-      } else if (this_type.is<type::Flags>()) {
-        builder().Store<ir::RegOr<type::Flags::underlying_type>>(
-            current_block()->Append(type::OrFlagsInstruction{
-                .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
-                .rhs = EmitAs<type::Flags::underlying_type>(&node->rhs()),
-                .result = builder().CurrentGroup()->Reserve()}),
-            lhs_lval);
-      } else {
-        UNREACHABLE(this_type.to_string());
-      }
+  switch (node->kind()) {
+    case ast::BinaryOperator::Kind::SymbolOr: {
+      builder().Store<ir::RegOr<type::Flags::underlying_type>>(
+          current_block()->Append(type::OrFlagsInstruction{
+              .lhs    = builder().Load<type::Flags::underlying_type>(lhs_lval),
+              .rhs    = EmitAs<type::Flags::underlying_type>(&node->rhs()),
+              .result = builder().CurrentGroup()->Reserve()}),
+          lhs_lval);
       return;
     } break;
-    case ast::BinaryOperator::Kind::SymbolAndEq: {
-      auto this_type = context().qual_types(node)[0].type();
-      auto lhs_lval  = EmitRef(&node->lhs());
-      if (this_type.is<type::Flags>()) {
-        builder().Store<ir::RegOr<type::Flags::underlying_type>>(
-            current_block()->Append(type::AndFlagsInstruction{
-                .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
-                .rhs = EmitAs<type::Flags::underlying_type>(&node->rhs()),
-                .result = builder().CurrentGroup()->Reserve()}),
-            lhs_lval);
-      } else if (this_type == type::Bool) {
-        auto *land_block = builder().AddBlock();
-        auto *more_block = builder().AddBlock();
-
-        auto lhs_val       = builder().Load<bool>(lhs_lval);
-        auto lhs_end_block = builder().CurrentBlock();
-        builder().CondJump(lhs_val, more_block, land_block);
-
-        builder().CurrentBlock() = more_block;
-        auto rhs_val             = EmitAs<bool>(&node->rhs());
-        auto rhs_end_block       = builder().CurrentBlock();
-        builder().UncondJump(land_block);
-
-        builder().CurrentBlock() = land_block;
-        builder().Store(builder().Phi<bool>({lhs_end_block, rhs_end_block},
-                                            {ir::RegOr<bool>(false), rhs_val}),
-                        lhs_lval);
-      } else {
-        UNREACHABLE(this_type.to_string());
-      }
+    case ast::BinaryOperator::Kind::SymbolAnd: {
+      builder().Store<ir::RegOr<type::Flags::underlying_type>>(
+          current_block()->Append(type::AndFlagsInstruction{
+              .lhs    = builder().Load<type::Flags::underlying_type>(lhs_lval),
+              .rhs    = EmitAs<type::Flags::underlying_type>(&node->rhs()),
+              .result = builder().CurrentGroup()->Reserve()}),
+          lhs_lval);
       return;
     } break;
-    case ast::BinaryOperator::Kind::SymbolXorEq: {
-      auto this_type = context().qual_types(node)[0].type();
-      auto lhs_lval  = EmitRef(&node->lhs());
-      if (this_type.is<type::Flags>()) {
-        auto rhs_ir = EmitAs<type::Flags::underlying_type>(&node->rhs());
-        builder().Store<ir::RegOr<type::Flags::underlying_type>>(
-            current_block()->Append(type::XorFlagsInstruction{
-                .lhs = builder().Load<type::Flags::underlying_type>(lhs_lval),
-                .rhs = rhs_ir,
-                .result = builder().CurrentGroup()->Reserve()}),
-            lhs_lval);
-      } else if (this_type == type::Bool) {
-        auto rhs_ir = EmitAs<bool>(&node->rhs());
-        builder().Store(builder().Ne(builder().Load<bool>(lhs_lval), rhs_ir),
-                        lhs_lval);
-      } else {
-        UNREACHABLE(this_type.to_string());
-      }
+    case ast::BinaryOperator::Kind::SymbolXor: {
+      auto rhs_ir = EmitAs<type::Flags::underlying_type>(&node->rhs());
+      builder().Store<ir::RegOr<type::Flags::underlying_type>>(
+          current_block()->Append(type::XorFlagsInstruction{
+              .lhs    = builder().Load<type::Flags::underlying_type>(lhs_lval),
+              .rhs    = rhs_ir,
+              .result = builder().CurrentGroup()->Reserve()}),
+          lhs_lval);
       return;
     } break;
-    case ast::BinaryOperator::Kind::AddEq: {
-      auto lhs_lval = EmitRef(&node->lhs());
+    case ast::BinaryOperator::Kind::Add: {
       EmitToBuffer(&node->rhs(), out);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
@@ -376,8 +327,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       }
       return;
     } break;
-    case ast::BinaryOperator::Kind::SubEq: {
-      auto lhs_lval = EmitRef(&node->lhs());
+    case ast::BinaryOperator::Kind::Sub: {
       EmitToBuffer(&node->rhs(), out);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
@@ -402,8 +352,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       }
       return;
     } break;
-    case ast::BinaryOperator::Kind::MulEq: {
-      auto lhs_lval = EmitRef(&node->lhs());
+    case ast::BinaryOperator::Kind::Mul: {
       EmitToBuffer(&node->rhs(), out);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
@@ -418,8 +367,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       });
       return;
     } break;
-    case ast::BinaryOperator::Kind::DivEq: {
-      auto lhs_lval = EmitRef(&node->lhs());
+    case ast::BinaryOperator::Kind::Div: {
       EmitToBuffer(&node->rhs(), out);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
@@ -435,8 +383,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
           });
       return;
     } break;
-    case ast::BinaryOperator::Kind::ModEq: {
-      auto lhs_lval = EmitRef(&node->lhs());
+    case ast::BinaryOperator::Kind::Mod: {
       EmitToBuffer(&node->rhs(), out);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
@@ -451,7 +398,6 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       });
       return;
     } break;
-
     default: {
       UNREACHABLE(node->DebugString());
     } break;

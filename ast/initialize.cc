@@ -132,6 +132,10 @@ void BinaryOperator::Initialize(Initializer& initializer) {
   is_dependent_   = lhs_->is_dependent() or rhs_->is_dependent();
 }
 
+void BinaryAssignmentOperator::Initialize(Initializer& initializer) {
+  BinaryOperator::Initialize(initializer);
+}
+
 void BindingDeclaration::Initialize(Initializer& initializer) {
   Declaration::Initialize(initializer);
   covers_binding_ = true;

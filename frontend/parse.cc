@@ -1313,7 +1313,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
           {"<", Operator::Lt},    {">", Operator::Gt},  {"<=", Operator::Le},
           {">=", Operator::Ge}};
 
-  std::string const &tk = nodes[1]->as<Token>().token;
+  std::string_view tk = nodes[1]->as<Token>().token;
   if (auto iter = kChainOps->find(tk); iter != kChainOps->end()) {
     nodes[1]->as<Token>().op = iter->second;
     return (iter->second == Operator::Comma)
@@ -1333,16 +1333,9 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
                                        move_as<ast::Expression>(nodes[2]));
   }
 
+  bool assignment = (tk.back() == '=');
   static base::Global kSymbols =
       absl::flat_hash_map<std::string_view, ast::BinaryOperator::Kind>{
-          {"|=", ast::BinaryOperator::Kind::SymbolOrEq},
-          {"&=", ast::BinaryOperator::Kind::SymbolAndEq},
-          {"^=", ast::BinaryOperator::Kind::SymbolXorEq},
-          {"+=", ast::BinaryOperator::Kind::AddEq},
-          {"-=", ast::BinaryOperator::Kind::SubEq},
-          {"*=", ast::BinaryOperator::Kind::MulEq},
-          {"/=", ast::BinaryOperator::Kind::DivEq},
-          {"%=", ast::BinaryOperator::Kind::ModEq},
           {"+", ast::BinaryOperator::Kind::Add},
           {"-", ast::BinaryOperator::Kind::Sub},
           {"*", ast::BinaryOperator::Kind::Mul},
@@ -1354,9 +1347,16 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
           {"^", ast::BinaryOperator::Kind::SymbolXor},
           {"&", ast::BinaryOperator::Kind::SymbolAnd},
           {"|", ast::BinaryOperator::Kind::SymbolOr}};
-  return std::make_unique<ast::BinaryOperator>(
-      move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
-      move_as<ast::Expression>(nodes[2]));
+  if (assignment) {
+    tk.remove_suffix(1);
+    return std::make_unique<ast::BinaryAssignmentOperator>(
+        move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
+        move_as<ast::Expression>(nodes[2]));
+  } else {
+    return std::make_unique<ast::BinaryOperator>(
+        move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
+        move_as<ast::Expression>(nodes[2]));
+  }
 }
 
 std::unique_ptr<ast::Node> BuildFunctionExpression(

@@ -62,9 +62,9 @@ TEST_P(FlagsLogicalOperatorEq, InvalidLhsType) {
     )",
                                  GetParam()));
 
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair(
-                  "type-error", "logical-assignment-needs-bool-or-flags")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
 
 TEST_P(FlagsLogicalOperatorEq, InvalidRhsType) {
@@ -76,10 +76,11 @@ TEST_P(FlagsLogicalOperatorEq, InvalidRhsType) {
     )",
                                  GetParam()));
 
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair(
-                  "type-error", "logical-assignment-needs-bool-or-flags")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
+
 INSTANTIATE_TEST_SUITE_P(All, FlagsLogicalOperatorEq,
                          testing::ValuesIn({"^=", "&=", "|="}));
 
@@ -309,9 +310,9 @@ TEST_P(OperatorOverload, MissingOverloads) {
       absl::StrFormat("S.{} %s S.{}", GetParam()));
   auto qts = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(
-                  Pair("type-error", "invalid-binary-operator-overload")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
 
 INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,

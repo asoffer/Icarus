@@ -46,6 +46,11 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
     Visit(&node->rhs());
   }
 
+  void Visit(ast::BinaryAssignmentOperator const *node) final {
+    Visit(&node->lhs());
+    Visit(&node->rhs());
+  }
+
   void Visit(ast::BindingDeclaration const *node) final {}
 
   void Visit(ast::BlockLiteral const *node) final {
