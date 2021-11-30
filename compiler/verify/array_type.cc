@@ -91,8 +91,7 @@ bool Compiler::VerifyPatternType(ast::ArrayType const *node, type::Type t) {
 
   EnqueueVerifyPatternMatchType(node->data_type(), type::Type_);
   for (auto const *expr : node->lengths()) {
-    // TODO: Support arbitrary constant types.
-    EnqueueVerifyPatternMatchType(expr, type::I64);
+    EnqueueVerifyPatternMatchType(expr, type::Integer);
   }
 
   return true;

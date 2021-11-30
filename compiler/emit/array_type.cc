@@ -63,8 +63,8 @@ bool Compiler::PatternMatch(
 
   ir::CompleteResultBuffer length_buffer;
   length_buffer.append(a->length());
-  EnqueuePatternMatch(node->length(index),
-                      {.type = type::I64, .value = std::move(length_buffer)});
+  EnqueuePatternMatch(node->length(index), {.type  = type::Integer,
+                                            .value = std::move(length_buffer)});
 
   ir::CompleteResultBuffer data_type_buffer;
   data_type_buffer.append(a->data_type());
@@ -74,8 +74,7 @@ bool Compiler::PatternMatch(
         node->data_type(),
         {.type = type::Type_, .value = std::move(data_type_buffer)});
   } else {
-    // TODO: Support integer constants in general.
-    EnqueuePatternMatch(node, {.type             = type::I64,
+    EnqueuePatternMatch(node, {.type             = type::Integer,
                                .value            = std::move(data_type_buffer),
                                .array_type_index = index + 1});
   }
