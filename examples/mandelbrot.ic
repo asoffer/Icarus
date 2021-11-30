@@ -10,7 +10,7 @@ squared_norm ::= (x: complex) -> f64 {
   return x.real * x.real + x.imag * x.imag
 }
 
-add ::= (x: complex, y: complex) -> complex {
+(+) ::= (x: complex, y: complex) -> complex {
   return complex.{
     real = x.real + y.real
     imag = x.imag + y.imag
@@ -21,17 +21,32 @@ squared ::= (x: f64) -> f64 {
   return x * x
 }
 
-squared ::= (x: complex) -> complex {
+(*)::= (x: complex, y: complex) -> complex {
   return complex.{
-    real = x.real'squared - x.imag'squared
-    imag = 2.0 * x.real * x.imag
+    real = x.real * y.real - x.imag * y.imag
+    imag = x.real * y.imag + x.imag * y.real
+  }
+}
+
+(^)::= (x: complex, n: i64) -> complex {
+  if (n == 0) then {
+    return complex.{ real = 1.0 \\ imag = 0.0 }
+  } else if (n < 0) then {
+    sn := x'squared_norm
+    return complex.{ real = x.real / sn \\ imag = -x.imag / sn }
+  } else if (n == 1) then {
+    return x
+  } else if (n % 2 == 0) then {
+    return (x * x) ^ (n / 2)
+  } else {
+    return x * (x * x) ^ (n / 2)
   }
 }
 
 mandelbrot ::= (a: complex) -> i64 {
   z := a
   for (0, 30) do [iter: i64] {
-    z = z'squared'add(a)
+    z = z ^ 2 + a
     if (z'squared_norm > 4.0) then {
       return iter + 1
     }
