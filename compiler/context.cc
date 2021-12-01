@@ -138,7 +138,7 @@ void Context::set_imported_module(ast::Import const *node,
   imported_modules_.emplace(node, module_id);
 }
 
-absl::Span<ast::Declaration const *const> Context::decls(
+absl::Span<ast::Declaration::Id const *const> Context::decls(
     ast::Identifier const *id) const {
   auto iter = decls_.find(id);
   if (iter == decls_.end()) { return ASSERT_NOT_NULL(parent())->decls(id); }
@@ -146,8 +146,9 @@ absl::Span<ast::Declaration const *const> Context::decls(
 }
 
 void Context::set_decls(ast::Identifier const *id,
-                        std::vector<ast::Declaration const *> decls) {
-  decls_.emplace(id, std::move(decls));
+                        std::vector<ast::Declaration::Id const *> decls) {
+  [[maybe_unused]] auto [iter, inserted] = decls_.emplace(id, std::move(decls));
+  ASSERT(inserted == true);
 }
 
 ir::CompleteResultBuffer const &Context::SetConstant(

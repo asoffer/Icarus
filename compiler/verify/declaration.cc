@@ -242,14 +242,15 @@ std::vector<type::QualType> VerifyInferred(Compiler &compiler,
   std::vector<type::QualType> init_val_qts(init_val_qt_span.begin(),
                                            init_val_qt_span.end());
   bool inference_failure = false;
-  // TODO: Support multiple declarations
-  auto reason = Inferrable(init_val_qts[0].type());
-  if (reason != UninferrableType::Reason::kInferrable) {
-    compiler.diag().Consume(UninferrableType{
-        .reason = reason,
-        .range  = node->init_val()->range(),
-    });
-    inference_failure = true;
+  for (auto const &qt : init_val_qts) {
+    auto reason = Inferrable(qt.type());
+    if (reason != UninferrableType::Reason::kInferrable) {
+      compiler.diag().Consume(UninferrableType{
+          .reason = reason,
+          .range  = node->init_val()->range(),
+      });
+      inference_failure = true;
+    }
   }
 
   if (inference_failure) { return {type::QualType::Error()}; }

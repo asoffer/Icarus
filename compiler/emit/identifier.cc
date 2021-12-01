@@ -23,17 +23,18 @@ void Compiler::EmitCopyInit(
 void Compiler::EmitToBuffer(ast::Identifier const *node,
                             ir::PartialResultBuffer &out) {
   LOG("Identifier", "%s on context %p", node->name(), &context());
-  auto decl_span = context().decls(node);
-  ASSERT(decl_span.size() != 0u);
-  if (decl_span[0]->flags() & ast::Declaration::f_IsConst) {
-    EmitToBuffer(decl_span[0], out);
+  auto decl_id_span = context().decls(node);
+  ASSERT(decl_id_span.size() == 1u);
+  auto const& decl_id = *decl_id_span[0];
+
+  if (decl_id.declaration().flags() & ast::Declaration::f_IsConst) {
+    EmitToBuffer(&decl_id, out);
     return;
   }
-  if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
-    auto t = context().qual_types(node)[0].type();
-    // TODO: Support multiple declarations
-    ir::Reg reg = builder().addr(&decl_span[0]->ids()[0]);
-    if ((decl_span[0]->flags() &
+  if (decl_id.declaration().flags() & ast::Declaration::f_IsFnParam) {
+    auto t      = context().qual_types(node)[0].type();
+    ir::Reg reg = builder().addr(&decl_id);
+    if ((decl_id.declaration().flags() &
          (ast::Declaration::f_IsBlockParam | ast::Declaration::f_IsOutput)) and
         not t.is_big()) {
       builder().Load(reg, t, out);
@@ -78,13 +79,9 @@ void Compiler::EmitMoveAssign(
 }
 
 ir::Reg Compiler::EmitRef(ast::Identifier const *node) {
-  auto decl_span = context().decls(node);
-  ASSERT(decl_span.size() == 1u);
-  for (auto const &id : decl_span[0]->ids()) {
-    if (id.name() != node->name()) { continue; }
-    return builder().addr(&id);
-  }
-  UNREACHABLE();
+  auto decl_id_span = context().decls(node);
+  ASSERT(decl_id_span.size() == 1u);
+  return builder().addr(decl_id_span[0]);
 }
 
 }  // namespace compiler

@@ -21,14 +21,14 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
   std::vector<ir::RegOr<ir::Jump>> enters;
   std::vector<ir::RegOr<ir::Fn>> exits;
   for (auto const &decl : node->decls()) {
-    // TODO: Support multiple declarations;
-    if (decl.ids()[0].name() == "enter") {
-      enters.push_back(EmitAs<ir::Jump>(&decl));
-      // TODO: Support multiple declarations;
-    } else if (decl.ids()[0].name() == "exit") {
-      exits.push_back(EmitAs<ir::Fn>(&decl));
-    } else {
-      blocks.emplace(decl.ids()[0].name(), EmitAs<ir::Block>(&decl).value());
+    for (auto const &id : decl.ids()) {
+      if (id.name() == "enter") {
+        enters.push_back(EmitAs<ir::Jump>(&id));
+      } else if (id.name() == "exit") {
+        exits.push_back(EmitAs<ir::Fn>(&id));
+      } else {
+        blocks.emplace(id.name(), EmitAs<ir::Block>(&id).value());
+      }
     }
   }
 

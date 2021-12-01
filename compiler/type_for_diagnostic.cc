@@ -158,9 +158,9 @@ struct StringifyType : ast::Visitor<std::string()> {
   }
 
   std::string Visit(ast::Identifier const *node) final {
-    absl::Span<ast::Declaration const *const> decls = context_.decls(node);
-    ASSERT(decls.size() == 1u);
-    return Visit(decls[0]);
+    absl::Span<ast::Declaration::Id const *const> decl_ids = context_.decls(node);
+    ASSERT(decl_ids.size() == 1u);
+    return Visit(decl_ids[0]);
   }
 
   std::string Visit(ast::Import const *node) final { return "module"; }

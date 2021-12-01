@@ -249,11 +249,10 @@ struct Context {
     arg_type_.emplace(name, t);
   }
 
-  // TODO: Use Declaration::Id instead
-  absl::Span<ast::Declaration const *const> decls(
+  absl::Span<ast::Declaration::Id const *const> decls(
       ast::Identifier const *id) const;
   void set_decls(ast::Identifier const *id,
-                 std::vector<ast::Declaration const *> decls);
+                 std::vector<ast::Declaration::Id const *> decls);
 
   template <typename T>
   internal_context::DefiningAstNodeType<T> const *AstLiteral(T const *p) const {
@@ -376,10 +375,10 @@ struct Context {
   // Stores the types of argument bound to the parameter with the given name.
   absl::flat_hash_map<std::string_view, type::Type> arg_type_;
 
-  // A map from each identifier to all possible declarations that the identifier
-  // might refer to.
+  // A map from each identifier to all possible declaration identifiers that the
+  // identifier might refer to.
   absl::flat_hash_map<ast::Identifier const *,
-                      std::vector<ast::Declaration const *>>
+                      std::vector<ast::Declaration::Id const *>>
       decls_;
 
   // Map of all constant declarations to their values within this dependent

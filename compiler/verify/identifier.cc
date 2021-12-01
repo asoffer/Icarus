@@ -200,12 +200,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
       }
 
       LOG("Identifier", "setting %s: %s", node->name(), qt);
-      // TOOD: Support multiple declarations
-      std::vector<ast::Declaration const *> decls;
+      std::vector<ast::Declaration::Id const *> decl_ids;
       for (auto const &[id, id_qt] : *potential_decl_ids) {
-        decls.push_back(&id->declaration());
+        decl_ids.push_back(id);
       }
-      context().set_decls(node, std::move(decls));
+      context().set_decls(node, std::move(decl_ids));
     } break;
     case 0: {
       // TODO: Performance. We don't need to look at these, we just need to know
@@ -265,12 +264,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
       qt =
           type::QualType(type::MakeOverloadSet(std::move(member_types)), quals);
       LOG("Identifier", "setting %s", node->name());
-      // TOOD: Support multiple declarations
-      std::vector<ast::Declaration const *> decls;
+      std::vector<ast::Declaration::Id const *> decl_ids;
       for (auto const &[id, id_qt] : *potential_decl_ids) {
-        decls.push_back(&id->declaration());
+        decl_ids.push_back(id);
       }
-      context().set_decls(node, std::move(decls));
+      context().set_decls(node, std::move(decl_ids));
     } break;
   }
 

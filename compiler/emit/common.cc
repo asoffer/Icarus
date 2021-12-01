@@ -183,10 +183,13 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
 core::Params<ast::Expression const *> DefaultsFor(ast::Expression const *expr,
                                                   Context const &context) {
   if (auto const *id = expr->if_as<ast::Identifier>()) {
-    auto decl_span = context.decls(id);
-    switch (decl_span.size()) {
+    auto decl_id_span = context.decls(id);
+    switch (decl_id_span.size()) {
       case 0: UNREACHABLE();
-      case 1: return DefaultsFor(decl_span[0]->init_val(), context);
+      case 1:
+        // TODO: This initial value is for the entire declaration, even if it
+        // has multiple identifiers.
+        return DefaultsFor(decl_id_span[0]->declaration().init_val(), context);
       default: UNREACHABLE();
     }
   } else if (auto const *id = expr->if_as<ast::Declaration::Id>()) {
