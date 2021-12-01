@@ -11,7 +11,8 @@ namespace ir {
 namespace {
 
 struct MappedBlock {
-  MappedBlock(BasicBlock *p = nullptr) : data_(reinterpret_cast<uintptr_t>(p)) {}
+  MappedBlock(BasicBlock *p = nullptr)
+      : data_(reinterpret_cast<uintptr_t>(p)) {}
   void visit() { data_ |= uintptr_t{1}; }
   bool seen() const { return data_ & uintptr_t{1}; }
   BasicBlock *operator->() { return get(); }
@@ -20,6 +21,7 @@ struct MappedBlock {
   BasicBlock *get() {
     return reinterpret_cast<BasicBlock *>(data_ & ~uintptr_t{1});
   }
+
  private:
   uintptr_t data_;
 };
@@ -231,7 +233,7 @@ void Builder::InlineJumpIntoCurrent(Jump to_be_inlined,
   auto *start_block          = CurrentBlock();
   size_t inlined_start_index = CurrentGroup()->blocks().size();
 
-  auto *into = CurrentGroup();
+  auto *into     = CurrentGroup();
   CurrentBlock() = start_block;
 
   // Update the register count. This must be done after we've added the
@@ -376,7 +378,9 @@ void Builder::InlineJumpIntoCurrent(Jump to_be_inlined,
 
 void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
                                  PartialResultBuffer &buffer) {
-  ASSERT(type::CanCastImplicitly(from, to.type()) == true);
+  if (not type::CanCastImplicitly(from, to.type())) {
+    UNREACHABLE(from, "casting implicitly to", to);
+  }
   if (from == to.type()) { return; }
   if (from.is<type::Slice>() and to.type().is<type::Slice>()) { return; }
 
