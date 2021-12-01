@@ -297,6 +297,17 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "primitive_test",
+    srcs = ["primitive_test.cc"],
+    deps = [
+        ":primitive",
+        "//base:universal_print",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "qual_type",
     hdrs = ["qual_type.h"],

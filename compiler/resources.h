@@ -18,6 +18,7 @@ struct PersistentResources {
   CompiledModule* module;
   diagnostic::DiagnosticConsumer* diagnostic_consumer;
   module::Importer* importer;
+  core::Arch architecture = core::Host;
 };
 
 }  // namespace compiler

@@ -155,6 +155,11 @@ inline bool IsFloatingPoint(Type t) {
   return p and p >= &F32.as<Primitive>() and p <= &F64.as<Primitive>();
 }
 
+inline Type PointerDifferenceType(core::Arch const &arch) {
+  static std::array<Type, 8> kTypes{I8, I16, I32, I32, I64, I64, I64, I64};
+  return kTypes[arch.pointer().bytes().value() - 1];
+}
+
 }  // namespace type
 
 #endif  // ICARUS_TYPE_PRIMITIVE_H

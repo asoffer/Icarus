@@ -161,11 +161,11 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
       if (type::IsIntegral(rhs_qt.type())) {
         return c.context().set_qual_type(node, lhs_qt);
       } else if (lhs_qt.type() == rhs_qt.type()) {
-        // TODO: The choice of signed integral type here needs to be dependent
-        // on the architecture.
         auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Quals::Ref());
-        return c.context().set_qual_type(node,
-                                         type::QualType(type::I64, quals));
+        return c.context().set_qual_type(
+            node, type::QualType(
+                      type::PointerDifferenceType(c.resources().architecture),
+                      quals));
       }
     }
   }
