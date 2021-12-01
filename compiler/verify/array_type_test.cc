@@ -115,7 +115,8 @@ TEST(ArrayType, ValidPattern) {
   {
     auto const *expr = mod.Append<ast::Identifier>(R"(N)");
     auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::I64)));
+    EXPECT_THAT(qts,
+                UnorderedElementsAre(type::QualType::Constant(type::Integer)));
   }
 
   {

@@ -102,16 +102,9 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       return;
     } break;
     case ast::BinaryOperator::Kind::Xor: {
-      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
-      if (lhs_type.is<type::Flags>() and lhs_type == rhs_type) {
-        auto lhs_ir = EmitAs<bool>(&node->lhs());
-        auto rhs_ir = EmitAs<bool>(&node->rhs());
-        out.append(builder().Ne(lhs_ir, rhs_ir));
-
-      } else {
-        EmitBinaryOverload(*this, node, out);
-      }
+      auto lhs_ir = EmitAs<bool>(&node->lhs());
+      auto rhs_ir = EmitAs<bool>(&node->rhs());
+      out.append(builder().Ne(lhs_ir, rhs_ir));
       return;
     } break;
     case ast::BinaryOperator::Kind::SymbolXor: {
@@ -124,7 +117,6 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
             .lhs    = lhs_ir,
             .rhs    = rhs_ir,
             .result = builder().CurrentGroup()->Reserve()}));
-
       } else {
         EmitBinaryOverload(*this, node, out);
       }
@@ -152,40 +144,18 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       return;
     } break;
     case ast::BinaryOperator::Kind::SymbolAnd: {
-      auto t = context().qual_types(node)[0].type();
-      if (t == type::Bool) {
-        auto lhs_ir = EmitAs<bool>(&node->lhs());
-        auto rhs_ir = EmitAs<bool>(&node->rhs());
-
-        auto *land_block = builder().AddBlock();
-
-        std::vector<ir::BasicBlock const *> phi_blocks;
-
-        auto *next_block = builder().AddBlock();
-        builder().CondJump(lhs_ir, next_block, land_block);
-        phi_blocks.push_back(builder().CurrentBlock());
-        builder().CurrentBlock() = next_block;
-
-        phi_blocks.push_back(builder().CurrentBlock());
-        builder().UncondJump(land_block);
-
-        builder().CurrentBlock() = land_block;
-
-        out.append(builder().Phi<bool>(std::move(phi_blocks), {false, rhs_ir}));
-        return;
-      } else if (t.is<type::Flags>()) {
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
+      if (lhs_type.is<type::Flags>() and lhs_type == rhs_type) {
         auto lhs_ir = EmitAs<type::Flags::underlying_type>(&node->lhs());
         auto rhs_ir = EmitAs<type::Flags::underlying_type>(&node->rhs());
-
-        // `|` is not overloadable, and blocks piped together must be done
-        // syntactically in a `goto` node and are handled by the parser.
         out.append(current_block()->Append(type::AndFlagsInstruction{
             .lhs    = lhs_ir,
             .rhs    = rhs_ir,
             .result = builder().CurrentGroup()->Reserve()}));
         return;
       } else {
-        UNREACHABLE();
+        EmitBinaryOverload(*this, node, out);
       }
     } break;
     case ast::BinaryOperator::Kind::Add: {

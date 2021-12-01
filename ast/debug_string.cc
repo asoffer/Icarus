@@ -142,7 +142,7 @@ void Assignment::DebugStrAppend(std::string *out, size_t indent) const {
 void BinaryOperator::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "(");
   lhs().DebugStrAppend(out, indent);
-  absl::StrAppend(out, Symbol(kind()));
+  absl::StrAppend(out, " ", Symbol(kind()), " ");
   rhs().DebugStrAppend(out, indent);
   absl::StrAppend(out, ")");
 }
@@ -151,7 +151,7 @@ void BinaryAssignmentOperator::DebugStrAppend(std::string *out,
                                               size_t indent) const {
   absl::StrAppend(out, "(");
   lhs().DebugStrAppend(out, indent);
-  absl::StrAppend(out, Symbol(kind()));
+  absl::StrAppend(out, " ", Symbol(kind()), " ");
   rhs().DebugStrAppend(out, indent);
   absl::StrAppend(out, ")");
 }
