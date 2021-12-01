@@ -55,9 +55,8 @@ struct Builder {
   BasicBlock* AddBlock(std::string header);
   BasicBlock* AddBlock(BasicBlock const& to_copy);
 
-  ir::OutParams OutParams(
-      absl::Span<type::Type const> types,
-      absl::Span<type::Typed<RegOr<addr_t>> const> to = {});
+  ir::OutParams OutParams(absl::Span<type::Type const> types,
+                          absl::Span<type::Typed<RegOr<addr_t>> const> to = {});
 
   template <typename KeyType, typename ValueType>
   absl::flat_hash_map<KeyType, BasicBlock*> AddBlocks(
@@ -185,7 +184,7 @@ struct Builder {
       return buffer.get<ToType>();
     }
     if (auto const* p = t.if_as<type::Primitive>()) {
-      return p->Apply([&]<typename T>()->RegOr<ToType> {
+      return p->Apply([&]<typename T>() -> RegOr<ToType> {
         return Cast<T, ToType>(buffer.get<T>());
       });
     } else if (t.is<type::Enum>()) {
@@ -205,7 +204,7 @@ struct Builder {
             buffer.get<type::Flags::underlying_type>());
       }
     } else {
-      UNREACHABLE(base::meta<ToType>, ", ", t);
+      UNREACHABLE(t, "cannot cast to", GetType<ToType>());
     }
   }
 
@@ -227,8 +226,7 @@ struct Builder {
         }
       }
     } else {
-      UNREACHABLE(base::meta<FromType>, " cannot be cast to ",
-                  base::meta<ToType>);
+      UNREACHABLE(GetType<FromType>(), "cannot cast to", GetType<ToType>());
     }
   }
 
@@ -278,7 +276,7 @@ struct Builder {
   void OnEachArrayElement(type::Array const* t, Reg array_reg, F fn) {
     auto* data_ptr_type = type::Ptr(t->data_type());
 
-    auto ptr = PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
+    auto ptr     = PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
     auto end_ptr = PtrIncr(ptr, t->length().value(), data_ptr_type);
 
     auto* start_block = CurrentBlock();
@@ -556,7 +554,7 @@ struct Builder {
   } current_;
 
   // Stores addresses of local identifiers
-  absl::flat_hash_map<ast::Declaration::Id const *, Reg> addr_;
+  absl::flat_hash_map<ast::Declaration::Id const*, Reg> addr_;
 };
 
 struct SetCurrent : base::UseWithScope {
