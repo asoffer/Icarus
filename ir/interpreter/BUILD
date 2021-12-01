@@ -27,7 +27,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":architecture",
-        ":evaluation_result",
         ":execution_context",
         "//base:debug",
         "//base:untyped_buffer",
@@ -35,18 +34,6 @@ cc_library(
         "//ir:compiled_fn",
         "//ir:compiled_jump",
         "//ir/instruction",
-        "//ir/value:result_buffer",
-    ],
-)
-
-cc_library(
-    name = "evaluation_result",
-    hdrs = ["evaluation_result.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//diagnostic:message",
-        "//diagnostic/consumer",
-        "//frontend/source:buffer",
         "//ir/value:result_buffer",
     ],
 )

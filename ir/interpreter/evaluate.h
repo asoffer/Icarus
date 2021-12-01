@@ -5,7 +5,6 @@
 #include "base/untyped_buffer.h"
 #include "ir/compiled_fn.h"
 #include "ir/interpreter/architecture.h"
-#include "ir/interpreter/evaluation_result.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/value/native_fn.h"
 #include "type/generic_struct.h"

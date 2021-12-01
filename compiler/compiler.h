@@ -148,22 +148,6 @@ struct Compiler
     return c;
   }
 
-  void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
-    for (ast::Node const *node : nodes) {
-      if (auto const *decl = node->if_as<ast::Declaration>()) {
-        if (decl->flags() & ast::Declaration::f_IsConst) { VerifyType(node); }
-      }
-    }
-
-    for (ast::Node const *node : nodes) {
-      if (auto const *decl = node->if_as<ast::Declaration>()) {
-        if (decl->flags() & ast::Declaration::f_IsConst) { continue; }
-      }
-
-      VerifyType(node);
-    }
-  }
-
   void Enqueue(WorkItem const &w,
                absl::flat_hash_set<WorkItem> prerequisites = {}) {
     work_resources_.enqueue(w, std::move(prerequisites));
@@ -331,6 +315,7 @@ struct Compiler
   ir::BasicBlock *current_block() { return builder().CurrentBlock(); }
 
   module::Importer &importer() const { return *resources_.importer; }
+  TransientState &state() { return state_; }
 
   // Evaluates `expr` in the current context as a value of type `T`. If
   // evaluation succeeds, returns the vaule, otherwise adds a diagnostic for the
@@ -364,11 +349,6 @@ struct Compiler
 
   std::optional<ir::CompleteResultBuffer> EvaluateToBufferOrDiagnose(
       type::Typed<ast::Expression const *> expr);
-
-  interpreter::EvaluationResult Evaluate(
-      type::Typed<ast::Expression const *> expr);
-
-  TransientState &state() { return state_; }
 
 #define ICARUS_AST_NODE_X(name)                                                \
   absl::Span<type::QualType const> VerifyType(ast::name const *node);          \

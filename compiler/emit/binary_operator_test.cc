@@ -7,6 +7,7 @@
 
 namespace compiler {
 namespace {
+using ::testing::Optional;
 
 struct TestCase {
   std::string op;
@@ -42,9 +43,9 @@ TEST_P(BinaryOperatorTest, Constants) {
   ASSERT_TRUE(t.valid());
   Compiler c(&mod.context(), mod.resources());
   c.set_work_resources(mod.work_resources());
-  auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, t));
-  ASSERT_TRUE(result);
-  EXPECT_EQ(*result, test_data.expected);
+  ASSERT_THAT(
+      c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
+      Optional(test_data.expected));
 }
 
 TEST_P(BinaryOperatorTest, NonConstants) {
@@ -66,9 +67,9 @@ TEST_P(BinaryOperatorTest, NonConstants) {
   ASSERT_TRUE(t.valid());
   Compiler c(&mod.context(), mod.resources());
   c.set_work_resources(mod.work_resources());
-  auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, t));
-  ASSERT_TRUE(result);
-  EXPECT_EQ(*result, test_data.expected);
+  ASSERT_THAT(
+      c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
+      Optional(test_data.expected));
 }
 
 TEST_P(BinaryOperatorTest, Assignment) {
@@ -94,9 +95,9 @@ TEST_P(BinaryOperatorTest, Assignment) {
   ASSERT_TRUE(t.valid());
   Compiler c(&mod.context(), mod.resources());
   c.set_work_resources(mod.work_resources());
-  auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, t));
-  ASSERT_TRUE(result);
-  EXPECT_EQ(*result, test_data.expected);
+  ASSERT_THAT(
+      c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
+      Optional(test_data.expected));
 }
 
 
@@ -609,9 +610,9 @@ TEST(BinaryOperator, Overload) {
   ASSERT_TRUE(t.valid());
   Compiler c(&mod.context(), mod.resources());
   c.set_work_resources(mod.work_resources());
-  auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, t));
-  ASSERT_TRUE(result);
-  EXPECT_EQ(result->get<int64_t>(0), 7);
+  ASSERT_THAT(
+      c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
+      Optional(test::ExpectedValue(int64_t{7})));
 }
 
 
@@ -637,9 +638,9 @@ TEST_P(BufferPointerTest, Arithmetic) {
   ASSERT_TRUE(t.valid());
   Compiler c(&mod.context(), mod.resources());
   c.set_work_resources(mod.work_resources());
-  auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, t));
-  ASSERT_TRUE(result);
-  EXPECT_EQ(result->get<int64_t>(0), expected_result);
+  ASSERT_THAT(
+      c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
+      Optional(test::ExpectedValue(expected_result)));
 }
 
 INSTANTIATE_TEST_SUITE_P(

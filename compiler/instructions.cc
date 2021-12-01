@@ -180,9 +180,4 @@ ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f) {
   return interpreter::EvaluateToBuffer<instruction_set_t>(f);
 }
 
-interpreter::EvaluationResult EvaluateAtCompileTime(ir::NativeFn fn) {
-  LOG("EvaluateAtCompileTime", "%s", fn);
-  return interpreter::EvaluateToBuffer<instruction_set_t>(fn);
-}
-
 }  // namespace compiler

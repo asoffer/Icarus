@@ -41,9 +41,9 @@ TEST_P(EvaluationTest, Test) {
                                        });
   c.set_work_resources(mod.work_resources());
 
-  auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, type));
-  ASSERT_TRUE(result);
-  EXPECT_EQ(expected, *result);
+  EXPECT_THAT(c.EvaluateToBufferOrDiagnose(
+                  type::Typed<ast::Expression const *>(e, type)),
+              ::testing::Optional(::testing::Eq(expected)));
 }
 
 }  // namespace test

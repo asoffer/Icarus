@@ -6,6 +6,8 @@
 namespace compiler {
 namespace {
 
+using ::testing::Optional;
+
 std::string Context() {
   return R"(
   identity ::= (x: ~`T) => x
@@ -142,9 +144,9 @@ TEST(CallTest, Foreign) {
     ASSERT_TRUE(t.valid());
     Compiler c(&mod.context(), mod.resources());
     c.set_work_resources(mod.work_resources());
-    auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, t));
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->get<ir::addr_t>(0), ir::Addr(ForeignFunctionPtr()));
+    ASSERT_THAT(c.EvaluateToBufferOrDiagnose(
+                    type::Typed<ast::Expression const *>(e, t)),
+                Optional(test::ExpectedValue(ir::Addr(ForeignFunctionPtr()))));
   }
 
   {
@@ -153,9 +155,9 @@ TEST(CallTest, Foreign) {
     ASSERT_TRUE(t.valid());
     Compiler c(&mod.context(), mod.resources());
     c.set_work_resources(mod.work_resources());
-    auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, t));
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->get<int8_t>(0), ForeignFunctionI8());
+    ASSERT_THAT(c.EvaluateToBufferOrDiagnose(
+                    type::Typed<ast::Expression const *>(e, t)),
+                Optional(test::ExpectedValue(ForeignFunctionI8())));
   }
 
   {
@@ -164,9 +166,9 @@ TEST(CallTest, Foreign) {
     ASSERT_TRUE(t.valid());
     Compiler c(&mod.context(), mod.resources());
     c.set_work_resources(mod.work_resources());
-    auto result = c.Evaluate(type::Typed<ast::Expression const *>(e, t));
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->get<int64_t>(0), ForeignFunctionI64());
+    ASSERT_THAT(c.EvaluateToBufferOrDiagnose(
+                    type::Typed<ast::Expression const *>(e, t)),
+                Optional(test::ExpectedValue(ForeignFunctionI64())));
   }
 }
 

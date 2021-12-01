@@ -23,21 +23,6 @@ Compiler::Compiler(Context *context, PersistentResources const &resources,
       resources_(resources),
       state_(std::move(state)) {}
 
-interpreter::EvaluationResult Compiler::Evaluate(
-    type::Typed<ast::Expression const *> expr) {
-  auto maybe_result = EvaluateToBuffer(expr);
-  if (auto *diagnostics = std::get_if<std::vector<diagnostic::ConsumedMessage>>(
-          &maybe_result)) {
-    for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
-    return interpreter::EvaluationResult{interpreter::EvaluationResult::Failure{
-        .failure = interpreter::EvaluationResult::Failure::Reason ::Unknown,
-        .range   = (*expr)->range(),
-    }};
-  } else {
-    return std::get<ir::CompleteResultBuffer>(std::move(maybe_result));
-  }
-}
-
 std::optional<ir::CompleteResultBuffer> Compiler::EvaluateToBufferOrDiagnose(
     type::Typed<ast::Expression const *> expr) {
   auto maybe_result = EvaluateToBuffer(expr);
