@@ -43,7 +43,9 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
     next_highlight_change = highlight_iter->range.begin();
   }
 
-  int border_alignment = NumDigits(quote.lines.endpoints_.back() - 1) + 2;
+  frontend::LineNum last_line = quote.lines.endpoints_.back() - 1;
+  int border_alignment        = NumDigits(last_line) + 2;
+
   frontend::LineNum prev_line_num = (*quote.lines.begin()).begin();
   for (base::Interval<frontend::LineNum> line_range : quote.lines) {
     // If there's only one line between two intervals, we might as well print
@@ -91,7 +93,8 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
 
       frontend::Offset off{0};
       while (next_highlight_change and
-             buffer.line_number(*next_highlight_change) == line) {
+             buffer.line_number(*next_highlight_change) == line and
+             off.value < line_str.length()) {
         frontend::Offset change_offset =
             buffer.offset_in_line(*next_highlight_change);
 
@@ -117,9 +120,14 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
         }
         set_highlight();
       }
-      absl::FPrintF(out_, "%s", line_str.substr(off.value));
+      if (off.value < line_str.length()) {
+        absl::FPrintF(out_, "%s", line_str.substr(off.value));
+      }
     }
   }
+  // Ensure that any following messages are on a separate line, even if the last
+  // line of the source quote didn't include a newline.
+  if (not buffer.line(last_line).ends_with('\n')) absl::FPrintF(out_, "\n");
 }
 
 void ConsoleRenderer::Add(frontend::Source const *source, Category cat,
