@@ -93,7 +93,8 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
 
       frontend::Offset off{0};
       while (next_highlight_change and
-             buffer.line_number(*next_highlight_change) == line) {
+             buffer.line_number(*next_highlight_change) == line and
+             off.value < line_str.length()) {
         frontend::Offset change_offset =
             buffer.offset_in_line(*next_highlight_change);
 
@@ -119,7 +120,9 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
         }
         set_highlight();
       }
-      absl::FPrintF(out_, "%s", line_str.substr(off.value));
+      if (off.value < line_str.length()) {
+        absl::FPrintF(out_, "%s", line_str.substr(off.value));
+      }
     }
   }
   // Ensure that any following messages are on a separate line, even if the last
