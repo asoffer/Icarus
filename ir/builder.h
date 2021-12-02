@@ -213,7 +213,7 @@ struct Builder {
     if constexpr (base::meta<ToType> == base::meta<FromType>) {
       return r;
     } else if constexpr ((base::meta<FromType> == base::meta<Integer> and
-                          std::is_integral_v<ToType>) or
+                          std::is_arithmetic_v<ToType>) or
                          base::meta<FromType>.template converts_to<ToType>()) {
       if (r.is_reg()) {
         return CurrentBlock()->Append(CastInstruction<ToType(FromType)>{

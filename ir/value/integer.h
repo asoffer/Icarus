@@ -57,6 +57,11 @@ struct Integer {
     return data_;
   }
 
+  template <std::floating_point T>
+  T as_type() {
+    return data_;
+  }
+
   // TODO: Remove
   int64_t value() const { return data_; }
 
