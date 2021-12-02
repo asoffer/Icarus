@@ -4,6 +4,7 @@
 #include "compiler/compiler.h"
 #include "compiler/context.h"
 #include "compiler/instantiate.h"
+#include "compiler/module.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
 #include "compiler/verify/common.h"
@@ -279,9 +280,12 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   for (auto const &param : fn_type.params()) {
     type::Type t = param.value.type();
     if (const auto *s = t.if_as<type::Struct>()) {
-      EnsureComplete({.kind    = WorkItem::Kind::CompleteStruct,
-                      .node    = context().AstLiteral(s),
-                      .context = &context()});
+      EnsureComplete(
+          {.kind = WorkItem::Kind::CompleteStruct,
+           .node = ASSERT_NOT_NULL(
+               s->defining_module()->as<CompiledModule>().context().AstLiteral(
+                   s)),
+           .context = &context()});
     }
     if (t.get()->completeness() == type::Completeness::Incomplete) {
       NOT_YET();
@@ -289,9 +293,12 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   }
   for (type::Type ret : fn_type.return_types()) {
     if (const auto *s = ret.if_as<type::Struct>()) {
-      EnsureComplete({.kind    = WorkItem::Kind::CompleteStruct,
-                      .node    = context().AstLiteral(s),
-                      .context = &context()});
+      EnsureComplete(
+          {.kind = WorkItem::Kind::CompleteStruct,
+           .node = ASSERT_NOT_NULL(
+               s->defining_module()->as<CompiledModule>().context().AstLiteral(
+                   s)),
+           .context = &context()});
     }
     if (ret.get()->completeness() == type::Completeness::Incomplete) {
       NOT_YET();

@@ -103,7 +103,20 @@ type::QualType VerifyOperatorOverload(
     type::Typed<ir::CompleteResultRef> const &rhs) {
   absl::flat_hash_set<type::Callable const *> member_types;
 
-  ast::OverloadSet os(node->scope(), NodeType::Symbol(node->kind()));
+  auto symbol = NodeType::Symbol(node->kind());
+  ast::OverloadSet os(node->scope(), symbol);
+  for (auto const &t : {lhs.type(), rhs.type()}) {
+    // TODO: Checking defining_module only when this is a struct is wrong. We
+    // should also handle pointers to structs, ec
+    if (auto const *s = lhs.type().if_as<type::Struct>()) {
+      s->defining_module()->scope().ForEachDeclIdTowardsRoot(
+          symbol, [&](ast::Declaration::Id const *id) {
+            os.insert(id);
+            return true;
+          });
+    }
+  }
+
   if (os.members().empty()) { return type::QualType::Error(); }
   for (auto const *member : os.members()) {
     ASSIGN_OR(continue, auto qt, c.context().qual_types(member)[0]);
