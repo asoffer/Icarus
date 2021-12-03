@@ -104,8 +104,11 @@ struct StringifyType : ast::Visitor<std::string()> {
   std::string Visit(ast::ArrayType const *node) final { return "type"; }
 
   std::string Visit(ast::BinaryOperator const *node) final {
-    type::Type operand_type = context_.qual_types(&node->lhs())[0].type();
-    if (operand_type.is<type::Primitive>()) { return Visit(&node->lhs()); }
+    type::Type lhs_type = context_.qual_types(&node->lhs())[0].type();
+    type::Type rhs_type = context_.qual_types(&node->rhs())[0].type();
+    if (lhs_type.is<type::Primitive>() and rhs_type.is<type::Primitive>()) {
+      return Visit(&node->lhs());
+    }
     // TODO: Look at return type of overloaded operators once operator
     // overloading is implemented.
     return context_.qual_types(node)[0].type().to_string();
@@ -164,6 +167,15 @@ struct StringifyType : ast::Visitor<std::string()> {
   }
 
   std::string Visit(ast::Import const *node) final { return "module"; }
+
+  std::string Visit(ast::Index const *node) final {
+    // TODO: This is tricky to implement correctly, even if we're looking
+    // directly at an array. We want to look at the type as spelled at the
+    // declaration site of the array, (if it even has one) and extract the
+    // element type from that. But if the type is inferred we want to progress
+    // further.
+    return context_.qual_types(node)[0].type().to_string();
+  }
 
   std::string Visit(ast::PatternMatch const *node) final {
     return Visit(&node->pattern());
