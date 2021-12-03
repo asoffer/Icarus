@@ -33,9 +33,10 @@ TEST(Cast, Error) {
   auto const *expr = mod.Append<ast::Expression>("3.0 as i8");
   auto qts         = mod.context().qual_types(expr);
   // Continues assuming the type is correct
-  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::I8)));
+  ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::I8)));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "invalid-cast")));
+  EXPECT_TRUE(qts[0].HasErrorMark());
 }
 
 TEST(Cast, InvalidType) {
