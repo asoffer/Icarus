@@ -591,6 +591,7 @@ struct Compiler
   DEFINE_EMIT(ast::BinaryOperator)
   DEFINE_EMIT(ast::Call)
   DEFINE_EMIT(ast::Cast)
+  DEFINE_EMIT(ast::ComparisonOperator)
   DEFINE_EMIT(ast::FunctionLiteral)
   DEFINE_EMIT(ast::DesignatedInitializer)
   DEFINE_EMIT(ast::Identifier)

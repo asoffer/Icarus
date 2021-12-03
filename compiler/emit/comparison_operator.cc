@@ -183,4 +183,40 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
   out.append(builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values)));
 }
 
+void Compiler::EmitCopyAssign(
+    ast::ComparisonOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  EmitCopyAssign(to[0], type::Typed(buffer[0], type::Bool));
+}
+
+void Compiler::EmitMoveAssign(
+    ast::ComparisonOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  EmitMoveAssign(to[0], type::Typed(buffer[0], type::Bool));
+}
+
+void Compiler::EmitCopyInit(
+    ast::ComparisonOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  EmitCopyAssign(to[0], type::Typed(buffer[0], type::Bool));
+}
+
+void Compiler::EmitMoveInit(
+    ast::ComparisonOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  EmitMoveAssign(to[0], type::Typed(buffer[0], type::Bool));
+}
+
 }  // namespace compiler
