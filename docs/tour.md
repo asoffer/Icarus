@@ -127,6 +127,15 @@ a: [3; i64] = [1, 4, 9]
 b := [2, 4, 6]
 ```
 
+Multi-dimensional arrays can be constructed by nesting the above type syntax,
+or using a comma-separated list of dimensions. The declarations below are
+equivalent.
+
+```
+c: [4, 2; f32]
+d: [4; [2; f32]]
+```
+
 ## Pointers
 Pointers represent the location of an object in memory. A pointer to an object
 of type `T` has type `*T`. To take the address of an object, we use the unary
@@ -160,8 +169,8 @@ Note that buffer pointers must point into arrays or slices (see below). You may 
 
 ## Slices
 
-A slice is another reference-type like pointers. It holds effectively is a
-buffer pointer and a length, allowing you refer to subsequences of contiguous
+A slice is another reference-type like pointers. It holds a buffer pointer
+and a length, which makes it easy to refer to subsequences of contiguous
 blocks of memory. A slice of objects of type `T` is written as `[]T`. Slices
 can be indexed and dereferenced just like buffer pointers.
 

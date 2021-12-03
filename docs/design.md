@@ -29,7 +29,7 @@ the elements of which are arrays of length 10, and consider how you might access
 the very last element in this multidimensional array.
 
 ```
-// C/C++
+// C, C++
 bool my_bools[10][5];
 my_bools[4][9];
 
@@ -37,6 +37,7 @@ my_bools[4][9];
 let my_bools: [[bool; 10]; 5]
 my_bools[4][9]
 
+// Go
 var my_bools: [5][10]bool
 my_bools[4][9]
 ```
