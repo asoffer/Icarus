@@ -308,8 +308,12 @@ void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Pointer> to,
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::addr_t>, type::Pointer> const &to,
     type::Typed<ir::PartialResultRef> const &from) {
-  if (type::Type(to.type()) == from.type()) {
-    builder().Store(from->get<ir::addr_t>(), *to);
+  if (type::CanCastImplicitly(from.type(), to.type())) {
+    ir::PartialResultBuffer buffer;
+    buffer.append(from->get<ir::addr_t>());
+    builder().ApplyImplicitCasts(
+        from.type(), type::QualType::NonConstant(to.type()), buffer);
+    builder().Store(buffer.get<ir::addr_t>(0), *to);
   } else if (from.type() == type::NullPtr) {
     builder().Store(ir::Null(), *to);
   } else {

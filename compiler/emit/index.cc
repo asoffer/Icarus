@@ -63,7 +63,7 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
     auto index = EmitWithCastTo<int64_t>(rhs_type, node->rhs());
     return builder().PtrIncr(data, index, type::BufPtr(s->data_type()));
   }
-  UNREACHABLE(*this, lhs_type.to_string());
+  UNREACHABLE(lhs_type.to_string());
 }
 
 // TODO: Unit tests
