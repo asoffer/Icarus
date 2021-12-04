@@ -161,14 +161,14 @@ struct Context {
 
   // Returns a span over a the qualified types for this expression. The span may
   // be empty if the expression's type is nothing, but behavior is undefined if
-  // the expressions type has not yet been computed. The returned span is valid
+  // the expressions type is not available. The returned span is valid
   // accessible for the lifetime of this Context.
   absl::Span<type::QualType const> qual_types(
       ast::Expression const *expr) const;
 
-  // Same as `qual_type` defined above, except that behavior is defined to
-  // return a default constructed span ifthe expression's type has not yet been
-  // computed.
+  // Same as `qual_types` defined above, except that behavior is defined to
+  // return a default constructed span if the expression's type is not
+  // available.
   absl::Span<type::QualType const> maybe_qual_type(
       ast::Expression const *expr) const;
 
