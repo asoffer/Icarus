@@ -496,7 +496,7 @@ void ParameterizedStructLiteral::DebugStrAppend(std::string *out,
 
 void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
   if (type() == base::meta<ir::Integer>) {
-    absl::StrAppend(out, value().get<ir::Integer>().value());
+    absl::StrAppend(out, value().get<ir::Integer>());
   } else if (type() == base::meta<bool>) {
     absl::StrAppend(out, value().get<bool>() ? "true" : "false");
   } else if (type() == base::meta<ir::Char>) {

@@ -220,7 +220,7 @@ struct Builder {
             .value = r.reg(), .result = CurrentGroup()->Reserve()});
       } else {
         if constexpr (base::meta<FromType> == base::meta<Integer>) {
-          return static_cast<ToType>(r.value().value());
+          return static_cast<ToType>(r.value());
         } else {
           return static_cast<ToType>(r.value());
         }
@@ -277,7 +277,7 @@ struct Builder {
     auto* data_ptr_type = type::Ptr(t->data_type());
 
     auto ptr     = PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
-    auto end_ptr = PtrIncr(ptr, t->length().value(), data_ptr_type);
+    auto end_ptr = PtrIncr(ptr, t->length(), data_ptr_type);
 
     auto* start_block = CurrentBlock();
     auto* loop_body   = AddBlock();

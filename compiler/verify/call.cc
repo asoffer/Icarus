@@ -260,7 +260,7 @@ type::QualType VerifyReserveMemoryCall(
     qt.MarkError();
   } else {
     for (size_t i : {0, 1}) {
-      if (!type::CanCastImplicitly(arg_vals[i].type(), type::U64)) {
+      if (!type::CanCastImplicitly(arg_vals[i].type(), type::Integer)) {
         c->diag().Consume(BuiltinError{
             .range = range,
             .message =

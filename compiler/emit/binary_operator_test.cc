@@ -40,7 +40,8 @@ TEST_P(BinaryOperatorTest, Constants) {
   auto const *e = mod.Append<ast::Expression>(absl::StrFormat(
       R"((%s) %s (%s))", test_data.lhs, test_case.op, test_data.rhs));
   auto t        = mod.context().qual_types(e)[0].type();
-  ASSERT_TRUE(t.valid());
+  ASSERT_TRUE(t.valid()) << absl::StrFormat(
+      R"((%s) %s (%s))", test_data.lhs, test_case.op, test_data.rhs);
   Compiler c(&mod.context(), mod.resources());
   c.set_work_resources(mod.work_resources());
   ASSERT_THAT(

@@ -32,7 +32,7 @@ size_t Array::HashValue(ir::CompleteResultRef const &value) const { NOT_YET(); }
 
 core::Bytes Array::bytes(core::Arch const &a) const {
   return core::FwdAlign(data_type().bytes(a), data_type().alignment(a)) *
-         length().value();
+         length();
 }
 
 core::Alignment Array::alignment(core::Arch const &a) const {

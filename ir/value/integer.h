@@ -11,7 +11,14 @@
 
 namespace ir {
 
+// TODO: In the short-term we're just going to use i64 for constant integer
+// types. Long-term we would like to allow arbitrary precision computation at
+// compile-time, but the semantics here are subtle and difficult and not
+// important enough to tackle just yet.
+using Integer = int64_t;
+
 // TODO: Implement arbitrary-precision integers
+#if 0
 struct Integer {
   Integer(int64_t n = 0) : data_(n) {}
 
@@ -68,6 +75,7 @@ struct Integer {
  private:
   int64_t data_;
 };
+#endif
 
 }  // namespace ir
 
