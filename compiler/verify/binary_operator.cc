@@ -1,4 +1,7 @@
+#include <functional>
+
 #include "compiler/compiler.h"
+#include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
 #include "type/overload_set.h"
 #include "type/pointer.h"
@@ -95,6 +98,20 @@ struct NoMatchingBinaryOperator {
   frontend::SourceRange range;
 };
 
+module::BasicModule const *DefiningModule(type::Type t) {
+  if (auto const *s = t.if_as<type::Struct>()) { return s->defining_module(); }
+  if (auto const *e = t.if_as<type::Enum>()) { return e->defining_module(); }
+  if (auto const *f = t.if_as<type::Flags>()) { return f->defining_module(); }
+  if (auto const *o = t.if_as<type::Opaque>()) { return o->defining_module(); }
+  if (auto const *p = t.if_as<type::Pointer>()) {
+    return DefiningModule(p->pointee());
+  }
+  if (auto const *a = t.if_as<type::Array>()) {
+    return DefiningModule(a->data_type());
+  }
+  return nullptr;
+}
+
 template <
     base::one_of<ast::BinaryOperator, ast::BinaryAssignmentOperator> NodeType>
 type::QualType VerifyOperatorOverload(
@@ -102,28 +119,47 @@ type::QualType VerifyOperatorOverload(
     type::Typed<ir::CompleteResultRef> const &lhs,
     type::Typed<ir::CompleteResultRef> const &rhs) {
   absl::flat_hash_set<type::Callable const *> member_types;
+  absl::flat_hash_set<ast::Declaration::Id const *> members;
 
   auto symbol = NodeType::Symbol(node->kind());
-  ast::OverloadSet os(node->scope(), symbol);
+  ast::OverloadSet os;
+
+  auto get_ids = [&](Context const &ctx, ast::Declaration::Id const *id) {
+    members.insert(id);
+    member_types.insert(&ctx.qual_types(id)[0].type().as<type::Callable>());
+  };
+
   for (auto const &t : {lhs.type(), rhs.type()}) {
     // TODO: Checking defining_module only when this is a struct is wrong. We
     // should also handle pointers to structs, ec
-    if (auto const *s = lhs.type().if_as<type::Struct>()) {
-      s->defining_module()->scope().ForEachDeclIdTowardsRoot(
+    if (auto const *dm = DefiningModule(t)) {
+      if (c.resources().module == dm) { continue; }
+      dm->scope().ForEachDeclIdTowardsRoot(
           symbol, [&](ast::Declaration::Id const *id) {
-            os.insert(id);
+            if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
+              get_ids(dm->as<CompiledModule>().context(), id);
+            }
             return true;
           });
     }
   }
+  node->scope()->ForEachDeclIdTowardsRoot(symbol,
+                                          [&](ast::Declaration::Id const *id) {
+                                            get_ids(c.context(), id);
+                                            return true;
+                                          });
+
+  for (auto const *id : members) { os.insert(id); }
 
   if (os.members().empty()) { return type::QualType::Error(); }
   for (auto const *member : os.members()) {
-    ASSIGN_OR(continue, auto qt, c.context().qual_types(member)[0]);
-    // Must be callable because we're looking at overloads for operators which
-    // have previously been type-checked to ensure callability.
-    auto &c = qt.type().as<type::Callable>();
-    member_types.insert(&c);
+    if (auto qts = c.context().maybe_qual_type(member); not qts.empty()) {
+      ASSIGN_OR(continue, auto qt, qts[0]);
+      // Must be callable because we're looking at overloads for operators which
+      // have previously been type-checked to ensure callability.
+      auto &c = qt.type().as<type::Callable>();
+      member_types.insert(&c);
+    }
   }
 
   c.context().SetViableOverloads(node, std::move(os));
