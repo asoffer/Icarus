@@ -60,6 +60,7 @@ template <bool IncludeExplicit>
 bool CanCast(Type from, Type to) {
   // TODO: handle reinterpretation
   if (to == from) { return true; }
+  if (to == Integer) { return false; }
 
   if (auto const *to_p = to.if_as<Pointer>()) {
     if (from == NullPtr or
@@ -96,15 +97,24 @@ bool CanCast(Type from, Type to) {
     }
   }
 
+  if constexpr (not IncludeExplicit) { 
+    if (from == Integer and IsNumeric(to)) { return true; }
+  }
+
   if constexpr (IncludeExplicit) {
     if (IsIntegral(from) and IsNumeric(to)) { return true; }
     if (IsFloatingPoint(from) and IsFloatingPoint(to)) { return true; }
 
     if (from == Char and IsIntegral(to)) { return true; }
-    if ((from == I8 or from == U8) and to == Char) { return true; }
+    if ((from == I8 or from == U8 or from == Integer) and to == Char) {
+      return true;
+    }
 
     // TODO other integer types. This set of rules is weird and obviously wrong.
-    if ((from == I32) and (to.is<Enum>() or to.is<Flags>())) { return true; }
+    if ((from == I32 or from == Integer) and
+        (to.is<Enum>() or to.is<Flags>())) {
+      return true;
+    }
     if ((from.is<Enum>() or from.is<Flags>()) and to == U64) { return true; }
 
     if (auto const *from_fn = from.if_as<Function>()) {
@@ -154,6 +164,8 @@ Type Meet(Type lhs, Type rhs) {
 
   if (lhs == NullPtr and rhs.is<Pointer>()) { return rhs; }
   if (rhs == NullPtr and lhs.is<Pointer>()) { return lhs; }
+  if (lhs == Integer and IsIntegral(rhs)) { return rhs; }
+  if (rhs == Integer and IsIntegral(lhs)) { return lhs; }
 
   if (lhs.is<Pointer>()) {
     // TODO: This is wrong.

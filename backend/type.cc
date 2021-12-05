@@ -34,7 +34,7 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
 #undef ICARUS_TYPE_TYPE_X
 
   llvm::Type *get(type::Array const *t) {
-    return llvm::ArrayType::get(get(t->data_type()), t->length());
+    return llvm::ArrayType::get(get(t->data_type()), t->length().value());
   }
 
   llvm::Type *get(type::Slice const *t) { NOT_YET(); }

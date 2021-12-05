@@ -27,7 +27,7 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
 
   auto from_ptr = bldr.PtrIncr(val, 0, from_data_ptr_type);
   auto from_end_ptr =
-      bldr.PtrIncr(from_ptr, from->length(), from_data_ptr_type);
+      bldr.PtrIncr(from_ptr, from->length().value(), from_data_ptr_type);
   auto to_ptr = bldr.PtrIncr(var, 0, to_data_ptr_type);
 
   auto *loop_body  = bldr.AddBlock();
@@ -84,7 +84,7 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
 
   auto from_ptr = bldr.PtrIncr(var, 0, from_data_ptr_type);
   auto from_end_ptr =
-      bldr.PtrIncr(from_ptr, from->length(), from_data_ptr_type);
+      bldr.PtrIncr(from_ptr, from->length().value(), from_data_ptr_type);
   auto to_ptr = bldr.PtrIncr(ret, 0, from_data_ptr_type);
 
   auto *loop_body  = bldr.AddBlock();

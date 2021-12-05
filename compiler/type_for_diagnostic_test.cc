@@ -78,7 +78,7 @@ INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
                              },
                              TestCase{
                                  .expr     = "[1, 2, 3]",
-                                 .expected = "[3; i64]",
+                                 .expected = "[3; integer]",
                              },
                              TestCase{
                                  .context  = R"(
