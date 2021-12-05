@@ -50,6 +50,7 @@ cc_library(
         "//frontend/source:shared",
         "//frontend:parse",
         "//ir/value:module_id",
+        "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/strings",
     ],
 )

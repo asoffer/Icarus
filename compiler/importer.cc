@@ -1,11 +1,11 @@
 #include "compiler/importer.h"
 
-
 #include <cstdio>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "base/debug.h"
@@ -32,8 +32,13 @@ bool FileExists(std::string const& path) {
 frontend::CanonicalFileName ResolveModulePath(
     frontend::CanonicalFileName const& module_path,
     std::vector<std::string> const& lookup_paths) {
+  auto save_errno = std::exchange(errno, 0);
+  absl::Cleanup c = [&] { errno = save_errno; };
+
   // Respect absolute paths.
-  if (absl::StartsWith(module_path.name(), "/")) { return module_path; }
+  if (absl::StartsWith(module_path.name(), "/")) {
+    return module_path;
+  }
   // Check for the module relative to the given lookup paths.
   for (std::string_view base_path : lookup_paths) {
     std::string path = absl::StrCat(base_path, "/", module_path.name());

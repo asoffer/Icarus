@@ -35,6 +35,7 @@ cc_library(
         "//ir:compiled_jump",
         "//ir/instruction",
         "//ir/value:result_buffer",
+        "@com_google_absl//absl/cleanup",
     ],
 )
 

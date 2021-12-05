@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_INTERPRETER_EVALUATE_H
 #define ICARUS_IR_INTERPRETER_EVALUATE_H
 
+#include "absl/cleanup/cleanup.h"
 #include "base/debug.h"
 #include "base/untyped_buffer.h"
 #include "ir/compiled_fn.h"
@@ -14,6 +15,8 @@ namespace interpreter {
 template <typename InstSet>
 void Execute(ir::NativeFn fn) {
   ASSERT(fn.type()->output().size() == 0u);
+  auto save_errno = std::exchange(errno, 0);
+  absl::Cleanup c = [&] { errno = save_errno; };
   // TODO actually just have a good way to construct the buffer
   LOG("Execute", "%s", fn);
   ExecutionContext ctx;
