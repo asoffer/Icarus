@@ -185,4 +185,67 @@ Type Meet(Type lhs, Type rhs) {
   return nullptr;
 }
 
+InferenceResult Inference(Type t) {
+  if (t == NullPtr) {
+    return InferenceResult::Kind::NullPointer;
+  } else if (t == EmptyArray) {
+    return InferenceResult::Kind::EmptyArray;
+  } else if (auto *a = t.if_as<Array>()) {
+    ASSIGN_OR(return _, Type result, Inference(a->data_type()));
+    return type::Type(Arr(a->length(), result));
+  } else if (auto *p = t.if_as<Pointer>()) {
+    ASSIGN_OR(return _, Type result, Inference(p->pointee()));
+    if (p->pointee() != result) {
+      return InferenceResult::Kind::PointerMismatch;
+    }
+    return t;
+  } else if (auto *f = t.if_as<Function>()) {
+    for (auto const &param : f->params()) {
+      ASSIGN_OR(return _, std::ignore, Inference(param.value.type()));
+    }
+    for (auto t : f->output()) {
+      ASSIGN_OR(return _, std::ignore, Inference(t));
+    }
+    // TODO: Transformation.
+    return t;
+  } else if (t == Integer) {
+    return I64;
+  }
+
+  return t;
+}
+
+diagnostic::DiagnosticMessage UninferrableType::ToMessage(
+    frontend::Source const *src) const {
+  char const *text = nullptr;
+  switch (kind) {
+    case InferenceResult::Kind::EmptyArray:
+      text =
+          "Unable to infer the type of the following expression because the "
+          "type of an empty array cannot be inferred. Either specify the "
+          "type explicitly, or cast it to a specific array type:";
+      break;
+    case InferenceResult::Kind::NullPointer:
+      text =
+          "Unable to infer the type of the following expression because the "
+          "type of `null` cannot be inferred. Either specify the type "
+          "explicitly, or cast it to a specific pointer type:";
+      break;
+    case InferenceResult::Kind::PointerMismatch:
+      // TODO: Once you have a better understanding of what the issue is here,
+      // improve the error message.
+      text =
+          "Unable to infer the type of the following expression because the "
+          "type pointed-to type would decay incorrectly.";
+      break;
+    case InferenceResult::Kind::Uninitialized:
+      text = "Unable to infer the type of a value that is uninitalized:";
+      break;
+  }
+
+  return diagnostic::DiagnosticMessage(
+      diagnostic::Text(text),
+      diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+}
+
 }  // namespace type

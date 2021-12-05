@@ -326,5 +326,18 @@ TEST(Meet, Integral) {
   EXPECT_EQ(Meet(I8, Integer), I8);
 }
 
+
+TEST(Cast, Inference) {
+  EXPECT_EQ(Inference(Type(Integer)), InferenceResult(Type(I64)));
+  EXPECT_EQ(Inference(Type(I64)), InferenceResult(Type(I64)));
+  EXPECT_EQ(Inference(Type(Arr(5, Integer))),
+            InferenceResult(Type(Arr(5, I64))));
+  EXPECT_EQ(Inference(Type(Ptr(I64))), InferenceResult(Type(Ptr(I64))));
+
+  EXPECT_FALSE(Inference(Type(NullPtr)));
+  EXPECT_FALSE(Inference(Type(EmptyArray)));
+  EXPECT_FALSE(Inference(Type(Ptr(Integer))));
+}
+
 }  // namespace
 }  // namespace type

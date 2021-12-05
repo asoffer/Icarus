@@ -42,7 +42,7 @@ TEST(ComparisonOperator, NonConstantSuccess) {
 TEST(ComparisonOperator, Pointer) {
   test::TestModule mod;
   mod.AppendCode(
-      R"(x := 1
+      R"(x: i64
          p := &x
       )");
   auto const *expr = mod.Append<ast::ComparisonOperator>("null != p == &x");

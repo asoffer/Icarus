@@ -90,6 +90,8 @@ cc_library(
         ":primitive",
         ":slice",
         ":type",
+        "//diagnostic:message",
+        "//frontend/source:buffer",
         "@com_google_absl//absl/algorithm:container",
     ],
 )

@@ -81,66 +81,6 @@ struct UninitializedConstant {
   frontend::SourceRange range;
 };
 
-struct UninferrableType {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "uninferrable-type";
-
-  enum class Reason {
-    kInferrable,
-    kHole,
-    kEmptyArray,
-    kNullPtr,
-  };
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    char const *text = nullptr;
-    switch (reason) {
-      case Reason::kInferrable: UNREACHABLE();
-      case Reason::kEmptyArray:
-        text =
-            "Unable to infer the type of the following expression because the "
-            "type of an empty array cannot be inferred. Either specify the "
-            "type explicitly, or cast it to a specific array type:";
-        break;
-      case Reason::kNullPtr:
-        text =
-            "Unable to infer the type of the following expression because the "
-            "type of `null` cannot be inferred. Either specify the type "
-            "explicitly, or cast it to a specific pointer type:";
-        break;
-      case Reason::kHole:
-        text = "Unable to infer the type of a value that is uninitalized:";
-        break;
-    }
-
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text(text),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  Reason reason;
-  frontend::SourceRange range;
-};
-
-UninferrableType::Reason Inferrable(type::Type t) {
-  if (t == type::NullPtr) { return UninferrableType::Reason::kNullPtr; }
-  if (t == type::EmptyArray) { return UninferrableType::Reason::kEmptyArray; }
-  if (auto *a = t.if_as<type::Array>()) { return Inferrable(a->data_type()); }
-  if (auto *p = t.if_as<type::Pointer>()) { return Inferrable(p->pointee()); }
-  if (auto *f = t.if_as<type::Function>()) {
-    for (auto const &param : f->params()) {
-      auto reason = Inferrable(param.value.type());
-      if (reason != UninferrableType::Reason::kInferrable) { return reason; }
-    }
-    for (auto t : f->output()) {
-      auto reason = Inferrable(t);
-      if (reason != UninferrableType::Reason::kInferrable) { return reason; }
-    }
-  }
-
-  return UninferrableType::Reason::kInferrable;
-}
-
 // TODO: what about shadowing of symbols across module boundaries imported with
 // -- ::= ?
 // Or when you import two modules verifying that symbols don't conflict.
@@ -241,13 +181,21 @@ std::vector<type::QualType> VerifyInferred(Compiler &compiler,
   auto init_val_qt_span = compiler.VerifyType(node->init_val());
   std::vector<type::QualType> init_val_qts(init_val_qt_span.begin(),
                                            init_val_qt_span.end());
+
+  type::Quals quals = (node->flags() & ast::Declaration::f_IsConst)
+                          ? type::Quals::Const()
+                          : type::Quals::Unqualified();
+
   bool inference_failure = false;
-  for (auto const &qt : init_val_qts) {
-    auto reason = Inferrable(qt.type());
-    if (reason != UninferrableType::Reason::kInferrable) {
-      compiler.diag().Consume(UninferrableType{
-          .reason = reason,
-          .range  = node->init_val()->range(),
+  for (auto &qt : init_val_qts) {
+    if (auto inference_result = Inference(qt.type())) {
+      if (not(quals >= type::Quals::Const())) {
+        qt = type::QualType(*inference_result, quals);
+      }
+    } else {
+      compiler.diag().Consume(type::UninferrableType{
+          .kind  = inference_result.failure(),
+          .range = node->init_val()->range(),
       });
       inference_failure = true;
     }
@@ -255,17 +203,7 @@ std::vector<type::QualType> VerifyInferred(Compiler &compiler,
 
   if (inference_failure) { return {type::QualType::Error()}; }
 
-  type::Quals quals = (node->flags() & ast::Declaration::f_IsConst)
-                          ? type::Quals::Const()
-                          : type::Quals::Unqualified();
   for (auto &qt : init_val_qts) {
-    if (qt.type() == type::Integer and not(quals >= type::Quals::Const())) {
-      // `integer` is inferrable but automatically converts to `i64` if inferred
-      // in a declaration.
-      //
-      // TODO: Conversion to `i64` might not be the best type.
-      qt = type::QualType(type::I64, qt.quals());
-    }
     if (not internal::VerifyInitialization(compiler.diag(), node->range(), qt,
                                            qt)) {
       qt.MarkError();
@@ -335,9 +273,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       node_qual_types = VerifyInferred(*this, node);
     } break;
     case ast::Declaration::kInferredAndUninitialized: {
-      diag().Consume(UninferrableType{
-          .reason = UninferrableType::Reason::kHole,
-          .range  = node->init_val()->range(),
+      diag().Consume(type::UninferrableType{
+          .kind  = type::InferenceResult::Kind::Uninitialized,
+          .range = node->init_val()->range(),
       });
       if (node->flags() & ast::Declaration::f_IsConst) {
         diag().Consume(UninitializedConstant{.range = node->range()});
