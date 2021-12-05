@@ -259,6 +259,13 @@ std::vector<type::QualType> VerifyInferred(Compiler &compiler,
                           ? type::Quals::Const()
                           : type::Quals::Unqualified();
   for (auto &qt : init_val_qts) {
+    if (qt.type() == type::Integer and not(quals >= type::Quals::Const())) {
+      // `integer` is inferrable but automatically converts to `i64` if inferred
+      // in a declaration.
+      //
+      // TODO: Conversion to `i64` might not be the best type.
+      qt = type::QualType(type::I64, qt.quals());
+    }
     if (not internal::VerifyInitialization(compiler.diag(), node->range(), qt,
                                            qt)) {
       qt.MarkError();
