@@ -1,0 +1,35 @@
+-- ::= import "core.ic"
+
+state ::= struct {
+  head: [*]char
+  end: [*]char
+  split_char: char
+}
+
+
+get_chunk ::= (st: *state, offset: i64) -> []char {
+  p := st.head + offset
+  while (p != st.end and @p != st.split_char) do { p += 1 }
+  chunk := slice(st.head + offset, (p - st.head - offset) as u64)
+  st.head = p
+  return chunk
+}
+
+#{export}
+Split ::= scope (state) {
+  enter ::= jump [st: *state] (s: []char, c: char) {
+    st.head = s.data
+    st.end = s.data + s.length
+    st.split_char = c
+    goto do(get_chunk(st, 0))
+  }
+
+  do ::= block {
+    before ::= (s: []char) => s
+    after ::= jump [st: *state] () {
+      goto st.head == st.end, done(), do(get_chunk(st, 1))
+    }
+  }
+
+  exit ::= () -> () {}
+}
