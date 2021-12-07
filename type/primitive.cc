@@ -45,6 +45,7 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
     case BasicType::Block: return core::Host.pointer().bytes();
     case BasicType::Label: return core::Host.pointer().bytes();
     case BasicType::Interface: return core::Host.pointer().bytes();
+    case BasicType::ScopeContext: return core::Host.pointer().bytes();
     default:;
   }
   UNREACHABLE(to_string());
@@ -78,6 +79,7 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     case BasicType::Block: return core::Host.pointer().alignment();
     case BasicType::Label: return core::Host.pointer().alignment();
     case BasicType::Interface: return core::Host.pointer().alignment();
+    case BasicType::ScopeContext: return core::Host.pointer().alignment();
     default:;
   }
   UNREACHABLE(to_string());

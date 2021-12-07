@@ -91,6 +91,7 @@ inline base::Global kPrimitiveArray = std::array{
     Primitive(Primitive::BasicType::Block),
     Primitive(Primitive::BasicType::Label),
     Primitive(Primitive::BasicType::Interface),
+    Primitive(Primitive::BasicType::ScopeContext),
     Primitive(Primitive::BasicType::Void),
 };
 
@@ -110,29 +111,30 @@ Primitive::ApplyImpl(Fn &&fn) const {
   })...}[index]();
 }
 
-inline Type U8         = &(*internal::kPrimitiveArray)[0];
-inline Type U16        = &(*internal::kPrimitiveArray)[1];
-inline Type U32        = &(*internal::kPrimitiveArray)[2];
-inline Type U64        = &(*internal::kPrimitiveArray)[3];
-inline Type Integer    = &(*internal::kPrimitiveArray)[4];
-inline Type I8         = &(*internal::kPrimitiveArray)[5];
-inline Type I16        = &(*internal::kPrimitiveArray)[6];
-inline Type I32        = &(*internal::kPrimitiveArray)[7];
-inline Type I64        = &(*internal::kPrimitiveArray)[8];
-inline Type F32        = &(*internal::kPrimitiveArray)[9];
-inline Type F64        = &(*internal::kPrimitiveArray)[10];
-inline Type Bool       = &(*internal::kPrimitiveArray)[11];
-inline Type Char       = &(*internal::kPrimitiveArray)[12];
-inline Type Type_      = &(*internal::kPrimitiveArray)[13];
-inline Type Module     = &(*internal::kPrimitiveArray)[14];
-inline Type Byte       = &(*internal::kPrimitiveArray)[15];
-inline Type NullPtr    = &(*internal::kPrimitiveArray)[16];
-inline Type EmptyArray = &(*internal::kPrimitiveArray)[17];
-inline Type Scope      = &(*internal::kPrimitiveArray)[18];
-inline Type Block      = &(*internal::kPrimitiveArray)[19];
-inline Type Label      = &(*internal::kPrimitiveArray)[20];
-inline Type Interface  = &(*internal::kPrimitiveArray)[21];
-inline Type Void       = &(*internal::kPrimitiveArray)[22];
+inline Type U8           = &(*internal::kPrimitiveArray)[0];
+inline Type U16          = &(*internal::kPrimitiveArray)[1];
+inline Type U32          = &(*internal::kPrimitiveArray)[2];
+inline Type U64          = &(*internal::kPrimitiveArray)[3];
+inline Type Integer      = &(*internal::kPrimitiveArray)[4];
+inline Type I8           = &(*internal::kPrimitiveArray)[5];
+inline Type I16          = &(*internal::kPrimitiveArray)[6];
+inline Type I32          = &(*internal::kPrimitiveArray)[7];
+inline Type I64          = &(*internal::kPrimitiveArray)[8];
+inline Type F32          = &(*internal::kPrimitiveArray)[9];
+inline Type F64          = &(*internal::kPrimitiveArray)[10];
+inline Type Bool         = &(*internal::kPrimitiveArray)[11];
+inline Type Char         = &(*internal::kPrimitiveArray)[12];
+inline Type Type_        = &(*internal::kPrimitiveArray)[13];
+inline Type Module       = &(*internal::kPrimitiveArray)[14];
+inline Type Byte         = &(*internal::kPrimitiveArray)[15];
+inline Type NullPtr      = &(*internal::kPrimitiveArray)[16];
+inline Type EmptyArray   = &(*internal::kPrimitiveArray)[17];
+inline Type Scope        = &(*internal::kPrimitiveArray)[18];
+inline Type Block        = &(*internal::kPrimitiveArray)[19];
+inline Type Label        = &(*internal::kPrimitiveArray)[20];
+inline Type Interface    = &(*internal::kPrimitiveArray)[21];
+inline Type ScopeContext = &(*internal::kPrimitiveArray)[22];
+inline Type Void         = &(*internal::kPrimitiveArray)[23];
 
 inline bool IsNumeric(Type t) {
   auto const *p = t.if_as<Primitive>();
