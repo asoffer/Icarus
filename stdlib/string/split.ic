@@ -1,4 +1,5 @@
 -- ::= import "core.ic"
+match ::= import "string/match.ic"
 
 state ::= struct {
   head: [*]char
@@ -6,11 +7,11 @@ state ::= struct {
   split_char: char
 }
 
-
 get_chunk ::= (st: *state, offset: i64) -> []char {
-  p := st.head + offset
-  while (p != st.end and @p != st.split_char) do { p += 1 }
-  chunk := slice(st.head + offset, (p - st.head - offset) as u64)
+  start := st.head + offset
+  len := (st.end - start) as u64
+  p := match.Find(slice(start, len), st.split_char)
+  chunk := slice(start, (p - start) as u64)
   st.head = p
   return chunk
 }
@@ -28,6 +29,47 @@ Split ::= scope (state) {
     before ::= (s: []char) => s
     after ::= jump [st: *state] () {
       goto st.head == st.end, done(), do(get_chunk(st, 1))
+    }
+  }
+
+  exit ::= () -> () {}
+}
+
+state2 ::= struct {
+  head: [*]char
+  end: [*]char
+  delim: [*]char
+  delim_len: i64
+}
+
+get_chunk2 ::= (st: *state2) -> []char {
+  start := st.head
+  len := (st.end - start) as u64
+  p := match.Find(slice(start, len), slice(st.delim, st.delim_len as u64))
+  if (p == st.end) then {
+    st.head = st.end
+    return slice(start, len)
+  }
+  chunk := slice(start, (p - start) as u64)
+  st.head = p + st.delim_len
+  return chunk
+}
+
+// TODO: Update this to Split once we support overloaded scopes.
+#{export}
+Split2 ::= scope (state2) {
+  enter ::= jump [st: *state2] (s: []char, delim: []char) {
+    st.head = s.data
+    st.end = s.data + s.length
+    st.delim = delim.data
+    st.delim_len = delim.length as i64
+    goto do(get_chunk2(st))
+  }
+
+  do ::= block {
+    before ::= (s: []char) => s
+    after ::= jump [st: *state2] () {
+      goto st.head >= st.end, done(), do(get_chunk2(st))
     }
   }
 
