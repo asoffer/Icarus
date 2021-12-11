@@ -1,5 +1,6 @@
 #include "type/overload_set.h"
 
+#include <string>
 #include <vector>
 
 #include "base/debug.h"
@@ -24,63 +25,21 @@ core::Alignment OverloadSet::alignment(core::Arch const &arch) const {
   return core::Alignment{1};
 }
 
-std::vector<type::Type> OverloadSet::return_types(
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) const {
-  ASSERT(callables_.size() == 1u);  // TODO: Support dynamic disptach
-  return (*callables_.begin())->return_types(args);
-}
+OverloadSet const *MakeOverloadSet(absl::flat_hash_set<Type> const &ts) {
+  ASSERT(ts.size() != 0u);
+  auto handle = overload_sets.lock();
+  for (auto const &overload_set : *handle) {
+    if (overload_set->members_.size() != ts.size()) { goto next_overload_set; }
 
-Callable const *MakeOverloadSet(
-    absl::flat_hash_set<Callable const *> const &cs) {
-  ASSERT(cs.size() != 0u);
-  if (cs.size() == 1) {
-    return *cs.begin();
-  } else {
-    auto handle = overload_sets.lock();
-    for (auto const &overload_set : *handle) {
-      if (overload_set->callables_.size() != cs.size()) {
-        goto next_overload_set;
-      }
-      for (Callable const *c : cs) {
-        if (c->if_as<type::OverloadSet>()) {
-          NOT_YET("Trying to make a nested overload set");
-        } else {
-          if (not overload_set->callables_.contains(c)) {
-            goto next_overload_set;
-          }
-        }
-      }
-
-      return overload_set.get();
-
-    next_overload_set:;
+    for (Type t : ts) {
+      if (not overload_set->members_.contains(t)) { goto next_overload_set; }
     }
-    return handle->emplace_back(new OverloadSet(cs)).get();
+
+    return overload_set.get();
+
+  next_overload_set:;
   }
-}
-
-Callable const *MakeOverloadSet(absl::flat_hash_set<Callable const *> &&cs) {
-  ASSERT(cs.size() != 0u);
-  if (cs.size() == 1) {
-    return *cs.begin();
-  } else {
-    auto handle = overload_sets.lock();
-    for (auto const &overload_set : *handle) {
-      if (overload_set->callables_.size() != cs.size()) {
-        goto next_overload_set;
-      }
-      for (Callable const *c : cs) {
-        if (not overload_set->callables_.contains(c)) {
-          goto next_overload_set;
-        }
-      }
-
-      return overload_set.get();
-
-    next_overload_set:;
-    }
-    return handle->emplace_back(new OverloadSet(std::move(cs))).get();
-  }
+  return handle->emplace_back(new OverloadSet(ts)).get();
 }
 
 }  // namespace type

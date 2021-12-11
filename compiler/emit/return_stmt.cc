@@ -31,10 +31,10 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
   // registers for small types and writing through them for big ones.
   ASSERT(
       node->exprs().size() ==
-      fn_type.output().size());  // TODO: For now, assume no actual expansion.
+      fn_type.return_types().size());  // TODO: For now, assume no actual expansion.
   for (size_t i = 0; i < node->exprs().size(); ++i) {
     auto const *expr    = node->exprs()[i];
-    type::Type ret_type = fn_type.output()[i];
+    type::Type ret_type = fn_type.return_types()[i];
     if (ret_type.is_big()) {
       type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
           ir::RegOr<ir::addr_t>(ir::Reg::Out(i)), ret_type);

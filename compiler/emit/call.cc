@@ -6,7 +6,7 @@
 #include "compiler/module.h"
 #include "compiler/resources.h"
 #include "ir/instruction/instructions.h"
-#include "type/instantiated_generic_struct.h"
+#include "type/generic.h"
 #include "type/interface/ir.h"
 
 namespace compiler {
@@ -102,7 +102,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
 
     case ir::BuiltinFn::Which::Bytes: {
       auto const &fn_type = *ir::Fn(ir::BuiltinFn::Bytes()).type();
-      ir::OutParams outs  = c.builder().OutParams(fn_type.output());
+      ir::OutParams outs  = c.builder().OutParams(fn_type.return_types());
       ir::Reg reg         = outs[0];
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(&args[0].expr(), buffer);
@@ -116,7 +116,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
     case ir::BuiltinFn::Which::Alignment: {
       // TODO: Return an integer
       auto const &fn_type = *ir::Fn(ir::BuiltinFn::Alignment()).type();
-      ir::OutParams outs  = c.builder().OutParams(fn_type.output());
+      ir::OutParams outs  = c.builder().OutParams(fn_type.return_types());
       ir::Reg reg         = outs[0];
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(&args[0].expr(), buffer);
@@ -137,27 +137,28 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
 
 }  // namespace
 
-void Compiler::EmitToBuffer(ast::Call const *node, ir::PartialResultBuffer &out) {
+void Compiler::EmitToBuffer(ast::Call const *node,
+                            ir::PartialResultBuffer &out) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     EmitBuiltinCall(*this, b, node->arguments(), out);
     return;
   }
 
   auto qts = context().qual_types(node);
-  if (not qts.empty() and qts[0].type() == type::Interface) { return; }
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
-  auto constant_arguments = EmitConstantArguments(*this, node->arguments(), buffer);
+  auto constant_arguments =
+      EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
-                                .if_as<type::GenericStruct>()) {
-    out.append(type::Type(
-        gs_type->Instantiate(work_resources(), constant_arguments).second));
+                                .if_as<type::Generic<type::Struct>>()) {
+    out.append(
+        type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     return;
   }
 
@@ -185,21 +186,23 @@ void Compiler::EmitMoveInit(
     ir::PartialResultBuffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    EmitMoveAssign(to[0], type::Typed(out[0], context().qual_types(node)[0].type()));
+    EmitMoveAssign(to[0],
+                   type::Typed(out[0], context().qual_types(node)[0].type()));
     return;
   }
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
-  auto constant_arguments = EmitConstantArguments(*this, node->arguments(), buffer);
+  auto constant_arguments =
+      EmitConstantArguments(*this, node->arguments(), buffer);
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
-                                .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(type::Type(
-        gs_type->Instantiate(work_resources(), constant_arguments).second));
+                                .if_as<type::Generic<type::Struct>>()) {
+    ir::RegOr<type::Type> t(
+        type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -227,15 +230,16 @@ void Compiler::EmitCopyInit(
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
-  auto constant_arguments = EmitConstantArguments(*this, node->arguments(), buffer);
+  auto constant_arguments =
+      EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
-                                .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(type::Type(
-        gs_type->Instantiate(work_resources(), constant_arguments).second));
+                                .if_as<type::Generic<type::Struct>>()) {
+    ir::RegOr<type::Type> t(
+        type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -263,15 +267,16 @@ void Compiler::EmitMoveAssign(
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
-  auto constant_arguments = EmitConstantArguments(*this, node->arguments(), buffer);
+  auto constant_arguments =
+      EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
-                                .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(type::Type(
-        gs_type->Instantiate(work_resources(), constant_arguments).second));
+                                .if_as<type::Generic<type::Struct>>()) {
+    ir::RegOr<type::Type> t(
+        type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitMoveAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -299,15 +304,16 @@ void Compiler::EmitCopyAssign(
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
-  auto constant_arguments = EmitConstantArguments(*this, node->arguments(), buffer);
+  auto constant_arguments =
+      EmitConstantArguments(*this, node->arguments(), buffer);
 
   // TODO: Support mixed overloads
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
-                                .if_as<type::GenericStruct>()) {
-    ir::RegOr<type::Type> t(type::Type(
-        gs_type->Instantiate(work_resources(), constant_arguments).second));
+                                .if_as<type::Generic<type::Struct>>()) {
+    ir::RegOr<type::Type> t(
+        type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
     EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
@@ -327,8 +333,8 @@ bool Compiler::PatternMatch(
   // TODO: Only supporting parameterized structs right now.
   if (pmc.type != type::Type_) { return false; }
 
-  auto const *i =
-      pmc.value.get<type::Type>(0).if_as<type::InstantiatedGenericStruct>();
+  auto const *i = pmc.value.get<type::Type>(0)
+                      .if_as<type::InstantiatedGeneric<type::Struct>>();
 
   if (not i) { return false; }
 

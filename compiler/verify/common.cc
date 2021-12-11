@@ -19,14 +19,13 @@ struct CompiledModule;
 namespace {
 
 void ExtractParams(
-    Compiler &compiler, ast::Expression const *callee,
-    type::Callable const *callable,
+    Compiler &compiler, ast::Expression const *callee, type::Type t,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args,
-    std::vector<std::tuple<ast::Expression const *, type::Callable const *,
+    std::vector<std::tuple<ast::Expression const *, type::ReturningType const *,
                            core::Params<type::QualType>>> &overload_params,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
         &errors) {
-  if (auto const *f = callable->if_as<type::Function>()) {
+  if (auto const *f = t.if_as<type::ReturningType>()) {
     auto result = core::Callability(f->params(), args,
                                     [](auto const &...) { return true; });
     if (result.ok()) {
@@ -35,30 +34,16 @@ void ExtractParams(
       errors.emplace(f, std::move(result));
       return;
     }
-  } else if (auto const *os = callable->if_as<type::OverloadSet>()) {
-    for (auto const *overload : os->members()) {
+  } else if (auto const *os = t.if_as<type::OverloadSet>()) {
+    for (type::Type overload : os->members()) {
       // TODO: Callee provenance is wrong here.
       ExtractParams(compiler, callee, overload, args, overload_params, errors);
     }
     if (overload_params.empty()) { return; }
-  } else if (auto const *gf = callable->if_as<type::GenericFunction>()) {
-    auto result = core::Callability(gf->params(), args,
-                                    [](auto const &...) { return true; });
-
-    if (result.ok()) {
-      // TODO: But this could fail and when it fails we want to capture failure
-      // reasons.
-      auto const *f = gf->concrete(compiler.work_resources(), args);
-      overload_params.emplace_back(callee, f, f->params());
-    } else {
-      errors.emplace(gf, std::move(result));
-      return;
-    }
-  } else if (auto const *gs = callable->if_as<type::GenericStruct>()) {
-    // TODO: But this could fail and when it fails we want to capture failure
-    // reasons.
-    auto [params, s] = gs->Instantiate(compiler.work_resources(), args);
-    overload_params.emplace_back(callee, gs, params);
+  } else if (auto const *gf = t.if_as<type::Generic<type::Function>>()) {
+    auto const *i = gf->Instantiate(compiler.work_resources(), args);
+    if (not i) { return; }
+    overload_params.emplace_back(callee, i, i->params());
   } else {
     UNREACHABLE();
   }
@@ -93,9 +78,7 @@ std::vector<core::Arguments<type::Type>> ExpandedArguments(
 }
 
 void AddOverloads(Context const &context, PersistentResources const &resources,
-                  ast::Expression const *callee,
-                  absl::flat_hash_map<ast::Expression const *,
-                                      type::Callable const *> &overload_map) {
+                  ast::Expression const *callee) {
   auto const *overloads = context.AllOverloads(callee);
   if (not overloads) { return; }
   Context const &context_root = context.root();
@@ -111,8 +94,6 @@ void AddOverloads(Context const &context, PersistentResources const &resources,
     type::QualType qt = (&context_root == &overload_root)
                             ? context.qual_types(overload)[0]
                             : overload_root.qual_types(overload)[0];
-
-    if (qt) { overload_map.emplace(overload, &qt.type().as<type::Callable>()); }
   }
 }
 
@@ -188,14 +169,14 @@ Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args,
 type::QualType Compiler::VerifyUnaryOverload(
     char const *symbol, ast::Expression const *node,
     type::Typed<ir::CompleteResultRef> const &operand) {
-  absl::flat_hash_set<type::Callable const *> member_types;
+  absl::flat_hash_set<type::Function const *> member_types;
 
   node->scope()->ForEachDeclIdTowardsRoot(
       symbol, [&](ast::Declaration::Id const *id) {
         ASSIGN_OR(return false, auto qt, context().qual_types(id)[0]);
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
-        auto &c = qt.type().as<type::Callable>();
+        auto &c = qt.type().as<type::Function>();
         member_types.insert(&c);
         return true;
       });
@@ -203,57 +184,39 @@ type::QualType Compiler::VerifyUnaryOverload(
   if (member_types.empty()) {
     return context().set_qual_type(node, type::QualType::Error())[0];
   }
-  std::vector<type::Typed<ir::CompleteResultRef>> pos_args;
-  pos_args.emplace_back(operand);
 
+  ASSERT(member_types.size() == 1u);
   // TODO: Check that we only have one return type on each of these overloads.
-  return type::QualType(
-      type::MakeOverloadSet(std::move(member_types))
-          ->return_types(core::Arguments<type::Typed<ir::CompleteResultRef>>(
-              std::move(pos_args), {}))[0],
-      type::Quals::Unqualified());
+  return type::QualType((*member_types.begin())->return_types()[0],
+                        type::Quals::Unqualified());
 }
 
 type::QualType Compiler::VerifyBinaryOverload(
     std::string_view symbol, ast::Expression const *node,
     type::Typed<ir::CompleteResultRef> const &lhs,
     type::Typed<ir::CompleteResultRef> const &rhs) {
-  absl::flat_hash_set<type::Callable const *> member_types;
+  absl::flat_hash_set<type::Function const *> member_types;
 
   node->scope()->ForEachDeclIdTowardsRoot(
       symbol, [&](ast::Declaration::Id const *id) {
         ASSIGN_OR(return false, auto qt, context().qual_types(id)[0]);
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
-        auto &c = qt.type().as<type::Callable>();
+        auto &c = qt.type().as<type::Function>();
         member_types.insert(&c);
         return true;
       });
 
   if (member_types.empty()) { return type::QualType::Error(); }
-  std::vector<type::Typed<ir::CompleteResultRef>> pos_args;
-  pos_args.emplace_back(lhs);
-  pos_args.emplace_back(rhs);
+  ASSERT(member_types.size() == 1u);
   // TODO: Check that we only have one return type on each of these overloads.
-  return type::QualType(
-      type::MakeOverloadSet(std::move(member_types))
-          ->return_types(core::Arguments<type::Typed<ir::CompleteResultRef>>(
-              std::move(pos_args), {}))[0],
-      type::Quals::Unqualified());
+  return type::QualType((*member_types.begin())->return_types()[0],
+                        type::Quals::Unqualified());
 }
 
-std::pair<type::QualType,
-          absl::flat_hash_map<ast::Expression const *, type::Callable const *>>
-Compiler::VerifyCallee(
+type::QualType Compiler::VerifyCallee(
     ast::Expression const *callee,
     absl::flat_hash_set<type::Type> const &argument_dependent_lookup_types) {
-  using return_type =
-      std::pair<type::QualType, absl::flat_hash_map<ast::Expression const *,
-                                                    type::Callable const *>>;
-
-  absl::flat_hash_map<ast::Expression const *, type::Callable const *>
-      overload_map;
-
   LOG("VerifyCallee", "Verify callee: %s", callee->DebugString());
 
   // Set modules to be used for ADL before calling VerifyType on the callee, so
@@ -270,23 +233,23 @@ Compiler::VerifyCallee(
     context().SetAdlModules(id, std::move(adl_modules));
   }
 
-  ASSIGN_OR(return return_type(type::QualType::Error(), {}),  //
+  ASSIGN_OR(return type::QualType::Error(),  //
                    auto qt, VerifyType(callee)[0]);
 
-  ASSIGN_OR(return return_type(qt, {}),  //
+  ASSIGN_OR(return qt,  //
                    auto const &callable, qt.type().if_as<type::Callable>());
 
-  AddOverloads(context(), resources(), callee, overload_map);
+  AddOverloads(context(), resources(), callee);
   for (type::Type t : argument_dependent_lookup_types) {
     // TODO: Generic structs? Arrays? Pointers?
     if (auto const *s = t.if_as<type::Struct>()) {
       AddOverloads(
           s->defining_module()->as<compiler::CompiledModule>().context(),
-          resources(), callee, overload_map);
+          resources(), callee);
     }
   }
 
-  return return_type(qt, std::move(overload_map));
+  return qt;
 }
 
 std::variant<
@@ -294,12 +257,11 @@ std::variant<
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
 Compiler::VerifyCall(
     ast::Call const *call_expr,
-    absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
-        &overload_map,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
   LOG("VerifyCall", "%s", call_expr->DebugString());
-  absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
-  std::vector<std::tuple<ast::Expression const *, type::Callable const *,
+  absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
+      errors;
+  std::vector<std::tuple<ast::Expression const *, type::ReturningType const *,
                          core::Params<type::QualType>>>
       overload_params;
 
@@ -318,11 +280,9 @@ Compiler::VerifyCall(
                                        .context();
       // TODO: This is fraught, because we still don't have access to
       // instantiated contexts if that's what's needed here.
-      type::QualType qt = (&context_root == &callee_root)
-                              ? context().qual_types(callee)[0]
-                              : callee_root.qual_types(callee)[0];
-      ExtractParams(*this, callee, &qt.type().as<type::Callable>(), args,
-                    overload_params, errors);
+      auto &ctx = (&context_root == &callee_root) ? context() : callee_root;
+      type::QualType qt = ctx.qual_types(callee)[0];
+      ExtractParams(*this, callee, qt.type(), args, overload_params, errors);
     }
   }
 
@@ -351,7 +311,7 @@ Compiler::VerifyCall(
       // to writing errors. Rewriting it here and then we'll look at how to
       // combine it later.
 
-      ASSERT(expansion.pos().size() <= params.size());
+      if (expansion.pos().size() > params.size()) { continue; }
       for (size_t i = 0; i < expansion.pos().size(); ++i) {
         LOG("VerifyCall", "Comparing parameter %s with argument %s",
             expansion[i].to_string(), params[i].value.type().to_string());
@@ -391,10 +351,11 @@ Compiler::VerifyCall(
       }
 
       os.insert(callee);
-      if (not callable_type->is<type::GenericStruct>()) {
+      if (not callable_type->is<type::Generic<type::Struct>>()) {
         quals &= ~type::Quals::Const();
       }
-      return_types.push_back(callable_type->return_types(args));
+      return_types.emplace_back(callable_type->return_types().begin(),
+                                callable_type->return_types().end());
       goto next_expansion;
     next_overload:;
     }

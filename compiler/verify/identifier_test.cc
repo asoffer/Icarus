@@ -70,8 +70,7 @@ TEST(Identifier, NonCallableOverloads) {
   ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "non-callable-in-overload-set"),
-                           Pair("type-error", "shadowing-declaration")));
+      UnorderedElementsAre(Pair("type-error", "shadowing-declaration")));
 }
 
 TEST(Identifier, CyclicDependency) {

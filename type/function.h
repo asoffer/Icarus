@@ -18,24 +18,16 @@
 
 namespace type {
 
-struct Function : public Callable {
+struct Function : ReturningType {
   Function(core::Params<QualType> in, std::vector<Type> out)
-      : params_(std::move(in)), output_(std::move(out)) {
-#if defined(ICARUS_DEBUG)
-    for (auto const &p : params_) { ASSERT(p.value != QualType::Error()); }
-    for (Type t : output_) { ASSERT(t.valid() == true); }
-#endif  // defined(ICARUS_DEBUG)
-  }
+      : ReturningType(LegacyType::Flags{.is_default_initializable = 0,
+                                        .is_copyable              = 1,
+                                        .is_movable               = 1,
+                                        .has_destructor           = 0},
+                      std::move(in), std::move(out)) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
-  absl::Span<type::Type const> return_types() const { return output_; }
-  std::vector<type::Type> return_types(
-      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args)
-      const override {
-    return output_;
   }
 
   bool is_big() const override { return false; }
@@ -46,22 +38,6 @@ struct Function : public Callable {
   core::Alignment alignment(core::Arch const &arch) const override;
 
   Completeness completeness() const override { return Completeness::Complete; }
-
-  core::Params<QualType> const &params() const { return params_; }
-  absl::Span<Type const> output() const { return output_; }
-
- private:
-  // Each `Param<LegacyType const*>` has a `std::string_view` member
-  // representing the parameter name. This is viewing an identifier owned by a
-  // declaration in the syntax tree which means it is valid for the lifetime of
-  // the syntax tree. However, this type is never destroyed, so it's lifetime is
-  // indeed longer than that of the syntax tree.
-  //
-  // TODO either fix this, or come up with a simple and robust rule we can
-  // follow to ensure this is safe. Do we keep the syntax tree around for the
-  // lifetime of the program? Any program?
-  core::Params<QualType> params_;
-  std::vector<Type> output_;
 };
 
 Function const *Func(core::Params<QualType> in, std::vector<Type> out);

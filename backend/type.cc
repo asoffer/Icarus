@@ -67,7 +67,7 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
     //  TODO: We could maybe do better than this by packing two `i32`s into a
     //  single register on 64-bit architectures. We could also try to pick one
     //  return type that does fit in a rgeister and use that.
-    auto const output_span = t->output();
+    auto const output_span = t->return_types();
     if (output_span.size() != 1 or output_span[0].get()->is_big()) {
       for (auto out_type : output_span) {
         param_types.push_back(get(out_type)->getPointerTo());
@@ -88,8 +88,6 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
     return t->Apply([this]<typename T>() { return LlvmType<T>(context_); });
   }
 
-  llvm::Type *get(type::GenericFunction const *t) { NOT_YET(); }
-  llvm::Type *get(type::GenericStruct const *t) { NOT_YET(); }
   llvm::Type *get(type::Jump const *t) { NOT_YET(); }
   llvm::Type *get(type::Opaque const *t) { NOT_YET(); }
   llvm::Type *get(type::Struct const *t) { NOT_YET(); }

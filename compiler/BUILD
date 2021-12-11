@@ -70,8 +70,7 @@ cc_library(
         "//type:pointer",
         "//type:slice",
         "//type:struct",
-        "//type:generic_struct",
-        "//type:generic_function",
+        "//type:generic",
         "//type",
         "//ir/byte_code",
         "//ir/instruction:arithmetic",
@@ -223,7 +222,7 @@ cc_library(
         "//ir:compiled_fn",
         "//ir:compiled_jump",
         "//ir/interpreter:evaluate",
-        "//type:generic_struct",
+        "//type:generic",
         "//type:jump",
     ] + TYPE_VERIFICATION + IR_EMISSION,
 )

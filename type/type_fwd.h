@@ -2,6 +2,8 @@
 #define ICARUS_TYPE_TYPE_FWD_H
 
 namespace type {
+template <typename T, typename InstantiationType = T>
+struct Generic;
 struct LegacyType;
 #define ICARUS_TYPE_TYPE_X(name) struct name;
 #include "type.xmacro.h"

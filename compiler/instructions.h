@@ -19,8 +19,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
-#include "type/generic_function.h"
-#include "type/generic_struct.h"
+#include "type/generic.h"
 #include "type/interface/interface.h"
 #include "type/jump.h"
 #include "type/opaque.h"
@@ -93,7 +92,8 @@ bool Compare(::type::Type t) {
   } else if constexpr (base::meta<T> == base::meta<ir::Slice>) {
     return t.is<::type::Slice>();
   } else if constexpr (base::meta<T> == base::meta<ir::GenericFn>) {
-    return t.is<::type::GenericFunction>() or t.is<::type::GenericStruct>();
+    return t.is<::type::Generic<type::Function>>() or
+           t.is<::type::Generic<type::Struct>>();
   } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
     return t == ::type::Module;
   } else if constexpr (base::meta<T> == base::meta<ir::Block>) {

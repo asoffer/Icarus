@@ -37,6 +37,8 @@ struct Visitor<Tag, Ret(Args...)> : VisitorBase {
   virtual Ret Visit(Tag, ty const *t, Args... args) {                          \
     UNREACHABLE(#ty, typeid(Tag).name());                                      \
   }
+  ICARUS_TYPE_TYPE_X(Generic<Struct>)
+  ICARUS_TYPE_TYPE_X(Generic<Function>)
 #include "type/type.xmacro.h"
 #undef ICARUS_TYPE_TYPE_X
 

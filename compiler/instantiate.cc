@@ -38,7 +38,7 @@ std::optional<type::Type> ComputeParameterTypeOrDiagnose(
   }
 }
 
-BoundParameters ComputeParamsFromArgs(
+std::optional<BoundParameters> ComputeParamsFromArgs(
     Compiler &c, ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
   LOG("ComputeParamsFromArgs", "Creating a concrete implementation with %s",
@@ -73,6 +73,7 @@ BoundParameters ComputeParamsFromArgs(
       } break;
       case core::DependencyNodeKind::ArgumentType: {
         auto const *argument      = ArgumentFromIndex(args, index, id);
+        if (not argument) { return std::nullopt; }
         auto const *initial_value = dep_node.node()->init_val();
         type::Type arg_type =
             argument ? argument->type()
@@ -136,7 +137,7 @@ BoundParameters ComputeParamsFromArgs(
 
 }  // namespace
 
-Context::InsertSubcontextResult Instantiate(
+std::optional<Context::InsertSubcontextResult> Instantiate(
     Compiler &c, ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
   auto &ctx = node->scope()
@@ -151,8 +152,9 @@ Context::InsertSubcontextResult Instantiate(
   Compiler child(&scratchpad, resources);
   child.set_work_resources(c.work_resources());
 
-  return ctx.InsertSubcontext(node, ComputeParamsFromArgs(child, node, args),
-                              std::move(scratchpad));
+  ASSIGN_OR(return std::nullopt,  //
+                   auto bound_params, ComputeParamsFromArgs(child, node, args));
+  return ctx.InsertSubcontext(node, bound_params, std::move(scratchpad));
 }
 
 Context::FindSubcontextResult FindInstantiation(
@@ -169,7 +171,7 @@ Context::FindSubcontextResult FindInstantiation(
   PersistentResources resources = c.resources();
   Compiler child(&scratchpad, resources);
   child.set_work_resources(c.work_resources());
-  return ctx.FindSubcontext(node, ComputeParamsFromArgs(child, node, args));
+  return ctx.FindSubcontext(node, *ComputeParamsFromArgs(child, node, args));
 }
 
 }  // namespace compiler

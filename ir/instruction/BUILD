@@ -95,7 +95,7 @@ cc_library(
         "//ir/value:string",
         "//module",
         "//type:array",
-        "//type:generic_function",
+        "//type:generic",
         "//type:pointer",
         "//type:struct",
         "@com_google_absl//absl/status:statusor",

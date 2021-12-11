@@ -89,15 +89,15 @@ struct UninitializedConstant {
 // created from the other by currying some of the arguments or decide we don't care.
 bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
             type::Typed<ast::Declaration::Id const *> id2) {
+  // TODO: Don't worry about generic shadowing? It'll be checked later?
+  if (id1.type().is<type::Generic<type::Function>>() or
+      id2.type().is<type::Generic<type::Function>>()) {
+    return false;
+  }
+
   type::Callable const *callable1 = id1.type().if_as<type::Callable>();
   type::Callable const *callable2 = id2.type().if_as<type::Callable>();
   if (not callable1 or not callable2) { return true; }
-
-  // TODO: Don't worry about generic shadowing? It'll be checked later?
-  if (callable1->is<type::GenericFunction>() or
-      callable2->is<type::GenericFunction>()) {
-    return false;
-  }
 
   return core::AmbiguouslyCallable(callable1->as<type::Function>().params(),
                                    callable2->as<type::Function>().params(),
@@ -130,25 +130,6 @@ type::QualType VerifyDeclarationType(Compiler &compiler,
     return type::QualType(t, (node->flags() & ast::Declaration::f_IsConst)
                                  ? type::Quals::Const()
                                  : type::Quals::Unqualified());
-  } else if (type_expr_qt.type() == type::Interface) {
-    // TODO: Non-constant *INTERFACE*, not a type.
-    if (not type_expr_qt.constant()) {
-      compiler.diag().Consume(NonConstantTypeInDeclaration{
-          .range = node->type_expr()->range(),
-      });
-      return type::QualType::Error();
-    }
-
-    ASSIGN_OR(return type::QualType::Error(),  //
-                     auto intf,
-                     compiler.EvaluateOrDiagnoseAs<interface::Interface>(
-                         node->type_expr()));
-
-    // TODO: we need to pass `intf` in.
-    return type::QualType(type::Interface,
-                          (node->flags() & ast::Declaration::f_IsConst)
-                              ? type::Quals::Const()
-                              : type::Quals::Unqualified());
   } else {
     // TODO: Not a type or *INTERFACE*
     compiler.diag().Consume(NotAType{

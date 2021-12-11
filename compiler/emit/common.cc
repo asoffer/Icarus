@@ -69,8 +69,8 @@ ir::OutParams SetReturns(
     ir::Builder &bldr, type::Type type,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *fn_type = type.if_as<type::Function>()) {
-    return bldr.OutParams(fn_type->output(), to);
-  } else if (type.is<type::GenericFunction>()) {
+    return bldr.OutParams(fn_type->return_types(), to);
+  } else if (type.is<type::Generic<type::Function>>()) {
     NOT_YET(type.to_string());
   } else {
     NOT_YET(type.to_string());
@@ -226,7 +226,7 @@ CalleeResult EmitCallee(
                           ? c.context().qual_types(callable)[0]
                           : callable_root.qual_types(callable)[0];
 
-  if (auto const *gf_type = qt.type().if_as<type::GenericFunction>()) {
+  if (auto const *gf_type = qt.type().if_as<type::Generic<type::Function>>()) {
     ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(callable).value();
 
     // TODO: declarations aren't callable so we shouldn't have to check this
@@ -702,7 +702,7 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
   c.builder().Call(callee_fn, overload_type, std::move(prepared_arguments),
                    out_params);
   int i = -1;
-  for (type::Type t : overload_type->output()) {
+  for (type::Type t : overload_type->return_types()) {
     ++i;
     if (t.get()->is_big()) { continue; }
 

@@ -4,23 +4,16 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
-#include "type/callable.h"
 #include "type/type.h"
 
 namespace type {
 
-Callable const *MakeOverloadSet(
-    absl::flat_hash_set<Callable const *> const &cs);
-Callable const *MakeOverloadSet(absl::flat_hash_set<Callable const *> &&cs);
-
-struct OverloadSet : Callable {
+struct OverloadSet : LegacyType {
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  absl::flat_hash_set<type::Callable const *> const &members() const {
-    return callables_;
-  }
+  absl::flat_hash_set<Type> const &members() const { return members_; }
 
   Completeness completeness() const override { return Completeness::Complete; }
 
@@ -28,25 +21,25 @@ struct OverloadSet : Callable {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
-  std::vector<type::Type> return_types(
-      core::Arguments<type::Typed<ir::CompleteResultRef>> const &args)
-      const override;
-
   // Not considered big because it only makes sense to pass around at
   // compile-time anyway.
   bool is_big() const override { return false; }
 
  private:
-  friend Callable const *MakeOverloadSet(
-      absl::flat_hash_set<Callable const *> const &cs);
-  friend Callable const *MakeOverloadSet(
-      absl::flat_hash_set<Callable const *> &&cs);
+  friend OverloadSet const *MakeOverloadSet(
+      absl::flat_hash_set<Type> const &ts);
 
-  OverloadSet(absl::flat_hash_set<type::Callable const *> cs)
-      : callables_(std::move(cs)) {}
+  OverloadSet(absl::flat_hash_set<Type> cs)
+      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
+                                     .is_copyable              = 1,
+                                     .is_movable               = 1,
+                                     .has_destructor           = 0}),
+        members_(std::move(cs)) {}
 
-  absl::flat_hash_set<type::Callable const *> callables_;
+  absl::flat_hash_set<Type> members_;
 };
+
+OverloadSet const *MakeOverloadSet(absl::flat_hash_set<Type> const &cs);
 
 }  // namespace type
 

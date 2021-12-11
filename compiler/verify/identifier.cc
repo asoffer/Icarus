@@ -59,27 +59,6 @@ struct UncapturedIdentifier {
   frontend::SourceRange range;
 };
 
-struct NonCallableInOverloadSet {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-callable-in-overload-set";
-
-  // TODO this assumes a single source for all references in this message.
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text(
-            "Non-callable type `%s` in overload set requested here:",
-            decl_type),
-        diagnostic::SourceQuote(src).Highlighted(
-            id, diagnostic::Style::ErrorText()),
-        diagnostic::Text("Declaration here:"),
-        diagnostic::SourceQuote(src).Highlighted(decl, diagnostic::Style{}));
-  }
-
-  frontend::SourceRange id;
-  frontend::SourceRange decl;
-  type::Type decl_type;
-};
-
 // Returns the declaration ids along with their qualified type that may be
 // referenced by the given identifier, or nullopt if any one of them is an
 // error.
@@ -195,7 +174,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
         }
       }
 
-      if (qt.type().is<type::Callable>()) {
+      if (qt.type().is<type::Callable>() or
+          qt.type().is<type::Generic<type::Function>>()) {
         context().SetAllOverloads(node, ast::OverloadSet({id}));
       }
 
@@ -231,24 +211,14 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
     } break;
     default: {
       type::Quals quals = type::Quals::Const();
-      absl::flat_hash_set<type::Callable const *> member_types;
+      absl::flat_hash_set<type::Type> member_types;
       bool error = false;
 
       for (auto const &[id, id_qt] : *potential_decl_ids) {
         qt = id_qt;
         if (not qt.ok() or qt.HasErrorMark()) { error = true; }
-
-        if (auto *c = qt.type().if_as<type::Callable>()) {
-          quals &= qt.quals();
-          member_types.insert(c);
-        } else {
-          diag().Consume(NonCallableInOverloadSet{
-              .id        = node->range(),
-              .decl      = id->range(),
-              .decl_type = qt.type(),
-          });
-          error = true;
-        }
+        quals &= qt.quals();
+        member_types.insert(qt.type());
       }
 
       if (error) {
@@ -261,8 +231,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
         potential_ids.push_back(id);
       }
       context().SetAllOverloads(node, ast::OverloadSet(potential_ids));
-      qt =
-          type::QualType(type::MakeOverloadSet(std::move(member_types)), quals);
+      qt = type::QualType(type::MakeOverloadSet(member_types), quals);
       LOG("Identifier", "setting %s", node->name());
       std::vector<ast::Declaration::Id const *> decl_ids;
       for (auto const &[id, id_qt] : *potential_decl_ids) {

@@ -57,7 +57,7 @@ TEST(ShortFunctionLiteral, ConstantParameter) {
   auto qts = mod.context().qual_types(
       mod.Append<ast::Expression>(R"((n :: i64) => n)"));
   EXPECT_GE(qts[0].quals(), type::Quals::Const());
-  EXPECT_TRUE(qts[0].type().is<type::GenericFunction>());
+  EXPECT_TRUE(qts[0].type().is<type::Generic<type::Function>>());
 }
 
 }  // namespace

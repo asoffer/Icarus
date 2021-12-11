@@ -250,7 +250,7 @@ TEST(Call, Uncallable) {
   ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "uncallable-expression")));
+      UnorderedElementsAre(Pair("type-error", "uncallable-with-arguments")));
 }
 
 TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {

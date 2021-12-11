@@ -26,7 +26,7 @@ bool CanCastPointer(Pointer const *from, Pointer const *to) {
 bool CanCastFunction(Function const *from, Function const *to) {
   if (from->params().size() != to->params().size()) { return false; }
 
-  if (from->output() != to->output()) { return false; }
+  if (from->return_types() != to->return_types()) { return false; }
 
   size_t num_params = from->params().size();
   for (size_t i = 0; i < num_params; ++i) {
@@ -203,7 +203,7 @@ InferenceResult Inference(Type t) {
     for (auto const &param : f->params()) {
       ASSIGN_OR(return _, std::ignore, Inference(param.value.type()));
     }
-    for (auto t : f->output()) {
+    for (auto t : f->return_types()) {
       ASSIGN_OR(return _, std::ignore, Inference(t));
     }
     // TODO: Transformation.

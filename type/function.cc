@@ -33,7 +33,7 @@ void Function::WriteTo(std::string *result) const {
   result->append(") -> (");
 
   sep = "";
-  for (Type out : output()) {
+  for (Type out : return_types()) {
     result->append(sep);
     out.get()->WriteTo(result);
     sep = ", ";

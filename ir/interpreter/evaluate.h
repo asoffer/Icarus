@@ -8,13 +8,12 @@
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/value/native_fn.h"
-#include "type/generic_struct.h"
 
 namespace interpreter {
 
 template <typename InstSet>
 void Execute(ir::NativeFn fn) {
-  ASSERT(fn.type()->output().size() == 0u);
+  ASSERT(fn.type()->return_types().size() == 0u);
   auto save_errno = std::exchange(errno, 0);
   absl::Cleanup c = [&] { errno = save_errno; };
   // TODO actually just have a good way to construct the buffer
@@ -28,13 +27,13 @@ template <typename InstSet>
 ir::CompleteResultBuffer EvaluateToBuffer(ir::NativeFn fn) {
   LOG("EvaluateToBuffer", "%s", fn);
 
-  ASSERT(fn.type()->output().size() != 0u);
+  ASSERT(fn.type()->return_types().size() != 0u);
 
   ExecutionContext ctx;
   StackFrame frame(fn, ctx.stack());
 
   ir::CompleteResultBuffer result;
-  auto outputs = fn.type()->output();
+  auto outputs = fn.type()->return_types();
 
   core::Bytes total;
   for (auto t : outputs) { total += t.bytes(kArchitecture); }

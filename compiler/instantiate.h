@@ -12,7 +12,7 @@ namespace compiler {
 
 // Attempts to instantiate `node` with `args`, possibly creating a new
 // instantiation as a subcontext of `c.context()` if needed.
-Context::InsertSubcontextResult Instantiate(
+std::optional<Context::InsertSubcontextResult> Instantiate(
     Compiler &c, ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 

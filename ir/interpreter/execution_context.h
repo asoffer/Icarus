@@ -220,7 +220,7 @@ struct ExecutionContext {
 
         for (size_t i = 0; i < inst.outputs().size(); ++i) {
           ir::Reg reg         = inst.outputs()[i];
-          type::Type t        = fn_type->output()[i];
+          type::Type t        = fn_type->return_types()[i];
           ir::addr_t out_addr = t.is_big() ? ctx.resolve<ir::addr_t>(reg)
                                            : ctx.current_frame().regs_.raw(reg);
           LOG("CallInstruction", "  %s: [%p]", ir::Reg::Out(i), out_addr);

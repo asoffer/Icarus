@@ -152,7 +152,7 @@ cc_library(
         "//compiler:module",
         "//compiler:resources",
         "//ir/instruction",
-        "//type:instantiated_generic_struct",
+        "//type:generic",
     ],
 )
 

@@ -70,9 +70,8 @@ cc_library(
     hdrs = ["callable.h"],
     deps = [
         ":type",
-        ":typed_value",
-        "//core:arguments",
-        "//ir/value:result_buffer",
+        ":qual_type",
+        "//core:params",
     ],
 )
 
@@ -168,43 +167,15 @@ cc_library(
 )
 
 cc_library(
-    name = "generic_function",
-    hdrs = ["generic_function.h"],
-    srcs = ["generic_function.cc"],
+    name = "generic",
+    hdrs = ["generic.h"],
     deps = [
-        ":callable",
-        ":function",
         ":type",
         ":typed_value",
         "//base:any_invocable",
         "//compiler:work_resources",
         "//core:arch",
         "//core:arguments",
-    ],
-)
-
-cc_library(
-    name = "generic_struct",
-    hdrs = ["generic_struct.h"],
-    srcs = ["generic_struct.cc"],
-    deps = [
-        ":struct",
-        ":type",
-        "//ast:scope",
-        "//base:any_invocable",
-        "//core:arguments",
-        "//compiler:work_resources",
-        "//module",
-    ],
-)
-
-cc_library(
-    name = "instantiated_generic_struct",
-    hdrs = ["instantiated_generic_struct.h"],
-    deps = [
-        ":generic_struct",
-        ":struct",
-        ":type",
     ],
 )
 
@@ -250,10 +221,7 @@ cc_library(
     name = "overload_set",
     hdrs = ["overload_set.h"],
     srcs = ["overload_set.cc"],
-    deps = [
-        ":callable",
-        ":type",
-    ],
+    deps = [":type"],
 )
 
 cc_library(
@@ -338,8 +306,7 @@ cc_library(
     hdrs = ["provenance.h"],
     srcs = ["provenance.cc"],
     deps = CONCRETE_TYPES + [
-        ":generic_function",
-        ":generic_struct",
+        ":generic",
         ":overload_set",
         ":visitor",
         "//module",

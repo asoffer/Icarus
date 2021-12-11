@@ -118,7 +118,7 @@ type::QualType VerifyOperatorOverload(
     Compiler &c, ast::BinaryOperator const *node,
     type::Typed<ir::CompleteResultRef> const &lhs,
     type::Typed<ir::CompleteResultRef> const &rhs) {
-  absl::flat_hash_set<type::Callable const *> member_types;
+  absl::flat_hash_set<type::Function const *> member_types;
   absl::flat_hash_set<ast::Declaration::Id const *> members;
 
   auto symbol = NodeType::Symbol(node->kind());
@@ -126,7 +126,7 @@ type::QualType VerifyOperatorOverload(
 
   auto get_ids = [&](Context const &ctx, ast::Declaration::Id const *id) {
     members.insert(id);
-    member_types.insert(&ctx.qual_types(id)[0].type().as<type::Callable>());
+    member_types.insert(&ctx.qual_types(id)[0].type().as<type::Function>());
   };
 
   for (auto const &t : {lhs.type(), rhs.type()}) {
@@ -157,23 +157,17 @@ type::QualType VerifyOperatorOverload(
       ASSIGN_OR(continue, auto qt, qts[0]);
       // Must be callable because we're looking at overloads for operators which
       // have previously been type-checked to ensure callability.
-      auto &c = qt.type().as<type::Callable>();
+      auto &c = qt.type().as<type::Function>();
       member_types.insert(&c);
     }
   }
 
   c.context().SetViableOverloads(node, std::move(os));
 
-  std::vector<type::Typed<ir::CompleteResultRef>> pos_args;
-  pos_args.emplace_back(lhs);
-  pos_args.emplace_back(rhs);
-  // TODO: Check that we only have one return type on each of these overloads.
+  ASSERT(member_types.size() == 1u);
 
-  return type::QualType(
-      type::MakeOverloadSet(std::move(member_types))
-          ->return_types(core::Arguments<type::Typed<ir::CompleteResultRef>>(
-              std::move(pos_args), {}))[0],
-      type::Quals::Unqualified());
+  return type::QualType((*member_types.begin())->return_types()[0],
+                        type::Quals::Unqualified());
 }
 
 template <char C>

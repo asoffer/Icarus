@@ -149,7 +149,7 @@ struct CallInstruction
         args_(std::move(args)),
         outs_(std::move(outs)) {
     ASSERT(args_.num_entries() == fn_type_->params().size());
-    ASSERT(this->outs_.size() == fn_type_->output().size());
+    ASSERT(this->outs_.size() == fn_type_->return_types().size());
   }
 
   std::string to_string() const;

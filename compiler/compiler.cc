@@ -6,11 +6,7 @@
 #include "compiler/emit/common.h"
 #include "compiler/instructions.h"
 #include "diagnostic/consumer/buffering.h"
-#include "ir/compiled_fn.h"
-#include "ir/compiled_jump.h"
 #include "ir/interpreter/evaluate.h"
-#include "type/generic_struct.h"
-#include "type/jump.h"
 
 namespace compiler {
 

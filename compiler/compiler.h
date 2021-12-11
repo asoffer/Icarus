@@ -37,8 +37,6 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
-#include "type/generic_function.h"
-#include "type/generic_struct.h"
 #include "type/jump.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
@@ -637,13 +635,9 @@ struct Compiler
       std::vector<type::QualType>,
       absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
   VerifyCall(ast::Call const *call_expr,
-             absl::flat_hash_map<ast::Expression const *,
-                                 type::Callable const *> const &overload_map,
              core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 
-  std::pair<type::QualType, absl::flat_hash_map<ast::Expression const *,
-                                                type::Callable const *>>
-  VerifyCallee(
+  type::QualType VerifyCallee(
       ast::Expression const *callee,
       absl::flat_hash_set<type::Type> const &argument_dependent_lookup_types);
 

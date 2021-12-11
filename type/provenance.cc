@@ -3,7 +3,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
-#include "type/generic_function.h"
+#include "type/generic.h"
 #include "type/jump.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
@@ -39,10 +39,12 @@ struct ProvenanceVisitor
   module::BasicModule const *Visit(ProvenanceTag, Function const *) final {
     return nullptr;
   }
-  module::BasicModule const *Visit(ProvenanceTag, GenericFunction const *) final {
+  module::BasicModule const *Visit(ProvenanceTag,
+                                   Generic<Function> const *) final {
     return nullptr;
   }
-  module::BasicModule const *Visit(ProvenanceTag, GenericStruct const *) final {
+  module::BasicModule const *Visit(ProvenanceTag,
+                                   Generic<Struct> const *) final {
     // TODO: Implement.
     return nullptr;
   }

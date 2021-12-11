@@ -88,9 +88,10 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
     }
   }
 
-  ASSERT(fn_type->output().size() <= 1u);
+  ASSERT(fn_type->return_types().size() <= 1u);
 
-  auto out_type = fn_type->output().empty() ? type::Void : fn_type->output()[0];
+  auto out_type =
+      fn_type->return_types().empty() ? type::Void : fn_type->return_types()[0];
 
   ffi_cif cif;
   ffi_arg ret;

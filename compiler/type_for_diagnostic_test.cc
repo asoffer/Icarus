@@ -101,36 +101,6 @@ INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
                              TestCase{
                                  .context  = R"(
                                  Int ::= i64
-                                 S ::= struct (T :: type) {}
-                                 n: Int
-                                 s: S(n:?)
-                                 )",
-                                 .expr     = "s",
-                                 .expected = "S(Int)",
-                             },
-                             TestCase{
-                                 .context  = R"(
-                                 Int ::= i64
-                                 S ::= struct (T :: type) {}
-                                 n: Int
-                                 s: n:?'S
-                                 )",
-                                 .expr     = "s",
-                                 .expected = "S(Int)",
-                             },
-                             TestCase{
-                                 .context  = R"(
-                                 Int ::= i64
-                                 S ::= struct (T :: type) {}
-                                 n: Int
-                                 s: S(T = n:?)
-                                 )",
-                                 .expr     = "s",
-                                 .expected = "S(T = Int)",
-                             },
-                             TestCase{
-                                 .context  = R"(
-                                 Int ::= i64
                                  f ::= () -> Int { return 0 }
                                  )",
                                  .expr     = "f()",

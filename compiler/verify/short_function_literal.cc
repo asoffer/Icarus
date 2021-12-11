@@ -26,8 +26,10 @@ type::QualType VerifyGeneric(Compiler &c,
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Function const * {
     instantiation_compiler.set_work_resources(wr);
-    auto [params, rets_ref, context, inserted] =
-        Instantiate(instantiation_compiler, node, args);
+    ASSIGN_OR(return nullptr,  //
+                     auto result,
+                     Instantiate(instantiation_compiler, node, args));
+    auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
@@ -36,7 +38,7 @@ type::QualType VerifyGeneric(Compiler &c,
       compiler.set_work_resources(wr);
       compiler.builder().CurrentGroup() = cg;
       auto qt                           = VerifyConcrete(compiler, node);
-      auto outs = qt.type().as<type::Function>().output();
+      auto outs = qt.type().as<type::Function>().return_types();
       rets_ref.assign(outs.begin(), outs.end());
 
       // TODO: Provide a mechanism by which this can fail.
@@ -53,11 +55,8 @@ type::QualType VerifyGeneric(Compiler &c,
   };
 
   return c.context().set_qual_type(
-      node, type::QualType::Constant(new type::GenericFunction(
-                node->params().Transform([](auto const &p) {
-                  return type::GenericFunction::EmptyStruct{};
-                }),
-                std::move(gen))))[0];
+      node, type::QualType::Constant(
+                new type::Generic<type::Function>(std::move(gen))))[0];
 }
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {

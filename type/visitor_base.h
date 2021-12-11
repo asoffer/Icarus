@@ -13,6 +13,9 @@ struct VisitorBase {
     UNREACHABLE();
   }
 
+  virtual void ErasedVisit(Generic<Function> const *, void *, void *) = 0;
+  virtual void ErasedVisit(Generic<Struct> const *, void *, void *)   = 0;
+
 #define ICARUS_TYPE_TYPE_X(subtype)                                            \
   virtual void ErasedVisit(subtype const *, void *, void *) = 0;
 #include "type/type.xmacro.h"

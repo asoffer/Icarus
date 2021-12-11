@@ -8,6 +8,7 @@
 
 #include "compiler/context.h"
 #include "compiler/module.h"
+#include "compiler/work_item.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/source/file_name.h"
 #include "ir/value/module_id.h"

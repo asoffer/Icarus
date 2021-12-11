@@ -224,8 +224,10 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Function const * {
     instantiation_compiler.set_work_resources(wr);
-    auto [params, rets_ref, context, inserted] =
-        Instantiate(instantiation_compiler, node, args);
+    ASSIGN_OR(return nullptr,  //
+                     auto result,
+                     Instantiate(instantiation_compiler, node, args));
+    auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s into %s", node->DebugString(),
@@ -235,7 +237,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
       compiler.set_work_resources(wr);
       compiler.builder().CurrentGroup() = cg;
       auto qt                           = VerifyConcrete(compiler, node);
-      auto outs = qt.type().as<type::Function>().output();
+      auto outs = qt.type().as<type::Function>().return_types();
       rets_ref.assign(outs.begin(), outs.end());
 
       // TODO: Provide a mechanism by which this can fail.
@@ -252,10 +254,8 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
     }
   };
 
-  return type::QualType::Constant(type::Allocate<type::GenericFunction>(
-      node->params().Transform(
-          [](auto const &p) { return type::GenericFunction::EmptyStruct{}; }),
-      std::move(gen)));
+  return type::QualType::Constant(
+      type::Allocate<type::Generic<type::Function>>(std::move(gen)));
 }
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::FunctionLiteral const *node) {
@@ -310,10 +310,10 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
     LOG("FunctionLiteral", "Body verification was a failure.");
     return false;
   }
-  if (maybe_return_types->size() != fn_type.output().size()) {
+  if (maybe_return_types->size() != fn_type.return_types().size()) {
     diag().Consume(ReturningWrongNumber{
         .actual   = maybe_return_types->size(),
-        .expected = fn_type.output().size(),
+        .expected = fn_type.return_types().size(),
         // TODO: The location specified here is really wide.
         .range = node->range()});
     return false;
@@ -322,10 +322,10 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   bool error = false;
   for (size_t i = 0; i < maybe_return_types->size(); ++i) {
     if (not type::CanCastImplicitly((*maybe_return_types)[i],
-                                    fn_type.output()[i])) {
+                                    fn_type.return_types()[i])) {
       error = true;
       diag().Consume(ReturnTypeMismatch{.actual   = (*maybe_return_types)[i],
-                                        .expected = fn_type.output()[i]});
+                                        .expected = fn_type.return_types()[i]});
     }
   }
 

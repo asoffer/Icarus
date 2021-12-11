@@ -36,7 +36,7 @@ std::string CallInstruction::to_string() const {
   fn_ss << fn_;
   return absl::StrFormat(
       "%scall %s: %s",
-      fn_type_->output().empty()
+      fn_type_->return_types().empty()
           ? ""
           : absl::StrCat("(",
                          absl::StrJoin(outs_.regs(), ", ",

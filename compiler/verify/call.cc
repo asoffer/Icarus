@@ -27,20 +27,6 @@ struct BuiltinError {
   std::string message;
 };
 
-struct UncallableExpression {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "uncallable-expression";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Uncallable expression"),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
-  }
-
-  frontend::SourceRange range;
-};
-
 struct UncallableWithArguments {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "uncallable-with-arguments";
@@ -288,7 +274,7 @@ type::QualType VerifyOpaqueCall(
     Compiler *c, frontend::SourceRange const &range,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   type::QualType qt = type::QualType::Constant(
-      ir::Fn(ir::BuiltinFn::Opaque()).type()->output()[0]);
+      ir::Fn(ir::BuiltinFn::Opaque()).type()->return_types()[0]);
   if (not arg_vals.empty()) {
     c->diag().Consume(BuiltinError{
         .range   = range,
@@ -302,7 +288,7 @@ type::QualType VerifyBytesCall(
     Compiler *c, frontend::SourceRange const &range,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   auto qt = type::QualType::Constant(
-      ir::Fn(ir::BuiltinFn::Bytes()).type()->output()[0]);
+      ir::Fn(ir::BuiltinFn::Bytes()).type()->return_types()[0]);
 
   if (not arg_vals.named().empty()) {
     c->diag().Consume(BuiltinError{.range = range,
@@ -338,7 +324,7 @@ type::QualType VerifyAlignmentCall(
     Compiler *c, frontend::SourceRange const &range,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   auto qt = type::QualType::Constant(
-      ir::Fn(ir::BuiltinFn::Alignment()).type()->output()[0]);
+      ir::Fn(ir::BuiltinFn::Alignment()).type()->return_types()[0]);
 
   if (not arg_vals.named().empty()) {
     c->diag().Consume(
@@ -390,24 +376,6 @@ type::QualType VerifyAbortCall(
 absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
   LOG("Call", "Verifying %s", node->DebugString());
 
-  if (not node->named_arguments().empty()) { goto not_an_interface; }
-  if (node->positional_arguments().empty()) { goto not_an_interface; }
-  for (auto const &arg : node->positional_arguments()) {
-    if (not arg.expr().is<ast::Declaration>()) { goto not_an_interface; }
-  }
-
-  if (auto callee_qt = VerifyType(node->callee())[0]) {
-    if (not callee_qt.ok()) {
-      return context().set_qual_type(node, type::QualType::Error());
-    }
-    if (auto const *gs = callee_qt.type().if_as<type::GenericStruct>()) {
-      return context().set_qual_type(node,
-                                     type::QualType::Constant(type::Interface));
-    }
-  }
-
-not_an_interface:
-
   ir::CompleteResultBuffer buffer;
   ASSIGN_OR(return type::QualType::ErrorSpan(),  //
                    auto arg_vals, VerifyArguments(node->arguments(), buffer));
@@ -458,43 +426,39 @@ not_an_interface:
     argument_dependent_lookup_types.insert(
         context().qual_types(&arg.expr())[0].type());
   }
-  auto [callee_qt, overload_map] =
+  auto callee_qt =
       VerifyCallee(node->callee(), argument_dependent_lookup_types);
   LOG("Call", "Callee's qual-type is %s", callee_qt);
   if (not callee_qt.ok()) {
     return context().set_qual_type(node, type::QualType::Error());
   }
 
-  if (auto const *c = callee_qt.type().if_as<type::Callable>()) {
-    auto qts_or_errors = VerifyCall(node, overload_map, arg_vals);
-    if (auto *errors = std::get_if<absl::flat_hash_map<
-            type::Callable const *, core::CallabilityResult>>(&qts_or_errors)) {
-      core::Arguments<std::string> argument_type_strings;
-      for (auto const &arg : node->positional_arguments()) {
-        argument_type_strings.pos_emplace(
-            TypeForDiagnostic(&arg.expr(), context()));
-      }
-      for (auto const &arg : node->named_arguments()) {
-        argument_type_strings.named_emplace(
-            arg.name(), TypeForDiagnostic(&arg.expr(), context()));
-      }
-
-      diag().Consume(UncallableWithArguments{
-          .arguments = std::move(argument_type_strings),
-          .errors    = std::move(*errors),
-          .range     = node->callee()->range(),
-      });
-      return context().set_qual_type(node, type::QualType::Error());
+  auto qts_or_errors = VerifyCall(node, arg_vals);
+  if (auto *errors = std::get_if<
+          absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>(
+          &qts_or_errors)) {
+    core::Arguments<std::string> argument_type_strings;
+    for (auto const &arg : node->positional_arguments()) {
+      argument_type_strings.pos_emplace(
+          TypeForDiagnostic(&arg.expr(), context()));
     }
-    auto &qual_type = std::get<std::vector<type::QualType>>(qts_or_errors);
-    LOG("Call", "Call qual-type is %s on %p", qual_type, &context());
-    // TODO: under what circumstances can we prove that the implementation
-    // doesn't need to be run at runtime?
-    return context().set_qual_types(node, std::move(qual_type));
-  } else {
-    diag().Consume(UncallableExpression{.range = node->callee()->range()});
+    for (auto const &arg : node->named_arguments()) {
+      argument_type_strings.named_emplace(
+          arg.name(), TypeForDiagnostic(&arg.expr(), context()));
+    }
+
+    diag().Consume(UncallableWithArguments{
+        .arguments = std::move(argument_type_strings),
+        .errors    = std::move(*errors),
+        .range     = node->callee()->range(),
+    });
     return context().set_qual_type(node, type::QualType::Error());
   }
+  auto &qual_type = std::get<std::vector<type::QualType>>(qts_or_errors);
+  LOG("Call", "Call qual-type is %s on %p", qual_type, &context());
+  // TODO: under what circumstances can we prove that the implementation
+  // doesn't need to be run at runtime?
+  return context().set_qual_types(node, std::move(qual_type));
 }
 
 bool Compiler::VerifyPatternType(ast::Call const *node, type::Type t) {
@@ -505,7 +469,7 @@ bool Compiler::VerifyPatternType(ast::Call const *node, type::Type t) {
   // that seems like a bad idea.
   ASSIGN_OR(return false,  //
                    auto qt, VerifyType(node->callee())[0]);
-  if (auto const *gs = qt.type().if_as<type::GenericStruct>()) {
+  if (auto const *gs = qt.type().if_as<type::Generic<type::Struct>>()) {
     for (auto const &arg : node->arguments()) {
       // TODO: Having these always be types is problematic, but for now we don't
       // have a way to deduce another possibility.

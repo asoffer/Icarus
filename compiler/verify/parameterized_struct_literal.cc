@@ -6,8 +6,7 @@
 #include "compiler/module.h"
 #include "compiler/resources.h"
 #include "compiler/verify/common.h"
-#include "type/generic_struct.h"
-#include "type/instantiated_generic_struct.h"
+#include "type/generic.h"
 #include "type/qual_type.h"
 #include "type/struct.h"
 #include "type/typed_value.h"
@@ -21,18 +20,20 @@ bool Compiler::VerifyBody(ast::ParameterizedStructLiteral const *node) {
 
 absl::Span<type::QualType const> Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
-  auto *gen_struct = type::Allocate<type::GenericStruct>();
+  auto *gen_struct = type::Allocate<type::Generic<type::Struct>>();
 
-  auto gen = [gen_struct, node,
-              instantiation_compiler = Compiler(&context(), resources()),
-              cg                     = builder().CurrentGroup()](
-                 WorkResources const &wr,
-                 core::Arguments<type::Typed<ir::CompleteResultRef>> const
-                     &args) mutable
-      -> std::pair<core::Params<type::QualType>, type::Struct *> {
+  auto gen =
+      [gen_struct, node,
+       instantiation_compiler = Compiler(&context(), resources()),
+       cg                     = builder().CurrentGroup()](
+          WorkResources const &wr,
+          core::Arguments<type::Typed<ir::CompleteResultRef>> const
+              &args) mutable -> type::InstantiatedGeneric<type::Struct> * {
     instantiation_compiler.set_work_resources(wr);
-    auto [params, rets_ref, context, inserted] =
-        Instantiate(instantiation_compiler, node, args);
+    ASSIGN_OR(return nullptr,  //
+                     auto result,
+                     Instantiate(instantiation_compiler, node, args));
+    auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
       LOG("ParameterizedStructLiteral", "inserted! %s", node->DebugString());
@@ -42,16 +43,17 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       compiler.builder().CurrentGroup() = cg;
 
       auto [t, inserted] =
-          compiler.context().EmplaceType<type::InstantiatedGenericStruct>(
-              node, compiler.resources().module,
-              type::Struct::Options{.is_copyable = not node->hashtags.contains(
-                                        ir::Hashtag::Uncopyable),
-                                    .is_movable = not node->hashtags.contains(
-                                        ir::Hashtag::Immovable)},
-              gen_struct);
+          compiler.context()
+              .EmplaceType<type::InstantiatedGeneric<type::Struct>>(
+                  node, gen_struct, compiler.resources().module,
+                  type::Struct::Options{
+                      .is_copyable =
+                          not node->hashtags.contains(ir::Hashtag::Uncopyable),
+                      .is_movable =
+                          not node->hashtags.contains(ir::Hashtag::Immovable)});
 
-      auto *s = &const_cast<type::InstantiatedGenericStruct &>(
-          t.as<type::InstantiatedGenericStruct>());
+      auto *s = &const_cast<type::InstantiatedGeneric<type::Struct> &>(
+          t.as<type::InstantiatedGeneric<type::Struct>>());
       if (inserted) {
         s->set_arguments(args.Transform([](auto const &a) {
           ir::CompleteResultBuffer buffer;
@@ -82,16 +84,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(
           node->DebugString(), *s, s->fields().size());
       // TODO: Hack just assuming parameterized structs are parameterized on
       // exactly one type which is anonymous.
-      return std::make_pair(core::Params<type::QualType>{core::AnonymousParam(
-                                type::QualType::Constant(type::Type_))},
-                            s);
+      return s;
     } else {
       LOG("ParameterizedStructLiteral", "cached! %s", node->DebugString());
-      return std::make_pair(
-          core::Params<type::QualType>{
-              core::AnonymousParam(type::QualType::Constant(type::Type_))},
-          &const_cast<type::InstantiatedGenericStruct &>(
-              context.LoadType(node).as<type::InstantiatedGenericStruct>()));
+      return &const_cast<type::InstantiatedGeneric<type::Struct> &>(
+          context.LoadType(node).as<type::InstantiatedGeneric<type::Struct>>());
     }
   };
 
