@@ -20,6 +20,7 @@ cc_library(
         "//ir/value:char",
         "//ir/value:module_id",
         "//ir/value:reg",
+        "//type:scope",
         "//type:slice",
         "//type/interface",
         "//type:typed_value",

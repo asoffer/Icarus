@@ -33,6 +33,7 @@
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/scope.h"
 #include "type/slice.h"
 #include "type/struct.h"
 #include "type/type.h"
@@ -511,7 +512,7 @@ struct Builder {
     } else if constexpr (base::meta<T> == base::meta<type::Type>) {
       return type::Type_;
     } else if constexpr (base::meta<T> == base::meta<Scope>) {
-      return type::Scope;
+      return type::Scp({});
     } else if constexpr (base::meta<T> == base::meta<ModuleId>) {
       return type::Module;
     } else if constexpr (base::meta<T> == base::meta<interface::Interface>) {

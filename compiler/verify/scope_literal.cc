@@ -162,7 +162,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ScopeLiteral const *n
   LOG("ScopeLiteral", "Verifying body of %p: %s", node, node->DebugString());
 
   auto qts =
-      context().set_qual_type(node, type::QualType::Constant(type::Scope));
+      context().set_qual_type(node, type::QualType::Constant(type::Scp({})));
   auto qt = qts[0];
 
   type::Type state_type = nullptr;

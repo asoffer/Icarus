@@ -26,6 +26,7 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
+#include "type/scope.h"
 #include "type/slice.h"
 #include "type/struct.h"
 #include "type/type.h"
@@ -82,7 +83,7 @@ bool Compare(::type::Type t) {
   } else if constexpr (base::meta<T> == base::meta<ir::addr_t>) {
     return t.is<::type::Pointer>() or t == type::NullPtr or t.is<type::Slice>();
   } else if constexpr (base::meta<T> == base::meta<ir::Scope>) {
-    return t == ::type::Scope;
+    return t == ::type::Type(::type::Scp({}));
   } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {
     return t.is<::type::Struct>();
   } else if constexpr (base::meta<T> == base::meta<ir::Fn>) {

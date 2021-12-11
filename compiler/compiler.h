@@ -324,7 +324,7 @@ struct Compiler
     type::Type t = [] {
       constexpr auto type = base::meta<T>;
       if constexpr (type == base::meta<type::Type>) { return type::Type_; }
-      if constexpr (type == base::meta<ir::Scope>) { return type::Scope; }
+      if constexpr (type == base::meta<ir::Scope>) { return type::Scp({}); }
       if constexpr (type == base::meta<ir::ModuleId>) { return type::Module; }
       if constexpr (type == base::meta<uint64_t>) { return type::U64; }
       if constexpr (type == base::meta<ir::Integer>) { return type::Integer; }

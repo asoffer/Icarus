@@ -314,6 +314,26 @@ cc_library(
 )
 
 cc_library(
+    name = "scope",
+    hdrs = ["scope.h"],
+    srcs = ["scope.cc"],
+    deps = [
+        ":callable",
+        ":qual_type",
+        ":type",
+        ":typed_value",
+        "//base:extend",
+        "//base/extend:serialize",
+        "//base/extend:traverse",
+        "//base:global",
+        "//core:params",
+        "//ir/instruction:base",
+        "//ir/instruction:debug",
+        "@com_google_absl//absl/container:node_hash_map",
+    ],
+)
+
+cc_library(
     name = "slice",
     hdrs = ["slice.h"],
     srcs = ["slice.cc"],

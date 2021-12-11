@@ -68,6 +68,7 @@ cc_library(
         "//type/interface:ir",
         "//type:opaque",
         "//type:pointer",
+        "//type:scope",
         "//type:slice",
         "//type:struct",
         "//type:generic",
