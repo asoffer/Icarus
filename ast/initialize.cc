@@ -367,10 +367,11 @@ void YieldStmt::Initialize(Initializer& initializer) {
 void ScopeLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
-  if (state_type_) { state_type_->Initialize(initializer); }
+  context_decl_.Initialize(initializer);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
-  for (auto& decl : decls_) { decl.Initialize(initializer); }
+  for (auto& param : params_) { param.value->Initialize(initializer); }
+  InitializeAll(stmts_, initializer, &covers_binding_, &is_dependent_);
 }
 
 void ScopeNode::Initialize(Initializer& initializer) {

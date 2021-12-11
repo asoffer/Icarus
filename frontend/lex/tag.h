@@ -57,6 +57,7 @@ enum Tag : uint64_t {
   empty_brackets  = 1ull << 46,
   rocket          = 1ull << 47,
   tick            = 1ull << 48,
+  kw_scope        = 1ull << 49,
 };
 
 inline std::ostream& operator<<(std::ostream& os, Tag t) {
@@ -110,6 +111,7 @@ inline std::ostream& operator<<(std::ostream& os, Tag t) {
       "empty_brackets",
       "rocket",
       "tick",
+      "scope",
   };
   const char* sep = "";
   os << "Tag(";

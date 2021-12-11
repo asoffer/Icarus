@@ -253,7 +253,8 @@ struct ParamDependencyGraphBuilder
 
   void Visit(ScopeLiteral const *node,
              core::DependencyNode<Declaration const *> d) {
-    for (auto const &decl : node->decls()) { Visit(&decl, d); }
+    for (auto const &param : node->params()) { Visit(param.value.get(), d); }
+    for (auto const *stmt : node->stmts()) { Visit(stmt, d); }
   }
 
   void Visit(ScopeNode const *node,

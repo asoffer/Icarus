@@ -1406,22 +1406,29 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
 }
 
 std::unique_ptr<ast::Node> BuildScopeLiteral(
-    std::unique_ptr<ast::Expression> state_type,
-    std::unique_ptr<Statements> stmts, SourceRange const &range,
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  std::vector<ast::Declaration> decls;
-  for (auto &stmt : stmts->content_) {
-    if (auto *decl = stmt->if_as<ast::Declaration>()) {
-      decls.push_back(std::move(*decl));
-    } else {
-      diag.Consume(NonDeclarationInScope{
-          .error_range   = stmt->range(),
-          .context_range = range,
-      });
-    }
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
+  // TODO: Error handling.
+  std::vector<std::unique_ptr<ast::Declaration>> params =
+      ExtractIfCommaList<ast::Declaration>(std::move(nodes[2]), true);
+
+  auto elements = std::move(nodes[1]->as<ast::ArrayLiteral>()).extract();
+  ASSERT(elements.size() == 1u);
+  auto &id      = elements[0]->as<ast::Identifier>();
+  auto id_range = id.range();
+
+  Statements stmts(nodes[1]->range());
+  if (auto *s = nodes[3]->if_as<Statements>()) {
+    stmts = std::move(*s);
+  } else {
+    stmts.append(std::move(nodes[1]));
   }
-  return std::make_unique<ast::ScopeLiteral>(range, std::move(state_type),
-                                             std::move(decls));
+
+  return std::make_unique<ast::ScopeLiteral>(
+      range, ast::Declaration::Id(std::move(id).extract(), id_range),
+      std::move(params), std::move(stmts).extract());
 }
 
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
@@ -1555,10 +1562,6 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     return std::make_unique<ast::Jump>(range, nullptr, std::move(params),
                                        std::move(stmts));
 
-  } else if (tk == "scope") {
-    return BuildScopeLiteral(move_as<ast::Expression>(nodes[1]),
-                             move_as<Statements>(nodes.back()), range, diag);
-
   } else if (tk == "struct") {
     auto stmts = ExtractStatements(std::move(nodes.back()));
 
@@ -1617,10 +1620,6 @@ std::unique_ptr<ast::Node> BuildKWBlock(
     } else if (tk == "interface") {
       return BuildInterfaceLiteral(std::move(nodes[1]->as<Statements>()), range,
                                    diag);
-
-    } else if (tk == "scope") {
-      return BuildScopeLiteral(nullptr, move_as<Statements>(nodes[1]), range,
-                               diag);
 
     } else if (tk == "block") {
       return BuildBlock(move_as<Statements>(nodes[1]), range, diag);
@@ -1694,8 +1693,9 @@ std::unique_ptr<ast::Node> LabelScopeNode(
 
 constexpr uint64_t OP_B = op_b | tick | dot | colon | eq | colon_eq | rocket;
 constexpr uint64_t FN_CALL_EXPR = paren_call_expr | full_call_expr;
-constexpr uint64_t EXPR         = expr | fn_expr | scope_expr | FN_CALL_EXPR |
-                          paren_expr | bracket_expr | empty_brackets;
+constexpr uint64_t NON_BRACKET_EXPR =
+    expr | fn_expr | scope_expr | FN_CALL_EXPR | paren_expr | empty_brackets;
+constexpr uint64_t EXPR  = NON_BRACKET_EXPR | bracket_expr;
 constexpr uint64_t STMTS = stmt | stmt_list;
 // Used in error productions only!
 constexpr uint64_t RESERVED = kw_struct | kw_block_head | op_lt;
@@ -1803,6 +1803,10 @@ static base::Global kRules = std::array{
                      braced_stmts},
            .output  = expr,
            .execute = BuildParameterizedKeywordScope},
+    rule_t{.match   = {kw_scope, bracket_expr, empty_parens | paren_decl_list,
+                     braced_stmts},
+           .output  = expr,
+           .execute = BuildScopeLiteral},
     rule_t{.match   = {kw_struct, l_bracket, decl | decl_list, r_bracket,
                      empty_parens | paren_expr | paren_decl_list, braced_stmts},
            .output  = expr,
@@ -1824,7 +1828,8 @@ static base::Global kRules = std::array{
     rule_t{.match   = {RESERVED, tick, RESERVED, paren_expr | empty_parens},
            .output  = full_call_expr,
            .execute = ReservedKeywords<1, 0, 2>},
-    rule_t{.match = {EXPR, paren_expr | empty_parens | paren_decl_list},
+    rule_t{.match = {NON_BRACKET_EXPR,
+                     paren_expr | empty_parens | paren_decl_list},
            // TODO: Remove the paren_decl_list and have that be it's own
            // interface building node.
            .output  = paren_call_expr,

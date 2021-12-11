@@ -228,7 +228,8 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
   }
 
   void Visit(ast::ScopeLiteral const *node) final {
-    for (auto const &decl : node->decls()) { Visit(&decl); }
+    for (auto const &param : node->params()) { Visit(param.value.get()); }
+    for (auto const *stmt: node->stmts()) { Visit(stmt); }
   }
 
   void Visit(ast::ScopeNode const *node) final {

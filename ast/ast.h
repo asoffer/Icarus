@@ -1056,43 +1056,64 @@ struct ReturnStmt : Node {
   std::vector<std::unique_ptr<Expression>> exprs_;
 };
 
-// ScopeLiteral:
-// Represents the definition of a user-defined scope, including how blocks jump
-// to one another.
-//
-// Example:
-//  ```
-//  if ::= scope {
-//    init ::= (b: bool) -> () {
-//      goto b, then(), else() | exit()
-//    }
-//    then ::= block {
-//      before ::= () -> () {}
-//      after ::= () -> () { jump exit() }
-//    }
-//    else ::= block? {
-//      before ::= () -> () {}
-//      after ::= () -> () { jump exit() }
-//    }
-//    done ::= () -> () {}
-//  }
-//  ```
-struct ScopeLiteral : Expression, WithScope<ScopeLitScope> {
-  explicit ScopeLiteral(frontend::SourceRange const &range,
-                        std::unique_ptr<Expression> state_type,
-                        std::vector<Declaration> decls)
-      : Expression(range),
-        state_type_(std::move(state_type)),
-        decls_(std::move(decls)) {}
-
-  absl::Span<Declaration const> decls() const { return decls_; }
-  Expression const *state_type() const { return state_type_.get(); }
+// Terminal:
+// Represents any node that is not an identifier but has no sub-parts. These are
+// typically numeric literals, or expressions that are also keywords such as
+// `true`, `false`, or `null`.
+struct Terminal : Expression {
+  template <typename T>
+  explicit Terminal(frontend::SourceRange const &range, T const &value)
+      : Expression(range), type_(base::meta<T>) {
+    value_.append(value);
+  }
+  ir::CompleteResultRef value() const { return value_[0]; }
+  base::MetaValue type() const { return type_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  std::unique_ptr<Expression> state_type_;
-  std::vector<Declaration> decls_;
+  ir::CompleteResultBuffer value_;
+  base::MetaValue type_;
+};
+
+// ScopeLiteral:
+// Represents the definition of a user-defined scope.
+//
+// Example:
+//  ```
+//  repeat ::= scope [context] (n: i64) {
+//    i := 0
+//    while (i < n) do {
+//      context.do <<
+//      i += 1
+//    }
+//  }
+//  ```
+struct ScopeLiteral : ParameterizedExpression, WithScope<ScopeLitScope> {
+  explicit ScopeLiteral(frontend::SourceRange const &range,
+                        Declaration::Id context_identifier,
+                        std::vector<std::unique_ptr<Declaration>> params,
+                        std::vector<std::unique_ptr<Node>> stmts)
+      : ParameterizedExpression(range, std::move(params)),
+        context_decl_(ContextDeclaration(std::move(context_identifier))),
+        stmts_(std::move(stmts)) {}
+
+  Declaration const &context() const { return context_decl_; }
+  base::PtrSpan<Node const> stmts() const { return stmts_; }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  static Declaration ContextDeclaration(Declaration::Id context_identifier) {
+    auto range = context_identifier.range();
+    // TODO: Type-expression is needed.
+    return Declaration(
+        range, std::vector<Declaration::Id>{std::move(context_identifier)},
+        nullptr, nullptr, Declaration::f_IsConst);
+  }
+
+  Declaration context_decl_;
+  std::vector<std::unique_ptr<Node>> stmts_;
 };
 
 // ScopeNode:
@@ -1230,26 +1251,6 @@ struct StructLiteral : Expression, WithScope<DeclScope> {
 
  private:
   std::vector<Declaration> fields_;
-};
-
-// Terminal:
-// Represents any node that is not an identifier but has no sub-parts. These are
-// typically numeric literals, or expressions that are also keywords such as
-// `true`, `false`, or `null`.
-struct Terminal : Expression {
-  template <typename T>
-  explicit Terminal(frontend::SourceRange const &range, T const &value)
-      : Expression(range), type_(base::meta<T>) {
-    value_.append(value);
-  }
-  ir::CompleteResultRef value() const { return value_[0]; }
-  base::MetaValue type() const { return type_; }
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
- private:
-  ir::CompleteResultBuffer value_;
-  base::MetaValue type_;
 };
 
 // UnaryOperator:
