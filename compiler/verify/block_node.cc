@@ -40,15 +40,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BlockNode const *node
     qt.MarkError();
     return context().set_qual_type(node, qt);
   }
-  auto const *compiled_scope = ir::CompiledScope::From(*scope);
 
-  if (not compiled_scope->find_block(node->name())) {
-    diag().Consume(NoBlockWithName{
-        .name  = std::string(node->name()),
-        .range = node->name_range(),
-    });
-    qt.MarkError(); 
-  }
+  // TODO: Verify that the block's name makes sense.
 
   for (auto &param : node->params()) {
     if (not VerifyType(param.value.get())[0].ok()) { qt.MarkError(); }

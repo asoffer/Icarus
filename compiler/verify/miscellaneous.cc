@@ -42,7 +42,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::YieldStmt const *node
   return {};
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::ScopeNode const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::ScopeNode const *node) {
   LOG("ScopeNode", "Verifying ScopeNode named `%s`",
       node->name()->DebugString());
   // TODO: The type of the arguments and the scope name are independent and
@@ -61,59 +62,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ScopeNode const *node
 
   ASSIGN_OR(type::QualType::Error(),  //
             ir::Scope scope, EvaluateOrDiagnoseAs<ir::Scope>(node->name()));
-  auto *compiled_scope               = ir::CompiledScope::From(scope);
-  ir::OverloadSet &exit_overload_set = compiled_scope->exit();
 
-  std::vector<absl::Span<type::Type const>> return_types;
-  std::optional<size_t> num_rets;
-  for (core::Arguments<type::QualType> const &args :
-       YieldArgumentTypes(context(), node)) {
-    if (auto maybe_fn = exit_overload_set.Lookup(args)) {
-      auto rets = maybe_fn->type()->return_types();
-      if (num_rets) {
-        if (*num_rets != rets.size()) { NOT_YET(); }
-      } else {
-        num_rets = rets.size();
-      }
-      return_types.push_back(rets);
-    } else {
-      NOT_YET();
-    }
-  }
-
-  switch (return_types.size()) {
-    case 0:
-      return context().set_qual_type(node,
-                                     type::QualType::NonConstant(type::Void));
-    case 1: {
-      std::vector<type::QualType> qts;
-      qts.reserve(return_types.front().size());
-      for (auto t : return_types.front()) {
-        qts.emplace_back(t, type::Quals::Unqualified());
-      }
-      return context().set_qual_types(node, qts);
-    }
-    default: {
-      std::vector<type::Type> merged_rets(return_types.front().begin(),
-                                          return_types.front().end());
-      absl::Span<absl::Span<type::Type const> const> return_types_span =
-          return_types;
-      return_types_span.remove_prefix(1);
-      for (absl::Span<type::Type const> rets : return_types_span) {
-        for (size_t i = 0; i < *num_rets; ++i) {
-          // TODO: Error checking.
-          merged_rets[i] = type::Meet(merged_rets[i], rets[i]);
-        }
-      }
-
-      std::vector<type::QualType> qts;
-      qts.reserve(merged_rets.size());
-      for (auto t : merged_rets) {
-        qts.emplace_back(t, type::Quals::Unqualified());
-      }
-      return context().set_qual_types(node, qts);
-    }
-  }
+  // TODO: Allow for types to be yielded to this position.
+  return context().set_qual_type(node, type::QualType::NonConstant(type::Void));
 }
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::Label const *node) {

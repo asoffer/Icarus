@@ -474,6 +474,7 @@ cc_library(
     name = "scope_literal",
     srcs = ["scope_literal.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:reg_or",

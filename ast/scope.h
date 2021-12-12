@@ -138,6 +138,9 @@ struct Scope : public base::Cast<Scope> {
 // An executable scope representing the body of a function literal. These scopes
 // need to know about all child scopes so they can stack-allocate enough space
 // when they start.
+//
+// TODO: Rename this as it represents not just functions but any executable
+// scope at the root of execution.
 struct FnScope : Scope {
   FnScope(Scope *parent) : Scope(parent, true) { descendants_.push_back(this); }
 
@@ -189,12 +192,6 @@ struct ModuleScope : FnScope {
 struct DeclScope : public Scope {
   DeclScope(Scope *parent) : Scope(parent, false) {}
   ~DeclScope() override {}
-};
-
-// Represents the body of a scope-literal which is the construct responsible for
-// defining scopes.
-struct ScopeLitScope : public DeclScope {
-  ScopeLitScope(Scope *parent) : DeclScope(parent) {}
 };
 
 bool Scope::ForEachDeclIdTowardsRoot(

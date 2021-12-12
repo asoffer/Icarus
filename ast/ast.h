@@ -1089,7 +1089,7 @@ struct Terminal : Expression {
 //    }
 //  }
 //  ```
-struct ScopeLiteral : ParameterizedExpression, WithScope<ScopeLitScope> {
+struct ScopeLiteral : ParameterizedExpression, WithScope<FnScope> {
   explicit ScopeLiteral(frontend::SourceRange const &range,
                         Declaration::Id context_identifier,
                         std::vector<std::unique_ptr<Declaration>> params,

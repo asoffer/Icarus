@@ -437,9 +437,6 @@ struct Builder {
 
   void MakeBlock(Block block, std::vector<RegOr<Fn>> befores,
                  std::vector<RegOr<Jump>> afters);
-  void MakeScope(Scope scope, std::vector<RegOr<Jump>> inits,
-                 std::vector<RegOr<Fn>> dones,
-                 absl::flat_hash_map<std::string_view, Block> blocks);
 
   void DebugIr() {
     CurrentBlock()->Append(DebugIrInstruction{.fn = CurrentGroup()});

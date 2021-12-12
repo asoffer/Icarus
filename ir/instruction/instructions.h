@@ -421,36 +421,6 @@ struct MakeBlockInstruction
   std::vector<RegOr<Jump>> afters;
 };
 
-struct MakeScopeInstruction
-    : base::Extend<MakeScopeInstruction>::With<base::BaseSerializeExtension,
-                                               DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat =
-      "make-scope(%1$s, %4$s, ...)";  // TODO
-
-  void Apply(interpreter::ExecutionContext& ctx) const {
-    absl::flat_hash_set<ir::Jump> resolved_inits;
-    resolved_inits.reserve(inits.size());
-    for (auto const& init : inits) { resolved_inits.insert(ctx.resolve(init)); }
-
-    std::vector<ir::Fn> resolved_dones;
-    resolved_dones.reserve(dones.size());
-    for (auto const& fn : dones) { resolved_dones.push_back(ctx.resolve(fn)); }
-
-    CompiledScope::From(scope)->Initialize(
-        std::move(resolved_inits), OverloadSet(std::move(resolved_dones)),
-        blocks);
-  }
-
-  friend void BaseTraverse(Inliner& inl, MakeScopeInstruction& inst) {
-    base::Traverse(inl, inst.inits, inst.dones);
-  }
-
-  Scope scope;
-  std::vector<RegOr<Jump>> inits;
-  std::vector<RegOr<Fn>> dones;
-  absl::flat_hash_map<std::string_view, Block> blocks;
-};
-
 struct StructIndexInstruction
     : base::Extend<StructIndexInstruction>::With<base::BaseTraverseExtension,
                                                  base::BaseSerializeExtension,

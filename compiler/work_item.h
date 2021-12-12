@@ -23,6 +23,7 @@ struct WorkItem : base::Extend<WorkItem>::With<base::AbslHashExtension> {
     EmitFunctionBody,
     EmitShortFunctionBody,
     EmitJumpBody,
+    EmitScopeBody,
   };
 
   static WorkItem VerifyBodyOf(auto const *n, Context *ctx) {

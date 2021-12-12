@@ -192,6 +192,9 @@ bool WorkGraph::Execute(WorkItem const &w) {
     case WorkItem::Kind::EmitJumpBody:
       result = c.EmitJumpBody(&w.node->as<ast::Jump>());
       break;
+    case WorkItem::Kind::EmitScopeBody:
+      result = c.EmitScopeBody(&w.node->as<ast::ScopeLiteral>());
+      break;
     case WorkItem::Kind::EmitFunctionBody:
       result = Execute({.kind    = WorkItem::Kind::VerifyFunctionBody,
                         .node    = w.node,

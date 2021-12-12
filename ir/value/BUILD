@@ -284,6 +284,8 @@ cc_library(
         "//base:extend",
         "//base/extend:absl_format",
         "//base/extend:absl_hash",
+        "//ir/blocks:group",
+        "//type:scope",
     ],
 )
 

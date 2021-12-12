@@ -17,6 +17,19 @@ NativeFn Module::InsertFunction(type::Function const *fn_type) {
   return NativeFn(ASSERT_NOT_NULL(iter->second.second.get()));
 }
 
+Scope Module::InsertScope(type::Scope const *scope_type) {
+  auto *s        = &scopes_.emplace_front(scope_type);
+  auto data      = std::make_unique<Scope::Data>(Scope::Data{
+      .scope = s,
+      .type  = scope_type,
+  });
+  auto *data_ptr = data.get();
+  auto [iter, inserted] =
+      scope_data_.try_emplace(Scope(data_ptr), ByteCode(), std::move(data));
+  ASSERT(inserted == true);
+  return Scope(ASSERT_NOT_NULL(iter->second.second.get()));
+}
+
 std::pair<NativeFn, bool> Module::InsertInit(type::Type t) {
   auto [iter, inserted] = init_.try_emplace(t);
   if (not inserted) { return std::pair(iter->second, inserted); }

@@ -68,15 +68,7 @@ cc_library(
 cc_library(
     name = "compiled_scope",
     hdrs = ["compiled_scope.h"],
-    deps = [
-        "//ir/value:block",
-        "//ir/value:jump",
-        "//ir/value:scope",
-        "//ir/value:overload_set",
-        "//type",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
+    deps = ["//ir/value:scope"],
 )
 
 cc_library(
@@ -100,6 +92,7 @@ cc_library(
         "//base:iterator",
         "//ir/byte_code",
         "//ir/value:native_fn",
+        "//ir/value:scope",
         "//type:function",
         "//type:pointer",
         "@com_google_absl//absl/container:flat_hash_map",

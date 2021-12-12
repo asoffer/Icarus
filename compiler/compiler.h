@@ -619,6 +619,7 @@ struct Compiler
   bool CompleteStruct(ast::ParameterizedStructLiteral const *node);
   bool CompleteEnum(ast::EnumLiteral const *node);
   bool EmitJumpBody(ast::Jump const *node);
+  bool EmitScopeBody(ast::ScopeLiteral const *node);
   bool EmitFunctionBody(ast::FunctionLiteral const *node);
   bool EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
 

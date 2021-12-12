@@ -183,9 +183,6 @@ struct Context {
   ir::ModuleId imported_module(ast::Import const *node);
   void set_imported_module(ast::Import const *node, ir::ModuleId module_id);
 
-  ir::Scope add_scope(type::Type state_type) {
-    return ir::Scope(&scopes_.emplace_front(state_type));
-  }
   ir::Block add_block() { return ir::Block(&blocks_.emplace_front()); }
 
   void ForEachCompiledFn(
@@ -213,6 +210,32 @@ struct Context {
     return std::pair(entry, inserted);
   }
 
+  ir::NativeFn FindNativeFn(ast::ParameterizedExpression const *expr) {
+    auto iter = ir_funcs_.find(expr);
+    if (iter != ir_funcs_.end()) { return iter->second; }
+    if (parent()) { return parent()->FindNativeFn(expr); }
+    return ir::NativeFn();
+  }
+
+  std::pair<ir::Scope, bool> add_scope(
+      ast::ParameterizedExpression const *expr) {
+    type::Scope const *scope_type =
+        &qual_types(expr)[0].type().as<type::Scope>();
+
+    auto [iter, inserted] = ir_scopes_.try_emplace(expr);
+    auto &entry           = iter->second;
+
+    if (inserted) { entry = ir_module_.InsertScope(scope_type); }
+    return std::pair(entry, inserted);
+  }
+
+  ir::Scope FindScope(ast::ParameterizedExpression const *expr) {
+    auto iter = ir_scopes_.find(expr);
+    if (iter != ir_scopes_.end()) { return iter->second; }
+    if (parent()) { return parent()->FindScope(expr); }
+    return ir::Scope();
+  }
+
   // If an `ir::CompiledJump` corresponding to the compilation of `expr` already
   // exists, returns a pointer to that object. Otherwise, constructs a new one
   // by calling `fn`.
@@ -232,13 +255,6 @@ struct Context {
                     ir::PartialResultBuffer &out) const;
   bool TryLoadConstant(ast::Declaration::Id const *id,
                        ir::PartialResultBuffer &out) const;
-
-  ir::NativeFn FindNativeFn(ast::ParameterizedExpression const *expr) {
-    auto iter = ir_funcs_.find(expr);
-    if (iter != ir_funcs_.end()) { return iter->second; }
-    if (parent()) { return parent()->FindNativeFn(expr); }
-    return ir::NativeFn();
-  }
 
   type::Type arg_type(std::string_view name) const {
     auto iter = arg_type_.find(name);
@@ -400,6 +416,8 @@ struct Context {
 
   absl::node_hash_map<ast::ParameterizedExpression const *, ir::NativeFn>
       ir_funcs_;
+  absl::node_hash_map<ast::ParameterizedExpression const *, ir::Scope>
+      ir_scopes_;
 
   // Holds all information about generated IR.
   ir::Module &ir_module_;
@@ -419,7 +437,6 @@ struct Context {
   // This forward_list is never iterated over, we only require pointer
   // stability.
   std::forward_list<ir::CompiledBlock> blocks_;
-  std::forward_list<ir::CompiledScope> scopes_;
 
   // Provides a mapping from a given AST node to the collection of all nodes
   // that might jump to it. For example, a function literal will be mapped to
