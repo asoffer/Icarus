@@ -38,13 +38,84 @@ void MakePhi(ir::Builder &builder, std::string_view name,
   builder.Store<ir::RegOr<T>>(phi->result, addr);
 }
 
+// BasicBlockMapping tracks a mapping from basic blocks in a scope being inlined
+// to their corresponding created basic block in their inlined location.
+struct BasicBlockMapping {
+  explicit BasicBlockMapping(ir::Builder &builder, ir::Scope scope) {
+    for (auto const *block : scope->blocks()) {
+      auto [iter, inserted] =
+          mapping_.try_emplace(block, builder.AddBlock(*block));
+      ASSERT(inserted == true);
+    }
+  }
+
+  ir::BasicBlock *operator()(ir::BasicBlock const *from) const {
+    auto iter = mapping_.find(from);
+    ASSERT(iter != mapping_.end());
+    return iter->second;
+  }
+
+  auto begin() const { return mapping_.begin(); }
+  auto end() const { return mapping_.end(); }
+
+ private:
+  absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *> mapping_;
+};
+
+ir::BasicBlock * InlineScope(Compiler &c, ir::Scope to_be_inlined,
+                 ir::PartialResultBuffer const &arguments) {
+  auto landing = c.builder().AddBlock();
+
+  auto *start_block          = c.builder().CurrentBlock();
+  size_t inlined_start_index = c.builder().CurrentGroup()->blocks().size();
+
+  auto *into                 = c.builder().CurrentGroup();
+  c.builder().CurrentBlock() = start_block;
+
+  // Update the register count. This must be done after we've added the
+  // register-forwarding instructions which use this count to choose a register
+  // number.
+  ir::Inliner inliner(into->num_regs(), to_be_inlined->num_args());
+
+  // TODO: Parameter binding.
+
+  into->MergeAllocationsFrom(*to_be_inlined, inliner);
+  BasicBlockMapping mapping(c.builder(), to_be_inlined);
+  for (auto [from_block, to_block] : mapping) {
+    base::Traverse(inliner, *to_block);
+
+    to_block->jump().Visit([&, jump = &to_block->jump()](auto &j) {
+      constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
+      if constexpr (type == base::meta<ir::JumpCmd::UncondJump>) {
+        j.block = mapping(j.block);
+      } else if constexpr (type == base::meta<ir::JumpCmd::CondJump>) {
+        base::Traverse(inliner, j.reg);
+        j.true_block  = mapping(j.true_block);
+        j.false_block = mapping(j.false_block);
+      } else if constexpr (type == base::meta<ir::JumpCmd::RetJump>) {
+        *jump = ir::JumpCmd::Uncond(landing);
+      } else {
+        UNREACHABLE(type);
+      }
+    });
+  }
+
+  start_block->set_jump(ir::JumpCmd::Uncond(mapping(to_be_inlined->entry())));
+  return landing;
+}
+
 }  // namespace
 
 void Compiler::EmitToBuffer(ast::ScopeNode const *node,
                             ir::PartialResultBuffer &out) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
   ir::Scope scope = *EvaluateOrDiagnoseAs<ir::Scope>(node->name());
-  NOT_YET();
+
+  ir::PartialResultBuffer argument_buffer;
+  EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
+                node->arguments(), {/* TODO: Constant arguments */},
+                argument_buffer);
+  builder().CurrentBlock() = InlineScope(*this, scope, argument_buffer);
 }
 
 void Compiler::EmitCopyInit(

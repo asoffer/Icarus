@@ -41,6 +41,7 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
     // need to ensure we call them even on paths that exit scopes without
     // computing values.
     MakeAllDestructions(*this, &node->body_scope());
+    builder().ReturnJump();
   }
 
   return true;

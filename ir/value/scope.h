@@ -27,6 +27,8 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
   CompiledScope *operator->() { return data_->scope; }
   CompiledScope &operator*() { return *data_->scope; }
 
+  type::Scope const *type() const { return data_->type; }
+
  private:
   friend CompiledScope;
   friend base::EnableExtensions;

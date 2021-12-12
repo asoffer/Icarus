@@ -67,9 +67,9 @@ struct BlockGroupBase {
   Reg Alloca(type::Type t);
   Reg Alloca(core::TypeContour tc);
 
-  void MergeAllocationsFrom(BlockGroupBase const &from,
-                            std::invocable<ir::Reg &> auto &&f) {
-    alloc_.MergeFrom(from.alloc_, std::forward<decltype(f)>(f));
+  template <std::invocable<ir::Reg &> F>
+  void MergeAllocationsFrom(BlockGroupBase const &from, F &&f) {
+    alloc_.MergeFrom(from.alloc_, std::forward<F>(f));
   }
 
   constexpr size_t num_regs() const { return alloc_.num_regs(); }
