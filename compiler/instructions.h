@@ -14,7 +14,6 @@
 #include "ir/value/reg.h"
 #include "ir/value/result_buffer.h"
 #include "ir/value/scope.h"
-#include "ir/value/string.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"

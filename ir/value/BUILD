@@ -304,29 +304,3 @@ cc_library(
 )
 
 #TODO: slice_test
-
-cc_library(
-    name = "string",
-    hdrs = ["string.h"],
-    srcs = ["string.cc"],
-    deps = [
-        ":addr",
-        ":char",
-        ":slice",
-        "//base:guarded",
-        "//base:no_destructor",
-        "//core:alignment",
-        "//core:arch",
-        "//core:bytes",
-        "@com_google_absl//absl/container:node_hash_map",
-    ],
-)
-
-cc_test(
-    name = "string_test",
-    srcs = ["string_test.cc"],
-    deps = [
-        ":string",
-        "@com_google_googletest//:gtest_main",
-    ],
-)

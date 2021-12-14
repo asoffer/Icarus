@@ -92,7 +92,6 @@ cc_library(
         "//ir/value:fn",
         "//ir/value:generic_fn",
         "//ir/value:reg_or",
-        "//ir/value:string",
         "//module",
         "//type:array",
         "//type:generic",
@@ -135,6 +134,7 @@ cc_library(
         "//ir/byte_code:writer",
         "//ir:out_params",
         "//ir/value:reg_or",
+        "//ir/value:slice",
         "@com_google_absl//absl/strings",
     ],
 )
