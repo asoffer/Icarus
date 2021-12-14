@@ -1,5 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/type_for_diagnostic.h"
+#include "compiler/verify/common.h"
 #include "type/array.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
@@ -70,7 +72,7 @@ struct InvalidIndexing {
   }
 
   frontend::SourceRange range;
-  type::Type type;
+  std::string type;
 };
 
 // Validate the index type, possibly emitting diagnostics
@@ -165,11 +167,60 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Index const *node) {
     qt = VerifyBufferPointerIndex(*this, node, buf_ptr_type, lhs_qt.quals(),
                                   index_qt);
   } else {
-    diag().Consume(InvalidIndexing{
-        .range = node->range(),
-        .type  = lhs_qt.type(),
-    });
-    qt = type::QualType::Error();
+    absl::flat_hash_set<type::Function const *> member_types;
+    absl::flat_hash_set<ast::Declaration::Id const *> members;
+    ast::OverloadSet os;
+
+    auto get_ids = [&](Context const &ctx, ast::Declaration::Id const *id) {
+      members.insert(id);
+      member_types.insert(&ctx.qual_types(id)[0].type().as<type::Function>());
+    };
+
+    for (auto const &t : {lhs_qt.type(), index_qt.type()}) {
+      // TODO: Checking defining_module only when this is a struct is wrong. We
+      // should also handle pointers to structs, ec
+      if (auto const *dm = DefiningModule(t)) {
+        if (resources().module == dm) { continue; }
+        dm->scope().ForEachDeclIdTowardsRoot(
+            "__index__", [&](ast::Declaration::Id const *id) {
+              if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
+                get_ids(dm->as<CompiledModule>().context(), id);
+              }
+              return true;
+            });
+      }
+    }
+    node->scope()->ForEachDeclIdTowardsRoot(
+        "__index__", [&](ast::Declaration::Id const *id) {
+          get_ids(context(), id);
+          return true;
+        });
+
+    for (auto const *id : members) { os.insert(id); }
+    if (os.members().empty()) {
+      diag().Consume(InvalidIndexing{
+          .range = node->range(),
+          .type  = TypeForDiagnostic(node->lhs(), context()),
+      });
+      qt = type::QualType::Error();
+    } else {
+      for (auto const *member : os.members()) {
+        if (auto qts = context().maybe_qual_type(member); not qts.empty()) {
+          ASSIGN_OR(continue, auto overload_qt, qts[0]);
+          // Must be callable because we're looking at overloads for operators
+          // which have previously been type-checked to ensure callability.
+          auto &c = overload_qt.type().as<type::Function>();
+          member_types.insert(&c);
+        }
+      }
+    }
+
+    context().SetViableOverloads(node, std::move(os));
+
+    ASSERT(member_types.size() == 1u);
+
+    qt = type::QualType((*member_types.begin())->return_types()[0],
+                        type::Quals::Unqualified());
   }
 
   return context().set_qual_type(node, qt);

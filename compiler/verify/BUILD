@@ -139,6 +139,7 @@ cc_library(
     name = "binary_operator",
     srcs = ["binary_operator.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:module",
@@ -445,8 +446,10 @@ cc_library(
     name = "index",
     srcs = ["index.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:type_for_diagnostic",
         "//type:array",
         "//type:primitive",
         "//type:qual_type",

@@ -3,6 +3,7 @@
 #include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
+#include "compiler/verify/common.h"
 #include "type/overload_set.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -97,20 +98,6 @@ struct NoMatchingBinaryOperator {
   std::string rhs_type;
   frontend::SourceRange range;
 };
-
-module::BasicModule const *DefiningModule(type::Type t) {
-  if (auto const *s = t.if_as<type::Struct>()) { return s->defining_module(); }
-  if (auto const *e = t.if_as<type::Enum>()) { return e->defining_module(); }
-  if (auto const *f = t.if_as<type::Flags>()) { return f->defining_module(); }
-  if (auto const *o = t.if_as<type::Opaque>()) { return o->defining_module(); }
-  if (auto const *p = t.if_as<type::Pointer>()) {
-    return DefiningModule(p->pointee());
-  }
-  if (auto const *a = t.if_as<type::Array>()) {
-    return DefiningModule(a->data_type());
-  }
-  return nullptr;
-}
 
 template <
     base::one_of<ast::BinaryOperator, ast::BinaryAssignmentOperator> NodeType>

@@ -1,41 +1,87 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 
 namespace compiler {
+namespace {
+
+void EmitIndexOverload(Compiler &c, ast::Index const *node,
+                       ir::PartialResultBuffer &out) {
+  auto const &os = c.context().ViableOverloads(node);
+  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
+
+  // TODO: We claim ownership but later release the ownership. This is
+  // safe and correct, but it's also a bit of a lie. It would be better
+  // if we had a mechanism to hide ownership.
+  std::array<ast::Call::Argument, 2> arguments{
+      ast::Call::Argument("", std::unique_ptr<ast::Expression>(
+                                  const_cast<ast::Expression *>(node->lhs()))),
+      ast::Call::Argument("", std::unique_ptr<ast::Expression>(
+                                  const_cast<ast::Expression *>(node->rhs())))};
+
+  type::Type result_type = c.context().qual_types(node)[0].type();
+  type::Typed<ir::RegOr<ir::addr_t>> result(c.builder().TmpAlloca(result_type),
+                                            result_type);
+
+  EmitCall(c, os.members().front(), {}, arguments,
+           absl::MakeConstSpan(&result, 1));
+
+  for (auto &argument : arguments) {
+    auto &&[name, expr] = std::move(argument).extract();
+    expr.release();
+  }
+  out.append(c.builder().PtrFix(result->reg(), result_type));
+}
+
+}  // namespace
 
 void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out) {
   type::QualType qt = context().qual_types(node->lhs())[0];
-  if (qt.quals() >= type::Quals::Ref()) {
-    out.append(
-        builder().PtrFix(EmitRef(node), context().qual_types(node)[0].type()));
-  } else if (auto const *s = qt.type().if_as<type::Slice>()) {
-    auto data = builder().Load<ir::addr_t>(
-        current_block()->Append(type::SliceDataInstruction{
-            .slice  = EmitAs<ir::addr_t>(node->lhs()),
-            .result = builder().CurrentGroup()->Reserve(),
-        }),
-        type::BufPtr(s->data_type()));
+  if (auto const *s = qt.type().if_as<type::Slice>()) {
+    if (qt.quals() >= type::Quals::Ref()) {
+      out.append(builder().PtrFix(EmitRef(node),
+                                  context().qual_types(node)[0].type()));
+    } else {
+      auto data = builder().Load<ir::addr_t>(
+          current_block()->Append(type::SliceDataInstruction{
+              .slice  = EmitAs<ir::addr_t>(node->lhs()),
+              .result = builder().CurrentGroup()->Reserve(),
+          }),
+          type::BufPtr(s->data_type()));
 
-    auto index = EmitWithCastTo<int64_t>(
-        context().qual_types(node->rhs())[0].type(), node->rhs());
-    out.append(builder().PtrFix(builder().Index(type::Ptr(s), data, index),
-                                s->data_type()));
+      auto index = EmitWithCastTo<int64_t>(
+          context().qual_types(node->rhs())[0].type(), node->rhs());
+      out.append(builder().PtrFix(builder().Index(type::Ptr(s), data, index),
+                                  s->data_type()));
+    }
   } else if (auto const *array_type = qt.type().if_as<type::Array>()) {
-    auto index = EmitWithCastTo<int64_t>(
-        context().qual_types(node->rhs())[0].type(), node->rhs());
-    out.append(builder().PtrFix(
-        builder().Index(type::Ptr(context().qual_types(node->lhs())[0].type()),
-                        EmitAs<ir::addr_t>(node->lhs()), index),
-        array_type->data_type()));
+    if (qt.quals() >= type::Quals::Ref()) {
+      out.append(builder().PtrFix(EmitRef(node),
+                                  context().qual_types(node)[0].type()));
+    } else {
+      auto index = EmitWithCastTo<int64_t>(
+          context().qual_types(node->rhs())[0].type(), node->rhs());
+      out.append(builder().PtrFix(
+          builder().Index(
+              type::Ptr(context().qual_types(node->lhs())[0].type()),
+              EmitAs<ir::addr_t>(node->lhs()), index),
+          array_type->data_type()));
+    }
   } else if (auto const *buf_ptr_type =
                  qt.type().if_as<type::BufferPointer>()) {
-    auto index = EmitWithCastTo<int64_t>(
-        context().qual_types(node->rhs())[0].type(), node->rhs());
-    out.append(builder().PtrFix(
-        builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()), index, buf_ptr_type),
-        buf_ptr_type->pointee()));
+    if (qt.quals() >= type::Quals::Ref()) {
+      out.append(builder().PtrFix(EmitRef(node),
+                                  context().qual_types(node)[0].type()));
+    } else {
+      auto index = EmitWithCastTo<int64_t>(
+          context().qual_types(node->rhs())[0].type(), node->rhs());
+      out.append(
+          builder().PtrFix(builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()),
+                                             index, buf_ptr_type),
+                           buf_ptr_type->pointee()));
+    }
   } else {
-    UNREACHABLE(*this, *qt);
+    EmitIndexOverload(*this, node, out);
   }
 }
 
