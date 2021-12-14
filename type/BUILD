@@ -262,7 +262,6 @@ cc_library(
         "//ir/value:char",
         "//ir/value:integer",
         "//ir/value:module_id",
-        "//ir/value:string",
         "@com_google_absl//absl/functional:function_ref",
     ],
 )

@@ -23,7 +23,6 @@
 #include "ir/value/module_id.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
-#include "ir/value/string.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"

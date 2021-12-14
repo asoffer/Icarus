@@ -25,7 +25,6 @@
 #include "ir/value/fn.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/scope.h"
-#include "ir/value/string.h"
 #include "type/array.h"
 #include "type/pointer.h"
 #include "type/struct.h"

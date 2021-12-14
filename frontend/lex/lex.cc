@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/node_hash_set.h"
 #include "absl/status/statusor.h"
 #include "ast/ast.h"
 #include "base/meta.h"
@@ -12,11 +13,13 @@
 #include "frontend/lex/syntax.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/integer.h"
-#include "ir/value/string.h"
+#include "ir/value/slice.h"
 #include "type/primitive.h"
 
 namespace frontend {
 namespace {
+
+absl::node_hash_set<std::string> GlobalStringTable;
 
 struct NumberParsingFailure {
   static constexpr std::string_view kCategory = "lex";
@@ -469,6 +472,7 @@ Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
       },
       ParseNumber(number_str));
 }
+
 }  // namespace
 
 std::vector<Lexeme> Lex(SourceBuffer &buffer,
@@ -524,8 +528,9 @@ restart:
         });
       }
 
-      return Lexeme(
-          std::make_unique<ast::Terminal>(range, ir::String(str).slice()));
+      auto iter = GlobalStringTable.insert(std::move(str)).first;
+      return Lexeme(std::make_unique<ast::Terminal>(
+          range, ir::Slice(ir::Addr(iter->data()), iter->size())));
 
     } break;
     case '#': {

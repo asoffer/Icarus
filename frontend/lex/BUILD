@@ -15,9 +15,10 @@ cc_library(
         "//ir/value:builtin_fn",
         "//ir/value:hashtag",
         "//ir/value:integer",
-        "//ir/value:string",
+        "//ir/value:slice",
         "//type:primitive",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/status:statusor",
     ],
 )
