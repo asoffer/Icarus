@@ -9,7 +9,8 @@ namespace interpreter {
 namespace {
 
 template <typename T>
-void ExtractReturnValue(ExecutionContext& ctx, ffi_arg *ret, StackFrame &frame) {
+void ExtractReturnValue(ExecutionContext &ctx, ffi_arg *ret,
+                        StackFrame &frame) {
   // libffi promotes return values of size wider than the system register size.
   // size.
   static constexpr bool PromotesToInt =
@@ -17,7 +18,7 @@ void ExtractReturnValue(ExecutionContext& ctx, ffi_arg *ret, StackFrame &frame) 
   using ffi_ret_type = std::conditional_t<PromotesToInt, int, T>;
   ffi_ret_type value;
   std::memcpy(&value, ret, sizeof(value));
-  ctx.Store(frame.regs_.get<ir::addr_t>(ir::Reg::Out(0)), static_cast<T>(value));
+  ctx.Store(frame.get<ir::addr_t>(ir::Reg::Out(0)), static_cast<T>(value));
 }
 
 ffi_type *ToFfiType(type::Type t) {
@@ -62,7 +63,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
   std::vector<void const *> pointer_values;
 
   for (size_t i = 0; i < fn_type->params().size(); ++i) {
-    auto const& in = fn_type->params()[i];
+    auto const &in = fn_type->params()[i];
 
     ASSERT(in.value.constant() == false);
     auto ffi_type = ToFfiType(in.value.type());
@@ -73,7 +74,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
     // elements are stable.
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
-      ir::addr_t addr = frame.regs_.get<ir::addr_t>(ir::Reg::Arg(i));
+      ir::addr_t addr = frame.get<ir::addr_t>(ir::Reg::Arg(i));
       LOG("CallFn", "Pushing pointer addr = %p stored in %s", addr,
           ir::Reg::Arg(i));
       pointer_values.push_back(addr);
@@ -84,7 +85,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
       // ir::Char where we're writing/reading `char` through the `ir::Char`
       // according to the C++ standard.
       arg_vals.push_back(reinterpret_cast<char *>(
-          const_cast<std::byte *>(frame.regs_.raw(ir::Reg::Arg(i)))));
+          const_cast<std::byte *>(frame.raw(ir::Reg::Arg(i)))));
     }
   }
 
@@ -129,7 +130,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
   } else if (out_type.is<type::Pointer>()) {
     ir::addr_t ptr;
     std::memcpy(&ptr, &ret, sizeof(ptr));
-    Store(frame.regs_.get<ir::addr_t>(ir::Reg::Out(0)), ptr);
+    Store(frame.get<ir::addr_t>(ir::Reg::Out(0)), ptr);
   } else {
     UNREACHABLE(out_type);
   }
@@ -138,27 +139,26 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
 void ExecutionContext::CallFn(ir::BuiltinFn fn, StackFrame &frame) {
   switch (fn.which()) {
     case ir::BuiltinFn::Which::Alignment: {
-      type::Type type = frame.regs_.get<type::Type>(ir::Reg::Arg(0));
-      auto out        = frame.regs_.get<ir::addr_t>(ir::Reg::Out(0));
+      type::Type type = frame.get<type::Type>(ir::Reg::Arg(0));
+      auto out        = frame.get<ir::addr_t>(ir::Reg::Out(0));
       *reinterpret_cast<uint64_t *>(ASSERT_NOT_NULL(out)) =
           type.alignment(kArchitecture).value();
     } break;
     case ir::BuiltinFn::Which::Bytes: {
-      type::Type type = frame.regs_.get<type::Type>(ir::Reg::Arg(0));
-      auto out        = frame.regs_.get<ir::addr_t>(ir::Reg::Out(0));
+      type::Type type = frame.get<type::Type>(ir::Reg::Arg(0));
+      auto out        = frame.get<ir::addr_t>(ir::Reg::Out(0));
       *reinterpret_cast<uint64_t *>(ASSERT_NOT_NULL(out)) =
           type.bytes(kArchitecture).value();
     } break;
     default: NOT_YET();
   }
-
 }
 
 void ExecutionContext::Load(ir::Reg result, ir::addr_t addr,
                             core::Bytes num_bytes) {
   ASSERT(addr != nullptr);
   LOG("Load", "%s %p %u", result, addr, num_bytes.value());
-  current_frame().regs_.set_raw(result, addr, num_bytes.value());
+  current_frame().set_raw(result, addr, num_bytes.value());
 }
 
 }  // namespace interpreter

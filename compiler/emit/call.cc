@@ -131,6 +131,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
     case ir::BuiltinFn::Which::Abort:
       c.current_block()->Append(ir::AbortInstruction{});
       return;
+    case ir::BuiltinFn::Which::CompilationError: UNREACHABLE();
   }
   UNREACHABLE();
 }

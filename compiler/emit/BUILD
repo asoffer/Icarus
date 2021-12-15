@@ -360,6 +360,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler/emit:common",
     ],
 )
 

@@ -20,6 +20,7 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
     Alignment,
     Bytes,
     Opaque,
+    CompilationError,
     Foreign,
     ReserveMemory,
     Slice,
@@ -31,6 +32,9 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
   static BuiltinFn Alignment() { return BuiltinFn(Which::Alignment); }
   static BuiltinFn Bytes() { return BuiltinFn(Which::Bytes); }
   static BuiltinFn Opaque() { return BuiltinFn(Which::Opaque); }
+  static BuiltinFn CompilationError() {
+    return BuiltinFn(Which::CompilationError);
+  }
   static BuiltinFn Foreign() { return BuiltinFn(Which::Foreign); }
   static BuiltinFn ReserveMemory() { return BuiltinFn(Which::ReserveMemory); }
   static BuiltinFn Slice() { return BuiltinFn(Which::Slice); }
@@ -54,9 +58,9 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
  private:
   friend base::EnableExtensions;
 
-  static constexpr std::array kNames{"abort",  "alignment", "bytes",
-                                     "opaque", "foreign",   "reserve_memory",
-                                     "slice",  "debug_ir"};
+  static constexpr std::array kNames{
+      "abort",   "alignment",      "bytes", "opaque",  "compilation_error",
+      "foreign", "reserve_memory", "slice", "debug_ir"};
 
   Which which_;
 };

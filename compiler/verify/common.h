@@ -5,6 +5,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/context.h"
+#include "compiler/module.h"
 #include "core/dependency_node.h"
 #include "diagnostic/message.h"
 
@@ -73,6 +74,8 @@ struct PatternTypeMismatch {
   std::string matched_type;
   frontend::SourceRange range;
 };
+
+module::BasicModule const *DefiningModule(type::Type t);
 
 std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
     Context const &context,

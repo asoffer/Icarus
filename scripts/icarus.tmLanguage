@@ -44,7 +44,7 @@
         </dict>
         <dict>
           <key>match</key>
-          <string>(\b(import|struct|scope|jump|block|before|after|done|return|goto|move|copy|destroy|as|and|or|xor|not)\b)</string>
+          <string>(\b(import|struct|scope|jump|block|before|after|done|return|goto|move|copy|destroy|as|and|or|xor|not|compilation_error)\b)</string>
           <key>name</key>
           <string>keyword.control.icarus</string>
         </dict>

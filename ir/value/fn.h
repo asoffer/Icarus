@@ -61,6 +61,7 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
                  core::AnonymousParam(type::QualType::Constant(type::Integer))},
                 {type::BufPtr(type::Byte)});
           case BuiltinFn::Which::Slice:
+          case BuiltinFn::Which::CompilationError:
           case BuiltinFn::Which::Foreign:
             // Note: We do not allow passing `foreign` or `slice` around as a
             // function object. It is call-only, which means the generic part

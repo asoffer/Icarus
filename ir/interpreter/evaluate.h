@@ -39,7 +39,7 @@ ir::CompleteResultBuffer EvaluateToBuffer(ir::NativeFn fn) {
   for (auto t : outputs) { total += t.bytes(kArchitecture); }
   result.reserve_bytes(outputs.size(), total.value());
   for (size_t i = 0; i < outputs.size(); ++i) {
-    frame.regs_.set<ir::addr_t>(
+    frame.set<ir::addr_t>(
         ir::Reg::Out(i),
         result.append_slot(outputs[i].bytes(kArchitecture).value()));
   }

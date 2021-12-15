@@ -154,6 +154,24 @@ TEST(Index, ArrayOutOfBoundsLarge) {
       UnorderedElementsAre(Pair("value-error", "indexing-array-out-of-bounds")));
 }
 
+TEST(Index, OverloadSuccess) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  S ::= struct {}
+  __index__ ::= (s: *S, x: f64) -> bool { return true }
+
+  thing: S
+  )");
+  auto const *expr = mod.Append<ast::Expression>(R"(thing[3.14])");
+  auto qts         = mod.context().qual_types(expr);
+  EXPECT_THAT(qts,
+              UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+// TODO: We have not done error-handling yet (for any operator overload). We
+// simply are assuming that if we find exactly one overload it is correct.
+
 // TODO: BufferPtr tests
 
 }  // namespace

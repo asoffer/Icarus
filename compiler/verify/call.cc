@@ -27,6 +27,19 @@ struct BuiltinError {
   std::string message;
 };
 
+struct UserDefinedError {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "user-defined-error";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("%s", message),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+  frontend::SourceRange range;
+  std::string message;
+};
+
 struct UncallableWithArguments {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "uncallable-with-arguments";
@@ -154,6 +167,75 @@ type::QualType VerifySliceCall(
 
   return type::QualType::NonConstant(
       type::Slc(arg_vals[0].type().as<type::BufferPointer>().pointee()));
+}
+
+type::QualType VerifyCompilationErrorCall(
+    Compiler *c, frontend::SourceRange const &range,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
+  bool error = false;
+  if (not arg_vals.named().empty()) {
+    c->diag().Consume(BuiltinError{
+        .range   = range,
+        .message = "Built-in function `compilation_error` cannot be called "
+                   "with named arguments.",
+    });
+    error = true;
+  }
+
+  size_t size = arg_vals.size();
+  if (size != 2u) {
+    c->diag().Consume(BuiltinError{
+        .range   = range,
+        .message = absl::StrCat("Built-in function `compilation_error` takes "
+                                "exactly two arguments (You provided ",
+                                size, ")."),
+    });
+    error = true;
+  }
+
+  if (error) { return type::QualType::Error(); }
+
+  if (arg_vals[0].type() != type::Type_) {
+    c->diag().Consume(BuiltinError{
+        .range   = range,
+        .message = absl::StrCat("First argument to `compilation_error` must be "
+                                "a type (You provided a(n) ",
+                                arg_vals[0].type().to_string(), ")."),
+    });
+    error = true;
+  }
+
+  if (arg_vals[0]->empty()) {
+    c->diag().Consume(BuiltinError{
+        .range = range,
+        .message =
+            "First argument to `compilation_error` must be a constant."});
+    error = true;
+  }
+
+  if (arg_vals[1].type() != type::Slc(type::Char)) {
+    c->diag().Consume(BuiltinError{
+        .range   = range,
+        .message = absl::StrCat("Second argument to `compilation_error` must "
+                                "be a []char (You provided a(n) ",
+                                arg_vals[0].type().to_string(), ").")});
+    error = true;
+  }
+
+  if (arg_vals[1]->empty()) {
+    c->diag().Consume(BuiltinError{
+        .range = range,
+        .message =
+            "Second argument to `compilation_error` must be a constant."});
+    error = true;
+  }
+
+  if (error) { return type::QualType::Error(); }
+
+  std::string_view error_text = arg_vals[1]->get<ir::Slice>();
+  c->diag().Consume(
+      UserDefinedError{.range = range, .message = std::string(error_text)});
+  return type::QualType::NonConstant(arg_vals[0]->get<type::Type>());
 }
 
 type::QualType VerifyForeignCall(
@@ -398,6 +480,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
         os.insert(node);
         context().SetAllOverloads(node, std::move(os));
         qt = VerifyForeignCall(this, b->range(), arg_vals);
+      } break;
+      case ir::BuiltinFn::Which::CompilationError: {
+        qt = VerifyCompilationErrorCall(this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Opaque: {
         qt = VerifyOpaqueCall(this, b->range(), arg_vals);

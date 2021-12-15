@@ -25,9 +25,12 @@ StackFrame::StackFrame(ir::Fn fn, Stack& stack)
     : fn_(fn),
       stack_(stack),
       frame_size_(0),
-      regs_({.num_registers  = NumRegisters(fn_),
-             .num_parameters = fn_.num_parameters(),
-             .num_outputs    = NumOutputs(fn_)}) {
+      sizes_({.num_registers  = NumRegisters(fn_),
+              .num_parameters = fn_.num_parameters(),
+              .num_outputs    = NumOutputs(fn_)}),
+      data_(base::untyped_buffer::MakeFull(
+          (sizes_.num_registers + sizes_.num_parameters + sizes_.num_outputs) *
+          register_value_size)) {
   absl::flat_hash_map<ir::Reg, size_t> offsets;
 
   if (fn_.kind() == ir::Fn::Kind::Native) {
@@ -39,12 +42,15 @@ StackFrame::StackFrame(ir::Fn fn, Stack& stack)
           next_reg_loc += tc.bytes();
         });
 
-    frame_size_        = next_reg_loc.value();
+    frame_size_            = next_reg_loc.value();
     ir::addr_t frame_start = stack_.Allocate(frame_size_);
 
-    for (auto [reg, offset] : offsets) { regs_.set(reg, frame_start + offset); }
+    for (auto [reg, offset] : offsets) { set(reg, frame_start + offset); }
   }
 }
+
+// Tuning parameters for stack allocation in the interpreter.
+static constexpr size_t kMinStackSegmentSizeInBytes = 4096;
 
 Stack::Stack() {
   auto& segment  = segments_.emplace_back();

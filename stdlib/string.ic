@@ -134,6 +134,9 @@ Print ::= (s: *string) -> () {
 #{export}
 at ::= (s: *string, n: u64) => &s._data[n]
 
+#{export}
+__index__ ::= (s: *string, n: u64) => s._data[n]
+
 // TODO: The call to `at` here should be allowed because it couldn't possibly match itself.
 #{export}
 at ::= (s: *string, lo: u64, hi: u64) => slice(&s._data[lo], hi - lo)

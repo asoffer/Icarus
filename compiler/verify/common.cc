@@ -99,6 +99,20 @@ void AddOverloads(Context const &context, PersistentResources const &resources,
 
 }  // namespace
 
+module::BasicModule const *DefiningModule(type::Type t) {
+  if (auto const *s = t.if_as<type::Struct>()) { return s->defining_module(); }
+  if (auto const *e = t.if_as<type::Enum>()) { return e->defining_module(); }
+  if (auto const *f = t.if_as<type::Flags>()) { return f->defining_module(); }
+  if (auto const *o = t.if_as<type::Opaque>()) { return o->defining_module(); }
+  if (auto const *p = t.if_as<type::Pointer>()) {
+    return DefiningModule(p->pointee());
+  }
+  if (auto const *a = t.if_as<type::Array>()) {
+    return DefiningModule(a->data_type());
+  }
+  return nullptr;
+}
+
 std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
     core::Params<std::unique_ptr<ast::Declaration>> const &params) {
   // Parameter types cannot be dependent in concrete implementations so it is
@@ -259,8 +273,7 @@ Compiler::VerifyCall(
     ast::Call const *call_expr,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
   LOG("VerifyCall", "%s", call_expr->DebugString());
-  absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
-      errors;
+  absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
   std::vector<std::tuple<ast::Expression const *, type::ReturningType const *,
                          core::Params<type::QualType>>>
       overload_params;
