@@ -94,7 +94,7 @@ struct ExecutionContext {
   // undefined if the value stored in the register is of another type.
   template <typename T>
   T resolve(ir::Reg r) const {
-    return current_frame().regs_.get<T>(r);
+    return current_frame().get<T>(r);
   }
 
   // If `val` is already holding a `T`, returns that value. Otherwise, loads the
@@ -150,7 +150,7 @@ struct ExecutionContext {
           frame_iter.MoveTo(offset);
         } break;
         case ir::LoadInstruction::kIndex: {
-          type::Type t       = iter.read<type::Type>();
+          type::Type t          = iter.read<type::Type>();
           core::Bytes num_bytes = t.bytes(interpreter::kArchitecture);
           ir::addr_t addr = resolve(iter.read<ir::RegOr<ir::addr_t>>().get());
           ir::Reg result_reg = iter.read<ir::Reg>();
@@ -191,7 +191,7 @@ struct ExecutionContext {
       if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
         auto inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
         LOG("CallInstruction", "%s", inst);
-        ir::Fn f  = ctx.resolve(inst.func());
+        ir::Fn f                      = ctx.resolve(inst.func());
         type::Function const *fn_type = f.type();
         LOG("CallInstruction", "%s: %s", f, *fn_type);
 
@@ -201,17 +201,15 @@ struct ExecutionContext {
           ir::PartialResultRef argument = inst.arguments()[i];
           if (argument.is_register()) {
             ir::Reg reg = argument.get<ir::Reg>();
-            frame.regs_.set_raw(ir::Reg::Arg(i),
-                                ctx.current_frame().regs_.raw(reg),
-                                RegisterArray::value_size);
+            frame.set_raw(ir::Reg::Arg(i), ctx.current_frame().raw(reg),
+                          StackFrame::register_value_size);
             LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i), reg);
           } else {
             type::Type t = fn_type->params()[i].value.type();
             core::Bytes size =
                 t.is_big() ? interpreter::kArchitecture.pointer().bytes()
                            : t.bytes(interpreter::kArchitecture);
-            frame.regs_.set_raw(ir::Reg::Arg(i), argument.raw().data(),
-                                size.value());
+            frame.set_raw(ir::Reg::Arg(i), argument.raw().data(), size.value());
 
             LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i),
                 argument.raw());
@@ -222,9 +220,9 @@ struct ExecutionContext {
           ir::Reg reg         = inst.outputs()[i];
           type::Type t        = fn_type->return_types()[i];
           ir::addr_t out_addr = t.is_big() ? ctx.resolve<ir::addr_t>(reg)
-                                           : ctx.current_frame().regs_.raw(reg);
+                                           : ctx.current_frame().raw(reg);
           LOG("CallInstruction", "  %s: [%p]", ir::Reg::Out(i), out_addr);
-          frame.regs_.set(ir::Reg::Out(i), out_addr);
+          frame.set(ir::Reg::Out(i), out_addr);
         }
 
         ctx.Execute<InstSet>(f, frame);
@@ -246,11 +244,11 @@ struct ExecutionContext {
           }
         }
 
-        ctx.current_frame().regs_.set(iter->read<ir::Reg>(), *result);
+        ctx.current_frame().set(iter->read<ir::Reg>(), *result);
       } else if constexpr (
           base::meta<Inst>.template is_a<ir::SetReturnInstruction>()) {
         using type          = typename Inst::type;
-        auto inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
+        auto inst           = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
         ir::addr_t ret_slot = ctx.resolve<ir::addr_t>(ir::Reg::Out(inst.index));
         auto value          = ctx.resolve(inst.value);
         *ASSERT_NOT_NULL(reinterpret_cast<type *>(ret_slot)) = value;
@@ -259,7 +257,7 @@ struct ExecutionContext {
         std::apply([&](auto &... fields) { (ctx.ResolveField(fields), ...); },
                    inst.field_refs());
 
-        ctx.current_frame().regs_.set(inst.result, inst.Resolve());
+        ctx.current_frame().set(inst.result, inst.Resolve());
 
       } else if constexpr (base::meta<decltype(std::declval<Inst>().Apply(
                                ctx))> == base::meta<void>) {

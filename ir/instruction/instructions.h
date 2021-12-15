@@ -70,7 +70,7 @@ struct PtrDiffInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = ptrdiff %1$s %2$s";
 
   void Apply(interpreter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(
+    ctx.current_frame().set(
         result, (ctx.resolve(lhs) - ctx.resolve(rhs)) /
                     pointee_type.bytes(interpreter::kArchitecture).value());
   }
@@ -127,13 +127,13 @@ struct InitInstruction
     if (auto* s = type.if_as<type::Struct>()) {
       ir::Fn f = *s->init_;
       interpreter::StackFrame frame(f.native(), ctx.stack());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
+      frame.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
       return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
       ir::Fn f = a->Initializer();
       interpreter::StackFrame frame(f.native(), ctx.stack());
-      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
+      frame.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
       return frame;
 
     } else {
@@ -156,7 +156,7 @@ struct DestroyInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
+    frame.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
     return frame;
   }
 
@@ -187,8 +187,8 @@ struct CopyInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(to));
-    frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::addr_t>(from));
+    frame.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(to));
+    frame.set(ir::Reg::Arg(1), ctx.resolve<ir::addr_t>(from));
     return frame;
   }
 
@@ -220,8 +220,8 @@ struct CopyInitInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(from));
-    frame.regs_.set(ir::Reg::Out(0), ctx.resolve<ir::addr_t>(to));
+    frame.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(from));
+    frame.set(ir::Reg::Out(0), ctx.resolve<ir::addr_t>(to));
     return frame;
   }
 
@@ -253,8 +253,8 @@ struct MoveInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(to));
-    frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::addr_t>(from));
+    frame.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(to));
+    frame.set(ir::Reg::Arg(1), ctx.resolve<ir::addr_t>(from));
     return frame;
   }
 
@@ -286,8 +286,8 @@ struct MoveInitInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(from));
-    frame.regs_.set(ir::Reg::Out(0), ctx.resolve<ir::addr_t>(to));
+    frame.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(from));
+    frame.set(ir::Reg::Out(0), ctx.resolve<ir::addr_t>(to));
     return frame;
   }
 
@@ -338,12 +338,11 @@ struct LoadSymbolInstruction
     if (auto* fn_type = type.if_as<type::Function>()) {
       auto sym = interpreter::LoadFunctionSymbol(name);
       if (not sym.ok()) { FatalInterpreterError(sym.status().message()); }
-      ctx.current_frame().regs_.set(result,
-                                    ir::Fn(ir::ForeignFn(*sym, fn_type)));
+      ctx.current_frame().set(result, ir::Fn(ir::ForeignFn(*sym, fn_type)));
     } else if (type.is<type::Pointer>()) {
       absl::StatusOr<void*> sym = interpreter::LoadDataSymbol(name);
       if (not sym.ok()) { FatalInterpreterError(sym.status().message()); }
-      ctx.current_frame().regs_.set(result, ir::Addr(*sym));
+      ctx.current_frame().set(result, ir::Addr(*sym));
     } else {
       UNREACHABLE(type.to_string());
     }

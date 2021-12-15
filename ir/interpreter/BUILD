@@ -12,16 +12,6 @@ cc_library(
 )
 
 cc_library(
-    name = "register_array",
-    hdrs = ["register_array.h"],
-    deps = [
-        "//base:untyped_buffer",
-        "//base:untyped_buffer_view",
-        "//ir/value:reg",
-    ],
-)
-
-cc_library(
     name = "evaluate",
     hdrs = ["evaluate.h"],
     visibility = ["//visibility:public"],
@@ -46,11 +36,12 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":architecture",
-        ":register_array",
+        "//base:untyped_buffer",
         "//base:untyped_buffer_view",
         "//core:arch",
         "//ir/blocks:basic",
         "//ir/value:native_fn",
+        "//ir/value:reg",
         "//type:type",
     ],
 )
