@@ -34,6 +34,16 @@ Find ::= (s: []char, needle: []char) -> [*]char {
 }
 
 #{export}
+IndexOf ::= (s: []char, ch: char) -> i64 {
+  return Find(s, ch) - s.data
+}
+
+#{export}
+IndexOf ::= (s: []char, needle: []char) -> i64 {
+  return Find(s, needle) - s.data
+}
+
+#{export}
 StartsWith ::= (s: []char, prefix: []char) -> bool {
   s_len := s.length as i64
   p_len := prefix.length as i64

@@ -18,6 +18,31 @@ struct Offset {
   uint32_t is_register : 1;
 };
 
+struct Writer {
+  explicit Writer(base::untyped_buffer *buffer)
+      : buffer_(*ASSERT_NOT_NULL(buffer)) {}
+
+  void write_bytes(absl::Span<std::byte const> bytes) {
+    buffer_.write(buffer_.size(), bytes.data(), bytes.size());
+  }
+
+ private:
+  base::untyped_buffer &buffer_;
+};
+
+struct Reader {
+  explicit Reader(base::untyped_buffer_view::const_iterator iter)
+      : iter_(iter) {}
+  absl::Span<std::byte const> read_bytes(size_t count) {
+    absl::Span<std::byte const> span(iter_.raw(), count);
+    iter_.skip(count);
+    return span;
+  }
+
+ private:
+  base::untyped_buffer_view::const_iterator iter_;
+};
+
 }  // namespace internal_result_buffer
 
 struct PartialResultBuffer;
@@ -36,7 +61,10 @@ struct PartialResultRef {
       if (is_register_) {
         return RegOr<T>(view_.get<Reg>(0));
       } else {
-        return RegOr<T>(view_.get<T>(0));
+        T t;
+        internal_result_buffer::Reader r(view_.begin());
+        base::Deserialize(r, t);
+        return RegOr<T>(t);
       }
     }
   }
@@ -76,7 +104,10 @@ struct CompleteResultRef {
 
   template <typename T>
   T get() const {
-    return view_.get<T>(0);
+    T t;
+    internal_result_buffer::Reader r(view_.begin());
+    base::Deserialize(r, t);
+    return t;
   }
 
   bool empty() const { return view_.empty(); }
@@ -125,7 +156,8 @@ struct CompleteResultBuffer {
   void append(T const &value) {
     static_assert(not base::HasErasureWrapper<T>);
     offsets_.push_back(buffer_.size());
-    buffer_.append(value);
+    internal_result_buffer::Writer w(&buffer_);
+    base::Serialize(w, value);
   }
 
   void append();
@@ -198,7 +230,8 @@ struct PartialResultBuffer {
       if (value.is_reg()) {
         buffer_.append(value.reg());
       } else {
-        buffer_.append(value.value());
+        internal_result_buffer::Writer w(&buffer_);
+        base::Serialize(w, value);
       }
     } else if constexpr (base::meta<T> == base::meta<Reg>) {
       offsets_.push_back(internal_result_buffer::Offset{
@@ -209,7 +242,8 @@ struct PartialResultBuffer {
       offsets_.push_back(internal_result_buffer::Offset{
           .index       = static_cast<uint32_t>(buffer_.size()),
           .is_register = false});
-      buffer_.append(value);
+      internal_result_buffer::Writer w(&buffer_);
+      base::Serialize(w, value);
     }
   }
 
