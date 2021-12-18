@@ -157,6 +157,29 @@ std::optional<Context::InsertSubcontextResult> Instantiate(
   return ctx.InsertSubcontext(node, bound_params, std::move(scratchpad));
 }
 
+std::optional<Context::InsertSubcontextResult> Instantiate(
+    Compiler &c, ast::ScopeLiteral const *node,
+    ir::ScopeContext const &scope_context) {
+  auto &ctx = node->scope()
+                  ->Containing<ast::ModuleScope>()
+                  ->module()
+                  ->as<CompiledModule>()
+                  .context();
+  LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
+      ctx.DebugString());
+  Context scratchpad            = ctx.ScratchpadSubcontext();
+  PersistentResources resources = c.resources();
+  Compiler child(&scratchpad, resources);
+  child.set_work_resources(c.work_resources());
+
+  ir::CompleteResultBuffer buffer;
+  buffer.append(scope_context);
+  BoundParameters bound_parameters(
+      {core::AnonymousParam(type::QualType::Constant(type::ScopeContext))},
+      absl::MakeConstSpan(&buffer, 1));
+  return ctx.InsertSubcontext(node, bound_parameters, std::move(scratchpad));
+}
+
 Context::FindSubcontextResult FindInstantiation(
     Compiler &c, ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {

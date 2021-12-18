@@ -281,9 +281,11 @@ cc_library(
     name = "scope",
     hdrs = ["scope.h"],
     deps = [
+        "//base:any_invocable",
         "//base:extend",
         "//base/extend:absl_format",
         "//base/extend:absl_hash",
+        "//base:extend:serialize",
         "//ir/blocks:group",
         "//type:scope",
     ],

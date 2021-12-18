@@ -22,6 +22,12 @@ Context::FindSubcontextResult FindInstantiation(
     Compiler &c, ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 
+// Attempts to instantiate `node` with `scope_context`, possibly creating a new
+// instantiation as a subcontext of `c.context()` if needed.
+std::optional<Context::InsertSubcontextResult> Instantiate(
+    Compiler &c, ast::ScopeLiteral const *node,
+    ir::ScopeContext const &scope_context);
+
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_INSTANTIATE_H

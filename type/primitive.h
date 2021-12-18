@@ -88,6 +88,7 @@ inline base::Global kPrimitiveArray = std::array{
     Primitive(Primitive::BasicType::NullPtr),
     Primitive(Primitive::BasicType::EmptyArray),
     Primitive(Primitive::BasicType::ScopeContext),
+    Primitive(Primitive::BasicType::UnboundScope),
     Primitive(Primitive::BasicType::Block),
     Primitive(Primitive::BasicType::Label),
     Primitive(Primitive::BasicType::Interface),
@@ -132,7 +133,8 @@ inline Type ScopeContext = &(*internal::kPrimitiveArray)[18];
 inline Type Block        = &(*internal::kPrimitiveArray)[19];
 inline Type Label        = &(*internal::kPrimitiveArray)[20];
 inline Type Interface    = &(*internal::kPrimitiveArray)[21];
-inline Type Void         = &(*internal::kPrimitiveArray)[22];
+inline Type UnboundScope = &(*internal::kPrimitiveArray)[22];
+inline Type Void         = &(*internal::kPrimitiveArray)[23];
 
 inline bool IsNumeric(Type t) {
   auto const *p = t.if_as<Primitive>();

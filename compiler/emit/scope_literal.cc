@@ -10,14 +10,31 @@ namespace compiler {
 
 void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
                             ir::PartialResultBuffer &out) {
-  auto [s, inserted] = context().add_scope(node);
-  if (inserted) {
-    Enqueue({.kind    = WorkItem::Kind::EmitScopeBody,
-             .node    = node,
-             .context = &context()});
-  }
-  out.append(s);
-  return;
+  // TODO: Long-term we shouldn't heap-allocate this, but each of these needs to
+  // be separately allocated and long-lived anyway there's not much harm in
+  // ignoring the proper ownership story for the time being.
+  out.append(
+      ir::UnboundScope(new base::any_invocable<std::optional<ir::Scope>(
+                           ir::ScopeContext const &)>(
+          [instantiation_compiler = Compiler(&context(), resources()),
+           node](ir::ScopeContext const &scope_context) mutable
+          -> std::optional<ir::Scope> {
+            ASSIGN_OR(return std::nullopt,  //
+                             auto result,
+                             Instantiate(instantiation_compiler, node,
+                                         scope_context));
+            auto const &[params, rets_ref, context, inserted] = result;
+            PersistentResources resources = instantiation_compiler.resources();
+            auto compiler =
+                instantiation_compiler.MakeChild(&context, resources);
+            // TODO: Is this necessary?
+            // compiler.set_work_resources(wr);
+            for (auto const *stmt : node->stmts()) {
+              compiler.VerifyType(stmt);
+            }
+            // TODO: Return a real value.
+            return std::nullopt;
+          })));
 }
 
 bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {

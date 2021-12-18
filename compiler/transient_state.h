@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "ir/scope_state.h"
+#include "ir/value/scope.h"
 
 namespace compiler {
 
@@ -11,6 +12,7 @@ namespace compiler {
 // function or jump, but otherwise does not need to be saved.
 struct TransientState {
   std::vector<ir::ScopeState> scope_landings;
+  std::vector<ir::ScopeContext> scope_contexts;
 };
 
 }  // namespace compiler
