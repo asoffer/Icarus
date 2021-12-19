@@ -45,9 +45,9 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
   LOG("ComputeParamsFromArgs", "Creating a concrete implementation with %s",
       args.Transform([](auto const &a) { return a.type().to_string(); }));
 
-  std::vector<ir::CompleteResultBuffer> buffers(node->params().size());
-  std::vector<core::Param<type::QualType>> qts(node->params().size());
   std::vector<type::Type> argument_types(node->params().size());
+
+  BoundParameters bound_parameters;
 
   for (auto [index, dep_node] : node->ordered_dependency_nodes()) {
     ASSERT(dep_node.node()->ids().size() == 1u);
@@ -100,8 +100,7 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
           NOT_YET("Log an error and bail out of this computation");
         }
 
-        qts[index] =
-            core::Param<type::QualType>(id, qt, node->params()[index].flags);
+        bound_parameters.bind_type(&dep_node.node()->ids()[0], qt);
       } break;
       case core::DependencyNodeKind::ParameterValue: {
         // Find the argument associated with this parameter.
@@ -129,11 +128,11 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
 
         // TODO: We end up stashing arguments both in BoundParameters and in
         // the context's Constant map. We should probably only use the latter.
-        buffers[index].append(*argument);
+        bound_parameters.bind_value(&dep_node.node()->ids()[0], *argument);
       } break;
     }
   }
-  return BoundParameters(std::move(qts), buffers);
+  return bound_parameters;
 }
 
 }  // namespace
@@ -175,9 +174,10 @@ std::optional<Context::InsertSubcontextResult> Instantiate(
 
   ir::CompleteResultBuffer buffer;
   buffer.append(scope_context);
-  BoundParameters bound_parameters(
-      {core::AnonymousParam(type::QualType::Constant(type::ScopeContext))},
-      absl::MakeConstSpan(&buffer, 1));
+  BoundParameters bound_parameters;
+  bound_parameters.bind_type(&node->context().ids()[0],
+                             type::QualType::Constant(type::ScopeContext));
+  bound_parameters.bind_value(&node->context().ids()[0], buffer[0]);
   return ctx.InsertSubcontext(node, bound_parameters, std::move(scratchpad));
 }
 

@@ -89,10 +89,10 @@ inline base::Global kPrimitiveArray = std::array{
     Primitive(Primitive::BasicType::NullPtr),
     Primitive(Primitive::BasicType::EmptyArray),
     Primitive(Primitive::BasicType::ScopeContext),
-    Primitive(Primitive::BasicType::UnboundScope),
     Primitive(Primitive::BasicType::Block),
     Primitive(Primitive::BasicType::Label),
     Primitive(Primitive::BasicType::Interface),
+    Primitive(Primitive::BasicType::UnboundScope),
     Primitive(Primitive::BasicType::Void),
 };
 

@@ -107,9 +107,8 @@ auto ApplyTypes(type::Type t, Fn &&fn) {
 
   // Create a static array of funtions that may be called depending on which
   // type matches.
-  static base::NoDestructor kFnToCall =
-      std::array<return_type (*)(Fn &&), sizeof...(Ts)>{
-          [](Fn &&f) { return f.template operator()<Ts>(); }...};
+  std::array<return_type (*)(Fn &&), sizeof...(Ts)> kFnToCall{
+      [](Fn &&f) { return f.template operator()<Ts>(); }...};
 
   // Using fold expressions, take the disjunction of
   // `internal_type::Compare<T>(t)` over all T. This will compute this boolean
@@ -123,7 +122,7 @@ auto ApplyTypes(type::Type t, Fn &&fn) {
   bool found   = ((++index, ::compiler::internal_type::Compare<Ts>(t)) or ...);
   ASSERT(found == true);
 
-  return (*kFnToCall)[index - 1](std::forward<Fn>(fn));
+  return kFnToCall[index - 1](std::forward<Fn>(fn));
 }
 
 }  // namespace compiler

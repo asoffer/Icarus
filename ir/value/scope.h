@@ -27,17 +27,22 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
     base::untyped_buffer::const_iterator byte_code;
   };
 
-  constexpr Scope() : Scope(nullptr) {}
-  explicit constexpr Scope(Scope::Data const *data) : data_(data) {}
+  constexpr Scope() : data_(nullptr) {}
+  explicit constexpr Scope(Scope::Data const *data)
+      : data_(ASSERT_NOT_NULL(data)) {}
 
-  CompiledScope *operator->() { return data_->scope; }
-  CompiledScope &operator*() { return *data_->scope; }
+  CompiledScope *operator->() { return get().scope; }
+  CompiledScope &operator*() { return *get().scope; }
 
-  type::Scope const *type() const { return data_->type; }
+  type::Scope const *type() const {
+    return ASSERT_NOT_NULL(get().type);
+  }
 
  private:
   friend CompiledScope;
   friend base::EnableExtensions;
+
+  Data const &get() const { return *ASSERT_NOT_NULL(data_); }
 
   Data const *data_;
 };

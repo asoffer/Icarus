@@ -132,7 +132,7 @@ struct Context {
   // computed parameter types and `Context` into which new computed data
   // dependent on this set of generic context can be added.
   struct InsertSubcontextResult {
-    BoundParameters const &params;
+    core::Params<type::QualType> const &params;
     std::vector<type::Type> &rets;
     Context &context;
     bool inserted;

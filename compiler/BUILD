@@ -6,9 +6,10 @@ cc_library(
     hdrs = ["bound_parameters.h"],
     srcs = ["bound_parameters.cc"],
     deps = [
-        "//core:params",
+        "//ast:declaration",
         "//ir/value:result_buffer",
         "//type:qual_type",
+        "@com_google_absl//absl/container:btree",
     ],
 )
 
