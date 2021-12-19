@@ -328,6 +328,9 @@ struct Compiler
       if constexpr (type == base::meta<ir::ModuleId>) { return type::Module; }
       if constexpr (type == base::meta<uint64_t>) { return type::U64; }
       if constexpr (type == base::meta<ir::Integer>) { return type::Integer; }
+      if constexpr (type == base::meta<ir::UnboundScope>) {
+        return type::UnboundScope;
+      }
       if constexpr (type == base::meta<interface::Interface>) {
         return type::Interface;
       }

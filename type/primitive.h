@@ -8,6 +8,7 @@
 #include "ir/value/char.h"
 #include "ir/value/integer.h"
 #include "ir/value/module_id.h"
+#include "ir/value/scope.h"
 #include "type/type.h"
 
 namespace type {
@@ -35,8 +36,8 @@ struct Primitive : public LegacyType {
   auto Apply(Fn &&fn) const {
     return ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, ir::Integer, int8_t,
                      int16_t, int32_t, int64_t, float, double, bool, ir::Char,
-                     Type, ir::ModuleId,
-                     ir::addr_t /* TODO: Other primitives */>(
+                     Type, ir::ModuleId, ir::addr_t,
+                     ir::UnboundScope /* TODO: Other primitives */>(
         std::forward<Fn>(fn));
   }
 

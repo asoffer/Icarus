@@ -98,6 +98,8 @@ bool Compare(::type::Type t) {
     return t == ::type::Module;
   } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
     return t == ::type::Block;
+  } else if constexpr (base::meta<T> == base::meta<ir::UnboundScope>) {
+    return t == type::UnboundScope;
   } else if constexpr (base::meta<T> == base::meta<interface::Interface>) {
     return t == ::type::Interface;
   } else {

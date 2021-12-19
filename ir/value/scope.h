@@ -57,7 +57,11 @@ struct ScopeContext
 struct UnboundScope
     : base::Extend<UnboundScope, 1>::With<base::AbslFormatExtension,
                                           base::AbslHashExtension> {
-  explicit UnboundScope(base::any_invocable<std::optional<Scope>(ScopeContext const &)> *f)
+  static constexpr std::string_view kAbslFormatString = "UnboundScope(%p)";
+
+  explicit UnboundScope(
+      base::any_invocable<std::optional<Scope>(ScopeContext const &)> *f =
+          nullptr)
       : f_(f) {}
 
   std::optional<Scope> operator()(ScopeContext const &ctx) const {
@@ -65,6 +69,8 @@ struct UnboundScope
   }
 
  private:
+  friend base::EnableExtensions;
+
   base::any_invocable<std::optional<Scope>(ScopeContext const &)> *f_;
 };
 

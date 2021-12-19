@@ -44,11 +44,11 @@ using TypeConstructorInstructions = ir::InstructionSet<
 
 struct instruction_set_t
     : ir::InstructionSet<
-          ir::CoreInstructions<bool, ir::Char, ir::Integer, uint8_t, int8_t,
-                               uint16_t, int16_t, uint32_t, int32_t, uint64_t,
-                               int64_t, float, double, type::Type, ir::addr_t,
-                               ir::Fn, ir::Block, ir::Scope, ir::Jump,
-                               ir::ModuleId, interface::Interface>,
+          ir::CoreInstructions<
+              bool, ir::Char, ir::Integer, uint8_t, int8_t, uint16_t, int16_t,
+              uint32_t, int32_t, uint64_t, int64_t, float, double, type::Type,
+              ir::addr_t, ir::Fn, ir::Block, ir::Scope, ir::Jump, ir::ModuleId,
+              ir::UnboundScope, interface::Interface>,
           ir::SetReturnInstruction<ir::GenericFn>,
           ArithmeticInstructions<ir::Integer, uint8_t, int8_t, uint16_t,
                                  int16_t, uint32_t, int32_t, uint64_t, int64_t,

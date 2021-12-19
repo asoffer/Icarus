@@ -37,7 +37,7 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
 
   if (inserted) {
     LOG("Instantiate", "Context inserted as %p", &iter->second->context);
-    for (size_t i = 0; i < params.size(); ++i) {
+    for (size_t i = 0; i < node->params().size(); ++i) {
       auto [qt, ref] = params[i];
       if (not qt.constant()) { continue; }
 
