@@ -20,6 +20,7 @@ cc_library(
         "//ir/value:char",
         "//ir/value:module_id",
         "//ir/value:reg",
+        "//type:cast",
         "//type:scope",
         "//type:slice",
         "//type/interface",
@@ -30,38 +31,11 @@ cc_library(
 )
 
 cc_library(
-    name = "compiled_block",
-    hdrs = ["compiled_block.h"],
-    deps = [
-        "//ast",
-        "//ir/instruction:set",
-        "//ir/value:overload_set",
-        "//ir/value:jump",
-        "//type:jump",
-        "//type:typed_value",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
-)
-
-cc_library(
     name = "compiled_fn",
     hdrs = ["compiled_fn.h"],
     deps = [
         "//ir/blocks:group",
         "//type:function",
-    ],
-)
-
-cc_library(
-    name = "compiled_jump",
-    hdrs = ["compiled_jump.h"],
-    deps = [
-        "//ast:ast",
-        "//core:params",
-        "//ir/blocks:group",
-        "//ir/value:jump",
-        "//type:jump",
-        "//type:qual_type",
     ],
 )
 

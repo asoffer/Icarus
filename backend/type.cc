@@ -88,7 +88,6 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
     return t->Apply([this]<typename T>() { return LlvmType<T>(context_); });
   }
 
-  llvm::Type *get(type::Jump const *t) { NOT_YET(); }
   llvm::Type *get(type::Opaque const *t) { NOT_YET(); }
   llvm::Type *get(type::Struct const *t) { NOT_YET(); }
 

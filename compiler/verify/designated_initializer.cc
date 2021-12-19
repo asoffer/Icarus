@@ -4,6 +4,7 @@
 #include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
+#include "type/cast.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
 #include "type/struct.h"

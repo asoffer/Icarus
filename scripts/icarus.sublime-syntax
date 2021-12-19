@@ -13,7 +13,7 @@ contexts:
     - match: '(!(?:[^\x{005c}]|\\[abfnrtv0]))'
       captures:
         0: string.icarus
-    - match: '(\b(import|struct|scope|jump|block|before|after|done|return|goto|move|copy|destroy|as|and|or|xor|not|compilation_error)\b)'
+    - match: '(\b(import|struct|scope|return|move|copy|destroy|as|and|or|xor|not|compilation_error)\b)'
       captures:
         0: keyword.control.icarus
     - match: '([\x{002a}\x{0040}\x{0026}\x{0027}.\x{002c}\x{002b}\x{002f}\x{007c}\x{003b}\x{003a}\x{003d}\x{003c}\x{003e}-]|\\\\)'

@@ -8,6 +8,7 @@
 #include "core/arguments.h"
 #include "core/call.h"
 #include "type/callable.h"
+#include "type/cast.h"
 #include "type/overload_set.h"
 #include "type/provenance.h"
 #include "type/typed_value.h"

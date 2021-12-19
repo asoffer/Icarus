@@ -4,6 +4,7 @@
 #include "compiler/module.h"
 #include "compiler/verify/common.h"
 #include "compiler/verify/internal/assignment_and_initialization.h"
+#include "type/cast.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"
 

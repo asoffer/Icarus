@@ -2,6 +2,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "diagnostic/message.h"
+#include "type/cast.h"
 
 namespace compiler {
 namespace {

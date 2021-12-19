@@ -2,7 +2,7 @@
 name = icarus
 file_extensions [] = ic;
 
-__KEYWORDS \= (\b(import|struct|scope|jump|block|before|after|done|return|goto|move|copy|destroy|as|and|or|xor|not|compilation_error)\b)
+__KEYWORDS \= (\b(import|struct|scope|return|move|copy|destroy|as|and|or|xor|not|compilation_error)\b)
 __OPERATORS \= ([*@&'.,+/|;:=<>-]|\\\\)
 __BUILTINS \= (\b(bool|char|byte|type|slice|[iuf](?:8|16|32|64))\b)
 

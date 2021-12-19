@@ -9,14 +9,10 @@
 
 static constexpr auto kTokens = std::array{
     // Keywords
-    std::string_view{"which"}, std::string_view{"print"},
-    std::string_view{"ensure"}, std::string_view{"needs"},
-    std::string_view{"import"}, std::string_view{"flags"},
-    std::string_view{"enum"}, std::string_view{"struct"},
-    std::string_view{"return"}, std::string_view{"goto"},
-    std::string_view{"jump"}, std::string_view{"switch"},
-    std::string_view{"when"}, std::string_view{"as"}, std::string_view{"copy"},
-    std::string_view{"move"},
+    std::string_view{"which"}, std::string_view{"import"},
+    std::string_view{"flags"}, std::string_view{"enum"},
+    std::string_view{"struct"}, std::string_view{"return"},
+    std::string_view{"as"}, std::string_view{"copy"}, std::string_view{"move"},
     // Operators
     std::string_view{"@"}, std::string_view{","}, std::string_view{"[*]"},
     std::string_view{"$"}, std::string_view{"+="}, std::string_view{"+"},

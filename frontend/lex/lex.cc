@@ -159,7 +159,6 @@ static base::Global kKeywords =
         {"import", {Operator::Import}},   {"flags", {Syntax::Flags}},
         {"enum", {Syntax::Enum}},         {"struct", {Syntax::Struct}},
         {"return", {Operator::Return}},   {"interface", {Syntax::Interface}},
-        {"goto", {Operator::Goto}},       {"jump", {Syntax::Jump}},
         {"as", {Operator::As}},           {"copy", {Operator::Copy}},
         {"init", {Operator::Init}},       {"move", {Operator::Move}},
         {"destroy", {Operator::Destroy}}, {"and", {Operator::And}},
@@ -340,17 +339,9 @@ Lexeme ConsumeWord(SourceLoc &cursor, SourceBuffer const &buffer) {
                       iter->second);
   }
 
-  // "block" is special because it is also the name of the type of such a
-  // block. That is, `block { ... }` has type `block`. This means that a
-  // function returning a block will look like `() -> block { ... }` and there
-  // is an ambiguity whereby we can't tell if this should be parsed as A: ()
-  // -> (block { ... }), or B: (() -> block) { ... }
-  //
-  // We can fix this in the parser easily (by checking for a `->` beforehand
-  // and prefering (B). Users can specifically add parentheses to get (A), but
-  // this requires tagging "block" differently from the other block-head
-  // keywords.
-  if (word == "block") { return Lexeme(Syntax::Block, range); }
+  // TODO: Scope used to be special due it it being a keyword signifying a scope
+  // and the type of such a construct, but this is no longer relevant, so we
+  // don't need to treat it specially.
   if (word == "scope") { return Lexeme(Syntax::Scope, range); }
 
   return Lexeme(std::make_unique<ast::Identifier>(range, std::string{word}));

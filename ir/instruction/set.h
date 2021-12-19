@@ -9,10 +9,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/meta.h"
-#include "ir/compiled_jump.h"
 #include "ir/instruction/core.h"
 #include "ir/value/addr.h"
-#include "ir/value/block.h"
 #include "ir/value/char.h"
 #include "ir/value/fn.h"
 #include "ir/value/foreign_fn.h"

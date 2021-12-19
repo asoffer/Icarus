@@ -11,7 +11,6 @@
 #include "ast/build_param_dependency_graph.h"
 #include "ast/declaration.h"
 #include "ast/expression.h"
-#include "ast/jump_options.h"
 #include "ast/node.h"
 #include "ast/scope.h"
 #include "ast/visitor_base.h"
@@ -441,37 +440,6 @@ struct DesignatedInitializer : Expression {
  private:
   std::unique_ptr<Expression> type_;
   std::vector<std::unique_ptr<Assignment>> assignments_;
-};
-
-// BlockLiteral:
-//
-// Represents the specification for a block in a scope. The `before`
-// declarations constitute the objects assigned to the identifier `before`.
-// These constitute the overload set for functions to be called before entering
-// the corresponding block. Analogously, The declarations in `after` constitute
-// the overload set for functions to be called after exiting the block.
-//
-// Example:
-//  ```
-//  block {
-//    before ::= () -> () {}
-//    after  ::= () -> () { jump exit() }
-//  }
-//  ```
-struct BlockLiteral : Expression, WithScope<DeclScope> {
-  explicit BlockLiteral(frontend::SourceRange const &range,
-                        std::vector<std::unique_ptr<Declaration>> before,
-                        std::vector<std::unique_ptr<Declaration>> after)
-      : Expression(range),
-        before_(std::move(before)),
-        after_(std::move(after)) {}
-  base::PtrSpan<Declaration const> before() const { return before_; }
-  base::PtrSpan<Declaration const> after() const { return after_; }
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
- private:
-  std::vector<std::unique_ptr<Declaration>> before_, after_;
 };
 
 // BlockNode:
@@ -958,39 +926,6 @@ struct Label : Expression {
   std::string label_;
 };
 
-// Jump:
-// Represents a component of a scope definition that directs control flow.
-//
-// Example:
-// If the bool is true, control flow continues to the next block in this scope.
-// Otherwise, control flow exits the scope entirely.
-//  ```
-//  jump (b: bool) {
-//    if (b) then { goto next() }
-//    goto exit()
-//  }
-//  ```
-struct Jump : ParameterizedExpression, WithScope<FnScope> {
-  explicit Jump(frontend::SourceRange const &range,
-                std::unique_ptr<Declaration> state,
-                std::vector<std::unique_ptr<Declaration>> in_params,
-                std::vector<std::unique_ptr<Node>> stmts)
-      : ParameterizedExpression(range, std::move(in_params)),
-        state_(std::move(state)),
-        stmts_(std::move(stmts)) {
-    if (state_) { state_->flags() |= Declaration::f_IsFnParam; }
-  }
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
-  Declaration const *state() const { return state_.get(); }
-  base::PtrSpan<Node const> stmts() const { return stmts_; }
-
- private:
-  std::unique_ptr<Declaration> state_;
-  std::vector<std::unique_ptr<Node>> stmts_;
-};
-
 // ParameterizedStructLiteral:
 //
 // Represents the definition of a parameterized user-defined structure. This
@@ -1288,109 +1223,6 @@ struct UnaryOperator : Expression {
  private:
   std::unique_ptr<Expression> operand_;
   Kind kind_;
-};
-
-// ConditionalGoto:
-// Represents a statement describing where a block should jump after completion.
-//
-// Example (in context of a scope):
-//  ```
-//  while ::= scope {
-//    init ::= jump(b: bool) {
-//      goto b, do() | exit()
-//    }
-//    do ::= block {
-//      before ::= () -> () {}
-//      after ::= jump() { goto start() }
-//    }
-//    done ::= () -> () {}
-//  }
-//  ```
-//
-//  Note: We generally try to keep these alphabetical, but in this case, the
-//  body depends on `Identifier`.
-struct ConditionalGoto : Node {
-  explicit ConditionalGoto(frontend::SourceRange const &range,
-                           std::unique_ptr<Expression> condition,
-                           std::vector<std::unique_ptr<Call>> true_calls,
-                           std::vector<std::unique_ptr<Call>> false_calls)
-      : Node(range), condition_(std::move(condition)) {
-    for (auto &call : true_calls) {
-      auto [callee, args] = std::move(*call).extract();
-      if (auto *id = callee->if_as<Identifier>()) {
-        true_options_.emplace_back(std::string{id->name()},
-                                   Call::Argument::Extract(std::move(args)));
-      } else {
-        UNREACHABLE();
-      }
-    }
-
-    for (auto &call : false_calls) {
-      auto [callee, args] = std::move(*call).extract();
-      if (auto *id = callee->if_as<Identifier>()) {
-        false_options_.emplace_back(std::string{id->name()},
-                                    Call::Argument::Extract(std::move(args)));
-      } else {
-        UNREACHABLE();
-      }
-    }
-  }
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
-  Expression const *condition() const { return condition_.get(); }
-  absl::Span<JumpOption const> true_options() const { return true_options_; }
-  absl::Span<JumpOption const> false_options() const { return false_options_; }
-
- private:
-  // A jump will evaluate at compile-time to the first option for which the
-  // scope node has all possible blocks.
-  std::unique_ptr<Expression> condition_;
-  std::vector<JumpOption> true_options_, false_options_;
-};
-
-// UnconditionalGoto:
-// Represents a statement describing where a block should jump after completion.
-//
-// Example (in context of a scope):
-//  ```
-//  forever ::= scope {
-//    init ::= jump(b: bool) {
-//      goto do()
-//    }
-//    do ::= block {
-//      before ::= () -> () {}
-//      after ::= jump() { goto start() }
-//    }
-//    done ::= () -> () {}
-//  }
-//  ```
-//
-//  Note: We generally try to keep these alphabetical, but in this case, the
-//  body depends on `Identifier`.
-struct UnconditionalGoto : Node {
-  explicit UnconditionalGoto(frontend::SourceRange const &range,
-                             std::vector<std::unique_ptr<Call>> calls)
-      : Node(range) {
-    for (auto &call : calls) {
-      auto [callee, args] = std::move(*call).extract();
-      if (auto *id = callee->if_as<Identifier>()) {
-        options_.emplace_back(std::string{id->name()},
-                              Call::Argument::Extract(std::move(args)));
-      } else {
-        UNREACHABLE();
-      }
-    }
-  }
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
-  absl::Span<JumpOption const> options() const { return options_; }
-
- private:
-  // A jump will evaluate at compile-time to the first option for which the
-  // scope node has all possible blocks.
-  std::vector<JumpOption> options_;
 };
 
 // YieldStmt:

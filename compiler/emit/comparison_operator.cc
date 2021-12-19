@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "ir/value/char.h"
+#include "type/cast.h"
 
 namespace compiler {
 namespace {
@@ -80,13 +81,6 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
                          bldr.CastTo<T>(rhs.type(), (*rhs)[0]));
         });
       case frontend::Operator::Eq:
-        if (t == type::Block) {
-          auto val1 = lhs->get<ir::Block>(0);
-          auto val2 = rhs->get<ir::Block>(0);
-          if (not val1.is_reg() and not val2.is_reg()) {
-            return val1.value() == val2.value();
-          }
-        }
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, type::Type, ir::addr_t>(t, [&]<typename T>() {
@@ -94,13 +88,6 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
                          bldr.CastTo<T>(rhs.type(), (*rhs)[0]));
         });
       case frontend::Operator::Ne:
-        if (t == type::Block) {
-          auto val1 = lhs->get<ir::Block>(0);
-          auto val2 = rhs->get<ir::Block>(0);
-          if (not val1.is_reg() and not val2.is_reg()) {
-            return val1.value() == val2.value();
-          }
-        }
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, type::Type, ir::addr_t>(t, [&]<typename T>() {

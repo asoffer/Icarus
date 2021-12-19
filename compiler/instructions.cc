@@ -44,11 +44,11 @@ using TypeConstructorInstructions = ir::InstructionSet<
 
 struct instruction_set_t
     : ir::InstructionSet<
-          ir::CoreInstructions<
-              bool, ir::Char, ir::Integer, uint8_t, int8_t, uint16_t, int16_t,
-              uint32_t, int32_t, uint64_t, int64_t, float, double, type::Type,
-              ir::addr_t, ir::Fn, ir::Block, ir::Scope, ir::Jump, ir::ModuleId,
-              ir::UnboundScope, interface::Interface>,
+          ir::CoreInstructions<bool, ir::Char, ir::Integer, uint8_t, int8_t,
+                               uint16_t, int16_t, uint32_t, int32_t, uint64_t,
+                               int64_t, float, double, type::Type, ir::addr_t,
+                               ir::Fn, ir::Scope, ir::ModuleId,
+                               ir::UnboundScope, interface::Interface>,
           ir::SetReturnInstruction<ir::GenericFn>,
           ArithmeticInstructions<ir::Integer, uint8_t, int8_t, uint16_t,
                                  int16_t, uint32_t, int32_t, uint64_t, int64_t,
@@ -124,13 +124,12 @@ struct instruction_set_t
           ir::AndInstruction, ir::NotInstruction, type::XorFlagsInstruction,
           type::AndFlagsInstruction, type::OrFlagsInstruction,
           ir::LoadSymbolInstruction, type::ArrayInstruction,
-          ir::MakeBlockInstruction, ir::StructIndexInstruction,
-          ir::PtrIncrInstruction, ir::TypeInfoInstruction, ir::InitInstruction,
-          ir::DestroyInstruction, ir::MoveInitInstruction,
-          ir::CopyInitInstruction, ir::MoveInstruction, ir::CopyInstruction,
-          type::SliceLengthInstruction, type::SliceDataInstruction,
-          ir::DebugIrInstruction, ir::AbortInstruction,
-          TypeConstructorInstructions> {};
+          ir::StructIndexInstruction, ir::PtrIncrInstruction,
+          ir::TypeInfoInstruction, ir::InitInstruction, ir::DestroyInstruction,
+          ir::MoveInitInstruction, ir::CopyInitInstruction, ir::MoveInstruction,
+          ir::CopyInstruction, type::SliceLengthInstruction,
+          type::SliceDataInstruction, ir::DebugIrInstruction,
+          ir::AbortInstruction, TypeConstructorInstructions> {};
 
 void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
   writer.set_block(&block);

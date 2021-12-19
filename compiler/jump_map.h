@@ -34,13 +34,6 @@ struct JumpMap {
     return iter != yields_.end() ? &iter->second : nullptr;
   }
 
-  std::vector<base::PtrUnion<ast::UnconditionalGoto const,
-                             ast::ConditionalGoto const>> const *
-  operator[](ast::Jump const *p) const {
-    auto iter = gotos_.find(p);
-    return iter != gotos_.end() ? &iter->second : nullptr;
-  }
-
  private:
   struct NodeExtractor;
 
@@ -56,13 +49,6 @@ struct JumpMap {
     yields_[node].push_back(y);
   }
 
-  void Insert(
-      ast::Jump const *node,
-      base::PtrUnion<ast::UnconditionalGoto const, ast::ConditionalGoto const>
-          g) {
-    gotos_[node].push_back(g);
-  }
-
   absl::flat_hash_map<base::PtrUnion<ast::FunctionLiteral const,
                                      ast::ShortFunctionLiteral const>,
                       std::vector<ast::ReturnStmt const *>>
@@ -72,11 +58,6 @@ struct JumpMap {
       base::PtrUnion<ast::BlockNode const, ast::ScopeNode const>,
       std::vector<ast::YieldStmt const *>>
       yields_;
-
-  absl::flat_hash_map<ast::Jump const *,
-                      std::vector<base::PtrUnion<ast::UnconditionalGoto const,
-                                                 ast::ConditionalGoto const>>>
-      gotos_;
 };
 
 }  // namespace compiler

@@ -61,8 +61,7 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
       ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
                  uint8_t, uint16_t, uint32_t, uint64_t, float, double,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::Jump, ir::Block, ir::GenericFn, ir::UnboundScope,
-                 interface::Interface>(
+                 ir::GenericFn, ir::UnboundScope, interface::Interface>(
           type, [&]<typename T>() {
             c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
                 .index = 0,
@@ -189,9 +188,6 @@ bool WorkGraph::Execute(WorkItem const &w) {
       break;
     case WorkItem::Kind::CompleteEnum:
       result = c.CompleteEnum(&w.node->as<ast::EnumLiteral>());
-      break;
-    case WorkItem::Kind::EmitJumpBody:
-      result = c.EmitJumpBody(&w.node->as<ast::Jump>());
       break;
     case WorkItem::Kind::EmitScopeBody:
       result = c.EmitScopeBody(&w.node->as<ast::ScopeLiteral>());

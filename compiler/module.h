@@ -9,7 +9,6 @@
 #include "ast/ast_fwd.h"
 #include "compiler/context.h"
 #include "ir/compiled_fn.h"
-#include "ir/compiled_jump.h"
 #include "ir/module.h"
 #include "module/module.h"
 

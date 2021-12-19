@@ -81,11 +81,6 @@ Context::FindSubcontextResult Context::FindSubcontext(
   };
 }
 
-ir::CompiledJump *Context::jump(ast::Jump const *expr) {
-  auto iter = ir_jumps_.find(expr);
-  return iter == ir_jumps_.end() ? nullptr : &iter->second;
-}
-
 absl::Span<type::QualType const> Context::qual_types(
     ast::Expression const *expr) const {
   auto iter = qual_types_.find(expr);
@@ -201,13 +196,6 @@ absl::Span<ast::YieldStmt const *const> Context::YieldsTo(
     base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node) const {
   auto const *v = jumps_[node];
   return v ? *v : ASSERT_NOT_NULL(parent())->YieldsTo(node);
-}
-
-absl::Span<base::PtrUnion<ast::UnconditionalGoto const,
-                          ast::ConditionalGoto const> const>
-Context::GoesTo(ast::Jump const *node) const {
-  auto const *v = jumps_[node];
-  return v ? *v : ASSERT_NOT_NULL(parent())->GoesTo(node);
 }
 
 void Context::LoadConstant(ast::Declaration::Id const *id,

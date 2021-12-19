@@ -18,7 +18,6 @@
 #include "ir/out_params.h"
 #include "ir/scope_state.h"
 #include "ir/value/addr.h"
-#include "ir/value/block.h"
 #include "ir/value/char.h"
 #include "ir/value/module_id.h"
 #include "ir/value/reg.h"
@@ -28,7 +27,6 @@
 #include "type/flags.h"
 #include "type/function.h"
 #include "type/interface/interface.h"
-#include "type/jump.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -46,10 +44,6 @@ namespace ir {
 // approach by carrying around extra state (like loads/store-caching).
 
 struct Builder {
-  void InlineJumpIntoCurrent(ir::Jump to_be_inlined,
-                             ir::PartialResultBuffer const& arguments,
-                             ScopeState const& state);
-
   BasicBlock* AddBlock();
   BasicBlock* AddBlock(std::string header);
   BasicBlock* AddBlock(BasicBlock const& to_copy);
@@ -434,9 +428,6 @@ struct Builder {
   Reg Alloca(type::Type t);
   Reg TmpAlloca(type::Type t);
 
-  void MakeBlock(Block block, std::vector<RegOr<Fn>> befores,
-                 std::vector<RegOr<Jump>> afters);
-
   void DebugIr() {
     CurrentBlock()->Append(DebugIrInstruction{.fn = CurrentGroup()});
   }
@@ -456,7 +447,6 @@ struct Builder {
     kMoreStatements,  // Not at the end of the block yet
     kNoTerminator,    // Block complete; no `return` or `<<`
     kReturn,          // Block completed with `return`
-    kGoto,            // Block completed with `goto`
     kLabeledYield,    // Block completed with `#.my_label << `
     kYield,           // Block completed with `<<`
   };
@@ -503,8 +493,6 @@ struct Builder {
       return type::F32;
     } else if constexpr (base::meta<T> == base::meta<double>) {
       return type::F64;
-    } else if constexpr (base::meta<T> == base::meta<Block>) {
-      return type::Block;
     } else if constexpr (base::meta<T> == base::meta<type::Type>) {
       return type::Type_;
     } else if constexpr (base::meta<T> == base::meta<Scope>) {

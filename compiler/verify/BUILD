@@ -19,19 +19,6 @@ cc_library(
 )
 
 cc_library(
-    name = "block_literal",
-    srcs = ["block_literal.cc"],
-    deps = [
-        "//ast",
-        "//compiler:compiler_header",
-        "//type:primitive",
-        "//type:qual_type",
-    ],
-)
-
-# TODO: block_literal_test
-
-cc_library(
     name = "block_node",
     srcs = ["block_node.cc"],
     deps = [
@@ -119,6 +106,7 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
+        "//type:cast",
         "//type:primitive",
         "//type:qual_type",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -144,6 +132,7 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:module",
         "//compiler:type_for_diagnostic",
+        "//type:cast",
         "//type:overload_set",
         "//type:pointer",
         "//type:primitive",
@@ -199,6 +188,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",
+        "//type:cast",
         "//type:qual_type",
     ],
 )
@@ -225,6 +215,7 @@ cc_library(
         "//core:dependency_node",
         "//core:arguments",
         "//type:callable",
+        "//type:cast",
         "//type:overload_set",
         "//type:provenance",
         "//type:typed_value",
@@ -241,6 +232,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//type:array",
+        "//type:cast",
         "//type:pointer",
         "//type:primitive",
         "//type:qual_type",
@@ -267,6 +259,7 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:module",
         "//compiler/verify/internal:assignment_and_initialization",
+        "//type:cast",
         "//type:qual_type",
         "//type:typed_value",
         "@com_google_absl//absl/cleanup",
@@ -292,6 +285,7 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:module",
         "//compiler:type_for_diagnostic",
+        "//type:cast",
         "//type:primitive",
         "//type:qual_type",
         "@com_google_absl//absl/cleanup",
@@ -371,26 +365,6 @@ cc_library(
 cc_test(
     name = "function_type_test",
     srcs = ["function_type_test.cc"],
-    deps = [
-        "//compiler",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "goto",
-    srcs = ["goto.cc"],
-    deps = [
-        "//ast",
-        "//compiler:compiler_header",
-        "//type:primitive",
-    ],
-)
-
-cc_test(
-    name = "goto_test",
-    srcs = ["goto_test.cc"],
     deps = [
         "//compiler",
         "//test:module",
@@ -479,28 +453,6 @@ cc_library(
 # TODO: interface_literal_test
 
 cc_library(
-    name = "jump",
-    srcs = ["jump.cc"],
-    deps = [
-        "//ast",
-        "//compiler:compiler_header",
-        "//type:pointer",
-        "//type:qual_type",
-        "//type:typed_value",
-    ],
-)
-
-cc_test(
-    name = "jump_test",
-    srcs = ["jump_test.cc"],
-    deps = [
-        "//compiler",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "module",
     srcs = ["module.cc"],
     deps = [
@@ -571,7 +523,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//type:jump",
         "//type:primitive",
         "//type:qual_type",
         "//type:typed_value",
@@ -585,7 +536,6 @@ cc_test(
         "//compiler",
         "//test:module",
         "//type:primitive",
-        "//type:jump",
         "@com_google_googletest//:gtest_main",
     ],
 )

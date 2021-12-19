@@ -4,6 +4,7 @@
 #include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
+#include "type/cast.h"
 #include "type/overload_set.h"
 #include "type/pointer.h"
 #include "type/primitive.h"

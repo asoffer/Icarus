@@ -84,20 +84,6 @@ struct AssigningNonIdentifier {
   SourceRange id_range;
 };
 
-struct JumpingToNonCall {
-  static constexpr std::string_view kCategory = "parse-error";
-  static constexpr std::string_view kName     = "jumping-to-non-call";
-
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Jump targets must be call expressions."),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
-  }
-
-  SourceRange range;
-};
-
 struct AccessRhsNotIdentifier {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "access-rhs-not-identifier";
@@ -388,23 +374,6 @@ struct BracedShortFunctionLiteral {
             "\nShort function literals do not use braces in Icarus.\n"
             "Rather than writing `(n: i64) => { n * n }`, remove the braces "
             "and write `(n: i64) => n * n`."));
-  }
-
-  SourceRange range;
-};
-
-struct InvalidGoto {
-  static constexpr std::string_view kCategory = "parse-error";
-  static constexpr std::string_view kName     = "invalid-goto";
-
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Invalid number of arguments for `goto`."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}),
-        diagnostic::Text(
-            "\nThe `goto` keyword can be used in one of two ways:\n"
-            " 1) an unconditional jump, like `goto done()`\n"
-            " 2) a conditional jump like `goto x > 3, higher(), lower()`."));
   }
 
   SourceRange range;
@@ -1086,43 +1055,6 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
                                                      std::move(ret_vals[0]));
 }
 
-void ExtractRightChainImpl(ast::BinaryOperator::Kind kind,
-                           std::unique_ptr<ast::Expression> node,
-                           std::vector<std::unique_ptr<ast::Expression>> &out) {
-  if (auto *b = node->if_as<ast::BinaryOperator>();
-      b and b->kind() == kind and b->num_parentheses() == 0) {
-    auto [lhs, rhs] = std::move(*b).extract();
-    ExtractRightChainImpl(kind, std::move(lhs), out);
-    out.push_back(std::move(rhs));
-  } else {
-    out.push_back(std::move(node));
-  }
-}
-
-std::vector<std::unique_ptr<ast::Expression>> ExtractRightChain(
-    ast::BinaryOperator::Kind kind, std::unique_ptr<ast::Expression> node) {
-  std::vector<std::unique_ptr<ast::Expression>> exprs;
-  ExtractRightChainImpl(kind, std::move(node), exprs);
-  return exprs;
-}
-
-std::vector<std::unique_ptr<ast::Call>> BuildJumpOptions(
-    std::unique_ptr<ast::Expression> node,
-    diagnostic::DiagnosticConsumer &diag) {
-  std::vector<std::unique_ptr<ast::Call>> call_exprs;
-  auto exprs =
-      ExtractRightChain(ast::BinaryOperator::Kind::SymbolOr, std::move(node));
-  for (auto &expr : exprs) {
-    if (expr->is<ast::Call>()) {
-      call_exprs.push_back(move_as<ast::Call>(expr));
-    } else {
-      diag.Consume(JumpingToNonCall{.range = expr->range()});
-    }
-  }
-
-  return call_exprs;
-}
-
 std::unique_ptr<ast::Node> BuildStatementLeftUnop(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1131,32 +1063,10 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
   auto stmts = std::make_unique<Statements>(range);
 
   const std::string &tk = nodes[0]->as<Token>().token;
-  if (tk == "goto") {
-    auto exprs = ExtractIfCommaList<ast::Expression>(std::move(nodes[1]));
-    switch (exprs.size()) {
-      case 1: {
-        auto jumps = BuildJumpOptions(move_as<ast::Expression>(exprs[0]), diag);
-        stmts->append(
-            std::make_unique<ast::UnconditionalGoto>(range, std::move(jumps)));
-      } break;
-      case 3: {
-        auto true_jumps =
-            BuildJumpOptions(move_as<ast::Expression>(exprs[1]), diag);
-        auto false_jumps =
-            BuildJumpOptions(move_as<ast::Expression>(exprs[2]), diag);
-        stmts->append(std::make_unique<ast::ConditionalGoto>(
-            range, move_as<ast::Expression>(exprs[0]), std::move(true_jumps),
-            std::move(false_jumps)));
-      } break;
-      default:
-        diag.Consume(InvalidGoto{.range = range});
-        return MakeInvalidNode(range);
-    }
-  } else if (tk == "return") {
-    std::vector<std::unique_ptr<ast::Expression>> exprs =
-        ExtractIfCommaList<ast::Expression>(std::move(nodes[1]));
-    stmts->append(std::make_unique<ast::ReturnStmt>(range, std::move(exprs)));
-  }
+  ASSERT(tk == "return");
+  std::vector<std::unique_ptr<ast::Expression>> exprs =
+      ExtractIfCommaList<ast::Expression>(std::move(nodes[1]));
+  stmts->append(std::make_unique<ast::ReturnStmt>(range, std::move(exprs)));
   return stmts;
 }
 
@@ -1431,34 +1341,6 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
       std::move(params), std::move(stmts).extract());
 }
 
-std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
-                                      SourceRange const &range,
-                                      diagnostic::DiagnosticConsumer &diag) {
-  std::vector<std::unique_ptr<ast::Declaration>> before, after;
-  for (auto &stmt : stmts->content_) {
-    if (auto *decl = stmt->if_as<ast::Declaration>()) {
-      // TODO: Support multiple declarations for "before" and "after".
-      if (decl->ids()[0].name() == "before") {
-        before.push_back(move_as<ast::Declaration>(stmt));
-      } else if (decl->ids()[0].name() == "after") {
-        after.push_back(move_as<ast::Declaration>(stmt));
-      } else {
-        diag.Consume(UnknownDeclarationInBlock{
-            .error_range   = decl->ids()[0].range(),
-            .context_range = range,
-        });
-      }
-    } else {
-      diag.Consume(NonDeclarationInBlock{
-          .error_range   = stmt->range(),
-          .context_range = range,
-      });
-    }
-  }
-  return std::make_unique<ast::BlockLiteral>(range, std::move(before),
-                                             std::move(after));
-}
-
 std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
     std::vector<std::unique_ptr<ast::Node>> &&stmts, SourceRange range,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1505,45 +1387,6 @@ std::unique_ptr<ast::InterfaceLiteral> BuildInterfaceLiteral(
   return std::make_unique<ast::InterfaceLiteral>(range, std::move(exprs));
 }
 
-std::unique_ptr<ast::Node> BuildStatefulJump(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto const &tk = nodes[0]->as<Token>().token;
-  if (tk != "jump") {
-    diag.Consume(TodoDiagnostic{.range = nodes[0]->range()});
-    return nullptr;
-  }
-
-  SourceRange range(nodes.front()->range().begin(),
-                    nodes.back()->range().end());
-  std::vector<std::unique_ptr<ast::Declaration>> params;
-  if (nodes.size() == 6) {
-    if (nodes[4]->is<CommaList>()) {
-      for (auto &expr : nodes[4]->as<CommaList>().nodes_) {
-        auto decl = move_as<ast::Declaration>(expr);
-        decl->flags() |= ast::Declaration::f_IsFnParam;
-        params.push_back(std::move(decl));
-      }
-    } else {
-      auto decl = move_as<ast::Declaration>(nodes[4]);
-      decl->flags() |= ast::Declaration::f_IsFnParam;
-      params.push_back(std::move(decl));
-    }
-  }
-
-  std::vector<std::unique_ptr<ast::Expression>> state_exprs =
-      ExtractIfCommaList<ast::Expression>(std::move(nodes[2]));
-
-  if (not state_exprs[0]->is<ast::Declaration>()) {
-    diag.Consume(TodoDiagnostic{.range = range});
-    return nullptr;
-  }
-
-  return std::make_unique<ast::Jump>(
-      range, move_as<ast::Declaration>(state_exprs[0]), std::move(params),
-      std::move(nodes.back()->as<Statements>()).extract());
-}
-
 std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1552,17 +1395,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
   auto const &tk = nodes[0]->as<Token>().token;
   SourceRange range(nodes.front()->range().begin(),
                     nodes.back()->range().end());
-  if (tk == "jump") {
-    auto stmts = ExtractStatements(std::move(nodes.back()));
-
-    std::vector<std::unique_ptr<ast::Declaration>> params =
-        ExtractIfCommaList<ast::Declaration>(std::move(nodes[1]), true);
-    for (auto &p : params) { p->flags() |= ast::Declaration::f_IsFnParam; }
-
-    return std::make_unique<ast::Jump>(range, nullptr, std::move(params),
-                                       std::move(stmts));
-
-  } else if (tk == "struct") {
+  if (tk == "struct") {
     auto stmts = ExtractStatements(std::move(nodes.back()));
 
     std::vector<ast::Declaration> fields;
@@ -1620,9 +1453,6 @@ std::unique_ptr<ast::Node> BuildKWBlock(
     } else if (tk == "interface") {
       return BuildInterfaceLiteral(std::move(nodes[1]->as<Statements>()), range,
                                    diag);
-
-    } else if (tk == "block") {
-      return BuildBlock(move_as<Statements>(nodes[1]), range, diag);
     } else {
       UNREACHABLE(tk);
     }
@@ -1807,10 +1637,6 @@ static base::Global kRules = std::array{
                      braced_stmts},
            .output  = expr,
            .execute = BuildScopeLiteral},
-    rule_t{.match   = {kw_struct, l_bracket, decl | decl_list, r_bracket,
-                     empty_parens | paren_expr | paren_decl_list, braced_stmts},
-           .output  = expr,
-           .execute = BuildStatefulJump},
     rule_t{.match   = {KW_BLOCK, braced_stmts},
            .output  = expr,
            .execute = BuildKWBlock},

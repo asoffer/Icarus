@@ -1,6 +1,5 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "type/jump.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"

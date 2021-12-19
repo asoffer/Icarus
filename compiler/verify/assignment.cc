@@ -2,6 +2,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/verify/common.h"
+#include "type/cast.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
 

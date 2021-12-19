@@ -114,12 +114,6 @@ struct ParamDependencyGraphBuilder
     Visit(&node->rhs(), d);
   }
 
-  void Visit(BlockLiteral const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const *b : node->before()) { Visit(b, d); }
-    for (auto const *a : node->after()) { Visit(a, d); }
-  }
-
   void Visit(BlockNode const *node,
              core::DependencyNode<Declaration const *> d) {
     for (auto const &p : node->params()) { Visit(p.value.get(), d); }
@@ -205,36 +199,6 @@ struct ParamDependencyGraphBuilder
       Visit(name.get(), d);
       Visit(expr.get(), d);
     }
-  }
-
-  void Visit(ConditionalGoto const *node,
-             core::DependencyNode<Declaration const *> d) {
-    Visit(node->condition(), d);
-    for (auto const &opt : node->true_options()) {
-      for (std::unique_ptr<Expression> const &expr : opt.args()) {
-        Visit(expr.get(), d);
-      }
-    }
-    for (auto const &opt : node->false_options()) {
-      for (std::unique_ptr<Expression> const &expr : opt.args()) {
-        Visit(expr.get(), d);
-      }
-    }
-  }
-
-  void Visit(UnconditionalGoto const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const &opt : node->options()) {
-      for (std::unique_ptr<Expression> const &expr : opt.args()) {
-        Visit(expr.get(), d);
-      }
-    }
-  }
-
-  void Visit(Jump const *node, core::DependencyNode<Declaration const *> d) {
-    if (node->state()) { Visit(node->state(), d); }
-    for (auto const &param : node->params()) { Visit(param.value.get(), d); }
-    for (auto const *stmt : node->stmts()) { Visit(stmt, d); }
   }
 
   void Visit(Module const *node, core::DependencyNode<Declaration const *> d) {}

@@ -96,6 +96,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header", 
         "//compiler/emit:common", 
+        "//type:cast",
     ],
 )
 
@@ -107,25 +108,6 @@ cc_test(
         "//test:evaluation",
         "//test:module",
         "@com_google_absl//absl/strings:str_format",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "block_literal",
-    srcs = ["block_literal.cc"],
-    deps = [
-        "//ast",
-        "//compiler:compiler_header",
-    ],
-)
-
-cc_test(
-    name = "block_literal_test",
-    srcs = ["block_literal_test.cc"],
-    deps = [
-        "//compiler",
-        "//test:module",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -194,6 +176,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:char",
+        "//type:cast",
     ],
 )
 
@@ -320,19 +303,7 @@ cc_library(
     ],
 )
 
-# TODO: FunctionLiteral
-
-cc_library(
-    name = "goto",
-    srcs = ["goto.cc"],
-    deps = [
-        "//ast",
-        "//compiler:compiler_header",
-    ],
-)
-
-# Note: There are no tests for ":goto" directly as these are well-covered by
-# ":scope_node_test".
+# TODO: function_literal_test
 
 cc_library(
     name = "identifier",
@@ -384,24 +355,6 @@ cc_library(
 )
 
 # TODO: interface_literal_test
-
-cc_library(
-    name = "jump",
-    srcs = ["jump.cc"],
-    deps = [
-        ":common",
-        "//ast",
-        "//compiler:compiler_header",
-        "//compiler:instructions",
-        "//core:arguments",
-        "//ir/value:reg",
-        "//ir/value:reg_or",
-        "//type",
-        "//type:typed_value",
-    ],
-)
-
-# TODO: jump_test
 
 cc_library(
     name = "miscellaneous",
@@ -557,6 +510,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instructions",
+        "//type:cast",
     ],
 )
 

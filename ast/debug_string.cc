@@ -52,7 +52,6 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Ne: return " != ";
     case frontend::Operator::Ge: return " >= ";
     case frontend::Operator::Gt: return " > ";
-    case frontend::Operator::Goto: return "goto ";
     case frontend::Operator::Return: return "return ";
     case frontend::Operator::Yield: return "<< ";
     case frontend::Operator::Not: return "not";
@@ -167,22 +166,6 @@ void BindingDeclaration::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "`", ids()[0].name());
 }
 
-void BlockLiteral::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, "block {\n");
-
-  for (auto const *b : before()) {
-    absl::StrAppend(out, indentation(indent));
-    b->DebugStrAppend(out, indent + 1);
-    absl::StrAppend(out, "\n");
-  }
-  for (auto const *a : after()) {
-    absl::StrAppend(out, indentation(indent));
-    a->DebugStrAppend(out, indent + 1);
-    absl::StrAppend(out, "\n");
-  }
-  absl::StrAppend(out, indentation(indent), "}\n");
-}
-
 void BlockNode::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, name());
   if (not params().empty()) {
@@ -194,19 +177,6 @@ void BlockNode::DebugStrAppend(std::string *out, size_t indent) const {
     stmt->DebugStrAppend(out, indent + 1);
   }
   absl::StrAppend(out, indentation(indent), "}\n");
-}
-
-void Jump::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(
-      out, "jump",
-      state() ? absl::StrCat(" [", state()->DebugString(), "] ") : " ", "(",
-      ParametersToString(params(), indent), ") {");
-
-  for (auto *stmt : stmts()) {
-    absl::StrAppend(out, "\n", indentation(indent + 1));
-    stmt->DebugStrAppend(out, indent + 1);
-  }
-  absl::StrAppend(out, "\n", indentation(indent), "}\n");
 }
 
 void BuiltinFn::DebugStrAppend(std::string *out, size_t indent) const {
@@ -374,32 +344,6 @@ void InterfaceLiteral::DebugStrAppend(std::string *out, size_t indent) const {
     absl::StrAppend(out, "\n");
   }
   absl::StrAppend(out, "}");
-}
-
-void ConditionalGoto::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, "goto ");
-  condition()->DebugStrAppend(out, indent);
-  absl::StrAppend(out, ", ");
-  for (auto const &opt : true_options()) {
-    absl::StrAppend(out, opt.block(), "(");
-    DumpArguments(out, indent, opt.args());
-    absl::StrAppend(out, ")");
-  }
-  absl::StrAppend(out, ", ");
-  for (auto const &opt : false_options()) {
-    absl::StrAppend(out, opt.block(), "(");
-    DumpArguments(out, indent, opt.args());
-    absl::StrAppend(out, ")");
-  }
-}
-
-void UnconditionalGoto::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, "goto ");
-  for (auto const &opt : options()) {
-    absl::StrAppend(out, opt.block(), "(");
-    DumpArguments(out, indent, opt.args());
-    absl::StrAppend(out, ")");
-  }
 }
 
 void Label::DebugStrAppend(std::string *out, size_t indent) const {

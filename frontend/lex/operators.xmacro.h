@@ -1,7 +1,6 @@
 OPERATOR_MACRO(Hashtag, "", hashtag, 0, non_assoc)
 OPERATOR_MACRO(Import, "import", op_l, 1, non_assoc)
 OPERATOR_MACRO(Return, "return", sop_lt, 1, non_assoc)
-OPERATOR_MACRO(Goto, "goto", sop_l, 1, non_assoc)
 // TODO need to support rhs-only too (e.g., `#.label <<`)
 OPERATOR_MACRO(Yield, "<<", yield, 1, non_assoc)
 OPERATOR_MACRO(Comma, ",", comma, 2, chain_assoc)

@@ -53,11 +53,6 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
 
   void Visit(ast::BindingDeclaration const *node) final {}
 
-  void Visit(ast::BlockLiteral const *node) final {
-    for (auto const *b : node->before()) { Visit(b); }
-    for (auto const *a : node->after()) { Visit(a); }
-  }
-
   void Visit(ast::BlockNode const *node) final {
     // Even if this function literal has no return statements, We want to track
     // the fact that we've seen this node.
@@ -135,54 +130,11 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
     Visit(node->rhs());
   }
 
-  void Visit(ast::ConditionalGoto const *node) final {
-    Visit(node->condition());
-
-    // TODO Can you return or yield or jump from inside a jump block?!
-    for (auto const &opt : node->true_options()) {
-      for (std::unique_ptr<ast::Expression> const &expr : opt.args()) {
-        Visit(expr.get());
-      }
-    }
-
-    for (auto const &opt : node->false_options()) {
-      for (std::unique_ptr<ast::Expression> const &expr : opt.args()) {
-        Visit(expr.get());
-      }
-    }
-    jumps_->Insert(&node_stack_.back()->as<ast::Jump>(), node);
-  }
-
-  void Visit(ast::UnconditionalGoto const *node) final {
-    // TODO Can you return or yield or jump from inside a jump block?!
-    for (auto const &opt : node->options()) {
-      for (std::unique_ptr<ast::Expression> const &expr : opt.args()) {
-        Visit(expr.get());
-      }
-    }
-
-    auto iter = node_stack_.rbegin();
-    while (iter != node_stack_.rend() and not(**iter).is<ast::Jump>()) {
-      ++iter;
-    }
-    if (iter != node_stack_.rend()) {
-      jumps_->Insert(&(*iter)->as<ast::Jump>(), node);
-    }
-  }
-
   void Visit(ast::PatternMatch const *node) final {
     if (node->is_binary()) { Visit(&node->expr()); }
     Visit(&node->pattern());
   }
   void Visit(ast::Label const *node) final {}
-
-  void Visit(ast::Jump const *node) final {
-    // TODO Can you return or yield or jump from inside a jump block?!
-    for (auto const &param : node->params()) { Visit(param.value.get()); }
-    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
-      for (auto const *stmt : node->stmts()) { Visit(stmt); }
-    }
-  }
 
   void Visit(ast::ReturnStmt const *node) final {
     for (auto *expr : node->exprs()) { Visit(expr); }

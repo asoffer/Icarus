@@ -33,7 +33,6 @@ cc_library(
     deps = [
         ":declaration",
         ":expression",
-        ":jump_options",
         ":module",
         ":node",
         ":scope",
@@ -66,15 +65,6 @@ cc_library(
     deps = [
         ":node",
         "//ir/value:hashtag",
-    ],
-)
-
-cc_library(
-    name = "jump_options",
-    hdrs = ["jump_options.h"],
-    deps = [
-        ":expression",
-        "//core:arguments",
     ],
 )
 

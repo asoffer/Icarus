@@ -6,6 +6,7 @@
 #include "base/traverse.h"
 #include "ir/blocks/group.h"
 #include "type/array.h"
+#include "type/cast.h"
 
 namespace ir {
 namespace {
@@ -190,14 +191,6 @@ type::Typed<Reg> Builder::FieldRef(RegOr<addr_t> r, type::Struct const *t,
   CurrentBlock()->Append(StructIndexInstruction{
       .addr = r, .index = n, .struct_type = t, .result = result});
   return type::Typed<Reg>(result, t->fields()[n].type);
-}
-
-void Builder::MakeBlock(Block block, std::vector<RegOr<Fn>> befores,
-                        std::vector<RegOr<Jump>> afters) {
-  MakeBlockInstruction inst{.block   = block,
-                            .befores = std::move(befores),
-                            .afters  = std::move(afters)};
-  CurrentBlock()->Append(std::move(inst));
 }
 
 void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,

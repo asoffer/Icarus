@@ -2,6 +2,7 @@
 #include "compiler/compiler.h"
 #include "compiler/instructions.h"
 #include "ir/instruction/instructions.h"
+#include "type/cast.h"
 
 // TODO: Currently inserting these always at the root. There are a couple of
 // reason why this is wrong. First, If this is generated due to a temporary

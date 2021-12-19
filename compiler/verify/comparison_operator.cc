@@ -1,5 +1,6 @@
 #include "compiler/compiler.h"
 #include "type/array.h"
+#include "type/cast.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"

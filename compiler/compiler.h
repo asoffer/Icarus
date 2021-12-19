@@ -21,6 +21,7 @@
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
 #include "compiler/work_item.h"
+#include "core/call.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/source.h"
 #include "ir/builder.h"
@@ -37,7 +38,6 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
-#include "type/jump.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -381,13 +381,11 @@ struct Compiler
   DEFINE_EMIT(ast::BinaryOperator)
   DEFINE_EMIT(ast::BinaryAssignmentOperator)
   DEFINE_EMIT(ast::BindingDeclaration)
-  DEFINE_EMIT(ast::BlockLiteral)
   DEFINE_EMIT(ast::BlockNode)
   DEFINE_EMIT(ast::BuiltinFn)
   DEFINE_EMIT(ast::Call)
   DEFINE_EMIT(ast::Cast)
   DEFINE_EMIT(ast::ComparisonOperator)
-  DEFINE_EMIT(ast::ConditionalGoto)
   DEFINE_EMIT(ast::Declaration)
   DEFINE_EMIT(ast::Declaration_Id)
   DEFINE_EMIT(ast::DesignatedInitializer)
@@ -399,7 +397,6 @@ struct Compiler
   DEFINE_EMIT(ast::Index)
   DEFINE_EMIT(ast::InterfaceLiteral)
   DEFINE_EMIT(ast::Label)
-  DEFINE_EMIT(ast::Jump)
   DEFINE_EMIT(ast::ParameterizedStructLiteral)
   DEFINE_EMIT(ast::PatternMatch)
   DEFINE_EMIT(ast::ReturnStmt)
@@ -410,7 +407,6 @@ struct Compiler
   DEFINE_EMIT(ast::StructLiteral)
   DEFINE_EMIT(ast::Terminal)
   DEFINE_EMIT(ast::UnaryOperator)
-  DEFINE_EMIT(ast::UnconditionalGoto)
   DEFINE_EMIT(ast::YieldStmt)
 
 #undef DEFINE_EMIT
@@ -621,7 +617,6 @@ struct Compiler
   bool CompleteStruct(ast::StructLiteral const *node);
   bool CompleteStruct(ast::ParameterizedStructLiteral const *node);
   bool CompleteEnum(ast::EnumLiteral const *node);
-  bool EmitJumpBody(ast::Jump const *node);
   bool EmitScopeBody(ast::ScopeLiteral const *node);
   bool EmitFunctionBody(ast::FunctionLiteral const *node);
   bool EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);

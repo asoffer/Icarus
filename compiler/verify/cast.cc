@@ -2,6 +2,7 @@
 #include "compiler/compiler.h"
 #include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
+#include "type/cast.h"
 #include "type/primitive.h"
 
 namespace compiler {

@@ -143,15 +143,6 @@ void BindingDeclaration::Initialize(Initializer& initializer) {
   pattern_        = initializer.pattern;
 }
 
-void BlockLiteral::Initialize(Initializer& initializer) {
-  scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
-  initializer.scope = &body_scope();
-  absl::Cleanup c   = [&] { initializer.scope = scope_; };
-  InitializeAll(before_, initializer, &covers_binding_, &is_dependent_);
-  InitializeAll(after_, initializer, &covers_binding_, &is_dependent_);
-}
-
 void BlockNode::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope, true);
@@ -296,55 +287,6 @@ void InterfaceLiteral::Initialize(Initializer& initializer) {
     covers_binding_ |= name->covers_binding() or expr->covers_binding();
     is_dependent_ |= name->is_dependent() or expr->is_dependent();
   }
-}
-
-void ConditionalGoto::Initialize(Initializer& initializer) {
-  scope_ = initializer.scope;
-  condition_->Initialize(initializer);
-  for (auto& opt : true_options_) {
-    opt.args_.Apply([&](auto& expr) {
-      expr->Initialize(initializer);
-      covers_binding_ |= expr->covers_binding();
-      is_dependent_ |= expr->is_dependent();
-    });
-  }
-  for (auto& opt : false_options_) {
-    opt.args_.Apply([&](auto& expr) {
-      expr->Initialize(initializer);
-      covers_binding_ |= expr->covers_binding();
-      is_dependent_ |= expr->is_dependent();
-    });
-  }
-}
-
-void UnconditionalGoto::Initialize(Initializer& initializer) {
-  scope_ = initializer.scope;
-  for (auto& opt : options_) {
-    opt.args_.Apply([&](auto& expr) {
-      expr->Initialize(initializer);
-      covers_binding_ |= expr->covers_binding();
-      is_dependent_ |= expr->is_dependent();
-    });
-  }
-}
-
-void Jump::Initialize(Initializer& initializer) {
-  scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
-  initializer.scope = &body_scope();
-  absl::Cleanup c   = [&] { initializer.scope = scope_; };
-  if (state_) {
-    state_->Initialize(initializer);
-    covers_binding_ |= state_->covers_binding();
-    is_dependent_ |= state_->is_dependent();
-  }
-  for (auto& param : params_) {
-    param.value->Initialize(initializer);
-    covers_binding_ |= param.value->covers_binding();
-    is_dependent_ |= param.value->is_dependent();
-  }
-  InitializeAll(stmts_, initializer, &covers_binding_, &is_dependent_);
-  InitializeParams();
 }
 
 void Label::Initialize(Initializer& initializer) { scope_ = initializer.scope; }

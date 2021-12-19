@@ -10,6 +10,7 @@
 #include "compiler/module.h"
 #include "core/params.h"
 #include "ir/value/result_buffer.h"
+#include "type/cast.h"
 #include "type/type.h"
 
 namespace compiler {

@@ -56,7 +56,6 @@ CONCRETE_TYPES = [
     ":enum",
     ":flags",
     ":function",
-    ":jump",
     ":opaque",
     ":pointer",
     ":primitive",
@@ -176,31 +175,6 @@ cc_library(
         "//compiler:work_resources",
         "//core:arch",
         "//core:arguments",
-    ],
-)
-
-cc_library(
-    name = "jump",
-    hdrs = ["jump.h"],
-    srcs = ["jump.cc"],
-    deps = [
-        ":type",
-        ":qual_type",
-        "//base:global",
-        "//core:params",
-        "@com_google_absl//absl/container:node_hash_set",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_test(
-    name = "jump_test",
-    srcs = ["jump_test.cc"],
-    deps = [
-        ":fake",
-        ":jump",
-        "@com_google_absl//absl/strings:str_format",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 

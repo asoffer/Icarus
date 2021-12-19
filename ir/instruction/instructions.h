@@ -12,7 +12,6 @@
 #include "base/extend.h"
 #include "base/extend/traverse.h"
 #include "base/meta.h"
-#include "ir/compiled_block.h"
 #include "ir/compiled_scope.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
@@ -21,7 +20,6 @@
 #include "ir/interpreter/foreign.h"
 #include "ir/interpreter/stack_frame.h"
 #include "ir/out_params.h"
-#include "ir/value/block.h"
 #include "ir/value/fn.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/scope.h"
@@ -387,36 +385,6 @@ struct TypeInfoInstruction
   Kind kind;
   RegOr<type::Type> type;
   Reg result;
-};
-
-struct MakeBlockInstruction
-    : base::Extend<MakeBlockInstruction>::With<base::BaseSerializeExtension,
-                                               DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat =
-      "make-block(%1$s, ...)";  // TODO
-
-  void Apply(interpreter::ExecutionContext& ctx) const {
-    std::vector<ir::Fn> resolved_befores;
-    resolved_befores.reserve(befores.size());
-    for (auto const& fn : befores) {
-      resolved_befores.push_back(ctx.resolve(fn));
-    }
-
-    absl::flat_hash_set<ir::Jump> resolved_afters;
-    resolved_afters.reserve(afters.size());
-    for (auto const& jmp : afters) { resolved_afters.insert(ctx.resolve(jmp)); }
-
-    *CompiledBlock::From(block) = CompiledBlock(
-        OverloadSet(std::move(resolved_befores)), std::move(resolved_afters));
-  }
-
-  friend void BaseTraverse(Inliner& inl, MakeBlockInstruction& inst) {
-    base::Traverse(inl, inst.befores, inst.afters);
-  }
-
-  Block block;
-  std::vector<RegOr<Fn>> befores;
-  std::vector<RegOr<Jump>> afters;
 };
 
 struct StructIndexInstruction

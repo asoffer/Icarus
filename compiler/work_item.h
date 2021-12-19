@@ -22,7 +22,6 @@ struct WorkItem : base::Extend<WorkItem>::With<base::AbslHashExtension> {
     CompleteEnum,
     EmitFunctionBody,
     EmitShortFunctionBody,
-    EmitJumpBody,
     EmitScopeBody,
   };
 
