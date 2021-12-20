@@ -676,6 +676,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
           {"@", ast::UnaryOperator::Kind::At},
           {"*", ast::UnaryOperator::Kind::Pointer},
           {"-", ast::UnaryOperator::Kind::Negate},
+          {">>", ast::UnaryOperator::Kind::BlockJump},
           {"not", ast::UnaryOperator::Kind::Not}};
 
   auto &operand = nodes[1];
@@ -1254,6 +1255,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
           {"xor", ast::BinaryOperator::Kind::Xor},
           {"and", ast::BinaryOperator::Kind::And},
           {"or", ast::BinaryOperator::Kind::Or},
+          {">>", ast::BinaryOperator::Kind::BlockJump},
           {"^", ast::BinaryOperator::Kind::SymbolXor},
           {"&", ast::BinaryOperator::Kind::SymbolAnd},
           {"|", ast::BinaryOperator::Kind::SymbolOr}};

@@ -378,6 +378,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       return VerifyArithmeticOperator<'/'>(*this, node, lhs_qt, rhs_qt);
     case ast::BinaryOperator::Kind::Mod:
       return VerifyArithmeticOperator<'%'>(*this, node, lhs_qt, rhs_qt);
+    case ast::BinaryOperator::Kind::BlockJump: NOT_YET();
   }
 }
 

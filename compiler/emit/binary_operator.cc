@@ -255,6 +255,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         EmitBinaryOverload(*this, node, out);
       }
     } break;
+    case ast::BinaryOperator::Kind::BlockJump: NOT_YET();
   }
 }
 

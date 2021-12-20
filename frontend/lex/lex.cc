@@ -212,7 +212,7 @@ Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
 // Note: The order here is somewhat important. Because we choose the first
 // match, we cannot, for example, put `:` before `::=`.
 static base::Global kOps =
-    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 45>{
+    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 46>{
         {{"@", {Operator::At}},           {",", {Operator::Comma}},
          {"[*]", {Operator::BufPtr}},     {"$", {Operator::ArgType}},
          {"+=", {Operator::AddEq}},       {"+", {Operator::Add}},
@@ -223,19 +223,19 @@ static base::Global kOps =
          {"&=", {Operator::SymbolAndEq}}, {"&", {Operator::SymbolAnd}},
          {"|=", {Operator::SymbolOrEq}},  {"|", {Operator::SymbolOr}},
          {"^=", {Operator::SymbolXorEq}}, {"^", {Operator::SymbolXor}},
-         {">=", {Operator::Ge}},          {">", {Operator::Gt}},
-         {"!=", {Operator::Ne}},          {"::=", {Operator::DoubleColonEq}},
+         {">>", {Operator::BlockJump}},   {">=", {Operator::Ge}},
+         {">", {Operator::Gt}},           {"::=", {Operator::DoubleColonEq}},
          {":?", {Operator::TypeOf}},      {"::", {Operator::DoubleColon}},
          {":=", {Operator::ColonEq}},     {".", {Syntax::Dot}},
-         {":", {Operator::Colon}},        {"<<", {Operator::Yield}},
-         {"<=", {Operator::Le}},          {"<", {Operator::Lt}},
-         {"==", {Operator::Eq}},          {"=>", {Operator::Rocket}},
-         {"=", {Operator::Assign}},       {"'", {Operator::Call}},
-         {"(", {Syntax::LeftParen}},      {")", {Syntax::RightParen}},
-         {"[", {Syntax::LeftBracket}},    {"]", {Syntax::RightBracket}},
-         {"{", {Syntax::LeftBrace}},      {"}", {Syntax::RightBrace}},
-         {"~", {Operator::Tilde}},        {";", {Syntax::Semicolon}},
-         {"`", {Operator::Backtick}}},
+         {"!=", {Operator::Ne}},          {":", {Operator::Colon}},
+         {"<<", {Operator::Yield}},       {"<=", {Operator::Le}},
+         {"<", {Operator::Lt}},           {"==", {Operator::Eq}},
+         {"=>", {Operator::Rocket}},      {"=", {Operator::Assign}},
+         {"'", {Operator::Call}},         {"(", {Syntax::LeftParen}},
+         {")", {Syntax::RightParen}},     {"[", {Syntax::LeftBracket}},
+         {"]", {Syntax::RightBracket}},   {"{", {Syntax::LeftBrace}},
+         {"}", {Syntax::RightBrace}},     {"~", {Operator::Tilde}},
+         {";", {Syntax::Semicolon}},      {"`", {Operator::Backtick}}},
     };
 
 Lexeme NextOperator(SourceCursor &cursor, SourceBuffer const &buffer) {

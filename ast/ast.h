@@ -227,11 +227,12 @@ struct BinaryOperator : Expression {
     SymbolAnd,
     SymbolOr,
     SymbolXor,
+    BlockJump,
   };
 
   static std::string_view Symbol(Kind k) {
-    constexpr std::array<std::string_view, 11> kSymbols{
-        "+", "-", "*", "/", "%", "and", "or", "xor", "&", "|", "^"};
+    constexpr std::array<std::string_view, 12> kSymbols{
+        "+", "-", "*", "/", "%", "and", "or", "xor", "&", "|", "^", ">>"};
     return kSymbols[static_cast<int>(k)];
   }
 
@@ -1210,6 +1211,7 @@ struct UnaryOperator : Expression {
     Address,
     Negate,
     Not,
+    BlockJump,
   };
 
   explicit UnaryOperator(frontend::SourceRange const &range, Kind kind,

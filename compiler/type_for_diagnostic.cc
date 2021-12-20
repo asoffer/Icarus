@@ -198,6 +198,8 @@ struct StringifyType : ast::Visitor<std::string()> {
       case ast::UnaryOperator::Kind::Pointer: return "type";
       case ast::UnaryOperator::Kind::Address:
         return absl::StrCat("*", Visit(node->operand()));
+      case ast::UnaryOperator::Kind::BlockJump:
+        return absl::StrCat(">> ", Visit(node->operand()));
       case ast::UnaryOperator::Kind::Negate:
       case ast::UnaryOperator::Kind::Not: {
         type::Type operand_type =
