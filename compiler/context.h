@@ -231,6 +231,32 @@ struct Context {
     return ir::Scope();
   }
 
+  ir::ScopeContext set_scope_context(ast::ScopeNode const *node,
+                                     std::vector<std::string> &&names) {
+    auto [data_iter, data_inserted] =
+        scope_context_data_.emplace(std::move(names));
+    auto [iter, inserted] =
+        scope_contexts_.emplace(node, ir::ScopeContext(&*data_iter));
+    ASSERT(inserted == true);
+    return iter->second;
+  }
+
+  ir::ScopeContext set_scope_context(ast::ScopeNode const *node,
+                                     absl::Span<std::string const> names) {
+    auto [data_iter, data_inserted] =
+        scope_context_data_.emplace(names.begin(), names.end());
+    auto [iter, inserted] =
+        scope_contexts_.emplace(node, ir::ScopeContext(&*data_iter));
+    ASSERT(inserted == true);
+    return iter->second;
+  }
+
+  ir::ScopeContext ScopeContext(ast::ScopeNode const *node) {
+    auto iter = scope_contexts_.find(node);
+    ASSERT(iter != scope_contexts_.end());
+    return iter->second;
+  }
+
   void CompleteType(ast::Expression const *expr, bool success);
 
   void LoadConstant(ast::Declaration::Id const *id,
@@ -408,6 +434,9 @@ struct Context {
   // For types defined by a single literal expression, (e.g., enums, flags, and
   // structs), this map encodes that definition.
   absl::flat_hash_map<ast::Expression const *, type::Type> types_;
+
+  absl::node_hash_set<std::vector<std::string>> scope_context_data_;
+  absl::flat_hash_map<ast::ScopeNode const *, ir::ScopeContext> scope_contexts_;
 
   // Provides a mapping from a given AST node to the collection of all nodes
   // that might jump to it. For example, a function literal will be mapped to

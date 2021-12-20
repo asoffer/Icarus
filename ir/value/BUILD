@@ -273,6 +273,7 @@ cc_library(
         "//base/extend:absl_format",
         "//base/extend:absl_hash",
         "//base/extend:serialize",
+        "//compiler:work_resources",
         "//ir/blocks:group",
         "//type:scope",
     ],

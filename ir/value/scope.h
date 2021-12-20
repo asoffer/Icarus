@@ -10,6 +10,7 @@
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
 #include "base/extend/serialize.h"
+#include "compiler/work_resources.h"
 #include "ir/blocks/group.h"
 #include "type/scope.h"
 
@@ -49,14 +50,14 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
 
 struct ScopeContext
     : base::Extend<ScopeContext, 1>::With<base::BaseSerializeExtension> {
-  explicit ScopeContext(std::vector<std::string> block_names)
-      : block_names_(std::move(block_names)) {}
+  explicit ScopeContext(std::vector<std::string> const *block_names)
+      : block_names_(block_names) {}
 
-  absl::Span<std::string const> blocks() const { return block_names_; }
+  absl::Span<std::string const> blocks() const { return *block_names_; }
 
  private:
   friend base::EnableExtensions;
-  std::vector<std::string> block_names_;
+  std::vector<std::string> const *block_names_;
 };
 
 struct UnboundScope
@@ -65,18 +66,19 @@ struct UnboundScope
   static constexpr std::string_view kAbslFormatString = "UnboundScope(%p)";
 
   explicit UnboundScope(
-      base::any_invocable<std::optional<Scope>(ScopeContext const &)> *f =
-          nullptr)
+      base::any_invocable<Scope(compiler::WorkResources const &,
+                                ScopeContext const &)> *f = nullptr)
       : f_(f) {}
 
-  std::optional<Scope> operator()(ScopeContext const &ctx) const {
-    return (*f_)(ctx);
+  Scope bind(compiler::WorkResources const &wr, ScopeContext const &ctx) const {
+    return (*f_)(wr, ctx);
   }
 
  private:
   friend base::EnableExtensions;
 
-  base::any_invocable<std::optional<Scope>(ScopeContext const &)> *f_;
+  base::any_invocable<Scope(compiler::WorkResources const &,
+                            ScopeContext const &)> *f_;
 };
 
 }  // namespace ir

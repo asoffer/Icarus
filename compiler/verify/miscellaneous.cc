@@ -64,11 +64,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     VerifyType(&block);
     names.push_back(std::string(block.name()));
   }
-
-  ASSIGN_OR(type::QualType::Error(),  //
-            ir::UnboundScope unbound_scope,
-            EvaluateOrDiagnoseAs<ir::UnboundScope>(node->name()));
-  auto maybe_scope = unbound_scope(ir::ScopeContext(std::move(names)));
+  // TODO: Validation that this scope context is valid for use with the unbound
+  // scope.
+  context().set_scope_context(node, std::move(names));
 
   // TODO: Allow for types to be yielded to this position.
   return context().set_qual_type(node, type::QualType::NonConstant(type::Void));

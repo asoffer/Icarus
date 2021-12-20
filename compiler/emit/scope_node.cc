@@ -109,9 +109,12 @@ ir::BasicBlock * InlineScope(Compiler &c, ir::Scope to_be_inlined,
 void Compiler::EmitToBuffer(ast::ScopeNode const *node,
                             ir::PartialResultBuffer &out) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
-  ir::Scope scope = *EvaluateOrDiagnoseAs<ir::Scope>(node->name());
+  auto unbound_scope = *EvaluateOrDiagnoseAs<ir::UnboundScope>(node->name());
 
   ir::PartialResultBuffer argument_buffer;
+  LOG("", "%s", unbound_scope);
+  ir::Scope scope =
+      unbound_scope.bind(work_resources(), context().ScopeContext(node));
   EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
                 node->arguments(), {/* TODO: Constant arguments */},
                 argument_buffer);

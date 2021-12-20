@@ -7,19 +7,23 @@
 #include "type/type.h"
 
 namespace compiler {
+// TODO: Leaking these would be totally fine. We just need to silence ASAN's
+// leak checker. Longer term, we're going to rewrite these so instead of using
+// type erasure they're an honest-to-goodness function in IR which will be
+// appropriately owned by the module.
+static std::forward_list<
+    base::any_invocable<ir::Scope(WorkResources const &,ir::ScopeContext const &)>>
+    invocables;
 
 void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
                             ir::PartialResultBuffer &out) {
-  // TODO: Long-term we shouldn't heap-allocate this, but each of these needs to
-  // be separately allocated and long-lived anyway there's not much harm in
-  // ignoring the proper ownership story for the time being.
-  out.append(
-      ir::UnboundScope(new base::any_invocable<std::optional<ir::Scope>(
-                           ir::ScopeContext const &)>(
-          [instantiation_compiler = Compiler(&context(), resources()),
-           node](ir::ScopeContext const &scope_context) mutable
-          -> std::optional<ir::Scope> {
-            ASSIGN_OR(return std::nullopt,  //
+  invocables.push_front(
+      base::any_invocable<ir::Scope(WorkResources const &,
+                                    ir::ScopeContext const &)>(
+          [instantiation_compiler = Compiler(&context(), resources()), node](
+              WorkResources const &wr,
+              ir::ScopeContext scope_context) mutable -> ir::Scope {
+            ASSIGN_OR(return ir::Scope(),  //
                              auto result,
                              Instantiate(instantiation_compiler, node,
                                          scope_context));
@@ -27,14 +31,14 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
             PersistentResources resources = instantiation_compiler.resources();
             auto compiler =
                 instantiation_compiler.MakeChild(&context, resources);
-            // TODO: Is this necessary?
-            // compiler.set_work_resources(wr);
+            compiler.set_work_resources(wr);
             for (auto const *stmt : node->stmts()) {
               compiler.VerifyType(stmt);
             }
             // TODO: Return a real value.
-            return std::nullopt;
-          })));
+            return ir::Scope();
+          }));
+  out.append(ir::UnboundScope(&invocables.front()));
 }
 
 bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
