@@ -198,4 +198,23 @@ Context::FindSubcontextResult FindInstantiation(
   return ctx.FindSubcontext(node, *ComputeParamsFromArgs(child, node, args));
 }
 
+Context::FindSubcontextResult FindInstantiation(
+    Compiler &c, ast::ScopeLiteral const *node,
+    ir::ScopeContext const &scope_context) {
+  auto &ctx = node->scope()
+                  ->Containing<ast::ModuleScope>()
+                  ->module()
+                  ->as<CompiledModule>()
+                  .context();
+  LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
+      ctx.DebugString());
+  ir::CompleteResultBuffer buffer;
+  buffer.append(scope_context);
+  BoundParameters bound_parameters;
+  bound_parameters.bind_type(&node->context().ids()[0],
+                             type::QualType::Constant(type::ScopeContext));
+  bound_parameters.bind_value(&node->context().ids()[0], buffer[0]);
+  return ctx.FindSubcontext(node, bound_parameters);
+}
+
 }  // namespace compiler

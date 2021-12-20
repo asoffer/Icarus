@@ -4,6 +4,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "ir/value/reg_or.h"
+#include "type/scope.h"
 #include "type/type.h"
 
 namespace compiler {
@@ -27,7 +28,7 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
                              auto result,
                              Instantiate(instantiation_compiler, node,
                                          scope_context));
-            auto const &[params, rets_ref, context, inserted] = result;
+            auto const &[params, rets_ref, context, instantiation_inserted] = result;
             PersistentResources resources = instantiation_compiler.resources();
             auto compiler =
                 instantiation_compiler.MakeChild(&context, resources);
@@ -35,15 +36,25 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
             for (auto const *stmt : node->stmts()) {
               compiler.VerifyType(stmt);
             }
-            // TODO: Return a real value.
-            return ir::Scope();
+
+            context.set_qual_type(node,
+                                  type::QualType::Constant(type::Scp({})));
+            auto [scope, inserted] = context.add_scope(node);
+            if (inserted) {
+              compiler.Enqueue({.kind    = WorkItem::Kind::EmitScopeBody,
+                                .node    = node,
+                                .context = &context});
+            }
+
+            return scope;
           }));
+  context().SetAstLiteral(ir::UnboundScope(&invocables.front()), node);
   out.append(ir::UnboundScope(&invocables.front()));
 }
 
 bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
   LOG("EmitScopeBody", "Scope %s", node->DebugString());
-  ir::Scope ir_scope     = context().FindScope(node);
+  ir::Scope ir_scope = context().FindScope(node);
 
   ICARUS_SCOPE(ir::SetCurrent(*ir_scope, builder())) {
     builder().CurrentBlock() = ir_scope->entry();

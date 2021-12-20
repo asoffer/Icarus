@@ -28,6 +28,12 @@ std::optional<Context::InsertSubcontextResult> Instantiate(
     Compiler &c, ast::ScopeLiteral const *node,
     ir::ScopeContext const &scope_context);
 
+// Finds an already existing instantiation of `node` with `scope_context` as a
+// subcontext of `c.context()`. Behavior is undefined if none exists.
+Context::FindSubcontextResult FindInstantiation(
+    Compiler &c, ast::ScopeLiteral const *node,
+    ir::ScopeContext const &scope_context);
+
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_INSTANTIATE_H

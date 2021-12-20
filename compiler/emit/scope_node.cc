@@ -111,10 +111,22 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   LOG("ScopeNode", "Emitting IR for ScopeNode");
   auto unbound_scope = *EvaluateOrDiagnoseAs<ir::UnboundScope>(node->name());
 
+  ir::ScopeContext scope_context = context().ScopeContext(node);
+  ir::Scope scope = unbound_scope.bind(work_resources(), scope_context);
+
+  ast::ScopeLiteral const *scope_lit = context().AstLiteral(unbound_scope);
+
+  auto find_subcontext_result =
+      FindInstantiation(*this, scope_lit, scope_context);
+  auto &context = find_subcontext_result.context;
+
+  EnsureComplete({
+      .kind    = WorkItem::Kind::EmitScopeBody,
+      .node    = scope_lit,
+      .context = &context,
+  });
+
   ir::PartialResultBuffer argument_buffer;
-  LOG("", "%s", unbound_scope);
-  ir::Scope scope =
-      unbound_scope.bind(work_resources(), context().ScopeContext(node));
   EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
                 node->arguments(), {/* TODO: Constant arguments */},
                 argument_buffer);

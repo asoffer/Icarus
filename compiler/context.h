@@ -227,8 +227,7 @@ struct Context {
   ir::Scope FindScope(ast::ParameterizedExpression const *expr) {
     auto iter = ir_scopes_.find(expr);
     if (iter != ir_scopes_.end()) { return iter->second; }
-    if (parent()) { return parent()->FindScope(expr); }
-    return ir::Scope();
+    return ASSERT_NOT_NULL(parent())->FindScope(expr);
   }
 
   ir::ScopeContext set_scope_context(ast::ScopeNode const *node,
@@ -291,6 +290,15 @@ struct Context {
       return parent_context->AstLiteral(p);
     }
     return nullptr;
+  }
+
+  void SetAstLiteral(ir::UnboundScope s, ast::ScopeLiteral const *node) {
+    scope_literal_.emplace(s, node);
+  }
+  ast::ScopeLiteral const *AstLiteral(ir::UnboundScope s) const {
+    auto iter = scope_literal_.find(s);
+    ASSERT(iter != scope_literal_.end());
+    return iter->second;
   }
 
   template <typename T, typename... Args>
@@ -437,6 +445,9 @@ struct Context {
 
   absl::node_hash_set<std::vector<std::string>> scope_context_data_;
   absl::flat_hash_map<ast::ScopeNode const *, ir::ScopeContext> scope_contexts_;
+
+  absl::flat_hash_map<ir::UnboundScope, ast::ScopeLiteral const *>
+      scope_literal_;
 
   // Provides a mapping from a given AST node to the collection of all nodes
   // that might jump to it. For example, a function literal will be mapped to
