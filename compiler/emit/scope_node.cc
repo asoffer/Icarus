@@ -62,8 +62,11 @@ struct BasicBlockMapping {
   absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *> mapping_;
 };
 
-ir::BasicBlock * InlineScope(Compiler &c, ir::Scope to_be_inlined,
-                 ir::PartialResultBuffer const &arguments) {
+ir::BasicBlock *InlineScope(
+    Compiler &c, ir::Scope to_be_inlined,
+    ir::PartialResultBuffer const &arguments,
+    absl::Span<std::pair<ir::BasicBlock *, ir::BasicBlock *> const>
+        block_entry_exit) {
   auto landing = c.builder().AddBlock();
 
   auto *start_block          = c.builder().CurrentBlock();
@@ -94,12 +97,21 @@ ir::BasicBlock * InlineScope(Compiler &c, ir::Scope to_be_inlined,
         j.false_block = mapping(j.false_block);
       } else if constexpr (type == base::meta<ir::JumpCmd::RetJump>) {
         *jump = ir::JumpCmd::Uncond(landing);
+      } else if constexpr (type == base::meta<ir::JumpCmd::UnreachableJump>) {
+        return;
+      } else if constexpr (type == base::meta<ir::JumpCmd::BlockJump>) {
+        auto [entry, exit] = block_entry_exit[j.block.value()];
+        auto exit_block    = mapping(to_be_inlined.connection(j.block).second);
+        *jump              = ir::JumpCmd::Uncond(entry);
+        c.builder().CurrentBlock() = exit;
+        c.builder().UncondJump(exit_block);
       } else {
         UNREACHABLE(type);
       }
     });
   }
 
+  LOG("", "%p %p", start_block, mapping(to_be_inlined->entry()));
   start_block->set_jump(ir::JumpCmd::Uncond(mapping(to_be_inlined->entry())));
   return landing;
 }
@@ -126,11 +138,27 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
       .context = &context,
   });
 
+  auto *start              = builder().CurrentBlock();
+
+  std::vector<std::pair<ir::BasicBlock *, ir::BasicBlock *>> block_entry_exit;
+  block_entry_exit.reserve(node->blocks().size());
+  for (auto const &block : node->blocks()) {
+    auto &[entry, exit]      = block_entry_exit.emplace_back();
+    entry                    = builder().AddBlock();
+    builder().CurrentBlock() = entry;
+    ir::PartialResultBuffer ignored;
+    EmitToBuffer(&block, ignored);
+    exit = builder().CurrentBlock();
+  }
+
+  builder().CurrentBlock() = start;
   ir::PartialResultBuffer argument_buffer;
   EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
                 node->arguments(), {/* TODO: Constant arguments */},
                 argument_buffer);
-  builder().CurrentBlock() = InlineScope(*this, scope, argument_buffer);
+
+  builder().CurrentBlock() =
+      InlineScope(*this, scope, argument_buffer, block_entry_exit);
 }
 
 void Compiler::EmitCopyInit(

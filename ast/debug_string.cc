@@ -21,7 +21,7 @@ char const *OpStr(UnaryOperator::Kind op) {
     case UnaryOperator::Kind::Negate: return "-";
     case UnaryOperator::Kind::At: return "@";
     case UnaryOperator::Kind::Address: return "&";
-    case UnaryOperator::Kind::BlockJump: return ">>";
+    case UnaryOperator::Kind::BlockJump: return ">> ";
     case UnaryOperator::Kind::TypeOf: UNREACHABLE();
   }
 }

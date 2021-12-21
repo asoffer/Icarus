@@ -9,6 +9,7 @@ cc_library(
         "//compiler:module",
         "//compiler:type_for_diagnostic",
         "//ir/value:module_id",
+        "//type:block",
         "//type:enum",
         "//type:flags",
         "//type:overload_set",

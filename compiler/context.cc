@@ -38,23 +38,22 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
 
   if (inserted) {
     LOG("Instantiate", "Context inserted as %p", &iter->second->context);
-    for (size_t i = 0; i < node->params().size(); ++i) {
-      auto const *id = &node->params()[i].value->ids()[0];
-      auto parameter_binding = params.binding(id);
-      if (not parameter_binding) { continue; }
+    params.ForEachBinding(
+        [&c = iter->second->context](
+            ast::Declaration::Id const *id,
+            BoundParameters::BoundParameterReference const &binding) {
+          auto qt = binding.qual_type();
+          if (auto value = binding.value(); not value.empty()) {
+            LOG("Instantiate", "    Parameter has type %s and value %s", qt,
+                qt.type().Representation(value));
+            c.SetConstant(id, value);
+          } else {
+            LOG("Instantiate", "    Parameter has type %s", qt);
+          }
 
-      auto qt = parameter_binding.qual_type();
-      if (auto value = parameter_binding.value(); not value.empty()) {
-        LOG("Instantiate", "    Parameter %u has type %s and value %s", i, qt,
-            qt.type().Representation(value));
-        iter->second->context.SetConstant(id, value);
-      } else {
-        LOG("Instantiate", "    Parameter %u has type %s", i, qt);
-      }
-
-      iter->second->context.set_qual_type(id, qt);
-      iter->second->context.set_qual_type(&id->declaration(), qt);
-    }
+          c.set_qual_type(id, qt);
+          c.set_qual_type(&id->declaration(), qt);
+        });
   }
   auto &[parameter_types, rets, ctx] = *iter->second;
 

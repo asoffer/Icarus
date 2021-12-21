@@ -10,6 +10,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     ast::ScopeLiteral const *node) {
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),  //
                    auto params, VerifyParams(node->params()));
+
+  VerifyType(&node->context());
   return context().set_qual_type(node,
                                  type::QualType::Constant(type::UnboundScope));
 }

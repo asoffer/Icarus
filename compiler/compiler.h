@@ -35,6 +35,7 @@
 #include "module/importer.h"
 #include "module/module.h"
 #include "type/array.h"
+#include "type/block.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
@@ -325,11 +326,15 @@ struct Compiler
       constexpr auto type = base::meta<T>;
       if constexpr (type == base::meta<type::Type>) { return type::Type_; }
       if constexpr (type == base::meta<ir::Scope>) { return type::Scp({}); }
+      if constexpr (type == base::meta<ir::Block>) { return type::Blk({}); }
       if constexpr (type == base::meta<ir::ModuleId>) { return type::Module; }
       if constexpr (type == base::meta<uint64_t>) { return type::U64; }
       if constexpr (type == base::meta<ir::Integer>) { return type::Integer; }
       if constexpr (type == base::meta<ir::UnboundScope>) {
         return type::UnboundScope;
+      }
+      if constexpr (type == base::meta<ir::ScopeContext>) {
+        return type::ScopeContext;
       }
       if constexpr (type == base::meta<interface::Interface>) {
         return type::Interface;

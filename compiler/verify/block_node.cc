@@ -24,7 +24,7 @@ struct NoBlockWithName {
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::BlockNode const *node) {
   LOG("BlockNode", "Verifying %s", node->DebugString());
-  auto qt = type::QualType::Constant(type::Block);
+  auto qt = type::QualType::Constant(type::Void);
 
   auto const *scope_node = node->parent();
   if (not scope_node) {

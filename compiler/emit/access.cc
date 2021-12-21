@@ -3,6 +3,7 @@
 #include "compiler/module.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
+#include "type/block.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/typed_value.h"
@@ -70,7 +71,11 @@ void Compiler::EmitToBuffer(ast::Access const *node,
   }
 
   type::QualType node_qt = context().qual_types(node)[0];
-  if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
+  if (auto const *b = node_qt.type().if_as<type::Block>()) {
+    auto scope_context =
+        *EvaluateOrDiagnoseAs<ir::ScopeContext>(node->operand());
+    out.append(scope_context.find(node->member_name()));
+  } else if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
     out.append(*enum_type->EmitLiteral(node->member_name()));
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
     out.append(*flags_type->EmitLiteral(node->member_name()));

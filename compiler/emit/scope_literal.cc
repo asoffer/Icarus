@@ -41,6 +41,15 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
                                   type::QualType::Constant(type::Scp({})));
             auto [scope, inserted] = context.add_scope(node);
             if (inserted) {
+              ICARUS_SCOPE(ir::SetCurrent(*scope, compiler.builder())) {
+                size_t num_blocks = scope_context.size();
+                for (size_t i = 0; i < num_blocks; ++i) {
+                  auto *entry_to_block  = compiler.builder().AddBlock();
+                  auto *exit_from_block = compiler.builder().AddBlock();
+                  scope.add_connection(entry_to_block, exit_from_block);
+                }
+              }
+
               compiler.Enqueue({.kind    = WorkItem::Kind::EmitScopeBody,
                                 .node    = node,
                                 .context = &context});
@@ -55,6 +64,8 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
 bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
   LOG("EmitScopeBody", "Scope %s", node->DebugString());
   ir::Scope ir_scope = context().FindScope(node);
+  state().scopes.push_back(ir_scope);
+  absl::Cleanup cleanup = [&] { state().scopes.pop_back(); };
 
   ICARUS_SCOPE(ir::SetCurrent(*ir_scope, builder())) {
     builder().CurrentBlock() = ir_scope->entry();

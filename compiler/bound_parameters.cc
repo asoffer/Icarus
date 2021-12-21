@@ -42,6 +42,8 @@ BoundParameters::BoundParameterReference BoundParameters::binding(
   auto iter = bindings_.find(id);
   if (iter == bindings_.end()) {
     return BoundParameterReference(nullptr, ir::CompleteResultRef());
+  } else if (iter->second.index == std::numeric_limits<size_t>::max()) {
+    return BoundParameterReference(&iter->second, ir::CompleteResultRef());
   } else {
     return BoundParameterReference(&iter->second, buffer_[iter->second.index]);
   }

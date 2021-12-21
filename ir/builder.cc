@@ -126,6 +126,11 @@ void Builder::UncondJump(BasicBlock *block) {
   CurrentBlock()->set_jump(JumpCmd::Uncond(block));
 }
 
+void Builder::BlockJump(Block b) {
+  ClearJumps(CurrentBlock()->jump(), CurrentBlock());
+  CurrentBlock()->set_jump(JumpCmd::ToBlock(b));
+}
+
 void Builder::ReturnJump() {
   block_termination_state() = BlockTerminationState::kReturn;
   CurrentBlock()->set_jump(JumpCmd::Return());

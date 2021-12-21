@@ -3,6 +3,21 @@ package(default_visibility = ["//visibility:public"])
 cc_library(name = "type_xmacro", textual_hdrs = ["type.xmacro.h"])
 
 cc_library(
+    name = "block",
+    hdrs = ["block.h"],
+    srcs = ["block.cc"],
+    deps = [
+        ":callable",
+        ":qual_type",
+        ":type",
+        ":typed_value",
+        "//base:global",
+        "//core:params",
+        "@com_google_absl//absl/container:node_hash_map",
+    ],
+)
+
+cc_library(
     name =  "fake",
     hdrs = ["fake.h"],
     deps = [

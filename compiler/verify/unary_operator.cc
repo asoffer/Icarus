@@ -312,7 +312,12 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::UnaryOperator const *
         qt = type::QualType::Error();
       }
     } break;
-    default: UNREACHABLE(*node);
+    case ast::UnaryOperator::Kind::BlockJump: {
+      // TODO: Look at the scope context and determine who might jump to here
+      // and what they might attempt to return.
+      qt = type::QualType::Constant(type::Void);
+    } break;
+    default: UNREACHABLE(node->DebugString());
   }
 
   return context().set_qual_type(node, qt);

@@ -14,6 +14,7 @@
 #include "base/universal_print.h"
 #include "core/arguments.h"
 #include "ir/value/arguments.h"
+#include "ir/value/block.h"
 #include "ir/value/reg.h"
 #include "type/qual_type.h"
 
@@ -26,6 +27,7 @@ struct JumpCmd {
   static JumpCmd Uncond(BasicBlock* block) {
     return JumpCmd(UncondJump{block});
   }
+  static JumpCmd ToBlock(Block b) { return JumpCmd(BlockJump{b}); }
   static JumpCmd JumpExit(std::string name, BasicBlock* choose_block,
                           core::Arguments<type::QualType> argument_types) {
     return JumpCmd(
@@ -49,6 +51,9 @@ struct JumpCmd {
 
   struct UnreachableJump {};
   struct RetJump {};
+  struct BlockJump {
+    Block block;
+  };
   struct UncondJump {
     BasicBlock* block;
   };
@@ -87,7 +92,15 @@ struct JumpCmd {
     std::vector<Arguments> args_;
   };
 
-  enum class Kind { Unreachable, Return, Uncond, Cond, JumpExit, Choose };
+  enum class Kind {
+    Unreachable,
+    Return,
+    Uncond,
+    Cond,
+    JumpExit,
+    Choose,
+    BlockJump
+  };
   Kind kind() const { return static_cast<Kind>(jump_.index()); }
 
   template <typename Fn>
@@ -100,6 +113,7 @@ struct JumpCmd {
       case Kind::Cond: return fn(std::get<3>(jump_));
       case Kind::JumpExit: return fn(std::get<4>(jump_));
       case Kind::Choose: return fn(std::get<5>(jump_));
+      case Kind::BlockJump: return fn(std::get<6>(jump_));
     }
     UNREACHABLE();
   }
@@ -114,6 +128,7 @@ struct JumpCmd {
       case Kind::Cond: return fn(std::get<3>(jump_));
       case Kind::JumpExit: return fn(std::get<4>(jump_));
       case Kind::Choose: return fn(std::get<5>(jump_));
+      case Kind::BlockJump: return fn(std::get<6>(jump_));
     }
     UNREACHABLE();
   }
@@ -152,6 +167,8 @@ struct JumpCmd {
         return absl::StrFormat("cond %s false: %p, true: %p",
                                base::UniversalPrintToString(j.reg),
                                j.false_block, j.true_block);
+      } else if constexpr (std::is_same_v<type, BlockJump>) {
+        return absl::StrCat("jump scope-block-", j.block.value());
       } else if constexpr (std::is_same_v<type, JumpExitJump>) {
         return absl::StrCat("jump-exit ", j.name);
       } else if constexpr (std::is_same_v<type, ChooseJump>) {
@@ -172,7 +189,7 @@ struct JumpCmd {
   explicit JumpCmd(T&& val) : jump_(std::forward<T>(val)) {}
 
   std::variant<UnreachableJump, RetJump, UncondJump, CondJump, JumpExitJump,
-               ChooseJump>
+               ChooseJump, BlockJump>
       jump_;
 };
 

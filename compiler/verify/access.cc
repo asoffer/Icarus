@@ -1,18 +1,19 @@
+#include <string>
+#include <utility>
+
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"
+#include "type/block.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/overload_set.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
 #include "type/struct.h"
-
-#include <string>
-#include <utility>
 
 namespace compiler {
 namespace {
@@ -480,6 +481,24 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
     } else if (auto *s = base_type.if_as<type::Struct>()) {
       return context().set_qual_type(node,
                                      AccessStructMember(*this, node, s, quals));
+    } else if (base_type == type::ScopeContext) {
+      ASSIGN_OR(
+          return context().set_qual_types(node, type::QualType::ErrorSpan()),
+                 auto scope_context,
+                 EvaluateOrDiagnoseAs<ir::ScopeContext>(node->operand()));
+      auto block = scope_context.find(node->member_name());
+      if (block == ir::Block::Invalid()) {
+        diag().Consume(MissingMember{
+            .expr_range   = node->operand()->range(),
+            .member_range = node->member_range(),
+            .member       = std::string{node->member_name()},
+            .type         = TypeForDiagnostic(node->operand(), context()),
+        });
+        return context().set_qual_types(node, type::QualType::ErrorSpan());
+      } else {
+        return context().set_qual_type(
+            node, type::QualType::Constant(type::Blk(scope_context[block].second)));
+      }
     } else {
       // TODO: Improve this error message. It's not just that the member is
       // missing but that we don't even think it's allowed to have a member on a

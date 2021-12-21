@@ -301,7 +301,7 @@ struct Builder {
   Reg PtrFix(RegOr<addr_t> addr, type::Type desired_type) {
     // TODO must this be a register if it's loaded?
     if (desired_type.get()->is_big()) { return addr.reg(); }
-    ir::PartialResultBuffer buffer;
+    PartialResultBuffer buffer;
     Load(addr, desired_type, buffer);
     return buffer.get<Reg>(0);
   }
@@ -389,6 +389,7 @@ struct Builder {
   void CondJump(RegOr<bool> cond, BasicBlock* true_block,
                 BasicBlock* false_block);
   void ReturnJump();
+  void BlockJump(Block b);
 
   template <bool B>
   BasicBlock* EarlyExitOn(BasicBlock* exit_block, RegOr<bool> cond) {
@@ -414,7 +415,7 @@ struct Builder {
   type::Typed<Reg> FieldRef(RegOr<addr_t> r, type::Struct const* t, int64_t n);
 
   type::Type FieldValue(RegOr<addr_t> r, type::Struct const* t, int64_t n,
-                        ir::PartialResultBuffer& out) {
+                        PartialResultBuffer& out) {
     auto typed_reg = FieldRef(r, t, n);
     out.append(PtrFix(*typed_reg, typed_reg.type()));
     return typed_reg.type();

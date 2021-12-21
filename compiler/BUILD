@@ -63,6 +63,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//type:array",
+        "//type:block",
         "//type:enum",
         "//type:flags",
         "//type:function",
@@ -197,6 +198,7 @@ cc_library(
         "//ir/value:reg",
         "//module",
         "//module:importer",
+        "//type:block",
         "//type:slice",
         "//type:type_fwd",
         "//type:qual_type",

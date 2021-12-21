@@ -14,7 +14,7 @@ void Compiler::EmitToBuffer(ast::BlockNode const *node,
 
   EmitIrForStatements(*this, node->stmts());
   MakeAllDestructions(*this, &node->body_scope());
-  NOT_YET(); // TODO: Probably just a yield jump.
+  // TODO: Probably just a yield jump.
 }
 
 }  // namespace compiler

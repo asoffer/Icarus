@@ -13,6 +13,7 @@
 #include "ir/value/result_buffer.h"
 #include "ir/value/scope.h"
 #include "type/array.h"
+#include "type/block.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
@@ -91,8 +92,12 @@ bool Compare(::type::Type t) {
            t.is<::type::Generic<type::Struct>>();
   } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
     return t == ::type::Module;
+  } else if constexpr (base::meta<T> == base::meta<ir::ScopeContext>) {
+    return t == type::ScopeContext;
   } else if constexpr (base::meta<T> == base::meta<ir::UnboundScope>) {
     return t == type::UnboundScope;
+  } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
+    return t.is<::type::Block>();
   } else if constexpr (base::meta<T> == base::meta<interface::Interface>) {
     return t == ::type::Interface;
   } else {

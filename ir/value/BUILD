@@ -15,6 +15,16 @@ cc_library(
 )
 
 cc_library(
+    name = "block",
+    hdrs = ["block.h"],
+    deps = [
+        "//base:extend",
+        "//base/extend:absl_format",
+        "//base/extend:absl_hash",
+    ],
+)
+
+cc_library(
     name = "builtin_fn",
     hdrs = ["builtin_fn.h"],
     deps = [
@@ -268,6 +278,7 @@ cc_library(
     name = "scope",
     hdrs = ["scope.h"],
     deps = [
+        ":block",
         "//base:any_invocable",
         "//base:extend",
         "//base/extend:absl_format",

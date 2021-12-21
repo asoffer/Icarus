@@ -61,7 +61,8 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
       ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
                  uint8_t, uint16_t, uint32_t, uint64_t, float, double,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::GenericFn, ir::UnboundScope, interface::Interface>(
+                 ir::GenericFn, ir::UnboundScope, ir::ScopeContext, ir::Block,
+                 interface::Interface>(
           type, [&]<typename T>() {
             c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
                 .index = 0,

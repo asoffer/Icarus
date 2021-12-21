@@ -23,6 +23,7 @@
 #include "ir/value/builtin_fn.h"
 #include "ir/value/label.h"
 #include "ir/value/result_buffer.h"
+#include "type/primitive.h"
 
 namespace ast {
 
@@ -1034,21 +1035,22 @@ struct ScopeLiteral : ParameterizedExpression, WithScope<FnScope> {
         context_decl_(ContextDeclaration(std::move(context_identifier))),
         stmts_(std::move(stmts)) {}
 
-  Declaration const &context() const { return context_decl_; }
+  Declaration const &context() const { return *context_decl_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  static Declaration ContextDeclaration(Declaration::Id context_identifier) {
+  static std::unique_ptr<Declaration> ContextDeclaration(
+      Declaration::Id context_identifier) {
     auto range = context_identifier.range();
-    // TODO: Type-expression is needed.
-    return Declaration(
+    return std::make_unique<Declaration>(
         range, std::vector<Declaration::Id>{std::move(context_identifier)},
-        nullptr, nullptr, Declaration::f_IsConst);
+        std::make_unique<Terminal>(range, type::ScopeContext), nullptr,
+        Declaration::f_IsConst);
   }
 
-  Declaration context_decl_;
+  std::unique_ptr<Declaration> context_decl_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 

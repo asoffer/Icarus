@@ -58,15 +58,19 @@ absl::Span<type::QualType const> Compiler::VerifyType(
 
   context().TrackJumps(node);
 
-  std::vector<std::string> names;
-  names.reserve(node->blocks().size());
+  std::vector<ir::ScopeContext::block_type> blocks;
+  blocks.reserve(node->blocks().size());
   for (auto const &block : node->blocks()) {
+    // TODO: When we start to allow block parameters to be deduced from values
+    // injected from the scope, doing this work here won't make sense.
     VerifyType(&block);
-    names.push_back(std::string(block.name()));
+    auto param_types = block.params().Transform(
+        [&](auto const &p) { return context().qual_types(p.get())[0]; });
+    blocks.emplace_back(std::string(block.name()), std::move(param_types));
   }
   // TODO: Validation that this scope context is valid for use with the unbound
   // scope.
-  context().set_scope_context(node, std::move(names));
+  context().set_scope_context(node, std::move(blocks));
 
   // TODO: Allow for types to be yielded to this position.
   return context().set_qual_type(node, type::QualType::NonConstant(type::Void));

@@ -1,21 +1,21 @@
-#include "type/scope.h"
+#include "type/block.h"
 
 #include "absl/container/node_hash_map.h"
 #include "base/global.h"
 
 namespace type {
 
-static base::Global<absl::node_hash_map<core::Params<QualType>, Scope>> scopes_;
-Scope const *Scp(core::Params<QualType> in) {
-  auto f      = Scope(in);
-  auto handle = scopes_.lock();
+static base::Global<absl::node_hash_map<core::Params<QualType>, Block>> blocks_;
+Block const *Blk(core::Params<QualType> in) {
+  auto f      = Block(in);
+  auto handle = blocks_.lock();
   auto const &[iter, inserted] =
       handle->try_emplace(std::move(in), std::move(f));
   return &iter->second;
 }
 
-void Scope::WriteTo(std::string *result) const {
-  result->append("scope (");
+void Block::WriteTo(std::string *result) const {
+  result->append("block (");
   std::string_view sep = "";
   for (auto const &param : params()) {
     result->append(sep);
@@ -29,19 +29,17 @@ void Scope::WriteTo(std::string *result) const {
   result->append(")");
 }
 
-core::Bytes Scope::bytes(core::Arch const &a) const {
+core::Bytes Block::bytes(core::Arch const &a) const {
   return a.pointer().bytes();
 }
 
-core::Alignment Scope::alignment(core::Arch const &a) const {
+core::Alignment Block::alignment(core::Arch const &a) const {
   return a.pointer().alignment();
 }
 
-void Scope::ShowValue(std::ostream &os,
+void Block::ShowValue(std::ostream &os,
                       ir::CompleteResultRef const &value) const {
-  // TODO: Invert the dependency on //ir/value:fn so this can be implemented
-  // correctly.
-  os << "<<scope>>";
+  os << "<<block>>";
 }
 
 }  // namespace type

@@ -67,10 +67,10 @@ struct BoundParameters {
   struct BoundParameterReference {
     explicit operator bool() const { return data_; }
 
-    type::QualType qual_type() {
+    type::QualType qual_type() const {
       return ASSERT_NOT_NULL(data_)->parameter_type;
     }
-    ir::CompleteResultRef value() { return value_; }
+    ir::CompleteResultRef value() const { return value_; }
 
    private:
     friend BoundParameters;
@@ -92,6 +92,15 @@ struct BoundParameters {
   friend bool operator!=(BoundParameters const &lhs,
                          BoundParameters const &rhs) {
     return not(lhs == rhs);
+  }
+
+  void ForEachBinding(std::invocable<ast::Declaration::Id const *,
+                                     BoundParameterReference> auto &&f) const {
+    for (auto const &[id, data] : bindings_) {
+      f(id, BoundParameterReference(&data, data.parameter_type.constant()
+                                               ? buffer_[data.index]
+                                               : ir::CompleteResultRef()));
+    }
   }
 
   template <typename H>

@@ -95,6 +95,14 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       builder().Load(buffer.get<ir::addr_t>(0), t, out);
       return;
     } break;
+    case ast::UnaryOperator::Kind::BlockJump: {
+      ir::PartialResultBuffer buffer;
+      auto block = *EvaluateOrDiagnoseAs<ir::Block>(node->operand());
+      ASSERT(state().scopes.size() != 0u);
+      auto [entry, exit] = state().scopes.back().connection(block);
+      builder().BlockJump(block);
+      builder().CurrentBlock() = exit;
+    } break;
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));
   }
 }

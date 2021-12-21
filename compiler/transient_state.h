@@ -12,7 +12,7 @@ namespace compiler {
 // function or jump, but otherwise does not need to be saved.
 struct TransientState {
   std::vector<ir::ScopeState> scope_landings;
-  std::vector<ir::ScopeContext> scope_contexts;
+  std::vector<ir::Scope> scopes;
 };
 
 }  // namespace compiler

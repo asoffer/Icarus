@@ -12,6 +12,7 @@
 #include "base/extend/serialize.h"
 #include "compiler/work_resources.h"
 #include "ir/blocks/group.h"
+#include "ir/value/block.h"
 #include "type/scope.h"
 
 namespace ir {
@@ -25,12 +26,19 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
   struct Data {
     CompiledScope *scope;
     type::Scope const *type;
+    std::vector<std::pair<BasicBlock*, BasicBlock*>> connections;
     base::untyped_buffer::const_iterator byte_code;
   };
 
   constexpr Scope() : data_(nullptr) {}
-  explicit constexpr Scope(Scope::Data const *data)
-      : data_(ASSERT_NOT_NULL(data)) {}
+  explicit constexpr Scope(Scope::Data *data) : data_(ASSERT_NOT_NULL(data)) {}
+
+  void add_connection(BasicBlock *entry_to_block, BasicBlock *exit_from_block) {
+    data_->connections.emplace_back(entry_to_block, exit_from_block);
+  }
+  std::pair<BasicBlock *, BasicBlock *> const &connection(Block b) const {
+    return data_->connections[b.value()];
+  }
 
   CompiledScope *operator->() { return get().scope; }
   CompiledScope &operator*() { return *get().scope; }
@@ -45,19 +53,48 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
 
   Data const &get() const { return *ASSERT_NOT_NULL(data_); }
 
-  Data const *data_;
+  Data *data_;
 };
 
 struct ScopeContext
     : base::Extend<ScopeContext, 1>::With<base::BaseSerializeExtension> {
-  explicit ScopeContext(std::vector<std::string> const *block_names)
-      : block_names_(block_names) {}
+  // TODO: Rather than storing the parameters, we should store the actual
+  // block-type, or, if it's generic, the generic that could be used to
+  // instantiate a block-type.
+  using block_type = std::pair<std::string, core::Params<type::QualType>>;
 
-  absl::Span<std::string const> blocks() const { return *block_names_; }
+  ScopeContext() : block_names_(nullptr) {}
+  explicit ScopeContext(std::vector<block_type> const *block_names)
+      : block_names_(ASSERT_NOT_NULL(block_names)) {}
+
+  absl::Span<block_type const> blocks() const { return *block_names_; }
+
+  size_t size() const { return block_names_->size(); }
+
+  Block find(std::string_view name) const {
+    for (size_t i = 0; i < block_names_->size(); ++i) {
+      auto const &[block_name, qts] = (*block_names_)[i];
+      if (block_name == name) { return Block(i); }
+    }
+    return Block::Invalid();
+  }
+
+  auto const &operator[](Block b) const {
+    ASSERT(b != Block::Invalid());
+    return (*block_names_)[b.value()];
+  }
+
+  friend bool operator==(ScopeContext const &lhs, ScopeContext const &rhs) {
+    return *lhs.block_names_ == *rhs.block_names_;
+  }
+
+  friend bool operator!=(ScopeContext const &lhs, ScopeContext const &rhs) {
+    return not(lhs == rhs);
+  }
 
  private:
   friend base::EnableExtensions;
-  std::vector<std::string> const *block_names_;
+  std::vector<block_type> const *block_names_;
 };
 
 struct UnboundScope

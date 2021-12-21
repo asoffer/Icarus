@@ -10,6 +10,7 @@ cc_library(
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type:enum",
+        "//type:block",
         "//type:flags",
         "//type:typed_value",
     ],

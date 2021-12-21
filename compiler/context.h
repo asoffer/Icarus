@@ -230,8 +230,9 @@ struct Context {
     return ASSERT_NOT_NULL(parent())->FindScope(expr);
   }
 
-  ir::ScopeContext set_scope_context(ast::ScopeNode const *node,
-                                     std::vector<std::string> &&names) {
+  ir::ScopeContext set_scope_context(
+      ast::ScopeNode const *node,
+      std::vector<ir::ScopeContext::block_type> &&names) {
     auto [data_iter, data_inserted] =
         scope_context_data_.emplace(std::move(names));
     auto [iter, inserted] =
@@ -240,8 +241,9 @@ struct Context {
     return iter->second;
   }
 
-  ir::ScopeContext set_scope_context(ast::ScopeNode const *node,
-                                     absl::Span<std::string const> names) {
+  ir::ScopeContext set_scope_context(
+      ast::ScopeNode const *node,
+      absl::Span<ir::ScopeContext::block_type> names) {
     auto [data_iter, data_inserted] =
         scope_context_data_.emplace(names.begin(), names.end());
     auto [iter, inserted] =
@@ -443,7 +445,8 @@ struct Context {
   // structs), this map encodes that definition.
   absl::flat_hash_map<ast::Expression const *, type::Type> types_;
 
-  absl::node_hash_set<std::vector<std::string>> scope_context_data_;
+  absl::node_hash_set<std::vector<ir::ScopeContext::block_type>>
+      scope_context_data_;
   absl::flat_hash_map<ast::ScopeNode const *, ir::ScopeContext> scope_contexts_;
 
   absl::flat_hash_map<ir::UnboundScope, ast::ScopeLiteral const *>

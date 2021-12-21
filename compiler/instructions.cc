@@ -50,6 +50,8 @@ struct instruction_set_t
                                ir::Fn, ir::Scope, ir::ModuleId,
                                ir::UnboundScope, interface::Interface>,
           ir::SetReturnInstruction<ir::GenericFn>,
+          ir::SetReturnInstruction<ir::ScopeContext>,
+          ir::SetReturnInstruction<ir::Block>,
           ArithmeticInstructions<ir::Integer, uint8_t, int8_t, uint16_t,
                                  int16_t, uint32_t, int32_t, uint64_t, int64_t,
                                  float, double>,
