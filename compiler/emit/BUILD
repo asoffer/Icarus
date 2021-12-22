@@ -361,6 +361,7 @@ cc_library(
     name = "miscellaneous",
     srcs = ["miscellaneous.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
     ],

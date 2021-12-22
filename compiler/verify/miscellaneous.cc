@@ -84,9 +84,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::IfStmt const *node) {
   // TODO: Emit errors if the type's fail to check.
   VerifyType(&node->condition());
   for (auto const *stmt : node->true_block()) { VerifyType(stmt); }
-  if (node->has_false_block()) {
-    for (auto const *stmt : node->false_block()) { VerifyType(stmt); }
-  }
+  for (auto const *stmt : node->false_block()) { VerifyType(stmt); }
 
   // TODO: Allow for types to be yielded
   return context().set_qual_type(node, type::QualType::NonConstant(type::Void));

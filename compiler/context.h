@@ -366,7 +366,9 @@ struct Context {
                      ast::ShortFunctionLiteral const>
           node) const;
   absl::Span<ast::YieldStmt const *const> YieldsTo(
-      base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node) const;
+      base::PtrUnion<ast::BlockNode const, ast::ScopeNode const,
+                     ast::IfStmt const, ast::WhileStmt const>
+          node) const;
 
   bool ClaimVerifyBodyTask(ast::FunctionLiteral const *node) {
     return body_is_verified_.insert(node).second;

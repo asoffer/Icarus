@@ -389,7 +389,9 @@ Compiler::VerifyCall(
 
 std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
     Context const &context,
-    base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node) {
+    base::PtrUnion<ast::BlockNode const, ast::ScopeNode const,
+                   ast::IfStmt const, ast::WhileStmt const>
+        node) {
   std::vector<core::Arguments<type::QualType>> yield_types;
   absl::Span<ast::YieldStmt const *const> yields = context.YieldsTo(node);
   yield_types.reserve(yields.size());

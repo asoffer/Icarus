@@ -128,7 +128,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
         ir::Builder::BlockTerminationState::kReturn) {
       MakeAllDestructions(*this, &node->body_scope());
       builder().ReturnJump();
-    }
+   }
   }
 
   context().ir().WriteByteCode<EmitByteCode>(ir_func);

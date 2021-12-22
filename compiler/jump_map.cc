@@ -223,6 +223,25 @@ struct JumpMap::NodeExtractor : ast::Visitor<void()> {
 
   void Visit(ast::UnaryOperator const *node) final { Visit(node->operand()); }
 
+  void Visit(ast::IfStmt const *node) final {
+    Visit(&node->condition());
+    if (not jumps_->yields_.try_emplace(node).second) { return; }
+
+    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
+      for (auto const *stmt : node->true_block()) { Visit(stmt); }
+      for (auto const *stmt : node->false_block()) { Visit(stmt); }
+    }
+  }
+
+  void Visit(ast::WhileStmt const *node) final {
+    Visit(&node->condition());
+    if (not jumps_->yields_.try_emplace(node).second) { return; }
+
+    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
+      for (auto const *stmt : node->body()) { Visit(stmt); }
+    }
+  }
+
   std::vector<ast::Node const *> node_stack_;
   JumpMap *jumps_;
 };

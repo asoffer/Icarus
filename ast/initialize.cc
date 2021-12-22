@@ -395,18 +395,14 @@ void IfStmt::Initialize(Initializer& initializer) {
   condition_->Initialize(initializer);
   covers_binding_ = condition_->covers_binding();
   is_dependent_   = condition_->is_dependent();
+  body_scopes_.emplace(std::piecewise_construct,
+                       std::forward_as_tuple(scope_, true),
+                       std::forward_as_tuple(scope_, true));
+  initializer.scope = &body_scopes_->first;
+  InitializeAll(true_block_, initializer, &covers_binding_, &is_dependent_);
+  initializer.scope = &body_scopes_->second;
+  InitializeAll(false_block_, initializer, &covers_binding_, &is_dependent_);
 
-  for (auto& stmt : true_block_) {
-    stmt->Initialize(initializer);
-    covers_binding_ |= stmt->covers_binding();
-    is_dependent_ |= stmt->is_dependent();
-  }
-
-  for (auto & stmt : false_block_) {
-    stmt->Initialize(initializer);
-    covers_binding_ |= stmt->covers_binding();
-    is_dependent_ |= stmt->is_dependent();
-  }
 }
 
 void WhileStmt::Initialize(Initializer& initializer) {
@@ -416,11 +412,7 @@ void WhileStmt::Initialize(Initializer& initializer) {
   is_dependent_   = condition_->is_dependent();
   set_body_with_parent(initializer.scope, true);
   initializer.scope = &body_scope();
-  for (auto const& stmt : body_) {
-    stmt->Initialize(initializer);
-    covers_binding_ |= stmt->covers_binding();
-    is_dependent_ |= stmt->is_dependent();
-  }
+  InitializeAll(body_, initializer, &covers_binding_, &is_dependent_);
 }
 
 }  // namespace ast

@@ -29,7 +29,9 @@ struct JumpMap {
   }
 
   std::vector<ast::YieldStmt const *> const *operator[](
-      base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> p) const {
+      base::PtrUnion<ast::BlockNode const, ast::ScopeNode const,
+                     ast::IfStmt const, ast::WhileStmt const>
+          p) const {
     auto iter = yields_.find(p);
     return iter != yields_.end() ? &iter->second : nullptr;
   }
@@ -44,7 +46,9 @@ struct JumpMap {
     returns_[node].push_back(r);
   }
 
-  void Insert(base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node,
+  void Insert(base::PtrUnion<ast::BlockNode const, ast::ScopeNode const,
+                             ast::IfStmt const, ast::WhileStmt const>
+                  node,
               ast::YieldStmt const *y) {
     yields_[node].push_back(y);
   }
@@ -54,9 +58,9 @@ struct JumpMap {
                       std::vector<ast::ReturnStmt const *>>
       returns_;
 
-  absl::flat_hash_map<
-      base::PtrUnion<ast::BlockNode const, ast::ScopeNode const>,
-      std::vector<ast::YieldStmt const *>>
+  absl::flat_hash_map<base::PtrUnion<ast::BlockNode const, ast::ScopeNode const,
+                                     ast::IfStmt const, ast::WhileStmt const>,
+                      std::vector<ast::YieldStmt const *>>
       yields_;
 };
 

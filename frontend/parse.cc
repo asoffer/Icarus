@@ -525,21 +525,35 @@ std::unique_ptr<ast::Node> BuildControlHandler(
 std::unique_ptr<ast::Node> BuildWhileStmt(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
   // TODO: Make robust.
-  auto stmts = move_as<Statements>(nodes[2]);
+  std::vector<std::unique_ptr<ast::Node>> body;
+  if (auto *stmts = nodes[2]->if_as<Statements>()) {
+    body = std::move(*stmts).extract();
+  } else {
+    body.push_back(std::move(nodes[2]));
+  }
+
   return std::make_unique<ast::WhileStmt>(
-      range, move_as<ast::Expression>(nodes[1]), std::move(*stmts).extract());
+      range, move_as<ast::Expression>(nodes[1]), std::move(body));
 }
 
 std::unique_ptr<ast::Node> BuildIfStmt(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
   // TODO: Make robust.
-  auto stmts = move_as<Statements>(nodes[2]);
+  std::vector<std::unique_ptr<ast::Node>> true_body;
+  if (auto *stmts = nodes[2]->if_as<Statements>()) {
+    true_body = std::move(*stmts).extract();
+  } else {
+    true_body.push_back(std::move(nodes[2]));
+  }
+
   return std::make_unique<ast::IfStmt>(
-      range, move_as<ast::Expression>(nodes[1]), std::move(*stmts).extract());
+      range, move_as<ast::Expression>(nodes[1]), std::move(true_body));
 }
 
 std::unique_ptr<ast::Node> BuildRightUnop(

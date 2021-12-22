@@ -1283,9 +1283,16 @@ struct IfStmt : Expression {
 
   Expression const &condition() const { return *condition_; }
   base::PtrSpan<Node const> true_block() const { return true_block_; }
-  base::PtrSpan<Node const> false_block() const {
-    ASSERT(has_false_block() == true);
-    return false_block_;
+  base::PtrSpan<Node const> false_block() const { return false_block_; }
+
+  Scope const &true_scope() const {
+    ASSERT(body_scopes_.has_value() == true);
+    return body_scopes_->first;
+  }
+
+  Scope const &false_scope() const {
+    ASSERT(body_scopes_.has_value() == true);
+    return body_scopes_->second;
   }
 
   bool has_false_block() const { return has_false_block_; }
@@ -1296,6 +1303,8 @@ struct IfStmt : Expression {
   std::unique_ptr<Expression> condition_;
   std::vector<std::unique_ptr<Node>> true_block_;
   std::vector<std::unique_ptr<Node>> false_block_;
+  // True-scope, then false-scope
+  std::optional<std::pair<Scope, Scope>> body_scopes_;
   bool has_false_block_;
 };
 
