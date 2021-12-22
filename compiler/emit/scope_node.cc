@@ -63,9 +63,9 @@ struct BasicBlockMapping {
 };
 
 ir::BasicBlock *InlineScope(
-    Compiler &c, ir::Scope to_be_inlined,
-    ir::PartialResultBuffer const &arguments,
-    absl::Span<std::pair<ir::BasicBlock *, ir::BasicBlock *> const>
+    Compiler &c, absl::Span<ast::BlockNode const> blocks,
+    ir::Scope to_be_inlined, ir::PartialResultBuffer const &arguments,
+    absl::Span<std::pair<ir::BasicBlock *, ir::BasicBlock *>>
         block_entry_exit) {
   auto landing = c.builder().AddBlock();
 
@@ -80,7 +80,23 @@ ir::BasicBlock *InlineScope(
   // number.
   ir::Inliner inliner(into->num_regs(), to_be_inlined->num_args());
 
-  // TODO: Parameter binding.
+  size_t block_index = 0;
+  for (auto const &block : blocks) {
+    size_t param_index            = 0;
+    auto *parameter_binding_block = c.builder().AddBlock();
+    c.builder().CurrentBlock()    = parameter_binding_block;
+    for (auto const &param : block.params()) {
+      ir::Reg r =
+          to_be_inlined.parameters(ir::Block(block_index))[param_index++];
+      inliner(r);
+      c.builder().Store(ir::RegOr<ir::addr_t>(r),
+                        c.builder().addr(&param.value->ids()[0]));
+    }
+    auto &entry = block_entry_exit[block_index].first;
+    c.builder().UncondJump(entry);
+    entry = parameter_binding_block;
+    ++block_index;
+  }
 
   into->MergeAllocationsFrom(*to_be_inlined, inliner);
   BasicBlockMapping mapping(c.builder(), to_be_inlined);
@@ -111,7 +127,6 @@ ir::BasicBlock *InlineScope(
     });
   }
 
-  LOG("", "%p %p", start_block, mapping(to_be_inlined->entry()));
   start_block->set_jump(ir::JumpCmd::Uncond(mapping(to_be_inlined->entry())));
   return landing;
 }
@@ -142,6 +157,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
 
   std::vector<std::pair<ir::BasicBlock *, ir::BasicBlock *>> block_entry_exit;
   block_entry_exit.reserve(node->blocks().size());
+
   for (auto const &block : node->blocks()) {
     auto &[entry, exit]      = block_entry_exit.emplace_back();
     entry                    = builder().AddBlock();
@@ -158,7 +174,8 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
                 argument_buffer);
 
   builder().CurrentBlock() =
-      InlineScope(*this, scope, argument_buffer, block_entry_exit);
+      InlineScope(*this, node->blocks(), scope, argument_buffer,
+                  absl::MakeSpan(block_entry_exit));
 }
 
 void Compiler::EmitCopyInit(

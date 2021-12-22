@@ -255,7 +255,20 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
         EmitBinaryOverload(*this, node, out);
       }
     } break;
-    case ast::BinaryOperator::Kind::BlockJump: NOT_YET();
+    case ast::BinaryOperator::Kind::BlockJump: {
+      ir::PartialResultBuffer buffer;
+      auto block = *EvaluateOrDiagnoseAs<ir::Block>(&node->rhs());
+      ASSERT(state().scopes.size() != 0u);
+      ir::Scope scope = state().scopes.back();
+      auto [entry, exit] = scope.connection(block);
+      ir::PartialResultBuffer lhs_buffer;
+      EmitToBuffer(&node->lhs(), lhs_buffer);
+      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
+      scope.add_parameters(
+          block, RegisterReferencing(builder(), lhs_type, lhs_buffer[0]));
+      builder().BlockJump(block);
+      builder().CurrentBlock() = exit;
+    }
   }
 }
 

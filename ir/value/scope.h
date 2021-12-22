@@ -11,8 +11,11 @@
 #include "base/extend/absl_hash.h"
 #include "base/extend/serialize.h"
 #include "compiler/work_resources.h"
+#include "core/params.h"
 #include "ir/blocks/group.h"
 #include "ir/value/block.h"
+#include "ir/value/reg.h"
+#include "ir/value/result_buffer.h"
 #include "type/scope.h"
 
 namespace ir {
@@ -26,7 +29,8 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
   struct Data {
     CompiledScope *scope;
     type::Scope const *type;
-    std::vector<std::pair<BasicBlock*, BasicBlock*>> connections;
+    std::vector<std::pair<BasicBlock *, BasicBlock *>> connections;
+    absl::flat_hash_map<Block, std::vector<Reg>> parameters;
     base::untyped_buffer::const_iterator byte_code;
   };
 
@@ -42,6 +46,11 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
 
   CompiledScope *operator->() { return get().scope; }
   CompiledScope &operator*() { return *get().scope; }
+
+  void add_parameters(Block b, Reg r) {
+    return data_->parameters[b].push_back(r);
+  }
+  absl::Span<Reg const> parameters(Block b) { return data_->parameters[b]; }
 
   type::Scope const *type() const {
     return ASSERT_NOT_NULL(get().type);

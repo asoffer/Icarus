@@ -9,6 +9,13 @@ void Compiler::EmitToBuffer(ast::BlockNode const *node,
                             ir::PartialResultBuffer &) {
   LOG("BlockNode", "EmitToBuffer for block node named %s", node->name());
 
+  for (auto const &param : node->params()) {
+    auto addr =
+        builder().Alloca(context().qual_types(param.value.get())[0].type());
+    // TODO: Support multiple declarations?
+    builder().set_addr(&param.value->ids()[0], addr);
+  }
+
   builder().block_termination_state() =
       ir::Builder::BlockTerminationState::kMoreStatements;
 

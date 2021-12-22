@@ -9,23 +9,22 @@
 #include "type/cast.h"
 
 namespace ir {
-namespace {
 
 // If the type `t` is not big, creates a new register referencing the value (or
 // register) held in `value`. If `t` is big, `value` is either another register
 // or the address of the big value and a new register referencing that address
 // (or register) is created.
-[[maybe_unused]] ir::Reg RegisterReferencing(
-    ir::Builder &builder, type::Type t, ir::PartialResultRef const &value) {
+Reg RegisterReferencing(Builder &builder, type::Type t,
+                        PartialResultRef const &value) {
   if (t.is_big() or t.is<type::Pointer>()) {
-    return builder.CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
-        .operand = value.get<ir::addr_t>(),
+    return builder.CurrentBlock()->Append(RegisterInstruction<addr_t>{
+        .operand = value.get<addr_t>(),
         .result  = builder.CurrentGroup()->Reserve(),
     });
   } else {
     if (auto const *p = t.if_as<type::Primitive>()) {
       return p->Apply([&]<typename T>() {
-        return builder.CurrentBlock()->Append(ir::RegisterInstruction<T>{
+        return builder.CurrentBlock()->Append(RegisterInstruction<T>{
             .operand = value.get<T>(),
             .result  = builder.CurrentGroup()->Reserve(),
         });
@@ -35,8 +34,6 @@ namespace {
     }
   }
 }
-
-}  // namespace
 
 BasicBlock *Builder::AddBlock() { return CurrentGroup()->AppendBlock(); }
 BasicBlock *Builder::AddBlock(std::string header) {

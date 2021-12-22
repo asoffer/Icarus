@@ -378,7 +378,12 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       return VerifyArithmeticOperator<'/'>(*this, node, lhs_qt, rhs_qt);
     case ast::BinaryOperator::Kind::Mod:
       return VerifyArithmeticOperator<'%'>(*this, node, lhs_qt, rhs_qt);
-    case ast::BinaryOperator::Kind::BlockJump: NOT_YET();
+    case ast::BinaryOperator::Kind::BlockJump: {
+      // TODO: Look at the scope context and determine who might jump to here
+      // and what they might attempt to return.
+      return context().set_qual_type(node,
+                                     type::QualType::Constant(type::Void));
+    }
   }
 }
 

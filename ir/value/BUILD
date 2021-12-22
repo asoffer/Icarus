@@ -279,6 +279,8 @@ cc_library(
     hdrs = ["scope.h"],
     deps = [
         ":block",
+        ":reg",
+        ":result_buffer",
         "//base:any_invocable",
         "//base:extend",
         "//base/extend:absl_format",

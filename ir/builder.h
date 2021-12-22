@@ -567,6 +567,9 @@ struct SetTemporaries : base::UseWithScope {
   Builder& bldr_;
 };
 
+Reg RegisterReferencing(Builder& builder, type::Type t,
+                        PartialResultRef const& value);
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_BUILDER_H

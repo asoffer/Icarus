@@ -69,14 +69,7 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
 
   ICARUS_SCOPE(ir::SetCurrent(*ir_scope, builder())) {
     builder().CurrentBlock() = ir_scope->entry();
-    // TODO: arguments should be renumbered to not waste space on const
-    // values
-    int32_t i = 0;
-    for (auto const &param : node->params()) {
-      // TODO: Support multiple declarations?
-      builder().set_addr(&param.value->ids()[0], ir::Reg::Arg(i++));
-    }
-
+    // TODO: Scope parameters
     MakeAllStackAllocations(*this, &node->body_scope());
     EmitIrForStatements(*this, node->stmts());
 
