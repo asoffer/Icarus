@@ -522,6 +522,26 @@ std::unique_ptr<ast::Node> BuildControlHandler(
   UNREACHABLE();
 }
 
+std::unique_ptr<ast::Node> BuildWhileStmt(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
+  // TODO: Make robust.
+  auto stmts = move_as<Statements>(nodes[2]);
+  return std::make_unique<ast::WhileStmt>(
+      range, move_as<ast::Expression>(nodes[1]), std::move(*stmts).extract());
+}
+
+std::unique_ptr<ast::Node> BuildIfStmt(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
+  // TODO: Make robust.
+  auto stmts = move_as<Statements>(nodes[2]);
+  return std::make_unique<ast::IfStmt>(
+      range, move_as<ast::Expression>(nodes[1]), std::move(*stmts).extract());
+}
+
 std::unique_ptr<ast::Node> BuildRightUnop(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1629,6 +1649,15 @@ static base::Global kRules = std::array{
     rule_t{.match   = {paren_decl_list | empty_parens, fn_arrow, braced_stmts},
            .output  = expr,
            .execute = BuildInferredFunctionLiteral},
+
+    // if-stmt
+    // TODO: if-else
+    rule_t{.match   = {builtin_if, empty_parens | paren_expr, braced_stmts},
+           .output  = expr,
+           .execute = BuildIfStmt},
+    rule_t{.match   = {builtin_while, empty_parens | paren_expr, braced_stmts},
+           .output  = expr,
+           .execute = BuildWhileStmt},
 
     // Structs, etc.
     rule_t{.match   = {kw_struct, empty_parens | paren_expr | paren_decl_list,

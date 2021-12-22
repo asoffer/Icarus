@@ -390,4 +390,37 @@ void UnaryOperator::Initialize(Initializer& initializer) {
   is_dependent_   = operand_->is_dependent();
 }
 
+void IfStmt::Initialize(Initializer& initializer) {
+  scope_ = initializer.scope;
+  condition_->Initialize(initializer);
+  covers_binding_ = condition_->covers_binding();
+  is_dependent_   = condition_->is_dependent();
+
+  for (auto& stmt : true_block_) {
+    stmt->Initialize(initializer);
+    covers_binding_ |= stmt->covers_binding();
+    is_dependent_ |= stmt->is_dependent();
+  }
+
+  for (auto & stmt : false_block_) {
+    stmt->Initialize(initializer);
+    covers_binding_ |= stmt->covers_binding();
+    is_dependent_ |= stmt->is_dependent();
+  }
+}
+
+void WhileStmt::Initialize(Initializer& initializer) {
+  scope_ = initializer.scope;
+  condition_->Initialize(initializer);
+  covers_binding_ = condition_->covers_binding();
+  is_dependent_   = condition_->is_dependent();
+  set_body_with_parent(initializer.scope, true);
+  initializer.scope = &body_scope();
+  for (auto const& stmt : body_) {
+    stmt->Initialize(initializer);
+    covers_binding_ |= stmt->covers_binding();
+    is_dependent_ |= stmt->is_dependent();
+  }
+}
+
 }  // namespace ast

@@ -1253,6 +1253,82 @@ struct YieldStmt : Node {
   std::unique_ptr<Label> label_;
 };
 
+// IfStmt:
+// Represents an if-statement, which evaluates the condition and then either
+// executes the `then` body if the condition is `true`, or the `else` body (if
+// it exists and) the condition is `false`.
+//
+// Examples:
+// ```
+// if (condition) then { x() } else { y() }
+// if (condition) then { z() }
+// ```
+struct IfStmt : Expression {
+  explicit IfStmt(frontend::SourceRange const &range,
+                  std::unique_ptr<Expression> condition,
+                  std::vector<std::unique_ptr<Node>> true_block)
+      : Expression(range),
+        condition_(std::move(condition)),
+        true_block_(std::move(true_block)),
+        has_false_block_(false) {}
+  explicit IfStmt(frontend::SourceRange const &range,
+                  std::unique_ptr<Expression> condition,
+                  std::vector<std::unique_ptr<Node>> true_block,
+                  std::vector<std::unique_ptr<Node>> false_block)
+      : Expression(range),
+        condition_(std::move(condition)),
+        true_block_(std::move(true_block)),
+        false_block_(std::move(false_block)),
+        has_false_block_(true) {}
+
+  Expression const &condition() const { return *condition_; }
+  base::PtrSpan<Node const> true_block() const { return true_block_; }
+  base::PtrSpan<Node const> false_block() const {
+    ASSERT(has_false_block() == true);
+    return false_block_;
+  }
+
+  bool has_false_block() const { return has_false_block_; }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  std::unique_ptr<Expression> condition_;
+  std::vector<std::unique_ptr<Node>> true_block_;
+  std::vector<std::unique_ptr<Node>> false_block_;
+  bool has_false_block_;
+};
+
+// WhileStmt:
+// Represents a while-loop, which repeatedly executes the body while the
+// condition evaluates to `true`.
+//
+// Example:
+// ```
+// while (condition) do {
+//   x()
+//   y()
+//   z()
+// }
+// ```
+struct WhileStmt : Expression, WithScope<Scope> {
+  explicit WhileStmt(frontend::SourceRange const &range,
+                     std::unique_ptr<Expression> condition,
+                     std::vector<std::unique_ptr<Node>> body)
+      : Expression(range),
+        condition_(std::move(condition)),
+        body_(std::move(body)) {}
+
+  Expression const &condition() const { return *condition_; }
+  base::PtrSpan<Node const> body() const { return body_; }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  std::unique_ptr<Expression> condition_;
+  std::vector<std::unique_ptr<Node>> body_;
+};
+
 #undef ICARUS_AST_VIRTUAL_METHODS
 
 inline void Declaration::set_initial_value(std::unique_ptr<Expression> expr) {

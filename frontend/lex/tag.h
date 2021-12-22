@@ -58,6 +58,8 @@ enum Tag : uint64_t {
   rocket          = 1ull << 47,
   tick            = 1ull << 48,
   kw_scope        = 1ull << 49,
+  builtin_if      = 1ull << 50,
+  builtin_while   = 1ull << 51,
 };
 
 inline std::ostream& operator<<(std::ostream& os, Tag t) {
@@ -112,10 +114,12 @@ inline std::ostream& operator<<(std::ostream& os, Tag t) {
       "rocket",
       "tick",
       "scope",
+      "if",
+      "while",
   };
   const char* sep = "";
   os << "Tag(";
-  for (size_t i = 0; i < 50; ++i) {
+  for (size_t i = 0; i < 52; ++i) {
     if (t & (1ull << i)) { os << std::exchange(sep, ", ") << tag_strs[i]; }
   }
   return os << ")";

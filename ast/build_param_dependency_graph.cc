@@ -258,6 +258,22 @@ struct ParamDependencyGraphBuilder
     Visit(node->operand(), d);
   }
 
+  void Visit(IfStmt const *node, core::DependencyNode<Declaration const *> d) {
+    Visit(&node->condition(), d);
+
+    for (auto const *s : node->true_block()) { Visit(s, d); }
+    if (node->has_false_block()) {
+      for (auto const *s : node->false_block()) { Visit(s, d); }
+    }
+  }
+
+  void Visit(WhileStmt const *node,
+             core::DependencyNode<Declaration const *> d) {
+    Visit(&node->condition(), d);
+    for (auto const *s : node->body()) { Visit(s, d); }
+  }
+
+
  private:
   base::Graph<core::DependencyNode<Declaration>> graph_;
   std::vector<Declaration const *> to_process_;

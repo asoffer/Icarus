@@ -413,6 +413,8 @@ struct Compiler
   DEFINE_EMIT(ast::Terminal)
   DEFINE_EMIT(ast::UnaryOperator)
   DEFINE_EMIT(ast::YieldStmt)
+  DEFINE_EMIT(ast::IfStmt)
+  DEFINE_EMIT(ast::WhileStmt)
 
 #undef DEFINE_EMIT
 

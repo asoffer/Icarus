@@ -480,4 +480,34 @@ void UnaryOperator::DebugStrAppend(std::string *out, size_t indent) const {
   }
 }
 
+void IfStmt::DebugStrAppend(std::string *out, size_t indent) const {
+  absl::StrAppend(out, "if (");
+  condition().DebugStrAppend(out, indent);
+  absl::StrAppend(out, ") then {");
+  for (auto const *stmt : true_block()) {
+    absl::StrAppend(out, "\n", indentation(indent + 1));
+    stmt->DebugStrAppend(out, indent + 1);
+  }
+
+  if (has_false_block()) {
+    absl::StrAppend(out, "\n", indentation(indent), "} else {");
+    for (auto const *stmt : false_block()) {
+      absl::StrAppend(out, "\n", indentation(indent + 1));
+      stmt->DebugStrAppend(out, indent + 1);
+    }
+  }
+  absl::StrAppend(out, "\n", indentation(indent), "}");
+}
+
+void WhileStmt::DebugStrAppend(std::string *out, size_t indent) const {
+  absl::StrAppend(out, "while (");
+  condition().DebugStrAppend(out, indent);
+  absl::StrAppend(out, ") do {");
+  for (auto const *stmt : body()) {
+    absl::StrAppend(out, "\n", indentation(indent + 1));
+    stmt->DebugStrAppend(out, indent + 1);
+  }
+  absl::StrAppend(out, "\n", indentation(indent), "}");
+}
+
 }  // namespace ast
