@@ -32,19 +32,6 @@ cc_library(
 )
 
 cc_test(
-    name = "block_node_test",
-    srcs = ["block_node_test.cc"],
-    deps = [
-        ":common",
-        "//compiler",
-        "//core:arguments",
-        "//test:module",
-        "//type:primitive",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "access_test",
     srcs = ["access_test.cc"],
     deps = [
@@ -527,17 +514,6 @@ cc_library(
         "//type:primitive",
         "//type:qual_type",
         "//type:typed_value",
-    ],
-)
-
-cc_test(
-    name = "scope_literal_test",
-    srcs = ["scope_literal_test.cc"],
-    deps = [
-        "//compiler",
-        "//test:module",
-        "//type:primitive",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 

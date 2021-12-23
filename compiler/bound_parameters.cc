@@ -29,6 +29,8 @@ bool operator==(BoundParameters const &lhs, BoundParameters const &rhs) {
     if (lhs_id != rhs_id) { return false; }
     if (lhs_data.parameter_type != rhs_data.parameter_type) { return false; }
     auto qt = lhs_data.parameter_type;
+    if (lhs_data.index != rhs_data.index) { return false; }
+    if (lhs_data.index == std::numeric_limits<size_t>::max()) { continue; }
     if (not qt.type().EqualsValue(lhs.buffer_[lhs_data.index],
                                   rhs.buffer_[rhs_data.index])) {
       return false;

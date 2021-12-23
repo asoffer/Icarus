@@ -129,10 +129,10 @@ inline Type Module       = &(*internal::kPrimitiveArray)[14];
 inline Type ScopeContext = &(*internal::kPrimitiveArray)[15];
 inline Type UnboundScope = &(*internal::kPrimitiveArray)[16];
 inline Type NullPtr      = &(*internal::kPrimitiveArray)[17];
-inline Type Byte         = &(*internal::kPrimitiveArray)[15];
-inline Type EmptyArray   = &(*internal::kPrimitiveArray)[17];
-inline Type Label        = &(*internal::kPrimitiveArray)[19];
-inline Type Interface    = &(*internal::kPrimitiveArray)[20];
+inline Type Byte         = &(*internal::kPrimitiveArray)[18];
+inline Type EmptyArray   = &(*internal::kPrimitiveArray)[19];
+inline Type Label        = &(*internal::kPrimitiveArray)[20];
+inline Type Interface    = &(*internal::kPrimitiveArray)[21];
 inline Type Void         = &(*internal::kPrimitiveArray)[22];
 
 inline bool IsNumeric(Type t) {
