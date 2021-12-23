@@ -159,7 +159,8 @@ std::optional<Context::InsertSubcontextResult> Instantiate(
 
 std::optional<Context::InsertSubcontextResult> Instantiate(
     Compiler &c, ast::ScopeLiteral const *node,
-    ir::ScopeContext const &scope_context) {
+    ir::ScopeContext const &scope_context,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
   auto &ctx = node->scope()
                   ->Containing<ast::ModuleScope>()
                   ->module()
@@ -174,7 +175,10 @@ std::optional<Context::InsertSubcontextResult> Instantiate(
 
   ir::CompleteResultBuffer buffer;
   buffer.append(scope_context);
-  BoundParameters bound_parameters;
+
+  ASSIGN_OR(return std::nullopt,  //
+                   auto bound_parameters,
+                   ComputeParamsFromArgs(child, node, args));
   bound_parameters.bind_type(&node->context().ids()[0],
                              type::QualType::Constant(type::ScopeContext));
   bound_parameters.bind_value(&node->context().ids()[0], buffer[0]);
@@ -200,7 +204,8 @@ Context::FindSubcontextResult FindInstantiation(
 
 Context::FindSubcontextResult FindInstantiation(
     Compiler &c, ast::ScopeLiteral const *node,
-    ir::ScopeContext const &scope_context) {
+    ir::ScopeContext const &scope_context,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
   auto &ctx = node->scope()
                   ->Containing<ast::ModuleScope>()
                   ->module()
@@ -208,9 +213,15 @@ Context::FindSubcontextResult FindInstantiation(
                   .context();
   LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
       ctx.DebugString());
+  Context scratchpad = ctx.ScratchpadSubcontext();
+  PersistentResources resources = c.resources();
+  Compiler child(&scratchpad, resources);
+  child.set_work_resources(c.work_resources());
+
   ir::CompleteResultBuffer buffer;
   buffer.append(scope_context);
-  BoundParameters bound_parameters;
+
+  BoundParameters bound_parameters = *ComputeParamsFromArgs(child, node, args);
   bound_parameters.bind_type(&node->context().ids()[0],
                              type::QualType::Constant(type::ScopeContext));
   bound_parameters.bind_value(&node->context().ids()[0], buffer[0]);

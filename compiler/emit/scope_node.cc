@@ -64,21 +64,40 @@ struct BasicBlockMapping {
 
 ir::BasicBlock *InlineScope(
     Compiler &c, absl::Span<ast::BlockNode const> blocks,
-    ir::Scope to_be_inlined, ir::PartialResultBuffer const &arguments,
+    ast::ScopeLiteral const *scope_literal, ir::Scope to_be_inlined,
+    ir::PartialResultBuffer const &arguments,
     absl::Span<std::pair<ir::BasicBlock *, ir::BasicBlock *>>
         block_entry_exit) {
   auto landing = c.builder().AddBlock();
 
   auto *start_block          = c.builder().CurrentBlock();
   size_t inlined_start_index = c.builder().CurrentGroup()->blocks().size();
-
   auto *into                 = c.builder().CurrentGroup();
-  c.builder().CurrentBlock() = start_block;
+
+  std::vector<ir::Reg> parameter_values;
+  size_t j = 0;
+  for (auto const &p : to_be_inlined.type()->params()) {
+    parameter_values.push_back(
+        RegisterReferencing(c.builder(), p.value.type(), arguments[j++]));
+  }
 
   // Update the register count. This must be done after we've added the
   // register-forwarding instructions which use this count to choose a register
   // number.
   ir::Inliner inliner(into->num_regs(), to_be_inlined->num_args());
+
+  size_t i = 0;
+  for (auto const &p : to_be_inlined.type()->params()) {
+    absl::Cleanup cleanup = [&] { ++i; };
+    ir::Reg param_alloc   = c.builder().Alloca(p.value.type());
+    c.builder().set_addr(&scope_literal->params()[i].value->ids()[0],
+                         param_alloc);
+    c.builder().Store(
+        ir::RegOr<ir::addr_t>(parameter_values[i]),
+        c.builder().addr(&scope_literal->params()[i].value->ids()[0]));
+  }
+
+  c.builder().CurrentBlock() = start_block;
 
   size_t block_index = 0;
   for (auto const &block : blocks) {
@@ -139,12 +158,22 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   auto unbound_scope = *EvaluateOrDiagnoseAs<ir::UnboundScope>(node->name());
 
   ir::ScopeContext scope_context = context().ScopeContext(node);
-  ir::Scope scope = unbound_scope.bind(work_resources(), scope_context);
+
+  ir::PartialResultBuffer argument_buffer;
+
+  // Constant arguments need to be computed entirely before being used to
+  // instantiate a generic function.
+  ir::CompleteResultBuffer buffer;
+  auto constant_arguments =
+      EmitConstantArguments(*this, node->arguments(), buffer);
+
+  ir::Scope scope =
+      unbound_scope.bind(work_resources(), scope_context, constant_arguments);
 
   ast::ScopeLiteral const *scope_lit = context().AstLiteral(unbound_scope);
 
   auto find_subcontext_result =
-      FindInstantiation(*this, scope_lit, scope_context);
+      FindInstantiation(*this, scope_lit, scope_context, constant_arguments);
   auto &context = find_subcontext_result.context;
 
   EnsureComplete({
@@ -153,7 +182,9 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
       .context = &context,
   });
 
-  auto *start              = builder().CurrentBlock();
+  auto *start = builder().CurrentBlock();
+  EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
+                node->arguments(), constant_arguments, argument_buffer);
 
   std::vector<std::pair<ir::BasicBlock *, ir::BasicBlock *>> block_entry_exit;
   block_entry_exit.reserve(node->blocks().size());
@@ -168,13 +199,9 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   }
 
   builder().CurrentBlock() = start;
-  ir::PartialResultBuffer argument_buffer;
-  EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
-                node->arguments(), {/* TODO: Constant arguments */},
-                argument_buffer);
 
   builder().CurrentBlock() =
-      InlineScope(*this, node->blocks(), scope, argument_buffer,
+      InlineScope(*this, node->blocks(), scope_lit, scope, argument_buffer,
                   absl::MakeSpan(block_entry_exit));
 }
 

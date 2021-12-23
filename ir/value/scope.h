@@ -112,19 +112,23 @@ struct UnboundScope
   static constexpr std::string_view kAbslFormatString = "UnboundScope(%p)";
 
   explicit UnboundScope(
-      base::any_invocable<Scope(compiler::WorkResources const &,
-                                ScopeContext const &)> *f = nullptr)
+      base::any_invocable<
+          Scope(compiler::WorkResources const &, ScopeContext const &,
+                core::Arguments<type::Typed<CompleteResultRef>> const &)> *f =
+          nullptr)
       : f_(f) {}
 
-  Scope bind(compiler::WorkResources const &wr, ScopeContext const &ctx) const {
-    return (*f_)(wr, ctx);
+  Scope bind(compiler::WorkResources const &wr, ScopeContext const &ctx,
+             core::Arguments<type::Typed<CompleteResultRef>> const &arguments) const {
+    return (*f_)(wr, ctx, arguments);
   }
 
  private:
   friend base::EnableExtensions;
 
-  base::any_invocable<Scope(compiler::WorkResources const &,
-                            ScopeContext const &)> *f_;
+  base::any_invocable<Scope(
+      compiler::WorkResources const &, ScopeContext const &,
+      core::Arguments<type::Typed<CompleteResultRef>> const &)> *f_;
 };
 
 }  // namespace ir

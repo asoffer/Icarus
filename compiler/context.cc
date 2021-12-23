@@ -55,7 +55,13 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
           c.set_qual_type(&id->declaration(), qt);
         });
   }
+
   auto &[parameter_types, rets, ctx] = *iter->second;
+
+  parameter_types =
+      node->params().Transform([&c = iter->second->context](auto const &d) {
+        return c.qual_types(d.get())[0];
+      });
 
   return InsertSubcontextResult{
       .params   = parameter_types,
