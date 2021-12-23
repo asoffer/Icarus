@@ -17,7 +17,7 @@ ic_low_level_library(
     name = "io",
     visibility = ["//visibility:public"],
     srcs = ["io.ic"],
-    deps = [":core"],
+    deps = [],
 )
 
 ic_low_level_library(

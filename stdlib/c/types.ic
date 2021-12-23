@@ -10,6 +10,7 @@
 #{export} unsigned_long_long ::= u64
 
 #{export} size_t ::= u64
+#{export} ssize_t ::= i64
 
 #{export} float ::= f32
 #{export} double ::= f64

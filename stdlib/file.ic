@@ -19,27 +19,17 @@ make ::= (f: *c.File) -> File {
 CFileHandle ::= (f: File) => f._handle
 
 #{export}
-With ::= scope(File) {
-  enter ::= jump [f: *File] (name: []char) {
-    f._handle = c.fopen(name.data, "r".data)
-    e := errno.get()
-    goto e == errno.error.SUCCESS, open(@f), error(e) | done()
+With ::= scope [ctx] (name: []char) {
+  f: File
+  f._handle = c.fopen(name.data, "r".data)
+  e := errno.get()
+  if (e == errno.error.SUCCESS) {
+    @f >> ctx.open
+    c.fclose(f._handle)
+    return
   }
 
-  open ::= block {
-    before ::= (f: File) => f
-    after ::= jump [f: *File] () {
-      c.fclose(f._handle)
-      goto done()
-    }
-  }
-
-  error ::= block {
-    before ::= (e: errno.error) => e
-    after ::= jump [f: *File] () { goto done() }
-  }
-
-  exit ::= () -> () {}
+  e >> ctx.error
 }
 
 #{export}
@@ -66,28 +56,19 @@ LinesState ::= struct {
   }
 }
 
-next_line ::= (s: *LinesState) -> bool {
-  s.line_length = c.getline(&s.line, &s.bufsize, s.handle)
-  return s.line_length > 0
-}
-
-as_slice ::= (s: *LinesState) -> []char {
-  return slice(s.line, s.line_length as u64)
+next_line ::= (handle: *c.File, line: *[]char) -> bool {
+  data: [*]char
+  alloc_size: c.size_t
+  length := c.getline(&data, &alloc_size, handle)
+  @line = slice(data, length as u64)
+  return length > 0
 }
 
 #{export}
-Lines ::= scope(LinesState) {
-  enter ::= jump [state: *LinesState] (f: File) {
-    state.handle = f'CFileHandle
-    goto state'next_line(), each(state'as_slice()), done()
+Lines ::= scope [ctx] (f: File) {
+  line: []char
+  while (next_line(f'CFileHandle, line)) {
+    line >> ctx.each
+    memory.deallocate(line.data)
   }
-
-  each ::= block {
-    before ::= (line: []char) => line
-    after ::= jump [state: *LinesState] () {
-      goto state'next_line(), each(state'as_slice()), done()
-    }
-  }
-
-  exit ::= () -> () {}
 }

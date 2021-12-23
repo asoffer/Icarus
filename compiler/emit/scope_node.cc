@@ -64,8 +64,7 @@ struct BasicBlockMapping {
 
 ir::BasicBlock *InlineScope(
     Compiler &c, absl::Span<ast::BlockNode const> blocks,
-    ast::ScopeLiteral const *scope_literal, ir::Scope to_be_inlined,
-    ir::PartialResultBuffer const &arguments,
+    ir::Scope to_be_inlined, ir::PartialResultBuffer const &arguments,
     absl::Span<std::pair<ir::BasicBlock *, ir::BasicBlock *>>
         block_entry_exit) {
   auto landing = c.builder().AddBlock();
@@ -90,11 +89,7 @@ ir::BasicBlock *InlineScope(
   for (auto const &p : to_be_inlined.type()->params()) {
     absl::Cleanup cleanup = [&] { ++i; };
     ir::Reg param_alloc   = c.builder().Alloca(p.value.type());
-    c.builder().set_addr(&scope_literal->params()[i].value->ids()[0],
-                         param_alloc);
-    c.builder().Store(
-        ir::RegOr<ir::addr_t>(parameter_values[i]),
-        c.builder().addr(&scope_literal->params()[i].value->ids()[0]));
+    c.builder().Store(ir::RegOr<ir::addr_t>(parameter_values[i]), param_alloc);
   }
 
   c.builder().CurrentBlock() = start_block;
@@ -170,7 +165,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   ir::Scope scope =
       unbound_scope.bind(work_resources(), scope_context, constant_arguments);
 
-  ast::ScopeLiteral const *scope_lit = context().AstLiteral(unbound_scope);
+  ast::ScopeLiteral const *scope_lit = unbound_scope.literal();
 
   auto find_subcontext_result =
       FindInstantiation(*this, scope_lit, scope_context, constant_arguments);
@@ -201,7 +196,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   builder().CurrentBlock() = start;
 
   builder().CurrentBlock() =
-      InlineScope(*this, node->blocks(), scope_lit, scope, argument_buffer,
+      InlineScope(*this, node->blocks(), scope, argument_buffer,
                   absl::MakeSpan(block_entry_exit));
 }
 

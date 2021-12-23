@@ -12,15 +12,13 @@ namespace compiler {
 // leak checker. Longer term, we're going to rewrite these so instead of using
 // type erasure they're an honest-to-goodness function in IR which will be
 // appropriately owned by the module.
-static std::forward_list<base::any_invocable<ir::Scope(
-    WorkResources const &, ir::ScopeContext const &,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &)>>
-    invocables;
+static std::forward_list<ir::UnboundScope::Data> scope_data;
 
 void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
                             ir::PartialResultBuffer &out) {
-  invocables.push_front(
-      base::any_invocable<ir::Scope(
+  scope_data.push_front(ir::UnboundScope::Data{
+      .literal = node,
+      .f       = base::any_invocable<ir::Scope(
           WorkResources const &, ir::ScopeContext const &,
           core::Arguments<type::Typed<ir::CompleteResultRef>> const &)>(
           [instantiation_compiler = Compiler(&context(), resources()), node](
@@ -31,7 +29,8 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
                              auto result,
                              Instantiate(instantiation_compiler, node,
                                          scope_context, args));
-            auto const &[params, rets_ref, context, instantiation_inserted] = result;
+            auto const &[params, rets_ref, context, instantiation_inserted] =
+                result;
             PersistentResources resources = instantiation_compiler.resources();
             auto compiler =
                 instantiation_compiler.MakeChild(&context, resources);
@@ -59,9 +58,8 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
             }
 
             return scope;
-          }));
-  context().SetAstLiteral(ir::UnboundScope(&invocables.front()), node);
-  out.append(ir::UnboundScope(&invocables.front()));
+          })});
+  out.append(ir::UnboundScope(&scope_data.front()));
 }
 
 bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {

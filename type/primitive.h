@@ -36,7 +36,8 @@ struct Primitive : public LegacyType {
   auto Apply(Fn &&fn) const {
     return ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, ir::Integer, int8_t,
                      int16_t, int32_t, int64_t, float, double, bool, ir::Char,
-                     Type, ir::ModuleId, ir::addr_t, ir::ScopeContext,
+                     std::byte, Type, ir::ModuleId, ir::addr_t,
+                     ir::ScopeContext,
                      ir::UnboundScope /* TODO: Other primitives */>(
         std::forward<Fn>(fn));
   }
@@ -83,12 +84,12 @@ inline base::Global kPrimitiveArray = std::array{
     Primitive(Primitive::BasicType::F64),
     Primitive(Primitive::BasicType::Bool),
     Primitive(Primitive::BasicType::Char),
+    Primitive(Primitive::BasicType::Byte),
     Primitive(Primitive::BasicType::Type_),
     Primitive(Primitive::BasicType::Module),
     Primitive(Primitive::BasicType::ScopeContext),
     Primitive(Primitive::BasicType::UnboundScope),
     Primitive(Primitive::BasicType::NullPtr),
-    Primitive(Primitive::BasicType::Byte),
     Primitive(Primitive::BasicType::EmptyArray),
     Primitive(Primitive::BasicType::Label),
     Primitive(Primitive::BasicType::Interface),
@@ -124,12 +125,12 @@ inline Type F32          = &(*internal::kPrimitiveArray)[9];
 inline Type F64          = &(*internal::kPrimitiveArray)[10];
 inline Type Bool         = &(*internal::kPrimitiveArray)[11];
 inline Type Char         = &(*internal::kPrimitiveArray)[12];
-inline Type Type_        = &(*internal::kPrimitiveArray)[13];
-inline Type Module       = &(*internal::kPrimitiveArray)[14];
-inline Type ScopeContext = &(*internal::kPrimitiveArray)[15];
-inline Type UnboundScope = &(*internal::kPrimitiveArray)[16];
-inline Type NullPtr      = &(*internal::kPrimitiveArray)[17];
-inline Type Byte         = &(*internal::kPrimitiveArray)[18];
+inline Type Byte         = &(*internal::kPrimitiveArray)[13];
+inline Type Type_        = &(*internal::kPrimitiveArray)[14];
+inline Type Module       = &(*internal::kPrimitiveArray)[15];
+inline Type ScopeContext = &(*internal::kPrimitiveArray)[16];
+inline Type UnboundScope = &(*internal::kPrimitiveArray)[17];
+inline Type NullPtr      = &(*internal::kPrimitiveArray)[18];
 inline Type EmptyArray   = &(*internal::kPrimitiveArray)[19];
 inline Type Label        = &(*internal::kPrimitiveArray)[20];
 inline Type Interface    = &(*internal::kPrimitiveArray)[21];

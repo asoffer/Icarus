@@ -47,5 +47,5 @@ c ::= import "c/types.ic"
 #{export} tmpfile  ::= foreign("tmpfile", () -> *File)
 #{export} tmpnam   ::= foreign("tmpnam", [*]char -> [*]char)
 
-#{export} getline  ::= foreign("getline", (*[*]char, *u64, *File) -> i64)
+#{export} getline  ::= foreign("getline", (*[*]char, *c.size_t, *File) -> c.ssize_t)
 #{export} getdelim ::= foreign("getdelim", (*[*]char, *u64, c.int, *File) -> i64)

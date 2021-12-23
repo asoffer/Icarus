@@ -18,6 +18,10 @@
 #include "ir/value/result_buffer.h"
 #include "type/scope.h"
 
+namespace ast {
+struct ScopeLiteral;
+}  // namespace ast
+
 namespace ir {
 
 using CompiledScope = BlockGroup<type::Scope>;
@@ -27,6 +31,7 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
   static constexpr std::string_view kAbslFormatString = "Scope(%p)";
 
   struct Data {
+    ast::ScopeLiteral const *literal;
     CompiledScope *scope;
     type::Scope const *type;
     std::vector<std::pair<BasicBlock *, BasicBlock *>> connections;
@@ -111,24 +116,32 @@ struct UnboundScope
                                           base::AbslHashExtension> {
   static constexpr std::string_view kAbslFormatString = "UnboundScope(%p)";
 
-  explicit UnboundScope(
-      base::any_invocable<
-          Scope(compiler::WorkResources const &, ScopeContext const &,
-                core::Arguments<type::Typed<CompleteResultRef>> const &)> *f =
-          nullptr)
-      : f_(f) {}
+  struct Data {
+    // TODO: Storing the literal here is in general a bad idea, but helps us
+    // move forward with generics as a short-term solution. Long term, we need
+    // tohave a better solution.
+    ast::ScopeLiteral const *literal;
 
-  Scope bind(compiler::WorkResources const &wr, ScopeContext const &ctx,
-             core::Arguments<type::Typed<CompleteResultRef>> const &arguments) const {
-    return (*f_)(wr, ctx, arguments);
+    base::any_invocable<Scope(
+        compiler::WorkResources const &, ScopeContext const &,
+        core::Arguments<type::Typed<CompleteResultRef>> const &)>
+        f;
+  };
+
+  explicit UnboundScope(Data *data = nullptr) : data_(data) {}
+
+  Scope bind(
+      compiler::WorkResources const &wr, ScopeContext const &ctx,
+      core::Arguments<type::Typed<CompleteResultRef>> const &arguments) const {
+    return data_->f(wr, ctx, arguments);
   }
+
+  ast::ScopeLiteral const *literal() const { return data_->literal; }
 
  private:
   friend base::EnableExtensions;
 
-  base::any_invocable<Scope(
-      compiler::WorkResources const &, ScopeContext const &,
-      core::Arguments<type::Typed<CompleteResultRef>> const &)> *f_;
+  Data *data_;
 };
 
 }  // namespace ir

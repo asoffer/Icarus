@@ -294,15 +294,6 @@ struct Context {
     return nullptr;
   }
 
-  void SetAstLiteral(ir::UnboundScope s, ast::ScopeLiteral const *node) {
-    scope_literal_.emplace(s, node);
-  }
-  ast::ScopeLiteral const *AstLiteral(ir::UnboundScope s) const {
-    auto iter = scope_literal_.find(s);
-    ASSERT(iter != scope_literal_.end());
-    return iter->second;
-  }
-
   template <typename T, typename... Args>
   std::pair<type::Type, bool> EmplaceType(ast::Expression const *expr,
                                           Args &&... args) {
@@ -450,9 +441,6 @@ struct Context {
   absl::node_hash_set<std::vector<ir::ScopeContext::block_type>>
       scope_context_data_;
   absl::flat_hash_map<ast::ScopeNode const *, ir::ScopeContext> scope_contexts_;
-
-  absl::flat_hash_map<ir::UnboundScope, ast::ScopeLiteral const *>
-      scope_literal_;
 
   // Provides a mapping from a given AST node to the collection of all nodes
   // that might jump to it. For example, a function literal will be mapped to

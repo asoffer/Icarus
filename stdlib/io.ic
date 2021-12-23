@@ -1,5 +1,3 @@
-core ::= import "core.ic"
-
 #{export} Print ::= (n: i8) -> () { Print(n as i64) }
 #{export} Print ::= (n: i16) -> () { Print(n as i64) }
 #{export} Print ::= (n: i32) -> () { Print(n as i64) }
@@ -17,7 +15,7 @@ core ::= import "core.ic"
 }
 
 #{export} Print ::= (b: bool) -> () {
-  core.if (b) then { Print("true") } else { Print("false") }
+  if (b) { Print("true") } else { Print("false") }
 }
 
 #{export} Print ::= (c: char) -> () {
