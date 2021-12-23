@@ -73,23 +73,14 @@ ir::BasicBlock *InlineScope(
   size_t inlined_start_index = c.builder().CurrentGroup()->blocks().size();
   auto *into                 = c.builder().CurrentGroup();
 
-  std::vector<ir::Reg> parameter_values;
-  size_t j = 0;
-  for (auto const &p : to_be_inlined.type()->params()) {
-    parameter_values.push_back(
-        RegisterReferencing(c.builder(), p.value.type(), arguments[j++]));
-  }
-
   // Update the register count. This must be done after we've added the
   // register-forwarding instructions which use this count to choose a register
   // number.
   ir::Inliner inliner(into->num_regs(), to_be_inlined->num_args());
 
-  size_t i = 0;
+  size_t j = 0;
   for (auto const &p : to_be_inlined.type()->params()) {
-    absl::Cleanup cleanup = [&] { ++i; };
-    ir::Reg param_alloc   = c.builder().Alloca(p.value.type());
-    c.builder().Store(ir::RegOr<ir::addr_t>(parameter_values[i]), param_alloc);
+    RegisterReferencing(c.builder(), p.value.type(), arguments[j++]);
   }
 
   c.builder().CurrentBlock() = start_block;
@@ -139,6 +130,7 @@ ir::BasicBlock *InlineScope(
         UNREACHABLE(type);
       }
     });
+
   }
 
   start_block->set_jump(ir::JumpCmd::Uncond(mapping(to_be_inlined->entry())));

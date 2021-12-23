@@ -2,11 +2,11 @@
 io ::= import "io.ic"
 
 for (0, 100) do [i: i64] {
-  if (i % 15 == 0) then {
+  if (i % 15 == 0) {
     io.Print("FizzBuzz\n")
-  } else if (i % 3 == 0) then {
+  } else if (i % 3 == 0) {
     io.Print("Fizz\n")
-  } else if (i % 5 == 0) then {
+  } else if (i % 5 == 0) {
     io.Print("Buzz\n")
   } else {
     io.Print(i, "\n")

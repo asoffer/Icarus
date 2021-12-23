@@ -1,4 +1,3 @@
-core   ::= import "core.ic"
 memory ::= import "memory.ic"
 
 #{export}
@@ -96,9 +95,9 @@ is_empty ::= (s: *string) => s._length == 0
 
 #{export}
 append ::= (s: *string, character: char) -> () {
-  core.if (s._capacity == 0) then {
+  if (s._capacity == 0) {
     resize_buffer(s, 1)
-  } else core.if (s._capacity == s._length) then {
+  } else if (s._capacity == s._length) {
     resize_buffer(s, s._capacity * 2)
   }
   s._data[s._length] = init character
@@ -108,11 +107,11 @@ append ::= (s: *string, character: char) -> () {
 
 #{export}
 append ::= (s: *string, char_slice: []char) -> () {
-  core.if (s._length + char_slice.length > s._capacity) then {
+  if (s._length + char_slice.length > s._capacity) {
     resize_buffer(s, s._length + char_slice.length)
   }
 
-  core.if (char_slice.length > 0) then {
+  if (char_slice.length > 0) {
     len := char_slice.length + 1
     memory.Copy(from = slice(char_slice.data, len),
                 to   = slice(s'at(s._length), len))
@@ -128,7 +127,7 @@ append ::= (s: *string, from: *string) -> () {
 #{export}
 Print ::= (s: *string) -> () {
   printf ::= foreign("printf", ([*]char, [*]char) -> i32)
-  core.if (not s'is_empty) then { printf("%s".data, s._data) }
+  if (not s'is_empty) { printf("%s".data, s._data) }
 }
 
 #{export}

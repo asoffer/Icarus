@@ -1,8 +1,9 @@
 c      ::= import "c/stdio.ic"
-core   ::= import "core.ic"
+ctypes ::= import "c/types.ic"
 errno  ::= import "errno.ic"
 memory ::= import "memory.ic"
 
+io      ::= import "io.ic"
 #{export}
 File ::= struct {
   #{export} _handle: *c.File
@@ -14,7 +15,6 @@ make ::= (f: *c.File) -> File {
   return File.{ _handle = f }
 }
 
-
 #{export}
 CFileHandle ::= (f: File) => f._handle
 
@@ -24,12 +24,11 @@ With ::= scope [ctx] (name: []char) {
   f._handle = c.fopen(name.data, "r".data)
   e := errno.get()
   if (e == errno.error.SUCCESS) {
-    @f >> ctx.open
+    f >> ctx.open
     c.fclose(f._handle)
-    return
+  } else {
+    e >> ctx.error
   }
-
-  e >> ctx.error
 }
 
 #{export}
@@ -38,36 +37,28 @@ read_to ::= (f: File, T :: type) -> T {
   CHUNK_SIZE ::= 1024
   num_read := CHUNK_SIZE
   buffer: [CHUNK_SIZE; char]
-  core.while (num_read == CHUNK_SIZE) do {
+  while (num_read == CHUNK_SIZE) {
     num_read = c.fread(&buffer[0], char'bytes, CHUNK_SIZE, f._handle)
     result'append(slice(&buffer[0], num_read))
   }
   return result
 }
 
-LinesState ::= struct {
-  handle: *c.File
-  line: [*]char
-  bufsize: u64
-  line_length: i64
-
-  (destroy) ::= (self: *LinesState) -> () {
-    memory.deallocate(self.line)
-  }
-}
-
 next_line ::= (handle: *c.File, line: *[]char) -> bool {
   data: [*]char
-  alloc_size: c.size_t
+  alloc_size: ctypes.size_t
   length := c.getline(&data, &alloc_size, handle)
-  @line = slice(data, length as u64)
+  io.Print(length, "\n")
+  if (length >= 0) {
+    @line = slice(data, length as u64)
+  }
   return length > 0
 }
 
 #{export}
 Lines ::= scope [ctx] (f: File) {
-  line: []char
-  while (next_line(f'CFileHandle, line)) {
+  line := slice(null as [*]char, 0)
+  while (next_line(f'CFileHandle, &line)) {
     line >> ctx.each
     memory.deallocate(line.data)
   }

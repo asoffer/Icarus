@@ -9,7 +9,7 @@ mem   ::= import "memory.ic"
 // the file cannot be opened, an error is printed instead.
 
 f := c.fopen("examples/example_file.txt".data, "r".data)
-if (errno.get() as u64 == 0) then {
+if (errno.get() as u64 == 0) {
   io.Print("First line of file is:\n")
   p: [*]char
   num: u64

@@ -2,9 +2,9 @@
 
 #{export}
 Equals ::= (a: []char, b: []char) -> bool {
-  if (a.length != b.length) then { return false }
+  if (a.length != b.length) { return false }
   for (0, a.length as i64) do [idx: i64] {
-    if (a[idx] != b[idx]) then { return false }
+    if (a[idx] != b[idx]) { return false }
   }
   return true
 }
@@ -13,21 +13,21 @@ Equals ::= (a: []char, b: []char) -> bool {
 Find ::= (s: []char, ch: char) -> [*]char {
   ptr := s.data
   end := ptr + s.length
-  while (ptr != end and @ptr != ch) do { ptr += 1 }
+  while (ptr != end and @ptr != ch) { ptr += 1 }
   return ptr
 }
 
 // TODO: Use something better than brute force here.
 #{export}
 Find ::= (s: []char, needle: []char) -> [*]char {
-  if (needle.length == 1) then { return Find(s, needle[0]) }
+  if (needle.length == 1) { return Find(s, needle[0]) }
   ptr := s.data
   end := ptr + s.length
-  if (needle.length == 0) then { return ptr }
-  if (needle.length > s.length) then { return end }
+  if (needle.length == 0) { return ptr }
+  if (needle.length > s.length) { return end }
   stop := end - needle.length
-  while (ptr != stop) do {
-    if (Equals(slice(ptr, needle.length), needle)) then { return ptr }
+  while (ptr != stop) {
+    if (Equals(slice(ptr, needle.length), needle)) { return ptr }
     ptr += 1
   }
   return end
@@ -47,9 +47,9 @@ IndexOf ::= (s: []char, needle: []char) -> i64 {
 StartsWith ::= (s: []char, prefix: []char) -> bool {
   s_len := s.length as i64
   p_len := prefix.length as i64
-  if (p_len > s_len) then { return false }
+  if (p_len > s_len) { return false }
   for (0, p_len) do [idx: i64] {
-    if (s[idx] != prefix[idx]) then { return false }
+    if (s[idx] != prefix[idx]) { return false }
   }
   return true
 }
@@ -58,9 +58,9 @@ StartsWith ::= (s: []char, prefix: []char) -> bool {
 EndsWith ::= (s: []char, prefix: []char) -> bool {
   s_len := s.length as i64
   p_len := prefix.length as i64
-  if (p_len > s_len) then { return false }
+  if (p_len > s_len) { return false }
   for (1, p_len + 1) do [idx: i64] {
-    if (s[s_len - idx] != prefix[p_len - idx]) then {
+    if (s[s_len - idx] != prefix[p_len - idx]) {
       return false
     }
   }

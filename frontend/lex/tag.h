@@ -60,6 +60,7 @@ enum Tag : uint64_t {
   kw_scope        = 1ull << 49,
   builtin_if      = 1ull << 50,
   builtin_while   = 1ull << 51,
+  if_expr         = 1ull << 52,
 };
 
 inline std::ostream& operator<<(std::ostream& os, Tag t) {
@@ -116,10 +117,11 @@ inline std::ostream& operator<<(std::ostream& os, Tag t) {
       "scope",
       "if",
       "while",
+      "if_expr",
   };
   const char* sep = "";
   os << "Tag(";
-  for (size_t i = 0; i < 52; ++i) {
+  for (size_t i = 0; i < 53; ++i) {
     if (t & (1ull << i)) { os << std::exchange(sep, ", ") << tag_strs[i]; }
   }
   return os << ")";

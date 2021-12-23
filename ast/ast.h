@@ -507,6 +507,8 @@ struct BlockNode : ParameterizedExpression, WithScope<Scope> {
     return frontend::SourceRange(range().begin(), name_end_);
   }
 
+  std::vector<std::unique_ptr<Node>> extract() && { return std::move(stmts_); }
+
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
@@ -1270,16 +1272,26 @@ struct IfStmt : Expression {
       : Expression(range),
         condition_(std::move(condition)),
         true_block_(std::move(true_block)),
-        has_false_block_(false) {}
-  explicit IfStmt(frontend::SourceRange const &range,
-                  std::unique_ptr<Expression> condition,
-                  std::vector<std::unique_ptr<Node>> true_block,
-                  std::vector<std::unique_ptr<Node>> false_block)
-      : Expression(range),
-        condition_(std::move(condition)),
-        true_block_(std::move(true_block)),
-        false_block_(std::move(false_block)),
-        has_false_block_(true) {}
+        has_false_block_(false),
+        last_if_(this) {}
+
+  void SetFalseBlock(std::vector<std::unique_ptr<Node>> false_block) {
+    ASSERT(last_if_->has_false_block_ == false);
+    last_if_->false_block_     = std::move(false_block);
+    last_if_->has_false_block_ = true;
+    last_if_ = nullptr;
+  }
+
+  // Appends the given block not necessarily to this ScopeNode, but to the scope
+  // that makes sense syntactically. For instance, in the first example above,
+  // the inner `if` ScopeNode checking `condition2` would be appended to.
+  void AppendElseBlock(std::unique_ptr<ast::IfStmt> node) {
+    auto *ptr = node.get();
+    ASSERT(last_if_->has_false_block_ == false);
+    last_if_->false_block_.push_back(std::move(node));
+    last_if_->has_false_block_ = true;
+    last_if_                   = ptr;
+  }
 
   Expression const &condition() const { return *condition_; }
   base::PtrSpan<Node const> true_block() const { return true_block_; }
@@ -1306,6 +1318,7 @@ struct IfStmt : Expression {
   // True-scope, then false-scope
   std::optional<std::pair<Scope, Scope>> body_scopes_;
   bool has_false_block_;
+  IfStmt *last_if_ = nullptr;
 };
 
 // WhileStmt:

@@ -25,6 +25,7 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
               WorkResources const &wr, ir::ScopeContext scope_context,
               core::Arguments<type::Typed<ir::CompleteResultRef>> const
                   &args) mutable -> ir::Scope {
+            instantiation_compiler.set_work_resources(wr);
             ASSIGN_OR(return ir::Scope(),  //
                              auto result,
                              Instantiate(instantiation_compiler, node,

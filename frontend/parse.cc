@@ -539,6 +539,7 @@ std::unique_ptr<ast::Node> BuildWhileStmt(
       range, move_as<ast::Expression>(nodes[1]), std::move(body));
 }
 
+
 std::unique_ptr<ast::Node> BuildIfStmt(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -554,6 +555,39 @@ std::unique_ptr<ast::Node> BuildIfStmt(
 
   return std::make_unique<ast::IfStmt>(
       range, move_as<ast::Expression>(nodes[1]), std::move(true_body));
+}
+
+std::unique_ptr<ast::Node> ExtendIfElseStmt(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
+  auto if_stmt = move_as<ast::IfStmt>(nodes[0]);
+  auto extension_if_stmt = move_as<ast::IfStmt>(nodes[2]);
+
+  if (auto *id = nodes[1]->if_as<ast::Identifier>()) {
+    if (id->name() != "else") { NOT_YET(); }
+  } else {
+    NOT_YET();
+  }
+  // TODO: Make robust.
+  if_stmt->AppendElseBlock(std::move(extension_if_stmt));
+  return if_stmt;
+}
+
+std::unique_ptr<ast::Node> BuildIfElseStmt(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
+  auto if_stmt = move_as<ast::IfStmt>(nodes[0]);
+
+  auto block_node = move_as<ast::BlockNode>(nodes[1]);
+  if (block_node->name() != "else") { NOT_YET(); }
+
+  // TODO: Make robust.
+  if_stmt->SetFalseBlock(std::move(*block_node).extract());
+  return if_stmt;
 }
 
 std::unique_ptr<ast::Node> BuildRightUnop(
@@ -1561,7 +1595,7 @@ constexpr uint64_t OP_B = op_b | tick | dot | colon | eq | colon_eq | rocket;
 constexpr uint64_t FN_CALL_EXPR = paren_call_expr | full_call_expr;
 constexpr uint64_t NON_BRACKET_EXPR =
     expr | fn_expr | scope_expr | FN_CALL_EXPR | paren_expr | empty_brackets;
-constexpr uint64_t EXPR  = NON_BRACKET_EXPR | bracket_expr;
+constexpr uint64_t EXPR  = NON_BRACKET_EXPR | bracket_expr | if_expr;
 constexpr uint64_t STMTS = stmt | stmt_list;
 // Used in error productions only!
 constexpr uint64_t RESERVED = kw_struct | kw_block_head | op_lt;
@@ -1665,10 +1699,15 @@ static base::Global kRules = std::array{
            .execute = BuildInferredFunctionLiteral},
 
     // if-stmt
-    // TODO: if-else
     rule_t{.match   = {builtin_if, empty_parens | paren_expr, braced_stmts},
-           .output  = expr,
+           .output  = if_expr,
            .execute = BuildIfStmt},
+    rule_t{.match   = {if_expr, expr, if_expr},
+           .output  = if_expr,
+           .execute = ExtendIfElseStmt},
+    rule_t{.match   = {if_expr, block_expr},
+           .output  = expr,
+           .execute = BuildIfElseStmt},
     rule_t{.match   = {builtin_while, empty_parens | paren_expr, braced_stmts},
            .output  = expr,
            .execute = BuildWhileStmt},
@@ -1847,7 +1886,9 @@ static base::Global kMoreRules = std::array{
     //
     // TODO: does this rule prevent chained scope blocks on new lines or is it
     // preceeded by a shift rule that eats newlines after a right-brace?
-    rule_t{.match = {op_lt}, .output = stmt, .execute = BuildControlHandler},
+    rule_t{.match   = {op_lt | sop_lt},
+           .output  = stmt,
+           .execute = BuildControlHandler},
     rule_t{.match   = {EXPR | decl | assignment},
            .output  = stmt,
            .execute = BuildOneStatement},

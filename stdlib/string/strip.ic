@@ -3,7 +3,7 @@ match ::= import "string/match.ic"
 
 #{export}
 StripPrefix ::= (s: []char, prefix: []char) -> []char {
-  if (match.StartsWith(s, prefix)) then {
+  if (match.StartsWith(s, prefix)) {
     return slice(s.data + prefix.length, s.length - prefix.length)
   }
   return s
@@ -11,7 +11,7 @@ StripPrefix ::= (s: []char, prefix: []char) -> []char {
 
 #{export}
 StripSuffix ::= (s: []char, suffix: []char) -> []char {
-  if (match.EndsWith(s, suffix)) then {
+  if (match.EndsWith(s, suffix)) {
     return slice(s.data, s.length - suffix.length)
   }
   return s

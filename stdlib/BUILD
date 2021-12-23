@@ -25,7 +25,6 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["file.ic"],
     deps = [
-        ":core",
         ":errno",
         ":memory",
         "//stdlib/c:stdio",
@@ -48,7 +47,6 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["string.ic"],
     deps = [
-        ":core",
         ":memory",
     ],
 )

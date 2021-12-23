@@ -99,11 +99,11 @@ io.Print("\n")
 io.Print("--------------------------------------------------------------------\n")
 
 Print ::= (x: Suit) -> () {
-  if (x == Suit.CLUB) then {
+  if (x == Suit.CLUB) {
     io.Print("CLUB")
-  } else if (x == Suit.DIAMOND) then {
+  } else if (x == Suit.DIAMOND) {
     io.Print("DIAMOND")
-  } else if (x == Suit.HEART) then {
+  } else if (x == Suit.HEART) {
     io.Print("HEART")
   } else {
     io.Print("SPADE")
@@ -113,8 +113,8 @@ Print ::= (x: Suit) -> () {
 Print ::= (x: Color) -> () {
   sep := ""
   io.Print("Color[")
-  if (Color.RED <= x) then { io.Print("RED") \\ sep = ", " }
-  if (Color.GREEN <= x) then { io.Print(sep) \\ io.Print("GREEN") \\ sep = ", " }
-  if (Color.BLUE <= x) then { io.Print(sep) \\ io.Print("BLUE") }
+  if (Color.RED <= x) { io.Print("RED") \\ sep = ", " }
+  if (Color.GREEN <= x) { io.Print(sep) \\ io.Print("GREEN") \\ sep = ", " }
+  if (Color.BLUE <= x) { io.Print(sep) \\ io.Print("BLUE") }
   io.Print("]")
 }

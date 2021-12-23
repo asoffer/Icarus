@@ -6,15 +6,15 @@ upper ::= 1_000
 for (2, upper) do [n: i64] {
   found_div := false
   test: i64 = 2
-  while (test * test <= n) do {
-    if (n % test == 0) then {
+  while (test * test <= n) {
+    if (n % test == 0) {
       found_div = true
       test = n // Force break
     }
     test += 1
   }
 
-  if (not found_div) then { num += 1 }
+  if (not found_div) { num += 1 }
   n += 1
 }
 

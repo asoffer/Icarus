@@ -29,6 +29,18 @@ Reg RegisterReferencing(Builder &builder, type::Type t,
             .result  = builder.CurrentGroup()->Reserve(),
         });
       });
+    } else if (auto const *e = t.if_as<type::Enum>()) {
+      return builder.CurrentBlock()->Append(
+          RegisterInstruction<type::Enum::underlying_type>{
+              .operand = value.get<type::Enum::underlying_type>(),
+              .result  = builder.CurrentGroup()->Reserve(),
+          });
+    } else if (auto const *e = t.if_as<type::Flags>()) {
+      return builder.CurrentBlock()->Append(
+          RegisterInstruction<type::Flags::underlying_type>{
+              .operand = value.get<type::Flags::underlying_type>(),
+              .result  = builder.CurrentGroup()->Reserve(),
+          });
     } else {
       NOT_YET(t);
     }

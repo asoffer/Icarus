@@ -14,39 +14,44 @@ repeat ::= scope [c] (count: i64) {
 }
 
 #{export}
-exchange ::= (x: *~`T, y: T) -> T {
-  result: T
-  result = @x
-  @x = y
-  return result
+forever ::= scope [c] () {
+  while (true) { >> c.do }
 }
 
-#{export}
-exchange ::= (x: *~`T, y: *T, z: T) -> T {
-  result: T
-  result = @x
-  @x = @y
-  @y = z
-  return result
-}
-
-max_impl ::= (t :: type) -> integer {
-  if (t == i8) then { return 127 }
-  if (t == i16) then { return 32767 }
-  if (t == i32) then { return 2147483647 }
-  if (t == i64) then { return 9223372036854775807 }
-  'abort // TODO: This should emit an error message. Or better yet we should
-         // constrain `t` to only accept supported types.
-}
-
-#{export}
-max ::= (t :: type) => max_impl(t) as t
-
-#{export}
-element_array_of ::= (num :: integer, value: ~`t) -> [num; t] {
-  result: [num; t]
-  for (0, num) do [i: i64] {
-    result[i] = copy value
-  }
-  return result
-}
+// #{export}
+// exchange ::= (x: *~`T, y: T) -> T {
+//   result: T
+//   result = @x
+//   @x = y
+//   return result
+// }
+// 
+// #{export}
+// exchange ::= (x: *~`T, y: *T, z: T) -> T {
+//   result: T
+//   result = @x
+//   @x = @y
+//   @y = z
+//   return result
+// }
+// 
+// max_impl ::= (t :: type) -> integer {
+//   if (t == i8) { return 127 }
+//   if (t == i16) { return 32767 }
+//   if (t == i32) { return 2147483647 }
+//   if (t == i64) { return 9223372036854775807 }
+//   'abort // TODO: This should emit an error message. Or better yet we should
+//          // constrain `t` to only accept supported types.
+// }
+// 
+// #{export}
+// max ::= (t :: type) => max_impl(t) as t
+// 
+// #{export}
+// element_array_of ::= (num :: integer, value: ~`t) -> [num; t] {
+//   result: [num; t]
+//   for (0, num) do [i: i64] {
+//     result[i] = copy value
+//   }
+//   return result
+// }

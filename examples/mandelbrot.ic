@@ -6,7 +6,7 @@ mandelbrot ::= (a: math.complex) -> i64 {
   z := a
   for (0, 30) do [iter: i64] {
     z = z ^ 2 + a
-    if (z'squared_norm > 4.0) then {
+    if (z'squared_norm > 4.0) {
       return iter + 1
     }
   }
@@ -19,26 +19,15 @@ linspace_state ::= struct {
   remaining: i64
 }
 
-linspace ::= scope (linspace_state) {
-  enter ::= jump [state: *linspace_state] (begin: f64, end: f64, steps: i64) {
-    @state = linspace_state.{
-      current = begin
-      step = (end - begin) / (steps as f64)
-      remaining = steps
-    }
-    goto state.remaining == 0, done(), do(state.current)
+linspace ::= scope [c] (begin: f64, end: f64, steps: i64) {
+  remaining := steps
+  current := begin
+  step := (end - begin) / (steps as f64)
+  while (remaining > 0) {
+    current >> c.do
+    current += step
+    remaining -= 1
   }
-
-  do ::= block {
-    before ::= (x: f64) => x
-    after ::= jump [state: *linspace_state] () {
-      state.remaining -= 1
-      state.current += state.step
-      goto state.remaining == 0, done(), do(state.current)
-    }
-  }
-
-  exit ::= () -> () {}
 }
 
 linspace (1.0, -1.0, 40) do [y: f64] {

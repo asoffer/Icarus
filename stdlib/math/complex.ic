@@ -57,14 +57,14 @@ squared_norm ::= (x: complex) -> f64 {
 
 #{export}
 (^)::= (x: complex, n: i64) -> complex {
-  if (n == 0) then {
+  if (n == 0) {
     return complex.{ real = 1.0 \\ imag = 0.0 }
-  } else if (n < 0) then {
+  } else if (n < 0) {
     sn := x'squared_norm
     return complex.{ real = x.real / sn \\ imag = -x.imag / sn }
-  } else if (n == 1) then {
+  } else if (n == 1) {
     return x
-  } else if (n % 2 == 0) then {
+  } else if (n % 2 == 0) {
     return (x * x) ^ (n / 2)
   } else {
     return x * (x * x) ^ (n / 2)

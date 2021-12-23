@@ -309,11 +309,13 @@ void YieldStmt::Initialize(Initializer& initializer) {
 void ScopeLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   set_body_with_parent(initializer.scope);
-  context_decl_->Initialize(initializer);
   initializer.scope = &body_scope();
+  context_decl_->Initialize(initializer);
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& param : params_) { param.value->Initialize(initializer); }
   InitializeAll(stmts_, initializer, &covers_binding_, &is_dependent_);
+  ordered_dependency_nodes_ = OrderedDependencyNodes(this);
+  InitializeParams();
 }
 
 void ScopeNode::Initialize(Initializer& initializer) {

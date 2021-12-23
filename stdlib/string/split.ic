@@ -17,6 +17,16 @@ get_chunk ::= (st: *state, offset: i64) -> []char {
 }
 
 #{export}
+Split ::= scope (s: []char, c: char) {
+  s := ""
+  offset := 0
+  while (offset == 0 or s.length != 0) {
+    get_chunk(st, offset)
+    offset = 1
+
+  }
+}
+
 Split ::= scope (state) {
   enter ::= jump [st: *state] (s: []char, c: char) {
     st.head = s.data
@@ -46,7 +56,7 @@ get_chunk2 ::= (st: *state2) -> []char {
   start := st.head
   len := (st.end - start) as u64
   p := match.Find(slice(start, len), slice(st.delim, st.delim_len as u64))
-  if (p == st.end) then {
+  if (p == st.end) {
     st.head = st.end
     return slice(start, len)
   }
