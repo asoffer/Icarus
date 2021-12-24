@@ -26,7 +26,6 @@
 #include "frontend/parse.h"
 #include "frontend/source/file.h"
 #include "frontend/source/file_name.h"
-#include "frontend/source/shared.h"
 #include "ir/compiled_fn.h"
 #include "ir/interpreter/execution_context.h"
 #include "module/module.h"
@@ -117,9 +116,9 @@ void DumpControlFlowGraph(ir::CompiledFn const *fn, std::ostream &output) {
 
 int DumpControlFlowGraph(frontend::FileName const &file_name,
                          std::ostream &output) {
-  diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
+  diagnostic::StreamingConsumer diag(stderr, nullptr);
   auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
-  auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
+  auto maybe_file_src      = frontend::SourceBufferFromFile(canonical_file_name);
   if (not maybe_file_src.ok()) {
     diag.Consume(frontend::MissingModule{
         .source    = canonical_file_name,
@@ -149,7 +148,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
       .importer            = &importer,
   };
 
-  auto parsed_nodes = frontend::Parse(src->buffer(), diag);
+  auto parsed_nodes = frontend::Parse(*src, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   auto main_fn = compiler::CompileExecutable(context, resources, nodes);
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }

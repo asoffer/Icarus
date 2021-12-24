@@ -1,7 +1,9 @@
 #ifndef ICARUS_DIAGNOSTIC_CONSUMER_CONSUMER_H
 #define ICARUS_DIAGNOSTIC_CONSUMER_CONSUMER_H
 
+#include "base/debug.h"
 #include "diagnostic/message.h"
+#include "frontend/source/buffer.h"
 
 namespace diagnostic {
 
@@ -12,7 +14,7 @@ struct ConsumedMessage {
 };
 
 struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
-  explicit DiagnosticConsumer(frontend::Source const* src) : src_(src) {}
+  explicit DiagnosticConsumer(frontend::SourceBuffer const* src) : src_(src) {}
   virtual ~DiagnosticConsumer() {}
 
   void Consume(ConsumedMessage m) {
@@ -22,11 +24,11 @@ struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
 
   template <typename Diag>
   void Consume(Diag const& diag) {
-    ConsumeImpl(Diag::kCategory, Diag::kName, diag.ToMessage(src_));
+    ConsumeImpl(Diag::kCategory, Diag::kName, diag.ToMessage(nullptr));
     ++num_consumed_;
   }
 
-  frontend::Source const* source() const { return src_; }
+  frontend::SourceBuffer const* source() const { return src_; }
 
   // TODO this should be overridable. What it means to count the number consumed
   // is dependent on what it consumes. For example, if warnings are considered
@@ -37,7 +39,7 @@ struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
                            DiagnosticMessage&& diag) = 0;
 
  private:
-  frontend::Source const* src_;
+  frontend::SourceBuffer const *src_;
   size_t num_consumed_ = 0;
 };
 

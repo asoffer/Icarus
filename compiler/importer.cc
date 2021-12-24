@@ -15,7 +15,6 @@
 #include "frontend/parse.h"
 #include "frontend/source/file.h"
 #include "frontend/source/file_name.h"
-#include "frontend/source/shared.h"
 
 namespace compiler {
 namespace {

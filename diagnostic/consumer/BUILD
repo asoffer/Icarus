@@ -7,6 +7,7 @@ cc_library(
         ":consumer",
         "//diagnostic:console_renderer",
         "//diagnostic:message",
+        "//frontend/source:buffer",
     ],
 )
 
@@ -14,7 +15,9 @@ cc_library(
     name = "consumer",
     hdrs = ["consumer.h"],
     deps = [
-        "//diagnostic:message"
+        "//base:debug",
+        "//diagnostic:message",
+        "//frontend/source:buffer",
     ],
 )
 
@@ -26,6 +29,7 @@ cc_library(
         "//base:debug",
         "//diagnostic:console_renderer",
         "//diagnostic:message",
+        "//frontend/source:buffer",
     ],
 )
 
@@ -34,7 +38,8 @@ cc_library(
     hdrs = ["tracking.h"],
     deps = [
         ":consumer",
-        "//diagnostic:message"
+        "//diagnostic:message",
+        "//frontend/source:buffer",
     ],
     testonly = True,
 )
@@ -44,7 +49,8 @@ cc_library(
     hdrs = ["trivial.h"],
     deps = [
         ":consumer",
-        "//diagnostic:message"
+        "//diagnostic:message",
+        "//frontend/source:buffer",
     ],
 )
 
@@ -53,6 +59,7 @@ cc_library(
     hdrs = ["aborting.h"],
     deps = [
         ":consumer",
-        "//diagnostic:message"
+        "//diagnostic:message",
+        "//frontend/source:buffer",
     ],
 )

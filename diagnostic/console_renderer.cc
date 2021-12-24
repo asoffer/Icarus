@@ -130,10 +130,11 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
   if (not buffer.line(last_line).ends_with('\n')) absl::FPrintF(out_, "\n");
 }
 
-void ConsoleRenderer::Add(frontend::Source const *source, Category cat,
+void ConsoleRenderer::Add(std::string_view filename,
+                          frontend::SourceBuffer const &source, Category cat,
                           DiagnosticMessage const &diag) {
   has_data_ = true;
-  if (std::string filename = source->FileName(); !filename.empty()) {
+  if (not filename.empty()) {
     absl::FPrintF(out_, "\033[31;1mError\033[0m in \033[1m%s\033[0m:\n",
                   filename);
   } else {
@@ -149,7 +150,7 @@ void ConsoleRenderer::Add(frontend::Source const *source, Category cat,
         absl::FPrintF(out_, "  * %s\n", item);
       }
     } else if constexpr (type == base::meta<SourceQuote>) {
-      WriteSourceQuote(source->buffer(), component);
+      WriteSourceQuote(source, component);
     } else {
       static_assert(base::always_false(type));
     }

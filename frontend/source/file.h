@@ -27,6 +27,9 @@ struct MissingModule {
   std::string reason;
 };
 
+absl::StatusOr<SourceBuffer> SourceBufferFromFile(
+    CanonicalFileName const &file_name);
+
 struct FileSource : public Source {
   static absl::StatusOr<FileSource> Make(CanonicalFileName file_name);
 
@@ -45,6 +48,9 @@ struct FileSource : public Source {
   std::string FileName() const override { return std::string(name_.name()); }
 
  private:
+  friend absl::StatusOr<SourceBuffer> SourceBufferFromFile(
+      CanonicalFileName const &file_name);
+
   FileSource(CanonicalFileName name, std::string src)
       : name_(std::move(name)), src_(std::move(src)) {}
 

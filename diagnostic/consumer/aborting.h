@@ -6,12 +6,12 @@
 #include "diagnostic/console_renderer.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/message.h"
-#include "frontend/source/source.h"
+#include "frontend/source/buffer.h"
 
 namespace diagnostic {
 
 struct AbortingConsumer : DiagnosticConsumer {
-  explicit AbortingConsumer(frontend::Source const* src)
+  explicit AbortingConsumer(frontend::SourceBuffer const* src)
       : DiagnosticConsumer(src), renderer_(stderr) {}
   ~AbortingConsumer() override {}
 

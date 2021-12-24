@@ -102,7 +102,14 @@ struct SourceRange {
 // case of static compilation, the source data is behind only one indirection
 // rather than two. Lines may not span multiple chunks.
 struct SourceBuffer {
-  explicit SourceBuffer(std::string chunk) { AppendChunk(std::move(chunk)); }
+  explicit SourceBuffer(std::string name, std::string chunk)
+      : name_(std::move(name)) {
+    AppendChunk(std::move(chunk));
+  }
+  explicit SourceBuffer(std::string chunk)
+      : SourceBuffer("", std::move(chunk)) {}
+
+  std::string_view name() const { return name_; }
 
   // Chunks are treated as if all appended chunks represent a single source
   // buffer, but we require that chunks only break at newlines. Thus, an
@@ -199,6 +206,7 @@ struct SourceBuffer {
 
   // Offsets of lines stored with begin and end sentinels.
   std::vector<SourceLoc> line_start_ = {SourceLoc(0, 0)};
+  std::string name_;
 };
 
 }  // namespace frontend

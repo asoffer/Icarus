@@ -38,12 +38,11 @@ struct Highlight {
 };
 
 struct SourceQuote {
-  explicit SourceQuote(frontend::Source const* source) : source(source) {}
+  explicit SourceQuote(frontend::SourceBuffer const* source) : source(source) {}
+  explicit SourceQuote(frontend::Source const* source) : source(nullptr) {}
 
   // TODO: implement for real.
   SourceQuote& Highlighted(frontend::SourceRange range, Style style) {
-    if (source) { lines.insert(range.lines(source->buffer())); }
-    highlights.emplace_back(range, style);
     return *this;
   }
 
@@ -54,7 +53,7 @@ struct SourceQuote {
     return *this;
   }
 
-  frontend::Source const* source;
+  frontend::SourceBuffer const* source;
   base::IntervalSet<frontend::LineNum> lines;
   std::vector<Highlight> highlights;
 };
