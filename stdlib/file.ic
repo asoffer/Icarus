@@ -3,7 +3,6 @@ ctypes ::= import "c/types.ic"
 errno  ::= import "errno.ic"
 memory ::= import "memory.ic"
 
-io      ::= import "io.ic"
 #{export}
 File ::= struct {
   #{export} _handle: *c.File
@@ -48,7 +47,6 @@ next_line ::= (handle: *c.File, line: *[]char) -> bool {
   data: [*]char
   alloc_size: ctypes.size_t
   length := c.getline(&data, &alloc_size, handle)
-  io.Print(length, "\n")
   if (length >= 0) {
     @line = slice(data, length as u64)
   }
@@ -60,6 +58,6 @@ Lines ::= scope [ctx] (f: File) {
   line := slice(null as [*]char, 0)
   while (next_line(f'CFileHandle, &line)) {
     line >> ctx.each
-    memory.deallocate(line.data)
   }
+  // TODO: Deallocate `line.data`.
 }

@@ -94,8 +94,12 @@ ir::BasicBlock *InlineScope(
       ir::Reg r =
           to_be_inlined.parameters(ir::Block(block_index))[param_index++];
       inliner(r);
-      c.builder().Store(ir::RegOr<ir::addr_t>(r),
-                        c.builder().addr(&param.value->ids()[0]));
+      auto const &id        = param.value->ids()[0];
+      type::Type param_type = c.context().qual_types(&id)[0].type();
+      ir::PartialResultBuffer buffer;
+      buffer.append(r);
+      c.EmitCopyAssign(type::Typed(c.builder().addr(&id), param_type),
+                       type::Typed(buffer[0], param_type));
     }
     auto &entry = block_entry_exit[block_index].first;
     c.builder().UncondJump(entry);
