@@ -19,6 +19,8 @@ cc_library(
     deps = [
         "//ast",
         "//diagnostic/consumer",
+        "//frontend/source:view",
+        "//module",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
@@ -189,7 +191,8 @@ cc_library(
         "//core:call",
         "//diagnostic/consumer",
         "//diagnostic/consumer:buffering",
-        "//frontend/source",
+        "//frontend/source:buffer",
+        "//frontend/source:view",
         "//ir:builder",
         "//ir/instruction:set",
         "//ir/value:addr",

@@ -24,7 +24,11 @@ struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
 
   template <typename Diag>
   void Consume(Diag const& diag) {
-    ConsumeImpl(Diag::kCategory, Diag::kName, diag.ToMessage(nullptr));
+    if constexpr (requires { diag.ToMessage(); }) {
+      ConsumeImpl(Diag::kCategory, Diag::kName, diag.ToMessage());
+    } else {
+      ConsumeImpl(Diag::kCategory, Diag::kName, diag.ToMessage(nullptr));
+    }
     ++num_consumed_;
   }
 

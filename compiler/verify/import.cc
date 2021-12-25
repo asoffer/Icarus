@@ -13,28 +13,30 @@ struct NonConstantImport {
   static constexpr std::string_view kCategory = "value-category-error";
   static constexpr std::string_view kName     = "non-constant-import";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot import a non-constant module."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct InvalidImport {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "invalid-import";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot import a module from a value of type `%s`.",
                          type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
   type::Type type;
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 }  // namespace
@@ -47,13 +49,13 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Import const *node) {
   auto qt  = type::QualType::Constant(type::Module);
   bool err = false;
   if (result.type() != type::Slc(type::Char)) {
-    diag().Consume(InvalidImport{.type  = result.type(),
-                                 .range = node->operand()->range()});
+    diag().Consume(InvalidImport{.type = result.type(),
+                                 .view = SourceViewFor(node->operand())});
     err = true;
   }
 
   if (not result.constant()) {
-    diag().Consume(NonConstantImport{.range = node->operand()->range()});
+    diag().Consume(NonConstantImport{.view = SourceViewFor(node->operand())});
     err = true;
   }
 
@@ -70,7 +72,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Import const *node) {
     return context().set_qual_type(node, qt);
   }
 
-  auto slice = source_locator->get<ir::Slice>(0);
+  auto slice          = source_locator->get<ir::Slice>(0);
   ir::ModuleId mod_id = importer().Import(slice);
   if (mod_id == ir::ModuleId::Invalid()) {
     qt.MarkError();

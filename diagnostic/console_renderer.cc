@@ -32,8 +32,7 @@ void ConsoleRenderer::Flush() {
   std::fflush(out_);
 }
 
-void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
-                                       SourceQuote const &quote) {
+void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
   ASSERT(quote.lines.empty() == false);
 
   auto highlight_iter   = quote.highlights.begin();
@@ -56,7 +55,7 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
       case 2: {
         absl::FPrintF(out_, "\033[97;1m%*d | \033[0m%s\n", border_alignment,
                       (prev_line_num + 1).value,
-                      buffer.line(prev_line_num + 1));
+                      quote.source->line(prev_line_num + 1));
       } break;
       default: {
         absl::FPrintF(out_, "\033[97;1m%*s.. | \033[0m\n", border_alignment - 2,
@@ -79,24 +78,24 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
 
       set_highlight();
 
-      std::string_view line_str = buffer.line(line);
+      std::string_view line_str = quote.source->line(line);
 
       if (next_highlight_change and
-          buffer.line_number(*next_highlight_change) > line) {
+          quote.source->line_number(*next_highlight_change) > line) {
         absl::FPrintF(out_, "%s", line_str);
         continue;
       }
 
       if (next_highlight_change) {
-        ASSERT(buffer.line_number(*next_highlight_change) == line);
+        ASSERT(quote.source->line_number(*next_highlight_change) == line);
       }
 
       frontend::Offset off{0};
       while (next_highlight_change and
-             buffer.line_number(*next_highlight_change) == line and
+             quote.source->line_number(*next_highlight_change) == line and
              off.value < line_str.length()) {
         frontend::Offset change_offset =
-            buffer.offset_in_line(*next_highlight_change);
+            quote.source->offset_in_line(*next_highlight_change);
 
         absl::FPrintF(out_, "%s",
                       line_str.substr(off.value, (change_offset - off).value));
@@ -127,16 +126,16 @@ void ConsoleRenderer::WriteSourceQuote(frontend::SourceBuffer const &buffer,
   }
   // Ensure that any following messages are on a separate line, even if the last
   // line of the source quote didn't include a newline.
-  if (not buffer.line(last_line).ends_with('\n')) absl::FPrintF(out_, "\n");
+  if (not quote.source->line(last_line).ends_with('\n'))
+    absl::FPrintF(out_, "\n");
 }
 
-void ConsoleRenderer::Add(std::string_view filename,
-                          frontend::SourceBuffer const &source, Category cat,
+void ConsoleRenderer::Add(frontend::SourceBuffer const &source, Category cat,
                           DiagnosticMessage const &diag) {
   has_data_ = true;
-  if (not filename.empty()) {
+  if (not source.name().empty()) {
     absl::FPrintF(out_, "\033[31;1mError\033[0m in \033[1m%s\033[0m:\n",
-                  filename);
+                  source.name());
   } else {
     std::fputs("\033[31;1mError\033[0m:\n", out_);
   }
@@ -150,7 +149,7 @@ void ConsoleRenderer::Add(std::string_view filename,
         absl::FPrintF(out_, "  * %s\n", item);
       }
     } else if constexpr (type == base::meta<SourceQuote>) {
-      WriteSourceQuote(source, component);
+      WriteSourceQuote(component);
     } else {
       static_assert(base::always_false(type));
     }

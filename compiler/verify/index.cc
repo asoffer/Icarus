@@ -13,16 +13,17 @@ struct InvalidIndexType {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "invalid-index-type";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Attempting to index a value of type `%s` with a "
                          "non-integral index. Indices must be integers, but "
                          "you provided an index of type `%s`.",
                          type, index_type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
   type::Type type;
   type::Type index_type;
 };
@@ -31,16 +32,17 @@ struct IndexingArrayOutOfBounds {
   static constexpr std::string_view kCategory = "value-error";
   static constexpr std::string_view kName     = "indexing-array-out-of-bounds";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Array is indexed out of bounds. Array of type `%s` has size %u "
             "but you are attempting to access position %d.",
             type::Type(array), array->length(), index),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
   type::Array const *array;
   ir::Integer index;
 };
@@ -49,29 +51,31 @@ struct NegativeArrayIndex {
   static constexpr std::string_view kCategory = "value-error";
   static constexpr std::string_view kName     = "negative-array-index";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Array is indexed with a negative value."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct InvalidIndexing {
   static constexpr std::string_view kCategory = "value-error";
   static constexpr std::string_view kName     = "invalid-indexing";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Cannot index into a non-array, non-buffer type. Indexed type is "
             "a `%s`.",
             type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
   std::string type;
 };
 
@@ -81,7 +85,7 @@ bool ValidIndexType(Compiler &c, ast::Index const *node, type::Type type,
   if (index_qt.ok()) {
     if (type::IsIntegral(index_qt.type())) { return true; }
     c.diag().Consume(InvalidIndexType{
-        .range      = node->range(),
+        .view       = SourceViewFor(node),
         .type       = type,
         .index_type = index_qt.type(),
     });
@@ -122,12 +126,12 @@ type::QualType VerifyArrayIndex(Compiler &c, ast::Index const *node,
 
     if (index < 0) {
       c.diag().Consume(NegativeArrayIndex{
-          .range = node->range(),
+          .view = SourceViewFor(node),
       });
       qt.MarkError();
     } else if (index >= array_type->length()) {
       c.diag().Consume(IndexingArrayOutOfBounds{
-          .range = node->range(),
+          .view  = SourceViewFor(node),
           .array = array_type,
           .index = index,
       });
@@ -199,8 +203,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Index const *node) {
     for (auto const *id : members) { os.insert(id); }
     if (os.members().empty()) {
       diag().Consume(InvalidIndexing{
-          .range = node->range(),
-          .type  = TypeForDiagnostic(node->lhs(), context()),
+          .view = SourceViewFor(node),
+          .type = TypeForDiagnostic(node->lhs(), context()),
       });
       qt = type::QualType::Error();
     } else {

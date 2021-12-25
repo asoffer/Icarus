@@ -20,7 +20,7 @@ cc_library(
         "//compiler:work_graph",
         "//diagnostic/consumer:aborting",
         "//diagnostic/consumer:tracking",
-        "//frontend/source:string",
+        "//frontend/source:buffer",
         "//frontend:parse",
         "//module:module",
         "//module:mock_importer",

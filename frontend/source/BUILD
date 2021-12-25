@@ -37,28 +37,11 @@ cc_library(
     srcs = ["file.cc"],
     deps = [
         ":file_name",
-        ":source",
-        ":string",
         "//base:strong_types",
         "//diagnostic:message",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
-    ],
-)
-
-cc_test(
-    name = "file_test",
-    srcs = ["file_test.cc"],
-    deps = [
-        ":file",
-        "@com_google_googletest//:gtest_main",
-    ],
-    data = [
-        "testdata/empty_file.txt",
-        "testdata/one_line_file.txt",
-        "testdata/multi_line_file.txt",
     ],
 )
 
@@ -100,19 +83,10 @@ cc_library(
 )
 
 cc_library(
-    name = "string",
-    hdrs = ["string.h"],
+    name = "view",
+    hdrs = ["view.h"],
     deps = [
         ":buffer",
-        ":source"
-    ],
-)
-
-cc_test(
-    name = "string_test",
-    srcs = ["string_test.cc"],
-    deps = [
-        ":string",
-        "@com_google_googletest//:gtest_main",
-    ],
+        "//base:debug",
+    ]
 )

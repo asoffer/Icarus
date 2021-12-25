@@ -13,7 +13,7 @@
 #include "diagnostic/consumer/aborting.h"
 #include "diagnostic/consumer/tracking.h"
 #include "frontend/parse.h"
-#include "frontend/source/string.h"
+#include "frontend/source/buffer.h"
 #include "module/mock_importer.h"
 #include "module/module.h"
 
@@ -21,8 +21,8 @@ namespace test {
 
 struct TestModule : compiler::CompiledModule {
   TestModule()
-      : compiler::CompiledModule(&context_),
-        source_("\n"),
+      : compiler::CompiledModule(&source_, &context_),
+        source_("test-module", "\n"),
         context_(&ir_module_),
         work_graph_(compiler::PersistentResources{
             .work                = &work_set,
@@ -33,10 +33,9 @@ struct TestModule : compiler::CompiledModule {
 
   void AppendCode(std::string code) {
     code.push_back('\n');
-    source_.buffer().AppendChunk(std::move(code));
+    source_.AppendChunk(std::move(code));
     diagnostic::AbortingConsumer diag(&source_);
-    auto stmts = frontend::Parse(source_.buffer(), diag,
-                                 source_.buffer().num_chunks() - 1);
+    auto stmts = frontend::Parse(source_, diag, source_.num_chunks() - 1);
     auto nodes = insert(stmts.begin(), stmts.end());
     compiler::Compiler c(&context(), resources());
     c.set_work_resources(work_graph_.work_resources());
@@ -60,11 +59,10 @@ struct TestModule : compiler::CompiledModule {
   template <typename NodeType>
   NodeType const* Append(std::string code) {
     code.push_back('\n');
-    source_.buffer().AppendChunk(std::move(code));
+    source_.AppendChunk(std::move(code));
 
     diagnostic::AbortingConsumer diag(&source_);
-    auto stmts = frontend::Parse(source_.buffer(), diag,
-                                 source_.buffer().num_chunks() - 1);
+    auto stmts = frontend::Parse(source_, diag, source_.num_chunks() - 1);
     if (auto* ptr = stmts[0]->template if_as<NodeType>()) {
       std::vector<std::unique_ptr<ast::Node>> ns;
       ns.push_back(std::move(stmts[0]));
@@ -127,7 +125,7 @@ struct TestModule : compiler::CompiledModule {
   diagnostic::TrackingConsumer consumer;
   compiler::WorkSet work_set;
  private:
-  frontend::StringSource source_;
+  frontend::SourceBuffer source_;
   ir::Module ir_module_;
   compiler::Context context_;
   compiler::WorkGraph work_graph_;

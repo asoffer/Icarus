@@ -57,7 +57,7 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
   auto [iter, inserted] = modules_.try_emplace(file_name);
   if (not inserted) { return iter->second->id; }
 
-  auto maybe_file_src = frontend::FileSource::Make(
+  auto maybe_file_src = frontend::SourceBufferFromFile(
       ResolveModulePath(file_name, module_lookup_paths_));
 
   if (not maybe_file_src.ok()) {
@@ -70,7 +70,7 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
     return ir::ModuleId::Invalid();
   }
 
-  iter->second                           = std::make_unique<ModuleData>();
+  iter->second = std::make_unique<ModuleData>(&*maybe_file_src);
   auto& [id, ir_module, context, module] = *iter->second;
   modules_by_id_.emplace(id, &module);
 
@@ -78,8 +78,7 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
     module.scope().embed(&get(embedded_id).scope());
   }
 
-  auto parsed_nodes =
-      frontend::Parse(maybe_file_src->buffer(), *diagnostic_consumer_);
+  auto parsed_nodes = frontend::Parse(*maybe_file_src, *diagnostic_consumer_);
   auto nodes = module.insert(parsed_nodes.begin(), parsed_nodes.end());
 
   PersistentResources resources{

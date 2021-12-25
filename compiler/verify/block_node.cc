@@ -3,24 +3,6 @@
 #include "compiler/context.h"
 
 namespace compiler {
-namespace {
-
-struct NoBlockWithName {
-  static constexpr std::string_view kCategory = "reference-error";
-  static constexpr std::string_view kName     = "no-block-with-name";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("No block on this scope with the name `%s`.", name),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
-  }
-
-  std::string name;
-  frontend::SourceRange range;
-};
-
-}  // namespace
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::BlockNode const *node) {
   LOG("BlockNode", "Verifying %s", node->DebugString());

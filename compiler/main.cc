@@ -152,7 +152,7 @@ int Compile(frontend::FileName const &file_name) {
 
   ir::Module ir_module;
   compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(&context);
+  compiler::CompiledModule exec_mod(src, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id).scope());
   }

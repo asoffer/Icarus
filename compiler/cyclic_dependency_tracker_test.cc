@@ -51,6 +51,13 @@ TEST(CyclicDependencyTracker, Errors) {
   ast::Identifier id1(frontend::SourceRange(), "a");
   ast::Identifier id2(frontend::SourceRange(), "a");
 
+  frontend::SourceBuffer buffer("\n");
+  module::BasicModule module(&buffer);
+  ast::ModuleScope scope(&module);
+  ast::Node::Initializer i{.scope = &scope};
+  id1.Initialize(i);
+  id2.Initialize(i);
+
   auto token1 = dep_tracker.PushDependency(&id1, diag);
   auto token2 = dep_tracker.PushDependency(&id2, diag);
 

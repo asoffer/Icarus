@@ -23,7 +23,8 @@
 #include "compiler/work_item.h"
 #include "core/call.h"
 #include "diagnostic/consumer/consumer.h"
-#include "frontend/source/source.h"
+#include "frontend/source/buffer.h"
+#include "frontend/source/view.h"
 #include "ir/builder.h"
 #include "ir/instruction/set.h"
 #include "ir/interpreter/evaluate.h"
@@ -54,15 +55,16 @@ struct NotAType {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "not-a-type";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expression was expected to be a type, but instead "
                          "was a value of type `%s`.",
                          type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
   type::Type type;
 };
 
@@ -662,6 +664,9 @@ struct Compiler
   // TODO: Should be persistent, but also needs on some local context.
   CyclicDependencyTracker cylcic_dependency_tracker_;
 };
+
+frontend::SourceBuffer const *SourceBufferFor(ast::Node const *node);
+frontend::SourceView SourceViewFor(ast::Node const *node);
 
 }  // namespace compiler
 

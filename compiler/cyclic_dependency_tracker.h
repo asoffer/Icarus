@@ -8,6 +8,8 @@
 #include "absl/types/span.h"
 #include "ast/ast.h"
 #include "diagnostic/consumer/consumer.h"
+#include "frontend/source/view.h"
+#include "module/module.h"
 
 namespace compiler {
 namespace {
@@ -16,17 +18,17 @@ struct CyclicDependency {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "cyclic-dependency";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    diagnostic::SourceQuote quote(src);
-    for (auto const *id : cycle) {
-      quote = quote.Highlighted(id->range(), diagnostic::Style::ErrorText());
+  diagnostic::DiagnosticMessage ToMessage() const {
+    diagnostic::SourceQuote quote(&cycle.front().buffer());
+    for (auto const &view : cycle) {
+      quote = quote.Highlighted(view.range(), diagnostic::Style::ErrorText());
     }
 
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Found a cyclic dependency:"), std::move(quote));
   }
 
-  std::vector<ast::Identifier const *> cycle;
+  std::vector<frontend::SourceView> cycle;
 };
 
 }  // namespace
@@ -71,9 +73,16 @@ struct CyclicDependencyTracker {
       return DependencyToken(this);
     }
 
-    diag.Consume(CyclicDependency{
-        .cycle = {iter, dependencies_.end()},
-    });
+    std::vector<frontend::SourceView> views;
+    views.reserve(std::distance(iter, dependencies_.end()));
+    for (auto it = iter; it != dependencies_.end(); ++it) {
+      ast::Identifier const *id = *it;
+      views.push_back(frontend::SourceView(
+          &id->scope()->Containing<ast::ModuleScope>()->module()->buffer(),
+          id->range()));
+    }
+
+    diag.Consume(CyclicDependency{.cycle = std::move(views)});
     for (; iter != dependencies_.end(); ++iter) { error_ids_.insert(id); }
 
     return DependencyToken();

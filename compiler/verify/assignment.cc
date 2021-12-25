@@ -13,37 +13,38 @@ struct TypeMismatch {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "assignment-type-mismatch";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Cannot assign a value of type `%s` to a reference of type `%s`:",
             rhs_type, lhs_type),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
   type::Type lhs_type;
   type::Type rhs_type;
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct AssigningToNonReference {
   static constexpr std::string_view kCategory = "value-category-error";
   static constexpr std::string_view kName     = "assigning-to-non-reference";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Assigning to a non-reference expression:"),
-        diagnostic::SourceQuote(src).Highlighted(
-            lhs, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote(&lhs.buffer())
+            .Highlighted(lhs.range(), diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceRange lhs;
+  frontend::SourceView lhs;
 };
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::Assignment const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::Assignment const *node) {
   std::vector<type::QualType> lhs_qts, rhs_qts;
   lhs_qts.reserve(node->lhs().size());
   rhs_qts.reserve(node->rhs().size());
@@ -61,9 +62,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Assignment const *nod
     } else {
       if (qt.quals() >= type::Quals::Const()) {
         diag().Consume(
-            AssigningToConstant{.to = qt.type(), .range = l->range()});
+            AssigningToConstant{.to = qt.type(), .view = SourceViewFor(l)});
       } else if (not(qt.quals() >= type::Quals::Ref())) {
-        diag().Consume(AssigningToNonReference{.lhs = l->range()});
+        diag().Consume(AssigningToNonReference{.lhs = SourceViewFor(l)});
       }
     }
     lhs_qts.push_back(qt);
@@ -106,7 +107,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Assignment const *nod
           .rhs_type = rhs_type,
           // TODO: set the range to point more directly to the things we care
           // about.
-          .range = node->range(),
+          .view = SourceViewFor(node),
       });
     }
     ++lhs_iter;

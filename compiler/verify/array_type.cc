@@ -11,43 +11,46 @@ struct NonIntegralArrayLength {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-integral-array-length";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Array length indexed by non-integral type"),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct ArrayDataTypeNotAType {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "array-data-type-not-a-type";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Array type has underlying data type specified as a value which "
             "is not a type."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct NonTypeArrayTypeMatch {
   static constexpr std::string_view kCategory = "pattern-error";
   static constexpr std::string_view kName     = "non-type-array-type-match";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to match an array type against a value of type `%s`.",
             type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
   type::Type type;
 };
 
@@ -55,7 +58,8 @@ struct NonTypeArrayTypeMatch {
 
 // Verifies that the array type has constant integer lengths and that the data
 // type expression is a type.
-absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayType const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::ArrayType const *node) {
   std::vector<type::QualType> length_results;
   length_results.reserve(node->lengths().size());
   auto quals = type::Quals::Const();
@@ -65,7 +69,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayType const *node
     length_results.push_back(result);
     if (not type::IsIntegral(result.type())) {
       diag().Consume(NonIntegralArrayLength{
-          .range = node->range(),
+          .view = SourceViewFor(node),
       });
     }
   }
@@ -75,7 +79,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayType const *node
   type::QualType qt(type::Type_, quals);
   if (data_qual_type.type() != type::Type_) {
     diag().Consume(ArrayDataTypeNotAType{
-        .range = node->data_type()->range(),
+        .view = SourceViewFor(node->data_type()),
     });
     qt.MarkError();
   }
@@ -85,7 +89,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayType const *node
 
 bool Compiler::VerifyPatternType(ast::ArrayType const *node, type::Type t) {
   if (t != type::Type_) {
-    diag().Consume(NonTypeArrayTypeMatch{.range = node->range(), .type = t});
+    diag().Consume(
+        NonTypeArrayTypeMatch{.view = SourceViewFor(node), .type = t});
     return false;
   }
 
@@ -96,6 +101,5 @@ bool Compiler::VerifyPatternType(ast::ArrayType const *node, type::Type t) {
 
   return true;
 }
-
 
 }  // namespace compiler

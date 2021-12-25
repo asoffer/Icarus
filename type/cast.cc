@@ -215,8 +215,7 @@ InferenceResult Inference(Type t) {
   return t;
 }
 
-diagnostic::DiagnosticMessage UninferrableType::ToMessage(
-    frontend::Source const *src) const {
+diagnostic::DiagnosticMessage UninferrableType::ToMessage() const {
   char const *text = nullptr;
   switch (kind) {
     case InferenceResult::Kind::EmptyArray:
@@ -245,7 +244,8 @@ diagnostic::DiagnosticMessage UninferrableType::ToMessage(
 
   return diagnostic::DiagnosticMessage(
       diagnostic::Text(text),
-      diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+      diagnostic::SourceQuote(&view.buffer())
+          .Highlighted(view.range(), diagnostic::Style{}));
 }
 
 }  // namespace type

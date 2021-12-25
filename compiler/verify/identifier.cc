@@ -14,49 +14,49 @@ struct DeclOutOfOrder {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "declaration-out-of-order";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Variable `%s` used before it was declared.", id),
-        diagnostic::SourceQuote(src)
-            .Highlighted(use_range, diagnostic::Style::ErrorText())
-            .Highlighted(id_range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote(&use_view.buffer())
+            .Highlighted(use_view.range(), diagnostic::Style::ErrorText())
+            .Highlighted(id_view.range(), diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;
-  frontend::SourceRange id_range;
-  frontend::SourceRange use_range;
+  frontend::SourceView id_view;
+  frontend::SourceView use_view;
 };
 
 struct UndeclaredIdentifier {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "undeclared-identifier";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Found an undeclared identifier '%s':", id),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct UncapturedIdentifier {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "uncaptured-identifier";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Found an identifier '%s' which is not visible in the "
                          "current scope:",
                          id),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 // Returns the declaration ids along with their qualified type that may be
@@ -114,7 +114,8 @@ PotentialIds(Compiler &c, ast::Identifier const &id) {
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::Identifier const *node) {
   if (cylcic_dependency_tracker_.has_error(node)) {
     return context().set_qual_type(node, type::QualType::Error());
   }
@@ -140,8 +141,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
   switch (potential_decl_ids->size()) {
     case 1: {
       auto const &potential_id = (*potential_decl_ids)[0];
-      auto const &[id, id_qt] = potential_id;
-      auto const *decl = &id->declaration();
+      auto const &[id, id_qt]  = potential_id;
+      auto const *decl         = &id->declaration();
       if (decl->flags() & ast::Declaration::f_IsConst) {
         qt = id_qt;
         if (not qt.ok() or qt.HasErrorMark()) {
@@ -150,9 +151,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
       } else {
         if (node->range().begin() < id->range().begin()) {
           diag().Consume(DeclOutOfOrder{
-              .id        = node->name(),
-              .id_range  = potential_id.first->range(),
-              .use_range = node->range(),
+              .id       = node->name(),
+              .id_view  = SourceViewFor(potential_id.first),
+              .use_view = SourceViewFor(node),
           });
           // Haven't seen the declaration yet, so we can't proceed.
           return context().set_qual_type(node, type::QualType::Error());
@@ -198,13 +199,13 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Identifier const *nod
           });
       if (present) {
         diag().Consume(UncapturedIdentifier{
-            .id    = node->name(),
-            .range = node->range(),
+            .id   = node->name(),
+            .view = SourceViewFor(node),
         });
       } else {
         diag().Consume(UndeclaredIdentifier{
-            .id    = node->name(),
-            .range = node->range(),
+            .id   = node->name(),
+            .view = SourceViewFor(node),
         });
       }
       return context().set_qual_type(node, type::QualType::Error());

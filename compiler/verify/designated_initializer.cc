@@ -17,13 +17,14 @@ struct NonConstantDesignatedInitializerType {
   static constexpr std::string_view kName =
       "non-constant-designated-initializer-type";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Designated initializer type must be a constant."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct NonTypeDesignatedInitializerType {
@@ -31,15 +32,17 @@ struct NonTypeDesignatedInitializerType {
   static constexpr std::string_view kName =
       "non-type-designated-initializer-type";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Designated initializer type must be a type, but you "
-                         "provided an expression which is a `%s`.", type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+                         "provided an expression which is a `%s`.",
+                         type),
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
   std::string type;
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct NonStructDesignatedInitializer {
@@ -47,68 +50,72 @@ struct NonStructDesignatedInitializer {
   static constexpr std::string_view kName =
       "non-struct-designated-initializer-type";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Designated initializers can only be used with structs, but you "
             "provided a `%s`",
             type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
   std::string type;
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct InvalidInitializerType {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "invalid-initializer-type";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Designated initializer field encountered an unexpected type:\n"
             "  Expected: A type convertible to `%s`\n"
             "  Actual:   `%s`",
             expected, actual),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
   type::Type expected;
   type::Type actual;
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct NonExportedField {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-exported-field";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Field named `%s` in struct `%s` is not exported.",
                          member_name, type::Type(struct_type)),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
   std::string member_name;
   type::Struct const *struct_type;
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct MissingStructField {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "missing-struct-field";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No field named `%s` in struct `%s`.", member_name,
                          struct_type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
   std::string member_name;
   std::string struct_type;
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 // Returns whether `qt` is a const type, emitting diagnostics for both constness
@@ -120,15 +127,15 @@ bool ValidateConstType(ast::DesignatedInitializer const &node,
 
   if (not qt.constant()) {
     diagnostic_consumer.Consume(NonConstantDesignatedInitializerType{
-        .range = node.type()->range(),
+        .view = SourceViewFor(node.type()),
     });
     result = false;
   }
 
   if (qt.type() != type::Type_) {
     diagnostic_consumer.Consume(NonTypeDesignatedInitializerType{
-        .type  = TypeForDiagnostic(&node, context),
-        .range = node.type()->range(),
+        .type = TypeForDiagnostic(&node, context),
+        .view = SourceViewFor(node.type()),
     });
     result = false;
   }
@@ -137,7 +144,8 @@ bool ValidateConstType(ast::DesignatedInitializer const &node,
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::DesignatedInitializer const *node) {
   auto type_qt = VerifyType(node->type())[0];
   if (not ValidateConstType(*node, type_qt, context(), diag())) {
     return context().set_qual_type(node, type::QualType::Error());
@@ -164,9 +172,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
   auto *struct_type = t.if_as<type::Struct>();
   if (not struct_type) {
     diag().Consume(NonStructDesignatedInitializer{
-        .type  = t.to_string(),
-        .range = node->type()->range(),
-   });
+        .type = t.to_string(),
+        .view = SourceViewFor(node->type()),
+    });
     return context().set_qual_type(node, type::QualType::Error());
   }
 
@@ -199,7 +207,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
           diag().Consume(NonExportedField{
               .member_name = std::string(field_name),
               .struct_type = struct_type,
-              .range       = field->range(),
+              .view        = SourceViewFor(field),
           });
           recovered_error = true;
           quals           = type::Quals::Unqualified();
@@ -208,7 +216,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
         diag().Consume(MissingStructField{
             .member_name = std::string(field_name),
             .struct_type = TypeForDiagnostic(node, context()),
-            .range       = field->range(),
+            .view        = SourceViewFor(field),
         });
         recovered_error = true;
         quals           = type::Quals::Unqualified();
@@ -218,7 +226,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
     auto qt_iter = initializer_iter->begin();
 
     for (auto const *field : assignment->lhs()) {
-      std::string_view field_name   = field->as<ast::Identifier>().name();
+      std::string_view field_name = field->as<ast::Identifier>().name();
       ASSERT(qt_iter != initializer_iter->end());
       type::QualType initializer_qt = *qt_iter;
       ++qt_iter;
@@ -241,7 +249,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::DesignatedInitializer
         diag().Consume(InvalidInitializerType{
             .expected = rhs_type,
             .actual   = lhs_type,
-            .range    = field->range(),
+            .view     = SourceViewFor(field),
         });
         recovered_error = true;
         quals           = type::Quals::Unqualified();

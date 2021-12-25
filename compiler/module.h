@@ -15,8 +15,9 @@
 namespace compiler {
 
 struct CompiledModule : module::BasicModule {
-  explicit CompiledModule(Context *context = nullptr)
-      : context_(ASSERT_NOT_NULL(context)), data_(&module_) {}
+  explicit CompiledModule(frontend::SourceBuffer const *buffer,
+                          Context *context = nullptr)
+      : module::BasicModule(buffer), context_(ASSERT_NOT_NULL(context)) {}
   ~CompiledModule() override {}
 
   Context const &context(module::BasicModule const *unused = nullptr) const {
@@ -29,7 +30,6 @@ struct CompiledModule : module::BasicModule {
  private:
   ir::Module module_;
   Context *context_;
-  Context data_;
 };
 
 }  // namespace compiler

@@ -38,11 +38,15 @@ struct Highlight {
 };
 
 struct SourceQuote {
-  explicit SourceQuote(frontend::SourceBuffer const* source) : source(source) {}
-  explicit SourceQuote(frontend::Source const* source) : source(nullptr) {}
+  explicit SourceQuote(frontend::SourceBuffer const* source)
+      : source(ASSERT_NOT_NULL(source)) {}
+  explicit SourceQuote(frontend::Source const* source)
+      : source(&source->buffer()) {}
 
   // TODO: implement for real.
   SourceQuote& Highlighted(frontend::SourceRange range, Style style) {
+    lines.insert(range.lines(*source));
+    highlights.emplace_back(range, style);
     return *this;
   }
 

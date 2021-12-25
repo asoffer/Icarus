@@ -11,29 +11,32 @@ struct NonTypeFunctionInput {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-type-function-input";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "The specified input type for a function must be a type."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct NonTypeFunctionOutput {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-type-function-output";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "The specified return type for a function must be a type."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::FunctionType const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::FunctionType const *node) {
   type::Type t      = type::Type_;
   type::Quals quals = type::Quals::Const();
 
@@ -47,7 +50,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::FunctionType const *n
     if (not p->is<ast::Declaration>()) { quals &= qt.quals(); }
     if (not p->is<ast::Declaration>() and qt.type() != type::Type_) {
       t = nullptr;
-      diag().Consume(NonTypeFunctionInput{.range = p->range()});
+      diag().Consume(NonTypeFunctionInput{.view = SourceViewFor(p)});
     }
   }
 
@@ -60,7 +63,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::FunctionType const *n
     quals &= qt.quals();
     if (qt.type() != type::Type_) {
       t = nullptr;
-      diag().Consume(NonTypeFunctionOutput{.range = p->range()});
+      diag().Consume(NonTypeFunctionOutput{.view = SourceViewFor(p)});
     }
   }
 

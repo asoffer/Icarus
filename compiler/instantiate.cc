@@ -29,7 +29,7 @@ std::optional<type::Type> ComputeParameterTypeOrDiagnose(
     auto type_expr_type = c.VerifyType(type_expr)[0].type();
     if (type_expr_type != type::Type_) {
       c.diag().Consume(
-          NotAType{.range = type_expr->range(), .type = type_expr_type});
+          NotAType{.view = SourceViewFor(type_expr), .type = type_expr_type});
       NOT_YET("Exit out of this computation.");
     }
 

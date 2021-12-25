@@ -18,15 +18,16 @@ struct ReturningNonType {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "returning-non-type";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expected a type for the function's return-type but "
                          "found an expression of type `%s`",
                          type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
   type::Type type;
 };
 
@@ -34,50 +35,49 @@ struct NoReturnTypes {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "no-return-type";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to return a value when function returns nothing."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 struct ReturnTypeMismatch {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "return-type-mismatch";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text(
-            "Returning an expression of type `%s` from a function which "
-            "returns `%s`.",
-            actual, expected),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(diagnostic::Text(
+        "Returning an expression of type `%s` from a function which "
+        "returns `%s`.",
+        actual, expected));
   }
 
   type::Type actual;
   type::Type expected;
-  frontend::SourceRange range;
 };
 
 struct ReturningWrongNumber {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "returning-wrong-number";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to return %u value%s from a function which has %u "
             "return value%s.",
             actual, actual == 1 ? "" : "s", expected, expected == 1 ? "" : "s"),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
   size_t actual;
   size_t expected;
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 // `InferReturnTypes` looks at the possible return type of a function only
@@ -131,7 +131,7 @@ std::optional<std::vector<type::Type>> JoinReturnTypes(
       error = true;
       diag.Consume(ReturningWrongNumber{.actual   = types.size(),
                                         .expected = num_returns,
-                                        .range    = stmt->range()});
+                                        .view     = SourceViewFor(stmt)});
     }
   }
   if (error) { return std::nullopt; }
@@ -151,7 +151,7 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
   c.context().TrackJumps(node);
   bool found_error = false;
   for (auto const *stmt : node->stmts()) {
-    absl::Span<type::QualType const>  qts = c.VerifyType(stmt);
+    absl::Span<type::QualType const> qts = c.VerifyType(stmt);
     bool current_was_error = (qts.size() == 1 and not qts[0].ok());
     if (current_was_error) {
       found_error = true;
@@ -181,8 +181,8 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
         error = true;
         // TODO: Declarations are given the type of the variable being declared.
         c.diag().Consume(ReturningNonType{
-            .range = output->range(),
-            .type  = result.type(),
+            .view = SourceViewFor(output),
+            .type = result.type(),
         });
       }
     }
@@ -258,7 +258,8 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
       type::Allocate<type::Generic<type::Function>>(std::move(gen)));
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::FunctionLiteral const *node) {
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "Verifying %p: %s", node, node->DebugString());
   ast::OverloadSet os;
   os.insert(node);
@@ -315,7 +316,7 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
         .actual   = maybe_return_types->size(),
         .expected = fn_type.return_types().size(),
         // TODO: The location specified here is really wide.
-        .range = node->range()});
+        .view = SourceViewFor(node)});
     return false;
   }
 

@@ -8,28 +8,30 @@ struct NonConstantEnumerator {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-constant-enumerator";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Values for enumerators must be declared as constants."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 struct NonIntegralEnumerator {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-integral-enumerator";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Values for enumerators must be integers, but we "
                          "found an enumerator of type `%s`.",
                          type),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
   type::Type type;
 };
 
@@ -39,13 +41,13 @@ bool Compiler::VerifyBody(ast::EnumLiteral const *node) {
     auto qts = VerifyType(value.get());
     if (not(qts[0].quals() >= type::Quals::Const())) {
       success = false;
-      diag().Consume(NonConstantEnumerator{.range = value->range()});
+      diag().Consume(NonConstantEnumerator{.view = SourceViewFor(value.get())});
     }
     if (not type::IsIntegral(qts[0].type())) {
       success = false;
       diag().Consume(NonIntegralEnumerator{
-          .range = value->range(),
-          .type  = qts[0].type(),
+          .view = SourceViewFor(value.get()),
+          .type = qts[0].type(),
       });
     }
   }

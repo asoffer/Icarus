@@ -15,6 +15,7 @@
 #include "base/guarded.h"
 #include "base/macros.h"
 #include "base/ptr_span.h"
+#include "frontend/source/buffer.h"
 
 namespace module {
 
@@ -25,7 +26,8 @@ enum class Linkage { Internal, External };
 // Represents a unit of compilation, beyond which all intercommunication must be
 // explicit.
 struct BasicModule : base::Cast<BasicModule> {
-  BasicModule() : module_(this) {}
+  explicit BasicModule(frontend::SourceBuffer const *buffer)
+      : module_(this), buffer_(buffer) {}
   virtual ~BasicModule() {}
 
   // Pointers to modules are passed around, so moving a module is not safe.
@@ -42,6 +44,10 @@ struct BasicModule : base::Cast<BasicModule> {
   ast::ModuleScope const &scope() const { return module_.body_scope(); }
   ast::ModuleScope &scope() { return module_.body_scope(); }
 
+  frontend::SourceBuffer const &buffer() const {
+    return *ASSERT_NOT_NULL(buffer_);
+  }
+
   template <std::input_iterator Iter>
   base::PtrSpan<ast::Node const> insert(Iter b, Iter e) {
     return module_.insert(b, e);
@@ -56,6 +62,7 @@ struct BasicModule : base::Cast<BasicModule> {
 
  private:
   ast::Module module_;
+  frontend::SourceBuffer const *buffer_;
 
   // This flag should be set to true if this module is ever found to depend on
   // another which has errors, even if those errors do not effect

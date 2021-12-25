@@ -16,19 +16,22 @@
 #include "frontend/lex/tagged_node.h"
 #include "frontend/lex/token.h"
 #include "frontend/parse_rule.h"
-#include "frontend/source/source.h"
+#include "frontend/source/buffer.h"
+#include "frontend/source/view.h"
 
 ABSL_FLAG(bool, debug_parser, false,
           "Step through the parser step-by-step for debugging.");
 
 namespace frontend {
 namespace {
+// TODO: Out of sheer laziness, I haven't wired this through yet.
+SourceBuffer const *src;
 
 struct TodoDiagnostic {
   static constexpr std::string_view kCategory = "todo";
   static constexpr std::string_view kName     = "todo";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("TODO: Diagnostic emit from %s, line %u.",
                          loc.file_name(), loc.line()),
@@ -37,6 +40,7 @@ struct TodoDiagnostic {
 
   std::experimental::source_location loc =
       std::experimental::source_location::current();
+  SourceBuffer const *src;
   SourceRange range;
 };
 
@@ -44,12 +48,13 @@ struct NonIdentifierBinding {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "non-identifier-binding";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("A backtick (`) must be followed by an identifier"),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange range;
 };
 
@@ -58,7 +63,7 @@ struct DeclaringNonIdentifier {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "declaring-non-identifier";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Encountered a declaration where the expression being "
                          "declared is not an identifier."),
@@ -66,6 +71,7 @@ struct DeclaringNonIdentifier {
             id_range, diagnostic::Style::ErrorText()));
   }
 
+  SourceBuffer const *src;
   SourceRange id_range;
 };
 
@@ -73,7 +79,7 @@ struct AssigningNonIdentifier {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "assigning-non-identifier";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Encountered an assignment where the expression being "
                          "assigned to is not an identifier."),
@@ -81,6 +87,7 @@ struct AssigningNonIdentifier {
             id_range, diagnostic::Style::ErrorText()));
   }
 
+  SourceBuffer const *src;
   SourceRange id_range;
 };
 
@@ -88,12 +95,13 @@ struct AccessRhsNotIdentifier {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "access-rhs-not-identifier";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Right-hand side must be an identifier"),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange range;
 };
 
@@ -104,12 +112,13 @@ struct ScopeNodeAlreadyHasLabel {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "scope-already-has-label";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("This scope already has a label."),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange label_range;
   SourceRange range;
 };
@@ -118,12 +127,13 @@ struct ReservedKeyword {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "reserved-keyword";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Identifier `%s` is a reserved keyword.", keyword),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange range;
   std::string keyword;
 };
@@ -132,12 +142,13 @@ struct CallingDeclaration {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "calling-declaration";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Declarations cannot be called"),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange range;
 };
 
@@ -145,12 +156,13 @@ struct IndexingDeclaration {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "indexing-declaration";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Declarations cannot be indexed"),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange range;
 };
 
@@ -158,7 +170,7 @@ struct UnknownDeclarationInBlock {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "unknown-declaration-in-block";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Scope blocks may only declare 'before' and 'after'."),
         diagnostic::SourceQuote(src)
@@ -166,6 +178,7 @@ struct UnknownDeclarationInBlock {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange error_range, context_range;
 };
 
@@ -173,7 +186,7 @@ struct NonDeclarationInBlock {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "non-declaration-in-block";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Scope blocks may only contain declarations."),
         diagnostic::SourceQuote(src)
@@ -181,6 +194,7 @@ struct NonDeclarationInBlock {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange error_range, context_range;
 };
 
@@ -188,7 +202,7 @@ struct NonDeclarationInScope {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "non-declaration-in-scope";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Scopes may only contain declarations."),
         diagnostic::SourceQuote(src)
@@ -196,6 +210,7 @@ struct NonDeclarationInScope {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange error_range, context_range;
 };
 
@@ -203,7 +218,7 @@ struct NonDeclarationInStruct {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "non-declaration-in-struct";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Each struct member must be defined using a declaration."),
@@ -212,6 +227,7 @@ struct NonDeclarationInStruct {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange error_range, context_range;
 };
 
@@ -219,7 +235,7 @@ struct NonDeclarationInInterface {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "non-declaration-in-interface";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Each interface member must be defined using a declaration."),
@@ -228,6 +244,7 @@ struct NonDeclarationInInterface {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange error_range, context_range;
 };
 
@@ -235,7 +252,7 @@ struct InvalidArgumentTypeVar {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "invalid-argument-type-var";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Argument type variables must be valid identifiers."),
         diagnostic::SourceQuote(src)
@@ -243,6 +260,7 @@ struct InvalidArgumentTypeVar {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange error_range, context_range;
 };
 
@@ -251,7 +269,7 @@ struct NonAssignmentInDesignatedInitializer {
   static constexpr std::string_view kName =
       "non-assignment-in-designated-initializer";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Each struct member must be initialized with an assignment."),
@@ -260,6 +278,7 @@ struct NonAssignmentInDesignatedInitializer {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange error_range, context_range;
 };
 
@@ -267,17 +286,18 @@ struct UnknownParseError {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "unknown-parse-error";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     diagnostic::SourceQuote quote(src);
     for (auto const &range : lines) {
       quote.Highlighted(range, diagnostic::Style{});
     }
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Parse errors found in \"%s\" on the following lines:",
-                         src->FileName()),
+                         src->name()),
         std::move(quote));
   }
 
+  SourceBuffer const *src;
   std::vector<SourceRange> lines;
 };
 
@@ -285,17 +305,18 @@ struct ExceedinglyCrappyParseError {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName = "exceedingly-crappy-parse-error";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     diagnostic::SourceQuote quote(src);
     for (auto const &range : lines) {
       quote.Highlighted(range, diagnostic::Style{});
     }
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Parse errors found somewhere in \"%s\":",
-                         src->FileName()),
+                         src->name()),
         std::move(quote));
   }
 
+  SourceBuffer const *src;
   std::vector<SourceRange> lines;
 };
 
@@ -303,12 +324,13 @@ struct CommaSeparatedListStatement {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName = "comma-separated-list-statement";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Comma-separated lists are not allowed as statements"),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange range;
 };
 
@@ -317,13 +339,14 @@ struct DeclarationUsedInUnaryOperator {
   static constexpr std::string_view kName =
       "declaration-used-in-unary-operator";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Declarations cannot be used as argument to unary operator."),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   SourceRange range;
 };
 
@@ -332,7 +355,7 @@ struct PositionalArgumentFollowingNamed {
   static constexpr std::string_view kName =
       "positional-argument-followed-by-named";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     diagnostic::SourceQuote quote(src);
     quote.Highlighted(last_named, diagnostic::Style{});
     for (auto const &pos_range : pos_ranges) {
@@ -344,6 +367,7 @@ struct PositionalArgumentFollowingNamed {
         std::move(quote));
   }
 
+  SourceBuffer const *src;
   std::vector<SourceRange> pos_ranges;
   SourceRange last_named;
 };
@@ -352,12 +376,13 @@ struct UnknownBuiltinHashtag {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "unknown-builtin-hashtag";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Unknown builtin hashtag #%s", token),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
+  SourceBuffer const *src;
   std::string token;
   SourceRange range;
 };
@@ -366,7 +391,7 @@ struct BracedShortFunctionLiteral {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "braced-short-function-literal";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Unexpected braces in short function literal."),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}),
@@ -376,6 +401,7 @@ struct BracedShortFunctionLiteral {
             "and write `(n: i64) => n * n`."));
   }
 
+  SourceBuffer const *src;
   SourceRange range;
 };
 
@@ -459,7 +485,7 @@ std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
 void ValidateStatementSyntax(ast::Node *node,
                              diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = node->if_as<CommaList>()) {
-    diag.Consume(CommaSeparatedListStatement{.range = cl->range()});
+    diag.Consume(CommaSeparatedListStatement{.src = src, .range = cl->range()});
     // TODO: Do we call this more than once?
   }
 }
@@ -498,7 +524,8 @@ std::unique_ptr<ast::Node> AddHashtag(
   }
 
   if (token.front() == '{' or token.back() == '}') {
-    diag.Consume(UnknownBuiltinHashtag{.token = std::string{token},
+    diag.Consume(UnknownBuiltinHashtag{.src   = src,
+                                       .token = std::string{token},
                                        .range = nodes.front()->range()});
   } else {
     // TODO: User-defined hashtag.
@@ -602,8 +629,8 @@ std::unique_ptr<ast::Node> BuildRightUnop(
 
     if (unop->operand()->is<ast::Declaration>() and
         not unop->operand()->is<ast::BindingDeclaration>()) {
-      diag.Consume(
-          DeclarationUsedInUnaryOperator{.range = unop->operand()->range()});
+      diag.Consume(DeclarationUsedInUnaryOperator{
+          .src = src, .range = unop->operand()->range()});
     }
 
     return unop;
@@ -638,6 +665,7 @@ void MergeIntoArgs(std::vector<ast::Call::Argument> &args,
 
     if (not positional_error_ranges.empty()) {
       diag.Consume(PositionalArgumentFollowingNamed{
+          .src        = src,
           .pos_ranges = positional_error_ranges,
           .last_named = *last_named_range_before_error});
     }
@@ -669,7 +697,7 @@ std::unique_ptr<ast::Node> BuildFullCall(
   auto callee = move_as<ast::Expression>(nodes[2]);
 
   if (callee->is<ast::Declaration>()) {
-    diag.Consume(CallingDeclaration{.range = callee->range()});
+    diag.Consume(CallingDeclaration{.src = src, .range = callee->range()});
   }
 
   return std::make_unique<ast::Call>(range, std::move(callee), std::move(args),
@@ -687,7 +715,7 @@ std::unique_ptr<ast::Node> BuildParenCall(
   MergeIntoArgs(args, std::move(nodes[1]), diag);
 
   if (callee->is<ast::Declaration>()) {
-    diag.Consume(CallingDeclaration{.range = callee->range()});
+    diag.Consume(CallingDeclaration{.src = src, .range = callee->range()});
   }
 
   return std::make_unique<ast::Call>(range, std::move(callee), std::move(args),
@@ -709,7 +737,8 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     if (auto *id = nodes[1]->if_as<ast::Identifier>()) {
       id_str = std::move(*id).extract();
     } else {
-      diag.Consume(NonIdentifierBinding{.range = nodes[0]->range()});
+      diag.Consume(
+          NonIdentifierBinding{.src = src, .range = nodes[0]->range()});
     }
 
     return std::make_unique<ast::BindingDeclaration>(
@@ -725,6 +754,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       id_str = std::move(*id).extract();
     } else {
       diag.Consume(InvalidArgumentTypeVar{
+          .src           = src,
           .error_range   = nodes[1]->range(),
           .context_range = range,
       });
@@ -752,12 +782,12 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 
   if (operand->is<ast::Declaration>() and
       not operand->is<ast::BindingDeclaration>()) {
-    diag.Consume(DeclarationUsedInUnaryOperator{.range = range});
+    diag.Consume(DeclarationUsedInUnaryOperator{.src = src, .range = range});
     return std::make_unique<ast::UnaryOperator>(
         range, op, MakeInvalidNode(nodes[1]->range()));
 
   } else if (not operand->is<ast::Expression>()) {
-    diag.Consume(TodoDiagnostic{.range = range});
+    diag.Consume(TodoDiagnostic{.src = src, .range = range});
     return std::make_unique<ast::UnaryOperator>(
         range, op, MakeInvalidNode(nodes[1]->range()));
 
@@ -867,7 +897,8 @@ std::unique_ptr<ast::Node> BuildAccess(
   auto range = SourceRange(nodes[0]->range().begin(), nodes[2]->range().end());
   auto &&operand = move_as<ast::Expression>(nodes[0]);
   if (not nodes[2]->is<ast::Identifier>()) {
-    diag.Consume(AccessRhsNotIdentifier{.range = nodes[2]->range()});
+    diag.Consume(
+        AccessRhsNotIdentifier{.src = src, .range = nodes[2]->range()});
     return std::make_unique<ast::Access>(range, std::move(operand),
                                          "invalid_node");
   }
@@ -887,7 +918,7 @@ std::unique_ptr<ast::Node> BuildIndexOperator(
                                    move_as<ast::Expression>(nodes[2]));
 
   if (index->lhs()->is<ast::Declaration>()) {
-    diag.Consume(IndexingDeclaration{.range = nodes[0]->range()});
+    diag.Consume(IndexingDeclaration{.src = src, .range = nodes[0]->range()});
   }
 
   // TODO: This check is correct except that we're using indexes as a temporary
@@ -973,13 +1004,15 @@ std::unique_ptr<ast::Node> BuildDeclaration(
         frontend::SourceRange range = id->range();
         ids.emplace_back(std::move(*id).extract(), range);
       } else {
-        diag.Consume(DeclaringNonIdentifier{.id_range = i->range()});
+        diag.Consume(
+            DeclaringNonIdentifier{.src = src, .id_range = i->range()});
         error = true;
       }
     }
 
   } else {
-    diag.Consume(DeclaringNonIdentifier{.id_range = nodes[0]->range()});
+    diag.Consume(
+        DeclaringNonIdentifier{.src = src, .id_range = nodes[0]->range()});
     error = true;
   }
   if (error) { return MakeInvalidNode(decl_range); }
@@ -1043,11 +1076,13 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
       initializers.push_back(move_as<ast::Assignment>(stmt));
       for (auto const *expr : assignment->lhs()) {
         if (not expr->is<ast::Identifier>()) {
-          diag.Consume(AssigningNonIdentifier{.id_range = expr->range()});
+          diag.Consume(
+              AssigningNonIdentifier{.src = src, .id_range = expr->range()});
         }
       }
     } else {
       diag.Consume(NonAssignmentInDesignatedInitializer{
+          .src           = src,
           .error_range   = stmt->range(),
           .context_range = range,
       });
@@ -1066,7 +1101,7 @@ std::unique_ptr<ast::Node> HandleBracedShortFunctionLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   SourceRange range(nodes[0]->range().begin(), nodes.back()->range().end());
-  diag.Consume(BracedShortFunctionLiteral{.range = range});
+  diag.Consume(BracedShortFunctionLiteral{.src = src, .range = range});
   return MakeInvalidNode(range);
 }
 
@@ -1205,7 +1240,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
           range, std::string{id->name()}, id->range().end(), std::move(stmts));
     }
   } else {
-    diag.Consume(TodoDiagnostic{.range = range});
+    diag.Consume(TodoDiagnostic{.src = src, .range = range});
     return std::make_unique<ast::BlockNode>(
         range, "", nodes.front()->range().end(), std::move(stmts));
   }
@@ -1244,7 +1279,7 @@ std::unique_ptr<ast::Node> BuildDeclarationInitialization(
   if (not decl->type_expr()) {
     // NOTE: It might be that this was supposed to be a bool ==? How can we
     // give a good error message if that's what is intended?
-    diag.Consume(TodoDiagnostic{.range = range});
+    diag.Consume(TodoDiagnostic{.src = src, .range = range});
     return move_as<ast::Declaration>(nodes[0]);
   }
 
@@ -1271,7 +1306,7 @@ std::unique_ptr<ast::Node> BuildTickCall(
       move_as<ast::Expression>(nodes.back());
 
   if (callee->is<ast::Declaration>()) {
-    diag.Consume(CallingDeclaration{.range = callee->range()});
+    diag.Consume(CallingDeclaration{.src = src, .range = callee->range()});
   }
 
   std::vector<ast::Call::Argument> args;
@@ -1365,7 +1400,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
       enumerators.push_back(std::move(*id).extract());
     } else if (auto *decl = stmt->if_as<ast::Declaration>()) {
       if (not(decl->flags() & ast::Declaration::f_IsConst)) {
-        diag.Consume(TodoDiagnostic{.range = range});
+        diag.Consume(TodoDiagnostic{.src = src,.range = range});
       }
       auto [ids, type_expr, init_val] = std::move(*decl).extract();
       // TODO: Use the type expression?
@@ -1377,7 +1412,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
       }
     } else {
       LOG("", "%s", stmt->DebugString());
-      diag.Consume(TodoDiagnostic{.range = range});
+      diag.Consume(TodoDiagnostic{.src = src, .range = range});
     }
   }
 
@@ -1421,6 +1456,7 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
       fields.push_back(std::move(*decl));
     } else {
       diag.Consume(NonDeclarationInStruct{
+          .src           = src,
           .error_range   = stmt->range(),
           .context_range = range,
       });
@@ -1448,6 +1484,7 @@ std::unique_ptr<ast::InterfaceLiteral> BuildInterfaceLiteral(
                          std::move(type_expr));
     } else {
       diag.Consume(NonDeclarationInInterface{
+          .src           = src,
           .error_range   = stmt->range(),
           .context_range = range,
       });
@@ -1474,6 +1511,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
         fields.push_back(std::move(*decl));
       } else {
         diag.Consume(NonDeclarationInStruct{
+            .src           = src,
             .error_range   = stmt->range(),
             .context_range = range,
         });
@@ -1486,7 +1524,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
       if (expr->is<ast::Declaration>()) {
         params.push_back(move_as<ast::Declaration>(expr));
       } else {
-        diag.Consume(TodoDiagnostic{.range = expr->range()});
+        diag.Consume(TodoDiagnostic{.src = src, .range = expr->range()});
       }
     }
 
@@ -1561,7 +1599,8 @@ std::unique_ptr<ast::Node> ReservedKeywords(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   (diag.Consume(
-       ReservedKeyword{.range   = nodes[ReservedIndices]->range(),
+       ReservedKeyword{.src     = src,
+                       .range   = nodes[ReservedIndices]->range(),
                        .keyword = nodes[ReservedIndices]->as<Token>().token}),
    ...);
   return MakeInvalidNode(nodes[ReturnIndex]->range());
@@ -1581,7 +1620,8 @@ std::unique_ptr<ast::Node> LabelScopeNode(
   auto scope_node = move_as<ast::ScopeNode>(nodes[1]);
   if (scope_node->label()) {
     diag.Consume(
-        ScopeNodeAlreadyHasLabel{.label_range = scope_node->label()->range(),
+        ScopeNodeAlreadyHasLabel{.src         = src,
+                                 .label_range = scope_node->label()->range(),
                                  .range       = scope_node->range()});
   } else {
     scope_node->range() =
@@ -2134,6 +2174,8 @@ void CleanUpReduction(ParseState *state) {
 
 std::vector<std::unique_ptr<ast::Node>> Parse(
     SourceBuffer &buffer, diagnostic::DiagnosticConsumer &diag, size_t chunk) {
+  src = &buffer;
+
   auto nodes = Lex(buffer, diag, chunk);
   // If lexing failed, don't bother trying to parse.
   if (diag.num_consumed() > 0) { return {}; }
@@ -2183,9 +2225,10 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
         for (const auto &ns : state.node_stack_) {
           lines.push_back(ns->range());
         }
-        diag.Consume(ExceedinglyCrappyParseError{.lines = std::move(lines)});
+        diag.Consume(
+            ExceedinglyCrappyParseError{.src = src, .lines = std::move(lines)});
       } else {
-        diag.Consume(UnknownParseError{.lines = std::move(lines)});
+        diag.Consume(UnknownParseError{.src = src, .lines = std::move(lines)});
       }
       return {};
     }

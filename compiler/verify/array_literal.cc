@@ -11,13 +11,14 @@ struct InconsistentArrayType {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName = "inconsistent-array-element-type";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Type error: Array literal must have consistent type"),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
-  frontend::SourceRange range;
+  frontend::SourceView view;
 };
 
 // Guesses the intended array literal type. For instance, if all but one element
@@ -61,7 +62,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayLiteral const *n
     auto qt      = type::QualType(type::Arr(num_elements, t), quals);
     return context().set_qual_type(node, qt);
   } else {
-    diag().Consume(InconsistentArrayType{.range = node->range()});
+    diag().Consume(InconsistentArrayType{.view = SourceViewFor(node)});
     if (type::Type t = GuessIntendedArrayType(elem_type_count)) {
       auto qt = type::QualType(type::Arr(num_elements, t), quals);
       qt.MarkError();

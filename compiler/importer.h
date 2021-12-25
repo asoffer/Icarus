@@ -34,10 +34,11 @@ struct FileImporter : module::Importer {
 
  private:
   struct ModuleData {
-    ModuleData()
+    // TODO: SourceBuffer*
+    ModuleData(frontend::SourceBuffer* buffer)
         : id(ir::ModuleId::New()),
           root_context(&ir_module),
-          module(&root_context) {}
+          module(buffer, &root_context) {}
     ir::ModuleId id;
     ir::Module ir_module;
     Context root_context;
