@@ -1,87 +1,40 @@
--- ::= import "core.ic"
 match ::= import "string/match.ic"
+strip ::= import "string/strip.ic"
 
-state ::= struct {
-  head: [*]char
-  end: [*]char
-  split_char: char
-}
-
-get_chunk ::= (st: *state, offset: i64) -> []char {
-  start := st.head + offset
-  len := (st.end - start) as u64
-  p := match.Find(slice(start, len), st.split_char)
-  chunk := slice(start, (p - start) as u64)
-  st.head = p
-  return chunk
+#{export}
+SplitAt ::= (s: []char, n: u64) -> ([]char, []char) {
+  return slice(s.data, n), slice(s.data + n, s.length - n)
 }
 
 #{export}
-Split ::= scope (s: []char, c: char) {
-  s := ""
-  offset := 0
-  while (offset == 0 or s.length != 0) {
-    get_chunk(st, offset)
-    offset = 1
-
-  }
+SplitFirst ::= (s: []char, c: char) -> ([]char, []char) {
+  n := match.Find(s, c) - s.data
+  (first, rest) := SplitAt(s, n as u64)
+  return first, strip.WithoutPrefix(rest, 1)
 }
 
-Split ::= scope (state) {
-  enter ::= jump [st: *state] (s: []char, c: char) {
-    st.head = s.data
-    st.end = s.data + s.length
-    st.split_char = c
-    goto do(get_chunk(st, 0))
-  }
-
-  do ::= block {
-    before ::= (s: []char) => s
-    after ::= jump [st: *state] () {
-      goto st.head == st.end, done(), do(get_chunk(st, 1))
-    }
-  }
-
-  exit ::= () -> () {}
-}
-
-state2 ::= struct {
-  head: [*]char
-  end: [*]char
-  delim: [*]char
-  delim_len: i64
-}
-
-get_chunk2 ::= (st: *state2) -> []char {
-  start := st.head
-  len := (st.end - start) as u64
-  p := match.Find(slice(start, len), slice(st.delim, st.delim_len as u64))
-  if (p == st.end) {
-    st.head = st.end
-    return slice(start, len)
-  }
-  chunk := slice(start, (p - start) as u64)
-  st.head = p + st.delim_len
-  return chunk
-}
-
-// TODO: Update this to Split once we support overloaded scopes.
 #{export}
-Split2 ::= scope (state2) {
-  enter ::= jump [st: *state2] (s: []char, delim: []char) {
-    st.head = s.data
-    st.end = s.data + s.length
-    st.delim = delim.data
-    st.delim_len = delim.length as i64
-    goto do(get_chunk2(st))
-  }
+SplitFirst ::= (haystack: []char, needle: []char) -> ([]char, []char) {
+  n := match.Find(haystack, needle) - haystack.data
+  (first, rest) := SplitAt(haystack, n as u64)
+  return first, strip.WithoutPrefix(rest, needle.length)
+}
 
-  do ::= block {
-    before ::= (s: []char) => s
-    after ::= jump [st: *state2] () {
-      goto st.head >= st.end, done(), do(get_chunk2(st))
-    }
+#{export}
+Split ::= scope [ctx] (s: []char, c: char) {
+  while (s.length != 0) {
+    n := match.Find(s, c) - s.data
+    slice(s.data, n as u64) >> ctx.do
+    s = strip.WithoutPrefix(s, (n + 1) as u64)
   }
+}
 
-  exit ::= () -> () {}
+// TODO: When overloads are supported, rename to Split
+#{export}
+Split2 ::= scope [ctx] (haystack: []char, needle: []char) {
+  while (haystack.length != 0) {
+    n := match.Find(haystack, needle) - haystack.data
+    slice(haystack.data, n as u64) >> ctx.do
+    haystack = strip.WithoutPrefix(haystack, (n + needle.length) as u64)
+  }
 }
