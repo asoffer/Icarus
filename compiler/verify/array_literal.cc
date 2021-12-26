@@ -12,21 +12,30 @@ struct InconsistentArrayType {
   static constexpr std::string_view kName = "inconsistent-array-element-type";
 
   diagnostic::DiagnosticMessage ToMessage() const {
+    auto quote = diagnostic::SourceQuote(buffer);
+    for (auto const &range : highlights) {
+      quote.Highlighted(range, diagnostic::Style{});
+    }
+
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Type error: Array literal must have consistent type"),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        quote);
   }
 
-  frontend::SourceView view;
+  frontend::SourceBuffer const * buffer;
+  std::vector<frontend::SourceRange> highlights;
 };
 
 // Guesses the intended array literal type. For instance, if all but one element
 // have the same type, that is probably the intended type. Returns null if it
 // cannot determine a reasonable guess.
-//
-// TODO: Improve implementation
-type::Type GuessIntendedArrayType(absl::flat_hash_map<type::Type, int>) {
+type::Type GuessIntendedArrayType(
+    absl::flat_hash_map<type::Type, int> const &histogram) {
+  int total = 0;
+  for (auto const &[t, n] : histogram) { total += n; }
+  for (auto const &[t, n] : histogram) {
+    if (2 * n > total) { return t; }
+  }
   return nullptr;
 }
 
@@ -52,7 +61,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayLiteral const *n
 
   type::Quals quals   = type::Quals::All();
   size_t num_elements = elem_qts.size();
-  for (type::QualType qt : elem_qts) {
+  for (type::QualType const &qt : elem_qts) {
     ++elem_type_count[qt.type()];
     quals &= qt.quals();
   }
@@ -62,12 +71,27 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayLiteral const *n
     auto qt      = type::QualType(type::Arr(num_elements, t), quals);
     return context().set_qual_type(node, qt);
   } else {
-    diag().Consume(InconsistentArrayType{.view = SourceViewFor(node)});
     if (type::Type t = GuessIntendedArrayType(elem_type_count)) {
+      std::vector<frontend::SourceRange> mistyped_elements;
+      size_t i = 0;
+      for (type::QualType const &qt : elem_qts) {
+        if (qt.type() != t) {
+          mistyped_elements.push_back(node->elems()[i]->range());
+        }
+        ++i;
+      }
+      diag().Consume(InconsistentArrayType{
+          .buffer     = SourceBufferFor(node),
+          .highlights = std::move(mistyped_elements),
+      });
       auto qt = type::QualType(type::Arr(num_elements, t), quals);
       qt.MarkError();
       return context().set_qual_type(node, qt);
     } else {
+      diag().Consume(InconsistentArrayType{
+          .buffer     = SourceBufferFor(node),
+          .highlights = {node->range()},
+      });
       return context().set_qual_type(node, type::QualType::Error());
     }
   }
