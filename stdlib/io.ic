@@ -64,3 +64,52 @@ Print ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2, a3: ~`A3, a4: ~`A4) -> () {
   Print(a3)
   Print(a4)
 }
+
+#{export}
+Print ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2, a3: ~`A3, a4: ~`A4, a5: ~`A5) -> () {
+  Print(a0)
+  Print(a1)
+  Print(a2)
+  Print(a3)
+  Print(a4)
+  Print(a5)
+}
+
+#{export}
+Print ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2, a3: ~`A3, a4: ~`A4, a5: ~`A5,
+           a6: ~`A6) -> () {
+  Print(a0)
+  Print(a1)
+  Print(a2)
+  Print(a3)
+  Print(a4)
+  Print(a5)
+  Print(a6)
+}
+
+#{export}
+Print ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2, a3: ~`A3, a4: ~`A4, a5: ~`A5,
+           a6: ~`A6, a7: ~`A7) -> () {
+  Print(a0)
+  Print(a1)
+  Print(a2)
+  Print(a3)
+  Print(a4)
+  Print(a5)
+  Print(a6)
+  Print(a7)
+}
+
+#{export}
+Print ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2, a3: ~`A3, a4: ~`A4, a5: ~`A5,
+           a6: ~`A6, a7: ~`A7, a8: ~`A8) -> () {
+  Print(a0)
+  Print(a1)
+  Print(a2)
+  Print(a3)
+  Print(a4)
+  Print(a5)
+  Print(a6)
+  Print(a7)
+  Print(a8)
+}

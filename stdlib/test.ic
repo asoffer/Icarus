@@ -1,0 +1,35 @@
+#{export}
+TestContext ::= struct {
+  successes: u64
+  failures:  u64
+}
+
+#{export}
+expect ::= (t: *TestContext, b: bool) -> () {
+  if (b) {
+    t.successes += 1
+  } else {
+    t.failures += 1
+  }
+}
+
+#{export}
+assert ::= scope [ctx] (t: *TestContext, b: bool) {
+  t'expect(b)
+  if (not b) { >> ctx.else }
+}
+
+#{export}
+test ::= scope [ctx] (name: []char) {
+  io ::= import "io.ic"
+  io.Print("[ TEST BEGIN ] == ", name, " ==\n")
+  t: TestContext
+  t >> ctx.do
+  if (t.failures == 0) {
+    io.Print("[   PASSED   ] == ", name, " == (", t.successes, " expectations)\n")
+  } else {
+    io.Print("[   FAILED   ] == ", name, " ==\n",
+             "  Successes: ", t.successes, "\n",
+             "   Failures: ", t.failures, "\n")
+  }
+}
