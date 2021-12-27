@@ -7,6 +7,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/type_for_diagnostic.h"
+#include "compiler/verify/common.h"
 #include "type/callable.h"
 #include "type/cast.h"
 #include "type/qual_type.h"
@@ -514,13 +515,14 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
         context().qual_types(&arg.expr())[0].type());
   }
   auto callee_qt =
-      VerifyCallee(node->callee(), argument_dependent_lookup_types);
+      VerifyCallee(*this, node->callee(), argument_dependent_lookup_types);
   LOG("Call", "Callee's qual-type is %s", callee_qt);
   if (not callee_qt.ok()) {
     return context().set_qual_type(node, type::QualType::Error());
   }
 
-  auto qts_or_errors = VerifyCall(node, arg_vals);
+  auto qts_or_errors =
+      VerifyCall(*this, {.callee = node->callee(), .arguments = arg_vals});
   if (auto *errors = std::get_if<
           absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>(
           &qts_or_errors)) {

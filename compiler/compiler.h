@@ -639,16 +639,6 @@ struct Compiler
       char const *symbol, ast::Expression const *node,
       type::Typed<ir::CompleteResultRef> const &operand);
 
-  std::variant<
-      std::vector<type::QualType>,
-      absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
-  VerifyCall(ast::Call const *call_expr,
-             core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
-
-  type::QualType VerifyCallee(
-      ast::Expression const *callee,
-      absl::flat_hash_set<type::Type> const &argument_dependent_lookup_types);
-
   Context *context_;
   WorkResources work_resources_;
   PersistentResources resources_;
@@ -665,6 +655,7 @@ struct Compiler
   CyclicDependencyTracker cylcic_dependency_tracker_;
 };
 
+module::BasicModule const *ModuleFor(ast::Node const *node);
 frontend::SourceBuffer const *SourceBufferFor(ast::Node const *node);
 frontend::SourceView SourceViewFor(ast::Node const *node);
 

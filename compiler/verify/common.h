@@ -78,10 +78,21 @@ struct PatternTypeMismatch {
   frontend::SourceView view;
 };
 
-module::BasicModule const *DefiningModule(type::Type t);
-
 std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
     Context const &context,
     base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node);
+
+type::QualType VerifyCallee(Compiler &c, ast::Expression const *callee,
+                            absl::flat_hash_set<type::Type> const &adl_types);
+
+struct VerifyCallParameters{
+  ast::Expression const *callee;
+  core::Arguments<type::Typed<ir::CompleteResultRef>> const arguments;
+};
+
+std::variant<
+    std::vector<type::QualType>,
+    absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
+VerifyCall(Compiler &c, VerifyCallParameters const &vcp);
 
 }  // namespace compiler

@@ -40,11 +40,14 @@ ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
   }
 }
 
-frontend::SourceBuffer const *SourceBufferFor(ast::Node const *node) {
+module::BasicModule const *ModuleFor(ast::Node const *node) {
   auto &scope     = *ASSERT_NOT_NULL(node->scope());
   auto &mod_scope = *ASSERT_NOT_NULL(scope.Containing<ast::ModuleScope>());
-  auto &mod       = *ASSERT_NOT_NULL(mod_scope.module());
-  return &mod.buffer();
+  return ASSERT_NOT_NULL(mod_scope.module());
+}
+
+frontend::SourceBuffer const *SourceBufferFor(ast::Node const *node) {
+  return &ModuleFor(node)->buffer();
 }
 
 frontend::SourceView SourceViewFor(ast::Node const *node) {

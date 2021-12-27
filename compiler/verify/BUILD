@@ -144,6 +144,7 @@ cc_library(
     name = "call",
     srcs = ["call.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",

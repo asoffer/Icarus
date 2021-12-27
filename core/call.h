@@ -189,11 +189,11 @@ struct CallabilityResult
       data_;
 };
 
-// Returns true if and only if a callable with `params` can be called with
-// `args`.
+// Returns true if and only if a callable with parameters given by `params` can
+// be called with arguments given by `args`.
 template <typename T, typename U>
 CallabilityResult Callability(Params<T> const& params, Arguments<U> const& args,
-                              std::invocable<U, T> auto fn) {
+                              std::predicate<U, T> auto fn) {
   if (params.size() < args.size()) {
     return CallabilityResult::TooManyArguments{
         .num_provided = args.size(), .max_num_accepted = params.size()};

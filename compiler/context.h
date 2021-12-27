@@ -414,7 +414,11 @@ struct Context {
 
   // Overloads for a callable expression, including overloads that are not
   // callable based on the call-site arguments.
-  absl::flat_hash_map<ast::Expression const *, ast::OverloadSet> all_overloads_;
+  //
+  // Note: This indirection guarantees stability that we rely on when doing type
+  // verification. It's possible that while holding on to this set of overloads,
+  // we attempt instantiations that insert more data into the hash map.
+  absl::node_hash_map<ast::Expression const *, ast::OverloadSet> all_overloads_;
 
   // Overloads for a callable expression, keeping only the ones that are viable
   // based on the call-site arguments.

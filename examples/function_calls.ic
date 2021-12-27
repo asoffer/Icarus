@@ -50,10 +50,7 @@ basic_calls ::= () -> () {
 
   // Functions can be called by passing arguments in parentheses after the name
   // of the function.
-  io.Print("2^2 = ")
-  io.Print(squared(2))
-  io.Print("\n")
-  io.Print(sum(3, 4))
+  io.Print("2^2 = ", squared(2), "\n", sum(3, 4))
 
   // Functions may also be called by following the arguments with a single quote
   // character ' and then the function name.
@@ -191,20 +188,12 @@ compile_time_arguments ::= () -> () {
   // Compile-time arguments do not need to be literals. They can also be
   // compile-time constants, or expressions known at compile-time.
   N ::= 17
-  io.Print(compile_time_square(N))
-  io.Print("\n")
-  io.Print(compile_time_square(2 * N - 10))
-  io.Print("\n")
+  io.Print(compile_time_square(N), "\n")
+  io.Print(compile_time_square(2 * N - 10), "\n")
 
   // Compile-time arguments work just as well with named or default arguments.
-  f ::= (a: i64, b ::= 2, c: i64) -> () {
-    io.Print("f(a = ")
-    io.Print(a)
-    io.Print(", b = ")
-    io.Print(b)
-    io.Print(", c = ")
-    io.Print(c)
-    io.Print(")\n")
+  f ::= (a: i64, b :: i64 = 2, c: i64) -> () {
+    io.Print("f(a = ", a, ", b = ", b, ", c = ", c, ")\n")
   }
   // f(1, c = 3)
   f(1, c = 30, b = 20)
@@ -225,14 +214,8 @@ multiple_return_values ::= () -> () {
   }
 
   (a, b) := f(3)
-  io.Print(a)
-  io.Print("^2 = ")
-  io.Print(b)
-  io.Print("\n")
+  io.Print(a, "^2 = ", b, "\n")
 
   (a, b) = f(4)
-  io.Print(a)
-  io.Print("^2 = ")
-  io.Print(b)
-  io.Print("\n")
+  io.Print(a, "^2 = ", b, "\n")
 }

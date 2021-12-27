@@ -4,6 +4,7 @@
 #include "compiler/verify/common.h"
 #include "type/array.h"
 #include "type/primitive.h"
+#include "type/provenance.h"
 #include "type/qual_type.h"
 
 namespace compiler {
@@ -183,7 +184,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Index const *node) {
     for (auto const &t : {lhs_qt.type(), index_qt.type()}) {
       // TODO: Checking defining_module only when this is a struct is wrong. We
       // should also handle pointers to structs, ec
-      if (auto const *dm = DefiningModule(t)) {
+      if (auto const *dm = type::Provenance(t)) {
         if (resources().module == dm) { continue; }
         dm->scope().ForEachDeclIdTowardsRoot(
             "__index__", [&](ast::Declaration::Id const *id) {

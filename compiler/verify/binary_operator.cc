@@ -8,6 +8,7 @@
 #include "type/overload_set.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/provenance.h"
 #include "type/qual_type.h"
 
 namespace compiler {
@@ -120,7 +121,7 @@ type::QualType VerifyOperatorOverload(
   for (auto const &t : {lhs.type(), rhs.type()}) {
     // TODO: Checking defining_module only when this is a struct is wrong. We
     // should also handle pointers to structs, ec
-    if (auto const *dm = DefiningModule(t)) {
+    if (auto const *dm = type::Provenance(t)) {
       if (c.resources().module == dm) { continue; }
       dm->scope().ForEachDeclIdTowardsRoot(
           symbol, [&](ast::Declaration::Id const *id) {
