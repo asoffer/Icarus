@@ -633,7 +633,7 @@ void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
   });
 
   for (auto const &[id, t] : ordered_decl_ids) {
-    c.EmitDestroy(type::Typed<ir::Reg>(c.builder().addr(id), t));
+    c.EmitDestroy(type::Typed<ir::Reg>(c.builder().addr(id).reg(), t));
   }
 }
 

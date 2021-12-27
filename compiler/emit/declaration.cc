@@ -46,9 +46,14 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
                         .SetConstant(&node->ids()[0], value_buffer)[0]
                         .raw()
                         .data();
+        c.builder().set_addr(&node->ids()[0], const_cast<ir::addr_t>(addr));
         out.append(addr);
       } else {
-        c.context().SetConstant(&node->ids()[0], value_buffer);
+        auto addr = c.context()
+                        .SetConstant(&node->ids()[0], value_buffer)[0]
+                        .raw()
+                        .data();
+        c.builder().set_addr(&node->ids()[0], const_cast<ir::addr_t>(addr));
         out.append(value_buffer);
       }
     } else if (auto const *bd = node->if_as<ast::BindingDeclaration>()) {

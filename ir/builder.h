@@ -460,8 +460,8 @@ struct Builder {
     return current_.block_termination_state_;
   }
 
-  Reg addr(ast::Declaration::Id const* id) const { return addr_.at(id); }
-  void set_addr(ast::Declaration::Id const* id, Reg addr) {
+  RegOr<addr_t> addr(ast::Declaration::Id const* id) const { return addr_.at(id); }
+  void set_addr(ast::Declaration::Id const* id, RegOr<addr_t> addr) {
     addr_.emplace(id, addr);
   }
 
@@ -541,7 +541,7 @@ struct Builder {
   } current_;
 
   // Stores addresses of local identifiers
-  absl::flat_hash_map<ast::Declaration::Id const*, Reg> addr_;
+  absl::flat_hash_map<ast::Declaration::Id const*, RegOr<addr_t>> addr_;
 };
 
 struct SetCurrent : base::UseWithScope {

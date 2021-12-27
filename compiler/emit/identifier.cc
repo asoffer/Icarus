@@ -25,21 +25,21 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
   LOG("Identifier", "%s on context %p", node->name(), &context());
   auto decl_id_span = context().decls(node);
   ASSERT(decl_id_span.size() == 1u);
-  auto const& decl_id = *decl_id_span[0];
+  auto const &decl_id = *decl_id_span[0];
 
   if (decl_id.declaration().flags() & ast::Declaration::f_IsConst) {
     EmitToBuffer(&decl_id, out);
     return;
   }
   if (decl_id.declaration().flags() & ast::Declaration::f_IsFnParam) {
-    auto t      = context().qual_types(node)[0].type();
-    ir::Reg reg = builder().addr(&decl_id);
+    auto t                     = context().qual_types(node)[0].type();
+    ir::RegOr<ir::addr_t> addr = builder().addr(&decl_id);
     if ((decl_id.declaration().flags() &
          (ast::Declaration::f_IsBlockParam | ast::Declaration::f_IsOutput)) and
         not t.is_big()) {
-      builder().Load(reg, t, out);
+      builder().Load(addr, t, out);
     } else {
-      out.append(reg);
+      out.append(addr);
     }
   } else {
     type::Type t = context().qual_types(node)[0].type();
@@ -80,7 +80,25 @@ void Compiler::EmitMoveAssign(
 ir::Reg Compiler::EmitRef(ast::Identifier const *node) {
   auto decl_id_span = context().decls(node);
   ASSERT(decl_id_span.size() == 1u);
-  return builder().addr(decl_id_span[0]);
+  auto const *decl_id = decl_id_span[0];
+  if (decl_id->declaration().flags() & ast::Declaration::f_IsConst) {
+    auto const *buffer = context().Constant(decl_id);
+    if (not buffer) {
+      EmitVoid(&decl_id->declaration());
+      buffer = context().Constant(decl_id);
+    }
+    ASSERT(buffer != nullptr);
+
+    ir::Reg r = builder().CurrentGroup()->Reserve();
+    builder().CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
+        .operand = const_cast<ir::addr_t>((*buffer)[0].raw().data()),
+        .result  = r,
+    });
+
+    return r;
+  } else {
+    return builder().addr(decl_id).reg();
+  }
 }
 
 }  // namespace compiler

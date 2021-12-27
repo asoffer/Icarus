@@ -190,6 +190,7 @@ Reg Builder::PtrIncr(RegOr<addr_t> ptr, RegOr<int64_t> inc,
   }
   Reg result = CurrentGroup()->Reserve();
   cache.set(ptr, inc, OffsetCache::Kind::Passed, result);
+  if (not ptr.is_reg()) { ASSERT(ptr.value() != nullptr); }
   return CurrentBlock()->Append(PtrIncrInstruction{
       .addr = ptr, .index = inc, .ptr = t, .result = result});
 }

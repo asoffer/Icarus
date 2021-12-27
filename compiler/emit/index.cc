@@ -64,7 +64,7 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
       out.append(builder().PtrFix(
           builder().Index(
               type::Ptr(context().qual_types(node->lhs())[0].type()),
-              EmitAs<ir::addr_t>(node->lhs()), index),
+              EmitRef(node->lhs()), index),
           array_type->data_type()));
     }
   } else if (auto const *buf_ptr_type =
