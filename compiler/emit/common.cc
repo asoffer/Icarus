@@ -325,7 +325,13 @@ void EmitArguments(
     auto const &param     = param_qts[i];
     std::string_view name = param_qts[i].name;
     if (param.value.constant()) {
-      buffer.append(constants[name]);
+      if (auto const *value = constants.at_or_null(name)) {
+        buffer.append(*value);
+      } else {
+        // TODO: It'd be better to simply extract the bound value.
+        c.VerifyType(defaults[i].value);
+        EmitAndCast(c, *defaults[i].value, param.value, buffer);
+      }
     } else {
       // TODO: Encapsulate the argument name finding.
       size_t j = named_start;

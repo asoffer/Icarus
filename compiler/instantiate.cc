@@ -55,33 +55,25 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
     LOG("ComputeParamsFromArgs", "Handling %s`%s` (index = %u)", dep_node, id,
         index);
     switch (dep_node.kind()) {
-      case core::DependencyNodeKind::ArgumentValue: {
-        ir::CompleteResultBuffer buffer;
-        ir::CompleteResultRef value;
-        if (auto const *argument = ArgumentFromIndex(args, index, id)) {
-          value = **argument;
-        } else {
-          auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          type::Type t         = c.context().arg_type(id);
-          ASSIGN_OR(NOT_YET("bail out of this computation)"),  //
-                    buffer,
-                    c.EvaluateToBufferOrDiagnose(type::Typed(init_val, t)));
-          value = buffer[0];
-        }
-
-        LOG("ComputeParamsFromArgs", "... %s",
-            c.context().arg_type(id).Representation(value));
-      } break;
       case core::DependencyNodeKind::ArgumentType: {
-        auto const *argument      = ArgumentFromIndex(args, index, id);
-        if (not argument) { return std::nullopt; }
-        auto const *initial_value = dep_node.node()->init_val();
-        type::Type arg_type =
-            argument ? argument->type()
-                     : c.VerifyType(ASSERT_NOT_NULL(initial_value))[0].type();
-        argument_types[index] = arg_type;
-        c.context().set_arg_type(id, arg_type);
-        LOG("ComputeParamsFromArgs", "... %s", arg_type.to_string());
+        if (auto const *argument = ArgumentFromIndex(args, index, id)) {
+          argument_types[index] = argument->type();
+          c.context().set_arg_type(id, argument->type());
+        } else if (auto const *default_value = dep_node.node()->init_val()) {
+          type::Type t = c.VerifyType(default_value)[0].type();
+          argument_types[index] = t;
+          c.context().set_arg_type(id, t);
+        } else {
+          return std::nullopt;
+        }
+        LOG("ComputeParamsFromArgs", "... %s",
+            argument_types[index].to_string());
+      } break;
+      case core::DependencyNodeKind::ArgumentValue: {
+        if (not ArgumentFromIndex(args, index, id) and
+            not dep_node.node()->init_val()) {
+          return std::nullopt;
+        }
       } break;
       case core::DependencyNodeKind::ParameterType: {
         ASSIGN_OR(NOT_YET("bail out of this computation"),  //
@@ -103,32 +95,36 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
         bound_parameters.bind_type(&dep_node.node()->ids()[0], qt);
       } break;
       case core::DependencyNodeKind::ParameterValue: {
-        // Find the argument associated with this parameter.
-        // TODO, if the type is wrong but there is an implicit cast, deal with
-        // that.
-        type::Typed<ir::CompleteResultRef> argument;
+        type::Typed<ir::CompleteResultBuffer> buffer;
         if (auto const *a = ArgumentFromIndex(args, index, id)) {
-          argument = *a;
+          buffer->append(**a);
+          buffer.set_type(a->type());
         } else {
-          auto t = c.context().qual_types(dep_node.node())[0].type();
+          auto const *default_value =
+              ASSERT_NOT_NULL(dep_node.node()->init_val());
+          type::Type default_value_type =
+              c.context().qual_types(default_value)[0].type();
           ASSIGN_OR(NOT_YET("bail out of this computation"),  //
-                    auto result,
-                    c.EvaluateToBufferOrDiagnose(type::Typed(
-                        ASSERT_NOT_NULL(dep_node.node()->init_val()), t)));
-          argument = type::Typed(result[0], t);
-          LOG("ComputeParamsFromArgs", "%s", dep_node.node()->DebugString());
+                    *buffer,
+                    c.EvaluateToBufferOrDiagnose(
+                        type::Typed(default_value, default_value_type)));
+          buffer.set_type(default_value_type);
         }
+
+        auto qt = bound_parameters.binding(&dep_node.node()->ids()[0]).qual_type();
+        c.builder().ApplyImplicitCasts(buffer.type(), qt, *buffer);
 
         // TODO: Support multiple declarations
         if (not c.context().Constant(&dep_node.node()->ids()[0])) {
-          c.context().SetConstant(&dep_node.node()->ids()[0], *argument);
+          c.context().SetConstant(&dep_node.node()->ids()[0], *buffer);
         }
 
-        LOG("ComputeParamsFromArgs", "... %s", *argument);
+        LOG("ComputeParamsFromArgs", "... %s",
+            qt.type().Representation((*buffer)[0]));
 
         // TODO: We end up stashing arguments both in BoundParameters and in
         // the context's Constant map. We should probably only use the latter.
-        bound_parameters.bind_value(&dep_node.node()->ids()[0], *argument);
+        bound_parameters.bind_value(&dep_node.node()->ids()[0], (*buffer)[0]);
       } break;
     }
   }
@@ -139,12 +135,8 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
 
 std::optional<Context::InsertSubcontextResult> Instantiate(
     Compiler &c, ast::ParameterizedExpression const *node,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
-  auto &ctx = node->scope()
-                  ->Containing<ast::ModuleScope>()
-                  ->module()
-                  ->as<CompiledModule>()
-                  .context();
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments) {
+  auto &ctx = ModuleFor(node)->as<CompiledModule>().context();
   LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
       ctx.DebugString());
   Context scratchpad            = ctx.ScratchpadSubcontext();
@@ -153,19 +145,15 @@ std::optional<Context::InsertSubcontextResult> Instantiate(
   child.set_work_resources(c.work_resources());
 
   ASSIGN_OR(return std::nullopt,  //
-                   auto bound_params, ComputeParamsFromArgs(child, node, args));
+                   auto bound_params, ComputeParamsFromArgs(child, node, arguments));
   return ctx.InsertSubcontext(node, bound_params, std::move(scratchpad));
 }
 
 std::optional<Context::InsertSubcontextResult> Instantiate(
     Compiler &c, ast::ScopeLiteral const *node,
     ir::ScopeContext const &scope_context,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
-  auto &ctx = node->scope()
-                  ->Containing<ast::ModuleScope>()
-                  ->module()
-                  ->as<CompiledModule>()
-                  .context();
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments) {
+  auto &ctx = ModuleFor(node)->as<CompiledModule>().context();
   LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
       ctx.DebugString());
   Context scratchpad            = ctx.ScratchpadSubcontext();
@@ -178,7 +166,7 @@ std::optional<Context::InsertSubcontextResult> Instantiate(
 
   ASSIGN_OR(return std::nullopt,  //
                    auto bound_parameters,
-                   ComputeParamsFromArgs(child, node, args));
+                   ComputeParamsFromArgs(child, node, arguments));
   bound_parameters.bind_type(&node->context().ids()[0],
                              type::QualType::Constant(type::ScopeContext));
   bound_parameters.bind_value(&node->context().ids()[0], buffer[0]);
@@ -187,33 +175,26 @@ std::optional<Context::InsertSubcontextResult> Instantiate(
 
 Context::FindSubcontextResult FindInstantiation(
     Compiler &c, ast::ParameterizedExpression const *node,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
-  auto &ctx = node->scope()
-                  ->Containing<ast::ModuleScope>()
-                  ->module()
-                  ->as<CompiledModule>()
-                  .context();
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments) {
+  auto &ctx = ModuleFor(node)->as<CompiledModule>().context();
   LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
       ctx.DebugString());
-  Context scratchpad = ctx.ScratchpadSubcontext();
+  Context scratchpad            = ctx.ScratchpadSubcontext();
   PersistentResources resources = c.resources();
   Compiler child(&scratchpad, resources);
   child.set_work_resources(c.work_resources());
-  return ctx.FindSubcontext(node, *ComputeParamsFromArgs(child, node, args));
+  return ctx.FindSubcontext(node,
+                            *ComputeParamsFromArgs(child, node, arguments));
 }
 
 Context::FindSubcontextResult FindInstantiation(
     Compiler &c, ast::ScopeLiteral const *node,
     ir::ScopeContext const &scope_context,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
-  auto &ctx = node->scope()
-                  ->Containing<ast::ModuleScope>()
-                  ->module()
-                  ->as<CompiledModule>()
-                  .context();
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments) {
+  auto &ctx = ModuleFor(node)->as<CompiledModule>().context();
   LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
       ctx.DebugString());
-  Context scratchpad = ctx.ScratchpadSubcontext();
+  Context scratchpad            = ctx.ScratchpadSubcontext();
   PersistentResources resources = c.resources();
   Compiler child(&scratchpad, resources);
   child.set_work_resources(c.work_resources());
@@ -221,7 +202,8 @@ Context::FindSubcontextResult FindInstantiation(
   ir::CompleteResultBuffer buffer;
   buffer.append(scope_context);
 
-  BoundParameters bound_parameters = *ComputeParamsFromArgs(child, node, args);
+  BoundParameters bound_parameters =
+      *ComputeParamsFromArgs(child, node, arguments);
   bound_parameters.bind_type(&node->context().ids()[0],
                              type::QualType::Constant(type::ScopeContext));
   bound_parameters.bind_value(&node->context().ids()[0], buffer[0]);

@@ -87,6 +87,8 @@ struct Builder {
 
   void ApplyImplicitCasts(type::Type from, type::QualType to,
                           PartialResultBuffer& buffer);
+  void ApplyImplicitCasts(type::Type from, type::QualType to,
+                          CompleteResultBuffer& buffer);
 
   // INSTRUCTIONS
 

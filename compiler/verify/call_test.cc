@@ -510,11 +510,11 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
         },
         TestCase{
-            .context = R"(
+            .context            = R"(
             f ::= (b: bool) => true
             f ::= (n: i64) => n
             )",
-            .expr = "f(n = 0 as i64)",  // TODO: Allow implicit conversion here
+            .expr               = "f(n = 0)",
             .expected_qual_type = type::QualType::NonConstant(type::I64),
         },
         // Generic functions

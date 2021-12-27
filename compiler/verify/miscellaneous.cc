@@ -38,7 +38,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::ReturnStmt const *nod
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::YieldStmt const *node) {
   ir::CompleteResultBuffer buffer;
-  VerifyArguments(node->arguments(), buffer);
+  VerifyArguments(*this, node->arguments(), buffer);
   return {};
 }
 
@@ -51,7 +51,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(
 
   ir::CompleteResultBuffer buffer;
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
-                   std::ignore, VerifyArguments(node->arguments(), buffer));
+                   std::ignore,
+                   VerifyArguments(*this, node->arguments(), buffer));
 
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
                    std::ignore, VerifyType(node->name())[0]);

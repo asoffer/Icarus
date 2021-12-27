@@ -463,7 +463,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
 
   ir::CompleteResultBuffer buffer;
   ASSIGN_OR(return type::QualType::ErrorSpan(),  //
-                   auto arg_vals, VerifyArguments(node->arguments(), buffer));
+                   auto arg_vals,
+                   VerifyArguments(*this, node->arguments(), buffer));
   // TODO: consider having `foreign` be a generic type. This would allow for the
   // possibility of overlading builtins. That's a dangerous yet principled idea.
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {

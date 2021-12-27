@@ -9,6 +9,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
+#include "base/debug.h"
 #include "base/meta.h"
 #include "base/universal_print.h"
 
@@ -51,9 +52,15 @@ struct Arguments {
   T &operator[](size_t i) { return pos_[i]; }
   T const &operator[](size_t i) const { return pos_[i]; }
 
-  T &operator[](std::string_view s) { return named_.find(s)->second; }
+  T &operator[](std::string_view s) {
+    auto iter = named_.find(s);
+    ASSERT(iter != named_.end());
+    return iter->second;
+  }
   T const &operator[](std::string_view s) const {
-    return named_.find(s)->second;
+    auto iter = named_.find(s);
+    ASSERT(iter != named_.end());
+    return iter->second;
   }
 
   T *at_or_null(std::string_view s) {

@@ -41,7 +41,7 @@ struct BoundParameters {
     // of type `size_t` if no value is bound.
     size_t index = std::numeric_limits<size_t>::max();
 
-    // Hash of the value at `index`, or -1 if no value is bound.
+    // Hash of the value at `index`, or 0 if no value is bound.
     size_t hash_value = 0;
 
     void bind(ir::CompleteResultBuffer &buffer,
@@ -101,6 +101,21 @@ struct BoundParameters {
                                                ? buffer_[data.index]
                                                : ir::CompleteResultRef()));
     }
+  }
+
+  friend std::ostream &operator<<(std::ostream &os, BoundParameters const &b) {
+    std::string_view separator = "";
+    for (auto const &[id, binding]: b.bindings_) {
+      bool constant = binding.parameter_type.constant();
+      os << std::exchange(separator, ", ") << id->name()
+         << (constant ? " :: " : ": ") << binding.parameter_type.type();
+      if (binding.index != std::numeric_limits<size_t>::max()) {
+        os << " = "
+           << binding.parameter_type.type().Representation(
+                  b.buffer_[binding.index]);
+      }
+    }
+    return os;
   }
 
   template <typename H>

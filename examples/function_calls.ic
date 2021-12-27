@@ -95,17 +95,8 @@ named_arguments ::= () -> () {
   // names in any order, but once a named argument is used, all further
   // arguments must also be named.
   f ::= (a: i64, b: i64, c: i64, d: i64, e: i64) -> () {
-    io.Print("f(a = ")
-    io.Print(a)
-    io.Print(", b = ")
-    io.Print(b)
-    io.Print(", c = ")
-    io.Print(c)
-    io.Print(", d = ")
-    io.Print(d)
-    io.Print(", e = ")
-    io.Print(e)
-    io.Print(")\n")
+    io.Print("f(a = ", a, ", b = ", b, ", c = ", c,
+             ", d = ", d, ", e = ", e, ")\n")
   }
 
   // A call to f using only positional arguments:
@@ -120,19 +111,13 @@ named_arguments ::= () -> () {
   // Once again, there is nothing special about the fact that we gave a name to
   // the function f. We colud just as well have called a lambda:
   (x: i64, y: i64) -> () {
-    io.Print("lambda called with x = ")
-    io.Print(x)
-    io.Print(" and y = ")
-    io.Print(y)
-    io.Print("\n")
+    io.Print("lambda called with x = ", x, " and y = ", y, "\n")
   }(y = 3, x = 4)
 
   // Because parameter names are a part of the function type, even non-constant 
   // functions can be called with named arguments.
   g := (a: i64, b: i64) => a + b * b
-  io.Print("4 + 3 * 3 = ")
-  io.Print(g(a = 4, b = 3))
-  io.Print("\n")
+  io.Print("4 + 3 * 3 = ", g(a = 4, b = 3), "\n")
 }
 
 default_arguments ::= () -> () {
@@ -142,13 +127,7 @@ default_arguments ::= () -> () {
   // argument is provided. We can also infer the type of the parameter as is done
   // with `c := 3 as i64`.
   f ::= (a: i64, b: i64 = 2 as i64, c := 3 as i64) -> () {
-    io.Print("f(a = ")
-    io.Print(a)
-    io.Print(", b = ")
-    io.Print(b)
-    io.Print(", c = ")
-    io.Print(c)
-    io.Print(")\n")
+    io.Print("f(a = ", a, ", b = ", b, ", c = ", c, ")\n")
   }
   f(1)
   f(1, 20)
@@ -162,13 +141,7 @@ default_arguments ::= () -> () {
   // `b` has a default, so if a value for `b` is not provided at the call site,
   // `c` must be explicitly named.
   g ::= (a: i64, b := 2 as i64, c: i64) -> () {
-    io.Print("g(a = ")
-    io.Print(a)
-    io.Print(", b = ")
-    io.Print(b)
-    io.Print(", c = ")
-    io.Print(c)
-    io.Print(")\n")
+    io.Print("g(a = ", a, ", b = ", b, ", c = ", c, ")\n")
   }
   g(10, 20, 30)
   g(10, c = 30)
@@ -182,8 +155,7 @@ compile_time_arguments ::= () -> () {
   // single colon. Using `::` marks the argument as required to be known at
   // compile-time.
   compile_time_square ::= (n :: i64) => n * n
-  io.Print(compile_time_square(3))
-  io.Print("\n")
+  io.Print(compile_time_square(3), "\n")
 
   // Compile-time arguments do not need to be literals. They can also be
   // compile-time constants, or expressions known at compile-time.
@@ -195,7 +167,7 @@ compile_time_arguments ::= () -> () {
   f ::= (a: i64, b :: i64 = 2, c: i64) -> () {
     io.Print("f(a = ", a, ", b = ", b, ", c = ", c, ")\n")
   }
-  // f(1, c = 3)
+  f(1, c = 3)
   f(1, c = 30, b = 20)
 
   // One benefit of compile-time arguments is that they can be used in the

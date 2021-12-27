@@ -235,4 +235,32 @@ void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
   }
 }
 
+void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
+                                 CompleteResultBuffer &buffer) {
+  if (not type::CanCastImplicitly(from, to.type())) {
+    UNREACHABLE(from, "casting implicitly to", to);
+  }
+  if (from == to.type()) { return; }
+  if (from.is<type::Slice>() and to.type().is<type::Slice>()) { return; }
+
+  auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
+  auto const *ptr_to_type      = to.type().if_as<type::Pointer>();
+  if (bufptr_from_type and ptr_to_type and
+      type::CanCastImplicitly(bufptr_from_type, ptr_to_type)) {
+    return;
+  }
+
+  if (from == type::Integer and type::IsIntegral(to.type())) {
+    to.type().as<type::Primitive>().Apply([&]<typename T>() {
+      if constexpr (std::is_integral_v<T>) {
+        T result = Cast<Integer, T>(buffer.back().get<Integer>()).value();
+        buffer.pop_back();
+        buffer.append(result);
+      } else {
+        UNREACHABLE(typeid(T).name());
+      }
+    });
+  }
+}
+
 }  // namespace ir

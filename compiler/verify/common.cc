@@ -74,23 +74,24 @@ std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
 }
 
 std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>
-Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args,
-                          ir::CompleteResultBuffer &out) {
-  bool err = false;
-  std::vector<std::tuple<type::Type, ssize_t>> refs;
-  for (auto const &arg : args) {
-    auto expr_qual_type = VerifyType(&arg.expr())[0];
-    err |= not expr_qual_type.ok();
-    if (err) {
-      LOG("VerifyArguments", "Error with: %s", arg.expr().DebugString());
+VerifyArguments(Compiler &c, absl::Span<ast::Call::Argument const> arguments,
+                ir::CompleteResultBuffer &out) {
+  bool error = false;
+  std::vector<std::pair<type::Type, ssize_t>> refs;
+  for (auto const &argument : arguments) {
+    auto expr_qual_type = c.VerifyType(&argument.expr())[0];
+    error |= not expr_qual_type.ok();
+    if (error) {
+      LOG("VerifyArguments", "Error with: %s", argument.expr().DebugString());
       refs.emplace_back(nullptr, -1);
     } else {
-      LOG("VerifyArguments", "constant: %s", arg.expr().DebugString());
+      LOG("VerifyArguments", "constant: %s", argument.expr().DebugString());
       if (expr_qual_type.constant()) {
-        if (auto maybe_result = EvaluateToBufferOrDiagnose(
-                type::Typed(&arg.expr(), expr_qual_type.type()))) {
-          LOG("VerifyArguments", "%s",
-              expr_qual_type.type().Representation((*maybe_result)[0]));
+        if (auto maybe_result = c.EvaluateToBufferOrDiagnose(
+                type::Typed(&argument.expr(), expr_qual_type.type()))) {
+          LOG("VerifyArguments", "%s: %s",
+              expr_qual_type.type().Representation((*maybe_result)[0]),
+              expr_qual_type.type());
           out.append((*maybe_result)[0]);
           refs.emplace_back(expr_qual_type.type(), out.num_entries() - 1);
         }
@@ -100,22 +101,22 @@ Compiler::VerifyArguments(absl::Span<ast::Call::Argument const> args,
     }
   }
 
-  if (err) { return std::nullopt; }
+  if (error) { return std::nullopt; }
 
-  core::Arguments<type::Typed<ir::CompleteResultRef>> arg_vals;
+  core::Arguments<type::Typed<ir::CompleteResultRef>> argument_values;
 
   size_t i = 0;
   for (auto const &[t, index] : refs) {
     absl::Cleanup c = [&] { ++i; };
     auto ref        = index == -1 ? ir::CompleteResultRef() : out[index];
-    if (not args[i].named()) {
-      arg_vals.pos_emplace(ref, t);
+    if (not arguments[i].named()) {
+      argument_values.pos_emplace(ref, t);
     } else {
-      arg_vals.named_emplace(args[i].name(), type::Typed(ref, t));
+      argument_values.named_emplace(arguments[i].name(), type::Typed(ref, t));
     }
   }
 
-  return arg_vals;
+  return argument_values;
 }
 
 // TODO: Replace `symbol` with an enum.

@@ -99,10 +99,9 @@ size_t Primitive::HashValue(ir::CompleteResultRef const &value) const {
 void Primitive::ShowValue(std::ostream &os,
                           ir::CompleteResultRef const &value) const {
   Apply([&]<typename T>() {
-    if constexpr (requires {
-                    { (void)(os << std::declval<T>()) }
-                    ->std::same_as<void>;
-                  }) {
+    if constexpr (base::meta<T> == base::meta<bool>) {
+      os << (value.get<T>() ? "true" : "false");
+    } else if constexpr (requires { os << std::declval<T>(); }) {
       os << value.get<T>();
     } else {
       NOT_YET();

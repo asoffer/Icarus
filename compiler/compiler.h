@@ -631,10 +631,6 @@ struct Compiler
   bool EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
 
  private:
-  std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>
-  VerifyArguments(absl::Span<ast::Call::Argument const> args,
-                  ir::CompleteResultBuffer &out);
-
   type::QualType VerifyUnaryOverload(
       char const *symbol, ast::Expression const *node,
       type::Typed<ir::CompleteResultRef> const &operand);
@@ -655,7 +651,7 @@ struct Compiler
   CyclicDependencyTracker cylcic_dependency_tracker_;
 };
 
-module::BasicModule const *ModuleFor(ast::Node const *node);
+module::BasicModule *ModuleFor(ast::Node const *node);
 frontend::SourceBuffer const *SourceBufferFor(ast::Node const *node);
 frontend::SourceView SourceViewFor(ast::Node const *node);
 
