@@ -75,10 +75,7 @@ PotentialIds(Compiler &c, ast::Identifier const &id) {
     if (auto const *decl_id_qt = c.context().maybe_qual_type(decl_id).data()) {
       qt = *decl_id_qt;
     } else {
-      auto const *mod = &decl_id->scope()
-                             ->Containing<ast::ModuleScope>()
-                             ->module()
-                             ->as<CompiledModule>();
+      auto const *mod = &ModuleFor(decl_id)->as<CompiledModule>();
       if (mod != c.resources().module) {
         qt = mod->context().qual_types(decl_id)[0];
       } else {

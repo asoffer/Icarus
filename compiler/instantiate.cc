@@ -77,9 +77,9 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
         }
       } break;
       case core::DependencyNodeKind::ParameterType: {
-        ASSIGN_OR(NOT_YET("bail out of this computation"),  //
-                  type::Type t,
-                  ComputeParameterTypeOrDiagnose(c, dep_node.node()));
+        ASSIGN_OR(return std::nullopt,  //
+                         type::Type t,
+                         ComputeParameterTypeOrDiagnose(c, dep_node.node()));
 
         auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
                       ? type::QualType::Constant(t)

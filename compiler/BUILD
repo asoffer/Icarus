@@ -293,13 +293,7 @@ cc_library(
     hdrs = ["module.h"],
     deps = [
         ":context",
-        "//ast:ast",
-        "//ast:ast_fwd",
-        "//base:ptr_span",
-        "//ir/interpreter:evaluate",
-        "//ir:compiled_fn",
         "//module",
-        "@com_google_absl//absl/synchronization",
     ],
 )
 
