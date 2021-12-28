@@ -6,6 +6,7 @@
 
 #include "base/debug.h"
 #include "compiler/bound_parameters.h"
+#include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "core/params.h"
@@ -30,7 +31,7 @@ std::optional<type::Type> ComputeParameterTypeOrDiagnose(
     if (type_expr_type != type::Type_) {
       c.diag().Consume(
           NotAType{.view = SourceViewFor(type_expr), .type = type_expr_type});
-      NOT_YET("Exit out of this computation.");
+      return std::nullopt;
     }
 
     return c.EvaluateOrDiagnoseAs<type::Type>(type_expr);

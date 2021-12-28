@@ -5,6 +5,7 @@ cc_library(
     hdrs = ["assignment_and_initialization.h"],
     srcs = ["assignment_and_initialization.cc"],
     deps = [
+        "//compiler:common_diagnostics",
         "//compiler/verify:common",
         "//diagnostic/consumer",
         "//frontend/source:buffer",

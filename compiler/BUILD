@@ -14,6 +14,18 @@ cc_library(
 )
 
 cc_library(
+    name = "common_diagnostics",
+    hdrs = ["common_diagnostics.h"],
+    deps = [
+        "//core:call",
+        "//diagnostic:message",
+        "//frontend/source:buffer",
+        "//frontend/source:view",
+        "//type",
+    ]
+)
+
+cc_library(
     name = "cyclic_dependency_tracker",
     hdrs = ["cyclic_dependency_tracker.h"],
     deps = [
@@ -251,8 +263,9 @@ cc_library(
     hdrs = ["instantiate.h"],
     srcs = ["instantiate.cc"],
     deps = [
-        ":context",
+        ":common_diagnostics",
         ":compiler_header",
+        ":context",
         ":module",
         "//core:arguments",
         "//ir/value:result_buffer",

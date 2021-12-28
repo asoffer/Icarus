@@ -1,4 +1,5 @@
 #include "ast/ast.h"
+#include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "type/qual_type.h"
 #include "type/slice.h"

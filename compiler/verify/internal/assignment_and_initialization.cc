@@ -2,6 +2,7 @@
 
 #include <type_traits>
 
+#include "compiler/common_diagnostics.h"
 #include "compiler/verify/common.h"
 #include "type/cast.h"
 

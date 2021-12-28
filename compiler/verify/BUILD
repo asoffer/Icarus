@@ -70,6 +70,7 @@ cc_library(
     srcs = ["array_type.cc"],
     deps = [
         "//ast",
+        "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//type:array",
         "//type:primitive",
@@ -93,6 +94,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//type:cast",
         "//type:primitive",
@@ -146,6 +148,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",
         "//type:callable",
@@ -175,6 +178,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",
         "//type:cast",
@@ -198,6 +202,7 @@ cc_library(
     srcs = ["common.cc"],
     deps = [
         "//ast",
+        "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:context",
         "//compiler:module",
@@ -245,6 +250,7 @@ cc_library(
     srcs = ["declaration.cc"],
     deps = [
         "//ast",
+        "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:module",
         "//compiler/verify/internal:assignment_and_initialization",
@@ -523,6 +529,7 @@ cc_library(
     srcs = ["slice_type.cc"],
     deps = [
         "//ast",
+        "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//type:slice",
         "//type:primitive",
@@ -615,6 +622,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",
         "//type:pointer",

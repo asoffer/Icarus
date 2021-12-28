@@ -51,23 +51,6 @@
 
 namespace compiler {
 
-struct NotAType {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "not-a-type";
-
-  diagnostic::DiagnosticMessage ToMessage() const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Expression was expected to be a type, but instead "
-                         "was a value of type `%s`.",
-                         type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
-  }
-
-  frontend::SourceView view;
-  type::Type type;
-};
-
 struct PatternMatchingContext {
   type::Type type;
   ir::CompleteResultBuffer value;
