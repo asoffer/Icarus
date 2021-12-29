@@ -1,10 +1,29 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/context.h"
+#include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
 
 namespace compiler {
 namespace {
+
+struct NonBooleanCondition {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-boolean-condition";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("If statements require the condition to be of type "
+                         "`bool`, but you provided a value of type `%s`.",
+                         type),
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
+  }
+
+  frontend::SourceView view;
+  std::string type;
+};
+
 
 std::optional<type::Quals> VerifyAndGetQuals(
     Compiler *v, base::PtrSpan<ast::Expression const> exprs) {
@@ -82,10 +101,26 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Label const *node) {
 }
 
 absl::Span<type::QualType const> Compiler::VerifyType(ast::IfStmt const *node) {
-  // TODO: Emit errors if the type's fail to check.
-  VerifyType(&node->condition());
-  for (auto const *stmt : node->true_block()) { VerifyType(stmt); }
-  for (auto const *stmt : node->false_block()) { VerifyType(stmt); }
+  auto qt = VerifyType(&node->condition())[0];
+  if (qt.type() != type::Bool) {
+    diag().Consume(NonBooleanCondition{
+        .view = SourceViewFor(node),
+        .type = TypeForDiagnostic(&node->condition(), context()),
+    });
+  }
+  if (node->hashtags.contains(ir::Hashtag::Const)) {
+    if (not qt.constant()) { NOT_YET(); }
+    if (*EvaluateOrDiagnoseAs<bool>(&node->condition())) {
+      for (auto const *stmt : node->true_block()) { VerifyType(stmt); }
+    } else if (node->has_false_block()) {
+      for (auto const *stmt : node->false_block()) { VerifyType(stmt); }
+    }
+
+  } else {
+    // TODO: Emit errors if the type's fail to check.
+    for (auto const *stmt : node->true_block()) { VerifyType(stmt); }
+    for (auto const *stmt : node->false_block()) { VerifyType(stmt); }
+  }
 
   // TODO: Allow for types to be yielded
   return context().set_qual_type(node, type::QualType::NonConstant(type::Void));

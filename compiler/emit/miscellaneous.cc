@@ -29,43 +29,48 @@ void Compiler::EmitToBuffer(ast::Label const *node,
 
 void Compiler::EmitToBuffer(ast::IfStmt const *node,
                             ir::PartialResultBuffer &out) {
-  auto *true_block  = builder().AddBlock();
-  auto *false_block = node->has_false_block() ? builder().AddBlock() : nullptr;
-  auto *landing     = builder().AddBlock();
+  if (node->hashtags.contains(ir::Hashtag::Const)) {
+    if (*EvaluateOrDiagnoseAs<bool>(&node->condition())) {
+      builder().block_termination_state() =
+          ir::Builder::BlockTerminationState::kMoreStatements;
+      ir::PartialResultBuffer buffer;
+      for (auto const *stmt : node->true_block()) {
+        buffer.clear();
+        EmitToBuffer(stmt, buffer);
+      }
 
-  ir::RegOr<bool> condition = EmitAs<bool>(&node->condition());
-  builder().CondJump(condition, true_block,
-                     false_block ? false_block : landing);
+      MakeAllDestructions(*this, &node->true_scope());
+    } else if (node->has_false_block()) {
+      builder().block_termination_state() =
+          ir::Builder::BlockTerminationState::kMoreStatements;
+      ir::PartialResultBuffer buffer;
+      for (auto const *stmt : node->false_block()) {
+        buffer.clear();
+        EmitToBuffer(stmt, buffer);
+      }
 
-  builder().CurrentBlock() = true_block;
-  builder().block_termination_state() =
-      ir::Builder::BlockTerminationState::kMoreStatements;
-  ir::PartialResultBuffer buffer;
-  for (auto const *stmt : node->true_block()) {
-    buffer.clear();
-    EmitToBuffer(stmt, buffer);
-  }
+      MakeAllDestructions(*this, &node->false_scope());
+    }
+  } else {
+    auto *true_block = builder().AddBlock();
+    auto *false_block =
+        node->has_false_block() ? builder().AddBlock() : nullptr;
+    auto *landing = builder().AddBlock();
 
-  MakeAllDestructions(*this, &node->true_scope());
+    ir::RegOr<bool> condition = EmitAs<bool>(&node->condition());
+    builder().CondJump(condition, true_block,
+                       false_block ? false_block : landing);
 
-  switch (builder().block_termination_state()) {
-    case ir::Builder::BlockTerminationState::kMoreStatements:
-    case ir::Builder::BlockTerminationState::kNoTerminator:
-      builder().UncondJump(landing);
-      break;
-    default: break;
-  }
-
-  if (node->has_false_block()) {
-    builder().CurrentBlock() = false_block;
+    builder().CurrentBlock() = true_block;
     builder().block_termination_state() =
         ir::Builder::BlockTerminationState::kMoreStatements;
-    for (auto const *stmt : node->false_block()) {
+    ir::PartialResultBuffer buffer;
+    for (auto const *stmt : node->true_block()) {
       buffer.clear();
       EmitToBuffer(stmt, buffer);
     }
 
-    MakeAllDestructions(*this, &node->false_scope());
+    MakeAllDestructions(*this, &node->true_scope());
 
     switch (builder().block_termination_state()) {
       case ir::Builder::BlockTerminationState::kMoreStatements:
@@ -74,11 +79,31 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
         break;
       default: break;
     }
-  }
 
-  builder().block_termination_state() =
-      ir::Builder::BlockTerminationState::kMoreStatements;
-  builder().CurrentBlock() = landing;
+    if (node->has_false_block()) {
+      builder().CurrentBlock() = false_block;
+      builder().block_termination_state() =
+          ir::Builder::BlockTerminationState::kMoreStatements;
+      for (auto const *stmt : node->false_block()) {
+        buffer.clear();
+        EmitToBuffer(stmt, buffer);
+      }
+
+      MakeAllDestructions(*this, &node->false_scope());
+
+      switch (builder().block_termination_state()) {
+        case ir::Builder::BlockTerminationState::kMoreStatements:
+        case ir::Builder::BlockTerminationState::kNoTerminator:
+          builder().UncondJump(landing);
+          break;
+        default: break;
+      }
+    }
+
+    builder().block_termination_state() =
+        ir::Builder::BlockTerminationState::kMoreStatements;
+    builder().CurrentBlock() = landing;
+  }
 }
 
 void Compiler::EmitToBuffer(ast::WhileStmt const *node,

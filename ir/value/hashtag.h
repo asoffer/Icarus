@@ -8,29 +8,25 @@
 namespace ir {
 
 enum class Hashtag : uint8_t {
+  // Denotes that a scope is to be evaluated and blocks instantiated.
+  Const = 0,
   // Denotes that an object should be made visible across module boundaries.
-  Export     = 0,
-  Uncopyable = 1,
-  Immovable  = 2,
+  Export     = 1,
+  Uncopyable = 2,
+  Immovable  = 3,
 };
 
-inline constexpr std::string_view ToStringView(Hashtag h) {
-  switch (h) {
-    case Hashtag::Export: return "{export}";
-    case Hashtag::Uncopyable: return "{uncopyable}";
-    case Hashtag::Immovable: return "{immovable}";
-  }
-}
-
-inline std::ostream& operator<<(std::ostream& os, Hashtag h) {
-  return os << ToStringView(h);
-}
-
 inline std::array BuiltinHashtagsByName{
+    std::pair(std::string_view("{const}"), Hashtag::Const),
     std::pair(std::string_view("{export}"), Hashtag::Export),
     std::pair(std::string_view("{uncopyable}"), Hashtag::Uncopyable),
     std::pair(std::string_view("{immovable}"), Hashtag::Immovable),
 };
+
+inline std::ostream& operator<<(std::ostream& os, Hashtag h) {
+  return os << BuiltinHashtagsByName[static_cast<uint8_t>(h)].first;
+}
+
 
 }  // namespace ir
 

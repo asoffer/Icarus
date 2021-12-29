@@ -35,8 +35,9 @@ struct TaggedNode {
           } else if constexpr (type == base::meta<std::unique_ptr<ast::Node>>) {
             node_ = std::move(x);
           } else {
-            node_ = std::make_unique<Token>(
-                range, std::string(ir::ToStringView(x)), true);
+            std::stringstream ss;
+            ss << x;
+            node_ = std::make_unique<Token>(range, ss.str(), true);
           }
         },
         std::move(l).get());

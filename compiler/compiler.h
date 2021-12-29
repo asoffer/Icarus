@@ -310,6 +310,7 @@ struct Compiler
     type::Type t = [] {
       constexpr auto type = base::meta<T>;
       if constexpr (type == base::meta<type::Type>) { return type::Type_; }
+      if constexpr (type == base::meta<bool>) { return type::Bool; }
       if constexpr (type == base::meta<ir::Scope>) { return type::Scp({}); }
       if constexpr (type == base::meta<ir::Block>) { return type::Blk({}); }
       if constexpr (type == base::meta<ir::ModuleId>) { return type::Module; }
