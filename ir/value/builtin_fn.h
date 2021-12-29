@@ -22,6 +22,7 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
     Opaque,
     CompilationError,
     Foreign,
+    HasBlock,
     ReserveMemory,
     Slice,
     DebugIr
@@ -36,6 +37,7 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
     return BuiltinFn(Which::CompilationError);
   }
   static BuiltinFn Foreign() { return BuiltinFn(Which::Foreign); }
+  static BuiltinFn HasBlock() { return BuiltinFn(Which::HasBlock); }
   static BuiltinFn ReserveMemory() { return BuiltinFn(Which::ReserveMemory); }
   static BuiltinFn Slice() { return BuiltinFn(Which::Slice); }
   static BuiltinFn DebugIr() { return BuiltinFn(Which::DebugIr); }
@@ -59,8 +61,8 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
   friend base::EnableExtensions;
 
   static constexpr std::array kNames{
-      "abort",   "alignment",      "bytes", "opaque",  "compilation_error",
-      "foreign", "reserve_memory", "slice", "debug_ir"};
+      "abort",   "alignment", "bytes",          "opaque", "compilation_error",
+      "foreign", "has_block", "reserve_memory", "slice",  "debug_ir"};
 
   Which which_;
 };

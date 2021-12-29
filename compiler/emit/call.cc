@@ -66,6 +66,16 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       out.append(slice);
       return;
     } break;
+    case ir::BuiltinFn::Which::HasBlock: {
+      ir::ScopeContext sc =
+          *c.EvaluateOrDiagnoseAs<ir::ScopeContext>(&args[0].expr());
+      auto name_buffer =
+          *c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
+              &args[1].expr(), type::Slc(type::Char)));
+      out.append(sc.find(name_buffer[0].get<ir::Slice>()) !=
+                 ir::Block::Invalid());
+      return;
+    } break;
     case ir::BuiltinFn::Which::Foreign: {
       // `EvaluateOrDiagnoseAs` cannot yet support slices because we it
       // internally converts compile-time types to a type::Type and it doesn't

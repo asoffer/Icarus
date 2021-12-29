@@ -59,6 +59,7 @@ cc_library(
         "//type:function",
         "//type:pointer",
         "//type:primitive",
+        "//type:slice",
         "//base:extend",
         "//base/extend:absl_hash",
     ],

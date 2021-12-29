@@ -14,6 +14,7 @@
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/slice.h"
 
 namespace ir {
 
@@ -62,6 +63,12 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
                 {type::BufPtr(type::Byte)});
           case BuiltinFn::Which::Slice:
           case BuiltinFn::Which::CompilationError:
+          case BuiltinFn::Which::HasBlock:
+            return type::Func({core::AnonymousParam(type::QualType::Constant(
+                                   type::ScopeContext)),
+                               core::AnonymousParam(type::QualType::Constant(
+                                   type::Slc(type::Char)))},
+                              {type::Bool});
           case BuiltinFn::Which::Foreign:
             // Note: We do not allow passing `foreign` or `slice` around as a
             // function object. It is call-only, which means the generic part

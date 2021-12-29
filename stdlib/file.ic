@@ -26,7 +26,10 @@ With ::= scope [ctx] (name: []char) {
     f >> ctx.open
     c.fclose(f._handle)
   } else {
-    e >> ctx.error
+    has_block(ctx, "error")
+    #{const} if (has_block(ctx, "error")) {
+      e >> ctx.error
+    }
   }
 }
 

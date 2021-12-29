@@ -46,6 +46,59 @@ struct UserDefinedError {
   std::string message;
 };
 
+type::QualType VerifyHasBlockCall(
+    Compiler *c, frontend::SourceView view,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
+  bool error = false;
+  if (not arg_vals.named().empty()) {
+    c->diag().Consume(BuiltinError{
+        .view    = view,
+        .message = "Built-in function `has_block` cannot be called with named "
+                   "arguments.",
+    });
+    error = true;
+  }
+
+  size_t size = arg_vals.size();
+  if (size != 2u) {
+    c->diag().Consume(BuiltinError{
+        .view    = view,
+        .message = absl::StrCat("Built-in function `has_block` takes exactly two "
+                                "arguments (You provided ",
+                                size, ")."),
+    });
+    error = true;
+  }
+
+  if (error) { return type::QualType::Error(); }
+
+  if (not arg_vals[0].type() == type::ScopeContext) {
+    c->diag().Consume(BuiltinError{
+        .view = view,
+        .message =
+            absl::StrCat("First argument to `has_block` must be a scope_context"
+                         " (You provided a(n) ",
+                         arg_vals[0].type().to_string(), ")."),
+    });
+    error = true;
+  }
+
+  if (!type::CanCastImplicitly(arg_vals[1].type(), type::Slc(type::Char))) {
+    c->diag().Consume(BuiltinError{
+        .view    = view,
+        .message = absl::StrCat("Second argument to `has_block` must be "
+                                "implicitly convertible to `[]char` (You "
+                                "provided `",
+                                arg_vals[1].type().to_string(), "`)."),
+    });
+    error = true;
+  }
+
+  if (error) { return type::QualType::Error(); }
+
+  return type::QualType::Constant(type::Bool);
+}
+
 type::QualType VerifySliceCall(
     Compiler *c, frontend::SourceView view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
@@ -402,6 +455,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
         os.insert(node);
         context().SetAllOverloads(node, std::move(os));
         qt = VerifySliceCall(this, SourceViewFor(b), arg_vals);
+      } break;
+      case ir::BuiltinFn::Which::HasBlock: {
+        qt = VerifyHasBlockCall(this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::ReserveMemory: {
         qt = VerifyReserveMemoryCall(this, SourceViewFor(b), arg_vals);
