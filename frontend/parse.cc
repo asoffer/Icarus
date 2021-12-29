@@ -1263,6 +1263,12 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
   std::vector<std::unique_ptr<ast::Node>> block_stmt_nodes;
   block_stmt_nodes.push_back(std::move(nodes[2]));
 
+  if (not nodes[0]->is<ast::ScopeNode>()) {
+    auto [callee, args] = std::move(nodes[0]->as<ast::Call>()).extract();
+    nodes[0] = std::make_unique<ast::ScopeNode>(range, std::move(callee),
+                                                std::move(args),
+                                                std::vector<ast::BlockNode>{});
+  }
   nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
       ast::BlockNode(range, std::string{nodes[1]->as<ast::Identifier>().name()},
                      nodes[1]->range().end(), std::move(block_stmt_nodes)),
@@ -1818,7 +1824,7 @@ static base::Global kRules = std::array{
     rule_t{.match   = {scope_expr, block_expr},
            .output  = scope_expr,
            .execute = ExtendScopeNode},
-    rule_t{.match   = {scope_expr, expr, scope_expr},
+    rule_t{.match   = {paren_call_expr | scope_expr, expr, scope_expr},
            .output  = scope_expr,
            .execute = SugaredExtendScopeNode},
     rule_t{.match   = {label, scope_expr},
@@ -1912,9 +1918,8 @@ static base::Global kRules = std::array{
     rule_t{.match   = {paren_decl_list | empty_parens, rocket, braced_stmts},
            .output  = expr,
            .execute = HandleBracedShortFunctionLiteral},
-    rule_t{.match   = {hashtag, if_expr},
-           .output  = if_expr,
-           .execute = AddHashtag},
+    rule_t{
+        .match = {hashtag, if_expr}, .output = if_expr, .execute = AddHashtag},
     rule_t{.match = {hashtag, EXPR}, .output = expr, .execute = AddHashtag},
     rule_t{.match = {hashtag, decl}, .output = decl, .execute = AddHashtag},
     rule_t{.match = {STMTS, eof}, .output = stmt_list, .execute = KeepOnly<0>},
