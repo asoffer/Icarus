@@ -214,7 +214,25 @@ void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
     UNREACHABLE(from, "casting implicitly to", to);
   }
   if (from == to.type()) { return; }
-  if (from.is<type::Slice>() and to.type().is<type::Slice>()) { return; }
+  if (to.type().is<type::Slice>()) {
+    if (from.is<type::Slice>()) { return; }
+    if (auto const *a =from.if_as<type::Array>()) {
+      ir::RegOr<ir::addr_t> data   = buffer[0].get<ir::addr_t>();
+      type::Slice::length_t length = a->length().value();
+      auto alloc                   = TmpAlloca(to.type());
+      Store(data, CurrentBlock()->Append(type::SliceDataInstruction{
+                      .slice  = alloc,
+                      .result = CurrentGroup()->Reserve(),
+                  }));
+      Store(length, CurrentBlock()->Append(type::SliceLengthInstruction{
+                        .slice  = alloc,
+                        .result = CurrentGroup()->Reserve(),
+                    }));
+      CurrentBlock()->load_store_cache().clear();
+      buffer.clear();
+      buffer.append(alloc);
+    }
+  }
 
   auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
   auto const *ptr_to_type      = to.type().if_as<type::Pointer>();
@@ -242,7 +260,26 @@ void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
     UNREACHABLE(from, "casting implicitly to", to);
   }
   if (from == to.type()) { return; }
-  if (from.is<type::Slice>() and to.type().is<type::Slice>()) { return; }
+  if (to.type().is<type::Slice>()) {
+    if (from.is<type::Slice>()) { return; }
+    if (auto const *a =from.if_as<type::Array>()) {
+      ir::addr_t data              = buffer[0].get<ir::addr_t>();
+      type::Slice::length_t length = a->length().value();
+      auto alloc                   = TmpAlloca(to.type());
+      Store(data, CurrentBlock()->Append(type::SliceDataInstruction{
+                      .slice  = alloc,
+                      .result = CurrentGroup()->Reserve(),
+                  }));
+      Store(length, CurrentBlock()->Append(type::SliceLengthInstruction{
+                        .slice  = alloc,
+                        .result = CurrentGroup()->Reserve(),
+                    }));
+      CurrentBlock()->load_store_cache().clear();
+      buffer.clear();
+      buffer.append(alloc);
+
+    }
+  }
 
   auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
   auto const *ptr_to_type      = to.type().if_as<type::Pointer>();

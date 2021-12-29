@@ -79,8 +79,21 @@ void EmitNonConstantDeclaration(Compiler &c, ast::Declaration const *node,
     addrs.push_back(type::Typed<ir::RegOr<ir::addr_t>>(
         c.builder().addr(&id), c.context().qual_types(&id)[0].type()));
   }
-  if (auto const *init_val = node->initial_value()) {
-    c.EmitMoveInit(init_val, addrs);
+  if (auto const *initial_value = node->initial_value()) {
+    // TODO: Support multiple declarations.
+    auto initial_value_qt = c.context().qual_types(initial_value)[0];
+    if (initial_value_qt.type() == addrs[0].type()) {
+      c.EmitMoveInit(initial_value, addrs);
+    } else {
+      ir::PartialResultBuffer buffer;
+      c.EmitToBuffer(initial_value, buffer);
+      c.builder().ApplyImplicitCasts(
+          initial_value_qt.type(), type::QualType::NonConstant(addrs[0].type()),
+          buffer);
+      c.EmitMoveInit(type::Typed<ir::Reg>(addrs[0]->reg(), addrs[0].type()),
+                     buffer);
+    }
+
   } else {
     if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
       c.EmitDefaultInit(type::Typed<ir::Reg>(addrs[0]->reg(), addrs[0].type()));
