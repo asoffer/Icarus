@@ -128,11 +128,11 @@ struct instruction_set_t
           type::AndFlagsInstruction, type::OrFlagsInstruction,
           ir::LoadSymbolInstruction, type::ArrayInstruction,
           ir::StructIndexInstruction, ir::PtrIncrInstruction,
-          ir::TypeInfoInstruction, ir::InitInstruction, ir::DestroyInstruction,
-          ir::MoveInitInstruction, ir::CopyInitInstruction, ir::MoveInstruction,
-          ir::CopyInstruction, type::SliceLengthInstruction,
-          type::SliceDataInstruction, ir::DebugIrInstruction,
-          ir::AbortInstruction, TypeConstructorInstructions> {};
+          ir::InitInstruction, ir::DestroyInstruction, ir::MoveInitInstruction,
+          ir::CopyInitInstruction, ir::MoveInstruction, ir::CopyInstruction,
+          type::SliceLengthInstruction, type::SliceDataInstruction,
+          ir::DebugIrInstruction, ir::AbortInstruction,
+          TypeConstructorInstructions> {};
 
 void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
   writer.set_block(&block);

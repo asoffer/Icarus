@@ -12,6 +12,55 @@
 
 namespace compiler {
 namespace {
+
+// Usually it is sufficient to determine all the inputs to a phi instruction
+// upfront, but sometimes it is useful to construct a phi instruction without
+// having set its inputs.
+//
+// TODO: Right now we are relying on the fact that Inst stores values on the
+// heap, but this may not always be the case.
+template <typename T>
+ir::PhiInstruction<T> *PhiInst(ir::Builder &builder) {
+  ir::PhiInstruction<T> inst;
+  inst.result = builder.CurrentGroup()->Reserve();
+  builder.CurrentBlock()->Append(std::move(inst));
+  return builder.CurrentBlock()
+      ->instructions()
+      .back()
+      .template if_as<ir::PhiInstruction<T>>();
+}
+
+template <typename F>
+void OnEachArrayElement(ir::Builder &builder, type::Array const *t,
+                        ir::Reg array_reg, F fn) {
+  auto *data_ptr_type = type::Ptr(t->data_type());
+
+  auto ptr     = builder.PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
+  auto end_ptr = builder.PtrIncr(ptr, t->length().value(), data_ptr_type);
+
+  auto *start_block = builder.CurrentBlock();
+  auto *loop_body   = builder.CurrentGroup()->AppendBlock();
+  auto *land_block  = builder.CurrentGroup()->AppendBlock();
+  auto *cond_block  = builder.CurrentGroup()->AppendBlock();
+
+  builder.UncondJump(cond_block);
+
+  builder.CurrentBlock() = cond_block;
+  auto *phi              = PhiInst<ir::addr_t>(builder);
+  builder.CondJump(builder.Eq(ir::RegOr<ir::addr_t>(phi->result), end_ptr),
+                   land_block, loop_body);
+
+  builder.CurrentBlock() = loop_body;
+  fn(phi->result);
+  ir::Reg next = builder.PtrIncr(phi->result, 1, data_ptr_type);
+  builder.UncondJump(cond_block);
+
+  phi->add(start_block, ptr);
+  phi->add(builder.CurrentBlock(), next);
+
+  builder.CurrentBlock() = land_block;
+}
+
 enum Kind { Move, Copy };
 
 template <Kind K>
@@ -31,15 +80,15 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
       bldr.PtrIncr(from_ptr, from->length().value(), from_data_ptr_type);
   auto to_ptr = bldr.PtrIncr(var, 0, to_data_ptr_type);
 
-  auto *loop_body  = bldr.AddBlock();
-  auto *land_block = bldr.AddBlock();
-  auto *cond_block = bldr.AddBlock();
+  auto *loop_body  = bldr.CurrentGroup()->AppendBlock();
+  auto *land_block = bldr.CurrentGroup()->AppendBlock();
+  auto *cond_block = bldr.CurrentGroup()->AppendBlock();
 
   bldr.UncondJump(cond_block);
 
   bldr.CurrentBlock() = cond_block;
-  auto *from_phi      = bldr.PhiInst<ir::addr_t>();
-  auto *to_phi        = bldr.PhiInst<ir::addr_t>();
+  auto *from_phi      = PhiInst<ir::addr_t>(bldr);
+  auto *to_phi        = PhiInst<ir::addr_t>(bldr);
   bldr.CondJump(bldr.Eq(ir::RegOr<ir::addr_t>(from_phi->result), from_end_ptr),
                 land_block, loop_body);
 
@@ -88,15 +137,15 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
       bldr.PtrIncr(from_ptr, from->length().value(), from_data_ptr_type);
   auto to_ptr = bldr.PtrIncr(ret, 0, from_data_ptr_type);
 
-  auto *loop_body  = bldr.AddBlock();
-  auto *land_block = bldr.AddBlock();
-  auto *cond_block = bldr.AddBlock();
+  auto *loop_body  = bldr.CurrentGroup()->AppendBlock();
+  auto *land_block = bldr.CurrentGroup()->AppendBlock();
+  auto *cond_block = bldr.CurrentGroup()->AppendBlock();
 
   bldr.UncondJump(cond_block);
 
   bldr.CurrentBlock() = cond_block;
-  auto *from_phi      = bldr.PhiInst<ir::addr_t>();
-  auto *to_phi        = bldr.PhiInst<ir::addr_t>();
+  auto *from_phi      = PhiInst<ir::addr_t>(bldr);
+  auto *to_phi        = PhiInst<ir::addr_t>(bldr);
   bldr.CondJump(bldr.Eq(ir::RegOr<ir::addr_t>(from_phi->result), from_end_ptr),
                 land_block, loop_body);
 
@@ -134,9 +183,10 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
-      builder().OnEachArrayElement(r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
-        EmitDefaultInit(type::Typed<ir::Reg>(reg, r.type()->data_type()));
-      });
+      OnEachArrayElement(
+          builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
+            EmitDefaultInit(type::Typed<ir::Reg>(reg, r.type()->data_type()));
+          });
       builder().ReturnJump();
     }
     context().ir().WriteByteCode<EmitByteCode>(fn);
@@ -153,9 +203,10 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
-      builder().OnEachArrayElement(r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
-        EmitDestroy(type::Typed<ir::Reg>(reg, r.type()->data_type()));
-      });
+      OnEachArrayElement(
+          builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
+            EmitDestroy(type::Typed<ir::Reg>(reg, r.type()->data_type()));
+          });
       builder().ReturnJump();
     }
     context().ir().WriteByteCode<EmitByteCode>(fn);

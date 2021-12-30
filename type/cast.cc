@@ -85,8 +85,13 @@ bool CanCast(Type from, Type to) {
     if (auto const *to_slice = to.if_as<Slice>()) {
       return CanCastInPlace(from_array->data_type(), to_slice->data_type());
 
-    } else if constexpr (IncludeExplicit) {
-      if (auto const *to_array = to.if_as<Array>()) {
+    } else if (auto const *to_array = to.if_as<Array>()) {
+      if (from_array->data_type() == Integer and
+          CanCastImplicitly(from_array->data_type(), to_array->data_type())) {
+        return true;
+      }
+
+      if constexpr (IncludeExplicit) {
         return from_array->length() == to_array->length() and
                CanCastInPlace(from_array->data_type(), to_array->data_type());
       }

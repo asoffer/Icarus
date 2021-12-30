@@ -52,10 +52,11 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
       MakeAllDestructions(*this, &node->false_scope());
     }
   } else {
-    auto *true_block = builder().AddBlock();
-    auto *false_block =
-        node->has_false_block() ? builder().AddBlock() : nullptr;
-    auto *landing = builder().AddBlock();
+    auto *true_block  = builder().CurrentGroup()->AppendBlock();
+    auto *false_block = node->has_false_block()
+                            ? builder().CurrentGroup()->AppendBlock()
+                            : nullptr;
+    auto *landing = builder().CurrentGroup()->AppendBlock();
 
     ir::RegOr<bool> condition = EmitAs<bool>(&node->condition());
     builder().CondJump(condition, true_block,
@@ -108,9 +109,9 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
 
 void Compiler::EmitToBuffer(ast::WhileStmt const *node,
                             ir::PartialResultBuffer &out) {
-  auto start_block = builder().AddBlock();
-  auto body_block  = builder().AddBlock();
-  auto landing     = builder().AddBlock();
+  auto start_block = builder().CurrentGroup()->AppendBlock();
+  auto body_block  = builder().CurrentGroup()->AppendBlock();
+  auto landing     = builder().CurrentGroup()->AppendBlock();
 
   builder().UncondJump(start_block);
 
