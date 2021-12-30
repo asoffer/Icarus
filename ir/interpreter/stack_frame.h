@@ -10,6 +10,7 @@
 #include "ir/blocks/basic.h"
 #include "ir/value/fn.h"
 #include "ir/value/reg.h"
+#include "ir/value/scope.h"
 
 namespace interpreter {
 
@@ -24,12 +25,15 @@ struct StackFrame {
 
   StackFrame() = delete;
   StackFrame(ir::Fn fn, Stack &stack);
+  StackFrame(ir::Scope s, Stack &stack);
   ~StackFrame();
-
-  ir::Fn fn() const { return fn_; }
 
   std::byte const *raw(ir::Reg r) const { return data_.raw(offset(r)); }
   std::byte *raw(ir::Reg r) { return data_.raw(offset(r)); }
+
+  base::untyped_buffer::const_iterator byte_code_iterator() const {
+    return byte_code_iter_;
+  };
 
   template <typename T>
   auto get(ir::Reg r) const {
@@ -76,7 +80,7 @@ struct StackFrame {
     return offset * register_value_size;
   }
 
-  ir::Fn fn_;
+  base::untyped_buffer::const_iterator byte_code_iter_;
   Stack &stack_;
   size_t frame_size_;
   Sizes sizes_;

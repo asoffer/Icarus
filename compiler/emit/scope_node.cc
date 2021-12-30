@@ -150,8 +150,6 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
 
   ir::ScopeContext scope_context = context().ScopeContext(node);
 
-  ir::PartialResultBuffer argument_buffer;
-
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
   ir::CompleteResultBuffer buffer;
@@ -172,6 +170,14 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
       .node    = scope_lit,
       .context = &context,
   });
+
+  if (node->hashtags.contains(ir::Hashtag::Const)) {
+    context.ir().WriteByteCode<EmitByteCode>(scope);
+    InterpretScopeAtCompileTime(scope, constant_arguments);
+    return;
+  }
+
+  ir::PartialResultBuffer argument_buffer;
 
   auto *start = builder().CurrentBlock();
   EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},

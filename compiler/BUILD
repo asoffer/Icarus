@@ -75,6 +75,7 @@ cc_library(
     srcs = ["instructions.cc"],
     visibility = ["//visibility:public"],
     deps = [
+        "//core:call",
         "//type:array",
         "//type:block",
         "//type:enum",

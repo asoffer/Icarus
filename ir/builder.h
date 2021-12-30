@@ -382,16 +382,11 @@ struct Builder {
   // `CondJump`:     Transfers control to one of two blocks depending on a
   //                 run-time boolean value.
   // `ReturnJump`:   Transfers control back to the calling function.
-  // `ChooseJump`:   Transfers control to the appropriate block-handler. Note
-  //                 that this is highly specific to the current scope-definine
-  //                 language constructs which are likely to change.
-  // `JumpExitJump`: Transfers control to the calling jump/function, specifying
-  //                 the block it came from.
   void UncondJump(BasicBlock* block);
   void CondJump(RegOr<bool> cond, BasicBlock* true_block,
                 BasicBlock* false_block);
   void ReturnJump();
-  void BlockJump(Block b);
+  void BlockJump(Block b, BasicBlock* after);
 
   template <bool B>
   BasicBlock* EarlyExitOn(BasicBlock* exit_block, RegOr<bool> cond) {

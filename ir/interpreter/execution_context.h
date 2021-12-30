@@ -29,9 +29,10 @@ concept HasResolveMemberFunction = requires(T t) {
 // clang-format on
 
 struct StackFrameIterator {
-  StackFrameIterator(ir::NativeFn fn, StackFrame &frame)
-      : byte_code_iter_(fn.byte_code_iterator()),
-        begin_(fn.byte_code_iterator()),
+  StackFrameIterator(base::untyped_buffer::const_iterator byte_code_iter,
+                     StackFrame &frame)
+      : byte_code_iter_(byte_code_iter),
+        begin_(byte_code_iter),
         prev_index_(0),
         current_index_(0) {}
 
@@ -106,9 +107,16 @@ struct ExecutionContext {
   }
 
   template <typename InstSet>
+  void Execute(ir::Scope, StackFrame &frame) {
+    StackFrame *old = std::exchange(current_frame_, &frame);
+    absl::Cleanup c = [&] { current_frame_ = old; };
+    ExecuteBlocks<InstSet>();
+  }
+
+  template <typename InstSet>
   void Execute(ir::Fn fn, StackFrame &frame) {
     switch (fn.kind()) {
-      case ir::Fn::Kind::Native: CallFn<InstSet>(fn.native(), frame); break;
+      case ir::Fn::Kind::Native: CallFn<InstSet>(frame); break;
       case ir::Fn::Kind::Builtin: CallFn(fn.builtin(), frame); break;
       case ir::Fn::Kind::Foreign: CallFn(fn.foreign(), frame); break;
     }
@@ -119,7 +127,7 @@ struct ExecutionContext {
 
  private:
   template <typename InstSet>
-  void CallFn(ir::NativeFn fn, StackFrame &frame) {
+  void CallFn(StackFrame &frame) {
     StackFrame *old = std::exchange(current_frame_, &frame);
     absl::Cleanup c = [&] { current_frame_ = old; };
     ExecuteBlocks<InstSet>();
@@ -132,7 +140,7 @@ struct ExecutionContext {
   template <typename InstSet>
   void ExecuteBlocks() {
     internal_execution::StackFrameIterator frame_iter(
-        current_frame_->fn().native(), *current_frame_);
+        current_frame_->byte_code_iterator(), *current_frame_);
     auto &iter = frame_iter.byte_code_iterator();
     while (true) {
       ir::cmd_index_t cmd_index = iter.read<ir::cmd_index_t>();
@@ -265,7 +273,7 @@ struct ExecutionContext {
       } else {
         StackFrame frame =
             ir::ByteCodeReader::DeserializeTo<Inst>(*iter).Apply(ctx);
-        ctx.CallFn<InstSet>(frame.fn().native(), frame);
+        ctx.CallFn<InstSet>(frame);
       }
     };
   }

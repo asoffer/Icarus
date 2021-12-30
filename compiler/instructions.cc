@@ -1,5 +1,6 @@
 #include "compiler/instructions.h"
 
+#include "core/call.h"
 #include "ir/instruction/arithmetic.h"
 #include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
@@ -142,24 +143,30 @@ void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
   }
 
   block.jump().Visit([&](auto& j) {
-    using type = std::decay_t<decltype(j)>;
-    if constexpr (std::is_same_v<type, ir::JumpCmd::RetJump>) {
+    constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
+    if constexpr (type == base::meta<ir::JumpCmd::RetJump>) {
       base::Serialize(writer, ir::internal::kReturnInstruction);
-    } else if constexpr (std::is_same_v<type, ir::JumpCmd::UncondJump>) {
+    } else if constexpr (type == base::meta<ir::JumpCmd::UncondJump>) {
       base::Serialize(writer, ir::internal::kUncondJumpInstruction, j.block);
-    } else if constexpr (std::is_same_v<type, ir::JumpCmd::CondJump>) {
+    } else if constexpr (type == base::meta<ir::JumpCmd::CondJump>) {
       base::Serialize(writer, ir::internal::kCondJumpInstruction, j.reg,
                       j.true_block, j.false_block);
+    } else if constexpr (type == base::meta<ir::JumpCmd::BlockJump>) {
+      // j.block;
+      base::Serialize(writer, ir::internal::kUncondJumpInstruction, j.after);
+    } else if constexpr (type == base::meta<ir::JumpCmd::UnreachableJump>) {
+    } else {
+      static_assert(base::always_false(type));
     }
   });
 }
 
 }  // namespace
 
-ir::ByteCode EmitByteCode(ir::CompiledFn const& fn) {
+ir::ByteCode EmitByteCode(ir::internal::BlockGroupBase const& g) {
   ir::ByteCode byte_code;
   ir::ByteCodeWriter writer(&byte_code);
-  for (auto const& block : fn.blocks()) { EmitByteCode(writer, *block); }
+  for (auto const& block : g.blocks()) { EmitByteCode(writer, *block); }
   std::move(writer).Finalize();
   return byte_code;
 }
@@ -176,6 +183,25 @@ void InterpretAtCompileTime(ir::CompiledFn const& fn) {
 
 void InterpretAtCompileTime(ir::NativeFn f) {
   interpreter::Execute<instruction_set_t>(f);
+}
+
+void InterpretScopeAtCompileTime(
+    ir::Scope s,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const& arguments) {
+  interpreter::ExecutionContext ctx;
+  interpreter::StackFrame frame(s, ctx.stack());
+  core::BindArguments(
+      s.type()->params(), arguments,
+      [&, i = 0](type::QualType param,
+                 type::Typed<ir::CompleteResultRef> argument) mutable {
+        absl::Cleanup c  = [&] { ++i; };
+        core::Bytes size = param.type().is_big()
+                               ? interpreter::kArchitecture.pointer().bytes()
+                               : param.type().bytes(interpreter::kArchitecture);
+        frame.set_raw(ir::Reg::Arg(i), argument->raw().data(), size.value());
+      });
+
+  ctx.Execute<instruction_set_t>(s, frame);
 }
 
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f) {

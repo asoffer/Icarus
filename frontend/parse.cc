@@ -1212,12 +1212,15 @@ std::unique_ptr<ast::Node> BuildScopeNode(
     diagnostic::DiagnosticConsumer &diag) {
   SourceRange range(nodes.front()->range().begin(),
                     nodes.back()->range().end());
+  auto hashtags       = std::move(nodes[0]->as<ast::Call>().hashtags);
   auto [callee, args] = std::move(nodes[0]->as<ast::Call>()).extract();
 
   std::vector<ast::BlockNode> blocks;
   blocks.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
-  return std::make_unique<ast::ScopeNode>(range, std::move(callee),
-                                          std::move(args), std::move(blocks));
+  auto result = std::make_unique<ast::ScopeNode>(
+      range, std::move(callee), std::move(args), std::move(blocks));
+  result->hashtags = std::move(hashtags);
+  return result;
 }
 
 std::unique_ptr<ast::Node> BuildBlockNode(
@@ -1264,10 +1267,13 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
   block_stmt_nodes.push_back(std::move(nodes[2]));
 
   if (not nodes[0]->is<ast::ScopeNode>()) {
+    auto hashtags       = std::move(nodes[0]->as<ast::Call>().hashtags);
     auto [callee, args] = std::move(nodes[0]->as<ast::Call>()).extract();
-    nodes[0] = std::make_unique<ast::ScopeNode>(range, std::move(callee),
-                                                std::move(args),
-                                                std::vector<ast::BlockNode>{});
+    auto scope_node     = std::make_unique<ast::ScopeNode>(
+        range, std::move(callee), std::move(args),
+        std::vector<ast::BlockNode>{});
+    scope_node->hashtags = std::move(hashtags);
+    nodes[0]             = std::move(scope_node);
   }
   nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
       ast::BlockNode(range, std::string{nodes[1]->as<ast::Identifier>().name()},
@@ -1920,6 +1926,9 @@ static base::Global kRules = std::array{
            .execute = HandleBracedShortFunctionLiteral},
     rule_t{
         .match = {hashtag, if_expr}, .output = if_expr, .execute = AddHashtag},
+    rule_t{.match   = {hashtag, paren_call_expr},
+           .output  = paren_call_expr,
+           .execute = AddHashtag},
     rule_t{.match = {hashtag, EXPR}, .output = expr, .execute = AddHashtag},
     rule_t{.match = {hashtag, decl}, .output = decl, .execute = AddHashtag},
     rule_t{.match = {STMTS, eof}, .output = stmt_list, .execute = KeepOnly<0>},

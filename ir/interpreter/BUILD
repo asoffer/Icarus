@@ -41,6 +41,7 @@ cc_library(
         "//ir/blocks:basic",
         "//ir/value:native_fn",
         "//ir/value:reg",
+        "//ir/value:scope",
         "//type:type",
     ],
 )

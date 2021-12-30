@@ -27,20 +27,11 @@ struct JumpCmd {
   static JumpCmd Uncond(BasicBlock* block) {
     return JumpCmd(UncondJump{block});
   }
-  static JumpCmd ToBlock(Block b) { return JumpCmd(BlockJump{b}); }
-  static JumpCmd JumpExit(std::string name, BasicBlock* choose_block,
-                          core::Arguments<type::QualType> argument_types) {
-    return JumpCmd(
-        JumpExitJump{std::move(name), choose_block, std::move(argument_types)});
+  static JumpCmd ToBlock(Block b, BasicBlock* after) {
+    return JumpCmd(BlockJump{b, after});
   }
   static JumpCmd Cond(Reg r, BasicBlock* true_block, BasicBlock* false_block) {
     return JumpCmd(CondJump{r, true_block, false_block});
-  }
-  static JumpCmd Choose(std::vector<std::string_view> names,
-                        std::vector<BasicBlock*> blocks,
-                        std::vector<Arguments> args) {
-    return JumpCmd(
-        ChooseJump(std::move(names), std::move(blocks), std::move(args)));
   }
 
   JumpCmd(JumpCmd const&)     = default;
@@ -53,6 +44,7 @@ struct JumpCmd {
   struct RetJump {};
   struct BlockJump {
     Block block;
+    BasicBlock* after;
   };
   struct UncondJump {
     BasicBlock* block;
@@ -62,43 +54,12 @@ struct JumpCmd {
     BasicBlock* true_block;
     BasicBlock* false_block;
   };
-  struct JumpExitJump {
-    std::string name;
-    BasicBlock* choose_block;
-    core::Arguments<type::QualType> argument_types;
-  };
-  struct ChooseJump {
-    explicit ChooseJump(std::vector<std::string_view> names,
-                        std::vector<BasicBlock*> blocks,
-                        std::vector<Arguments> args)
-        : names_(std::move(names)),
-          blocks_(std::move(blocks)),
-          args_(std::move(args)) {
-      ASSERT(names_.size() == blocks_.size());
-      ASSERT(names_.size() == args_.size());
-    }
-
-    size_t size() const { return names_.size(); }
-    absl::Span<std::string_view const> names() const { return names_; }
-    absl::Span<BasicBlock* const> blocks() const { return blocks_; }
-    std::vector<Arguments>&& arguments() && { return std::move(args_); }
-    absl::Span<Arguments const> args() const {
-      return args_;
-    }  // TODO: rename `arguments()`
-
-   private:
-    std::vector<std::string_view> names_;
-    std::vector<BasicBlock*> blocks_;
-    std::vector<Arguments> args_;
-  };
 
   enum class Kind {
     Unreachable,
     Return,
     Uncond,
     Cond,
-    JumpExit,
-    Choose,
     BlockJump
   };
   Kind kind() const { return static_cast<Kind>(jump_.index()); }
@@ -111,9 +72,7 @@ struct JumpCmd {
       case Kind::Return: return fn(std::get<1>(jump_));
       case Kind::Uncond: return fn(std::get<2>(jump_));
       case Kind::Cond: return fn(std::get<3>(jump_));
-      case Kind::JumpExit: return fn(std::get<4>(jump_));
-      case Kind::Choose: return fn(std::get<5>(jump_));
-      case Kind::BlockJump: return fn(std::get<6>(jump_));
+      case Kind::BlockJump: return fn(std::get<4>(jump_));
     }
     UNREACHABLE();
   }
@@ -126,18 +85,12 @@ struct JumpCmd {
       case Kind::Return: return fn(std::get<1>(jump_));
       case Kind::Uncond: return fn(std::get<2>(jump_));
       case Kind::Cond: return fn(std::get<3>(jump_));
-      case Kind::JumpExit: return fn(std::get<4>(jump_));
-      case Kind::Choose: return fn(std::get<5>(jump_));
-      case Kind::BlockJump: return fn(std::get<6>(jump_));
+      case Kind::BlockJump: return fn(std::get<4>(jump_));
     }
     UNREACHABLE();
   }
 
   Reg CondReg() const { return std::get<CondJump>(jump_).reg; }
-
-  ChooseJump const* IfAsChooseJump() const {
-    return std::get_if<ChooseJump>(&jump_);
-  }
 
   BasicBlock* CondTarget(bool b) const {
     if (auto* u = std::get_if<CondJump>(&jump_)) {
@@ -168,16 +121,7 @@ struct JumpCmd {
                                base::UniversalPrintToString(j.reg),
                                j.false_block, j.true_block);
       } else if constexpr (std::is_same_v<type, BlockJump>) {
-        return absl::StrCat("jump scope-block-", j.block.value());
-      } else if constexpr (std::is_same_v<type, JumpExitJump>) {
-        return absl::StrCat("jump-exit ", j.name);
-      } else if constexpr (std::is_same_v<type, ChooseJump>) {
-        std::string out = "choose( ";
-        for (std::string_view name : j.names()) {
-          absl::StrAppend(&out, name, " ");
-        }
-        absl::StrAppend(&out, ")");
-        return out;
+        return absl::StrFormat("jump scope-block-%s (%p)", j.block, j.after);
       } else {
         static_assert(base::always_false<type>());
       }
@@ -188,9 +132,7 @@ struct JumpCmd {
   template <typename T>
   explicit JumpCmd(T&& val) : jump_(std::forward<T>(val)) {}
 
-  std::variant<UnreachableJump, RetJump, UncondJump, CondJump, JumpExitJump,
-               ChooseJump, BlockJump>
-      jump_;
+  std::variant<UnreachableJump, RetJump, UncondJump, CondJump, BlockJump> jump_;
 };
 
 }  // namespace ir

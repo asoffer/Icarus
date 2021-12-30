@@ -135,9 +135,9 @@ void Builder::UncondJump(BasicBlock *block) {
   CurrentBlock()->set_jump(JumpCmd::Uncond(block));
 }
 
-void Builder::BlockJump(Block b) {
+void Builder::BlockJump(Block b, BasicBlock *after) {
   ClearJumps(CurrentBlock()->jump(), CurrentBlock());
-  CurrentBlock()->set_jump(JumpCmd::ToBlock(b));
+  CurrentBlock()->set_jump(JumpCmd::ToBlock(b, after));
 }
 
 void Builder::ReturnJump() {

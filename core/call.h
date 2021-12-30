@@ -232,6 +232,20 @@ CallabilityResult Callability(Params<T> const& params, Arguments<U> const& args,
   return {};
 }
 
+template <typename T, typename U>
+void BindArguments(Params<T> const& params, Arguments<U> const& args,
+                   std::invocable<T, U> auto&& f) {
+  for (size_t i = 0; i < args.pos().size(); ++i) {
+    f(params[i].value, args[i]);
+  }
+
+  // TODO: Default arguments.
+  for (size_t i = args.pos().size(); i < params.size(); ++i) {
+    auto const& param = params[i];
+    f(param.value, args[param.name]);
+  }
+}
+
 }  // namespace core
 
 #endif  // ICARUS_CORE_CALL_H

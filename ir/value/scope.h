@@ -61,6 +61,10 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
     return ASSERT_NOT_NULL(get().type);
   }
 
+  base::untyped_buffer::const_iterator byte_code_iterator() const {
+    return data_->byte_code;
+  }
+
  private:
   friend CompiledScope;
   friend base::EnableExtensions;

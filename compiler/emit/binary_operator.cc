@@ -266,7 +266,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       scope.add_parameters(
           block, RegisterReferencing(builder(), lhs_type, lhs_buffer[0]));
-      builder().BlockJump(block);
+      builder().BlockJump(block, exit);
       builder().CurrentBlock() = exit;
     }
   }

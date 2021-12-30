@@ -100,7 +100,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       auto block = *EvaluateOrDiagnoseAs<ir::Block>(node->operand());
       ASSERT(state().scopes.size() != 0u);
       auto [entry, exit] = state().scopes.back().connection(block);
-      builder().BlockJump(block);
+      builder().BlockJump(block, exit);
       builder().CurrentBlock() = exit;
     } break;
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));

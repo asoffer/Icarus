@@ -87,8 +87,6 @@ void DumpControlFlowGraph(ir::CompiledFn const *fn, std::ostream &output) {
         constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
         if constexpr (type == base::meta<ir::JumpCmd::CondJump>) {
           output << "cond-jump: " << j.reg;
-        } else if constexpr (type == base::meta<ir::JumpCmd::ChooseJump>) {
-          output << "choose";
         }
       });
 
