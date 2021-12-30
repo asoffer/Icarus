@@ -47,17 +47,6 @@ Reg RegisterReferencing(Builder &builder, type::Type t,
   }
 }
 
-BasicBlock *Builder::AddBlock() { return CurrentGroup()->AppendBlock(); }
-BasicBlock *Builder::AddBlock(std::string header) {
-  return CurrentGroup()->AppendBlock(BasicBlock::DebugInfo{
-      .header = std::move(header),
-  });
-}
-
-BasicBlock *Builder::AddBlock(BasicBlock const &to_copy) {
-  return CurrentGroup()->AppendBlock(to_copy);
-}
-
 SetCurrent::SetCurrent(internal::BlockGroupBase &group, Builder &builder)
     : builder_(builder),
       old_group_(builder_.CurrentGroup()),
@@ -166,20 +155,6 @@ void Builder::Move(type::Typed<RegOr<addr_t>> to, type::Typed<Reg> from) {
 void Builder::Copy(type::Typed<RegOr<addr_t>> to, type::Typed<Reg> from) {
   CurrentBlock()->Append(
       ir::CopyInstruction{.type = to.type(), .from = *from, .to = *to});
-}
-
-Reg Builder::Align(RegOr<type::Type> r) {
-  return CurrentBlock()->Append(
-      TypeInfoInstruction{.kind   = TypeInfoInstruction::Kind::Alignment,
-                          .type   = r,
-                          .result = CurrentGroup()->Reserve()});
-}
-
-Reg Builder::Bytes(RegOr<type::Type> r) {
-  return CurrentBlock()->Append(
-      TypeInfoInstruction{.kind   = TypeInfoInstruction::Kind::Bytes,
-                          .type   = r,
-                          .result = CurrentGroup()->Reserve()});
 }
 
 Reg Builder::PtrIncr(RegOr<addr_t> ptr, RegOr<int64_t> inc,

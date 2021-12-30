@@ -355,38 +355,6 @@ struct LoadSymbolInstruction
   Reg result;
 };
 
-struct TypeInfoInstruction
-    : base::Extend<TypeInfoInstruction>::With<base::BaseTraverseExtension,
-                                              base::BaseSerializeExtension> {
-  enum class Kind : uint8_t { Alignment = 0, Bytes = 2 };
-
-  friend std::ostream& operator<<(std::ostream& os,
-                                  TypeInfoInstruction const& inst) {
-    return os << inst.result
-              << (inst.kind == Kind::Alignment ? " = alignment " : " = bytes ")
-              << inst.type.value();
-  }
-
-  std::string to_string() const {
-    std::stringstream ss;
-    ss << *this;
-    return std::move(ss).str();
-  }
-
-  uint64_t Resolve() const {
-    switch (kind) {
-      case Kind::Alignment:
-        return type.value().alignment(interpreter::kArchitecture).value();
-      case Kind::Bytes:
-        return type.value().bytes(interpreter::kArchitecture).value();
-    }
-  }
-
-  Kind kind;
-  RegOr<type::Type> type;
-  Reg result;
-};
-
 struct StructIndexInstruction
     : base::Extend<StructIndexInstruction>::With<base::BaseTraverseExtension,
                                                  base::BaseSerializeExtension,

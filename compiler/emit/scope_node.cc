@@ -29,22 +29,13 @@
 namespace compiler {
 namespace {
 
-template <typename T>
-void MakePhi(ir::Builder &builder, std::string_view name,
-             ir::RegOr<ir::addr_t> addr, ir::ScopeState &state) {
-  ir::PhiInstruction<T> *phi = builder.PhiInst<T>();
-  state.set_phis[name].push_back(
-      [phi](ir::BasicBlock const *block, ir::Reg r) { phi->add(block, r); });
-  builder.Store<ir::RegOr<T>>(phi->result, addr);
-}
-
 // BasicBlockMapping tracks a mapping from basic blocks in a scope being inlined
 // to their corresponding created basic block in their inlined location.
 struct BasicBlockMapping {
   explicit BasicBlockMapping(ir::Builder &builder, ir::Scope scope) {
     for (auto const *block : scope->blocks()) {
-      auto [iter, inserted] =
-          mapping_.try_emplace(block, builder.AddBlock(*block));
+      auto [iter, inserted] = mapping_.try_emplace(
+          block, builder.CurrentGroup()->AppendBlock(*block));
       ASSERT(inserted == true);
     }
   }
@@ -67,7 +58,7 @@ ir::BasicBlock *InlineScope(
     ir::Scope to_be_inlined, ir::PartialResultBuffer const &arguments,
     absl::Span<std::pair<ir::BasicBlock *, ir::BasicBlock *>>
         block_entry_exit) {
-  auto landing = c.builder().AddBlock();
+  auto landing = c.builder().CurrentGroup()->AppendBlock();
 
   auto *start_block          = c.builder().CurrentBlock();
   size_t inlined_start_index = c.builder().CurrentGroup()->blocks().size();
@@ -88,7 +79,7 @@ ir::BasicBlock *InlineScope(
   size_t block_index = 0;
   for (auto const &block : blocks) {
     size_t param_index            = 0;
-    auto *parameter_binding_block = c.builder().AddBlock();
+    auto *parameter_binding_block = c.builder().CurrentGroup()->AppendBlock();
     c.builder().CurrentBlock()    = parameter_binding_block;
     for (auto const &param : block.params()) {
       ir::Reg r =
@@ -182,7 +173,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
 
   for (auto const &block : node->blocks()) {
     auto &[entry, exit]      = block_entry_exit.emplace_back();
-    entry                    = builder().AddBlock();
+    entry                    = builder().CurrentGroup()->AppendBlock();
     builder().CurrentBlock() = entry;
     ir::PartialResultBuffer ignored;
     EmitToBuffer(&block, ignored);

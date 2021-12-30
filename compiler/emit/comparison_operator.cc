@@ -69,17 +69,35 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
       case frontend::Operator::Lt:
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Lt(bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
-                         bldr.CastTo<T>(rhs.type(), (*rhs)[0]));
-        });
+                          double, ir::addr_t>(
+            t, [&]<typename T>() -> ir::RegOr<bool> {
+              auto l = bldr.CastTo<T>(lhs.type(), (*lhs)[0]);
+              auto r = bldr.CastTo<T>(rhs.type(), (*rhs)[0]);
+              if (not l.is_reg() and not r.is_reg()) {
+                return ir::LtInstruction<T>::Apply(l.value(), r.value());
+              } else {
+                return bldr.CurrentBlock()->Append(ir::LtInstruction<T>{
+                    .lhs    = l,
+                    .rhs    = r,
+                    .result = bldr.CurrentGroup()->Reserve()});
+              }
+            });
       case frontend::Operator::Le:
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Le(bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
-                         bldr.CastTo<T>(rhs.type(), (*rhs)[0]));
-        });
+                          double, ir::addr_t>(
+            t, [&]<typename T>() -> ir::RegOr<bool> {
+              auto l = bldr.CastTo<T>(lhs.type(), (*lhs)[0]);
+              auto r = bldr.CastTo<T>(rhs.type(), (*rhs)[0]);
+              if (not l.is_reg() and not r.is_reg()) {
+                return ir::LeInstruction<T>::Apply(l.value(), r.value());
+              } else {
+                return bldr.CurrentBlock()->Append(ir::LeInstruction<T>{
+                    .lhs    = l,
+                    .rhs    = r,
+                    .result = bldr.CurrentGroup()->Reserve()});
+              }
+            });
       case frontend::Operator::Eq:
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
@@ -97,17 +115,35 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
       case frontend::Operator::Ge:
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Le(bldr.CastTo<T>(rhs.type(), (*rhs)[0]),
-                         bldr.CastTo<T>(lhs.type(), (*lhs)[0]));
-        });
+                          double, ir::addr_t>(
+            t, [&]<typename T>() -> ir::RegOr<bool> {
+              auto l = bldr.CastTo<T>(lhs.type(), (*lhs)[0]);
+              auto r = bldr.CastTo<T>(rhs.type(), (*rhs)[0]);
+              if (not l.is_reg() and not r.is_reg()) {
+                return ir::LeInstruction<T>::Apply(r.value(), l.value());
+              } else {
+                return bldr.CurrentBlock()->Append(ir::LeInstruction<T>{
+                    .lhs    = r,
+                    .rhs    = l,
+                    .result = bldr.CurrentGroup()->Reserve()});
+              }
+            });
       case frontend::Operator::Gt:
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Lt(bldr.CastTo<T>(rhs.type(), (*rhs)[0]),
-                         bldr.CastTo<T>(lhs.type(), (*lhs)[0]));
-        });
+                          double, ir::addr_t>(
+            t, [&]<typename T>() -> ir::RegOr<bool> {
+              auto l = bldr.CastTo<T>(lhs.type(), (*lhs)[0]);
+              auto r = bldr.CastTo<T>(rhs.type(), (*rhs)[0]);
+              if (not l.is_reg() and not r.is_reg()) {
+                return ir::LtInstruction<T>::Apply(r.value(), l.value());
+              } else {
+                return bldr.CurrentBlock()->Append(ir::LtInstruction<T>{
+                    .lhs    = r,
+                    .rhs    = l,
+                    .result = bldr.CurrentGroup()->Reserve()});
+              }
+            });
         // TODO case frontend::Operator::And: cmp = *lhs; break;
       default: UNREACHABLE();
     }
@@ -136,7 +172,7 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
   EmitToBuffer(node->exprs()[0], lhs_buffer);
   type::Type lhs_type = context().qual_types(node->exprs()[0])[0].type();
 
-  auto *land_block = builder().AddBlock();
+  auto *land_block = builder().CurrentGroup()->AppendBlock();
   for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
     rhs_buffer.clear();
     EmitToBuffer(node->exprs()[i], rhs_buffer);
@@ -147,7 +183,7 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
 
     phi_blocks.push_back(builder().CurrentBlock());
     phi_values.push_back(false);
-    auto *next_block = builder().AddBlock();
+    auto *next_block = builder().CurrentGroup()->AppendBlock();
     builder().CondJump(cmp, next_block, land_block);
     builder().CurrentBlock() = next_block;
     lhs_buffer               = std::move(rhs_buffer);

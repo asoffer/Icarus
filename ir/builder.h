@@ -44,29 +44,8 @@ namespace ir {
 // approach by carrying around extra state (like loads/store-caching).
 
 struct Builder {
-  BasicBlock* AddBlock();
-  BasicBlock* AddBlock(std::string header);
-  BasicBlock* AddBlock(BasicBlock const& to_copy);
-
   ir::OutParams OutParams(absl::Span<type::Type const> types,
                           absl::Span<type::Typed<RegOr<addr_t>> const> to = {});
-
-  template <typename KeyType, typename ValueType>
-  absl::flat_hash_map<KeyType, BasicBlock*> AddBlocks(
-      absl::flat_hash_map<KeyType, ValueType> const& table) {
-    absl::flat_hash_map<KeyType, BasicBlock*> result;
-    for (auto const& [key, val] : table) { result.emplace(key, AddBlock()); }
-    return result;
-  }
-
-  absl::flat_hash_map<ast::Expression const*, BasicBlock*> AddBlocks(
-      ast::OverloadSet const& os) {
-    absl::flat_hash_map<ast::Expression const*, BasicBlock*> result;
-    for (auto const* overload : os.members()) {
-      result.emplace(overload, AddBlock());
-    }
-    return result;
-  }
 
   Reg Reserve() { return CurrentGroup()->Reserve(); }
 
@@ -91,22 +70,6 @@ struct Builder {
                           CompleteResultBuffer& buffer);
 
   // INSTRUCTIONS
-
-  template <typename Lhs, typename Rhs>
-  RegOr<bool> Lt(Lhs const& lhs, Rhs const& rhs) {
-    using type = reduced_type_t<Lhs>;
-    if constexpr (base::meta<Lhs>.template is_a<RegOr>() and
-                  base::meta<Rhs>.template is_a<RegOr>()) {
-      if (not lhs.is_reg() and not rhs.is_reg()) {
-        return LtInstruction<type>::Apply(lhs.value(), rhs.value());
-      }
-
-      return CurrentBlock()->Append(LtInstruction<reduced_type_t<Lhs>>{
-          .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-    } else {
-      return Lt(RegOr<type>(lhs), RegOr<type>(rhs));
-    }
-  }
 
   template <typename Lhs, typename Rhs>
   RegOr<bool> Le(Lhs const& lhs, Rhs const& rhs) {
@@ -250,56 +213,6 @@ struct Builder {
     return result;
   }
 
-  // Usually it is sufficient to determine all the inputs to a phi instruction
-  // upfront, but sometimes it is useful to construct a phi instruction without
-  // having set its inputs.
-  //
-  // TODO: Right now we are relying on the fact that Inst stores values on the
-  // heap, but this may not always be the case.
-  template <typename T>
-  PhiInstruction<T>* PhiInst() {
-    PhiInstruction<T> inst;
-    inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return CurrentBlock()
-        ->instructions()
-        .back()
-        .template if_as<PhiInstruction<T>>();
-  }
-
-  template <typename F>
-  void OnEachArrayElement(type::Array const* t, Reg array_reg, F fn) {
-    auto* data_ptr_type = type::Ptr(t->data_type());
-
-    auto ptr     = PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
-    auto end_ptr = PtrIncr(ptr, t->length().value(), data_ptr_type);
-
-    auto* start_block = CurrentBlock();
-    auto* loop_body   = AddBlock();
-    auto* land_block  = AddBlock();
-    auto* cond_block  = AddBlock();
-
-    UncondJump(cond_block);
-
-    CurrentBlock() = cond_block;
-    auto* phi      = PhiInst<addr_t>();
-    CondJump(Eq(RegOr<addr_t>(phi->result), end_ptr), land_block, loop_body);
-
-    CurrentBlock() = loop_body;
-    fn(phi->result);
-    Reg next = PtrIncr(phi->result, 1, data_ptr_type);
-    UncondJump(cond_block);
-
-    phi->add(start_block, ptr);
-    phi->add(CurrentBlock(), next);
-
-    CurrentBlock() = land_block;
-  }
-
-  void Comment(std::string s) {
-    CurrentBlock()->Append(CommentInstruction{.comment = std::move(s)});
-  }
-
   Reg PtrFix(RegOr<addr_t> addr, type::Type desired_type) {
     // TODO must this be a register if it's loaded?
     if (desired_type.get()->is_big()) { return addr.reg(); }
@@ -393,17 +306,6 @@ struct Builder {
   void ReturnJump();
   void BlockJump(Block b);
 
-  template <bool B>
-  BasicBlock* EarlyExitOn(BasicBlock* exit_block, RegOr<bool> cond) {
-    auto* continue_block = AddBlock();
-    if constexpr (B) {
-      CondJump(cond, exit_block, continue_block);
-    } else {
-      CondJump(cond, continue_block, exit_block);
-    }
-    return continue_block;
-  }
-
   // Special members function instructions. Calling these typically calls
   // builtin functions (or, in the case of primitive types, do nothing).
   void Move(type::Typed<RegOr<addr_t>> to, type::Typed<Reg> from);
@@ -423,10 +325,6 @@ struct Builder {
     return typed_reg.type();
   }
   Reg PtrIncr(RegOr<addr_t> ptr, RegOr<int64_t> inc, type::Pointer const* t);
-
-  // Low-level size/alignment commands
-  Reg Align(RegOr<type::Type> r);
-  Reg Bytes(RegOr<type::Type> r);
 
   Reg Alloca(type::Type t);
   Reg TmpAlloca(type::Type t);
@@ -460,7 +358,9 @@ struct Builder {
     return current_.block_termination_state_;
   }
 
-  RegOr<addr_t> addr(ast::Declaration::Id const* id) const { return addr_.at(id); }
+  RegOr<addr_t> addr(ast::Declaration::Id const* id) const {
+    return addr_.at(id);
+  }
   void set_addr(ast::Declaration::Id const* id, RegOr<addr_t> addr) {
     addr_.emplace(id, addr);
   }

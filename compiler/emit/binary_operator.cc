@@ -69,11 +69,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
   switch (node->kind()) {
     case ast::BinaryOperator::Kind::Or: {
       auto lhs_ir      = EmitAs<bool>(&node->lhs());
-      auto *land_block = builder().AddBlock();
+      auto *land_block = builder().CurrentGroup()->AppendBlock();
 
       std::vector<ir::BasicBlock const *> phi_blocks;
 
-      auto *next_block = builder().AddBlock();
+      auto *next_block = builder().CurrentGroup()->AppendBlock();
       builder().CondJump(lhs_ir, land_block, next_block);
       phi_blocks.push_back(builder().CurrentBlock());
       builder().CurrentBlock() = next_block;
@@ -127,11 +127,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       auto lhs_ir = EmitAs<bool>(&node->lhs());
       auto rhs_ir = EmitAs<bool>(&node->rhs());
 
-      auto *land_block = builder().AddBlock();
+      auto *land_block = builder().CurrentGroup()->AppendBlock();
 
       std::vector<ir::BasicBlock const *> phi_blocks;
 
-      auto *next_block = builder().AddBlock();
+      auto *next_block = builder().CurrentGroup()->AppendBlock();
       builder().CondJump(lhs_ir, next_block, land_block);
       phi_blocks.push_back(builder().CurrentBlock());
       builder().CurrentBlock() = next_block;
@@ -259,7 +259,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       ir::PartialResultBuffer buffer;
       auto block = *EvaluateOrDiagnoseAs<ir::Block>(&node->rhs());
       ASSERT(state().scopes.size() != 0u);
-      ir::Scope scope = state().scopes.back();
+      ir::Scope scope    = state().scopes.back();
       auto [entry, exit] = scope.connection(block);
       ir::PartialResultBuffer lhs_buffer;
       EmitToBuffer(&node->lhs(), lhs_buffer);
@@ -274,7 +274,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
 
 void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
                             ir::PartialResultBuffer &out) {
-  auto lhs_lval  = EmitRef(&node->lhs());
+  auto lhs_lval = EmitRef(&node->lhs());
 
   switch (node->kind()) {
     case ast::BinaryOperator::Kind::SymbolOr: {
