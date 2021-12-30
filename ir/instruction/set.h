@@ -59,6 +59,12 @@ struct InstructionSet {
   using instructions_t = decltype(internal_instructions::ExpandedInstructions(
       base::type_list<InstructionsOrSets...>{}, base::type_list<>{}));
 
+  template <typename I>
+  static cmd_index_t Index() {
+    // TODO: This could be constexpr.
+    return index_mapping_.find(base::meta<I>)->second;
+  }
+
   static cmd_index_t Index(Inst const &inst) {
     auto iter = index_mapping_.find(inst.rtti());
 #if defined(ICARUS_DEBUG)

@@ -237,18 +237,20 @@ struct Context {
         scope_context_data_.emplace(std::move(names));
     auto [iter, inserted] =
         scope_contexts_.emplace(node, ir::ScopeContext(&*data_iter));
-    ASSERT(inserted == true);
+    // Insertion is not guaranteed because we share contexts across across scope
+    // instantiations.
     return iter->second;
   }
 
   ir::ScopeContext set_scope_context(
       ast::ScopeNode const *node,
-      absl::Span<ir::ScopeContext::block_type> names) {
+      absl::Span<ir::ScopeContext::block_type const> names) {
     auto [data_iter, data_inserted] =
         scope_context_data_.emplace(names.begin(), names.end());
     auto [iter, inserted] =
         scope_contexts_.emplace(node, ir::ScopeContext(&*data_iter));
-    ASSERT(inserted == true);
+    // Insertion is not guaranteed because we share contexts across across scope
+    // instantiations.
     return iter->second;
   }
 

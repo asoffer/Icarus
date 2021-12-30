@@ -116,7 +116,7 @@ struct ExecutionContext {
   template <typename InstSet>
   void Execute(ir::Fn fn, StackFrame &frame) {
     switch (fn.kind()) {
-      case ir::Fn::Kind::Native: CallFn<InstSet>(frame); break;
+      case ir::Fn::Kind::Native: CallNative<InstSet>(frame); break;
       case ir::Fn::Kind::Builtin: CallFn(fn.builtin(), frame); break;
       case ir::Fn::Kind::Foreign: CallFn(fn.foreign(), frame); break;
     }
@@ -127,7 +127,7 @@ struct ExecutionContext {
 
  private:
   template <typename InstSet>
-  void CallFn(StackFrame &frame) {
+  void CallNative(StackFrame &frame) {
     StackFrame *old = std::exchange(current_frame_, &frame);
     absl::Cleanup c = [&] { current_frame_ = old; };
     ExecuteBlocks<InstSet>();
@@ -140,7 +140,7 @@ struct ExecutionContext {
   template <typename InstSet>
   void ExecuteBlocks() {
     internal_execution::StackFrameIterator frame_iter(
-        current_frame_->byte_code_iterator(), *current_frame_);
+        current_frame_->byte_code_begin(), *current_frame_);
     auto &iter = frame_iter.byte_code_iterator();
     while (true) {
       ir::cmd_index_t cmd_index = iter.read<ir::cmd_index_t>();
@@ -273,7 +273,7 @@ struct ExecutionContext {
       } else {
         StackFrame frame =
             ir::ByteCodeReader::DeserializeTo<Inst>(*iter).Apply(ctx);
-        ctx.CallFn<InstSet>(frame);
+        ctx.CallNative<InstSet>(frame);
       }
     };
   }

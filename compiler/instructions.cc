@@ -21,6 +21,22 @@
 namespace compiler {
 namespace {
 
+struct InsertBlockInstruction
+    : base::Extend<InsertBlockInstruction>::With<base::BaseTraverseExtension,
+                                                 base::BaseSerializeExtension,
+                                                 ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "insert block %1$s";
+
+  void Apply(interpreter::ExecutionContext& ctx) {
+    // TODO: Out(0) may not be sufficient.
+    auto& blocks = *ASSERT_NOT_NULL(reinterpret_cast<std::vector<ir::Block>*>(
+        ctx.resolve<ir::addr_t>(ir::Reg::Out(0))));
+    blocks.push_back(block);
+  }
+
+  ir::Block block;
+};
+
 // TODO: Include ModInstruction, but only for non-floating-point types.
 template <typename... Ts>
 using ArithmeticInstructions =
@@ -132,7 +148,7 @@ struct instruction_set_t
           ir::CopyInitInstruction, ir::MoveInstruction, ir::CopyInstruction,
           type::SliceLengthInstruction, type::SliceDataInstruction,
           ir::DebugIrInstruction, ir::AbortInstruction,
-          TypeConstructorInstructions> {};
+          TypeConstructorInstructions, InsertBlockInstruction> {};
 
 void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
   writer.set_block(&block);
@@ -152,9 +168,16 @@ void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
       base::Serialize(writer, ir::internal::kCondJumpInstruction, j.reg,
                       j.true_block, j.false_block);
     } else if constexpr (type == base::meta<ir::JumpCmd::BlockJump>) {
-      // j.block;
-      base::Serialize(writer, ir::internal::kUncondJumpInstruction, j.after);
+      // TODO: Block arguments
+      base::Serialize(writer,
+                      instruction_set_t::Index<InsertBlockInstruction>(),
+                      InsertBlockInstruction{.block = j.block},
+                      ir::internal::kUncondJumpInstruction, j.after);
     } else if constexpr (type == base::meta<ir::JumpCmd::UnreachableJump>) {
+      // We very well may have built up a representation in IR that has
+      // unreachable blocks. That's okay and we can simply ignore them when
+      // emitting IR to byte-code. It's only when executing an unreachable jump
+      // that we know a problem occurred.
     } else {
       static_assert(base::always_false(type));
     }
@@ -185,7 +208,7 @@ void InterpretAtCompileTime(ir::NativeFn f) {
   interpreter::Execute<instruction_set_t>(f);
 }
 
-void InterpretScopeAtCompileTime(
+std::vector<ir::Block> InterpretScopeAtCompileTime(
     ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const& arguments) {
   interpreter::ExecutionContext ctx;
@@ -201,7 +224,11 @@ void InterpretScopeAtCompileTime(
         frame.set_raw(ir::Reg::Arg(i), argument->raw().data(), size.value());
       });
 
+  std::vector<ir::Block> result;
+  auto* result_ptr = &result;
+  frame.set(ir::Reg::Out(0), reinterpret_cast<ir::addr_t>(result_ptr));
   ctx.Execute<instruction_set_t>(s, frame);
+  return result;
 }
 
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f) {

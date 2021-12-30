@@ -28,12 +28,12 @@ struct StackFrame {
   StackFrame(ir::Scope s, Stack &stack);
   ~StackFrame();
 
+  base::untyped_buffer::const_iterator byte_code_begin() const {
+    return byte_code_iter_;
+  }
+
   std::byte const *raw(ir::Reg r) const { return data_.raw(offset(r)); }
   std::byte *raw(ir::Reg r) { return data_.raw(offset(r)); }
-
-  base::untyped_buffer::const_iterator byte_code_iterator() const {
-    return byte_code_iter_;
-  };
 
   template <typename T>
   auto get(ir::Reg r) const {

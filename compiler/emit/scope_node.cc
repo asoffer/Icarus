@@ -164,33 +164,38 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
 
   if (node->hashtags.contains(ir::Hashtag::Const)) {
     context.ir().WriteByteCode<EmitByteCode>(scope);
-    InterpretScopeAtCompileTime(scope, constant_arguments);
-    return;
+    auto blocks = InterpretScopeAtCompileTime(scope, constant_arguments);
+
+    for (auto block : blocks) {
+      ir::PartialResultBuffer ignored;
+      EmitToBuffer(&node->blocks()[block.value()], ignored);
+    }
+  } else {
+    ir::PartialResultBuffer argument_buffer;
+
+    auto *start = builder().CurrentBlock();
+    EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
+                  node->arguments(), constant_arguments, argument_buffer);
+
+    std::vector<std::pair<ir::BasicBlock *, ir::BasicBlock *>> block_entry_exit;
+    block_entry_exit.reserve(node->blocks().size());
+
+    for (auto const &block : node->blocks()) {
+      auto &[entry, exit]      = block_entry_exit.emplace_back();
+      entry                    = builder().CurrentGroup()->AppendBlock();
+      builder().CurrentBlock() = entry;
+      ir::PartialResultBuffer ignored;
+      EmitToBuffer(&block, ignored);
+      exit = builder().CurrentBlock();
+    }
+
+    builder().CurrentBlock() = start;
+
+    builder().CurrentBlock() =
+        InlineScope(*this, node->blocks(), scope, argument_buffer,
+                    absl::MakeSpan(block_entry_exit));
   }
-
-  ir::PartialResultBuffer argument_buffer;
-
-  auto *start = builder().CurrentBlock();
-  EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
-                node->arguments(), constant_arguments, argument_buffer);
-
-  std::vector<std::pair<ir::BasicBlock *, ir::BasicBlock *>> block_entry_exit;
-  block_entry_exit.reserve(node->blocks().size());
-
-  for (auto const &block : node->blocks()) {
-    auto &[entry, exit]      = block_entry_exit.emplace_back();
-    entry                    = builder().CurrentGroup()->AppendBlock();
-    builder().CurrentBlock() = entry;
-    ir::PartialResultBuffer ignored;
-    EmitToBuffer(&block, ignored);
-    exit = builder().CurrentBlock();
-  }
-
-  builder().CurrentBlock() = start;
-
-  builder().CurrentBlock() =
-      InlineScope(*this, node->blocks(), scope, argument_buffer,
-                  absl::MakeSpan(block_entry_exit));
+  LOG("ScopeNode", "%s", *builder().CurrentGroup());
 }
 
 void Compiler::EmitCopyInit(
