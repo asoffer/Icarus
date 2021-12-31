@@ -6,6 +6,7 @@
 
 #include "base/debug.h"
 #include "compiler/bound_parameters.h"
+#include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"

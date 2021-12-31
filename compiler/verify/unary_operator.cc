@@ -1,5 +1,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
+#include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "compiler/type_for_diagnostic.h"

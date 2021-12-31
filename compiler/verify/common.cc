@@ -3,6 +3,7 @@
 #include <optional>
 #include <string_view>
 
+#include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"
@@ -20,14 +21,14 @@ struct CompiledModule;
 
 namespace {
 
-void ExtractParams(
+void ExtractParameters(
     Compiler &compiler, ast::Expression const *callee, type::Type t,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments,
-    std::vector<std::tuple<ast::Expression const *, type::ReturningType const *,
+    std::vector<std::tuple<ast::Expression const *, type::Callable const *,
                            core::Params<type::QualType>>> &overload_params,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
         &errors) {
-  if (auto const *f = t.if_as<type::ReturningType>()) {
+  if (auto const *f = t.if_as<type::Callable>()) {
     auto result = core::Callability(f->params(), arguments,
                                     [](auto const &...) { return true; });
     if (result.ok()) {
@@ -39,7 +40,8 @@ void ExtractParams(
   } else if (auto const *os = t.if_as<type::OverloadSet>()) {
     for (type::Type overload : os->members()) {
       // TODO: Callee provenance is wrong here.
-      ExtractParams(compiler, callee, overload, arguments, overload_params, errors);
+      ExtractParameters(compiler, callee, overload, arguments, overload_params,
+                        errors);
     }
     if (overload_params.empty()) { return; }
   } else if (auto const *gf = t.if_as<type::Generic<type::Function>>()) {
@@ -195,15 +197,14 @@ type::QualType VerifyCallee(Compiler &c, ast::Expression const *callee,
   return c.VerifyType(callee)[0];
 }
 
-std::variant<
-    std::vector<type::QualType>,
-    absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
+std::variant<ast::OverloadSet, absl::flat_hash_map<type::Callable const *,
+                                                   core::CallabilityResult>>
 VerifyCall(Compiler &c, VerifyCallParameters const &vcp) {
   auto const & [callee, arguments] = vcp;
   LOG("VerifyCall", "%s", callee->DebugString());
 
   absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
-  std::vector<std::tuple<ast::Expression const *, type::ReturningType const *,
+  std::vector<std::tuple<ast::Expression const *, type::Callable const *,
                          core::Params<type::QualType>>>
       overload_params;
 
@@ -216,14 +217,11 @@ VerifyCall(Compiler &c, VerifyCallParameters const &vcp) {
       // instantiated contexts if that's what's needed here.
       auto &ctx = (&context_root == &callee_root) ? c.context() : callee_root;
       type::QualType qt = ctx.qual_types(called)[0];
-      ExtractParams(c, called, qt.type(), arguments, overload_params, errors);
+      ExtractParameters(c, called, qt.type(), arguments, overload_params, errors);
     }
   }
 
   LOG("VerifyCall", "%u overloads", overload_params.size());
-  // TODO: Expansion is relevant too.
-  std::vector<std::vector<type::Type>> return_types;
-
   type::Quals quals = type::Quals::Const();
   auto args_qt      = arguments.Transform([&](auto const &typed_value) {
     auto qt = typed_value->empty()
@@ -245,8 +243,6 @@ VerifyCall(Compiler &c, VerifyCallParameters const &vcp) {
         });
     if (callability.ok()) {
       os.insert(called);
-      return_types.emplace_back(callable_type->return_types().begin(),
-                                callable_type->return_types().end());
       if (not callable_type->is<type::Generic<type::Struct>>()) {
         quals &= ~type::Quals::Const();
       }
@@ -256,13 +252,53 @@ VerifyCall(Compiler &c, VerifyCallParameters const &vcp) {
   }
 
   if (os.members().empty()) { return errors; }
+  c.context().SetViableOverloads(callee, os);
+  return os;
+}
 
-  c.context().SetViableOverloads(callee, std::move(os));
+std::variant<
+    std::vector<type::QualType>,
+    absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
+VerifyReturningCall(Compiler &c, VerifyCallParameters const &vcp) {
+  auto result = VerifyCall(c, vcp);
+  if (auto *error = std::get_if<
+          absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>(
+          &result)) {
+    return std::move(*error);
+  }
+
+  // TODO: Expansion is relevant too.
+  std::vector<std::vector<type::Type>> return_types;
+
+  auto const &[callee, arguments] = vcp;
+  auto const &os                  = std::get<ast::OverloadSet>(result);
+
+  for (auto const *member : os.members()) {
+    Context const &callee_root =
+        ModuleFor(member)->as<CompiledModule>().context();
+    // TODO: This is fraught, because we still don't have access to
+    // instantiated contexts if that's what's needed here.
+    Context const &context_root = c.context().root();
+    auto &ctx = (&context_root == &callee_root) ? c.context() : callee_root;
+
+    type::Type t = ctx.qual_types(member)[0].type();
+    if (type::ReturningType const *rt = t.if_as<type::ReturningType>()) {
+      return_types.emplace_back(rt->return_types().begin(),
+                                rt->return_types().end());
+    } else if (auto const *gf = t.if_as<type::Generic<type::Function>>()) {
+      auto const *i = gf->Instantiate(c.work_resources(), arguments);
+      if (not i) { continue; }
+      return_types.emplace_back(i->return_types().begin(),
+                                i->return_types().end());
+    }
+  }
 
   ASSERT(return_types.size() == 1u);
   std::vector<type::QualType> qts;
   qts.reserve(return_types.front().size());
-  for (type::Type t : return_types.front()) { qts.emplace_back(t, quals); }
+  for (type::Type t : return_types.front()) {
+    qts.push_back(type::QualType::NonConstant(t));
+  }
   return qts;
 }
 

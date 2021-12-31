@@ -7,6 +7,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
+#include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "compiler/type_for_diagnostic.h"
@@ -505,26 +506,13 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
     return context().set_qual_type(node, type::QualType::Error());
   }
 
-  auto qts_or_errors =
-      VerifyCall(*this, {.callee = node->callee(), .arguments = arg_vals});
+  auto qts_or_errors = VerifyReturningCall(
+      *this, {.callee = node->callee(), .arguments = arg_vals});
   if (auto *errors = std::get_if<
           absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>(
           &qts_or_errors)) {
-    core::Arguments<std::string> argument_type_strings;
-    for (auto const &arg : node->positional_arguments()) {
-      argument_type_strings.pos_emplace(
-          TypeForDiagnostic(&arg.expr(), context()));
-    }
-    for (auto const &arg : node->named_arguments()) {
-      argument_type_strings.named_emplace(
-          arg.name(), TypeForDiagnostic(&arg.expr(), context()));
-    }
-
-    diag().Consume(UncallableWithArguments{
-        .arguments = std::move(argument_type_strings),
-        .errors    = std::move(*errors),
-        .view      = SourceViewFor(node->callee()),
-    });
+    diag().Consume(UncallableError(context(), node->callee(), node->arguments(),
+                                   std::move(*errors)));
     return context().set_qual_type(node, type::QualType::Error());
   }
   auto &qual_type = std::get<std::vector<type::QualType>>(qts_or_errors);

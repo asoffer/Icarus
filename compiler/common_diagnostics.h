@@ -8,7 +8,10 @@
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
+#include "ast/ast.h"
 #include "base/meta.h"
+#include "compiler/context.h"
+#include "compiler/type_for_diagnostic.h"
 #include "core/call.h"
 #include "diagnostic/message.h"
 #include "frontend/source/buffer.h"
@@ -177,6 +180,12 @@ struct UncallableWithArguments {
   absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
   frontend::SourceView view;
 };
+
+UncallableWithArguments UncallableError(
+    Context const &context, ast::Expression const *name,
+    absl::Span<ast::Call::Argument const> arguments,
+    absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
+        errors);
 
 }  // namespace compiler
 

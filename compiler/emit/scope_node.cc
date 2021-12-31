@@ -14,8 +14,10 @@
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "base/meta.h"
+#include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/module.h"
 #include "ir/blocks/basic.h"
 #include "ir/blocks/group.h"
 #include "ir/compiled_scope.h"
@@ -106,7 +108,15 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
 void Compiler::EmitToBuffer(ast::ScopeNode const *node,
                             ir::PartialResultBuffer &out) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
-  auto unbound_scope = *EvaluateOrDiagnoseAs<ir::UnboundScope>(node->name());
+  auto const &os = context().ViableOverloads(node->name());
+  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
+  // TODO: There should be an easier way to ensure we're generating with the
+  // right context.
+  Compiler c(&ModuleFor(os.members()[0])->as<CompiledModule>().context(),
+             resources());
+  c.set_work_resources(work_resources());
+  auto unbound_scope =
+      *c.EvaluateOrDiagnoseAs<ir::UnboundScope>(os.members()[0]);
 
   ir::ScopeContext scope_context = context().ScopeContext(node);
 

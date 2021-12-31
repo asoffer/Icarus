@@ -12,8 +12,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(
                    auto params, VerifyParams(node->params()));
 
   VerifyType(&node->context());
-  return context().set_qual_type(node,
-                                 type::QualType::Constant(type::UnboundScope));
+  return context().set_qual_type(
+      node, type::QualType::Constant(type::Scp(std::move(params))));
 }
 
 }  // namespace compiler

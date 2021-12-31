@@ -1,4 +1,5 @@
 #include "ast/ast.h"
+#include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/module.h"

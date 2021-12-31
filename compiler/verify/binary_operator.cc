@@ -1,5 +1,6 @@
 #include <functional>
 
+#include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"

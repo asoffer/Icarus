@@ -98,7 +98,7 @@ bool Compare(::type::Type t) {
   } else if constexpr (base::meta<T> == base::meta<ir::ScopeContext>) {
     return t == type::ScopeContext;
   } else if constexpr (base::meta<T> == base::meta<ir::UnboundScope>) {
-    return t == type::UnboundScope;
+    return t == type::UnboundScope or t.is<type::Scope>();
   } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
     return t.is<::type::Block>();
   } else if constexpr (base::meta<T> == base::meta<interface::Interface>) {

@@ -1,6 +1,7 @@
 #include <string_view>
 
 #include "ast/ast.h"
+#include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "diagnostic/message.h"
 #include "type/qual_type.h"

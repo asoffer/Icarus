@@ -1,3 +1,4 @@
+#include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "type/array.h"
 #include "type/cast.h"

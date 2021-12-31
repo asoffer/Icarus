@@ -635,10 +635,6 @@ struct Compiler
   CyclicDependencyTracker cylcic_dependency_tracker_;
 };
 
-module::BasicModule *ModuleFor(ast::Node const *node);
-frontend::SourceBuffer const *SourceBufferFor(ast::Node const *node);
-frontend::SourceView SourceViewFor(ast::Node const *node);
-
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_COMPILER_H

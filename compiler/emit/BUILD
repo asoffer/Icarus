@@ -446,6 +446,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//compiler:instructions",
         "//ir:compiled_scope",

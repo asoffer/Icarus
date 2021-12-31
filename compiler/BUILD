@@ -14,14 +14,34 @@ cc_library(
 )
 
 cc_library(
+    name = "common",
+    hdrs = ["common.h"],
+    srcs = ["common.cc"],
+    deps = [
+        "//ast:node",
+        "//ast:scope",
+        "//base:debug",
+        "//frontend/source:buffer",
+        "//frontend/source:view",
+        "//module",
+    ],
+)
+
+cc_library(
     name = "common_diagnostics",
     hdrs = ["common_diagnostics.h"],
+    srcs = ["common_diagnostics.cc"],
     deps = [
+        ":common",
+        ":context",
+        ":type_for_diagnostic",
+        "//ast",
         "//core:call",
         "//diagnostic:message",
         "//frontend/source:buffer",
         "//frontend/source:view",
         "//type",
+        "//type:callable",
     ]
 )
 
@@ -191,6 +211,7 @@ cc_library(
     hdrs = ["compiler.h"],
     deps = [
         ":bound_parameters",
+        ":common",
         ":context",
         ":cyclic_dependency_tracker",
         ":instructions",
@@ -264,6 +285,7 @@ cc_library(
     hdrs = ["instantiate.h"],
     srcs = ["instantiate.cc"],
     deps = [
+        ":common",
         ":common_diagnostics",
         ":compiler_header",
         ":context",

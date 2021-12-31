@@ -5,6 +5,7 @@ cc_library(
     srcs = ["access.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//compiler:module",
         "//compiler:type_for_diagnostic",
@@ -48,6 +49,7 @@ cc_library(
     srcs = ["array_literal.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//type:array",
         "//type:primitive",
@@ -70,6 +72,7 @@ cc_library(
     srcs = ["array_type.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//type:array",
@@ -94,6 +97,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common",
         "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//type:cast",
@@ -119,6 +123,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//compiler:module",
         "//compiler:type_for_diagnostic",
@@ -148,6 +153,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common",
         "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",
@@ -177,7 +183,8 @@ cc_library(
     srcs = ["cast.cc"],
     deps = [
         ":common",
-        "//ast",
+        "//ast", 
+        "//compiler:common",
         "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",
@@ -202,6 +209,7 @@ cc_library(
     srcs = ["common.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:context",
@@ -224,6 +232,7 @@ cc_library(
     srcs = ["comparison_operator.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//type:array",
         "//type:cast",
@@ -250,6 +259,7 @@ cc_library(
     srcs = ["declaration.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:module",
@@ -277,6 +287,7 @@ cc_library(
     srcs = ["designated_initializer.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//compiler:module",
         "//compiler:type_for_diagnostic",
@@ -305,6 +316,7 @@ cc_library(
     srcs = ["enum_literal.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//compiler:work_item",
         "//type:primitive",
@@ -327,6 +339,7 @@ cc_library(
     srcs = ["function_literal.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//compiler:instantiate",
         "//compiler:resources",
@@ -351,6 +364,7 @@ cc_library(
     srcs = ["function_type.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//type:qual_type",
         "//type:typed_value",
@@ -372,6 +386,7 @@ cc_library(
     srcs = ["identifier.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//compiler:cyclic_dependency_tracker",
         "//compiler:module",
@@ -396,6 +411,7 @@ cc_library(
     srcs = ["import.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//ir/value:module_id",
     ],
@@ -417,6 +433,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",
         "//type:array",
@@ -464,6 +481,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",
         "//type:primitive",
@@ -530,6 +548,7 @@ cc_library(
     srcs = ["slice_type.cc"],
     deps = [
         "//ast",
+        "//compiler:common",
         "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//type:slice",
@@ -623,6 +642,7 @@ cc_library(
     deps = [
         ":common",
         "//ast",
+        "//compiler:common",
         "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:type_for_diagnostic",

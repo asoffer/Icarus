@@ -1,5 +1,6 @@
 #include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
+#include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"
@@ -98,7 +99,8 @@ bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
             type::Typed<ast::Declaration::Id const *> id2) {
   // TODO: Don't worry about generic shadowing? It'll be checked later?
   if (id1.type().is<type::Generic<type::Function>>() or
-      id2.type().is<type::Generic<type::Function>>()) {
+      id2.type().is<type::Generic<type::Function>>() or
+      id1.type() == type::UnboundScope or id2.type() == type::UnboundScope) {
     return false;
   }
 
@@ -106,8 +108,7 @@ bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
   type::Callable const *callable2 = id2.type().if_as<type::Callable>();
   if (not callable1 or not callable2) { return true; }
 
-  return core::AmbiguouslyCallable(callable1->as<type::Function>().params(),
-                                   callable2->as<type::Function>().params(),
+  return core::AmbiguouslyCallable(callable1->params(), callable2->params(),
                                    [](type::QualType lhs, type::QualType rhs) {
                                      return type::Meet(lhs.type(),
                                                        rhs.type()) != nullptr;

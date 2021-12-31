@@ -2,6 +2,7 @@
 #include <utility>
 
 #include "ast/ast.h"
+#include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"

@@ -25,9 +25,13 @@ struct VerifyCallParameters{
   core::Arguments<type::Typed<ir::CompleteResultRef>> const arguments;
 };
 
+std::variant<ast::OverloadSet, absl::flat_hash_map<type::Callable const *,
+                                                   core::CallabilityResult>>
+VerifyCall(Compiler &c, VerifyCallParameters const &vcp);
+
 std::variant<
     std::vector<type::QualType>,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
-VerifyCall(Compiler &c, VerifyCallParameters const &vcp);
+VerifyReturningCall(Compiler &c, VerifyCallParameters const &vcp);
 
 }  // namespace compiler

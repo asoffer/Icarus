@@ -29,9 +29,8 @@ Split ::= scope [ctx] (s: []char, c: char) {
   }
 }
 
-// TODO: When overloads are supported, rename to Split
 #{export}
-Split2 ::= scope [ctx] (haystack: []char, needle: []char) {
+Split ::= scope [ctx] (haystack: []char, needle: []char) {
   while (haystack.length != 0) {
     n := match.Find(haystack, needle) - haystack.data
     slice(haystack.data, n as u64) >> ctx.do

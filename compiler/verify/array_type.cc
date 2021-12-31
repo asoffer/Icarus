@@ -1,4 +1,5 @@
 #include "ast/ast.h"
+#include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "type/array.h"

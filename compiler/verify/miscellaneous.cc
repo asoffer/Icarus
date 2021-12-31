@@ -1,4 +1,6 @@
 #include "ast/ast.h"
+#include "compiler/common.h"
+#include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "compiler/context.h"
 #include "compiler/type_for_diagnostic.h"
@@ -70,11 +72,25 @@ absl::Span<type::QualType const> Compiler::VerifyType(
 
   ir::CompleteResultBuffer buffer;
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
-                   std::ignore,
+                   auto argument_values,
                    VerifyArguments(*this, node->arguments(), buffer));
 
-  ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
-                   std::ignore, VerifyType(node->name())[0]);
+  // TODO: Determine to what extent we want to support ADL
+  auto callee_qt = VerifyCallee(*this, node->name(), {});
+  LOG("ScopeNode", "Callee's qual-type is %s", callee_qt);
+  if (not callee_qt.ok()) {
+    return context().set_qual_type(node, type::QualType::Error());
+  }
+
+  auto qts_or_errors =
+      VerifyCall(*this, {.callee = node->name(), .arguments = argument_values});
+  if (auto *errors = std::get_if<
+          absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>(
+          &qts_or_errors)) {
+    diag().Consume(UncallableError(context(), node->name(), node->arguments(),
+                                   std::move(*errors)));
+    return context().set_qual_type(node, type::QualType::Error());
+  }
 
   context().TrackJumps(node);
 

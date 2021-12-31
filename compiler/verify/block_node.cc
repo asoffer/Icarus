@@ -16,13 +16,6 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::BlockNode const *node
         "without parents.");
   }
 
-  std::optional<ir::Scope> scope =
-      EvaluateOrDiagnoseAs<ir::Scope>(scope_node->name());
-  if (not scope) {
-    qt.MarkError();
-    return context().set_qual_type(node, qt);
-  }
-
   // TODO: Verify that the block's name makes sense.
 
   for (auto &param : node->params()) {
