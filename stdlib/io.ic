@@ -144,3 +144,18 @@ Print ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2, a3: ~`A3, a4: ~`A4, a5: ~`A5,
   Print(a9)
   Print(a10)
 }
+
+#{export} Abort ::= (value: ~`T) -> () {
+  Print(value, "\n")
+  abort()
+}
+
+#{export} Abort ::= (a0: ~`A0, a1: ~`A1) -> () {
+  Print(a0, a1, "\n")
+  abort()
+}
+
+#{export} Abort ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2) -> () {
+  Print(a0, a1, a2, "\n")
+  abort()
+}
