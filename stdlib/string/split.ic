@@ -35,6 +35,6 @@ Split2 ::= scope [ctx] (haystack: []char, needle: []char) {
   while (haystack.length != 0) {
     n := match.Find(haystack, needle) - haystack.data
     slice(haystack.data, n as u64) >> ctx.do
-    haystack = strip.WithoutPrefix(haystack, (n + needle.length) as u64)
+    haystack = strip.WithoutPrefix(haystack, n as u64 + needle.length)
   }
 }

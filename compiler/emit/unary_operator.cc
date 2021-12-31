@@ -98,8 +98,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
     case ast::UnaryOperator::Kind::BlockJump: {
       ir::PartialResultBuffer buffer;
       auto block = *EvaluateOrDiagnoseAs<ir::Block>(node->operand());
-      ASSERT(state().scopes.size() != 0u);
-      auto [entry, exit] = state().scopes.back().connection(block);
+      auto *exit = builder().CurrentGroup()->AppendBlock();
       builder().BlockJump(block, exit);
       builder().CurrentBlock() = exit;
     } break;

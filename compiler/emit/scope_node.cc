@@ -29,106 +29,75 @@
 namespace compiler {
 namespace {
 
-// BasicBlockMapping tracks a mapping from basic blocks in a scope being inlined
-// to their corresponding created basic block in their inlined location.
-struct BasicBlockMapping {
-  explicit BasicBlockMapping(ir::Builder &builder, ir::Scope scope) {
-    for (auto const *block : scope->blocks()) {
-      auto [iter, inserted] = mapping_.try_emplace(
-          block, builder.CurrentGroup()->AppendBlock(*block));
-      ASSERT(inserted == true);
-    }
+absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *>
+InsertUnadjustedBlocks(ir::internal::BlockGroupBase &to,
+                       ir::internal::BlockGroupBase const &from) {
+  absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *> result;
+  for (auto const *block : from.blocks()) {
+    auto [iter, inserted] = result.try_emplace(block, to.AppendBlock(*block));
+    ASSERT(inserted == true);
   }
+  return result;
+}
 
-  ir::BasicBlock *operator()(ir::BasicBlock const *from) const {
-    auto iter = mapping_.find(from);
-    ASSERT(iter != mapping_.end());
-    return iter->second;
-  }
+void AdjustInstructions(
+    ir::Inliner &inliner,
+    absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *> const
+        &block_mapping) {
+  for (auto const &[from, to] : block_mapping) { base::Traverse(inliner, *to); }
+}
 
-  auto begin() const { return mapping_.begin(); }
-  auto end() const { return mapping_.end(); }
-
- private:
-  absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *> mapping_;
-};
-
-ir::BasicBlock *InlineScope(
-    Compiler &c, absl::Span<ast::BlockNode const> blocks,
-    ir::Scope to_be_inlined, ir::PartialResultBuffer const &arguments,
-    absl::Span<std::pair<ir::BasicBlock *, ir::BasicBlock *>>
-        block_entry_exit) {
-  auto landing = c.builder().CurrentGroup()->AppendBlock();
-
-  auto *start_block          = c.builder().CurrentBlock();
-  size_t inlined_start_index = c.builder().CurrentGroup()->blocks().size();
-  auto *into                 = c.builder().CurrentGroup();
-
-  // Update the register count. This must be done after we've added the
-  // register-forwarding instructions which use this count to choose a register
-  // number.
-  ir::Inliner inliner(into->num_regs(), to_be_inlined->num_args());
-
-  size_t j = 0;
-  for (auto const &p : to_be_inlined.type()->params()) {
-    RegisterReferencing(c.builder(), p.value.type(), arguments[j++]);
-  }
-
-  c.builder().CurrentBlock() = start_block;
-
-  size_t block_index = 0;
-  for (auto const &block : blocks) {
-    size_t param_index            = 0;
-    auto *parameter_binding_block = c.builder().CurrentGroup()->AppendBlock();
-    c.builder().CurrentBlock()    = parameter_binding_block;
-    for (auto const &param : block.params()) {
-      ir::Reg r =
-          to_be_inlined.parameters(ir::Block(block_index))[param_index++];
-      inliner(r);
-      auto const &id        = param.value->ids()[0];
-      type::Type param_type = c.context().qual_types(&id)[0].type();
-      ir::PartialResultBuffer buffer;
-      buffer.append(r);
-      c.EmitCopyAssign(type::Typed(c.builder().addr(&id), param_type),
-                       type::Typed(buffer[0], param_type));
-    }
-    auto &entry = block_entry_exit[block_index].first;
-    c.builder().UncondJump(entry);
-    entry = parameter_binding_block;
-    ++block_index;
-  }
-
-  into->MergeAllocationsFrom(*to_be_inlined, inliner);
-  BasicBlockMapping mapping(c.builder(), to_be_inlined);
-  for (auto [from_block, to_block] : mapping) {
-    base::Traverse(inliner, *to_block);
-
-    to_block->jump().Visit([&, jump = &to_block->jump()](auto &j) {
+ir::BasicBlock *AdjustJumpsAndEmitBlocks(
+    Compiler &c, ast::ScopeNode const *node, ir::Scope scope,
+    ir::Inliner &inliner,
+    absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *> const
+        &block_mapping) {
+  auto *landing = c.builder().CurrentGroup()->AppendBlock();
+  for (auto const &[from, to] : block_mapping) {
+    to->jump().Visit([&, jump = &to->jump()](auto &j) {
       constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
       if constexpr (type == base::meta<ir::JumpCmd::UncondJump>) {
-        j.block = mapping(j.block);
+        j.block = block_mapping.find(j.block)->second;
       } else if constexpr (type == base::meta<ir::JumpCmd::CondJump>) {
         base::Traverse(inliner, j.reg);
-        j.true_block  = mapping(j.true_block);
-        j.false_block = mapping(j.false_block);
+        j.true_block  = block_mapping.find(j.true_block)->second;
+        j.false_block = block_mapping.find(j.false_block)->second;
       } else if constexpr (type == base::meta<ir::JumpCmd::RetJump>) {
         *jump = ir::JumpCmd::Uncond(landing);
       } else if constexpr (type == base::meta<ir::JumpCmd::UnreachableJump>) {
         return;
       } else if constexpr (type == base::meta<ir::JumpCmd::BlockJump>) {
-        auto [entry, exit] = block_entry_exit[j.block.value()];
-        auto exit_block    = mapping(to_be_inlined.connection(j.block).second);
-        *jump              = ir::JumpCmd::Uncond(entry);
-        c.builder().CurrentBlock() = exit;
-        c.builder().UncondJump(exit_block);
+        // Save the exit before we modify `*jump`.
+        auto *exit          = block_mapping.find(j.after)->second;
+        size_t block_index = j.block.value();
+        auto *block_to_emit = &node->blocks()[block_index];
+
+        auto *block_start = c.builder().CurrentGroup()->AppendBlock();
+        *jump             = ir::JumpCmd::Uncond(block_start);
+
+        c.builder().CurrentBlock() = block_start;
+
+        size_t param_index = 0;
+        for (auto const &param : block_to_emit->params()) {
+          ir::Reg r = scope.parameters(ir::Block(block_index))[param_index++];
+          inliner(r);
+          auto const &id        = param.value->ids()[0];
+          type::Type param_type = c.context().qual_types(&id)[0].type();
+          ir::PartialResultBuffer buffer;
+          buffer.append(r);
+          c.builder().set_addr(&id, c.builder().Alloca(param_type));
+          c.EmitCopyAssign(type::Typed(c.builder().addr(&id), param_type),
+                           type::Typed(buffer[0], param_type));
+        }
+
+        ir::PartialResultBuffer ignored;
+        c.EmitToBuffer(block_to_emit, ignored);
+        c.builder().UncondJump(exit);
       } else {
         UNREACHABLE(type);
       }
     });
-
   }
-
-  start_block->set_jump(ir::JumpCmd::Uncond(mapping(to_be_inlined->entry())));
   return landing;
 }
 
@@ -177,23 +146,25 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
     EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
                   node->arguments(), constant_arguments, argument_buffer);
 
-    std::vector<std::pair<ir::BasicBlock *, ir::BasicBlock *>> block_entry_exit;
-    block_entry_exit.reserve(node->blocks().size());
+    ir::Inliner inliner(builder().CurrentGroup()->num_regs(),
+                        scope->num_args());
 
-    for (auto const &block : node->blocks()) {
-      auto &[entry, exit]      = block_entry_exit.emplace_back();
-      entry                    = builder().CurrentGroup()->AppendBlock();
-      builder().CurrentBlock() = entry;
-      ir::PartialResultBuffer ignored;
-      EmitToBuffer(&block, ignored);
-      exit = builder().CurrentBlock();
+    size_t j = 0;
+    for (auto const &p : scope.type()->params()) {
+      RegisterReferencing(builder(), p.value.type(), argument_buffer[j++]);
     }
 
-    builder().CurrentBlock() = start;
+    builder().CurrentGroup()->MergeAllocationsFrom(*scope, inliner);
+    auto block_mapping =
+        InsertUnadjustedBlocks(*builder().CurrentGroup(), *scope);
+    AdjustInstructions(inliner, block_mapping);
 
-    builder().CurrentBlock() =
-        InlineScope(*this, node->blocks(), scope, argument_buffer,
-                    absl::MakeSpan(block_entry_exit));
+    builder().CurrentBlock() = start;
+    builder().UncondJump(block_mapping.find(scope->entry())->second);
+
+    auto *landing =
+        AdjustJumpsAndEmitBlocks(*this, node, scope, inliner, block_mapping);
+    builder().CurrentBlock() = landing;
   }
   LOG("ScopeNode", "%s", *builder().CurrentGroup());
 }
