@@ -34,20 +34,12 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
     ast::ScopeLiteral const *literal;
     CompiledScope *scope;
     type::Scope const *type;
-    std::vector<std::pair<BasicBlock *, BasicBlock *>> connections;
     absl::flat_hash_map<Block, std::vector<Reg>> parameters;
     base::untyped_buffer::const_iterator byte_code;
   };
 
   constexpr Scope() : data_(nullptr) {}
   explicit constexpr Scope(Scope::Data *data) : data_(ASSERT_NOT_NULL(data)) {}
-
-  void add_connection(BasicBlock *entry_to_block, BasicBlock *exit_from_block) {
-    data_->connections.emplace_back(entry_to_block, exit_from_block);
-  }
-  std::pair<BasicBlock *, BasicBlock *> const &connection(Block b) const {
-    return data_->connections[b.value()];
-  }
 
   CompiledScope *operator->() { return get().scope; }
   CompiledScope &operator*() { return *get().scope; }

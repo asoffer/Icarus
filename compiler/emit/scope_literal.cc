@@ -44,17 +44,6 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
                                   type::QualType::Constant(type::Scp(params)));
             auto [scope, inserted] = context.add_scope(node);
             if (inserted) {
-              ICARUS_SCOPE(ir::SetCurrent(*scope, compiler.builder())) {
-                size_t num_blocks = scope_context.size();
-                for (size_t i = 0; i < num_blocks; ++i) {
-                  auto *entry_to_block =
-                      compiler.builder().CurrentGroup()->AppendBlock();
-                  auto *exit_from_block =
-                      compiler.builder().CurrentGroup()->AppendBlock();
-                  scope.add_connection(entry_to_block, exit_from_block);
-                }
-              }
-
               compiler.Enqueue({.kind    = WorkItem::Kind::EmitScopeBody,
                                 .node    = node,
                                 .context = &context});

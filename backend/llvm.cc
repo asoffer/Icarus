@@ -318,8 +318,7 @@ void LlvmEmitter::EmitBasicBlockJump(ir::BasicBlock const *block,
                             context.blocks.at(block->jump().CondTarget(true)),
                             context.blocks.at(block->jump().CondTarget(false)));
       return;
-    case ir::JumpCmd::Kind::Choose:
-    default: UNREACHABLE("choose-jump should not be possible.");
+    default: UNREACHABLE();
   }
 }
 
