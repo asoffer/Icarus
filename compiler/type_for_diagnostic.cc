@@ -87,10 +87,16 @@ struct StringifyType : ast::Visitor<std::string()> {
     if (qts.size() == 1 and
         (qts[0].type().is<type::Enum>() or qts[0].type().is<type::Flags>())) {
       return StringifyExpression(&context_, kind_).Visit(node->operand());
+    } else {
+      auto operand_qts = context_.qual_types(node->operand());
+      if (operand_qts[0].type().is<type::Slice>()) {
+        if (node->member_name() == "length") { return "u64"; }
+      }
+      // TODO: This is wrong.
+      return absl::StrCat(
+          StringifyType(&context_, kind_).Visit(node->operand()), ".",
+          node->member_name());
     }
-    return absl::StrCat(
-        StringifyExpression(&context_, kind_).Visit(node->operand()), ".",
-        node->member_name());
   }
 
   std::string Visit(ast::ArrayLiteral const *node) final {

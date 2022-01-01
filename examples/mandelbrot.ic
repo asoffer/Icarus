@@ -13,12 +13,6 @@ mandelbrot ::= (a: math.complex) -> i64 {
   return 30
 }
 
-linspace_state ::= struct {
-  current: f64
-  step: f64
-  remaining: i64
-}
-
 linspace ::= scope [c] (begin: f64, end: f64, steps: i64) {
   remaining := steps
   current := begin
