@@ -112,9 +112,7 @@ type::QualType VerifyBinaryOverload(
         return true;
       });
 
-  if (member_types.empty()) {
-    return context.set_qual_type(node, type::QualType::Error())[0];
-  }
+  if (member_types.empty()) { return type::QualType::Error(); }
 
   ASSERT(member_types.size() == 1u);
   // TODO: Check that we only have one return type on each of these overloads.
