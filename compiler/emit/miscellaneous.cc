@@ -17,9 +17,7 @@ void Compiler::EmitToBuffer(ast::BuiltinFn const *node,
 
 void Compiler::EmitToBuffer(ast::Import const *node,
                             ir::PartialResultBuffer &out) {
-  auto module_id = context().imported_module(node);
-  ASSERT(module_id != ir::ModuleId::Invalid());
-  out.append(module_id);
+  context().LoadConstant(node, out);
 }
 
 void Compiler::EmitToBuffer(ast::Label const *node,

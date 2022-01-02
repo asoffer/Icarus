@@ -78,7 +78,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Import const *node) {
   if (mod_id == ir::ModuleId::Invalid()) {
     qt.MarkError();
   } else {
-    context().set_imported_module(node, mod_id);
+    context().SetConstant(node, mod_id);
   }
   return context().set_qual_type(node, qt);
 }

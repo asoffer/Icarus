@@ -177,9 +177,6 @@ struct Context {
                                                  type::QualType const qts);
 
 
-  ir::ModuleId imported_module(ast::Import const *node);
-  void set_imported_module(ast::Import const *node, ir::ModuleId module_id);
-
   void ForEachCompiledFn(
       std::invocable<ir::CompiledFn const *> auto &&f) const {
     for (auto const &compiled_fn : ir_module_.functions()) { f(&compiled_fn); }
@@ -235,11 +232,8 @@ struct Context {
       std::vector<ir::ScopeContext::block_type> &&names) {
     auto [data_iter, data_inserted] =
         scope_context_data_.emplace(std::move(names));
-    auto [iter, inserted] =
-        scope_contexts_.emplace(node, ir::ScopeContext(&*data_iter));
-    // Insertion is not guaranteed because we share contexts across across scope
-    // instantiations.
-    return iter->second;
+    SetConstant(node, ir::ScopeContext(&*data_iter));
+    return ir::ScopeContext(&*data_iter);
   }
 
   ir::ScopeContext set_scope_context(
@@ -247,25 +241,11 @@ struct Context {
       absl::Span<ir::ScopeContext::block_type const> names) {
     auto [data_iter, data_inserted] =
         scope_context_data_.emplace(names.begin(), names.end());
-    auto [iter, inserted] =
-        scope_contexts_.emplace(node, ir::ScopeContext(&*data_iter));
-    // Insertion is not guaranteed because we share contexts across across scope
-    // instantiations.
-    return iter->second;
-  }
-
-  ir::ScopeContext ScopeContext(ast::ScopeNode const *node) {
-    auto iter = scope_contexts_.find(node);
-    ASSERT(iter != scope_contexts_.end());
-    return iter->second;
+    SetConstant(node, ir::ScopeContext(&*data_iter));
+    return ir::ScopeContext(&*data_iter);
   }
 
   void CompleteType(ast::Expression const *expr, bool success);
-
-  void LoadConstant(ast::Declaration::Id const *id,
-                    ir::PartialResultBuffer &out) const;
-  bool TryLoadConstant(ast::Declaration::Id const *id,
-                       ir::PartialResultBuffer &out) const;
 
   type::Type arg_type(std::string_view name) const {
     auto iter = arg_type_.find(name);
@@ -313,8 +293,30 @@ struct Context {
       ast::Declaration::Id const *id, ir::CompleteResultRef const &buffer);
   ir::CompleteResultBuffer const &SetConstant(
       ast::Declaration::Id const *id, ir::CompleteResultBuffer const &buffer);
+
+  template <typename T>
+  void SetConstant(ast::Expression const *expr, T const &value) {
+    auto [iter, inserted] = constants_.try_emplace(expr);
+    ASSERT(inserted == true);
+    iter->second.append(value);
+  }
+
   ir::CompleteResultBuffer const *Constant(
       ast::Declaration::Id const *id) const;
+
+  void LoadConstant(ast::Expression const *expr,
+                    ir::CompleteResultBuffer &out) const;
+  void LoadConstant(ast::Expression const *expr,
+                    ir::PartialResultBuffer &out) const;
+  template <typename T>
+  T LoadConstant(ast::Expression const *expr) const {
+    ir::CompleteResultBuffer buffer;
+    LoadConstant(expr, buffer);
+    return buffer[0].get<T>();
+  }
+
+  bool TryLoadConstant(ast::Declaration::Id const *id,
+                       ir::PartialResultBuffer &out) const;
 
   void SetAllOverloads(ast::Expression const *callee, ast::OverloadSet os);
   ast::OverloadSet const *AllOverloads(ast::Expression const *callee) const;
@@ -406,13 +408,10 @@ struct Context {
                       std::vector<ast::Declaration::Id const *>>
       decls_;
 
-  // Map of all constant declarations to their values within this dependent
-  // context.
-  absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
+  // A map where we store all constants that are valuable to cache during
+  // compilation.
+  absl::flat_hash_map<ast::Expression const *, ir::CompleteResultBuffer>
       constants_;
-
-  // Colleciton of modules imported by this one.
-  absl::flat_hash_map<ast::Import const *, ir::ModuleId> imported_modules_;
 
   // Overloads for a callable expression, including overloads that are not
   // callable based on the call-site arguments.
@@ -446,7 +445,6 @@ struct Context {
 
   absl::node_hash_set<std::vector<ir::ScopeContext::block_type>>
       scope_context_data_;
-  absl::flat_hash_map<ast::ScopeNode const *, ir::ScopeContext> scope_contexts_;
 
   // Provides a mapping from a given AST node to the collection of all nodes
   // that might jump to it. For example, a function literal will be mapped to

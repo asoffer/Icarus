@@ -127,18 +127,6 @@ void Context::CompleteType(ast::Expression const *expr, bool success) {
   if (parent()) { parent()->CompleteType(expr, success); }
 }
 
-ir::ModuleId Context::imported_module(ast::Import const *node) {
-  auto iter = imported_modules_.find(node);
-  if (iter != imported_modules_.end()) { return iter->second; }
-  if (parent()) { return parent()->imported_module(node); }
-  return ir::ModuleId::Invalid();
-}
-
-void Context::set_imported_module(ast::Import const *node,
-                                  ir::ModuleId module_id) {
-  imported_modules_.emplace(node, module_id);
-}
-
 absl::Span<ast::Declaration::Id const *const> Context::decls(
     ast::Identifier const *id) const {
   auto iter = decls_.find(id);
@@ -206,12 +194,21 @@ absl::Span<ast::YieldStmt const *const> Context::YieldsTo(
   return v ? *v : ASSERT_NOT_NULL(parent())->YieldsTo(node);
 }
 
-void Context::LoadConstant(ast::Declaration::Id const *id,
-                           ir::PartialResultBuffer &out) const {
-  if (auto iter = constants_.find(id); iter != constants_.end()) {
+void Context::LoadConstant(ast::Expression const *expr,
+                           ir::CompleteResultBuffer &out) const {
+  if (auto iter = constants_.find(expr); iter != constants_.end()) {
     out.append(iter->second);
   } else {
-    ASSERT_NOT_NULL(parent())->LoadConstant(id, out);
+    ASSERT_NOT_NULL(parent())->LoadConstant(expr, out);
+  }
+}
+
+void Context::LoadConstant(ast::Expression const *expr,
+                           ir::PartialResultBuffer &out) const {
+  if (auto iter = constants_.find(expr); iter != constants_.end()) {
+    out.append(iter->second);
+  } else {
+    ASSERT_NOT_NULL(parent())->LoadConstant(expr, out);
   }
 }
 

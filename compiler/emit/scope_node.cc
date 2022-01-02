@@ -130,7 +130,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   auto unbound_scope =
       *c.EvaluateOrDiagnoseAs<ir::UnboundScope>(os.members()[0]);
 
-  ir::ScopeContext scope_context = context().ScopeContext(node);
+  auto scope_context = context().LoadConstant<ir::ScopeContext>(node);
 
   // Constant arguments need to be computed entirely before being used to
   // instantiate a generic function.
