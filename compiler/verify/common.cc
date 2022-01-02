@@ -59,7 +59,8 @@ void ExtractParameters(
 
 }  // namespace
 
-std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
+std::optional<core::Params<type::QualType>> VerifyParameters(
+    Compiler &c,
     core::Params<std::unique_ptr<ast::Declaration>> const &params) {
   // Parameter types cannot be dependent in concrete implementations so it is
   // safe to verify each of them separately (to generate more errors that are
@@ -69,7 +70,7 @@ std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
   type_params.reserve(params.size());
   bool err = false;
   for (auto &d : params) {
-    auto qt = VerifyType(d.value.get())[0];
+    auto qt = c.VerifyType(d.value.get())[0];
     if (qt.ok()) {
       type_params.append(d.name, qt, d.flags);
     } else {
@@ -124,55 +125,6 @@ VerifyArguments(Compiler &c, absl::Span<ast::Call::Argument const> arguments,
   }
 
   return argument_values;
-}
-
-// TODO: Replace `symbol` with an enum.
-type::QualType Compiler::VerifyUnaryOverload(
-    char const *symbol, ast::Expression const *node,
-    type::Typed<ir::CompleteResultRef> const &operand) {
-  absl::flat_hash_set<type::Function const *> member_types;
-
-  node->scope()->ForEachDeclIdTowardsRoot(
-      symbol, [&](ast::Declaration::Id const *id) {
-        ASSIGN_OR(return false, auto qt, context().qual_types(id)[0]);
-        // Must be callable because we're looking at overloads for operators
-        // which have previously been type-checked to ensure callability.
-        auto &c = qt.type().as<type::Function>();
-        member_types.insert(&c);
-        return true;
-      });
-
-  if (member_types.empty()) {
-    return context().set_qual_type(node, type::QualType::Error())[0];
-  }
-
-  ASSERT(member_types.size() == 1u);
-  // TODO: Check that we only have one return type on each of these overloads.
-  return type::QualType((*member_types.begin())->return_types()[0],
-                        type::Quals::Unqualified());
-}
-
-type::QualType Compiler::VerifyBinaryOverload(
-    std::string_view symbol, ast::Expression const *node,
-    type::Typed<ir::CompleteResultRef> const &lhs,
-    type::Typed<ir::CompleteResultRef> const &rhs) {
-  absl::flat_hash_set<type::Function const *> member_types;
-
-  node->scope()->ForEachDeclIdTowardsRoot(
-      symbol, [&](ast::Declaration::Id const *id) {
-        ASSIGN_OR(return false, auto qt, context().qual_types(id)[0]);
-        // Must be callable because we're looking at overloads for operators
-        // which have previously been type-checked to ensure callability.
-        auto &c = qt.type().as<type::Function>();
-        member_types.insert(&c);
-        return true;
-      });
-
-  if (member_types.empty()) { return type::QualType::Error(); }
-  ASSERT(member_types.size() == 1u);
-  // TODO: Check that we only have one return type on each of these overloads.
-  return type::QualType((*member_types.begin())->return_types()[0],
-                        type::Quals::Unqualified());
 }
 
 absl::flat_hash_set<CompiledModule const *> ModulesFromTypeProvenance(

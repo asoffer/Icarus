@@ -31,13 +31,4 @@ std::optional<ir::CompleteResultBuffer> Compiler::EvaluateToBufferOrDiagnose(
   }
 }
 
-ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
-  // TODO: Implement caching behavior.
-  if (auto maybe_mod = EvaluateOrDiagnoseAs<ir::ModuleId>(expr)) {
-    return *maybe_mod;
-  } else {
-    return ir::ModuleId::Invalid();
-  }
-}
-
 }  // namespace compiler

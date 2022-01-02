@@ -10,7 +10,7 @@ type::QualType VerifyConcrete(Compiler &c,
                               ast::ShortFunctionLiteral const *node) {
   LOG("ShortFunctionLiteral", "VerifyConcrete %s", node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto params, c.VerifyParams(node->params()));
+                   auto params, VerifyParameters(c, node->params()));
   ASSIGN_OR(return _, auto body_qt, c.VerifyType(node->body())[0]);
   return c.context().set_qual_type(
       node, type::QualType::Constant(

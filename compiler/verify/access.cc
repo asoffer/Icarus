@@ -373,13 +373,13 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
     return type::QualType::Error();
   }
 
-  ir::ModuleId mod_id = c.EvaluateModuleWithCache(node->operand());
-  if (mod_id == ir::ModuleId::Invalid()) { return type::QualType::Error(); }
+  std::optional mod_id = c.EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand());
+  if (not mod_id) { return type::QualType::Error(); }
 
   // There is no way to refer to the current module, but a bug here could cause
   // a deadlock as this module waits for the notification that it's declarations
   // can be exported, so we would prefer to abort.
-  auto const &mod = c.importer().get(mod_id).as<CompiledModule>();
+  auto const &mod = c.importer().get(*mod_id).as<CompiledModule>();
   ASSERT(&mod != c.resources().module);
 
   // Note: for any declarations read across module boundaries, we set the

@@ -96,6 +96,32 @@ ComparisonKind Comparator(type::Type t) {
   }
 }
 
+type::QualType VerifyBinaryOverload(
+    Context &context, std::string_view symbol, ast::Expression const *node,
+    type::Typed<ir::CompleteResultRef> const &lhs,
+    type::Typed<ir::CompleteResultRef> const &rhs) {
+  absl::flat_hash_set<type::Function const *> member_types;
+
+  node->scope()->ForEachDeclIdTowardsRoot(
+      symbol, [&](ast::Declaration::Id const *id) {
+        ASSIGN_OR(return false, auto qt, context.qual_types(id)[0]);
+        // Must be callable because we're looking at overloads for operators
+        // which have previously been type-checked to ensure callability.
+        auto &c = qt.type().as<type::Function>();
+        member_types.insert(&c);
+        return true;
+      });
+
+  if (member_types.empty()) {
+    return context.set_qual_type(node, type::QualType::Error())[0];
+  }
+
+  ASSERT(member_types.size() == 1u);
+  // TODO: Check that we only have one return type on each of these overloads.
+  return type::QualType((*member_types.begin())->return_types()[0],
+                        type::Quals::Unqualified());
+}
+
 }  // namespace
 
 absl::Span<type::QualType const> Compiler::VerifyType(
@@ -145,7 +171,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       }
       // TODO: Calling with constants?
       auto result = VerifyBinaryOverload(
-          token, node,
+          context(), token, node,
           type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
                                              lhs_qual_type.type()),
           type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
@@ -195,8 +221,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(
             case ComparisonKind::Equality:
             case ComparisonKind::None:
               diag().Consume(ComparingIncomparables{
-                  .lhs   = lhs_qual_type.type(),
-                  .rhs   = rhs_qual_type.type(),
+                  .lhs  = lhs_qual_type.type(),
+                  .rhs  = rhs_qual_type.type(),
                   .view = frontend::SourceView(SourceBufferFor(node),
                                                node->binary_range(i)),
               });

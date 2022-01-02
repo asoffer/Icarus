@@ -593,16 +593,6 @@ struct Compiler
   DEFINE_EMIT(ast::UnaryOperator)
 #undef DEFINE_EMIT
 
-  type::QualType VerifyBinaryOverload(
-      std::string_view symbol, ast::Expression const *node,
-      type::Typed<ir::CompleteResultRef> const &lhs,
-      type::Typed<ir::CompleteResultRef> const &rhs);
-
-  ir::ModuleId EvaluateModuleWithCache(ast::Expression const *expr);
-
-  std::optional<core::Params<type::QualType>> VerifyParams(
-      core::Params<std::unique_ptr<ast::Declaration>> const &params);
-
   // TODO: The implementation here has some overlap with CompleteStruct.
   bool EnsureDataCompleteness(type::Struct *s);
 
@@ -615,10 +605,6 @@ struct Compiler
   bool EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
 
  private:
-  type::QualType VerifyUnaryOverload(
-      char const *symbol, ast::Expression const *node,
-      type::Typed<ir::CompleteResultRef> const &operand);
-
   Context *context_;
   WorkResources work_resources_;
   PersistentResources resources_;

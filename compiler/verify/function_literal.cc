@@ -167,7 +167,7 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
 type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "VerifyConcrete %s", node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto params, c.VerifyParams(node->params()));
+                   auto params, VerifyParameters(c, node->params()));
 
   if (auto outputs = node->outputs()) {
     std::vector<type::Type> output_type_vec(outputs->size());

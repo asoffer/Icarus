@@ -17,6 +17,9 @@ std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>
 VerifyArguments(Compiler &c, absl::Span<ast::Call::Argument const> arguments,
                 ir::CompleteResultBuffer &out);
 
+std::optional<core::Params<type::QualType>> VerifyParameters(
+    Compiler &c, core::Params<std::unique_ptr<ast::Declaration>> const &params);
+
 type::QualType VerifyCallee(Compiler &c, ast::Expression const *callee,
                             absl::flat_hash_set<type::Type> const &adl_types);
 

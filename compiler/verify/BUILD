@@ -539,6 +539,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler/verify:common",
         "//type:primitive",
         "//type:qual_type",
         "//type:typed_value",

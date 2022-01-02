@@ -59,9 +59,10 @@ void Compiler::EmitToBuffer(ast::Access const *node,
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    auto const &mod = importer()
-                          .get(EvaluateModuleWithCache(node->operand()))
-                          .as<CompiledModule>();
+    auto const &mod =
+        importer()
+            .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
+            .as<CompiledModule>();
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
@@ -172,9 +173,10 @@ void Compiler::EmitMoveInit(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    auto const &mod = importer()
-                          .get(EvaluateModuleWithCache(node->operand()))
-                          .as<CompiledModule>();
+    auto const &mod =
+        importer()
+            .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
+            .as<CompiledModule>();
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
@@ -244,9 +246,10 @@ void Compiler::EmitCopyInit(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    auto const &mod = importer()
-                          .get(EvaluateModuleWithCache(node->operand()))
-                          .as<CompiledModule>();
+    auto const &mod =
+        importer()
+            .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
+            .as<CompiledModule>();
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
@@ -313,9 +316,10 @@ void Compiler::EmitMoveAssign(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    auto const &mod = importer()
-                          .get(EvaluateModuleWithCache(node->operand()))
-                          .as<CompiledModule>();
+    auto const &mod =
+        importer()
+            .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
+            .as<CompiledModule>();
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
@@ -354,9 +358,10 @@ void Compiler::EmitCopyAssign(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    auto const &mod = importer()
-                          .get(EvaluateModuleWithCache(node->operand()))
-                          .as<CompiledModule>();
+    auto const &mod =
+        importer()
+            .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
+            .as<CompiledModule>();
     auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
