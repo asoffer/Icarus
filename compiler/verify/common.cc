@@ -48,6 +48,10 @@ void ExtractParameters(
     auto const *i = gf->Instantiate(compiler.work_resources(), arguments);
     if (not i) { return; }
     overload_params.emplace_back(callee, i, i->params());
+  } else if (auto const *gb = t.if_as<type::Generic<type::Block>>()) {
+    auto const *i = gb->Instantiate(compiler.work_resources(), arguments);
+    if (not i) { return; }
+    overload_params.emplace_back(callee, i, i->params());
   } else {
     UNREACHABLE();
   }
@@ -210,14 +214,14 @@ VerifyCall(Compiler &c, VerifyCallParameters const &vcp) {
 
   if (auto const *overloads = c.context().AllOverloads(callee)) {
     Context const &context_root = c.context().root();
-    for (auto const *called : overloads->members()) {
+    for (auto const *overload : overloads->members()) {
       Context const &callee_root =
-          ModuleFor(called)->as<CompiledModule>().context();
+          ModuleFor(overload)->as<CompiledModule>().context();
       // TODO: This is fraught, because we still don't have access to
       // instantiated contexts if that's what's needed here.
       auto &ctx = (&context_root == &callee_root) ? c.context() : callee_root;
-      type::QualType qt = ctx.qual_types(called)[0];
-      ExtractParameters(c, called, qt.type(), arguments, overload_params, errors);
+      type::QualType qt = ctx.qual_types(overload)[0];
+      ExtractParameters(c, overload, qt.type(), arguments, overload_params, errors);
     }
   }
 
@@ -290,6 +294,8 @@ VerifyReturningCall(Compiler &c, VerifyCallParameters const &vcp) {
       if (not i) { continue; }
       return_types.emplace_back(i->return_types().begin(),
                                 i->return_types().end());
+    } else if (auto const *gb = t.if_as<type::Generic<type::Block>>()) {
+      return_types.emplace_back();
     }
   }
 

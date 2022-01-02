@@ -8,13 +8,14 @@
 
 namespace type {
 
-struct Block : Callable {
+struct Block : ReturningType {
+  // TODO: Support actual returns.
   Block(core::Params<QualType> params)
-      : Callable(LegacyType::Flags{.is_default_initializable = 0,
-                                   .is_copyable              = 1,
-                                   .is_movable               = 1,
-                                   .has_destructor           = 0},
-                 std::move(params)) {}
+      : ReturningType(LegacyType::Flags{.is_default_initializable = 0,
+                                        .is_copyable              = 1,
+                                        .is_movable               = 1,
+                                        .has_destructor           = 0},
+                      std::move(params), {}) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);

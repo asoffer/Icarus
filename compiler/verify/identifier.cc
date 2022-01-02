@@ -174,7 +174,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       }
 
       if (qt.type().is<type::Callable>() or
-          qt.type().is<type::Generic<type::Function>>()) {
+          qt.type().is<type::Generic<type::Function>>() or
+          qt.type().is<type::Generic<type::Block>>()) {
         context().SetAllOverloads(node, ast::OverloadSet({id}));
       }
 

@@ -150,6 +150,7 @@ void BlockNode::Initialize(Initializer& initializer) {
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& param : params_) { param.value->Initialize(initializer); }
   InitializeAll(stmts_, initializer, &covers_binding_, &is_dependent_);
+  ordered_dependency_nodes_ = OrderedDependencyNodes(this);
   InitializeParams();
 }
 

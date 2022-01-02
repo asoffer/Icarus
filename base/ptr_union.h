@@ -50,6 +50,21 @@ struct PtrUnion {
     return reinterpret_cast<T *>(ptr_ & ~mask);
   }
 
+  template <internal_ptr_union::const_one_of<Ts...> T>
+  T const *get_if() const {
+    constexpr uintptr_t mask = static_cast<uintptr_t>(alignment_v - 1);
+    return (ptr_ & mask) == index<T>()
+               ? reinterpret_cast<T const *>(ptr_ & ~mask)
+               : nullptr;
+  }
+
+  template <one_of<Ts...> T>
+  T *get_if() {
+    constexpr uintptr_t mask = static_cast<uintptr_t>(alignment_v - 1);
+    return (ptr_ & mask) == index<T>() ? reinterpret_cast<T *>(ptr_ & ~mask)
+                                       : nullptr;
+  }
+
   template <typename H>
   friend H AbslHashValue(H h, PtrUnion p) {
     return H::combine(std::move(h), p.ptr_);

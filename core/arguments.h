@@ -199,6 +199,21 @@ struct Arguments {
   size_t size() const { return pos().size() + named().size(); }
   bool empty() const { return size() == 0; }
 
+  friend std::ostream &operator<<(std::ostream &os, Arguments const &arguments) 
+    requires(requires {
+      { os << std::declval<T>() } -> std::same_as<std::ostream &>;
+    }) {
+    os << "arguments(";
+    std::string_view separator = "";
+    for (auto const & argument : arguments.pos()) {
+      os << std::exchange(separator, ", ") << argument;
+    }
+    for (auto const &[name, argument] : arguments.named()) {
+      os << std::exchange(separator, ", ") << name << '(' << argument << ')';
+    }
+    return os << ')';
+  }
+
  private:
   std::vector<T> pos_;
   absl::flat_hash_map<StringType, T> named_;

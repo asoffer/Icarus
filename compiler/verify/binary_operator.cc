@@ -1,6 +1,7 @@
 #include <functional>
 
 #include "compiler/common.h"
+#include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
@@ -378,6 +379,34 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       // and what they might attempt to return.
       return context().set_qual_type(node,
                                      type::QualType::Constant(type::Void));
+
+      // std::optional<ir::CompleteResultBuffer> constant_buffer;
+      // core::Arguments<type::Typed<ir::CompleteResultRef>> arguments;
+      // if (lhs_qt.constant()) {
+      //   constant_buffer = EvaluateToBufferOrDiagnose(
+      //       type::Typed(&node->lhs(), lhs_qt.type()));
+      // }
+
+      // if (constant_buffer) {
+      //   arguments.pos_emplace((*constant_buffer)[0], lhs_qt.type());
+      // } else {
+      //   arguments.pos_emplace(ir::CompleteResultRef(), lhs_qt.type());
+      // }
+
+      // auto qts_or_errors = VerifyReturningCall(
+      //     *this, {.callee = &node->rhs(), .arguments = std::move(arguments)});
+      // if (auto *errors =
+      //         std::get_if<absl::flat_hash_map<type::Callable const *,
+      //                                         core::CallabilityResult>>(
+      //             &qts_or_errors)) {
+      //   // TODO Argument span??
+      //   diag().Consume(
+      //       UncallableError(context(), &node->lhs(), {}, std::move(*errors)));
+      //   return context().set_qual_type(node, type::QualType::Error());
+      // }
+
+      // return context().set_qual_types(
+      //     node, std::get<std::vector<type::QualType>>(qts_or_errors));
     }
   }
 }

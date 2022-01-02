@@ -320,6 +320,19 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       // TODO: Look at the scope context and determine who might jump to here
       // and what they might attempt to return.
       qt = type::QualType::Constant(type::Void);
+
+      // auto qts_or_errors =
+      //     VerifyReturningCall(*this, {.callee = node->operand()});
+      // if (auto *errors =
+      //         std::get_if<absl::flat_hash_map<type::Callable const *,
+      //                                         core::CallabilityResult>>(
+      //             &qts_or_errors)) {
+      //   diag().Consume(UncallableError(context(), node->operand(), {},
+      //                                  std::move(*errors)));
+      //   return context().set_qual_type(node, type::QualType::Error());
+      // }
+      // auto &qual_type = std::get<std::vector<type::QualType>>(qts_or_errors);
+      // return context().set_qual_types(node, qual_type);
     } break;
     default: UNREACHABLE(node->DebugString());
   }

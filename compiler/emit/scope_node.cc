@@ -79,22 +79,34 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
 
         c.builder().CurrentBlock() = block_start;
 
-        size_t param_index = 0;
-        for (auto const &param : block_to_emit->params()) {
-          ir::Reg r = scope.parameters(ir::Block(block_index))[param_index++];
-          inliner(r);
-          auto const &id        = param.value->ids()[0];
-          type::Type param_type = c.context().qual_types(&id)[0].type();
-          ir::PartialResultBuffer buffer;
-          buffer.append(r);
-          c.builder().set_addr(&id, c.builder().Alloca(param_type));
-          c.EmitCopyAssign(type::Typed(c.builder().addr(&id), param_type),
-                           type::Typed(buffer[0], param_type));
-        }
+        type::Type t = c.context().qual_types(block_to_emit)[0].type();
+        if (t.is<type::Block>()) {
+          size_t param_index = 0;
+          for (auto const &param : block_to_emit->params()) {
+            ir::Reg r = scope.parameters(ir::Block(block_index))[param_index++];
+            inliner(r);
+            auto const &id        = param.value->ids()[0];
+            type::Type param_type = c.context().qual_types(&id)[0].type();
+            ir::PartialResultBuffer buffer;
+            buffer.append(r);
+            c.builder().set_addr(&id, c.builder().Alloca(param_type));
+            c.EmitCopyAssign(type::Typed(c.builder().addr(&id), param_type),
+                             type::Typed(buffer[0], param_type));
+          }
 
-        ir::PartialResultBuffer ignored;
-        c.EmitToBuffer(block_to_emit, ignored);
-        c.builder().UncondJump(exit);
+          ir::PartialResultBuffer ignored;
+          c.EmitToBuffer(block_to_emit, ignored);
+          c.builder().UncondJump(exit);
+        } else {
+          auto const &gb = t.as<type::Generic<type::Block>>();
+          // TODO: From here we need to find the instantiation, which requires
+          // knowing the bound arguments and types thereof.
+
+          //FindInstantiation
+          // gb.Instantiate();
+          LOG("", "%s", gb.to_string());
+          NOT_YET();
+        }
       } else {
         UNREACHABLE(type);
       }

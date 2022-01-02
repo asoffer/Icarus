@@ -10,12 +10,15 @@
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
 #include "base/extend/serialize.h"
+#include "base/ptr_union.h"
 #include "compiler/work_resources.h"
 #include "core/params.h"
 #include "ir/blocks/group.h"
 #include "ir/value/block.h"
 #include "ir/value/reg.h"
 #include "ir/value/result_buffer.h"
+#include "type/block.h"
+#include "type/generic.h"
 #include "type/scope.h"
 
 namespace ast {
@@ -71,7 +74,11 @@ struct ScopeContext
   // TODO: Rather than storing the parameters, we should store the actual
   // block-type, or, if it's generic, the generic that could be used to
   // instantiate a block-type.
-  using block_type = std::pair<std::string, core::Params<type::QualType>>;
+  struct block_type : base::Extend<block_type>::With<base::AbslHashExtension> {
+    std::string_view name;
+    base::PtrUnion<type::Block const, type::Generic<type::Block> const> type;
+    ast::BlockNode const *node;
+  };
 
   ScopeContext() : block_names_(nullptr) {}
   explicit ScopeContext(std::vector<block_type> const *block_names)
@@ -83,8 +90,7 @@ struct ScopeContext
 
   Block find(std::string_view name) const {
     for (size_t i = 0; i < block_names_->size(); ++i) {
-      auto const &[block_name, qts] = (*block_names_)[i];
-      if (block_name == name) { return Block(i); }
+      if ((*block_names_)[i].name == name) { return Block(i); }
     }
     return Block::Invalid();
   }

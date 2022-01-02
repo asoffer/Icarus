@@ -63,6 +63,11 @@ struct Typed {
     return Typed<V, U>(value_, &type_->template as<U>());
   }
 
+  friend std::ostream& operator<<(std::ostream& os, Typed const& t)
+    requires(requires { { os << *t } -> std::same_as<std::ostream&>; }) {
+    return os << *t << ": " << t.type();
+  }
+
  private:
   V value_{};
   type_t type_{};

@@ -10,7 +10,7 @@ for ::= scope [c] (low: i64, high: i64) {
 // TODO: Accept unsigned as well
 #{export}
 repeat ::= scope [c] (count: i64) {
-  for (0, count) do { >> c.do }
+  for (0, count) do [n: i64] { >> c.do }
 }
 
 #{export}

@@ -500,9 +500,20 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
         });
         return context().set_qual_types(node, type::QualType::ErrorSpan());
       } else {
+        auto const &[name, possibly_generic_block, block_node] =
+            scope_context[block];
+        auto const *b = possibly_generic_block.get_if<type::Block>();
+
+        ast::OverloadSet os;
+        os.insert(block_node);
+        context().SetAllOverloads(node, std::move(os));
+
         return context().set_qual_type(
             node,
-            type::QualType::Constant(type::Blk(scope_context[block].second)));
+            type::QualType::Constant(
+                b ? type::Type(b)
+                  : type::Type(possibly_generic_block
+                                   .get_if<type::Generic<type::Block>>())));
       }
     } else {
       // TODO: Improve this error message. It's not just that the member is

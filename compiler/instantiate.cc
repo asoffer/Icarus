@@ -44,8 +44,8 @@ std::optional<type::Type> ComputeParameterTypeOrDiagnose(
 std::optional<BoundParameters> ComputeParamsFromArgs(
     Compiler &c, ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args) {
-  LOG("ComputeParamsFromArgs", "Creating a concrete implementation with %s",
-      args.Transform([](auto const &a) { return a.type().to_string(); }));
+  LOG("ComputeParamsFromArgs",
+      "Creating a concrete implementation with arguments %s", args);
 
   std::vector<type::Type> argument_types(node->params().size());
 

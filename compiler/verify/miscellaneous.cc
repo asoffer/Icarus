@@ -74,6 +74,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
                    auto argument_values,
                    VerifyArguments(*this, node->arguments(), buffer));
+  LOG("ScopeNode", "Arguments = %s", argument_values);
 
   // TODO: Determine to what extent we want to support ADL
   auto callee_qt = VerifyCallee(*this, node->name(), {});
@@ -97,12 +98,13 @@ absl::Span<type::QualType const> Compiler::VerifyType(
   std::vector<ir::ScopeContext::block_type> blocks;
   blocks.reserve(node->blocks().size());
   for (auto const &block : node->blocks()) {
-    // TODO: When we start to allow block parameters to be deduced from values
-    // injected from the scope, doing this work here won't make sense.
-    VerifyType(&block);
-    auto param_types = block.params().Transform(
-        [&](auto const &p) { return context().qual_types(p.get())[0]; });
-    blocks.emplace_back(std::string(block.name()), std::move(param_types));
+    type::Type t   = VerifyType(&block)[0].type();
+    auto *as_block = t.if_as<type::Block>();
+    using ptr_union_type =
+        base::PtrUnion<type::Block const, type::Generic<type::Block> const>;
+    auto ptr = as_block ? ptr_union_type(as_block)
+                        : ptr_union_type(&t.as<type::Generic<type::Block>>());
+    blocks.push_back({.name = block.name(), .type = ptr, .node = &block});
   }
   // TODO: Validation that this scope context is valid for use with the unbound
   // scope.
