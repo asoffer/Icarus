@@ -73,7 +73,7 @@ struct BasicModule : base::Cast<BasicModule> {
   bool depends_on_module_with_errors_ = false;
 };
 
-// Returns a container of all visible declarations in this scope  with the given
+// Returns a container of all visible declarations in this scope with the given
 // identifier. This means any declarations in the path to the ancestor
 // function/jump, and any constant declarations above that.
 std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(

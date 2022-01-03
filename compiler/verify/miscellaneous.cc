@@ -77,14 +77,38 @@ absl::Span<type::QualType const> Compiler::VerifyType(
   LOG("ScopeNode", "Arguments = %s", argument_values);
 
   // TODO: Determine to what extent we want to support ADL
-  auto callee_qt = VerifyCallee(*this, node->name(), {});
-  LOG("ScopeNode", "Callee's qual-type is %s", callee_qt);
-  if (not callee_qt.ok()) {
-    return context().set_qual_type(node, type::QualType::Error());
+  if (auto const *id = node->name()->if_as<ast::Identifier>()) {
+    context().SetCallMetadata(node, CallMetadata(id->name(), node->scope()));
+    context().set_qual_type(node->name(),
+                            type::QualType::NonConstant(type::Void));
+  } else {
+    auto callee_qt = VerifyType(node->name())[0];
+
+    LOG("ScopeNode", "Callee's qual-type is %s", callee_qt);
+    if (not callee_qt.ok()) {
+      return context().set_qual_type(node, type::QualType::Error());
+    }
+
+    if (auto const *access = node->name()->if_as<ast::Access>()) {
+      std::optional mod_id =
+          EvaluateOrDiagnoseAs<ir::ModuleId>(access->operand());
+      if (not mod_id) {
+        return context().set_qual_type(node, type::QualType::Error());
+      }
+
+      auto ids = importer().get(*mod_id).scope().ExportedDeclarationIds(
+          access->member_name());
+      context().SetCallMetadata(
+          node, CallMetadata(absl::flat_hash_set<ast::Expression const *>(
+                    ids.begin(), ids.end())));
+    } else {
+      context().SetCallMetadata(node, CallMetadata(node->name()));
+    }
   }
 
-  auto qts_or_errors =
-      VerifyCall(*this, {.callee = node->name(), .arguments = argument_values});
+  auto qts_or_errors = VerifyCall(
+      *this,
+      {.call = node, .callee = node->name(), .arguments = argument_values});
   if (auto *errors = std::get_if<
           absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>(
           &qts_or_errors)) {

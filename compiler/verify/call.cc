@@ -14,6 +14,7 @@
 #include "compiler/verify/common.h"
 #include "type/callable.h"
 #include "type/cast.h"
+#include "type/provenance.h"
 #include "type/qual_type.h"
 
 namespace compiler {
@@ -452,9 +453,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
     type::QualType qt;
     switch (b->value().which()) {
       case ir::BuiltinFn::Which::Slice: {
-        ast::OverloadSet os;
-        os.insert(node);
-        context().SetAllOverloads(node, std::move(os));
+        context().SetCallMetadata(
+            node,
+            CallMetadata(absl::flat_hash_set<ast::Expression const *>{node}));
         qt = VerifySliceCall(this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::HasBlock: {
@@ -464,9 +465,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
         qt = VerifyReserveMemoryCall(this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Foreign: {
-        ast::OverloadSet os;
-        os.insert(node);
-        context().SetAllOverloads(node, std::move(os));
+        context().SetCallMetadata(
+            node,
+            CallMetadata(absl::flat_hash_set<ast::Expression const *>{node}));
         qt = VerifyForeignCall(this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::CompilationError: {
@@ -494,20 +495,47 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
     return context().set_qual_type(node, qt);
   }
 
-  absl::flat_hash_set<type::Type> argument_dependent_lookup_types;
-  for (auto const &arg : node->prefix_arguments()) {
-    argument_dependent_lookup_types.insert(
-        context().qual_types(&arg.expr())[0].type());
-  }
-  auto callee_qt =
-      VerifyCallee(*this, node->callee(), argument_dependent_lookup_types);
-  LOG("Call", "Callee's qual-type is %s", callee_qt);
-  if (not callee_qt.ok()) {
-    return context().set_qual_type(node, type::QualType::Error());
+  if (auto const *id = node->callee()->if_as<ast::Identifier>()) {
+    absl::flat_hash_set<module::BasicModule const *> lookup_modules;
+    for (auto const &arg : node->prefix_arguments()) {
+      if (auto const *mod =
+              type::Provenance(context().qual_types(&arg.expr())[0].type())) {
+        lookup_modules.insert(mod);
+      }
+    }
+    CallMetadata metadata(id->name(), node->scope(), std::move(lookup_modules));
+    if (metadata.overloads().empty()) {
+      diag().Consume(UndeclaredIdentifier{
+          .id   = id->name(),
+          .view = SourceViewFor(node->callee()),
+      });
+      return context().set_qual_type(node, type::QualType::Error());
+    }
+    context().SetCallMetadata(node, std::move(metadata));
+  } else {
+    auto callee_qt = VerifyType(node->callee())[0];
+
+    LOG("Call", "Callee's qual-type is %s", callee_qt);
+    if (not callee_qt.ok()) {
+      return context().set_qual_type(node, type::QualType::Error());
+    }
+
+    if (auto const *access = node->callee()->if_as<ast::Access>()) {
+      ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
+                       ir::ModuleId mod_id,
+                       EvaluateOrDiagnoseAs<ir::ModuleId>(access->operand()));
+      context().SetCallMetadata(node,
+                                CallMetadata(access->member_name(), nullptr,
+                                             {&importer().get(mod_id)}));
+    } else {
+      context().SetCallMetadata(
+          node, CallMetadata(absl::flat_hash_set<ast::Expression const *>{
+                    node->callee()}));
+    }
   }
 
   auto qts_or_errors = VerifyReturningCall(
-      *this, {.callee = node->callee(), .arguments = arg_vals});
+      *this, {.call = node, .callee = node->callee(), .arguments = arg_vals});
   if (auto *errors = std::get_if<
           absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>(
           &qts_or_errors)) {

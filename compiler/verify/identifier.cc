@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
+#include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/module.h"
@@ -26,21 +27,6 @@ struct DeclOutOfOrder {
   std::string_view id;
   frontend::SourceView id_view;
   frontend::SourceView use_view;
-};
-
-struct UndeclaredIdentifier {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "undeclared-identifier";
-
-  diagnostic::DiagnosticMessage ToMessage() const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Found an undeclared identifier '%s':", id),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
-  }
-
-  std::string_view id;
-  frontend::SourceView view;
 };
 
 struct UncapturedIdentifier {
@@ -94,18 +80,8 @@ PotentialIds(Compiler &c, ast::Identifier const &id) {
     if (result) { result->emplace_back(decl_id, qt); }
   }
 
-  if (result) {
-    // TODO: Can there be any ADL modules?
-    if (auto const *adl_modules = c.context().AdlModules(&id)) {
-      for (auto const *mod : *adl_modules) {
-        auto ids = mod->scope().ExportedDeclarationIds(id.name());
-        for (auto const *decl_id : ids) {
-          result->emplace_back(
-              decl_id, mod->context().qual_types(&decl_id->declaration())[0]);
-        }
-      }
-    }
-  }
+
+  // TODO: Fill out overloads based on adl modules
 
   return result;
 }
@@ -176,7 +152,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(
       if (qt.type().is<type::Callable>() or
           qt.type().is<type::Generic<type::Function>>() or
           qt.type().is<type::Generic<type::Block>>()) {
-        context().SetAllOverloads(node, ast::OverloadSet({id}));
+        context().SetCallMetadata(
+            node,
+            CallMetadata(absl::flat_hash_set<ast::Expression const *>{id}));
       }
 
       LOG("Identifier", "setting %s: %s", node->name(), qt);
@@ -225,12 +203,12 @@ absl::Span<type::QualType const> Compiler::VerifyType(
         return context().set_qual_type(node, type::QualType::Error());
       }
 
-      std::vector<ast::Declaration::Id const *> potential_ids;
+      absl::flat_hash_set<ast::Expression const *> potential_ids;
       potential_ids.reserve(potential_decl_ids->size());
       for (auto const &[id, id_qt] : *potential_decl_ids) {
-        potential_ids.push_back(id);
+        potential_ids.insert(id);
       }
-      context().SetAllOverloads(node, ast::OverloadSet(potential_ids));
+      context().SetCallMetadata(node, CallMetadata(std::move(potential_ids)));
       qt = type::QualType(type::MakeOverloadSet(member_types), quals);
       LOG("Identifier", "setting %s", node->name());
       std::vector<ast::Declaration::Id const *> decl_ids;

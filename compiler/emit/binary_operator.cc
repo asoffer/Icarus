@@ -35,9 +35,6 @@ void Apply(type::Typed<ast::Expression const *> lhs,
 
 void EmitBinaryOverload(Compiler &c, ast::BinaryOperator const *node,
                         ir::PartialResultBuffer &out) {
-  auto const &os = c.context().ViableOverloads(node);
-  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-
   // TODO: We claim ownership but later release the ownership. This is
   // safe and correct, but it's also a bit of a lie. It would be better
   // if we had a mechanism to hide ownership.
@@ -52,7 +49,7 @@ void EmitBinaryOverload(Compiler &c, ast::BinaryOperator const *node,
   type::Typed<ir::RegOr<ir::addr_t>> result(c.builder().TmpAlloca(result_type),
                                             result_type);
 
-  EmitCall(c, os.members().front(), {}, arguments,
+  EmitCall(c, c.context().CallMetadata(node).resolved(), {}, arguments,
            absl::MakeConstSpan(&result, 1));
 
   for (auto &argument : arguments) {

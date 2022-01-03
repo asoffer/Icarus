@@ -106,57 +106,33 @@ struct NoMatchingBinaryOperator {
 template <
     base::one_of<ast::BinaryOperator, ast::BinaryAssignmentOperator> NodeType>
 type::QualType VerifyOperatorOverload(
-    Compiler &c, ast::BinaryOperator const *node,
+    Compiler &c, NodeType const *node,
     type::Typed<ir::CompleteResultRef> const &lhs,
     type::Typed<ir::CompleteResultRef> const &rhs) {
-  absl::flat_hash_set<type::Function const *> member_types;
-  absl::flat_hash_set<ast::Declaration::Id const *> members;
-
   auto symbol = NodeType::Symbol(node->kind());
-  ast::OverloadSet os;
+  CallMetadata metadata(symbol, node->scope(),
+                        ModulesFromTypeProvenance({lhs.type(), rhs.type()}));
+  if (metadata.overloads().empty()) { return type::QualType::Error(); }
 
-  auto get_ids = [&](Context const &ctx, ast::Declaration::Id const *id) {
-    members.insert(id);
-    member_types.insert(&ctx.qual_types(id)[0].type().as<type::Function>());
-  };
-
-  for (auto const &t : {lhs.type(), rhs.type()}) {
-    // TODO: Checking defining_module only when this is a struct is wrong. We
-    // should also handle pointers to structs, ec
-    if (auto const *dm = type::Provenance(t)) {
-      if (c.resources().module == dm) { continue; }
-      dm->scope().ForEachDeclIdTowardsRoot(
-          symbol, [&](ast::Declaration::Id const *id) {
-            if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
-              get_ids(dm->as<CompiledModule>().context(), id);
-            }
-            return true;
-          });
-    }
-  }
-  node->scope()->ForEachDeclIdTowardsRoot(symbol,
-                                          [&](ast::Declaration::Id const *id) {
-                                            get_ids(c.context(), id);
-                                            return true;
-                                          });
-
-  for (auto const *id : members) { os.insert(id); }
-
-  if (os.members().empty()) { return type::QualType::Error(); }
-  for (auto const *member : os.members()) {
-    if (auto qts = c.context().maybe_qual_type(member); not qts.empty()) {
+  absl::flat_hash_set<type::Function const *> member_types;
+  ast::Expression const *resolved_call = nullptr;
+  for (auto const *overload : metadata.overloads()) {
+    if (auto qts =
+            ModuleFor(overload)->as<CompiledModule>().context().maybe_qual_type(
+                overload);
+        not qts.empty()) {
       ASSIGN_OR(continue, auto qt, qts[0]);
       // Must be callable because we're looking at overloads for operators which
       // have previously been type-checked to ensure callability.
       auto &c = qt.type().as<type::Function>();
       member_types.insert(&c);
+      resolved_call = overload;
     }
   }
 
-  c.context().SetViableOverloads(node, std::move(os));
+  c.context().SetCallMetadata(node, CallMetadata(resolved_call));
 
   ASSERT(member_types.size() == 1u);
-
   return type::QualType((*member_types.begin())->return_types()[0],
                         type::Quals::Unqualified());
 }

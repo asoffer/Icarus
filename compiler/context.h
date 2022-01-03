@@ -12,6 +12,7 @@
 #include "ast/ast.h"
 #include "base/guarded.h"
 #include "compiler/bound_parameters.h"
+#include "compiler/call_metadata.h"
 #include "compiler/jump_map.h"
 #include "ir/builder.h"
 #include "ir/byte_code/byte_code.h"
@@ -318,38 +319,14 @@ struct Context {
   bool TryLoadConstant(ast::Declaration::Id const *id,
                        ir::PartialResultBuffer &out) const;
 
-  void SetAllOverloads(ast::Expression const *callee, ast::OverloadSet os);
-  ast::OverloadSet const *AllOverloads(ast::Expression const *callee) const;
-
-  void SetViableOverloads(ast::Expression const *callee, ast::OverloadSet os) {
-    viable_overloads_.emplace(callee, std::move(os));
+  CallMetadata const & CallMetadata(ast::Expression const * expr) const {
+    auto iter = call_metadata_.find(expr);
+    if (iter != call_metadata_.end()) { return iter->second; }
+    return ASSERT_NOT_NULL(parent())->CallMetadata(expr);
   }
 
-  void SetAdlModules(ast::Identifier const *callee,
-                     absl::flat_hash_set<CompiledModule const *> modules) {
-    adl_modules_.emplace(callee, std::move(modules));
-  }
-  absl::flat_hash_set<CompiledModule const *> const *AdlModules(
-      ast::Identifier const *callee) {
-    auto iter = adl_modules_.find(callee);
-    if (iter == adl_modules_.end()) {
-      if (parent()) { return parent()->AdlModules(callee); }
-      return nullptr;
-    } else {
-      return &iter->second;
-    }
-  }
-
-  ast::OverloadSet const &ViableOverloads(ast::Expression const *callee) const {
-    auto iter = viable_overloads_.find(callee);
-    if (iter == viable_overloads_.end()) {
-      if (parent() == nullptr) {
-        UNREACHABLE("Failed to find any overloads for ", callee->DebugString());
-      }
-      return parent()->ViableOverloads(callee);
-    } else {
-      return iter->second;
-    }
+  void SetCallMetadata(ast::Expression const *expr, struct CallMetadata m) {
+    call_metadata_.insert_or_assign(expr, std::move(m));
   }
 
   ir::Module &ir() { return ir_module_; }
@@ -413,18 +390,9 @@ struct Context {
   absl::flat_hash_map<ast::Expression const *, ir::CompleteResultBuffer>
       constants_;
 
-  // Overloads for a callable expression, including overloads that are not
-  // callable based on the call-site arguments.
-  //
-  // Note: This indirection guarantees stability that we rely on when doing type
-  // verification. It's possible that while holding on to this set of overloads,
-  // we attempt instantiations that insert more data into the hash map.
-  absl::node_hash_map<ast::Expression const *, ast::OverloadSet> all_overloads_;
-
-  // Overloads for a callable expression, keeping only the ones that are viable
-  // based on the call-site arguments.
-  absl::flat_hash_map<ast::Expression const *, ast::OverloadSet>
-      viable_overloads_;
+  // TODO: Determine whether this needs to be node or if flat is okay.
+  absl::node_hash_map<ast::Expression const *, struct CallMetadata>
+      call_metadata_;
 
   absl::node_hash_map<ast::ParameterizedExpression const *, ir::NativeFn>
       ir_funcs_;
@@ -433,11 +401,6 @@ struct Context {
 
   // Holds all information about generated IR.
   ir::Module &ir_module_;
-
-  // The modules in which to look up a callee.
-  absl::flat_hash_map<ast::Identifier const *,
-                      absl::flat_hash_set<CompiledModule const *>>
-      adl_modules_;
 
   // For types defined by a single literal expression, (e.g., enums, flags, and
   // structs), this map encodes that definition.

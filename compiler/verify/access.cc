@@ -279,7 +279,7 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
         .context = &c.context(),
     });
     if (auto const *member = s->constant(node->member_name())) {
-      std::vector<ast::Declaration::Id const *> ids;
+      absl::flat_hash_set<ast::Expression const *> ids;
 
       auto &s_mod = s->defining_module()->as<compiler::CompiledModule>();
       auto const *struct_lit = s_mod.context().AstLiteral(s);
@@ -297,10 +297,10 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
         }
         for (auto const &id : decl.ids()) {
           if (id.name() != node->member_name()) { continue; }
-          ids.push_back(&id);
+          ids.insert(&id);
         }
       }
-      c.context().SetAllOverloads(node, ast::OverloadSet(ids));
+      c.context().SetCallMetadata(node, CallMetadata(std::move(ids)));
       return c.context().set_qual_type(node,
                                        type::QualType::Constant(member->type));
     }
@@ -387,6 +387,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
   // makes it findable when it's called via an overload set as is type-checked
   // in VerifyCallee.
   auto ids = mod.scope().ExportedDeclarationIds(node->member_name());
+
   switch (ids.size()) {
     case 0: {
       c.diag().Consume(UndeclaredIdentifierInModule{
@@ -409,7 +410,6 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
             node->DebugString());
         return type::QualType::Error();
       } else {
-        c.context().SetAllOverloads(node, ast::OverloadSet(ids));
         return c.context().set_qual_type(ids[0], qt)[0];
       }
     } break;
@@ -438,7 +438,6 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
         member_types.insert(qt.type());
       }
 
-      c.context().SetAllOverloads(node, ast::OverloadSet(ids));
       return type::QualType(type::MakeOverloadSet(member_types), quals);
     } break;
   }
@@ -504,9 +503,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
             scope_context[block];
         auto const *b = possibly_generic_block.get_if<type::Block>();
 
-        ast::OverloadSet os;
-        os.insert(block_node);
-        context().SetAllOverloads(node, std::move(os));
+        context().SetCallMetadata(
+            node, CallMetadata(absl::flat_hash_set<ast::Expression const *>{
+                      block_node}));
 
         return context().set_qual_type(
             node,

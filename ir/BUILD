@@ -6,7 +6,6 @@ cc_library(
     srcs = ["builder.cc"],
     deps = [
         ":scope_state",
-        "//ast:overload_set",
         "//base:debug",
         "//base:scope",
         "//base:traverse",

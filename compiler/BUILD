@@ -14,6 +14,17 @@ cc_library(
 )
 
 cc_library(
+    name = "call_metadata",
+    hdrs = ["call_metadata.h"],
+    srcs = ["call_metadata.cc"],
+    deps = [
+        "//ast:expression",
+        "//module",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
+)
+
+cc_library(
     name = "common",
     hdrs = ["common.h"],
     srcs = ["common.cc"],
@@ -219,7 +230,6 @@ cc_library(
         ":transient_state",
         ":work_item",
         "//ast",
-        "//ast:overload_set",
         "//ast:visitor",
         "//base:debug",
         "//core:call",
@@ -266,6 +276,7 @@ cc_library(
     srcs = ["context.cc"],
     deps = [
         ":bound_parameters",
+        ":call_metadata",
         ":jump_map",
         "//ast:ast",
         "//base:guarded",

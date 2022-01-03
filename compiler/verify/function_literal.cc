@@ -262,9 +262,6 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
 absl::Span<type::QualType const> Compiler::VerifyType(
     ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "Verifying %p: %s", node, node->DebugString());
-  ast::OverloadSet os;
-  os.insert(node);
-  context().SetAllOverloads(node, std::move(os));
   auto qt = node->is_generic() ? VerifyGeneric(*this, node)
                                : VerifyConcrete(*this, node);
   return context().set_qual_type(node, qt);

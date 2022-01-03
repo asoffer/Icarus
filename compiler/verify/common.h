@@ -9,6 +9,9 @@
 
 namespace compiler {
 
+absl::flat_hash_set<module::BasicModule const *> ModulesFromTypeProvenance(
+    absl::flat_hash_set<type::Type> const &adl_types);
+
 std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
     Context const &context,
     base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node);
@@ -20,16 +23,15 @@ VerifyArguments(Compiler &c, absl::Span<ast::Call::Argument const> arguments,
 std::optional<core::Params<type::QualType>> VerifyParameters(
     Compiler &c, core::Params<std::unique_ptr<ast::Declaration>> const &params);
 
-type::QualType VerifyCallee(Compiler &c, ast::Expression const *callee,
-                            absl::flat_hash_set<type::Type> const &adl_types);
-
-struct VerifyCallParameters{
+struct VerifyCallParameters {
+  ast::Expression const *call;
   ast::Expression const *callee;
   core::Arguments<type::Typed<ir::CompleteResultRef>> const arguments;
 };
 
-std::variant<ast::OverloadSet, absl::flat_hash_map<type::Callable const *,
-                                                   core::CallabilityResult>>
+std::variant<
+    type::Typed<ast::Expression const *>,
+    absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
 VerifyCall(Compiler &c, VerifyCallParameters const &vcp);
 
 std::variant<

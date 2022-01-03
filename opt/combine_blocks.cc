@@ -1,5 +1,9 @@
 #include "opt/combine_blocks.h"
 
+#include <queue>
+#include <type_traits>
+#include <utility>
+
 #include "base/log.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"

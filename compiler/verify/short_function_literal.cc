@@ -59,10 +59,8 @@ type::QualType VerifyGeneric(Compiler &c,
                 new type::Generic<type::Function>(std::move(gen))))[0];
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
-  ast::OverloadSet os;
-  os.insert(node);
-  context().SetAllOverloads(node, std::move(os));
+absl::Span<type::QualType const> Compiler::VerifyType(
+    ast::ShortFunctionLiteral const *node) {
   auto qt = node->is_generic() ? VerifyGeneric(*this, node)
                                : VerifyConcrete(*this, node);
   return context().set_qual_type(node, qt);

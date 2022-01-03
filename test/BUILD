@@ -13,7 +13,6 @@ cc_library(
     deps = [
         "//ast:ast",
         "//ast:expression",
-        "//ast:overload_set",
         "//base:ptr_span",
         "//compiler",
         "//compiler:resources",

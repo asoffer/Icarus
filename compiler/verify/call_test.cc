@@ -42,7 +42,7 @@ TEST(BuiltinReserveMemory, WrongType) {
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
-TEST(BuiltinForeign, CompilationErrorError) {
+TEST(BuiltinCompilationError, CompilationErrorError) {
   test::TestModule mod;
   auto const *call =
       mod.Append<ast::Call>(R"(compilation_error(0, "hello"))");
@@ -50,7 +50,7 @@ TEST(BuiltinForeign, CompilationErrorError) {
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
-TEST(BuiltinForeign, CompilationErrorSuccess) {
+TEST(BuiltinCompilationError, CompilationErrorSuccess) {
   test::TestModule mod;
   auto const *call =
       mod.Append<ast::Call>(R"(compilation_error(i64, "hello"))");

@@ -173,60 +173,39 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Index const *node) {
     qt = VerifyBufferPointerIndex(*this, node, buf_ptr_type, lhs_qt.quals(),
                                   index_qt);
   } else {
-    absl::flat_hash_set<type::Function const *> member_types;
-    absl::flat_hash_set<ast::Declaration::Id const *> members;
-    ast::OverloadSet os;
-
-    auto get_ids = [&](Context const &ctx, ast::Declaration::Id const *id) {
-      members.insert(id);
-      member_types.insert(&ctx.qual_types(id)[0].type().as<type::Function>());
-    };
-
-    for (auto const &t : {lhs_qt.type(), index_qt.type()}) {
-      // TODO: Checking defining_module only when this is a struct is wrong. We
-      // should also handle pointers to structs, ec
-      if (auto const *dm = type::Provenance(t)) {
-        if (resources().module == dm) { continue; }
-        dm->scope().ForEachDeclIdTowardsRoot(
-            "__index__", [&](ast::Declaration::Id const *id) {
-              if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
-                get_ids(dm->as<CompiledModule>().context(), id);
-              }
-              return true;
-            });
-      }
-    }
-    node->scope()->ForEachDeclIdTowardsRoot(
-        "__index__", [&](ast::Declaration::Id const *id) {
-          get_ids(context(), id);
-          return true;
-        });
-
-    for (auto const *id : members) { os.insert(id); }
-    if (os.members().empty()) {
+    CallMetadata metadata(
+        "__index__", node->scope(),
+        ModulesFromTypeProvenance({lhs_qt.type(), index_qt.type()}));
+    if (metadata.overloads().empty()) {
       diag().Consume(InvalidIndexing{
           .view = SourceViewFor(node),
           .type = TypeForDiagnostic(node->lhs(), context()),
       });
       qt = type::QualType::Error();
     } else {
-      for (auto const *member : os.members()) {
-        if (auto qts = context().maybe_qual_type(member); not qts.empty()) {
-          ASSIGN_OR(continue, auto overload_qt, qts[0]);
+      absl::flat_hash_set<type::Function const *> member_types;
+      ast::Expression const *resolved_call;
+      for (auto const *overload : metadata.overloads()) {
+        if (auto qts = ModuleFor(overload)
+                           ->as<CompiledModule>()
+                           .context()
+                           .maybe_qual_type(overload);
+            not qts.empty()) {
+          ASSIGN_OR(continue, auto qt, qts[0]);
           // Must be callable because we're looking at overloads for operators
           // which have previously been type-checked to ensure callability.
-          auto &c = overload_qt.type().as<type::Function>();
+          auto &c = qt.type().as<type::Function>();
           member_types.insert(&c);
+          resolved_call = overload;
         }
       }
+
+      context().SetCallMetadata(node, CallMetadata(resolved_call));
+
+      ASSERT(member_types.size() == 1u);
+      qt = type::QualType((*member_types.begin())->return_types()[0],
+                          type::Quals::Unqualified());
     }
-
-    context().SetViableOverloads(node, std::move(os));
-
-    ASSERT(member_types.size() == 1u);
-
-    qt = type::QualType((*member_types.begin())->return_types()[0],
-                        type::Quals::Unqualified());
   }
 
   return context().set_qual_type(node, qt);

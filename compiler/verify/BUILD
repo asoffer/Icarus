@@ -161,6 +161,7 @@ cc_library(
         "//compiler:type_for_diagnostic",
         "//type:callable",
         "//type:cast",
+        "//type:provenance",
         "//type:qual_type",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
@@ -389,6 +390,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:common",
+        "//compiler:common_diagnostics",
         "//compiler:compiler_header",
         "//compiler:cyclic_dependency_tracker",
         "//compiler:module",

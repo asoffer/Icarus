@@ -173,8 +173,6 @@ void Compiler::EmitToBuffer(ast::Call const *node,
     return;
   }
 
-  auto const &os = context().ViableOverloads(node->callee());
-  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   // TODO: It'd be nice to not stack-allocate register-sized values.
   std::vector<type::Typed<ir::RegOr<ir::addr_t>>> outs;
   outs.reserve(qts.size());
@@ -182,8 +180,8 @@ void Compiler::EmitToBuffer(ast::Call const *node,
     outs.emplace_back(builder().TmpAlloca(qt.type()), qt.type());
   }
 
-  EmitCall(*this, os.members().front(), constant_arguments, node->arguments(),
-           outs);
+  EmitCall(*this, context().CallMetadata(node).resolved(), constant_arguments,
+           node->arguments(), outs);
   // TODO: Why is this conditional on the size of qts?
   if (qts.size() == 1) {
     out.append(builder().PtrFix(outs[0]->reg(), qts[0].type()));
@@ -220,10 +218,8 @@ void Compiler::EmitMoveInit(
     return;
   }
 
-  auto const &os = context().ViableOverloads(node->callee());
-  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-  EmitCall(*this, os.members().front(), constant_arguments, node->arguments(),
-           to);
+  EmitCall(*this, context().CallMetadata(node).resolved(), constant_arguments,
+           node->arguments(), to);
 }
 
 void Compiler::EmitCopyInit(
@@ -257,10 +253,8 @@ void Compiler::EmitCopyInit(
     return;
   }
 
-  auto const &os = context().ViableOverloads(node->callee());
-  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-  return EmitCall(*this, os.members().front(), constant_arguments,
-                  node->arguments(), to);
+  EmitCall(*this, context().CallMetadata(node).resolved(), constant_arguments,
+           node->arguments(), to);
 }
 
 void Compiler::EmitMoveAssign(
@@ -293,11 +287,8 @@ void Compiler::EmitMoveAssign(
     EmitMoveAssign(to[0], type::Typed(t_buf[0], type::Type_));
   }
 
-  auto const &os = context().ViableOverloads(node->callee());
-  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-
-  return EmitCall(*this, os.members().front(), constant_arguments,
-                  node->arguments(), to);
+  EmitCall(*this, context().CallMetadata(node).resolved(), constant_arguments,
+           node->arguments(), to);
 }
 
 void Compiler::EmitCopyAssign(
@@ -330,11 +321,8 @@ void Compiler::EmitCopyAssign(
     EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
   }
 
-  auto const &os = context().ViableOverloads(node->callee());
-  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-
-  return EmitCall(*this, os.members().front(), constant_arguments,
-                  node->arguments(), to);
+  EmitCall(*this, context().CallMetadata(node).resolved(), constant_arguments,
+           node->arguments(), to);
 }
 
 bool Compiler::PatternMatch(

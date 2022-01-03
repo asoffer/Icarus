@@ -125,11 +125,9 @@ struct StringifyType : ast::Visitor<std::string()> {
   }
 
   std::string Visit(ast::Call const *node) final {
-    auto const &overload_set = context_.ViableOverloads(node->callee());
-    ASSERT(overload_set.members().size() == 1u);
     auto old_kind = std::exchange(kind_, VisitationKind::ReturnType);
     absl::Cleanup c([&] { kind_ = old_kind; });
-    return Visit(overload_set.members().front());
+    return Visit(context_.CallMetadata(node).resolved());
   }
 
   std::string Visit(ast::Declaration const *node) final {

@@ -91,21 +91,6 @@ cc_library(
     ],
 )
 
-
-cc_library(
-    name = "overload_set",
-    hdrs = ["overload_set.h"],
-    srcs = ["overload_set.cc"],
-    deps = [
-        ":ast",
-        ":scope",
-        "//base:log",
-        "//module:module",
-        "@com_google_absl//absl/types:span",
-    ],
-    test_deps = None,
-)
-
 cc_library(
     name = "scope",
     hdrs = ["scope.h"],

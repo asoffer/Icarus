@@ -120,15 +120,11 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
 void Compiler::EmitToBuffer(ast::ScopeNode const *node,
                             ir::PartialResultBuffer &out) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
-  auto const &os = context().ViableOverloads(node->name());
-  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
-  // TODO: There should be an easier way to ensure we're generating with the
-  // right context.
-  Compiler c(&ModuleFor(os.members()[0])->as<CompiledModule>().context(),
-             resources());
+
+  auto const *callee = context().CallMetadata(node).resolved();
+  Compiler c(&ModuleFor(callee)->as<CompiledModule>().context(), resources());
   c.set_work_resources(work_resources());
-  auto unbound_scope =
-      *c.EvaluateOrDiagnoseAs<ir::UnboundScope>(os.members()[0]);
+  auto unbound_scope = *c.EvaluateOrDiagnoseAs<ir::UnboundScope>(callee);
 
   auto scope_context = context().LoadConstant<ir::ScopeContext>(node);
 

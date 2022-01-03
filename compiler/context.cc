@@ -160,25 +160,6 @@ ir::CompleteResultBuffer const *Context::Constant(
   return nullptr;
 }
 
-void Context::SetAllOverloads(ast::Expression const *callee,
-                              ast::OverloadSet os) {
-  LOG("SetAllOverloads", "%s", callee->DebugString());
-  [[maybe_unused]] auto [iter, inserted] =
-      all_overloads_.emplace(callee, std::move(os));
-  ASSERT(inserted == true);
-}
-
-ast::OverloadSet const *Context::AllOverloads(
-    ast::Expression const *callee) const {
-  auto iter = all_overloads_.find(callee);
-  if (iter == all_overloads_.end()) {
-    if (parent() == nullptr) { return nullptr; }
-    return parent()->AllOverloads(callee);
-  } else {
-    return &iter->second;
-  }
-}
-
 absl::Span<ast::ReturnStmt const *const> Context::ReturnsTo(
     base::PtrUnion<ast::FunctionLiteral const, ast::ShortFunctionLiteral const>
         node) const {

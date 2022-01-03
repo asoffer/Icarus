@@ -21,6 +21,21 @@
 
 namespace compiler {
 
+struct UndeclaredIdentifier {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "undeclared-identifier";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Found an undeclared identifier '%s':", id),
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+  }
+
+  std::string_view id;
+  frontend::SourceView view;
+};
+
 struct NotAType {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "not-a-type";

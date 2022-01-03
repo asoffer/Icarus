@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "ast/overload_set.h"
 #include "base/debug.h"
 #include "base/meta.h"
 #include "base/scope.h"
