@@ -13,7 +13,6 @@
 #include "base/guarded.h"
 #include "compiler/bound_parameters.h"
 #include "compiler/call_metadata.h"
-#include "compiler/jump_map.h"
 #include "ir/builder.h"
 #include "ir/byte_code/byte_code.h"
 #include "ir/compiled_fn.h"
@@ -331,17 +330,6 @@ struct Context {
 
   ir::Module &ir() { return ir_module_; }
 
-  void TrackJumps(ast::Node const *p) { jumps_.TrackJumps(p); }
-
-  absl::Span<ast::ReturnStmt const *const> ReturnsTo(
-      base::PtrUnion<ast::FunctionLiteral const,
-                     ast::ShortFunctionLiteral const>
-          node) const;
-  absl::Span<ast::YieldStmt const *const> YieldsTo(
-      base::PtrUnion<ast::BlockNode const, ast::ScopeNode const,
-                     ast::IfStmt const, ast::WhileStmt const>
-          node) const;
-
   bool ClaimVerifyBodyTask(ast::FunctionLiteral const *node) {
     return body_is_verified_.insert(node).second;
   }
@@ -408,11 +396,6 @@ struct Context {
 
   absl::node_hash_set<std::vector<ir::ScopeContext::block_type>>
       scope_context_data_;
-
-  // Provides a mapping from a given AST node to the collection of all nodes
-  // that might jump to it. For example, a function literal will be mapped to
-  // all return statements from that function.
-  JumpMap jumps_;
 };
 
 // TODO: Probably deserves it's own translation unit?

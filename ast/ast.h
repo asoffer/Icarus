@@ -503,6 +503,7 @@ struct BlockNode : ParameterizedExpression, WithScope<Scope> {
   std::string_view name() const { return name_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
   ScopeNode const *parent() const { return parent_; }
+
   frontend::SourceRange name_range() const {
     return frontend::SourceRange(range().begin(), name_end_);
   }
@@ -774,11 +775,18 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
     return *outputs_;
   }
 
+  absl::flat_hash_set<ReturnStmt const *> const &returns() const {
+    return returns_;
+  }
+
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
+  friend ReturnStmt;
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> stmts_;
+
+  absl::flat_hash_set<ReturnStmt const *> returns_;
 };
 
 // FunctionType:
@@ -989,7 +997,7 @@ struct ReturnStmt : Node {
 
  private:
   // Pointer to the function literal containing this return statement.
-  ast::FunctionLiteral const *function_literal_;
+  FunctionLiteral *function_literal_;
 
   // Expressions being returned.
   std::vector<std::unique_ptr<Expression>> exprs_;
@@ -1092,6 +1100,10 @@ struct ScopeNode : Expression {
   Label const *label() const { return label_ ? &*label_ : nullptr; }
   void set_label(Label label) { label_ = std::move(label); }
 
+  absl::flat_hash_set<YieldStmt const *> const &yields() const {
+    return yields_;
+  }
+
   // Appends the given block not necessarily to this ScopeNode, but to the scope
   // that makes sense syntactically. For instance, in the first example above,
   // the inner `if` ScopeNode checking `condition2` would be appended to.
@@ -1106,6 +1118,8 @@ struct ScopeNode : Expression {
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
+  friend YieldStmt;
+
   std::vector<BlockNode> WithThisAsParent(std::vector<BlockNode> &&blocks) {
     for (auto &b : blocks) { b.parent_ = this; }
     return std::move(blocks);
@@ -1115,6 +1129,7 @@ struct ScopeNode : Expression {
   std::unique_ptr<Expression> name_;
   std::vector<Call::Argument> args_;
   std::vector<BlockNode> blocks_;
+  absl::flat_hash_set<YieldStmt const *> yields_;
   ScopeNode *last_scope_node_ = nullptr;
 };
 

@@ -12,10 +12,6 @@ namespace compiler {
 absl::flat_hash_set<module::BasicModule const *> ModulesFromTypeProvenance(
     absl::flat_hash_set<type::Type> const &adl_types);
 
-std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
-    Context const &context,
-    base::PtrUnion<ast::BlockNode const, ast::ScopeNode const> node);
-
 std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>
 VerifyArguments(Compiler &c, absl::Span<ast::Call::Argument const> arguments,
                 ir::CompleteResultBuffer &out);

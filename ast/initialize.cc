@@ -234,7 +234,7 @@ void FunctionLiteral::Initialize(Initializer& initializer) {
   set_body_with_parent(initializer.scope);
 
   initializer.scope = &body_scope();
-  auto const* f     = std::exchange(initializer.function_literal, this);
+  auto* f           = std::exchange(initializer.function_literal, this);
   absl::Cleanup c   = [&] {
     initializer.scope            = scope_;
     initializer.function_literal = f;
@@ -295,6 +295,7 @@ void Label::Initialize(Initializer& initializer) { scope_ = initializer.scope; }
 void ReturnStmt::Initialize(Initializer& initializer) {
   scope_            = initializer.scope;
   function_literal_ = initializer.function_literal;
+  function_literal_->returns_.insert(this);
   InitializeAll(exprs_, initializer, &covers_binding_, &is_dependent_);
 }
 
@@ -304,6 +305,19 @@ void YieldStmt::Initialize(Initializer& initializer) {
     arg.expr().Initialize(initializer);
     covers_binding_ |= arg.expr().covers_binding();
     is_dependent_ |= arg.expr().is_dependent();
+  }
+  if (auto const *l = label()) {
+    for (auto iter = initializer.scope_nodes.rbegin();
+         iter != initializer.scope_nodes.rend(); ++iter) {
+      auto* scope_node = *iter;
+      if (scope_node->label() and
+          *scope_node->label()->value().get() == *label()->value().get()) {
+        scope_node->yields_.insert(this);
+      }
+    }
+    NOT_YET("Log an error due to an unknown label.");
+  } else {
+    initializer.scope_nodes.back()->yields_.insert(this);
   }
 }
 
@@ -328,6 +342,8 @@ void ScopeNode::Initialize(Initializer& initializer) {
     is_dependent_ |= arg.expr().is_dependent();
   }
 
+  initializer.scope_nodes.emplace_back(this);
+  absl::Cleanup c = [&] { initializer.scope_nodes.pop_back(); };
   for (auto& block : blocks_) { block.Initialize(initializer); }
 }
 

@@ -117,8 +117,6 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     return context().set_qual_type(node, type::QualType::Error());
   }
 
-  context().TrackJumps(node);
-
   std::vector<ir::ScopeContext::block_type> blocks;
   blocks.reserve(node->blocks().size());
   for (auto const &block : node->blocks()) {

@@ -95,7 +95,7 @@ InferReturnTypes(Compiler &c, ast::FunctionLiteral const *node) {
   // syntax tree will be insufficient here.
   absl::flat_hash_map<ast::ReturnStmt const *, std::vector<type::Type>> result;
 
-  for (ast::ReturnStmt const *ret_node : c.context().ReturnsTo(node)) {
+  for (ast::ReturnStmt const *ret_node : node->returns()) {
     if (not ret_node) { continue; }
     std::vector<type::Type> ret_types;
     for (auto const *expr : ret_node->exprs()) {
@@ -149,7 +149,6 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
     Compiler &c, ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "VerifyBodyOnly for %s on %s", node->DebugString(),
       c.context().DebugString());
-  c.context().TrackJumps(node);
   bool found_error = false;
   for (auto const *stmt : node->stmts()) {
     absl::Span<type::QualType const> qts = c.VerifyType(stmt);

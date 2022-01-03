@@ -197,24 +197,4 @@ VerifyReturningCall(Compiler &c, VerifyCallParameters const &vcp) {
   return qts;
 }
 
-std::vector<core::Arguments<type::QualType>> YieldArgumentTypes(
-    Context const &context,
-    base::PtrUnion<ast::BlockNode const, ast::ScopeNode const,
-                   ast::IfStmt const, ast::WhileStmt const>
-        node) {
-  std::vector<core::Arguments<type::QualType>> yield_types;
-  absl::Span<ast::YieldStmt const *const> yields = context.YieldsTo(node);
-  yield_types.reserve(yields.size());
-
-  for (auto const *yield_stmt : yields) {
-    auto &yielded = yield_types.emplace_back();
-    for (auto const &argument : yield_stmt->arguments()) {
-      // TODO: Determine whether or not you want to support named yields. If
-      // not, reduce this to a vector or some other positional arguments type.
-      yielded.pos_emplace(context.qual_types(&argument.expr())[0]);
-    }
-  }
-  return yield_types;
-}
-
 }  // namespace compiler

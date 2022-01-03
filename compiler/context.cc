@@ -160,21 +160,6 @@ ir::CompleteResultBuffer const *Context::Constant(
   return nullptr;
 }
 
-absl::Span<ast::ReturnStmt const *const> Context::ReturnsTo(
-    base::PtrUnion<ast::FunctionLiteral const, ast::ShortFunctionLiteral const>
-        node) const {
-  auto const *v = jumps_[node];
-  return v ? *v : ASSERT_NOT_NULL(parent())->ReturnsTo(node);
-}
-
-absl::Span<ast::YieldStmt const *const> Context::YieldsTo(
-    base::PtrUnion<ast::BlockNode const, ast::ScopeNode const,
-                   ast::IfStmt const, ast::WhileStmt const>
-        node) const {
-  auto const *v = jumps_[node];
-  return v ? *v : ASSERT_NOT_NULL(parent())->YieldsTo(node);
-}
-
 void Context::LoadConstant(ast::Expression const *expr,
                            ir::CompleteResultBuffer &out) const {
   if (auto iter = constants_.find(expr); iter != constants_.end()) {

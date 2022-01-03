@@ -39,10 +39,10 @@ struct Node : base::Cast<Node> {
   struct Initializer {
     Scope *scope = nullptr;
 
-    // The closest parent `FunctionLiteral` node. Used so that `ReturnStmt`
-    // nodes can point back to their corresponding function literal from which
-    // they return.
-    FunctionLiteral const *function_literal = nullptr;
+    // The closest parent `FunctionLiteral` node. Used to link up function
+    // literals with their corresponding return statements.
+    FunctionLiteral *function_literal = nullptr;
+    std::vector<ScopeNode *> scope_nodes;
 
     PatternMatch const *pattern = nullptr;
     Declaration *match_against  = nullptr;
