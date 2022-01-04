@@ -115,7 +115,7 @@ VerifyArguments(Compiler &c, absl::Span<ast::Call::Argument const> arguments,
   std::vector<std::pair<type::Type, ssize_t>> refs;
   for (auto const &argument : arguments) {
     auto expr_qual_type = c.VerifyType(&argument.expr())[0];
-    error |= not expr_qual_type.ok();
+    error |= expr_qual_type.HasErrorMark();
     if (error) {
       LOG("VerifyArguments", "Error with: %s", argument.expr().DebugString());
       refs.emplace_back(nullptr, -1);

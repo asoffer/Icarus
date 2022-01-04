@@ -179,7 +179,9 @@ std::vector<type::QualType> VerifyInferred(Compiler &compiler,
   for (auto &qt : init_val_qts) {
     if (auto inference_result = Inference(qt.type())) {
       if (not(quals >= type::Quals::Const())) {
-        qt = type::QualType(*inference_result, quals);
+        bool had_error_mark = qt.HasErrorMark();
+        qt                  = type::QualType(*inference_result, quals);
+        if (had_error_mark) { qt.MarkError(); }
       }
     } else {
       compiler.diag().Consume(type::UninferrableType{
@@ -400,6 +402,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
   i = 0;
   for (auto const &id : node->ids()) {
     absl::Cleanup c = [&] { ++i; };
+
     context().set_qual_types(&id, absl::MakeConstSpan(&span[i], 1));
   }
 
