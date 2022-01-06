@@ -58,7 +58,6 @@ struct NonIdentifierBinding {
   SourceRange range;
 };
 
-
 struct DeclaringNonIdentifier {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "declaring-non-identifier";
@@ -411,7 +410,7 @@ std::unique_ptr<ast::Identifier> MakeInvalidNode(
 }
 
 struct Statements : ast::Node {
-  Statements(SourceRange const &range) : ast::Node(range) {}
+  Statements(SourceRange const &range) : ast::Node(-1, range) {}
   ~Statements() override {}
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
@@ -440,7 +439,8 @@ struct Statements : ast::Node {
 };
 
 struct CommaList : ast::Expression {
-  explicit CommaList(SourceRange const &range = {}) : ast::Expression(range) {}
+  explicit CommaList(SourceRange const &range = {})
+      : ast::Expression(-1, range) {}
   ~CommaList() override {}
 
   CommaList(CommaList const &) noexcept = default;
@@ -1550,34 +1550,30 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
 std::unique_ptr<ast::Node> BuildKWBlock(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  if (nodes[0]->is<Token>()) {
-    std::string const &tk = nodes[0]->as<Token>().token;
-    SourceRange range(nodes.front()->range().begin(),
-                      nodes.back()->range().end());
+  std::string const &tk = nodes[0]->as<Token>().token;
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
 
-    if (bool is_enum = (tk == "enum"); is_enum or tk == "flags") {
-      return BuildEnumOrFlagLiteral(std::move(nodes),
-                                    is_enum ? ast::EnumLiteral::Kind::Enum
-                                            : ast::EnumLiteral::Kind::Flags,
-                                    diag);
+  if (bool is_enum = (tk == "enum"); is_enum or tk == "flags") {
+    return BuildEnumOrFlagLiteral(
+        std::move(nodes),
+        is_enum ? ast::EnumLiteral::Kind::Enum : ast::EnumLiteral::Kind::Flags,
+        diag);
 
-    } else if (tk == "struct") {
-      std::vector<std::unique_ptr<ast::Node>> stmts;
-      if (nodes[1]->is<Statements>()) {
-        stmts = std::move(nodes[1]->as<Statements>()).extract();
-      } else {
-        stmts.push_back(std::move(nodes[1]));
-      }
-      return BuildStructLiteral(std::move(stmts), range, diag);
-
-    } else if (tk == "interface") {
-      return BuildInterfaceLiteral(std::move(nodes[1]->as<Statements>()), range,
-                                   diag);
+  } else if (tk == "struct") {
+    std::vector<std::unique_ptr<ast::Node>> stmts;
+    if (nodes[1]->is<Statements>()) {
+      stmts = std::move(nodes[1]->as<Statements>()).extract();
     } else {
-      UNREACHABLE(tk);
+      stmts.push_back(std::move(nodes[1]));
     }
+    return BuildStructLiteral(std::move(stmts), range, diag);
+
+  } else if (tk == "interface") {
+    return BuildInterfaceLiteral(std::move(nodes[1]->as<Statements>()), range,
+                                 diag);
   } else {
-    UNREACHABLE(nodes[0].get());
+    UNREACHABLE(tk);
   }
 }
 

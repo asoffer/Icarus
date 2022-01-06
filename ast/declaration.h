@@ -20,7 +20,8 @@ struct Declaration;
 // TODO: Does it make sense for this to be an expression?
 struct Declaration_Id : Expression {
   explicit Declaration_Id(std::string name, frontend::SourceRange const &range)
-      : Expression(range), name_(std::move(name)) {}
+      : Expression(internal_node::Index<Declaration_Id>(), range),
+        name_(std::move(name)) {}
 
   std::string_view name() const { return name_; }
   ast::Declaration const &declaration() const {
@@ -81,7 +82,7 @@ struct Declaration : Expression {
   explicit Declaration(frontend::SourceRange const &range, std::vector<Id> ids,
                        std::unique_ptr<Expression> type_expression,
                        std::unique_ptr<Expression> initial_val, Flags flags)
-      : Expression(range),
+      : Expression(internal_node::Index<Declaration>(), range),
         ids_(std::move(ids)),
         type_expr_(std::move(type_expression)),
         init_val_(std::move(initial_val)),
@@ -90,7 +91,8 @@ struct Declaration : Expression {
   }
 
   Declaration(Declaration &&decl) noexcept
-      : ids_(std::move(decl.ids_)),
+      : Expression(internal_node::Index<Declaration>(), decl.range()),
+        ids_(std::move(decl.ids_)),
         type_expr_(std::move(decl.type_expr_)),
         init_val_(std::move(decl.init_val_)),
         flags_(decl.flags_) {

@@ -10,8 +10,9 @@
 namespace ast {
 
 struct Expression : Node {
-  Expression(frontend::SourceRange const &span = frontend::SourceRange())
-      : Node(span) {}
+  Expression(int8_t which,
+             frontend::SourceRange const &range = frontend::SourceRange())
+      : Node(which, range) {}
 
   Expression(Expression &&) noexcept      = default;
   Expression(Expression const &) noexcept = default;

@@ -66,5 +66,14 @@ TEST(Meta, Container) {
   EXPECT_FALSE(Container<S>);
 }
 
+TEST(Meta, Index) {
+  EXPECT_EQ(-1, Index<int>(type_list<>{}));
+  EXPECT_EQ(0, Index<int>(type_list<int, bool>{}));
+  EXPECT_EQ(1, Index<bool>(type_list<int, bool>{}));
+  EXPECT_EQ(-1, Index<char>(type_list<int, bool>{}));
+  EXPECT_EQ(2, Index<int>(type_list<char, bool, int, bool>{}));
+  EXPECT_EQ(1, Index<bool>(type_list<char, bool, int, bool>{}));
+}
+
 }  // namespace
 }  // namespace base

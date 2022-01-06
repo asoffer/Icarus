@@ -87,6 +87,7 @@ cc_library(
     deps = [
         ":visitor_base",
         "//base:cast",
+        "//base:meta",
         "//frontend/source:buffer",
     ],
 )

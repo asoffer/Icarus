@@ -246,6 +246,13 @@ concept PtrConvertibleTo = requires(From* f) {
   { static_cast<To*>(f) } -> std::same_as<To*>;
 };
 
+template <typename T, typename... Ts>
+constexpr ssize_t Index(type_list<Ts...>) {
+  ssize_t i = 0;
+  (void)((meta<T> == meta<Ts> ? false : (++i, true)) && ...);
+  return i == sizeof...(Ts) ? ssize_t{-1} : i;
+}
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H

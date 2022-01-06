@@ -5,17 +5,32 @@
 
 #include "ast/visitor_base.h"
 #include "base/cast.h"
+#include "base/meta.h"
 #include "frontend/source/buffer.h"
 
 namespace ast {
 struct Expression;
-struct FunctionLiteral;
-struct PatternMatch;
 struct Scope;
 
+using AllNodeTypes = base::type_list<
+#define ICARUS_AST_NODE_X(node) struct node,
+#include "ast/node.xmacro.h"
+#undef ICARUS_AST_NODE_X
+    struct EmptyNodeTag>;
+
+namespace internal_node {
+
+template <typename T>
+constexpr ssize_t Index() {
+  return base::Index<T>(AllNodeTypes{});
+}
+
+}  // namespace internal_node
+
 struct Node : base::Cast<Node> {
-  explicit constexpr Node(frontend::SourceRange const &range = {})
-      : range_(range) {}
+  explicit constexpr Node(int8_t which,
+                          frontend::SourceRange const &range = {})
+      : range_(range), which_(which) {}
 
   virtual ~Node() {}
 
@@ -31,6 +46,8 @@ struct Node : base::Cast<Node> {
   virtual void DebugStrAppend(std::string *out, size_t indent) const {}
   bool covers_binding() const { return covers_binding_; }
   bool is_dependent() const { return is_dependent_; }
+
+  int8_t which() const { return which_; }
 
   constexpr frontend::SourceRange range() const { return range_; }
   Scope *scope() const { return scope_; }
@@ -56,6 +73,7 @@ struct Node : base::Cast<Node> {
   // TODO: We can compress these bit somewhere.
   bool covers_binding_ = false;
   bool is_dependent_   = false;
+  int8_t which_;
 };
 
 }  // namespace ast
