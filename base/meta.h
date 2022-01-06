@@ -1,6 +1,7 @@
 #ifndef ICARUS_BASE_META_H
 #define ICARUS_BASE_META_H
 
+#include <array>
 #include <concepts>
 #include <cstdint>
 #include <ostream>
@@ -252,6 +253,20 @@ constexpr ssize_t Index(type_list<Ts...>) {
   (void)((meta<T> == meta<Ts> ? false : (++i, true)) && ...);
   return i == sizeof...(Ts) ? ssize_t{-1} : i;
 }
+
+namespace internal_meta {
+template <template <typename> typename F, typename TL>
+struct array_transform_impl;
+template <template <typename> typename F, typename... Ts>
+struct array_transform_impl<F, type_list<Ts...>> {
+  static constexpr std::array<decltype(F<first<Ts...>>::value), sizeof...(Ts)>
+      value{F<Ts>::value...};
+};
+}  // namespace internal_meta
+
+template <template <typename> typename F, typename TL>
+inline constexpr auto array_transform =
+    internal_meta::array_transform_impl<F, TL>::value;
 
 }  // namespace base
 

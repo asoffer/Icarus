@@ -25,7 +25,34 @@ constexpr ssize_t Index() {
   return base::Index<T>(AllNodeTypes{});
 }
 
+template <typename V, typename>
+struct VTableEntryForImpl;
+
+template <typename V, typename Ret, typename... Args>
+struct VTableEntryForImpl<V, Ret(Args...)> {
+  template <typename T>
+  struct Get {
+    static constexpr Ret (*value)(Args...) = [](void const *p, V &v,
+                                                Args... args) -> Ret {
+      v(*reinterpret_cast<T const *>(p), std::forward<Args>(args)...);
+    };
+  };
+};
+
+template <typename V>
+using VTableEntryFor = VTableEntryForImpl<V, typename V::signature>;
+
 }  // namespace internal_node
+
+template <typename V>
+inline constexpr auto VTableFor =
+    base::array_transform<internal_node::VTableEntryFor<V>::template Get,
+                          AllNodeTypes>;
+
+template <typename V>
+concept AstNodeVisitor = requires {
+  VTableFor<V>;
+};
 
 struct Node : base::Cast<Node> {
   explicit constexpr Node(int8_t which,
@@ -43,11 +70,14 @@ struct Node : base::Cast<Node> {
     return out;
   }
 
+  template <AstNodeVisitor V, typename... Args>
+  auto visit(V &v, Args &&... args) const {
+    return VTableFor<V>[which_](this, v, std::forward<Args>(args)...);
+  }
+
   virtual void DebugStrAppend(std::string *out, size_t indent) const {}
   bool covers_binding() const { return covers_binding_; }
   bool is_dependent() const { return is_dependent_; }
-
-  int8_t which() const { return which_; }
 
   constexpr frontend::SourceRange range() const { return range_; }
   Scope *scope() const { return scope_; }
