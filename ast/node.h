@@ -5,6 +5,7 @@
 
 #include "base/cast.h"
 #include "base/meta.h"
+#include "base/visitable.h"
 #include "frontend/source/buffer.h"
 
 namespace ast {
@@ -17,46 +18,14 @@ using AllNodeTypes = base::tail<base::type_list<int
 #undef ICARUS_AST_NODE_X
                                                 >>;
 
-namespace internal_node {
-
 template <typename T>
-constexpr ssize_t Index() {
+constexpr ssize_t IndexOf() {
   return base::Index<T>(AllNodeTypes{});
 }
 
-template <typename V, typename>
-struct VTableEntryForImpl;
-
-template <typename V, typename Ret, typename... Args>
-struct VTableEntryForImpl<V, Ret(Args...)> {
-  template <typename T>
-  struct Get {
-    static constexpr Ret (*value)(void const *, V &, Args...) =
-        [](void const *p, V &v, Args... args) -> Ret {
-      return v(reinterpret_cast<T const *>(p), std::forward<Args>(args)...);
-    };
-  };
-};
-
-template <typename V>
-using VTableEntryFor = VTableEntryForImpl<V, typename V::signature>;
-
-}  // namespace internal_node
-
-template <typename V>
-inline constexpr auto VTableFor =
-    base::array_transform<internal_node::VTableEntryFor<V>::template Get,
-                          AllNodeTypes>;
-
-template <typename V>
-concept AstNodeVisitor = requires {
-  VTableFor<V>;
-};
-
-struct Node : base::Cast<Node> {
-  explicit constexpr Node(int8_t which,
-                          frontend::SourceRange const &range = {})
-      : range_(range), which_(which) {}
+struct Node : base::Visitable<Node, AllNodeTypes>, base::Cast<Node> {
+  explicit constexpr Node(int8_t which, frontend::SourceRange const &range = {})
+      : base::Visitable<Node, AllNodeTypes>(which), range_(range) {}
 
   virtual ~Node() {}
 
@@ -64,11 +33,6 @@ struct Node : base::Cast<Node> {
     std::string out;
     DebugStrAppend(&out, 0);
     return out;
-  }
-
-  template <AstNodeVisitor V, typename... Args>
-  auto visit(V &v, Args &&... args) const {
-    return VTableFor<V>[which_](this, v, std::forward<Args>(args)...);
   }
 
   virtual void DebugStrAppend(std::string *out, size_t indent) const {}
@@ -99,7 +63,6 @@ struct Node : base::Cast<Node> {
   // TODO: We can compress these bit somewhere.
   bool covers_binding_ = false;
   bool is_dependent_   = false;
-  int8_t which_;
 };
 
 }  // namespace ast

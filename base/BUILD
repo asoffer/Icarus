@@ -338,3 +338,9 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "visitable",
+    hdrs = ["visitable.h"],
+    deps = [":meta"],
+)

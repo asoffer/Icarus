@@ -18,7 +18,7 @@ namespace ast {
 // Represents a module, the root node for a syntax tree.
 struct Module : Node {
   explicit Module(module::BasicModule *mod)
-      : Node(internal_node::Index<Module>()), body_scope_(mod) {}
+      : Node(IndexOf<Module>()), body_scope_(mod) {}
 
   ModuleScope const &body_scope() const { return body_scope_; }
   ModuleScope &body_scope() { return body_scope_; }

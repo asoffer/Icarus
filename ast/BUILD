@@ -86,6 +86,7 @@ cc_library(
         ":node_xmacro",
         "//base:cast",
         "//base:meta",
+        "//base:visitable",
         "//frontend/source:buffer",
     ],
 )
