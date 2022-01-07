@@ -230,7 +230,6 @@ cc_library(
         ":transient_state",
         ":work_item",
         "//ast",
-        "//ast:visitor",
         "//base:debug",
         "//core:call",
         "//diagnostic/consumer",
@@ -323,7 +322,6 @@ cc_library(
     deps = [
         ":context",
         "//ast",
-        "//ast:visitor",
         "@com_google_absl//absl/strings",
     ],
 )

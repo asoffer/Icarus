@@ -262,11 +262,22 @@ struct array_transform_impl<F, type_list<Ts...>> {
   static constexpr std::array<decltype(F<first<Ts...>>::value), sizeof...(Ts)>
       value{F<Ts>::value...};
 };
+
+template <typename>
+struct tail_impl;
+template <typename T, typename... Ts>
+struct tail_impl<type_list<T, Ts...>> {
+  using type = type_list<Ts...>;
+};
+
 }  // namespace internal_meta
 
 template <template <typename> typename F, typename TL>
 inline constexpr auto array_transform =
     internal_meta::array_transform_impl<F, TL>::value;
+
+template <typename TL>
+using tail = typename internal_meta::tail_impl<TL>::type;
 
 }  // namespace base
 

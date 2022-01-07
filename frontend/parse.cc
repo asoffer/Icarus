@@ -415,11 +415,6 @@ struct Statements : ast::Node {
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
 
-  void Accept(ast::VisitorBase *visitor, void *ret,
-              void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   void set_range(SourceRange const &range) { range_ = range; }
 
   size_t size() const { return content_.size(); }
@@ -447,11 +442,6 @@ struct CommaList : ast::Expression {
   CommaList(CommaList &&) noexcept      = default;
   CommaList &operator=(CommaList const &) noexcept = default;
   CommaList &operator=(CommaList &&) noexcept = default;
-
-  void Accept(ast::VisitorBase *visitor, void *ret,
-              void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
 
   void DebugStrAppend(std::string *out, size_t indent) const override {
     absl::StrAppend(out, "(",

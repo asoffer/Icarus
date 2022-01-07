@@ -3,7 +3,6 @@
 
 #include <string>
 
-#include "ast/visitor_base.h"
 #include "base/cast.h"
 #include "base/meta.h"
 #include "frontend/source/buffer.h"
@@ -12,11 +11,11 @@ namespace ast {
 struct Expression;
 struct Scope;
 
-using AllNodeTypes = base::type_list<
-#define ICARUS_AST_NODE_X(node) struct node,
+using AllNodeTypes = base::tail<base::type_list<int
+#define ICARUS_AST_NODE_X(node) , struct node
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
-    struct EmptyNodeTag>;
+                                                >>;
 
 namespace internal_node {
 
@@ -32,9 +31,9 @@ template <typename V, typename Ret, typename... Args>
 struct VTableEntryForImpl<V, Ret(Args...)> {
   template <typename T>
   struct Get {
-    static constexpr Ret (*value)(Args...) = [](void const *p, V &v,
-                                                Args... args) -> Ret {
-      v(*reinterpret_cast<T const *>(p), std::forward<Args>(args)...);
+    static constexpr Ret (*value)(void const *, V &, Args...) =
+        [](void const *p, V &v, Args... args) -> Ret {
+      return v(reinterpret_cast<T const *>(p), std::forward<Args>(args)...);
     };
   };
 };
@@ -60,9 +59,6 @@ struct Node : base::Cast<Node> {
       : range_(range), which_(which) {}
 
   virtual ~Node() {}
-
-  virtual void Accept(VisitorBase *visitor, void *ret,
-                      void *arg_tuple) const = 0;
 
   std::string DebugString() const {
     std::string out;

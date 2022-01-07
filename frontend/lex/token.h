@@ -10,7 +10,7 @@ struct JumpExprs;
 namespace frontend {
 // ast node used only for holding tokens which have been lexed but not yet
 // parsed.
-struct Token : public ast::Node {
+struct Token : ast::Node {
   Token(const SourceRange &range = SourceRange(), std::string str = "",
         bool is_hashtag = false)
       : Node(-1, range), token(std::move(str)) {
@@ -29,10 +29,6 @@ struct Token : public ast::Node {
   }
 
   ~Token() override {}
-
-  void Accept(ast::VisitorBase *, void *, void *) const override {
-    UNREACHABLE();
-  }
 
   void DebugStrAppend(std::string *out, size_t indent) const override {
     out->append("[token: ");

@@ -3,13 +3,12 @@
 #include "absl/container/node_hash_map.h"
 #include "ast/ast.h"
 #include "ast/module.h"
-#include "ast/visitor.h"
 
 namespace ast {
 namespace {
 
-struct ParamDependencyGraphBuilder
-    : Visitor<void(core::DependencyNode<Declaration const *>)> {
+struct ParamDependencyGraphBuilder {
+  using signature = void(core::DependencyNode<Declaration const *>);
   explicit ParamDependencyGraphBuilder(
       core::Params<std::unique_ptr<Declaration>> const &params) {
     to_process_.reserve(params.size());
@@ -37,16 +36,16 @@ struct ParamDependencyGraphBuilder
 
     for (auto const *decl : to_process_) {
       if (auto const *n = decl->type_expr()) {
-        Visit(n, core::DependencyNode<Declaration const *>::ParameterType(
-                     &relevant_decls_.at(decl->ids()[0].name())));
+        (*this)(n, core::DependencyNode<Declaration const *>::ParameterType(
+                       &relevant_decls_.at(decl->ids()[0].name())));
       } else {
         graph_.add_edge(core::DependencyNode<Declaration>::ParameterType(decl),
                         core::DependencyNode<Declaration>::ArgumentType(decl));
       }
 
       if (auto const *n = decl->init_val()) {
-        Visit(n, core::DependencyNode<Declaration const *>::ParameterValue(
-                     &relevant_decls_.at(decl->ids()[0].name())));
+        (*this)(n, core::DependencyNode<Declaration const *>::ParameterValue(
+                       &relevant_decls_.at(decl->ids()[0].name())));
       }
     }
 
@@ -61,8 +60,8 @@ struct ParamDependencyGraphBuilder
     return std::move(graph_);
   }
 
-  void Visit(BindingDeclaration const *node,
-             core::DependencyNode<Declaration const *> d) {
+  void operator()(BindingDeclaration const *node,
+                  core::DependencyNode<Declaration const *> d) {
     auto [iter, inserted] =
         relevant_decls_.try_emplace(node->ids()[0].name(), node);
     edges_.emplace_back(
@@ -75,204 +74,212 @@ struct ParamDependencyGraphBuilder
             &iter->second));
   }
 
-  void Visit(Node const *node, core::DependencyNode<Declaration const *> d) {
-    Visitor<void(core::DependencyNode<Declaration const *>)>::Visit(node, d);
+  void operator()(Node const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    node->visit<ParamDependencyGraphBuilder>(*this, d);
   }
 
-  void Visit(Access const *node, core::DependencyNode<Declaration const *> d) {
-    Visit(node->operand(), d);
+  void operator()(Access const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(node->operand(), d);
   }
 
-  void Visit(ArgumentType const *node,
-             core::DependencyNode<Declaration const *> d) {
+  void operator()(ArgumentType const *node,
+                  core::DependencyNode<Declaration const *> d) {
     auto [iter, inserted] = relevant_decls_.try_emplace(node->name());
     edges_.emplace_back(
         d,
         core::DependencyNode<Declaration const *>::ArgumentType(&iter->second));
   }
 
-  void Visit(ArrayLiteral const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const *expr : node->elems()) { Visit(expr, d); }
+  void operator()(ArrayLiteral const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const *expr : node->elems()) { (*this)(expr, d); }
   }
 
-  void Visit(ArrayType const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const &len : node->lengths()) { Visit(len, d); }
-    Visit(node->data_type(), d);
+  void operator()(ArrayType const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const &len : node->lengths()) { (*this)(len, d); }
+    (*this)(node->data_type(), d);
   }
 
-  void Visit(Assignment const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const *l : (node->lhs())) { Visit(l, d); }
-    for (auto const *r : (node->rhs())) { Visit(r, d); }
+  void operator()(Assignment const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const *l : (node->lhs())) { (*this)(l, d); }
+    for (auto const *r : (node->rhs())) { (*this)(r, d); }
   }
 
-  void Visit(BinaryOperator const *node,
-             core::DependencyNode<Declaration const *> d) {
-    Visit(&node->lhs(), d);
-    Visit(&node->rhs(), d);
+  void operator()(BinaryOperator const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(&node->lhs(), d);
+    (*this)(&node->rhs(), d);
   }
 
-  void Visit(BlockNode const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const &p : node->params()) { Visit(p.value.get(), d); }
-    for (auto const *stmt : node->stmts()) { Visit(stmt, d); }
+  void operator()(BlockNode const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const &p : node->params()) { (*this)(p.value.get(), d); }
+    for (auto const *stmt : node->stmts()) { (*this)(stmt, d); }
   }
 
-  void Visit(BuiltinFn const *node,
-             core::DependencyNode<Declaration const *> d) {}
+  void operator()(BuiltinFn const *node,
+                  core::DependencyNode<Declaration const *> d) {}
 
-  void Visit(Call const *node, core::DependencyNode<Declaration const *> d) {
-    Visit(node->callee(), d);
-    for (auto const &arg : node->arguments()) { Visit(&arg.expr(), d); }
+  void operator()(Call const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(node->callee(), d);
+    for (auto const &arg : node->arguments()) { (*this)(&arg.expr(), d); }
   }
 
-  void Visit(Cast const *node, core::DependencyNode<Declaration const *> d) {
-    Visit(node->expr(), d);
-    Visit(node->type(), d);
+  void operator()(Cast const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(node->expr(), d);
+    (*this)(node->type(), d);
   }
 
-  void Visit(ComparisonOperator const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const *expr : node->exprs()) { Visit(expr, d); }
+  void operator()(ComparisonOperator const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const *expr : node->exprs()) { (*this)(expr, d); }
   }
 
-  void Visit(Declaration const *node,
-             core::DependencyNode<Declaration const *> d) {
-    if (node->type_expr()) { Visit(node->type_expr(), d); }
-    if (node->init_val()) { Visit(node->init_val(), d); }
+  void operator()(Declaration const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    if (node->type_expr()) { (*this)(node->type_expr(), d); }
+    if (node->init_val()) { (*this)(node->init_val(), d); }
   }
 
-  void Visit(DesignatedInitializer const *node,
-             core::DependencyNode<Declaration const *> d) {
-    Visit(node->type(), d);
-    for (auto const *assignment : node->assignments()) { Visit(assignment, d); }
+  void operator()(DesignatedInitializer const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(node->type(), d);
+    for (auto const *assignment : node->assignments()) { (*this)(assignment, d); }
   }
 
-  void Visit(EnumLiteral const *node,
-             core::DependencyNode<Declaration const *> d) {
+  void operator()(EnumLiteral const *node,
+                  core::DependencyNode<Declaration const *> d) {
     for (auto const &[enumerator, value] : node->specified_values()) {
-      Visit(value.get(), d);
+      (*this)(value.get(), d);
     }
   }
 
-  void Visit(FunctionLiteral const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const &param : node->params()) { Visit(param.value.get(), d); }
+  void operator()(FunctionLiteral const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const &param : node->params()) { (*this)(param.value.get(), d); }
     if (auto outputs = node->outputs()) {
-      for (auto const &out : *outputs) { Visit(out, d); }
+      for (auto const &out : *outputs) { (*this)(out, d); }
     }
   }
 
-  void Visit(FunctionType const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const *param : node->params()) { Visit(param, d); }
-    for (auto const *out : node->outputs()) { Visit(out, d); }
+  void operator()(FunctionType const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const *param : node->params()) { (*this)(param, d); }
+    for (auto const *out : node->outputs()) { (*this)(out, d); }
   }
 
-  void Visit(ShortFunctionLiteral const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const &param : node->params()) { Visit(param.value.get(), d); }
+  void operator()(ShortFunctionLiteral const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const &param : node->params()) { (*this)(param.value.get(), d); }
   }
 
-  void Visit(Identifier const *node,
-             core::DependencyNode<Declaration const *> d) {
+  void operator()(Identifier const *node,
+                  core::DependencyNode<Declaration const *> d) {
     auto [iter, inserted] = relevant_decls_.try_emplace(node->name());
     edges_.emplace_back(
         d, core::DependencyNode<Declaration const *>::ParameterValue(
                &iter->second));
   }
 
-  void Visit(Import const *node, core::DependencyNode<Declaration const *> d) {
-    Visit(node->operand(), d);
+  void operator()(Import const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(node->operand(), d);
   }
 
-  void Visit(Index const *node, core::DependencyNode<Declaration const *> d) {
-    Visit(node->lhs(), d);
-    Visit(node->rhs(), d);
+  void operator()(Index const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(node->lhs(), d);
+    (*this)(node->rhs(), d);
   }
 
-  void Visit(InterfaceLiteral const *node,
-             core::DependencyNode<Declaration const *> d) {
+  void operator()(InterfaceLiteral const *node,
+                  core::DependencyNode<Declaration const *> d) {
     for (auto &[name, expr] : node->entries()) {
-      Visit(name.get(), d);
-      Visit(expr.get(), d);
+      (*this)(name.get(), d);
+      (*this)(expr.get(), d);
     }
   }
 
-  void Visit(Module const *node, core::DependencyNode<Declaration const *> d) {}
+  void operator()(Module const *node,
+                  core::DependencyNode<Declaration const *> d) {}
 
-  void Visit(Label const *node, core::DependencyNode<Declaration const *> d) {}
+  void operator()(Label const *node,
+                  core::DependencyNode<Declaration const *> d) {}
 
-  void Visit(ReturnStmt const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto *expr : node->exprs()) { Visit(expr, d); }
+  void operator()(ReturnStmt const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto *expr : node->exprs()) { (*this)(expr, d); }
   }
 
-  void Visit(YieldStmt const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const &arg : node->arguments()) { Visit(&arg.expr(), d); }
+  void operator()(YieldStmt const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const &arg : node->arguments()) { (*this)(&arg.expr(), d); }
   }
 
-  void Visit(ScopeLiteral const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const &param : node->params()) { Visit(param.value.get(), d); }
-    for (auto const *stmt : node->stmts()) { Visit(stmt, d); }
+  void operator()(ScopeLiteral const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const &param : node->params()) { (*this)(param.value.get(), d); }
+    for (auto const *stmt : node->stmts()) { (*this)(stmt, d); }
   }
 
-  void Visit(ScopeNode const *node,
-             core::DependencyNode<Declaration const *> d) {
-    Visit(node->name(), d);
-    for (auto const &arg : node->arguments()) { Visit(&arg.expr(), d); }
-    for (auto const &block : node->blocks()) { Visit(&block, d); }
+  void operator()(ScopeNode const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(node->name(), d);
+    for (auto const &arg : node->arguments()) { (*this)(&arg.expr(), d); }
+    for (auto const &block : node->blocks()) { (*this)(&block, d); }
   }
 
-  void Visit(SliceType const *node,
-             core::DependencyNode<Declaration const *> d) {
-    Visit(node->data_type(), d);
+  void operator()(SliceType const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(node->data_type(), d);
   }
 
-  void Visit(StructLiteral const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const &f : node->fields()) { Visit(&f, d); }
+  void operator()(StructLiteral const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const &f : node->fields()) { (*this)(&f, d); }
   }
 
-  void Visit(PatternMatch const *node,
-             core::DependencyNode<Declaration const *> d) {
+  void operator()(PatternMatch const *node,
+                  core::DependencyNode<Declaration const *> d) {
     ASSERT(node->is_binary() == false);
-    Visit(&node->pattern(), d);
+    (*this)(&node->pattern(), d);
   }
 
-  void Visit(ParameterizedStructLiteral const *node,
-             core::DependencyNode<Declaration const *> d) {
-    for (auto const &param : node->params()) { Visit(param.value.get(), d); }
-    for (auto const &f : node->fields()) { Visit(&f, d); }
+  void operator()(ParameterizedStructLiteral const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    for (auto const &param : node->params()) { (*this)(param.value.get(), d); }
+    for (auto const &f : node->fields()) { (*this)(&f, d); }
   }
 
-  void Visit(Terminal const *node,
-             core::DependencyNode<Declaration const *> d) {}
+  void operator()(Terminal const *node,
+                  core::DependencyNode<Declaration const *> d) {}
 
-  void Visit(UnaryOperator const *node,
-             core::DependencyNode<Declaration const *> d) {
-    Visit(node->operand(), d);
+  void operator()(UnaryOperator const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(node->operand(), d);
   }
 
-  void Visit(IfStmt const *node, core::DependencyNode<Declaration const *> d) {
-    Visit(&node->condition(), d);
+  void operator()(IfStmt const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(&node->condition(), d);
 
-    for (auto const *s : node->true_block()) { Visit(s, d); }
+    for (auto const *s : node->true_block()) { (*this)(s, d); }
     if (node->has_false_block()) {
-      for (auto const *s : node->false_block()) { Visit(s, d); }
+      for (auto const *s : node->false_block()) { (*this)(s, d); }
     }
   }
 
-  void Visit(WhileStmt const *node,
-             core::DependencyNode<Declaration const *> d) {
-    Visit(&node->condition(), d);
-    for (auto const *s : node->body()) { Visit(s, d); }
+  void operator()(WhileStmt const *node,
+                  core::DependencyNode<Declaration const *> d) {
+    (*this)(&node->condition(), d);
+    for (auto const *s : node->body()) { (*this)(s, d); }
   }
-
 
  private:
   base::Graph<core::DependencyNode<Declaration>> graph_;

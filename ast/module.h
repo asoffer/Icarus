@@ -50,10 +50,6 @@ struct Module : Node {
 
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   void DebugStrAppend(std::string *out, size_t indent) const override {
     absl::StrAppend(out, absl::StrJoin(stmts(), "\n",
                                        [&](std::string *out, auto const &elem) {

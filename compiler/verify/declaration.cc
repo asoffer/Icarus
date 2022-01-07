@@ -422,7 +422,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
 }
 
 bool Compiler::VerifyPatternType(ast::Declaration const *node, type::Type t) {
-  UNREACHABLE();
+  UNREACHABLE(node->DebugString());
 }
 
 bool Compiler::VerifyPatternType(ast::BindingDeclaration const *node,

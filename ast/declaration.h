@@ -33,9 +33,6 @@ struct Declaration_Id : Expression {
                                                          std::move(range_));
   }
 
-  void Accept(VisitorBase *v, void *ret, void *arg_tuple) const override {
-    v->ErasedVisit(this, ret, arg_tuple);
-  }
   void DebugStrAppend(std::string *out, size_t) const override {
     out->append(name());
   }
@@ -150,10 +147,6 @@ struct Declaration : Expression {
   Flags &flags() { return flags_; }  // TODO consider removing this.
 
   void set_initial_value(std::unique_ptr<Expression> expr);
-
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Initializer &initializer) override;

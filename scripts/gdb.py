@@ -23,12 +23,11 @@ def should_display(f):
         return False
 
     for pattern in [
-            r"^compiler::Compiler::Visit",
+            r"^ast::internal_node",
+            r"^ast::Node::visit",
             r"^compiler::Compiler::VerifyType\(ast::Node const",
             r"^compiler::Compiler::EmitToBuffer\(ast::Node const",
-            r"^ast::Visitor<",
             r"^type::Visitor<",
-            r"^ast::[^:]*::Accept",
             r"^type::[^:]*::Accept",
             r"^std::__invoke",
             r"^std::_[A-Z]",

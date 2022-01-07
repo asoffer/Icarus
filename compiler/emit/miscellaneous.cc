@@ -5,6 +5,11 @@
 
 namespace compiler {
 
+void Compiler::EmitToBuffer(ast::Module const *node,
+                            ir::PartialResultBuffer &out) {
+  NOT_YET();
+}
+
 void Compiler::EmitToBuffer(ast::ArgumentType const *node,
                             ir::PartialResultBuffer &out) {
   out.append(context().arg_type(node->name()));

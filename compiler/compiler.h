@@ -9,7 +9,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
 #include "ast/ast.h"
-#include "ast/visitor.h"
 #include "base/any_invocable.h"
 #include "base/debug.h"
 #include "base/log.h"
@@ -62,8 +61,6 @@ struct EmitRefTag {};
 struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
 struct EmitToBufferTag {};
-struct VerifyTypeTag {};
-struct VerifyBodyTag {};
 struct EmitDestroyTag {};
 struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
@@ -87,24 +84,126 @@ struct PatternMatchTag {};
 // surface from separation are from separating parsing from these two stages
 // rather than separating all stages. In time we will see if this belief holds
 // water.
+template <typename C>
+struct TypeVerifier {
+  using signature = absl::Span<type::QualType const>();
+
+  template <typename NodeType>
+  absl::Span<type::QualType const> operator()(NodeType const *node) {
+    return static_cast<C *>(this)->VerifyType(node);
+  }
+};
+
+template <typename C>
+struct BodyVerifier {
+  using signature = bool();
+
+  template <typename NodeType>
+  bool operator()(NodeType const *node) {
+    return static_cast<C *>(this)->VerifyBody(node);
+  }
+};
+
+template <typename C>
+struct MoveInitEmitter {
+  using signature = void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>);
+
+  template <typename NodeType>
+  void operator()(NodeType const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+    return static_cast<C *>(this)->EmitMoveInit(node, regs);
+  }
+};
+
+template <typename C>
+struct CopyInitEmitter {
+  using signature = void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>);
+
+  template <typename NodeType>
+  void operator()(NodeType const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+    return static_cast<C *>(this)->EmitCopyInit(node, regs);
+  }
+};
+
+template <typename C>
+struct MoveAssignEmitter {
+  using signature = void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>);
+
+  template <typename NodeType>
+  void operator()(NodeType const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+    return static_cast<C *>(this)->EmitMoveAssign(node, regs);
+  }
+};
+
+template <typename C>
+struct CopyAssignEmitter {
+  using signature = void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>);
+
+  template <typename NodeType>
+  void operator()(NodeType const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+    return static_cast<C *>(this)->EmitCopyAssign(node, regs);
+  }
+};
+
+template <typename C>
+struct RefEmitter {
+  using signature = ir::Reg();
+
+  template <typename NodeType>
+  ir::Reg operator()(NodeType const *node) {
+    return static_cast<C *>(this)->EmitRef(node);
+  }
+};
+
+template <typename C>
+struct IrEmitter {
+  using signature = void(ir::PartialResultBuffer &buffer);
+
+  template <typename NodeType>
+  void operator()(NodeType const *node, ir::PartialResultBuffer &buffer) {
+    return static_cast<C *>(this)->EmitToBuffer(node, buffer);
+  }
+};
+
+template <typename C>
+struct PatternMatcher {
+  using signature = bool(PatternMatchingContext &,
+                         absl::flat_hash_map<ast::Declaration::Id const *,
+                                             ir::CompleteResultBuffer> &);
+
+  template <typename NodeType>
+  bool operator()(NodeType const *node, PatternMatchingContext &context,
+                  absl::flat_hash_map<ast::Declaration::Id const *,
+                                      ir::CompleteResultBuffer> &bindings) {
+    return static_cast<C *>(this)->PatternMatch(node, context, bindings);
+  }
+};
+
+template <typename C>
+struct PatternTypeVerifier {
+  using signature = bool(type::Type);
+
+  template <typename NodeType>
+  bool operator()(NodeType const *node, type::Type t) {
+    return static_cast<C *>(this)->VerifyPatternType(node, t);
+  }
+};
+
 struct Compiler
-    : ast::Visitor<EmitMoveInitTag,
-                   void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>,
-      ast::Visitor<EmitCopyInitTag,
-                   void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>,
-      ast::Visitor<EmitMoveAssignTag,
-                   void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>,
-      ast::Visitor<EmitCopyAssignTag,
-                   void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>,
-      ast::Visitor<EmitRefTag, ir::Reg()>,
-      ast::Visitor<EmitToBufferTag, void(ir::PartialResultBuffer *)>,
-      ast::Visitor<VerifyTypeTag, absl::Span<type::QualType const>()>,
-      ast::Visitor<VerifyBodyTag, bool()>,
-      ast::Visitor<PatternMatchTag,
-                   bool(PatternMatchingContext *,
-                        absl::flat_hash_map<ast::Declaration::Id const *,
-                                            ir::CompleteResultBuffer> *)>,
-      ast::Visitor<PatternTypeTag, bool(type::Type)>,
+    : TypeVerifier<Compiler>,
+      BodyVerifier<Compiler>,
+      MoveInitEmitter<Compiler>,
+      CopyInitEmitter<Compiler>,
+      MoveAssignEmitter<Compiler>,
+      CopyAssignEmitter<Compiler>,
+      RefEmitter<Compiler>,
+      IrEmitter<Compiler>,
+      PatternMatcher<Compiler>,
+      PatternTypeVerifier<Compiler>,
+
       type::Visitor<EmitDestroyTag, void(ir::Reg)>,
       type::Visitor<EmitMoveInitTag,
                     void(ir::Reg, ir::PartialResultBuffer const *)>,
@@ -117,7 +216,6 @@ struct Compiler
       type::Visitor<EmitCopyAssignTag,
                     void(ir::RegOr<ir::addr_t>,
                          type::Typed<ir::PartialResultRef> const &)> {
-
   PersistentResources &resources() { return resources_; }
   void set_work_resources(WorkResources wr) { work_resources_ = std::move(wr); }
   WorkResources const &work_resources() { return work_resources_; }
@@ -131,30 +229,61 @@ struct Compiler
     return c;
   }
 
-  void Enqueue(WorkItem const &w,
-               absl::flat_hash_set<WorkItem> prerequisites = {}) {
-    work_resources_.enqueue(w, std::move(prerequisites));
-  }
-  void EnsureComplete(WorkItem const &w) { work_resources_.complete(w); }
-
   absl::Span<type::QualType const> VerifyType(ast::Node const *node) {
-    return ast::Visitor<VerifyTypeTag,
-                        absl::Span<type::QualType const>()>::Visit(node);
+    return node->visit<TypeVerifier<Compiler>>(*this);
   }
 
   bool VerifyBody(ast::Node const *node) {
-    return ast::Visitor<VerifyBodyTag, bool()>::Visit(node);
+    return node->visit<BodyVerifier<Compiler>>(*this);
+  }
+
+  void EmitMoveInit(
+      ast::Node const *node,
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+    return node->visit<MoveInitEmitter<Compiler>>(*this, regs);
+  }
+
+  void EmitCopyInit(
+      ast::Node const *node,
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+    return node->visit<CopyInitEmitter<Compiler>>(*this, regs);
+  }
+
+  void EmitMoveAssign(
+      ast::Node const *node,
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+    return node->visit<MoveAssignEmitter<Compiler>>(*this, regs);
+  }
+
+  void EmitCopyAssign(
+      ast::Node const *node,
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+    return node->visit<CopyAssignEmitter<Compiler>>(*this, regs);
+  }
+
+  ir::Reg EmitRef(ast::Node const *node) {
+    return node->visit<RefEmitter<Compiler>>(*this);
+  }
+
+  void EmitToBuffer(ast::Node const *node, ir::PartialResultBuffer &buffer) {
+    node->visit<IrEmitter<Compiler>>(*this, buffer);
   }
 
   bool PatternMatch(ast::Node const *node, PatternMatchingContext &context,
                     absl::flat_hash_map<ast::Declaration::Id const *,
                                         ir::CompleteResultBuffer> &bindings) {
-    return ast::Visitor<PatternMatchTag,
-                        bool(PatternMatchingContext *,
-                             absl::flat_hash_map<ast::Declaration::Id const *,
-                                                 ir::CompleteResultBuffer>
-                                 *)>::Visit(node, &context, &bindings);
+    return node->visit<PatternMatcher<Compiler>>(*this, context, bindings);
   }
+
+  bool VerifyPatternType(ast::Node const *node, type::Type t) {
+    return node->visit<PatternTypeVerifier<Compiler>>(*this, t);
+  }
+
+  void Enqueue(WorkItem const &w,
+               absl::flat_hash_set<WorkItem> prerequisites = {}) {
+    work_resources_.enqueue(w, std::move(prerequisites));
+  }
+  void EnsureComplete(WorkItem const &w) { work_resources_.complete(w); }
 
   void EnqueuePatternMatch(ast::Node const *node,
                            PatternMatchingContext context) {
@@ -164,10 +293,6 @@ struct Compiler
   void EnqueueVerifyPatternMatchType(ast::Node const *node,
                                      type::Type match_type) {
     verify_pattern_type_queues_.back().emplace(node, match_type);
-  }
-
-  bool VerifyPatternType(ast::Node const *node, type::Type t) {
-    return ast::Visitor<PatternTypeTag, bool(type::Type)>::Visit(node, t);
   }
 
   template <typename T>
@@ -202,45 +327,6 @@ struct Compiler
   ir::RegOr<T> EmitAs(ast::Node const *node) {
     ir::PartialResultBuffer buffer;
     return EmitAs<T>(node, buffer);
-  }
-
-  void EmitToBuffer(ast::Node const *node, ir::PartialResultBuffer &buffer) {
-    ast::Visitor<EmitToBufferTag, void(ir::PartialResultBuffer *)>::Visit(
-        node, &buffer);
-  }
-
-  void EmitMoveAssign(
-      ast::Node const *node,
-      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
-    ast::Visitor<EmitMoveAssignTag,
-                 void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::
-        Visit(node, regs);
-  }
-
-  void EmitCopyAssign(
-      ast::Node const *node,
-      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
-    ast::Visitor<EmitCopyAssignTag,
-                 void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::
-        Visit(node, regs);
-  }
-
-  void EmitCopyInit(ast::Node const *node,
-                    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
-    ast::Visitor<EmitCopyInitTag,
-                 void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::
-        Visit(node, regs);
-  }
-
-  void EmitMoveInit(ast::Node const *node,
-                    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
-    ast::Visitor<EmitMoveInitTag,
-                 void(absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const>)>::
-        Visit(node, regs);
-  }
-
-  ir::Reg EmitRef(ast::Node const *node) {
-    return ast::Visitor<EmitRefTag, ir::Reg()>::Visit(node);
   }
 
   void EmitDestroy(type::Typed<ir::Reg> r) {
@@ -343,81 +429,17 @@ struct Compiler
 
 #define ICARUS_AST_NODE_X(name)                                                \
   absl::Span<type::QualType const> VerifyType(ast::name const *node);          \
-  absl::Span<type::QualType const> Visit(VerifyTypeTag, ast::name const *node) \
-      override {                                                               \
-    return VerifyType(node);                                                   \
-  }                                                                            \
-                                                                               \
-  bool Visit(VerifyBodyTag, ast::name const *node) override {                  \
-    return VerifyBody(node);                                                   \
-  }                                                                            \
-                                                                               \
-  void Visit(EmitToBufferTag, ast::name const *node,                           \
-             ir::PartialResultBuffer *buffer) override {                       \
-    EmitToBuffer(node, *buffer);                                               \
-  }
+  void EmitToBuffer(ast::name const *node, ir::PartialResultBuffer &buffer);
 
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
-
-#define DEFINE_EMIT(name)                                                      \
-  void EmitToBuffer(name const *node, ir::PartialResultBuffer &buffer);
-
-  DEFINE_EMIT(ast::Access)
-  DEFINE_EMIT(ast::ArgumentType)
-  DEFINE_EMIT(ast::ArrayLiteral)
-  DEFINE_EMIT(ast::ArrayType)
-  DEFINE_EMIT(ast::Assignment)
-  DEFINE_EMIT(ast::BinaryOperator)
-  DEFINE_EMIT(ast::BinaryAssignmentOperator)
-  DEFINE_EMIT(ast::BindingDeclaration)
-  DEFINE_EMIT(ast::BlockNode)
-  DEFINE_EMIT(ast::BuiltinFn)
-  DEFINE_EMIT(ast::Call)
-  DEFINE_EMIT(ast::Cast)
-  DEFINE_EMIT(ast::ComparisonOperator)
-  DEFINE_EMIT(ast::Declaration)
-  DEFINE_EMIT(ast::Declaration_Id)
-  DEFINE_EMIT(ast::DesignatedInitializer)
-  DEFINE_EMIT(ast::EnumLiteral)
-  DEFINE_EMIT(ast::FunctionLiteral)
-  DEFINE_EMIT(ast::FunctionType)
-  DEFINE_EMIT(ast::Identifier)
-  DEFINE_EMIT(ast::Import)
-  DEFINE_EMIT(ast::Index)
-  DEFINE_EMIT(ast::InterfaceLiteral)
-  DEFINE_EMIT(ast::Label)
-  DEFINE_EMIT(ast::ParameterizedStructLiteral)
-  DEFINE_EMIT(ast::PatternMatch)
-  DEFINE_EMIT(ast::ReturnStmt)
-  DEFINE_EMIT(ast::ScopeLiteral)
-  DEFINE_EMIT(ast::ScopeNode)
-  DEFINE_EMIT(ast::SliceType)
-  DEFINE_EMIT(ast::ShortFunctionLiteral)
-  DEFINE_EMIT(ast::StructLiteral)
-  DEFINE_EMIT(ast::Terminal)
-  DEFINE_EMIT(ast::UnaryOperator)
-  DEFINE_EMIT(ast::YieldStmt)
-  DEFINE_EMIT(ast::IfStmt)
-  DEFINE_EMIT(ast::WhileStmt)
-
-#undef DEFINE_EMIT
 
 #define DEFINE_PATTERN_MATCH(name)                                             \
   bool PatternMatch(name const *node, PatternMatchingContext &context,         \
                     absl::flat_hash_map<ast::Declaration::Id const *,          \
                                         ir::CompleteResultBuffer> &bindings);  \
-  bool Visit(                                                                  \
-      PatternMatchTag, name const *node, PatternMatchingContext *context,      \
-      absl::flat_hash_map<ast::Declaration::Id const *,                        \
-                          ir::CompleteResultBuffer> *bindings) override {      \
-    return PatternMatch(node, *context, *bindings);                            \
-  }                                                                            \
-                                                                               \
-  bool VerifyPatternType(name const *node, type::Type t);                      \
-  bool Visit(PatternTypeTag, name const *node, type::Type t) override {        \
-    return VerifyPatternType(node, t);                                         \
-  }
+  bool VerifyPatternType(name const *node, type::Type t);
+
   DEFINE_PATTERN_MATCH(ast::Access)
   DEFINE_PATTERN_MATCH(ast::ArrayType)
   DEFINE_PATTERN_MATCH(ast::BinaryOperator)
@@ -439,21 +461,9 @@ struct Compiler
   bool VerifyBody(ast::StructLiteral const *node);
 
   ir::Reg EmitRef(ast::Access const *node);
-  ir::Reg Visit(EmitRefTag, ast::Access const *node) override {
-    return EmitRef(node);
-  }
   ir::Reg EmitRef(ast::Identifier const *node);
-  ir::Reg Visit(EmitRefTag, ast::Identifier const *node) override {
-    return EmitRef(node);
-  }
   ir::Reg EmitRef(ast::Index const *node);
-  ir::Reg Visit(EmitRefTag, ast::Index const *node) override {
-    return EmitRef(node);
-  }
   ir::Reg EmitRef(ast::UnaryOperator const *node);
-  ir::Reg Visit(EmitRefTag, ast::UnaryOperator const *node) override {
-    return EmitRef(node);
-  }
 
 #define DEFINE_EMIT_ASSIGN(T)                                                  \
   void Visit(EmitCopyAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,          \
@@ -545,35 +555,16 @@ struct Compiler
   void EmitCopyInit(                                                           \
       node_type const *node,                                                   \
       absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);              \
-  void Visit(EmitCopyInitTag, node_type const *node,                           \
-             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)        \
-      override {                                                               \
-    return EmitCopyInit(node, regs);                                           \
-  }                                                                            \
   void EmitMoveInit(                                                           \
       node_type const *node,                                                   \
       absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);              \
-  void Visit(EmitMoveInitTag, node_type const *node,                           \
-             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)        \
-      override {                                                               \
-    return EmitMoveInit(node, regs);                                           \
-  }                                                                            \
   void EmitMoveAssign(                                                         \
       node_type const *node,                                                   \
       absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);              \
-  void Visit(EmitMoveAssignTag, node_type const *node,                         \
-             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)        \
-      override {                                                               \
-    return EmitMoveAssign(node, regs);                                         \
-  }                                                                            \
   void EmitCopyAssign(                                                         \
       node_type const *node,                                                   \
-      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);              \
-  void Visit(EmitCopyAssignTag, node_type const *node,                         \
-             absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs)        \
-      override {                                                               \
-    return EmitCopyAssign(node, regs);                                         \
-  }
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs);
+
   DEFINE_EMIT(ast::Access)
   DEFINE_EMIT(ast::ArrayLiteral)
   DEFINE_EMIT(ast::ArrayType)

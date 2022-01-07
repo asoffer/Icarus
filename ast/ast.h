@@ -13,7 +13,6 @@
 #include "ast/expression.h"
 #include "ast/node.h"
 #include "ast/scope.h"
-#include "ast/visitor_base.h"
 #include "base/ptr_span.h"
 #include "base/untyped_buffer.h"
 #include "core/arguments.h"
@@ -26,15 +25,6 @@
 #include "type/primitive.h"
 
 namespace ast {
-
-#define ICARUS_AST_VIRTUAL_METHODS                                             \
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple)                \
-      const override {                                                         \
-    visitor->ErasedVisit(this, ret, arg_tuple);                                \
-  }                                                                            \
-                                                                               \
-  void DebugStrAppend(std::string *out, size_t indent) const override;         \
-  void Initialize(Node::Initializer &initializer) override;
 
 // WithScope:
 // A mixin which adds a scope of the given type `S`.
@@ -80,7 +70,8 @@ struct Access : Expression {
   }
   Expression const *operand() const { return operand_.get(); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::unique_ptr<Expression> operand_;
@@ -107,7 +98,8 @@ struct ArgumentType : Expression {
         name_(std::move(name)) {}
   std::string_view name() const { return name_; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::string name_;
@@ -133,7 +125,8 @@ struct ArrayLiteral : Expression {
   base::PtrSpan<Expression const> elems() const { return elems_; }
   auto extract() && { return std::move(elems_); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::vector<std::unique_ptr<Expression>> elems_;
@@ -159,7 +152,8 @@ struct Assignment : Node {
 
   auto extract() && { return std::pair(std::move(lhs_), std::move(rhs_)); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::vector<std::unique_ptr<Expression>> lhs_;
@@ -199,7 +193,8 @@ struct ArrayType : Expression {
   Expression const *length(size_t i) const { return lengths_[i].get(); }
   Expression const *data_type() const { return data_type_.get(); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::vector<std::unique_ptr<Expression>> lengths_;
@@ -253,7 +248,8 @@ struct BinaryOperator : Expression {
 
   auto extract() && { return std::pair{std::move(lhs_), std::move(rhs_)}; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   Kind kind_;
@@ -276,8 +272,11 @@ struct BinaryAssignmentOperator : BinaryOperator {
 
   explicit BinaryAssignmentOperator(std::unique_ptr<Expression> lhs, Kind kind,
                                     std::unique_ptr<Expression> rhs)
-      : BinaryOperator(std::move(lhs), kind, std::move(rhs)) {}
-  ICARUS_AST_VIRTUAL_METHODS;
+      : BinaryOperator(std::move(lhs), kind, std::move(rhs)) {
+    which_ = internal_node::Index<BinaryAssignmentOperator>();
+  }
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 };
 
 // ParameterizedExpression:
@@ -366,7 +365,8 @@ struct PatternMatch : Expression {
 
   bool is_binary() const { return expr_to_match_ & uintptr_t{1}; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   Expression &expr() {
@@ -390,11 +390,14 @@ struct BindingDeclaration : Declaration {
   explicit BindingDeclaration(frontend::SourceRange const &range,
                               Declaration::Id id)
       : Declaration(range, ToVector(std::move(id)), nullptr, nullptr,
-                    f_IsConst) {}
+                    f_IsConst) {
+    which_ = internal_node::Index<BindingDeclaration>();
+  }
 
   PatternMatch const &pattern() const { return *ASSERT_NOT_NULL(pattern_); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   static std::vector<ast::Declaration::Id> ToVector(ast::Declaration::Id id) {
@@ -444,7 +447,8 @@ struct DesignatedInitializer : Expression {
   Expression const *type() const { return type_.get(); }
   base::PtrSpan<Assignment const> assignments() const { return assignments_; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::unique_ptr<Expression> type_;
@@ -518,7 +522,8 @@ struct BlockNode : ParameterizedExpression, WithScope<Scope> {
 
   std::vector<std::unique_ptr<Node>> extract() && { return std::move(stmts_); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   friend struct ScopeNode;
@@ -537,7 +542,8 @@ struct BuiltinFn : Expression {
       : Expression(internal_node::Index<BuiltinFn>(), range), val_(b) {}
   ir::BuiltinFn value() const { return val_; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   ir::BuiltinFn val_;
@@ -623,7 +629,8 @@ struct Call : Expression {
     return std::make_tuple(std::move(callee_), std::move(arguments_));
   }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::unique_ptr<Expression> callee_;
@@ -650,7 +657,8 @@ struct Cast : Expression {
   Expression const *expr() const { return expr_.get(); }
   Expression const *type() const { return type_.get(); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::unique_ptr<Expression> expr_, type_;
@@ -691,7 +699,8 @@ struct ComparisonOperator : Expression {
 
   auto extract() && { return std::move(exprs_); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::vector<frontend::Operator> ops_;
@@ -746,7 +755,8 @@ struct EnumLiteral : Expression, WithScope<DeclScope> {
   }
   Kind kind() const { return kind_; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::vector<std::string> enumerators_;
@@ -788,7 +798,8 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
     return returns_;
   }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   friend ReturnStmt;
@@ -821,7 +832,8 @@ struct FunctionType : Expression {
   base::PtrSpan<Expression const> params() const { return params_; }
   base::PtrSpan<Expression const> outputs() const { return output_; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
   auto extract() && {
     return std::pair(std::move(params_), std::move(output_));
@@ -839,7 +851,8 @@ struct Identifier : Expression {
       : Expression(internal_node::Index<Identifier>(), range),
         name_(std::move(name)) {}
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
   std::string_view name() const { return name_; }
 
@@ -863,7 +876,8 @@ struct Import : Expression {
 
   Expression const *operand() const { return operand_.get(); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::unique_ptr<Expression> operand_;
@@ -888,7 +902,8 @@ struct Index : Expression {
   Expression const *rhs() const { return rhs_.get(); }
   auto extract() && { return std::pair(std::move(lhs_), std::move(rhs_)); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::unique_ptr<Expression> lhs_, rhs_;
@@ -926,7 +941,8 @@ struct InterfaceLiteral : Expression, WithScope<DeclScope> {
     return entries_;
   }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::vector<std::pair<std::unique_ptr<ast::Expression>,
@@ -947,7 +963,8 @@ struct Label : Expression {
 
   ir::Label value() const { return ir::Label(&label_); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::string label_;
@@ -985,7 +1002,8 @@ struct ParameterizedStructLiteral : ParameterizedExpression,
   ParameterizedStructLiteral &operator        =(
       ParameterizedStructLiteral &&) noexcept = default;
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::vector<Declaration> fields_;
@@ -1011,7 +1029,8 @@ struct ReturnStmt : Node {
 
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   // Pointer to the function literal containing this return statement.
@@ -1035,7 +1054,8 @@ struct Terminal : Expression {
   ir::CompleteResultRef value() const { return value_[0]; }
   base::MetaValue type() const { return type_; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   ir::CompleteResultBuffer value_;
@@ -1060,14 +1080,16 @@ struct ScopeLiteral : ParameterizedExpression, WithScope<FnScope> {
                         Declaration::Id context_identifier,
                         std::vector<std::unique_ptr<Declaration>> params,
                         std::vector<std::unique_ptr<Node>> stmts)
-      : ParameterizedExpression(internal_node::Index<ScopeLiteral>(),range, std::move(params)),
+      : ParameterizedExpression(internal_node::Index<ScopeLiteral>(), range,
+                                std::move(params)),
         context_decl_(ContextDeclaration(std::move(context_identifier))),
         stmts_(std::move(stmts)) {}
 
   Declaration const &context() const { return *context_decl_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   static std::unique_ptr<Declaration> ContextDeclaration(
@@ -1106,7 +1128,7 @@ struct ScopeNode : Expression {
   ScopeNode(frontend::SourceRange const &range,
             std::unique_ptr<Expression> name, std::vector<Call::Argument> args,
             std::vector<BlockNode> blocks)
-      : Expression(internal_node::Index<ScopeNode>(),range),
+      : Expression(internal_node::Index<ScopeNode>(), range),
         name_(std::move(name)),
         args_(std::move(args)),
         blocks_(WithThisAsParent(std::move(blocks))) {}
@@ -1134,7 +1156,8 @@ struct ScopeNode : Expression {
     if (updated_last_scope_node) { last_scope_node_ = updated_last_scope_node; }
   }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   friend YieldStmt;
@@ -1167,7 +1190,8 @@ struct SliceType : Expression {
 
   Expression const *data_type() const { return data_type_.get(); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::unique_ptr<Expression> data_type_;
@@ -1194,7 +1218,8 @@ struct ShortFunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
         body_(std::move(body)) {}
   Expression const *body() const { return body_.get(); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::unique_ptr<Expression> body_;
@@ -1224,7 +1249,8 @@ struct StructLiteral : Expression, WithScope<DeclScope> {
 
   StructLiteral &operator=(StructLiteral &&) noexcept = default;
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::vector<Declaration> fields_;
@@ -1260,7 +1286,8 @@ struct UnaryOperator : Expression {
       : Expression(internal_node::Index<UnaryOperator>(), range),
         operand_(std::move(operand)),
         kind_(kind) {}
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
   Kind kind() const { return kind_; }
   Expression const *operand() const { return operand_.get(); }
@@ -1289,7 +1316,8 @@ struct YieldStmt : Node {
   absl::Span<Call::Argument const> arguments() const { return args_; }
   Label const *label() const { return label_.get(); }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::vector<Call::Argument> args_;
@@ -1320,7 +1348,7 @@ struct IfStmt : Expression {
     ASSERT(last_if_->has_false_block_ == false);
     last_if_->false_block_     = std::move(false_block);
     last_if_->has_false_block_ = true;
-    last_if_ = nullptr;
+    last_if_                   = nullptr;
   }
 
   // Appends the given block not necessarily to this ScopeNode, but to the scope
@@ -1350,7 +1378,8 @@ struct IfStmt : Expression {
 
   bool has_false_block() const { return has_false_block_; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::unique_ptr<Expression> condition_;
@@ -1385,14 +1414,13 @@ struct WhileStmt : Expression, WithScope<Scope> {
   Expression const &condition() const { return *condition_; }
   base::PtrSpan<Node const> body() const { return body_; }
 
-  ICARUS_AST_VIRTUAL_METHODS;
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::unique_ptr<Expression> condition_;
   std::vector<std::unique_ptr<Node>> body_;
 };
-
-#undef ICARUS_AST_VIRTUAL_METHODS
 
 inline void Declaration::set_initial_value(std::unique_ptr<Expression> expr) {
   ASSERT(init_val_ == nullptr);

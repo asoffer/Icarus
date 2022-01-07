@@ -22,7 +22,6 @@ cc_library(
     name = "ast",
     hdrs = [
         "ast.h",
-        "visitor.h"
     ],
     srcs = [
         "build_param_dependency_graph.h",
@@ -36,7 +35,6 @@ cc_library(
         ":module",
         ":node",
         ":scope",
-        ":visitor_base",
         "//base:debug",
         "//base:graph",
         "//base:ptr_span",
@@ -85,7 +83,7 @@ cc_library(
     name = "node",
     hdrs = ["node.h"],
     deps = [
-        ":visitor_base",
+        ":node_xmacro",
         "//base:cast",
         "//base:meta",
         "//frontend/source:buffer",
@@ -106,23 +104,5 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/types:span"
-    ],
-)
-
-cc_library(
-    name = "visitor_base",
-    hdrs = ["visitor_base.h"],
-    deps = [
-        ":ast_fwd",
-        "//base:debug",
-    ],
-)
-
-cc_library(
-    name = "visitor",
-    hdrs = [],
-    deps = [
-        ":ast",
-        ":visitor_base",
     ],
 )
