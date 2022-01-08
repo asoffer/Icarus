@@ -453,14 +453,14 @@ bool Compiler::VerifyPatternType(ast::BinaryOperator const *node,
           NOT_YET();
         } else {
           VerifyType(&node->lhs());
-          EnqueueVerifyPatternMatchType(&node->rhs(), t);
+          state().EnqueueVerifyPatternMatchType(&node->rhs(), t);
         }
       }
 
       if (node->lhs().covers_binding()) {
         if (node->lhs().covers_binding()) {
           VerifyType(&node->rhs());
-          EnqueueVerifyPatternMatchType(&node->lhs(), t);
+          state().EnqueueVerifyPatternMatchType(&node->lhs(), t);
         } else {
           NOT_YET();
         }

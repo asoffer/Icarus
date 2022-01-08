@@ -96,9 +96,9 @@ bool Compiler::VerifyPatternType(ast::ArrayType const *node, type::Type t) {
     return false;
   }
 
-  EnqueueVerifyPatternMatchType(node->data_type(), type::Type_);
+  state().EnqueueVerifyPatternMatchType(node->data_type(), type::Type_);
   for (auto const *expr : node->lengths()) {
-    EnqueueVerifyPatternMatchType(expr, type::Integer);
+    state().EnqueueVerifyPatternMatchType(expr, type::Integer);
   }
 
   return true;

@@ -345,8 +345,9 @@ bool Compiler::PatternMatch(
     buffer.append(a->get<type::Type>(0));
 
     // TODO: Support non-type parameters.
-    EnqueuePatternMatch(&node->arguments()[index].expr(),
-                        {.type = type::Type_, .value = std::move(buffer)});
+    state().EnqueuePatternMatch(
+        &node->arguments()[index].expr(),
+        {.type = type::Type_, .value = std::move(buffer)});
     ++i;
   }
 

@@ -14,7 +14,6 @@
 #include "base/log.h"
 #include "compiler/bound_parameters.h"
 #include "compiler/context.h"
-#include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/instructions.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
@@ -48,14 +47,6 @@
 #include "type/visitor.h"
 
 namespace compiler {
-
-struct PatternMatchingContext {
-  type::Type type;
-  ir::CompleteResultBuffer value;
-  union {
-    size_t array_type_index = 0;
-  };
-};
 
 struct EmitRefTag {};
 struct EmitCopyInitTag {};
@@ -216,9 +207,11 @@ struct Compiler
       type::Visitor<EmitCopyAssignTag,
                     void(ir::RegOr<ir::addr_t>,
                          type::Typed<ir::PartialResultRef> const &)> {
-  PersistentResources &resources() { return resources_; }
-  void set_work_resources(WorkResources wr) { work_resources_ = std::move(wr); }
-  WorkResources const &work_resources() { return work_resources_; }
+  PersistentResources &resources() { return data_.resources; }
+  void set_work_resources(WorkResources wr) {
+    data_.work_resources = std::move(wr);
+  }
+  WorkResources const &work_resources() { return data_.work_resources; }
 
   template <typename... Args>
   Compiler MakeChild(Args &&... args) {
@@ -281,19 +274,9 @@ struct Compiler
 
   void Enqueue(WorkItem const &w,
                absl::flat_hash_set<WorkItem> prerequisites = {}) {
-    work_resources_.enqueue(w, std::move(prerequisites));
+    data_.work_resources.enqueue(w, std::move(prerequisites));
   }
-  void EnsureComplete(WorkItem const &w) { work_resources_.complete(w); }
-
-  void EnqueuePatternMatch(ast::Node const *node,
-                           PatternMatchingContext context) {
-    pattern_match_queues_.back().emplace(node, std::move(context));
-  }
-
-  void EnqueueVerifyPatternMatchType(ast::Node const *node,
-                                     type::Type match_type) {
-    verify_pattern_type_queues_.back().emplace(node, match_type);
-  }
+  void EnsureComplete(WorkItem const &w) { data_.work_resources.complete(w); }
 
   template <typename T>
   ir::RegOr<T> EmitWithCastTo(type::Type t, ast::Node const *node,
@@ -375,16 +358,15 @@ struct Compiler
   Compiler(Compiler const &) = delete;
   Compiler(Compiler &&)      = default;
 
-  void set_context(Context *context) { context_ = ASSERT_NOT_NULL(context); }
-  Context &context() const { return *context_; }
-  ir::Builder &builder() { return builder_; };
+  Context &context() const { return *data_.context; }
+  ir::Builder &builder() { return state().builder; };
   diagnostic::DiagnosticConsumer &diag() const {
-    return *resources_.diagnostic_consumer;
+    return *data_.resources.diagnostic_consumer;
   }
   ir::BasicBlock *current_block() { return builder().CurrentBlock(); }
 
-  module::Importer &importer() const { return *resources_.importer; }
-  TransientState &state() { return state_; }
+  module::Importer &importer() const { return *data_.resources.importer; }
+  TransientState &state() { return data_.state; }
 
   // Evaluates `expr` in the current context as a value of type `T`. If
   // evaluation succeeds, returns the vaule, otherwise adds a diagnostic for the
@@ -420,8 +402,8 @@ struct Compiler
   std::variant<ir::CompleteResultBuffer,
                std::vector<diagnostic::ConsumedMessage>>
   EvaluateToBuffer(type::Typed<ast::Expression const *> expr) {
-    ASSERT(work_resources_.evaluate != nullptr);
-    return work_resources_.evaluate(context(), expr);
+    ASSERT(data_.work_resources.evaluate != nullptr);
+    return data_.work_resources.evaluate(context(), expr);
   }
 
   std::optional<ir::CompleteResultBuffer> EvaluateToBufferOrDiagnose(
@@ -595,20 +577,12 @@ struct Compiler
   bool EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
 
  private:
-  Context *context_;
-  WorkResources work_resources_;
-  PersistentResources resources_;
-  TransientState state_;
-  ir::Builder builder_;
-
-  // TODO: Should move this into TransientState?
-  std::vector<std::queue<std::pair<ast::Node const *, PatternMatchingContext>>>
-      pattern_match_queues_;
-  std::vector<std::queue<std::pair<ast::Node const *, type::Type>>>
-      verify_pattern_type_queues_;
-
-  // TODO: Should be persistent, but also needs on some local context.
-  CyclicDependencyTracker cylcic_dependency_tracker_;
+  struct CompilationData {
+    Context *context;
+    WorkResources work_resources;
+    PersistentResources resources;
+    TransientState state;
+  } data_;
 };
 
 }  // namespace compiler

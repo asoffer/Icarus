@@ -20,8 +20,8 @@ absl::Span<type::QualType const> Compiler::VerifyType(
     match_type = type::Type_;
   }
 
-  auto &q         = verify_pattern_type_queues_.emplace_back();
-  absl::Cleanup c = [&] { verify_pattern_type_queues_.pop_back(); };
+  auto &q         = state().verify_pattern_type_queues.emplace_back();
+  absl::Cleanup c = [&] { state().verify_pattern_type_queues.pop_back(); };
 
   q.emplace(&node->pattern(), match_type);
 

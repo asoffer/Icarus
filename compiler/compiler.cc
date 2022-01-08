@@ -11,13 +11,13 @@
 namespace compiler {
 
 Compiler::Compiler(Context *context, PersistentResources const &resources)
-    : context_(ASSERT_NOT_NULL(context)), resources_(resources) {}
+    : data_{.context = ASSERT_NOT_NULL(context), .resources = resources} {}
 
 Compiler::Compiler(Context *context, PersistentResources const &resources,
                    TransientState state)
-    : context_(ASSERT_NOT_NULL(context)),
-      resources_(resources),
-      state_(std::move(state)) {}
+    : data_{.context   = ASSERT_NOT_NULL(context),
+            .resources = resources,
+            .state     = std::move(state)} {}
 
 std::optional<ir::CompleteResultBuffer> Compiler::EvaluateToBufferOrDiagnose(
     type::Typed<ast::Expression const *> expr) {

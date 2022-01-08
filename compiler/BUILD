@@ -138,12 +138,14 @@ cc_library(
     hdrs = ["resources.h"],
     deps = [
         ":context",
+        ":cyclic_dependency_tracker",
         ":transient_state",
         ":work_item",
         "//ast:node",
-        "//diagnostic/consumer",
-        "//diagnostic/consumer:buffering",
-        "//module:importer",
+        "//type",
+        "//ir:scope_state",
+        "//ir/value:result_buffer",
+        "//ir/value:scope",
     ],
 )
 
@@ -224,7 +226,6 @@ cc_library(
         ":bound_parameters",
         ":common",
         ":context",
-        ":cyclic_dependency_tracker",
         ":instructions",
         ":resources",
         ":transient_state",

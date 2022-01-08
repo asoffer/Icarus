@@ -40,8 +40,8 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
   }
   out = buffer;
 
-  auto &q         = pattern_match_queues_.emplace_back();
-  absl::Cleanup c = [&] { pattern_match_queues_.pop_back(); };
+  auto &q         = state().pattern_match_queues.emplace_back();
+  absl::Cleanup c = [&] { state().pattern_match_queues.pop_back(); };
 
   q.emplace(&node->pattern(),
             PatternMatchingContext{.type = t, .value = buffer});

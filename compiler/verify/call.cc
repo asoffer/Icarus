@@ -562,7 +562,7 @@ bool Compiler::VerifyPatternType(ast::Call const *node, type::Type t) {
     for (auto const &arg : node->arguments()) {
       // TODO: Having these always be types is problematic, but for now we don't
       // have a way to deduce another possibility.
-      EnqueueVerifyPatternMatchType(&arg.expr(), type::Type_);
+      state().EnqueueVerifyPatternMatchType(&arg.expr(), type::Type_);
     }
 
     return true;
