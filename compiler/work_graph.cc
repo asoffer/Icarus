@@ -1,6 +1,7 @@
 #include "compiler/work_graph.h"
 
 #include "compiler/instructions.h"
+#include "compiler/verify/verify.h"
 #include "ir/builder.h"
 
 namespace compiler {
@@ -173,21 +174,21 @@ bool WorkGraph::Execute(WorkItem const &w) {
       result = resources().diagnostic_consumer->num_consumed() == 0;
       break;
     case WorkItem::Kind::VerifyEnumBody:
-      result = c.VerifyBody(&w.node->as<ast::EnumLiteral>());
+      result = VerifyBody(c, &w.node->as<ast::EnumLiteral>());
       break;
     case WorkItem::Kind::VerifyFunctionBody:
       result = not w.context->ClaimVerifyBodyTask(
                    &w.node->as<ast::FunctionLiteral>()) or
-               c.VerifyBody(&w.node->as<ast::FunctionLiteral>());
+               VerifyBody(c, &w.node->as<ast::FunctionLiteral>());
       break;
     case WorkItem::Kind::VerifyStructBody:
-      result = c.VerifyBody(&w.node->as<ast::StructLiteral>());
+      result = VerifyBody(c, &w.node->as<ast::StructLiteral>());
       break;
     case WorkItem::Kind::CompleteStructData:
       result = Execute({.kind    = WorkItem::Kind::VerifyStructBody,
                         .node    = w.node,
                         .context = w.context}) and
-               c.CompleteStructData(&w.node->as<ast::StructLiteral>());
+               CompleteStructData(c, &w.node->as<ast::StructLiteral>());
       break;
     case WorkItem::Kind::CompleteStruct:
       result = Execute({.kind    = WorkItem::Kind::CompleteStructData,

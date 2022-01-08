@@ -142,10 +142,11 @@ cc_library(
         ":transient_state",
         ":work_item",
         "//ast:node",
-        "//type",
+        "//diagnostic/consumer:buffering",
         "//ir:scope_state",
         "//ir/value:result_buffer",
         "//ir/value:scope",
+        "//type",
     ],
 )
 
@@ -220,11 +221,34 @@ IR_EMISSION = [
 ]
 
 cc_library(
+    name = "compilation_data",
+    hdrs = ["compilation_data.h"],
+    deps = [
+        ":context",
+        ":resources",
+        ":transient_state",
+        "//ast",
+        "//base:any_invocable",
+        "//diagnostic/consumer",
+        "//frontend/source:buffer",
+        "//frontend/source:view",
+        "//ir:builder",
+        "//ir/value:result_buffer",
+        "//module:importer",
+        "//module",
+        "//type",
+        "//type:typed_value",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
+)
+
+cc_library(
     name = "compiler_header",
     hdrs = ["compiler.h"],
     deps = [
         ":bound_parameters",
         ":common",
+        ":compilation_data",
         ":context",
         ":instructions",
         ":resources",
@@ -233,6 +257,7 @@ cc_library(
         "//ast",
         "//base:debug",
         "//core:call",
+        "//compiler/verify",
         "//diagnostic/consumer",
         "//diagnostic/consumer:buffering",
         "//frontend/source:buffer",

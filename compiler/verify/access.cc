@@ -6,6 +6,7 @@
 #include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
+#include "compiler/verify/verify.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"
 #include "type/block.h"
@@ -317,12 +318,50 @@ absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
   return qts;
 }
 
+bool EnsureDataCompleteness(Compiler &c, type::Struct *s) {
+  if (s->completeness() >= type::Completeness::DataComplete) { return true; }
+
+  ast::Expression const &expr = *ASSERT_NOT_NULL(c.context().AstLiteral(s));
+  // TODO: Deal with repetition between ast::StructLiteral and
+  // ast::ParameterizedStructLiteral
+  if (auto const *node = expr.if_as<ast::StructLiteral>()) {
+    if (not VerifyBody(c, node)) { return false; }
+    c.EmitVoid(node);
+
+    LOG("struct", "Completing struct-literal emission: %p", node);
+
+    ASSIGN_OR(return false,  //
+                     auto fn, StructDataCompletionFn(c, s, node->fields()));
+    // TODO: What if execution fails.
+    InterpretAtCompileTime(fn);
+    LOG("struct", "Completed %s which is a struct %s with %u field(s).",
+        node->DebugString(), *s, s->fields().size());
+    return true;
+  } else if (auto const *node = expr.if_as<ast::ParameterizedStructLiteral>()) {
+    if (not VerifyBody(c, node)) { return false; }
+    c.EmitVoid(node);
+
+    LOG("struct", "Completing struct-literal emission: %p ", node);
+
+    ASSIGN_OR(return false,  //
+                     auto fn, StructDataCompletionFn(c, s, node->fields()));
+    // TODO: What if execution fails.
+    InterpretAtCompileTime(fn);
+    LOG("struct", "Completed %s which is a struct %s with %u field(s).",
+        node->DebugString(), *s, s->fields().size());
+    return true;
+  } else {
+    // TODO Should we encode that it's one of these two in the type?
+    NOT_YET();
+  }
+}
+
 // Verifies access to a struct field. The field must be exported if it is in a
 // different module.
 type::QualType AccessStructMember(Compiler &c, ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
   // TODO: Figure out how to remove const_cast here.
-  if (not c.EnsureDataCompleteness(const_cast<type::Struct *>(s))) {
+  if (not EnsureDataCompleteness(c, const_cast<type::Struct *>(s))) {
     c.diag().Consume(IncompleteTypeMemberAccess{
         .member_view =
             frontend::SourceView(SourceBufferFor(node), node->member_range()),

@@ -16,11 +16,6 @@
 
 namespace compiler {
 
-// Returns A function which can be executed to complete the data for an
-// incomplete struct type pointed to by `s`.
-std::optional<ir::CompiledFn> StructDataCompletionFn(
-    Compiler &c, type::Struct *s, absl::Span<ast::Declaration const> fields);
-
 // Returns A function which can be executed to complete the data-complete struct
 // type pointed to by `s`.
 std::optional<ir::CompiledFn> StructCompletionFn(

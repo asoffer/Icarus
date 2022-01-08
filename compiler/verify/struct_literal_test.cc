@@ -40,7 +40,7 @@ TEST(StructLiteral, FieldError) {
     b := true
   })");
   CompilationData data{.context = &mod.context(), .resources = mod.resources()};
-  Compiler(&data).VerifyBody(s);
+  VerifyBody(CompilationDataReference(&data), s);
   auto qts  = mod.context().qual_types(s);
   EXPECT_THAT(qts, UnorderedElementsAre( type::QualType::Constant(type::Type_)));
   EXPECT_THAT(mod.consumer.diagnostics(),

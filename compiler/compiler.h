@@ -13,10 +13,12 @@
 #include "base/debug.h"
 #include "base/log.h"
 #include "compiler/bound_parameters.h"
+#include "compiler/compilation_data.h"
 #include "compiler/context.h"
 #include "compiler/instructions.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
+#include "compiler/verify/verify.h"
 #include "compiler/work_item.h"
 #include "core/call.h"
 #include "diagnostic/consumer/consumer.h"
@@ -76,51 +78,6 @@ struct PatternMatchTag {};
 // rather than separating all stages. In time we will see if this belief holds
 // water.
 
-struct CompilationData {
-  Context *context;
-  WorkResources work_resources;
-  PersistentResources resources;
-  TransientState state;
-};
-
-struct CompilationDataReference {
-  explicit CompilationDataReference(CompilationData *data)
-      : data_(*ASSERT_NOT_NULL(data)) {}
-
-  Context &context() const { return *data_.context; }
-  ir::Builder &builder() { return state().builder; };
-  diagnostic::DiagnosticConsumer &diag() const {
-    return *data_.resources.diagnostic_consumer;
-  }
-  ir::BasicBlock *current_block() { return builder().CurrentBlock(); }
-
-  module::Importer &importer() const { return *data_.resources.importer; }
-  TransientState &state() { return data_.state; }
-
-  PersistentResources &resources() { return data_.resources; }
-  void set_work_resources(WorkResources wr) {
-    data_.work_resources = std::move(wr);
-  }
-  WorkResources const &work_resources() { return data_.work_resources; }
-
-  void Enqueue(WorkItem const &w,
-               absl::flat_hash_set<WorkItem> prerequisites = {}) {
-    data_.work_resources.enqueue(w, std::move(prerequisites));
-  }
-  void EnsureComplete(WorkItem const &w) { data_.work_resources.complete(w); }
-
-  std::variant<ir::CompleteResultBuffer,
-               std::vector<diagnostic::ConsumedMessage>>
-  EvaluateToBuffer(type::Typed<ast::Expression const *> expr) {
-    ASSERT(data_.work_resources.evaluate != nullptr);
-    return data_.work_resources.evaluate(context(), expr);
-  }
-
-  CompilationData const &data() const { return data_; }
-
- private:
-  CompilationData &data_;
-};
 
 template <typename C>
 struct TypeVerifier {
@@ -130,25 +87,6 @@ struct TypeVerifier {
   absl::Span<type::QualType const> operator()(NodeType const *node) {
     return static_cast<C *>(this)->VerifyType(node);
   }
-};
-
-// The reason to separate out type/body verification is if the body might
-// transitively have identifiers referring to a declaration that is assigned
-// directly to this node.
-struct BodyVerifier : CompilationDataReference {
-  using signature = bool();
-
-  explicit BodyVerifier(CompilationDataReference ref)
-      : CompilationDataReference(ref) {}
-
-  bool operator()(auto const *node) { return VerifyBody(node); }
-  bool VerifyBody(ast::Node const *node) { return node->visit(*this); }
-
-  bool VerifyBody(ast::Expression const *node) { return true; }
-  bool VerifyBody(ast::EnumLiteral const *node);
-  bool VerifyBody(ast::FunctionLiteral const *node);
-  bool VerifyBody(ast::ParameterizedStructLiteral const *node);
-  bool VerifyBody(ast::StructLiteral const *node);
 };
 
 template <typename C>
@@ -420,19 +358,6 @@ struct Compiler
     return result->get<T>(0);
   }
 
-  std::optional<ir::CompleteResultBuffer> EvaluateToBufferOrDiagnose(
-      type::Typed<ast::Expression const *> expr) {
-    auto maybe_result = EvaluateToBuffer(expr);
-    if (auto *diagnostics =
-            std::get_if<std::vector<diagnostic::ConsumedMessage>>(
-                &maybe_result)) {
-      for (auto &d : *diagnostics) { diag().Consume(std::move(d)); }
-      return std::nullopt;
-    } else {
-      return std::get<ir::CompleteResultBuffer>(std::move(maybe_result));
-    }
-  }
-
 #define ICARUS_AST_NODE_X(name)                                                \
   absl::Span<type::QualType const> VerifyType(ast::name const *node);          \
   void EmitToBuffer(ast::name const *node, ir::PartialResultBuffer &buffer);
@@ -590,8 +515,6 @@ struct Compiler
   bool EmitScopeBody(ast::ScopeLiteral const *node);
   bool EmitFunctionBody(ast::FunctionLiteral const *node);
   bool EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
-
-  bool VerifyBody(ast::Node const *node) { return BodyVerifier(*this)(node); }
 };
 
 }  // namespace compiler

@@ -14,20 +14,6 @@
 namespace compiler {
 namespace {
 
-struct IncompleteField {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "incomplete-field";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Struct field has incomplete type."),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
-  }
-
-  frontend::SourceRange range;
-};
-
 ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveInit(s, s);
   if (inserted) {
@@ -350,72 +336,6 @@ void EmitArguments(
   }
 }
 
-std::optional<ir::CompiledFn> StructDataCompletionFn(
-    Compiler &c, type::Struct *s,
-    absl::Span<ast::Declaration const> field_decls) {
-  ASSERT(s->completeness() == type::Completeness::Incomplete);
-  bool field_error = false;
-  for (auto const &field_decl : field_decls) {
-    if (field_decl.flags() & ast::Declaration::f_IsConst) { continue; }
-    for (auto const &id : field_decl.ids()) {
-      type::QualType qt = c.context().qual_types(&id)[0];
-      if (not qt or
-          qt.type().get()->completeness() == type::Completeness::Incomplete) {
-        c.diag().Consume(IncompleteField{.range = id.range()});
-        field_error = true;
-      }
-    }
-  }
-
-  if (field_error) { return std::nullopt; }
-
-  ir::CompiledFn fn(type::Func({}, {}));
-  ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
-    c.builder().CurrentBlock() = fn.entry();
-
-    std::vector<type::StructDataInstruction::Field> fields;
-
-    for (auto const &field_decl : field_decls) {
-      if (field_decl.flags() & ast::Declaration::f_IsConst) { continue; }
-      // TODO: Access to init_val is not correct here because that may
-      // initialize multiple values.
-      for (auto const &id : field_decl.ids()) {
-        // TODO: Decide whether to support all hashtags. For now just covering
-        // export.
-        if (auto const *init_val = id.declaration().init_val()) {
-          // TODO init_val type may not be the same.
-          type::Type field_type = c.context().qual_types(init_val)[0].type();
-
-          ASSIGN_OR(
-              NOT_YET(),  //
-              auto result,
-              c.EvaluateToBufferOrDiagnose(type::Typed(init_val, field_type)));
-
-          fields.emplace_back(id.name(), field_type, std::move(result))
-              .set_export(
-                  id.declaration().hashtags.contains(ir::Hashtag::Export));
-        } else {
-          // TODO: Failed evaluation
-          // TODO: Type expression actually refers potentially to multiple
-          // declaration ids.
-          type::Type field_type =
-              c.EvaluateOrDiagnoseAs<type::Type>(id.declaration().type_expr())
-                  .value();
-          fields.emplace_back(id.name(), field_type)
-              .set_export(
-                  id.declaration().hashtags.contains(ir::Hashtag::Export));
-        }
-      }
-    }
-
-    c.current_block()->Append(
-        type::StructDataInstruction{.struct_ = s, .fields = std::move(fields)});
-    c.builder().ReturnJump();
-  }
-
-  return fn;
-}
-
 std::optional<ir::CompiledFn> StructCompletionFn(
     Compiler &c, type::Struct *s,
     absl::Span<ast::Declaration const> field_decls) {
@@ -542,44 +462,6 @@ std::optional<ir::CompiledFn> StructCompletionFn(
   }
 
   return fn;
-}
-
-bool Compiler::EnsureDataCompleteness(type::Struct *s) {
-  if (s->completeness() >= type::Completeness::DataComplete) { return true; }
-
-  ast::Expression const &expr = *ASSERT_NOT_NULL(context().AstLiteral(s));
-  // TODO: Deal with repetition between ast::StructLiteral and
-  // ast::ParameterizedStructLiteral
-  if (auto const *node = expr.if_as<ast::StructLiteral>()) {
-    if (not VerifyBody(node)) { return false; }
-    EmitVoid(node);
-
-    LOG("struct", "Completing struct-literal emission: %p", node);
-
-    ASSIGN_OR(return false,  //
-                     auto fn, StructDataCompletionFn(*this, s, node->fields()));
-    // TODO: What if execution fails.
-    InterpretAtCompileTime(fn);
-    LOG("struct", "Completed %s which is a struct %s with %u field(s).",
-        node->DebugString(), *s, s->fields().size());
-    return true;
-  } else if (auto const *node = expr.if_as<ast::ParameterizedStructLiteral>()) {
-    if (not VerifyBody(node)) { return false; }
-    EmitVoid(node);
-
-    LOG("struct", "Completing struct-literal emission: %p ", node);
-
-    ASSIGN_OR(return false,  //
-                     auto fn, StructDataCompletionFn(*this, s, node->fields()));
-    // TODO: What if execution fails.
-    InterpretAtCompileTime(fn);
-    LOG("struct", "Completed %s which is a struct %s with %u field(s).",
-        node->DebugString(), *s, s->fields().size());
-    return true;
-  } else {
-    // TODO Should we encode that it's one of these two in the type?
-    NOT_YET();
-  }
 }
 
 void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {

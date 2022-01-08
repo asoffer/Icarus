@@ -6,6 +6,7 @@
 #include "compiler/module.h"
 #include "compiler/resources.h"
 #include "compiler/verify/common.h"
+#include "compiler/verify/verify.h"
 #include "type/generic.h"
 #include "type/qual_type.h"
 #include "type/struct.h"

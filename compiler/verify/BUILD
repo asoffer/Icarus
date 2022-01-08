@@ -501,6 +501,7 @@ cc_library(
     srcs = ["parameterized_struct_literal.cc"],
     deps = [
         ":common",
+        ":verify",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instantiate",
@@ -667,5 +668,16 @@ cc_test(
         "//type:array",
         "//type:primitive",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "verify",
+    hdrs = ["verify.h"],
+    srcs = ["verify.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compilation_data",
+        "//compiler:instructions",
     ],
 )
