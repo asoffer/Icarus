@@ -41,8 +41,10 @@ TEST_P(BinaryOperatorTest, Constants) {
       R"((%s) %s (%s))", test_data.lhs, test_case.op, test_data.rhs));
   auto t        = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
-  Compiler c(&mod.context(), mod.resources());
-  c.set_work_resources(mod.work_resources());
+  CompilationData data{.context        = &mod.context(),
+                       .work_resources = mod.work_resources(),
+                       .resources      = mod.resources()};
+  Compiler c(&data);
   ASSERT_THAT(
       c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
       Optional(test_data.expected));
@@ -65,8 +67,10 @@ TEST_P(BinaryOperatorTest, NonConstants) {
       test_case.type, test_data.lhs, test_data.rhs, test_case.op));
   auto t        = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
-  Compiler c(&mod.context(), mod.resources());
-  c.set_work_resources(mod.work_resources());
+  CompilationData data{.context        = &mod.context(),
+                       .work_resources = mod.work_resources(),
+                       .resources      = mod.resources()};
+  Compiler c(&data);
   ASSERT_THAT(
       c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
       Optional(test_data.expected));
@@ -93,8 +97,10 @@ TEST_P(BinaryOperatorTest, Assignment) {
       test_case.type, test_data.lhs, test_case.op, test_data.rhs));
   auto t        = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
-  Compiler c(&mod.context(), mod.resources());
-  c.set_work_resources(mod.work_resources());
+  CompilationData data{.context        = &mod.context(),
+                       .work_resources = mod.work_resources(),
+                       .resources      = mod.resources()};
+  Compiler c(&data);
   ASSERT_THAT(
       c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
       Optional(test_data.expected));
@@ -608,8 +614,10 @@ TEST(BinaryOperator, Overload) {
       })())");
   auto t = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
-  Compiler c(&mod.context(), mod.resources());
-  c.set_work_resources(mod.work_resources());
+  CompilationData data{.context        = &mod.context(),
+                       .work_resources = mod.work_resources(),
+                       .resources      = mod.resources()};
+  Compiler c(&data);
   ASSERT_THAT(
       c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
       Optional(test::ExpectedValue(int64_t{7})));
@@ -636,8 +644,10 @@ TEST_P(BufferPointerTest, Arithmetic) {
       expr));
   auto t        = mod.context().qual_types(e)[0].type();
   ASSERT_TRUE(t.valid());
-  Compiler c(&mod.context(), mod.resources());
-  c.set_work_resources(mod.work_resources());
+  CompilationData data{.context        = &mod.context(),
+                       .work_resources = mod.work_resources(),
+                       .resources      = mod.resources()};
+  Compiler c(&data);
   ASSERT_THAT(
       c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
       Optional(test::ExpectedValue(expected_result)));

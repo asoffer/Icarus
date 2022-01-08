@@ -87,7 +87,7 @@ struct ReturningWrongNumber {
 // to verify that returns match any specified return type, or to infer the
 // return type of the function.
 absl::flat_hash_map<ast::ReturnStmt const *, std::vector<type::Type>>
-InferReturnTypes(Compiler &c, ast::FunctionLiteral const *node) {
+InferReturnTypes(Context const &c, ast::FunctionLiteral const *node) {
   // TODO: we can have yields and returns, or yields and jumps, but not jumps
   // and returns. Check this.
   //
@@ -99,7 +99,7 @@ InferReturnTypes(Compiler &c, ast::FunctionLiteral const *node) {
     if (not ret_node) { continue; }
     std::vector<type::Type> ret_types;
     for (auto const *expr : ret_node->exprs()) {
-      ret_types.push_back(c.context().qual_types(expr)[0].type());
+      ret_types.push_back(c.qual_types(expr)[0].type());
     }
 
     result.emplace(ret_node, std::move(ret_types));
@@ -146,12 +146,12 @@ std::optional<std::vector<type::Type>> JoinReturnTypes(
 //   match the return types (if specified).
 // * From Compiler::VerifyType if the return types are inferred.
 std::optional<std::vector<type::Type>> VerifyBodyOnly(
-    Compiler &c, ast::FunctionLiteral const *node) {
+    CompilationDataReference data, ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "VerifyBodyOnly for %s on %s", node->DebugString(),
-      c.context().DebugString());
+      data.context().DebugString());
   bool found_error = false;
   for (auto const *stmt : node->stmts()) {
-    absl::Span<type::QualType const> qts = c.VerifyType(stmt);
+    absl::Span<type::QualType const> qts = Compiler(data).VerifyType(stmt);
     bool current_was_error = (qts.size() == 1 and not qts[0].ok());
     if (current_was_error) {
       found_error = true;
@@ -160,14 +160,13 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
   }
   if (found_error) { return std::nullopt; }
 
-  return JoinReturnTypes(c.diag(), InferReturnTypes(c, node));
+  return JoinReturnTypes(data.diag(), InferReturnTypes(data.context(), node));
 }
 
 type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "VerifyConcrete %s", node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto params, VerifyParameters(c, node->params()));
-
   if (auto outputs = node->outputs()) {
     std::vector<type::Type> output_type_vec(outputs->size());
     bool error = false;
@@ -217,26 +216,24 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 }  // namespace
 
 type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
-  auto gen = [node,
-              instantiation_compiler = Compiler(&c.context(), c.resources()),
-              cg                     = c.builder().CurrentGroup()](
+  auto gen = [node, data = c.data()](
                  WorkResources const &wr,
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Function const * {
-    instantiation_compiler.set_work_resources(wr);
+    Compiler c(&data);
+    c.set_work_resources(wr);
     ASSIGN_OR(return nullptr,  //
-                     auto result,
-                     Instantiate(instantiation_compiler, node, args));
+                     auto result, Instantiate(c, node, args));
     auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s into %s", node->DebugString(),
           context.DebugString());
-      PersistentResources resources = instantiation_compiler.resources();
-      auto compiler = instantiation_compiler.MakeChild(&context, resources);
-      compiler.set_work_resources(wr);
-      compiler.builder().CurrentGroup() = cg;
-      auto qt                           = VerifyConcrete(compiler, node);
+      CompilationData data{.context        = &context,
+                           .work_resources = wr,
+                           .resources      = c.resources()};
+      Compiler compiler(&data);
+      auto qt   = VerifyConcrete(compiler, node);
       auto outs = qt.type().as<type::Function>().return_types();
       rets_ref.assign(outs.begin(), outs.end());
 
@@ -268,7 +265,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
 
 // TODO: Nothing about this has been comprehensively tested. Especially the
 // generic bits.
-bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
+bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "function-literal body verification: %s %p",
       node->DebugString(), &context());
 

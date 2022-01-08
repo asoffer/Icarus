@@ -138,12 +138,15 @@ TEST(CallTest, Foreign) {
   f_i64 ::= foreign("ForeignFunctionI64", () -> i64)
   )");
 
+  CompilationData data{.context        = &mod.context(),
+                       .work_resources = mod.work_resources(),
+                       .resources      = mod.resources()};
+
   {
     auto const *e = mod.Append<ast::Expression>("f_ptr()");
     auto t        = mod.context().qual_types(e)[0].type();
     ASSERT_TRUE(t.valid());
-    Compiler c(&mod.context(), mod.resources());
-    c.set_work_resources(mod.work_resources());
+    Compiler c(&data);
     ASSERT_THAT(c.EvaluateToBufferOrDiagnose(
                     type::Typed<ast::Expression const *>(e, t)),
                 Optional(test::ExpectedValue(ir::Addr(ForeignFunctionPtr()))));
@@ -153,8 +156,7 @@ TEST(CallTest, Foreign) {
     auto const *e = mod.Append<ast::Expression>("f_i8()");
     auto t        = mod.context().qual_types(e)[0].type();
     ASSERT_TRUE(t.valid());
-    Compiler c(&mod.context(), mod.resources());
-    c.set_work_resources(mod.work_resources());
+    Compiler c(&data);
     ASSERT_THAT(c.EvaluateToBufferOrDiagnose(
                     type::Typed<ast::Expression const *>(e, t)),
                 Optional(test::ExpectedValue(ForeignFunctionI8())));
@@ -164,8 +166,7 @@ TEST(CallTest, Foreign) {
     auto const *e = mod.Append<ast::Expression>("f_i64()");
     auto t        = mod.context().qual_types(e)[0].type();
     ASSERT_TRUE(t.valid());
-    Compiler c(&mod.context(), mod.resources());
-    c.set_work_resources(mod.work_resources());
+    Compiler c(&data);
     ASSERT_THAT(c.EvaluateToBufferOrDiagnose(
                     type::Typed<ast::Expression const *>(e, t)),
                 Optional(test::ExpectedValue(ForeignFunctionI64())));

@@ -13,10 +13,11 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
                             ir::PartialResultBuffer &out) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
-        [c = Compiler(&context(), resources()), node](
+        [node, data = this->data()](
             WorkResources const &wr,
             core::Arguments<type::Typed<ir::CompleteResultRef>> const
                 &args) mutable -> ir::NativeFn {
+          Compiler c(&data);
           c.set_work_resources(wr);
           auto find_subcontext_result = FindInstantiation(c, node, args);
           auto &context               = find_subcontext_result.context;

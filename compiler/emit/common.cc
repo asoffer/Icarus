@@ -681,9 +681,6 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
               absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   auto [callee_fn, overload_type, defaults, context] =
       EmitCallee(c, callee, constant_arguments);
-  PersistentResources resources = c.resources();
-  Compiler child = c.MakeChild(context ? context : &c.context(), resources);
-
   // Arguments provided to a function call need to be "prepared" in the sense
   // that they need to be
   // * Ordered according to the parameters of the function (because named
@@ -704,7 +701,7 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
                 prepared_arguments);
 
   // TODO: With expansions, this might be wrong.
-  auto out_params = SetReturns(child.builder(), overload_type, to);
+  auto out_params = SetReturns(c.builder(), overload_type, to);
   c.builder().Call(callee_fn, overload_type, std::move(prepared_arguments),
                    out_params);
   int i = -1;

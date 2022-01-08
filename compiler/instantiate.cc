@@ -142,9 +142,10 @@ std::optional<Context::InsertSubcontextResult> Instantiate(
   LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
       ctx.DebugString());
   Context scratchpad            = ctx.ScratchpadSubcontext();
-  PersistentResources resources = c.resources();
-  Compiler child(&scratchpad, resources);
-  child.set_work_resources(c.work_resources());
+  CompilationData data{.context        = &scratchpad,
+                       .work_resources = c.work_resources(),
+                       .resources      = c.resources()};
+  Compiler child(&data);
 
   ASSIGN_OR(return std::nullopt,  //
                    auto bound_params, ComputeParamsFromArgs(child, node, arguments));
@@ -159,9 +160,10 @@ std::optional<Context::InsertSubcontextResult> Instantiate(
   LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
       ctx.DebugString());
   Context scratchpad            = ctx.ScratchpadSubcontext();
-  PersistentResources resources = c.resources();
-  Compiler child(&scratchpad, resources);
-  child.set_work_resources(c.work_resources());
+  CompilationData data{.context        = &scratchpad,
+                       .work_resources = c.work_resources(),
+                       .resources      = c.resources()};
+  Compiler child(&data);
 
   ir::CompleteResultBuffer buffer;
   buffer.append(scope_context);
@@ -182,9 +184,10 @@ Context::FindSubcontextResult FindInstantiation(
   LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
       ctx.DebugString());
   Context scratchpad            = ctx.ScratchpadSubcontext();
-  PersistentResources resources = c.resources();
-  Compiler child(&scratchpad, resources);
-  child.set_work_resources(c.work_resources());
+  CompilationData data{.context        = &scratchpad,
+                       .work_resources = c.work_resources(),
+                       .resources      = c.resources()};
+  Compiler child(&data);
   return ctx.FindSubcontext(node,
                             *ComputeParamsFromArgs(child, node, arguments));
 }
@@ -196,10 +199,11 @@ Context::FindSubcontextResult FindInstantiation(
   auto &ctx = ModuleFor(node)->as<CompiledModule>().context();
   LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
       ctx.DebugString());
-  Context scratchpad            = ctx.ScratchpadSubcontext();
-  PersistentResources resources = c.resources();
-  Compiler child(&scratchpad, resources);
-  child.set_work_resources(c.work_resources());
+  Context scratchpad = ctx.ScratchpadSubcontext();
+  CompilationData data{.context        = &scratchpad,
+                       .work_resources = c.work_resources(),
+                       .resources      = c.resources()};
+  Compiler child(&data);
 
   ir::CompleteResultBuffer buffer;
   buffer.append(scope_context);

@@ -13,7 +13,7 @@
 
 namespace compiler {
 
-bool Compiler::VerifyBody(ast::ParameterizedStructLiteral const *node) {
+bool BodyVerifier::VerifyBody(ast::ParameterizedStructLiteral const *node) {
   // NOT_YET();
   return true;
 }
@@ -23,25 +23,23 @@ absl::Span<type::QualType const> Compiler::VerifyType(
   auto *gen_struct = type::Allocate<type::Generic<type::Struct>>();
 
   auto gen =
-      [gen_struct, node,
-       instantiation_compiler = Compiler(&context(), resources()),
-       cg                     = builder().CurrentGroup()](
+      [gen_struct, node, d = data()](
           WorkResources const &wr,
           core::Arguments<type::Typed<ir::CompleteResultRef>> const
               &args) mutable -> type::InstantiatedGeneric<type::Struct> * {
-    instantiation_compiler.set_work_resources(wr);
+    Compiler c(&d);
+    c.set_work_resources(wr);
     ASSIGN_OR(return nullptr,  //
                      auto result,
-                     Instantiate(instantiation_compiler, node, args));
+                     Instantiate(c, node, args));
     auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
       LOG("ParameterizedStructLiteral", "inserted! %s", node->DebugString());
-      PersistentResources resources = instantiation_compiler.resources();
-      auto compiler = instantiation_compiler.MakeChild(&context, resources);
-      compiler.set_work_resources(wr);
-      compiler.builder().CurrentGroup() = cg;
-
+      CompilationData data{.context        = &context,
+                           .work_resources = wr,
+                           .resources      = c.resources()};
+      Compiler compiler(&data);
       auto [t, inserted] =
           compiler.context()
               .EmplaceType<type::InstantiatedGeneric<type::Struct>>(

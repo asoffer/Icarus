@@ -37,8 +37,12 @@ struct TestModule : compiler::CompiledModule {
     diagnostic::AbortingConsumer diag(&source_);
     auto stmts = frontend::Parse(source_, diag, source_.num_chunks() - 1);
     auto nodes = insert(stmts.begin(), stmts.end());
-    compiler::Compiler c(&context(), resources());
-    c.set_work_resources(work_graph_.work_resources());
+    compiler::CompilationData data{
+        .context        = &context(),
+        .work_resources = work_graph_.work_resources(),
+        .resources      = resources(),
+    };
+    compiler::Compiler c(&data);
     for (auto const* node : nodes) {
       auto const* decl = node->if_as<ast::Declaration>();
       if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
@@ -67,8 +71,12 @@ struct TestModule : compiler::CompiledModule {
       std::vector<std::unique_ptr<ast::Node>> ns;
       ns.push_back(std::move(stmts[0]));
       auto nodes = insert(ns.begin(), ns.end());
-      compiler::Compiler c(&context(), resources());
-      c.set_work_resources(work_graph_.work_resources());
+      compiler::CompilationData data{
+          .context        = &context(),
+          .work_resources = work_graph_.work_resources(),
+          .resources      = resources(),
+      };
+      compiler::Compiler c(&data);
       for (auto const* node : nodes) {
         auto const* decl = node->if_as<ast::Declaration>();
         if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {

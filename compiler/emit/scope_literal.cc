@@ -21,32 +21,31 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
       .f       = base::any_invocable<ir::Scope(
           WorkResources const &, ir::ScopeContext const &,
           core::Arguments<type::Typed<ir::CompleteResultRef>> const &)>(
-          [instantiation_compiler = Compiler(&context(), resources()), node](
+          [node, d = this->data()](
               WorkResources const &wr, ir::ScopeContext scope_context,
               core::Arguments<type::Typed<ir::CompleteResultRef>> const
                   &args) mutable -> ir::Scope {
-            instantiation_compiler.set_work_resources(wr);
+            Compiler compiler(&d);
+            compiler.set_work_resources(wr);
             ASSIGN_OR(return ir::Scope(),  //
                              auto result,
-                             Instantiate(instantiation_compiler, node,
-                                         scope_context, args));
+                             Instantiate(compiler, node, scope_context, args));
             auto const &[params, rets_ref, context, instantiation_inserted] =
                 result;
-            PersistentResources resources = instantiation_compiler.resources();
-            auto compiler =
-                instantiation_compiler.MakeChild(&context, resources);
-            compiler.set_work_resources(wr);
-            for (auto const *stmt : node->stmts()) {
-              compiler.VerifyType(stmt);
-            }
+            CompilationData data{.context        = &context,
+                                 .work_resources = wr,
+                                 .resources      = compiler.resources()};
+            Compiler c(&data);
+
+            for (auto const *stmt : node->stmts()) { c.VerifyType(stmt); }
 
             context.set_qual_type(node,
                                   type::QualType::Constant(type::Scp(params)));
             auto [scope, inserted] = context.add_scope(node);
             if (inserted) {
-              compiler.Enqueue({.kind    = WorkItem::Kind::EmitScopeBody,
-                                .node    = node,
-                                .context = &context});
+              c.Enqueue({.kind    = WorkItem::Kind::EmitScopeBody,
+                         .node    = node,
+                         .context = &context});
             }
 
             return scope;

@@ -5,7 +5,7 @@
 
 namespace compiler {
 
-bool Compiler::VerifyBody(ast::StructLiteral const *node) {
+bool BodyVerifier::VerifyBody(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Struct-literal body verification: %p %s", node,
       node->DebugString());
 
@@ -21,7 +21,7 @@ bool Compiler::VerifyBody(ast::StructLiteral const *node) {
                   .context = &context(),
               }});
     } else {
-      auto field_qt = VerifyType(&field)[0];
+      auto field_qt = Compiler(*this).VerifyType(&field)[0];
       if (not field_qt.ok()) {
         error = true;
       } else if (field_qt.type().get()->completeness() ==

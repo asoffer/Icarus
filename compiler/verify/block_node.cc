@@ -27,27 +27,25 @@ type::QualType VerifyConcrete(Compiler &c, ast::BlockNode const *node) {
   return qt;
 }
 
-type::QualType VerifyGeneric(Compiler &c, ast::BlockNode const *node) {
-  auto gen = [node,
-              instantiation_compiler = Compiler(&c.context(), c.resources()),
-              cg                     = c.builder().CurrentGroup()](
+type::QualType VerifyGeneric(Compiler &compiler, ast::BlockNode const *node) {
+  auto gen = [node, d = compiler.data()](
                  WorkResources const &wr,
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Block const * {
-    instantiation_compiler.set_work_resources(wr);
+    Compiler c(&d);
+    c.set_work_resources(wr);
     ASSIGN_OR(return nullptr,  //
-                     auto result,
-                     Instantiate(instantiation_compiler, node, args));
+                     auto result, Instantiate(c, node, args));
     auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
       LOG("BlockNode", "inserted! %s into %s", node->DebugString(),
           context.DebugString());
-      PersistentResources resources = instantiation_compiler.resources();
-      auto compiler = instantiation_compiler.MakeChild(&context, resources);
-      compiler.set_work_resources(wr);
-      compiler.builder().CurrentGroup() = cg;
-      auto qt                           = VerifyConcrete(compiler, node);
+      CompilationData data{.context        = &context,
+                           .work_resources = wr,
+                           .resources      = c.resources()};
+      Compiler compiler(&data);
+      auto qt = VerifyConcrete(compiler, node);
       // TODO: Provide a mechanism by which this can fail.
       ASSERT(qt.ok() == true);
       // TODO: We shouldn't have a queue per compiler. We may not be able to

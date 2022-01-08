@@ -19,24 +19,22 @@ type::QualType VerifyConcrete(Compiler &c,
 
 type::QualType VerifyGeneric(Compiler &c,
                              ast::ShortFunctionLiteral const *node) {
-  auto gen = [node,
-              instantiation_compiler = Compiler(&c.context(), c.resources()),
-              cg                     = c.builder().CurrentGroup()](
+  auto gen = [node, data = c.data()](
                  WorkResources const &wr,
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Function const * {
-    instantiation_compiler.set_work_resources(wr);
+    Compiler c(&data);
+    c.set_work_resources(wr);
     ASSIGN_OR(return nullptr,  //
-                     auto result,
-                     Instantiate(instantiation_compiler, node, args));
+                     auto result, Instantiate(c, node, args));
     auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
-      PersistentResources resources = instantiation_compiler.resources();
-      auto compiler = instantiation_compiler.MakeChild(&context, resources);
-      compiler.set_work_resources(wr);
-      compiler.builder().CurrentGroup() = cg;
+      CompilationData data{.context        = &context,
+                           .work_resources = wr,
+                           .resources      = c.resources()};
+      Compiler compiler(&data);
       auto qt                           = VerifyConcrete(compiler, node);
       auto outs = qt.type().as<type::Function>().return_types();
       rets_ref.assign(outs.begin(), outs.end());

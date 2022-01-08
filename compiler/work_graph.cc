@@ -20,8 +20,10 @@ bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
                            Context &context, WorkGraph &work_graph,
                            base::PtrSpan<ast::Node const> nodes,
                            bool stop_on_first_error = false) {
-  Compiler c(&context, work_graph.resources());
-  c.set_work_resources(work_graph.work_resources());
+  CompilationData data{.context        = &context,
+                       .work_resources = work_graph.work_resources(),
+                       .resources      = work_graph.resources()};
+  Compiler c(&data);
 
   bool found_error = false;
   for (ast::Node const *node : nodes) {
@@ -94,8 +96,10 @@ bool CompileLibrary(Context &context, PersistentResources const &resources,
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
         for (auto const *node : nodes) {
-          Compiler c(&context, w.resources());
-          c.set_work_resources(w.work_resources());
+          CompilationData data{.context        = &context,
+                               .work_resources = w.work_resources(),
+                               .resources      = w.resources()};
+          Compiler c(&data);
           c.EmitVoid(node);
         }
         return true;
@@ -119,8 +123,10 @@ std::optional<ir::CompiledFn> CompileExecutable(
                                      nodes);
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        Compiler c(&context, w.resources());
-        c.set_work_resources(w.work_resources());
+        CompilationData data{.context        = &context,
+                             .work_resources = w.work_resources(),
+                             .resources      = w.resources()};
+        Compiler c(&data);
         ICARUS_SCOPE(ir::SetCurrent(f, c.builder())) {
           if (nodes.empty()) {
             EmitIrForStatements(c, nodes);
@@ -154,8 +160,10 @@ bool WorkGraph::Execute(WorkItem const &w) {
     return true;
   }
 
-  Compiler c(w.context, resources_);
-  c.set_work_resources(work_resources());
+  CompilationData data{.context        = w.context,
+                       .work_resources = work_resources(),
+                       .resources      = resources_};
+  Compiler c(&data);
   bool result;
   LOG("WorkGraph", "Starting work %u on %s (%p)", (int)w.kind,
       w.node->DebugString(), this);
@@ -227,8 +235,10 @@ WorkGraph::EvaluateToBuffer(Context &context,
   r.diagnostic_consumer = &buffering_consumer;
   WorkGraph w(r);
 
-  Compiler c(&context, w.resources());
-  c.set_work_resources(w.work_resources());
+  CompilationData compilation_data{.context        = &context,
+                                   .work_resources = w.work_resources(),
+                                   .resources      = w.resources()};
+  Compiler c(&compilation_data);
 
   auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
   ir::NativeFn::Data data{

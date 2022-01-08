@@ -122,8 +122,12 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   LOG("ScopeNode", "Emitting IR for ScopeNode");
 
   auto const *callee = context().CallMetadata(node).resolved();
-  Compiler c(&ModuleFor(callee)->as<CompiledModule>().context(), resources());
-  c.set_work_resources(work_resources());
+  CompilationData data{
+      .context        = &ModuleFor(callee)->as<CompiledModule>().context(),
+      .work_resources = work_resources(),
+      .resources      = resources(),
+  };
+  Compiler c(&data);
   auto unbound_scope = *c.EvaluateOrDiagnoseAs<ir::UnboundScope>(callee);
 
   auto scope_context = context().LoadConstant<ir::ScopeContext>(node);

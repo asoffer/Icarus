@@ -33,13 +33,18 @@ TEST_P(EvaluationTest, Test) {
   ASSERT_EQ(qts.size(), 1);
   ASSERT_EQ(qts[0].type(), type);
 
-  compiler::Compiler c(&mod.context(), compiler::PersistentResources{
-                                           .work   = &mod.work_set,
-                                           .module = &mod,
-                                           .diagnostic_consumer = &mod.consumer,
-                                           .importer            = &mod.importer,
-                                       });
-  c.set_work_resources(mod.work_resources());
+  compiler::CompilationData data{
+      .context        = &mod.context(),
+      .work_resources = mod.work_resources(),
+      .resources =
+          {
+              .work                = &mod.work_set,
+              .module              = &mod,
+              .diagnostic_consumer = &mod.consumer,
+              .importer            = &mod.importer,
+          },
+  };
+  compiler::Compiler c(&data);
 
   EXPECT_THAT(c.EvaluateToBufferOrDiagnose(
                   type::Typed<ast::Expression const *>(e, type)),

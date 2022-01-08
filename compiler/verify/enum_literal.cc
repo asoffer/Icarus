@@ -36,10 +36,10 @@ struct NonIntegralEnumerator {
   type::Type type;
 };
 
-bool Compiler::VerifyBody(ast::EnumLiteral const *node) {
+bool BodyVerifier::VerifyBody(ast::EnumLiteral const *node) {
   bool success = true;
   for (auto const &[name, value] : node->specified_values()) {
-    auto qts = VerifyType(value.get());
+    auto qts = Compiler(*this).VerifyType(value.get());
     if (not(qts[0].quals() >= type::Quals::Const())) {
       success = false;
       diag().Consume(NonConstantEnumerator{.view = SourceViewFor(value.get())});

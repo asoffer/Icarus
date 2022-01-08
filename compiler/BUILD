@@ -255,7 +255,6 @@ cc_library(
 
 cc_library(
     name = "compiler",
-    srcs = ["compiler.cc"],
     deps = [
         ":compiler_header",
         ":context",
