@@ -341,15 +341,16 @@ void EmitArguments(
 }
 
 std::optional<ir::CompiledFn> StructCompletionFn(
-    Compiler &c, type::Struct *s,
+    CompilationDataReference data, type::Struct *s,
     absl::Span<ast::Declaration const> field_decls) {
   ASSERT(s->completeness() == type::Completeness::DataComplete);
 
   ir::CompiledFn fn(type::Func({}, {}));
-  ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+  ICARUS_SCOPE(ir::SetCurrent(fn, data.builder())) {
+    Compiler c(data);
     // TODO this is essentially a copy of the body of
     // FunctionLiteral::EmitToBuffer. Factor these out together.
-    c.builder().CurrentBlock() = fn.entry();
+    data.builder().CurrentBlock() = fn.entry();
 
     std::vector<type::StructInstruction::Field> constants;
     bool needs_dtor = false;
@@ -362,7 +363,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
         copy_assignments;
     for (auto const &field_decl : field_decls) {
       if (not(field_decl.flags() & ast::Declaration::f_IsConst)) { continue; }
-      VerifyType(c, &field_decl);
+      VerifyType(data, &field_decl);
 
       // TODO: Access to init_val is not correct here because that may
       // initialize multiple values.
@@ -387,11 +388,11 @@ std::optional<ir::CompiledFn> StructCompletionFn(
         } else {
           if (auto const *init_val = id.declaration().init_val()) {
             // TODO init_val type may not be the same.
-            type::Type field_type = c.context().qual_types(init_val)[0].type();
+            type::Type field_type = data.context().qual_types(init_val)[0].type();
 
             ASSIGN_OR(NOT_YET(),  //
                       auto result,
-                      c.EvaluateToBufferOrDiagnose(
+                      data.EvaluateToBufferOrDiagnose(
                           type::Typed(init_val, field_type)));
 
             constants.emplace_back(id.name(), field_type, std::move(result))
@@ -402,7 +403,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
             // TODO: Type expression actually refers potentially to multiple
             // declaration ids.
             type::Type field_type =
-                c.EvaluateOrDiagnoseAs<type::Type>(id.declaration().type_expr())
+                data.EvaluateOrDiagnoseAs<type::Type>(id.declaration().type_expr())
                     .value();
             constants.emplace_back(id.name(), field_type)
                 .set_export(
@@ -414,28 +415,28 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 
     std::optional<ir::Fn> dtor;
     if (needs_dtor) {
-      auto [full_dtor, inserted] = c.context().ir().InsertDestroy(s);
+      auto [full_dtor, inserted] = data.context().ir().InsertDestroy(s);
       if (inserted) {
-        ICARUS_SCOPE(ir::SetCurrent(full_dtor, c.builder())) {
-          c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
+        ICARUS_SCOPE(ir::SetCurrent(full_dtor, data.builder())) {
+          data.builder().CurrentBlock() = data.builder().CurrentGroup()->entry();
           auto var                   = ir::Reg::Arg(0);
           if (user_dtor) {
             // TODO: Should probably force-inline this.
             ir::PartialResultBuffer args;
             args.append(var);
             // TODO: Constants
-            c.builder().Call(*user_dtor, full_dtor.type(), std::move(args),
+            data.builder().Call(*user_dtor, full_dtor.type(), std::move(args),
                              ir::OutParams());
           }
           for (int i = s->fields().size() - 1; i >= 0; --i) {
             // TODO: Avoid emitting IR if the type doesn't need to be
             // destroyed.
             c.EmitDestroy(
-                type::Typed<ir::Reg>(c.builder().FieldRef(var, s, i)));
+                type::Typed<ir::Reg>(data.builder().FieldRef(var, s, i)));
           }
 
-          c.builder().ReturnJump();
-          c.context().ir().WriteByteCode<EmitByteCode>(full_dtor);
+          data.builder().ReturnJump();
+          data.context().ir().WriteByteCode<EmitByteCode>(full_dtor);
 
           dtor = full_dtor;
         }
@@ -454,7 +455,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
       copy_assignments.push_back(InsertGeneratedCopyAssign(c, s));
     }
 
-    c.current_block()->Append(
+    data.current_block()->Append(
         type::StructInstruction{.struct_          = s,
                                 .constants        = std::move(constants),
                                 .move_inits       = std::move(move_inits),
@@ -462,7 +463,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
                                 .move_assignments = std::move(move_assignments),
                                 .copy_assignments = std::move(copy_assignments),
                                 .dtor             = dtor});
-    c.builder().ReturnJump();
+    data.builder().ReturnJump();
   }
 
   return fn;

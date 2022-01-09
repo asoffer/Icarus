@@ -1,6 +1,5 @@
 #include "ast/ast.h"
 #include "base/meta.h"
-#include "compiler/compiler.h"
 #include "compiler/verify/verify.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"

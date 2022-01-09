@@ -66,7 +66,7 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
           argument_types[index] = argument->type();
           c.context().set_arg_type(id, argument->type());
         } else if (auto const *default_value = dep_node.node()->init_val()) {
-          type::Type t = VerifyType(c, default_value)[0].type();
+          type::Type t          = VerifyType(c, default_value)[0].type();
           argument_types[index] = t;
           c.context().set_arg_type(id, t);
         } else {
@@ -117,7 +117,8 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
           buffer.set_type(default_value_type);
         }
 
-        auto qt = bound_parameters.binding(&dep_node.node()->ids()[0]).qual_type();
+        auto qt =
+            bound_parameters.binding(&dep_node.node()->ids()[0]).qual_type();
         c.builder().ApplyImplicitCasts(buffer.type(), qt, *buffer);
 
         // TODO: Support multiple declarations
@@ -140,33 +141,35 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
 }  // namespace
 
 std::optional<Context::InsertSubcontextResult> Instantiate(
-    Compiler &c, ast::ParameterizedExpression const *node,
+    CompilationDataReference parent_data,
+    ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments) {
   auto &ctx = ModuleFor(node)->as<CompiledModule>().context();
   LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
       ctx.DebugString());
-  Context scratchpad            = ctx.ScratchpadSubcontext();
+  Context scratchpad = ctx.ScratchpadSubcontext();
   CompilationData data{.context        = &scratchpad,
-                       .work_resources = c.work_resources(),
-                       .resources      = c.resources()};
+                       .work_resources = parent_data.work_resources(),
+                       .resources      = parent_data.resources()};
   Compiler child(&data);
 
   ASSIGN_OR(return std::nullopt,  //
-                   auto bound_params, ComputeParamsFromArgs(child, node, arguments));
+                   auto bound_params,
+                   ComputeParamsFromArgs(child, node, arguments));
   return ctx.InsertSubcontext(node, bound_params, std::move(scratchpad));
 }
 
 std::optional<Context::InsertSubcontextResult> Instantiate(
-    Compiler &c, ast::ScopeLiteral const *node,
+    CompilationDataReference instantiation_data, ast::ScopeLiteral const *node,
     ir::ScopeContext const &scope_context,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments) {
   auto &ctx = ModuleFor(node)->as<CompiledModule>().context();
   LOG("Instantiate", "Instantiating %s: %s", node->DebugString(),
       ctx.DebugString());
-  Context scratchpad            = ctx.ScratchpadSubcontext();
+  Context scratchpad = ctx.ScratchpadSubcontext();
   CompilationData data{.context        = &scratchpad,
-                       .work_resources = c.work_resources(),
-                       .resources      = c.resources()};
+                       .work_resources = instantiation_data.work_resources(),
+                       .resources      = instantiation_data.resources()};
   Compiler child(&data);
 
   ir::CompleteResultBuffer buffer;
@@ -187,7 +190,7 @@ Context::FindSubcontextResult FindInstantiation(
   auto &ctx = ModuleFor(node)->as<CompiledModule>().context();
   LOG("FindInstantiation", "Finding %s: %s", node->DebugString(),
       ctx.DebugString());
-  Context scratchpad            = ctx.ScratchpadSubcontext();
+  Context scratchpad = ctx.ScratchpadSubcontext();
   CompilationData data{.context        = &scratchpad,
                        .work_resources = c.work_resources(),
                        .resources      = c.resources()};

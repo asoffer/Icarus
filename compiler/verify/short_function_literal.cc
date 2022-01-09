@@ -1,5 +1,4 @@
 #include "ast/ast.h"
-#include "compiler/compiler.h"
 #include "compiler/instantiate.h"
 #include "compiler/resources.h"
 #include "compiler/verify/common.h"
@@ -20,23 +19,23 @@ type::QualType VerifyConcrete(CompilationDataReference data,
 
 type::QualType VerifyGeneric(CompilationDataReference data,
                              ast::ShortFunctionLiteral const *node) {
-  auto gen = [node, data = data.data()](
+  auto gen = [node, comp_data = data.data()](
                  WorkResources const &wr,
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Function const * {
-    Compiler c(&data);
-    c.set_work_resources(wr);
-    ASSIGN_OR(return nullptr,  //
-                     auto result, Instantiate(c, node, args));
+    comp_data.work_resources = wr;
+    ASSIGN_OR(
+        return nullptr,  //
+               auto result,
+               Instantiate(CompilationDataReference(&comp_data), node, args));
     auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
       CompilationData data{.context        = &context,
                            .work_resources = wr,
-                           .resources      = c.resources()};
-      Compiler compiler(&data);
-      auto qt   = VerifyConcrete(compiler, node);
+                           .resources      = comp_data.resources};
+      auto qt   = VerifyConcrete(CompilationDataReference(&data), node);
       auto outs = qt.type().as<type::Function>().return_types();
       rets_ref.assign(outs.begin(), outs.end());
 

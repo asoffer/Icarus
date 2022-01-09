@@ -1,7 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
-#include "compiler/compiler.h"
 #include "compiler/verify/verify.h"
 #include "type/array.h"
 #include "type/primitive.h"

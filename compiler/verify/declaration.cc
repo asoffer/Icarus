@@ -2,7 +2,6 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
-#include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "compiler/verify/common.h"
 #include "compiler/verify/assignment_and_initialization.h"

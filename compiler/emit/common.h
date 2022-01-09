@@ -19,7 +19,8 @@ namespace compiler {
 // Returns A function which can be executed to complete the data-complete struct
 // type pointed to by `s`.
 std::optional<ir::CompiledFn> StructCompletionFn(
-    Compiler &c, type::Struct *s, absl::Span<ast::Declaration const> fields);
+    CompilationDataReference data, type::Struct *s,
+    absl::Span<ast::Declaration const> fields);
 
 // Makes space for every local variable in this stack frame, but does not
 // initialize any such object.

@@ -3,7 +3,6 @@
 
 #include "ast/ast.h"
 #include "compiler/common.h"
-#include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/verify.h"
@@ -35,7 +34,7 @@ struct DeducingAccess {
   frontend::SourceView view;
 };
 
-struct IncompleteTypeMemberAccess {
+struct [[maybe_unused]] IncompleteTypeMemberAccess {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "incomplete-type-member-access";
 
@@ -318,58 +317,16 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
   return qts;
 }
 
-bool EnsureDataCompleteness(Compiler &c, type::Struct *s) {
-  if (s->completeness() >= type::Completeness::DataComplete) { return true; }
-
-  ast::Expression const &expr = *ASSERT_NOT_NULL(c.context().AstLiteral(s));
-  // TODO: Deal with repetition between ast::StructLiteral and
-  // ast::ParameterizedStructLiteral
-  if (auto const *node = expr.if_as<ast::StructLiteral>()) {
-    if (not VerifyBody(c, node)) { return false; }
-    c.EmitVoid(node);
-
-    LOG("struct", "Completing struct-literal emission: %p", node);
-
-    ASSIGN_OR(return false,  //
-                     auto fn, StructDataCompletionFn(c, s, node->fields()));
-    // TODO: What if execution fails.
-    InterpretAtCompileTime(fn);
-    LOG("struct", "Completed %s which is a struct %s with %u field(s).",
-        node->DebugString(), *s, s->fields().size());
-    return true;
-  } else if (auto const *node = expr.if_as<ast::ParameterizedStructLiteral>()) {
-    if (not VerifyBody(c, node)) { return false; }
-    c.EmitVoid(node);
-
-    LOG("struct", "Completing struct-literal emission: %p ", node);
-
-    ASSIGN_OR(return false,  //
-                     auto fn, StructDataCompletionFn(c, s, node->fields()));
-    // TODO: What if execution fails.
-    InterpretAtCompileTime(fn);
-    LOG("struct", "Completed %s which is a struct %s with %u field(s).",
-        node->DebugString(), *s, s->fields().size());
-    return true;
-  } else {
-    // TODO Should we encode that it's one of these two in the type?
-    NOT_YET();
-  }
-}
-
 // Verifies access to a struct field. The field must be exported if it is in a
 // different module.
 type::QualType AccessStructMember(CompilationDataReference data,
                                   ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
-  // TODO: Figure out how to remove const_cast here.
-  Compiler c(data);
-  if (not EnsureDataCompleteness(c, const_cast<type::Struct *>(s))) {
-    c.diag().Consume(IncompleteTypeMemberAccess{
-        .member_view =
-            frontend::SourceView(SourceBufferFor(node), node->member_range()),
-        .type = s,
-    });
-  }
+  data.EnsureComplete({
+      .kind    = WorkItem::Kind::CompleteStructData,
+      .node    = ASSERT_NOT_NULL(data.context().AstLiteral(s)),
+      .context = &data.context(),
+  });
   ASSERT(s->completeness() >= type::Completeness::DataComplete);
 
   auto const *member = s->field(node->member_name());

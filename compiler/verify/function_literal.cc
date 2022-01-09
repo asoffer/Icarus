@@ -2,7 +2,6 @@
 
 #include "ast/ast.h"
 #include "compiler/common.h"
-#include "compiler/compiler.h"
 #include "compiler/context.h"
 #include "compiler/instantiate.h"
 #include "compiler/module.h"
@@ -143,9 +142,9 @@ std::optional<std::vector<type::Type>> JoinReturnTypes(
 
 // Verify the body of a function literal, assuming it's parameters have already
 // been verified. This is called it two places:
-// * From Compiler::VerifyBody which also checks that the return statements
+// * From VerifyBody which also checks that the return statements
 //   match the return types (if specified).
-// * From Compiler::VerifyType if the return types are inferred.
+// * From VerifyType if the return types are inferred.
 std::optional<std::vector<type::Type>> VerifyBodyOnly(
     CompilationDataReference data, ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "VerifyBodyOnly for %s on %s", node->DebugString(),
@@ -218,16 +217,17 @@ type::QualType VerifyConcrete(CompilationDataReference data,
 
 }  // namespace
 
-type::QualType VerifyGeneric(TypeVerifier &tv,
+type::QualType VerifyGeneric(CompilationDataReference data,
                              ast::FunctionLiteral const *node) {
-  auto gen = [node, data = tv.data()](
+  auto gen = [node, comp_data = data.data()](
                  WorkResources const &wr,
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Function const * {
-    Compiler c(&data);
-    c.set_work_resources(wr);
-    ASSIGN_OR(return nullptr,  //
-                     auto result, Instantiate(c, node, args));
+    comp_data.work_resources = wr;
+    ASSIGN_OR(
+        return nullptr,  //
+               auto result,
+               Instantiate(CompilationDataReference(&comp_data), node, args));
     auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
@@ -235,9 +235,8 @@ type::QualType VerifyGeneric(TypeVerifier &tv,
           context.DebugString());
       CompilationData data{.context        = &context,
                            .work_resources = wr,
-                           .resources      = c.resources()};
-      Compiler compiler(&data);
-      auto qt   = VerifyConcrete(compiler, node);
+                           .resources      = comp_data.resources};
+      auto qt   = VerifyConcrete(CompilationDataReference(&data), node);
       auto outs = qt.type().as<type::Function>().return_types();
       rets_ref.assign(outs.begin(), outs.end());
 

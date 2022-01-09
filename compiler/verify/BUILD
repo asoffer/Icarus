@@ -45,7 +45,6 @@ cc_library(
         "//compiler:common",
         "//compiler:common_diagnostics",
         "//compiler:compilation_data",
-        "//compiler:compiler_header",
         "//compiler:context",
         "//compiler:cyclic_dependency_tracker",
         "//compiler:instantiate",

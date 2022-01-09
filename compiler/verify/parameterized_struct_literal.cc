@@ -1,5 +1,4 @@
 #include "ast/ast.h"
-#include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/instantiate.h"
 #include "compiler/instructions.h"
@@ -28,28 +27,23 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
           WorkResources const &wr,
           core::Arguments<type::Typed<ir::CompleteResultRef>> const
               &args) mutable -> type::InstantiatedGeneric<type::Struct> * {
-    Compiler c(&d);
-    c.set_work_resources(wr);
+    d.work_resources = wr;
     ASSIGN_OR(return nullptr,  //
                      auto result,
-                     Instantiate(c, node, args));
+                     Instantiate(CompilationDataReference(&d), node, args));
     auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
       LOG("ParameterizedStructLiteral", "inserted! %s", node->DebugString());
-      CompilationData data{.context        = &context,
-                           .work_resources = wr,
-                           .resources      = c.resources()};
-      Compiler compiler(&data);
+      CompilationData data{
+          .context = &context, .work_resources = wr, .resources = d.resources};
       auto [t, inserted] =
-          compiler.context()
-              .EmplaceType<type::InstantiatedGeneric<type::Struct>>(
-                  node, gen_struct, compiler.resources().module,
-                  type::Struct::Options{
-                      .is_copyable =
-                          not node->hashtags.contains(ir::Hashtag::Uncopyable),
-                      .is_movable =
-                          not node->hashtags.contains(ir::Hashtag::Immovable)});
+          context.EmplaceType<type::InstantiatedGeneric<type::Struct>>(
+              node, gen_struct, d.resources.module,
+              type::Struct::Options{.is_copyable = not node->hashtags.contains(
+                                        ir::Hashtag::Uncopyable),
+                                    .is_movable = not node->hashtags.contains(
+                                        ir::Hashtag::Immovable)});
 
       auto *s = &const_cast<type::InstantiatedGeneric<type::Struct> &>(
           t.as<type::InstantiatedGeneric<type::Struct>>());
@@ -62,18 +56,20 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       }
 
       for (auto const &field : node->fields()) {
-        compiler::VerifyType(compiler, &field);
+        compiler::VerifyType(CompilationDataReference(&data), &field);
       }
 
       {
-        auto maybe_fn = StructDataCompletionFn(compiler, s, node->fields());
+        auto maybe_fn = StructDataCompletionFn(CompilationDataReference(&data),
+                                               s, node->fields());
         // TODO: Deal with error-case.
         ASSERT(maybe_fn.has_value() == true);
         InterpretAtCompileTime(*maybe_fn);
       }
 
       {
-        auto maybe_fn = StructCompletionFn(compiler, s, node->fields());
+        auto maybe_fn = StructCompletionFn(CompilationDataReference(&data), s,
+                                           node->fields());
         // TODO: Deal with error-case.
         ASSERT(maybe_fn.has_value() == true);
         // TODO: What if execution fails.

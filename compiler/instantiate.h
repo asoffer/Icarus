@@ -11,9 +11,9 @@
 namespace compiler {
 
 // Attempts to instantiate `node` with `args`, possibly creating a new
-// instantiation as a subcontext of `c.context()` if needed.
+// instantiation as a subcontext of `data.context()` if needed.
 std::optional<Context::InsertSubcontextResult> Instantiate(
-    Compiler &c, ast::ParameterizedExpression const *node,
+    CompilationDataReference data, ast::ParameterizedExpression const *node,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 
 // Finds an already existing instantiation of `node` with `args` as a subcontext
@@ -23,9 +23,9 @@ Context::FindSubcontextResult FindInstantiation(
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 
 // Attempts to instantiate `node` with `scope_context`, possibly creating a new
-// instantiation as a subcontext of `c.context()` if needed.
+// instantiation as a subcontext of `data.context()` if needed.
 std::optional<Context::InsertSubcontextResult> Instantiate(
-    Compiler &c, ast::ScopeLiteral const *node,
+    CompilationDataReference data, ast::ScopeLiteral const *node,
     ir::ScopeContext const &scope_context,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &args);
 

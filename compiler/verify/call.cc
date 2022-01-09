@@ -9,7 +9,6 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
-#include "compiler/compiler.h"
 #include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
 #include "type/callable.h"
