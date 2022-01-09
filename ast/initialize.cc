@@ -418,10 +418,10 @@ void IfStmt::Initialize(Initializer& initializer) {
                        std::forward_as_tuple(scope_, true),
                        std::forward_as_tuple(scope_, true));
   initializer.scope = &body_scopes_->first;
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
   InitializeAll(true_block_, initializer, &covers_binding_, &is_dependent_);
   initializer.scope = &body_scopes_->second;
   InitializeAll(false_block_, initializer, &covers_binding_, &is_dependent_);
-
 }
 
 void WhileStmt::Initialize(Initializer& initializer) {
@@ -431,6 +431,7 @@ void WhileStmt::Initialize(Initializer& initializer) {
   is_dependent_   = condition_->is_dependent();
   set_body_with_parent(initializer.scope, true);
   initializer.scope = &body_scope();
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
   InitializeAll(body_, initializer, &covers_binding_, &is_dependent_);
 }
 

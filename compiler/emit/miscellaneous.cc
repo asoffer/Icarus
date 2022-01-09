@@ -125,13 +125,9 @@ void Compiler::EmitToBuffer(ast::WhileStmt const *node,
   builder().CurrentBlock() = body_block;
   builder().block_termination_state() =
       ir::Builder::BlockTerminationState::kMoreStatements;
-  ir::PartialResultBuffer buffer;
-  for (auto const *stmt : node->body()) {
-    buffer.clear();
-    EmitToBuffer(stmt, buffer);
-  }
-
+  EmitIrForStatements(*this, node->body());
   MakeAllDestructions(*this, &node->body_scope());
+
   switch (builder().block_termination_state()) {
     case ir::Builder::BlockTerminationState::kMoreStatements:
     case ir::Builder::BlockTerminationState::kNoTerminator:
