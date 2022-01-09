@@ -1,35 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "builder",
-    hdrs = ["builder.h"],
-    srcs = ["builder.cc"],
-    deps = [
-        ":scope_state",
-        "//base:debug",
-        "//base:scope",
-        "//base:traverse",
-        "//ir/blocks:basic",
-        "//ir/blocks:group",
-        "//ir/instruction",
-        "//ir/instruction:arithmetic",
-        "//ir/instruction:compare",
-        "//ir/instruction:core",
-        "//ir/value:addr",
-        "//ir/value:char",
-        "//ir/value:module_id",
-        "//ir/value:reg",
-        "//type:cast",
-        "//type:scope",
-        "//type:slice",
-        "//type/interface",
-        "//type:typed_value",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_library(
     name = "compiled_fn",
     hdrs = ["compiled_fn.h"],
     deps = [

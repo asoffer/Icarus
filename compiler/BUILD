@@ -134,6 +134,35 @@ cc_library(
 )
 
 cc_library(
+    name = "ir_builder",
+    hdrs = ["ir_builder.h"],
+    srcs = ["ir_builder.cc"],
+    deps = [
+        "//ir:scope_state",
+        "//base:debug",
+        "//base:scope",
+        "//base:traverse",
+        "//ir/blocks:basic",
+        "//ir/blocks:group",
+        "//ir/instruction",
+        "//ir/instruction:arithmetic",
+        "//ir/instruction:compare",
+        "//ir/instruction:core",
+        "//ir/value:addr",
+        "//ir/value:char",
+        "//ir/value:module_id",
+        "//ir/value:reg",
+        "//type:cast",
+        "//type:scope",
+        "//type:slice",
+        "//type/interface",
+        "//type:typed_value",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "resources",
     hdrs = ["resources.h"],
     deps = [
@@ -194,6 +223,7 @@ cc_library(
     hdrs = ["compilation_data.h"],
     deps = [
         ":context",
+        ":ir_builder",
         ":resources",
         ":transient_state",
         "//ast",
@@ -201,7 +231,6 @@ cc_library(
         "//diagnostic/consumer",
         "//frontend/source:buffer",
         "//frontend/source:view",
-        "//ir:builder",
         "//ir/value:result_buffer",
         "//module:importer",
         "//module",
@@ -220,6 +249,7 @@ cc_library(
         ":compilation_data",
         ":context",
         ":instructions",
+        ":ir_builder",
         ":resources",
         ":transient_state",
         ":work_item",
@@ -230,7 +260,6 @@ cc_library(
         "//diagnostic/consumer:buffering",
         "//frontend/source:buffer",
         "//frontend/source:view",
-        "//ir:builder",
         "//ir/instruction:set",
         "//ir/value:addr",
         "//ir/value:module_id",
@@ -269,9 +298,9 @@ cc_library(
     deps = [
         ":bound_parameters",
         ":call_metadata",
+        ":ir_builder",
         "//ast:ast",
         "//base:guarded",
-        "//ir:builder",
         "//ir/byte_code",
         "//ir:compiled_fn",
         "//ir:compiled_scope",

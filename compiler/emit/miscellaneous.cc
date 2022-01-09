@@ -35,7 +35,7 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
   if (node->hashtags.contains(ir::Hashtag::Const)) {
     if (*EvaluateOrDiagnoseAs<bool>(&node->condition())) {
       builder().block_termination_state() =
-          ir::Builder::BlockTerminationState::kMoreStatements;
+          IrBuilder::BlockTerminationState::kMoreStatements;
       ir::PartialResultBuffer buffer;
       for (auto const *stmt : node->true_block()) {
         buffer.clear();
@@ -45,7 +45,7 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
       MakeAllDestructions(*this, &node->true_scope());
     } else if (node->has_false_block()) {
       builder().block_termination_state() =
-          ir::Builder::BlockTerminationState::kMoreStatements;
+          IrBuilder::BlockTerminationState::kMoreStatements;
       ir::PartialResultBuffer buffer;
       for (auto const *stmt : node->false_block()) {
         buffer.clear();
@@ -67,7 +67,7 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
 
     builder().CurrentBlock() = true_block;
     builder().block_termination_state() =
-        ir::Builder::BlockTerminationState::kMoreStatements;
+        IrBuilder::BlockTerminationState::kMoreStatements;
     ir::PartialResultBuffer buffer;
     for (auto const *stmt : node->true_block()) {
       buffer.clear();
@@ -77,8 +77,8 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
     MakeAllDestructions(*this, &node->true_scope());
 
     switch (builder().block_termination_state()) {
-      case ir::Builder::BlockTerminationState::kMoreStatements:
-      case ir::Builder::BlockTerminationState::kNoTerminator:
+      case IrBuilder::BlockTerminationState::kMoreStatements:
+      case IrBuilder::BlockTerminationState::kNoTerminator:
         builder().UncondJump(landing);
         break;
       default: break;
@@ -87,7 +87,7 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
     if (node->has_false_block()) {
       builder().CurrentBlock() = false_block;
       builder().block_termination_state() =
-          ir::Builder::BlockTerminationState::kMoreStatements;
+          IrBuilder::BlockTerminationState::kMoreStatements;
       for (auto const *stmt : node->false_block()) {
         buffer.clear();
         EmitToBuffer(stmt, buffer);
@@ -96,8 +96,8 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
       MakeAllDestructions(*this, &node->false_scope());
 
       switch (builder().block_termination_state()) {
-        case ir::Builder::BlockTerminationState::kMoreStatements:
-        case ir::Builder::BlockTerminationState::kNoTerminator:
+        case IrBuilder::BlockTerminationState::kMoreStatements:
+        case IrBuilder::BlockTerminationState::kNoTerminator:
           builder().UncondJump(landing);
           break;
         default: break;
@@ -105,7 +105,7 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
     }
 
     builder().block_termination_state() =
-        ir::Builder::BlockTerminationState::kMoreStatements;
+        IrBuilder::BlockTerminationState::kMoreStatements;
     builder().CurrentBlock() = landing;
   }
 }
@@ -124,20 +124,20 @@ void Compiler::EmitToBuffer(ast::WhileStmt const *node,
 
   builder().CurrentBlock() = body_block;
   builder().block_termination_state() =
-      ir::Builder::BlockTerminationState::kMoreStatements;
+      IrBuilder::BlockTerminationState::kMoreStatements;
   EmitIrForStatements(*this, node->body());
   MakeAllDestructions(*this, &node->body_scope());
 
   switch (builder().block_termination_state()) {
-    case ir::Builder::BlockTerminationState::kMoreStatements:
-    case ir::Builder::BlockTerminationState::kNoTerminator:
+    case IrBuilder::BlockTerminationState::kMoreStatements:
+    case IrBuilder::BlockTerminationState::kNoTerminator:
       builder().UncondJump(start_block);
       break;
     default: break;
   }
 
   builder().block_termination_state() =
-      ir::Builder::BlockTerminationState::kMoreStatements;
+      IrBuilder::BlockTerminationState::kMoreStatements;
   builder().CurrentBlock() = landing;
 }
 

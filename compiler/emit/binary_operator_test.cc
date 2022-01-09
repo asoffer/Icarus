@@ -109,7 +109,7 @@ TEST_P(BinaryOperatorTest, Assignment) {
 
 // Note: We test both with literals and with a unary-operator applied directly
 // to a function call. The former helps cover the constant-folding mechanisms
-// built in to the ir::Builder. The latter helps cover the common case for code
+// built in to the IrBuilder. The latter helps cover the common case for code
 // emission.
 INSTANTIATE_TEST_SUITE_P(
     BooleanOr, BinaryOperatorTest,

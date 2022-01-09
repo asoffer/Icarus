@@ -87,7 +87,7 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
   ir::NativeFn ir_func = context().FindNativeFn(node);
   ASSERT(static_cast<bool>(ir_func) == true);
 
-  ICARUS_SCOPE(ir::SetCurrent(ir_func, builder())) {
+  ICARUS_SCOPE(SetCurrent(ir_func, builder())) {
     builder().CurrentBlock() = builder().CurrentGroup()->entry();
 
     // TODO arguments should be renumbered to not waste space on const values

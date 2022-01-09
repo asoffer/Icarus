@@ -21,7 +21,7 @@ namespace {
 ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveInit(s, s);
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+    ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
       c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
       auto from = ir::Reg::Arg(0);
@@ -56,7 +56,7 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
 }
 
 ir::OutParams SetReturns(
-    ir::Builder &bldr, type::Type type,
+    IrBuilder &bldr, type::Type type,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *fn_type = type.if_as<type::Function>()) {
     return bldr.OutParams(fn_type->return_types(), to);
@@ -70,7 +70,7 @@ ir::OutParams SetReturns(
 ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyInit(s, s);
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+    ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
       c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
       auto from = ir::Reg::Arg(0);
@@ -106,7 +106,7 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
 ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveAssign(s, s);
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+    ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
       c.builder().CurrentBlock() = fn->entry();
       auto var                   = ir::Reg::Arg(0);
       auto val                   = ir::Reg::Arg(1);
@@ -140,7 +140,7 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
 ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyAssign(s, s);
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+    ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
       c.builder().CurrentBlock() = fn->entry();
       auto var                   = ir::Reg::Arg(0);
       auto val                   = ir::Reg::Arg(1);
@@ -346,7 +346,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
   ASSERT(s->completeness() == type::Completeness::DataComplete);
 
   ir::CompiledFn fn(type::Func({}, {}));
-  ICARUS_SCOPE(ir::SetCurrent(fn, data.builder())) {
+  ICARUS_SCOPE(SetCurrent(fn, data.builder())) {
     Compiler c(data);
     // TODO this is essentially a copy of the body of
     // FunctionLiteral::EmitToBuffer. Factor these out together.
@@ -417,7 +417,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     if (needs_dtor) {
       auto [full_dtor, inserted] = data.context().ir().InsertDestroy(s);
       if (inserted) {
-        ICARUS_SCOPE(ir::SetCurrent(full_dtor, data.builder())) {
+        ICARUS_SCOPE(SetCurrent(full_dtor, data.builder())) {
           data.builder().CurrentBlock() = data.builder().CurrentGroup()->entry();
           auto var                   = ir::Reg::Arg(0);
           if (user_dtor) {
@@ -527,7 +527,7 @@ void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
 // TODO One problem with this setup is that we don't end up calling destructors
 // if we exit early, so those need to be handled externally.
 void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
-  ICARUS_SCOPE(ir::SetTemporaries(c.builder())) {
+  ICARUS_SCOPE(SetTemporaries(c.builder())) {
     ir::PartialResultBuffer buffer;
     for (auto *stmt : stmts) {
       LOG("EmitIrForStatements", "%s", stmt->DebugString());
@@ -539,7 +539,7 @@ void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
           *c.builder().CurrentGroup());
 
       if (c.builder().block_termination_state() !=
-          ir::Builder::BlockTerminationState::kMoreStatements) {
+          IrBuilder::BlockTerminationState::kMoreStatements) {
         break;
       }
     }

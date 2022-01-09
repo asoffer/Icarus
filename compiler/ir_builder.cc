@@ -1,4 +1,4 @@
-#include "ir/builder.h"
+#include "compiler/ir_builder.h"
 
 #include <memory>
 
@@ -8,36 +8,36 @@
 #include "type/array.h"
 #include "type/cast.h"
 
-namespace ir {
+namespace compiler {
 
 // If the type `t` is not big, creates a new register referencing the value (or
 // register) held in `value`. If `t` is big, `value` is either another register
 // or the address of the big value and a new register referencing that address
 // (or register) is created.
-Reg RegisterReferencing(Builder &builder, type::Type t,
-                        PartialResultRef const &value) {
+ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
+                            ir::PartialResultRef const &value) {
   if (t.is_big() or t.is<type::Pointer>()) {
-    return builder.CurrentBlock()->Append(RegisterInstruction<addr_t>{
-        .operand = value.get<addr_t>(),
+    return builder.CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
+        .operand = value.get<ir::addr_t>(),
         .result  = builder.CurrentGroup()->Reserve(),
     });
   } else {
     if (auto const *p = t.if_as<type::Primitive>()) {
       return p->Apply([&]<typename T>() {
-        return builder.CurrentBlock()->Append(RegisterInstruction<T>{
+        return builder.CurrentBlock()->Append(ir::RegisterInstruction<T>{
             .operand = value.get<T>(),
             .result  = builder.CurrentGroup()->Reserve(),
         });
       });
     } else if (auto const *e = t.if_as<type::Enum>()) {
       return builder.CurrentBlock()->Append(
-          RegisterInstruction<type::Enum::underlying_type>{
+          ir::RegisterInstruction<type::Enum::underlying_type>{
               .operand = value.get<type::Enum::underlying_type>(),
               .result  = builder.CurrentGroup()->Reserve(),
           });
     } else if (auto const *e = t.if_as<type::Flags>()) {
       return builder.CurrentBlock()->Append(
-          RegisterInstruction<type::Flags::underlying_type>{
+          ir::RegisterInstruction<type::Flags::underlying_type>{
               .operand = value.get<type::Flags::underlying_type>(),
               .result  = builder.CurrentGroup()->Reserve(),
           });
@@ -47,7 +47,7 @@ Reg RegisterReferencing(Builder &builder, type::Type t,
   }
 }
 
-SetCurrent::SetCurrent(internal::BlockGroupBase &group, Builder &builder)
+SetCurrent::SetCurrent(ir::internal::BlockGroupBase &group, IrBuilder &builder)
     : builder_(builder),
       old_group_(builder_.CurrentGroup()),
       old_block_(builder_.CurrentBlock()),
@@ -55,7 +55,7 @@ SetCurrent::SetCurrent(internal::BlockGroupBase &group, Builder &builder)
   builder_.CurrentGroup()  = &group;
   builder_.current_.block_ = group.entry();
   builder_.current_.block_termination_state_ =
-      Builder::BlockTerminationState::kMoreStatements;
+      IrBuilder::BlockTerminationState::kMoreStatements;
 }
 
 SetCurrent::~SetCurrent() {
@@ -64,18 +64,18 @@ SetCurrent::~SetCurrent() {
   builder_.current_.block_termination_state_ = old_termination_state_;
 }
 
-Reg Builder::Alloca(type::Type t) { return CurrentGroup()->Alloca(t); }
+ir::Reg IrBuilder::Alloca(type::Type t) { return CurrentGroup()->Alloca(t); }
 
-Reg Builder::TmpAlloca(type::Type t) {
+ir::Reg IrBuilder::TmpAlloca(type::Type t) {
   auto reg = Alloca(t);
   current_.temporaries_to_destroy_.emplace_back(reg, t);
   return reg;
 }
 
-ir::OutParams Builder::OutParams(
+ir::OutParams IrBuilder::OutParams(
     absl::Span<type::Type const> types,
-    absl::Span<type::Typed<ir::RegOr<addr_t>> const> to) {
-  std::vector<Reg> regs;
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  std::vector<ir::Reg> regs;
   regs.reserve(types.size());
   for (size_t i = 0; i < types.size(); ++i) {
     regs.push_back(types[i].get()->is_big()
@@ -85,8 +85,8 @@ ir::OutParams Builder::OutParams(
   return ir::OutParams(std::move(regs));
 }
 
-void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
-                   PartialResultBuffer args, ir::OutParams outs) {
+void IrBuilder::Call(ir::RegOr<ir::Fn> const &fn, type::Function const *f,
+                     ir::PartialResultBuffer args, ir::OutParams outs) {
   ASSERT(args.num_entries() == f->params().size());
 
   // TODO: this call should return the constructed registers rather than forcing
@@ -103,95 +103,97 @@ void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
   }
 
   CurrentBlock()->Append(
-      CallInstruction(f, fn, std::move(args), std::move(outs)));
+      ir::CallInstruction(f, fn, std::move(args), std::move(outs)));
 }
 
-static void ClearJumps(JumpCmd const &jump, BasicBlock *from) {
+static void ClearJumps(ir::JumpCmd const &jump, ir::BasicBlock *from) {
   jump.Visit([&](auto &j) {
     using type = std::decay_t<decltype(j)>;
-    if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
+    if constexpr (std::is_same_v<type, ir::JumpCmd::UncondJump>) {
       j.block->erase_incoming(from);
-    } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
+    } else if constexpr (std::is_same_v<type, ir::JumpCmd::CondJump>) {
       j.true_block->erase_incoming(from);
       j.false_block->erase_incoming(from);
     }
   });
 }
 
-void Builder::UncondJump(BasicBlock *block) {
+void IrBuilder::UncondJump(ir::BasicBlock *block) {
   ClearJumps(CurrentBlock()->jump(), CurrentBlock());
   block->insert_incoming(CurrentBlock());
-  CurrentBlock()->set_jump(JumpCmd::Uncond(block));
+  CurrentBlock()->set_jump(ir::JumpCmd::Uncond(block));
 }
 
-void Builder::BlockJump(Block b, BasicBlock *after) {
+void IrBuilder::BlockJump(ir::Block b, ir::BasicBlock *after) {
   ClearJumps(CurrentBlock()->jump(), CurrentBlock());
-  CurrentBlock()->set_jump(JumpCmd::ToBlock(b, after));
+  CurrentBlock()->set_jump(ir::JumpCmd::ToBlock(b, after));
 }
 
-void Builder::ReturnJump() {
+void IrBuilder::ReturnJump() {
   block_termination_state() = BlockTerminationState::kReturn;
-  CurrentBlock()->set_jump(JumpCmd::Return());
+  CurrentBlock()->set_jump(ir::JumpCmd::Return());
 }
 
-void Builder::CondJump(RegOr<bool> cond, BasicBlock *true_block,
-                       BasicBlock *false_block) {
+void IrBuilder::CondJump(ir::RegOr<bool> cond, ir::BasicBlock *true_block,
+                         ir::BasicBlock *false_block) {
   ClearJumps(CurrentBlock()->jump(), CurrentBlock());
   if (cond.is_reg()) {
     true_block->insert_incoming(CurrentBlock());
     false_block->insert_incoming(CurrentBlock());
     CurrentBlock()->set_jump(
-        JumpCmd::Cond(cond.reg(), true_block, false_block));
+        ir::JumpCmd::Cond(cond.reg(), true_block, false_block));
   } else {
     return UncondJump(cond.value() ? true_block : false_block);
   }
 }
 
-void Builder::Move(type::Typed<RegOr<addr_t>> to, type::Typed<Reg> from) {
+void IrBuilder::Move(type::Typed<ir::RegOr<ir::addr_t>> to,
+                     type::Typed<ir::Reg> from) {
   CurrentBlock()->Append(
       ir::MoveInstruction{.type = to.type(), .from = *from, .to = *to});
 }
 
-void Builder::Copy(type::Typed<RegOr<addr_t>> to, type::Typed<Reg> from) {
+void IrBuilder::Copy(type::Typed<ir::RegOr<ir::addr_t>> to,
+                     type::Typed<ir::Reg> from) {
   CurrentBlock()->Append(
       ir::CopyInstruction{.type = to.type(), .from = *from, .to = *to});
 }
 
-Reg Builder::PtrIncr(RegOr<addr_t> ptr, RegOr<int64_t> inc,
-                     type::Pointer const *t) {
+ir::Reg IrBuilder::PtrIncr(ir::RegOr<ir::addr_t> ptr, ir::RegOr<int64_t> inc,
+                           type::Pointer const *t) {
   auto &cache = CurrentBlock()->offset_cache();
-  if (auto result = cache.get(ptr, inc, OffsetCache::Kind::Passed)) {
+  if (auto result = cache.get(ptr, inc, ir::OffsetCache::Kind::Passed)) {
     return *result;
   }
-  Reg result = CurrentGroup()->Reserve();
-  cache.set(ptr, inc, OffsetCache::Kind::Passed, result);
+  ir::Reg result = CurrentGroup()->Reserve();
+  cache.set(ptr, inc, ir::OffsetCache::Kind::Passed, result);
   if (not ptr.is_reg()) { ASSERT(ptr.value() != nullptr); }
-  return CurrentBlock()->Append(PtrIncrInstruction{
+  return CurrentBlock()->Append(ir::PtrIncrInstruction{
       .addr = ptr, .index = inc, .ptr = t, .result = result});
 }
 
-type::Typed<Reg> Builder::FieldRef(RegOr<addr_t> r, type::Struct const *t,
-                                   int64_t n) {
+type::Typed<ir::Reg> IrBuilder::FieldRef(ir::RegOr<ir::addr_t> r,
+                                         type::Struct const *t, int64_t n) {
   auto &cache = CurrentBlock()->offset_cache();
-  if (auto result = cache.get(r, n, OffsetCache::Kind::Into)) {
-    return type::Typed<Reg>(*result, t->fields()[n].type);
+  if (auto result = cache.get(r, n, ir::OffsetCache::Kind::Into)) {
+    return type::Typed<ir::Reg>(*result, t->fields()[n].type);
   }
-  Reg result = CurrentGroup()->Reserve();
-  cache.set(r, n, OffsetCache::Kind::Into, result);
-  CurrentBlock()->Append(StructIndexInstruction{
+  ir::Reg result = CurrentGroup()->Reserve();
+  cache.set(r, n, ir::OffsetCache::Kind::Into, result);
+  CurrentBlock()->Append(ir::StructIndexInstruction{
       .addr = r, .index = n, .struct_type = t, .result = result});
-  return type::Typed<Reg>(result, t->fields()[n].type);
+  return type::Typed<ir::Reg>(result, t->fields()[n].type);
 }
 
-void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
-                                 PartialResultBuffer &buffer) {
+void IrBuilder::ApplyImplicitCasts(type::Type from, type::QualType to,
+                                   ir::PartialResultBuffer &buffer) {
   if (not type::CanCastImplicitly(from, to.type())) {
     UNREACHABLE(from, "casting implicitly to", to);
   }
   if (from == to.type()) { return; }
   if (to.type().is<type::Slice>()) {
     if (from.is<type::Slice>()) { return; }
-    if (auto const *a =from.if_as<type::Array>()) {
+    if (auto const *a = from.if_as<type::Array>()) {
       ir::RegOr<ir::addr_t> data   = buffer[0].get<ir::addr_t>();
       type::Slice::length_t length = a->length().value();
       auto alloc                   = TmpAlloca(to.type());
@@ -219,7 +221,8 @@ void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
   if (from == type::Integer and type::IsIntegral(to.type())) {
     to.type().as<type::Primitive>().Apply([&]<typename T>() {
       if constexpr (std::is_integral_v<T>) {
-        RegOr<T> result = Cast<Integer, T>(buffer.back().get<Integer>());
+        ir::RegOr<T> result =
+            Cast<ir::Integer, T>(buffer.back().get<ir::Integer>());
         buffer.pop_back();
         buffer.append(result);
       } else {
@@ -229,15 +232,15 @@ void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
   }
 }
 
-void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
-                                 CompleteResultBuffer &buffer) {
+void IrBuilder::ApplyImplicitCasts(type::Type from, type::QualType to,
+                                   ir::CompleteResultBuffer &buffer) {
   if (not type::CanCastImplicitly(from, to.type())) {
     UNREACHABLE(from, "casting implicitly to", to);
   }
   if (from == to.type()) { return; }
   if (to.type().is<type::Slice>()) {
     if (from.is<type::Slice>()) { return; }
-    if (auto const *a =from.if_as<type::Array>()) {
+    if (auto const *a = from.if_as<type::Array>()) {
       ir::addr_t data              = buffer[0].get<ir::addr_t>();
       type::Slice::length_t length = a->length().value();
       auto alloc                   = TmpAlloca(to.type());
@@ -252,7 +255,6 @@ void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
       CurrentBlock()->load_store_cache().clear();
       buffer.clear();
       buffer.append(alloc);
-
     }
   }
 
@@ -266,7 +268,8 @@ void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
   if (from == type::Integer and type::IsIntegral(to.type())) {
     to.type().as<type::Primitive>().Apply([&]<typename T>() {
       if constexpr (std::is_integral_v<T>) {
-        T result = Cast<Integer, T>(buffer.back().get<Integer>()).value();
+        T result =
+            Cast<ir::Integer, T>(buffer.back().get<ir::Integer>()).value();
         buffer.pop_back();
         buffer.append(result);
       } else {
@@ -276,4 +279,4 @@ void Builder::ApplyImplicitCasts(type::Type from, type::QualType to,
   }
 }
 
-}  // namespace ir
+}  // namespace compiler

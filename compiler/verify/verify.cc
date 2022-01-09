@@ -53,7 +53,7 @@ std::optional<ir::CompiledFn> StructDataCompletionFn(
   if (field_error) { return std::nullopt; }
 
   ir::CompiledFn fn(type::Func({}, {}));
-  ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+  ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
     c.builder().CurrentBlock() = fn.entry();
 
     std::vector<type::StructDataInstruction::Field> fields;

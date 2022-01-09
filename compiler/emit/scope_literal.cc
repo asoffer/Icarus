@@ -64,7 +64,7 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
   state().scopes.push_back(ir_scope);
   absl::Cleanup cleanup = [&] { state().scopes.pop_back(); };
 
-  ICARUS_SCOPE(ir::SetCurrent(*ir_scope, builder())) {
+  ICARUS_SCOPE(SetCurrent(*ir_scope, builder())) {
     builder().CurrentBlock() = ir_scope->entry();
 
     // TODO arguments should be renumbered to not waste space on const values

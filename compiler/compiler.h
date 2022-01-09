@@ -23,7 +23,7 @@
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/buffer.h"
 #include "frontend/source/view.h"
-#include "ir/builder.h"
+#include "compiler/ir_builder.h"
 #include "ir/instruction/set.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/value/addr.h"

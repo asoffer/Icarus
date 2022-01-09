@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "base/log.h"
-#include "ir/builder.h"
+#include "compiler/ir_builder.h"
 #include "ir/compiled_fn.h"
 
 namespace opt {
@@ -59,7 +59,7 @@ static void RemoveDeadBlocks(std::queue<ir::BasicBlock*> to_check,
 }
 
 void CombineBlocksStartingAt(ir::BasicBlock* block) {
-  ir::Builder bldr;
+  compiler::IrBuilder bldr;
 
   while (auto* next_block =
              block->jump().Visit([](auto const& j) -> ir::BasicBlock* {
@@ -81,7 +81,7 @@ void CombineBlocksStartingAt(ir::BasicBlock* block) {
 }
 
 void ReduceEmptyBlocks(ir::CompiledFn* fn) {
-  ir::Builder bldr;
+  compiler::IrBuilder bldr;
   auto& mut_blocks = fn->mutable_blocks();
   auto iter        = mut_blocks.begin();
 

@@ -20,7 +20,7 @@ namespace {
 // TODO: Right now we are relying on the fact that Inst stores values on the
 // heap, but this may not always be the case.
 template <typename T>
-ir::PhiInstruction<T> *PhiInst(ir::Builder &builder) {
+ir::PhiInstruction<T> *PhiInst(IrBuilder &builder) {
   ir::PhiInstruction<T> inst;
   inst.result = builder.CurrentGroup()->Reserve();
   builder.CurrentBlock()->Append(std::move(inst));
@@ -31,7 +31,7 @@ ir::PhiInstruction<T> *PhiInst(ir::Builder &builder) {
 }
 
 template <typename F>
-void OnEachArrayElement(ir::Builder &builder, type::Array const *t,
+void OnEachArrayElement(IrBuilder &builder, type::Array const *t,
                         ir::Reg array_reg, F fn) {
   auto *data_ptr_type = type::Ptr(t->data_type());
 
@@ -181,7 +181,7 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
   auto [fn, inserted] = context().ir().InsertInit(r.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
+    ICARUS_SCOPE(SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
       OnEachArrayElement(
           builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
@@ -201,7 +201,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
   if (not r.type()->HasDestructor()) { return; }
   auto [fn, inserted] = context().ir().InsertDestroy(r.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
+    ICARUS_SCOPE(SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
       OnEachArrayElement(
           builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
@@ -223,10 +223,10 @@ void SetArrayInits(Compiler &c, type::Array const *array_type) {
       c.context().ir().InsertMoveInit(array_type, array_type);
   ASSERT(copy_inserted == move_inserted);
   if (copy_inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(copy_fn, c.builder())) {
+    ICARUS_SCOPE(SetCurrent(copy_fn, c.builder())) {
       EmitArrayInit<Copy>(c, array_type, array_type);
     }
-    ICARUS_SCOPE(ir::SetCurrent(move_fn, c.builder())) {
+    ICARUS_SCOPE(SetCurrent(move_fn, c.builder())) {
       EmitArrayInit<Move>(c, array_type, array_type);
     }
 
@@ -244,10 +244,10 @@ void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
       c.context().ir().InsertMoveAssign(array_type, array_type);
   ASSERT(copy_inserted == move_inserted);
   if (copy_inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(copy_fn, c.builder())) {
+    ICARUS_SCOPE(SetCurrent(copy_fn, c.builder())) {
       EmitArrayAssignment<Copy>(c, array_type, array_type);
     }
-    ICARUS_SCOPE(ir::SetCurrent(move_fn, c.builder())) {
+    ICARUS_SCOPE(SetCurrent(move_fn, c.builder())) {
       EmitArrayAssignment<Move>(c, array_type, array_type);
     }
 
@@ -443,7 +443,7 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
   auto [fn, inserted] = context().ir().InsertInit(r.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
+    ICARUS_SCOPE(SetCurrent(fn, builder())) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 

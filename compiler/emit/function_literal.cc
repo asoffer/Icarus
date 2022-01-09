@@ -90,7 +90,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   ir::NativeFn ir_func = context().FindNativeFn(node);
   ASSERT(static_cast<bool>(ir_func) == true);
 
-  ICARUS_SCOPE(ir::SetCurrent(ir_func, builder())) {
+  ICARUS_SCOPE(SetCurrent(ir_func, builder())) {
     builder().CurrentBlock() = builder().CurrentGroup()->entry();
 
     // TODO arguments should be renumbered to not waste space on const values
@@ -126,7 +126,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
 
     EmitIrForStatements(*this, node->stmts());
     if (builder().block_termination_state() !=
-        ir::Builder::BlockTerminationState::kReturn) {
+        IrBuilder::BlockTerminationState::kReturn) {
       MakeAllDestructions(*this, &node->body_scope());
       builder().ReturnJump();
    }

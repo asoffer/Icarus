@@ -13,7 +13,7 @@
 #include "base/guarded.h"
 #include "compiler/bound_parameters.h"
 #include "compiler/call_metadata.h"
-#include "ir/builder.h"
+#include "compiler/ir_builder.h"
 #include "ir/byte_code/byte_code.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_scope.h"

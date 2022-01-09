@@ -3,7 +3,7 @@
 #include "absl/types/span.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "ir/builder.h"
+#include "compiler/ir_builder.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
 #include "type/typed_value.h"

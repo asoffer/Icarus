@@ -44,7 +44,7 @@ struct TransientState {
 
   CyclicDependencyTracker cyclic_dependency_tracker;
 
-  ir::Builder builder;
+  IrBuilder builder;
 };
 
 }  // namespace compiler

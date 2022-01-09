@@ -11,7 +11,7 @@
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/buffer.h"
 #include "frontend/source/view.h"
-#include "ir/builder.h"
+#include "compiler/ir_builder.h"
 #include "ir/value/integer.h"
 #include "ir/value/module_id.h"
 #include "ir/value/result_buffer.h"
@@ -34,7 +34,7 @@ struct CompilationDataReference {
       : data_(*ASSERT_NOT_NULL(data)) {}
 
   Context &context() const { return *data_.context; }
-  ir::Builder &builder() { return state().builder; };
+  IrBuilder &builder() { return state().builder; };
   diagnostic::DiagnosticConsumer &diag() const {
     return *data_.resources.diagnostic_consumer;
   }

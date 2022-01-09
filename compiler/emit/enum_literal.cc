@@ -41,7 +41,7 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
   ir::CompiledFn fn(type::Func({}, {}));
   type::Type t = context().LoadType(node);
 
-  ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
+  ICARUS_SCOPE(SetCurrent(fn, builder())) {
     builder().CurrentBlock() = fn.entry();
 
     std::vector<std::string_view> names(node->enumerators().begin(),

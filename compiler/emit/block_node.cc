@@ -1,7 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
-#include "ir/builder.h"
+#include "compiler/ir_builder.h"
 
 namespace compiler {
 
@@ -17,7 +17,7 @@ void Compiler::EmitToBuffer(ast::BlockNode const *node,
   }
 
   builder().block_termination_state() =
-      ir::Builder::BlockTerminationState::kMoreStatements;
+      IrBuilder::BlockTerminationState::kMoreStatements;
 
   EmitIrForStatements(*this, node->stmts());
   MakeAllDestructions(*this, &node->body_scope());

@@ -2,7 +2,7 @@
 
 #include "compiler/instructions.h"
 #include "compiler/verify/verify.h"
-#include "ir/builder.h"
+#include "compiler/ir_builder.h"
 
 namespace compiler {
 namespace {
@@ -46,7 +46,7 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
   LOG("MakeThunk", "Thunk for %s: %s %p", expr->DebugString(), type.to_string(),
       &c.context());
   ir::CompiledFn fn(type::Func({}, {type}));
-  ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
+  ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
     // TODO this is essentially a copy of the body of
     // FunctionLiteral::EmitToBuffer Factor these out together.
     c.builder().CurrentBlock() = fn.entry();
@@ -128,7 +128,7 @@ std::optional<ir::CompiledFn> CompileExecutable(
                              .work_resources = w.work_resources(),
                              .resources      = w.resources()};
         Compiler c(&data);
-        ICARUS_SCOPE(ir::SetCurrent(f, c.builder())) {
+        ICARUS_SCOPE(SetCurrent(f, c.builder())) {
           if (nodes.empty()) {
             EmitIrForStatements(c, nodes);
           } else {
