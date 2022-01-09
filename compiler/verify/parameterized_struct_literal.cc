@@ -1,5 +1,4 @@
 #include "ast/ast.h"
-#include "compiler/emit/common.h"
 #include "compiler/instantiate.h"
 #include "compiler/instructions.h"
 #include "compiler/module.h"
@@ -55,26 +54,17 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         }));
       }
 
+      CompilationDataReference ref(&data);
       for (auto const &field : node->fields()) {
-        compiler::VerifyType(CompilationDataReference(&data), &field);
+        compiler::VerifyType(ref, &field);
       }
 
-      {
-        auto maybe_fn = StructDataCompletionFn(CompilationDataReference(&data),
-                                               s, node->fields());
-        // TODO: Deal with error-case.
-        ASSERT(maybe_fn.has_value() == true);
-        InterpretAtCompileTime(*maybe_fn);
-      }
-
-      {
-        auto maybe_fn = StructCompletionFn(CompilationDataReference(&data), s,
-                                           node->fields());
-        // TODO: Deal with error-case.
-        ASSERT(maybe_fn.has_value() == true);
-        // TODO: What if execution fails.
-        InterpretAtCompileTime(*maybe_fn);
-      }
+      ref.EnsureComplete({.kind    = WorkItem::Kind::CompleteStructData,
+                          .node    = node,
+                          .context = data.context});
+      ref.EnsureComplete({.kind    = WorkItem::Kind::CompleteStruct,
+                          .node    = node,
+                          .context = data.context});
 
       LOG("ParameterizedStructLiteral",
           "Completed %s which is a (parameterized) struct %s with %u field(s).",

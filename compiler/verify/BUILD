@@ -41,7 +41,6 @@ cc_library(
     deps = [
         "//ast",
         "//base:meta",
-        "//compiler/emit:common",
         "//compiler:common",
         "//compiler:common_diagnostics",
         "//compiler:compilation_data",
