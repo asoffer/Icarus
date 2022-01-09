@@ -573,7 +573,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Access const *nod
   }
 }
 
-bool Compiler::VerifyPatternType(ast::Access const *node, type::Type t) {
+bool PatternTypeVerifier::VerifyPatternType(ast::Access const *node, type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
   diag().Consume(DeducingAccess{.view = SourceViewFor(node)});
   return false;

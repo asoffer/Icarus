@@ -420,12 +420,13 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   UNREACHABLE();
 }
 
-bool Compiler::VerifyPatternType(ast::Declaration const *node, type::Type t) {
+bool PatternTypeVerifier::VerifyPatternType(ast::Declaration const *node,
+                                            type::Type t) {
   UNREACHABLE(node->DebugString());
 }
 
-bool Compiler::VerifyPatternType(ast::BindingDeclaration const *node,
-                                 type::Type t) {
+bool PatternTypeVerifier::VerifyPatternType(ast::BindingDeclaration const *node,
+                                            type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
   // TODO: Do this explicitly on VerifyPatternType(Declaration::Id, type::Type)
   for (auto const &id : node->ids()) {

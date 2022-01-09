@@ -14,7 +14,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                                  type::QualType::Constant(TerminalType(*node)));
 }
 
-bool Compiler::VerifyPatternType(ast::Terminal const *node, type::Type t) {
+bool PatternTypeVerifier::VerifyPatternType(ast::Terminal const *node,
+                                            type::Type t) {
   return VerifyType(*this, node)[0].type() == t;
 }
 

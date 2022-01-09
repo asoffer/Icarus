@@ -28,6 +28,11 @@ bool VerifyBody(CompilationDataReference data, ast::Node const *node) {
   return BodyVerifier(data)(node);
 }
 
+bool VerifyPatternType(CompilationDataReference data, ast::Node const *node,
+                       type::Type t) {
+  return PatternTypeVerifier(data)(node, t);
+}
+
 std::optional<ir::CompiledFn> StructDataCompletionFn(
     CompilationDataReference c, type::Struct *s,
     absl::Span<ast::Declaration const> field_decls) {

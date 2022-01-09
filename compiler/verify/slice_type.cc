@@ -62,7 +62,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   return context().set_qual_type(node, qt);
 }
 
-bool Compiler::VerifyPatternType(ast::SliceType const *node, type::Type t) {
+bool PatternTypeVerifier::VerifyPatternType(ast::SliceType const *node,
+                                            type::Type t) {
   if (t != type::Type_) {
     diag().Consume(
         NonTypeSliceTypeMatch{.view = SourceViewFor(node), .type = t});

@@ -441,7 +441,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   }
 }
 
-bool Compiler::VerifyPatternType(ast::BinaryOperator const *node,
+bool PatternTypeVerifier::VerifyPatternType(ast::BinaryOperator const *node,
                                  type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
   switch (node->kind()) {

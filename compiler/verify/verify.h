@@ -52,6 +52,33 @@ struct BodyVerifier : CompilationDataReference {
 
 bool VerifyBody(CompilationDataReference data, ast::Node const *node);
 
+struct PatternTypeVerifier : CompilationDataReference {
+  using signature = bool(type::Type);
+
+  explicit PatternTypeVerifier(CompilationDataReference ref)
+      : CompilationDataReference(ref) {}
+
+  bool operator()(auto const *node, type::Type t) {
+    return VerifyPatternType(node, t);
+  }
+
+  bool VerifyPatternType(ast::Node const *node, type::Type t) {
+    return node->visit(*this, t);
+  }
+
+  bool VerifyPatternType(ast::Access const *node, type::Type t);
+  bool VerifyPatternType(ast::ArrayType const *node, type::Type t);
+  bool VerifyPatternType(ast::BinaryOperator const *node, type::Type t);
+  bool VerifyPatternType(ast::BindingDeclaration const *node, type::Type t);
+  bool VerifyPatternType(ast::Call const *node, type::Type t);
+  bool VerifyPatternType(ast::Declaration const *node, type::Type t);
+  bool VerifyPatternType(ast::SliceType const *node, type::Type t);
+  bool VerifyPatternType(ast::Terminal const *node, type::Type t);
+  bool VerifyPatternType(ast::UnaryOperator const *node, type::Type t);
+};
+bool VerifyPatternType(CompilationDataReference data, ast::Node const *node,
+                       type::Type t);
+
 // Returns A function which can be executed to complete the data for an
 // incomplete struct type pointed to by `s`.
 std::optional<ir::CompiledFn> StructDataCompletionFn(

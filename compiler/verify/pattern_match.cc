@@ -1,4 +1,3 @@
-#include "compiler/compiler.h"
 #include "compiler/verify/verify.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -30,7 +29,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     auto [n, t] = std::move(q.front());
     q.pop();
 
-    if (not Compiler(*this).VerifyPatternType(n, t)) {
+    if (not VerifyPatternType(*this, n, t)) {
       // TODO: It may not be okay to emit an error because it may just determine
       // an overload set member is not valid.
       return context().set_qual_type(node, type::QualType::Error());

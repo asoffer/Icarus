@@ -155,16 +155,6 @@ struct PatternMatcher {
   }
 };
 
-template <typename C>
-struct PatternTypeVerifier {
-  using signature = bool(type::Type);
-
-  template <typename NodeType>
-  bool operator()(NodeType const *node, type::Type t) {
-    return static_cast<C *>(this)->VerifyPatternType(node, t);
-  }
-};
-
 struct Compiler
     : CompilationDataReference,
       MoveInitEmitter<Compiler>,
@@ -174,7 +164,6 @@ struct Compiler
       RefEmitter<Compiler>,
       IrEmitter<Compiler>,
       PatternMatcher<Compiler>,
-      PatternTypeVerifier<Compiler>,
 
       type::Visitor<EmitDestroyTag, void(ir::Reg)>,
       type::Visitor<EmitMoveInitTag,
@@ -230,10 +219,6 @@ struct Compiler
                     absl::flat_hash_map<ast::Declaration::Id const *,
                                         ir::CompleteResultBuffer> &bindings) {
     return node->visit<PatternMatcher<Compiler>>(*this, context, bindings);
-  }
-
-  bool VerifyPatternType(ast::Node const *node, type::Type t) {
-    return node->visit<PatternTypeVerifier<Compiler>>(*this, t);
   }
 
   template <typename T>
@@ -350,8 +335,7 @@ struct Compiler
 #define DEFINE_PATTERN_MATCH(name)                                             \
   bool PatternMatch(name const *node, PatternMatchingContext &context,         \
                     absl::flat_hash_map<ast::Declaration::Id const *,          \
-                                        ir::CompleteResultBuffer> &bindings);  \
-  bool VerifyPatternType(name const *node, type::Type t);
+                                        ir::CompleteResultBuffer> &bindings);
 
   DEFINE_PATTERN_MATCH(ast::Access)
   DEFINE_PATTERN_MATCH(ast::ArrayType)

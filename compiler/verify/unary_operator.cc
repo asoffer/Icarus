@@ -366,7 +366,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   return context().set_qual_type(node, qt);
 }
 
-bool Compiler::VerifyPatternType(ast::UnaryOperator const *node, type::Type t) {
+bool PatternTypeVerifier::VerifyPatternType(ast::UnaryOperator const *node, type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Not:
