@@ -1,5 +1,5 @@
 #include "compiler/common.h"
-#include "compiler/compiler.h"
+#include "compiler/verify/verify.h"
 #include "type/array.h"
 #include "type/cast.h"
 #include "type/pointer.h"
@@ -122,7 +122,7 @@ type::QualType VerifyBinaryOverload(
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::ComparisonOperator const *node) {
   std::vector<type::QualType> expr_qts;
   expr_qts.reserve(node->exprs().size());

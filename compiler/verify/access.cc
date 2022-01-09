@@ -184,9 +184,9 @@ std::pair<type::Type, int> DereferenceAll(type::Type t) {
 // have to call `set_qual_types` on each return path, possibly before a
 // diagnostic, rather than using the returned value when this function is
 // called.
-absl::Span<type::QualType const> AccessTypeMember(Compiler &c,
-    ast::Access const *node,
-    type::QualType operand_qt) {
+absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
+                                                  ast::Access const *node,
+                                                  type::QualType operand_qt) {
   LOG("Access", "%s", node->DebugString());
   if (not operand_qt.constant()) {
     c.diag().Consume(NonConstantTypeMemberAccess{
@@ -358,9 +358,11 @@ bool EnsureDataCompleteness(Compiler &c, type::Struct *s) {
 
 // Verifies access to a struct field. The field must be exported if it is in a
 // different module.
-type::QualType AccessStructMember(Compiler &c, ast::Access const *node,
+type::QualType AccessStructMember(CompilationDataReference data,
+                                  ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
   // TODO: Figure out how to remove const_cast here.
+  Compiler c(data);
   if (not EnsureDataCompleteness(c, const_cast<type::Struct *>(s))) {
     c.diag().Consume(IncompleteTypeMemberAccess{
         .member_view =
@@ -372,12 +374,12 @@ type::QualType AccessStructMember(Compiler &c, ast::Access const *node,
 
   auto const *member = s->field(node->member_name());
   if (not member) {
-    c.diag().Consume(MissingMember{
+    data.diag().Consume(MissingMember{
         .expr_view = SourceViewFor(node->operand()),
         .member_view =
             frontend::SourceView(SourceBufferFor(node), node->member_range()),
         .member = std::string{node->member_name()},
-        .type   = TypeForDiagnostic(node->operand(), c.context()),
+        .type   = TypeForDiagnostic(node->operand(), data.context()),
     });
     return type::QualType::Error();
   }
@@ -385,9 +387,9 @@ type::QualType AccessStructMember(Compiler &c, ast::Access const *node,
   type::QualType qt(member->type, quals | type::Quals::Ref());
 
   // Struct field members need to be exported in addition to the struct itself.
-  if (c.resources().module != s->defining_module() and
+  if (data.resources().module != s->defining_module() and
       not member->hashtags.contains(ir::Hashtag::Export)) {
-    c.diag().Consume(NonExportedMember{
+    data.diag().Consume(NonExportedMember{
         .member = std::string{node->member_name()},
         .type   = s,
         .view   = SourceViewFor(node),
@@ -403,7 +405,8 @@ type::QualType AccessStructMember(Compiler &c, ast::Access const *node,
 
 // Verifies access to a symbol in a different module. If there are multiple
 // symbols of the same name, verify that they form a valid overload set.
-type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
+type::QualType AccessModuleMember(CompilationDataReference c,
+                                  ast::Access const *node,
                                   type::QualType operand_qt) {
   if (not operand_qt.constant()) {
     c.diag().Consume(NonConstantModuleMemberAccess{
@@ -485,7 +488,7 @@ type::QualType AccessModuleMember(Compiler &c, ast::Access const *node,
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::Access const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Access const *node) {
   if (auto qts = context().maybe_qual_type(node); qts.data()) { return qts; }
 
   ASSIGN_OR(return context().set_qual_types(node, type::QualType::ErrorSpan()),

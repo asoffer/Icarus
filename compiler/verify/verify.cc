@@ -19,6 +19,10 @@ struct IncompleteField {
 };
 
 }  // namespace
+absl::Span<type::QualType const> VerifyType(CompilationDataReference data,
+                                            ast::Node const *node) {
+  return TypeVerifier(data)(node);
+}
 
 bool VerifyBody(CompilationDataReference data, ast::Node const *node) {
   return BodyVerifier(data)(node);

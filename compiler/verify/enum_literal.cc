@@ -1,6 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
-#include "compiler/compiler.h"
+#include "compiler/verify/verify.h"
 #include "compiler/work_item.h"
 
 namespace compiler {
@@ -39,7 +39,7 @@ struct NonIntegralEnumerator {
 bool BodyVerifier::VerifyBody(ast::EnumLiteral const *node) {
   bool success = true;
   for (auto const &[name, value] : node->specified_values()) {
-    auto qts = Compiler(*this).VerifyType(value.get());
+    auto qts = VerifyType(*this, value.get());
     if (not(qts[0].quals() >= type::Quals::Const())) {
       success = false;
       diag().Consume(NonConstantEnumerator{.view = SourceViewFor(value.get())});
@@ -55,7 +55,7 @@ bool BodyVerifier::VerifyBody(ast::EnumLiteral const *node) {
   return success;
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::EnumLiteral const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::EnumLiteral const *node) {
   LOG("compile-work-queue", "Request work enum: %p", node);
   Enqueue(WorkItem::VerifyBodyOf(node, &context()));
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));

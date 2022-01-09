@@ -6,7 +6,7 @@
 
 namespace compiler {
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::ScopeLiteral const *node) {
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
                    auto params, VerifyParameters(*this, node->params()));

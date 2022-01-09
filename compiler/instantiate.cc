@@ -16,6 +16,10 @@
 #include "type/type.h"
 
 namespace compiler {
+// TODO: Remove forward declaration.
+absl::Span<type::QualType const> VerifyType(CompilationDataReference data,
+                                            ast::Node const *node);
+
 namespace {
 
 type::Typed<ir::CompleteResultRef> const *ArgumentFromIndex(
@@ -28,7 +32,7 @@ type::Typed<ir::CompleteResultRef> const *ArgumentFromIndex(
 std::optional<type::Type> ComputeParameterTypeOrDiagnose(
     Compiler &c, ast::Declaration const *decl) {
   if (auto const *type_expr = decl->type_expr()) {
-    auto type_expr_type = c.VerifyType(type_expr)[0].type();
+    auto type_expr_type = VerifyType(c, type_expr)[0].type();
     if (type_expr_type != type::Type_) {
       c.diag().Consume(
           NotAType{.view = SourceViewFor(type_expr), .type = type_expr_type});
@@ -37,7 +41,7 @@ std::optional<type::Type> ComputeParameterTypeOrDiagnose(
 
     return c.EvaluateOrDiagnoseAs<type::Type>(type_expr);
   } else {
-    return c.VerifyType(decl->init_val())[0].type();
+    return VerifyType(c, decl->init_val())[0].type();
   }
 }
 
@@ -62,7 +66,7 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
           argument_types[index] = argument->type();
           c.context().set_arg_type(id, argument->type());
         } else if (auto const *default_value = dep_node.node()->init_val()) {
-          type::Type t = c.VerifyType(default_value)[0].type();
+          type::Type t = VerifyType(c, default_value)[0].type();
           argument_types[index] = t;
           c.context().set_arg_type(id, t);
         } else {

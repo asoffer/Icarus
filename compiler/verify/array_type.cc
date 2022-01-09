@@ -2,6 +2,7 @@
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
+#include "compiler/verify/verify.h"
 #include "type/array.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
@@ -60,7 +61,7 @@ struct NonTypeArrayTypeMatch {
 
 // Verifies that the array type has constant integer lengths and that the data
 // type expression is a type.
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::ArrayType const *node) {
   std::vector<type::QualType> length_results;
   length_results.reserve(node->lengths().size());

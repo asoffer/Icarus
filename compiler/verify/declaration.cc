@@ -5,7 +5,7 @@
 #include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "compiler/verify/common.h"
-#include "compiler/verify/internal/assignment_and_initialization.h"
+#include "compiler/verify/assignment_and_initialization.h"
 #include "type/cast.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"
@@ -117,30 +117,29 @@ bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
 
 // Verifies and evaluates the type expression, returning its value if it can be
 // computed or an error.
-type::QualType VerifyDeclarationType(Compiler &compiler,
+type::QualType VerifyDeclarationType(CompilationDataReference data,
                                      ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto type_expr_qt,
-                   compiler.VerifyType(node->type_expr())[0]);
+                   VerifyType(data, node->type_expr())[0]);
   if (type_expr_qt.type() == type::Type_) {
     if (not type_expr_qt.constant()) {
-      compiler.diag().Consume(NonConstantTypeInDeclaration{
+      data.diag().Consume(NonConstantTypeInDeclaration{
           .view = SourceViewFor(node->type_expr()),
       });
       return type::QualType::Error();
     }
 
-    ASSIGN_OR(
-        return type::QualType::Error(),  //
-               auto t,
-               compiler.EvaluateOrDiagnoseAs<type::Type>(node->type_expr()));
+    ASSIGN_OR(return type::QualType::Error(),  //
+                     auto t,
+                     data.EvaluateOrDiagnoseAs<type::Type>(node->type_expr()));
 
     return type::QualType(t, (node->flags() & ast::Declaration::f_IsConst)
                                  ? type::Quals::Const()
                                  : type::Quals::Unqualified());
   } else {
     // TODO: Not a type or *INTERFACE*
-    compiler.diag().Consume(NotAType{
+    data.diag().Consume(NotAType{
         .view = SourceViewFor(node->type_expr()),
         .type = type_expr_qt.type(),
     });
@@ -149,25 +148,25 @@ type::QualType VerifyDeclarationType(Compiler &compiler,
 }
 
 // Verifies the type of a declaration of the form `x: t`.
-type::QualType VerifyDefaultInitialization(Compiler &compiler,
+type::QualType VerifyDefaultInitialization(CompilationDataReference data,
                                            ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(), auto qt,
-                   VerifyDeclarationType(compiler, node));
+                   VerifyDeclarationType(data, node));
 
   if (not(node->flags() & ast::Declaration::f_IsFnParam) and
       not qt.type().get()->IsDefaultInitializable()) {
-    compiler.diag().Consume(NoDefaultValue{
-        .type  = qt.type(),
-        .view =SourceViewFor(node),
+    data.diag().Consume(NoDefaultValue{
+        .type = qt.type(),
+        .view = SourceViewFor(node),
     });
   }
   return qt;
 }
 
 // Verifies the type of a declaration of the form `x := y`.
-std::vector<type::QualType> VerifyInferred(Compiler &compiler,
+std::vector<type::QualType> VerifyInferred(CompilationDataReference data,
                                            ast::Declaration const *node) {
-  auto init_val_qt_span = compiler.VerifyType(node->init_val());
+  auto init_val_qt_span = VerifyType(data, node->init_val());
   std::vector<type::QualType> init_val_qts(init_val_qt_span.begin(),
                                            init_val_qt_span.end());
 
@@ -184,7 +183,7 @@ std::vector<type::QualType> VerifyInferred(Compiler &compiler,
         if (had_error_mark) { qt.MarkError(); }
       }
     } else {
-      compiler.diag().Consume(type::UninferrableType{
+      data.diag().Consume(type::UninferrableType{
           .kind = inference_result.failure(),
           .view = SourceViewFor(node->init_val()),
       });
@@ -195,8 +194,8 @@ std::vector<type::QualType> VerifyInferred(Compiler &compiler,
   if (inference_failure) { return {type::QualType::Error()}; }
 
   for (auto &qt : init_val_qts) {
-    if (not internal::VerifyInitialization(compiler.diag(), SourceViewFor(node),
-                                           qt, qt)) {
+    if (not internal::VerifyInitialization(data.diag(), SourceViewFor(node), qt,
+                                           qt)) {
       qt.MarkError();
     }
     qt.set_quals(quals);
@@ -206,14 +205,14 @@ std::vector<type::QualType> VerifyInferred(Compiler &compiler,
 }
 
 // Verifies the type of a declaration of the form `x: T = y`.
-type::QualType VerifyCustom(Compiler &compiler, ast::Declaration const *node) {
-  auto init_val_qt = compiler.VerifyType(node->init_val())[0];
+type::QualType VerifyCustom(TypeVerifier &tv, ast::Declaration const *node) {
+  auto init_val_qt = tv.VerifyType(node->init_val())[0];
 
   ASSIGN_OR(return type::QualType::Error(), auto qt,
-                   VerifyDeclarationType(compiler, node));
+                   VerifyDeclarationType(tv, node));
 
   if (not init_val_qt.ok() or
-      not internal::VerifyInitialization(compiler.diag(), SourceViewFor(node),
+      not internal::VerifyInitialization(tv.diag(), SourceViewFor(node),
                                          qt, init_val_qt)) {
     qt.MarkError();
   }
@@ -221,18 +220,18 @@ type::QualType VerifyCustom(Compiler &compiler, ast::Declaration const *node) {
   return qt;
 }
 
-type::QualType VerifyUninitialized(Compiler &compiler,
+type::QualType VerifyUninitialized(TypeVerifier &tv,
                                    ast::Declaration const *node) {
   if (node->flags() & ast::Declaration::f_IsConst) {
-    compiler.diag().Consume(UninitializedConstant{.view =SourceViewFor(node)});
+    tv.diag().Consume(UninitializedConstant{.view = SourceViewFor(node)});
   }
 
-  return VerifyDeclarationType(compiler, node);
+  return VerifyDeclarationType(tv, node);
 }
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::Declaration const *node) {
   // Declarations can be seen out of order if they're constants and we happen to
   // verify an identifier referencing the declaration before the declaration is
@@ -410,13 +409,13 @@ absl::Span<type::QualType const> Compiler::VerifyType(
   return span;
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::Declaration::Id const *node) {
   LOG("Declaration::Id", "Verifying %s", node->name());
   return VerifyType(&node->declaration());
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::BindingDeclaration const *node) {
   UNREACHABLE();
 }

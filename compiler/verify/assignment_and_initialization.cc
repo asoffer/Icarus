@@ -1,4 +1,4 @@
-#include "compiler/verify/internal/assignment_and_initialization.h"
+#include "compiler/verify/assignment_and_initialization.h"
 
 #include <type_traits>
 

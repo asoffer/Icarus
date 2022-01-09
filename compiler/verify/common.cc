@@ -5,7 +5,6 @@
 
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
-#include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "core/arguments.h"
 #include "core/call.h"
@@ -38,7 +37,7 @@ void ValidateCallable(
 }
 
 absl::flat_hash_set<type::Typed<ast::Expression const *>> ResolveCall(
-    Compiler &c, CallMetadata const &metadata,
+    TypeVerifier &tv, CallMetadata const &metadata,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
         &errors) {
@@ -46,7 +45,7 @@ absl::flat_hash_set<type::Typed<ast::Expression const *>> ResolveCall(
 
   absl::flat_hash_set<type::Typed<ast::Expression const *>> valid;
 
-  Context const &context_root = c.context().root();
+  Context const &context_root = tv.context().root();
 
   for (auto const *overload : metadata.overloads()) {
     Context const &callee_root =
@@ -55,7 +54,7 @@ absl::flat_hash_set<type::Typed<ast::Expression const *>> ResolveCall(
     // instantiated contexts if that's what's needed here.
     type::Type t;
     if (&context_root == &callee_root) {
-      t = c.VerifyType(overload)[0].type();
+      t = tv.VerifyType(overload)[0].type();
     } else {
       t = callee_root.qual_types(overload)[0].type();
     }
@@ -63,11 +62,11 @@ absl::flat_hash_set<type::Typed<ast::Expression const *>> ResolveCall(
     if (auto const *callable = t.if_as<type::Callable>()) {
       ValidateCallable(overload, callable, arguments, valid, errors);
     } else if (auto const *gf = t.if_as<type::Generic<type::Function>>()) {
-      auto const *i = gf->Instantiate(c.work_resources(), arguments);
+      auto const *i = gf->Instantiate(tv.work_resources(), arguments);
       if (not i) { continue; }  // TODO: Save an error.
       ValidateCallable(overload, i, arguments, valid, errors);
     } else if (auto const *gb = t.if_as<type::Generic<type::Block>>()) {
-      auto const *i = gb->Instantiate(c.work_resources(), arguments);
+      auto const *i = gb->Instantiate(tv.work_resources(), arguments);
       if (not i) { continue; }
       ValidateCallable(overload, i, arguments, valid, errors);
     }
@@ -87,7 +86,7 @@ absl::flat_hash_set<module::BasicModule const *> ModulesFromTypeProvenance(
 }
 
 std::optional<core::Params<type::QualType>> VerifyParameters(
-    Compiler &c,
+    TypeVerifier &tv,
     core::Params<std::unique_ptr<ast::Declaration>> const &params) {
   // Parameter types cannot be dependent in concrete implementations so it is
   // safe to verify each of them separately (to generate more errors that are
@@ -97,7 +96,7 @@ std::optional<core::Params<type::QualType>> VerifyParameters(
   type_params.reserve(params.size());
   bool err = false;
   for (auto &d : params) {
-    auto qt = c.VerifyType(d.value.get())[0];
+    auto qt = tv.VerifyType(d.value.get())[0];
     if (qt.ok()) {
       type_params.append(d.name, qt, d.flags);
     } else {
@@ -109,12 +108,13 @@ std::optional<core::Params<type::QualType>> VerifyParameters(
 }
 
 std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>
-VerifyArguments(Compiler &c, absl::Span<ast::Call::Argument const> arguments,
+VerifyArguments(TypeVerifier &tv,
+                absl::Span<ast::Call::Argument const> arguments,
                 ir::CompleteResultBuffer &out) {
   bool error = false;
   std::vector<std::pair<type::Type, ssize_t>> refs;
   for (auto const &argument : arguments) {
-    auto expr_qual_type = c.VerifyType(&argument.expr())[0];
+    auto expr_qual_type = tv.VerifyType(&argument.expr())[0];
     error |= expr_qual_type.HasErrorMark();
     if (error) {
       LOG("VerifyArguments", "Error with: %s", argument.expr().DebugString());
@@ -122,7 +122,7 @@ VerifyArguments(Compiler &c, absl::Span<ast::Call::Argument const> arguments,
     } else {
       LOG("VerifyArguments", "constant: %s", argument.expr().DebugString());
       if (expr_qual_type.constant()) {
-        if (auto maybe_result = c.EvaluateToBufferOrDiagnose(
+        if (auto maybe_result = tv.EvaluateToBufferOrDiagnose(
                 type::Typed(&argument.expr(), expr_qual_type.type()))) {
           LOG("VerifyArguments", "%s: %s",
               expr_qual_type.type().Representation((*maybe_result)[0]),
@@ -157,21 +157,21 @@ VerifyArguments(Compiler &c, absl::Span<ast::Call::Argument const> arguments,
 std::variant<
     type::Typed<ast::Expression const *>,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
-VerifyCall(Compiler &c, VerifyCallParameters const &vcp) {
+VerifyCall(TypeVerifier &tv, VerifyCallParameters const &vcp) {
   auto const &[call, callee, arguments] = vcp;
   LOG("VerifyCall", "%s", call->DebugString());
   absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
   auto exprs =
-      ResolveCall(c, c.context().CallMetadata(call), arguments, errors);
+      ResolveCall(tv, tv.context().CallMetadata(call), arguments, errors);
   if (exprs.size() == 1) {
     auto typed_expr = *exprs.begin();
-    c.context().SetCallMetadata(call, CallMetadata(*typed_expr));
+    tv.context().SetCallMetadata(call, CallMetadata(*typed_expr));
     // TODO: This doesn't need to be a constant.
-    c.context().set_qual_type(callee,
-                              type::QualType::Constant(typed_expr.type()));
+    tv.context().set_qual_type(callee,
+                               type::QualType::Constant(typed_expr.type()));
     return typed_expr;
   } else {
-    c.context().set_qual_type(callee, type::QualType::Error());
+    tv.context().set_qual_type(callee, type::QualType::Error());
     return errors;
   }
 }
@@ -179,8 +179,8 @@ VerifyCall(Compiler &c, VerifyCallParameters const &vcp) {
 std::variant<
     std::vector<type::QualType>,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
-VerifyReturningCall(Compiler &c, VerifyCallParameters const &vcp) {
-  auto result = VerifyCall(c, vcp);
+VerifyReturningCall(TypeVerifier &tv, VerifyCallParameters const &vcp) {
+  auto result = VerifyCall(tv, vcp);
   if (auto *error = std::get_if<
           absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>(
           &result)) {

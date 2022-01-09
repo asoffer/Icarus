@@ -8,6 +8,11 @@
 #include "type/type.h"
 
 namespace compiler {
+
+// TODO: Remove forward declaration.
+absl::Span<type::QualType const> VerifyType(CompilationDataReference data,
+                                            ast::Node const *node);
+
 // TODO: Leaking these would be totally fine. We just need to silence ASAN's
 // leak checker. Longer term, we're going to rewrite these so instead of using
 // type erasure they're an honest-to-goodness function in IR which will be
@@ -37,7 +42,7 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
                                  .resources      = compiler.resources()};
             Compiler c(&data);
 
-            for (auto const *stmt : node->stmts()) { c.VerifyType(stmt); }
+            for (auto const *stmt : node->stmts()) { VerifyType(c, stmt); }
 
             context.set_qual_type(node,
                                   type::QualType::Constant(type::Scp(params)));

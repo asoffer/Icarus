@@ -6,20 +6,21 @@
 
 namespace compiler {
 
-type::QualType VerifyConcrete(Compiler &c,
+type::QualType VerifyConcrete(CompilationDataReference data,
                               ast::ShortFunctionLiteral const *node) {
   LOG("ShortFunctionLiteral", "VerifyConcrete %s", node->DebugString());
+  TypeVerifier tv(data);
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto params, VerifyParameters(c, node->params()));
-  ASSIGN_OR(return _, auto body_qt, c.VerifyType(node->body())[0]);
-  return c.context().set_qual_type(
+                   auto params, VerifyParameters(tv, node->params()));
+  ASSIGN_OR(return _, auto body_qt, VerifyType(data, node->body())[0]);
+  return data.context().set_qual_type(
       node, type::QualType::Constant(
                 type::Func(std::move(params), {body_qt.type()})))[0];
 }
 
-type::QualType VerifyGeneric(Compiler &c,
+type::QualType VerifyGeneric(CompilationDataReference data,
                              ast::ShortFunctionLiteral const *node) {
-  auto gen = [node, data = c.data()](
+  auto gen = [node, data = data.data()](
                  WorkResources const &wr,
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Function const * {
@@ -35,7 +36,7 @@ type::QualType VerifyGeneric(Compiler &c,
                            .work_resources = wr,
                            .resources      = c.resources()};
       Compiler compiler(&data);
-      auto qt                           = VerifyConcrete(compiler, node);
+      auto qt   = VerifyConcrete(compiler, node);
       auto outs = qt.type().as<type::Function>().return_types();
       rets_ref.assign(outs.begin(), outs.end());
 
@@ -52,12 +53,12 @@ type::QualType VerifyGeneric(Compiler &c,
     return ft;
   };
 
-  return c.context().set_qual_type(
+  return data.context().set_qual_type(
       node, type::QualType::Constant(
                 new type::Generic<type::Function>(std::move(gen))))[0];
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::ShortFunctionLiteral const *node) {
   auto qt = node->is_generic() ? VerifyGeneric(*this, node)
                                : VerifyConcrete(*this, node);

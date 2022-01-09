@@ -18,7 +18,6 @@
 #include "compiler/instructions.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
-#include "compiler/verify/verify.h"
 #include "compiler/work_item.h"
 #include "core/call.h"
 #include "diagnostic/consumer/consumer.h"
@@ -77,17 +76,6 @@ struct PatternMatchTag {};
 // surface from separation are from separating parsing from these two stages
 // rather than separating all stages. In time we will see if this belief holds
 // water.
-
-
-template <typename C>
-struct TypeVerifier {
-  using signature = absl::Span<type::QualType const>();
-
-  template <typename NodeType>
-  absl::Span<type::QualType const> operator()(NodeType const *node) {
-    return static_cast<C *>(this)->VerifyType(node);
-  }
-};
 
 template <typename C>
 struct MoveInitEmitter {
@@ -179,7 +167,6 @@ struct PatternTypeVerifier {
 
 struct Compiler
     : CompilationDataReference,
-      TypeVerifier<Compiler>,
       MoveInitEmitter<Compiler>,
       CopyInitEmitter<Compiler>,
       MoveAssignEmitter<Compiler>,
@@ -206,10 +193,6 @@ struct Compiler
       : CompilationDataReference(ref){};
   Compiler(Compiler const &) = delete;
   Compiler(Compiler &&)      = delete;
-
-  absl::Span<type::QualType const> VerifyType(ast::Node const *node) {
-    return node->visit<TypeVerifier<Compiler>>(*this);
-  }
 
   void EmitMoveInit(
       ast::Node const *node,
@@ -359,7 +342,6 @@ struct Compiler
   }
 
 #define ICARUS_AST_NODE_X(name)                                                \
-  absl::Span<type::QualType const> VerifyType(ast::name const *node);          \
   void EmitToBuffer(ast::name const *node, ir::PartialResultBuffer &buffer);
 
 #include "ast/node.xmacro.h"
@@ -504,9 +486,6 @@ struct Compiler
   DEFINE_EMIT(ast::Terminal)
   DEFINE_EMIT(ast::UnaryOperator)
 #undef DEFINE_EMIT
-
-  // TODO: The implementation here has some overlap with CompleteStruct.
-  bool EnsureDataCompleteness(type::Struct *s);
 
   bool CompleteStructData(ast::StructLiteral const *node);
   bool CompleteStruct(ast::StructLiteral const *node);

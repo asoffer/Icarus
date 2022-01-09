@@ -2,8 +2,8 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
-#include "compiler/compiler.h"
 #include "compiler/verify/common.h"
+#include "compiler/verify/verify.h"
 #include "type/cast.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
@@ -45,7 +45,7 @@ struct AssigningToNonReference {
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::Assignment const *node) {
   std::vector<type::QualType> lhs_qts, rhs_qts;
   lhs_qts.reserve(node->lhs().size());

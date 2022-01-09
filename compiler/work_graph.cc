@@ -29,7 +29,7 @@ bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
   bool found_error = false;
   for (ast::Node const *node : nodes) {
     if (not predicate(node)) { continue; }
-    auto qts = c.VerifyType(node);
+    auto qts = VerifyType(c, node);
     for (auto const &qt : qts) {
       if (qt.HasErrorMark()) {
         found_error = true;
@@ -170,7 +170,7 @@ bool WorkGraph::Execute(WorkItem const &w) {
       w.node->DebugString(), this);
   switch (w.kind) {
     case WorkItem::Kind::VerifyType:
-      c.VerifyType(w.node);
+      VerifyType(c, w.node);
       result = resources().diagnostic_consumer->num_consumed() == 0;
       break;
     case WorkItem::Kind::VerifyEnumBody:

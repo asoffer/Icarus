@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "compiler/compiler.h"
+#include "compiler/verify/verify.h"
 #include "type/array.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
@@ -42,7 +43,7 @@ type::Type GuessIntendedArrayType(
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::ArrayLiteral const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::ArrayLiteral const *node) {
   if (node->empty()) {
     return context().set_qual_type(node,
                                    type::QualType::Constant(type::EmptyArray));

@@ -1,10 +1,35 @@
 #ifndef ICARUS_COMPILER_VERIFY_VERIFY_H
 #define ICARUS_COMPILER_VERIFY_VERIFY_H
 
+#include "absl/types/span.h"
 #include "ast/ast.h"
 #include "compiler/compilation_data.h"
+#include "type/qual_type.h"
 
 namespace compiler {
+
+struct TypeVerifier : CompilationDataReference {
+  using signature = absl::Span<type::QualType const>();
+
+  explicit TypeVerifier(CompilationDataReference ref)
+      : CompilationDataReference(ref) {}
+
+  absl::Span<type::QualType const> operator()(auto const *node) {
+    return VerifyType(node);
+  }
+  absl::Span<type::QualType const> VerifyType(ast::Node const *node) {
+    return node->visit(*this);
+  }
+
+#define ICARUS_AST_NODE_X(name)                                                \
+  absl::Span<type::QualType const> VerifyType(ast::name const *node);
+
+#include "ast/node.xmacro.h"
+#undef ICARUS_AST_NODE_X
+};
+
+absl::Span<type::QualType const> VerifyType(CompilationDataReference data,
+                                            ast::Node const *node);
 
 // The reason to separate out type/body verification is if the body might
 // transitively have identifiers referring to a declaration that is assigned

@@ -156,37 +156,6 @@ cc_library(
     deps = ["//ir:scope_state"],
 )
 
-TYPE_VERIFICATION = [
-    "//compiler/verify:access",
-    "//compiler/verify:array_literal",
-    "//compiler/verify:array_type",
-    "//compiler/verify:assignment",
-    "//compiler/verify:binary_operator",
-    "//compiler/verify:block_node",
-    "//compiler/verify:call",
-    "//compiler/verify:cast",
-    "//compiler/verify:comparison_operator",
-    "//compiler/verify:declaration",
-    "//compiler/verify:designated_initializer",
-    "//compiler/verify:enum_literal",
-    "//compiler/verify:function_literal",
-    "//compiler/verify:function_type",
-    "//compiler/verify:identifier",
-    "//compiler/verify:import",
-    "//compiler/verify:index",
-    "//compiler/verify:interface_literal",
-    "//compiler/verify:miscellaneous",
-    "//compiler/verify:module",
-    "//compiler/verify:parameterized_struct_literal",
-    "//compiler/verify:pattern_match",
-    "//compiler/verify:short_function_literal",
-    "//compiler/verify:slice_type",
-    "//compiler/verify:struct_literal",
-    "//compiler/verify:scope_literal",
-    "//compiler/verify:terminal",
-    "//compiler/verify:unary_operator",
-]
-
 IR_EMISSION = [
     "//compiler/emit:access",
     "//compiler/emit:array_literal",
@@ -257,7 +226,6 @@ cc_library(
         "//ast",
         "//base:debug",
         "//core:call",
-        "//compiler/verify",
         "//diagnostic/consumer",
         "//diagnostic/consumer:buffering",
         "//frontend/source:buffer",
@@ -287,11 +255,11 @@ cc_library(
         "//ast",
         "//base:log",
         "//compiler/emit:common",
-        "//compiler/verify:common",
+        "//compiler/verify",
         "//ir:compiled_fn",
         "//ir/interpreter:evaluate",
         "//type:generic",
-    ] + TYPE_VERIFICATION + IR_EMISSION,
+    ] + IR_EMISSION,
 )
 
 cc_library(

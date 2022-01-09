@@ -26,13 +26,12 @@ struct NonBooleanCondition {
   std::string type;
 };
 
-
 std::optional<type::Quals> VerifyAndGetQuals(
-    Compiler *v, base::PtrSpan<ast::Expression const> exprs) {
+    TypeVerifier &tv, base::PtrSpan<ast::Expression const> exprs) {
   bool err          = false;
   type::Quals quals = type::Quals::All();
   for (auto *expr : exprs) {
-    auto qt = v->VerifyType(expr)[0];
+    auto qt = tv.VerifyType(expr)[0];
     err |= not qt.ok();
     if (not err) { quals &= qt.quals(); }
   }
@@ -42,28 +41,28 @@ std::optional<type::Quals> VerifyAndGetQuals(
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::ArgumentType const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::ArgumentType const *node) {
   return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::BuiltinFn const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::BuiltinFn const *node) {
   return context().set_qual_type(
       node, type::QualType::Constant(ir::Fn(node->value()).type()));
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::ReturnStmt const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::ReturnStmt const *node) {
   ASSIGN_OR(return type::QualType::ErrorSpan(),  //
-                   auto quals, VerifyAndGetQuals(this, node->exprs()));
+                   auto quals, VerifyAndGetQuals(*this, node->exprs()));
   return {};
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::YieldStmt const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::YieldStmt const *node) {
   ir::CompleteResultBuffer buffer;
   VerifyArguments(*this, node->arguments(), buffer);
   return {};
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::ScopeNode const *node) {
   LOG("ScopeNode", "Verifying ScopeNode named `%s`",
       node->name()->DebugString());
@@ -136,11 +135,11 @@ absl::Span<type::QualType const> Compiler::VerifyType(
   return context().set_qual_type(node, type::QualType::NonConstant(type::Void));
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::Label const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Label const *node) {
   return context().set_qual_type(node, type::QualType::Constant(type::Label));
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::IfStmt const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::IfStmt const *node) {
   auto qt = VerifyType(&node->condition())[0];
   if (qt.type() != type::Bool) {
     diag().Consume(NonBooleanCondition{
@@ -166,7 +165,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::IfStmt const *node) {
   return context().set_qual_type(node, type::QualType::NonConstant(type::Void));
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::WhileStmt const *node) {
   // TODO: Emit errors if the type's fail to check.
   VerifyType(&node->condition());

@@ -2,9 +2,9 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "compiler/common.h"
-#include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
+#include "compiler/verify/verify.h"
 #include "type/cast.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
@@ -145,7 +145,7 @@ bool ValidateConstType(ast::DesignatedInitializer const &node,
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::DesignatedInitializer const *node) {
   auto type_qt = VerifyType(node->type())[0];
   if (not ValidateConstType(*node, type_qt, context(), diag())) {

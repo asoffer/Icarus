@@ -2,7 +2,7 @@
 
 #include "ast/ast.h"
 #include "compiler/common.h"
-#include "compiler/compiler.h"
+#include "compiler/verify/verify.h"
 #include "diagnostic/message.h"
 #include "type/qual_type.h"
 
@@ -36,7 +36,7 @@ struct NonTypeFunctionOutput {
   frontend::SourceView view;
 };
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::FunctionType const *node) {
   type::Type t      = type::Type_;
   type::Quals quals = type::Quals::Const();

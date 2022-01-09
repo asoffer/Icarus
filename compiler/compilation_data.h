@@ -12,6 +12,8 @@
 #include "frontend/source/buffer.h"
 #include "frontend/source/view.h"
 #include "ir/builder.h"
+#include "ir/value/integer.h"
+#include "ir/value/module_id.h"
 #include "ir/value/result_buffer.h"
 #include "module/importer.h"
 #include "module/module.h"
@@ -81,8 +83,16 @@ struct CompilationDataReference {
   std::optional<T> EvaluateOrDiagnoseAs(ast::Expression const *expr) {
     type::Type t = [] {
       constexpr auto type = base::meta<T>;
+      if constexpr (type == base::meta<bool>) { return type::Bool; }
       if constexpr (type == base::meta<type::Type>) { return type::Type_; }
+      if constexpr (type == base::meta<ir::ModuleId>) { return type::Module; }
       if constexpr (type == base::meta<ir::Integer>) { return type::Integer; }
+      if constexpr (type == base::meta<ir::UnboundScope>) {
+        return type::UnboundScope;
+      }
+      if constexpr (type == base::meta<ir::ScopeContext>) {
+        return type::ScopeContext;
+      }
     }();
     auto result = EvaluateToBufferOrDiagnose(
         type::Typed<ast::Expression const *>(expr, t));

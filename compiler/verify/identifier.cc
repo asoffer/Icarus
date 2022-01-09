@@ -1,9 +1,9 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
-#include "compiler/compiler.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/module.h"
+#include "compiler/verify/verify.h"
 #include "type/overload_set.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"
@@ -51,7 +51,7 @@ struct UncapturedIdentifier {
 // error.
 std::optional<
     std::vector<std::pair<ast::Declaration::Id const *, type::QualType>>>
-PotentialIds(Compiler &c, ast::Identifier const &id) {
+PotentialIds(CompilationDataReference data, ast::Identifier const &id) {
   std::optional<
       std::vector<std::pair<ast::Declaration::Id const *, type::QualType>>>
       result(std::in_place);
@@ -59,16 +59,16 @@ PotentialIds(Compiler &c, ast::Identifier const &id) {
   for (auto const *decl_id :
        module::AllVisibleDeclsTowardsRoot(id.scope(), id.name())) {
     type::QualType qt;
-    if (auto const *decl_id_qt = c.context().maybe_qual_type(decl_id).data()) {
+    if (auto const *decl_id_qt = data.context().maybe_qual_type(decl_id).data()) {
       qt = *decl_id_qt;
     } else {
       auto const *mod = &ModuleFor(decl_id)->as<CompiledModule>();
-      if (mod != c.resources().module) {
+      if (mod != data.resources().module) {
         qt = mod->context().qual_types(decl_id)[0];
       } else {
         // TODO: Eventually we may want to relax this for functions where we
         // don't need the entire decl we just need to know if it's callable.
-        qt = c.VerifyType(decl_id)[0];
+        qt = VerifyType(data, decl_id)[0];
       }
 
       if (not qt.ok()) {
@@ -88,7 +88,7 @@ PotentialIds(Compiler &c, ast::Identifier const &id) {
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::Identifier const *node) {
   if (state().cyclic_dependency_tracker.has_error(node)) {
     return context().set_qual_type(node, type::QualType::Error());

@@ -9,6 +9,7 @@
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
 #include "compiler/verify/common.h"
+#include "compiler/verify/verify.h"
 #include "type/cast.h"
 #include "type/function.h"
 
@@ -151,7 +152,7 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
       data.context().DebugString());
   bool found_error = false;
   for (auto const *stmt : node->stmts()) {
-    absl::Span<type::QualType const> qts = Compiler(data).VerifyType(stmt);
+    absl::Span<type::QualType const> qts = VerifyType(data, stmt);
     bool current_was_error = (qts.size() == 1 and not qts[0].ok());
     if (current_was_error) {
       found_error = true;
@@ -163,23 +164,25 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
   return JoinReturnTypes(data.diag(), InferReturnTypes(data.context(), node));
 }
 
-type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
+type::QualType VerifyConcrete(CompilationDataReference data,
+                              ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "VerifyConcrete %s", node->DebugString());
+  TypeVerifier tv(data);
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto params, VerifyParameters(c, node->params()));
+                   auto params, VerifyParameters(tv, node->params()));
   if (auto outputs = node->outputs()) {
     std::vector<type::Type> output_type_vec(outputs->size());
     bool error = false;
 
     // TODO: Output types could depend on each other.
     for (auto *output : *outputs) {
-      auto result = c.VerifyType(output)[0];
+      auto result = VerifyType(data, output)[0];
       if (not result) {
         error = true;
       } else if (result.type() != type::Type_) {
         error = true;
         // TODO: Declarations are given the type of the variable being declared.
-        c.diag().Consume(ReturningNonType{
+        data.diag().Consume(ReturningNonType{
             .view = SourceViewFor(output),
             .type = result.type(),
         });
@@ -190,21 +193,21 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
-        output_type_vec[i] = c.context().qual_types(decl)[0].type();
+        output_type_vec[i] = data.context().qual_types(decl)[0].type();
       } else if (auto maybe_type =
-                     c.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i])) {
+                     data.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i])) {
         output_type_vec[i] = *maybe_type;
       }
     }
 
-    LOG("FunctionLiteral", "Request work fn-lit: %p, %p", node, &c.context());
-    c.Enqueue({.kind    = WorkItem::Kind::VerifyFunctionBody,
-               .node    = node,
-               .context = &c.context()});
+    LOG("FunctionLiteral", "Request work fn-lit: %p, %p", node, &data.context());
+    data.Enqueue({.kind    = WorkItem::Kind::VerifyFunctionBody,
+                .node    = node,
+                .context = &data.context()});
     return type::QualType::Constant(
         type::Func(std::move(params), std::move(output_type_vec)));
   } else {
-    if (auto maybe_return_types = VerifyBodyOnly(c, node)) {
+    if (auto maybe_return_types = VerifyBodyOnly(data, node)) {
       return type::QualType::Constant(
           type::Func(std::move(params), *std::move(maybe_return_types)));
     } else {
@@ -215,8 +218,9 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 
 }  // namespace
 
-type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
-  auto gen = [node, data = c.data()](
+type::QualType VerifyGeneric(TypeVerifier &tv,
+                             ast::FunctionLiteral const *node) {
+  auto gen = [node, data = tv.data()](
                  WorkResources const &wr,
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Function const * {
@@ -255,7 +259,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
       type::Allocate<type::Generic<type::Function>>(std::move(gen)));
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "Verifying %p: %s", node, node->DebugString());
   auto qt = node->is_generic() ? VerifyGeneric(*this, node)

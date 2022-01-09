@@ -2,22 +2,24 @@
 #include "compiler/compiler.h"
 #include "compiler/context.h"
 #include "compiler/instantiate.h"
+#include "compiler/verify/verify.h"
 
 namespace compiler {
 
-type::QualType VerifyConcrete(Compiler &c, ast::BlockNode const *node) {
+type::QualType VerifyConcrete(CompilationDataReference data,
+                              ast::BlockNode const *node) {
   bool has_error   = false;
   auto param_types = node->params().Transform([&](auto const &p) {
-    auto qt = c.VerifyType(p.get())[0];
+    auto qt = VerifyType(data, p.get())[0];
     has_error |= qt.HasErrorMark();
     return qt;
   });
 
   if (not has_error) {
     LOG("BlockNode", "Verifying %s %s", node->DebugString(),
-        c.context().DebugString());
+        data.context().DebugString());
     for (auto *stmt : node->stmts()) {
-      absl::Span<type::QualType const> qts = c.VerifyType(stmt);
+      absl::Span<type::QualType const> qts = VerifyType(data, stmt);
       if (qts.size() == 1 and not qts[0].ok()) { has_error = true; }
     }
   }
@@ -27,12 +29,13 @@ type::QualType VerifyConcrete(Compiler &c, ast::BlockNode const *node) {
   return qt;
 }
 
-type::QualType VerifyGeneric(Compiler &compiler, ast::BlockNode const *node) {
-  auto gen = [node, d = compiler.data()](
+type::QualType VerifyGeneric(CompilationDataReference data,
+                             ast::BlockNode const *node) {
+  auto gen = [node, data = data.data()](
                  WorkResources const &wr,
                  core::Arguments<type::Typed<ir::CompleteResultRef>> const
                      &args) mutable -> type::Block const * {
-    Compiler c(&d);
+    Compiler c(&data);
     c.set_work_resources(wr);
     ASSIGN_OR(return nullptr,  //
                      auto result, Instantiate(c, node, args));
@@ -61,7 +64,7 @@ type::QualType VerifyGeneric(Compiler &compiler, ast::BlockNode const *node) {
       type::Allocate<type::Generic<type::Block>>(std::move(gen)));
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::BlockNode const *node) {
   LOG("BlockNode", "Verifying %s", node->DebugString());
 

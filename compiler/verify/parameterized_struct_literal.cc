@@ -19,7 +19,7 @@ bool BodyVerifier::VerifyBody(ast::ParameterizedStructLiteral const *node) {
   return true;
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
   auto *gen_struct = type::Allocate<type::Generic<type::Struct>>();
 
@@ -61,7 +61,9 @@ absl::Span<type::QualType const> Compiler::VerifyType(
         }));
       }
 
-      for (auto const &field : node->fields()) { compiler.VerifyType(&field); }
+      for (auto const &field : node->fields()) {
+        compiler::VerifyType(compiler, &field);
+      }
 
       {
         auto maybe_fn = StructDataCompletionFn(compiler, s, node->fields());

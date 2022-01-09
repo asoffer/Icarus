@@ -49,11 +49,11 @@ struct UserDefinedError {
 };
 
 type::QualType VerifyHasBlockCall(
-    Compiler *c, frontend::SourceView view,
+    CompilationDataReference data, frontend::SourceView view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = "Built-in function `has_block` cannot be called with named "
                    "arguments.",
@@ -63,11 +63,12 @@ type::QualType VerifyHasBlockCall(
 
   size_t size = arg_vals.size();
   if (size != 2u) {
-    c->diag().Consume(BuiltinError{
-        .view    = view,
-        .message = absl::StrCat("Built-in function `has_block` takes exactly two "
-                                "arguments (You provided ",
-                                size, ")."),
+    data.diag().Consume(BuiltinError{
+        .view = view,
+        .message =
+            absl::StrCat("Built-in function `has_block` takes exactly two "
+                         "arguments (You provided ",
+                         size, ")."),
     });
     error = true;
   }
@@ -75,7 +76,7 @@ type::QualType VerifyHasBlockCall(
   if (error) { return type::QualType::Error(); }
 
   if (not arg_vals[0].type() == type::ScopeContext) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view = view,
         .message =
             absl::StrCat("First argument to `has_block` must be a scope_context"
@@ -86,7 +87,7 @@ type::QualType VerifyHasBlockCall(
   }
 
   if (!type::CanCastImplicitly(arg_vals[1].type(), type::Slc(type::Char))) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("Second argument to `has_block` must be "
                                 "implicitly convertible to `[]char` (You "
@@ -102,11 +103,11 @@ type::QualType VerifyHasBlockCall(
 }
 
 type::QualType VerifySliceCall(
-    Compiler *c, frontend::SourceView view,
+    CompilationDataReference data, frontend::SourceView view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = "Built-in function `slice` cannot be called with named "
                    "arguments.",
@@ -116,7 +117,7 @@ type::QualType VerifySliceCall(
 
   size_t size = arg_vals.size();
   if (size != 2u) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("Built-in function `slice` takes exactly two "
                                 "arguments (You provided ",
@@ -128,7 +129,7 @@ type::QualType VerifySliceCall(
   if (error) { return type::QualType::Error(); }
 
   if (not arg_vals[0].type().is<type::BufferPointer>()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("First argument to `slice` must be a buffer "
                                 "pointer (You provided a(n) ",
@@ -138,7 +139,7 @@ type::QualType VerifySliceCall(
   }
 
   if (!type::CanCastImplicitly(arg_vals[1].type(), type::U64)) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("Second argument to `slice` must be "
                                 "implicitly convertible to `u64` (You "
@@ -155,11 +156,11 @@ type::QualType VerifySliceCall(
 }
 
 type::QualType VerifyCompilationErrorCall(
-    Compiler *c, frontend::SourceView view,
+    CompilationDataReference data, frontend::SourceView view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = "Built-in function `compilation_error` cannot be called "
                    "with named arguments.",
@@ -169,7 +170,7 @@ type::QualType VerifyCompilationErrorCall(
 
   size_t size = arg_vals.size();
   if (size != 2u) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("Built-in function `compilation_error` takes "
                                 "exactly two arguments (You provided ",
@@ -181,7 +182,7 @@ type::QualType VerifyCompilationErrorCall(
   if (error) { return type::QualType::Error(); }
 
   if (arg_vals[0].type() != type::Type_) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("First argument to `compilation_error` must be "
                                 "a type (You provided a(n) ",
@@ -191,7 +192,7 @@ type::QualType VerifyCompilationErrorCall(
   }
 
   if (arg_vals[0]->empty()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view = view,
         .message =
             "First argument to `compilation_error` must be a constant."});
@@ -199,7 +200,7 @@ type::QualType VerifyCompilationErrorCall(
   }
 
   if (arg_vals[1].type() != type::Slc(type::Char)) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("Second argument to `compilation_error` must "
                                 "be a []char (You provided a(n) ",
@@ -208,7 +209,7 @@ type::QualType VerifyCompilationErrorCall(
   }
 
   if (arg_vals[1]->empty()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view = view,
         .message =
             "Second argument to `compilation_error` must be a constant."});
@@ -218,17 +219,17 @@ type::QualType VerifyCompilationErrorCall(
   if (error) { return type::QualType::Error(); }
 
   std::string_view error_text = arg_vals[1]->get<ir::Slice>();
-  c->diag().Consume(
+  data.diag().Consume(
       UserDefinedError{.view = view, .message = std::string(error_text)});
   return type::QualType::NonConstant(arg_vals[0]->get<type::Type>());
 }
 
 type::QualType VerifyForeignCall(
-    Compiler *c, frontend::SourceView view,
+    CompilationDataReference data, frontend::SourceView view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = "Built-in function `foreign` cannot be called with named "
                    "arguments.",
@@ -238,7 +239,7 @@ type::QualType VerifyForeignCall(
 
   size_t size = arg_vals.size();
   if (size != 2u) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("Built-in function `foreign` takes exactly two "
                                 "arguments (You provided ",
@@ -250,7 +251,7 @@ type::QualType VerifyForeignCall(
   if (error) { return type::QualType::Error(); }
 
   if (arg_vals[0].type() != type::Slc(type::Char)) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("First argument to `foreign` must be a "
                                 "[]char (You provided a(n) ",
@@ -260,14 +261,14 @@ type::QualType VerifyForeignCall(
   }
 
   if (arg_vals[0]->empty()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = "First argument to `foreign` must be a constant."});
     error = true;
   }
 
   if (arg_vals[1].type() != type::Type_) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat(
             "Second argument to `foreign` must be a type (You provided a(n) ",
@@ -276,7 +277,7 @@ type::QualType VerifyForeignCall(
   }
 
   if (arg_vals[1]->empty()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = "Second argument to `foreign` must be a constant."});
     error = true;
@@ -287,7 +288,7 @@ type::QualType VerifyForeignCall(
   type::Type foreign_type = arg_vals[1]->get<type::Type>();
   if (not foreign_type.is<type::Function>() and
       not foreign_type.is<type::Pointer>()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = "Builtin `foreign` may only be called when the second "
                    "argument is a pointer or a function type.",
@@ -299,12 +300,12 @@ type::QualType VerifyForeignCall(
 }
 
 type::QualType VerifyReserveMemoryCall(
-    Compiler *c, frontend::SourceView view,
+    CompilationDataReference data, frontend::SourceView view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   type::QualType qt = type::QualType::NonConstant(type::BufPtr(type::Byte));
   size_t size       = arg_vals.size();
   if (size != 2u) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("Built-in function `reserve_memory` takes "
                                 "exactly two arguments (You provided ",
@@ -314,7 +315,7 @@ type::QualType VerifyReserveMemoryCall(
   } else {
     for (size_t i : {0, 1}) {
       if (!type::CanCastImplicitly(arg_vals[i].type(), type::U64)) {
-        c->diag().Consume(BuiltinError{
+        data.diag().Consume(BuiltinError{
             .view = view,
             .message =
                 absl::StrCat("Arguments to `reserve_memory` must be "
@@ -324,7 +325,7 @@ type::QualType VerifyReserveMemoryCall(
         qt.MarkError();
         break;
       } else if (arg_vals[i]->empty()) {
-        c->diag().Consume(
+        data.diag().Consume(
             BuiltinError{.view    = view,
                          .message = "Arguments to `reserve_memory` must be "
                                     "compile-time constants."});
@@ -338,12 +339,12 @@ type::QualType VerifyReserveMemoryCall(
 }
 
 type::QualType VerifyOpaqueCall(
-    Compiler *c, frontend::SourceView view,
+    CompilationDataReference data, frontend::SourceView view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   type::QualType qt = type::QualType::Constant(
       ir::Fn(ir::BuiltinFn::Opaque()).type()->return_types()[0]);
   if (not arg_vals.empty()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = "Built-in function `opaque` takes no arguments."});
     qt.MarkError();
@@ -352,20 +353,20 @@ type::QualType VerifyOpaqueCall(
 }
 
 type::QualType VerifyBytesCall(
-    Compiler *c, frontend::SourceView view,
+    CompilationDataReference data, frontend::SourceView view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   auto qt = type::QualType::Constant(
       ir::Fn(ir::BuiltinFn::Bytes()).type()->return_types()[0]);
 
   if (not arg_vals.named().empty()) {
-    c->diag().Consume(BuiltinError{.view = view,
-                                   .message =
-                                       "Built-in function `bytes` cannot be "
-                                       "called with named arguments."});
+    data.diag().Consume(BuiltinError{.view = view,
+                                     .message =
+                                         "Built-in function `bytes` cannot be "
+                                         "called with named arguments."});
     qt.MarkError();
   } else {
     if (size_t size = arg_vals.size(); size != 1u) {
-      c->diag().Consume(BuiltinError{
+      data.diag().Consume(BuiltinError{
           .view    = view,
           .message = absl::StrCat("Built-in function `bytes` takes exactly "
                                   "one argument (You provided ",
@@ -374,7 +375,7 @@ type::QualType VerifyBytesCall(
 
       qt.MarkError();
     } else if (arg_vals[0].type() != type::Type_) {
-      c->diag().Consume(BuiltinError{
+      data.diag().Consume(BuiltinError{
           .view = view,
           .message =
               absl::StrCat("Built-in function `bytes` must take a single "
@@ -388,20 +389,20 @@ type::QualType VerifyBytesCall(
 }
 
 type::QualType VerifyAlignmentCall(
-    Compiler *c, frontend::SourceView view,
+    CompilationDataReference data, frontend::SourceView view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   auto qt = type::QualType::Constant(
       ir::Fn(ir::BuiltinFn::Alignment()).type()->return_types()[0]);
 
   if (not arg_vals.named().empty()) {
-    c->diag().Consume(
+    data.diag().Consume(
         BuiltinError{.view    = view,
                      .message = "Built-in function `alignment` cannot be "
                                 "called with named arguments."});
     qt.MarkError();
   } else {
     if (size_t size = arg_vals.size(); size != 1u) {
-      c->diag().Consume(BuiltinError{
+      data.diag().Consume(BuiltinError{
           .view    = view,
           .message = absl::StrCat("Built-in function `alignment` takes exactly "
                                   "one argument (You provided ",
@@ -410,7 +411,7 @@ type::QualType VerifyAlignmentCall(
 
       qt.MarkError();
     } else if (arg_vals[0].type() != type::Type_) {
-      c->diag().Consume(BuiltinError{
+      data.diag().Consume(BuiltinError{
           .view = view,
           .message =
               absl::StrCat("Built-in function `alignment` must take a single "
@@ -424,12 +425,12 @@ type::QualType VerifyAlignmentCall(
 }
 
 type::QualType VerifyAbortCall(
-    Compiler *c, frontend::SourceView view,
+    CompilationDataReference data, frontend::SourceView view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   auto qt = type::QualType::NonConstant(type::Void);
 
   if (not arg_vals.empty()) {
-    c->diag().Consume(BuiltinError{
+    data.diag().Consume(BuiltinError{
         .view    = view,
         .message = "Built-in function `abort` takes no arguments."});
     qt.MarkError();
@@ -440,7 +441,7 @@ type::QualType VerifyAbortCall(
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Call const *node) {
   LOG("Call", "Verifying %s", node->DebugString());
 
   ir::CompleteResultBuffer buffer;
@@ -456,34 +457,34 @@ absl::Span<type::QualType const> Compiler::VerifyType(ast::Call const *node) {
         context().SetCallMetadata(
             node,
             CallMetadata(absl::flat_hash_set<ast::Expression const *>{node}));
-        qt = VerifySliceCall(this, SourceViewFor(b), arg_vals);
+        qt = VerifySliceCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::HasBlock: {
-        qt = VerifyHasBlockCall(this, SourceViewFor(b), arg_vals);
+        qt = VerifyHasBlockCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::ReserveMemory: {
-        qt = VerifyReserveMemoryCall(this, SourceViewFor(b), arg_vals);
+        qt = VerifyReserveMemoryCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Foreign: {
         context().SetCallMetadata(
             node,
             CallMetadata(absl::flat_hash_set<ast::Expression const *>{node}));
-        qt = VerifyForeignCall(this, SourceViewFor(b), arg_vals);
+        qt = VerifyForeignCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::CompilationError: {
-        qt = VerifyCompilationErrorCall(this, SourceViewFor(b), arg_vals);
+        qt = VerifyCompilationErrorCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Opaque: {
-        qt = VerifyOpaqueCall(this, SourceViewFor(b), arg_vals);
+        qt = VerifyOpaqueCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Bytes: {
-        qt = VerifyBytesCall(this, SourceViewFor(b), arg_vals);
+        qt = VerifyBytesCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Alignment: {
-        qt = VerifyAlignmentCall(this, SourceViewFor(b), arg_vals);
+        qt = VerifyAlignmentCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Abort: {
-        qt = VerifyAbortCall(this, SourceViewFor(b), arg_vals);
+        qt = VerifyAbortCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::DebugIr: {
         // This is for debugging the compiler only, so there's no need to
@@ -557,7 +558,7 @@ bool Compiler::VerifyPatternType(ast::Call const *node, type::Type t) {
   // expression arguments and use ADL for anything we see has a module set? But
   // that seems like a bad idea.
   ASSIGN_OR(return false,  //
-                   auto qt, VerifyType(node->callee())[0]);
+                   auto qt, VerifyType(*this, node->callee())[0]);
   if (auto const *gs = qt.type().if_as<type::Generic<type::Struct>>()) {
     for (auto const &arg : node->arguments()) {
       // TODO: Having these always be types is problematic, but for now we don't

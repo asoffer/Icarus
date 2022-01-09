@@ -3,9 +3,9 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
-#include "compiler/compiler.h"
 #include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
+#include "compiler/verify/verify.h"
 #include "type/primitive.h"
 
 namespace compiler {
@@ -28,7 +28,7 @@ struct CastToNonConstantType {
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::Cast const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Cast const *node) {
   auto expr_qt = VerifyType(node->expr())[0];
   auto type_qt = VerifyType(node->type())[0];
   if (not expr_qt.ok() or not type_qt.ok()) {

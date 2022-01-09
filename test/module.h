@@ -9,6 +9,7 @@
 #include "base/ptr_span.h"
 #include "compiler/compiler.h"
 #include "compiler/resources.h"
+#include "compiler/verify/verify.h"
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/aborting.h"
 #include "diagnostic/consumer/tracking.h"
@@ -46,13 +47,13 @@ struct TestModule : compiler::CompiledModule {
     for (auto const* node : nodes) {
       auto const* decl = node->if_as<ast::Declaration>();
       if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
-        c.VerifyType(node);
+        VerifyType(c, node);
       }
     }
     for (auto const* node : nodes) {
       auto const* decl = node->if_as<ast::Declaration>();
       if (not decl or not(decl->flags() & ast::Declaration::f_IsConst)) {
-        c.VerifyType(node);
+        VerifyType(c, node);
       }
     }
     Complete();
@@ -80,13 +81,13 @@ struct TestModule : compiler::CompiledModule {
       for (auto const* node : nodes) {
         auto const* decl = node->if_as<ast::Declaration>();
         if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
-          c.VerifyType(node);
+          VerifyType(c, node);
         }
       }
       for (auto const* node : nodes) {
         auto const* decl = node->if_as<ast::Declaration>();
         if (not decl or not(decl->flags() & ast::Declaration::f_IsConst)) {
-          c.VerifyType(node);
+          VerifyType(c, node);
         }
       }
       Complete();

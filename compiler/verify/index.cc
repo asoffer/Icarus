@@ -1,8 +1,8 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
-#include "compiler/compiler.h"
 #include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
+#include "compiler/verify/verify.h"
 #include "type/array.h"
 #include "type/primitive.h"
 #include "type/provenance.h"
@@ -82,11 +82,11 @@ struct InvalidIndexing {
 };
 
 // Validate the index type, possibly emitting diagnostics
-bool ValidIndexType(Compiler &c, ast::Index const *node, type::Type type,
-                    type::QualType index_qt) {
+bool ValidIndexType(CompilationDataReference data, ast::Index const *node,
+                    type::Type type, type::QualType index_qt) {
   if (index_qt.ok()) {
     if (type::IsIntegral(index_qt.type())) { return true; }
-    c.diag().Consume(InvalidIndexType{
+    data.diag().Consume(InvalidIndexType{
         .view       = SourceViewFor(node),
         .type       = type,
         .index_type = index_qt.type(),
@@ -95,18 +95,20 @@ bool ValidIndexType(Compiler &c, ast::Index const *node, type::Type type,
   return false;
 }
 
-type::QualType VerifySliceIndex(Compiler &c, ast::Index const *node,
+type::QualType VerifySliceIndex(CompilationDataReference data,
+                                ast::Index const *node,
                                 type::Slice const *slice_type,
                                 type::Quals quals, type::QualType index_qt) {
   // TODO: Emit errors when possible for out-of-bounds indices. Or probabl just
   // do this with properties/symbolic-execution.
   quals = (quals & index_qt.quals()) | type::Quals::Buf();
   type::QualType qt(slice_type->data_type(), quals);
-  if (not ValidIndexType(c, node, slice_type, index_qt)) { qt.MarkError(); }
-  return c.context().set_qual_type(node, qt)[0];
+  if (not ValidIndexType(data, node, slice_type, index_qt)) { qt.MarkError(); }
+  return data.context().set_qual_type(node, qt)[0];
 }
 
-type::QualType VerifyArrayIndex(Compiler &c, ast::Index const *node,
+type::QualType VerifyArrayIndex(CompilationDataReference data,
+                                ast::Index const *node,
                                 type::Array const *array_type,
                                 type::Quals quals, type::QualType index_qt) {
   if (index_qt.quals() <= ~type::Quals::Const()) {
@@ -115,24 +117,24 @@ type::QualType VerifyArrayIndex(Compiler &c, ast::Index const *node,
   type::Type data_type = array_type->data_type();
   type::QualType qt(data_type, quals);
 
-  if (not ValidIndexType(c, node, array_type, index_qt)) {
+  if (not ValidIndexType(data, node, array_type, index_qt)) {
     qt.MarkError();
-    return c.context().set_qual_type(node, qt)[0];
+    return data.context().set_qual_type(node, qt)[0];
   }
 
   if (index_qt.constant()) {
     std::optional<ir::Integer> maybe_index_value =
-        c.EvaluateOrDiagnoseAs<ir::Integer>(node->rhs());
+        data.EvaluateOrDiagnoseAs<ir::Integer>(node->rhs());
     if (not maybe_index_value.has_value()) { return type::QualType::Error(); }
     ir::Integer index = *maybe_index_value;
 
     if (index < 0) {
-      c.diag().Consume(NegativeArrayIndex{
+      data.diag().Consume(NegativeArrayIndex{
           .view = SourceViewFor(node),
       });
       qt.MarkError();
     } else if (index >= array_type->length()) {
-      c.diag().Consume(IndexingArrayOutOfBounds{
+      data.diag().Consume(IndexingArrayOutOfBounds{
           .view  = SourceViewFor(node),
           .array = array_type,
           .index = index,
@@ -140,22 +142,25 @@ type::QualType VerifyArrayIndex(Compiler &c, ast::Index const *node,
       qt.MarkError();
     }
   }
-  return c.context().set_qual_type(node, qt)[0];
+  return data.context().set_qual_type(node, qt)[0];
 }
 
-type::QualType VerifyBufferPointerIndex(Compiler &c, ast::Index const *node,
+type::QualType VerifyBufferPointerIndex(CompilationDataReference data,
+                                        ast::Index const *node,
                                         type::BufferPointer const *buf_ptr_type,
                                         type::Quals quals,
                                         type::QualType index_qt) {
   quals = (quals & index_qt.quals()) | type::Quals::Buf();
   type::QualType qt(buf_ptr_type->pointee(), quals);
-  if (not ValidIndexType(c, node, buf_ptr_type, index_qt)) { qt.MarkError(); }
-  return c.context().set_qual_type(node, qt)[0];
+  if (not ValidIndexType(data, node, buf_ptr_type, index_qt)) {
+    qt.MarkError();
+  }
+  return data.context().set_qual_type(node, qt)[0];
 }
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::Index const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Index const *node) {
   auto lhs_qt   = VerifyType(node->lhs())[0];
   auto index_qt = VerifyType(node->rhs())[0];
 

@@ -6,6 +6,7 @@
 #include "compiler/module.h"
 #include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
+#include "compiler/verify/verify.h"
 #include "type/cast.h"
 #include "type/overload_set.h"
 #include "type/pointer.h"
@@ -106,7 +107,7 @@ struct NoMatchingBinaryOperator {
 template <
     base::one_of<ast::BinaryOperator, ast::BinaryAssignmentOperator> NodeType>
 type::QualType VerifyOperatorOverload(
-    Compiler &c, NodeType const *node,
+    TypeVerifier &tv, NodeType const *node,
     type::Typed<ir::CompleteResultRef> const &lhs,
     type::Typed<ir::CompleteResultRef> const &rhs) {
   auto symbol = NodeType::Symbol(node->kind());
@@ -130,7 +131,7 @@ type::QualType VerifyOperatorOverload(
     }
   }
 
-  c.context().SetCallMetadata(node, CallMetadata(resolved_call));
+  tv.context().SetCallMetadata(node, CallMetadata(resolved_call));
 
   ASSERT(member_types.size() == 1u);
   return type::QualType((*member_types.begin())->return_types()[0],
@@ -139,41 +140,41 @@ type::QualType VerifyOperatorOverload(
 
 template <char C>
 absl::Span<type::QualType const> VerifyArithmeticOperator(
-    Compiler &c, ast::BinaryOperator const *node, type::QualType lhs_qt,
+    TypeVerifier &tv, ast::BinaryOperator const *node, type::QualType lhs_qt,
     type::QualType rhs_qt) {
   if (type::IsNumeric(lhs_qt.type()) and type::IsNumeric(rhs_qt.type())) {
     if (auto t = type::Meet(rhs_qt.type(), lhs_qt.type())) {
       auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Quals::Ref());
-      return c.context().set_qual_type(node, type::QualType(t, quals));
+      return tv.context().set_qual_type(node, type::QualType(t, quals));
     } else {
-      c.diag().Consume(BinaryOperatorTypeMismatch{
+      tv.diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qt.type(),
           .rhs_type = rhs_qt.type(),
           .view     = SourceViewFor(node),
       });
-      return c.context().set_qual_type(node, type::QualType::Error());
+      return tv.context().set_qual_type(node, type::QualType::Error());
     }
   }
 
   if constexpr (C == '+') {
     if (lhs_qt.type().is<type::BufferPointer>() and
         type::IsIntegral(rhs_qt.type())) {
-      return c.context().set_qual_type(node, lhs_qt);
+      return tv.context().set_qual_type(node, lhs_qt);
     } else if (rhs_qt.type().is<type::BufferPointer>() and
                type::IsIntegral(lhs_qt.type())) {
-      return c.context().set_qual_type(node, rhs_qt);
+      return tv.context().set_qual_type(node, rhs_qt);
     }
   }
 
   if constexpr (C == '-') {
     if (lhs_qt.type().is<type::BufferPointer>()) {
       if (type::IsIntegral(rhs_qt.type())) {
-        return c.context().set_qual_type(node, lhs_qt);
+        return tv.context().set_qual_type(node, lhs_qt);
       } else if (lhs_qt.type() == rhs_qt.type()) {
         auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Quals::Ref());
-        return c.context().set_qual_type(
+        return tv.context().set_qual_type(
             node, type::QualType(
-                      type::PointerDifferenceType(c.resources().architecture),
+                      type::PointerDifferenceType(tv.resources().architecture),
                       quals));
       }
     }
@@ -181,30 +182,30 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
 
   // TODO: Calling with constants?
   auto qt = VerifyOperatorOverload<ast::BinaryOperator>(
-      c, node,
+      tv, node,
       type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
                                          lhs_qt.type()),
       type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
                                          rhs_qt.type()));
   if (not qt.ok()) {
-    c.diag().Consume(NoMatchingBinaryOperator{
+    tv.diag().Consume(NoMatchingBinaryOperator{
         .op       = std::string(ast::BinaryOperator::Symbol(node->kind())),
-        .lhs_type = TypeForDiagnostic(&node->lhs(), c.context()),
-        .rhs_type = TypeForDiagnostic(&node->rhs(), c.context()),
+        .lhs_type = TypeForDiagnostic(&node->lhs(), tv.context()),
+        .rhs_type = TypeForDiagnostic(&node->rhs(), tv.context()),
         .view     = SourceViewFor(node),
     });
   }
-  return c.context().set_qual_type(node, qt);
+  return tv.context().set_qual_type(node, qt);
 }
 
 std::optional<std::pair<type::QualType, type::QualType>> VerifyOperands(
-    Compiler &c, ast::BinaryOperator const *node) {
-  auto lhs_qts = c.VerifyType(&node->lhs());
-  auto rhs_qts = c.VerifyType(&node->rhs());
+    TypeVerifier &tv, ast::BinaryOperator const *node) {
+  auto lhs_qts = VerifyType(tv, &node->lhs());
+  auto rhs_qts = VerifyType(tv, &node->rhs());
 
   bool error = false;
   if (lhs_qts.size() != 1) {
-    c.diag().Consume(UnexpandedBinaryOperatorArgument{
+    tv.diag().Consume(UnexpandedBinaryOperatorArgument{
         .num_arguments = lhs_qts.size(),
         .view          = SourceViewFor(&node->lhs()),
     });
@@ -212,7 +213,7 @@ std::optional<std::pair<type::QualType, type::QualType>> VerifyOperands(
   }
 
   if (rhs_qts.size() != 1) {
-    c.diag().Consume(UnexpandedBinaryOperatorArgument{
+    tv.diag().Consume(UnexpandedBinaryOperatorArgument{
         .num_arguments = rhs_qts.size(),
         .view          = SourceViewFor(&node->rhs()),
     });
@@ -228,57 +229,57 @@ std::optional<std::pair<type::QualType, type::QualType>> VerifyOperands(
 
 template <char C>
 absl::Span<type::QualType const> VerifyArithmeticAssignment(
-    Compiler &c, ast::BinaryAssignmentOperator const *node,
+    TypeVerifier &tv, ast::BinaryAssignmentOperator const *node,
     type::QualType lhs_qt, type::QualType rhs_qt) {
   if (type::IsNumeric(lhs_qt.type()) and type::IsNumeric(rhs_qt.type())) {
     if (type::CanCastImplicitly(rhs_qt.type(), lhs_qt.type())) {
-      return c.context().set_qual_types(node, {});
+      return tv.context().set_qual_types(node, {});
     } else {
-      c.diag().Consume(BinaryOperatorTypeMismatch{
+      tv.diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qt.type(),
           .rhs_type = rhs_qt.type(),
           .view     = SourceViewFor(node),
       });
-      return c.context().set_qual_type(node, type::QualType::Error());
+      return tv.context().set_qual_type(node, type::QualType::Error());
     }
   }
 
   if constexpr (C == '+') {
     if (lhs_qt.type().is<type::BufferPointer>() and
         type::IsIntegral(rhs_qt.type())) {
-      return c.context().set_qual_types(node, {});
+      return tv.context().set_qual_types(node, {});
     }
   }
 
   if constexpr (C == '-') {
     if (lhs_qt.type().is<type::BufferPointer>() and
         type::IsIntegral(rhs_qt.type())) {
-      return c.context().set_qual_types(node, {});
+      return tv.context().set_qual_types(node, {});
     }
   }
 
   // TODO: Calling with constants?
   auto qt = VerifyOperatorOverload<ast::BinaryAssignmentOperator>(
-      c, node,
+      tv, node,
       type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
                                          lhs_qt.type()),
       type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
                                          rhs_qt.type()));
   if (not qt.ok()) {
-    c.diag().Consume(NoMatchingBinaryOperator{
+    tv.diag().Consume(NoMatchingBinaryOperator{
         .op = std::string(ast::BinaryAssignmentOperator::Symbol(node->kind())),
-        .lhs_type = TypeForDiagnostic(&node->lhs(), c.context()),
-        .rhs_type = TypeForDiagnostic(&node->rhs(), c.context()),
+        .lhs_type = TypeForDiagnostic(&node->lhs(), tv.context()),
+        .rhs_type = TypeForDiagnostic(&node->rhs(), tv.context()),
         .view     = SourceViewFor(node),
     });
   }
 
-  return c.context().set_qual_type(node, type::QualType::Error());
+  return tv.context().set_qual_type(node, type::QualType::Error());
 }
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::BinaryOperator const *node) {
   auto result = VerifyOperands(*this, node);
   if (not result) {
@@ -387,7 +388,7 @@ absl::Span<type::QualType const> Compiler::VerifyType(
   }
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::BinaryAssignmentOperator const *node) {
   auto result = VerifyOperands(*this, node);
   if (not result) {
@@ -452,14 +453,14 @@ bool Compiler::VerifyPatternType(ast::BinaryOperator const *node,
         if (node->lhs().covers_binding()) {
           NOT_YET();
         } else {
-          VerifyType(&node->lhs());
+          VerifyType(*this, &node->lhs());
           state().EnqueueVerifyPatternMatchType(&node->rhs(), t);
         }
       }
 
       if (node->lhs().covers_binding()) {
         if (node->lhs().covers_binding()) {
-          VerifyType(&node->rhs());
+          VerifyType(*this, &node->rhs());
           state().EnqueueVerifyPatternMatchType(&node->lhs(), t);
         } else {
           NOT_YET();

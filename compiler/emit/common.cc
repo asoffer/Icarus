@@ -12,6 +12,10 @@
 #include "type/typed_value.h"
 
 namespace compiler {
+// TODO: Remove forward declaration.
+absl::Span<type::QualType const> VerifyType(CompilationDataReference data,
+                                            ast::Node const *node);
+
 namespace {
 
 ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
@@ -315,7 +319,7 @@ void EmitArguments(
         buffer.append(*value);
       } else {
         // TODO: It'd be better to simply extract the bound value.
-        c.VerifyType(defaults[i].value);
+        VerifyType(c, defaults[i].value);
         EmitAndCast(c, *defaults[i].value, param.value, buffer);
       }
     } else {
@@ -358,7 +362,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
         copy_assignments;
     for (auto const &field_decl : field_decls) {
       if (not(field_decl.flags() & ast::Declaration::f_IsConst)) { continue; }
-      c.VerifyType(&field_decl);
+      VerifyType(c, &field_decl);
 
       // TODO: Access to init_val is not correct here because that may
       // initialize multiple values.

@@ -1,5 +1,5 @@
 #include "ast/ast.h"
-#include "compiler/compiler.h"
+#include "compiler/verify/verify.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"
 
@@ -21,7 +21,7 @@ bool BodyVerifier::VerifyBody(ast::StructLiteral const *node) {
                   .context = &context(),
               }});
     } else {
-      auto field_qt = Compiler(*this).VerifyType(&field)[0];
+      auto field_qt = VerifyType(*this, &field)[0];
       if (not field_qt.ok()) {
         error = true;
       } else if (field_qt.type().get()->completeness() ==
@@ -38,7 +38,7 @@ bool BodyVerifier::VerifyBody(ast::StructLiteral const *node) {
   return not error;
 }
 
-absl::Span<type::QualType const> Compiler::VerifyType(ast::StructLiteral const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::StructLiteral const *node) {
   LOG("StructLiteral", "Verify type %p %s", node, node->DebugString());
   Enqueue({.kind    = WorkItem::Kind::VerifyStructBody,
            .node    = node,

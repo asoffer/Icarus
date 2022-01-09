@@ -167,7 +167,7 @@ type::QualType VerifyUnaryOverload(
 
 }  // namespace
 
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::UnaryOperator const *node) {
   auto operand_qts = VerifyType(node->operand());
 

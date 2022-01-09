@@ -2,6 +2,7 @@
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
+#include "compiler/verify/verify.h"
 #include "type/qual_type.h"
 #include "type/slice.h"
 
@@ -44,7 +45,7 @@ struct NonTypeSliceTypeMatch {
 }  // namespace
 
 // Verifies that the slice data type expression is a type.
-absl::Span<type::QualType const> Compiler::VerifyType(
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::SliceType const *node) {
   auto quals = type::Quals::Const();
 
