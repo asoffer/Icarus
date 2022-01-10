@@ -84,50 +84,43 @@ void Compiler::EmitCopyAssign(
   builder().Store(EmitAs<ir::Fn>(node), *to[0]);
 }
 
+// TODO: Parameters should be renumbered to not waste space on const values
 bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   LOG("EmitFunctionBody", "%s", node->DebugString());
 
-  ir::NativeFn ir_func = context().FindNativeFn(node);
-  ASSERT(static_cast<bool>(ir_func) == true);
+  ir::NativeFn ir_func = set_builder(node);
 
-  ICARUS_SCOPE(SetCurrent(ir_func, builder())) {
-    builder().CurrentBlock() = builder().CurrentGroup()->entry();
+  size_t i = 0;
+  for (auto const &param : node->params()) {
+    absl::Span<ast::Declaration::Id const> ids = param.value->ids();
+    ASSERT(ids.size() == 1u);
+    state().set_addr(&ids[0], ir::Reg::Arg(i++));
+  }
 
-    // TODO arguments should be renumbered to not waste space on const values
-    size_t i = 0;
-    for (auto const &param : node->params()) {
-      absl::Span<ast::Declaration::Id const> ids = param.value->ids();
-      ASSERT(ids.size() == 1u);
-      state().set_addr(&ids[0], ir::Reg::Arg(i++));
-    }
+  MakeAllStackAllocations(*this, &node->body_scope());
+  if (auto outputs = node->outputs()) {
+    for (size_t i = 0; i < outputs->size(); ++i) {
+      auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
+      if (not out_decl) { continue; }
+      type::Type out_decl_type = context().qual_types(out_decl)[0].type();
+      auto alloc               = out_decl_type.is_big() ? ir::Reg::Out(i)
+                                          : builder().Alloca(out_decl_type);
 
-    MakeAllStackAllocations(*this, &node->body_scope());
-    if (auto outputs = node->outputs()) {
-      for (size_t i = 0; i < outputs->size(); ++i) {
-        auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
-        if (not out_decl) { continue; }
-        type::Type out_decl_type = context().qual_types(out_decl)[0].type();
-        auto alloc               = out_decl_type.is_big() ? ir::Reg::Out(i)
-                                            : builder().Alloca(out_decl_type);
-
-        ASSERT(out_decl->ids().size() == 1u);
-        state().set_addr(&out_decl->ids()[0], alloc);
-        if (out_decl->IsDefaultInitialized()) {
-          EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
-        } else {
-          ir::PartialResultBuffer buffer;
-          EmitToBuffer(out_decl->init_val(), buffer);
-          EmitCopyAssign(
-              type::Typed<ir::RegOr<ir::addr_t>>(alloc, out_decl_type),
-              type::Typed(buffer[0], out_decl_type));
-        }
+      ASSERT(out_decl->ids().size() == 1u);
+      state().set_addr(&out_decl->ids()[0], alloc);
+      if (out_decl->IsDefaultInitialized()) {
+        EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
+      } else {
+        ir::PartialResultBuffer buffer;
+        EmitToBuffer(out_decl->init_val(), buffer);
+        EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(alloc, out_decl_type),
+                       type::Typed(buffer[0], out_decl_type));
       }
     }
-
-    EmitIrForStatements(*this, node->stmts());
-    MakeAllDestructions(*this, &node->body_scope());
-    builder().ReturnJump();
   }
+
+  EmitIrForStatements(*this, &node->body_scope(), node->stmts());
+  builder().ReturnJump();
 
   context().ir().WriteByteCode<EmitByteCode>(ir_func);
   return true;

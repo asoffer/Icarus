@@ -29,9 +29,9 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
   // TODO: It's tricky... on a single expression that gets expanded, we could
   // have both small and big types and we would need to handle both setting
   // registers for small types and writing through them for big ones.
-  ASSERT(
-      node->exprs().size() ==
-      fn_type.return_types().size());  // TODO: For now, assume no actual expansion.
+  ASSERT(node->exprs().size() ==
+         fn_type.return_types()
+             .size());  // TODO: For now, assume no actual expansion.
   for (size_t i = 0; i < node->exprs().size(); ++i) {
     auto const *expr    = node->exprs()[i];
     type::Type ret_type = fn_type.return_types()[i];
@@ -58,14 +58,8 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
   }
 
   DestroyTemporaries();
-
-  // Rather than doing this on each block it'd be better to have each
-  // scope's destructors jump you to the correct next block for destruction.
-  for (auto const &scope : node->scope()->ancestors()) {
-    MakeAllDestructions(*this, &scope);
-    if (scope.is<ast::FnScope>()) { break; }
-  }
-
+  builder().CurrentBlock() = builder().EmitDestructionPath(
+      node->scope(), node->scope()->Containing<ast::FnScope>());
   builder().ReturnJump();
 }
 

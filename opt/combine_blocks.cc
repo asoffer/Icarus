@@ -5,8 +5,8 @@
 #include <utility>
 
 #include "base/log.h"
-#include "compiler/ir_builder.h"
 #include "ir/compiled_fn.h"
+#include "ir/instruction/core.h"
 
 namespace opt {
 
@@ -58,9 +58,7 @@ static void RemoveDeadBlocks(std::queue<ir::BasicBlock*> to_check,
   DeleteBlocks(to_delete, fn);
 }
 
-void CombineBlocksStartingAt(ir::BasicBlock* block) {
-  compiler::IrBuilder bldr;
-
+void CombineBlocksStartingAt(ir::CompiledFn* fn, ir::BasicBlock* block) {
   while (auto* next_block =
              block->jump().Visit([](auto const& j) -> ir::BasicBlock* {
                using type = std::decay_t<decltype(j)>;
@@ -74,14 +72,11 @@ void CombineBlocksStartingAt(ir::BasicBlock* block) {
     if (next_block->incoming().size() != 1) { break; }
     block->Append(std::move(*next_block));
 
-    // TODO should be part of moved-from state.
-    bldr.CurrentBlock() = next_block;
-    bldr.ReturnJump();
+    next_block->set_jump(ir::JumpCmd::Return());
   }
 }
 
 void ReduceEmptyBlocks(ir::CompiledFn* fn) {
-  compiler::IrBuilder bldr;
   auto& mut_blocks = fn->mutable_blocks();
   auto iter        = mut_blocks.begin();
 
@@ -107,10 +102,7 @@ void ReduceEmptyBlocks(ir::CompiledFn* fn) {
       }
     }
 
-    if (block->incoming().empty()) {
-      bldr.CurrentBlock() = block.get();
-      bldr.ReturnJump();
-    }
+    if (block->incoming().empty()) { block->set_jump(ir::JumpCmd::Return()); }
   }
 }
 
@@ -129,12 +121,12 @@ void CombineBlocks(ir::CompiledFn* fn) {
       case 1: {  // case (a).
         auto* inc_block = *block->incoming().begin();
         if (inc_block->jump().kind() == ir::JumpCmd::Kind::Cond) {
-          CombineBlocksStartingAt(inc_block);
+          CombineBlocksStartingAt(fn, inc_block);
         }
       } break;
       default:  // case (b).
         if (block->jump().kind() == ir::JumpCmd::Kind::Uncond) {
-          CombineBlocksStartingAt(block.get());
+          CombineBlocksStartingAt(fn, block.get());
         }
         break;
     }

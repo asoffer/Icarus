@@ -41,44 +41,43 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
   ir::CompiledFn fn(type::Func({}, {}));
   type::Type t = context().LoadType(node);
 
-  ICARUS_SCOPE(SetCurrent(fn, builder())) {
-    builder().CurrentBlock() = fn.entry();
+  set_builder(&fn);
+  builder().CurrentBlock() = fn.entry();
 
-    std::vector<std::string_view> names(node->enumerators().begin(),
-                                        node->enumerators().end());
-    absl::flat_hash_map<uint64_t, ir::RegOr<type::Enum::underlying_type>>
-        specified_values;
+  std::vector<std::string_view> names(node->enumerators().begin(),
+                                      node->enumerators().end());
+  absl::flat_hash_map<uint64_t, ir::RegOr<type::Enum::underlying_type>>
+      specified_values;
 
-    uint64_t i = 0;
-    for (uint64_t i = 0; i < names.size(); ++i) {
-      if (auto iter = node->specified_values().find(names[i]);
-          iter != node->specified_values().end()) {
-        specified_values.emplace(i, EmitWithCastTo<type::Enum::underlying_type>(
-                                        t, iter->second.get()));
-      }
+  uint64_t i = 0;
+  for (uint64_t i = 0; i < names.size(); ++i) {
+    if (auto iter = node->specified_values().find(names[i]);
+        iter != node->specified_values().end()) {
+      specified_values.emplace(i, EmitWithCastTo<type::Enum::underlying_type>(
+                                      t, iter->second.get()));
     }
-
-    // TODO: Find a way around these const casts.
-    switch (node->kind()) {
-      case ast::EnumLiteral::Kind::Enum: {
-        current_block()->Append(type::EnumInstruction{
-            .type              = &const_cast<type::Enum &>(t.as<type::Enum>()),
-            .names_            = std::move(names),
-            .specified_values_ = std::move(specified_values),
-            .result            = builder().CurrentGroup()->Reserve()});
-      } break;
-      case ast::EnumLiteral::Kind::Flags: {
-        current_block()->Append(type::FlagsInstruction{
-            .type   = &const_cast<type::Flags &>(t.as<type::Flags>()),
-            .names_ = std::move(names),
-            .specified_values_ = std::move(specified_values),
-            .result            = builder().CurrentGroup()->Reserve()});
-      } break;
-      default: UNREACHABLE();
-    }
-
-    builder().ReturnJump();
   }
+
+  // TODO: Find a way around these const casts.
+  switch (node->kind()) {
+    case ast::EnumLiteral::Kind::Enum: {
+      current_block()->Append(type::EnumInstruction{
+          .type              = &const_cast<type::Enum &>(t.as<type::Enum>()),
+          .names_            = std::move(names),
+          .specified_values_ = std::move(specified_values),
+          .result            = builder().CurrentGroup()->Reserve()});
+    } break;
+    case ast::EnumLiteral::Kind::Flags: {
+      current_block()->Append(type::FlagsInstruction{
+          .type              = &const_cast<type::Flags &>(t.as<type::Flags>()),
+          .names_            = std::move(names),
+          .specified_values_ = std::move(specified_values),
+          .result            = builder().CurrentGroup()->Reserve()});
+    } break;
+    default: UNREACHABLE();
+  }
+
+  builder().ReturnJump();
 
   InterpretAtCompileTime(fn);
 

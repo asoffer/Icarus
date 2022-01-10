@@ -34,11 +34,22 @@ struct CompilationDataReference {
       : data_(*ASSERT_NOT_NULL(data)) {}
 
   Context &context() const { return *data_.context; }
-  IrBuilder &builder() { return state().builder; };
+  IrBuilder &builder() { return *state().builder; };
   diagnostic::DiagnosticConsumer &diag() const {
     return *data_.resources.diagnostic_consumer;
   }
   ir::BasicBlock *current_block() { return builder().CurrentBlock(); }
+
+  ir::NativeFn set_builder(ast::ParameterizedExpression const *node) {
+    ir::NativeFn ir_func = context().FindNativeFn(node);
+    ASSERT(static_cast<bool>(ir_func) == true);
+    state().builder.emplace(&*ir_func, &node->scope()->as<ast::FnScope>());
+    return ir_func;
+  }
+
+  void set_builder(ir::internal::BlockGroupBase *group) {
+    state().builder.emplace(group, nullptr);
+  }
 
   module::Importer &importer() const { return *data_.resources.importer; }
   TransientState &state() { return data_.state; }

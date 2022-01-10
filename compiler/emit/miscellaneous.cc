@@ -34,21 +34,9 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
                             ir::PartialResultBuffer &out) {
   if (node->hashtags.contains(ir::Hashtag::Const)) {
     if (*EvaluateOrDiagnoseAs<bool>(&node->condition())) {
-      ir::PartialResultBuffer buffer;
-      for (auto const *stmt : node->true_block()) {
-        buffer.clear();
-        EmitToBuffer(stmt, buffer);
-      }
-
-      MakeAllDestructions(*this, &node->true_scope());
+      EmitIrForStatements(*this, &node->true_scope(), node->true_block());
     } else if (node->has_false_block()) {
-      ir::PartialResultBuffer buffer;
-      for (auto const *stmt : node->false_block()) {
-        buffer.clear();
-        EmitToBuffer(stmt, buffer);
-      }
-
-      MakeAllDestructions(*this, &node->false_scope());
+      EmitIrForStatements(*this, &node->false_scope(), node->false_block());
     }
   } else {
     auto *true_block  = builder().CurrentGroup()->AppendBlock();
@@ -62,27 +50,12 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
                        false_block ? false_block : landing);
 
     builder().CurrentBlock() = true_block;
-    ir::PartialResultBuffer buffer;
-    for (auto const *stmt : node->true_block()) {
-      buffer.clear();
-      EmitToBuffer(stmt, buffer);
-    }
-
-    MakeAllDestructions(*this, &node->true_scope());
-    builder().UncondJump(landing);
+    EmitIrForStatements(*this, &node->true_scope(), node->true_block());
 
     if (node->has_false_block()) {
       builder().CurrentBlock() = false_block;
-      for (auto const *stmt : node->false_block()) {
-        buffer.clear();
-        EmitToBuffer(stmt, buffer);
-      }
-
-      MakeAllDestructions(*this, &node->false_scope());
-      builder().UncondJump(landing);
+      EmitIrForStatements(*this, &node->false_scope(), node->false_block());
     }
-
-    builder().CurrentBlock() = landing;
   }
 }
 
@@ -99,8 +72,7 @@ void Compiler::EmitToBuffer(ast::WhileStmt const *node,
   builder().CondJump(condition, body_block, landing);
 
   builder().CurrentBlock() = body_block;
-  EmitIrForStatements(*this, node->body());
-  MakeAllDestructions(*this, &node->body_scope());
+  EmitIrForStatements(*this, &node->body_scope(), node->body());
   builder().UncondJump(start_block);
   builder().CurrentBlock() = landing;
 }

@@ -16,9 +16,7 @@ void Compiler::EmitToBuffer(ast::BlockNode const *node,
     state().set_addr(&param.value->ids()[0], addr);
   }
 
-  EmitIrForStatements(*this, node->stmts());
-  MakeAllDestructions(*this, &node->body_scope());
-  // TODO: Probably just a yield jump.
+  EmitIrForStatements(*this, &node->body_scope(), node->stmts());
 }
 
 }  // namespace compiler

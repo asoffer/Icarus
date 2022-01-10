@@ -84,45 +84,41 @@ void Compiler::EmitCopyAssign(
 }
 
 bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
-  ir::NativeFn ir_func = context().FindNativeFn(node);
-  ASSERT(static_cast<bool>(ir_func) == true);
+  ir::NativeFn ir_func     = set_builder(node);
+  builder().CurrentBlock() = builder().CurrentGroup()->entry();
 
-  ICARUS_SCOPE(SetCurrent(ir_func, builder())) {
-    builder().CurrentBlock() = builder().CurrentGroup()->entry();
-
-    // TODO arguments should be renumbered to not waste space on const values
-    size_t i = 0;
-    for (auto const &param : node->params()) {
-      absl::Span<ast::Declaration::Id const> ids = param.value->ids();
-      ASSERT(ids.size() == 1u);
-      state().set_addr(&ids[0], ir::Reg::Arg(i++));
-    }
-
-    MakeAllStackAllocations(*this, &node->body_scope());
-
-    type::Type ret_type = ir_func.type()->return_types()[0];
-    if (ret_type.is_big()) {
-      type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
-          ir::RegOr<ir::addr_t>(ir::Reg::Out(0)), ret_type);
-      EmitMoveInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
-    } else {
-      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
-                 interface::Interface>(ret_type, [&]<typename T>() {
-        auto value = this->EmitAs<T>(node->body());
-        builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
-            .index = 0,
-            .value = value,
-        });
-      });
-    }
-
-    DestroyTemporaries();
-
-    MakeAllDestructions(*this, &node->body_scope());
-    builder().ReturnJump();
+  // TODO arguments should be renumbered to not waste space on const values
+  size_t i = 0;
+  for (auto const &param : node->params()) {
+    absl::Span<ast::Declaration::Id const> ids = param.value->ids();
+    ASSERT(ids.size() == 1u);
+    state().set_addr(&ids[0], ir::Reg::Arg(i++));
   }
+
+  MakeAllStackAllocations(*this, &node->body_scope());
+
+  type::Type ret_type = ir_func.type()->return_types()[0];
+  if (ret_type.is_big()) {
+    type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
+        ir::RegOr<ir::addr_t>(ir::Reg::Out(0)), ret_type);
+    EmitMoveInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
+  } else {
+    ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+               uint16_t, uint32_t, uint64_t, float, double, type::Type,
+               ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
+               interface::Interface>(ret_type, [&]<typename T>() {
+      auto value = this->EmitAs<T>(node->body());
+      builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
+          .index = 0,
+          .value = value,
+      });
+    });
+  }
+
+  DestroyTemporaries();
+
+  MakeAllDestructions(*this, &node->body_scope());
+  builder().ReturnJump();
 
   context().ir().WriteByteCode<EmitByteCode>(ir_func);
   return true;

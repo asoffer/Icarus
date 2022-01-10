@@ -46,35 +46,33 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
   LOG("MakeThunk", "Thunk for %s: %s %p", expr->DebugString(), type.to_string(),
       &c.context());
   ir::CompiledFn fn(type::Func({}, {type}));
-  ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
-    // TODO this is essentially a copy of the body of
-    // FunctionLiteral::EmitToBuffer Factor these out together.
-    c.builder().CurrentBlock() = fn.entry();
+  c.set_builder(&fn);
+  // TODO this is essentially a copy of the body of
+  // FunctionLiteral::EmitToBuffer Factor these out together.
+  c.builder().CurrentBlock() = fn.entry();
 
-    ir::PartialResultBuffer buffer;
-    c.EmitToBuffer(expr, buffer);
+  ir::PartialResultBuffer buffer;
+  c.EmitToBuffer(expr, buffer);
 
-    // TODO: Treating slices specially is a big hack. We need to fix treating
-    // these things special just because they're big.
-    if (type.is_big()) {
-      ASSERT(buffer.num_entries() != 0);
-      // TODO: guaranteed move-elision
-      c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), type), buffer);
-    } else {
-      ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
-                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::GenericFn, ir::UnboundScope, ir::ScopeContext, ir::Block,
-                 interface::Interface>(
-          type, [&]<typename T>() {
-            c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
-                .index = 0,
-                .value = buffer.get<T>(0),
-            });
-          });
-    }
-    c.builder().ReturnJump();
+  // TODO: Treating slices specially is a big hack. We need to fix treating
+  // these things special just because they're big.
+  if (type.is_big()) {
+    ASSERT(buffer.num_entries() != 0);
+    // TODO: guaranteed move-elision
+    c.EmitMoveInit(type::Typed<ir::Reg>(ir::Reg::Out(0), type), buffer);
+  } else {
+    ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
+               uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
+               ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
+               ir::UnboundScope, ir::ScopeContext, ir::Block,
+               interface::Interface>(type, [&]<typename T>() {
+      c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
+          .index = 0,
+          .value = buffer.get<T>(0),
+      });
+    });
   }
+  c.builder().ReturnJump();
   LOG("MakeThunk", "%s", fn);
 
   return std::pair(std::move(fn), EmitByteCode(fn));
@@ -116,8 +114,8 @@ std::optional<ir::CompiledFn> CompileExecutable(
   bool success = w.ExecuteCompilationSequence(
       context, nodes,
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        if (not VerifyNodesSatisfying(IsConstantDeclaration, context, w,
-                                      nodes, true)) {
+        if (not VerifyNodesSatisfying(IsConstantDeclaration, context, w, nodes,
+                                      true)) {
           return false;
         }
         return VerifyNodesSatisfying(IsNotConstantDeclaration, context, w,
@@ -128,18 +126,14 @@ std::optional<ir::CompiledFn> CompileExecutable(
                              .work_resources = w.work_resources(),
                              .resources      = w.resources()};
         Compiler c(&data);
-        ICARUS_SCOPE(SetCurrent(f, c.builder())) {
-          if (nodes.empty()) {
-            EmitIrForStatements(c, nodes);
-          } else {
-            ast::ModuleScope const &mod_scope = w.resources().module->scope();
-            MakeAllStackAllocations(c, &mod_scope);
-            EmitIrForStatements(c, nodes);
-            MakeAllDestructions(c, &mod_scope);
-            // TODO determine under which scenarios destructors can be skipped.
-          }
-          c.builder().ReturnJump();
+        c.set_builder(&f);
+        if (not nodes.empty()) {
+          ast::ModuleScope const &mod_scope = w.resources().module->scope();
+          MakeAllStackAllocations(c, &mod_scope);
+          EmitIrForStatements(c, &mod_scope, nodes);
         }
+        c.builder().ReturnJump();
+
         return true;
       });
   if (not success) { return std::nullopt; }

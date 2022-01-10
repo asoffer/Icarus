@@ -21,35 +21,34 @@ namespace {
 ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveInit(s, s);
   if (inserted) {
-    ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
-      c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
+    c.set_builder(&*fn);
+    c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
-      auto from = ir::Reg::Arg(0);
-      auto to   = ir::Reg::Out(0);
+    auto from = ir::Reg::Arg(0);
+    auto to   = ir::Reg::Out(0);
 
-      size_t i = 0;
-      for (auto const &field : s->fields()) {
-        auto to_ref =
-            c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
-                .addr        = to,
-                .index       = i,
-                .struct_type = s,
-                .result      = c.builder().CurrentGroup()->Reserve()});
-        auto from_val =
-            c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
-                .addr        = from,
-                .index       = i,
-                .struct_type = s,
-                .result      = c.builder().CurrentGroup()->Reserve()});
+    size_t i = 0;
+    for (auto const &field : s->fields()) {
+      auto to_ref =
+          c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+              .addr        = to,
+              .index       = i,
+              .struct_type = s,
+              .result      = c.builder().CurrentGroup()->Reserve()});
+      auto from_val =
+          c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+              .addr        = from,
+              .index       = i,
+              .struct_type = s,
+              .result      = c.builder().CurrentGroup()->Reserve()});
 
-        ir::RegOr<ir::addr_t> r(c.builder().PtrFix(from_val, field.type));
-        ir::PartialResultBuffer buffer;
-        buffer.append(r);
-        c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
-        ++i;
-      }
-      c.builder().ReturnJump();
+      ir::RegOr<ir::addr_t> r(c.builder().PtrFix(from_val, field.type));
+      ir::PartialResultBuffer buffer;
+      buffer.append(r);
+      c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
+      ++i;
     }
+    c.builder().ReturnJump();
     c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
@@ -70,34 +69,33 @@ ir::OutParams SetReturns(
 ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyInit(s, s);
   if (inserted) {
-    ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
-      c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
+    c.set_builder(&*fn);
+    c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
-      auto from = ir::Reg::Arg(0);
-      auto to   = ir::Reg::Out(0);
+    auto from = ir::Reg::Arg(0);
+    auto to   = ir::Reg::Out(0);
 
-      size_t i = 0;
-      for (auto const &field : s->fields()) {
-        auto to_ref =
-            c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
-                .addr        = to,
-                .index       = i,
-                .struct_type = s,
-                .result      = c.builder().CurrentGroup()->Reserve()});
-        auto from_val =
-            c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
-                .addr        = from,
-                .index       = i,
-                .struct_type = s,
-                .result      = c.builder().CurrentGroup()->Reserve()});
+    size_t i = 0;
+    for (auto const &field : s->fields()) {
+      auto to_ref =
+          c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+              .addr        = to,
+              .index       = i,
+              .struct_type = s,
+              .result      = c.builder().CurrentGroup()->Reserve()});
+      auto from_val =
+          c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+              .addr        = from,
+              .index       = i,
+              .struct_type = s,
+              .result      = c.builder().CurrentGroup()->Reserve()});
 
-        ir::PartialResultBuffer buffer;
-        buffer.append(c.builder().PtrFix(from_val, field.type));
-        c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
-        ++i;
-      }
-      c.builder().ReturnJump();
+      ir::PartialResultBuffer buffer;
+      buffer.append(c.builder().PtrFix(from_val, field.type));
+      c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
+      ++i;
     }
+    c.builder().ReturnJump();
     c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
@@ -106,32 +104,31 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
 ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveAssign(s, s);
   if (inserted) {
-    ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
-      c.builder().CurrentBlock() = fn->entry();
-      auto var                   = ir::Reg::Arg(0);
-      auto val                   = ir::Reg::Arg(1);
+    c.set_builder(&*fn);
+    c.builder().CurrentBlock() = fn->entry();
+    auto var                   = ir::Reg::Arg(0);
+    auto val                   = ir::Reg::Arg(1);
 
-      for (size_t i = 0; i < s->fields().size(); ++i) {
-        ir::Reg to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
-            .addr        = var,
-            .index       = i,
-            .struct_type = s,
-            .result      = c.builder().CurrentGroup()->Reserve()});
-        ir::Reg from_ref = c.current_block()->Append(ir::StructIndexInstruction{
-            .addr        = val,
-            .index       = i,
-            .struct_type = s,
-            .result      = c.builder().CurrentGroup()->Reserve()});
+    for (size_t i = 0; i < s->fields().size(); ++i) {
+      ir::Reg to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = var,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.builder().CurrentGroup()->Reserve()});
+      ir::Reg from_ref = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = val,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.builder().CurrentGroup()->Reserve()});
 
-        ir::PartialResultBuffer buffer;
-        buffer.append(c.builder().PtrFix(from_ref, s->fields()[i].type));
-        c.EmitCopyAssign(
-            type::Typed<ir::RegOr<ir::addr_t>>(to_ref, s->fields()[i].type),
-            type::Typed(buffer[0], s->fields()[i].type));
-      }
-
-      c.builder().ReturnJump();
+      ir::PartialResultBuffer buffer;
+      buffer.append(c.builder().PtrFix(from_ref, s->fields()[i].type));
+      c.EmitCopyAssign(
+          type::Typed<ir::RegOr<ir::addr_t>>(to_ref, s->fields()[i].type),
+          type::Typed(buffer[0], s->fields()[i].type));
     }
+
+    c.builder().ReturnJump();
     c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
@@ -140,31 +137,30 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
 ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyAssign(s, s);
   if (inserted) {
-    ICARUS_SCOPE(SetCurrent(fn, c.builder())) {
-      c.builder().CurrentBlock() = fn->entry();
-      auto var                   = ir::Reg::Arg(0);
-      auto val                   = ir::Reg::Arg(1);
+    c.set_builder(&*fn);
+    c.builder().CurrentBlock() = fn->entry();
+    auto var                   = ir::Reg::Arg(0);
+    auto val                   = ir::Reg::Arg(1);
 
-      for (size_t i = 0; i < s->fields().size(); ++i) {
-        ir::Reg to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
-            .addr        = var,
-            .index       = i,
-            .struct_type = s,
-            .result      = c.builder().CurrentGroup()->Reserve()});
-        ir::Reg from_ref = c.current_block()->Append(ir::StructIndexInstruction{
-            .addr        = val,
-            .index       = i,
-            .struct_type = s,
-            .result      = c.builder().CurrentGroup()->Reserve()});
-        ir::PartialResultBuffer buffer;
-        buffer.append(c.builder().PtrFix(from_ref, s->fields()[i].type));
-        c.EmitCopyAssign(
-            type::Typed<ir::RegOr<ir::addr_t>>(to_ref, s->fields()[i].type),
-            type::Typed(buffer[0], s->fields()[i].type));
-      }
-
-      c.builder().ReturnJump();
+    for (size_t i = 0; i < s->fields().size(); ++i) {
+      ir::Reg to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = var,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.builder().CurrentGroup()->Reserve()});
+      ir::Reg from_ref = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = val,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.builder().CurrentGroup()->Reserve()});
+      ir::PartialResultBuffer buffer;
+      buffer.append(c.builder().PtrFix(from_ref, s->fields()[i].type));
+      c.EmitCopyAssign(
+          type::Typed<ir::RegOr<ir::addr_t>>(to_ref, s->fields()[i].type),
+          type::Typed(buffer[0], s->fields()[i].type));
     }
+
+    c.builder().ReturnJump();
     c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
@@ -346,125 +342,122 @@ std::optional<ir::CompiledFn> StructCompletionFn(
   ASSERT(s->completeness() == type::Completeness::DataComplete);
 
   ir::CompiledFn fn(type::Func({}, {}));
-  ICARUS_SCOPE(SetCurrent(fn, data.builder())) {
-    Compiler c(data);
-    // TODO this is essentially a copy of the body of
-    // FunctionLiteral::EmitToBuffer. Factor these out together.
-    data.builder().CurrentBlock() = fn.entry();
+  data.set_builder(&fn);
+  Compiler c(data);
+  // TODO this is essentially a copy of the body of
+  // FunctionLiteral::EmitToBuffer. Factor these out together.
+  data.builder().CurrentBlock() = fn.entry();
 
-    std::vector<type::StructInstruction::Field> constants;
-    bool needs_dtor = false;
-    for (auto const &field : s->fields()) {
-      needs_dtor = needs_dtor or field.type.get()->HasDestructor();
-    }
-
-    std::optional<ir::Fn> user_dtor;
-    std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
-        copy_assignments;
-    for (auto const &field_decl : field_decls) {
-      if (not(field_decl.flags() & ast::Declaration::f_IsConst)) { continue; }
-      VerifyType(data, &field_decl);
-
-      // TODO: Access to init_val is not correct here because that may
-      // initialize multiple values.
-      for (auto const &id : field_decl.ids()) {
-        // TODO: handle potential errors on each of these.
-        if (id.name() == "destroy") {
-          user_dtor = c.EmitAs<ir::Fn>(id.declaration().init_val()).value();
-        } else if (id.name() == "move") {
-          auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
-          switch (f.value().type()->params().size()) {
-            case 1: move_inits.push_back(f.value()); break;
-            case 2: move_assignments.push_back(f.value()); break;
-            default: UNREACHABLE();
-          }
-        } else if (id.name() == "copy") {
-          auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
-          switch (f.value().type()->params().size()) {
-            case 1: copy_inits.push_back(f.value()); break;
-            case 2: copy_assignments.push_back(f.value()); break;
-            default: UNREACHABLE();
-          }
-        } else {
-          if (auto const *init_val = id.declaration().init_val()) {
-            // TODO init_val type may not be the same.
-            type::Type field_type = data.context().qual_types(init_val)[0].type();
-
-            ASSIGN_OR(NOT_YET(),  //
-                      auto result,
-                      data.EvaluateToBufferOrDiagnose(
-                          type::Typed(init_val, field_type)));
-
-            constants.emplace_back(id.name(), field_type, std::move(result))
-                .set_export(
-                    id.declaration().hashtags.contains(ir::Hashtag::Export));
-          } else {
-            // TODO: Failed evaluation
-            // TODO: Type expression actually refers potentially to multiple
-            // declaration ids.
-            type::Type field_type =
-                data.EvaluateOrDiagnoseAs<type::Type>(id.declaration().type_expr())
-                    .value();
-            constants.emplace_back(id.name(), field_type)
-                .set_export(
-                    id.declaration().hashtags.contains(ir::Hashtag::Export));
-          }
-        }
-      }
-    }
-
-    std::optional<ir::Fn> dtor;
-    if (needs_dtor) {
-      auto [full_dtor, inserted] = data.context().ir().InsertDestroy(s);
-      if (inserted) {
-        ICARUS_SCOPE(SetCurrent(full_dtor, data.builder())) {
-          data.builder().CurrentBlock() = data.builder().CurrentGroup()->entry();
-          auto var                   = ir::Reg::Arg(0);
-          if (user_dtor) {
-            // TODO: Should probably force-inline this.
-            ir::PartialResultBuffer args;
-            args.append(var);
-            // TODO: Constants
-            data.builder().Call(*user_dtor, full_dtor.type(), std::move(args),
-                             ir::OutParams());
-          }
-          for (int i = s->fields().size() - 1; i >= 0; --i) {
-            // TODO: Avoid emitting IR if the type doesn't need to be
-            // destroyed.
-            c.EmitDestroy(
-                type::Typed<ir::Reg>(data.builder().FieldRef(var, s, i)));
-          }
-
-          data.builder().ReturnJump();
-          data.context().ir().WriteByteCode<EmitByteCode>(full_dtor);
-
-          dtor = full_dtor;
-        }
-      }
-    } else {
-      if (user_dtor) { dtor = *user_dtor; }
-    }
-
-    if (move_inits.empty() and copy_inits.empty()) {
-      move_inits.push_back(InsertGeneratedMoveInit(c, s));
-      copy_inits.push_back(InsertGeneratedCopyInit(c, s));
-    }
-
-    if (move_assignments.empty() and copy_assignments.empty()) {
-      move_assignments.push_back(InsertGeneratedMoveAssign(c, s));
-      copy_assignments.push_back(InsertGeneratedCopyAssign(c, s));
-    }
-
-    data.current_block()->Append(
-        type::StructInstruction{.struct_          = s,
-                                .constants        = std::move(constants),
-                                .move_inits       = std::move(move_inits),
-                                .copy_inits       = std::move(copy_inits),
-                                .move_assignments = std::move(move_assignments),
-                                .copy_assignments = std::move(copy_assignments),
-                                .dtor             = dtor});
-    data.builder().ReturnJump();
+  std::vector<type::StructInstruction::Field> constants;
+  bool needs_dtor = false;
+  for (auto const &field : s->fields()) {
+    needs_dtor = needs_dtor or field.type.get()->HasDestructor();
   }
+
+  std::optional<ir::Fn> user_dtor;
+  std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
+      copy_assignments;
+  for (auto const &field_decl : field_decls) {
+    if (not(field_decl.flags() & ast::Declaration::f_IsConst)) { continue; }
+    VerifyType(data, &field_decl);
+
+    // TODO: Access to init_val is not correct here because that may
+    // initialize multiple values.
+    for (auto const &id : field_decl.ids()) {
+      // TODO: handle potential errors on each of these.
+      if (id.name() == "destroy") {
+        user_dtor = c.EmitAs<ir::Fn>(id.declaration().init_val()).value();
+      } else if (id.name() == "move") {
+        auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
+        switch (f.value().type()->params().size()) {
+          case 1: move_inits.push_back(f.value()); break;
+          case 2: move_assignments.push_back(f.value()); break;
+          default: UNREACHABLE();
+        }
+      } else if (id.name() == "copy") {
+        auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
+        switch (f.value().type()->params().size()) {
+          case 1: copy_inits.push_back(f.value()); break;
+          case 2: copy_assignments.push_back(f.value()); break;
+          default: UNREACHABLE();
+        }
+      } else {
+        if (auto const *init_val = id.declaration().init_val()) {
+          // TODO init_val type may not be the same.
+          type::Type field_type = data.context().qual_types(init_val)[0].type();
+
+          ASSIGN_OR(NOT_YET(),  //
+                    auto result,
+                    data.EvaluateToBufferOrDiagnose(
+                        type::Typed(init_val, field_type)));
+
+          constants.emplace_back(id.name(), field_type, std::move(result))
+              .set_export(
+                  id.declaration().hashtags.contains(ir::Hashtag::Export));
+        } else {
+          // TODO: Failed evaluation
+          // TODO: Type expression actually refers potentially to multiple
+          // declaration ids.
+          type::Type field_type = data.EvaluateOrDiagnoseAs<type::Type>(
+                                          id.declaration().type_expr())
+                                      .value();
+          constants.emplace_back(id.name(), field_type)
+              .set_export(
+                  id.declaration().hashtags.contains(ir::Hashtag::Export));
+        }
+      }
+    }
+  }
+
+  std::optional<ir::Fn> dtor;
+  if (needs_dtor) {
+    auto [full_dtor, inserted] = data.context().ir().InsertDestroy(s);
+    if (inserted) {
+      data.set_builder(&*full_dtor);
+      data.builder().CurrentBlock() = data.builder().CurrentGroup()->entry();
+      auto var                      = ir::Reg::Arg(0);
+      if (user_dtor) {
+        // TODO: Should probably force-inline this.
+        ir::PartialResultBuffer args;
+        args.append(var);
+        // TODO: Constants
+        data.builder().Call(*user_dtor, full_dtor.type(), std::move(args),
+                            ir::OutParams());
+      }
+      for (int i = s->fields().size() - 1; i >= 0; --i) {
+        // TODO: Avoid emitting IR if the type doesn't need to be
+        // destroyed.
+        c.EmitDestroy(type::Typed<ir::Reg>(data.builder().FieldRef(var, s, i)));
+      }
+
+      data.builder().ReturnJump();
+      data.context().ir().WriteByteCode<EmitByteCode>(full_dtor);
+
+      dtor = full_dtor;
+    }
+  } else {
+    if (user_dtor) { dtor = *user_dtor; }
+  }
+
+  if (move_inits.empty() and copy_inits.empty()) {
+    move_inits.push_back(InsertGeneratedMoveInit(c, s));
+    copy_inits.push_back(InsertGeneratedCopyInit(c, s));
+  }
+
+  if (move_assignments.empty() and copy_assignments.empty()) {
+    move_assignments.push_back(InsertGeneratedMoveAssign(c, s));
+    copy_assignments.push_back(InsertGeneratedCopyAssign(c, s));
+  }
+
+  data.current_block()->Append(
+      type::StructInstruction{.struct_          = s,
+                              .constants        = std::move(constants),
+                              .move_inits       = std::move(move_inits),
+                              .copy_inits       = std::move(copy_inits),
+                              .move_assignments = std::move(move_assignments),
+                              .copy_assignments = std::move(copy_assignments),
+                              .dtor             = dtor});
+  data.builder().ReturnJump();
 
   return fn;
 }
@@ -524,9 +517,8 @@ void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
   }
 }
 
-// TODO One problem with this setup is that we don't end up calling destructors
-// if we exit early, so those need to be handled externally.
-void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
+void EmitIrForStatements(Compiler &c, ast::Scope const *scope,
+                         base::PtrSpan<ast::Node const> stmts) {
   std::vector<type::Typed<ir::Reg>> temporaries =
       std::exchange(c.state().temporaries_to_destroy, {});
   absl::Cleanup cleanup = [&] {
@@ -542,6 +534,8 @@ void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
     LOG("EmitIrForStatements", "%p %s", c.builder().CurrentBlock(),
         *c.builder().CurrentGroup());
   }
+
+  c.builder().CurrentBlock() = c.builder().EmitDestructionPath(scope, scope);
 }
 
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,

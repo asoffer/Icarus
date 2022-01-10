@@ -47,19 +47,6 @@ ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
   }
 }
 
-SetCurrent::SetCurrent(ir::internal::BlockGroupBase &group, IrBuilder &builder)
-    : builder_(builder),
-      old_group_(builder_.CurrentGroup()),
-      old_block_(builder_.CurrentBlock()) {
-  builder_.CurrentGroup()  = &group;
-  builder_.current_.block_ = group.entry();
-}
-
-SetCurrent::~SetCurrent() {
-  builder_.CurrentGroup()                    = old_group_;
-  builder_.CurrentBlock()                    = old_block_;
-}
-
 ir::Reg IrBuilder::Alloca(type::Type t) { return CurrentGroup()->Alloca(t); }
 
 void IrBuilder::Call(ir::RegOr<ir::Fn> const &fn, type::Function const *f,
@@ -159,6 +146,11 @@ type::Typed<ir::Reg> IrBuilder::FieldRef(ir::RegOr<ir::addr_t> r,
   CurrentBlock()->Append(ir::StructIndexInstruction{
       .addr = r, .index = n, .struct_type = t, .result = result});
   return type::Typed<ir::Reg>(result, t->fields()[n].type);
+}
+
+ir::BasicBlock *IrBuilder::EmitDestructionPath(ast::Scope const *from,
+                                               ast::Scope const *to) {
+  return nullptr;
 }
 
 }  // namespace compiler

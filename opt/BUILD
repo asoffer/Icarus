@@ -6,7 +6,7 @@ cc_library(
     srcs = ["combine_blocks.cc"],
     deps = [
         "//base:log",
-        "//compiler:ir_builder",
+        "//ir/instruction:core",
         "//ir:compiled_fn",
     ],
 )

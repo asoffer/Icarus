@@ -27,7 +27,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope);
 
 // Emits IR for each statement in `stmts`.
-void EmitIrForStatements(Compiler &compiler,
+void EmitIrForStatements(Compiler &compiler, ast::Scope const *scope,
                          base::PtrSpan<ast::Node const> stmts);
 
 // Inserts all destructor calls in this scope.

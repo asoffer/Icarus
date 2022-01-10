@@ -58,32 +58,26 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
   out.append(ir::UnboundScope(&scope_data.front()));
 }
 
+// TODO: Parameters should be renumbered to not waste space on const values
 bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
   LOG("EmitScopeBody", "Scope %s", node->DebugString());
   ir::Scope ir_scope = context().FindScope(node);
   state().scopes.push_back(ir_scope);
   absl::Cleanup cleanup = [&] { state().scopes.pop_back(); };
 
-  ICARUS_SCOPE(SetCurrent(*ir_scope, builder())) {
-    builder().CurrentBlock() = ir_scope->entry();
+  set_builder(&*ir_scope);
+  builder().CurrentBlock() = ir_scope->entry();
 
-    // TODO arguments should be renumbered to not waste space on const values
-    size_t i = 0;
-    for (auto const &param : node->params()) {
-      absl::Span<ast::Declaration::Id const> ids = param.value->ids();
-      ASSERT(ids.size() == 1u);
-      state().set_addr(&ids[0], ir::Reg::Arg(i++));
-    }
-
-    MakeAllStackAllocations(*this, &node->body_scope());
-    EmitIrForStatements(*this, node->stmts());
-
-    // TODO: Destructors are significantly more complicated than this because we
-    // need to ensure we call them even on paths that exit scopes without
-    // computing values.
-    MakeAllDestructions(*this, &node->body_scope());
-    builder().ReturnJump();
+  size_t i = 0;
+  for (auto const &param : node->params()) {
+    absl::Span<ast::Declaration::Id const> ids = param.value->ids();
+    ASSERT(ids.size() == 1u);
+    state().set_addr(&ids[0], ir::Reg::Arg(i++));
   }
+
+  MakeAllStackAllocations(*this, &node->body_scope());
+  EmitIrForStatements(*this, &node->body_scope(), node->stmts());
+  builder().ReturnJump();
 
   return true;
 }

@@ -181,14 +181,12 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
   auto [fn, inserted] = context().ir().InsertInit(r.type());
   if (inserted) {
-    ICARUS_SCOPE(SetCurrent(fn, builder())) {
-      builder().CurrentBlock() = fn->entry();
-      OnEachArrayElement(
-          builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
-            EmitDefaultInit(type::Typed<ir::Reg>(reg, r.type()->data_type()));
-          });
-      builder().ReturnJump();
-    }
+    set_builder(&*fn);
+    builder().CurrentBlock() = fn->entry();
+    OnEachArrayElement(builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
+      EmitDefaultInit(type::Typed<ir::Reg>(reg, r.type()->data_type()));
+    });
+    builder().ReturnJump();
     context().ir().WriteByteCode<EmitByteCode>(fn);
     // TODO: Remove const_cast.
     const_cast<type::Array *>(r.type())->SetInitializer(fn);
@@ -201,14 +199,12 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
   if (not r.type()->HasDestructor()) { return; }
   auto [fn, inserted] = context().ir().InsertDestroy(r.type());
   if (inserted) {
-    ICARUS_SCOPE(SetCurrent(fn, builder())) {
-      builder().CurrentBlock() = fn->entry();
-      OnEachArrayElement(
-          builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
-            EmitDestroy(type::Typed<ir::Reg>(reg, r.type()->data_type()));
-          });
-      builder().ReturnJump();
-    }
+    set_builder(&*fn);
+    builder().CurrentBlock() = fn->entry();
+    OnEachArrayElement(builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
+      EmitDestroy(type::Typed<ir::Reg>(reg, r.type()->data_type()));
+    });
+    builder().ReturnJump();
     context().ir().WriteByteCode<EmitByteCode>(fn);
     // TODO: Remove const_cast.
     const_cast<type::Array *>(r.type())->SetDestructor(fn);
@@ -223,12 +219,11 @@ void SetArrayInits(Compiler &c, type::Array const *array_type) {
       c.context().ir().InsertMoveInit(array_type, array_type);
   ASSERT(copy_inserted == move_inserted);
   if (copy_inserted) {
-    ICARUS_SCOPE(SetCurrent(copy_fn, c.builder())) {
-      EmitArrayInit<Copy>(c, array_type, array_type);
-    }
-    ICARUS_SCOPE(SetCurrent(move_fn, c.builder())) {
-      EmitArrayInit<Move>(c, array_type, array_type);
-    }
+    c.set_builder(&*copy_fn);
+    EmitArrayInit<Copy>(c, array_type, array_type);
+
+    c.set_builder(&*move_fn);
+    EmitArrayInit<Move>(c, array_type, array_type);
 
     c.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
     c.context().ir().WriteByteCode<EmitByteCode>(move_fn);
@@ -244,12 +239,11 @@ void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
       c.context().ir().InsertMoveAssign(array_type, array_type);
   ASSERT(copy_inserted == move_inserted);
   if (copy_inserted) {
-    ICARUS_SCOPE(SetCurrent(copy_fn, c.builder())) {
-      EmitArrayAssignment<Copy>(c, array_type, array_type);
-    }
-    ICARUS_SCOPE(SetCurrent(move_fn, c.builder())) {
-      EmitArrayAssignment<Move>(c, array_type, array_type);
-    }
+    c.set_builder(&*copy_fn);
+    EmitArrayAssignment<Copy>(c, array_type, array_type);
+
+    c.set_builder(&*move_fn);
+    EmitArrayAssignment<Move>(c, array_type, array_type);
 
     c.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
     c.context().ir().WriteByteCode<EmitByteCode>(move_fn);
@@ -443,23 +437,22 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
   auto [fn, inserted] = context().ir().InsertInit(r.type());
   if (inserted) {
-    ICARUS_SCOPE(SetCurrent(fn, builder())) {
-      builder().CurrentBlock() = builder().CurrentGroup()->entry();
-      auto var                 = ir::Reg::Arg(0);
+    set_builder(&*fn);
+    builder().CurrentBlock() = builder().CurrentGroup()->entry();
+    auto var                 = ir::Reg::Arg(0);
 
-      for (size_t i = 0; i < r.type()->fields().size(); ++i) {
-        auto &field = r.type()->fields()[i];
-        if (not field.initial_value.empty()) {
-          EmitCopyInit(builder().FieldRef(var, r.type(), i),
-                       field.initial_value);
-        } else {
-          EmitDefaultInit(
-              type::Typed<ir::Reg>(builder().FieldRef(var, r.type(), i)));
-        }
+    for (size_t i = 0; i < r.type()->fields().size(); ++i) {
+      auto &field = r.type()->fields()[i];
+      if (not field.initial_value.empty()) {
+        EmitCopyInit(builder().FieldRef(var, r.type(), i), field.initial_value);
+      } else {
+        EmitDefaultInit(
+            type::Typed<ir::Reg>(builder().FieldRef(var, r.type(), i)));
       }
-
-      builder().ReturnJump();
     }
+
+    builder().ReturnJump();
+
     // TODO: Remove this hack.
     const_cast<type::Struct *>(r.type())->init_ = fn;
     context().ir().WriteByteCode<EmitByteCode>(fn);

@@ -43,9 +43,18 @@ namespace compiler {
 // approach by carrying around extra state (like loads/store-caching).
 
 struct IrBuilder {
+  explicit IrBuilder(ir::internal::BlockGroupBase* group,
+                     ast::FnScope const* fn_scope)
+      : group_(ASSERT_NOT_NULL(group)) {
+    CurrentBlock() = group_->entry();
+  }
+
+  ir::BasicBlock* EmitDestructionPath(ast::Scope const* from,
+                                      ast::Scope const* to);
+
   ir::Reg Reserve() { return CurrentGroup()->Reserve(); }
 
-  ir::internal::BlockGroupBase*& CurrentGroup() { return current_.group_; }
+  ir::internal::BlockGroupBase*& CurrentGroup() { return group_; }
   ir::BasicBlock*& CurrentBlock() { return current_.block_; }
 
   template <typename T>
@@ -383,25 +392,11 @@ struct IrBuilder {
         .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
-  friend struct SetCurrent;
-
   struct State {
-    ir::internal::BlockGroupBase* group_ = nullptr;
     ir::BasicBlock* block_;
   } current_;
 
-};
-
-struct SetCurrent : base::UseWithScope {
-  explicit SetCurrent(ir::internal::BlockGroupBase& fn, IrBuilder& builder);
-  explicit SetCurrent(ir::NativeFn fn, IrBuilder& builder)
-      : SetCurrent(*fn, builder) {}
-  ~SetCurrent();
-
- private:
-  IrBuilder& builder_;
-  ir::internal::BlockGroupBase* old_group_;
-  ir::BasicBlock* old_block_;
+  ir::internal::BlockGroupBase* group_;
 };
 
 ir::Reg RegisterReferencing(IrBuilder& builder, type::Type t,
