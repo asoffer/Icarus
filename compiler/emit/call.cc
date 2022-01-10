@@ -38,7 +38,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
                         .type()
                         .as<type::BufferPointer>()
                         .pointee());
-      auto slice = c.builder().TmpAlloca(slice_type);
+      auto slice = c.state().TmpAlloca(slice_type);
 
       // TODO: These have the wrong types, or at least these types are not the
       // types of the values held, but that's what's expected by EmitMoveAssign.
@@ -112,7 +112,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
 
     case ir::BuiltinFn::Which::Bytes: {
       auto const &fn_type = *ir::Fn(ir::BuiltinFn::Bytes()).type();
-      ir::OutParams outs  = c.builder().OutParams(fn_type.return_types());
+      ir::OutParams outs  = c.OutParams(fn_type.return_types());
       ir::Reg reg         = outs[0];
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(&args[0].expr(), buffer);
@@ -126,7 +126,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
     case ir::BuiltinFn::Which::Alignment: {
       // TODO: Return an integer
       auto const &fn_type = *ir::Fn(ir::BuiltinFn::Alignment()).type();
-      ir::OutParams outs  = c.builder().OutParams(fn_type.return_types());
+      ir::OutParams outs  = c.OutParams(fn_type.return_types());
       ir::Reg reg         = outs[0];
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(&args[0].expr(), buffer);
@@ -177,7 +177,7 @@ void Compiler::EmitToBuffer(ast::Call const *node,
   std::vector<type::Typed<ir::RegOr<ir::addr_t>>> outs;
   outs.reserve(qts.size());
   for (type::QualType const &qt : qts) {
-    outs.emplace_back(builder().TmpAlloca(qt.type()), qt.type());
+    outs.emplace_back(state().TmpAlloca(qt.type()), qt.type());
   }
 
   EmitCall(*this, context().CallMetadata(node).resolved(), constant_arguments,

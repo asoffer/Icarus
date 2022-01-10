@@ -43,10 +43,6 @@ namespace compiler {
 // approach by carrying around extra state (like loads/store-caching).
 
 struct IrBuilder {
-  ir::OutParams OutParams(
-      absl::Span<type::Type const> types,
-      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to = {});
-
   ir::Reg Reserve() { return CurrentGroup()->Reserve(); }
 
   ir::internal::BlockGroupBase*& CurrentGroup() { return current_.group_; }
@@ -63,11 +59,6 @@ struct IrBuilder {
 
   template <typename T>
   using reduced_type_t = typename reduced_type<T>::type;
-
-  void ApplyImplicitCasts(type::Type from, type::QualType to,
-                          ir::PartialResultBuffer& buffer);
-  void ApplyImplicitCasts(type::Type from, type::QualType to,
-                          ir::CompleteResultBuffer& buffer);
 
   // INSTRUCTIONS
 
@@ -325,42 +316,9 @@ struct IrBuilder {
                   type::Pointer const* t);
 
   ir::Reg Alloca(type::Type t);
-  ir::Reg TmpAlloca(type::Type t);
 
   void DebugIr() {
     CurrentBlock()->Append(ir::DebugIrInstruction{.fn = CurrentGroup()});
-  }
-
-  // Apply the callable to each temporary in reverse order, and clear the list
-  // of temporaries.
-  template <typename Fn>
-  void FinishTemporariesWith(Fn&& fn) {
-    for (auto iter = current_.temporaries_to_destroy_.rbegin();
-         iter != current_.temporaries_to_destroy_.rend(); ++iter) {
-      fn(*iter);
-    }
-    current_.temporaries_to_destroy_.clear();
-  }
-
-  enum class BlockTerminationState {
-    kMoreStatements,  // Not at the end of the block yet
-    kNoTerminator,    // Block complete; no `return` or `<<`
-    kReturn,          // Block completed with `return`
-    kLabeledYield,    // Block completed with `#.my_label << `
-    kYield,           // Block completed with `<<`
-  };
-  constexpr BlockTerminationState block_termination_state() const {
-    return current_.block_termination_state_;
-  }
-  constexpr BlockTerminationState& block_termination_state() {
-    return current_.block_termination_state_;
-  }
-
-  ir::RegOr<ir::addr_t> addr(ast::Declaration::Id const* id) const {
-    return addr_.at(id);
-  }
-  void set_addr(ast::Declaration::Id const* id, ir::RegOr<ir::addr_t> addr) {
-    addr_.emplace(id, addr);
   }
 
  private:
@@ -426,22 +384,12 @@ struct IrBuilder {
   }
 
   friend struct SetCurrent;
-  friend struct SetTemporaries;
 
   struct State {
     ir::internal::BlockGroupBase* group_ = nullptr;
     ir::BasicBlock* block_;
-
-    // Temporaries need to be destroyed at the end of each statement.
-    // This is a pointer to a buffer where temporary allocations can register
-    // themselves for deletion.
-    std::vector<type::Typed<ir::Reg>> temporaries_to_destroy_;
-    BlockTerminationState block_termination_state_ =
-        BlockTerminationState::kMoreStatements;
   } current_;
 
-  // Stores addresses of local identifiers
-  absl::flat_hash_map<ast::Declaration::Id const*, ir::RegOr<ir::addr_t>> addr_;
 };
 
 struct SetCurrent : base::UseWithScope {
@@ -454,19 +402,6 @@ struct SetCurrent : base::UseWithScope {
   IrBuilder& builder_;
   ir::internal::BlockGroupBase* old_group_;
   ir::BasicBlock* old_block_;
-  IrBuilder::BlockTerminationState old_termination_state_;
-};
-
-struct SetTemporaries : base::UseWithScope {
-  SetTemporaries(IrBuilder& bldr) : bldr_(bldr) {
-    old_temporaries_ = std::exchange(bldr_.current_.temporaries_to_destroy_,
-                                     std::vector<type::Typed<ir::Reg>>{});
-  }
-  ~SetTemporaries() {}
-
- private:
-  std::vector<type::Typed<ir::Reg>> old_temporaries_;
-  IrBuilder& bldr_;
 };
 
 ir::Reg RegisterReferencing(IrBuilder& builder, type::Type t,

@@ -16,6 +16,7 @@
 #include "compiler/compilation_data.h"
 #include "compiler/context.h"
 #include "compiler/instructions.h"
+#include "compiler/ir_builder.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
 #include "compiler/work_item.h"
@@ -23,7 +24,6 @@
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/buffer.h"
 #include "frontend/source/view.h"
-#include "compiler/ir_builder.h"
 #include "ir/instruction/set.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/value/addr.h"
@@ -35,6 +35,7 @@
 #include "module/module.h"
 #include "type/array.h"
 #include "type/block.h"
+#include "type/cast.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
@@ -183,15 +184,13 @@ struct Compiler
   Compiler(Compiler const &) = delete;
   Compiler(Compiler &&)      = delete;
 
-  void EmitMoveInit(
-      ast::Node const *node,
-      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+  void EmitMoveInit(ast::Node const *node,
+                    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
     return node->visit<MoveInitEmitter<Compiler>>(*this, regs);
   }
 
-  void EmitCopyInit(
-      ast::Node const *node,
-      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
+  void EmitCopyInit(ast::Node const *node,
+                    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> regs) {
     return node->visit<CopyInitEmitter<Compiler>>(*this, regs);
   }
 
@@ -478,6 +477,129 @@ struct Compiler
   bool EmitScopeBody(ast::ScopeLiteral const *node);
   bool EmitFunctionBody(ast::FunctionLiteral const *node);
   bool EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
+
+  void DestroyTemporaries() {
+    for (auto iter = state().temporaries_to_destroy.rbegin();
+         iter != state().temporaries_to_destroy.rend(); ++iter) {
+      EmitDestroy(*iter);
+    }
+    state().temporaries_to_destroy.clear();
+  }
+
+  void ApplyImplicitCasts(type::Type from, type::QualType to,
+                          ir::PartialResultBuffer &buffer) {
+    if (not type::CanCastImplicitly(from, to.type())) {
+      UNREACHABLE(from, "casting implicitly to", to);
+    }
+    if (from == to.type()) { return; }
+    if (to.type().is<type::Slice>()) {
+      if (from.is<type::Slice>()) { return; }
+      if (auto const *a = from.if_as<type::Array>()) {
+        ir::RegOr<ir::addr_t> data   = buffer[0].get<ir::addr_t>();
+        type::Slice::length_t length = a->length().value();
+        auto alloc                   = state().TmpAlloca(to.type());
+        builder().Store(
+            data, builder().CurrentBlock()->Append(type::SliceDataInstruction{
+                      .slice  = alloc,
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }));
+        builder().Store(
+            length,
+            builder().CurrentBlock()->Append(type::SliceLengthInstruction{
+                .slice  = alloc,
+                .result = builder().CurrentGroup()->Reserve(),
+            }));
+        builder().CurrentBlock()->load_store_cache().clear();
+        buffer.clear();
+        buffer.append(alloc);
+      }
+    }
+
+    auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
+    auto const *ptr_to_type      = to.type().if_as<type::Pointer>();
+    if (bufptr_from_type and ptr_to_type and
+        type::CanCastImplicitly(bufptr_from_type, ptr_to_type)) {
+      return;
+    }
+
+    if (from == type::Integer and type::IsIntegral(to.type())) {
+      to.type().as<type::Primitive>().Apply([&]<typename T>() {
+        if constexpr (std::is_integral_v<T>) {
+          ir::RegOr<T> result =
+              builder().Cast<ir::Integer, T>(buffer.back().get<ir::Integer>());
+          buffer.pop_back();
+          buffer.append(result);
+        } else {
+          UNREACHABLE(typeid(T).name());
+        }
+      });
+    }
+  }
+
+  void ApplyImplicitCasts(type::Type from, type::QualType to,
+                          ir::CompleteResultBuffer &buffer) {
+    if (not type::CanCastImplicitly(from, to.type())) {
+      UNREACHABLE(from, "casting implicitly to", to);
+    }
+    if (from == to.type()) { return; }
+    if (to.type().is<type::Slice>()) {
+      if (from.is<type::Slice>()) { return; }
+      if (auto const *a = from.if_as<type::Array>()) {
+        ir::addr_t data              = buffer[0].get<ir::addr_t>();
+        type::Slice::length_t length = a->length().value();
+        auto alloc                   = state().TmpAlloca(to.type());
+        builder().Store(
+            data, builder().CurrentBlock()->Append(type::SliceDataInstruction{
+                      .slice  = alloc,
+                      .result = builder().CurrentGroup()->Reserve(),
+                  }));
+        builder().Store(
+            length,
+            builder().CurrentBlock()->Append(type::SliceLengthInstruction{
+                .slice  = alloc,
+                .result = builder().CurrentGroup()->Reserve(),
+            }));
+        builder().CurrentBlock()->load_store_cache().clear();
+        buffer.clear();
+        buffer.append(alloc);
+      }
+    }
+
+    auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
+    auto const *ptr_to_type      = to.type().if_as<type::Pointer>();
+    if (bufptr_from_type and ptr_to_type and
+        type::CanCastImplicitly(bufptr_from_type, ptr_to_type)) {
+      return;
+    }
+
+    if (from == type::Integer and type::IsIntegral(to.type())) {
+      to.type().as<type::Primitive>().Apply([&]<typename T>() {
+        if constexpr (std::is_integral_v<T>) {
+          T result = builder()
+                         .Cast<ir::Integer, T>(buffer.back().get<ir::Integer>())
+                         .value();
+          buffer.pop_back();
+          buffer.append(result);
+        } else {
+          UNREACHABLE(typeid(T).name());
+        }
+      });
+    }
+  }
+
+  ir::OutParams OutParams(
+      absl::Span<type::Type const> types,
+      absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to = {}) {
+    std::vector<ir::Reg> regs;
+    regs.reserve(types.size());
+    for (size_t i = 0; i < types.size(); ++i) {
+      regs.push_back(
+          types[i].get()->is_big()
+              ? (to.empty() ? state().TmpAlloca(types[i]) : to[i]->reg())
+              : builder().CurrentGroup()->Reserve());
+    }
+    return ir::OutParams(std::move(regs));
+  }
 };
 
 }  // namespace compiler

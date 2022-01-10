@@ -13,11 +13,8 @@ void Compiler::EmitToBuffer(ast::BlockNode const *node,
     auto addr =
         builder().Alloca(context().qual_types(param.value.get())[0].type());
     // TODO: Support multiple declarations?
-    builder().set_addr(&param.value->ids()[0], addr);
+    state().set_addr(&param.value->ids()[0], addr);
   }
-
-  builder().block_termination_state() =
-      IrBuilder::BlockTerminationState::kMoreStatements;
 
   EmitIrForStatements(*this, node->stmts());
   MakeAllDestructions(*this, &node->body_scope());

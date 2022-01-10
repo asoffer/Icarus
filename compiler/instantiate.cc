@@ -119,7 +119,7 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
 
         auto qt =
             bound_parameters.binding(&dep_node.node()->ids()[0]).qual_type();
-        c.builder().ApplyImplicitCasts(buffer.type(), qt, *buffer);
+        c.ApplyImplicitCasts(buffer.type(), qt, *buffer);
 
         // TODO: Support multiple declarations
         if (not c.context().Constant(&dep_node.node()->ids()[0])) {

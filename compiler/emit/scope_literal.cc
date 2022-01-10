@@ -72,7 +72,7 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
     for (auto const &param : node->params()) {
       absl::Span<ast::Declaration::Id const> ids = param.value->ids();
       ASSERT(ids.size() == 1u);
-      builder().set_addr(&ids[0], ir::Reg::Arg(i++));
+      state().set_addr(&ids[0], ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(*this, &node->body_scope());

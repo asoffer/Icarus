@@ -119,7 +119,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
       out.append(builder().PtrFix(EmitRef(node), node_qt.type()));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
-          builder().TmpAlloca(operand_qt.type()), operand_qt.type());
+          state().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       builder().FieldValue(*temp, &struct_type,
@@ -228,7 +228,7 @@ void Compiler::EmitMoveInit(
       EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
-          builder().TmpAlloca(operand_qt.type()), operand_qt.type());
+          state().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       ir::PartialResultBuffer buffer;
       auto const &struct_type = operand_qt.type().as<type::Struct>();
@@ -299,7 +299,7 @@ void Compiler::EmitCopyInit(
       EmitCopyAssign(to[0], type::Typed(buffer[0], node_qt.type()));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
-          builder().TmpAlloca(operand_qt.type()), operand_qt.type());
+          state().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       auto t                  = builder().FieldValue(
@@ -342,7 +342,7 @@ void Compiler::EmitMoveAssign(
       EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
-          builder().TmpAlloca(operand_qt.type()), operand_qt.type());
+          state().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitMoveInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       auto t                  = builder().FieldValue(
@@ -383,7 +383,7 @@ void Compiler::EmitCopyAssign(
       buffer.append(builder().PtrFix(EmitRef(node), t));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
-          builder().TmpAlloca(operand_qt.type()), operand_qt.type());
+          state().TmpAlloca(operand_qt.type()), operand_qt.type());
       EmitCopyInit(node->operand(), absl::MakeConstSpan(&temp, 1));
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       auto t                  = builder().FieldValue(

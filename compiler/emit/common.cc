@@ -56,10 +56,10 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
 }
 
 ir::OutParams SetReturns(
-    IrBuilder &bldr, type::Type type,
+    Compiler &c, type::Type type,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *fn_type = type.if_as<type::Function>()) {
-    return bldr.OutParams(fn_type->return_types(), to);
+    return c.OutParams(fn_type->return_types(), to);
   } else if (type.is<type::Generic<type::Function>>()) {
     NOT_YET(type.to_string());
   } else {
@@ -250,11 +250,11 @@ CalleeResult EmitCallee(
       // address.
       if (auto *fn_decl = callable->if_as<ast::Declaration>()) {
         return {.callee = c.builder().Load<ir::Fn>(
-                    c.builder().addr(&fn_decl->ids()[0]), f_type),
+                    c.state().addr(&fn_decl->ids()[0]), f_type),
                 .type    = f_type,
                 .context = nullptr};
       } else if (auto *fn_decl_id = callable->if_as<ast::Declaration::Id>()) {
-        return {.callee = c.builder().Load<ir::Fn>(c.builder().addr(fn_decl_id),
+        return {.callee = c.builder().Load<ir::Fn>(c.state().addr(fn_decl_id),
                                                    f_type),
                 .type   = f_type,
                 .context = nullptr};
@@ -278,7 +278,7 @@ void EmitAndCast(Compiler &c, ast::Expression const &expr, type::QualType to,
       if (arg_qt.quals() >= type::Quals::Ref()) {
         buffer.append(c.EmitRef(&expr));
       } else {
-        auto reg = c.builder().TmpAlloca(arg_qt.type());
+        auto reg = c.state().TmpAlloca(arg_qt.type());
         c.EmitMoveInit(&expr,
                        {type::Typed<ir::RegOr<ir::addr_t>>(reg, to.type())});
         buffer.append(reg);
@@ -288,7 +288,7 @@ void EmitAndCast(Compiler &c, ast::Expression const &expr, type::QualType to,
   }
 
   c.EmitToBuffer(&expr, buffer);
-  c.builder().ApplyImplicitCasts(arg_qt.type(), to, buffer);
+  c.ApplyImplicitCasts(arg_qt.type(), to, buffer);
 }
 
 }  // namespace
@@ -486,7 +486,7 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
 
         LOG("MakeAllStackAllocations", "allocating %s", id->name());
 
-        compiler.builder().set_addr(
+        compiler.state().set_addr(
             id, compiler.builder().Alloca(
                     compiler.context().qual_types(id)[0].type()));
       }
@@ -520,29 +520,27 @@ void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
   });
 
   for (auto const &[id, t] : ordered_decl_ids) {
-    c.EmitDestroy(type::Typed<ir::Reg>(c.builder().addr(id).reg(), t));
+    c.EmitDestroy(type::Typed<ir::Reg>(c.state().addr(id).reg(), t));
   }
 }
 
 // TODO One problem with this setup is that we don't end up calling destructors
 // if we exit early, so those need to be handled externally.
 void EmitIrForStatements(Compiler &c, base::PtrSpan<ast::Node const> stmts) {
-  ICARUS_SCOPE(SetTemporaries(c.builder())) {
-    ir::PartialResultBuffer buffer;
-    for (auto *stmt : stmts) {
-      LOG("EmitIrForStatements", "%s", stmt->DebugString());
-      buffer.clear();
-      c.EmitToBuffer(stmt, buffer);
-      c.builder().FinishTemporariesWith(
-          [&c](type::Typed<ir::Reg> r) { c.EmitDestroy(r); });
-      LOG("EmitIrForStatements", "%p %s", c.builder().CurrentBlock(),
-          *c.builder().CurrentGroup());
+  std::vector<type::Typed<ir::Reg>> temporaries =
+      std::exchange(c.state().temporaries_to_destroy, {});
+  absl::Cleanup cleanup = [&] {
+    c.state().temporaries_to_destroy = std::move(temporaries);
+  };
 
-      if (c.builder().block_termination_state() !=
-          IrBuilder::BlockTerminationState::kMoreStatements) {
-        break;
-      }
-    }
+  ir::PartialResultBuffer buffer;
+  for (auto *stmt : stmts) {
+    LOG("EmitIrForStatements", "%s", stmt->DebugString());
+    buffer.clear();
+    c.EmitToBuffer(stmt, buffer);
+    c.DestroyTemporaries();
+    LOG("EmitIrForStatements", "%p %s", c.builder().CurrentBlock(),
+        *c.builder().CurrentGroup());
   }
 }
 
@@ -588,7 +586,7 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
                 prepared_arguments);
 
   // TODO: With expansions, this might be wrong.
-  auto out_params = SetReturns(c.builder(), overload_type, to);
+  auto out_params = SetReturns(c, overload_type, to);
   c.builder().Call(callee_fn, overload_type, std::move(prepared_arguments),
                    out_params);
   int i = -1;

@@ -45,6 +45,29 @@ struct TransientState {
   CyclicDependencyTracker cyclic_dependency_tracker;
 
   IrBuilder builder;
+
+  ir::RegOr<ir::addr_t> addr(ast::Declaration::Id const *id) const {
+    return addr_.at(id);
+  }
+  void set_addr(ast::Declaration::Id const *id, ir::RegOr<ir::addr_t> addr) {
+    addr_.emplace(id, addr);
+  }
+
+  ir::Reg TmpAlloca(type::Type t) {
+    auto reg = builder.Alloca(t);
+    temporaries_to_destroy.emplace_back(reg, t);
+    return reg;
+  }
+
+  // Temporaries need to be destroyed at the end of each statement.  This is a
+  // pointer to a buffer where temporary allocations can register themselves for
+  // deletion.
+  std::vector<type::Typed<ir::Reg>> temporaries_to_destroy;
+
+ private:
+  // Stores addresses of local identifiers
+  absl::flat_hash_map<ast::Declaration::Id const *, ir::RegOr<ir::addr_t>>
+      addr_;
 };
 
 }  // namespace compiler

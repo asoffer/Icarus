@@ -33,7 +33,7 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
   }
   if (decl_id.declaration().flags() & ast::Declaration::f_IsFnParam) {
     auto t                     = context().qual_types(node)[0].type();
-    ir::RegOr<ir::addr_t> addr = builder().addr(&decl_id);
+    ir::RegOr<ir::addr_t> addr = state().addr(&decl_id);
     if ((decl_id.declaration().flags() &
          (ast::Declaration::f_IsBlockParam | ast::Declaration::f_IsOutput)) and
         not t.is_big()) {
@@ -97,7 +97,7 @@ ir::Reg Compiler::EmitRef(ast::Identifier const *node) {
 
     return r;
   } else {
-    return builder().addr(decl_id).reg();
+    return state().addr(decl_id).reg();
   }
 }
 

@@ -36,7 +36,7 @@ void Compiler::EmitToBuffer(ast::Assignment const *node,
   for (auto const *l : node->lhs()) {
     type::Type t = context().qual_types(l)[0].type();
     lhs_refs.emplace_back(EmitRef(l), t);
-    temps.emplace_back(builder().TmpAlloca(t), t);
+    temps.emplace_back(state().TmpAlloca(t), t);
   }
 
   auto temp_iter = temps.begin();

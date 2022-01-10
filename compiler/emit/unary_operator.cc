@@ -12,7 +12,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Copy: {
       auto operand_type = context().qual_types(node->operand())[0].type();
-      auto reg          = builder().TmpAlloca(operand_type);
+      auto reg          = state().TmpAlloca(operand_type);
       EmitToBuffer(node->operand(), out);
       EmitCopyInit(type::Typed<ir::Reg>(reg, operand_type), out);
       out.pop_back();
@@ -29,7 +29,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       // TODO: Not entirely sure this is what the semantics ought to be.
     case ast::UnaryOperator::Kind::Move: {
       auto operand_type = context().qual_types(node->operand())[0].type();
-      auto reg          = builder().TmpAlloca(operand_type);
+      auto reg          = state().TmpAlloca(operand_type);
       EmitToBuffer(node->operand(), out);
       EmitMoveInit(type::Typed<ir::Reg>(reg, operand_type), out);
       out.pop_back();

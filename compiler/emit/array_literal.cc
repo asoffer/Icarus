@@ -7,7 +7,7 @@ namespace compiler {
 void Compiler::EmitToBuffer(ast::ArrayLiteral const *node,
                             ir::PartialResultBuffer &out) {
   auto t     = context().qual_types(node)[0].type();
-  auto alloc = builder().TmpAlloca(t);
+  auto alloc = state().TmpAlloca(t);
   auto typed_alloc =
       type::Typed<ir::RegOr<ir::addr_t>>(ir::RegOr<ir::addr_t>(alloc), t);
   EmitMoveInit(node, absl::MakeConstSpan(&typed_alloc, 1));

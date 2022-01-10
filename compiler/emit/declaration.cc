@@ -46,14 +46,14 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
                         .SetConstant(&node->ids()[0], value_buffer)[0]
                         .raw()
                         .data();
-        c.builder().set_addr(&node->ids()[0], const_cast<ir::addr_t>(addr));
+        c.state().set_addr(&node->ids()[0], const_cast<ir::addr_t>(addr));
         out.append(addr);
       } else {
         auto addr = c.context()
                         .SetConstant(&node->ids()[0], value_buffer)[0]
                         .raw()
                         .data();
-        c.builder().set_addr(&node->ids()[0], const_cast<ir::addr_t>(addr));
+        c.state().set_addr(&node->ids()[0], const_cast<ir::addr_t>(addr));
         out.append(value_buffer);
       }
     } else if (auto const *bd = node->if_as<ast::BindingDeclaration>()) {
@@ -77,7 +77,7 @@ void EmitNonConstantDeclaration(Compiler &c, ast::Declaration const *node,
   addrs.reserve(node->ids().size());
   for (auto const &id : node->ids()) {
     addrs.push_back(type::Typed<ir::RegOr<ir::addr_t>>(
-        c.builder().addr(&id), c.context().qual_types(&id)[0].type()));
+        c.state().addr(&id), c.context().qual_types(&id)[0].type()));
   }
   if (auto const *initial_value = node->initial_value()) {
     // TODO: Support multiple declarations.
@@ -87,9 +87,9 @@ void EmitNonConstantDeclaration(Compiler &c, ast::Declaration const *node,
     } else {
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(initial_value, buffer);
-      c.builder().ApplyImplicitCasts(
-          initial_value_qt.type(), type::QualType::NonConstant(addrs[0].type()),
-          buffer);
+      c.ApplyImplicitCasts(initial_value_qt.type(),
+                           type::QualType::NonConstant(addrs[0].type()),
+                           buffer);
       c.EmitMoveInit(type::Typed<ir::Reg>(addrs[0]->reg(), addrs[0].type()),
                      buffer);
     }

@@ -363,8 +363,8 @@ void Compiler::EmitCopyAssign(
   if (type::CanCastImplicitly(from.type(), to.type())) {
     ir::PartialResultBuffer buffer;
     buffer.append(from->get<ir::addr_t>());
-    builder().ApplyImplicitCasts(
-        from.type(), type::QualType::NonConstant(to.type()), buffer);
+    ApplyImplicitCasts(from.type(), type::QualType::NonConstant(to.type()),
+                       buffer);
     builder().Store(buffer.get<ir::addr_t>(0), *to);
   } else if (from.type() == type::NullPtr) {
     builder().Store(ir::Null(), *to);

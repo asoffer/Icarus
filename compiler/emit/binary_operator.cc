@@ -46,7 +46,7 @@ void EmitBinaryOverload(Compiler &c, ast::BinaryOperator const *node,
                               &const_cast<ast::Expression &>(node->rhs())))};
 
   type::Type result_type = c.context().qual_types(node)[0].type();
-  type::Typed<ir::RegOr<ir::addr_t>> result(c.builder().TmpAlloca(result_type),
+  type::Typed<ir::RegOr<ir::addr_t>> result(c.state().TmpAlloca(result_type),
                                             result_type);
 
   EmitCall(c, c.context().CallMetadata(node).resolved(), {}, arguments,

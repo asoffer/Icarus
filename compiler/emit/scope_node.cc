@@ -89,8 +89,8 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
             type::Type param_type = c.context().qual_types(&id)[0].type();
             ir::PartialResultBuffer buffer;
             buffer.append(r);
-            c.builder().set_addr(&id, c.builder().Alloca(param_type));
-            c.EmitCopyAssign(type::Typed(c.builder().addr(&id), param_type),
+            c.state().set_addr(&id, c.builder().Alloca(param_type));
+            c.EmitCopyAssign(type::Typed(c.state().addr(&id), param_type),
                              type::Typed(buffer[0], param_type));
           }
 

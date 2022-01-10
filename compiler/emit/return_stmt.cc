@@ -57,8 +57,7 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
     }
   }
 
-  builder().FinishTemporariesWith(
-      [this](type::Typed<ir::Reg> r) { EmitDestroy(r); });
+  DestroyTemporaries();
 
   // Rather than doing this on each block it'd be better to have each
   // scope's destructors jump you to the correct next block for destruction.

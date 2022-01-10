@@ -98,7 +98,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
     for (auto const &param : node->params()) {
       absl::Span<ast::Declaration::Id const> ids = param.value->ids();
       ASSERT(ids.size() == 1u);
-      builder().set_addr(&ids[0], ir::Reg::Arg(i++));
+      state().set_addr(&ids[0], ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(*this, &node->body_scope());
@@ -111,7 +111,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
                                             : builder().Alloca(out_decl_type);
 
         ASSERT(out_decl->ids().size() == 1u);
-        builder().set_addr(&out_decl->ids()[0], alloc);
+        state().set_addr(&out_decl->ids()[0], alloc);
         if (out_decl->IsDefaultInitialized()) {
           EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
         } else {
@@ -125,11 +125,8 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
     }
 
     EmitIrForStatements(*this, node->stmts());
-    if (builder().block_termination_state() !=
-        IrBuilder::BlockTerminationState::kReturn) {
-      MakeAllDestructions(*this, &node->body_scope());
-      builder().ReturnJump();
-   }
+    MakeAllDestructions(*this, &node->body_scope());
+    builder().ReturnJump();
   }
 
   context().ir().WriteByteCode<EmitByteCode>(ir_func);

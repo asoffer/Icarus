@@ -50,40 +50,17 @@ ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
 SetCurrent::SetCurrent(ir::internal::BlockGroupBase &group, IrBuilder &builder)
     : builder_(builder),
       old_group_(builder_.CurrentGroup()),
-      old_block_(builder_.CurrentBlock()),
-      old_termination_state_(builder_.current_.block_termination_state_) {
+      old_block_(builder_.CurrentBlock()) {
   builder_.CurrentGroup()  = &group;
   builder_.current_.block_ = group.entry();
-  builder_.current_.block_termination_state_ =
-      IrBuilder::BlockTerminationState::kMoreStatements;
 }
 
 SetCurrent::~SetCurrent() {
   builder_.CurrentGroup()                    = old_group_;
   builder_.CurrentBlock()                    = old_block_;
-  builder_.current_.block_termination_state_ = old_termination_state_;
 }
 
 ir::Reg IrBuilder::Alloca(type::Type t) { return CurrentGroup()->Alloca(t); }
-
-ir::Reg IrBuilder::TmpAlloca(type::Type t) {
-  auto reg = Alloca(t);
-  current_.temporaries_to_destroy_.emplace_back(reg, t);
-  return reg;
-}
-
-ir::OutParams IrBuilder::OutParams(
-    absl::Span<type::Type const> types,
-    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
-  std::vector<ir::Reg> regs;
-  regs.reserve(types.size());
-  for (size_t i = 0; i < types.size(); ++i) {
-    regs.push_back(types[i].get()->is_big()
-                       ? (to.empty() ? TmpAlloca(types[i]) : to[i]->reg())
-                       : CurrentGroup()->Reserve());
-  }
-  return ir::OutParams(std::move(regs));
-}
 
 void IrBuilder::Call(ir::RegOr<ir::Fn> const &fn, type::Function const *f,
                      ir::PartialResultBuffer args, ir::OutParams outs) {
@@ -130,7 +107,6 @@ void IrBuilder::BlockJump(ir::Block b, ir::BasicBlock *after) {
 }
 
 void IrBuilder::ReturnJump() {
-  block_termination_state() = BlockTerminationState::kReturn;
   CurrentBlock()->set_jump(ir::JumpCmd::Return());
 }
 
@@ -183,100 +159,6 @@ type::Typed<ir::Reg> IrBuilder::FieldRef(ir::RegOr<ir::addr_t> r,
   CurrentBlock()->Append(ir::StructIndexInstruction{
       .addr = r, .index = n, .struct_type = t, .result = result});
   return type::Typed<ir::Reg>(result, t->fields()[n].type);
-}
-
-void IrBuilder::ApplyImplicitCasts(type::Type from, type::QualType to,
-                                   ir::PartialResultBuffer &buffer) {
-  if (not type::CanCastImplicitly(from, to.type())) {
-    UNREACHABLE(from, "casting implicitly to", to);
-  }
-  if (from == to.type()) { return; }
-  if (to.type().is<type::Slice>()) {
-    if (from.is<type::Slice>()) { return; }
-    if (auto const *a = from.if_as<type::Array>()) {
-      ir::RegOr<ir::addr_t> data   = buffer[0].get<ir::addr_t>();
-      type::Slice::length_t length = a->length().value();
-      auto alloc                   = TmpAlloca(to.type());
-      Store(data, CurrentBlock()->Append(type::SliceDataInstruction{
-                      .slice  = alloc,
-                      .result = CurrentGroup()->Reserve(),
-                  }));
-      Store(length, CurrentBlock()->Append(type::SliceLengthInstruction{
-                        .slice  = alloc,
-                        .result = CurrentGroup()->Reserve(),
-                    }));
-      CurrentBlock()->load_store_cache().clear();
-      buffer.clear();
-      buffer.append(alloc);
-    }
-  }
-
-  auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
-  auto const *ptr_to_type      = to.type().if_as<type::Pointer>();
-  if (bufptr_from_type and ptr_to_type and
-      type::CanCastImplicitly(bufptr_from_type, ptr_to_type)) {
-    return;
-  }
-
-  if (from == type::Integer and type::IsIntegral(to.type())) {
-    to.type().as<type::Primitive>().Apply([&]<typename T>() {
-      if constexpr (std::is_integral_v<T>) {
-        ir::RegOr<T> result =
-            Cast<ir::Integer, T>(buffer.back().get<ir::Integer>());
-        buffer.pop_back();
-        buffer.append(result);
-      } else {
-        UNREACHABLE(typeid(T).name());
-      }
-    });
-  }
-}
-
-void IrBuilder::ApplyImplicitCasts(type::Type from, type::QualType to,
-                                   ir::CompleteResultBuffer &buffer) {
-  if (not type::CanCastImplicitly(from, to.type())) {
-    UNREACHABLE(from, "casting implicitly to", to);
-  }
-  if (from == to.type()) { return; }
-  if (to.type().is<type::Slice>()) {
-    if (from.is<type::Slice>()) { return; }
-    if (auto const *a = from.if_as<type::Array>()) {
-      ir::addr_t data              = buffer[0].get<ir::addr_t>();
-      type::Slice::length_t length = a->length().value();
-      auto alloc                   = TmpAlloca(to.type());
-      Store(data, CurrentBlock()->Append(type::SliceDataInstruction{
-                      .slice  = alloc,
-                      .result = CurrentGroup()->Reserve(),
-                  }));
-      Store(length, CurrentBlock()->Append(type::SliceLengthInstruction{
-                        .slice  = alloc,
-                        .result = CurrentGroup()->Reserve(),
-                    }));
-      CurrentBlock()->load_store_cache().clear();
-      buffer.clear();
-      buffer.append(alloc);
-    }
-  }
-
-  auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
-  auto const *ptr_to_type      = to.type().if_as<type::Pointer>();
-  if (bufptr_from_type and ptr_to_type and
-      type::CanCastImplicitly(bufptr_from_type, ptr_to_type)) {
-    return;
-  }
-
-  if (from == type::Integer and type::IsIntegral(to.type())) {
-    to.type().as<type::Primitive>().Apply([&]<typename T>() {
-      if constexpr (std::is_integral_v<T>) {
-        T result =
-            Cast<ir::Integer, T>(buffer.back().get<ir::Integer>()).value();
-        buffer.pop_back();
-        buffer.append(result);
-      } else {
-        UNREACHABLE(typeid(T).name());
-      }
-    });
-  }
 }
 
 }  // namespace compiler
