@@ -34,21 +34,33 @@ struct CompilationDataReference {
       : data_(*ASSERT_NOT_NULL(data)) {}
 
   Context &context() const { return *data_.context; }
-  IrBuilder &builder() { return *state().builder; };
+  IrBuilder &builder() { return state().builders.back(); };
   diagnostic::DiagnosticConsumer &diag() const {
     return *data_.resources.diagnostic_consumer;
   }
   ir::BasicBlock *current_block() { return builder().CurrentBlock(); }
 
-  ir::NativeFn set_builder(ast::ParameterizedExpression const *node) {
+  ir::NativeFn set_builder(
+      base::one_of<ast::FunctionLiteral, ast::ShortFunctionLiteral> auto const
+          *node) {
     ir::NativeFn ir_func = context().FindNativeFn(node);
     ASSERT(static_cast<bool>(ir_func) == true);
-    state().builder.emplace(&*ir_func, &node->scope()->as<ast::FnScope>());
+    state().builders.emplace_back(
+        &*ir_func, &node->body_scope().template as<ast::FnScope>());
     return ir_func;
   }
 
-  void set_builder(ir::internal::BlockGroupBase *group) {
-    state().builder.emplace(group, nullptr);
+  ir::Scope set_builder(ast::ScopeLiteral const *node) {
+    ir::Scope ir_scope = context().FindScope(node);
+    ASSERT(static_cast<bool>(ir_scope) == true);
+    state().builders.emplace_back(&*ir_scope,
+                                  &node->body_scope().as<ast::FnScope>());
+    return ir_scope;
+  }
+
+  void set_builder(ir::internal::BlockGroupBase *group,
+                   ast::FnScope const *scope = nullptr) {
+    state().builders.emplace_back(group, scope);
   }
 
   module::Importer &importer() const { return *data_.resources.importer; }

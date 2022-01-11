@@ -63,10 +63,11 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
   LOG("EmitScopeBody", "Scope %s", node->DebugString());
   ir::Scope ir_scope = context().FindScope(node);
   state().scopes.push_back(ir_scope);
-  absl::Cleanup cleanup = [&] { state().scopes.pop_back(); };
-
-  set_builder(&*ir_scope);
-  builder().CurrentBlock() = ir_scope->entry();
+  set_builder(node);
+  absl::Cleanup cleanup = [&] {
+    state().scopes.pop_back();
+    state().builders.pop_back();
+  };
 
   size_t i = 0;
   for (auto const &param : node->params()) {

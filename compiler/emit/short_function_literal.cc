@@ -84,7 +84,9 @@ void Compiler::EmitCopyAssign(
 }
 
 bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
-  ir::NativeFn ir_func     = set_builder(node);
+  ir::NativeFn ir_func = set_builder(node);
+  absl::Cleanup cleanup = [&] { state().builders.pop_back(); };
+
   builder().CurrentBlock() = builder().CurrentGroup()->entry();
 
   // TODO arguments should be renumbered to not waste space on const values

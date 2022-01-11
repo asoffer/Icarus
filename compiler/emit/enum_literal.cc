@@ -42,6 +42,7 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
   type::Type t = context().LoadType(node);
 
   set_builder(&fn);
+  absl::Cleanup cleanup    = [&] { state().builders.pop_back(); };
   builder().CurrentBlock() = fn.entry();
 
   std::vector<std::string_view> names(node->enumerators().begin(),

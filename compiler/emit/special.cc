@@ -182,6 +182,8 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
   auto [fn, inserted] = context().ir().InsertInit(r.type());
   if (inserted) {
     set_builder(&*fn);
+    absl::Cleanup c = [&] { state().builders.pop_back(); };
+
     builder().CurrentBlock() = fn->entry();
     OnEachArrayElement(builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
       EmitDefaultInit(type::Typed<ir::Reg>(reg, r.type()->data_type()));
@@ -200,6 +202,8 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
   auto [fn, inserted] = context().ir().InsertDestroy(r.type());
   if (inserted) {
     set_builder(&*fn);
+    absl::Cleanup c = [&] { state().builders.pop_back(); };
+
     builder().CurrentBlock() = fn->entry();
     OnEachArrayElement(builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
       EmitDestroy(type::Typed<ir::Reg>(reg, r.type()->data_type()));
@@ -221,9 +225,11 @@ void SetArrayInits(Compiler &c, type::Array const *array_type) {
   if (copy_inserted) {
     c.set_builder(&*copy_fn);
     EmitArrayInit<Copy>(c, array_type, array_type);
+    c.state().builders.pop_back();
 
     c.set_builder(&*move_fn);
     EmitArrayInit<Move>(c, array_type, array_type);
+    c.state().builders.pop_back();
 
     c.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
     c.context().ir().WriteByteCode<EmitByteCode>(move_fn);
@@ -241,9 +247,11 @@ void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
   if (copy_inserted) {
     c.set_builder(&*copy_fn);
     EmitArrayAssignment<Copy>(c, array_type, array_type);
+    c.state().builders.pop_back();
 
     c.set_builder(&*move_fn);
     EmitArrayAssignment<Move>(c, array_type, array_type);
+    c.state().builders.pop_back();
 
     c.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
     c.context().ir().WriteByteCode<EmitByteCode>(move_fn);
@@ -438,6 +446,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
   auto [fn, inserted] = context().ir().InsertInit(r.type());
   if (inserted) {
     set_builder(&*fn);
+    absl::Cleanup c = [&] { state().builders.pop_back(); };
     builder().CurrentBlock() = builder().CurrentGroup()->entry();
     auto var                 = ir::Reg::Arg(0);
 

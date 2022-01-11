@@ -44,10 +44,7 @@ namespace compiler {
 
 struct IrBuilder {
   explicit IrBuilder(ir::internal::BlockGroupBase* group,
-                     ast::FnScope const* fn_scope)
-      : group_(ASSERT_NOT_NULL(group)) {
-    CurrentBlock() = group_->entry();
-  }
+                     ast::FnScope const* fn_scope);
 
   ir::BasicBlock* EmitDestructionPath(ast::Scope const* from,
                                       ast::Scope const* to);
@@ -330,6 +327,8 @@ struct IrBuilder {
     CurrentBlock()->Append(ir::DebugIrInstruction{.fn = CurrentGroup()});
   }
 
+  ir::BasicBlock* landing(ast::Scope const* s) const;
+
  private:
   template <typename T>
   static type::Type GetType() {
@@ -397,6 +396,21 @@ struct IrBuilder {
   } current_;
 
   ir::internal::BlockGroupBase* group_;
+
+  // TODO: Early exists from a scope should only destroy a prefix of the
+  // variables. We don't handle that concern yet.
+  //
+  // Each destruction path ending at the destruction of the local variables in a
+  // scope continues executing at a particular basic block. This a map
+  // associates each such scope to its corresponding landing block.
+  absl::flat_hash_map<ast::Scope const*, ir::BasicBlock*> landings_;
+  // Given a destruction path starting at a scope `start` and proceeding to
+  // destroy all local variables in all scopes up through and including a scope
+  // `end`, this map associates the pair `{start, end}` with the block to which
+  // you should jump to execute these destructions.
+  absl::flat_hash_map<std::pair<ast::Scope const*, ast::Scope const*>,
+                      ir::BasicBlock*>
+      destruction_blocks_;
 };
 
 ir::Reg RegisterReferencing(IrBuilder& builder, type::Type t,

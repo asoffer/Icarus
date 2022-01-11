@@ -44,7 +44,7 @@ struct TransientState {
 
   CyclicDependencyTracker cyclic_dependency_tracker;
 
-  std::optional<IrBuilder> builder;
+  std::vector<IrBuilder> builders;
 
   ir::RegOr<ir::addr_t> addr(ast::Declaration::Id const *id) const {
     return addr_.at(id);
@@ -54,7 +54,7 @@ struct TransientState {
   }
 
   ir::Reg TmpAlloca(type::Type t) {
-    auto reg = builder->Alloca(t);
+    auto reg = builders.back().Alloca(t);
     temporaries_to_destroy.emplace_back(reg, t);
     return reg;
   }

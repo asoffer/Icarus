@@ -47,6 +47,38 @@ ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
   }
 }
 
+IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
+                     ast::FnScope const *fn_scope)
+    : group_(ASSERT_NOT_NULL(group)) {
+  if (fn_scope) {
+    // TODO: Descendants are overkill: They include all the scopes for all
+    // locally defined functions too.
+    for (auto const *descendant : fn_scope->descendants()) {
+      landings_.emplace(descendant, group_->AppendBlock());
+
+      for (auto const *s = descendant; s != fn_scope->parent();
+           s             = s->parent()) {
+        destruction_blocks_.emplace(std::pair(descendant, s),
+                                    group_->AppendBlock());
+      }
+    }
+    for (auto [start_end, block] : destruction_blocks_) {
+      auto [start, end] = start_end;
+      // for (auto const *id : start->ordered_nonconstant_ids()) {
+      //   c.EmitDestroy(type::Typed<ir::Reg>(addr(id).reg(),
+      //                                      c.context().qual_types(id)[0].type()));
+      // }
+
+      CurrentBlock() = block;
+      UncondJump(start == end ? landings_.find(end)->second
+                              : destruction_blocks_
+                                    .find(std::pair(start->parent(), end))
+                                    ->second);
+    }
+  }
+  CurrentBlock() = group_->entry();
+}
+
 ir::Reg IrBuilder::Alloca(type::Type t) { return CurrentGroup()->Alloca(t); }
 
 void IrBuilder::Call(ir::RegOr<ir::Fn> const &fn, type::Function const *f,
@@ -150,7 +182,12 @@ type::Typed<ir::Reg> IrBuilder::FieldRef(ir::RegOr<ir::addr_t> r,
 
 ir::BasicBlock *IrBuilder::EmitDestructionPath(ast::Scope const *from,
                                                ast::Scope const *to) {
-  return nullptr;
+  UncondJump(destruction_blocks_.at(std::pair(from, to)));
+  return landing(to);
+}
+
+ir::BasicBlock *IrBuilder::landing(ast::Scope const *s) const {
+  return landings_.at(s);
 }
 
 }  // namespace compiler

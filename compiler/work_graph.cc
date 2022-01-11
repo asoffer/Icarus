@@ -47,6 +47,7 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
       &c.context());
   ir::CompiledFn fn(type::Func({}, {type}));
   c.set_builder(&fn);
+  absl::Cleanup cleanup = [&] { c.state().builders.pop_back(); };
   // TODO this is essentially a copy of the body of
   // FunctionLiteral::EmitToBuffer Factor these out together.
   c.builder().CurrentBlock() = fn.entry();
@@ -126,9 +127,10 @@ std::optional<ir::CompiledFn> CompileExecutable(
                              .work_resources = w.work_resources(),
                              .resources      = w.resources()};
         Compiler c(&data);
-        c.set_builder(&f);
+        ast::ModuleScope const &mod_scope = w.resources().module->scope();
+        c.set_builder(&f, &mod_scope);
+        absl::Cleanup cleanup = [&] { c.state().builders.pop_back(); };
         if (not nodes.empty()) {
-          ast::ModuleScope const &mod_scope = w.resources().module->scope();
           MakeAllStackAllocations(c, &mod_scope);
           EmitIrForStatements(c, &mod_scope, nodes);
         }

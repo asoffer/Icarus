@@ -47,6 +47,8 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
   CompiledScope *operator->() { return get().scope; }
   CompiledScope &operator*() { return *get().scope; }
 
+  explicit operator bool() { return data_; }
+
   void add_parameters(Block b, Reg r) {
     return data_->parameters[b].push_back(r);
   }

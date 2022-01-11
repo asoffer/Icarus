@@ -43,11 +43,11 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
     auto *false_block = node->has_false_block()
                             ? builder().CurrentGroup()->AppendBlock()
                             : nullptr;
-    auto *landing = builder().CurrentGroup()->AppendBlock();
 
     ir::RegOr<bool> condition = EmitAs<bool>(&node->condition());
-    builder().CondJump(condition, true_block,
-                       false_block ? false_block : landing);
+    builder().CondJump(
+        condition, true_block,
+        false_block ? false_block : builder().landing(&node->true_scope()));
 
     builder().CurrentBlock() = true_block;
     EmitIrForStatements(*this, &node->true_scope(), node->true_block());
@@ -55,6 +55,8 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
     if (node->has_false_block()) {
       builder().CurrentBlock() = false_block;
       EmitIrForStatements(*this, &node->false_scope(), node->false_block());
+      builder().UncondJump(builder().landing(&node->true_scope()));
+      builder().CurrentBlock() = builder().landing(&node->true_scope());
     }
   }
 }

@@ -22,6 +22,7 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveInit(s, s);
   if (inserted) {
     c.set_builder(&*fn);
+    absl::Cleanup cleanup      = [&] { c.state().builders.pop_back(); };
     c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
     auto from = ir::Reg::Arg(0);
@@ -70,6 +71,7 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyInit(s, s);
   if (inserted) {
     c.set_builder(&*fn);
+    absl::Cleanup cleanup = [&] { c.state().builders.pop_back(); };
     c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
 
     auto from = ir::Reg::Arg(0);
@@ -105,6 +107,7 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveAssign(s, s);
   if (inserted) {
     c.set_builder(&*fn);
+    absl::Cleanup cleanup = [&] { c.state().builders.pop_back(); };
     c.builder().CurrentBlock() = fn->entry();
     auto var                   = ir::Reg::Arg(0);
     auto val                   = ir::Reg::Arg(1);
@@ -138,6 +141,7 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyAssign(s, s);
   if (inserted) {
     c.set_builder(&*fn);
+    absl::Cleanup cleanup = [&] { c.state().builders.pop_back(); };
     c.builder().CurrentBlock() = fn->entry();
     auto var                   = ir::Reg::Arg(0);
     auto val                   = ir::Reg::Arg(1);
@@ -343,6 +347,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 
   ir::CompiledFn fn(type::Func({}, {}));
   data.set_builder(&fn);
+  absl::Cleanup cleanup = [&] { data.state().builders.pop_back(); };
   Compiler c(data);
   // TODO this is essentially a copy of the body of
   // FunctionLiteral::EmitToBuffer. Factor these out together.
@@ -414,6 +419,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     auto [full_dtor, inserted] = data.context().ir().InsertDestroy(s);
     if (inserted) {
       data.set_builder(&*full_dtor);
+      absl::Cleanup cleanup         = [&] { c.state().builders.pop_back(); };
       data.builder().CurrentBlock() = data.builder().CurrentGroup()->entry();
       auto var                      = ir::Reg::Arg(0);
       if (user_dtor) {
