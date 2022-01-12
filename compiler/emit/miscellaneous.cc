@@ -1,9 +1,44 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
-#include "ir/value/module_id.h"
 
 namespace compiler {
+namespace {
+
+void EmitConstantIf(Compiler &c, ast::IfStmt const *node,
+                    ir::PartialResultBuffer &out) {
+  if (*c.EvaluateOrDiagnoseAs<bool>(&node->condition())) {
+    EmitIrForStatements(c, &node->true_scope(), node->true_block());
+  } else if (node->has_false_block()) {
+    EmitIrForStatements(c, &node->false_scope(), node->false_block());
+  }
+}
+
+void EmitNonConstantIf(Compiler &c, ast::IfStmt const *node,
+                       ir::PartialResultBuffer &out) {
+  auto *true_block  = c.builder().CurrentGroup()->AppendBlock();
+  auto *false_block = node->has_false_block()
+                          ? c.builder().CurrentGroup()->AppendBlock()
+                          : nullptr;
+  auto *landing = c.builder().landing(&node->true_scope());
+
+  ir::RegOr<bool> condition = c.EmitWithCastTo<bool>(
+      c.context().qual_types(&node->condition())[0].type(), &node->condition());
+  c.builder().CondJump(condition, true_block,
+                     false_block ? false_block : landing);
+
+  c.builder().CurrentBlock() = true_block;
+  EmitIrForStatements(c, &node->true_scope(), node->true_block());
+
+  if (not node->has_false_block()) { return; }
+
+  c.builder().CurrentBlock() = false_block;
+  EmitIrForStatements(c, &node->false_scope(), node->false_block());
+  c.builder().UncondJump(landing);
+  c.builder().CurrentBlock() = landing;
+}
+
+}  // namespace
 
 void Compiler::EmitToBuffer(ast::Module const *node,
                             ir::PartialResultBuffer &out) {
@@ -33,39 +68,17 @@ void Compiler::EmitToBuffer(ast::Label const *node,
 void Compiler::EmitToBuffer(ast::IfStmt const *node,
                             ir::PartialResultBuffer &out) {
   if (node->hashtags.contains(ir::Hashtag::Const)) {
-    if (*EvaluateOrDiagnoseAs<bool>(&node->condition())) {
-      EmitIrForStatements(*this, &node->true_scope(), node->true_block());
-    } else if (node->has_false_block()) {
-      EmitIrForStatements(*this, &node->false_scope(), node->false_block());
-    }
+    EmitConstantIf(*this, node, out);
   } else {
-    auto *true_block  = builder().CurrentGroup()->AppendBlock();
-    auto *false_block = node->has_false_block()
-                            ? builder().CurrentGroup()->AppendBlock()
-                            : nullptr;
-
-    ir::RegOr<bool> condition = EmitAs<bool>(&node->condition());
-    builder().CondJump(
-        condition, true_block,
-        false_block ? false_block : builder().landing(&node->true_scope()));
-
-    builder().CurrentBlock() = true_block;
-    EmitIrForStatements(*this, &node->true_scope(), node->true_block());
-
-    if (node->has_false_block()) {
-      builder().CurrentBlock() = false_block;
-      EmitIrForStatements(*this, &node->false_scope(), node->false_block());
-      builder().UncondJump(builder().landing(&node->true_scope()));
-      builder().CurrentBlock() = builder().landing(&node->true_scope());
-    }
+    EmitNonConstantIf(*this, node, out);
   }
 }
 
 void Compiler::EmitToBuffer(ast::WhileStmt const *node,
                             ir::PartialResultBuffer &out) {
-  auto start_block = builder().CurrentGroup()->AppendBlock();
-  auto body_block  = builder().CurrentGroup()->AppendBlock();
-  auto landing     = builder().CurrentGroup()->AppendBlock();
+  auto *start_block = builder().CurrentGroup()->AppendBlock();
+  auto *body_block  = builder().CurrentGroup()->AppendBlock();
+  auto *landing     = builder().landing(&node->body_scope());
 
   builder().UncondJump(start_block);
 
