@@ -42,9 +42,9 @@ struct WithScope {
 
  protected:
   template <typename... Args>
-  void set_body_with_parent(Scope *p, Args... args) {
+  void set_body_with_parent(Args... args) {
     ASSERT(body_scope_.has_value() == false);
-    body_scope_.emplace(p, args...);
+    body_scope_.emplace(args...);
   }
 
   std::optional<S> body_scope_;
@@ -734,7 +734,7 @@ struct ComparisonOperator : Expression {
 //  }
 //  ```
 //
-struct EnumLiteral : Expression, WithScope<DeclScope> {
+struct EnumLiteral : Expression, WithScope<Scope> {
   enum Kind : char { Enum, Flags };
 
   EnumLiteral(
@@ -921,7 +921,7 @@ struct Index : Expression {
 // }
 // ```
 //
-struct InterfaceLiteral : Expression, WithScope<DeclScope> {
+struct InterfaceLiteral : Expression, WithScope<Scope> {
   explicit InterfaceLiteral(
       frontend::SourceRange const &range,
       std::vector<std::pair<std::unique_ptr<ast::Expression>,
@@ -981,8 +981,7 @@ struct Label : Expression {
 //   square ::= N * N
 // }
 // ```
-struct ParameterizedStructLiteral : ParameterizedExpression,
-                                    WithScope<DeclScope> {
+struct ParameterizedStructLiteral : ParameterizedExpression, WithScope<Scope> {
   ParameterizedStructLiteral(frontend::SourceRange const &range,
                              std::vector<std::unique_ptr<Declaration>> params,
                              std::vector<Declaration> fields)
@@ -1230,7 +1229,7 @@ struct ShortFunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
 //
 // struct {}
 // ```
-struct StructLiteral : Expression, WithScope<DeclScope> {
+struct StructLiteral : Expression, WithScope<Scope> {
   explicit StructLiteral(frontend::SourceRange const &range,
                          std::vector<Declaration> fields)
       : Expression(IndexOf<StructLiteral>(), range),

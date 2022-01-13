@@ -13,7 +13,7 @@ absl::flat_hash_set<ast::Expression const *> Overloads(
                                                          exprs.end());
   exprs.clear();
   for (auto const *mod : modules) {
-    auto ids = mod->scope().ExportedDeclarationIds(name);
+    auto ids = mod->ExportedDeclarationIds(name);
     for (auto const *decl_id : ids) { overloads.insert(decl_id); }
   }
   return overloads;

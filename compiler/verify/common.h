@@ -38,4 +38,27 @@ std::variant<
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
 VerifyReturningCall(TypeVerifier &tv, VerifyCallParameters const &vcp);
 
+// Calls `fn` on each declaration in this scope and in parent scopes with the
+// given identifier `name`, until calling `fn` returns false.
+bool ForEachDeclIdTowardsRoot(
+    ast::Scope const *start, std::string_view name,
+    std::invocable<ast::Declaration::Id const *> auto &&fn) {
+  for (ast::Scope const &s : start->ancestors()) {
+    if (auto iter = s.decls_.find(name); iter != s.decls_.end()) {
+      for (auto const *id : iter->second) {
+        if (not fn(id)) { return false; }
+      }
+    }
+
+    for (auto const *mod : s.embedded_modules()) {
+      for (auto const *id : mod->ExportedDeclarationIds(name)) {
+        // TODO what about transitivity for embedded modules?
+        // New context will lookup with no constants.
+        if (not fn(id)) { return false; }
+      }
+    }
+  }
+  return true;
+}
+
 }  // namespace compiler

@@ -3,6 +3,7 @@
 #include "compiler/common_diagnostics.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/module.h"
+#include "compiler/verify/common.h"
 #include "compiler/verify/verify.h"
 #include "type/overload_set.h"
 #include "type/qual_type.h"
@@ -169,11 +170,11 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       // if any exist.
 
       bool present = false;
-      node->scope()->ForEachDeclIdTowardsRoot(
-          node->name(), [&](ast::Declaration::Id const *id) {
-            present = true;
-            return false;
-          });
+      ForEachDeclIdTowardsRoot(node->scope(), node->name(),
+                               [&](ast::Declaration::Id const *id) {
+                                 present = true;
+                                 return false;
+                               });
       if (present) {
         diag().Consume(UncapturedIdentifier{
             .id   = node->name(),

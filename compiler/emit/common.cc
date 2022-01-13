@@ -205,11 +205,8 @@ CalleeResult EmitCallee(
     Compiler &c, ast::Expression const *callable,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
   Context const &context_root  = c.context().root();
-  Context const &callable_root = callable->scope()
-                                     ->Containing<ast::ModuleScope>()
-                                     ->module()
-                                     ->as<CompiledModule>()
-                                     .context();
+  Context const &callable_root =
+      ModuleFor(callable)->as<CompiledModule>().context();
   // TODO: This is fraught, because we still don't have access to
   // instantiated contexts if that's what's needed here.
   type::QualType qt = (&context_root == &callable_root)

@@ -26,6 +26,7 @@ void EmitNonConstantIf(Compiler &c, ast::IfStmt const *node,
       c.context().qual_types(&node->condition())[0].type(), &node->condition());
   c.builder().CondJump(condition, true_block,
                      false_block ? false_block : landing);
+  c.DestroyTemporaries();
 
   c.builder().CurrentBlock() = true_block;
   EmitIrForStatements(c, &node->true_scope(), node->true_block());
@@ -78,17 +79,21 @@ void Compiler::EmitToBuffer(ast::WhileStmt const *node,
                             ir::PartialResultBuffer &out) {
   auto *start_block = builder().CurrentGroup()->AppendBlock();
   auto *body_block  = builder().CurrentGroup()->AppendBlock();
-  auto *landing     = builder().landing(&node->body_scope());
+  auto *landing     = builder().CurrentGroup()->AppendBlock();
 
   builder().UncondJump(start_block);
 
   builder().CurrentBlock()  = start_block;
-  ir::RegOr<bool> condition = EmitAs<bool>(&node->condition());
+  ir::RegOr<bool> condition = EmitWithCastTo<bool>(
+      context().qual_types(&node->condition())[0].type(), &node->condition());
+  DestroyTemporaries();
+
   builder().CondJump(condition, body_block, landing);
 
   builder().CurrentBlock() = body_block;
   EmitIrForStatements(*this, &node->body_scope(), node->body());
   builder().UncondJump(start_block);
+
   builder().CurrentBlock() = landing;
 }
 

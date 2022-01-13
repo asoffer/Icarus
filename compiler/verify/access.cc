@@ -385,7 +385,7 @@ type::QualType AccessModuleMember(CompilationDataReference c,
   // QualType of the imported declaration on the importing module context. This
   // makes it findable when it's called via an overload set as is type-checked
   // in VerifyCallee.
-  auto ids = mod.scope().ExportedDeclarationIds(node->member_name());
+  auto ids = mod.ExportedDeclarationIds(node->member_name());
 
   switch (ids.size()) {
     case 0: {

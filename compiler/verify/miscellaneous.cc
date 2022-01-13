@@ -94,8 +94,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         return context().set_qual_type(node, type::QualType::Error());
       }
 
-      auto ids = importer().get(*mod_id).scope().ExportedDeclarationIds(
-          access->member_name());
+      auto ids =
+          importer().get(*mod_id).ExportedDeclarationIds(access->member_name());
       context().SetCallMetadata(
           node, CallMetadata(absl::flat_hash_set<ast::Expression const *>(
                     ids.begin(), ids.end())));

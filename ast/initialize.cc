@@ -221,7 +221,7 @@ void DesignatedInitializer::Initialize(Initializer& initializer) {
 
 void EnumLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  set_body_with_parent(Scope::Kind::Declarative, initializer.scope, false);
   for (auto& [id, value] : values_) {
     value->Initialize(initializer);
     covers_binding_ |= value->covers_binding();
@@ -279,7 +279,7 @@ void Index::Initialize(Initializer& initializer) {
 
 void InterfaceLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  set_body_with_parent(Scope::Kind::Declarative, initializer.scope, false);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& [name, expr] : entries_) {
@@ -367,7 +367,7 @@ void ShortFunctionLiteral::Initialize(Initializer& initializer) {
 
 void StructLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  set_body_with_parent(Scope::Kind::Declarative, initializer.scope, false);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& field : fields_) { field.Initialize(initializer); }
@@ -375,7 +375,7 @@ void StructLiteral::Initialize(Initializer& initializer) {
 
 void ParameterizedStructLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  set_body_with_parent(Scope::Kind::Declarative, initializer.scope, false);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& param : params_) { param.value->Initialize(initializer); }

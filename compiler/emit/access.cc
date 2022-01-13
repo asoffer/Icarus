@@ -63,7 +63,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
             .as<CompiledModule>();
-    auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
+    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: mod.context().LoadConstant(decl_ids[0], out); return;
@@ -177,7 +177,7 @@ void Compiler::EmitMoveInit(
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
             .as<CompiledModule>();
-    auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
+    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
@@ -250,7 +250,7 @@ void Compiler::EmitCopyInit(
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
             .as<CompiledModule>();
-    auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
+    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
@@ -320,7 +320,7 @@ void Compiler::EmitMoveAssign(
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
             .as<CompiledModule>();
-    auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
+    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {
@@ -362,7 +362,7 @@ void Compiler::EmitCopyAssign(
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
             .as<CompiledModule>();
-    auto decl_ids = mod.scope().ExportedDeclarationIds(node->member_name());
+    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
     switch (decl_ids.size()) {
       case 0: NOT_YET();
       case 1: {

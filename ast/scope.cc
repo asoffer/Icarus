@@ -17,10 +17,14 @@ void Scope::InsertDeclaration(ast::Declaration const *decl) {
   }
 }
 
-Scope::Scope(Scope *parent, bool executable)
-    : parent_(parent), executable_(executable) {
-  if (not parent_) { return; }
-  for (Scope *s = parent_; s; s = s->parent_) {
+Scope::Scope(module::BasicModule *module, bool executable)
+    : parent_(reinterpret_cast<uintptr_t>(module) | 1),
+      executable_(executable) {}
+
+Scope::Scope(Kind kind, Scope *parent_scope, bool executable)
+    : parent_(reinterpret_cast<uintptr_t>(parent_scope)),
+      executable_(executable) {
+  for (Scope *s = parent(); s; s = s->parent()) {
     LOG("Scope", "%p", s);
     if (auto *fs = s->if_as<FnScope>()) {
       fs->insert_descendant(this);
@@ -28,6 +32,9 @@ Scope::Scope(Scope *parent, bool executable)
     }
   }
   UNREACHABLE();
-}
+    }
+
+Scope::Scope(Scope *parent_scope, bool executable)
+    : Scope(Scope::Kind::Executable, parent_scope, executable) {}
 
 }  // namespace ast

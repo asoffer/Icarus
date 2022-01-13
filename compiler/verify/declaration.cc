@@ -314,7 +314,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
           // the AST.
 
           node->scope()->embed(
-              &importer().get(*maybe_mod).as<CompiledModule>().scope());
+              &importer().get(*maybe_mod).as<CompiledModule>());
         } else {
           node_qual_types[i].MarkError();
         }

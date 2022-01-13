@@ -144,8 +144,8 @@ type::QualType VerifyUnaryOverload(
     type::Typed<ir::CompleteResultRef> const &operand) {
   absl::flat_hash_set<type::Function const *> member_types;
 
-  node->scope()->ForEachDeclIdTowardsRoot(
-      symbol, [&](ast::Declaration::Id const *id) {
+  ForEachDeclIdTowardsRoot(
+      node->scope(), symbol, [&](ast::Declaration::Id const *id) {
         ASSIGN_OR(return false, auto qt, context.qual_types(id)[0]);
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.

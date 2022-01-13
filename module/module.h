@@ -9,6 +9,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
+#include "ast/declaration.h"
 #include "ast/module.h"
 #include "ast/scope.h"
 #include "base/cast.h"
@@ -41,8 +42,8 @@ struct BasicModule : base::Cast<BasicModule> {
   BasicModule(BasicModule const &) = delete;
   BasicModule &operator=(BasicModule const &) = delete;
 
-  ast::ModuleScope const &scope() const { return module_.body_scope(); }
-  ast::ModuleScope &scope() { return module_.body_scope(); }
+  ast::FnScope const &scope() const { return module_.body_scope(); }
+  ast::FnScope &scope() { return module_.body_scope(); }
 
   frontend::SourceBuffer const &buffer() const {
     return *ASSERT_NOT_NULL(buffer_);
@@ -50,7 +51,18 @@ struct BasicModule : base::Cast<BasicModule> {
 
   template <std::input_iterator Iter>
   base::PtrSpan<ast::Node const> insert(Iter b, Iter e) {
-    return module_.insert(b, e);
+    auto ptr_span = module_.insert(b, e);
+
+    for (auto const *node : ptr_span) {
+      if (auto *decl = node->template if_as<ast::Declaration>();
+          decl and decl->hashtags.contains(ir::Hashtag::Export)) {
+        for (auto const &id : decl->ids()) {
+          exported_declarations_[id.name()].push_back(&id);
+        }
+      }
+    }
+
+    return ptr_span;
   }
 
   bool has_error_in_dependent_module() const {
@@ -59,6 +71,9 @@ struct BasicModule : base::Cast<BasicModule> {
   void set_dependent_module_with_errors() {
     depends_on_module_with_errors_ = true;
   }
+
+  absl::Span<ast::Declaration::Id const *const> ExportedDeclarationIds(
+      std::string_view name) const;
 
  private:
   ast::Module module_;
@@ -71,6 +86,10 @@ struct BasicModule : base::Cast<BasicModule> {
   // TODO: As we move towards separate compilation in separate processes, this
   // will become irrelevant.
   bool depends_on_module_with_errors_ = false;
+
+  absl::flat_hash_map<std::string_view,
+                      std::vector<ast::Declaration::Id const *>>
+      exported_declarations_;
 };
 
 // Returns a container of all visible declarations in this scope with the given

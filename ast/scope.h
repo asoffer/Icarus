@@ -18,11 +18,18 @@ struct BasicModule;
 }  // namespace module
 
 namespace ast {
-struct ModuleScope;
 
-struct Scope : public base::Cast<Scope> {
+struct Scope : base::Cast<Scope> {
+  enum class Kind {
+    Declarative,
+    Executable,
+  };
+
   Scope() = delete;
   Scope(Scope *parent, bool executable);
+
+  Scope(module::BasicModule *module, bool executable);
+  Scope(Kind kind, Scope *parent, bool executable);
   virtual ~Scope() {}
 
   struct ancestor_iterator {
@@ -55,8 +62,26 @@ struct Scope : public base::Cast<Scope> {
     Scope const *p_;
   };
 
-  Scope *parent() { return parent_; }
-  Scope const *parent() const { return parent_; }
+  Scope *parent() {
+    return parent_ & 1 ? nullptr : reinterpret_cast<Scope *>(parent_);
+  }
+  Scope const *parent() const {
+    return parent_ & 1 ? nullptr : reinterpret_cast<Scope *>(parent_);
+  }
+
+  module::BasicModule &module() {
+    return parent_ & 1
+               ? *ASSERT_NOT_NULL(
+                     reinterpret_cast<module::BasicModule *>(parent_ - 1))
+               : parent()->module();
+  }
+
+  module::BasicModule const &module() const {
+    return parent_ & 1
+               ? *ASSERT_NOT_NULL(
+                     reinterpret_cast<module::BasicModule *>(parent_ - 1))
+               : parent()->module();
+  }
 
   ancestor_iterator begin() const { return ancestor_iterator(this); }
   ancestor_iterator end() const { return ancestor_iterator(nullptr); }
@@ -87,11 +112,7 @@ struct Scope : public base::Cast<Scope> {
   template <typename Sc>
   Sc const *Containing() const {
     Scope const *scope = this;
-    LOG("scope", "Looking for ancestor of type %s", typeid(Sc).name());
-    while (scope and not scope->is<Sc>()) {
-      LOG("scope", "%p => %p", scope, scope->parent());
-      scope = scope->parent();
-    }
+    while (scope and not scope->is<Sc>()) { scope = scope->parent(); }
     return static_cast<Sc const *>(scope);
   }
 
@@ -112,26 +133,20 @@ struct Scope : public base::Cast<Scope> {
     return absl::Span<Declaration::Id const *const>();
   }
 
-  void embed(ModuleScope const *scope) {
-    embedded_module_scopes_.insert(scope);
+  void embed(module::BasicModule const *module) {
+    embedded_modules_.insert(module);
   }
 
-  absl::flat_hash_set<ModuleScope const *> const &embedded_module_scopes()
+  absl::flat_hash_set<module::BasicModule const *> const &embedded_modules()
       const {
-    return embedded_module_scopes_;
+    return embedded_modules_;
   }
-
-  // Calls `fn` on each declaration in this scope and in parent scopes with the
-  // given identifier `name`, until calling `fn` returns false.
-  bool ForEachDeclIdTowardsRoot(
-      std::string_view name,
-      std::invocable<Declaration::Id const *> auto &&fn) const;
 
  private:
-  Scope *parent_ = nullptr;
+  uintptr_t parent_ = 0;
   absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       child_decls_;
-  absl::flat_hash_set<ModuleScope const *> embedded_module_scopes_;
+  absl::flat_hash_set<module::BasicModule const *> embedded_modules_;
   bool executable_;
 };
 
@@ -142,7 +157,13 @@ struct Scope : public base::Cast<Scope> {
 // TODO: Rename this as it represents not just functions but any executable
 // scope at the root of execution.
 struct FnScope : Scope {
-  FnScope(Scope *parent) : Scope(parent, true) { descendants_.push_back(this); }
+  explicit FnScope(module::BasicModule *module) : Scope(module, true) {
+    descendants_.push_back(this);
+  }
+
+  explicit FnScope(Scope *parent) : Scope(parent, true) {
+    descendants_.push_back(this);
+  }
 
   bool is_visibility_boundary() const override { return true; }
 
@@ -152,68 +173,6 @@ struct FnScope : Scope {
  private:
   std::vector<Scope *> descendants_;
 };
-
-// `ModuleScope`s are always FnScope`s because, even for imported library
-// modules, the body of the module is evaluated according to some linear
-// extension of the dependency partial order.
-struct ModuleScope : FnScope {
-  explicit ModuleScope(module::BasicModule *mod)
-      : FnScope(nullptr), module_(mod) {}
-
-  module::BasicModule *module() { return module_; }
-  module::BasicModule const *module() const { return module_; }
-
-  absl::Span<Declaration::Id const *const> ExportedDeclarationIds(
-      std::string_view name) const {
-    auto iter = exported_declarations_.find(name);
-    if (iter == exported_declarations_.end()) { return {}; }
-
-    // TODO: handle exported embedded modules here too.
-    return iter->second;
-  }
-
-  void insert_exported(Declaration::Id const *id) {
-    exported_declarations_[id->name()].push_back(id);
-  }
-
- private:
-  friend struct Scope;
-
-  absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
-      exported_declarations_;
-
-  module::BasicModule *module_;
-};
-
-// Represents a scope whose contents can only be declarations. This is in
-// contrast with scopes that can have other types of statements. For example, a
-// struct is a declarative scope because all entries inside that scope must be
-// declarations.
-struct DeclScope : public Scope {
-  DeclScope(Scope *parent) : Scope(parent, false) {}
-  ~DeclScope() override {}
-};
-
-bool Scope::ForEachDeclIdTowardsRoot(
-    std::string_view name,
-    std::invocable<Declaration::Id const *> auto &&fn) const {
-  for (Scope const &s : ancestors()) {
-    if (auto iter = s.decls_.find(name); iter != s.decls_.end()) {
-      for (auto const *id : iter->second) {
-        if (not fn(id)) { return false; }
-      }
-    }
-
-    for (auto const *mod_scope : s.embedded_module_scopes()) {
-      for (auto const *id : mod_scope->ExportedDeclarationIds(name)) {
-        // TODO what about transitivity for embedded modules?
-        // New context will lookup with no constants.
-        if (not fn(id)) { return false; }
-      }
-    }
-  }
-  return true;
-}
 
 }  // namespace ast
 

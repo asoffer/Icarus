@@ -5,6 +5,15 @@
 
 namespace module {
 
+absl::Span<ast::Declaration::Id const *const>
+BasicModule::ExportedDeclarationIds(std::string_view name) const {
+  auto iter = exported_declarations_.find(name);
+  if (iter == exported_declarations_.end()) { return {}; }
+
+  // TODO: handle exported embedded modules here too.
+  return iter->second;
+}
+
 // TODO: Add a version of this function that also gives the declarations that
 // are inaccessible. Particularly interesting would be the case of an overlaod
 // set mixing constant and non-constants. It should also be an error to
@@ -28,8 +37,8 @@ std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
       for (auto const *id : iter->second) { fn(id); }
     }
 
-    for (auto const *mod_scope : s.embedded_module_scopes()) {
-      for (auto const *id : mod_scope->ExportedDeclarationIds(id_name)) {
+    for (auto const *mod : s.embedded_modules()) {
+      for (auto const *id : mod->ExportedDeclarationIds(id_name)) {
         if (only_constants or
             (id->declaration().flags() & ast::Declaration::f_IsConst)) {
           ids.push_back(id);

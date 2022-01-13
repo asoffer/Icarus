@@ -1,12 +1,12 @@
 #ifndef ICARUS_COMPILER_CYCLIC_DEPENDENCY_TRACKER_H
 #define ICARUS_COMPILER_CYCLIC_DEPENDENCY_TRACKER_H
 
-#include <iterator>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/types/span.h"
 #include "ast/ast.h"
+#include "compiler/common.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/view.h"
 #include "module/module.h"
@@ -77,9 +77,7 @@ struct CyclicDependencyTracker {
     views.reserve(std::distance(iter, dependencies_.end()));
     for (auto it = iter; it != dependencies_.end(); ++it) {
       ast::Identifier const *id = *it;
-      views.push_back(frontend::SourceView(
-          &id->scope()->Containing<ast::ModuleScope>()->module()->buffer(),
-          id->range()));
+      views.push_back(frontend::SourceView(SourceBufferFor(id), id->range()));
     }
 
     diag.Consume(CyclicDependency{.cycle = std::move(views)});

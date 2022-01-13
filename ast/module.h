@@ -17,11 +17,12 @@ namespace ast {
 // Module:
 // Represents a module, the root node for a syntax tree.
 struct Module : Node {
+  // TODO: Remove `mod` parameter.
   explicit Module(module::BasicModule *mod)
       : Node(IndexOf<Module>()), body_scope_(mod) {}
 
-  ModuleScope const &body_scope() const { return body_scope_; }
-  ModuleScope &body_scope() { return body_scope_; }
+  FnScope const &body_scope() const { return body_scope_; }
+  FnScope &body_scope() { return body_scope_; }
 
   // Inserts the nodes from the half-open [b, e) into the module, initializes
   // them, and returns a PtrSpan referencing those nodes. The returned span is
@@ -33,15 +34,6 @@ struct Module : Node {
     Node::Initializer initializer{.scope = &body_scope()};
     while (b != e) {
       (*b)->Initialize(initializer);
-
-      if (auto *decl = (*b)->template if_as<Declaration>()) {
-        if (decl->hashtags.contains(ir::Hashtag::Export)) {
-          for (auto const &id : decl->ids()) {
-            body_scope_.insert_exported(&id);
-          }
-        }
-      }
-
       stmts_.push_back(std::move(*b++));
     }
 
@@ -63,7 +55,7 @@ struct Module : Node {
   }
 
  private:
-  ModuleScope body_scope_;
+  FnScope body_scope_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 

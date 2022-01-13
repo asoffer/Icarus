@@ -71,7 +71,7 @@ int Interpret(frontend::FileName const &file_name) {
   Context context(&ir_module);
   CompiledModule exec_mod(src, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
-    exec_mod.scope().embed(&importer.get(embedded_id).scope());
+    exec_mod.scope().embed(&importer.get(embedded_id));
   }
 
   PersistentResources resources{

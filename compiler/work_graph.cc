@@ -127,7 +127,7 @@ std::optional<ir::CompiledFn> CompileExecutable(
                              .work_resources = w.work_resources(),
                              .resources      = w.resources()};
         Compiler c(&data);
-        ast::ModuleScope const &mod_scope = w.resources().module->scope();
+        ast::FnScope const &mod_scope = w.resources().module->scope();
         c.set_builder(&f, &mod_scope);
         absl::Cleanup cleanup = [&] { c.state().builders.pop_back(); };
         if (not nodes.empty()) {

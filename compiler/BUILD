@@ -60,6 +60,7 @@ cc_library(
     name = "cyclic_dependency_tracker",
     hdrs = ["cyclic_dependency_tracker.h"],
     deps = [
+        ":common",
         "//ast",
         "//diagnostic/consumer",
         "//frontend/source:view",

@@ -75,7 +75,7 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
   modules_by_id_.emplace(id, &module);
 
   for (ir::ModuleId embedded_id : implicitly_embedded_modules()) {
-    module.scope().embed(&get(embedded_id).scope());
+    module.scope().embed(&get(embedded_id));
   }
 
   auto parsed_nodes = frontend::Parse(*maybe_file_src, *diagnostic_consumer_);

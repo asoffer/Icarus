@@ -2,6 +2,7 @@
 
 #include "absl/types/span.h"
 #include "ast/ast.h"
+#include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "compiler/module.h"
 #include "ir/value/addr.h"
@@ -16,12 +17,8 @@ namespace {
 // TODO: Support multiple declarations
 void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
                              ir::PartialResultBuffer &out) {
-  Context& compilation_root = c.context().root();
-  Context &node_root        = node->scope()
-                           ->Containing<ast::ModuleScope>()
-                           ->module()
-                           ->as<CompiledModule>()
-                           .context();
+  Context &compilation_root = c.context().root();
+  Context &node_root        = ModuleFor(node)->as<CompiledModule>().context();
   Context &ctx = (&compilation_root == &node_root) ? c.context() : node_root;
 
   LOG("EmitConstantDeclaration", "%s %s", node->DebugString(),

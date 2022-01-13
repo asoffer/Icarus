@@ -154,7 +154,7 @@ int Compile(frontend::FileName const &file_name) {
   compiler::Context context(&ir_module);
   compiler::CompiledModule exec_mod(src, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
-    exec_mod.scope().embed(&importer.get(embedded_id).scope());
+    exec_mod.scope().embed(&importer.get(embedded_id));
   }
 
   compiler::PersistentResources resources{
