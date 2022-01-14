@@ -26,7 +26,7 @@ struct Scope : base::Cast<Scope> {
     Executable,
   };
 
-  explicit Scope(Kind kind) : kind_(kind) { insert_descendant(this); }
+  explicit Scope(Kind kind);
   explicit Scope(module::BasicModule *module);
 
   Kind kind() const { return kind_; }
@@ -110,8 +110,12 @@ struct Scope : base::Cast<Scope> {
     return embedded_modules_;
   }
 
-  void insert_descendant(Scope *s) { descendants_.push_back(s); }
-  absl::Span<Scope *const> descendants() const { return descendants_; }
+  // Returns all scopes that are part of the executable scope. Requires that
+  // this scope be a root of execution (i.e., have Kind BoundaryExecutable).
+  absl::Span<Scope *const> executable_descendants() const {
+    ASSERT(kind_ == Kind::BoundaryExecutable);
+    return executable_descendants_;
+  }
 
  private:
   uintptr_t parent_ = 0;
@@ -119,7 +123,7 @@ struct Scope : base::Cast<Scope> {
   absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       child_decls_;
   absl::flat_hash_set<module::BasicModule const *> embedded_modules_;
-  std::vector<Scope *> descendants_;
+  std::vector<Scope *> executable_descendants_;
 };
 
 }  // namespace ast

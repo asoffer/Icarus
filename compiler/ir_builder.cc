@@ -51,9 +51,7 @@ IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
                      ast::Scope const *scope)
     : group_(ASSERT_NOT_NULL(group)) {
   if (scope) {
-    // TODO: Descendants are overkill: They include all the scopes for all
-    // locally defined functions too.
-    for (auto const *descendant : scope->descendants()) {
+    for (auto const *descendant : scope->executable_descendants()) {
       landings_.emplace(descendant, group_->AppendBlock());
 
       for (auto const *s = descendant; s != scope->parent(); s = s->parent()) {

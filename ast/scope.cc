@@ -17,21 +17,20 @@ void Scope::InsertDeclaration(ast::Declaration const *decl) {
   }
 }
 
+Scope::Scope(Kind kind) : kind_(kind) { executable_descendants_.push_back(this); }
+
 Scope::Scope(module::BasicModule *module)
     : parent_(reinterpret_cast<uintptr_t>(module) | 1),
       kind_(Kind::BoundaryExecutable) {
-  insert_descendant(this);
+  executable_descendants_.push_back(this);
 }
 
 void Scope::set_parent(Scope *p) {
   ASSERT(parent_ == 0u);
-  parent_ = reinterpret_cast<uintptr_t>(p);
-  if (kind() == Kind::BoundaryExecutable) { return; }
-  for (Scope *s = this; s; s = s->parent()) {
-    s->insert_descendant(this);
-    if (s->kind_ == Kind::BoundaryExecutable) { return; }
-  }
-  UNREACHABLE();
+  parent_  = reinterpret_cast<uintptr_t>(p);
+  Scope *s = this;
+  while (s->kind() != Kind::BoundaryExecutable) { s = s->parent(); }
+  s->executable_descendants_.push_back(this);
 }
 
 }  // namespace ast
