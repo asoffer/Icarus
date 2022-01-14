@@ -30,9 +30,6 @@ void MakeAllStackAllocations(Compiler &compiler, ast::Scope const *scope);
 void EmitIrForStatements(Compiler &compiler, ast::Scope const *scope,
                          base::PtrSpan<ast::Node const> stmts);
 
-// Inserts all destructor calls in this scope.
-void MakeAllDestructions(Compiler &compiler, ast::Scope const *scope);
-
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
                             ast::Expression const &expr,
                             ir::PartialResultBuffer &buffer);

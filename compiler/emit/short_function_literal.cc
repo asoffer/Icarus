@@ -119,7 +119,6 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
 
   DestroyTemporaries();
 
-  MakeAllDestructions(*this, &node->body_scope());
   builder().ReturnJump();
 
   context().ir().WriteByteCode<EmitByteCode>(ir_func);

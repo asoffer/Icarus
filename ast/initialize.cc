@@ -411,14 +411,16 @@ void UnaryOperator::Initialize(Initializer& initializer) {
 
 void IfStmt::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
   condition_->Initialize(initializer);
   covers_binding_ = condition_->covers_binding();
   is_dependent_   = condition_->is_dependent();
+
   true_scope_.set_parent(scope_);
-  false_scope_.set_parent(scope_);
   initializer.scope = &true_scope_;
-  absl::Cleanup c   = [&] { initializer.scope = scope_; };
   InitializeAll(true_block_, initializer, &covers_binding_, &is_dependent_);
+
+  false_scope_.set_parent(scope_);
   initializer.scope = &false_scope_;
   InitializeAll(false_block_, initializer, &covers_binding_, &is_dependent_);
 }

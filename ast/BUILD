@@ -102,6 +102,7 @@ cc_library(
         "//base:debug",
         "//base:log",
         "//base:iterator",
+        "//base:ptr_union",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/types:span"

@@ -466,56 +466,19 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 }
 
 void MakeAllStackAllocations(Compiler &compiler, ast::Scope const *scope) {
-  for (auto *s : scope->executable_descendants()) {
-    for (const auto &[key, val] : s->decls_) {
-      LOG("MakeAllStackAllocations", "%s (%p)", key, s);
-      // TODO: Support multiple declarations
-      for (ast::Declaration::Id const *id : val) {
-        if (id->declaration().flags() &
-            (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
-          LOG("MakeAllStackAllocations", "skipping constant/param decl %s",
-              id->name());
-          continue;
-        }
-
-        LOG("MakeAllStackAllocations", "allocating %s", id->name());
-
-        compiler.state().set_addr(
-            id, compiler.builder().Alloca(
-                    compiler.context().qual_types(id)[0].type()));
-      }
+  scope->ForEachDeclaration([&](ast::Declaration const *decl) {
+    if (decl->flags() &
+        (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
+      return;
     }
-  }
-}
+    for (ast::Declaration::Id const &id : decl->ids()) {
+      LOG("MakeAllStackAllocations", "allocating %s", id.name());
 
-void MakeAllDestructions(Compiler &c, ast::Scope const *scope) {
-  // TODO store these in the appropriate order so we don't have to compute this?
-  // Will this be faster?
-  std::vector<std::pair<ast::Declaration::Id const *, type::Type>>
-      ordered_decl_ids;
-  LOG("MakeAllDestructions", "decls in this scope:");
-  for (auto &[name, ids] : scope->decls_) {
-    if (ids[0]->declaration().flags() & ast::Declaration::f_IsConst) {
-      continue;
+      compiler.state().set_addr(
+          &id, compiler.builder().Alloca(
+                   compiler.context().qual_types(&id)[0].type()));
     }
-
-    LOG("MakeAllDestructions", "... %s", name);
-    for (ast::Declaration::Id const *id : ids) {
-      type::QualType qt = c.context().qual_types(id)[0];
-      if (qt.constant()) { continue; }
-      if (not qt.type().get()->HasDestructor()) { continue; }
-      ordered_decl_ids.emplace_back(id, qt.type());
-    }
-  }
-
-  // TODO eek, don't use line number to determine destruction order!
-  absl::c_sort(ordered_decl_ids, [](auto const &lhs, auto const &rhs) {
-    return (lhs.first->range().begin() > rhs.first->range().begin());
   });
-
-  for (auto const &[id, t] : ordered_decl_ids) {
-    c.EmitDestroy(type::Typed<ir::Reg>(c.state().addr(id).reg(), t));
-  }
 }
 
 void EmitIrForStatements(Compiler &c, ast::Scope const *scope,

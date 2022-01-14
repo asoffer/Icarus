@@ -1,6 +1,7 @@
 #ifndef ICARUS_AST_SCOPE_H
 #define ICARUS_AST_SCOPE_H
 
+#include <concepts>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -12,6 +13,7 @@
 #include "base/debug.h"
 #include "base/iterator.h"
 #include "base/log.h"
+#include "base/ptr_union.h"
 
 namespace module {
 struct BasicModule;
@@ -93,6 +95,18 @@ struct Scope : base::Cast<Scope> {
   absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       decls_;
 
+  // Invokes `f` on each declaration in this and all descendant scopes in the
+  // order of occurence.
+  void ForEachDeclaration(std::invocable<Declaration const *> auto &&f) const {
+    for (auto p : ordered_declarations_) {
+      if (auto const *decl = p.get_if<Declaration>()) {
+        f(decl);
+      } else {
+        p.get<Scope>()->ForEachDeclaration(f);
+      }
+    }
+  }
+
   absl::Span<Declaration::Id const *const> VisibleChildren(
       std::string_view name) const {
     if (auto iter = child_decls_.find(name); iter != child_decls_.end()) {
@@ -120,10 +134,17 @@ struct Scope : base::Cast<Scope> {
  private:
   uintptr_t parent_ = 0;
   Kind kind_;
+  // TODO: These are only useful in the shadowing check, so probably not worth
+  // storing.
   absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       child_decls_;
   absl::flat_hash_set<module::BasicModule const *> embedded_modules_;
   std::vector<Scope *> executable_descendants_;
+
+  // Sequence consisting of pointers to either a declaration or a child scope in
+  // the order that they appear.
+  std::vector<base::PtrUnion<Declaration const, Scope const>>
+      ordered_declarations_;
 };
 
 }  // namespace ast
