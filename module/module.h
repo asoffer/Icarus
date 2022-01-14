@@ -42,8 +42,8 @@ struct BasicModule : base::Cast<BasicModule> {
   BasicModule(BasicModule const &) = delete;
   BasicModule &operator=(BasicModule const &) = delete;
 
-  ast::FnScope const &scope() const { return module_.body_scope(); }
-  ast::FnScope &scope() { return module_.body_scope(); }
+  ast::Scope const &scope() const { return module_.body_scope(); }
+  ast::Scope &scope() { return module_.body_scope(); }
 
   frontend::SourceBuffer const &buffer() const {
     return *ASSERT_NOT_NULL(buffer_);

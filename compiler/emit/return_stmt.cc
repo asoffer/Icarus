@@ -58,8 +58,9 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
   }
 
   DestroyTemporaries();
-  builder().CurrentBlock() = builder().EmitDestructionPath(
-      node->scope(), node->scope()->Containing<ast::FnScope>());
+  ast::Scope const *s = node->scope();
+  while (s->kind() != ast::Scope::Kind::BoundaryExecutable) { s = s->parent(); }
+  builder().CurrentBlock() = builder().EmitDestructionPath(node->scope(), s);
   builder().ReturnJump();
 }
 

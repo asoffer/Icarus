@@ -11,30 +11,27 @@ void Scope::InsertDeclaration(ast::Declaration const *decl) {
     decls_[id.name()].push_back(&id);
     for (auto *scope_ptr = parent(); scope_ptr;
          scope_ptr       = scope_ptr->parent()) {
-      if (scope_ptr->is_visibility_boundary()) { break; }
+      if (kind_ == Kind::BoundaryExecutable) { break; }
       child_decls_[id.name()].push_back(&id);
     }
   }
 }
 
-Scope::Scope(module::BasicModule *module, bool executable)
+Scope::Scope(module::BasicModule *module)
     : parent_(reinterpret_cast<uintptr_t>(module) | 1),
-      executable_(executable) {}
+      kind_(Kind::BoundaryExecutable) {
+  insert_descendant(this);
+}
 
-Scope::Scope(Kind kind, Scope *parent_scope, bool executable)
-    : parent_(reinterpret_cast<uintptr_t>(parent_scope)),
-      executable_(executable) {
-  for (Scope *s = parent(); s; s = s->parent()) {
-    LOG("Scope", "%p", s);
-    if (auto *fs = s->if_as<FnScope>()) {
-      fs->insert_descendant(this);
-      return;
-    }
+void Scope::set_parent(Scope *p) {
+  ASSERT(parent_ == 0u);
+  parent_ = reinterpret_cast<uintptr_t>(p);
+  if (kind() == Kind::BoundaryExecutable) { return; }
+  for (Scope *s = this; s; s = s->parent()) {
+    s->insert_descendant(this);
+    if (s->kind_ == Kind::BoundaryExecutable) { return; }
   }
   UNREACHABLE();
-    }
-
-Scope::Scope(Scope *parent_scope, bool executable)
-    : Scope(Scope::Kind::Executable, parent_scope, executable) {}
+}
 
 }  // namespace ast

@@ -28,26 +28,14 @@ namespace ast {
 
 // WithScope:
 // A mixin which adds a scope of the given type `S`.
-template <typename S>
 struct WithScope {
-  S const &body_scope() const {
-    ASSERT(body_scope_.has_value() == true);
-    return *body_scope_;
-  }
+   explicit WithScope(Scope::Kind kind) : body_scope_(kind) {}
 
-  S &body_scope() {
-    ASSERT(body_scope_.has_value() == true);
-    return *body_scope_;
-  }
+  Scope const &body_scope() const { return body_scope_; }
+  Scope &body_scope() { return body_scope_; }
 
  protected:
-  template <typename... Args>
-  void set_body_with_parent(Args... args) {
-    ASSERT(body_scope_.has_value() == false);
-    body_scope_.emplace(args...);
-  }
-
-  std::optional<S> body_scope_;
+  Scope body_scope_;
 };
 
 // Access:
@@ -482,11 +470,12 @@ struct DesignatedInitializer : Expression {
 // Note: Today blocks have names and statements but cannot take any arguments.
 // This will likely change in the future so that blocks can take arguments
 // (likely in the form of `core::Arguments<std::unique_ptr<Expression>>`).
-struct BlockNode : ParameterizedExpression, WithScope<Scope> {
+struct BlockNode : ParameterizedExpression, WithScope {
   explicit BlockNode(frontend::SourceRange const &range, std::string name,
                      frontend::SourceLoc const &name_end,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(IndexOf<BlockNode>(), range),
+        WithScope(Scope::Kind::Executable),
         name_(std::move(name)),
         name_end_(name_end),
         stmts_(std::move(stmts)) {}
@@ -495,6 +484,7 @@ struct BlockNode : ParameterizedExpression, WithScope<Scope> {
                      std::vector<std::unique_ptr<Declaration>> params,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(IndexOf<BlockNode>(), range, std::move(params)),
+        WithScope(Scope::Kind::Executable),
         name_(std::move(name)),
         name_end_(name_end),
         stmts_(std::move(stmts)) {
@@ -734,7 +724,7 @@ struct ComparisonOperator : Expression {
 //  }
 //  ```
 //
-struct EnumLiteral : Expression, WithScope<Scope> {
+struct EnumLiteral : Expression, WithScope {
   enum Kind : char { Enum, Flags };
 
   EnumLiteral(
@@ -742,6 +732,7 @@ struct EnumLiteral : Expression, WithScope<Scope> {
       absl::flat_hash_map<std::string, std::unique_ptr<Expression>> values,
       Kind kind)
       : Expression(IndexOf<EnumLiteral>(), range),
+        WithScope(Scope::Kind::Declarative),
         enumerators_(std::move(enumerators)),
         values_(std::move(values)),
         kind_(kind) {}
@@ -773,7 +764,7 @@ struct EnumLiteral : Expression, WithScope<Scope> {
 // * `(n: i32, m: i32) => n * m`
 // * `(T :: type, val: T) => val`
 //
-struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
+struct FunctionLiteral : ParameterizedExpression, WithScope {
   explicit FunctionLiteral(
       frontend::SourceRange const &range,
       std::vector<std::unique_ptr<Declaration>> in_params,
@@ -782,6 +773,7 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
           std::nullopt)
       : ParameterizedExpression(IndexOf<FunctionLiteral>(), range,
                                 std::move(in_params)),
+        WithScope(Scope::Kind::BoundaryExecutable),
         outputs_(std::move(out_params)),
         stmts_(std::move(stmts)) {}
   base::PtrSpan<Node const> stmts() const { return stmts_; }
@@ -921,13 +913,14 @@ struct Index : Expression {
 // }
 // ```
 //
-struct InterfaceLiteral : Expression, WithScope<Scope> {
+struct InterfaceLiteral : Expression, WithScope {
   explicit InterfaceLiteral(
       frontend::SourceRange const &range,
       std::vector<std::pair<std::unique_ptr<ast::Expression>,
                             std::unique_ptr<ast::Expression>>>
           entries)
       : Expression(IndexOf<InterfaceLiteral>(), range),
+        WithScope(Scope::Kind::Declarative),
         entries_(std::move(entries)) {}
 
   absl::Span<std::pair<std::unique_ptr<ast::Expression>,
@@ -981,12 +974,13 @@ struct Label : Expression {
 //   square ::= N * N
 // }
 // ```
-struct ParameterizedStructLiteral : ParameterizedExpression, WithScope<Scope> {
+struct ParameterizedStructLiteral : ParameterizedExpression, WithScope {
   ParameterizedStructLiteral(frontend::SourceRange const &range,
                              std::vector<std::unique_ptr<Declaration>> params,
                              std::vector<Declaration> fields)
       : ParameterizedExpression(IndexOf<ParameterizedStructLiteral>(), range,
                                 std::move(params)),
+        WithScope(Scope::Kind::Declarative),
         fields_(std::move(fields)) {}
 
   absl::Span<Declaration const> fields() const { return fields_; }
@@ -1065,13 +1059,14 @@ struct Terminal : Expression {
 //    }
 //  }
 //  ```
-struct ScopeLiteral : ParameterizedExpression, WithScope<FnScope> {
+struct ScopeLiteral : ParameterizedExpression, WithScope {
   explicit ScopeLiteral(frontend::SourceRange const &range,
                         Declaration::Id context_identifier,
                         std::vector<std::unique_ptr<Declaration>> params,
                         std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(IndexOf<ScopeLiteral>(), range,
                                 std::move(params)),
+        WithScope(Scope::Kind::BoundaryExecutable),
         context_decl_(ContextDeclaration(std::move(context_identifier))),
         stmts_(std::move(stmts)) {}
 
@@ -1198,13 +1193,14 @@ struct SliceType : Expression {
 // * `(T :: type, val: T) => val`
 // * `(x: $x) => x`
 //
-struct ShortFunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
+struct ShortFunctionLiteral : ParameterizedExpression, WithScope {
   explicit ShortFunctionLiteral(
       frontend::SourceRange const &range,
       std::vector<std::unique_ptr<Declaration>> params,
       std::unique_ptr<Expression> body)
       : ParameterizedExpression(IndexOf<ShortFunctionLiteral>(), range,
                                 std::move(params)),
+        WithScope(Scope::Kind::BoundaryExecutable),
         body_(std::move(body)) {}
   Expression const *body() const { return body_.get(); }
 
@@ -1229,10 +1225,11 @@ struct ShortFunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
 //
 // struct {}
 // ```
-struct StructLiteral : Expression, WithScope<Scope> {
+struct StructLiteral : Expression, WithScope {
   explicit StructLiteral(frontend::SourceRange const &range,
                          std::vector<Declaration> fields)
       : Expression(IndexOf<StructLiteral>(), range),
+        WithScope(Scope::Kind::Declarative),
         fields_(std::move(fields)) {}
 
   absl::Span<Declaration const> fields() const { return fields_; }
@@ -1356,15 +1353,8 @@ struct IfStmt : Expression {
   base::PtrSpan<Node const> true_block() const { return true_block_; }
   base::PtrSpan<Node const> false_block() const { return false_block_; }
 
-  Scope const &true_scope() const {
-    ASSERT(body_scopes_.has_value() == true);
-    return body_scopes_->first;
-  }
-
-  Scope const &false_scope() const {
-    ASSERT(body_scopes_.has_value() == true);
-    return body_scopes_->second;
-  }
+  Scope const &true_scope() const { return true_scope_; }
+  Scope const &false_scope() const { return false_scope_; }
 
   bool has_false_block() const { return has_false_block_; }
 
@@ -1375,8 +1365,9 @@ struct IfStmt : Expression {
   std::unique_ptr<Expression> condition_;
   std::vector<std::unique_ptr<Node>> true_block_;
   std::vector<std::unique_ptr<Node>> false_block_;
-  // True-scope, then false-scope
-  std::optional<std::pair<Scope, Scope>> body_scopes_;
+  Scope true_scope_{Scope::Kind::Executable};
+  Scope false_scope_{Scope::Kind::Executable};
+
   bool has_false_block_;
   IfStmt *last_if_ = nullptr;
 };
@@ -1393,11 +1384,12 @@ struct IfStmt : Expression {
 //   z()
 // }
 // ```
-struct WhileStmt : Expression, WithScope<Scope> {
+struct WhileStmt : Expression, WithScope {
   explicit WhileStmt(frontend::SourceRange const &range,
                      std::unique_ptr<Expression> condition,
                      std::vector<std::unique_ptr<Node>> body)
       : Expression(IndexOf<WhileStmt>(), range),
+        WithScope(Scope::Kind::Executable),
         condition_(std::move(condition)),
         body_(std::move(body)) {}
 

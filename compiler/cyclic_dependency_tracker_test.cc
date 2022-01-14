@@ -53,7 +53,7 @@ TEST(CyclicDependencyTracker, Errors) {
 
   frontend::SourceBuffer buffer("\n");
   module::BasicModule module(&buffer);
-  ast::FnScope scope(nullptr);
+  ast::Scope scope(&module);
   ast::Node::Initializer i{.scope = &scope};
   id1.Initialize(i);
   id2.Initialize(i);

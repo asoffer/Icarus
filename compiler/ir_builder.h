@@ -44,7 +44,7 @@ namespace compiler {
 
 struct IrBuilder {
   explicit IrBuilder(ir::internal::BlockGroupBase* group,
-                     ast::FnScope const* fn_scope);
+                     ast::Scope const* scope);
 
   ir::BasicBlock* EmitDestructionPath(ast::Scope const* from,
                                       ast::Scope const* to);

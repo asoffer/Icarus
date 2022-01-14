@@ -21,8 +21,8 @@ struct Module : Node {
   explicit Module(module::BasicModule *mod)
       : Node(IndexOf<Module>()), body_scope_(mod) {}
 
-  FnScope const &body_scope() const { return body_scope_; }
-  FnScope &body_scope() { return body_scope_; }
+  Scope const &body_scope() const { return body_scope_; }
+  Scope &body_scope() { return body_scope_; }
 
   // Inserts the nodes from the half-open [b, e) into the module, initializes
   // them, and returns a PtrSpan referencing those nodes. The returned span is
@@ -55,7 +55,7 @@ struct Module : Node {
   }
 
  private:
-  FnScope body_scope_;
+  Scope body_scope_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 

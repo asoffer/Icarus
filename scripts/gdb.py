@@ -23,8 +23,8 @@ def should_display(f):
         return False
 
     for pattern in [
-            r"^ast::internal_node",
             r"^ast::Node::visit",
+            r"^base::Visitable",
             r"^compiler::Compiler::VerifyType\(ast::Node const",
             r"^compiler::Compiler::EmitToBuffer\(ast::Node const",
             r"^type::Visitor<",

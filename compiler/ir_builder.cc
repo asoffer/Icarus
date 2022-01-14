@@ -48,16 +48,15 @@ ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
 }
 
 IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
-                     ast::FnScope const *fn_scope)
+                     ast::Scope const *scope)
     : group_(ASSERT_NOT_NULL(group)) {
-  if (fn_scope) {
+  if (scope) {
     // TODO: Descendants are overkill: They include all the scopes for all
     // locally defined functions too.
-    for (auto const *descendant : fn_scope->descendants()) {
+    for (auto const *descendant : scope->descendants()) {
       landings_.emplace(descendant, group_->AppendBlock());
 
-      for (auto const *s = descendant; s != fn_scope->parent();
-           s             = s->parent()) {
+      for (auto const *s = descendant; s != scope->parent(); s = s->parent()) {
         destruction_blocks_.emplace(std::pair(descendant, s),
                                     group_->AppendBlock());
       }

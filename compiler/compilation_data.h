@@ -45,21 +45,19 @@ struct CompilationDataReference {
           *node) {
     ir::NativeFn ir_func = context().FindNativeFn(node);
     ASSERT(static_cast<bool>(ir_func) == true);
-    state().builders.emplace_back(
-        &*ir_func, &node->body_scope().template as<ast::FnScope>());
+    state().builders.emplace_back(&*ir_func, &node->body_scope());
     return ir_func;
   }
 
   ir::Scope set_builder(ast::ScopeLiteral const *node) {
     ir::Scope ir_scope = context().FindScope(node);
     ASSERT(static_cast<bool>(ir_scope) == true);
-    state().builders.emplace_back(&*ir_scope,
-                                  &node->body_scope().as<ast::FnScope>());
+    state().builders.emplace_back(&*ir_scope, &node->body_scope());
     return ir_scope;
   }
 
   void set_builder(ir::internal::BlockGroupBase *group,
-                   ast::FnScope const *scope = nullptr) {
+                   ast::Scope const *scope = nullptr) {
     state().builders.emplace_back(group, scope);
   }
 

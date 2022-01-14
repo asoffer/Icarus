@@ -465,11 +465,13 @@ std::optional<ir::CompiledFn> StructCompletionFn(
   return fn;
 }
 
-void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
-  for (auto *scope : fn_scope->descendants()) {
-    if (not scope->executable()) { continue; }
-    if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
-    for (const auto &[key, val] : scope->decls_) {
+void MakeAllStackAllocations(Compiler &compiler, ast::Scope const *scope) {
+  for (auto *s : scope->descendants()) {
+    // TODO: if (not s->executable()) { continue; }
+    if (s != scope and s->kind() == ast::Scope::Kind::BoundaryExecutable) {
+      continue;
+    }
+    for (const auto &[key, val] : s->decls_) {
       LOG("MakeAllStackAllocations", "%s", key);
       // TODO: Support multiple declarations
       for (ast::Declaration::Id const *id : val) {

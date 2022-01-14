@@ -22,24 +22,18 @@ namespace ast {
 struct Scope : base::Cast<Scope> {
   enum class Kind {
     Declarative,
+    BoundaryExecutable,
     Executable,
   };
 
-  Scope() = delete;
-  Scope(Scope *parent, bool executable);
+  explicit Scope(Kind kind) : kind_(kind) { insert_descendant(this); }
+  explicit Scope(module::BasicModule *module);
 
-  Scope(module::BasicModule *module, bool executable);
-  Scope(Kind kind, Scope *parent, bool executable);
-  virtual ~Scope() {}
+  Kind kind() const { return kind_; }
 
   struct ancestor_iterator {
-    friend bool operator==(ancestor_iterator lhs, ancestor_iterator rhs) {
-      return lhs.p_ == rhs.p_;
-    }
-
-    friend bool operator!=(ancestor_iterator lhs, ancestor_iterator rhs) {
-      return not(lhs == rhs);
-    }
+    bool operator==(ancestor_iterator const &lhs) const = default;
+    bool operator!=(ancestor_iterator const &lhs) const = default;
 
     Scope const &operator*() const { return *p_; }
 
@@ -62,14 +56,19 @@ struct Scope : base::Cast<Scope> {
     Scope const *p_;
   };
 
+  void set_parent(Scope *p);
+
   Scope *parent() {
+    ASSERT(parent_ != 0u);
     return parent_ & 1 ? nullptr : reinterpret_cast<Scope *>(parent_);
   }
   Scope const *parent() const {
+    ASSERT(parent_ != 0u);
     return parent_ & 1 ? nullptr : reinterpret_cast<Scope *>(parent_);
   }
 
   module::BasicModule &module() {
+    ASSERT(parent_ != 0u);
     return parent_ & 1
                ? *ASSERT_NOT_NULL(
                      reinterpret_cast<module::BasicModule *>(parent_ - 1))
@@ -77,50 +76,19 @@ struct Scope : base::Cast<Scope> {
   }
 
   module::BasicModule const &module() const {
+    ASSERT(parent_ != 0u);
     return parent_ & 1
                ? *ASSERT_NOT_NULL(
                      reinterpret_cast<module::BasicModule *>(parent_ - 1))
                : parent()->module();
   }
 
-  ancestor_iterator begin() const { return ancestor_iterator(this); }
-  ancestor_iterator end() const { return ancestor_iterator(nullptr); }
-  auto ancestors() const { return base::iterator_range(begin(), end()); }
+  auto ancestors() const {
+    return base::iterator_range(ancestor_iterator(this),
+                                ancestor_iterator(nullptr));
+  }
 
   void InsertDeclaration(Declaration const *decl);
-
-  // Whether or not non-constant declarations are visible across this scope
-  // boundary. In this example,
-  //
-  // ```
-  // f ::= (n: i64) -> () {
-  //   m := 1
-  //   while (m != 10) do {
-  //     m := "hello"
-  //   }
-  // }
-  //
-  // n := 1
-  // ```
-  //
-  // The identifier `m` is visible across the while-scope boundary, so `m` would
-  // be an ambiguous redeclaration. However the identifier `n` is not visible
-  // because function scopes constitute a visibility boundary.
-  virtual bool is_visibility_boundary() const { return false; }
-  bool executable() const { return executable_; }
-
-  template <typename Sc>
-  Sc const *Containing() const {
-    Scope const *scope = this;
-    while (scope and not scope->is<Sc>()) { scope = scope->parent(); }
-    return static_cast<Sc const *>(scope);
-  }
-
-  template <typename Sc>
-  Sc *Containing() {
-    return const_cast<Sc *>(
-        static_cast<Scope const *>(this)->template Containing<Sc>());
-  }
 
   absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       decls_;
@@ -142,35 +110,15 @@ struct Scope : base::Cast<Scope> {
     return embedded_modules_;
   }
 
- private:
-  uintptr_t parent_ = 0;
-  absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
-      child_decls_;
-  absl::flat_hash_set<module::BasicModule const *> embedded_modules_;
-  bool executable_;
-};
-
-// An executable scope representing the body of a function literal. These scopes
-// need to know about all child scopes so they can stack-allocate enough space
-// when they start.
-//
-// TODO: Rename this as it represents not just functions but any executable
-// scope at the root of execution.
-struct FnScope : Scope {
-  explicit FnScope(module::BasicModule *module) : Scope(module, true) {
-    descendants_.push_back(this);
-  }
-
-  explicit FnScope(Scope *parent) : Scope(parent, true) {
-    descendants_.push_back(this);
-  }
-
-  bool is_visibility_boundary() const override { return true; }
-
   void insert_descendant(Scope *s) { descendants_.push_back(s); }
   absl::Span<Scope *const> descendants() const { return descendants_; }
 
  private:
+  uintptr_t parent_ = 0;
+  Kind kind_;
+  absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
+      child_decls_;
+  absl::flat_hash_set<module::BasicModule const *> embedded_modules_;
   std::vector<Scope *> descendants_;
 };
 

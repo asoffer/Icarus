@@ -145,7 +145,7 @@ void BindingDeclaration::Initialize(Initializer& initializer) {
 
 void BlockNode::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope, true);
+  body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& param : params_) { param.value->Initialize(initializer); }
@@ -221,7 +221,7 @@ void DesignatedInitializer::Initialize(Initializer& initializer) {
 
 void EnumLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(Scope::Kind::Declarative, initializer.scope, false);
+  body_scope().set_parent(initializer.scope);
   for (auto& [id, value] : values_) {
     value->Initialize(initializer);
     covers_binding_ |= value->covers_binding();
@@ -231,7 +231,7 @@ void EnumLiteral::Initialize(Initializer& initializer) {
 
 void FunctionLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  body_scope().set_parent(initializer.scope);
 
   initializer.scope = &body_scope();
   auto* f           = std::exchange(initializer.function_literal, this);
@@ -279,7 +279,7 @@ void Index::Initialize(Initializer& initializer) {
 
 void InterfaceLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(Scope::Kind::Declarative, initializer.scope, false);
+  body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& [name, expr] : entries_) {
@@ -323,7 +323,7 @@ void YieldStmt::Initialize(Initializer& initializer) {
 
 void ScopeLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   context_decl_->Initialize(initializer);
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
@@ -356,7 +356,7 @@ void SliceType::Initialize(Initializer& initializer) {
 
 void ShortFunctionLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(initializer.scope);
+  body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& param : params_) { param.value->Initialize(initializer); }
@@ -367,7 +367,7 @@ void ShortFunctionLiteral::Initialize(Initializer& initializer) {
 
 void StructLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(Scope::Kind::Declarative, initializer.scope, false);
+  body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& field : fields_) { field.Initialize(initializer); }
@@ -375,7 +375,7 @@ void StructLiteral::Initialize(Initializer& initializer) {
 
 void ParameterizedStructLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  set_body_with_parent(Scope::Kind::Declarative, initializer.scope, false);
+  body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   for (auto& param : params_) { param.value->Initialize(initializer); }
@@ -414,13 +414,12 @@ void IfStmt::Initialize(Initializer& initializer) {
   condition_->Initialize(initializer);
   covers_binding_ = condition_->covers_binding();
   is_dependent_   = condition_->is_dependent();
-  body_scopes_.emplace(std::piecewise_construct,
-                       std::forward_as_tuple(scope_, true),
-                       std::forward_as_tuple(scope_, true));
-  initializer.scope = &body_scopes_->first;
+  true_scope_.set_parent(scope_);
+  false_scope_.set_parent(scope_);
+  initializer.scope = &true_scope_;
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   InitializeAll(true_block_, initializer, &covers_binding_, &is_dependent_);
-  initializer.scope = &body_scopes_->second;
+  initializer.scope = &false_scope_;
   InitializeAll(false_block_, initializer, &covers_binding_, &is_dependent_);
 }
 
@@ -429,7 +428,7 @@ void WhileStmt::Initialize(Initializer& initializer) {
   condition_->Initialize(initializer);
   covers_binding_ = condition_->covers_binding();
   is_dependent_   = condition_->is_dependent();
-  set_body_with_parent(initializer.scope, true);
+  body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
   InitializeAll(body_, initializer, &covers_binding_, &is_dependent_);

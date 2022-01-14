@@ -46,7 +46,9 @@ std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
       }
     }
 
-    if (s.is<ast::FnScope>()) { only_constants = true; }
+    if (s.kind() == ast::Scope::Kind::BoundaryExecutable) {
+      only_constants = true;
+    }
   }
   return ids;
 }
