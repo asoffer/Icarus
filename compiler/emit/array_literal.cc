@@ -21,7 +21,8 @@ void Compiler::EmitCopyInit(
   type::Array const &array_type =
       context().qual_types(node)[0].type().as<type::Array>();
   auto const *data_type_ptr = type::Ptr(array_type.data_type());
-  auto elem = builder().Index(type::Ptr(&array_type), to[0]->reg(), 0);
+  auto elem                 = builder().PtrIncr(to[0]->reg(), 0, data_type_ptr);
+
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
@@ -40,7 +41,7 @@ void Compiler::EmitMoveInit(
   if (t == type::EmptyArray) { return; }
   type::Array const &array_type = t.as<type::Array>();
   auto *data_type_ptr = type::Ptr(array_type.data_type());
-  auto elem = builder().Index(type::Ptr(&array_type), to[0]->reg(), 0);
+  auto elem = builder().PtrIncr(to[0]->reg(), 0, data_type_ptr);
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
@@ -58,7 +59,7 @@ void Compiler::EmitCopyAssign(
   type::Array const &array_type =
       context().qual_types(node)[0].type().as<type::Array>();
   auto *data_type_ptr = type::Ptr(array_type.data_type());
-  auto elem = builder().Index(type::Ptr(&array_type), to[0]->reg(), 0);
+  auto elem           = builder().PtrIncr(to[0]->reg(), 0, data_type_ptr);
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
@@ -76,7 +77,7 @@ void Compiler::EmitMoveAssign(
   type::Array const &array_type =
       context().qual_types(node)[0].type().as<type::Array>();
   auto *data_type_ptr = type::Ptr(array_type.data_type());
-  auto elem = builder().Index(type::Ptr(&array_type), to[0]->reg(), 0);
+  auto elem           = builder().PtrIncr(to[0]->reg(), 0, data_type_ptr);
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());

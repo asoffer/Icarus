@@ -49,88 +49,10 @@ struct IrBuilder {
   ir::BasicBlock* EmitDestructionPath(ast::Scope const* from,
                                       ast::Scope const* to);
 
-  ir::Reg Reserve() { return CurrentGroup()->Reserve(); }
-
   ir::internal::BlockGroupBase*& CurrentGroup() { return group_; }
-  ir::BasicBlock*& CurrentBlock() { return current_.block_; }
-
-  template <typename T>
-  struct reduced_type {
-    using type = T;
-  };
-  template <typename T>
-  struct reduced_type<ir::RegOr<T>> {
-    using type = T;
-  };
-
-  template <typename T>
-  using reduced_type_t = typename reduced_type<T>::type;
+  ir::BasicBlock*& CurrentBlock() { return block_; }
 
   // INSTRUCTIONS
-
-  template <typename Lhs, typename Rhs>
-  ir::RegOr<bool> Le(Lhs const& lhs, Rhs const& rhs) {
-    using type = reduced_type_t<Lhs>;
-    if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
-                  base::meta<Rhs>.template is_a<ir::RegOr>()) {
-      if (not lhs.is_reg() and not rhs.is_reg()) {
-        return ir::LeInstruction<type>::Apply(lhs.value(), rhs.value());
-      }
-
-      return CurrentBlock()->Append(ir::LeInstruction<type>{
-          .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-    } else {
-      return Le(ir::RegOr<type>(lhs), ir::RegOr<type>(rhs));
-    }
-  }
-
-  // Comparison
-  template <typename Lhs, typename Rhs>
-  ir::RegOr<bool> Eq(Lhs const& lhs, Rhs const& rhs) {
-    using type = reduced_type_t<Lhs>;
-    if constexpr (base::meta<type> == base::meta<bool>) {
-      return EqBool(lhs, rhs);
-    } else if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
-                         base::meta<Rhs>.template is_a<ir::RegOr>()) {
-      if (not lhs.is_reg() and not rhs.is_reg()) {
-        return ir::EqInstruction<type>::Apply(lhs.value(), rhs.value());
-      }
-      return CurrentBlock()->Append(ir::EqInstruction<type>{
-          .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-    } else {
-      return Eq(ir::RegOr<type>(lhs), ir::RegOr<type>(rhs));
-    }
-  }
-
-  template <typename Lhs, typename Rhs>
-  ir::RegOr<bool> Ne(Lhs const& lhs, Rhs const& rhs) {
-    using type = reduced_type_t<Lhs>;
-    if constexpr (std::is_same_v<type, bool>) {
-      return NeBool(lhs, rhs);
-    } else if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
-                         base::meta<Rhs>.template is_a<ir::RegOr>()) {
-      if (not lhs.is_reg() and not rhs.is_reg()) {
-        return ir::NeInstruction<type>::Apply(lhs.value(), rhs.value());
-      }
-      return CurrentBlock()->Append(ir::NeInstruction<type>{
-          .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-    } else {
-      return Ne(ir::RegOr<type>(lhs), ir::RegOr<type>(rhs));
-    }
-  }
-
-  template <typename T>
-  ir::RegOr<T> Neg(ir::RegOr<T> const& val) {
-    if (not val.is_reg()) { return ir::NegInstruction<T>::Apply(val.value()); }
-    return CurrentBlock()->Append(ir::NegInstruction<reduced_type_t<T>>{
-        .operand = val, .result = CurrentGroup()->Reserve()});
-  }
-
-  ir::RegOr<bool> Not(ir::RegOr<bool> const& val) {
-    if (not val.is_reg()) { return ir::NotInstruction::Apply(val.value()); }
-    return CurrentBlock()->Append(ir::NotInstruction{
-        .operand = val, .result = CurrentGroup()->Reserve()});
-  }
 
   template <typename ToType>
   ir::RegOr<ToType> CastTo(type::Type t, ir::PartialResultRef const& buffer) {
@@ -264,21 +186,6 @@ struct IrBuilder {
     }
   }
 
-  ir::Reg Index(type::Pointer const* t, ir::RegOr<ir::addr_t> addr,
-                ir::RegOr<int64_t> offset) {
-    type::Type pointee = t->pointee();
-    type::Type data_type;
-    if (auto const* a = pointee.if_as<type::Array>()) {
-      data_type = a->data_type();
-    } else if (auto const* s = pointee.if_as<type::Slice>()) {
-      data_type = s->data_type();
-    } else {
-      UNREACHABLE(t->to_string());
-    }
-
-    return PtrIncr(addr, offset, type::Ptr(data_type));
-  }
-
   // Emits a function-call instruction, calling `fn` of type `f` with the given
   // `arguments` and output parameters. If output parameters are not present,
   // the function must return nothing.
@@ -375,26 +282,7 @@ struct IrBuilder {
     }
   }
 
-  ir::RegOr<bool> EqBool(ir::RegOr<bool> const& lhs,
-                         ir::RegOr<bool> const& rhs) {
-    if (not lhs.is_reg()) { return lhs.value() ? rhs : Not(rhs); }
-    if (not rhs.is_reg()) { return rhs.value() ? lhs : Not(lhs); }
-    return CurrentBlock()->Append(ir::EqInstruction<bool>{
-        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-  }
-
-  ir::RegOr<bool> NeBool(ir::RegOr<bool> const& lhs,
-                         ir::RegOr<bool> const& rhs) {
-    if (not lhs.is_reg()) { return lhs.value() ? Not(rhs) : rhs; }
-    if (not rhs.is_reg()) { return rhs.value() ? Not(lhs) : lhs; }
-    return CurrentBlock()->Append(ir::NeInstruction<bool>{
-        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
-  }
-
-  struct State {
-    ir::BasicBlock* block_;
-  } current_;
-
+  ir::BasicBlock* block_;
   ir::internal::BlockGroupBase* group_;
 
   // TODO: Early exists from a scope should only destroy a prefix of the

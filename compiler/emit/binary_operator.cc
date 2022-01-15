@@ -102,7 +102,10 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
     case ast::BinaryOperator::Kind::Xor: {
       auto lhs_ir = EmitAs<bool>(&node->lhs());
       auto rhs_ir = EmitAs<bool>(&node->rhs());
-      out.append(builder().Ne(lhs_ir, rhs_ir));
+      out.append(builder().CurrentBlock()->Append(ir::NeInstruction<bool>{
+          .lhs    = lhs_ir,
+          .rhs    = rhs_ir,
+          .result = builder().CurrentGroup()->Reserve()}));
       return;
     } break;
     case ast::BinaryOperator::Kind::SymbolXor: {
@@ -188,15 +191,25 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs(), out);
         auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, &node->rhs(), out);
-        out.append(
-            builder().PtrIncr(lhs_ir, builder().Neg(rhs_ir), lhs_buf_ptr_type));
+        out.append(builder().PtrIncr(
+            lhs_ir,
+            current_block()->Append(ir::NegInstruction<int64_t>{
+                .operand = rhs_ir,
+                .result  = builder().CurrentGroup()->Reserve(),
+            }),
+            lhs_buf_ptr_type));
       } else if (auto const *rhs_buf_ptr_type =
                      rhs_type.if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
         auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, &node->lhs(), out);
         auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs(), out);
-        out.append(
-            builder().PtrIncr(rhs_ir, builder().Neg(lhs_ir), rhs_buf_ptr_type));
+        out.append(builder().PtrIncr(
+            rhs_ir,
+            current_block()->Append(ir::NegInstruction<int64_t>{
+                .operand = lhs_ir,
+                .result  = builder().CurrentGroup()->Reserve(),
+            }),
+            rhs_buf_ptr_type));
       } else if (auto const *buf_ptr = lhs_type.if_as<type::BufferPointer>();
                  lhs_type == rhs_type and buf_ptr) {
         auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs());
@@ -335,9 +348,13 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         builder().Store<ir::RegOr<ir::addr_t>>(
-            builder().PtrIncr(builder().Load<ir::addr_t>(lhs_lval),
-                              builder().Neg(out.get<int64_t>(0)),
-                              lhs_buf_ptr_type),
+            builder().PtrIncr(
+                builder().Load<ir::addr_t>(lhs_lval),
+                current_block()->Append(ir::NegInstruction<int64_t>{
+                    .operand = out.get<int64_t>(0),
+                    .result  = builder().CurrentGroup()->Reserve(),
+                }),
+                lhs_buf_ptr_type),
             lhs_lval);
       } else {
         ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,

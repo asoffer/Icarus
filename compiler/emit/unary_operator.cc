@@ -52,7 +52,8 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
         EmitToBuffer(node->operand(), out);
         auto value = out.back().get<bool>();
         out.pop_back();
-        out.append(builder().Not(value));
+        out.append(builder().CurrentBlock()->Append(ir::NotInstruction{
+            .operand = value, .result = builder().CurrentGroup()->Reserve()}));
         return;
       } else if (auto const *t = operand_qt.type().if_as<type::Flags>()) {
         out.append(current_block()->Append(type::XorFlagsInstruction{
@@ -71,7 +72,10 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
           context().qual_types(node->operand())[0].type(), [&]<typename T>() {
             auto value = out.back().get<T>();
             out.pop_back();
-            out.append(builder().Neg(value));
+            out.append(current_block()->Append(ir::NegInstruction<T>{
+                .operand = value,
+                .result  = builder().CurrentGroup()->Reserve(),
+            }));
           });
       return;
     } break;

@@ -47,8 +47,13 @@ void OnEachArrayElement(IrBuilder &builder, type::Array const *t,
 
   builder.CurrentBlock() = cond_block;
   auto *phi              = PhiInst<ir::addr_t>(builder);
-  builder.CondJump(builder.Eq(ir::RegOr<ir::addr_t>(phi->result), end_ptr),
-                   land_block, loop_body);
+
+  ir::Reg condition =
+      builder.CurrentBlock()->Append(ir::EqInstruction<ir::addr_t>{
+          .lhs    = phi->result,
+          .rhs    = end_ptr,
+          .result = builder.CurrentGroup()->Reserve()});
+  builder.CondJump(condition, land_block, loop_body);
 
   builder.CurrentBlock() = loop_body;
   fn(phi->result);
@@ -89,8 +94,11 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
   bldr.CurrentBlock() = cond_block;
   auto *from_phi      = PhiInst<ir::addr_t>(bldr);
   auto *to_phi        = PhiInst<ir::addr_t>(bldr);
-  bldr.CondJump(bldr.Eq(ir::RegOr<ir::addr_t>(from_phi->result), from_end_ptr),
-                land_block, loop_body);
+  ir::Reg condition   = bldr.CurrentBlock()->Append(
+      ir::EqInstruction<ir::addr_t>{.lhs    = from_phi->result,
+                                    .rhs    = from_end_ptr,
+                                    .result = bldr.CurrentGroup()->Reserve()});
+  bldr.CondJump(condition, land_block, loop_body);
 
   bldr.CurrentBlock() = loop_body;
   ir::PartialResultBuffer buffer;
@@ -146,8 +154,11 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
   bldr.CurrentBlock() = cond_block;
   auto *from_phi      = PhiInst<ir::addr_t>(bldr);
   auto *to_phi        = PhiInst<ir::addr_t>(bldr);
-  bldr.CondJump(bldr.Eq(ir::RegOr<ir::addr_t>(from_phi->result), from_end_ptr),
-                land_block, loop_body);
+  ir::Reg condition   = bldr.CurrentBlock()->Append(
+      ir::EqInstruction<ir::addr_t>{.lhs    = from_phi->result,
+                                    .rhs    = from_end_ptr,
+                                    .result = bldr.CurrentGroup()->Reserve()});
+  bldr.CondJump(condition, land_block, loop_body);
 
   bldr.CurrentBlock() = loop_body;
   ir::PartialResultBuffer buffer;

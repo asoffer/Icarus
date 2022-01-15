@@ -48,8 +48,10 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
 
       auto index = EmitWithCastTo<int64_t>(
           context().qual_types(node->rhs())[0].type(), node->rhs());
-      out.append(builder().PtrFix(builder().Index(type::Ptr(s), data, index),
-                                  s->data_type()));
+
+      out.append(builder().PtrFix(
+          builder().PtrIncr(data, index, type::Ptr(s->data_type())),
+          s->data_type()));
     }
   } else if (auto const *array_type = qt.type().if_as<type::Array>()) {
     if (qt.quals() >= type::Quals::Ref()) {
@@ -59,9 +61,8 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
       auto index = EmitWithCastTo<int64_t>(
           context().qual_types(node->rhs())[0].type(), node->rhs());
       out.append(builder().PtrFix(
-          builder().Index(
-              type::Ptr(context().qual_types(node->lhs())[0].type()),
-              EmitRef(node->lhs()), index),
+          builder().PtrIncr(EmitRef(node->lhs()), index,
+                            type::Ptr(array_type->data_type())),
           array_type->data_type()));
     }
   } else if (auto const *buf_ptr_type =
@@ -86,11 +87,10 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
   type::Type lhs_type = context().qual_types(node->lhs())[0].type();
   type::Type rhs_type = context().qual_types(node->rhs())[0].type();
 
-  if (lhs_type.is<type::Array>()) {
+  if (auto const *a = lhs_type.if_as<type::Array>()) {
     auto index = EmitWithCastTo<int64_t>(rhs_type, node->rhs());
     auto lval  = EmitRef(node->lhs());
-    return builder().Index(
-        type::Ptr(context().qual_types(node->lhs())[0].type()), lval, index);
+    return builder().PtrIncr(lval, index, type::Ptr(a->data_type()));
   } else if (auto *buf_ptr_type = lhs_type.if_as<type::BufferPointer>()) {
     auto index = EmitWithCastTo<int64_t>(rhs_type, node->rhs());
     return builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()), index,

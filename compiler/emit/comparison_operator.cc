@@ -5,11 +5,11 @@
 
 namespace compiler {
 namespace {
-ir::RegOr<bool> EmitPair(Compiler &compiler,
-                         ast::ComparisonOperator const *node, size_t index,
+ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
+                         size_t index,
                          type::Typed<ir::PartialResultBuffer> const &lhs,
                          type::Typed<ir::PartialResultBuffer> const &rhs) {
-  auto &bldr = compiler.builder();
+  auto &bldr = c.builder();
   auto op    = node->ops()[index];
   if (lhs.type().is<type::Array>() and rhs.type().is<type::Array>()) {
     NOT_YET();
@@ -20,45 +20,51 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
     auto lhs_value        = lhs->get<underlying_type>(0);
     auto rhs_value        = rhs->get<underlying_type>(0);
     switch (op) {
-      case frontend::Operator::Lt:
-        return compiler.current_block()->Append(ir::AndInstruction{
-            .lhs = bldr.Ne(lhs_value, rhs_value),
-            .rhs = bldr.Le(
-                ir::RegOr<underlying_type>(
-                    compiler.current_block()->Append(type::OrFlagsInstruction{
-                        .lhs    = lhs_value,
-                        .rhs    = rhs_value,
-                        .result = bldr.CurrentGroup()->Reserve()})),
-                rhs_value),
-            .result = bldr.CurrentGroup()->Reserve()});
-      case frontend::Operator::Le:
-        return bldr.Le(
-            ir::RegOr<underlying_type>(
-                compiler.current_block()->Append(type::OrFlagsInstruction{
-                    .lhs    = lhs_value,
-                    .rhs    = rhs_value,
-                    .result = bldr.CurrentGroup()->Reserve()})),
-            rhs_value);
-      case frontend::Operator::Eq: return bldr.Eq(lhs_value, rhs_value);
-      case frontend::Operator::Ne: return bldr.Ne(lhs_value, rhs_value);
-      case frontend::Operator::Ge:
-        return bldr.Le(
-            ir::RegOr<underlying_type>(
-                compiler.current_block()->Append(type::OrFlagsInstruction{
-                    .lhs    = lhs_value,
-                    .rhs    = rhs_value,
-                    .result = bldr.CurrentGroup()->Reserve()})),
-            lhs_value);
       case frontend::Operator::Gt:
-        return compiler.current_block()->Append(ir::AndInstruction{
-            .lhs = bldr.Ne(lhs_value, rhs_value),
-            .rhs = bldr.Le(
-                ir::RegOr<underlying_type>(
-                    compiler.current_block()->Append(type::OrFlagsInstruction{
-                        .lhs    = lhs_value,
-                        .rhs    = rhs_value,
-                        .result = bldr.CurrentGroup()->Reserve()})),
-                lhs_value),
+        std::swap(lhs_value, rhs_value);
+        [[fallthrough]];
+      case frontend::Operator::Lt: {
+        auto not_equal =
+            c.current_block()->Append(ir::NeInstruction<underlying_type>{
+                .lhs    = lhs_value,
+                .rhs    = rhs_value,
+                .result = bldr.CurrentGroup()->Reserve()});
+        auto mask = c.current_block()->Append(
+            type::OrFlagsInstruction{.lhs    = lhs_value,
+                                     .rhs    = rhs_value,
+                                     .result = bldr.CurrentGroup()->Reserve()});
+        auto less_or_equal_mask =
+            c.current_block()->Append(ir::LeInstruction<underlying_type>{
+                .lhs    = mask,
+                .rhs    = rhs_value,
+                .result = bldr.CurrentGroup()->Reserve()});
+        return c.current_block()->Append(
+            ir::AndInstruction{.lhs    = not_equal,
+                               .rhs    = less_or_equal_mask,
+                               .result = bldr.CurrentGroup()->Reserve()});
+      }
+      case frontend::Operator::Ge:
+        std::swap(lhs_value, rhs_value);
+        [[fallthrough]];
+      case frontend::Operator::Le: {
+        auto mask = c.current_block()->Append(
+            type::OrFlagsInstruction{.lhs    = lhs_value,
+                                     .rhs    = rhs_value,
+                                     .result = bldr.CurrentGroup()->Reserve()});
+        return c.current_block()->Append(ir::LeInstruction<underlying_type>{
+            .lhs    = mask,
+            .rhs    = rhs_value,
+            .result = bldr.CurrentGroup()->Reserve()});
+      }
+      case frontend::Operator::Eq:
+        return bldr.CurrentBlock()->Append(ir::EqInstruction<underlying_type>{
+            .lhs    = lhs_value,
+            .rhs    = rhs_value,
+            .result = bldr.CurrentGroup()->Reserve()});
+      case frontend::Operator::Ne:
+        return bldr.CurrentBlock()->Append(ir::NeInstruction<underlying_type>{
+            .lhs    = lhs_value,
+            .rhs    = rhs_value,
             .result = bldr.CurrentGroup()->Reserve()});
       default: UNREACHABLE();
     }
@@ -102,15 +108,19 @@ ir::RegOr<bool> EmitPair(Compiler &compiler,
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, type::Type, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Eq(bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
-                         bldr.CastTo<T>(rhs.type(), (*rhs)[0]));
+          return bldr.CurrentBlock()->Append(
+              ir::EqInstruction<T>{.lhs = bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
+                                   .rhs = bldr.CastTo<T>(rhs.type(), (*rhs)[0]),
+                                   .result = bldr.CurrentGroup()->Reserve()});
         });
       case frontend::Operator::Ne:
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, type::Type, ir::addr_t>(t, [&]<typename T>() {
-          return bldr.Ne(bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
-                         bldr.CastTo<T>(rhs.type(), (*rhs)[0]));
+          return bldr.CurrentBlock()->Append(
+              ir::NeInstruction<T>{.lhs = bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
+                                   .rhs = bldr.CastTo<T>(rhs.type(), (*rhs)[0]),
+                                   .result = bldr.CurrentGroup()->Reserve()});
         });
       case frontend::Operator::Ge:
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
