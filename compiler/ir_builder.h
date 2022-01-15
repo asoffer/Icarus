@@ -54,84 +54,6 @@ struct IrBuilder {
 
   // INSTRUCTIONS
 
-  template <typename ToType>
-  ir::RegOr<ToType> CastTo(type::Type t, ir::PartialResultRef const& buffer) {
-    if (t == GetType<ToType>() or
-        (t.is<type::Pointer>() and base::meta<ToType> == base::meta<ir::addr_t>)) {
-      return buffer.get<ToType>();
-    }
-    if (auto const* p = t.if_as<type::Primitive>()) {
-      return p->Apply([&]<typename T>() -> ir::RegOr<ToType> {
-        return Cast<T, ToType>(buffer.get<T>());
-      });
-    } else if (t.is<type::Enum>()) {
-      if constexpr (base::meta<ToType> ==
-                    base::meta<type::Enum::underlying_type>) {
-        return buffer.get<type::Enum::underlying_type>();
-      } else {
-        return Cast<type::Enum::underlying_type, ToType>(
-            buffer.get<type::Enum::underlying_type>());
-      }
-    } else if (t.is<type::Flags>()) {
-      if constexpr (base::meta<ToType> ==
-                    base::meta<type::Flags::underlying_type>) {
-        return buffer.get<type::Flags::underlying_type>();
-      } else {
-        return Cast<type::Flags::underlying_type, ToType>(
-            buffer.get<type::Flags::underlying_type>());
-      }
-    } else {
-      UNREACHABLE(t, "cannot cast to", GetType<ToType>());
-    }
-  }
-
-  template <typename FromType, typename ToType>
-  ir::RegOr<ToType> Cast(ir::RegOr<FromType> r) {
-    if constexpr (base::meta<ToType> == base::meta<FromType>) {
-      return r;
-    } else if constexpr ((base::meta<FromType> == base::meta<ir::Integer> and
-                          std::is_arithmetic_v<ToType>) or
-                         base::meta<FromType>.template converts_to<ToType>()) {
-      if (r.is_reg()) {
-        return CurrentBlock()->Append(ir::CastInstruction<ToType(FromType)>{
-            .value = r.reg(), .result = CurrentGroup()->Reserve()});
-      } else {
-        if constexpr (base::meta<FromType> == base::meta<ir::Integer>) {
-          return static_cast<ToType>(r.value().value());
-        } else {
-          return static_cast<ToType>(r.value());
-        }
-      }
-    } else {
-      UNREACHABLE(GetType<FromType>(), "cannot cast to", GetType<ToType>());
-    }
-  }
-
-  // Phi instruction. Takes a span of basic blocks and a span of (registers or)
-  // values. As a precondition, the number of blocks must be equal to the number
-  // of values. This instruction evaluates to the value `values[i]` if the
-  // previous block was `blocks[i]`.
-  //
-  // In the first overload, the resulting value is assigned to `r`. In the
-  // second overload, a register is constructed to represent the value.
-  template <typename T>
-  void Phi(ir::Reg r, std::vector<ir::BasicBlock const*> blocks,
-           std::vector<ir::RegOr<T>> values) {
-    ASSERT(blocks.size() == values.size());
-    ir::PhiInstruction<T> inst(std::move(blocks), std::move(values));
-    inst.result = r;
-  }
-
-  template <typename T>
-  ir::RegOr<T> Phi(std::vector<ir::BasicBlock const*> blocks,
-                   std::vector<ir::RegOr<T>> values) {
-    if (values.size() == 1u) { return values[0]; }
-    ir::PhiInstruction<T> inst(std::move(blocks), std::move(values));
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
-  }
-
   ir::Reg PtrFix(ir::RegOr<ir::addr_t> addr, type::Type desired_type) {
     // TODO must this be a register if it's loaded?
     if (desired_type.get()->is_big()) { return addr.reg(); }
@@ -236,7 +158,6 @@ struct IrBuilder {
 
   ir::BasicBlock* landing(ast::Scope const* s) const;
 
- private:
   template <typename T>
   static type::Type GetType() {
     if constexpr (base::meta<T> == base::meta<bool>) {
@@ -282,6 +203,7 @@ struct IrBuilder {
     }
   }
 
+ private:
   ir::BasicBlock* block_;
   ir::internal::BlockGroupBase* group_;
 

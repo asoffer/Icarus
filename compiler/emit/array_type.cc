@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "type/array.h"
 
 namespace compiler {
@@ -12,8 +13,9 @@ void Compiler::EmitToBuffer(ast::ArrayType const *node,
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
-    auto len = EmitWithCastTo<type::Array::length_t>(
-        context().qual_types(node->length(i))[0].type(), node->length(i));
+    auto len = EmitCast(*this, context().typed(node->length(i)), type::Integer)
+                   .back()
+                   .get<ir::Integer>();
     t = current_block()->Append(
         type::ArrayInstruction{.length    = len,
                                .data_type = t,

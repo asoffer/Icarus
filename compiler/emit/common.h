@@ -53,6 +53,39 @@ void EmitArguments(
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants,
     ir::PartialResultBuffer &buffer);
 
+// Requires that the last value in `buffer` has type `FromType`, and replaces it
+// with that value cast to `ToType`.
+template <typename FromType, typename ToType>
+void EmitCast(IrBuilder &builder, ir::PartialResultBuffer &buffer) {
+  if constexpr (base::meta<FromType> == base::meta<ToType>) {
+    return;
+  } else if constexpr (base::meta<ToType> == base::meta<ir::Integer>) {
+    auto result = buffer.back().get<ToType>().value();
+    buffer.pop_back();
+    buffer.append(ir::Integer(result));
+  } else {
+    auto result =
+        builder.CurrentBlock()->Append(ir::CastInstruction<ToType(FromType)>{
+            .value  = buffer.back().template get<FromType>(),
+            .result = builder.CurrentGroup()->Reserve(),
+        });
+    buffer.pop_back();
+    buffer.append(result);
+  }
+}
+
+// Requires that the last value in `buffer` has type `from`, and replaces it
+// with that value cast to `to`.
+void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
+                  ir::PartialResultBuffer &buffer);
+
+void EmitCast(Compiler &c, type::Typed<ast::Expression const *> node,
+              type::Type to, ir::PartialResultBuffer &buffer);
+
+ir::PartialResultBuffer EmitCast(Compiler &c,
+                                 type::Typed<ast::Expression const *> node,
+                                 type::Type to);
+
 }  // namespace compiler
 
 #endif  // ICARUS_IR_EMIT_COMMON_H

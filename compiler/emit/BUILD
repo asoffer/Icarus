@@ -49,6 +49,7 @@ cc_library(
     name = "array_type",
     srcs = ["array_type.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
     ],
@@ -153,6 +154,7 @@ cc_library(
     name = "cast",
     srcs = ["cast.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:char",
@@ -174,6 +176,7 @@ cc_library(
     name = "comparison_operator",
     srcs = ["comparison_operator.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:char",
@@ -256,6 +259,7 @@ cc_library(
     name = "enum_literal",
     srcs = ["enum_literal.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:module",
@@ -510,6 +514,7 @@ cc_library(
     name = "special",
     srcs = ["special.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instructions",

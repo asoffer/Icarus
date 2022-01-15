@@ -41,17 +41,15 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       out.clear();
-      EmitToBuffer(expr, out);
-      auto t = context().qual_types(expr)[0].type();
+      EmitCast(*this, context().typed(expr), ret_type, out);
       ApplyTypes<ir::Integer, bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
                  uint8_t, uint16_t, uint32_t, uint64_t, float, double,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
                  ir::GenericFn, interface::Interface>(
           ret_type, [&]<typename T>() {
-            ir::RegOr<T> value = builder().CastTo<T>(t, out[0]);
             builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
                 .index = static_cast<uint16_t>(i),
-                .value = value,
+                .value = out.back().get<T>(),
             });
           });
     }

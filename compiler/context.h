@@ -334,6 +334,13 @@ struct Context {
     return body_is_verified_.insert(node).second;
   }
 
+  type::Typed<ast::Expression const *> typed(
+      ast::Expression const *expr) const {
+    auto qts = qual_types(expr);
+    ASSERT(qts.size() == 1u);
+    return type::Typed<ast::Expression const *>(expr, qts[0].type());
+  }
+
  private:
   explicit Context(Context *parent);
 

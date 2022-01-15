@@ -25,11 +25,14 @@ template <template <typename> typename Op, typename... Ts>
 void Apply(type::Typed<ast::Expression const *> lhs,
            type::Typed<ast::Expression const *> rhs, Compiler &c,
            ir::PartialResultBuffer &out) {
-  ApplyTypes<Ts...>(type::Meet(lhs.type(), rhs.type()), [&]<typename T>() {
-    ir::RegOr<T> l = c.EmitWithCastTo<T>(lhs.type(), *lhs);
-    ir::RegOr<T> r = c.EmitWithCastTo<T>(rhs.type(), *rhs);
-    out.append(c.current_block()->Append(Op<T>{
-        .lhs = l, .rhs = r, .result = c.builder().CurrentGroup()->Reserve()}));
+  auto meet       = type::Meet(lhs.type(), rhs.type());
+  auto lhs_result = EmitCast(c, lhs, meet);
+  auto rhs_result = EmitCast(c, rhs, meet);
+  ApplyTypes<Ts...>(meet, [&]<typename T>() {
+    out.append(c.current_block()->Append(
+        Op<T>{.lhs    = lhs_result.back().get<T>(),
+              .rhs    = rhs_result.back().get<T>(),
+              .result = c.builder().CurrentGroup()->Reserve()}));
   });
 }
 
@@ -81,7 +84,9 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
 
       builder().CurrentBlock() = land_block;
 
-      out.append(builder().Phi<bool>(std::move(phi_blocks), {true, rhs_ir}));
+      ir::PhiInstruction<bool> phi(std::move(phi_blocks), {true, rhs_ir});
+      phi.result = builder().CurrentGroup()->Reserve();
+      out.append(current_block()->Append(std::move(phi)));
       return;
     } break;
     case ast::BinaryOperator::Kind::SymbolOr: {
@@ -140,8 +145,9 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       builder().UncondJump(land_block);
 
       builder().CurrentBlock() = land_block;
-
-      out.append(builder().Phi<bool>(std::move(phi_blocks), {false, rhs_ir}));
+      ir::PhiInstruction<bool> phi(std::move(phi_blocks), {false, rhs_ir});
+      phi.result = builder().CurrentGroup()->Reserve();
+      out.append(current_block()->Append(std::move(phi)));
       return;
     } break;
     case ast::BinaryOperator::Kind::SymbolAnd: {
@@ -160,37 +166,52 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       }
     } break;
     case ast::BinaryOperator::Kind::Add: {
-      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
-      if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
-          lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+      auto typed_lhs = context().typed(&node->lhs());
+      auto typed_rhs = context().typed(&node->rhs());
+      if (auto const *lhs_buf_ptr_type =
+              typed_lhs.type().if_as<type::BufferPointer>();
+          lhs_buf_ptr_type and type::IsIntegral(typed_rhs.type())) {
         auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs(), out);
-        auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, &node->rhs(), out);
+        // TODO: Remove assumption that the pointer difference type is int64_t.
+        auto rhs_ir =
+            EmitCast(*this, typed_rhs,
+                     type::PointerDifferenceType(resources().architecture))
+                .back()
+                .get<int64_t>();
         out.append(builder().PtrIncr(lhs_ir, rhs_ir, lhs_buf_ptr_type));
       } else if (auto const *rhs_buf_ptr_type =
-                     rhs_type.if_as<type::BufferPointer>();
-                 rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
-        auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, &node->lhs(), out);
+                     typed_rhs.type().if_as<type::BufferPointer>();
+                 rhs_buf_ptr_type and type::IsIntegral(typed_lhs.type())) {
+        // TODO: Remove assumption that the pointer difference type is int64_t.
+        auto lhs_ir =
+            EmitCast(*this, typed_lhs,
+                     type::PointerDifferenceType(resources().architecture))
+                .back()
+                .get<int64_t>();
         auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs(), out);
         out.append(builder().PtrIncr(rhs_ir, lhs_ir, rhs_buf_ptr_type));
-      } else if (lhs_type.is<type::Primitive>() and
-                 rhs_type.is<type::Primitive>()) {
+      } else if (typed_lhs.type().is<type::Primitive>() and
+                 typed_rhs.type().is<type::Primitive>()) {
         Apply<ir::AddInstruction, ir::Integer, int8_t, int16_t, int32_t,
               int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-            type::Typed(&node->lhs(), lhs_type),
-            type::Typed(&node->rhs(), rhs_type), *this, out);
+            typed_lhs, typed_rhs, *this, out);
       } else {
         EmitBinaryOverload(*this, node, out);
       }
       return;
     } break;
     case ast::BinaryOperator::Kind::Sub: {
-      type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
-      type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
-      if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
-          lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+      auto typed_lhs = context().typed(&node->lhs());
+      auto typed_rhs = context().typed(&node->rhs());
+      if (auto const *lhs_buf_ptr_type = typed_lhs.type().if_as<type::BufferPointer>();
+          lhs_buf_ptr_type and type::IsIntegral(typed_rhs.type())) {
         auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs(), out);
-        auto rhs_ir = EmitWithCastTo<int64_t>(rhs_type, &node->rhs(), out);
+        // TODO: Remove assumption that the pointer difference type is int64_t.
+        auto rhs_ir =
+            EmitCast(*this, typed_rhs,
+                     type::PointerDifferenceType(resources().architecture))
+                .back()
+                .get<int64_t>();
         out.append(builder().PtrIncr(
             lhs_ir,
             current_block()->Append(ir::NegInstruction<int64_t>{
@@ -199,9 +220,14 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
             }),
             lhs_buf_ptr_type));
       } else if (auto const *rhs_buf_ptr_type =
-                     rhs_type.if_as<type::BufferPointer>();
-                 rhs_buf_ptr_type and type::IsIntegral(lhs_type)) {
-        auto lhs_ir = EmitWithCastTo<int64_t>(lhs_type, &node->lhs(), out);
+                     typed_rhs.type().if_as<type::BufferPointer>();
+                 rhs_buf_ptr_type and type::IsIntegral(typed_lhs.type())) {
+        // TODO: Remove assumption that the pointer difference type is int64_t.
+        auto lhs_ir =
+            EmitCast(*this, typed_lhs,
+                     type::PointerDifferenceType(resources().architecture))
+                .back()
+                .get<int64_t>();
         auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs(), out);
         out.append(builder().PtrIncr(
             rhs_ir,
@@ -210,8 +236,8 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                 .result  = builder().CurrentGroup()->Reserve(),
             }),
             rhs_buf_ptr_type));
-      } else if (auto const *buf_ptr = lhs_type.if_as<type::BufferPointer>();
-                 lhs_type == rhs_type and buf_ptr) {
+      } else if (auto const *buf_ptr = typed_lhs.type().if_as<type::BufferPointer>();
+                 typed_lhs.type() == typed_rhs.type() and buf_ptr) {
         auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs());
         auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs());
         out.append(current_block()->Append(ir::PtrDiffInstruction{
@@ -219,12 +245,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
             .rhs          = rhs_ir,
             .pointee_type = buf_ptr->pointee(),
             .result       = builder().CurrentGroup()->Reserve()}));
-      } else if (lhs_type.is<type::Primitive>() and
-                 rhs_type.is<type::Primitive>()) {
+      } else if (typed_lhs.type().is<type::Primitive>() and
+                 typed_rhs.type().is<type::Primitive>()) {
         Apply<ir::SubInstruction, ir::Integer, int8_t, int16_t, int32_t,
               int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-            type::Typed(&node->lhs(), lhs_type),
-            type::Typed(&node->rhs(), rhs_type), *this, out);
+            typed_lhs, typed_rhs, *this, out);
       } else {
         EmitBinaryOverload(*this, node, out);
       }
@@ -284,7 +309,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
 }
 
 void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
-                            ir::PartialResultBuffer &out) {
+                            ir::PartialResultBuffer &) {
   auto lhs_lval = EmitRef(&node->lhs());
 
   switch (node->kind()) {
@@ -317,24 +342,28 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
       return;
     } break;
     case ast::BinaryOperator::Kind::Add: {
-      EmitToBuffer(&node->rhs(), out);
+      ir::PartialResultBuffer buffer;
+      EmitToBuffer(&node->rhs(), buffer);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+        // TODO: Remove assumption that the pointer difference type is int64_t.
+        EmitCast(builder(), rhs_type,
+                 type::PointerDifferenceType(resources().architecture), buffer);
         builder().Store<ir::RegOr<ir::addr_t>>(
             builder().PtrIncr(builder().Load<ir::addr_t>(lhs_lval),
-                              builder().CastTo<int64_t>(rhs_type, out[0]),
-                              lhs_buf_ptr_type),
+                              buffer.back().get<int64_t>(), lhs_buf_ptr_type),
             lhs_lval);
       } else {
+        EmitCast(builder(), rhs_type, lhs_type, buffer);
         ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                    uint16_t, uint32_t, uint64_t, float, double>(
-            context().qual_types(&node->lhs())[0].type(), [&]<typename T>() {
+            lhs_type, [&]<typename T>() {
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::AddInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
-                      .rhs    = builder().CastTo<T>(rhs_type, out[0]),
+                      .rhs    = buffer.back().get<T>(),
                       .result = builder().CurrentGroup()->Reserve()}),
                   lhs_lval);
             });
@@ -342,28 +371,31 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
       return;
     } break;
     case ast::BinaryOperator::Kind::Sub: {
-      EmitToBuffer(&node->rhs(), out);
+      ir::PartialResultBuffer buffer;
+      EmitToBuffer(&node->rhs(), buffer);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
       if (auto const *lhs_buf_ptr_type = lhs_type.if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
+        // TODO: Remove assumption that the pointer difference type is int64_t.
         builder().Store<ir::RegOr<ir::addr_t>>(
             builder().PtrIncr(
                 builder().Load<ir::addr_t>(lhs_lval),
                 current_block()->Append(ir::NegInstruction<int64_t>{
-                    .operand = out.get<int64_t>(0),
+                    .operand = buffer.back().get<int64_t>(),
                     .result  = builder().CurrentGroup()->Reserve(),
                 }),
                 lhs_buf_ptr_type),
             lhs_lval);
       } else {
+        EmitCast(builder(), rhs_type, lhs_type, buffer);
         ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                    uint16_t, uint32_t, uint64_t, float, double>(
             lhs_type, [&]<typename T>() {
               builder().Store<ir::RegOr<T>>(
                   current_block()->Append(ir::SubInstruction<T>{
                       .lhs    = builder().Load<T>(lhs_lval),
-                      .rhs    = builder().CastTo<T>(rhs_type, out[0]),
+                      .rhs    = buffer.back().get<T>(),
                       .result = builder().CurrentGroup()->Reserve()}),
                   lhs_lval);
             });
@@ -371,46 +403,55 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
       return;
     } break;
     case ast::BinaryOperator::Kind::Mul: {
-      EmitToBuffer(&node->rhs(), out);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
+
+      ir::PartialResultBuffer buffer;
+      EmitToBuffer(&node->rhs(), buffer);
+      EmitCast(builder(), rhs_type, lhs_type, buffer);
       ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                  uint64_t, float, double>(lhs_type, [&]<typename T>() {
         builder().Store<ir::RegOr<T>>(
             current_block()->Append(ir::MulInstruction<T>{
                 .lhs    = builder().Load<T>(lhs_lval),
-                .rhs    = builder().CastTo<T>(rhs_type, out[0]),
+                .rhs    = buffer.back().get<T>(),
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       });
       return;
     } break;
     case ast::BinaryOperator::Kind::Div: {
-      EmitToBuffer(&node->rhs(), out);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
+
+      ir::PartialResultBuffer buffer;
+      EmitToBuffer(&node->rhs(), buffer);
+      EmitCast(builder(), rhs_type, lhs_type, buffer);
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double>(
           lhs_type, [&]<typename T>() {
             builder().Store<ir::RegOr<T>>(
                 current_block()->Append(ir::DivInstruction<T>{
                     .lhs    = builder().Load<T>(lhs_lval),
-                    .rhs    = builder().CastTo<T>(rhs_type, out[0]),
+                    .rhs    = buffer.back().get<T>(),
                     .result = builder().CurrentGroup()->Reserve()}),
                 lhs_lval);
           });
       return;
     } break;
     case ast::BinaryOperator::Kind::Mod: {
-      EmitToBuffer(&node->rhs(), out);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
       type::Type rhs_type = context().qual_types(&node->rhs())[0].type();
+
+      ir::PartialResultBuffer buffer;
+      EmitToBuffer(&node->rhs(), buffer);
+      EmitCast(builder(), rhs_type, lhs_type, buffer);
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t>(lhs_type, [&]<typename T>() {
         builder().Store<ir::RegOr<T>>(
             current_block()->Append(ir::ModInstruction<T>{
                 .lhs    = builder().Load<T>(lhs_lval),
-                .rhs    = builder().CastTo<T>(rhs_type, out[0]),
+                .rhs    = buffer.back().get<T>(),
                 .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       });

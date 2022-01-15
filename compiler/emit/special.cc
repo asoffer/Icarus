@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "compiler/instructions.h"
 #include "ir/instruction/instructions.h"
 #include "type/cast.h"
@@ -24,10 +25,10 @@ ir::PhiInstruction<T> *PhiInst(IrBuilder &builder) {
   ir::PhiInstruction<T> inst;
   inst.result = builder.CurrentGroup()->Reserve();
   builder.CurrentBlock()->Append(std::move(inst));
-  return builder.CurrentBlock()
-      ->instructions()
-      .back()
-      .template if_as<ir::PhiInstruction<T>>();
+  return &builder.CurrentBlock()
+              ->instructions()
+              .back()
+              .template as<ir::PhiInstruction<T>>();
 }
 
 template <typename F>
@@ -442,9 +443,11 @@ void Compiler::EmitCopyInit(type::Typed<ir::Reg, type::Primitive> to,
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::addr_t>, type::Primitive> const &to,
     type::Typed<ir::PartialResultRef> const &from) {
-  to.type()->Apply([&]<typename T>() {
-    builder().Store(builder().CastTo<T>(from.type(), *from), *to);
-  });
+  ir::PartialResultBuffer buffer;
+  buffer.append(*from);
+  EmitCast(builder(), from.type(), to.type(), buffer);
+  to.type()->Apply(
+      [&]<typename T>() { builder().Store(buffer.back().get<T>(), *to); });
 }
 
 void Compiler::EmitMoveAssign(

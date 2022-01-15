@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "compiler/module.h"
 
 namespace compiler {
@@ -54,8 +55,11 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
   for (uint64_t i = 0; i < names.size(); ++i) {
     if (auto iter = node->specified_values().find(names[i]);
         iter != node->specified_values().end()) {
-      specified_values.emplace(i, EmitWithCastTo<type::Enum::underlying_type>(
-                                      t, iter->second.get()));
+      specified_values.emplace(
+          i, EmitCast(*this, context().typed(iter->second.get()),
+                      IrBuilder::GetType<type::Enum::underlying_type>())
+                 .back()
+                 .get<type::Enum::underlying_type>());
     }
   }
 

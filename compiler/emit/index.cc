@@ -46,8 +46,12 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
           }),
           type::BufPtr(s->data_type()));
 
-      auto index = EmitWithCastTo<int64_t>(
-          context().qual_types(node->rhs())[0].type(), node->rhs());
+      // TODO: Remove assumption that the pointer difference type is int64_t.
+      auto index =
+          EmitCast(*this, context().typed(node->rhs()),
+                   type::PointerDifferenceType(resources().architecture))
+              .back()
+              .get<int64_t>();
 
       out.append(builder().PtrFix(
           builder().PtrIncr(data, index, type::Ptr(s->data_type())),
@@ -58,8 +62,12 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
       out.append(builder().PtrFix(EmitRef(node),
                                   context().qual_types(node)[0].type()));
     } else {
-      auto index = EmitWithCastTo<int64_t>(
-          context().qual_types(node->rhs())[0].type(), node->rhs());
+      // TODO: Remove assumption that the pointer difference type is int64_t.
+      auto index =
+          EmitCast(*this, context().typed(node->rhs()),
+                   type::PointerDifferenceType(resources().architecture))
+              .back()
+              .get<int64_t>();
       out.append(builder().PtrFix(
           builder().PtrIncr(EmitRef(node->lhs()), index,
                             type::Ptr(array_type->data_type())),
@@ -71,8 +79,12 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
       out.append(builder().PtrFix(EmitRef(node),
                                   context().qual_types(node)[0].type()));
     } else {
-      auto index = EmitWithCastTo<int64_t>(
-          context().qual_types(node->rhs())[0].type(), node->rhs());
+      // TODO: Remove assumption that the pointer difference type is int64_t.
+      auto index =
+          EmitCast(*this, context().typed(node->rhs()),
+                   type::PointerDifferenceType(resources().architecture))
+              .back()
+              .get<int64_t>();
       out.append(
           builder().PtrFix(builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()),
                                              index, buf_ptr_type),
@@ -87,12 +99,16 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
   type::Type lhs_type = context().qual_types(node->lhs())[0].type();
   type::Type rhs_type = context().qual_types(node->rhs())[0].type();
 
+  // TODO: Remove assumption that the pointer difference type is int64_t.
+  auto index = EmitCast(*this, context().typed(node->rhs()),
+                        type::PointerDifferenceType(resources().architecture))
+                   .back()
+                   .get<int64_t>();
+
   if (auto const *a = lhs_type.if_as<type::Array>()) {
-    auto index = EmitWithCastTo<int64_t>(rhs_type, node->rhs());
     auto lval  = EmitRef(node->lhs());
     return builder().PtrIncr(lval, index, type::Ptr(a->data_type()));
   } else if (auto *buf_ptr_type = lhs_type.if_as<type::BufferPointer>()) {
-    auto index = EmitWithCastTo<int64_t>(rhs_type, node->rhs());
     return builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()), index,
                              type::Ptr(buf_ptr_type->pointee()));
   } else if (auto const *s = lhs_type.if_as<type::Slice>()) {
@@ -103,7 +119,6 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
         }),
         type::BufPtr(s->data_type()));
 
-    auto index = EmitWithCastTo<int64_t>(rhs_type, node->rhs());
     return builder().PtrIncr(data, index, type::BufPtr(s->data_type()));
   }
   UNREACHABLE(lhs_type.to_string());

@@ -221,21 +221,6 @@ struct Compiler
   }
 
   template <typename T>
-  ir::RegOr<T> EmitWithCastTo(type::Type t, ast::Node const *node,
-                              ir::PartialResultBuffer &buffer) {
-    EmitToBuffer(node, buffer);
-    auto result = builder().CastTo<T>(t, buffer[0]);
-    buffer.clear();
-    return result;
-  }
-
-  template <typename T>
-  ir::RegOr<T> EmitWithCastTo(type::Type t, ast::Node const *node) {
-    ir::PartialResultBuffer buffer;
-    return EmitWithCastTo<T>(t, node, buffer);
-  }
-
-  template <typename T>
   ir::RegOr<T> EmitAs(ast::Node const *node, ir::PartialResultBuffer &buffer) {
     EmitToBuffer(node, buffer);
     auto result = buffer.get<T>(0);
@@ -525,8 +510,11 @@ struct Compiler
     if (from == type::Integer and type::IsIntegral(to.type())) {
       to.type().as<type::Primitive>().Apply([&]<typename T>() {
         if constexpr (std::is_integral_v<T>) {
-          ir::RegOr<T> result =
-              builder().Cast<ir::Integer, T>(buffer.back().get<ir::Integer>());
+          ir::RegOr<T> result = builder().CurrentBlock()->Append(
+              ir::CastInstruction<T(ir::Integer)>{
+                  .value  = buffer.back().get<ir::Integer>(),
+                  .result = builder().CurrentGroup()->Reserve(),
+              });
           buffer.pop_back();
           buffer.append(result);
         } else {
@@ -575,11 +563,9 @@ struct Compiler
     if (from == type::Integer and type::IsIntegral(to.type())) {
       to.type().as<type::Primitive>().Apply([&]<typename T>() {
         if constexpr (std::is_integral_v<T>) {
-          T result = builder()
-                         .Cast<ir::Integer, T>(buffer.back().get<ir::Integer>())
-                         .value();
+          auto result = buffer.back().get<ir::Integer>();
           buffer.pop_back();
-          buffer.append(result);
+          buffer.append(static_cast<T>(result.value()));
         } else {
           UNREACHABLE(typeid(T).name());
         }

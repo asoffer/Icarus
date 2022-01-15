@@ -601,4 +601,106 @@ core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
   });
 }
 
+void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
+                  ir::PartialResultBuffer &buffer) {
+#if defined(ICARUS_DEBUG)
+  ASSERT(buffer.size() != 0u);
+  absl::Cleanup c = [size = buffer.size(), &buffer] {
+    ASSERT(size == buffer.size());
+  };
+#endif  // defined(ICARUS_DEBUG)
+
+  // Ignore no-op conversions.
+  if (to == from) { return; }
+
+  // Allow any conversion to raw byte buffer pointers.
+  if (from == type::Type(type::BufPtr(type::Byte)) or
+      to == type::Type(type::BufPtr(type::Byte))) {
+    return;
+  }
+
+  // TODO: We don't actually want to support casts to/from char. This should be
+  // done explicitly with named builtin functions like `ascii_encode :: char ->
+  // u8` and `ascii_decode :: u8 -> char`.
+  if (to == type::Char) {
+    if (from == type::U8) {
+      EmitCast<uint8_t, ir::Char>(builder, buffer);
+    } else if (from == type::I8) {
+      EmitCast<int8_t, ir::Char>(builder, buffer);
+    } else {
+      UNREACHABLE(from);
+    }
+    return;
+  } else if (from == type::Char) {
+    ASSERT(type::IsIntegral(to) == true);
+    ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
+               uint64_t>(
+        to, [&]<typename T>() { EmitCast<ir::Char, T>(builder, buffer); });
+    return;
+  }
+
+  if (type::IsNumeric(from)) {
+    if (auto const *enum_type = to.if_as<type::Enum>()) {
+      ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
+                 uint64_t>(from, [&]<typename T>() {
+        EmitCast<T, type::Enum::underlying_type>(builder, buffer);
+      });
+    } else if (auto const *flags_type = to.if_as<type::Flags>()) {
+      return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                        uint32_t, uint64_t>(from, [&]<typename T>() {
+        EmitCast<T, type::Flags::underlying_type>(builder, buffer);
+      });
+    } else {
+      ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t, float, double>(
+          to, [&]<typename To>() {
+            ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                       uint16_t, uint32_t, uint64_t, float, double>(
+                from, [&]<typename From>() {
+                  EmitCast<From, To>(builder, buffer);
+                });
+          });
+    }
+    return;
+  }
+
+  if (from == type::NullPtr) {
+    buffer.pop_back();
+    buffer.append(ir::Null());
+    return;
+  }
+
+  if (auto const *enum_type = from.if_as<type::Enum>()) {
+    ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
+               uint64_t>(to, [&]<typename T>() {
+      EmitCast<type::Enum::underlying_type, T>(builder, buffer);
+    });
+    return;
+  }
+
+  if (auto const *flags_type = from.if_as<type::Flags>()) {
+    return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                      uint32_t, uint64_t>(to, [&]<typename T>() {
+      EmitCast<type::Flags::underlying_type, T>(builder, buffer);
+    });
+    return;
+  }
+
+  UNREACHABLE(from, " to ", to);
+}
+
+void EmitCast(Compiler &c, type::Typed<ast::Expression const *> node,
+              type::Type to, ir::PartialResultBuffer &buffer) {
+  c.EmitToBuffer(*node, buffer);
+  EmitCast(c.builder(), node.type(), to, buffer);
+}
+
+ir::PartialResultBuffer EmitCast(Compiler &c,
+                                 type::Typed<ast::Expression const *> node,
+                                 type::Type to) {
+  ir::PartialResultBuffer buffer;
+  EmitCast(c, node, to, buffer);
+  return buffer;
+}
+
 }  // namespace compiler

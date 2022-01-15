@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "ir/value/char.h"
 #include "type/cast.h"
 
@@ -71,46 +72,44 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
 
   } else {
     type::Type t = type::Meet(lhs.type(), rhs.type());
+    ir::PartialResultBuffer lhs_buffer = *lhs, rhs_buffer = *rhs;
+    EmitCast(bldr, t, lhs.type(), lhs_buffer);
+    EmitCast(bldr, t, rhs.type(), rhs_buffer);
     switch (op) {
+      case frontend::Operator::Gt:
+        std::swap(lhs_buffer, rhs_buffer);
+        [[fallthrough]];
       case frontend::Operator::Lt:
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, ir::addr_t>(
             t, [&]<typename T>() -> ir::RegOr<bool> {
-              auto l = bldr.CastTo<T>(lhs.type(), (*lhs)[0]);
-              auto r = bldr.CastTo<T>(rhs.type(), (*rhs)[0]);
-              if (not l.is_reg() and not r.is_reg()) {
-                return ir::LtInstruction<T>::Apply(l.value(), r.value());
-              } else {
-                return bldr.CurrentBlock()->Append(ir::LtInstruction<T>{
-                    .lhs    = l,
-                    .rhs    = r,
-                    .result = bldr.CurrentGroup()->Reserve()});
-              }
+              return bldr.CurrentBlock()->Append(ir::LtInstruction<T>{
+                  .lhs    = lhs_buffer.back().get<T>(),
+                  .rhs    = rhs_buffer.back().get<T>(),
+                  .result = bldr.CurrentGroup()->Reserve()});
             });
+
+      case frontend::Operator::Ge:
+        std::swap(lhs_buffer, rhs_buffer);
+        [[fallthrough]];
       case frontend::Operator::Le:
         return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, ir::addr_t>(
             t, [&]<typename T>() -> ir::RegOr<bool> {
-              auto l = bldr.CastTo<T>(lhs.type(), (*lhs)[0]);
-              auto r = bldr.CastTo<T>(rhs.type(), (*rhs)[0]);
-              if (not l.is_reg() and not r.is_reg()) {
-                return ir::LeInstruction<T>::Apply(l.value(), r.value());
-              } else {
-                return bldr.CurrentBlock()->Append(ir::LeInstruction<T>{
-                    .lhs    = l,
-                    .rhs    = r,
-                    .result = bldr.CurrentGroup()->Reserve()});
-              }
+              return bldr.CurrentBlock()->Append(ir::LeInstruction<T>{
+                  .lhs    = lhs_buffer.back().get<T>(),
+                  .rhs    = rhs_buffer.back().get<T>(),
+                  .result = bldr.CurrentGroup()->Reserve()});
             });
       case frontend::Operator::Eq:
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, type::Type, ir::addr_t>(t, [&]<typename T>() {
           return bldr.CurrentBlock()->Append(
-              ir::EqInstruction<T>{.lhs = bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
-                                   .rhs = bldr.CastTo<T>(rhs.type(), (*rhs)[0]),
+              ir::EqInstruction<T>{.lhs    = lhs->back().get<T>(),
+                                   .rhs    = rhs->back().get<T>(),
                                    .result = bldr.CurrentGroup()->Reserve()});
         });
       case frontend::Operator::Ne:
@@ -118,43 +117,10 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, type::Type, ir::addr_t>(t, [&]<typename T>() {
           return bldr.CurrentBlock()->Append(
-              ir::NeInstruction<T>{.lhs = bldr.CastTo<T>(lhs.type(), (*lhs)[0]),
-                                   .rhs = bldr.CastTo<T>(rhs.type(), (*rhs)[0]),
+              ir::NeInstruction<T>{.lhs    = lhs->back().get<T>(),
+                                   .rhs    = rhs->back().get<T>(),
                                    .result = bldr.CurrentGroup()->Reserve()});
         });
-      case frontend::Operator::Ge:
-        return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
-                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, ir::addr_t>(
-            t, [&]<typename T>() -> ir::RegOr<bool> {
-              auto l = bldr.CastTo<T>(lhs.type(), (*lhs)[0]);
-              auto r = bldr.CastTo<T>(rhs.type(), (*rhs)[0]);
-              if (not l.is_reg() and not r.is_reg()) {
-                return ir::LeInstruction<T>::Apply(r.value(), l.value());
-              } else {
-                return bldr.CurrentBlock()->Append(ir::LeInstruction<T>{
-                    .lhs    = r,
-                    .rhs    = l,
-                    .result = bldr.CurrentGroup()->Reserve()});
-              }
-            });
-      case frontend::Operator::Gt:
-        return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
-                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, ir::addr_t>(
-            t, [&]<typename T>() -> ir::RegOr<bool> {
-              auto l = bldr.CastTo<T>(lhs.type(), (*lhs)[0]);
-              auto r = bldr.CastTo<T>(rhs.type(), (*rhs)[0]);
-              if (not l.is_reg() and not r.is_reg()) {
-                return ir::LtInstruction<T>::Apply(r.value(), l.value());
-              } else {
-                return bldr.CurrentBlock()->Append(ir::LtInstruction<T>{
-                    .lhs    = r,
-                    .rhs    = l,
-                    .result = bldr.CurrentGroup()->Reserve()});
-              }
-            });
-        // TODO case frontend::Operator::And: cmp = *lhs; break;
       default: UNREACHABLE();
     }
   }
@@ -213,7 +179,9 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
 
   builder().CurrentBlock() = land_block;
 
-  out.append(builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values)));
+  ir::PhiInstruction<bool> phi(std::move(phi_blocks), std::move(phi_values));
+  phi.result = builder().CurrentGroup()->Reserve();
+  out.append(current_block()->Append(std::move(phi)));
 }
 
 void Compiler::EmitCopyAssign(
