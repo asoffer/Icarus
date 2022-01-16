@@ -77,19 +77,6 @@ IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
   CurrentBlock() = group_->entry();
 }
 
-ir::Reg IrBuilder::PtrIncr(ir::RegOr<ir::addr_t> ptr, ir::RegOr<int64_t> inc,
-                           type::Pointer const *t) {
-  auto &cache = CurrentBlock()->offset_cache();
-  if (auto result = cache.get(ptr, inc, ir::OffsetCache::Kind::Passed)) {
-    return *result;
-  }
-  ir::Reg result = CurrentGroup()->Reserve();
-  cache.set(ptr, inc, ir::OffsetCache::Kind::Passed, result);
-  if (not ptr.is_reg()) { ASSERT(ptr.value() != nullptr); }
-  return CurrentBlock()->Append(ir::PtrIncrInstruction{
-      .addr = ptr, .index = inc, .ptr = t, .result = result});
-}
-
 ir::BasicBlock *IrBuilder::EmitDestructionPath(ast::Scope const *from,
                                                ast::Scope const *to) {
   CurrentBlock()->set_jump(

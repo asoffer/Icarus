@@ -55,9 +55,12 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
               .back()
               .get<int64_t>();
 
-      out.append(builder().PtrFix(
-          builder().PtrIncr(data, index, type::Ptr(s->data_type())),
-          s->data_type()));
+      auto incr = current_block()->Append(ir::PtrIncrInstruction{
+          .addr   = data,
+          .index  = index,
+          .ptr    = type::Ptr(s->data_type()),
+          .result = builder().CurrentGroup()->Reserve()});
+      out.append(builder().PtrFix(incr, s->data_type()));
     }
   } else if (auto const *array_type = qt.type().if_as<type::Array>()) {
     if (qt.quals() >= type::Quals::Ref()) {
@@ -70,10 +73,12 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
                    type::PointerDifferenceType(resources().architecture))
               .back()
               .get<int64_t>();
-      out.append(builder().PtrFix(
-          builder().PtrIncr(EmitRef(node->lhs()), index,
-                            type::Ptr(array_type->data_type())),
-          array_type->data_type()));
+      auto incr = current_block()->Append(ir::PtrIncrInstruction{
+          .addr   = EmitRef(node->lhs()),
+          .index  = index,
+          .ptr    = type::Ptr(array_type->data_type()),
+          .result = builder().CurrentGroup()->Reserve()});
+      out.append(builder().PtrFix(incr, array_type->data_type()));
     }
   } else if (auto const *buf_ptr_type =
                  qt.type().if_as<type::BufferPointer>()) {
@@ -87,10 +92,12 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
                    type::PointerDifferenceType(resources().architecture))
               .back()
               .get<int64_t>();
-      out.append(
-          builder().PtrFix(builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()),
-                                             index, buf_ptr_type),
-                           buf_ptr_type->pointee()));
+      auto incr = current_block()->Append(ir::PtrIncrInstruction{
+          .addr   = EmitAs<ir::addr_t>(node->lhs()),
+          .index  = index,
+          .ptr    = buf_ptr_type,
+          .result = builder().CurrentGroup()->Reserve()});
+      out.append(builder().PtrFix(incr, buf_ptr_type->pointee()));
     }
   } else {
     EmitIndexOverload(*this, node, out);
@@ -109,10 +116,17 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
 
   if (auto const *a = lhs_type.if_as<type::Array>()) {
     auto lval  = EmitRef(node->lhs());
-    return builder().PtrIncr(lval, index, type::Ptr(a->data_type()));
+    return current_block()->Append(
+        ir::PtrIncrInstruction{.addr   = lval,
+                               .index  = index,
+                               .ptr    = type::Ptr(a->data_type()),
+                               .result = builder().CurrentGroup()->Reserve()});
   } else if (auto *buf_ptr_type = lhs_type.if_as<type::BufferPointer>()) {
-    return builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()), index,
-                             type::Ptr(buf_ptr_type->pointee()));
+    return current_block()->Append(
+        ir::PtrIncrInstruction{.addr   = EmitAs<ir::addr_t>(node->lhs()),
+                               .index  = index,
+                               .ptr    = type::Ptr(buf_ptr_type->pointee()),
+                               .result = builder().CurrentGroup()->Reserve()});
   } else if (auto const *s = lhs_type.if_as<type::Slice>()) {
     auto data = current_block()->Append(ir::LoadInstruction{
         .type   = type::BufPtr(s->data_type()),
@@ -122,7 +136,11 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
         }),
         .result = builder().CurrentGroup()->Reserve(),
     });
-    return builder().PtrIncr(data, index, type::BufPtr(s->data_type()));
+    return current_block()->Append(
+        ir::PtrIncrInstruction{.addr   = data,
+                               .index  = index,
+                               .ptr    = type::BufPtr(s->data_type()),
+                               .result = builder().CurrentGroup()->Reserve()});
   }
   UNREACHABLE(lhs_type.to_string());
 }

@@ -7,7 +7,6 @@
 
 #include "base/meta.h"
 #include "base/untyped_buffer.h"
-#include "ir/blocks/offset_cache.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/jump.h"
@@ -49,8 +48,6 @@ struct BasicBlock {
 
   constexpr DebugInfo const &debug() const { return debug_; }
 
-  OffsetCache &offset_cache() { return offset_cache_; }
-
   absl::Span<Inst> instructions() { return absl::MakeSpan(instructions_); }
   absl::Span<Inst const> instructions() const { return instructions_; }
 
@@ -76,8 +73,6 @@ struct BasicBlock {
 
  private:
   std::vector<Inst> instructions_;
-
-  OffsetCache offset_cache_;
 
   JumpCmd jump_ = JumpCmd::Unreachable();
 

@@ -180,7 +180,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                      type::PointerDifferenceType(resources().architecture))
                 .back()
                 .get<int64_t>();
-        out.append(builder().PtrIncr(lhs_ir, rhs_ir, lhs_buf_ptr_type));
+        out.append(current_block()->Append(ir::PtrIncrInstruction{
+            .addr   = lhs_ir,
+            .index  = rhs_ir,
+            .ptr    = lhs_buf_ptr_type,
+            .result = builder().CurrentGroup()->Reserve()}));
       } else if (auto const *rhs_buf_ptr_type =
                      typed_rhs.type().if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(typed_lhs.type())) {
@@ -191,7 +195,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                 .back()
                 .get<int64_t>();
         auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs(), out);
-        out.append(builder().PtrIncr(rhs_ir, lhs_ir, rhs_buf_ptr_type));
+        out.append(current_block()->Append(ir::PtrIncrInstruction{
+            .addr   = rhs_ir,
+            .index  = lhs_ir,
+            .ptr    = rhs_buf_ptr_type,
+            .result = builder().CurrentGroup()->Reserve()}));
       } else if (typed_lhs.type().is<type::Primitive>() and
                  typed_rhs.type().is<type::Primitive>()) {
         Apply<ir::AddInstruction, ir::Integer, int8_t, int16_t, int32_t,
@@ -214,13 +222,14 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                      type::PointerDifferenceType(resources().architecture))
                 .back()
                 .get<int64_t>();
-        out.append(builder().PtrIncr(
-            lhs_ir,
-            current_block()->Append(ir::NegInstruction<int64_t>{
+        out.append(current_block()->Append(ir::PtrIncrInstruction{
+            .addr   = lhs_ir,
+            .index  = current_block()->Append(ir::NegInstruction<int64_t>{
                 .operand = rhs_ir,
                 .result  = builder().CurrentGroup()->Reserve(),
             }),
-            lhs_buf_ptr_type));
+            .ptr    = lhs_buf_ptr_type,
+            .result = builder().CurrentGroup()->Reserve()}));
       } else if (auto const *rhs_buf_ptr_type =
                      typed_rhs.type().if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(typed_lhs.type())) {
@@ -231,13 +240,14 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                 .back()
                 .get<int64_t>();
         auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs(), out);
-        out.append(builder().PtrIncr(
-            rhs_ir,
-            current_block()->Append(ir::NegInstruction<int64_t>{
+        out.append(current_block()->Append(ir::PtrIncrInstruction{
+            .addr   = rhs_ir,
+            .index  = current_block()->Append(ir::NegInstruction<int64_t>{
                 .operand = lhs_ir,
                 .result  = builder().CurrentGroup()->Reserve(),
             }),
-            rhs_buf_ptr_type));
+            .ptr    = rhs_buf_ptr_type,
+            .result = builder().CurrentGroup()->Reserve()}));
       } else if (auto const *buf_ptr = typed_lhs.type().if_as<type::BufferPointer>();
                  typed_lhs.type() == typed_rhs.type() and buf_ptr) {
         auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs());
@@ -363,12 +373,15 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
         EmitCast(builder(), rhs_type,
                  type::PointerDifferenceType(resources().architecture), buffer);
         builder().Store<ir::RegOr<ir::addr_t>>(
-            builder().PtrIncr(current_block()->Append(ir::LoadInstruction{
-                                  .type   = lhs_buf_ptr_type->pointee(),
-                                  .addr   = lhs_lval,
-                                  .result = builder().CurrentGroup()->Reserve(),
-                              }),
-                              buffer.back().get<int64_t>(), lhs_buf_ptr_type),
+            current_block()->Append(ir::PtrIncrInstruction{
+                .addr   = current_block()->Append(ir::LoadInstruction{
+                    .type   = lhs_buf_ptr_type->pointee(),
+                    .addr   = lhs_lval,
+                    .result = builder().CurrentGroup()->Reserve(),
+                }),
+                .index  = buffer.back().get<int64_t>(),
+                .ptr    = lhs_buf_ptr_type,
+                .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else {
         EmitCast(builder(), rhs_type, lhs_type, buffer);
@@ -399,17 +412,18 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
           lhs_buf_ptr_type and type::IsIntegral(rhs_type)) {
         // TODO: Remove assumption that the pointer difference type is int64_t.
         builder().Store<ir::RegOr<ir::addr_t>>(
-            builder().PtrIncr(
-                current_block()->Append(ir::LoadInstruction{
+            current_block()->Append(ir::PtrIncrInstruction{
+                .addr   = current_block()->Append(ir::LoadInstruction{
                     .type   = lhs_buf_ptr_type->pointee(),
                     .addr   = lhs_lval,
                     .result = builder().CurrentGroup()->Reserve(),
                 }),
-                current_block()->Append(ir::NegInstruction<int64_t>{
+                .index  = current_block()->Append(ir::NegInstruction<int64_t>{
                     .operand = buffer.back().get<int64_t>(),
                     .result  = builder().CurrentGroup()->Reserve(),
                 }),
-                lhs_buf_ptr_type),
+                .ptr    = lhs_buf_ptr_type,
+                .result = builder().CurrentGroup()->Reserve()}),
             lhs_lval);
       } else {
         EmitCast(builder(), rhs_type, lhs_type, buffer);

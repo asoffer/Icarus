@@ -5,7 +5,6 @@ cc_library(
     hdrs = ["basic.h"],
     srcs = ["basic.cc"],
     deps = [
-        ":offset_cache",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//ir/instruction:base",

@@ -36,9 +36,11 @@ void OnEachArrayElement(IrBuilder &builder, type::Array const *t,
                         ir::Reg array_reg, F fn) {
   auto *data_ptr_type = type::Ptr(t->data_type());
 
-  auto ptr     = builder.PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
-  auto end_ptr = builder.PtrIncr(ptr, t->length().value(), data_ptr_type);
-
+  ir::Reg end_ptr = builder.CurrentBlock()->Append(
+      ir::PtrIncrInstruction{.addr   = array_reg,
+                             .index  = t->length().value(),
+                             .ptr    = data_ptr_type,
+                             .result = builder.CurrentGroup()->Reserve()});
   auto *start_block = builder.CurrentBlock();
   auto *loop_body   = builder.CurrentGroup()->AppendBlock();
   auto *land_block  = builder.CurrentGroup()->AppendBlock();
@@ -59,10 +61,14 @@ void OnEachArrayElement(IrBuilder &builder, type::Array const *t,
 
   builder.CurrentBlock() = loop_body;
   fn(phi->result);
-  ir::Reg next = builder.PtrIncr(phi->result, 1, data_ptr_type);
+  ir::Reg next = builder.CurrentBlock()->Append(
+      ir::PtrIncrInstruction{.addr   = phi->result,
+                             .index  = 1,
+                             .ptr    = data_ptr_type,
+                             .result = builder.CurrentGroup()->Reserve()});
   builder.CurrentBlock()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
-  phi->add(start_block, ptr);
+  phi->add(start_block, array_reg);
   phi->add(builder.CurrentBlock(), next);
 
   builder.CurrentBlock() = land_block;
@@ -76,16 +82,17 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
   auto &bldr          = c.builder();
   auto &fn            = *bldr.CurrentGroup();
   bldr.CurrentBlock() = fn.entry();
-  auto var            = ir::Reg::Arg(0);
-  auto val            = ir::Reg::Arg(1);
+  auto to_ptr         = ir::Reg::Arg(0);
+  auto from_ptr       = ir::Reg::Arg(1);
 
   auto to_data_ptr_type   = type::Ptr(to->data_type());
   auto from_data_ptr_type = type::Ptr(from->data_type());
 
-  auto from_ptr = bldr.PtrIncr(val, 0, from_data_ptr_type);
-  auto from_end_ptr =
-      bldr.PtrIncr(from_ptr, from->length().value(), from_data_ptr_type);
-  auto to_ptr = bldr.PtrIncr(var, 0, to_data_ptr_type);
+  auto from_end_ptr = c.current_block()->Append(
+      ir::PtrIncrInstruction{.addr   = from_ptr,
+                             .index  = from->length().value(),
+                             .ptr    = from_data_ptr_type,
+                             .result = c.builder().CurrentGroup()->Reserve()});
 
   auto *loop_body  = bldr.CurrentGroup()->AppendBlock();
   auto *land_block = bldr.CurrentGroup()->AppendBlock();
@@ -119,8 +126,16 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
     UNREACHABLE();
   }
 
-  ir::Reg next_to   = bldr.PtrIncr(to_phi->result, 1, to_data_ptr_type);
-  ir::Reg next_from = bldr.PtrIncr(from_phi->result, 1, from_data_ptr_type);
+  ir::Reg next_to = bldr.CurrentBlock()->Append(
+      ir::PtrIncrInstruction{.addr   = to_phi->result,
+                             .index  = 1,
+                             .ptr    = to_data_ptr_type,
+                             .result = bldr.CurrentGroup()->Reserve()});
+  ir::Reg next_from = bldr.CurrentBlock()->Append(
+      ir::PtrIncrInstruction{.addr   = from_phi->result,
+                             .index  = 1,
+                             .ptr    = from_data_ptr_type,
+                             .result = bldr.CurrentGroup()->Reserve()});
   bldr.CurrentBlock()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   to_phi->add(fn.entry(), to_ptr);
@@ -138,15 +153,15 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
   auto &bldr                 = c.builder();
   auto &fn                   = *bldr.CurrentGroup();
   c.builder().CurrentBlock() = fn.entry();
-  auto var                   = ir::Reg::Arg(0);
-  auto ret                   = ir::Reg::Out(0);
+  auto from_ptr              = ir::Reg::Arg(0);
+  auto to_ptr                = ir::Reg::Out(0);
 
   auto from_data_ptr_type = type::Ptr(from->data_type());
-
-  auto from_ptr = bldr.PtrIncr(var, 0, from_data_ptr_type);
-  auto from_end_ptr =
-      bldr.PtrIncr(from_ptr, from->length().value(), from_data_ptr_type);
-  auto to_ptr = bldr.PtrIncr(ret, 0, from_data_ptr_type);
+  auto from_end_ptr = c.current_block()->Append(
+      ir::PtrIncrInstruction{.addr   = from_ptr,
+                             .index  = from->length().value(),
+                             .ptr    = from_data_ptr_type,
+                             .result = c.builder().CurrentGroup()->Reserve()});
 
   auto *loop_body  = bldr.CurrentGroup()->AppendBlock();
   auto *land_block = bldr.CurrentGroup()->AppendBlock();
@@ -177,8 +192,16 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
     UNREACHABLE();
   }
 
-  ir::Reg next_to   = bldr.PtrIncr(to_phi->result, 1, from_data_ptr_type);
-  ir::Reg next_from = bldr.PtrIncr(from_phi->result, 1, from_data_ptr_type);
+  ir::Reg next_to = c.builder().CurrentBlock()->Append(
+      ir::PtrIncrInstruction{.addr   = to_phi->result,
+                             .index  = 1,
+                             .ptr    = from_data_ptr_type,
+                             .result = c.builder().CurrentGroup()->Reserve()});
+  ir::Reg next_from = c.builder().CurrentBlock()->Append(
+      ir::PtrIncrInstruction{.addr   = from_phi->result,
+                             .index  = 1,
+                             .ptr    = from_data_ptr_type,
+                             .result = c.builder().CurrentGroup()->Reserve()});
   c.current_block()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   to_phi->add(fn.entry(), to_ptr);

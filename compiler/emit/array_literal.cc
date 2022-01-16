@@ -21,13 +21,17 @@ void Compiler::EmitCopyInit(
   type::Array const &array_type =
       context().qual_types(node)[0].type().as<type::Array>();
   auto const *data_type_ptr = type::Ptr(array_type.data_type());
-  auto elem                 = builder().PtrIncr(to[0]->reg(), 0, data_type_ptr);
+  ir::Reg elem              = to[0]->reg();
 
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
     EmitCopyInit(node->elems()[i], absl::MakeConstSpan(&to_var, 1));
-    elem = builder().PtrIncr(elem, 1, data_type_ptr);
+    elem = current_block()->Append(
+        ir::PtrIncrInstruction{.addr   = elem,
+                               .index  = 1,
+                               .ptr    = data_type_ptr,
+                               .result = builder().CurrentGroup()->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
   EmitCopyInit(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
@@ -40,13 +44,17 @@ void Compiler::EmitMoveInit(
   type::Type t = context().qual_types(node)[0].type();
   if (t == type::EmptyArray) { return; }
   type::Array const &array_type = t.as<type::Array>();
-  auto *data_type_ptr = type::Ptr(array_type.data_type());
-  auto elem = builder().PtrIncr(to[0]->reg(), 0, data_type_ptr);
+  auto *data_type_ptr           = type::Ptr(array_type.data_type());
+  ir::Reg elem                  = to[0]->reg();
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
     EmitMoveInit(node->elems()[i], absl::MakeConstSpan(&to_var, 1));
-    elem = builder().PtrIncr(elem, 1, data_type_ptr);
+    elem = current_block()->Append(
+        ir::PtrIncrInstruction{.addr   = elem,
+                               .index  = 1,
+                               .ptr    = data_type_ptr,
+                               .result = builder().CurrentGroup()->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
   EmitMoveInit(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
@@ -59,12 +67,16 @@ void Compiler::EmitCopyAssign(
   type::Array const &array_type =
       context().qual_types(node)[0].type().as<type::Array>();
   auto *data_type_ptr = type::Ptr(array_type.data_type());
-  auto elem           = builder().PtrIncr(to[0]->reg(), 0, data_type_ptr);
+  ir::Reg elem        = to[0]->reg();
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
     EmitCopyAssign(node->elems()[i], absl::MakeConstSpan(&to_var, 1));
-    elem = builder().PtrIncr(elem, 1, data_type_ptr);
+    elem = current_block()->Append(
+        ir::PtrIncrInstruction{.addr   = elem,
+                               .index  = 1,
+                               .ptr    = data_type_ptr,
+                               .result = builder().CurrentGroup()->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
   EmitCopyAssign(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
@@ -77,12 +89,17 @@ void Compiler::EmitMoveAssign(
   type::Array const &array_type =
       context().qual_types(node)[0].type().as<type::Array>();
   auto *data_type_ptr = type::Ptr(array_type.data_type());
-  auto elem           = builder().PtrIncr(to[0]->reg(), 0, data_type_ptr);
+  ir::Reg elem        = to[0]->reg();
+
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
     EmitMoveAssign(node->elems()[i], absl::MakeConstSpan(&to_var, 1));
-    elem = builder().PtrIncr(elem, 1, data_type_ptr);
+    elem = current_block()->Append(
+        ir::PtrIncrInstruction{.addr   = elem,
+                               .index  = 1,
+                               .ptr    = data_type_ptr,
+                               .result = builder().CurrentGroup()->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
   EmitMoveAssign(node->elems().back(), absl::MakeConstSpan(&to_var, 1));

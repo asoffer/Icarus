@@ -68,9 +68,6 @@ struct IrBuilder {
     }
   }
 
-  ir::Reg PtrIncr(ir::RegOr<ir::addr_t> ptr, ir::RegOr<int64_t> inc,
-                  type::Pointer const* t);
-
   ir::BasicBlock* landing(ast::Scope const* s) const;
 
  private:
