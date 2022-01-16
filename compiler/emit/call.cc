@@ -116,8 +116,10 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       ir::Reg reg         = outs[0];
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(&args[0].expr(), buffer);
-      c.builder().Call(ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
-                       std::move(buffer), std::move(outs));
+      c.current_block()->Append(
+          ir::CallInstruction(&fn_type, ir::Fn{ir::BuiltinFn::Bytes()},
+                              std::move(buffer), std::move(outs)));
+
       // TODO: Return an integer
       out.append(reg);
       return;
@@ -130,8 +132,9 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       ir::Reg reg         = outs[0];
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(&args[0].expr(), buffer);
-      c.builder().Call(ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
-                       std::move(buffer), std::move(outs));
+      c.current_block()->Append(
+          ir::CallInstruction(&fn_type, ir::Fn{ir::BuiltinFn::Alignment()},
+                              std::move(buffer), std::move(outs)));
       out.append(reg);
       return;
     } break;

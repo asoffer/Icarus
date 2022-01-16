@@ -96,7 +96,11 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       type::Type t = context().qual_types(node)[0].type();
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node->operand(), buffer);
-      builder().Load(buffer.get<ir::addr_t>(0), t, out);
+      out.append(current_block()->Append(ir::LoadInstruction{
+          .type   = t,
+          .addr   = buffer[0].get<ir::addr_t>(),
+          .result = builder().CurrentGroup()->Reserve(),
+      }));
       return;
     } break;
     case ast::UnaryOperator::Kind::BlockJump: {

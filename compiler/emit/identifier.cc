@@ -37,7 +37,11 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
     if ((decl_id.declaration().flags() &
          (ast::Declaration::f_IsBlockParam | ast::Declaration::f_IsOutput)) and
         not t.is_big()) {
-      builder().Load(addr, t, out);
+      out.append(current_block()->Append(ir::LoadInstruction{
+          .type   = t,
+          .addr   = addr,
+          .result = builder().CurrentGroup()->Reserve(),
+      }));
     } else {
       out.append(addr);
     }

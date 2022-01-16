@@ -246,18 +246,24 @@ CalleeResult EmitCallee(
       // initialization for the declaration. Instead, we need load the
       // address.
       if (auto *fn_decl = callable->if_as<ast::Declaration>()) {
-        return {.callee = c.builder().Load<ir::Fn>(
-                    c.state().addr(&fn_decl->ids()[0]), f_type),
+        return {.callee  = c.current_block()->Append(ir::LoadInstruction{
+                    .type   = f_type,
+                    .addr   = c.state().addr(&fn_decl->ids()[0]),
+                    .result = c.builder().CurrentGroup()->Reserve()}),
                 .type    = f_type,
                 .context = nullptr};
       } else if (auto *fn_decl_id = callable->if_as<ast::Declaration::Id>()) {
-        return {.callee = c.builder().Load<ir::Fn>(c.state().addr(fn_decl_id),
-                                                   f_type),
-                .type   = f_type,
+        return {.callee  = c.current_block()->Append(ir::LoadInstruction{
+                    .type   = f_type,
+                    .addr   = c.state().addr(fn_decl_id),
+                    .result = c.builder().CurrentGroup()->Reserve()}),
+                .type    = f_type,
                 .context = nullptr};
       } else {
-        return {.callee = c.builder().Load<ir::Fn>(
-                    c.EmitAs<ir::addr_t>(callable), f_type),
+        return {.callee  = c.current_block()->Append(ir::LoadInstruction{
+                    .type   = f_type,
+                    .addr   = c.EmitAs<ir::addr_t>(callable),
+                    .result = c.builder().CurrentGroup()->Reserve()}),
                 .type    = f_type,
                 .context = nullptr};
       }
@@ -424,8 +430,8 @@ std::optional<ir::CompiledFn> StructCompletionFn(
         ir::PartialResultBuffer args;
         args.append(var);
         // TODO: Constants
-        data.builder().Call(*user_dtor, full_dtor.type(), std::move(args),
-                            ir::OutParams());
+        data.current_block()->Append(ir::CallInstruction(
+            full_dtor.type(), *user_dtor, std::move(args), ir::OutParams()));
       }
       for (int i = s->fields().size() - 1; i >= 0; --i) {
         // TODO: Avoid emitting IR if the type doesn't need to be
@@ -545,8 +551,8 @@ void EmitCall(Compiler &c, ast::Expression const *callee,
 
   // TODO: With expansions, this might be wrong.
   auto out_params = SetReturns(c, overload_type, to);
-  c.builder().Call(callee_fn, overload_type, std::move(prepared_arguments),
-                   out_params);
+  c.current_block()->Append(ir::CallInstruction(
+      overload_type, callee_fn, std::move(prepared_arguments), out_params));
   int i = -1;
   for (type::Type t : overload_type->return_types()) {
     ++i;

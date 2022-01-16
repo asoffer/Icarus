@@ -494,7 +494,6 @@ struct Compiler
                 .slice  = alloc,
                 .result = builder().CurrentGroup()->Reserve(),
             }));
-        builder().CurrentBlock()->load_store_cache().clear();
         buffer.clear();
         buffer.append(alloc);
       }
@@ -547,7 +546,6 @@ struct Compiler
                 .slice  = alloc,
                 .result = builder().CurrentGroup()->Reserve(),
             }));
-        builder().CurrentBlock()->load_store_cache().clear();
         buffer.clear();
         buffer.append(alloc);
       }

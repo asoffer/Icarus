@@ -78,27 +78,6 @@ IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
 
 ir::Reg IrBuilder::Alloca(type::Type t) { return CurrentGroup()->Alloca(t); }
 
-void IrBuilder::Call(ir::RegOr<ir::Fn> const &fn, type::Function const *f,
-                     ir::PartialResultBuffer args, ir::OutParams outs) {
-  ASSERT(args.num_entries() == f->params().size());
-
-  // TODO: this call should return the constructed registers rather than forcing
-  // the caller to do it.
-  for (auto const &p : f->params()) {
-    if (auto const ptr = p.value.type().if_as<type::Pointer>()) {
-      if (auto const *prim = ptr->pointee().if_as<type::Primitive>()) {
-        CurrentBlock()->load_store_cache().clear(prim->meta());
-      } else {
-        CurrentBlock()->load_store_cache().clear();
-        break;
-      }
-    }
-  }
-
-  CurrentBlock()->Append(
-      ir::CallInstruction(f, fn, std::move(args), std::move(outs)));
-}
-
 static void ClearJumps(ir::JumpCmd const &jump, ir::BasicBlock *from) {
   jump.Visit([&](auto &j) {
     using type = std::decay_t<decltype(j)>;

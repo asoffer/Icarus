@@ -17,12 +17,14 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "module/module.h"
+#include "type/primitive.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
 namespace type {
 struct Flags : public type::LegacyType {
   using underlying_type = uint64_t;
+  static type::Type UnderlyingType() { return type::U64; }
 
   Flags(module::BasicModule const *mod)
       : LegacyType(LegacyType::Flags{.is_default_initializable = 1,

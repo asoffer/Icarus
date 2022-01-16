@@ -39,12 +39,14 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
       out.append(builder().PtrFix(EmitRef(node),
                                   context().qual_types(node)[0].type()));
     } else {
-      auto data = builder().Load<ir::addr_t>(
-          current_block()->Append(type::SliceDataInstruction{
+      auto data = current_block()->Append(ir::LoadInstruction{
+          .type   = type::BufPtr(s->data_type()),
+          .addr   = current_block()->Append(type::SliceDataInstruction{
               .slice  = EmitAs<ir::addr_t>(node->lhs()),
               .result = builder().CurrentGroup()->Reserve(),
           }),
-          type::BufPtr(s->data_type()));
+          .result = builder().CurrentGroup()->Reserve(),
+      });
 
       // TODO: Remove assumption that the pointer difference type is int64_t.
       auto index =
@@ -112,13 +114,14 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
     return builder().PtrIncr(EmitAs<ir::addr_t>(node->lhs()), index,
                              type::Ptr(buf_ptr_type->pointee()));
   } else if (auto const *s = lhs_type.if_as<type::Slice>()) {
-    auto data = builder().Load<ir::addr_t>(
-        current_block()->Append(type::SliceDataInstruction{
+    auto data = current_block()->Append(ir::LoadInstruction{
+        .type   = type::BufPtr(s->data_type()),
+        .addr   = current_block()->Append(type::SliceDataInstruction{
             .slice  = EmitAs<ir::addr_t>(node->lhs()),
             .result = builder().CurrentGroup()->Reserve(),
         }),
-        type::BufPtr(s->data_type()));
-
+        .result = builder().CurrentGroup()->Reserve(),
+    });
     return builder().PtrIncr(data, index, type::BufPtr(s->data_type()));
   }
   UNREACHABLE(lhs_type.to_string());

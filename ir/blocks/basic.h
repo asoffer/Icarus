@@ -7,7 +7,6 @@
 
 #include "base/meta.h"
 #include "base/untyped_buffer.h"
-#include "ir/blocks/load_store_cache.h"
 #include "ir/blocks/offset_cache.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/inliner.h"
@@ -59,7 +58,6 @@ struct BasicBlock {
     b->jump_ = JumpCmd::Uncond(this);
   }
 
-  LoadStoreCache &load_store_cache() { return load_store_cache_; }
   OffsetCache &offset_cache() { return offset_cache_; }
 
   void erase_incoming(BasicBlock *b) { incoming_.erase(b); }
@@ -94,7 +92,6 @@ struct BasicBlock {
 
   std::vector<Inst> instructions_;
 
-  LoadStoreCache load_store_cache_;
   OffsetCache offset_cache_;
   absl::flat_hash_set<BasicBlock *> incoming_;
 

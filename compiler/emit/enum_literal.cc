@@ -57,7 +57,7 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
         iter != node->specified_values().end()) {
       specified_values.emplace(
           i, EmitCast(*this, context().typed(iter->second.get()),
-                      IrBuilder::GetType<type::Enum::underlying_type>())
+                      type::Enum::UnderlyingType())
                  .back()
                  .get<type::Enum::underlying_type>());
     }
