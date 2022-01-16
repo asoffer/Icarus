@@ -90,19 +90,6 @@ ir::Reg IrBuilder::PtrIncr(ir::RegOr<ir::addr_t> ptr, ir::RegOr<int64_t> inc,
       .addr = ptr, .index = inc, .ptr = t, .result = result});
 }
 
-type::Typed<ir::Reg> IrBuilder::FieldRef(ir::RegOr<ir::addr_t> r,
-                                         type::Struct const *t, int64_t n) {
-  auto &cache = CurrentBlock()->offset_cache();
-  if (auto result = cache.get(r, n, ir::OffsetCache::Kind::Into)) {
-    return type::Typed<ir::Reg>(*result, t->fields()[n].type);
-  }
-  ir::Reg result = CurrentGroup()->Reserve();
-  cache.set(r, n, ir::OffsetCache::Kind::Into, result);
-  CurrentBlock()->Append(ir::StructIndexInstruction{
-      .addr = r, .index = n, .struct_type = t, .result = result});
-  return type::Typed<ir::Reg>(result, t->fields()[n].type);
-}
-
 ir::BasicBlock *IrBuilder::EmitDestructionPath(ast::Scope const *from,
                                                ast::Scope const *to) {
   CurrentBlock()->set_jump(

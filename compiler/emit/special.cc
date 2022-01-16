@@ -466,11 +466,17 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
 
     for (size_t i = 0; i < r.type()->fields().size(); ++i) {
       auto &field = r.type()->fields()[i];
+      type::Typed<ir::Reg> field_reg(
+          current_block()->Append(ir::StructIndexInstruction{
+              .addr        = var,
+              .index       = i,
+              .struct_type = r.type(),
+              .result      = builder().CurrentGroup()->Reserve()}),
+          r.type()->fields()[i].type);
       if (not field.initial_value.empty()) {
-        EmitCopyInit(builder().FieldRef(var, r.type(), i), field.initial_value);
+        EmitCopyInit(field_reg, field.initial_value);
       } else {
-        EmitDefaultInit(
-            type::Typed<ir::Reg>(builder().FieldRef(var, r.type(), i)));
+        EmitDefaultInit(field_reg);
       }
     }
 

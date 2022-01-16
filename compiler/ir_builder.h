@@ -68,20 +68,6 @@ struct IrBuilder {
     }
   }
 
-  // Data structure access commands. For structs, `Fields` takes an
-  // address of the data structure and returns the address of the particular
-  // field requested. For variants, `VariantType` computes the location where
-  // the type is stored and `VariantValue` accesses the location where the
-  // value is stored.
-  type::Typed<ir::Reg> FieldRef(ir::RegOr<ir::addr_t> r, type::Struct const* t,
-                                int64_t n);
-
-  type::Type FieldValue(ir::RegOr<ir::addr_t> r, type::Struct const* t, int64_t n,
-                        ir::PartialResultBuffer& out) {
-    auto typed_reg = FieldRef(r, t, n);
-    out.append(PtrFix(*typed_reg, typed_reg.type()));
-    return typed_reg.type();
-  }
   ir::Reg PtrIncr(ir::RegOr<ir::addr_t> ptr, ir::RegOr<int64_t> inc,
                   type::Pointer const* t);
 

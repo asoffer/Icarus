@@ -436,7 +436,13 @@ std::optional<ir::CompiledFn> StructCompletionFn(
       for (int i = s->fields().size() - 1; i >= 0; --i) {
         // TODO: Avoid emitting IR if the type doesn't need to be
         // destroyed.
-        c.EmitDestroy(type::Typed<ir::Reg>(data.builder().FieldRef(var, s, i)));
+        c.EmitDestroy(type::Typed<ir::Reg>(
+            c.current_block()->Append(ir::StructIndexInstruction{
+                .addr        = var,
+                .index       = i,
+                .struct_type = s,
+                .result      = c.builder().CurrentGroup()->Reserve()}),
+            s->fields()[i].type));
       }
 
       data.current_block()->set_jump(ir::JumpCmd::Return());
@@ -617,7 +623,7 @@ void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
 #endif  // defined(ICARUS_DEBUG)
 
   // Ignore no-op conversions.
-  if (to == from) { return; }
+  if (to == from or type::CanCastInPlace(from, to)) { return; }
 
   // Allow any conversion to raw byte buffer pointers.
   if (from == type::Type(type::BufPtr(type::Byte)) or
