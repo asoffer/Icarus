@@ -160,7 +160,7 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
     phi_blocks.push_back(builder().CurrentBlock());
     phi_values.push_back(false);
     auto *next_block = builder().CurrentGroup()->AppendBlock();
-    builder().CondJump(cmp, next_block, land_block);
+    current_block()->set_jump(ir::JumpCmd::Cond(cmp, next_block, land_block));
     builder().CurrentBlock() = next_block;
     lhs_buffer               = std::move(rhs_buffer);
     lhs_type                 = rhs_type;
@@ -175,7 +175,7 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
                                 type::Typed(lhs_buffer, lhs_type),
                                 type::Typed(rhs_buffer, rhs_type)));
 
-  builder().UncondJump(land_block);
+  current_block()->set_jump(ir::JumpCmd::Uncond(land_block));
 
   builder().CurrentBlock() = land_block;
 

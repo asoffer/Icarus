@@ -78,7 +78,7 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
 
   MakeAllStackAllocations(*this, &node->body_scope());
   EmitIrForStatements(*this, &node->body_scope(), node->stmts());
-  builder().ReturnJump();
+  current_block()->set_jump(ir::JumpCmd::Return());
 
   return true;
 }

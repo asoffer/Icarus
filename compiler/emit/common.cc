@@ -49,7 +49,7 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
       c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
       ++i;
     }
-    c.builder().ReturnJump();
+    c.current_block()->set_jump(ir::JumpCmd::Return());
     c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
@@ -97,7 +97,7 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
       c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
       ++i;
     }
-    c.builder().ReturnJump();
+    c.current_block()->set_jump(ir::JumpCmd::Return());
     c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
@@ -131,7 +131,7 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
           type::Typed(buffer[0], s->fields()[i].type));
     }
 
-    c.builder().ReturnJump();
+    c.current_block()->set_jump(ir::JumpCmd::Return());
     c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
@@ -164,7 +164,7 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
           type::Typed(buffer[0], s->fields()[i].type));
     }
 
-    c.builder().ReturnJump();
+    c.current_block()->set_jump(ir::JumpCmd::Return());
     c.context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   return fn;
@@ -439,7 +439,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
         c.EmitDestroy(type::Typed<ir::Reg>(data.builder().FieldRef(var, s, i)));
       }
 
-      data.builder().ReturnJump();
+      data.current_block()->set_jump(ir::JumpCmd::Return());
       data.context().ir().WriteByteCode<EmitByteCode>(full_dtor);
 
       dtor = full_dtor;
@@ -466,7 +466,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
                               .move_assignments = std::move(move_assignments),
                               .copy_assignments = std::move(copy_assignments),
                               .dtor             = dtor});
-  data.builder().ReturnJump();
+  data.current_block()->set_jump(ir::JumpCmd::Return());
 
   return fn;
 }
@@ -481,7 +481,7 @@ void MakeAllStackAllocations(Compiler &compiler, ast::Scope const *scope) {
       LOG("MakeAllStackAllocations", "allocating %s", id.name());
 
       compiler.state().set_addr(
-          &id, compiler.builder().Alloca(
+          &id, compiler.builder().CurrentGroup()->Alloca(
                    compiler.context().qual_types(&id)[0].type()));
     }
   });

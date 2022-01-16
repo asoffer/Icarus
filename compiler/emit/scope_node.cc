@@ -89,14 +89,15 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
             type::Type param_type = c.context().qual_types(&id)[0].type();
             ir::PartialResultBuffer buffer;
             buffer.append(r);
-            c.state().set_addr(&id, c.builder().Alloca(param_type));
+            c.state().set_addr(&id,
+                               c.builder().CurrentGroup()->Alloca(param_type));
             c.EmitCopyAssign(type::Typed(c.state().addr(&id), param_type),
                              type::Typed(buffer[0], param_type));
           }
 
           ir::PartialResultBuffer ignored;
           c.EmitToBuffer(block_to_emit, ignored);
-          c.builder().UncondJump(exit);
+          c.current_block()->set_jump(ir::JumpCmd::Uncond(exit));
         } else {
           auto const &gb = t.as<type::Generic<type::Block>>();
           // TODO: From here we need to find the instantiation, which requires
@@ -182,7 +183,8 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
     AdjustInstructions(inliner, block_mapping);
 
     builder().CurrentBlock() = start;
-    builder().UncondJump(block_mapping.find(scope->entry())->second);
+    start->set_jump(
+        ir::JumpCmd::Uncond(block_mapping.find(scope->entry())->second));
 
     auto *landing =
         AdjustJumpsAndEmitBlocks(*this, node, scope, inliner, block_mapping);

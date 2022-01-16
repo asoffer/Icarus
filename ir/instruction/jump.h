@@ -16,6 +16,7 @@
 #include "ir/value/arguments.h"
 #include "ir/value/block.h"
 #include "ir/value/reg.h"
+#include "ir/value/reg_or.h"
 #include "type/qual_type.h"
 
 namespace ir {
@@ -32,6 +33,13 @@ struct JumpCmd {
   }
   static JumpCmd Cond(Reg r, BasicBlock* true_block, BasicBlock* false_block) {
     return JumpCmd(CondJump{r, true_block, false_block});
+  }
+
+  static JumpCmd Cond(RegOr<bool> r, BasicBlock* true_block,
+                      BasicBlock* false_block) {
+    return r.is_reg()
+               ? JumpCmd(CondJump{r.reg(), true_block, false_block})
+               : JumpCmd(UncondJump{r.value() ? true_block : false_block});
   }
 
   JumpCmd(JumpCmd const&)     = default;

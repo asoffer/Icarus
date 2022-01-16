@@ -59,7 +59,7 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
   ast::Scope const *s = node->scope();
   while (s->kind() != ast::Scope::Kind::BoundaryExecutable) { s = s->parent(); }
   builder().CurrentBlock() = builder().EmitDestructionPath(node->scope(), s);
-  builder().ReturnJump();
+  current_block()->set_jump(ir::JumpCmd::Return());
 }
 
 }  // namespace compiler

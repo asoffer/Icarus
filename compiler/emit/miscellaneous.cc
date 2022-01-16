@@ -27,9 +27,8 @@ void EmitNonConstantIf(Compiler &c, ast::IfStmt const *node,
           .back()
           .get<bool>();
   c.DestroyTemporaries();
-  c.builder().CondJump(condition, true_block,
-                       false_block ? false_block : landing);
-
+  c.current_block()->set_jump(ir::JumpCmd::Cond(
+      condition, true_block, false_block ? false_block : landing));
   c.builder().CurrentBlock() = true_block;
   EmitIrForStatements(c, &node->true_scope(), node->true_block());
 
@@ -37,7 +36,7 @@ void EmitNonConstantIf(Compiler &c, ast::IfStmt const *node,
 
   c.builder().CurrentBlock() = false_block;
   EmitIrForStatements(c, &node->false_scope(), node->false_block());
-  c.builder().UncondJump(landing);
+  c.current_block()->set_jump(ir::JumpCmd::Uncond(landing));
   c.builder().CurrentBlock() = landing;
 }
 
@@ -83,7 +82,7 @@ void Compiler::EmitToBuffer(ast::WhileStmt const *node,
   auto *body_block  = builder().CurrentGroup()->AppendBlock();
   auto *landing     = builder().CurrentGroup()->AppendBlock();
 
-  builder().UncondJump(start_block);
+  current_block()->set_jump(ir::JumpCmd::Uncond(start_block));
 
   builder().CurrentBlock()  = start_block;
   ir::RegOr<bool> condition =
@@ -91,11 +90,11 @@ void Compiler::EmitToBuffer(ast::WhileStmt const *node,
           .back()
           .get<bool>();
   DestroyTemporaries();
-  builder().CondJump(condition, body_block, landing);
+  current_block()->set_jump(ir::JumpCmd::Cond(condition, body_block, landing));
 
   builder().CurrentBlock() = body_block;
   EmitIrForStatements(*this, &node->body_scope(), node->body());
-  builder().UncondJump(start_block);
+  current_block()->set_jump(ir::JumpCmd::Uncond(start_block));
 
   builder().CurrentBlock() = landing;
 }

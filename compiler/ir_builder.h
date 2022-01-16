@@ -68,25 +68,6 @@ struct IrBuilder {
     }
   }
 
-  // Jump instructions must be the last instruction in a basic block. They
-  // handle control-flow, indicating which basic block control should be
-  // transferred to next.
-  //
-  // `UncondJump`:   Transfers control to `block`.
-  // `CondJump`:     Transfers control to one of two blocks depending on a
-  //                 run-time boolean value.
-  // `ReturnJump`:   Transfers control back to the calling function.
-  void UncondJump(ir::BasicBlock* block);
-  void CondJump(ir::RegOr<bool> cond, ir::BasicBlock* true_block,
-                ir::BasicBlock* false_block);
-  void ReturnJump();
-  void BlockJump(ir::Block b, ir::BasicBlock* after);
-
-  // Special members function instructions. Calling these typically calls
-  // builtin functions (or, in the case of primitive types, do nothing).
-  void Move(type::Typed<ir::RegOr<ir::addr_t>> to, type::Typed<ir::Reg> from);
-  void Copy(type::Typed<ir::RegOr<ir::addr_t>> to, type::Typed<ir::Reg> from);
-
   // Data structure access commands. For structs, `Fields` takes an
   // address of the data structure and returns the address of the particular
   // field requested. For variants, `VariantType` computes the location where
@@ -103,12 +84,6 @@ struct IrBuilder {
   }
   ir::Reg PtrIncr(ir::RegOr<ir::addr_t> ptr, ir::RegOr<int64_t> inc,
                   type::Pointer const* t);
-
-  ir::Reg Alloca(type::Type t);
-
-  void DebugIr() {
-    CurrentBlock()->Append(ir::DebugIrInstruction{.fn = CurrentGroup()});
-  }
 
   ir::BasicBlock* landing(ast::Scope const* s) const;
 

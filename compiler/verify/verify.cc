@@ -94,7 +94,7 @@ std::optional<ir::CompiledFn> StructDataCompletionFn(
 
   c.current_block()->Append(
       type::StructDataInstruction{.struct_ = s, .fields = std::move(fields)});
-  c.builder().ReturnJump();
+  c.current_block()->set_jump(ir::JumpCmd::Return());
 
   return fn;
 }

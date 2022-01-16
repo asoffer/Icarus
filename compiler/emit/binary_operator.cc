@@ -74,13 +74,14 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       std::vector<ir::BasicBlock const *> phi_blocks;
 
       auto *next_block = builder().CurrentGroup()->AppendBlock();
-      builder().CondJump(lhs_ir, land_block, next_block);
+      current_block()->set_jump(
+          ir::JumpCmd::Cond(lhs_ir, land_block, next_block));
       phi_blocks.push_back(builder().CurrentBlock());
       builder().CurrentBlock() = next_block;
 
       auto rhs_ir = EmitAs<bool>(&node->rhs());
       phi_blocks.push_back(builder().CurrentBlock());
-      builder().UncondJump(land_block);
+      current_block()->set_jump(ir::JumpCmd::Uncond(land_block));
 
       builder().CurrentBlock() = land_block;
 
@@ -137,12 +138,13 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       std::vector<ir::BasicBlock const *> phi_blocks;
 
       auto *next_block = builder().CurrentGroup()->AppendBlock();
-      builder().CondJump(lhs_ir, next_block, land_block);
+      current_block()->set_jump(
+          ir::JumpCmd::Cond(lhs_ir, next_block, land_block));
       phi_blocks.push_back(builder().CurrentBlock());
       builder().CurrentBlock() = next_block;
 
       phi_blocks.push_back(builder().CurrentBlock());
-      builder().UncondJump(land_block);
+      current_block()->set_jump(ir::JumpCmd::Uncond(land_block));
 
       builder().CurrentBlock() = land_block;
       ir::PhiInstruction<bool> phi(std::move(phi_blocks), {false, rhs_ir});
@@ -302,7 +304,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
           block, RegisterReferencing(builder(), lhs_type, lhs_buffer[0]));
 
       auto *exit = builder().CurrentGroup()->AppendBlock();
-      builder().BlockJump(block, exit);
+      current_block()->set_jump(ir::JumpCmd::ToBlock(block, exit));
       builder().CurrentBlock() = exit;
     }
   }

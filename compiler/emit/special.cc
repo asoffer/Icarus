@@ -44,7 +44,7 @@ void OnEachArrayElement(IrBuilder &builder, type::Array const *t,
   auto *land_block  = builder.CurrentGroup()->AppendBlock();
   auto *cond_block  = builder.CurrentGroup()->AppendBlock();
 
-  builder.UncondJump(cond_block);
+  builder.CurrentBlock()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   builder.CurrentBlock() = cond_block;
   auto *phi              = PhiInst<ir::addr_t>(builder);
@@ -54,12 +54,13 @@ void OnEachArrayElement(IrBuilder &builder, type::Array const *t,
           .lhs    = phi->result,
           .rhs    = end_ptr,
           .result = builder.CurrentGroup()->Reserve()});
-  builder.CondJump(condition, land_block, loop_body);
+  builder.CurrentBlock()->set_jump(
+      ir::JumpCmd::Cond(condition, land_block, loop_body));
 
   builder.CurrentBlock() = loop_body;
   fn(phi->result);
   ir::Reg next = builder.PtrIncr(phi->result, 1, data_ptr_type);
-  builder.UncondJump(cond_block);
+  builder.CurrentBlock()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   phi->add(start_block, ptr);
   phi->add(builder.CurrentBlock(), next);
@@ -90,7 +91,7 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
   auto *land_block = bldr.CurrentGroup()->AppendBlock();
   auto *cond_block = bldr.CurrentGroup()->AppendBlock();
 
-  bldr.UncondJump(cond_block);
+  bldr.CurrentBlock()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   bldr.CurrentBlock() = cond_block;
   auto *from_phi      = PhiInst<ir::addr_t>(bldr);
@@ -99,7 +100,8 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
       ir::EqInstruction<ir::addr_t>{.lhs    = from_phi->result,
                                     .rhs    = from_end_ptr,
                                     .result = bldr.CurrentGroup()->Reserve()});
-  bldr.CondJump(condition, land_block, loop_body);
+  bldr.CurrentBlock()->set_jump(
+      ir::JumpCmd::Cond(condition, land_block, loop_body));
 
   bldr.CurrentBlock() = loop_body;
   ir::PartialResultBuffer buffer;
@@ -119,7 +121,7 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
 
   ir::Reg next_to   = bldr.PtrIncr(to_phi->result, 1, to_data_ptr_type);
   ir::Reg next_from = bldr.PtrIncr(from_phi->result, 1, from_data_ptr_type);
-  bldr.UncondJump(cond_block);
+  bldr.CurrentBlock()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   to_phi->add(fn.entry(), to_ptr);
   to_phi->add(bldr.CurrentBlock(), next_to);
@@ -127,17 +129,17 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
   from_phi->add(bldr.CurrentBlock(), next_from);
 
   bldr.CurrentBlock() = land_block;
-  bldr.ReturnJump();
+  land_block->set_jump(ir::JumpCmd::Return());
 }
 
 template <Kind K>
 void EmitArrayInit(Compiler &c, type::Array const *to,
                    type::Array const *from) {
-  auto &bldr          = c.builder();
-  auto &fn            = *bldr.CurrentGroup();
-  bldr.CurrentBlock() = fn.entry();
-  auto var            = ir::Reg::Arg(0);
-  auto ret            = ir::Reg::Out(0);
+  auto &bldr                 = c.builder();
+  auto &fn                   = *bldr.CurrentGroup();
+  c.builder().CurrentBlock() = fn.entry();
+  auto var                   = ir::Reg::Arg(0);
+  auto ret                   = ir::Reg::Out(0);
 
   auto from_data_ptr_type = type::Ptr(from->data_type());
 
@@ -150,18 +152,18 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
   auto *land_block = bldr.CurrentGroup()->AppendBlock();
   auto *cond_block = bldr.CurrentGroup()->AppendBlock();
 
-  bldr.UncondJump(cond_block);
+  c.current_block()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
-  bldr.CurrentBlock() = cond_block;
-  auto *from_phi      = PhiInst<ir::addr_t>(bldr);
-  auto *to_phi        = PhiInst<ir::addr_t>(bldr);
-  ir::Reg condition   = bldr.CurrentBlock()->Append(
+  c.builder().CurrentBlock() = cond_block;
+  auto *from_phi             = PhiInst<ir::addr_t>(bldr);
+  auto *to_phi               = PhiInst<ir::addr_t>(bldr);
+  ir::Reg condition          = c.current_block()->Append(
       ir::EqInstruction<ir::addr_t>{.lhs    = from_phi->result,
                                     .rhs    = from_end_ptr,
                                     .result = bldr.CurrentGroup()->Reserve()});
-  bldr.CondJump(condition, land_block, loop_body);
+  c.current_block()->set_jump(ir::JumpCmd::Cond(condition, land_block, loop_body));
 
-  bldr.CurrentBlock() = loop_body;
+  c.builder().CurrentBlock() = loop_body;
   ir::PartialResultBuffer buffer;
   buffer.append(c.builder().PtrFix(from_phi->result, from->data_type()));
   if constexpr (K == Copy) {
@@ -177,15 +179,15 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
 
   ir::Reg next_to   = bldr.PtrIncr(to_phi->result, 1, from_data_ptr_type);
   ir::Reg next_from = bldr.PtrIncr(from_phi->result, 1, from_data_ptr_type);
-  bldr.UncondJump(cond_block);
+  c.current_block()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   to_phi->add(fn.entry(), to_ptr);
-  to_phi->add(bldr.CurrentBlock(), next_to);
+  to_phi->add(c.current_block(), next_to);
   from_phi->add(fn.entry(), from_ptr);
-  from_phi->add(bldr.CurrentBlock(), next_from);
+  from_phi->add(c.current_block(), next_from);
 
-  bldr.CurrentBlock() = land_block;
-  bldr.ReturnJump();
+  c.builder().CurrentBlock() = land_block;
+  land_block->set_jump(ir::JumpCmd::Return());
 }
 
 }  // namespace
@@ -200,7 +202,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
     OnEachArrayElement(builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
       EmitDefaultInit(type::Typed<ir::Reg>(reg, r.type()->data_type()));
     });
-    builder().ReturnJump();
+    builder().CurrentBlock()->set_jump(ir::JumpCmd::Return());
     context().ir().WriteByteCode<EmitByteCode>(fn);
     // TODO: Remove const_cast.
     const_cast<type::Array *>(r.type())->SetInitializer(fn);
@@ -220,7 +222,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
     OnEachArrayElement(builder(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
       EmitDestroy(type::Typed<ir::Reg>(reg, r.type()->data_type()));
     });
-    builder().ReturnJump();
+    builder().CurrentBlock()->set_jump(ir::JumpCmd::Return());
     context().ir().WriteByteCode<EmitByteCode>(fn);
     // TODO: Remove const_cast.
     const_cast<type::Array *>(r.type())->SetDestructor(fn);
@@ -291,8 +293,8 @@ void Compiler::EmitCopyAssign(
     type::Typed<ir::PartialResultRef> const &from) {
   ASSERT(type::Type(to.type()) == from.type());
   SetArrayAssignments(*this, &to.type()->as<type::Array>());
-  builder().Copy(
-      to, type::Typed<ir::Reg>(from->get<ir::addr_t>().reg(), from.type()));
+  current_block()->Append(ir::CopyInstruction{
+      .type = to.type(), .from = from->get<ir::addr_t>(), .to = *to});
 }
 
 void Compiler::EmitMoveAssign(
@@ -300,8 +302,8 @@ void Compiler::EmitMoveAssign(
     type::Typed<ir::PartialResultRef> const &from) {
   ASSERT(type::Type(to.type()) == from.type());
   SetArrayAssignments(*this, &to.type()->as<type::Array>());
-  builder().Move(
-      to, type::Typed<ir::Reg>(from->get<ir::addr_t>().reg(), from.type()));
+  current_block()->Append(ir::MoveInstruction{
+      .type = to.type(), .from = from->get<ir::addr_t>(), .to = *to});
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Enum> to,
@@ -472,7 +474,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
       }
     }
 
-    builder().ReturnJump();
+    builder().CurrentBlock()->set_jump(ir::JumpCmd::Return());
 
     // TODO: Remove this hack.
     const_cast<type::Struct *>(r.type())->init_ = fn;

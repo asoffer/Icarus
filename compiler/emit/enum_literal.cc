@@ -82,7 +82,7 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
     default: UNREACHABLE();
   }
 
-  builder().ReturnJump();
+  current_block()->set_jump(ir::JumpCmd::Return());
 
   InterpretAtCompileTime(fn);
 

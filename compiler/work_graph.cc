@@ -73,7 +73,7 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
       });
     });
   }
-  c.builder().ReturnJump();
+  c.current_block()->set_jump(ir::JumpCmd::Return());
   LOG("MakeThunk", "%s", fn);
 
   return std::pair(std::move(fn), EmitByteCode(fn));
@@ -134,7 +134,7 @@ std::optional<ir::CompiledFn> CompileExecutable(
           MakeAllStackAllocations(c, &mod_scope);
           EmitIrForStatements(c, &mod_scope, nodes);
         }
-        c.builder().ReturnJump();
+        c.current_block()->set_jump(ir::JumpCmd::Return());
 
         return true;
       });

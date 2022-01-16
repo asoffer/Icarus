@@ -107,7 +107,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       ir::PartialResultBuffer buffer;
       auto block = *EvaluateOrDiagnoseAs<ir::Block>(node->operand());
       auto *exit = builder().CurrentGroup()->AppendBlock();
-      builder().BlockJump(block, exit);
+      current_block()->set_jump(ir::JumpCmd::ToBlock(block, exit));
       builder().CurrentBlock() = exit;
     } break;
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));

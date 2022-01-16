@@ -139,7 +139,10 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       return;
     } break;
 
-    case ir::BuiltinFn::Which::DebugIr: c.builder().DebugIr(); return;
+    case ir::BuiltinFn::Which::DebugIr:
+      c.current_block()->Append(
+          ir::DebugIrInstruction{.fn = c.builder().CurrentGroup()});
+      return;
 
     case ir::BuiltinFn::Which::Abort:
       c.current_block()->Append(ir::AbortInstruction{});

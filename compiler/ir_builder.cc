@@ -67,49 +67,14 @@ IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
       // }
 
       CurrentBlock() = block;
-      UncondJump(start == end ? landings_.find(end)->second
-                              : destruction_blocks_
-                                    .find(std::pair(start->parent(), end))
-                                    ->second);
+      block->set_jump(ir::JumpCmd::Uncond(
+          start == end
+              ? landings_.find(end)->second
+              : destruction_blocks_.find(std::pair(start->parent(), end))
+                    ->second));
     }
   }
   CurrentBlock() = group_->entry();
-}
-
-ir::Reg IrBuilder::Alloca(type::Type t) { return CurrentGroup()->Alloca(t); }
-
-void IrBuilder::UncondJump(ir::BasicBlock *block) {
-  CurrentBlock()->set_jump(ir::JumpCmd::Uncond(block));
-}
-
-void IrBuilder::BlockJump(ir::Block b, ir::BasicBlock *after) {
-  CurrentBlock()->set_jump(ir::JumpCmd::ToBlock(b, after));
-}
-
-void IrBuilder::ReturnJump() {
-  CurrentBlock()->set_jump(ir::JumpCmd::Return());
-}
-
-void IrBuilder::CondJump(ir::RegOr<bool> cond, ir::BasicBlock *true_block,
-                         ir::BasicBlock *false_block) {
-  if (cond.is_reg()) {
-    CurrentBlock()->set_jump(
-        ir::JumpCmd::Cond(cond.reg(), true_block, false_block));
-  } else {
-    return UncondJump(cond.value() ? true_block : false_block);
-  }
-}
-
-void IrBuilder::Move(type::Typed<ir::RegOr<ir::addr_t>> to,
-                     type::Typed<ir::Reg> from) {
-  CurrentBlock()->Append(
-      ir::MoveInstruction{.type = to.type(), .from = *from, .to = *to});
-}
-
-void IrBuilder::Copy(type::Typed<ir::RegOr<ir::addr_t>> to,
-                     type::Typed<ir::Reg> from) {
-  CurrentBlock()->Append(
-      ir::CopyInstruction{.type = to.type(), .from = *from, .to = *to});
 }
 
 ir::Reg IrBuilder::PtrIncr(ir::RegOr<ir::addr_t> ptr, ir::RegOr<int64_t> inc,
@@ -140,7 +105,8 @@ type::Typed<ir::Reg> IrBuilder::FieldRef(ir::RegOr<ir::addr_t> r,
 
 ir::BasicBlock *IrBuilder::EmitDestructionPath(ast::Scope const *from,
                                                ast::Scope const *to) {
-  UncondJump(destruction_blocks_.at(std::pair(from, to)));
+  CurrentBlock()->set_jump(
+      ir::JumpCmd::Uncond(destruction_blocks_.at(std::pair(from, to))));
   return landing(to);
 }
 

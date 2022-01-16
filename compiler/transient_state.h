@@ -54,7 +54,7 @@ struct TransientState {
   }
 
   ir::Reg TmpAlloca(type::Type t) {
-    auto reg = builders.back().Alloca(t);
+    auto reg = builders.back().CurrentGroup()->Alloca(t);
     temporaries_to_destroy.emplace_back(reg, t);
     return reg;
   }

@@ -103,8 +103,9 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
       auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
       if (not out_decl) { continue; }
       type::Type out_decl_type = context().qual_types(out_decl)[0].type();
-      auto alloc               = out_decl_type.is_big() ? ir::Reg::Out(i)
-                                          : builder().Alloca(out_decl_type);
+      auto alloc               = out_decl_type.is_big()
+                       ? ir::Reg::Out(i)
+                       : builder().CurrentGroup()->Alloca(out_decl_type);
 
       ASSERT(out_decl->ids().size() == 1u);
       state().set_addr(&out_decl->ids()[0], alloc);
@@ -120,7 +121,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   }
 
   EmitIrForStatements(*this, &node->body_scope(), node->stmts());
-  builder().ReturnJump();
+  current_block()->set_jump(ir::JumpCmd::Return());
 
   context().ir().WriteByteCode<EmitByteCode>(ir_func);
   return true;
