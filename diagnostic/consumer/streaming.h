@@ -18,7 +18,7 @@ struct StreamingConsumer : DiagnosticConsumer {
 
   void ConsumeImpl(std::string_view category, std::string_view name,
                    DiagnosticMessage&& diag) override {
-    renderer_.AddError(*source(), diag);
+    renderer_.AddError(source(), diag);
   }
 
  private:
