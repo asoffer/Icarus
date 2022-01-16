@@ -47,20 +47,9 @@ struct BasicBlock {
   void ReplaceJumpTargets(BasicBlock *old_target, BasicBlock *new_target);
   void Append(BasicBlock &&b);
 
-  // All `BasicBlocks` which can jump to this one. Some may jump unconditionally
-  // whereas others may jump only conditionally.
-  auto const &incoming() const { return incoming_; }
-
   constexpr DebugInfo const &debug() const { return debug_; }
 
-  void insert_incoming(BasicBlock *b) {
-    incoming_.insert(b);
-    b->jump_ = JumpCmd::Uncond(this);
-  }
-
   OffsetCache &offset_cache() { return offset_cache_; }
-
-  void erase_incoming(BasicBlock *b) { incoming_.erase(b); }
 
   absl::Span<Inst> instructions() { return absl::MakeSpan(instructions_); }
   absl::Span<Inst const> instructions() const { return instructions_; }
@@ -86,14 +75,9 @@ struct BasicBlock {
   friend std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
 
  private:
-  void RemoveOutgoingJumps();
-  void AddOutgoingJumps(JumpCmd const &jump);
-  void ExchangeJumps(BasicBlock const *b);
-
   std::vector<Inst> instructions_;
 
   OffsetCache offset_cache_;
-  absl::flat_hash_set<BasicBlock *> incoming_;
 
   JumpCmd jump_ = JumpCmd::Unreachable();
 

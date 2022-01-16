@@ -78,26 +78,11 @@ IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
 
 ir::Reg IrBuilder::Alloca(type::Type t) { return CurrentGroup()->Alloca(t); }
 
-static void ClearJumps(ir::JumpCmd const &jump, ir::BasicBlock *from) {
-  jump.Visit([&](auto &j) {
-    using type = std::decay_t<decltype(j)>;
-    if constexpr (std::is_same_v<type, ir::JumpCmd::UncondJump>) {
-      j.block->erase_incoming(from);
-    } else if constexpr (std::is_same_v<type, ir::JumpCmd::CondJump>) {
-      j.true_block->erase_incoming(from);
-      j.false_block->erase_incoming(from);
-    }
-  });
-}
-
 void IrBuilder::UncondJump(ir::BasicBlock *block) {
-  ClearJumps(CurrentBlock()->jump(), CurrentBlock());
-  block->insert_incoming(CurrentBlock());
   CurrentBlock()->set_jump(ir::JumpCmd::Uncond(block));
 }
 
 void IrBuilder::BlockJump(ir::Block b, ir::BasicBlock *after) {
-  ClearJumps(CurrentBlock()->jump(), CurrentBlock());
   CurrentBlock()->set_jump(ir::JumpCmd::ToBlock(b, after));
 }
 
@@ -107,10 +92,7 @@ void IrBuilder::ReturnJump() {
 
 void IrBuilder::CondJump(ir::RegOr<bool> cond, ir::BasicBlock *true_block,
                          ir::BasicBlock *false_block) {
-  ClearJumps(CurrentBlock()->jump(), CurrentBlock());
   if (cond.is_reg()) {
-    true_block->insert_incoming(CurrentBlock());
-    false_block->insert_incoming(CurrentBlock());
     CurrentBlock()->set_jump(
         ir::JumpCmd::Cond(cond.reg(), true_block, false_block));
   } else {

@@ -5,10 +5,7 @@ namespace ir::internal {
 BlockGroupBase::BlockGroupBase(core::Params<type::QualType> params,
                                size_t num_state_args)
     : params_(std::move(params)), alloc_(params_.size() + num_state_args) {
-  // Ensure the existence of an entry block. The entry block marks itself as
-  // incoming so it is never accidentally cleaned up.
-  auto *b = AppendBlock(BasicBlock::DebugInfo{.header = "Entry"});
-  b->insert_incoming(b);
+  AppendBlock(BasicBlock::DebugInfo{.header = "Entry"});
 }
 
 Reg BlockGroupBase::Alloca(type::Type t) { return alloc_.StackAllocate(t); }
