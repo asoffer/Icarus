@@ -12,12 +12,12 @@ struct ConsoleRenderer {
   // Assumes the file is already open.
   constexpr explicit ConsoleRenderer(std::FILE* out) : out_(out) {}
 
-  void AddError(frontend::SourceBuffer const& source,
+  void AddError(frontend::SourceBuffer const* source,
                 DiagnosticMessage const& diag) {
     Add(source, Category::Error, diag);
   }
 
-  void Add(frontend::SourceBuffer const& source, Category cat,
+  void Add(frontend::SourceBuffer const* source, Category cat,
            DiagnosticMessage const& diag);
   void Flush();
 

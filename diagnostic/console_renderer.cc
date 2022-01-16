@@ -130,12 +130,12 @@ void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
     absl::FPrintF(out_, "\n");
 }
 
-void ConsoleRenderer::Add(frontend::SourceBuffer const &source, Category cat,
+void ConsoleRenderer::Add(frontend::SourceBuffer const *source, Category cat,
                           DiagnosticMessage const &diag) {
   has_data_ = true;
-  if (not source.name().empty()) {
+  if (source and not source->name().empty()) {
     absl::FPrintF(out_, "\033[31;1mError\033[0m in \033[1m%s\033[0m:\n",
-                  source.name());
+                  source->name());
   } else {
     std::fputs("\033[31;1mError\033[0m:\n", out_);
   }
