@@ -21,3 +21,4 @@ $binary "$examples/mandelbrot.ic" >/dev/null && echo mandelbrot OK
 $binary "$examples/ping_pong.ic" >/dev/null && echo ping_pong OK
 $binary "$examples/primes.ic" >/dev/null && echo primes OK
 $binary "$examples/string_demo.ic" >/dev/null && echo string_demo OK
+$binary "$examples/regressions.ic" >/dev/null && echo regressions OK

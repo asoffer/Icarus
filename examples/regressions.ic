@@ -1,0 +1,6 @@
+// This file contains simple snippets that have triggered bugs in the past.
+
+// Test casting from a buffer pointer to a raw pointer.
+BufferToRawPointer ::= (data: [*]i64) -> *i64 {
+  return &data[0]
+}
