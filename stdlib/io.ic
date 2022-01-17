@@ -28,6 +28,12 @@
   printf("%.*s".data, s.length, &s[0])
 }
 
+// Warning: Unsafe, prints everything up to the first null byte.
+#{export} Print ::= (s: [*]char) -> () {
+  printf ::= foreign("printf", ([*]char, [*]char) -> i32)
+  printf("%s".data, s)
+}
+
 #{export} Print ::= (f: f32) -> () { Print(f as f64) }
 
 #{export} Print ::= (f: f64) -> () {

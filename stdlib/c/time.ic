@@ -1,0 +1,22 @@
+// This module provides an interface to functions in the <stdio.h> C-header
+// file.
+
+c ::= import "c/types.ic"
+
+#{export} time_t ::= i64
+#{export} time ::= foreign("time", (*time_t) -> time_t)
+#{export} difftime ::= foreign("difftime", (time_t, time_t) -> c.double)
+#{export} ctime ::= foreign("ctime", (*time_t) -> [*]char)
+
+#{export} clock_t ::= i64
+#{export} CLOCKS_PER_SEC ::= 1000000
+#{export} clock ::= foreign("clock", () -> clock_t)
+
+// Hack, because we can't expose structs via the FFI.
+#{export} tm ::= 'opaque
+#{export} mktime ::= foreign("mktime", (*tm) -> time_t)
+#{export} asctime ::= foreign("asctime", (*tm) -> [*]char)
+#{export} gmtime ::= foreign("gmtime", (*time_t) -> *tm)
+#{export} localtime ::= foreign("localtime", (*time_t) -> *tm)
+#{export} strftime ::= foreign("strftime",
+                               ([*]char, c.size_t, [*]char, *tm) -> c.size_t)
