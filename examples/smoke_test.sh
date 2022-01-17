@@ -11,6 +11,7 @@ export ICARUS_MODULE_PATH="$root/stdlib"
 
 $binary "$examples/c_file.ic" >/dev/null && echo c_file OK
 $binary "$examples/constant_scopes.ic" >/dev/null && echo constant_scopes OK
+$binary "$examples/date_time.ic" >/dev/null && echo date_time OK
 $binary "$examples/enum.ic" >/dev/null && echo enum OK
 $binary "$examples/factorial.ic" >/dev/null && echo factorial OK
 $binary "$examples/fibonacci.ic" >/dev/null && echo fibonacci OK

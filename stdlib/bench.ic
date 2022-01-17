@@ -1,0 +1,15 @@
+io ::= import "io.ic"
+c  ::= import "c/time.ic"
+
+Elapsed ::= (start: c.clock_t, stop: c.clock_t) -> f64 {
+  ticks := (stop - start) as f64
+  return ticks / c.CLOCKS_PER_SEC as f64
+}
+
+#{export}
+Timed ::= scope [ctx] (label: []char) {
+  start := c.clock()
+  >> ctx.do
+  stop := c.clock()
+  io.Print(label, ": ", Elapsed(start, stop), " secs\n")
+}
