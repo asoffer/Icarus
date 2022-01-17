@@ -1,4 +1,4 @@
-// This module provides an interface to functions in the <stdio.h> C-header
+// This module provides an interface to functions in the <time.h> C-header
 // file.
 
 c ::= import "c/types.ic"
