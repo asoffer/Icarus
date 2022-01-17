@@ -529,7 +529,8 @@ void EmitIrForStatements(Compiler &c, ast::Scope const *scope,
         *c.current().group);
   }
 
-  c.current_block() = c.builder().EmitDestructionPath(scope, scope);
+  c.current_block() =
+      c.builder().EmitDestructionPath(c.current().block, scope, scope);
 }
 
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,

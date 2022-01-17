@@ -11,15 +11,14 @@
 namespace compiler {
 
 IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
-                     ast::Scope const *scope)
-    : group_(ASSERT_NOT_NULL(group)) {
+                     ast::Scope const *scope) {
+  auto &g = *ASSERT_NOT_NULL(group);
   if (scope) {
     for (auto const *descendant : scope->executable_descendants()) {
-      landings_.emplace(descendant, group_->AppendBlock());
+      landings_.emplace(descendant, g.AppendBlock());
 
       for (auto const *s = descendant; s != scope->parent(); s = s->parent()) {
-        destruction_blocks_.emplace(std::pair(descendant, s),
-                                    group_->AppendBlock());
+        destruction_blocks_.emplace(std::pair(descendant, s), g.AppendBlock());
       }
     }
     for (auto [start_end, block] : destruction_blocks_) {
@@ -29,7 +28,6 @@ IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
       //                                      c.context().qual_types(id)[0].type()));
       // }
 
-      CurrentBlock() = block;
       block->set_jump(ir::JumpCmd::Uncond(
           start == end
               ? landings_.find(end)->second
@@ -37,12 +35,12 @@ IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
                     ->second));
     }
   }
-  CurrentBlock() = group_->entry();
 }
 
-ir::BasicBlock *IrBuilder::EmitDestructionPath(ast::Scope const *from,
+ir::BasicBlock *IrBuilder::EmitDestructionPath(ir::BasicBlock *from_block,
+                                               ast::Scope const *from,
                                                ast::Scope const *to) {
-  CurrentBlock()->set_jump(
+  from_block->set_jump(
       ir::JumpCmd::Uncond(destruction_blocks_.at(std::pair(from, to))));
   return landing(to);
 }

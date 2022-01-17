@@ -41,18 +41,13 @@ struct IrBuilder {
   explicit IrBuilder(ir::internal::BlockGroupBase* group,
                      ast::Scope const* scope);
 
-  ir::BasicBlock* EmitDestructionPath(ast::Scope const* from,
+  ir::BasicBlock* EmitDestructionPath(ir::BasicBlock* from_block,
+                                      ast::Scope const* from,
                                       ast::Scope const* to);
-
-  ir::internal::BlockGroupBase*& CurrentGroup() { return group_; }
-  ir::BasicBlock*& CurrentBlock() { return block_; }
 
   ir::BasicBlock* landing(ast::Scope const* s) const;
 
  private:
-  ir::BasicBlock* block_;
-  ir::internal::BlockGroupBase* group_;
-
   // TODO: Early exists from a scope should only destroy a prefix of the
   // variables. We don't handle that concern yet.
   //
