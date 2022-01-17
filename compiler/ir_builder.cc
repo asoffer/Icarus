@@ -10,43 +10,6 @@
 
 namespace compiler {
 
-// If the type `t` is not big, creates a new register referencing the value (or
-// register) held in `value`. If `t` is big, `value` is either another register
-// or the address of the big value and a new register referencing that address
-// (or register) is created.
-ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
-                            ir::PartialResultRef const &value) {
-  if (t.is_big() or t.is<type::Pointer>()) {
-    return builder.CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
-        .operand = value.get<ir::addr_t>(),
-        .result  = builder.CurrentGroup()->Reserve(),
-    });
-  } else {
-    if (auto const *p = t.if_as<type::Primitive>()) {
-      return p->Apply([&]<typename T>() {
-        return builder.CurrentBlock()->Append(ir::RegisterInstruction<T>{
-            .operand = value.get<T>(),
-            .result  = builder.CurrentGroup()->Reserve(),
-        });
-      });
-    } else if (auto const *e = t.if_as<type::Enum>()) {
-      return builder.CurrentBlock()->Append(
-          ir::RegisterInstruction<type::Enum::underlying_type>{
-              .operand = value.get<type::Enum::underlying_type>(),
-              .result  = builder.CurrentGroup()->Reserve(),
-          });
-    } else if (auto const *e = t.if_as<type::Flags>()) {
-      return builder.CurrentBlock()->Append(
-          ir::RegisterInstruction<type::Flags::underlying_type>{
-              .operand = value.get<type::Flags::underlying_type>(),
-              .result  = builder.CurrentGroup()->Reserve(),
-          });
-    } else {
-      NOT_YET(t);
-    }
-  }
-}
-
 IrBuilder::IrBuilder(ir::internal::BlockGroupBase *group,
                      ast::Scope const *scope)
     : group_(ASSERT_NOT_NULL(group)) {

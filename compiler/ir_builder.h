@@ -57,17 +57,6 @@ struct IrBuilder {
     });
   }
 
-  template <typename T>
-  void Store(T r, ir::RegOr<ir::addr_t> addr) {
-    if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
-      auto& blk = *CurrentBlock();
-      blk.Append(
-          ir::StoreInstruction<typename T::type>{.value = r, .location = addr});
-    } else {
-      Store(ir::RegOr<T>(r), addr);
-    }
-  }
-
   ir::BasicBlock* landing(ast::Scope const* s) const;
 
  private:
@@ -89,9 +78,6 @@ struct IrBuilder {
                       ir::BasicBlock*>
       destruction_blocks_;
 };
-
-ir::Reg RegisterReferencing(IrBuilder& builder, type::Type t,
-                            ir::PartialResultRef const& value);
 
 }  // namespace compiler
 

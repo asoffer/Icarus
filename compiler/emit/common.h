@@ -86,6 +86,13 @@ ir::PartialResultBuffer EmitCast(Compiler &c,
                                  type::Typed<ast::Expression const *> node,
                                  type::Type to);
 
+// If the type `t` is not big, creates a new register referencing the value (or
+// register) held in `value`. If `t` is big, `value` is either another register
+// or the address of the big value and a new register referencing that address
+// (or register) is created.
+ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
+                            ir::PartialResultRef const &value);
+
 }  // namespace compiler
 
 #endif  // ICARUS_IR_EMIT_COMMON_H

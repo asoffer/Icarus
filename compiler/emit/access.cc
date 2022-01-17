@@ -14,39 +14,40 @@ namespace {
 bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
                                   type::Type t, ir::RegOr<ir::addr_t> to) {
   if (auto const *enum_type = t.if_as<type::Enum>()) {
-    c.builder().Store(ir::RegOr<type::Enum::underlying_type>(
-                          *enum_type->EmitLiteral(node->member_name())),
-                      to);
+    c.current_block()->Append(ir::StoreInstruction<type::Enum::underlying_type>{
+        .value    = *enum_type->EmitLiteral(node->member_name()),
+        .location = to,
+    });
     return true;
   } else if (auto const *flags_type = t.if_as<type::Flags>()) {
-    c.builder().Store(ir::RegOr<type::Flags::underlying_type>(
-                          *flags_type->EmitLiteral(node->member_name())),
-                      to);
+    c.current_block()->Append(ir::StoreInstruction<type::Flags::underlying_type>{
+        .value    = *flags_type->EmitLiteral(node->member_name()),
+        .location = to,
+    });
     return true;
   } else if (auto const *s = t.if_as<type::Slice>()) {
     if (node->member_name() == "length") {
-      c.builder().Store(
-          ir::RegOr<type::Slice::length_t>(
-              c.current_block()->Append(ir::LoadInstruction{
-                  .type = type::Slice::LengthType(),
-                  .addr =
-                      c.current_block()->Append(type::SliceLengthInstruction{
-                          .slice  = c.EmitAs<ir::addr_t>(node->operand()),
-                          .result = c.builder().CurrentGroup()->Reserve(),
-                      }),
-                  .result = c.builder().CurrentGroup()->Reserve()})),
-          to);
+      c.current_block()->Append(ir::StoreInstruction<type::Slice::length_t>{
+          .value    = c.current_block()->Append(ir::LoadInstruction{
+              .type   = type::Slice::LengthType(),
+              .addr   = c.current_block()->Append(type::SliceLengthInstruction{
+                  .slice  = c.EmitAs<ir::addr_t>(node->operand()),
+                  .result = c.builder().CurrentGroup()->Reserve(),
+              }),
+              .result = c.builder().CurrentGroup()->Reserve()}),
+          .location = to,
+      });
     } else if (node->member_name() == "data") {
-      c.builder().Store(
-          ir::RegOr<ir::addr_t>(c.current_block()->Append(ir::LoadInstruction{
+      c.current_block()->Append(ir::StoreInstruction<ir::addr_t>{
+          .value    = c.current_block()->Append(ir::LoadInstruction{
               .type   = type::BufPtr(s->data_type()),
               .addr   = c.current_block()->Append(type::SliceDataInstruction{
                   .slice  = c.EmitAs<ir::addr_t>(node->operand()),
                   .result = c.builder().CurrentGroup()->Reserve(),
               }),
-              .result = c.builder().CurrentGroup()->Reserve()})),
-          to);
-
+              .result = c.builder().CurrentGroup()->Reserve()}),
+          .location = to,
+      });
     } else {
       UNREACHABLE(node->member_name());
     }

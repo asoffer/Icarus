@@ -483,17 +483,21 @@ struct Compiler
         ir::RegOr<ir::addr_t> data   = buffer[0].get<ir::addr_t>();
         type::Slice::length_t length = a->length().value();
         auto alloc                   = state().TmpAlloca(to.type());
-        builder().Store(
-            data, builder().CurrentBlock()->Append(type::SliceDataInstruction{
-                      .slice  = alloc,
-                      .result = builder().CurrentGroup()->Reserve(),
-                  }));
-        builder().Store(
-            length,
-            builder().CurrentBlock()->Append(type::SliceLengthInstruction{
+
+        current_block()->Append(ir::StoreInstruction<ir::addr_t>{
+            .value    = data,
+            .location = current_block()->Append(type::SliceDataInstruction{
                 .slice  = alloc,
                 .result = builder().CurrentGroup()->Reserve(),
-            }));
+            }),
+        });
+        current_block()->Append(ir::StoreInstruction<type::Slice::length_t>{
+            .value    = length,
+            .location = current_block()->Append(type::SliceLengthInstruction{
+                .slice  = alloc,
+                .result = builder().CurrentGroup()->Reserve(),
+            }),
+        });
         buffer.clear();
         buffer.append(alloc);
       }
@@ -535,17 +539,20 @@ struct Compiler
         ir::addr_t data              = buffer[0].get<ir::addr_t>();
         type::Slice::length_t length = a->length().value();
         auto alloc                   = state().TmpAlloca(to.type());
-        builder().Store(
-            data, builder().CurrentBlock()->Append(type::SliceDataInstruction{
-                      .slice  = alloc,
-                      .result = builder().CurrentGroup()->Reserve(),
-                  }));
-        builder().Store(
-            length,
-            builder().CurrentBlock()->Append(type::SliceLengthInstruction{
+        current_block()->Append(ir::StoreInstruction<ir::addr_t>{
+            .value    = data,
+            .location = current_block()->Append(type::SliceDataInstruction{
                 .slice  = alloc,
                 .result = builder().CurrentGroup()->Reserve(),
-            }));
+            }),
+        });
+        current_block()->Append(ir::StoreInstruction<type::Slice::length_t>{
+            .value    = length,
+            .location = current_block()->Append(type::SliceLengthInstruction{
+                .slice  = alloc,
+                .result = builder().CurrentGroup()->Reserve(),
+            }),
+        });
         buffer.clear();
         buffer.append(alloc);
       }

@@ -53,7 +53,10 @@ void Compiler::EmitMoveInit(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
+  current_block()->Append(ir::StoreInstruction<ir::Fn>{
+      .value    = EmitAs<ir::Fn>(node),
+      .location = *to[0],
+  });
 }
 
 void Compiler::EmitCopyInit(
@@ -62,7 +65,10 @@ void Compiler::EmitCopyInit(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
+  current_block()->Append(ir::StoreInstruction<ir::Fn>{
+      .value    = EmitAs<ir::Fn>(node),
+      .location = *to[0],
+  });
 }
 
 void Compiler::EmitMoveAssign(
@@ -71,7 +77,10 @@ void Compiler::EmitMoveAssign(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
+  current_block()->Append(ir::StoreInstruction<ir::Fn>{
+      .value    = EmitAs<ir::Fn>(node),
+      .location = *to[0],
+  });
 }
 
 void Compiler::EmitCopyAssign(
@@ -80,7 +89,10 @@ void Compiler::EmitCopyAssign(
   ASSERT(to.size() == 1u);
   if (node->is_generic()) { NOT_YET(); }
 
-  builder().Store(EmitAs<ir::Fn>(node), *to[0]);
+  current_block()->Append(ir::StoreInstruction<ir::Fn>{
+      .value    = EmitAs<ir::Fn>(node),
+      .location = *to[0],
+  });
 }
 
 bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
