@@ -18,7 +18,7 @@ struct StringifyExpression {
       : context_(*ASSERT_NOT_NULL(c)), kind_(kind) {}
 
   std::string operator()(ast::Node const *node) {
-    return node->visit<StringifyExpression>(*this);
+    return ASSERT_NOT_NULL(node)->visit<StringifyExpression>(*this);
   }
 
   std::string operator()(ast::Access const *node) {
@@ -81,7 +81,7 @@ struct StringifyType {
       : context_(*ASSERT_NOT_NULL(c)), kind_(kind) {}
 
   std::string operator()(ast::Node const *node) {
-    return node->visit<StringifyType>(*this);
+    return ASSERT_NOT_NULL(node)->visit<StringifyType>(*this);
   }
 
   std::string operator()(ast::Access const *node) {
