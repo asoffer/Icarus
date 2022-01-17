@@ -10,7 +10,7 @@ void Compiler::EmitToBuffer(ast::BlockNode const *node,
   LOG("BlockNode", "EmitToBuffer for block node named %s", node->name());
 
   for (auto const &param : node->params()) {
-    auto addr = builder().CurrentGroup()->Alloca(
+    auto addr = current().group->Alloca(
         context().qual_types(param.value.get())[0].type());
     // TODO: Support multiple declarations?
     state().set_addr(&param.value->ids()[0], addr);

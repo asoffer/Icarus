@@ -22,8 +22,11 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveInit(s, s);
   if (inserted) {
     c.set_builder(&*fn);
-    absl::Cleanup cleanup      = [&] { c.state().builders.pop_back(); };
-    c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
+    absl::Cleanup cleanup = [&] {
+      c.state().builders.pop_back();
+      c.state().current.pop_back();
+    };
+    c.current_block() = c.current().group->entry();
 
     auto from = ir::Reg::Arg(0);
     auto to   = ir::Reg::Out(0);
@@ -31,19 +34,19 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
     size_t i = 0;
     for (auto const &field : s->fields()) {
       auto to_ref =
-          c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+          c.current_block()->Append(ir::StructIndexInstruction{
               .addr        = to,
               .index       = i,
               .struct_type = s,
-              .result      = c.builder().CurrentGroup()->Reserve()});
+              .result      = c.current().group->Reserve()});
       auto from_val =
-          c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+          c.current_block()->Append(ir::StructIndexInstruction{
               .addr        = from,
               .index       = i,
               .struct_type = s,
-              .result      = c.builder().CurrentGroup()->Reserve()});
+              .result      = c.current().group->Reserve()});
 
-      ir::RegOr<ir::addr_t> r(PtrFix(c.builder(), from_val, field.type));
+      ir::RegOr<ir::addr_t> r(PtrFix(c.current(), from_val, field.type));
       ir::PartialResultBuffer buffer;
       buffer.append(r);
       c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
@@ -71,8 +74,11 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyInit(s, s);
   if (inserted) {
     c.set_builder(&*fn);
-    absl::Cleanup cleanup      = [&] { c.state().builders.pop_back(); };
-    c.builder().CurrentBlock() = c.builder().CurrentGroup()->entry();
+    absl::Cleanup cleanup = [&] {
+      c.state().builders.pop_back();
+      c.state().current.pop_back();
+    };
+    c.current_block() = c.current().group->entry();
 
     auto from = ir::Reg::Arg(0);
     auto to   = ir::Reg::Out(0);
@@ -80,20 +86,20 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
     size_t i = 0;
     for (auto const &field : s->fields()) {
       auto to_ref =
-          c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+          c.current_block()->Append(ir::StructIndexInstruction{
               .addr        = to,
               .index       = i,
               .struct_type = s,
-              .result      = c.builder().CurrentGroup()->Reserve()});
+              .result      = c.current().group->Reserve()});
       auto from_val =
-          c.builder().CurrentBlock()->Append(ir::StructIndexInstruction{
+          c.current_block()->Append(ir::StructIndexInstruction{
               .addr        = from,
               .index       = i,
               .struct_type = s,
-              .result      = c.builder().CurrentGroup()->Reserve()});
+              .result      = c.current().group->Reserve()});
 
       ir::PartialResultBuffer buffer;
-      buffer.append(PtrFix(c.builder(), from_val, field.type));
+      buffer.append(PtrFix(c.current(), from_val, field.type));
       c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
       ++i;
     }
@@ -107,8 +113,11 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveAssign(s, s);
   if (inserted) {
     c.set_builder(&*fn);
-    absl::Cleanup cleanup      = [&] { c.state().builders.pop_back(); };
-    c.builder().CurrentBlock() = fn->entry();
+    absl::Cleanup cleanup = [&] {
+      c.state().builders.pop_back();
+      c.state().current.pop_back();
+    };
+    c.current_block() = fn->entry();
     auto var                   = ir::Reg::Arg(0);
     auto val                   = ir::Reg::Arg(1);
 
@@ -117,15 +126,15 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
           .addr        = var,
           .index       = i,
           .struct_type = s,
-          .result      = c.builder().CurrentGroup()->Reserve()});
+          .result      = c.current().group->Reserve()});
       ir::Reg from_ref = c.current_block()->Append(ir::StructIndexInstruction{
           .addr        = val,
           .index       = i,
           .struct_type = s,
-          .result      = c.builder().CurrentGroup()->Reserve()});
+          .result      = c.current().group->Reserve()});
 
       ir::PartialResultBuffer buffer;
-      buffer.append(PtrFix(c.builder(), from_ref, s->fields()[i].type));
+      buffer.append(PtrFix(c.current(), from_ref, s->fields()[i].type));
       c.EmitCopyAssign(
           type::Typed<ir::RegOr<ir::addr_t>>(to_ref, s->fields()[i].type),
           type::Typed(buffer[0], s->fields()[i].type));
@@ -141,8 +150,11 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyAssign(s, s);
   if (inserted) {
     c.set_builder(&*fn);
-    absl::Cleanup cleanup = [&] { c.state().builders.pop_back(); };
-    c.builder().CurrentBlock() = fn->entry();
+    absl::Cleanup cleanup = [&] {
+      c.state().builders.pop_back();
+      c.state().current.pop_back();
+    };
+    c.current_block() = fn->entry();
     auto var                   = ir::Reg::Arg(0);
     auto val                   = ir::Reg::Arg(1);
 
@@ -151,14 +163,14 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
           .addr        = var,
           .index       = i,
           .struct_type = s,
-          .result      = c.builder().CurrentGroup()->Reserve()});
+          .result      = c.current().group->Reserve()});
       ir::Reg from_ref = c.current_block()->Append(ir::StructIndexInstruction{
           .addr        = val,
           .index       = i,
           .struct_type = s,
-          .result      = c.builder().CurrentGroup()->Reserve()});
+          .result      = c.current().group->Reserve()});
       ir::PartialResultBuffer buffer;
-      buffer.append(PtrFix(c.builder(), from_ref, s->fields()[i].type));
+      buffer.append(PtrFix(c.current(), from_ref, s->fields()[i].type));
       c.EmitCopyAssign(
           type::Typed<ir::RegOr<ir::addr_t>>(to_ref, s->fields()[i].type),
           type::Typed(buffer[0], s->fields()[i].type));
@@ -249,21 +261,21 @@ CalleeResult EmitCallee(
         return {.callee  = c.current_block()->Append(ir::LoadInstruction{
                     .type   = f_type,
                     .addr   = c.state().addr(&fn_decl->ids()[0]),
-                    .result = c.builder().CurrentGroup()->Reserve()}),
+                    .result = c.current().group->Reserve()}),
                 .type    = f_type,
                 .context = nullptr};
       } else if (auto *fn_decl_id = callable->if_as<ast::Declaration::Id>()) {
         return {.callee  = c.current_block()->Append(ir::LoadInstruction{
                     .type   = f_type,
                     .addr   = c.state().addr(fn_decl_id),
-                    .result = c.builder().CurrentGroup()->Reserve()}),
+                    .result = c.current().group->Reserve()}),
                 .type    = f_type,
                 .context = nullptr};
       } else {
         return {.callee  = c.current_block()->Append(ir::LoadInstruction{
                     .type   = f_type,
                     .addr   = c.EmitAs<ir::addr_t>(callable),
-                    .result = c.builder().CurrentGroup()->Reserve()}),
+                    .result = c.current().group->Reserve()}),
                 .type    = f_type,
                 .context = nullptr};
       }
@@ -350,11 +362,14 @@ std::optional<ir::CompiledFn> StructCompletionFn(
 
   ir::CompiledFn fn(type::Func({}, {}));
   data.set_builder(&fn);
-  absl::Cleanup cleanup = [&] { data.state().builders.pop_back(); };
+  absl::Cleanup cleanup = [&] {
+    data.state().builders.pop_back();
+    data.state().current.pop_back();
+  };
   Compiler c(data);
   // TODO this is essentially a copy of the body of
   // FunctionLiteral::EmitToBuffer. Factor these out together.
-  data.builder().CurrentBlock() = fn.entry();
+  data.current_block() = fn.entry();
 
   std::vector<type::StructInstruction::Field> constants;
   bool needs_dtor = false;
@@ -422,8 +437,11 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     auto [full_dtor, inserted] = data.context().ir().InsertDestroy(s);
     if (inserted) {
       data.set_builder(&*full_dtor);
-      absl::Cleanup cleanup         = [&] { c.state().builders.pop_back(); };
-      data.builder().CurrentBlock() = data.builder().CurrentGroup()->entry();
+      absl::Cleanup cleanup = [&] {
+        c.state().builders.pop_back();
+        c.state().current.pop_back();
+      };
+      data.current_block() = data.current().group->entry();
       auto var                      = ir::Reg::Arg(0);
       if (user_dtor) {
         // TODO: Should probably force-inline this.
@@ -441,7 +459,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
                 .addr        = var,
                 .index       = i,
                 .struct_type = s,
-                .result      = c.builder().CurrentGroup()->Reserve()}),
+                .result      = c.current().group->Reserve()}),
             s->fields()[i].type));
       }
 
@@ -487,7 +505,7 @@ void MakeAllStackAllocations(Compiler &compiler, ast::Scope const *scope) {
       LOG("MakeAllStackAllocations", "allocating %s", id.name());
 
       compiler.state().set_addr(
-          &id, compiler.builder().CurrentGroup()->Alloca(
+          &id, compiler.current().group->Alloca(
                    compiler.context().qual_types(&id)[0].type()));
     }
   });
@@ -507,11 +525,11 @@ void EmitIrForStatements(Compiler &c, ast::Scope const *scope,
     buffer.clear();
     c.EmitToBuffer(stmt, buffer);
     c.DestroyTemporaries();
-    LOG("EmitIrForStatements", "%p %s", c.builder().CurrentBlock(),
-        *c.builder().CurrentGroup());
+    LOG("EmitIrForStatements", "%p %s", c.current_block(),
+        *c.current().group);
   }
 
-  c.builder().CurrentBlock() = c.builder().EmitDestructionPath(scope, scope);
+  c.current_block() = c.builder().EmitDestructionPath(scope, scope);
 }
 
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
@@ -613,8 +631,8 @@ core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
   });
 }
 
-void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
-                  ir::PartialResultBuffer &buffer) {
+void EmitCast(GroupBlockReference &ref, type::Type from, type::Type to,
+              ir::PartialResultBuffer &buffer) {
 #if defined(ICARUS_DEBUG)
   ASSERT(buffer.size() != 0u);
   absl::Cleanup c = [size = buffer.size(), &buffer] {
@@ -636,9 +654,9 @@ void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
   // u8` and `ascii_decode :: u8 -> char`.
   if (to == type::Char) {
     if (from == type::U8) {
-      EmitCast<uint8_t, ir::Char>(builder, buffer);
+      EmitCast<uint8_t, ir::Char>(ref, buffer);
     } else if (from == type::I8) {
-      EmitCast<int8_t, ir::Char>(builder, buffer);
+      EmitCast<int8_t, ir::Char>(ref, buffer);
     } else {
       UNREACHABLE(from);
     }
@@ -647,7 +665,7 @@ void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
     ASSERT(type::IsIntegral(to) == true);
     ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                uint64_t>(
-        to, [&]<typename T>() { EmitCast<ir::Char, T>(builder, buffer); });
+        to, [&]<typename T>() { EmitCast<ir::Char, T>(ref, buffer); });
     return;
   }
 
@@ -655,12 +673,12 @@ void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
     if (auto const *enum_type = to.if_as<type::Enum>()) {
       ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                  uint64_t>(from, [&]<typename T>() {
-        EmitCast<T, type::Enum::underlying_type>(builder, buffer);
+        EmitCast<T, type::Enum::underlying_type>(ref, buffer);
       });
     } else if (auto const *flags_type = to.if_as<type::Flags>()) {
       return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                         uint32_t, uint64_t>(from, [&]<typename T>() {
-        EmitCast<T, type::Flags::underlying_type>(builder, buffer);
+        EmitCast<T, type::Flags::underlying_type>(ref, buffer);
       });
     } else {
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -669,7 +687,7 @@ void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
             ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                        uint16_t, uint32_t, uint64_t, float, double>(
                 from, [&]<typename From>() {
-                  EmitCast<From, To>(builder, buffer);
+                  EmitCast<From, To>(ref, buffer);
                 });
           });
     }
@@ -685,7 +703,7 @@ void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
   if (auto const *enum_type = from.if_as<type::Enum>()) {
     ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                uint64_t>(to, [&]<typename T>() {
-      EmitCast<type::Enum::underlying_type, T>(builder, buffer);
+      EmitCast<type::Enum::underlying_type, T>(ref, buffer);
     });
     return;
   }
@@ -693,7 +711,7 @@ void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
   if (auto const *flags_type = from.if_as<type::Flags>()) {
     return ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                       uint32_t, uint64_t>(to, [&]<typename T>() {
-      EmitCast<type::Flags::underlying_type, T>(builder, buffer);
+      EmitCast<type::Flags::underlying_type, T>(ref, buffer);
     });
     return;
   }
@@ -704,7 +722,7 @@ void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
 void EmitCast(Compiler &c, type::Typed<ast::Expression const *> node,
               type::Type to, ir::PartialResultBuffer &buffer) {
   c.EmitToBuffer(*node, buffer);
-  EmitCast(c.builder(), node.type(), to, buffer);
+  EmitCast(c.current(), node.type(), to, buffer);
 }
 
 ir::PartialResultBuffer EmitCast(Compiler &c,
@@ -715,32 +733,32 @@ ir::PartialResultBuffer EmitCast(Compiler &c,
   return buffer;
 }
 
-ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
+ir::Reg RegisterReferencing(GroupBlockReference current, type::Type t,
                             ir::PartialResultRef const &value) {
   if (t.is_big() or t.is<type::Pointer>()) {
-    return builder.CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
+    return current.block->Append(ir::RegisterInstruction<ir::addr_t>{
         .operand = value.get<ir::addr_t>(),
-        .result  = builder.CurrentGroup()->Reserve(),
+        .result  = current.group->Reserve(),
     });
   } else {
     if (auto const *p = t.if_as<type::Primitive>()) {
       return p->Apply([&]<typename T>() {
-        return builder.CurrentBlock()->Append(ir::RegisterInstruction<T>{
+        return current.block->Append(ir::RegisterInstruction<T>{
             .operand = value.get<T>(),
-            .result  = builder.CurrentGroup()->Reserve(),
+            .result  = current.group->Reserve(),
         });
       });
     } else if (auto const *e = t.if_as<type::Enum>()) {
-      return builder.CurrentBlock()->Append(
+      return current.block->Append(
           ir::RegisterInstruction<type::Enum::underlying_type>{
               .operand = value.get<type::Enum::underlying_type>(),
-              .result  = builder.CurrentGroup()->Reserve(),
+              .result  = current.group->Reserve(),
           });
     } else if (auto const *e = t.if_as<type::Flags>()) {
-      return builder.CurrentBlock()->Append(
+      return current.block->Append(
           ir::RegisterInstruction<type::Flags::underlying_type>{
               .operand = value.get<type::Flags::underlying_type>(),
-              .result  = builder.CurrentGroup()->Reserve(),
+              .result  = current.group->Reserve(),
           });
     } else {
       NOT_YET(t);
@@ -748,14 +766,14 @@ ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
   }
 }
 
-ir::Reg PtrFix(IrBuilder &builder, ir::RegOr<ir::addr_t> addr,
+ir::Reg PtrFix(GroupBlockReference current, ir::RegOr<ir::addr_t> addr,
                type::Type desired_type) {
   // TODO must this be a register if it's loaded?
   if (desired_type.get()->is_big()) { return addr.reg(); }
-  return builder.CurrentBlock()->Append(ir::LoadInstruction{
+  return current.block->Append(ir::LoadInstruction{
       .type   = desired_type,
       .addr   = addr,
-      .result = builder.CurrentGroup()->Reserve(),
+      .result = current.group->Reserve(),
   });
 }
 

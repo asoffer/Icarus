@@ -53,7 +53,7 @@ void Compiler::EmitToBuffer(ast::Assignment const *node,
   for (auto temp_iter = temps.begin(), ref_iter = lhs_refs.begin();
        temp_iter != temps.end(); ++temp_iter, ++ref_iter) {
     buffer.clear();
-    buffer.append(PtrFix(builder(), (*temp_iter)->reg(), temp_iter->type()));
+    buffer.append(PtrFix(current(), (*temp_iter)->reg(), temp_iter->type()));
     EmitMoveAssign(*ref_iter, type::Typed(buffer[0], temp_iter->type()));
   }
   return;

@@ -54,7 +54,7 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
     ir::Inliner &inliner,
     absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *> const
         &block_mapping) {
-  auto *landing = c.builder().CurrentGroup()->AppendBlock();
+  auto *landing = c.current().group->AppendBlock();
   for (auto const &[from, to] : block_mapping) {
     to->jump().Visit([&, jump = &to->jump()](auto &j) {
       constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
@@ -74,10 +74,10 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
         size_t block_index = j.block.value();
         auto *block_to_emit = &node->blocks()[block_index];
 
-        auto *block_start = c.builder().CurrentGroup()->AppendBlock();
+        auto *block_start = c.current().group->AppendBlock();
         *jump             = ir::JumpCmd::Uncond(block_start);
 
-        c.builder().CurrentBlock() = block_start;
+        c.current_block() = block_start;
 
         type::Type t = c.context().qual_types(block_to_emit)[0].type();
         if (t.is<type::Block>()) {
@@ -90,7 +90,7 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
             ir::PartialResultBuffer buffer;
             buffer.append(r);
             c.state().set_addr(&id,
-                               c.builder().CurrentGroup()->Alloca(param_type));
+                               c.current().group->Alloca(param_type));
             c.EmitCopyAssign(type::Typed(c.state().addr(&id), param_type),
                              type::Typed(buffer[0], param_type));
           }
@@ -165,32 +165,32 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   } else {
     ir::PartialResultBuffer argument_buffer;
 
-    auto *start = builder().CurrentBlock();
+    auto *start = current_block();
     EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
                   node->arguments(), constant_arguments, argument_buffer);
 
-    ir::Inliner inliner(builder().CurrentGroup()->num_regs(),
+    ir::Inliner inliner(current().group->num_regs(),
                         scope->num_args());
 
     size_t j = 0;
     for (auto const &p : scope.type()->params()) {
-      RegisterReferencing(builder(), p.value.type(), argument_buffer[j++]);
+      RegisterReferencing(current(), p.value.type(), argument_buffer[j++]);
     }
 
-    builder().CurrentGroup()->MergeAllocationsFrom(*scope, inliner);
+    current().group->MergeAllocationsFrom(*scope, inliner);
     auto block_mapping =
-        InsertUnadjustedBlocks(*builder().CurrentGroup(), *scope);
+        InsertUnadjustedBlocks(*current().group, *scope);
     AdjustInstructions(inliner, block_mapping);
 
-    builder().CurrentBlock() = start;
+    current_block() = start;
     start->set_jump(
         ir::JumpCmd::Uncond(block_mapping.find(scope->entry())->second));
 
     auto *landing =
         AdjustJumpsAndEmitBlocks(*this, node, scope, inliner, block_mapping);
-    builder().CurrentBlock() = landing;
+    current_block() = landing;
   }
-  LOG("ScopeNode", "%s", *builder().CurrentGroup());
+  LOG("ScopeNode", "%s", *current().group);
 }
 
 void Compiler::EmitCopyInit(

@@ -35,16 +35,23 @@ struct CompilationDataReference {
 
   Context &context() const { return *data_.context; }
   IrBuilder &builder() { return state().builders.back(); };
+  GroupBlockReference &current() {
+    auto &v = state().current;
+    ASSERT(v.size() != 0u);
+    return v.back();
+  };
+
   diagnostic::DiagnosticConsumer &diag() const {
     return *data_.resources.diagnostic_consumer;
   }
-  ir::BasicBlock *current_block() { return builder().CurrentBlock(); }
+  ir::BasicBlock *&current_block() { return current().block; }
 
   ir::NativeFn set_builder(
       base::one_of<ast::FunctionLiteral, ast::ShortFunctionLiteral> auto const
           *node) {
     ir::NativeFn ir_func = context().FindNativeFn(node);
     ASSERT(static_cast<bool>(ir_func) == true);
+    state().current.push_back({.group = &*ir_func, .block = ir_func->entry()});
     state().builders.emplace_back(&*ir_func, &node->body_scope());
     return ir_func;
   }
@@ -52,12 +59,14 @@ struct CompilationDataReference {
   ir::Scope set_builder(ast::ScopeLiteral const *node) {
     ir::Scope ir_scope = context().FindScope(node);
     ASSERT(static_cast<bool>(ir_scope) == true);
+    state().current.push_back({.group = &*ir_scope, .block = ir_scope->entry()});
     state().builders.emplace_back(&*ir_scope, &node->body_scope());
     return ir_scope;
   }
 
   void set_builder(ir::internal::BlockGroupBase *group,
-                   ast::Scope const *scope = nullptr) {
+                  ast::Scope const *scope = nullptr) {
+    state().current.push_back({.group = group, .block = group->entry()});
     state().builders.emplace_back(group, scope);
   }
 

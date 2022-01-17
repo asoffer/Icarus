@@ -65,7 +65,7 @@ void Compiler::EmitMoveInit(
               .addr        = to[0]->reg(),
               .index       = i,
               .struct_type = &struct_type,
-              .result      = builder().CurrentGroup()->Reserve()}),
+              .result      = current().group->Reserve()}),
           struct_type.fields()[i].type);
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
@@ -90,7 +90,7 @@ void Compiler::EmitMoveInit(
             .addr        = to[0]->reg(),
             .index       = field_index,
             .struct_type = &struct_type,
-            .result      = builder().CurrentGroup()->Reserve()}),
+            .result      = current().group->Reserve()}),
         struct_type.fields()[field_index].type);
     EmitMoveInit(assignment->rhs()[0], absl::MakeConstSpan(&field_reg, 1));
   }
@@ -121,7 +121,7 @@ void Compiler::EmitCopyInit(
               .addr        = to[0]->reg(),
               .index       = i,
               .struct_type = &struct_type,
-              .result      = builder().CurrentGroup()->Reserve()}),
+              .result      = current().group->Reserve()}),
           struct_type.fields()[i].type);
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
@@ -144,7 +144,7 @@ void Compiler::EmitCopyInit(
             .addr        = to[0]->reg(),
             .index       = field_index,
             .struct_type = &struct_type,
-            .result      = builder().CurrentGroup()->Reserve()}),
+            .result      = current().group->Reserve()}),
         struct_type.fields()[field_index].type);
     EmitCopyInit(assignment->rhs()[0], absl::MakeConstSpan(&field_reg, 1));
   }

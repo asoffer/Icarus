@@ -16,9 +16,9 @@ void EmitConstantIf(Compiler &c, ast::IfStmt const *node,
 
 void EmitNonConstantIf(Compiler &c, ast::IfStmt const *node,
                        ir::PartialResultBuffer &out) {
-  auto *true_block  = c.builder().CurrentGroup()->AppendBlock();
+  auto *true_block  = c.current().group->AppendBlock();
   auto *false_block = node->has_false_block()
-                          ? c.builder().CurrentGroup()->AppendBlock()
+                          ? c.current().group->AppendBlock()
                           : nullptr;
   auto *landing = c.builder().landing(&node->true_scope());
 
@@ -29,15 +29,15 @@ void EmitNonConstantIf(Compiler &c, ast::IfStmt const *node,
   c.DestroyTemporaries();
   c.current_block()->set_jump(ir::JumpCmd::Cond(
       condition, true_block, false_block ? false_block : landing));
-  c.builder().CurrentBlock() = true_block;
+  c.current_block() = true_block;
   EmitIrForStatements(c, &node->true_scope(), node->true_block());
 
   if (not node->has_false_block()) { return; }
 
-  c.builder().CurrentBlock() = false_block;
+  c.current_block() = false_block;
   EmitIrForStatements(c, &node->false_scope(), node->false_block());
   c.current_block()->set_jump(ir::JumpCmd::Uncond(landing));
-  c.builder().CurrentBlock() = landing;
+  c.current_block() = landing;
 }
 
 }  // namespace
@@ -78,13 +78,13 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
 
 void Compiler::EmitToBuffer(ast::WhileStmt const *node,
                             ir::PartialResultBuffer &out) {
-  auto *start_block = builder().CurrentGroup()->AppendBlock();
-  auto *body_block  = builder().CurrentGroup()->AppendBlock();
-  auto *landing     = builder().CurrentGroup()->AppendBlock();
+  auto *start_block = current().group->AppendBlock();
+  auto *body_block  = current().group->AppendBlock();
+  auto *landing     = current().group->AppendBlock();
 
   current_block()->set_jump(ir::JumpCmd::Uncond(start_block));
 
-  builder().CurrentBlock()  = start_block;
+  current_block()  = start_block;
   ir::RegOr<bool> condition =
       EmitCast(*this, context().typed(&node->condition()), type::Bool)
           .back()
@@ -92,11 +92,11 @@ void Compiler::EmitToBuffer(ast::WhileStmt const *node,
   DestroyTemporaries();
   current_block()->set_jump(ir::JumpCmd::Cond(condition, body_block, landing));
 
-  builder().CurrentBlock() = body_block;
+  current_block() = body_block;
   EmitIrForStatements(*this, &node->body_scope(), node->body());
   current_block()->set_jump(ir::JumpCmd::Uncond(start_block));
 
-  builder().CurrentBlock() = landing;
+  current_block() = landing;
 }
 
 }  // namespace compiler

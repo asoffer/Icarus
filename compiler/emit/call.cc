@@ -25,7 +25,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
                      ir::PartialResultBuffer &out) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::ReserveMemory: {
-      out.append(c.builder().CurrentGroup()->Alloca(core::TypeContour(
+      out.append(c.current().group->Alloca(core::TypeContour(
           core::Bytes(*c.EvaluateOrDiagnoseAs<uint64_t>(&args[0].expr())),
           core::Alignment(
               *c.EvaluateOrDiagnoseAs<uint64_t>(&args[1].expr())))));
@@ -45,13 +45,13 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       type::Typed<ir::RegOr<ir::addr_t>> data(
           c.current_block()->Append(type::SliceDataInstruction{
               .slice  = slice,
-              .result = c.builder().CurrentGroup()->Reserve(),
+              .result = c.current().group->Reserve(),
           }),
           type::BufPtr(slice_type->data_type()));
       type::Typed<ir::RegOr<ir::addr_t>> length(
           c.current_block()->Append(type::SliceLengthInstruction{
               .slice  = slice,
-              .result = c.builder().CurrentGroup()->Reserve(),
+              .result = c.current().group->Reserve(),
           }),
           type::U64);
 
@@ -94,7 +94,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       auto result = c.current_block()->Append(ir::LoadSymbolInstruction{
           .name   = std::move(name),
           .type   = *maybe_foreign_type,
-          .result = c.builder().CurrentGroup()->Reserve()});
+          .result = c.current().group->Reserve()});
       if (maybe_foreign_type->is<type::Pointer>() or
           maybe_foreign_type->is<type::Function>()) {
         out.append(result);
@@ -107,7 +107,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
     case ir::BuiltinFn::Which::Opaque:
       out.append(c.current_block()->Append(type::OpaqueTypeInstruction{
           .mod    = c.resources().module,
-          .result = c.builder().CurrentGroup()->Reserve()}));
+          .result = c.current().group->Reserve()}));
       return;
 
     case ir::BuiltinFn::Which::Bytes: {
@@ -141,7 +141,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
 
     case ir::BuiltinFn::Which::DebugIr:
       c.current_block()->Append(
-          ir::DebugIrInstruction{.fn = c.builder().CurrentGroup()});
+          ir::DebugIrInstruction{.fn = c.current().group});
       return;
 
     case ir::BuiltinFn::Which::Abort:
@@ -190,7 +190,7 @@ void Compiler::EmitToBuffer(ast::Call const *node,
            node->arguments(), outs);
   // TODO: Why is this conditional on the size of qts?
   if (qts.size() == 1) {
-    out.append(PtrFix(builder(), outs[0]->reg(), qts[0].type()));
+    out.append(PtrFix(current(), outs[0]->reg(), qts[0].type()));
   }
 }
 

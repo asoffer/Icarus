@@ -10,7 +10,7 @@ namespace compiler {
     auto t = out.get<type::Type>(0);
     out.pop_back();
     out.append(current_block()->Append(type::SliceInstruction{
-        .data_type = t, .result = builder().CurrentGroup()->Reserve()}));
+        .data_type = t, .result = current().group->Reserve()}));
   }
 
   void Compiler::EmitCopyAssign(

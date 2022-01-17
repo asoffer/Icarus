@@ -20,6 +20,11 @@ struct PatternMatchingContext {
   size_t array_type_index = 0;
 };
 
+struct GroupBlockReference {
+  ir::internal::BlockGroupBase *group;
+  ir::BasicBlock *block;
+};
+
 // Compiler state that needs to be tracked during a single depth traversal, but
 // that does not otherwise need to be saved.
 struct TransientState {
@@ -30,6 +35,8 @@ struct TransientState {
                                      type::Type match_type) {
     verify_pattern_type_queues.back().emplace(node, match_type);
   }
+
+  std::vector<GroupBlockReference> current;
 
   std::vector<std::queue<std::pair<ast::Node const *, type::Type>>>
       verify_pattern_type_queues;

@@ -66,7 +66,7 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
   set_builder(node);
   absl::Cleanup cleanup = [&] {
     state().scopes.pop_back();
-    state().builders.pop_back();
+    state().current.pop_back();
   };
 
   size_t i = 0;

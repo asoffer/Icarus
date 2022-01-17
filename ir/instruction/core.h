@@ -153,6 +153,10 @@ struct CallInstruction
   }
 
   std::string to_string() const;
+  friend std::ostream& operator<<(std::ostream& os,
+                                  CallInstruction const& inst) {
+    return os << inst.to_string();
+  }
 
   friend void BaseTraverse(Inliner& inliner, CallInstruction& inst) {
     base::Traverse(inliner, inst.fn_, inst.args_);

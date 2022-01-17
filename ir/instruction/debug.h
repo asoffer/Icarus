@@ -21,6 +21,10 @@ struct DebugFormatExtension {
         },
         static_cast<T const*>(this)->field_refs());
   }
+
+  friend std::ostream& operator<<(std::ostream& os, T const& inst) {
+    return os << inst.to_string();
+  }
 };
 
 }  // namespace ir

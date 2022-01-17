@@ -19,7 +19,7 @@ void Compiler::EmitToBuffer(ast::ArrayType const *node,
     t = current_block()->Append(
         type::ArrayInstruction{.length    = len,
                                .data_type = t,
-                               .result = builder().CurrentGroup()->Reserve()});
+                               .result = current().group->Reserve()});
   }
   out.append(t);
 }

@@ -47,10 +47,13 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
       &c.context());
   ir::CompiledFn fn(type::Func({}, {type}));
   c.set_builder(&fn);
-  absl::Cleanup cleanup = [&] { c.state().builders.pop_back(); };
+  absl::Cleanup cleanup = [&] {
+    c.state().builders.pop_back();
+    c.state().current.pop_back();
+  };
   // TODO this is essentially a copy of the body of
   // FunctionLiteral::EmitToBuffer Factor these out together.
-  c.builder().CurrentBlock() = fn.entry();
+  c.current_block() = fn.entry();
 
   ir::PartialResultBuffer buffer;
   c.EmitToBuffer(expr, buffer);
@@ -67,7 +70,7 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
                ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
                ir::UnboundScope, ir::ScopeContext, ir::Block,
                interface::Interface>(type, [&]<typename T>() {
-      c.builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
+      c.current_block()->Append(ir::SetReturnInstruction<T>{
           .index = 0,
           .value = buffer.get<T>(0),
       });
@@ -129,7 +132,10 @@ std::optional<ir::CompiledFn> CompileExecutable(
         Compiler c(&data);
         ast::Scope const &mod_scope = w.resources().module->scope();
         c.set_builder(&f, &mod_scope);
-        absl::Cleanup cleanup = [&] { c.state().builders.pop_back(); };
+        absl::Cleanup cleanup = [&] {
+          c.state().builders.pop_back();
+          c.state().current.pop_back();
+        };
         if (not nodes.empty()) {
           MakeAllStackAllocations(c, &mod_scope);
           EmitIrForStatements(c, &mod_scope, nodes);

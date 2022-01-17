@@ -47,7 +47,7 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
                  ir::GenericFn, interface::Interface>(
           ret_type, [&]<typename T>() {
-            builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
+            current_block()->Append(ir::SetReturnInstruction<T>{
                 .index = static_cast<uint16_t>(i),
                 .value = out.back().get<T>(),
             });
@@ -58,7 +58,7 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
   DestroyTemporaries();
   ast::Scope const *s = node->scope();
   while (s->kind() != ast::Scope::Kind::BoundaryExecutable) { s = s->parent(); }
-  builder().CurrentBlock() = builder().EmitDestructionPath(node->scope(), s);
+  current_block() = builder().EmitDestructionPath(node->scope(), s);
   current_block()->set_jump(ir::JumpCmd::Return());
 }
 

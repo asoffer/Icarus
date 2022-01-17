@@ -43,8 +43,11 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
   type::Type t = context().LoadType(node);
 
   set_builder(&fn);
-  absl::Cleanup cleanup    = [&] { state().builders.pop_back(); };
-  builder().CurrentBlock() = fn.entry();
+  absl::Cleanup cleanup = [&] {
+    state().builders.pop_back();
+    state().current.pop_back();
+  };
+  current_block() = fn.entry();
 
   std::vector<std::string_view> names(node->enumerators().begin(),
                                       node->enumerators().end());
@@ -70,14 +73,14 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
           .type              = &const_cast<type::Enum &>(t.as<type::Enum>()),
           .names_            = std::move(names),
           .specified_values_ = std::move(specified_values),
-          .result            = builder().CurrentGroup()->Reserve()});
+          .result            = current().group->Reserve()});
     } break;
     case ast::EnumLiteral::Kind::Flags: {
       current_block()->Append(type::FlagsInstruction{
           .type              = &const_cast<type::Flags &>(t.as<type::Flags>()),
           .names_            = std::move(names),
           .specified_values_ = std::move(specified_values),
-          .result            = builder().CurrentGroup()->Reserve()});
+          .result            = current().group->Reserve()});
     } break;
     default: UNREACHABLE();
   }

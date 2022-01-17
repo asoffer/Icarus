@@ -34,7 +34,7 @@ void Compiler::EmitToBuffer(ast::FunctionType const *node,
   out.append(current_block()->Append(type::FunctionTypeInstruction{
       .inputs  = std::move(param_vals),
       .outputs = std::move(out_vals),
-      .result  = builder().CurrentGroup()->Reserve()}));
+      .result  = current().group->Reserve()}));
 }
 
 }  // namespace compiler

@@ -97,9 +97,12 @@ void Compiler::EmitCopyAssign(
 
 bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
   ir::NativeFn ir_func = set_builder(node);
-  absl::Cleanup cleanup = [&] { state().builders.pop_back(); };
+  absl::Cleanup cleanup = [&] {
+    state().builders.pop_back();
+    state().current.pop_back();
+  };
 
-  builder().CurrentBlock() = builder().CurrentGroup()->entry();
+  current_block() = current().group->entry();
 
   // TODO arguments should be renumbered to not waste space on const values
   size_t i = 0;
@@ -122,7 +125,7 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
                ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
                interface::Interface>(ret_type, [&]<typename T>() {
       auto value = this->EmitAs<T>(node->body());
-      builder().CurrentBlock()->Append(ir::SetReturnInstruction<T>{
+      current_block()->Append(ir::SetReturnInstruction<T>{
           .index = 0,
           .value = value,
       });

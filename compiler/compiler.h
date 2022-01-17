@@ -488,14 +488,14 @@ struct Compiler
             .value    = data,
             .location = current_block()->Append(type::SliceDataInstruction{
                 .slice  = alloc,
-                .result = builder().CurrentGroup()->Reserve(),
+                .result = current().group->Reserve(),
             }),
         });
         current_block()->Append(ir::StoreInstruction<type::Slice::length_t>{
             .value    = length,
             .location = current_block()->Append(type::SliceLengthInstruction{
                 .slice  = alloc,
-                .result = builder().CurrentGroup()->Reserve(),
+                .result = current().group->Reserve(),
             }),
         });
         buffer.clear();
@@ -513,10 +513,10 @@ struct Compiler
     if (from == type::Integer and type::IsIntegral(to.type())) {
       to.type().as<type::Primitive>().Apply([&]<typename T>() {
         if constexpr (std::is_integral_v<T>) {
-          ir::RegOr<T> result = builder().CurrentBlock()->Append(
+          ir::RegOr<T> result = current_block()->Append(
               ir::CastInstruction<T(ir::Integer)>{
                   .value  = buffer.back().get<ir::Integer>(),
-                  .result = builder().CurrentGroup()->Reserve(),
+                  .result = current().group->Reserve(),
               });
           buffer.pop_back();
           buffer.append(result);
@@ -543,14 +543,14 @@ struct Compiler
             .value    = data,
             .location = current_block()->Append(type::SliceDataInstruction{
                 .slice  = alloc,
-                .result = builder().CurrentGroup()->Reserve(),
+                .result = current().group->Reserve(),
             }),
         });
         current_block()->Append(ir::StoreInstruction<type::Slice::length_t>{
             .value    = length,
             .location = current_block()->Append(type::SliceLengthInstruction{
                 .slice  = alloc,
-                .result = builder().CurrentGroup()->Reserve(),
+                .result = current().group->Reserve(),
             }),
         });
         buffer.clear();
@@ -587,7 +587,7 @@ struct Compiler
       regs.push_back(
           types[i].get()->is_big()
               ? (to.empty() ? state().TmpAlloca(types[i]) : to[i]->reg())
-              : builder().CurrentGroup()->Reserve());
+              : current().group->Reserve());
     }
     return ir::OutParams(std::move(regs));
   }

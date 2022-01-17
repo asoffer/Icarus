@@ -56,7 +56,7 @@ void EmitArguments(
 // Requires that the last value in `buffer` has type `FromType`, and replaces it
 // with that value cast to `ToType`.
 template <typename FromType, typename ToType>
-void EmitCast(IrBuilder &builder, ir::PartialResultBuffer &buffer) {
+void EmitCast(GroupBlockReference &ref, ir::PartialResultBuffer &buffer) {
   if constexpr (base::meta<FromType> == base::meta<ToType>) {
     return;
   } else if constexpr (base::meta<ToType> == base::meta<ir::Integer>) {
@@ -64,11 +64,10 @@ void EmitCast(IrBuilder &builder, ir::PartialResultBuffer &buffer) {
     buffer.pop_back();
     buffer.append(ir::Integer(result));
   } else {
-    auto result =
-        builder.CurrentBlock()->Append(ir::CastInstruction<ToType(FromType)>{
-            .value  = buffer.back().template get<FromType>(),
-            .result = builder.CurrentGroup()->Reserve(),
-        });
+    auto result = ref.block->Append(ir::CastInstruction<ToType(FromType)>{
+        .value  = buffer.back().template get<FromType>(),
+        .result = ref.group->Reserve(),
+    });
     buffer.pop_back();
     buffer.append(result);
   }
@@ -76,8 +75,8 @@ void EmitCast(IrBuilder &builder, ir::PartialResultBuffer &buffer) {
 
 // Requires that the last value in `buffer` has type `from`, and replaces it
 // with that value cast to `to`.
-void EmitCast(IrBuilder &builder, type::Type from, type::Type to,
-                  ir::PartialResultBuffer &buffer);
+void EmitCast(GroupBlockReference &ref, type::Type from, type::Type to,
+              ir::PartialResultBuffer &buffer);
 
 void EmitCast(Compiler &c, type::Typed<ast::Expression const *> node,
               type::Type to, ir::PartialResultBuffer &buffer);
@@ -90,11 +89,10 @@ ir::PartialResultBuffer EmitCast(Compiler &c,
 // register) held in `value`. If `t` is big, `value` is either another register
 // or the address of the big value and a new register referencing that address
 // (or register) is created.
-ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
+ir::Reg RegisterReferencing(GroupBlockReference current, type::Type t,
                             ir::PartialResultRef const &value);
-ir::Reg PtrFix(IrBuilder &builder, ir::RegOr<ir::addr_t> addr,
+ir::Reg PtrFix(GroupBlockReference current, ir::RegOr<ir::addr_t> addr,
                type::Type desired_type);
-
 
 }  // namespace compiler
 

@@ -41,7 +41,7 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
       out.append(current_block()->Append(ir::LoadInstruction{
           .type   = t,
           .addr   = addr,
-          .result = builder().CurrentGroup()->Reserve(),
+          .result = current().group->Reserve(),
       }));
     } else {
       out.append(addr);
@@ -56,7 +56,7 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
                  uint8_t, uint16_t, uint32_t, uint64_t, float, double,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
                  ir::GenericFn, interface::Interface>(t, [&]<typename T>() {
-        out.append(ir::RegOr<T>(PtrFix(builder(), lval, t)));
+        out.append(ir::RegOr<T>(PtrFix(current(), lval, t)));
       });
     }
   }
@@ -94,8 +94,8 @@ ir::Reg Compiler::EmitRef(ast::Identifier const *node) {
     }
     ASSERT(buffer != nullptr);
 
-    ir::Reg r = builder().CurrentGroup()->Reserve();
-    builder().CurrentBlock()->Append(ir::RegisterInstruction<ir::addr_t>{
+    ir::Reg r = current().group->Reserve();
+    current_block()->Append(ir::RegisterInstruction<ir::addr_t>{
         .operand = const_cast<ir::addr_t>((*buffer)[0].raw().data()),
         .result  = r,
     });
