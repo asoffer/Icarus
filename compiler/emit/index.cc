@@ -27,7 +27,7 @@ void EmitIndexOverload(Compiler &c, ast::Index const *node,
     auto &&[name, expr] = std::move(argument).extract();
     expr.release();
   }
-  out.append(c.builder().PtrFix(result->reg(), result_type));
+  out.append(PtrFix(c.builder(), result->reg(), result_type));
 }
 
 }  // namespace
@@ -36,7 +36,7 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
   type::QualType qt = context().qual_types(node->lhs())[0];
   if (auto const *s = qt.type().if_as<type::Slice>()) {
     if (qt.quals() >= type::Quals::Ref()) {
-      out.append(builder().PtrFix(EmitRef(node),
+      out.append(PtrFix(builder(), EmitRef(node),
                                   context().qual_types(node)[0].type()));
     } else {
       auto data = current_block()->Append(ir::LoadInstruction{
@@ -60,11 +60,11 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
           .index  = index,
           .ptr    = type::Ptr(s->data_type()),
           .result = builder().CurrentGroup()->Reserve()});
-      out.append(builder().PtrFix(incr, s->data_type()));
+      out.append(PtrFix(builder(), incr, s->data_type()));
     }
   } else if (auto const *array_type = qt.type().if_as<type::Array>()) {
     if (qt.quals() >= type::Quals::Ref()) {
-      out.append(builder().PtrFix(EmitRef(node),
+      out.append(PtrFix(builder(), EmitRef(node),
                                   context().qual_types(node)[0].type()));
     } else {
       // TODO: Remove assumption that the pointer difference type is int64_t.
@@ -78,12 +78,12 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
           .index  = index,
           .ptr    = type::Ptr(array_type->data_type()),
           .result = builder().CurrentGroup()->Reserve()});
-      out.append(builder().PtrFix(incr, array_type->data_type()));
+      out.append(PtrFix(builder(), incr, array_type->data_type()));
     }
   } else if (auto const *buf_ptr_type =
                  qt.type().if_as<type::BufferPointer>()) {
     if (qt.quals() >= type::Quals::Ref()) {
-      out.append(builder().PtrFix(EmitRef(node),
+      out.append(PtrFix(builder(), EmitRef(node),
                                   context().qual_types(node)[0].type()));
     } else {
       // TODO: Remove assumption that the pointer difference type is int64_t.
@@ -97,7 +97,7 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
           .index  = index,
           .ptr    = buf_ptr_type,
           .result = builder().CurrentGroup()->Reserve()});
-      out.append(builder().PtrFix(incr, buf_ptr_type->pointee()));
+      out.append(PtrFix(builder(), incr, buf_ptr_type->pointee()));
     }
   } else {
     EmitIndexOverload(*this, node, out);

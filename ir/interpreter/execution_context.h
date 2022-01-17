@@ -258,7 +258,7 @@ struct ExecutionContext {
         using type          = typename Inst::type;
         auto inst           = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
         ir::addr_t ret_slot = ctx.resolve<ir::addr_t>(ir::Reg::Out(inst.index));
-        auto value          = ctx.resolve(inst.value);
+        type value          = ctx.resolve(inst.value);
         *ASSERT_NOT_NULL(reinterpret_cast<type *>(ret_slot)) = value;
       } else if constexpr (internal_execution::HasResolveMemberFunction<Inst>) {
         Inst inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);

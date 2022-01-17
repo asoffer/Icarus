@@ -47,16 +47,6 @@ struct IrBuilder {
   ir::internal::BlockGroupBase*& CurrentGroup() { return group_; }
   ir::BasicBlock*& CurrentBlock() { return block_; }
 
-  ir::Reg PtrFix(ir::RegOr<ir::addr_t> addr, type::Type desired_type) {
-    // TODO must this be a register if it's loaded?
-    if (desired_type.get()->is_big()) { return addr.reg(); }
-    return CurrentBlock()->Append(ir::LoadInstruction{
-        .type   = desired_type,
-        .addr   = addr,
-        .result = CurrentGroup()->Reserve(),
-    });
-  }
-
   ir::BasicBlock* landing(ast::Scope const* s) const;
 
  private:

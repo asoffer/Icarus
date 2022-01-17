@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "compiler/module.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
@@ -125,7 +126,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
     }
   } else {
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      out.append(builder().PtrFix(EmitRef(node), node_qt.type()));
+      out.append(PtrFix(builder(), EmitRef(node), node_qt.type()));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           state().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -134,7 +135,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
       type::Type t =
           struct_type.fields()[struct_type.index(node->member_name())].type;
       out.append(
-          builder().PtrFix(current_block()->Append(ir::StructIndexInstruction{
+          PtrFix(builder(), current_block()->Append(ir::StructIndexInstruction{
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
@@ -253,7 +254,7 @@ void Compiler::EmitMoveInit(
   } else {
     ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      buffer.append(builder().PtrFix(EmitRef(node), node_qt.type()));
+      buffer.append(PtrFix(builder(), EmitRef(node), node_qt.type()));
       EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
@@ -265,7 +266,7 @@ void Compiler::EmitMoveInit(
       type::Type t =
           struct_type.fields()[struct_type.index(node->member_name())].type;
       buffer.append(
-          builder().PtrFix(current_block()->Append(ir::StructIndexInstruction{
+          PtrFix(builder(), current_block()->Append(ir::StructIndexInstruction{
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
@@ -338,7 +339,7 @@ void Compiler::EmitCopyInit(
   } else {
     ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      buffer.append(builder().PtrFix(EmitRef(node), node_qt.type()));
+      buffer.append(PtrFix(builder(), EmitRef(node), node_qt.type()));
       EmitCopyAssign(to[0], type::Typed(buffer[0], node_qt.type()));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
@@ -348,7 +349,7 @@ void Compiler::EmitCopyInit(
       type::Type t =
           struct_type.fields()[struct_type.index(node->member_name())].type;
       buffer.append(
-          builder().PtrFix(current_block()->Append(ir::StructIndexInstruction{
+          PtrFix(builder(), current_block()->Append(ir::StructIndexInstruction{
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
@@ -388,7 +389,7 @@ void Compiler::EmitMoveAssign(
     ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
       type::Type t = context().qual_types(node)[0].type();
-      buffer.append(builder().PtrFix(EmitRef(node), t));
+      buffer.append(PtrFix(builder(), EmitRef(node), t));
       EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
@@ -398,7 +399,7 @@ void Compiler::EmitMoveAssign(
       type::Type t =
           struct_type.fields()[struct_type.index(node->member_name())].type;
       buffer.append(
-          builder().PtrFix(current_block()->Append(ir::StructIndexInstruction{
+          PtrFix(builder(), current_block()->Append(ir::StructIndexInstruction{
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
@@ -437,7 +438,7 @@ void Compiler::EmitCopyAssign(
     type::Type t = context().qual_types(node)[0].type();
     ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
-      buffer.append(builder().PtrFix(EmitRef(node), t));
+      buffer.append(PtrFix(builder(), EmitRef(node), t));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           state().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -446,7 +447,7 @@ void Compiler::EmitCopyAssign(
       type::Type t =
           struct_type.fields()[struct_type.index(node->member_name())].type;
       buffer.append(
-          builder().PtrFix(current_block()->Append(ir::StructIndexInstruction{
+          PtrFix(builder(), current_block()->Append(ir::StructIndexInstruction{
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,

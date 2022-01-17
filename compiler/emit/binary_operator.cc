@@ -59,7 +59,7 @@ void EmitBinaryOverload(Compiler &c, ast::BinaryOperator const *node,
     auto &&[name, expr] = std::move(argument).extract();
     expr.release();
   }
-  out.append(c.builder().PtrFix(result->reg(), result_type));
+  out.append(PtrFix(c.builder(), result->reg(), result_type));
 }
 
 }  // namespace

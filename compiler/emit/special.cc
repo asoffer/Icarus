@@ -112,7 +112,7 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
 
   bldr.CurrentBlock() = loop_body;
   ir::PartialResultBuffer buffer;
-  buffer.append(c.builder().PtrFix(from_phi->result, from->data_type()));
+  buffer.append(PtrFix(c.builder(), from_phi->result, from->data_type()));
   type::Typed value_view(buffer[0], from->data_type());
   if constexpr (K == Copy) {
     c.EmitCopyAssign(
@@ -180,7 +180,7 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
 
   c.builder().CurrentBlock() = loop_body;
   ir::PartialResultBuffer buffer;
-  buffer.append(c.builder().PtrFix(from_phi->result, from->data_type()));
+  buffer.append(PtrFix(c.builder(), from_phi->result, from->data_type()));
   if constexpr (K == Copy) {
     c.EmitCopyInit(type::Typed<ir::Reg>(to_phi->result, to->data_type()),
                    buffer);
@@ -388,6 +388,10 @@ void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::addr_t>, type::Flags> const &to,
     type::Typed<ir::PartialResultRef> const &from) {
   ASSERT(type::Type(to.type()) == from.type());
+  current_block()->Append(ir::StoreInstruction<type::Flags::underlying_type>{
+      .value    = from->get<type::Flags::underlying_type>(),
+      .location = *to,
+  });
 }
 
 void Compiler::EmitMoveAssign(

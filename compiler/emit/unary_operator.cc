@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "frontend/lex/operators.h"
 #include "type/interface/ir.h"
 #include "type/pointer.h"
@@ -16,7 +17,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       EmitToBuffer(node->operand(), out);
       EmitCopyInit(type::Typed<ir::Reg>(reg, operand_type), out);
       out.pop_back();
-      out.append(builder().PtrFix(reg, operand_type));
+      out.append(PtrFix(builder(), reg, operand_type));
       return;
     } break;
     case ast::UnaryOperator::Kind::Destroy: {
@@ -33,7 +34,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       EmitToBuffer(node->operand(), out);
       EmitMoveInit(type::Typed<ir::Reg>(reg, operand_type), out);
       out.pop_back();
-      out.append(builder().PtrFix(reg, operand_type));
+      out.append(PtrFix(builder(), reg, operand_type));
       return;
     } break;
     case ast::UnaryOperator::Kind::BufferPointer: {

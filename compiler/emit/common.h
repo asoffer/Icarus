@@ -92,6 +92,9 @@ ir::PartialResultBuffer EmitCast(Compiler &c,
 // (or register) is created.
 ir::Reg RegisterReferencing(IrBuilder &builder, type::Type t,
                             ir::PartialResultRef const &value);
+ir::Reg PtrFix(IrBuilder &builder, ir::RegOr<ir::addr_t> addr,
+               type::Type desired_type);
+
 
 }  // namespace compiler
 

@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "compiler/module.h"
 
 namespace compiler {
@@ -55,7 +56,7 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
                  uint8_t, uint16_t, uint32_t, uint64_t, float, double,
                  type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
                  ir::GenericFn, interface::Interface>(t, [&]<typename T>() {
-        out.append(ir::RegOr<T>(builder().PtrFix(lval, t)));
+        out.append(ir::RegOr<T>(PtrFix(builder(), lval, t)));
       });
     }
   }

@@ -190,7 +190,7 @@ void Compiler::EmitToBuffer(ast::Call const *node,
            node->arguments(), outs);
   // TODO: Why is this conditional on the size of qts?
   if (qts.size() == 1) {
-    out.append(builder().PtrFix(outs[0]->reg(), qts[0].type()));
+    out.append(PtrFix(builder(), outs[0]->reg(), qts[0].type()));
   }
 }
 

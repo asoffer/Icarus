@@ -4,6 +4,7 @@ cc_library(
     name = "access",
     srcs = ["access.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:module",
@@ -69,6 +70,7 @@ cc_library(
     name = "assignment",
     srcs = ["assignment.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:addr",
@@ -314,6 +316,7 @@ cc_library(
     name = "identifier",
     srcs = ["identifier.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:module",
@@ -576,6 +579,7 @@ cc_library(
     name = "unary_operator",
     srcs = ["unary_operator.cc"],
     deps = [
+        ":common",
         "//ast",
         "//frontend/lex:operators",
         "//compiler:compiler_header",
