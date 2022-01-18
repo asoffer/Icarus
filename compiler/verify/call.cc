@@ -11,10 +11,14 @@
 #include "compiler/common_diagnostics.h"
 #include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
+#include "ir/value/fn.h"
+#include "ir/value/slice.h"
 #include "type/callable.h"
 #include "type/cast.h"
+#include "type/pointer.h"
 #include "type/provenance.h"
 #include "type/qual_type.h"
+#include "type/slice.h"
 
 namespace compiler {
 namespace {

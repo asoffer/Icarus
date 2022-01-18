@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ast/node.h"
+#include "compiler/block_group_scaffolding.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "ir/scope_state.h"
 #include "ir/value/result_buffer.h"
@@ -37,6 +38,7 @@ struct TransientState {
   }
 
   std::vector<GroupBlockReference> current;
+  std::vector<BlockGroupScaffolding> scaffolding;
 
   std::vector<std::queue<std::pair<ast::Node const *, type::Type>>>
       verify_pattern_type_queues;
@@ -50,8 +52,6 @@ struct TransientState {
       pattern_match_queues;
 
   CyclicDependencyTracker cyclic_dependency_tracker;
-
-  std::vector<IrBuilder> builders;
 
   ir::RegOr<ir::addr_t> addr(ast::Declaration::Id const *id) const {
     return addr_.at(id);

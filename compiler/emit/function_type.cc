@@ -2,7 +2,6 @@
 
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/ir_builder.h"
 #include "ir/value/reg_or.h"
 #include "type/function.h"
 #include "type/type.h"

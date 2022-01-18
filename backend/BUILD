@@ -26,6 +26,8 @@ cc_library(
         "//compiler:module",
         "//ir:compiled_fn",
         "//ir/instruction",
+        "//ir/instruction:arithmetic",
+        "//ir/instruction:compare",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

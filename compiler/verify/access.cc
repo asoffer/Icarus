@@ -8,6 +8,7 @@
 #include "compiler/verify/verify.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"
+#include "type/array.h"
 #include "type/block.h"
 #include "type/enum.h"
 #include "type/flags.h"

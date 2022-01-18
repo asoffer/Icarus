@@ -58,8 +58,8 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
   DestroyTemporaries();
   ast::Scope const *s = node->scope();
   while (s->kind() != ast::Scope::Kind::BoundaryExecutable) { s = s->parent(); }
-  current_block() =
-      builder().EmitDestructionPath(current().block, node->scope(), s);
+
+  current_block() = EmitDestructionPath(node->scope(), s);
   current_block()->set_jump(ir::JumpCmd::Return());
 }
 

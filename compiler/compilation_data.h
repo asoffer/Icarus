@@ -11,7 +11,6 @@
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/buffer.h"
 #include "frontend/source/view.h"
-#include "compiler/ir_builder.h"
 #include "ir/value/integer.h"
 #include "ir/value/module_id.h"
 #include "ir/value/result_buffer.h"
@@ -34,7 +33,6 @@ struct CompilationDataReference {
       : data_(*ASSERT_NOT_NULL(data)) {}
 
   Context &context() const { return *data_.context; }
-  IrBuilder &builder() { return state().builders.back(); };
   GroupBlockReference &current() {
     auto &v = state().current;
     ASSERT(v.size() != 0u);
@@ -46,28 +44,14 @@ struct CompilationDataReference {
   }
   ir::BasicBlock *&current_block() { return current().block; }
 
-  ir::NativeFn set_builder(
-      base::one_of<ast::FunctionLiteral, ast::ShortFunctionLiteral> auto const
-          *node) {
-    ir::NativeFn ir_func = context().FindNativeFn(node);
-    ASSERT(static_cast<bool>(ir_func) == true);
-    state().current.push_back({.group = &*ir_func, .block = ir_func->entry()});
-    state().builders.emplace_back(&*ir_func, &node->body_scope());
-    return ir_func;
-  }
-
-  ir::Scope set_builder(ast::ScopeLiteral const *node) {
-    ir::Scope ir_scope = context().FindScope(node);
-    ASSERT(static_cast<bool>(ir_scope) == true);
-    state().current.push_back({.group = &*ir_scope, .block = ir_scope->entry()});
-    state().builders.emplace_back(&*ir_scope, &node->body_scope());
-    return ir_scope;
-  }
-
-  void set_builder(ir::internal::BlockGroupBase *group,
-                  ast::Scope const *scope = nullptr) {
+  void push_current(ir::internal::BlockGroupBase *group) {
     state().current.push_back({.group = group, .block = group->entry()});
-    state().builders.emplace_back(group, scope);
+  }
+
+  ir::BasicBlock *EmitDestructionPath(ast::Scope const *start,
+                                      ast::Scope const *end) {
+    return state().scaffolding.back().EmitDestructionPath(current_block(),
+                                                          start, end);
   }
 
   module::Importer &importer() const { return *data_.resources.importer; }

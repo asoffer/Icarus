@@ -3,6 +3,7 @@
 #include <optional>
 #include <string_view>
 
+#include "absl/cleanup/cleanup.h"
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/module.h"

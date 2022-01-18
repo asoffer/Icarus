@@ -6,6 +6,7 @@
 #include "backend/type.h"
 #include "compiler/module.h"
 #include "ir/compiled_fn.h"
+#include "ir/value/fn.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 

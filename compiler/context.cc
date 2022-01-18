@@ -1,5 +1,8 @@
 #include "compiler/context.h"
+
 #include "absl/strings/str_format.h"
+#include "ir/value/scope.h"
+#include "type/slice.h"
 
 namespace compiler {
 

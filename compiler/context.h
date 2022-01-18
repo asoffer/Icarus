@@ -8,12 +8,12 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
+#include "absl/container/node_hash_set.h"
 #include "absl/hash/hash.h"
 #include "ast/ast.h"
 #include "base/guarded.h"
 #include "compiler/bound_parameters.h"
 #include "compiler/call_metadata.h"
-#include "compiler/ir_builder.h"
 #include "ir/byte_code/byte_code.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_scope.h"

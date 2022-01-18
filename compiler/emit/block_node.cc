@@ -1,7 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
-#include "compiler/ir_builder.h"
 
 namespace compiler {
 

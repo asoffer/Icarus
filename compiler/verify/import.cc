@@ -6,6 +6,8 @@
 #include "compiler/verify/verify.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"
+#include "ir/value/slice.h"
+#include "type/slice.h"
 
 namespace compiler {
 namespace {

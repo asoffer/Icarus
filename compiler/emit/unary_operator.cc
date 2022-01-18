@@ -3,8 +3,10 @@
 #include "compiler/emit/common.h"
 #include "compiler/emit/destroy.h"
 #include "frontend/lex/operators.h"
+#include "ir/instruction/arithmetic.h"
 #include "type/interface/ir.h"
 #include "type/pointer.h"
+#include "type/struct.h"
 
 namespace compiler {
 

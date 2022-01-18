@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/scaffolding.h"
 #include "compiler/instantiate.h"
 #include "compiler/instructions.h"
 #include "core/arguments.h"
@@ -96,11 +97,10 @@ void Compiler::EmitCopyAssign(
 }
 
 bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
-  ir::NativeFn ir_func = set_builder(node);
-  absl::Cleanup cleanup = [&] {
-    state().builders.pop_back();
-    state().current.pop_back();
-  };
+  ir::NativeFn ir_func = context().FindNativeFn(node);
+  auto cleanup         = EmitScaffolding(*this, *ir_func, node->body_scope());
+  push_current(&*ir_func);
+  absl::Cleanup c = [&] { state().current.pop_back(); };
 
   current_block() = current().group->entry();
 

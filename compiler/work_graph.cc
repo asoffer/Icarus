@@ -1,8 +1,8 @@
 #include "compiler/work_graph.h"
 
+#include "compiler/emit/scaffolding.h"
 #include "compiler/instructions.h"
 #include "compiler/verify/verify.h"
-#include "compiler/ir_builder.h"
 
 namespace compiler {
 namespace {
@@ -46,11 +46,8 @@ std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
   LOG("MakeThunk", "Thunk for %s: %s %p", expr->DebugString(), type.to_string(),
       &c.context());
   ir::CompiledFn fn(type::Func({}, {type}));
-  c.set_builder(&fn);
-  absl::Cleanup cleanup = [&] {
-    c.state().builders.pop_back();
-    c.state().current.pop_back();
-  };
+  c.push_current(&fn);
+  absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
   // TODO this is essentially a copy of the body of
   // FunctionLiteral::EmitToBuffer Factor these out together.
   c.current_block() = fn.entry();
@@ -131,11 +128,10 @@ std::optional<ir::CompiledFn> CompileExecutable(
                              .resources      = w.resources()};
         Compiler c(&data);
         ast::Scope const &mod_scope = w.resources().module->scope();
-        c.set_builder(&f, &mod_scope);
-        absl::Cleanup cleanup = [&] {
-          c.state().builders.pop_back();
-          c.state().current.pop_back();
-        };
+
+        auto scaffolding_cleanup = EmitScaffolding(c, f, mod_scope);
+        c.push_current(&f);
+        absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
         if (not nodes.empty()) {
           MakeAllStackAllocations(c, &mod_scope);
           EmitIrForStatements(c, &mod_scope, nodes);

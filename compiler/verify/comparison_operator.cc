@@ -3,6 +3,8 @@
 #include "compiler/verify/verify.h"
 #include "type/array.h"
 #include "type/cast.h"
+#include "type/enum.h"
+#include "type/flags.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"

@@ -3,6 +3,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/scaffolding.h"
 #include "ir/value/reg_or.h"
 #include "type/scope.h"
 #include "type/type.h"
@@ -62,12 +63,10 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
 bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
   LOG("EmitScopeBody", "Scope %s", node->DebugString());
   ir::Scope ir_scope = context().FindScope(node);
+  auto cleanup       = EmitScaffolding(*this, *ir_scope, node->body_scope());
   state().scopes.push_back(ir_scope);
-  set_builder(node);
-  absl::Cleanup cleanup = [&] {
-    state().scopes.pop_back();
-    state().current.pop_back();
-  };
+  push_current(&*ir_scope);
+  absl::Cleanup c = [&] { state().current.pop_back(); };
 
   size_t i = 0;
   for (auto const &param : node->params()) {

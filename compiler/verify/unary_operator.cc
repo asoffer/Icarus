@@ -4,9 +4,11 @@
 #include "compiler/common_diagnostics.h"
 #include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
+#include "type/flags.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
+#include "type/struct.h"
 
 namespace compiler {
 namespace {

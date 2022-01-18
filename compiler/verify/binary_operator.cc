@@ -7,6 +7,7 @@
 #include "compiler/verify/common.h"
 #include "compiler/verify/verify.h"
 #include "type/cast.h"
+#include "type/flags.h"
 #include "type/overload_set.h"
 #include "type/pointer.h"
 #include "type/primitive.h"

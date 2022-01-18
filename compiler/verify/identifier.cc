@@ -5,6 +5,7 @@
 #include "compiler/module.h"
 #include "compiler/verify/common.h"
 #include "compiler/verify/verify.h"
+#include "type/array.h"
 #include "type/overload_set.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"

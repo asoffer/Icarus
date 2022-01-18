@@ -5,6 +5,7 @@
 #include "base/log.h"
 #include "base/meta.h"
 #include "ir/instruction/arithmetic.h"
+#include "ir/instruction/compare.h"
 #include "ir/instruction/instructions.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"

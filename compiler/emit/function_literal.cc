@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/scaffolding.h"
 #include "compiler/instantiate.h"
 #include "compiler/instructions.h"
 #include "core/arguments.h"
@@ -100,7 +101,10 @@ void Compiler::EmitCopyAssign(
 bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   LOG("EmitFunctionBody", "%s", node->DebugString());
 
-  ir::NativeFn ir_func = set_builder(node);
+  ir::NativeFn ir_func = context().FindNativeFn(node);
+  auto cleanup         = EmitScaffolding(*this, *ir_func, node->body_scope());
+  push_current(&*ir_func);
+  absl::Cleanup c = [&] { state().current.pop_back(); };
 
   size_t i = 0;
   for (auto const &param : node->params()) {

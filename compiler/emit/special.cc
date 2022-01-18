@@ -20,7 +20,7 @@ template <Kind K>
 void EmitArrayAssignment(Compiler &c, type::Array const *to,
                          type::Array const *from) {
   auto &fn          = *c.current().group;
-  c.current().block = fn.entry();
+  c.current_block() = fn.entry();
   auto to_ptr       = ir::Reg::Arg(0);
   auto from_ptr     = ir::Reg::Arg(1);
 
@@ -37,19 +37,19 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
   auto *land_block = c.current().group->AppendBlock();
   auto *cond_block = c.current().group->AppendBlock();
 
-  c.current().block->set_jump(ir::JumpCmd::Uncond(cond_block));
+  c.current_block()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
-  c.current().block = cond_block;
+  c.current_block() = cond_block;
   auto *from_phi    = PhiInst<ir::addr_t>(c.current());
   auto *to_phi      = PhiInst<ir::addr_t>(c.current());
-  ir::Reg condition = c.current().block->Append(
+  ir::Reg condition = c.current_block()->Append(
       ir::EqInstruction<ir::addr_t>{.lhs    = from_phi->result,
                                     .rhs    = from_end_ptr,
                                     .result = c.current().group->Reserve()});
-  c.current().block->set_jump(
+  c.current_block()->set_jump(
       ir::JumpCmd::Cond(condition, land_block, loop_body));
 
-  c.current().block = loop_body;
+  c.current_block() = loop_body;
   ir::PartialResultBuffer buffer;
   buffer.append(PtrFix(c.current(), from_phi->result, from->data_type()));
   type::Typed value_view(buffer[0], from->data_type());
@@ -65,24 +65,24 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
     UNREACHABLE();
   }
 
-  ir::Reg next_to = c.current().block->Append(
+  ir::Reg next_to = c.current_block()->Append(
       ir::PtrIncrInstruction{.addr   = to_phi->result,
                              .index  = 1,
                              .ptr    = to_data_ptr_type,
                              .result = c.current().group->Reserve()});
-  ir::Reg next_from = c.current().block->Append(
+  ir::Reg next_from = c.current_block()->Append(
       ir::PtrIncrInstruction{.addr   = from_phi->result,
                              .index  = 1,
                              .ptr    = from_data_ptr_type,
                              .result = c.current().group->Reserve()});
-  c.current().block->set_jump(ir::JumpCmd::Uncond(cond_block));
+  c.current_block()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   to_phi->add(fn.entry(), to_ptr);
-  to_phi->add(c.current().block, next_to);
+  to_phi->add(c.current_block(), next_to);
   from_phi->add(fn.entry(), from_ptr);
-  from_phi->add(c.current().block, next_from);
+  from_phi->add(c.current_block(), next_from);
 
-  c.current().block = land_block;
+  c.current_block() = land_block;
   land_block->set_jump(ir::JumpCmd::Return());
 }
 
@@ -157,11 +157,8 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
   auto [fn, inserted] = context().ir().InsertInit(r.type());
   if (inserted) {
-    set_builder(&*fn);
-    absl::Cleanup c = [&] {
-      state().builders.pop_back();
-      state().current.pop_back();
-    };
+    push_current(&*fn);
+    absl::Cleanup c = [&] { state().current.pop_back(); };
 
     current_block() = fn->entry();
     OnEachArrayElement(current(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
@@ -184,14 +181,12 @@ void SetArrayInits(Compiler &c, type::Array const *array_type) {
       c.context().ir().InsertMoveInit(array_type, array_type);
   ASSERT(copy_inserted == move_inserted);
   if (copy_inserted) {
-    c.set_builder(&*copy_fn);
+    c.push_current(&*copy_fn);
     EmitArrayInit<Copy>(c, array_type, array_type);
-    c.state().builders.pop_back();
     c.state().current.pop_back();
 
-    c.set_builder(&*move_fn);
+    c.push_current(&*move_fn);
     EmitArrayInit<Move>(c, array_type, array_type);
-    c.state().builders.pop_back();
     c.state().current.pop_back();
 
     c.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
@@ -208,14 +203,12 @@ void SetArrayAssignments(Compiler &c, type::Array const *array_type) {
       c.context().ir().InsertMoveAssign(array_type, array_type);
   ASSERT(copy_inserted == move_inserted);
   if (copy_inserted) {
-    c.set_builder(&*copy_fn);
+    c.push_current(&*copy_fn);
     EmitArrayAssignment<Copy>(c, array_type, array_type);
-    c.state().builders.pop_back();
     c.state().current.pop_back();
 
-    c.set_builder(&*move_fn);
+    c.push_current(&*move_fn);
     EmitArrayAssignment<Move>(c, array_type, array_type);
-    c.state().builders.pop_back();
     c.state().current.pop_back();
 
     c.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
@@ -472,11 +465,8 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
   auto [fn, inserted] = context().ir().InsertInit(r.type());
   if (inserted) {
-    set_builder(&*fn);
-    absl::Cleanup c = [&] {
-      state().builders.pop_back();
-      state().current.pop_back();
-    };
+    push_current(&*fn);
+    absl::Cleanup c = [&] { state().current.pop_back(); };
     current_block() = current().group->entry();
     auto var        = ir::Reg::Arg(0);
 

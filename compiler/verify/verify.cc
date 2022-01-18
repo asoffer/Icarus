@@ -53,11 +53,8 @@ std::optional<ir::CompiledFn> StructDataCompletionFn(
   if (field_error) { return std::nullopt; }
 
   ir::CompiledFn fn(type::Func({}, {}));
-  c.set_builder(&fn);
-  absl::Cleanup cleanup = [&] {
-    c.state().builders.pop_back();
-    c.state().current.pop_back();
-  };
+  c.push_current(&fn);
+  absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
   c.current_block() = fn.entry();
 
   std::vector<type::StructDataInstruction::Field> fields;

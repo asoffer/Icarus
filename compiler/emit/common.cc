@@ -12,12 +12,12 @@
 #include "type/typed_value.h"
 
 namespace compiler {
+
 // TODO: Remove forward declaration.
 absl::Span<type::QualType const> VerifyType(CompilationDataReference data,
                                             ast::Node const *node);
 
 namespace {
-
 ir::OutParams SetReturns(
     Compiler &c, type::Type type,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
@@ -233,12 +233,10 @@ void EmitIrForStatements(Compiler &c, ast::Scope const *scope,
     buffer.clear();
     c.EmitToBuffer(stmt, buffer);
     c.DestroyTemporaries();
-    LOG("EmitIrForStatements", "%p %s", c.current_block(),
-        *c.current().group);
+    LOG("EmitIrForStatements", "%p %s", c.current_block(), *c.current().group);
   }
 
-  c.current_block() =
-      c.builder().EmitDestructionPath(c.current().block, scope, scope);
+  c.current_block() = c.EmitDestructionPath(scope, scope);
 }
 
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,

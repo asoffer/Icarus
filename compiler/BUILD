@@ -135,31 +135,13 @@ cc_library(
 )
 
 cc_library(
-    name = "ir_builder",
-    hdrs = ["ir_builder.h"],
-    srcs = ["ir_builder.cc"],
+    name = "block_group_scaffolding",
+    hdrs = ["block_group_scaffolding.h"],
     deps = [
-        "//ir:scope_state",
-        "//base:debug",
-        "//base:scope",
-        "//base:traverse",
+        "//ast:scope",
         "//ir/blocks:basic",
         "//ir/blocks:group",
-        "//ir/instruction",
-        "//ir/instruction:arithmetic",
-        "//ir/instruction:compare",
-        "//ir/instruction:core",
-        "//ir/value:addr",
-        "//ir/value:char",
-        "//ir/value:module_id",
-        "//ir/value:reg",
-        "//type:cast",
-        "//type:scope",
-        "//type:slice",
-        "//type/interface",
-        "//type:typed_value",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -183,7 +165,10 @@ cc_library(
 cc_library(
     name = "transient_state",
     hdrs = ["transient_state.h"],
-    deps = ["//ir:scope_state"],
+    deps = [
+        ":block_group_scaffolding",
+        "//ir:scope_state",
+    ],
 )
 
 IR_EMISSION = [
@@ -224,7 +209,6 @@ cc_library(
     hdrs = ["compilation_data.h"],
     deps = [
         ":context",
-        ":ir_builder",
         ":resources",
         ":transient_state",
         "//ast",
@@ -250,7 +234,6 @@ cc_library(
         ":compilation_data",
         ":context",
         ":instructions",
-        ":ir_builder",
         ":resources",
         ":transient_state",
         ":work_item",
@@ -299,7 +282,6 @@ cc_library(
     deps = [
         ":bound_parameters",
         ":call_metadata",
-        ":ir_builder",
         "//ast:ast",
         "//base:guarded",
         "//ir/byte_code",
@@ -308,6 +290,7 @@ cc_library(
         "//ir:module",
         "//module",
         "//type:qual_type",
+        "//type:slice",
         "@com_google_absl//absl/strings:str_format",
     ],
 )
@@ -345,6 +328,10 @@ cc_library(
     deps = [
         ":context",
         "//ast",
+        "//type:enum",
+        "//type:flags",
+        "//type:slice",
+        "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/strings",
     ],
 )

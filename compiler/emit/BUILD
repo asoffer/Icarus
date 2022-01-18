@@ -123,7 +123,6 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
-        "//compiler:ir_builder",
     ],
 )
 
@@ -239,7 +238,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//compiler:ir_builder",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type:typed_value",
@@ -276,7 +274,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//compiler:ir_builder",
         "//ir/value:reg_or",
         "//type",
     ],
@@ -297,6 +294,7 @@ cc_library(
     srcs = ["function_literal.cc"],
     deps = [
         ":common",
+        ":scaffolding",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instantiate",
@@ -439,6 +437,7 @@ cc_library(
     srcs = ["scope_literal.cc"],
     deps = [
         ":common",
+        ":scaffolding",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:reg_or",
@@ -479,6 +478,7 @@ cc_library(
     srcs = ["short_function_literal.cc"],
     deps = [
         ":common",
+        ":scaffolding",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instantiate",
@@ -588,6 +588,7 @@ cc_library(
         "//frontend/lex:operators",
         "//compiler:compiler_header",
         "//type/interface:ir",
+        "//type:struct",
     ],
 )
 
@@ -640,4 +641,18 @@ cc_library(
         "//type:slice",
         "//type:scope",
     ],
+)
+
+cc_library(
+    name = "scaffolding",
+    hdrs = ["scaffolding.h"],
+    srcs = ["scaffolding.cc"],
+    deps = [
+        ":destroy",
+        "//ast:scope",
+        "//base:debug",
+        "//compiler:compilation_data",
+        "//compiler:transient_state",
+        "//ir/blocks:group",
+    ]
 )

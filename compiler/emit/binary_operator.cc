@@ -2,6 +2,8 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "diagnostic/message.h"
+#include "ir/instruction/arithmetic.h"
+#include "ir/instruction/compare.h"
 #include "type/cast.h"
 
 namespace compiler {

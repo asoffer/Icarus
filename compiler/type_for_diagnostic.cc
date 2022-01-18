@@ -2,9 +2,13 @@
 
 #include <sstream>
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
+#include "type/enum.h"
+#include "type/flags.h"
+#include "type/slice.h"
 
 namespace compiler {
 namespace {

@@ -17,10 +17,10 @@ void EmitConstantIf(Compiler &c, ast::IfStmt const *node,
 void EmitNonConstantIf(Compiler &c, ast::IfStmt const *node,
                        ir::PartialResultBuffer &out) {
   auto *true_block  = c.current().group->AppendBlock();
-  auto *false_block = node->has_false_block()
-                          ? c.current().group->AppendBlock()
-                          : nullptr;
-  auto *landing = c.builder().landing(&node->true_scope());
+  auto *false_block =
+      node->has_false_block() ? c.current().group->AppendBlock() : nullptr;
+  auto *landing =
+      c.state().scaffolding.back().landing_blocks.at(&node->true_scope());
 
   ir::RegOr<bool> condition =
       EmitCast(c, c.context().typed(&node->condition()), type::Bool)

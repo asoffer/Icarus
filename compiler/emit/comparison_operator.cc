@@ -57,12 +57,12 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
             .result = c.current().group->Reserve()});
       }
       case frontend::Operator::Eq:
-        return c.current().block->Append(ir::EqInstruction<underlying_type>{
+        return c.current_block()->Append(ir::EqInstruction<underlying_type>{
             .lhs    = lhs_value,
             .rhs    = rhs_value,
             .result = c.current().group->Reserve()});
       case frontend::Operator::Ne:
-        return c.current().block->Append(ir::NeInstruction<underlying_type>{
+        return c.current_block()->Append(ir::NeInstruction<underlying_type>{
             .lhs    = lhs_value,
             .rhs    = rhs_value,
             .result = c.current().group->Reserve()});
@@ -83,7 +83,7 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, ir::addr_t>(
             t, [&]<typename T>() -> ir::RegOr<bool> {
-              return c.current().block->Append(
+              return c.current_block()->Append(
                   ir::LtInstruction<T>{.lhs    = lhs_buffer.back().get<T>(),
                                        .rhs    = rhs_buffer.back().get<T>(),
                                        .result = c.current().group->Reserve()});
@@ -97,7 +97,7 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, ir::addr_t>(
             t, [&]<typename T>() -> ir::RegOr<bool> {
-              return c.current().block->Append(
+              return c.current_block()->Append(
                   ir::LeInstruction<T>{.lhs    = lhs_buffer.back().get<T>(),
                                        .rhs    = rhs_buffer.back().get<T>(),
                                        .result = c.current().group->Reserve()});
@@ -106,7 +106,7 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, type::Type, ir::addr_t>(t, [&]<typename T>() {
-          return c.current().block->Append(
+          return c.current_block()->Append(
               ir::EqInstruction<T>{.lhs    = lhs->back().get<T>(),
                                    .rhs    = rhs->back().get<T>(),
                                    .result = c.current().group->Reserve()});
@@ -115,7 +115,7 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
                           int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                           double, type::Type, ir::addr_t>(t, [&]<typename T>() {
-          return c.current().block->Append(
+          return c.current_block()->Append(
               ir::NeInstruction<T>{.lhs    = lhs->back().get<T>(),
                                    .rhs    = rhs->back().get<T>(),
                                    .result = c.current().group->Reserve()});
