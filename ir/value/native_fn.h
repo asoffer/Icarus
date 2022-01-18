@@ -52,7 +52,6 @@ struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslHashExtension> {
     return os;
   }
 
-
  private:
   friend base::EnableExtensions;
   friend struct Fn;

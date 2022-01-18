@@ -59,7 +59,7 @@ StackFrame::StackFrame(ir::Fn fn, Stack& stack)
   absl::flat_hash_map<ir::Reg, size_t> offsets;
 
   if (fn.kind() == ir::Fn::Kind::Native) {
-    byte_code_iter_       = fn.native().byte_code_iterator();
+    byte_code_iter_          = fn.native().byte_code_iterator();
     core::Bytes next_reg_loc = core::Bytes(0);
     fn.native()->for_each_alloc(
         kArchitecture, [&](core::TypeContour tc, ir::Reg r) {

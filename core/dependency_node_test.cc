@@ -23,4 +23,3 @@ TEST(DependencyNode, Test) {
 
 }  // namespace
 }  // namespace core
-

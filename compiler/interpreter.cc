@@ -48,7 +48,7 @@ namespace {
 int Interpret(frontend::FileName const &file_name) {
   diagnostic::StreamingConsumer diag(stderr, nullptr);
   auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
-  auto maybe_file_src      = frontend::SourceBufferFromFile(canonical_file_name);
+  auto maybe_file_src = frontend::SourceBufferFromFile(canonical_file_name);
   if (not maybe_file_src.ok()) {
     diag.Consume(frontend::MissingModule{
         .source    = canonical_file_name,

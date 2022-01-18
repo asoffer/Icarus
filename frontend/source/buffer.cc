@@ -1,7 +1,8 @@
+#include "frontend/source/buffer.h"
+
 #include <iterator>
 
 #include "absl/strings/str_cat.h"
-#include "frontend/source/buffer.h"
 
 namespace frontend {
 

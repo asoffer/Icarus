@@ -105,7 +105,7 @@ struct BoundParameters {
 
   friend std::ostream &operator<<(std::ostream &os, BoundParameters const &b) {
     std::string_view separator = "";
-    for (auto const &[id, binding]: b.bindings_) {
+    for (auto const &[id, binding] : b.bindings_) {
       bool constant = binding.parameter_type.constant();
       os << std::exchange(separator, ", ") << id->name()
          << (constant ? " :: " : ": ") << binding.parameter_type.type();

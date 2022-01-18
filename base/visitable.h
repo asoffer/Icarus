@@ -34,4 +34,4 @@ struct Visitable {
 
 }  // namespace base
 
-#endif // ICARUS_BASE_VISITOR_H
+#endif  // ICARUS_BASE_VISITOR_H

@@ -49,4 +49,4 @@ struct CallMetadata {
 
 }  // namespace compiler
 
-#endif // ICARUS_COMPILER_CALL_METADATA_H
+#endif  // ICARUS_COMPILER_CALL_METADATA_H

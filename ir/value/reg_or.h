@@ -28,7 +28,7 @@ struct RegOr {
   constexpr RegOr(Reg reg) : reg_(reg), is_reg_(true) {}
   constexpr RegOr(type val) : val_(val), is_reg_(false) {}
 
-  RegOr(RegOr &&) = default;
+  RegOr(RegOr &&)      = default;
   RegOr(RegOr const &) = default;
   RegOr &operator=(RegOr &&) = default;
   RegOr &operator=(RegOr const &) = default;
@@ -107,7 +107,6 @@ bool operator==(RegOr<T> const &lhs, T const &rhs) {
   return not lhs.is_reg() and lhs.value() == rhs;
 }
 
-
 template <typename T>
 bool operator!=(RegOr<T> const &lhs, RegOr<T> const &rhs) {
   return not(lhs == rhs);
@@ -134,7 +133,7 @@ bool operator!=(RegOr<T> const &lhs, T const &rhs) {
 }
 
 template <typename T>
-RegOr(T)->RegOr<T>;
+RegOr(T) -> RegOr<T>;
 
 }  // namespace ir
 

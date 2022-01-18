@@ -17,7 +17,7 @@
 
 namespace compiler {
 
-struct DestructionEmitter: CompilationDataReference {
+struct DestructionEmitter : CompilationDataReference {
   using signature = void(ir::RegOr<ir::addr_t>);
 
   explicit DestructionEmitter(CompilationDataReference ref)

@@ -63,13 +63,7 @@ struct JumpCmd {
     BasicBlock* false_block;
   };
 
-  enum class Kind {
-    Unreachable,
-    Return,
-    Uncond,
-    Cond,
-    BlockJump
-  };
+  enum class Kind { Unreachable, Return, Uncond, Cond, BlockJump };
   Kind kind() const { return static_cast<Kind>(jump_.index()); }
 
   template <typename Fn>

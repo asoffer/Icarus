@@ -133,6 +133,7 @@ struct TestModule : compiler::CompiledModule {
   module::MockImporter importer;
   diagnostic::TrackingConsumer consumer;
   compiler::WorkSet work_set;
+
  private:
   frontend::SourceBuffer source_;
   ir::Module ir_module_;

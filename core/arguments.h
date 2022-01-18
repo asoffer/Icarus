@@ -199,13 +199,14 @@ struct Arguments {
   size_t size() const { return pos().size() + named().size(); }
   bool empty() const { return size() == 0; }
 
-  friend std::ostream &operator<<(std::ostream &os, Arguments const &arguments) 
-    requires(requires {
-      { os << std::declval<T>() } -> std::same_as<std::ostream &>;
-    }) {
+  friend std::ostream &operator<<(
+      std::ostream &os, Arguments const &arguments) requires(requires {
+    { os << std::declval<T>() }
+    ->std::same_as<std::ostream &>;
+  }) {
     os << "arguments(";
     std::string_view separator = "";
-    for (auto const & argument : arguments.pos()) {
+    for (auto const &argument : arguments.pos()) {
       os << std::exchange(separator, ", ") << argument;
     }
     for (auto const &[name, argument] : arguments.named()) {

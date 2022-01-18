@@ -65,7 +65,8 @@ struct RegisterAllocator {
   // allocated register from `a`, so that its value does not conflict with a
   // register in `*this`. It is up to the caller to ensure register values do
   // not consflict.
-  void MergeFrom(RegisterAllocator const& a, std::invocable<ir::Reg&> auto&& f) {
+  void MergeFrom(RegisterAllocator const& a,
+                 std::invocable<ir::Reg&> auto&& f) {
     num_regs_ += a.num_regs_;
     for (auto const& [t, reg] : a.allocs_) {
       Reg r = reg;

@@ -25,7 +25,7 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
   if (inserted) {
     c.push_current(&*fn);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-    c.current_block() = c.current().group->entry();
+    c.current_block()     = c.current().group->entry();
 
     auto from = ir::Reg::Arg(0);
     auto to   = ir::Reg::Out(0);
@@ -60,7 +60,7 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
   if (inserted) {
     c.push_current(&*fn);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-    c.current_block() = c.current().group->entry();
+    c.current_block()     = c.current().group->entry();
 
     auto from = ir::Reg::Arg(0);
     auto to   = ir::Reg::Out(0);
@@ -94,9 +94,9 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
   if (inserted) {
     c.push_current(&*fn);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-    c.current_block() = fn->entry();
-    auto var          = ir::Reg::Arg(0);
-    auto val          = ir::Reg::Arg(1);
+    c.current_block()     = fn->entry();
+    auto var              = ir::Reg::Arg(0);
+    auto val              = ir::Reg::Arg(1);
 
     for (size_t i = 0; i < s->fields().size(); ++i) {
       ir::Reg to_ref = c.current_block()->Append(
@@ -128,9 +128,9 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
   if (inserted) {
     c.push_current(&*fn);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-    c.current_block() = fn->entry();
-    auto var          = ir::Reg::Arg(0);
-    auto val          = ir::Reg::Arg(1);
+    c.current_block()     = fn->entry();
+    auto var              = ir::Reg::Arg(0);
+    auto val              = ir::Reg::Arg(1);
 
     for (size_t i = 0; i < s->fields().size(); ++i) {
       ir::Reg to_ref = c.current_block()->Append(
@@ -238,8 +238,8 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     if (inserted) {
       data.push_current(&*full_dtor);
       absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-      data.current_block() = data.current().group->entry();
-      auto var             = ir::Reg::Arg(0);
+      data.current_block()  = data.current().group->entry();
+      auto var              = ir::Reg::Arg(0);
       if (user_dtor) {
         // TODO: Should probably force-inline this.
         ir::PartialResultBuffer args;

@@ -91,4 +91,3 @@ bool CompleteStructData(CompilationDataReference data,
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_VERIFY_VERIFY_H
-

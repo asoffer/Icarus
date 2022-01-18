@@ -23,7 +23,7 @@ struct LexState {
     return cursor_.view()[0];
   }
 
-  SourceBuffer& buffer_;
+  SourceBuffer &buffer_;
   SourceCursor cursor_;
   diagnostic::DiagnosticConsumer &diag_;
 };

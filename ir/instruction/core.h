@@ -43,8 +43,9 @@ struct LoadInstruction
 
 // TODO consider changing these to something like 'basic block arguments'
 template <typename T>
-struct PhiInstruction : base::Extend<PhiInstruction<T>, 3>::template With<
-                            base::BaseTraverseExtension> {
+struct PhiInstruction
+    : base::Extend<PhiInstruction<T>,
+                   3>::template With<base::BaseTraverseExtension> {
   using type = T;
 
   PhiInstruction() = default;

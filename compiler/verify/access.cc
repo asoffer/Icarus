@@ -28,8 +28,8 @@ struct DeducingAccess {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("The type of an object cannot be deduced from the "
                          "type of a member."),
-        diagnostic::SourceQuote(&view.buffer()).Highlighted(
-            view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
   frontend::SourceView view;
@@ -43,8 +43,8 @@ struct [[maybe_unused]] IncompleteTypeMemberAccess {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot access a member of an incomplete type `%s`.",
                          type),
-        diagnostic::SourceQuote(&member_view.buffer()).Highlighted(
-            member_view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote(&member_view.buffer())
+            .Highlighted(member_view.range(), diagnostic::Style::ErrorText()));
   }
 
   frontend::SourceView member_view;
@@ -87,7 +87,6 @@ struct MissingConstantMember {
   std::string member;
 };
 
-
 struct NonConstantTypeMemberAccess {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName = "non-constant-type-member-access";
@@ -108,9 +107,10 @@ struct TypeHasNoMembers {
 
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("The type `%s` does not have `%s` as a member.", type, member),
-        diagnostic::SourceQuote(&view.buffer()).Highlighted(
-            view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::Text("The type `%s` does not have `%s` as a member.", type,
+                         member),
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
   std::string type;
@@ -127,7 +127,8 @@ struct NonExportedMember {
         diagnostic::Text(
             "Expressions of type `%s` do not export the member `%s`.", type,
             member),
-        diagnostic::SourceQuote(&view.buffer()).Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
   std::string member;
@@ -142,7 +143,8 @@ struct NonConstantModuleMemberAccess {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot access a member of a non-constant module."),
-        diagnostic::SourceQuote(&view.buffer()).Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style{}));
   }
 
   frontend::SourceView view;
@@ -155,8 +157,8 @@ struct UndeclaredIdentifierInModule {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Module contains no exported member `%s`", id),
-        diagnostic::SourceQuote(&view.buffer()).Highlighted(
-            view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote(&view.buffer())
+            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;
@@ -195,8 +197,8 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
     return c.context().set_qual_type(node, type::QualType::Error());
   }
   ASSIGN_OR(return c.context().set_qual_type(node, type::QualType::Error()),
-      auto evaled_type,
-      c.EvaluateOrDiagnoseAs<type::Type>(node->operand()));
+                   auto evaled_type,
+                   c.EvaluateOrDiagnoseAs<type::Type>(node->operand()));
   auto qt = type::QualType::Constant(evaled_type);
 
   if (type::Array const *a = evaled_type.if_as<type::Array>()) {
@@ -205,7 +207,7 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
           node, type::QualType::Constant(type::Array::LengthType()));
     } else if (node->member_name() == "element_type") {
       return c.context().set_qual_type(node,
-          type::QualType::Constant(type::Type_));
+                                       type::QualType::Constant(type::Type_));
     } else {
       auto qts = c.context().set_qual_type(node, type::QualType::Error());
       c.diag().Consume(MissingConstantMember{
@@ -446,7 +448,8 @@ type::QualType AccessModuleMember(CompilationDataReference c,
 
 }  // namespace
 
-absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Access const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
+    ast::Access const *node) {
   if (auto qts = context().maybe_qual_type(node); qts.data()) { return qts; }
 
   ASSIGN_OR(return context().set_qual_types(node, type::QualType::ErrorSpan()),
@@ -531,7 +534,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Access const *nod
   }
 }
 
-bool PatternTypeVerifier::VerifyPatternType(ast::Access const *node, type::Type t) {
+bool PatternTypeVerifier::VerifyPatternType(ast::Access const *node,
+                                            type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
   diag().Consume(DeducingAccess{.view = SourceViewFor(node)});
   return false;

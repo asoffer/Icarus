@@ -15,7 +15,7 @@ struct iterator_range {
 };
 
 template <typename I>
-iterator_range(I, I)->iterator_range<I>;
+iterator_range(I, I) -> iterator_range<I>;
 
 }  // namespace base
 

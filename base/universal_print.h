@@ -17,9 +17,8 @@ namespace base {
 
 template <typename P>
 concept Printer = (std::invocable<P, int64_t> and
-                   std::invocable<P, uint64_t> and
-                   std::invocable<P, double> and
-                   std::invocable<P, void const *> and
+                   std::invocable<P, uint64_t> and std::invocable<P, double> and
+                   std::invocable<P, void const*> and
                    std::invocable<P, std::string_view>);
 
 // `UniversalPrint` accepts a `Printer` and a value of any type, and prints

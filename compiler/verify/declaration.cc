@@ -3,8 +3,8 @@
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/module.h"
-#include "compiler/verify/common.h"
 #include "compiler/verify/assignment_and_initialization.h"
+#include "compiler/verify/common.h"
 #include "type/cast.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"
@@ -119,8 +119,7 @@ bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
 type::QualType VerifyDeclarationType(CompilationDataReference data,
                                      ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto type_expr_qt,
-                   VerifyType(data, node->type_expr())[0]);
+                   auto type_expr_qt, VerifyType(data, node->type_expr())[0]);
   if (type_expr_qt.type() == type::Type_) {
     if (not type_expr_qt.constant()) {
       data.diag().Consume(NonConstantTypeInDeclaration{
@@ -211,8 +210,8 @@ type::QualType VerifyCustom(TypeVerifier &tv, ast::Declaration const *node) {
                    VerifyDeclarationType(tv, node));
 
   if (not init_val_qt.ok() or
-      not internal::VerifyInitialization(tv.diag(), SourceViewFor(node),
-                                         qt, init_val_qt)) {
+      not internal::VerifyInitialization(tv.diag(), SourceViewFor(node), qt,
+                                         init_val_qt)) {
     qt.MarkError();
   }
 
@@ -267,7 +266,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
           .view = SourceViewFor(node->init_val()),
       });
       if (node->flags() & ast::Declaration::f_IsConst) {
-        diag().Consume(UninitializedConstant{.view =SourceViewFor(node)});
+        diag().Consume(UninitializedConstant{.view = SourceViewFor(node)});
       }
       node_qual_types = {type::QualType::Error()};
     } break;
@@ -320,8 +319,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         }
       } else {
         diag().Consume(DeclaringHoleAsNonModule{
-            .type  = node_qual_types[i].type(),
-            .view =SourceViewFor(node),
+            .type = node_qual_types[i].type(),
+            .view = SourceViewFor(node),
         });
         node_qual_types[i].MarkError();
       }

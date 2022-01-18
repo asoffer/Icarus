@@ -1,4 +1,5 @@
 #include "compiler/verify/verify.h"
+
 #include "compiler/instructions.h"
 
 namespace compiler {
@@ -55,7 +56,7 @@ std::optional<ir::CompiledFn> StructDataCompletionFn(
   ir::CompiledFn fn(type::Func({}, {}));
   c.push_current(&fn);
   absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-  c.current_block() = fn.entry();
+  c.current_block()     = fn.entry();
 
   std::vector<type::StructDataInstruction::Field> fields;
 

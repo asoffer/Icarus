@@ -444,7 +444,8 @@ type::QualType VerifyAbortCall(
 
 }  // namespace
 
-absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Call const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
+    ast::Call const *node) {
   LOG("Call", "Verifying %s", node->DebugString());
 
   ir::CompleteResultBuffer buffer;
@@ -554,7 +555,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Call const *node)
   return context().set_qual_types(node, std::move(qual_type));
 }
 
-bool PatternTypeVerifier::VerifyPatternType(ast::Call const *node, type::Type t) {
+bool PatternTypeVerifier::VerifyPatternType(ast::Call const *node,
+                                            type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
 
   // Note that the type here cannot use ADL. Maybe we could inspect the

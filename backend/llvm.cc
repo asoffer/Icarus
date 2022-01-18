@@ -96,14 +96,14 @@ bool EmitInstruction(LlvmEmitter &emitter, LlvmEmitter::context_type &context,
 
     if constexpr (base::meta<num_type> == base::meta<float> or
                   base::meta<num_type> == base::meta<double>) {
-      context.registers.emplace(
-          inst.result, emitter.builder().CreateMul(&lhs, &rhs));
+      context.registers.emplace(inst.result,
+                                emitter.builder().CreateMul(&lhs, &rhs));
     } else if constexpr (std::is_signed_v<num_type>) {
-      context.registers.emplace(
-          inst.result, emitter.builder().CreateNSWMul(&lhs, &rhs));
+      context.registers.emplace(inst.result,
+                                emitter.builder().CreateNSWMul(&lhs, &rhs));
     } else {
-      context.registers.emplace(
-          inst.result, emitter.builder().CreateNUWMul(&lhs, &rhs));
+      context.registers.emplace(inst.result,
+                                emitter.builder().CreateNUWMul(&lhs, &rhs));
     }
   } else if constexpr (instruction_t.template is_a<ir::DivInstruction>()) {
     using num_type = typename Inst::num_type;
@@ -134,20 +134,20 @@ bool EmitInstruction(LlvmEmitter &emitter, LlvmEmitter::context_type &context,
                                 emitter.builder().CreateURem(&lhs, &rhs));
     }
   } else if constexpr (instruction_t.template is_a<ir::LtInstruction>()) {
-    using num_type  = typename Inst::num_type;
+    using num_type = typename Inst::num_type;
     ASSIGN_OR(return false, auto &lhs, emitter.Resolve(inst.lhs, context));
     ASSIGN_OR(return false, auto &rhs, emitter.Resolve(inst.rhs, context));
 
     if constexpr (base::meta<num_type> == base::meta<float> or
                   base::meta<num_type> == base::meta<double>) {
-      context.registers.emplace(
-          inst.result, emitter.builder().CreateFCmpULT(&lhs, &rhs));
+      context.registers.emplace(inst.result,
+                                emitter.builder().CreateFCmpULT(&lhs, &rhs));
     } else if constexpr (std::is_signed_v<num_type>) {
-      context.registers.emplace(
-          inst.result, emitter.builder().CreateICmpSLT(&lhs, &rhs));
+      context.registers.emplace(inst.result,
+                                emitter.builder().CreateICmpSLT(&lhs, &rhs));
     } else {
-      context.registers.emplace(
-          inst.result, emitter.builder().CreateICmpULT(&lhs, &rhs));
+      context.registers.emplace(inst.result,
+                                emitter.builder().CreateICmpULT(&lhs, &rhs));
     }
   } else if constexpr (instruction_t.template is_a<ir::LeInstruction>()) {
     using num_type = typename Inst::num_type;
@@ -156,11 +156,11 @@ bool EmitInstruction(LlvmEmitter &emitter, LlvmEmitter::context_type &context,
 
     if constexpr (base::meta<num_type> == base::meta<float> or
                   base::meta<num_type> == base::meta<double>) {
-      context.registers.emplace(
-          inst.result, emitter.builder().CreateFCmpULE(&lhs, &rhs));
+      context.registers.emplace(inst.result,
+                                emitter.builder().CreateFCmpULE(&lhs, &rhs));
     } else if constexpr (std::is_signed_v<num_type>) {
-      context.registers.emplace(
-          inst.result, emitter.builder().CreateICmpSLE(&lhs, &rhs));
+      context.registers.emplace(inst.result,
+                                emitter.builder().CreateICmpSLE(&lhs, &rhs));
     } else {
       context.registers.emplace(inst.result,
                                 emitter.builder().CreateICmpULE(&lhs, &rhs));
@@ -193,13 +193,13 @@ bool EmitInstruction(LlvmEmitter &emitter, LlvmEmitter::context_type &context,
     if (inst.outputs().size() > 1) { NOT_YET(); }
     std::vector<typename LlvmEmitter::value_type *> args;
     args.reserve(inst.arguments().num_entries());
-    auto *fn_type = inst.func_type();
+    auto *fn_type   = inst.func_type();
     auto param_iter = fn_type->params().begin();
     NOT_YET();
     // for (auto const &arg : inst.arguments()) {
     //   arg.template apply<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
-    //                      uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-    //                      ir::Reg, ir::addr_t, ir::Fn>([&](auto v) {
+    //                      uint8_t, uint16_t, uint32_t, uint64_t, float,
+    //                      double, ir::Reg, ir::addr_t, ir::Fn>([&](auto v) {
     //     using T = std::decay_t<decltype(v)>;
     //     if constexpr (base::meta<T> == base::meta<ir::Reg>) {
     //       if (param_iter->value.type().template is<type::Pointer>()) {

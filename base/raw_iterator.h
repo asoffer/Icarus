@@ -1,8 +1,8 @@
 #ifndef ICARUS_BASE_RAW_ITERATOR_H
 #define ICARUS_BASE_RAW_ITERATOR_H
 
-#include <string>
 #include <compare>
+#include <string>
 
 #include "absl/types/span.h"
 #include "base/unaligned_ref.h"

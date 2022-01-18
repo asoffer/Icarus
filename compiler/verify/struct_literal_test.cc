@@ -14,35 +14,35 @@ using ::testing::UnorderedElementsAre;
 
 TEST(StructLiteral, SuccessEmpty) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::StructLiteral>(R"(struct {}
+  auto const *s = mod.Append<ast::StructLiteral>(R"(struct {}
   )");
-  auto qts       = mod.context().qual_types(s);
+  auto qts      = mod.context().qual_types(s);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(StructLiteral, SuccessNonEmpty) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::StructLiteral>(R"(struct {
+  auto const *s = mod.Append<ast::StructLiteral>(R"(struct {
     n: i64
     b := true
   }
   )");
-  auto qts  = mod.context().qual_types(s);
-  EXPECT_THAT(qts, UnorderedElementsAre( type::QualType::Constant(type::Type_)));
+  auto qts      = mod.context().qual_types(s);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(StructLiteral, FieldError) {
   test::TestModule mod;
-  auto const *s  = mod.Append<ast::StructLiteral>(R"(struct {
+  auto const *s = mod.Append<ast::StructLiteral>(R"(struct {
     n: 3
     b := true
   })");
   CompilationData data{.context = &mod.context(), .resources = mod.resources()};
   VerifyBody(CompilationDataReference(&data), s);
-  auto qts  = mod.context().qual_types(s);
-  EXPECT_THAT(qts, UnorderedElementsAre( type::QualType::Constant(type::Type_)));
+  auto qts = mod.context().qual_types(s);
+  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }
@@ -56,7 +56,7 @@ TEST(StructLiteral, SelfReferential) {
   }
   l: list
   )");
-  auto qts  = mod.context().qual_types(mod.Append<ast::Identifier>("l"));
+  auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("l"));
   type::Struct const *s = qts[0].type().if_as<type::Struct>();
   ASSERT_NE(s, nullptr);
   type::Struct::Field const *field = s->field("next");

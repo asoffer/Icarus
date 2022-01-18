@@ -34,9 +34,7 @@ struct ByteCodeWriter {
     for (auto const& [block, locs] : replacements_) {
       auto iter = offsets_.find(block);
       ASSERT(iter != offsets_.end());
-      for (size_t loc : locs) { 
-        byte_code_.set(loc, iter->second); 
-      }
+      for (size_t loc : locs) { byte_code_.set(loc, iter->second); }
     }
     replacements_.clear();
   }

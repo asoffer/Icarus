@@ -61,7 +61,7 @@ struct BasicBlock {
     return r;
   }
 
-  friend void BaseTraverse(Inliner& inliner, BasicBlock& block) {
+  friend void BaseTraverse(Inliner &inliner, BasicBlock &block) {
     base::Traverse(inliner, block.instructions_);
   }
 

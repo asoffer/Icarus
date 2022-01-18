@@ -29,7 +29,7 @@ namespace ast {
 // WithScope:
 // A mixin which adds a scope of the given type `S`.
 struct WithScope {
-   explicit WithScope(Scope::Kind kind) : body_scope_(kind) {}
+  explicit WithScope(Scope::Kind kind) : body_scope_(kind) {}
 
   Scope const &body_scope() const { return body_scope_; }
   Scope &body_scope() { return body_scope_; }

@@ -54,9 +54,7 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
   }
   absl::Span<Reg const> parameters(Block b) { return data_->parameters[b]; }
 
-  type::Scope const *type() const {
-    return ASSERT_NOT_NULL(get().type);
-  }
+  type::Scope const *type() const { return ASSERT_NOT_NULL(get().type); }
 
   base::untyped_buffer::const_iterator byte_code_iterator() const {
     return data_->byte_code;

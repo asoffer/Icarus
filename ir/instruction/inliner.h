@@ -11,7 +11,8 @@
 namespace ir {
 
 // Instruction traversal which replaces register values so that the instruction
-// can be inlined from one block group into another, avoiding register collisions.
+// can be inlined from one block group into another, avoiding register
+// collisions.
 struct Inliner {
   explicit Inliner(size_t register_offset, size_t num_params)
       : register_offset_(register_offset), num_params_(num_params) {}
@@ -29,7 +30,7 @@ struct Inliner {
   void operator()(void const *) {}
 
   void operator()(ir::PartialResultBuffer &buffer) {
-    for (size_t i= 0; i < buffer.num_entries(); ++i) {
+    for (size_t i = 0; i < buffer.num_entries(); ++i) {
       if (not buffer[i].is_register()) { continue; }
       Reg reg = buffer[i].get<Reg>();
       (*this)(reg);

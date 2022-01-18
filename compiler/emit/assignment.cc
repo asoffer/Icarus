@@ -20,8 +20,8 @@ void Compiler::EmitToBuffer(ast::Assignment const *node,
   if (node->lhs().size() == 1) {
     ASSERT(node->rhs().size() == 1u);
     auto const *l = node->lhs()[0];
-    type::Typed<ir::RegOr<ir::addr_t>> ref(
-        EmitRef(l), context().qual_types(l)[0].type());
+    type::Typed<ir::RegOr<ir::addr_t>> ref(EmitRef(l),
+                                           context().qual_types(l)[0].type());
     EmitMoveAssign(node->rhs()[0], absl::MakeConstSpan(&ref, 1));
     return;
   }
@@ -44,7 +44,7 @@ void Compiler::EmitToBuffer(ast::Assignment const *node,
   for (auto const *r : node->rhs()) {
     size_t num_rets = context().qual_types(r).size();
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> temp_span(&*temp_iter,
-                                                                 num_rets);
+                                                                   num_rets);
     EmitMoveAssign(r, temp_span);
     temp_iter += num_rets;
   }

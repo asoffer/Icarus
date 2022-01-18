@@ -141,7 +141,8 @@ void Compiler::EmitCopyInit(
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
         EmitCopyAssign(
-            to[0], type::Typed(buffer[0], context().qual_types(node)[0].type()));
+            to[0],
+            type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }
@@ -167,7 +168,8 @@ void Compiler::EmitMoveInit(
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
         EmitMoveAssign(
-            to[0], type::Typed(buffer[0], context().qual_types(node)[0].type()));
+            to[0],
+            type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }
@@ -199,7 +201,8 @@ void Compiler::EmitCopyAssign(
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
         EmitMoveAssign(
-            to[0], type::Typed(buffer[0], context().qual_types(node)[0].type()));
+            to[0],
+            type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }
@@ -226,7 +229,8 @@ void Compiler::EmitMoveAssign(
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
         EmitMoveAssign(
-            to[0], type::Typed(buffer[0], context().qual_types(node)[0].type()));
+            to[0],
+            type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }

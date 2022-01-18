@@ -278,13 +278,13 @@ TEST(CanCastInPlace, Function) {
 TEST(CanCastExplicitly, Function) {
   EXPECT_TRUE(CanCastExplicitly(Func({}, {}), Func({}, {})));
   EXPECT_FALSE(CanCastExplicitly(Func({}, {Bool}), Func({}, {I64})));
-  EXPECT_FALSE(
-      CanCastExplicitly(Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {}),
-              Func({core::AnonymousParam(QualType::NonConstant(I64))}, {})));
+  EXPECT_FALSE(CanCastExplicitly(
+      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {}),
+      Func({core::AnonymousParam(QualType::NonConstant(I64))}, {})));
 
-  EXPECT_TRUE(
-      CanCastExplicitly(Func({core::Param("name", QualType::NonConstant(Bool))}, {}),
-              Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
+  EXPECT_TRUE(CanCastExplicitly(
+      Func({core::Param("name", QualType::NonConstant(Bool))}, {}),
+      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
 
   EXPECT_FALSE(CanCastExplicitly(
       Func({core::Param("name", QualType::NonConstant(Bool), core::MUST_NAME)},
@@ -302,16 +302,16 @@ TEST(CanCastExplicitly, Function) {
       Func({core::Param("name2", QualType::NonConstant(Bool), core::MUST_NAME)},
            {})));
 
-  EXPECT_FALSE(
-      CanCastExplicitly(Func({core::Param("name1", QualType::NonConstant(Bool))}, {}),
-              Func({core::Param("name2", QualType::NonConstant(Bool))}, {})));
+  EXPECT_FALSE(CanCastExplicitly(
+      Func({core::Param("name1", QualType::NonConstant(Bool))}, {}),
+      Func({core::Param("name2", QualType::NonConstant(Bool))}, {})));
 
   // TODO, actually these should be equal.
-  EXPECT_TRUE(
-      CanCastExplicitly(Func({core::Param("name", QualType::NonConstant(Bool),
-                                core::MUST_NOT_NAME)},
-                   {}),
-              Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
+  EXPECT_TRUE(CanCastExplicitly(
+      Func({core::Param("name", QualType::NonConstant(Bool),
+                        core::MUST_NOT_NAME)},
+           {}),
+      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
 
   EXPECT_TRUE(CanCastExplicitly(
       Func({core::Param("name", QualType::NonConstant(BufPtr(Bool)))}, {}),
@@ -325,7 +325,6 @@ TEST(Meet, Integral) {
   EXPECT_EQ(Meet(U16, Integer), U16);
   EXPECT_EQ(Meet(I8, Integer), I8);
 }
-
 
 TEST(Cast, Inference) {
   EXPECT_EQ(Inference(Type(Integer)), InferenceResult(Type(I64)));

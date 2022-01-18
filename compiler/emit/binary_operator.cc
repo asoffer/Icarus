@@ -98,10 +98,10 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       if (lhs_type.is<type::Flags>() and lhs_type == rhs_type) {
         auto lhs_ir = EmitAs<type::Flags::underlying_type>(&node->lhs());
         auto rhs_ir = EmitAs<type::Flags::underlying_type>(&node->rhs());
-        out.append(current_block()->Append(type::OrFlagsInstruction{
-            .lhs    = lhs_ir,
-            .rhs    = rhs_ir,
-            .result = current().group->Reserve()}));
+        out.append(current_block()->Append(
+            type::OrFlagsInstruction{.lhs    = lhs_ir,
+                                     .rhs    = rhs_ir,
+                                     .result = current().group->Reserve()}));
       } else {
         EmitBinaryOverload(*this, node, out);
       }
@@ -111,9 +111,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       auto lhs_ir = EmitAs<bool>(&node->lhs());
       auto rhs_ir = EmitAs<bool>(&node->rhs());
       out.append(current_block()->Append(ir::NeInstruction<bool>{
-          .lhs    = lhs_ir,
-          .rhs    = rhs_ir,
-          .result = current().group->Reserve()}));
+          .lhs = lhs_ir, .rhs = rhs_ir, .result = current().group->Reserve()}));
       return;
     } break;
     case ast::BinaryOperator::Kind::SymbolXor: {
@@ -122,10 +120,10 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       if (lhs_type.is<type::Flags>() and lhs_type == rhs_type) {
         auto lhs_ir = EmitAs<type::Flags::underlying_type>(&node->lhs());
         auto rhs_ir = EmitAs<type::Flags::underlying_type>(&node->rhs());
-        out.append(current_block()->Append(type::XorFlagsInstruction{
-            .lhs    = lhs_ir,
-            .rhs    = rhs_ir,
-            .result = current().group->Reserve()}));
+        out.append(current_block()->Append(
+            type::XorFlagsInstruction{.lhs    = lhs_ir,
+                                      .rhs    = rhs_ir,
+                                      .result = current().group->Reserve()}));
       } else {
         EmitBinaryOverload(*this, node, out);
       }
@@ -160,10 +158,10 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       if (lhs_type.is<type::Flags>() and lhs_type == rhs_type) {
         auto lhs_ir = EmitAs<type::Flags::underlying_type>(&node->lhs());
         auto rhs_ir = EmitAs<type::Flags::underlying_type>(&node->rhs());
-        out.append(current_block()->Append(type::AndFlagsInstruction{
-            .lhs    = lhs_ir,
-            .rhs    = rhs_ir,
-            .result = current().group->Reserve()}));
+        out.append(current_block()->Append(
+            type::AndFlagsInstruction{.lhs    = lhs_ir,
+                                      .rhs    = rhs_ir,
+                                      .result = current().group->Reserve()}));
         return;
       } else {
         EmitBinaryOverload(*this, node, out);
@@ -182,11 +180,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                      type::PointerDifferenceType(resources().architecture))
                 .back()
                 .get<int64_t>();
-        out.append(current_block()->Append(ir::PtrIncrInstruction{
-            .addr   = lhs_ir,
-            .index  = rhs_ir,
-            .ptr    = lhs_buf_ptr_type,
-            .result = current().group->Reserve()}));
+        out.append(current_block()->Append(
+            ir::PtrIncrInstruction{.addr   = lhs_ir,
+                                   .index  = rhs_ir,
+                                   .ptr    = lhs_buf_ptr_type,
+                                   .result = current().group->Reserve()}));
       } else if (auto const *rhs_buf_ptr_type =
                      typed_rhs.type().if_as<type::BufferPointer>();
                  rhs_buf_ptr_type and type::IsIntegral(typed_lhs.type())) {
@@ -197,11 +195,11 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
                 .back()
                 .get<int64_t>();
         auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs(), out);
-        out.append(current_block()->Append(ir::PtrIncrInstruction{
-            .addr   = rhs_ir,
-            .index  = lhs_ir,
-            .ptr    = rhs_buf_ptr_type,
-            .result = current().group->Reserve()}));
+        out.append(current_block()->Append(
+            ir::PtrIncrInstruction{.addr   = rhs_ir,
+                                   .index  = lhs_ir,
+                                   .ptr    = rhs_buf_ptr_type,
+                                   .result = current().group->Reserve()}));
       } else if (typed_lhs.type().is<type::Primitive>() and
                  typed_rhs.type().is<type::Primitive>()) {
         Apply<ir::AddInstruction, ir::Integer, int8_t, int16_t, int32_t,
@@ -215,7 +213,8 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
     case ast::BinaryOperator::Kind::Sub: {
       auto typed_lhs = context().typed(&node->lhs());
       auto typed_rhs = context().typed(&node->rhs());
-      if (auto const *lhs_buf_ptr_type = typed_lhs.type().if_as<type::BufferPointer>();
+      if (auto const *lhs_buf_ptr_type =
+              typed_lhs.type().if_as<type::BufferPointer>();
           lhs_buf_ptr_type and type::IsIntegral(typed_rhs.type())) {
         auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs(), out);
         // TODO: Remove assumption that the pointer difference type is int64_t.
@@ -250,15 +249,16 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
             }),
             .ptr    = rhs_buf_ptr_type,
             .result = current().group->Reserve()}));
-      } else if (auto const *buf_ptr = typed_lhs.type().if_as<type::BufferPointer>();
+      } else if (auto const *buf_ptr =
+                     typed_lhs.type().if_as<type::BufferPointer>();
                  typed_lhs.type() == typed_rhs.type() and buf_ptr) {
         auto lhs_ir = EmitAs<ir::addr_t>(&node->lhs());
         auto rhs_ir = EmitAs<ir::addr_t>(&node->rhs());
-        out.append(current_block()->Append(ir::PtrDiffInstruction{
-            .lhs          = lhs_ir,
-            .rhs          = rhs_ir,
-            .pointee_type = buf_ptr->pointee(),
-            .result       = current().group->Reserve()}));
+        out.append(current_block()->Append(
+            ir::PtrDiffInstruction{.lhs          = lhs_ir,
+                                   .rhs          = rhs_ir,
+                                   .pointee_type = buf_ptr->pointee(),
+                                   .result = current().group->Reserve()}));
       } else if (typed_lhs.type().is<type::Primitive>() and
                  typed_rhs.type().is<type::Primitive>()) {
         Apply<ir::SubInstruction, ir::Integer, int8_t, int16_t, int32_t,
@@ -308,7 +308,7 @@ void Compiler::EmitToBuffer(ast::BinaryOperator const *node,
       ir::PartialResultBuffer buffer;
       auto block = *EvaluateOrDiagnoseAs<ir::Block>(&node->rhs());
       ASSERT(state().scopes.size() != 0u);
-      ir::Scope scope    = state().scopes.back();
+      ir::Scope scope = state().scopes.back();
       ir::PartialResultBuffer lhs_buffer;
       EmitToBuffer(&node->lhs(), lhs_buffer);
       type::Type lhs_type = context().qual_types(&node->lhs())[0].type();
@@ -328,37 +328,40 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
 
   switch (node->kind()) {
     case ast::BinaryOperator::Kind::SymbolOr:
-      current_block()->Append(ir::StoreInstruction<type::Flags::underlying_type>{
-          .value    = current_block()->Append(type::OrFlagsInstruction{
-              .lhs    = current_block()->Append(ir::LoadInstruction{
-                  .type   = type::Flags::UnderlyingType(),
-                  .addr   = lhs_lval,
+      current_block()->Append(
+          ir::StoreInstruction<type::Flags::underlying_type>{
+              .value    = current_block()->Append(type::OrFlagsInstruction{
+                  .lhs    = current_block()->Append(ir::LoadInstruction{
+                      .type   = type::Flags::UnderlyingType(),
+                      .addr   = lhs_lval,
+                      .result = current().group->Reserve()}),
+                  .rhs    = EmitAs<type::Flags::underlying_type>(&node->rhs()),
                   .result = current().group->Reserve()}),
-              .rhs    = EmitAs<type::Flags::underlying_type>(&node->rhs()),
-              .result = current().group->Reserve()}),
-          .location = lhs_lval});
+              .location = lhs_lval});
       return;
     case ast::BinaryOperator::Kind::SymbolAnd:
-      current_block()->Append(ir::StoreInstruction<type::Flags::underlying_type>{
-          .value    = current_block()->Append(type::AndFlagsInstruction{
-              .lhs    = current_block()->Append(ir::LoadInstruction{
-                  .type   = type::Flags::UnderlyingType(),
-                  .addr   = lhs_lval,
+      current_block()->Append(
+          ir::StoreInstruction<type::Flags::underlying_type>{
+              .value    = current_block()->Append(type::AndFlagsInstruction{
+                  .lhs    = current_block()->Append(ir::LoadInstruction{
+                      .type   = type::Flags::UnderlyingType(),
+                      .addr   = lhs_lval,
+                      .result = current().group->Reserve()}),
+                  .rhs    = EmitAs<type::Flags::underlying_type>(&node->rhs()),
                   .result = current().group->Reserve()}),
-              .rhs    = EmitAs<type::Flags::underlying_type>(&node->rhs()),
-              .result = current().group->Reserve()}),
-          .location = lhs_lval});
+              .location = lhs_lval});
       return;
     case ast::BinaryOperator::Kind::SymbolXor:
-      current_block()->Append(ir::StoreInstruction<type::Flags::underlying_type>{
-          .value    = current_block()->Append(type::XorFlagsInstruction{
-              .lhs    = current_block()->Append(ir::LoadInstruction{
-                  .type   = type::Flags::UnderlyingType(),
-                  .addr   = lhs_lval,
+      current_block()->Append(
+          ir::StoreInstruction<type::Flags::underlying_type>{
+              .value    = current_block()->Append(type::XorFlagsInstruction{
+                  .lhs    = current_block()->Append(ir::LoadInstruction{
+                      .type   = type::Flags::UnderlyingType(),
+                      .addr   = lhs_lval,
+                      .result = current().group->Reserve()}),
+                  .rhs    = EmitAs<type::Flags::underlying_type>(&node->rhs()),
                   .result = current().group->Reserve()}),
-              .rhs    = EmitAs<type::Flags::underlying_type>(&node->rhs()),
-              .result = current().group->Reserve()}),
-          .location = lhs_lval});
+              .location = lhs_lval});
       return;
     case ast::BinaryOperator::Kind::Add: {
       ir::PartialResultBuffer buffer;
@@ -458,10 +461,10 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
       ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                  uint64_t, float, double>(lhs_type, [&]<typename T>() {
         current_block()->Append(ir::StoreInstruction<T>{
-            .value    = current_block()->Append(ir::MulInstruction<T>{
-                .lhs    = loaded,
-                .rhs    = buffer.back().get<T>(),
-                .result = current().group->Reserve()}),
+            .value = current_block()->Append(
+                ir::MulInstruction<T>{.lhs    = loaded,
+                                      .rhs    = buffer.back().get<T>(),
+                                      .result = current().group->Reserve()}),
             .location = lhs_lval});
       });
       return;
@@ -505,10 +508,10 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
       ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t>(lhs_type, [&]<typename T>() {
         current_block()->Append(ir::StoreInstruction<T>{
-            .value    = current_block()->Append(ir::ModInstruction<T>{
-                .lhs    = loaded,
-                .rhs    = buffer.back().get<T>(),
-                .result = current().group->Reserve()}),
+            .value = current_block()->Append(
+                ir::ModInstruction<T>{.lhs    = loaded,
+                                      .rhs    = buffer.back().get<T>(),
+                                      .result = current().group->Reserve()}),
             .location = lhs_lval});
       });
       return;

@@ -131,7 +131,8 @@ TEST(SourceBuffer, ConsumeChunkWhile) {
   {
     SourceLoc loc(0, 1);
     EXPECT_EQ(buffer.ConsumeChunkWhile(loc, [](char) { return false; }),
-              std::pair(SourceRange(SourceLoc(0, 1), SourceLoc(0, 1)), std::string_view("")));
+              std::pair(SourceRange(SourceLoc(0, 1), SourceLoc(0, 1)),
+                        std::string_view("")));
     EXPECT_EQ(loc, SourceLoc(0, 1));
   }
 }

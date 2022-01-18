@@ -371,14 +371,16 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       // }
 
       // auto qts_or_errors = VerifyReturningCall(
-      //     *this, {.callee = &node->rhs(), .arguments = std::move(arguments)});
+      //     *this, {.callee = &node->rhs(), .arguments =
+      //     std::move(arguments)});
       // if (auto *errors =
       //         std::get_if<absl::flat_hash_map<type::Callable const *,
       //                                         core::CallabilityResult>>(
       //             &qts_or_errors)) {
       //   // TODO Argument span??
       //   diag().Consume(
-      //       UncallableError(context(), &node->lhs(), {}, std::move(*errors)));
+      //       UncallableError(context(), &node->lhs(), {},
+      //       std::move(*errors)));
       //   return context().set_qual_type(node, type::QualType::Error());
       // }
 
@@ -418,7 +420,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                                                rhs_qt.type()));
         if (not qt.ok()) {
           diag().Consume(NoMatchingBinaryOperator{
-              .op  = std::string(ast::BinaryOperator::Symbol(node->kind())),
+              .op = std::string(ast::BinaryOperator::Symbol(node->kind())),
               .lhs_type = TypeForDiagnostic(&node->lhs(), context()),
               .rhs_type = TypeForDiagnostic(&node->rhs(), context()),
               .view     = SourceViewFor(node),
@@ -442,7 +444,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
 }
 
 bool PatternTypeVerifier::VerifyPatternType(ast::BinaryOperator const *node,
-                                 type::Type t) {
+                                            type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
   switch (node->kind()) {
     case ast::BinaryOperator::Kind::Add:

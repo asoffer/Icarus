@@ -215,7 +215,8 @@ concept Assignable = std::assignable_from<T&, T>;
 
 template <typename T>
 concept SatisfiesTupleProtocol = requires(T t) {
-  { std::tuple_size<T>::value } -> std::integral;
+  { std::tuple_size<T>::value }
+  ->std::integral;
 };
 
 template <typename T>
@@ -239,12 +240,14 @@ concept is_enum = std::is_enum_v<T>;
 
 template <typename T>
 concept Streamable = requires(T t) {
-  { std::declval<std::ostream&>() << t } -> std::same_as<std::ostream&>;
+  { std::declval<std::ostream&>() << t }
+  ->std::same_as<std::ostream&>;
 };
 
 template <typename From, typename To>
 concept PtrConvertibleTo = requires(From* f) {
-  { static_cast<To*>(f) } -> std::same_as<To*>;
+  { static_cast<To*>(f) }
+  ->std::same_as<To*>;
 };
 
 template <typename T, typename... Ts>

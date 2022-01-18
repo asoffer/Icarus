@@ -44,7 +44,7 @@ void PartialResultBuffer::append() {
         .index = static_cast<uint32_t>(buffer_.size()), .is_register = 0});
   }
 
-  ASSERT(back().empty()==true);
+  ASSERT(back().empty() == true);
 }
 
 PartialResultRef PartialResultBuffer::operator[](size_t i) const {

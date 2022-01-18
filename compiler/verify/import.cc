@@ -44,7 +44,8 @@ struct InvalidImport {
 
 }  // namespace
 
-absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Import const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
+    ast::Import const *node) {
   LOG("Import", "%s", node->DebugString());
   ASSIGN_OR(return context().set_qual_type(node, _),  //
                    auto result, VerifyType(node->operand())[0]);

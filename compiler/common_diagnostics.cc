@@ -94,8 +94,7 @@ UncallableWithArguments UncallableError(
   }
   for (; i < arguments.size(); ++i) {
     result.arguments.named_emplace(
-        arguments[i].name(),
-        TypeForDiagnostic(&arguments[i].expr(), context));
+        arguments[i].name(), TypeForDiagnostic(&arguments[i].expr(), context));
   }
 
   result.errors = std::move(errors);

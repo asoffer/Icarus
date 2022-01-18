@@ -2,6 +2,7 @@
 #define ICARUS_FRONTEND_LEX_TOKEN_H
 
 #include <string>
+
 #include "ast/node.h"
 #include "base/debug.h"
 #include "frontend/lex/operators.h"

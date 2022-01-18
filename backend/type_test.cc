@@ -26,10 +26,8 @@ TEST(ToLlvm, Primitive) {
   EXPECT_EQ(ToLlvmType(type::U32, context), llvm::Type::getInt32Ty(context));
   EXPECT_EQ(ToLlvmType(type::I64, context), llvm::Type::getInt64Ty(context));
   EXPECT_EQ(ToLlvmType(type::U64, context), llvm::Type::getInt64Ty(context));
-  EXPECT_EQ(ToLlvmType(type::F32, context),
-            llvm::Type::getFloatTy(context));
-  EXPECT_EQ(ToLlvmType(type::F64, context),
-            llvm::Type::getDoubleTy(context));
+  EXPECT_EQ(ToLlvmType(type::F32, context), llvm::Type::getFloatTy(context));
+  EXPECT_EQ(ToLlvmType(type::F64, context), llvm::Type::getDoubleTy(context));
   // TODO: Test for `type`
 }
 

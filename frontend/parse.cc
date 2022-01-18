@@ -556,7 +556,6 @@ std::unique_ptr<ast::Node> BuildWhileStmt(
       range, move_as<ast::Expression>(nodes[1]), std::move(body));
 }
 
-
 std::unique_ptr<ast::Node> BuildIfStmt(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -579,7 +578,7 @@ std::unique_ptr<ast::Node> ExtendIfElseStmt(
     diagnostic::DiagnosticConsumer &diag) {
   SourceRange range(nodes.front()->range().begin(),
                     nodes.back()->range().end());
-  auto if_stmt = move_as<ast::IfStmt>(nodes[0]);
+  auto if_stmt           = move_as<ast::IfStmt>(nodes[0]);
   auto extension_if_stmt = move_as<ast::IfStmt>(nodes[2]);
 
   if (auto *id = nodes[1]->if_as<ast::Identifier>()) {
@@ -1402,7 +1401,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
       enumerators.push_back(std::move(*id).extract());
     } else if (auto *decl = stmt->if_as<ast::Declaration>()) {
       if (not(decl->flags() & ast::Declaration::f_IsConst)) {
-        diag.Consume(TodoDiagnostic{.src = src,.range = range});
+        diag.Consume(TodoDiagnostic{.src = src, .range = range});
       }
       auto [ids, type_expr, init_val] = std::move(*decl).extract();
       // TODO: Use the type expression?
@@ -2120,7 +2119,7 @@ void Shift(ParseState *ps) {
 template <auto &RuleSet>
 bool Reduce(ParseState *ps) {
   LOG("parse", "reducing");
-  size_t i = 0; 
+  size_t i = 0;
   for (auto const &rule : *RuleSet) {
     ++i;
     if (rule.match(ps->tag_stack_)) {

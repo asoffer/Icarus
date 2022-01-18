@@ -15,8 +15,7 @@ void Compiler::EmitToBuffer(ast::ParameterizedStructLiteral const *node,
                            &args) mutable -> ir::NativeFn { NOT_YET(); }));
 }
 
-bool Compiler::CompleteStruct(
-    ast::ParameterizedStructLiteral const *node) {
+bool Compiler::CompleteStruct(ast::ParameterizedStructLiteral const *node) {
   LOG("struct", "Completing struct-literal emission: %p", node);
 
   // TODO: Find a way around these const casts.

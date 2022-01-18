@@ -43,7 +43,7 @@ struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
                            DiagnosticMessage&& diag) = 0;
 
  private:
-  frontend::SourceBuffer const *src_;
+  frontend::SourceBuffer const* src_;
   size_t num_consumed_ = 0;
 };
 

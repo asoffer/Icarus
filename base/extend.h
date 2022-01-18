@@ -174,7 +174,6 @@ struct ExtensionSet;
 template <typename... Extensions>
 struct ExtensionSet<type_list<Extensions...>> : Extensions... {};
 
-
 template <typename... Deps>
 using AllDependencies = decltype(
     internal_extend::DependenciesImpl(type_list<Deps...>{}, type_list<>{}));

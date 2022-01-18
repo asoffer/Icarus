@@ -83,7 +83,7 @@ bool Compiler::PatternMatch(
         &bindings) {
   auto t        = context().qual_types(node)[0].type();
   auto const &p = t.as<type::Primitive>();
-  return p.Apply([&]<typename T>()->bool {
+  return p.Apply([&]<typename T>() -> bool {
     T pattern_value = node->value().template get<T>();
     T matched_value = pmc.value.template get<T>(0);
     if (matched_value == pattern_value) { return true; }

@@ -16,7 +16,7 @@ void EmitConstantIf(Compiler &c, ast::IfStmt const *node,
 
 void EmitNonConstantIf(Compiler &c, ast::IfStmt const *node,
                        ir::PartialResultBuffer &out) {
-  auto *true_block  = c.current().group->AppendBlock();
+  auto *true_block = c.current().group->AppendBlock();
   auto *false_block =
       node->has_false_block() ? c.current().group->AppendBlock() : nullptr;
   auto *landing =
@@ -84,7 +84,7 @@ void Compiler::EmitToBuffer(ast::WhileStmt const *node,
 
   current_block()->set_jump(ir::JumpCmd::Uncond(start_block));
 
-  current_block()  = start_block;
+  current_block() = start_block;
   ir::RegOr<bool> condition =
       EmitCast(*this, context().typed(&node->condition()), type::Bool)
           .back()

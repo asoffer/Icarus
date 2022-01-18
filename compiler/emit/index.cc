@@ -32,12 +32,13 @@ void EmitIndexOverload(Compiler &c, ast::Index const *node,
 
 }  // namespace
 
-void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out) {
+void Compiler::EmitToBuffer(ast::Index const *node,
+                            ir::PartialResultBuffer &out) {
   type::QualType qt = context().qual_types(node->lhs())[0];
   if (auto const *s = qt.type().if_as<type::Slice>()) {
     if (qt.quals() >= type::Quals::Ref()) {
       out.append(PtrFix(current(), EmitRef(node),
-                                  context().qual_types(node)[0].type()));
+                        context().qual_types(node)[0].type()));
     } else {
       auto data = current_block()->Append(ir::LoadInstruction{
           .type   = type::BufPtr(s->data_type()),
@@ -55,17 +56,17 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
               .back()
               .get<int64_t>();
 
-      auto incr = current_block()->Append(ir::PtrIncrInstruction{
-          .addr   = data,
-          .index  = index,
-          .ptr    = type::Ptr(s->data_type()),
-          .result = current().group->Reserve()});
+      auto incr = current_block()->Append(
+          ir::PtrIncrInstruction{.addr   = data,
+                                 .index  = index,
+                                 .ptr    = type::Ptr(s->data_type()),
+                                 .result = current().group->Reserve()});
       out.append(PtrFix(current(), incr, s->data_type()));
     }
   } else if (auto const *array_type = qt.type().if_as<type::Array>()) {
     if (qt.quals() >= type::Quals::Ref()) {
       out.append(PtrFix(current(), EmitRef(node),
-                                  context().qual_types(node)[0].type()));
+                        context().qual_types(node)[0].type()));
     } else {
       // TODO: Remove assumption that the pointer difference type is int64_t.
       auto index =
@@ -73,18 +74,18 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
                    type::PointerDifferenceType(resources().architecture))
               .back()
               .get<int64_t>();
-      auto incr = current_block()->Append(ir::PtrIncrInstruction{
-          .addr   = EmitRef(node->lhs()),
-          .index  = index,
-          .ptr    = type::Ptr(array_type->data_type()),
-          .result = current().group->Reserve()});
+      auto incr = current_block()->Append(
+          ir::PtrIncrInstruction{.addr   = EmitRef(node->lhs()),
+                                 .index  = index,
+                                 .ptr    = type::Ptr(array_type->data_type()),
+                                 .result = current().group->Reserve()});
       out.append(PtrFix(current(), incr, array_type->data_type()));
     }
   } else if (auto const *buf_ptr_type =
                  qt.type().if_as<type::BufferPointer>()) {
     if (qt.quals() >= type::Quals::Ref()) {
       out.append(PtrFix(current(), EmitRef(node),
-                                  context().qual_types(node)[0].type()));
+                        context().qual_types(node)[0].type()));
     } else {
       // TODO: Remove assumption that the pointer difference type is int64_t.
       auto index =
@@ -92,11 +93,11 @@ void Compiler::EmitToBuffer(ast::Index const *node, ir::PartialResultBuffer &out
                    type::PointerDifferenceType(resources().architecture))
               .back()
               .get<int64_t>();
-      auto incr = current_block()->Append(ir::PtrIncrInstruction{
-          .addr   = EmitAs<ir::addr_t>(node->lhs()),
-          .index  = index,
-          .ptr    = buf_ptr_type,
-          .result = current().group->Reserve()});
+      auto incr = current_block()->Append(
+          ir::PtrIncrInstruction{.addr   = EmitAs<ir::addr_t>(node->lhs()),
+                                 .index  = index,
+                                 .ptr    = buf_ptr_type,
+                                 .result = current().group->Reserve()});
       out.append(PtrFix(current(), incr, buf_ptr_type->pointee()));
     }
   } else {
@@ -115,7 +116,7 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
                    .get<int64_t>();
 
   if (auto const *a = lhs_type.if_as<type::Array>()) {
-    auto lval  = EmitRef(node->lhs());
+    auto lval = EmitRef(node->lhs());
     return current_block()->Append(
         ir::PtrIncrInstruction{.addr   = lval,
                                .index  = index,

@@ -75,13 +75,13 @@ TEST(Callability, EmptyParams) {
             CallabilityResult::Valid{});
   EXPECT_EQ(Callability(p, Arguments<int>{{3}, {}}, convertible),
             (CallabilityResult::TooManyArguments{.num_provided     = 1,
-                                                .max_num_accepted = 0}));
+                                                 .max_num_accepted = 0}));
   EXPECT_EQ(Callability(p, Arguments<int>{{}, {{"a", 4}}}, convertible),
             (CallabilityResult::TooManyArguments{.num_provided     = 1,
-                                                .max_num_accepted = 0}));
+                                                 .max_num_accepted = 0}));
   EXPECT_EQ(Callability(p, Arguments<int>{{3}, {{"a", 4}}}, convertible),
             (CallabilityResult::TooManyArguments{.num_provided     = 2,
-                                                .max_num_accepted = 0}));
+                                                 .max_num_accepted = 0}));
 }
 
 TEST(Callability, OneParamWithoutDefault) {
@@ -99,10 +99,10 @@ TEST(Callability, OneParamWithoutDefault) {
             CallabilityResult::NoParameterNamed{.name = "b"});
   EXPECT_EQ(Callability(p, Arguments<int>{{4}, {{"a", 4}}}, convertible),
             (CallabilityResult::TooManyArguments{.num_provided     = 2,
-                                                .max_num_accepted = 1}));
+                                                 .max_num_accepted = 1}));
   EXPECT_EQ(Callability(p, Arguments<int>{{4}, {{"a", 5}}}, convertible),
             (CallabilityResult::TooManyArguments{.num_provided     = 2,
-                                                .max_num_accepted = 1}));
+                                                 .max_num_accepted = 1}));
 }
 
 TEST(Callability, OneParamWithDefault) {
@@ -117,13 +117,13 @@ TEST(Callability, OneParamWithDefault) {
   EXPECT_EQ(Callability(p, Arguments<int>{{}, {{"a", 4}}}, convertible),
             CallabilityResult::Valid{});
   EXPECT_EQ(Callability(p, Arguments<int>{{}, {{"b", 4}}}, convertible),
-               CallabilityResult::NoParameterNamed{.name = "b"});
+            CallabilityResult::NoParameterNamed{.name = "b"});
   EXPECT_EQ(Callability(p, Arguments<int>{{4}, {{"a", 4}}}, convertible),
             (CallabilityResult::TooManyArguments{.num_provided     = 2,
-                                                .max_num_accepted = 1}));
+                                                 .max_num_accepted = 1}));
   EXPECT_EQ(Callability(p, Arguments<int>{{4}, {{"a", 5}}}, convertible),
             (CallabilityResult::TooManyArguments{.num_provided     = 2,
-                                                .max_num_accepted = 1}));
+                                                 .max_num_accepted = 1}));
 }
 
 TEST(Callability, MultipleParamsWithNonTrailingDefault) {

@@ -21,7 +21,6 @@ struct Expression : Node {
 
   virtual ~Expression() {}
 
-
   absl::flat_hash_set<ir::Hashtag> hashtags;
 
   // Add an extra layer of parentheses around this one.

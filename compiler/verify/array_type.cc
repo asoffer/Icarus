@@ -89,7 +89,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   return context().set_qual_type(node, qt);
 }
 
-bool PatternTypeVerifier::VerifyPatternType(ast::ArrayType const *node, type::Type t) {
+bool PatternTypeVerifier::VerifyPatternType(ast::ArrayType const *node,
+                                            type::Type t) {
   if (t != type::Type_) {
     diag().Consume(
         NonTypeArrayTypeMatch{.view = SourceViewFor(node), .type = t});

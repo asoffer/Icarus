@@ -71,7 +71,7 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
       } else if constexpr (type == base::meta<ir::JumpCmd::BlockJump>) {
         // Save the exit before we modify `*jump`.
         auto *exit          = block_mapping.find(j.after)->second;
-        size_t block_index = j.block.value();
+        size_t block_index  = j.block.value();
         auto *block_to_emit = &node->blocks()[block_index];
 
         auto *block_start = c.current().group->AppendBlock();
@@ -89,8 +89,7 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
             type::Type param_type = c.context().qual_types(&id)[0].type();
             ir::PartialResultBuffer buffer;
             buffer.append(r);
-            c.state().set_addr(&id,
-                               c.current().group->Alloca(param_type));
+            c.state().set_addr(&id, c.current().group->Alloca(param_type));
             c.EmitCopyAssign(type::Typed(c.state().addr(&id), param_type),
                              type::Typed(buffer[0], param_type));
           }
@@ -103,7 +102,7 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
           // TODO: From here we need to find the instantiation, which requires
           // knowing the bound arguments and types thereof.
 
-          //FindInstantiation
+          // FindInstantiation
           // gb.Instantiate();
           LOG("", "%s", gb.to_string());
           NOT_YET();
@@ -169,8 +168,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
     EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
                   node->arguments(), constant_arguments, argument_buffer);
 
-    ir::Inliner inliner(current().group->num_regs(),
-                        scope->num_args());
+    ir::Inliner inliner(current().group->num_regs(), scope->num_args());
 
     size_t j = 0;
     for (auto const &p : scope.type()->params()) {
@@ -178,8 +176,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
     }
 
     current().group->MergeAllocationsFrom(*scope, inliner);
-    auto block_mapping =
-        InsertUnadjustedBlocks(*current().group, *scope);
+    auto block_mapping = InsertUnadjustedBlocks(*current().group, *scope);
     AdjustInstructions(inliner, block_mapping);
 
     current_block() = start;

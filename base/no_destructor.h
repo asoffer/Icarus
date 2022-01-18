@@ -27,7 +27,7 @@ struct alignas(T) NoDestructor {
 };
 
 template <typename T>
-NoDestructor(T)->NoDestructor<T>;
+NoDestructor(T) -> NoDestructor<T>;
 
 }  // namespace base
 

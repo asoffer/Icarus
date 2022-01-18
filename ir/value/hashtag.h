@@ -27,7 +27,6 @@ inline std::ostream& operator<<(std::ostream& os, Hashtag h) {
   return os << BuiltinHashtagsByName[static_cast<uint8_t>(h)].first;
 }
 
-
 }  // namespace ir
 
 #endif  // ICARUS_IR_VALUE_HASHTAG_H

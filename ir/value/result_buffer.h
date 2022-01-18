@@ -125,7 +125,8 @@ struct CompleteResultRef {
     return {true};
   }
 
-  friend std::ostream& operator<<(std::ostream& os, CompleteResultRef const &ref) {
+  friend std::ostream &operator<<(std::ostream &os,
+                                  CompleteResultRef const &ref) {
     absl::Format(&os, "%s", ref);
     return os;
   }

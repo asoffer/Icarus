@@ -61,7 +61,8 @@ PotentialIds(CompilationDataReference data, ast::Identifier const &id) {
   for (auto const *decl_id :
        module::AllVisibleDeclsTowardsRoot(id.scope(), id.name())) {
     type::QualType qt;
-    if (auto const *decl_id_qt = data.context().maybe_qual_type(decl_id).data()) {
+    if (auto const *decl_id_qt =
+            data.context().maybe_qual_type(decl_id).data()) {
       qt = *decl_id_qt;
     } else {
       auto const *mod = &ModuleFor(decl_id)->as<CompiledModule>();
@@ -81,7 +82,6 @@ PotentialIds(CompilationDataReference data, ast::Identifier const &id) {
     }
     if (result) { result->emplace_back(decl_id, qt); }
   }
-
 
   // TODO: Fill out overloads based on adl modules
 

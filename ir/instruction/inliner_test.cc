@@ -31,19 +31,17 @@ TEST(Inliner, RegOr) {
 
 TEST(Inliner, Container) {
   std::vector<RegOr<double>> v = {
-      RegOr<double>(1.1),        RegOr<double>(2.2),
-      RegOr<double>(Reg(3)), RegOr<double>(4.4),
-      RegOr<double>(Reg(5)),
+      RegOr<double>(1.1), RegOr<double>(2.2),    RegOr<double>(Reg(3)),
+      RegOr<double>(4.4), RegOr<double>(Reg(5)),
   };
 
   Inliner inliner(4, 0);
   RegOr<int> r(3);
   base::Traverse(inliner, v);
 
-  EXPECT_THAT(v,
-              ElementsAre(RegOr<double>(1.1), RegOr<double>(2.2),
-                          RegOr<double>(Reg(7)), RegOr<double>(4.4),
-                          RegOr<double>(Reg(9))));
+  EXPECT_THAT(v, ElementsAre(RegOr<double>(1.1), RegOr<double>(2.2),
+                             RegOr<double>(Reg(7)), RegOr<double>(4.4),
+                             RegOr<double>(Reg(9))));
 }
 
 }  // namespace

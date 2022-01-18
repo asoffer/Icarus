@@ -14,7 +14,8 @@ using ::testing::UnorderedElementsAre;
 
 TEST(ShortFunctionLiteral, OneValidReturnType) {
   test::TestModule mod;
-  auto qts = mod.context().qual_types(mod.Append<ast::Expression>("() => 3 as i64"));
+  auto qts =
+      mod.context().qual_types(mod.Append<ast::Expression>("() => 3 as i64"));
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType::Constant(type::Func({}, {type::I64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -22,8 +23,8 @@ TEST(ShortFunctionLiteral, OneValidReturnType) {
 
 TEST(ShortFunctionLiteral, DISABLED_MultipleValidReturnTypes) {
   test::TestModule mod;
-  auto qts =
-      mod.context().qual_types(mod.Append<ast::Expression>("() => (3 as i64, true)"));
+  auto qts = mod.context().qual_types(
+      mod.Append<ast::Expression>("() => (3 as i64, true)"));
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
                        type::Func({}, {type::I64, type::Bool}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -31,8 +32,8 @@ TEST(ShortFunctionLiteral, DISABLED_MultipleValidReturnTypes) {
 
 TEST(ShortFunctionLiteral, OneParameterOneReturnType) {
   test::TestModule mod;
-  auto qts =
-      mod.context().qual_types(mod.Append<ast::Expression>("(b: bool) => 3 as i64"));
+  auto qts = mod.context().qual_types(
+      mod.Append<ast::Expression>("(b: bool) => 3 as i64"));
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool))},
@@ -42,8 +43,8 @@ TEST(ShortFunctionLiteral, OneParameterOneReturnType) {
 
 TEST(ShortFunctionLiteral, MultipleParametersOneReturnType) {
   test::TestModule mod;
-  auto qts = mod.context().qual_types(mod.Append<ast::Expression>(
-      R"((b: bool, n: i64) => 3 as i64)"));
+  auto qts = mod.context().qual_types(
+      mod.Append<ast::Expression>(R"((b: bool, n: i64) => 3 as i64)"));
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool)),

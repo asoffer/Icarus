@@ -18,8 +18,9 @@ using ::testing::UnorderedElementsAre;
 TEST(Copy, Success) {
   {
     test::TestModule mod;
-    auto const *expr = mod.Append<ast::UnaryOperator>("copy [1 as i64, 2 as i64, 3 as i64]");
-    auto qts         = mod.context().qual_types(expr);
+    auto const *expr =
+        mod.Append<ast::UnaryOperator>("copy [1 as i64, 2 as i64, 3 as i64]");
+    auto qts = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(
                          type::QualType::Constant(type::Arr(3, type::I64))));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -43,16 +44,16 @@ TEST(Init, Success) {
     test::TestModule mod;
     auto const *expr = mod.Append<ast::UnaryOperator>("init [1, 2, 3]");
     auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType::Constant(type::Arr(3, type::Integer))));
+    EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
+                         type::Arr(3, type::Integer))));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
-
   {
     test::TestModule mod;
-    auto const *expr = mod.Append<ast::UnaryOperator>("init [1 as i64, 2 as i64, 3 as i64]");
-    auto qts         = mod.context().qual_types(expr);
+    auto const *expr =
+        mod.Append<ast::UnaryOperator>("init [1 as i64, 2 as i64, 3 as i64]");
+    auto qts = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(
                          type::QualType::Constant(type::Arr(3, type::I64))));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -91,8 +92,9 @@ TEST(Copy, Uncopyable) {
 TEST(Move, Success) {
   {
     test::TestModule mod;
-    auto const *expr = mod.Append<ast::UnaryOperator>("move [1 as i64, 2 as i64, 3 as i64]");
-    auto qts         = mod.context().qual_types(expr);
+    auto const *expr =
+        mod.Append<ast::UnaryOperator>("move [1 as i64, 2 as i64, 3 as i64]");
+    auto qts = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(
                          type::QualType::Constant(type::Arr(3, type::I64))));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());

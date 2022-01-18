@@ -35,9 +35,7 @@ frontend::CanonicalFileName ResolveModulePath(
   absl::Cleanup c = [&] { errno = save_errno; };
 
   // Respect absolute paths.
-  if (absl::StartsWith(module_path.name(), "/")) {
-    return module_path;
-  }
+  if (absl::StartsWith(module_path.name(), "/")) { return module_path; }
   // Check for the module relative to the given lookup paths.
   for (std::string_view base_path : lookup_paths) {
     std::string path = absl::StrCat(base_path, "/", module_path.name());
@@ -79,7 +77,7 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
   }
 
   auto parsed_nodes = frontend::Parse(*maybe_file_src, *diagnostic_consumer_);
-  auto nodes = module.insert(parsed_nodes.begin(), parsed_nodes.end());
+  auto nodes        = module.insert(parsed_nodes.begin(), parsed_nodes.end());
 
   PersistentResources resources{
       .work                = work_set_,

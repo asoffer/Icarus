@@ -10,7 +10,8 @@
 
 namespace type {
 
-// Returns whether `from` is a type that can be reinterpreted in place into `to`.
+// Returns whether `from` is a type that can be reinterpreted in place into
+// `to`.
 bool CanCastInPlace(Type from, Type to);
 
 // Returns whether `from` is a type that can be cast implicitly to `to`.

@@ -102,7 +102,7 @@ bool CanCast(Type from, Type to) {
     }
   }
 
-  if constexpr (not IncludeExplicit) { 
+  if constexpr (not IncludeExplicit) {
     if (from == Integer and IsNumeric(to)) { return true; }
   }
 

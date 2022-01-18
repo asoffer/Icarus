@@ -166,7 +166,7 @@ struct StructDataInstruction
 // allows for more powerful metaprogramming.
 struct StructInstruction
     : base::Extend<StructInstruction>::With<base::BaseSerializeExtension> {
-      using Field = StructField;
+  using Field = StructField;
   friend void BaseTraverse(ir::Inliner &inliner, StructInstruction &s) {
     base::Traverse(inliner, s.constants);
   }

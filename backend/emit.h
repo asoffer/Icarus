@@ -1,8 +1,8 @@
 #ifndef ICARUS_BACKEND_EMIT_H
 #define ICARUS_BACKEND_EMIT_H
 
-#include <vector>
 #include <tuple>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"

@@ -15,7 +15,6 @@ struct Arguments {
     return buffer_[indices_[s]];
   }
 
-
   template <typename T>
   void pos_insert(T&& value) {
     indices_.pos_emplace(buffer_.num_entries());
@@ -31,9 +30,7 @@ struct Arguments {
   PartialResultBuffer& buffer() & { return buffer_; }
   PartialResultBuffer const& buffer() const& { return buffer_; }
 
-  void pos_set_in_place(size_t index) {
-    indices_.pos_emplace(index);
-  }
+  void pos_set_in_place(size_t index) { indices_.pos_emplace(index); }
 
   void named_set_in_place(std::string_view name, size_t index) {
     indices_.named_emplace(name, index);

@@ -99,7 +99,7 @@ TEST(Primitives, Containers) {
   ToUpper upper;
   std::string s = "abc";
   base::Traverse(upper, s);
-  EXPECT_EQ(s , "ABCx");
+  EXPECT_EQ(s, "ABCx");
   std::list<std::vector<std::string>> l;
   l.emplace_back() = {"abc", "def", "ghi"};
   l.emplace_back() = {"jkl", "mno"};

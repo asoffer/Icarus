@@ -16,7 +16,7 @@ struct LlvmBackendTraits {
   using function_type    = llvm::Function;
   using basic_block_type = llvm::BasicBlock;
   using value_type       = llvm::Value;
-  using module_type       = llvm::Module;
+  using module_type      = llvm::Module;
 };
 
 struct LlvmEmitter : Emitter<LlvmEmitter, LlvmBackendTraits> {

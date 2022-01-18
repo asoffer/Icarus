@@ -14,7 +14,7 @@ namespace base {
 
 template <typename S>
 concept Serializer = requires(S s) {
-  { (void)s.write_bytes(std::declval<absl::Span<std::byte const> >()) }
+  { (void)s.write_bytes(std::declval<absl::Span<std::byte const>>()) }
   ->std::same_as<void>;
 };
 
@@ -74,7 +74,7 @@ struct AssignableTypeImpl<
 template <typename T>
 struct AssignableTypeImpl<
     T, std::enable_if_t<not std::is_const_v<T> and not base::Assignable<T> and
-                        not::base::SatisfiesTupleProtocol<T> and
+                        not ::base::SatisfiesTupleProtocol<T> and
                         std::is_trivially_copyable_v<T>>> {
   using type = T;
 };

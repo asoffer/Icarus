@@ -61,7 +61,6 @@ struct CallableInstruction
   ir::Reg result;
 };
 
-
 }  // namespace interface
 
 #endif  // ICARUS_TYPE_INTERFACE_IR_H

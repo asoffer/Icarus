@@ -28,7 +28,7 @@ struct MatchSequence {
 
     auto stack_iter = tag_stack.rbegin();
     auto rule_iter  = matches_.rbegin();
-    auto end_iter = matches_.rbegin() + size();
+    auto end_iter   = matches_.rbegin() + size();
     while (rule_iter != end_iter) {
       if ((*rule_iter & *stack_iter) == 0) { return false; }
       ++rule_iter;

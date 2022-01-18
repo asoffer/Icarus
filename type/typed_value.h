@@ -63,8 +63,11 @@ struct Typed {
     return Typed<V, U>(value_, &type_->template as<U>());
   }
 
-  friend std::ostream& operator<<(std::ostream& os, Typed const& t)
-    requires(requires { { os << *t } -> std::same_as<std::ostream&>; }) {
+  friend std::ostream& operator<<(std::ostream& os,
+                                  Typed const& t) requires(requires {
+    { os << *t }
+    ->std::same_as<std::ostream&>;
+  }) {
     return os << *t << ": " << t.type();
   }
 
@@ -74,7 +77,7 @@ struct Typed {
 };
 
 template <typename V, typename T>
-Typed(V, T)->Typed<V, T>;
+Typed(V, T) -> Typed<V, T>;
 
 template <
     typename V, typename T,

@@ -44,7 +44,7 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
 
   push_current(&fn);
   absl::Cleanup cleanup = [&] { state().current.pop_back(); };
-  current_block() = fn.entry();
+  current_block()       = fn.entry();
 
   std::vector<std::string_view> names(node->enumerators().begin(),
                                       node->enumerators().end());

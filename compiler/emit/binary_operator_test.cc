@@ -106,7 +106,6 @@ TEST_P(BinaryOperatorTest, Assignment) {
       Optional(test_data.expected));
 }
 
-
 // Note: We test both with literals and with a unary-operator applied directly
 // to a function call. The former helps cover the constant-folding mechanisms
 // built in to the IrBuilder. The latter helps cover the common case for code
@@ -622,7 +621,6 @@ TEST(BinaryOperator, Overload) {
       c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
       Optional(test::ExpectedValue(int64_t{7})));
 }
-
 
 struct BufferPointerTestData {
   std::string expr;

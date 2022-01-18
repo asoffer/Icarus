@@ -15,9 +15,8 @@ INSTANTIATE_TEST_SUITE_P(
             .expected = type::Type(type::Func(
                 {core::AnonymousParam(type::QualType::NonConstant(type::I32))},
                 {type::Bool}))},
-        test::TestCase{
-            .expr     = R"(() -> bool)",
-            .expected = type::Type(type::Func({}, {type::Bool}))},
+        test::TestCase{.expr     = R"(() -> bool)",
+                       .expected = type::Type(type::Func({}, {type::Bool}))},
         test::TestCase{
             .expr     = R"(i32 -> ())",
             .expected = type::Type(type::Func(

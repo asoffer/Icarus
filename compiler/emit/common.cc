@@ -64,7 +64,7 @@ struct CalleeResult {
 CalleeResult EmitCallee(
     Compiler &c, ast::Expression const *callable,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
-  Context const &context_root  = c.context().root();
+  Context const &context_root = c.context().root();
   Context const &callable_root =
       ModuleFor(callable)->as<CompiledModule>().context();
   // TODO: This is fraught, because we still don't have access to
@@ -393,9 +393,8 @@ void EmitCast(GroupBlockReference &ref, type::Type from, type::Type to,
           to, [&]<typename To>() {
             ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
                        uint16_t, uint32_t, uint64_t, float, double>(
-                from, [&]<typename From>() {
-                  EmitCast<From, To>(ref, buffer);
-                });
+                from,
+                [&]<typename From>() { EmitCast<From, To>(ref, buffer); });
           });
     }
     return;

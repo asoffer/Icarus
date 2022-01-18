@@ -4,8 +4,8 @@
 #include <functional>
 #include <iostream>
 
-#include "base/extend.h"
 #include "absl/strings/str_format.h"
+#include "base/extend.h"
 
 namespace base {
 

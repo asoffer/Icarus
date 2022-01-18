@@ -23,7 +23,7 @@ struct InconsistentArrayType {
         quote);
   }
 
-  frontend::SourceBuffer const * buffer;
+  frontend::SourceBuffer const *buffer;
   std::vector<frontend::SourceRange> highlights;
 };
 
@@ -42,7 +42,8 @@ type::Type GuessIntendedArrayType(
 
 }  // namespace
 
-absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::ArrayLiteral const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
+    ast::ArrayLiteral const *node) {
   if (node->empty()) {
     return context().set_qual_type(node,
                                    type::QualType::Constant(type::EmptyArray));

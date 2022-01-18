@@ -87,8 +87,9 @@ TEST(UniversalPrint, Tuples) {
   EXPECT_EQ(UniversalPrintToString(std::tuple<>()), "()");
   EXPECT_EQ(UniversalPrintToString(std::tuple(false)), "(false)");
   EXPECT_EQ(UniversalPrintToString(std::tuple(3, 4)), "(3, 4)");
-  EXPECT_EQ(UniversalPrintToString(std::tuple(true, 3, std::pair(false, "hello"))),
-            "(true, 3, (false, hello))");
+  EXPECT_EQ(
+      UniversalPrintToString(std::tuple(true, 3, std::pair(false, "hello"))),
+      "(true, 3, (false, hello))");
 }
 
 TEST(UniversalPrint, Variants) {
@@ -116,8 +117,10 @@ TEST(UniversalPrint, Containers) {
   EXPECT_EQ(UniversalPrintToString(std::vector<int>{}), "[]");
   EXPECT_EQ(UniversalPrintToString(std::vector<int>{17}), "[17]");
 
-  EXPECT_EQ(UniversalPrintToString(std::vector<int>{1, 2, 3, 4}), "[1, 2, 3, 4]");
-  EXPECT_EQ(UniversalPrintToString(std::map<int, std::string>{{2, "hello"}, {5, "world"}}),
+  EXPECT_EQ(UniversalPrintToString(std::vector<int>{1, 2, 3, 4}),
+            "[1, 2, 3, 4]");
+  EXPECT_EQ(UniversalPrintToString(
+                std::map<int, std::string>{{2, "hello"}, {5, "world"}}),
             "[(2, hello), (5, world)]");
   EXPECT_EQ(UniversalPrintToString(std::set<int>{8, 4, 6, 2}), "[2, 4, 6, 8]");
 }

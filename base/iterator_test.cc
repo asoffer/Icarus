@@ -1,6 +1,7 @@
 #include "base/iterator.h"
 
 #include <vector>
+
 #include "gtest/gtest.h"
 
 namespace base {

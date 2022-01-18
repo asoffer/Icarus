@@ -27,8 +27,8 @@ void EmitIrForStatements(Compiler &compiler, ast::Scope const *scope,
                          base::PtrSpan<ast::Node const> stmts);
 
 void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
-                            ast::Expression const &expr,
-                            ir::PartialResultBuffer &buffer);
+                                 ast::Expression const &expr,
+                                 ir::PartialResultBuffer &buffer);
 
 // Note: The `CompleteResultRef`s passed in `constant_arguments` must refer to a
 // buffer that outlives the call to this function.

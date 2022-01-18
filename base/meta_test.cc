@@ -1,12 +1,12 @@
 #include "base/meta.h"
 
+#include <array>
 #include <type_traits>
 #include <vector>
-#include <array>
 
 #include "absl/types/span.h"
-#include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 namespace base {
 namespace {
@@ -86,7 +86,8 @@ struct Size {
 
 TEST(Meta, ArrayTransform) {
   EXPECT_THAT((array_transform<Size, type_list<>>), ElementsAre());
-  EXPECT_THAT((array_transform<Size, type_list<int>>), ElementsAre(sizeof(int)));
+  EXPECT_THAT((array_transform<Size, type_list<int>>),
+              ElementsAre(sizeof(int)));
   EXPECT_THAT((array_transform<Size, type_list<int, bool>>),
               ElementsAre(sizeof(int), sizeof(bool)));
 }

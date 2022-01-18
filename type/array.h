@@ -1,5 +1,5 @@
 #ifndef ICARUS_TYPE_ARRAY_H
-#define ICARUS_TYPE_ARRAY_H 
+#define ICARUS_TYPE_ARRAY_H
 
 #include "absl/container/node_hash_set.h"
 #include "base/extend.h"

@@ -28,7 +28,8 @@ struct CastToNonConstantType {
 
 }  // namespace
 
-absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Cast const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
+    ast::Cast const *node) {
   auto expr_qt = VerifyType(node->expr())[0];
   auto type_qt = VerifyType(node->type())[0];
   if (not expr_qt.ok() or not type_qt.ok()) {
@@ -38,7 +39,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Cast const *node)
   if (type_qt.type() != type::Type_) {
     diag().Consume(
         NotAType{.view = SourceViewFor(node), .type = type_qt.type()});
-    return context().set_qual_type(node,type::QualType::Error());
+    return context().set_qual_type(node, type::QualType::Error());
   }
   if (not type_qt.constant()) {
     diag().Consume(CastToNonConstantType{.view = SourceViewFor(node)});

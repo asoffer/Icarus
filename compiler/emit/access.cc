@@ -21,10 +21,11 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
     });
     return true;
   } else if (auto const *flags_type = t.if_as<type::Flags>()) {
-    c.current_block()->Append(ir::StoreInstruction<type::Flags::underlying_type>{
-        .value    = *flags_type->EmitLiteral(node->member_name()),
-        .location = to,
-    });
+    c.current_block()->Append(
+        ir::StoreInstruction<type::Flags::underlying_type>{
+            .value    = *flags_type->EmitLiteral(node->member_name()),
+            .location = to,
+        });
     return true;
   } else if (auto const *s = t.if_as<type::Slice>()) {
     if (node->member_name() == "length") {
@@ -134,13 +135,13 @@ void Compiler::EmitToBuffer(ast::Access const *node,
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       type::Type t =
           struct_type.fields()[struct_type.index(node->member_name())].type;
-      out.append(
-          PtrFix(current(), current_block()->Append(ir::StructIndexInstruction{
-                               .addr  = *temp,
-                               .index = struct_type.index(node->member_name()),
-                               .struct_type = &struct_type,
-                               .result = current().group->Reserve()}),
-                           t));
+      out.append(PtrFix(current(),
+                        current_block()->Append(ir::StructIndexInstruction{
+                            .addr  = *temp,
+                            .index = struct_type.index(node->member_name()),
+                            .struct_type = &struct_type,
+                            .result      = current().group->Reserve()}),
+                        t));
     }
   }
 }
@@ -227,27 +228,27 @@ void Compiler::EmitMoveInit(
     EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), flags_type), buffer);
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
-     ir::PartialResultBuffer buffer;
-     buffer.append(current_block()->Append(ir::LoadInstruction{
-         .type   = type::Slice::LengthType(),
-         .addr   = current_block()->Append(type::SliceLengthInstruction{
-             .slice  = EmitAs<ir::addr_t>(node->operand()),
-             .result = current().group->Reserve(),
-         }),
-         .result = current().group->Reserve(),
-     }));
-     EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+      ir::PartialResultBuffer buffer;
+      buffer.append(current_block()->Append(ir::LoadInstruction{
+          .type   = type::Slice::LengthType(),
+          .addr   = current_block()->Append(type::SliceLengthInstruction{
+              .slice  = EmitAs<ir::addr_t>(node->operand()),
+              .result = current().group->Reserve(),
+          }),
+          .result = current().group->Reserve(),
+      }));
+      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else if (node->member_name() == "data") {
-     ir::PartialResultBuffer buffer;
-     buffer.append(current_block()->Append(ir::LoadInstruction{
-         .type   = to[0].type(),
-         .addr   = current_block()->Append(type::SliceDataInstruction{
-             .slice  = EmitAs<ir::addr_t>(node->operand()),
-             .result = current().group->Reserve(),
-         }),
-         .result = current().group->Reserve(),
-     }));
-     EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+      ir::PartialResultBuffer buffer;
+      buffer.append(current_block()->Append(ir::LoadInstruction{
+          .type   = to[0].type(),
+          .addr   = current_block()->Append(type::SliceDataInstruction{
+              .slice  = EmitAs<ir::addr_t>(node->operand()),
+              .result = current().group->Reserve(),
+          }),
+          .result = current().group->Reserve(),
+      }));
+      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else {
       UNREACHABLE(node->member_name());
     }
@@ -265,12 +266,12 @@ void Compiler::EmitMoveInit(
 
       type::Type t =
           struct_type.fields()[struct_type.index(node->member_name())].type;
-      buffer.append(
-          PtrFix(current(), current_block()->Append(ir::StructIndexInstruction{
+      buffer.append(PtrFix(current(),
+                           current_block()->Append(ir::StructIndexInstruction{
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
-                               .result = current().group->Reserve()}),
+                               .result      = current().group->Reserve()}),
                            t));
       EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     }
@@ -348,12 +349,12 @@ void Compiler::EmitCopyInit(
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       type::Type t =
           struct_type.fields()[struct_type.index(node->member_name())].type;
-      buffer.append(
-          PtrFix(current(), current_block()->Append(ir::StructIndexInstruction{
+      buffer.append(PtrFix(current(),
+                           current_block()->Append(ir::StructIndexInstruction{
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
-                               .result = current().group->Reserve()}),
+                               .result      = current().group->Reserve()}),
                            t));
       EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     }
@@ -398,12 +399,12 @@ void Compiler::EmitMoveAssign(
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       type::Type t =
           struct_type.fields()[struct_type.index(node->member_name())].type;
-      buffer.append(
-          PtrFix(current(), current_block()->Append(ir::StructIndexInstruction{
+      buffer.append(PtrFix(current(),
+                           current_block()->Append(ir::StructIndexInstruction{
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
-                               .result = current().group->Reserve()}),
+                               .result      = current().group->Reserve()}),
                            t));
       EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     }
@@ -446,12 +447,12 @@ void Compiler::EmitCopyAssign(
       auto const &struct_type = operand_qt.type().as<type::Struct>();
       type::Type t =
           struct_type.fields()[struct_type.index(node->member_name())].type;
-      buffer.append(
-          PtrFix(current(), current_block()->Append(ir::StructIndexInstruction{
+      buffer.append(PtrFix(current(),
+                           current_block()->Append(ir::StructIndexInstruction{
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
-                               .result = current().group->Reserve()}),
+                               .result      = current().group->Reserve()}),
                            t));
     }
     EmitMoveAssign(to[0], type::Typed(buffer[0], t));

@@ -345,12 +345,12 @@ TEST(BufferPointerArithmetic, Failure) {
     p = 1 - p
     q - p
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(
-                  Pair("type-error", "no-matching-binary-operator"),
-                  Pair("type-error", "no-matching-binary-operator"),
-                  Pair("type-error", "no-matching-binary-operator"),
-                  Pair("type-error", "no-matching-binary-operator")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator"),
+                           Pair("type-error", "no-matching-binary-operator"),
+                           Pair("type-error", "no-matching-binary-operator"),
+                           Pair("type-error", "no-matching-binary-operator")));
 }
 
 TEST(Unexpanded, Failure) {

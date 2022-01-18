@@ -44,7 +44,8 @@ struct Primitive : LegacyType {
   }
 
   base::MetaValue meta() const {
-    return Apply([&]<typename T>()->base::MetaValue { return base::meta<T>; });
+    return Apply(
+        [&]<typename T>() -> base::MetaValue { return base::meta<T>; });
   }
 
   Completeness completeness() const override { return Completeness::Complete; }

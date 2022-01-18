@@ -18,4 +18,3 @@ frontend::SourceView SourceViewFor(ast::Node const *node) {
 }
 
 }  // namespace compiler
-

@@ -10,7 +10,7 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
                          size_t index,
                          type::Typed<ir::PartialResultBuffer> const &lhs,
                          type::Typed<ir::PartialResultBuffer> const &rhs) {
-  auto op    = node->ops()[index];
+  auto op = node->ops()[index];
   if (lhs.type().is<type::Array>() and rhs.type().is<type::Array>()) {
     NOT_YET();
   } else if (lhs.type().is<type::Struct>() or rhs.type().is<type::Struct>()) {

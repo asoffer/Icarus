@@ -124,7 +124,7 @@ TEST(CrossModule, TypeForDiagnostic) {
   mod ::= import "imported2"
   )");
 
-  auto const *module_access   = mod.Append<ast::Expression>(R"(mod.S.{})");
+  auto const *module_access = mod.Append<ast::Expression>(R"(mod.S.{})");
   EXPECT_EQ(TypeForDiagnostic(module_access, mod.context()), "mod.S");
 
   auto const *embedded_access = mod.Append<ast::Expression>(R"(S.{})");

@@ -6,8 +6,8 @@
 #include <type_traits>
 #include <vector>
 
-#include "type/type.h"
 #include "absl/types/span.h"
+#include "type/type.h"
 
 namespace type {
 

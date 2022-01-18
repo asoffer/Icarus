@@ -1,4 +1,5 @@
 #include "diagnostic/message.h"
+
 #include "absl/strings/str_cat.h"
 
 namespace diagnostic::internal_text {

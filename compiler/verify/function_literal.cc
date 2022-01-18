@@ -199,10 +199,11 @@ type::QualType VerifyConcrete(CompilationDataReference data,
       }
     }
 
-    LOG("FunctionLiteral", "Request work fn-lit: %p, %p", node, &data.context());
+    LOG("FunctionLiteral", "Request work fn-lit: %p, %p", node,
+        &data.context());
     data.Enqueue({.kind    = WorkItem::Kind::VerifyFunctionBody,
-                .node    = node,
-                .context = &data.context()});
+                  .node    = node,
+                  .context = &data.context()});
     return type::QualType::Constant(
         type::Func(std::move(params), std::move(output_type_vec)));
   } else {

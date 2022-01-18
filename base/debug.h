@@ -13,8 +13,8 @@
 
 #define ASSERT(expr)                                                           \
   do {                                                                         \
-    if (not::debug::Asserter{}(::debug::internal_matcher::ExprStealer{#expr}   \
-                               << expr)) {                                     \
+    if (not ::debug::Asserter{}(::debug::internal_matcher::ExprStealer{#expr}  \
+                                << expr)) {                                    \
       std::abort();                                                            \
     }                                                                          \
   } while (false)
@@ -89,7 +89,7 @@ ExprMatchResult<T, U> operator>=(StolenExpr<T> expr, U const& rhs) {
 struct Asserter {
   template <typename L, typename R>
   bool operator()(
-      ::debug::internal_matcher::ExprMatchResult<L, R> const &result,
+      ::debug::internal_matcher::ExprMatchResult<L, R> const& result,
       std::experimental::source_location src_loc =
           std::experimental::source_location::current()) const {
     if (not result.matched) {
@@ -113,13 +113,13 @@ struct Asserter {
 // the log without the intermediate string type.
 
 #define ASSERT_NOT_NULL(expr)                                                  \
-  ([](auto &&ptr,                                                              \
+  ([](auto&& ptr,                                                              \
       std::experimental::source_location src_loc) -> decltype(auto) {          \
     if (ptr == nullptr) {                                                      \
       LOG("", "%s is unexpectedly null.", #expr);                              \
       ::std::abort();                                                          \
     }                                                                          \
-    return static_cast<std::remove_reference_t<decltype(ptr)> &&>(ptr);        \
+    return static_cast<std::remove_reference_t<decltype(ptr)>&&>(ptr);         \
   })(expr, std::experimental::source_location::current())
 
 #define UNREACHABLE(...)                                                       \

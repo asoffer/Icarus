@@ -488,8 +488,8 @@ struct Compiler
     if (from == type::Integer and type::IsIntegral(to.type())) {
       to.type().as<type::Primitive>().Apply([&]<typename T>() {
         if constexpr (std::is_integral_v<T>) {
-          ir::RegOr<T> result = current_block()->Append(
-              ir::CastInstruction<T(ir::Integer)>{
+          ir::RegOr<T> result =
+              current_block()->Append(ir::CastInstruction<T(ir::Integer)>{
                   .value  = buffer.back().get<ir::Integer>(),
                   .result = current().group->Reserve(),
               });

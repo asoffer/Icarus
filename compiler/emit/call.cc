@@ -91,10 +91,10 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       auto slice = name_buffer->get<ir::Slice>(0);
 
       std::string name(slice);
-      auto result = c.current_block()->Append(ir::LoadSymbolInstruction{
-          .name   = std::move(name),
-          .type   = *maybe_foreign_type,
-          .result = c.current().group->Reserve()});
+      auto result = c.current_block()->Append(
+          ir::LoadSymbolInstruction{.name   = std::move(name),
+                                    .type   = *maybe_foreign_type,
+                                    .result = c.current().group->Reserve()});
       if (maybe_foreign_type->is<type::Pointer>() or
           maybe_foreign_type->is<type::Function>()) {
         out.append(result);
@@ -105,9 +105,9 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
     } break;
 
     case ir::BuiltinFn::Which::Opaque:
-      out.append(c.current_block()->Append(type::OpaqueTypeInstruction{
-          .mod    = c.resources().module,
-          .result = c.current().group->Reserve()}));
+      out.append(c.current_block()->Append(
+          type::OpaqueTypeInstruction{.mod    = c.resources().module,
+                                      .result = c.current().group->Reserve()}));
       return;
 
     case ir::BuiltinFn::Which::Bytes: {

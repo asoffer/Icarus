@@ -58,7 +58,8 @@ void TupleLikeApply(std::index_sequence<Ns...>, F&& f, T&& t) {
 }  // namespace internal_traverse
 
 template <typename T, typename Tr>
-concept TraversableBy = ::base::internal_traverse::TraversableTrait<Tr, T>::value;
+concept TraversableBy =
+    ::base::internal_traverse::TraversableTrait<Tr, T>::value;
 
 template <typename Tr>
 void Traverse(Tr& t, TraversableBy<Tr> auto&... values);
@@ -72,9 +73,9 @@ void TraverseOne(Tr& t, T& value) {
   } else if constexpr (requires { BaseTraverse(t, value); }) {
     BaseTraverse(t, value);
   } else if constexpr (::base::SatisfiesTupleProtocol<T>) {
-    TupleLikeApply(std::make_index_sequence<std::tuple_size<T>::value>{},
-                   [&](auto&... values) { ::base::Traverse(t, values...); },
-                   value);
+    TupleLikeApply(
+        std::make_index_sequence<std::tuple_size<T>::value>{},
+        [&](auto&... values) { ::base::Traverse(t, values...); }, value);
   } else if constexpr (requires {
                          typename T::value_type;
                          ++value.begin() == value.end();

@@ -14,8 +14,8 @@ struct TotalOrderExtension {
   }
 
   friend bool operator>(T const &lhs, T const &rhs) { return rhs < lhs; }
-  friend bool operator<=(T const &lhs, T const &rhs) { return not (rhs < lhs); }
-  friend bool operator>=(T const &lhs, T const &rhs) { return not (rhs < lhs); }
+  friend bool operator<=(T const &lhs, T const &rhs) { return not(rhs < lhs); }
+  friend bool operator>=(T const &lhs, T const &rhs) { return not(rhs < lhs); }
 };
 
 }  // namespace base

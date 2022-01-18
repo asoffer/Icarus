@@ -409,7 +409,6 @@ TEST(BindingDeclaration, Success) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-
 // TODO check shadowing on generics once you have interfaces implemented.
 // TODO Special functions (copy, move, etc)
 

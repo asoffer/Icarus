@@ -1,7 +1,7 @@
 #include "base/serialize.h"
 
-#include <type_traits>
 #include <memory>
+#include <type_traits>
 
 #include "absl/container/flat_hash_map.h"
 #include "gtest/gtest.h"

@@ -20,8 +20,7 @@ struct Declaration;
 // TODO: Does it make sense for this to be an expression?
 struct Declaration_Id : Expression {
   explicit Declaration_Id(std::string name, frontend::SourceRange const &range)
-      : Expression(IndexOf<Declaration_Id>(), range),
-        name_(std::move(name)) {}
+      : Expression(IndexOf<Declaration_Id>(), range), name_(std::move(name)) {}
 
   std::string_view name() const { return name_; }
   ast::Declaration const &declaration() const {

@@ -24,8 +24,8 @@ TEST(ArrayLiteral, OneElement) {
   {
     auto const *expr = mod.Append<ast::Expression>(R"([0])");
     auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType::Constant(type::Arr(1, type::Integer))));
+    EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
+                         type::Arr(1, type::Integer))));
   }
   {
     auto const *expr = mod.Append<ast::Expression>(R"([0 as i64])");

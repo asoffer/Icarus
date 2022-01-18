@@ -1,8 +1,8 @@
 #ifndef ICARUS_BASE_PTR_UNION_H
 #define ICARUS_BASE_PTR_UNION_H
 
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 #include <type_traits>
 #include <utility>
 

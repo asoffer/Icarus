@@ -65,9 +65,9 @@ struct unaligned_ref<T const> {
 };
 
 template <typename T>
-unaligned_ref(T const &)->unaligned_ref<T const>;
+unaligned_ref(T const &) -> unaligned_ref<T const>;
 template <typename T>
-unaligned_ref(T &)->unaligned_ref<T>;
+unaligned_ref(T &) -> unaligned_ref<T>;
 
 }  // namespace base
 

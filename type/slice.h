@@ -107,8 +107,7 @@ struct SliceDataInstruction
     : base::Extend<SliceDataInstruction>::With<base::BaseSerializeExtension,
                                                base::BaseTraverseExtension,
                                                ir::DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat =
-      "%2$s = slice-data %1$s";
+  static constexpr std::string_view kDebugFormat = "%2$s = slice-data %1$s";
 
   ir::addr_t Resolve() const { return slice.value(); }
 

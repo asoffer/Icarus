@@ -306,7 +306,7 @@ void YieldStmt::Initialize(Initializer& initializer) {
     covers_binding_ |= arg.expr().covers_binding();
     is_dependent_ |= arg.expr().is_dependent();
   }
-  if (auto const *l = label()) {
+  if (auto const* l = label()) {
     for (auto iter = initializer.scope_nodes.rbegin();
          iter != initializer.scope_nodes.rend(); ++iter) {
       auto* scope_node = *iter;
@@ -326,7 +326,7 @@ void ScopeLiteral::Initialize(Initializer& initializer) {
   body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   context_decl_->Initialize(initializer);
-  absl::Cleanup c   = [&] { initializer.scope = scope_; };
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
   for (auto& param : params_) { param.value->Initialize(initializer); }
   InitializeAll(stmts_, initializer, &covers_binding_, &is_dependent_);
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
@@ -410,7 +410,7 @@ void UnaryOperator::Initialize(Initializer& initializer) {
 }
 
 void IfStmt::Initialize(Initializer& initializer) {
-  scope_ = initializer.scope;
+  scope_          = initializer.scope;
   absl::Cleanup c = [&] { initializer.scope = scope_; };
   condition_->Initialize(initializer);
   covers_binding_ = condition_->covers_binding();

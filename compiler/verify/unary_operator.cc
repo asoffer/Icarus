@@ -199,8 +199,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
              type::Completeness::Complete);
       if (not operand_type.get()->IsCopyable()) {
         diag().Consume(UncopyableType{
-            .from  = operand_type,
-            .view  = SourceViewFor(node),
+            .from = operand_type,
+            .view = SourceViewFor(node),
         });
       }
       qt = type::QualType(operand_type,
@@ -224,8 +224,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
              type::Completeness::Complete);
       if (not operand_type.get()->IsMovable()) {
         diag().Consume(ImmovableType{
-            .from  = operand_type,
-            .view  = SourceViewFor(node),
+            .from = operand_type,
+            .view = SourceViewFor(node),
         });
       }
       qt = type::QualType(operand_type,
@@ -237,8 +237,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                             operand_qt.quals() & ~type::Quals::Buf());
       } else {
         diag().Consume(NotAType{
-            .view  = SourceViewFor(node->operand()),
-            .type  = operand_type,
+            .view = SourceViewFor(node->operand()),
+            .type = operand_type,
         });
         qt = type::QualType::Error();
       }
@@ -253,8 +253,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         qt = type::QualType(ptr_type->pointee(), type::Quals::Ref());
       } else {
         diag().Consume(DereferencingNonPointer{
-            .type  = operand_type,
-            .view  = SourceViewFor(node),
+            .type = operand_type,
+            .view = SourceViewFor(node),
         });
         qt = type::QualType::Error();
       }
@@ -277,8 +277,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                             operand_qt.quals() & ~type::Quals::Buf());
       } else {
         diag().Consume(NotAType{
-            .view  = SourceViewFor(node->operand()),
-            .type  = operand_type,
+            .view = SourceViewFor(node->operand()),
+            .type = operand_type,
         });
         qt = type::QualType::Error();
       }
@@ -289,8 +289,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                             operand_qt.quals() & type::Quals::Const());
       } else if (type::IsUnsignedNumeric(operand_type)) {
         diag().Consume(NegatingUnsignedInteger{
-            .type  = operand_type,
-            .view  = SourceViewFor(node),
+            .type = operand_type,
+            .view = SourceViewFor(node),
         });
         qt = type::QualType::Error();
       } else if (operand_type.is<type::Struct>()) {
@@ -301,8 +301,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                                                operand_qt.type()));
         if (not qt.ok()) {
           diag().Consume(InvalidUnaryOperatorOverload{
-              .op    = "-",
-              .view  = SourceViewFor(node),
+              .op   = "-",
+              .view = SourceViewFor(node),
           });
         }
       } else {
@@ -336,9 +336,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         }
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
-            .op    = "not",
-            .type  = TypeForDiagnostic(node->operand(), context()),
-            .view  = SourceViewFor(node),
+            .op   = "not",
+            .type = TypeForDiagnostic(node->operand(), context()),
+            .view = SourceViewFor(node),
         });
         qt = type::QualType::Error();
       }
@@ -367,7 +367,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   return context().set_qual_type(node, qt);
 }
 
-bool PatternTypeVerifier::VerifyPatternType(ast::UnaryOperator const *node, type::Type t) {
+bool PatternTypeVerifier::VerifyPatternType(ast::UnaryOperator const *node,
+                                            type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Not:

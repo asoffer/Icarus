@@ -160,7 +160,8 @@ type::QualType VerifyBufferPointerIndex(CompilationDataReference data,
 
 }  // namespace
 
-absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::Index const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
+    ast::Index const *node) {
   auto lhs_qt   = VerifyType(node->lhs())[0];
   auto index_qt = VerifyType(node->rhs())[0];
 

@@ -176,7 +176,6 @@ struct Context {
   absl::Span<type::QualType const> set_qual_type(ast::Expression const *expr,
                                                  type::QualType const qts);
 
-
   void ForEachCompiledFn(
       std::invocable<ir::CompiledFn const *> auto &&f) const {
     for (auto const &compiled_fn : ir_module_.functions()) { f(&compiled_fn); }
@@ -318,7 +317,7 @@ struct Context {
   bool TryLoadConstant(ast::Declaration::Id const *id,
                        ir::PartialResultBuffer &out) const;
 
-  CallMetadata const & CallMetadata(ast::Expression const * expr) const {
+  CallMetadata const &CallMetadata(ast::Expression const *expr) const {
     auto iter = call_metadata_.find(expr);
     if (iter != call_metadata_.end()) { return iter->second; }
     return ASSERT_NOT_NULL(parent())->CallMetadata(expr);

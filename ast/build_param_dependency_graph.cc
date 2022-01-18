@@ -150,7 +150,9 @@ struct ParamDependencyGraphBuilder {
   void operator()(DesignatedInitializer const *node,
                   core::DependencyNode<Declaration const *> d) {
     (*this)(node->type(), d);
-    for (auto const *assignment : node->assignments()) { (*this)(assignment, d); }
+    for (auto const *assignment : node->assignments()) {
+      (*this)(assignment, d);
+    }
   }
 
   void operator()(EnumLiteral const *node,

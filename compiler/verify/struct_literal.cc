@@ -38,7 +38,8 @@ bool BodyVerifier::VerifyBody(ast::StructLiteral const *node) {
   return not error;
 }
 
-absl::Span<type::QualType const> TypeVerifier::VerifyType(ast::StructLiteral const *node) {
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
+    ast::StructLiteral const *node) {
   LOG("StructLiteral", "Verify type %p %s", node, node->DebugString());
   Enqueue({.kind    = WorkItem::Kind::VerifyStructBody,
            .node    = node,

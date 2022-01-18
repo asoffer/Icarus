@@ -142,7 +142,7 @@ struct SourceBuffer {
     auto [start_chunk, start_offset] = line_start_[line_num - 1];
     auto [end_chunk, end_offset]     = line_start_[line_num];
     ASSERT(start_chunk < chunks_.size());
-    std::string const& line = chunks_[start_chunk];
+    std::string const &line = chunks_[start_chunk];
     ASSERT(start_offset < line.size());
     if (start_chunk == end_chunk) {
       return std::string_view(line.data() + start_offset,
@@ -162,7 +162,8 @@ struct SourceBuffer {
   // Returns the line number and offset of the source location into this buffer.
   std::pair<LineNum, Offset> line_and_offset(SourceLoc loc) const;
 
-  // Returns the source location representing the start of the given line number.
+  // Returns the source location representing the start of the given line
+  // number.
   SourceLoc location(LineNum line_num) const;
 
   // Returns a string_view of the source code in this buffer in the given range.
@@ -195,7 +196,8 @@ struct SourceBuffer {
     return std::make_pair(SourceRange(start_loc, loc), result);
   }
 
-  // Returns a SourceLoc referring to one character passed the end of the source buffer.
+  // Returns a SourceLoc referring to one character passed the end of the source
+  // buffer.
   SourceLoc end() const { return line_start_.back(); }
 
  private:

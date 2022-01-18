@@ -68,7 +68,7 @@ inline std::ostream &operator<<(std::ostream &os, untyped_buffer_view view) {
 
   size_t num_left = view.size_;
   while (num_left != 0) {
-    size_t row_width = std::min(size_t{8}, num_left);
+    size_t row_width           = std::min(size_t{8}, num_left);
     std::string_view separator = "";
     for (size_t i = 0; i < row_width; ++i) {
       uint8_t num = *reinterpret_cast<uint8_t const *>(

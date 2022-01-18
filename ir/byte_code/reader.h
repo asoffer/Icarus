@@ -1,7 +1,6 @@
 #ifndef ICARUS_IR_BYTE_CODE_READER_H
 #define ICARUS_IR_BYTE_CODE_READER_H
 
-
 #include <cstddef>
 
 #include "absl/types/span.h"

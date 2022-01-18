@@ -84,7 +84,6 @@ struct Text {
   char const* c_str() const { return message_.c_str(); }
 
  private:
-
   std::string message_;
 };
 

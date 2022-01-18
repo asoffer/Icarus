@@ -114,7 +114,6 @@ struct CompilationDataReference {
     return result->get<T>(0);
   }
 
-
   CompilationData const &data() const { return data_; }
 
  private:

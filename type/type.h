@@ -24,7 +24,6 @@ constexpr ssize_t IndexOf() {
   return base::Index<T>(AllTypeTypes{});
 }
 
-
 // `Completeness` is an enum that describes the status of a partially
 // cosntructed type. While this is primarily of interest for user-defined
 // structs, it is also relevant for compound types (e.g., arrays, tuples,
@@ -79,7 +78,9 @@ struct LegacyType : base::Visitable<LegacyType, AllTypeTypes>,
   // considered small too. Similarly with simple variants and tuples.
   virtual bool is_big() const { return false; }
 
-  virtual size_t HashValue(ir::CompleteResultRef const &) const { UNREACHABLE(); }
+  virtual size_t HashValue(ir::CompleteResultRef const &) const {
+    UNREACHABLE();
+  }
   virtual bool EqualsValue(ir::CompleteResultRef const &,
                            ir::CompleteResultRef const &) const {
     UNREACHABLE();
@@ -137,7 +138,7 @@ struct TypeVTable {
   core::Bytes (*bytes)(void const *, core::Arch const &) =
       [](void const *, core::Arch const &) { return core::Bytes{}; };
   core::Alignment (*alignment)(void const *, core::Arch const &) =
-      [](void const *, core::Arch const &) { return  core::Alignment{}; };
+      [](void const *, core::Arch const &) { return core::Alignment{}; };
   std::string (*to_string)(void const *) = [](void const *) -> std::string {
     return "invalid";
   };
@@ -163,52 +164,51 @@ struct TypeVTable {
 inline TypeVTable DefaultTypeVTable{};
 
 template <TypeFamily T>
-inline TypeVTable TypeVTableFor =
-    TypeVTable{
-        .bytes =
-            [](void const *self, core::Arch const &a) {
-              return reinterpret_cast<T const *>(self)->bytes(a);
-            },
-        .alignment =
-            [](void const *self, core::Arch const &a) {
-              return reinterpret_cast<T const *>(self)->alignment(a);
-            },
-        .to_string =
-            [](void const *self) {
-              return reinterpret_cast<T const *>(self)->to_string();
-            },
-        .is_big =
-            [](void const *self) {
-              return reinterpret_cast<T const *>(self)->is_big();
-            },
-        .Equals =
-            [](void const *lhs, void const *rhs) {
-              return *reinterpret_cast<T const *>(lhs) ==
-                     *reinterpret_cast<T const *>(rhs);
-            },
-        .Hash =
-            [](void const *lhs) {
-              return absl::Hash<T>{}(*reinterpret_cast<T const *>(lhs));
-            },
-        .Accept =
-            [](void const *self, VisitorBase &v, void *ret, void *args) {
-              reinterpret_cast<T const *>(self)->Accept(v, ret, args);
-            },
-        .EqualsValue =
-            [](void const *self, ir::CompleteResultRef const &lhs,
-               ir::CompleteResultRef const &rhs) {
-              return reinterpret_cast<T const *>(self)->EqualsValue(lhs, rhs);
-            },
-        .HashValue =
-            [](void const *self, ir::CompleteResultRef const &value) {
-              return reinterpret_cast<T const *>(self)->HashValue(value);
-            },
-        .ShowValue =
-            [](void const *self, std::ostream &os,
-               ir::CompleteResultRef const &value) {
-              reinterpret_cast<T const *>(self)->ShowValue(os, value);
-            },
-    };
+inline TypeVTable TypeVTableFor = TypeVTable{
+    .bytes =
+        [](void const *self, core::Arch const &a) {
+          return reinterpret_cast<T const *>(self)->bytes(a);
+        },
+    .alignment =
+        [](void const *self, core::Arch const &a) {
+          return reinterpret_cast<T const *>(self)->alignment(a);
+        },
+    .to_string =
+        [](void const *self) {
+          return reinterpret_cast<T const *>(self)->to_string();
+        },
+    .is_big =
+        [](void const *self) {
+          return reinterpret_cast<T const *>(self)->is_big();
+        },
+    .Equals =
+        [](void const *lhs, void const *rhs) {
+          return *reinterpret_cast<T const *>(lhs) ==
+                 *reinterpret_cast<T const *>(rhs);
+        },
+    .Hash =
+        [](void const *lhs) {
+          return absl::Hash<T>{}(*reinterpret_cast<T const *>(lhs));
+        },
+    .Accept =
+        [](void const *self, VisitorBase &v, void *ret, void *args) {
+          reinterpret_cast<T const *>(self)->Accept(v, ret, args);
+        },
+    .EqualsValue =
+        [](void const *self, ir::CompleteResultRef const &lhs,
+           ir::CompleteResultRef const &rhs) {
+          return reinterpret_cast<T const *>(self)->EqualsValue(lhs, rhs);
+        },
+    .HashValue =
+        [](void const *self, ir::CompleteResultRef const &value) {
+          return reinterpret_cast<T const *>(self)->HashValue(value);
+        },
+    .ShowValue =
+        [](void const *self, std::ostream &os,
+           ir::CompleteResultRef const &value) {
+          reinterpret_cast<T const *>(self)->ShowValue(os, value);
+        },
+};
 
 struct LegacyTypeWrapper {
   LegacyTypeWrapper(LegacyType const *t) : t_(t) {}

@@ -13,8 +13,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   type::Type match_type;
   if (node->is_binary()) {
     auto expr_qts = VerifyType(&node->expr());
-    result = context().set_qual_types(node, expr_qts);
-    match_type = expr_qts[0].type();
+    result        = context().set_qual_types(node, expr_qts);
+    match_type    = expr_qts[0].type();
   } else {
     result =
         context().set_qual_type(node, type::QualType::Constant(type::Type_));

@@ -44,8 +44,7 @@ TEST(BuiltinReserveMemory, WrongType) {
 
 TEST(BuiltinCompilationError, CompilationErrorError) {
   test::TestModule mod;
-  auto const *call =
-      mod.Append<ast::Call>(R"(compilation_error(0, "hello"))");
+  auto const *call = mod.Append<ast::Call>(R"(compilation_error(0, "hello"))");
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }

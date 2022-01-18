@@ -40,7 +40,7 @@ struct Global<T const> {
 };
 
 template <typename T>
-Global(T)->Global<T const>;
+Global(T) -> Global<T const>;
 
 }  // namespace base
 

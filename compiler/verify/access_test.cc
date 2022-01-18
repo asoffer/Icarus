@@ -208,7 +208,6 @@ TEST(Access, IntoModuleWithError) {
               UnorderedElementsAre(Pair("type-error", "invalid-cast")));
 }
 
-
 TEST(Access, Pattern) {
   test::TestModule mod;
 
@@ -223,7 +222,6 @@ TEST(Access, Pattern) {
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("pattern-error", "deducing-access")));
 }
-
 
 // TODO: Field not exported from another module.
 // TODO: Non-constant module

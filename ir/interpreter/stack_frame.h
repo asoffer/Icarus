@@ -15,8 +15,7 @@
 namespace interpreter {
 
 // Represents a a collection of registers available within a given stack frame.
-struct RegisterArray {
-};
+struct RegisterArray {};
 
 struct Stack;
 
@@ -90,7 +89,7 @@ struct StackFrame {
 struct Stack {
   Stack();
 
-  std::byte* Allocate(size_t bytes);
+  std::byte *Allocate(size_t bytes);
   void Deallocate(size_t bytes);
 
  private:
@@ -100,7 +99,7 @@ struct Stack {
   };
 
   std::vector<Segment> segments_;
-  std::byte* end_;
+  std::byte *end_;
 };
 
 }  // namespace interpreter

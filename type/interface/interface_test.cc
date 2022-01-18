@@ -15,7 +15,7 @@ TEST(Interface, Equality) {
   EXPECT_NE(Interface::Just(type::I64), Interface::Just(type::U64));
 }
 
-TEST( Satisfiability, Just) {
+TEST(Satisfiability, Just) {
   EXPECT_TRUE(Interface::Just(type::I64).SatisfiedBy(type::I64));
   EXPECT_FALSE(Interface::Just(type::I64).SatisfiedBy(type::U64));
 }

@@ -60,11 +60,11 @@ void Compiler::EmitMoveInit(
 
     {
       type::Typed<ir::Reg> field_reg(
-          current_block()->Append(ir::StructIndexInstruction{
-              .addr        = to[0]->reg(),
-              .index       = i,
-              .struct_type = &struct_type,
-              .result      = current().group->Reserve()}),
+          current_block()->Append(
+              ir::StructIndexInstruction{.addr        = to[0]->reg(),
+                                         .index       = i,
+                                         .struct_type = &struct_type,
+                                         .result = current().group->Reserve()}),
           struct_type.fields()[i].type);
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
@@ -85,11 +85,11 @@ void Compiler::EmitMoveInit(
     size_t field_index = struct_type.index(f->name);
 
     type::Typed<ir::RegOr<ir::addr_t>> field_reg(
-        current_block()->Append(ir::StructIndexInstruction{
-            .addr        = to[0]->reg(),
-            .index       = field_index,
-            .struct_type = &struct_type,
-            .result      = current().group->Reserve()}),
+        current_block()->Append(
+            ir::StructIndexInstruction{.addr        = to[0]->reg(),
+                                       .index       = field_index,
+                                       .struct_type = &struct_type,
+                                       .result = current().group->Reserve()}),
         struct_type.fields()[field_index].type);
     EmitMoveInit(assignment->rhs()[0], absl::MakeConstSpan(&field_reg, 1));
   }
@@ -116,16 +116,17 @@ void Compiler::EmitCopyInit(
 
     {
       type::Typed<ir::Reg> field_reg(
-          current_block()->Append(ir::StructIndexInstruction{
-              .addr        = to[0]->reg(),
-              .index       = i,
-              .struct_type = &struct_type,
-              .result      = current().group->Reserve()}),
+          current_block()->Append(
+              ir::StructIndexInstruction{.addr        = to[0]->reg(),
+                                         .index       = i,
+                                         .struct_type = &struct_type,
+                                         .result = current().group->Reserve()}),
           struct_type.fields()[i].type);
       if (field.initial_value.empty()) {
         EmitDefaultInit(field_reg);
       } else {
-        EmitCopyAssign(field_reg, type::Typed(field.initial_value[0], field.type));
+        EmitCopyAssign(field_reg,
+                       type::Typed(field.initial_value[0], field.type));
       }
     }
   next_field:;
@@ -139,11 +140,11 @@ void Compiler::EmitCopyInit(
     auto const *f      = struct_type.field(id.name());
     size_t field_index = struct_type.index(f->name);
     type::Typed<ir::RegOr<ir::addr_t>> field_reg(
-        current_block()->Append(ir::StructIndexInstruction{
-            .addr        = to[0]->reg(),
-            .index       = field_index,
-            .struct_type = &struct_type,
-            .result      = current().group->Reserve()}),
+        current_block()->Append(
+            ir::StructIndexInstruction{.addr        = to[0]->reg(),
+                                       .index       = field_index,
+                                       .struct_type = &struct_type,
+                                       .result = current().group->Reserve()}),
         struct_type.fields()[field_index].type);
     EmitCopyInit(assignment->rhs()[0], absl::MakeConstSpan(&field_reg, 1));
   }

@@ -29,7 +29,7 @@ struct LoadStoreCache {
   std::pair<base::unaligned_ref<RegOr<T>>, bool> slot(RegOr<addr_t> r) {
     constexpr auto type = base::meta<T>;
     static_assert(not type.template is_a<ir::RegOr>());
-    auto& map_for_type = storage_[type];
+    auto& map_for_type    = storage_[type];
     auto [iter, inserted] = map_for_type.try_emplace(r);
     if (inserted) { iter->second.append(RegOr<T>()); }
     return std::pair(iter->second.begin().template read<RegOr<T>>(), inserted);

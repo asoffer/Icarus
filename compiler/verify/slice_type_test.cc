@@ -51,7 +51,6 @@ TEST(UnaryOperator, ValidPattern) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-
 TEST(SliceType, InvalidPattern) {
   test::TestModule mod;
   mod.AppendCode(R"(

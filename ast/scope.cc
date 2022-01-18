@@ -18,7 +18,9 @@ void Scope::InsertDeclaration(ast::Declaration const *decl) {
   }
 }
 
-Scope::Scope(Kind kind) : kind_(kind) { executable_descendants_.push_back(this); }
+Scope::Scope(Kind kind) : kind_(kind) {
+  executable_descendants_.push_back(this);
+}
 
 Scope::Scope(module::BasicModule *module)
     : parent_(reinterpret_cast<uintptr_t>(module) | 1),

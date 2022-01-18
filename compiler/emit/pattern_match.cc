@@ -78,4 +78,3 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
 }
 
 }  // namespace compiler
-

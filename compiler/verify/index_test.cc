@@ -94,7 +94,7 @@ TEST(Index, ArrayNonConstantIndex) {
   mod.AppendCode(R"(n: i64)");
   auto const *expr =
       mod.Append<ast::Expression>(R"([1 as i64, 2 as i64, 3 as i64][n])");
-  auto qts         = mod.context().qual_types(expr);
+  auto qts = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Unqualified())));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -139,8 +139,9 @@ TEST(Index, ArrayOutOfBoundsNegative) {
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Const())));
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("value-error", "negative-array-index")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("value-error", "negative-array-index")));
 }
 
 TEST(Index, ArrayOutOfBoundsLarge) {
@@ -149,9 +150,9 @@ TEST(Index, ArrayOutOfBoundsLarge) {
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Const())));
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("value-error", "indexing-array-out-of-bounds")));
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(
+                  Pair("value-error", "indexing-array-out-of-bounds")));
 }
 
 TEST(Index, OverloadSuccess) {
