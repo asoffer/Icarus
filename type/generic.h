@@ -51,7 +51,8 @@ struct Generic : LegacyType {
   using instantiation_type = InstantiationType;
 
   explicit Generic()
-      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
+      : LegacyType(IndexOf<Generic<T, InstantiationType>>(),
+                   LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 1,
                                      .is_movable               = 1,
                                      .has_destructor           = 0}) {}
@@ -60,7 +61,8 @@ struct Generic : LegacyType {
                        compiler::WorkResources const &,
                        core::Arguments<Typed<ir::CompleteResultRef>> const &)>
                        fn)
-      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
+      : LegacyType(IndexOf<Generic<T, InstantiationType>>(),
+                   LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 1,
                                      .is_movable               = 1,
                                      .has_destructor           = 0}),

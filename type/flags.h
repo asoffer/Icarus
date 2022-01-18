@@ -22,12 +22,13 @@
 #include "type/typed_value.h"
 
 namespace type {
-struct Flags : public type::LegacyType {
+struct Flags : type::LegacyType {
   using underlying_type = uint64_t;
   static type::Type UnderlyingType() { return type::U64; }
 
   Flags(module::BasicModule const *mod)
-      : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
+      : LegacyType(IndexOf<Flags>(),
+                   LegacyType::Flags{.is_default_initializable = 1,
                                      .is_copyable              = 1,
                                      .is_movable               = 1,
                                      .has_destructor           = 0}),

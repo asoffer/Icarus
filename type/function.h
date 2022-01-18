@@ -20,7 +20,8 @@ namespace type {
 
 struct Function : ReturningType {
   Function(core::Params<QualType> in, std::vector<Type> out)
-      : ReturningType(LegacyType::Flags{.is_default_initializable = 0,
+      : ReturningType(IndexOf<Function>(),
+                      LegacyType::Flags{.is_default_initializable = 0,
                                         .is_copyable              = 1,
                                         .is_movable               = 1,
                                         .has_destructor           = 0},

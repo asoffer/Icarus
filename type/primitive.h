@@ -13,7 +13,7 @@
 
 namespace type {
 
-struct Primitive : public LegacyType {
+struct Primitive : LegacyType {
  public:
   enum class BasicType : uint8_t {
 #define PRIMITIVE_MACRO(EnumName, name) EnumName,
@@ -22,7 +22,8 @@ struct Primitive : public LegacyType {
   };
 
   constexpr Primitive(BasicType pt)
-      : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
+      : LegacyType(IndexOf<Primitive>(),
+                   LegacyType::Flags{.is_default_initializable = 1,
                                      .is_copyable              = 1,
                                      .is_movable               = 1,
                                      .has_destructor           = 0}),

@@ -154,16 +154,16 @@ struct DestroyInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.set(ir::Reg::Arg(0), ctx.resolve<ir::addr_t>(reg));
+    frame.set(ir::Reg::Arg(0), ctx.resolve(addr));
     return frame;
   }
 
   friend void BaseTraverse(Inliner& inl, DestroyInstruction& inst) {
-    inl(inst.reg);
+    inl(inst.addr);
   }
 
   type::Type type;
-  Reg reg;
+  RegOr<addr_t> addr;
 
  private:
   ir::Fn function() const {

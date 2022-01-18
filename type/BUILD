@@ -388,6 +388,7 @@ cc_library(
     deps = [
         ":visitor_base",
         "//base:cast",
+        "//base:visitable",
         "//base:meta",
         "//core:arch",
         "//ir/value:reg",

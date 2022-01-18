@@ -20,7 +20,8 @@ namespace type {
 
 struct Scope : Callable {
   Scope(core::Params<QualType> params)
-      : Callable(LegacyType::Flags{.is_default_initializable = 0,
+      : Callable(IndexOf<Scope>(),
+                 LegacyType::Flags{.is_default_initializable = 0,
                                    .is_copyable              = 1,
                                    .is_movable               = 1,
                                    .has_destructor           = 0},

@@ -10,12 +10,13 @@ struct FakeType : type::LegacyType {
   ~FakeType() override {}
 
   explicit FakeType(uint8_t n)
-      : type::LegacyType(type::LegacyType::Flags{
-            .is_default_initializable = (n & 1) != 0,
-            .is_copyable              = (n & 2) != 0,
-            .is_movable               = (n & 4) != 0,
-            .has_destructor           = (n & 8) != 0,
-        }) {}
+      : type::LegacyType(type::IndexOf<FakeType>(),
+                         type::LegacyType::Flags{
+                             .is_default_initializable = (n & 1) != 0,
+                             .is_copyable              = (n & 2) != 0,
+                             .is_movable               = (n & 4) != 0,
+                             .has_destructor           = (n & 8) != 0,
+                         }) {}
 
   void Accept(type::VisitorBase *visitor, void *ret,
               void *arg_tuple) const override {

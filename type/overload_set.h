@@ -30,7 +30,8 @@ struct OverloadSet : LegacyType {
       absl::flat_hash_set<Type> const &ts);
 
   OverloadSet(absl::flat_hash_set<Type> cs)
-      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
+      : LegacyType(IndexOf<OverloadSet>(),
+                   LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 1,
                                      .is_movable               = 1,
                                      .has_destructor           = 0}),

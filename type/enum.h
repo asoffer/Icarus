@@ -26,7 +26,8 @@ struct Enum : type::LegacyType {
   static type::Type UnderlyingType() { return type::U64; }
 
   explicit Enum(module::BasicModule const *mod)
-      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
+      : LegacyType(IndexOf<Enum>(),
+                   LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 1,
                                      .is_movable               = 1,
                                      .has_destructor           = 0}),

@@ -87,7 +87,9 @@ struct Array : LegacyType {
 
  private:
   explicit Array(length_t l, Type t)
-      : LegacyType(t.as<LegacyType>().flags()), len_(l), data_type_(t) {}
+      : LegacyType(IndexOf<Array>(), t.as<LegacyType>().flags()),
+        len_(l),
+        data_type_(t) {}
 
   length_t len_;
   Type data_type_;

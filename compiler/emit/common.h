@@ -16,12 +16,6 @@
 
 namespace compiler {
 
-// Returns A function which can be executed to complete the data-complete struct
-// type pointed to by `s`.
-std::optional<ir::CompiledFn> StructCompletionFn(
-    CompilationDataReference data, type::Struct *s,
-    absl::Span<ast::Declaration const> fields);
-
 // Makes space for every local variable in this stack frame, but does not
 // initialize any such object.
 void MakeAllStackAllocations(Compiler &compiler, ast::Scope const *scope);
@@ -93,6 +87,58 @@ ir::Reg RegisterReferencing(GroupBlockReference current, type::Type t,
                             ir::PartialResultRef const &value);
 ir::Reg PtrFix(GroupBlockReference current, ir::RegOr<ir::addr_t> addr,
                type::Type desired_type);
+
+// Usually it is sufficient to determine all the inputs to a phi instruction
+// upfront, but sometimes it is useful to construct a phi instruction without
+// having set its inputs.
+//
+// TODO: Right now we are relying on the fact that Inst stores values on the
+// heap, but this may not always be the case.
+template <typename T>
+ir::PhiInstruction<T> *PhiInst(GroupBlockReference ref) {
+  ir::PhiInstruction<T> inst;
+  inst.result = ref.group->Reserve();
+  ref.block->Append(std::move(inst));
+  return &ref.block->instructions().back().template as<ir::PhiInstruction<T>>();
+}
+
+void OnEachArrayElement(GroupBlockReference &ref, type::Array const *t,
+                        ir::Reg array_reg, std::invocable<ir::Reg> auto &&fn) {
+  auto *data_ptr_type = type::Ptr(t->data_type());
+
+  ir::Reg end_ptr =
+      ref.block->Append(ir::PtrIncrInstruction{.addr   = array_reg,
+                                               .index  = t->length().value(),
+                                               .ptr    = data_ptr_type,
+                                               .result = ref.group->Reserve()});
+  auto *start_block = ref.block;
+  auto *loop_body   = ref.group->AppendBlock();
+  auto *land_block  = ref.group->AppendBlock();
+  auto *cond_block  = ref.group->AppendBlock();
+
+  ref.block->set_jump(ir::JumpCmd::Uncond(cond_block));
+
+  ref.block = cond_block;
+  auto *phi = PhiInst<ir::addr_t>(ref);
+
+  ir::Reg condition = ref.block->Append(ir::EqInstruction<ir::addr_t>{
+      .lhs = phi->result, .rhs = end_ptr, .result = ref.group->Reserve()});
+  ref.block->set_jump(ir::JumpCmd::Cond(condition, land_block, loop_body));
+
+  ref.block = loop_body;
+  fn(phi->result);
+  ir::Reg next =
+      ref.block->Append(ir::PtrIncrInstruction{.addr   = phi->result,
+                                               .index  = 1,
+                                               .ptr    = data_ptr_type,
+                                               .result = ref.group->Reserve()});
+  ref.block->set_jump(ir::JumpCmd::Uncond(cond_block));
+
+  phi->add(start_block, array_reg);
+  phi->add(ref.block, next);
+
+  ref.block = land_block;
+}
 
 }  // namespace compiler
 

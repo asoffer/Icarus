@@ -36,11 +36,13 @@ struct Pointer : LegacyType {
   Completeness completeness() const override { return Completeness::Complete; }
 
  protected:
-  Pointer(Type t)
-      : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
-                                     .is_copyable              = 1,
-                                     .is_movable               = 1,
-                                     .has_destructor           = 0}),
+  Pointer(Type t) : Pointer(IndexOf<Pointer>(), t) {}
+
+  Pointer(int8_t which, Type t)
+      : LegacyType(which, LegacyType::Flags{.is_default_initializable = 1,
+                                            .is_copyable              = 1,
+                                            .is_movable               = 1,
+                                            .has_destructor           = 0}),
         pointee_(t) {}
 
  private:
@@ -61,7 +63,7 @@ struct BufferPointer : Pointer {
 
  private:
   BufferPointer() = delete;
-  BufferPointer(Type t) : Pointer(t) {}
+  BufferPointer(Type t) : Pointer(IndexOf<BufferPointer>(), t) {}
 };
 
 Pointer const *Ptr(Type t);

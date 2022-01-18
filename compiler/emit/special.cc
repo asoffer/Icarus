@@ -14,67 +14,15 @@
 namespace compiler {
 namespace {
 
-// Usually it is sufficient to determine all the inputs to a phi instruction
-// upfront, but sometimes it is useful to construct a phi instruction without
-// having set its inputs.
-//
-// TODO: Right now we are relying on the fact that Inst stores values on the
-// heap, but this may not always be the case.
-template <typename T>
-ir::PhiInstruction<T> *PhiInst(GroupBlockReference ref) {
-  ir::PhiInstruction<T> inst;
-  inst.result = ref.group->Reserve();
-  ref.block->Append(std::move(inst));
-  return &ref.block->instructions().back().template as<ir::PhiInstruction<T>>();
-}
-
-void OnEachArrayElement(GroupBlockReference& ref, type::Array const *t,
-                        ir::Reg array_reg, std::invocable<ir::Reg> auto &&fn) {
-  auto *data_ptr_type = type::Ptr(t->data_type());
-
-  ir::Reg end_ptr =
-      ref.block->Append(ir::PtrIncrInstruction{.addr   = array_reg,
-                                               .index  = t->length().value(),
-                                               .ptr    = data_ptr_type,
-                                               .result = ref.group->Reserve()});
-  auto *start_block = ref.block;
-  auto *loop_body   = ref.group->AppendBlock();
-  auto *land_block  = ref.group->AppendBlock();
-  auto *cond_block  = ref.group->AppendBlock();
-
-  ref.block->set_jump(ir::JumpCmd::Uncond(cond_block));
-
-  ref.block = cond_block;
-  auto *phi = PhiInst<ir::addr_t>(ref);
-
-  ir::Reg condition = ref.block->Append(ir::EqInstruction<ir::addr_t>{
-      .lhs = phi->result, .rhs = end_ptr, .result = ref.group->Reserve()});
-  ref.block->set_jump(ir::JumpCmd::Cond(condition, land_block, loop_body));
-
-  ref.block = loop_body;
-  fn(phi->result);
-  ir::Reg next =
-      ref.block->Append(ir::PtrIncrInstruction{.addr   = phi->result,
-                                               .index  = 1,
-                                               .ptr    = data_ptr_type,
-                                               .result = ref.group->Reserve()});
-  ref.block->set_jump(ir::JumpCmd::Uncond(cond_block));
-
-  phi->add(start_block, array_reg);
-  phi->add(ref.block, next);
-
-  ref.block = land_block;
-}
-
 enum Kind { Move, Copy };
 
 template <Kind K>
 void EmitArrayAssignment(Compiler &c, type::Array const *to,
                          type::Array const *from) {
-  auto &fn            = *c.current().group;
+  auto &fn          = *c.current().group;
   c.current().block = fn.entry();
-  auto to_ptr         = ir::Reg::Arg(0);
-  auto from_ptr       = ir::Reg::Arg(1);
+  auto to_ptr       = ir::Reg::Arg(0);
+  auto from_ptr     = ir::Reg::Arg(1);
 
   auto to_data_ptr_type   = type::Ptr(to->data_type());
   auto from_data_ptr_type = type::Ptr(from->data_type());
@@ -92,9 +40,9 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
   c.current().block->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   c.current().block = cond_block;
-  auto *from_phi      = PhiInst<ir::addr_t>(c.current());
-  auto *to_phi        = PhiInst<ir::addr_t>(c.current());
-  ir::Reg condition   = c.current().block->Append(
+  auto *from_phi    = PhiInst<ir::addr_t>(c.current());
+  auto *to_phi      = PhiInst<ir::addr_t>(c.current());
+  ir::Reg condition = c.current().block->Append(
       ir::EqInstruction<ir::addr_t>{.lhs    = from_phi->result,
                                     .rhs    = from_end_ptr,
                                     .result = c.current().group->Reserve()});
@@ -141,13 +89,13 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
 template <Kind K>
 void EmitArrayInit(Compiler &c, type::Array const *to,
                    type::Array const *from) {
-  auto &fn                   = *c.current().group;
+  auto &fn          = *c.current().group;
   c.current_block() = fn.entry();
-  auto from_ptr              = ir::Reg::Arg(0);
-  auto to_ptr                = ir::Reg::Out(0);
+  auto from_ptr     = ir::Reg::Arg(0);
+  auto to_ptr       = ir::Reg::Out(0);
 
   auto from_data_ptr_type = type::Ptr(from->data_type());
-  auto from_end_ptr = c.current_block()->Append(
+  auto from_end_ptr       = c.current_block()->Append(
       ir::PtrIncrInstruction{.addr   = from_ptr,
                              .index  = from->length().value(),
                              .ptr    = from_data_ptr_type,
@@ -160,13 +108,14 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
   c.current_block()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   c.current_block() = cond_block;
-  auto *from_phi             = PhiInst<ir::addr_t>(c.current());
-  auto *to_phi               = PhiInst<ir::addr_t>(c.current());
-  ir::Reg condition          = c.current_block()->Append(
+  auto *from_phi    = PhiInst<ir::addr_t>(c.current());
+  auto *to_phi      = PhiInst<ir::addr_t>(c.current());
+  ir::Reg condition = c.current_block()->Append(
       ir::EqInstruction<ir::addr_t>{.lhs    = from_phi->result,
                                     .rhs    = from_end_ptr,
                                     .result = c.current().group->Reserve()});
-  c.current_block()->set_jump(ir::JumpCmd::Cond(condition, land_block, loop_body));
+  c.current_block()->set_jump(
+      ir::JumpCmd::Cond(condition, land_block, loop_body));
 
   c.current_block() = loop_body;
   ir::PartialResultBuffer buffer;
@@ -226,28 +175,6 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
   }
 
   current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
-}
-
-void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
-  if (not r.type()->HasDestructor()) { return; }
-  auto [fn, inserted] = context().ir().InsertDestroy(r.type());
-  if (inserted) {
-    set_builder(&*fn);
-    absl::Cleanup c = [&] {
-      state().builders.pop_back();
-      state().current.pop_back();
-    };
-
-    current_block() = fn->entry();
-    OnEachArrayElement(current(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
-      EmitDestroy(type::Typed<ir::Reg>(reg, r.type()->data_type()));
-    });
-    current_block()->set_jump(ir::JumpCmd::Return());
-    context().ir().WriteByteCode<EmitByteCode>(fn);
-    // TODO: Remove const_cast.
-    const_cast<type::Array *>(r.type())->SetDestructor(fn);
-  }
-  current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
 
 void SetArrayInits(Compiler &c, type::Array const *array_type) {
@@ -551,16 +478,16 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
       state().current.pop_back();
     };
     current_block() = current().group->entry();
-    auto var                 = ir::Reg::Arg(0);
+    auto var        = ir::Reg::Arg(0);
 
     for (size_t i = 0; i < r.type()->fields().size(); ++i) {
       auto &field = r.type()->fields()[i];
       type::Typed<ir::Reg> field_reg(
-          current_block()->Append(ir::StructIndexInstruction{
-              .addr        = var,
-              .index       = i,
-              .struct_type = r.type(),
-              .result      = current().group->Reserve()}),
+          current_block()->Append(
+              ir::StructIndexInstruction{.addr        = var,
+                                         .index       = i,
+                                         .struct_type = r.type(),
+                                         .result = current().group->Reserve()}),
           r.type()->fields()[i].type);
       if (not field.initial_value.empty()) {
         EmitCopyInit(field_reg, field.initial_value);
@@ -576,11 +503,6 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
     context().ir().WriteByteCode<EmitByteCode>(fn);
   }
   current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
-}
-
-void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Struct> const &r) {
-  if (not r.type()->HasDestructor()) { return; }
-  current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
 
 void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Function> to,

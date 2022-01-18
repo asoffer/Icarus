@@ -1,6 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/emit/common.h"
+#include "compiler/emit/struct_literal.h"
 #include "compiler/instructions.h"
 #include "type/struct.h"
 #include "type/type.h"

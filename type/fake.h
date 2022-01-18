@@ -11,12 +11,13 @@ namespace type {
 
 struct FakeType : type::LegacyType {
   explicit FakeType(core::Bytes b, core::Alignment a)
-      : type::LegacyType(type::LegacyType::Flags{
-            .is_default_initializable = 0,
-            .is_copyable              = 0,
-            .is_movable               = 0,
-            .has_destructor           = 0,
-        }),
+      : type::LegacyType(IndexOf<FakeType>(),
+                         type::LegacyType::Flags{
+                             .is_default_initializable = 0,
+                             .is_copyable              = 0,
+                             .is_movable               = 0,
+                             .has_destructor           = 0,
+                         }),
         b_(b),
         a_(a) {}
 

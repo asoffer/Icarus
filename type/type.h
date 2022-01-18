@@ -6,11 +6,25 @@
 
 #include "base/cast.h"
 #include "base/meta.h"
+#include "base/visitable.h"
 #include "core/arch.h"
 #include "ir/value/result_buffer.h"
 #include "type/visitor_base.h"
 
 namespace type {
+
+using AllTypeTypes =
+    base::type_list<struct Array, struct Block, struct BufferPointer,
+                    struct Enum, struct Flags, struct Function, struct Opaque,
+                    struct Pointer, struct Primitive, struct Scope,
+                    struct Slice, struct Struct>;
+
+template <typename T>
+constexpr ssize_t IndexOf() {
+  return base::Index<T>(AllTypeTypes{});
+}
+
+
 // `Completeness` is an enum that describes the status of a partially
 // cosntructed type. While this is primarily of interest for user-defined
 // structs, it is also relevant for compound types (e.g., arrays, tuples,
@@ -34,7 +48,8 @@ enum class Completeness {
 // construct a new category of types, create a subclass of `LegacyType`.
 // Implementing the required virtual methods, and passing the correct flags to
 // the `LegacyType` constructor.
-struct LegacyType : base::Cast<LegacyType> {
+struct LegacyType : base::Visitable<LegacyType, AllTypeTypes>,
+                    base::Cast<LegacyType> {
  public:
   LegacyType() = delete;
   virtual ~LegacyType() {}
@@ -84,7 +99,8 @@ struct LegacyType : base::Cast<LegacyType> {
   constexpr Flags flags() const { return flags_; }
 
  protected:
-  explicit constexpr LegacyType(Flags flags) : flags_(flags) {}
+  explicit constexpr LegacyType(int8_t which, Flags flags)
+      : base::Visitable<LegacyType, AllTypeTypes>(which), flags_(flags) {}
   Flags flags_;
 };
 
@@ -342,6 +358,11 @@ struct Type {
     } else {
       return reinterpret_cast<T const &>(data_);
     }
+  }
+
+  template <typename V, typename... Args>
+  auto visit(V &v, Args &&... args) const {
+    return get()->visit(v, std::forward<Args>(args)...);
   }
 
   LegacyType const *get() const { return if_as<LegacyType>(); }

@@ -380,6 +380,7 @@ cc_library(
     name = "parameterized_struct_literal",
     srcs = ["parameterized_struct_literal.cc"],
     deps = [
+        ":struct_literal",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instructions",
@@ -537,11 +538,13 @@ cc_test(
 
 cc_library(
     name = "struct_literal",
+    hdrs = ["struct_literal.h"],
     srcs = ["struct_literal.cc"],
     deps = [
+        ":common",
+        ":destroy",
         "//ast",
         "//compiler:compiler_header",
-        "//compiler/emit:common",
         "//compiler:instructions",
         "//compiler:module",
         "//ir/value:addr",
@@ -580,6 +583,7 @@ cc_library(
     srcs = ["unary_operator.cc"],
     deps = [
         ":common",
+        ":destroy",
         "//ast",
         "//frontend/lex:operators",
         "//compiler:compiler_header",
@@ -613,4 +617,27 @@ cc_library(
     ],
 )
 
-# TODO: yieldStmt tests.
+# TODO: YieldStmt tests.
+
+cc_library(
+    name = "destroy",
+    hdrs = ["destroy.h"],
+    deps = [
+        ":common",
+        "//compiler:compilation_data",
+        "//compiler:instructions",
+        "//type:cast",
+        "//ir/value:addr",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:array",
+        "//type:enum",
+        "//type:flags",
+        "//type:function",
+        "//type:pointer",
+        "//type:primitive",
+        "//type:slice",
+        "//type:scope",
+    ],
+)

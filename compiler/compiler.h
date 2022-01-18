@@ -54,7 +54,6 @@ struct EmitRefTag {};
 struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
 struct EmitToBufferTag {};
-struct EmitDestroyTag {};
 struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
 struct EmitMoveAssignTag {};
@@ -165,8 +164,6 @@ struct Compiler
       RefEmitter<Compiler>,
       IrEmitter<Compiler>,
       PatternMatcher<Compiler>,
-
-      type::Visitor<EmitDestroyTag, void(ir::Reg)>,
       type::Visitor<EmitMoveInitTag,
                     void(ir::Reg, ir::PartialResultBuffer const *)>,
       type::Visitor<EmitCopyInitTag,
@@ -237,11 +234,6 @@ struct Compiler
   ir::RegOr<T> EmitAs(ast::Node const *node) {
     ir::PartialResultBuffer buffer;
     return EmitAs<T>(node, buffer);
-  }
-
-  void EmitDestroy(type::Typed<ir::Reg> r) {
-    type::Visitor<EmitDestroyTag, void(ir::Reg)>::Visit(r.type().get(),
-                                                        r.get());
   }
 
   void EmitDefaultInit(type::Typed<ir::Reg> r) {
@@ -406,23 +398,6 @@ struct Compiler
 
 #undef DEFINE_EMIT_INIT
 
-#define DEFINE_EMIT_DESTROY(T)                                                 \
-  void Visit(EmitDestroyTag, T const *ty, ir::Reg r) override {                \
-    EmitDestroy(type::Typed<ir::Reg, T>(r, ty));                               \
-  }                                                                            \
-  void EmitDestroy(type::Typed<ir::Reg, T> const &r)
-
-  DEFINE_EMIT_DESTROY(type::Array);
-  DEFINE_EMIT_DESTROY(type::Enum) {}
-  DEFINE_EMIT_DESTROY(type::Flags) {}
-  DEFINE_EMIT_DESTROY(type::Pointer) {}
-  DEFINE_EMIT_DESTROY(type::BufferPointer) {}
-  DEFINE_EMIT_DESTROY(type::Primitive) {}
-  DEFINE_EMIT_DESTROY(type::Slice) {}
-  DEFINE_EMIT_DESTROY(type::Struct);
-
-#undef DEFINE_EMIT_DESTROY
-
 #define DEFINE_EMIT(node_type)                                                 \
   void EmitCopyInit(                                                           \
       node_type const *node,                                                   \
@@ -466,7 +441,7 @@ struct Compiler
   void DestroyTemporaries() {
     for (auto iter = state().temporaries_to_destroy.rbegin();
          iter != state().temporaries_to_destroy.rend(); ++iter) {
-      EmitDestroy(*iter);
+      // TODO:EmitDestroy(*iter);
     }
     state().temporaries_to_destroy.clear();
   }

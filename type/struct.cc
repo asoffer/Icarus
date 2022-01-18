@@ -9,7 +9,8 @@
 namespace type {
 
 Struct::Struct(module::BasicModule const *mod, Struct::Options options)
-    : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
+    : LegacyType(IndexOf<Struct>(),
+                 LegacyType::Flags{.is_default_initializable = 1,
                                    .is_copyable    = options.is_copyable,
                                    .is_movable     = options.is_movable,
                                    .has_destructor = 0}),

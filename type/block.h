@@ -11,7 +11,8 @@ namespace type {
 struct Block : ReturningType {
   // TODO: Support actual returns.
   Block(core::Params<QualType> params)
-      : ReturningType(LegacyType::Flags{.is_default_initializable = 0,
+      : ReturningType(IndexOf<Block>(),
+                      LegacyType::Flags{.is_default_initializable = 0,
                                         .is_copyable              = 1,
                                         .is_movable               = 1,
                                         .has_destructor           = 0},

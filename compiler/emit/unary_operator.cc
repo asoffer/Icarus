@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/destroy.h"
 #include "frontend/lex/operators.h"
 #include "type/interface/ir.h"
 #include "type/pointer.h"
@@ -21,9 +22,9 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       return;
     } break;
     case ast::UnaryOperator::Kind::Destroy: {
-      EmitDestroy(type::Typed<ir::Reg>(
-          EmitAs<ir::addr_t>(node->operand()).reg(),
-          context().qual_types(node->operand())[0].type()));
+      DestructionEmitter de(*this);
+      de(context().typed(node->operand()).type(),
+         EmitAs<ir::addr_t>(node->operand()));
       return;
     } break;
     case ast::UnaryOperator::Kind::Init:
@@ -128,11 +129,11 @@ void Compiler::EmitCopyInit(
     case ast::UnaryOperator::Kind::Copy:
       EmitCopyInit(node->operand(), to);
       break;
-    case ast::UnaryOperator::Kind::Destroy:
-      EmitDestroy(type::Typed<ir::Reg>(
-          EmitAs<ir::addr_t>(node->operand()).reg(),
-          context().qual_types(node->operand())[0].type()));
-      break;
+    case ast::UnaryOperator::Kind::Destroy: {
+      DestructionEmitter de(*this);
+      de(context().typed(node->operand()).type(),
+         EmitAs<ir::addr_t>(node->operand()));
+    } break;
     default: {
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node, buffer);

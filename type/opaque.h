@@ -11,9 +11,10 @@
 #include "type/type.h"
 
 namespace type {
-struct Opaque : public LegacyType {
+struct Opaque : LegacyType {
   explicit Opaque(module::BasicModule const *mod)
-      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
+      : LegacyType(IndexOf<Opaque>(),
+                   LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 0,
                                      .is_movable               = 0,
                                      .has_destructor           = 0}),
