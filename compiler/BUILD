@@ -155,7 +155,6 @@ cc_library(
         ":work_item",
         "//ast:node",
         "//diagnostic/consumer:buffering",
-        "//ir:scope_state",
         "//ir/value:result_buffer",
         "//ir/value:scope",
         "//type",
@@ -167,7 +166,6 @@ cc_library(
     hdrs = ["transient_state.h"],
     deps = [
         ":subroutine_scaffolding",
-        "//ir:scope_state",
     ],
 )
 

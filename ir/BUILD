@@ -43,21 +43,6 @@ cc_library(
     ],
 )
 
-
-cc_library(
-    name = "scope_state",
-    hdrs = ["scope_state.h"],
-    deps = [
-        "//base:any_invocable",
-        "//ir:basic_block",
-        "//ir/value:label",
-        "//ir/value:result_buffer",
-        "//ir/value:scope",
-        "//type:qual_type",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
 cc_library(
     name = "subroutine",
     hdrs = ["subroutine.h"],

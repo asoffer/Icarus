@@ -8,7 +8,6 @@
 #include "ast/node.h"
 #include "compiler/subroutine_scaffolding.h"
 #include "compiler/cyclic_dependency_tracker.h"
-#include "ir/scope_state.h"
 #include "ir/value/result_buffer.h"
 #include "ir/value/scope.h"
 #include "type/type.h"
@@ -29,7 +28,6 @@ struct SubroutineBlockReference {
 // Compiler state that needs to be tracked during a single depth traversal, but
 // that does not otherwise need to be saved.
 struct TransientState {
-  std::vector<ir::ScopeState> scope_landings;
   std::vector<ir::Scope> scopes;
 
   void EnqueueVerifyPatternMatchType(ast::Node const *node,

@@ -17,15 +17,6 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
                             .qual_types(&node->function_literal())[0]
                             .type()
                             .as<type::Function>();
-
-  // TODO: Reduce code-size by sharing these sequences whenever they share a
-  // suffix.
-  for (auto iter = state().scope_landings.rbegin();
-       iter != state().scope_landings.rend(); ++iter) {
-    // TODO: Emit all destructions on this scope.
-    // TODO: Call the quick-exit for this scope.
-  }
-
   // TODO: It's tricky... on a single expression that gets expanded, we could
   // have both small and big types and we would need to handle both setting
   // registers for small types and writing through them for big ones.
