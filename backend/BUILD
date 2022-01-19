@@ -6,7 +6,7 @@ cc_library(
     hdrs = ["emit.h"],
     deps = [
         "//compiler:module",
-        "//ir:compiled_fn",
+        "//ir:subroutine",
         "//ir/value:reg",
         "//type",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -24,7 +24,7 @@ cc_library(
         ":type",
         "//base:log",
         "//compiler:module",
-        "//ir:compiled_fn",
+        "//ir:subroutine",
         "//ir/instruction",
         "//ir/instruction:arithmetic",
         "//ir/instruction:compare",

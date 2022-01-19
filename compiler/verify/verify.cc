@@ -34,7 +34,7 @@ bool VerifyPatternType(CompilationDataReference data, ast::Node const *node,
   return PatternTypeVerifier(data)(node, t);
 }
 
-std::optional<ir::CompiledFn> StructDataCompletionFn(
+std::optional<ir::Subroutine> StructDataCompletionFn(
     CompilationDataReference c, type::Struct *s,
     absl::Span<ast::Declaration const> field_decls) {
   ASSERT(s->completeness() == type::Completeness::Incomplete);
@@ -53,7 +53,7 @@ std::optional<ir::CompiledFn> StructDataCompletionFn(
 
   if (field_error) { return std::nullopt; }
 
-  ir::CompiledFn fn(type::Func({}, {}));
+  ir::Subroutine fn(type::Func({}, {}));
   c.push_current(&fn);
   absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
   c.current_block()     = fn.entry();

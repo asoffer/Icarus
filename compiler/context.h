@@ -15,8 +15,8 @@
 #include "compiler/bound_parameters.h"
 #include "compiler/call_metadata.h"
 #include "ir/byte_code/byte_code.h"
-#include "ir/compiled_fn.h"
-#include "ir/compiled_scope.h"
+#include "ir/subroutine.h"
+#include "ir/subroutine.h"
 #include "ir/module.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
@@ -176,13 +176,13 @@ struct Context {
   absl::Span<type::QualType const> set_qual_type(ast::Expression const *expr,
                                                  type::QualType const qts);
 
-  void ForEachCompiledFn(
-      std::invocable<ir::CompiledFn const *> auto &&f) const {
+  void ForEachSubroutine(
+      std::invocable<ir::Subroutine const *> auto &&f) const {
     for (auto const &compiled_fn : ir_module_.functions()) { f(&compiled_fn); }
   }
 
-  void ForEachCompiledFn(
-      std::invocable<ir::CompiledFn const *, module::Linkage> auto &&f) const {
+  void ForEachSubroutine(
+      std::invocable<ir::Subroutine const *, module::Linkage> auto &&f) const {
     for (auto const &compiled_fn : ir_module_.functions()) {
       f(&compiled_fn, module::Linkage::Internal);
     }

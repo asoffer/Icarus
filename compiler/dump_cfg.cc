@@ -26,7 +26,7 @@
 #include "frontend/parse.h"
 #include "frontend/source/file.h"
 #include "frontend/source/file_name.h"
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 #include "ir/interpreter/execution_context.h"
 #include "module/module.h"
 #include "opt/opt.h"
@@ -43,7 +43,7 @@ ABSL_FLAG(std::vector<std::string>, module_paths, {},
 
 namespace {
 
-void DumpControlFlowGraph(ir::CompiledFn const *fn, std::ostream &output) {
+void DumpControlFlowGraph(ir::Subroutine const *fn, std::ostream &output) {
   absl::Format(&output,
                "  subgraph cluster_fn%u {\n"
                "  fontname = monospace\n"
@@ -153,8 +153,8 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
 
   output << "digraph {\n";
   DumpControlFlowGraph(&*main_fn, output);
-  context.ForEachCompiledFn(
-      [&](ir::CompiledFn const *f) { DumpControlFlowGraph(f, output); });
+  context.ForEachSubroutine(
+      [&](ir::Subroutine const *f) { DumpControlFlowGraph(f, output); });
   output << "}";
 
   return 0;

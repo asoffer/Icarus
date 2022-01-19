@@ -13,7 +13,7 @@
 namespace backend {
 
 LlvmEmitter::function_type *LlvmEmitter::DeclareFunction(
-    ir::CompiledFn const *fn, module::Linkage linkage,
+    ir::Subroutine const *fn, module::Linkage linkage,
     module_type &output_module) {
   return llvm::Function::Create(
       llvm::cast<llvm::FunctionType>(ToLlvmType(fn->type(), context_)),
@@ -38,7 +38,7 @@ LlvmEmitter::basic_block_type *LlvmEmitter::DeclareBasicBlock(
 }
 
 void LlvmEmitter::PrepareForStackAllocation(
-    ir::CompiledFn const &fn,
+    ir::Subroutine const &fn,
     const absl::flat_hash_map<ir::BasicBlock const *, basic_block_type *>
         &block_map) {
   PrepareForBasicBlockAppend(block_map.at(fn.entry()));

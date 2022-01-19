@@ -364,7 +364,7 @@ cc_library(
         "//base/extend:serialize",
         "//base/extend:traverse",
         "//core:arch",
-        "//ir:compiled_fn",
+        "//ir:subroutine",
         "//ir/instruction:base",
         "//ir/interpreter:execution_context",
         "//ir/value:fn",

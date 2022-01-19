@@ -9,7 +9,7 @@
 #include "absl/strings/str_format.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 #include "type/function.h"
 
 namespace ir {
@@ -22,7 +22,7 @@ struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslHashExtension> {
   using prefer_wrapper_for_type_erasure               = void;
 
   struct Data {
-    CompiledFn *fn;
+    Subroutine *fn;
     type::Function const *type;
     base::untyped_buffer::const_iterator byte_code;
   };
@@ -37,8 +37,8 @@ struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslHashExtension> {
     return data_->byte_code;
   }
 
-  CompiledFn *operator->() { return data_->fn; }
-  CompiledFn &operator*() { return *data_->fn; }
+  Subroutine *operator->() { return data_->fn; }
+  Subroutine &operator*() { return *data_->fn; }
 
   friend absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
   AbslFormatConvert(NativeFn fn, const absl::FormatConversionSpec &spec,

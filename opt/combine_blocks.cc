@@ -5,16 +5,16 @@
 #include <utility>
 
 #include "base/log.h"
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 #include "ir/instruction/core.h"
 
 namespace opt {
 
 // TODO: Implement.
-void ReduceEmptyBlocks(ir::CompiledFn* fn) {}
-void CombineBlocks(ir::CompiledFn* fn) {}
+void ReduceEmptyBlocks(ir::Subroutine* fn) {}
+void CombineBlocks(ir::Subroutine* fn) {}
 
-void RemoveTrivialFunctionCalls(ir::CompiledFn* fn) {
+void RemoveTrivialFunctionCalls(ir::Subroutine* fn) {
   for (auto& block : fn->mutable_blocks()) {
     for (auto const& inst : block->instructions()) {
       if (auto* call_inst = inst.if_as<ir::CallInstruction>()) {

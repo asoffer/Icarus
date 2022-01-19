@@ -6,14 +6,14 @@
 #include "absl/types/span.h"
 #include "ast/declaration.h"
 #include "compiler/compilation_data.h"
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 #include "type/struct.h"
 
 namespace compiler {
 
 // Returns A function which can be executed to complete the data-complete struct
 // type pointed to by `s`.
-std::optional<ir::CompiledFn> StructCompletionFn(
+std::optional<ir::Subroutine> StructCompletionFn(
     CompilationDataReference data, type::Struct *s,
     absl::Span<ast::Declaration const> field_decls);
 

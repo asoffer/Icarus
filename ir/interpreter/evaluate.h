@@ -4,7 +4,7 @@
 #include "absl/cleanup/cleanup.h"
 #include "base/debug.h"
 #include "base/untyped_buffer.h"
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/value/native_fn.h"

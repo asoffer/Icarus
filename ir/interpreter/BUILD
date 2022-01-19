@@ -21,7 +21,7 @@ cc_library(
         "//base:debug",
         "//base:untyped_buffer",
         "//core:arch",
-        "//ir:compiled_fn",
+        "//ir:subroutine",
         "//ir/instruction",
         "//ir/value:result_buffer",
         "@com_google_absl//absl/cleanup",

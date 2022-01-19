@@ -20,7 +20,7 @@
 #include "compiler/module.h"
 #include "ir/basic_block.h"
 #include "ir/subroutine.h"
-#include "ir/compiled_scope.h"
+#include "ir/subroutine.h"
 #include "ir/instruction/core.h"
 #include "ir/instruction/jump.h"
 #include "ir/value/char.h"

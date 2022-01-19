@@ -171,7 +171,7 @@ cc_library(
     deps = [
         "//base:debug",
         "//base:extend",
-        "//ir:compiled_fn",
+        "//ir:subroutine",
         "//type:function",
         "@com_google_absl//absl/strings:str_format",
     ],

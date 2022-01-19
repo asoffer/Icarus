@@ -105,7 +105,7 @@ struct WorkGraph {
 
 bool CompileLibrary(Context &context, PersistentResources const &resources,
                     base::PtrSpan<ast::Node const> nodes);
-std::optional<ir::CompiledFn> CompileExecutable(
+std::optional<ir::Subroutine> CompileExecutable(
     Context &context, PersistentResources const &resources,
     base::PtrSpan<ast::Node const> nodes);
 

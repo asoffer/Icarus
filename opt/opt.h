@@ -5,7 +5,7 @@
 
 namespace opt {
 
-void RunAllOptimizations(ir::CompiledFn *fn);
+void RunAllOptimizations(ir::Subroutine *fn);
 
 }  // namespace opt
 

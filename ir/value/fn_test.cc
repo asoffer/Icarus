@@ -26,7 +26,7 @@ TEST(Fn, ForeignFn) {
 }
 
 TEST(Fn, NativeFn) {
-  ir::CompiledFn f(type::Func({}, {}), {});
+  ir::Subroutine f(type::Func({}, {}), {});
   ir::NativeFn::Data data{
       .fn   = &f,
       .type = f.type(),

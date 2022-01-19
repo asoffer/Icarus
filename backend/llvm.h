@@ -5,7 +5,7 @@
 #include "backend/emit.h"
 #include "backend/type.h"
 #include "compiler/module.h"
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 #include "ir/value/fn.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
@@ -25,14 +25,14 @@ struct LlvmEmitter : Emitter<LlvmEmitter, LlvmBackendTraits> {
 
   explicit LlvmEmitter(llvm::IRBuilder<> &builder, module_type *module);
 
-  function_type *DeclareFunction(ir::CompiledFn const *fn,
+  function_type *DeclareFunction(ir::Subroutine const *fn,
                                  module::Linkage linkage,
                                  module_type &output_module);
 
   basic_block_type *DeclareBasicBlock(function_type &fn);
 
   void PrepareForStackAllocation(
-      ir::CompiledFn const &fn,
+      ir::Subroutine const &fn,
       const absl::flat_hash_map<ir::BasicBlock const *, basic_block_type *>
           &block_map);
 

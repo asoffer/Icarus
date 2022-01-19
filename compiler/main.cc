@@ -24,7 +24,7 @@
 #include "frontend/parse.h"
 #include "frontend/source/file.h"
 #include "frontend/source/file_name.h"
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 #include "ir/interpreter/execution_context.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -71,7 +71,7 @@ struct InvalidTargetTriple {
   std::string message;
 };
 
-int CompileToObjectFile(CompiledModule const &module, ir::CompiledFn const &fn,
+int CompileToObjectFile(CompiledModule const &module, ir::Subroutine const &fn,
                         llvm::TargetMachine *target_machine) {
   llvm::LLVMContext context;
   llvm::Module llvm_module("module", context);

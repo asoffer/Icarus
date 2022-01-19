@@ -158,12 +158,12 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
 
 }  // namespace
 
-std::optional<ir::CompiledFn> StructCompletionFn(
+std::optional<ir::Subroutine> StructCompletionFn(
     CompilationDataReference data, type::Struct *s,
     absl::Span<ast::Declaration const> field_decls) {
   ASSERT(s->completeness() == type::Completeness::DataComplete);
 
-  ir::CompiledFn fn(type::Func({}, {}));
+  ir::Subroutine fn(type::Func({}, {}));
   data.push_current(&fn);
   absl::Cleanup cleanup = [&] { data.state().current.pop_back(); };
   Compiler c(data);

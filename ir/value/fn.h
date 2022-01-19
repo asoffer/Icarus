@@ -112,7 +112,7 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
   NativeFn native() const {
     ASSERT(kind() == Kind::Native);
     NativeFn f;
-    std::memcpy(&f.data_, &data_, sizeof(CompiledFn *));
+    std::memcpy(&f.data_, &data_, sizeof(Subroutine *));
     return f;
   }
 

@@ -1,10 +1,10 @@
 #include "opt/opt.h"
 
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 
 namespace opt {
 
-void RunAllOptimizations(ir::CompiledFn *fn) {
+void RunAllOptimizations(ir::Subroutine *fn) {
   ReduceEmptyBlocks(fn);
   CombineBlocks(fn);
   RemoveTrivialFunctionCalls(fn);

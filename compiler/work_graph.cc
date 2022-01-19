@@ -40,12 +40,12 @@ bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
   return not found_error;
 }
 
-std::pair<ir::CompiledFn, ir::ByteCode> MakeThunk(Compiler &c,
+std::pair<ir::Subroutine, ir::ByteCode> MakeThunk(Compiler &c,
                                                   ast::Expression const *expr,
                                                   type::Type type) {
   LOG("MakeThunk", "Thunk for %s: %s %p", expr->DebugString(), type.to_string(),
       &c.context());
-  ir::CompiledFn fn(type::Func({}, {type}));
+  ir::Subroutine fn(type::Func({}, {type}));
   c.push_current(&fn);
   absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
   // TODO this is essentially a copy of the body of
@@ -106,11 +106,11 @@ bool CompileLibrary(Context &context, PersistentResources const &resources,
       });
 }
 
-std::optional<ir::CompiledFn> CompileExecutable(
+std::optional<ir::Subroutine> CompileExecutable(
     Context &context, PersistentResources const &resources,
     base::PtrSpan<ast::Node const> nodes) {
   WorkGraph w(resources);
-  ir::CompiledFn f(type::Func({}, {}));
+  ir::Subroutine f(type::Func({}, {}));
 
   bool success = w.ExecuteCompilationSequence(
       context, nodes,

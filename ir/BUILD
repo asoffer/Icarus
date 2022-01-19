@@ -16,21 +16,6 @@ cc_library(
 )
 
 cc_library(
-    name = "compiled_fn",
-    hdrs = ["compiled_fn.h"],
-    deps = [
-        ":subroutine",
-        "//type:function",
-    ],
-)
-
-cc_library(
-    name = "compiled_scope",
-    hdrs = ["compiled_scope.h"],
-    deps = ["//ir/value:scope"],
-)
-
-cc_library(
     name = "out_params",
     hdrs = ["out_params.h"],
     deps = [
@@ -46,7 +31,7 @@ cc_library(
     hdrs = ["module.h"],
     srcs = ["module.cc"],
     deps = [
-        ":compiled_fn",
+        ":subroutine",
         "//base:debug",
         "//base:iterator",
         "//ir/byte_code",

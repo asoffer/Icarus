@@ -7,7 +7,7 @@ cc_library(
     deps = [
         "//base:log",
         "//ir/instruction:core",
-        "//ir:compiled_fn",
+        "//ir:subroutine",
     ],
 )
 
@@ -17,6 +17,6 @@ cc_library(
     srcs = ["opt.cc"],
     deps = [
         ":combine_blocks",
-        "//ir:compiled_fn",
+        "//ir:subroutine",
     ],
 )

@@ -27,15 +27,13 @@ struct ScopeLiteral;
 
 namespace ir {
 
-using CompiledScope = Subroutine;
-
 struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
                                             base::AbslHashExtension> {
   static constexpr std::string_view kAbslFormatString = "Scope(%p)";
 
   struct Data {
     ast::ScopeLiteral const *literal;
-    CompiledScope *scope;
+    Subroutine *scope;
     type::Scope const *type;
     absl::flat_hash_map<Block, std::vector<Reg>> parameters;
     base::untyped_buffer::const_iterator byte_code;
@@ -44,8 +42,8 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
   constexpr Scope() : data_(nullptr) {}
   explicit constexpr Scope(Scope::Data *data) : data_(ASSERT_NOT_NULL(data)) {}
 
-  CompiledScope *operator->() { return get().scope; }
-  CompiledScope &operator*() { return *get().scope; }
+  Subroutine *operator->() { return get().scope; }
+  Subroutine &operator*() { return *get().scope; }
 
   explicit operator bool() { return data_; }
 
@@ -61,7 +59,7 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
   }
 
  private:
-  friend CompiledScope;
+  friend Subroutine;
   friend base::EnableExtensions;
 
   Data const &get() const { return *ASSERT_NOT_NULL(data_); }

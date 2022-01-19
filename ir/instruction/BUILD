@@ -84,7 +84,7 @@ cc_library(
         "//base:extend",
         "//base/extend:serialize",
         "//base/extend:traverse",
-        "//ir:compiled_scope",
+        "//ir:subroutine",
         "//ir/interpreter:execution_context",
         "//ir:out_params",
         "//ir/value:fn",

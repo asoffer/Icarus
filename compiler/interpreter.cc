@@ -25,7 +25,7 @@
 #include "frontend/parse.h"
 #include "frontend/source/file.h"
 #include "frontend/source/file_name.h"
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 #include "ir/interpreter/evaluate.h"
 #include "module/module.h"
 #include "opt/opt.h"

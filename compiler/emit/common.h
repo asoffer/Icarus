@@ -10,7 +10,7 @@
 #include "base/ptr_span.h"
 #include "compiler/compiler.h"
 #include "compiler/instantiate.h"
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 #include "ir/instruction/compare.h"
 #include "ir/instruction/instructions.h"
 #include "ir/value/result_buffer.h"

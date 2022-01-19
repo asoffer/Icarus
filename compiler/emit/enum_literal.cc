@@ -39,7 +39,7 @@ void Compiler::EmitToBuffer(ast::EnumLiteral const *node,
 bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
   LOG("EnumLiteral", "Completing enum-literal emission: %p", node);
 
-  ir::CompiledFn fn(type::Func({}, {}));
+  ir::Subroutine fn(type::Func({}, {}));
   type::Type t = context().LoadType(node);
 
   push_current(&fn);

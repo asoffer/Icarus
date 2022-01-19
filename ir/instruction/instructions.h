@@ -12,7 +12,7 @@
 #include "base/extend.h"
 #include "base/extend/traverse.h"
 #include "base/meta.h"
-#include "ir/compiled_scope.h"
+#include "ir/subroutine.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/interpreter/architecture.h"

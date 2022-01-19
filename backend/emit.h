@@ -7,7 +7,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
 #include "compiler/module.h"
-#include "ir/compiled_fn.h"
+#include "ir/subroutine.h"
 #include "ir/value/reg.h"
 #include "type/type.h"
 
@@ -16,7 +16,7 @@ namespace backend {
 template <typename Traits>
 struct EmitContext {
   explicit EmitContext(
-      absl::flat_hash_map<ir::CompiledFn const *,
+      absl::flat_hash_map<ir::Subroutine const *,
                           typename Traits::function_type *> &fs)
       : functions(fs) {}
 
@@ -24,7 +24,7 @@ struct EmitContext {
                       typename Traits::basic_block_type *>
       blocks;
   absl::flat_hash_map<ir::Reg, typename Traits::value_type *> registers;
-  absl::flat_hash_map<ir::CompiledFn const *, typename Traits::function_type *>
+  absl::flat_hash_map<ir::Subroutine const *, typename Traits::function_type *>
       &functions;
 };
 
@@ -38,20 +38,20 @@ struct Emitter {
   void EmitModule(compiler::CompiledModule const &module) {
     auto &emitter = *static_cast<Derived *>(this);
 
-    module.context().ForEachCompiledFn(
-        [&](ir::CompiledFn const *fn, module::Linkage linkage) {
+    module.context().ForEachSubroutine(
+        [&](ir::Subroutine const *fn, module::Linkage linkage) {
           LOG("Emitter", "Declaring function %p", fn);
           contexts_.try_emplace(fn, functions_);
           functions_.emplace(fn, emitter.DeclareFunction(fn, linkage, module_));
         });
 
-    module.context().ForEachCompiledFn(
-        [&](ir::CompiledFn const *fn, module::Linkage linkage) {
+    module.context().ForEachSubroutine(
+        [&](ir::Subroutine const *fn, module::Linkage linkage) {
           emitter.EmitFunction(fn, linkage);
         });
   }
 
-  function_type *EmitFunction(ir::CompiledFn const *fn,
+  function_type *EmitFunction(ir::Subroutine const *fn,
                               module::Linkage linkage) {
     LOG("Emitter", "Emitting function %p", fn);
     auto &emitter = *static_cast<Derived *>(this);
@@ -75,7 +75,7 @@ struct Emitter {
     return f;
   }
 
-  void AllocateLocalVariables(ir::CompiledFn const &f) {
+  void AllocateLocalVariables(ir::Subroutine const &f) {
     auto &emitter = *static_cast<Derived *>(this);
     auto &ctx     = contexts_.at(&f);
     emitter.PrepareForStackAllocation(f, ctx.blocks);
@@ -87,7 +87,7 @@ struct Emitter {
 
  protected:
   Emitter(module_type *module) : module_(*ASSERT_NOT_NULL(module)) {}
-  void DeclareBasicBlocks(ir::CompiledFn const *f) {
+  void DeclareBasicBlocks(ir::Subroutine const *f) {
     auto &output_fn = *functions_.at(f);
     auto &ctx       = contexts_.at(f);
     ctx.blocks.reserve(f->blocks().size());
@@ -98,7 +98,7 @@ struct Emitter {
   }
 
  private:
-  void EmitBasicBlocks(ir::CompiledFn const &fn) {
+  void EmitBasicBlocks(ir::Subroutine const &fn) {
     std::vector<std::tuple<ir::BasicBlock const *, basic_block_type *,
                            absl::Span<ir::Inst const>>>
         to_process;
@@ -137,9 +137,9 @@ struct Emitter {
 
   module_type &module_;
 
-  absl::flat_hash_map<ir::CompiledFn const *, typename Traits::function_type *>
+  absl::flat_hash_map<ir::Subroutine const *, typename Traits::function_type *>
       functions_;
-  absl::flat_hash_map<ir::CompiledFn const *, EmitContext<Traits>> contexts_;
+  absl::flat_hash_map<ir::Subroutine const *, EmitContext<Traits>> contexts_;
 };
 
 }  // namespace backend

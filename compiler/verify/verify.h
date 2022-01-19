@@ -81,7 +81,7 @@ bool VerifyPatternType(CompilationDataReference data, ast::Node const *node,
 
 // Returns A function which can be executed to complete the data for an
 // incomplete struct type pointed to by `s`.
-std::optional<ir::CompiledFn> StructDataCompletionFn(
+std::optional<ir::Subroutine> StructDataCompletionFn(
     CompilationDataReference c, type::Struct *s,
     absl::Span<ast::Declaration const> fields);
 
