@@ -109,21 +109,21 @@ CalleeResult EmitCallee(
         return {.callee  = c.current_block()->Append(ir::LoadInstruction{
                     .type   = f_type,
                     .addr   = c.state().addr(&fn_decl->ids()[0]),
-                    .result = c.current().group->Reserve()}),
+                    .result = c.current().subroutine->Reserve()}),
                 .type    = f_type,
                 .context = nullptr};
       } else if (auto *fn_decl_id = callable->if_as<ast::Declaration::Id>()) {
         return {.callee  = c.current_block()->Append(ir::LoadInstruction{
                     .type   = f_type,
                     .addr   = c.state().addr(fn_decl_id),
-                    .result = c.current().group->Reserve()}),
+                    .result = c.current().subroutine->Reserve()}),
                 .type    = f_type,
                 .context = nullptr};
       } else {
         return {.callee  = c.current_block()->Append(ir::LoadInstruction{
                     .type   = f_type,
                     .addr   = c.EmitAs<ir::addr_t>(callable),
-                    .result = c.current().group->Reserve()}),
+                    .result = c.current().subroutine->Reserve()}),
                 .type    = f_type,
                 .context = nullptr};
       }
@@ -217,7 +217,7 @@ void EmitIrForStatements(Compiler &c, ast::Scope const *scope,
     buffer.clear();
     c.EmitToBuffer(stmt, buffer);
     c.DestroyTemporaries();
-    LOG("EmitIrForStatements", "%p %s", c.current_block(), *c.current().group);
+    LOG("EmitIrForStatements", "%p %s", c.current_block(), *c.current().subroutine);
   }
 
   c.current_block() = c.EmitDestructionPath(scope, scope);
@@ -322,7 +322,7 @@ core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
   });
 }
 
-void EmitCast(GroupBlockReference &ref, type::Type from, type::Type to,
+void EmitCast(SubroutineBlockReference &ref, type::Type from, type::Type to,
               ir::PartialResultBuffer &buffer) {
 #if defined(ICARUS_DEBUG)
   ASSERT(buffer.size() != 0u);
@@ -423,32 +423,32 @@ ir::PartialResultBuffer EmitCast(Compiler &c,
   return buffer;
 }
 
-ir::Reg RegisterReferencing(GroupBlockReference current, type::Type t,
+ir::Reg RegisterReferencing(SubroutineBlockReference current, type::Type t,
                             ir::PartialResultRef const &value) {
   if (t.is_big() or t.is<type::Pointer>()) {
     return current.block->Append(ir::RegisterInstruction<ir::addr_t>{
         .operand = value.get<ir::addr_t>(),
-        .result  = current.group->Reserve(),
+        .result  = current.subroutine->Reserve(),
     });
   } else {
     if (auto const *p = t.if_as<type::Primitive>()) {
       return p->Apply([&]<typename T>() {
         return current.block->Append(ir::RegisterInstruction<T>{
             .operand = value.get<T>(),
-            .result  = current.group->Reserve(),
+            .result  = current.subroutine->Reserve(),
         });
       });
     } else if (auto const *e = t.if_as<type::Enum>()) {
       return current.block->Append(
           ir::RegisterInstruction<type::Enum::underlying_type>{
               .operand = value.get<type::Enum::underlying_type>(),
-              .result  = current.group->Reserve(),
+              .result  = current.subroutine->Reserve(),
           });
     } else if (auto const *e = t.if_as<type::Flags>()) {
       return current.block->Append(
           ir::RegisterInstruction<type::Flags::underlying_type>{
               .operand = value.get<type::Flags::underlying_type>(),
-              .result  = current.group->Reserve(),
+              .result  = current.subroutine->Reserve(),
           });
     } else {
       NOT_YET(t);
@@ -456,14 +456,14 @@ ir::Reg RegisterReferencing(GroupBlockReference current, type::Type t,
   }
 }
 
-ir::Reg PtrFix(GroupBlockReference current, ir::RegOr<ir::addr_t> addr,
+ir::Reg PtrFix(SubroutineBlockReference current, ir::RegOr<ir::addr_t> addr,
                type::Type desired_type) {
   // TODO must this be a register if it's loaded?
   if (desired_type.get()->is_big()) { return addr.reg(); }
   return current.block->Append(ir::LoadInstruction{
       .type   = desired_type,
       .addr   = addr,
-      .result = current.group->Reserve(),
+      .result = current.subroutine->Reserve(),
   });
 }
 

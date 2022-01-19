@@ -186,10 +186,10 @@ void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
 
 }  // namespace
 
-ir::ByteCode EmitByteCode(ir::internal::BlockGroupBase const& g) {
+ir::ByteCode EmitByteCode(ir::Subroutine const& sr) {
   ir::ByteCode byte_code;
   ir::ByteCodeWriter writer(&byte_code);
-  for (auto const& block : g.blocks()) { EmitByteCode(writer, *block); }
+  for (auto const& block : sr.blocks()) { EmitByteCode(writer, *block); }
   std::move(writer).Finalize();
   return byte_code;
 }
@@ -198,7 +198,7 @@ void InterpretAtCompileTime(ir::CompiledFn const& fn) {
   ir::ByteCode byte_code = EmitByteCode(fn);
   ir::NativeFn::Data data{
       .fn        = &const_cast<ir::CompiledFn&>(fn),
-      .type      = fn.type(),
+      .type      = &fn.type()->as<type::Function>(),
       .byte_code = byte_code.begin(),
   };
   InterpretAtCompileTime(ir::NativeFn(&data));

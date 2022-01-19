@@ -46,7 +46,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       out.pop_back();
       out.append(current_block()->Append(type::BufPtrInstruction{
           .operand = value,
-          .result  = current().group->Reserve(),
+          .result  = current().subroutine->Reserve(),
       }));
       return;
     } break;
@@ -57,13 +57,13 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
         auto value = out.back().get<bool>();
         out.pop_back();
         out.append(current_block()->Append(ir::NotInstruction{
-            .operand = value, .result = current().group->Reserve()}));
+            .operand = value, .result = current().subroutine->Reserve()}));
         return;
       } else if (auto const *t = operand_qt.type().if_as<type::Flags>()) {
         out.append(current_block()->Append(type::XorFlagsInstruction{
             .lhs    = EmitAs<type::Flags::underlying_type>(node->operand()),
             .rhs    = t->All,
-            .result = current().group->Reserve()}));
+            .result = current().subroutine->Reserve()}));
         return;
       } else {
         // TODO: Operator overloading
@@ -78,7 +78,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
             out.pop_back();
             out.append(current_block()->Append(ir::NegInstruction<T>{
                 .operand = value,
-                .result  = current().group->Reserve(),
+                .result  = current().subroutine->Reserve(),
             }));
           });
       return;
@@ -92,7 +92,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
     case ast::UnaryOperator::Kind::Pointer: {
       out.append(current_block()->Append(type::PtrInstruction{
           .operand = EmitAs<type::Type>(node->operand()),
-          .result  = current().group->Reserve(),
+          .result  = current().subroutine->Reserve(),
       }));
       return;
     } break;
@@ -103,14 +103,14 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       out.append(current_block()->Append(ir::LoadInstruction{
           .type   = t,
           .addr   = buffer[0].get<ir::addr_t>(),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }));
       return;
     } break;
     case ast::UnaryOperator::Kind::BlockJump: {
       ir::PartialResultBuffer buffer;
       auto block = *EvaluateOrDiagnoseAs<ir::Block>(node->operand());
-      auto *exit = current().group->AppendBlock();
+      auto *exit = current().subroutine->AppendBlock();
       current_block()->set_jump(ir::JumpCmd::ToBlock(block, exit));
       current_block() = exit;
     } break;

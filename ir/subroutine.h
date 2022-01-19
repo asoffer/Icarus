@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_BLOCKS_GROUP_H
-#define ICARUS_IR_BLOCKS_GROUP_H
+#ifndef ICARUS_IR_SUBROUTINE_H
+#define ICARUS_IR_SUBROUTINE_H
 
 #include <concepts>
 #include <iostream>
@@ -12,30 +12,27 @@
 #include "core/bytes.h"
 #include "core/params.h"
 #include "core/type_contour.h"
-#include "ir/blocks/basic.h"
+#include "ir/basic_block.h"
 #include "ir/blocks/register_allocator.h"
 #include "ir/value/reg.h"
-#include "type/type_fwd.h"
-#include "type/typed_value.h"
+#include "type/callable.h"
 
 namespace ir {
-namespace internal {
 
-// BlockGroupBase:
+// Subroutine:
 //
 // Represents a collection of `BasicBlock`s which make sense together as a
 // coherent entity. One might normally call such a collection of `BasicBlock`s a
 // function, but Icarus has at least one other useful example: A `Jump`. The IR
 // for a Jump is largely similar to that of a function with a few differences. A
-// `BlockGroupBase` represents the parts common to both.
-struct BlockGroupBase {
-  BlockGroupBase(BlockGroupBase const &) = delete;
-  BlockGroupBase(BlockGroupBase &&)      = default;
-  BlockGroupBase &operator=(BlockGroupBase const &) = delete;
-  BlockGroupBase &operator=(BlockGroupBase &&) = default;
+// `Subroutine` represents the parts common to both.
+struct Subroutine {
+  Subroutine(Subroutine const &) = delete;
+  Subroutine(Subroutine &&)      = default;
+  Subroutine &operator=(Subroutine const &) = delete;
+  Subroutine &operator=(Subroutine &&) = default;
 
-  explicit BlockGroupBase(core::Params<type::QualType> params,
-                          size_t num_state_args = 0);
+  explicit Subroutine(type::Callable const *type);
 
   base::PtrSpan<BasicBlock const> blocks() const { return blocks_; }
   base::PtrSpan<BasicBlock> blocks() { return blocks_; }
@@ -51,7 +48,8 @@ struct BlockGroupBase {
         .get();
   }
 
-  core::Params<type::QualType> const &params() const { return params_; }
+  core::Params<type::QualType> const &params() const { return type_->params(); }
+  type::Callable const *type() const { return type_; }
 
   template <std::invocable<type::Type, ir::Reg> Fn>
   void for_each_alloc(Fn &&f) const {
@@ -68,7 +66,7 @@ struct BlockGroupBase {
   Reg Alloca(core::TypeContour tc);
 
   template <std::invocable<ir::Reg &> F>
-  void MergeAllocationsFrom(BlockGroupBase const &from, F &&f) {
+  void MergeAllocationsFrom(Subroutine const &from, F &&f) {
     alloc_.MergeFrom(from.alloc_, std::forward<F>(f));
   }
 
@@ -76,33 +74,14 @@ struct BlockGroupBase {
   constexpr size_t num_args() const { return alloc_.num_args(); }
   size_t num_allocs() const { return alloc_.num_allocs(); }
 
-  friend std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b);
+  friend std::ostream &operator<<(std::ostream &os, Subroutine const &b);
 
  private:
-  core::Params<type::QualType> params_;
+  type::Callable const *type_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   RegisterAllocator alloc_;
 };
 
-}  // namespace internal
-
-template <typename T>
-struct BlockGroup : internal::BlockGroupBase {
-  BlockGroup(T const *t, size_t num_state_args = 0)
-      : internal::BlockGroupBase(t->params(), num_state_args), type_(t) {}
-
-  T const *type() const { return type_; }
-
-  friend std::ostream &operator<<(std::ostream &os, BlockGroup const &b) {
-    return os << "\n"
-              << &b << ": " << b.type()->to_string()
-              << static_cast<internal::BlockGroupBase const &>(b);
-  }
-
- private:
-  T const *type_;
-};
-
 }  // namespace ir
 
-#endif  // ICARUS_IR_BLOCKS_GROUP_H
+#endif  // ICARUS_IR_SUBROUTINE_H

@@ -28,20 +28,20 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
             c.current_block()->Append(ir::NeInstruction<underlying_type>{
                 .lhs    = lhs_value,
                 .rhs    = rhs_value,
-                .result = c.current().group->Reserve()});
+                .result = c.current().subroutine->Reserve()});
         auto mask = c.current_block()->Append(
             type::OrFlagsInstruction{.lhs    = lhs_value,
                                      .rhs    = rhs_value,
-                                     .result = c.current().group->Reserve()});
+                                     .result = c.current().subroutine->Reserve()});
         auto less_or_equal_mask =
             c.current_block()->Append(ir::LeInstruction<underlying_type>{
                 .lhs    = mask,
                 .rhs    = rhs_value,
-                .result = c.current().group->Reserve()});
+                .result = c.current().subroutine->Reserve()});
         return c.current_block()->Append(
             ir::AndInstruction{.lhs    = not_equal,
                                .rhs    = less_or_equal_mask,
-                               .result = c.current().group->Reserve()});
+                               .result = c.current().subroutine->Reserve()});
       }
       case frontend::Operator::Ge:
         std::swap(lhs_value, rhs_value);
@@ -50,22 +50,22 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
         auto mask = c.current_block()->Append(
             type::OrFlagsInstruction{.lhs    = lhs_value,
                                      .rhs    = rhs_value,
-                                     .result = c.current().group->Reserve()});
+                                     .result = c.current().subroutine->Reserve()});
         return c.current_block()->Append(ir::LeInstruction<underlying_type>{
             .lhs    = mask,
             .rhs    = rhs_value,
-            .result = c.current().group->Reserve()});
+            .result = c.current().subroutine->Reserve()});
       }
       case frontend::Operator::Eq:
         return c.current_block()->Append(ir::EqInstruction<underlying_type>{
             .lhs    = lhs_value,
             .rhs    = rhs_value,
-            .result = c.current().group->Reserve()});
+            .result = c.current().subroutine->Reserve()});
       case frontend::Operator::Ne:
         return c.current_block()->Append(ir::NeInstruction<underlying_type>{
             .lhs    = lhs_value,
             .rhs    = rhs_value,
-            .result = c.current().group->Reserve()});
+            .result = c.current().subroutine->Reserve()});
       default: UNREACHABLE();
     }
 
@@ -86,7 +86,7 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
               return c.current_block()->Append(
                   ir::LtInstruction<T>{.lhs    = lhs_buffer.back().get<T>(),
                                        .rhs    = rhs_buffer.back().get<T>(),
-                                       .result = c.current().group->Reserve()});
+                                       .result = c.current().subroutine->Reserve()});
             });
 
       case frontend::Operator::Ge:
@@ -100,7 +100,7 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
               return c.current_block()->Append(
                   ir::LeInstruction<T>{.lhs    = lhs_buffer.back().get<T>(),
                                        .rhs    = rhs_buffer.back().get<T>(),
-                                       .result = c.current().group->Reserve()});
+                                       .result = c.current().subroutine->Reserve()});
             });
       case frontend::Operator::Eq:
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
@@ -109,7 +109,7 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
           return c.current_block()->Append(
               ir::EqInstruction<T>{.lhs    = lhs->back().get<T>(),
                                    .rhs    = rhs->back().get<T>(),
-                                   .result = c.current().group->Reserve()});
+                                   .result = c.current().subroutine->Reserve()});
         });
       case frontend::Operator::Ne:
         return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
@@ -118,7 +118,7 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
           return c.current_block()->Append(
               ir::NeInstruction<T>{.lhs    = lhs->back().get<T>(),
                                    .rhs    = rhs->back().get<T>(),
-                                   .result = c.current().group->Reserve()});
+                                   .result = c.current().subroutine->Reserve()});
         });
       default: UNREACHABLE();
     }
@@ -147,7 +147,7 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
   EmitToBuffer(node->exprs()[0], lhs_buffer);
   type::Type lhs_type = context().qual_types(node->exprs()[0])[0].type();
 
-  auto *land_block = current().group->AppendBlock();
+  auto *land_block = current().subroutine->AppendBlock();
   for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
     rhs_buffer.clear();
     EmitToBuffer(node->exprs()[i], rhs_buffer);
@@ -158,7 +158,7 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
 
     phi_blocks.push_back(current_block());
     phi_values.push_back(false);
-    auto *next_block = current().group->AppendBlock();
+    auto *next_block = current().subroutine->AppendBlock();
     current_block()->set_jump(ir::JumpCmd::Cond(cmp, next_block, land_block));
     current_block() = next_block;
     lhs_buffer      = std::move(rhs_buffer);
@@ -179,7 +179,7 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
   current_block() = land_block;
 
   ir::PhiInstruction<bool> phi(std::move(phi_blocks), std::move(phi_values));
-  phi.result = current().group->Reserve();
+  phi.result = current().subroutine->Reserve();
   out.append(current_block()->Append(std::move(phi)));
 }
 

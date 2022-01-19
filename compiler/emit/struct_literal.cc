@@ -25,7 +25,7 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
   if (inserted) {
     c.push_current(&*fn);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-    c.current_block()     = c.current().group->entry();
+    c.current_block()     = c.current().subroutine->entry();
 
     auto from = ir::Reg::Arg(0);
     auto to   = ir::Reg::Out(0);
@@ -36,12 +36,12 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
           ir::StructIndexInstruction{.addr        = to,
                                      .index       = i,
                                      .struct_type = s,
-                                     .result = c.current().group->Reserve()});
+                                     .result = c.current().subroutine->Reserve()});
       auto from_val = c.current_block()->Append(
           ir::StructIndexInstruction{.addr        = from,
                                      .index       = i,
                                      .struct_type = s,
-                                     .result = c.current().group->Reserve()});
+                                     .result = c.current().subroutine->Reserve()});
 
       ir::RegOr<ir::addr_t> r(PtrFix(c.current(), from_val, field.type));
       ir::PartialResultBuffer buffer;
@@ -60,7 +60,7 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
   if (inserted) {
     c.push_current(&*fn);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-    c.current_block()     = c.current().group->entry();
+    c.current_block()     = c.current().subroutine->entry();
 
     auto from = ir::Reg::Arg(0);
     auto to   = ir::Reg::Out(0);
@@ -71,12 +71,12 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
           ir::StructIndexInstruction{.addr        = to,
                                      .index       = i,
                                      .struct_type = s,
-                                     .result = c.current().group->Reserve()});
+                                     .result = c.current().subroutine->Reserve()});
       auto from_val = c.current_block()->Append(
           ir::StructIndexInstruction{.addr        = from,
                                      .index       = i,
                                      .struct_type = s,
-                                     .result = c.current().group->Reserve()});
+                                     .result = c.current().subroutine->Reserve()});
 
       ir::PartialResultBuffer buffer;
       buffer.append(PtrFix(c.current(), from_val, field.type));
@@ -103,12 +103,12 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
           ir::StructIndexInstruction{.addr        = var,
                                      .index       = i,
                                      .struct_type = s,
-                                     .result = c.current().group->Reserve()});
+                                     .result = c.current().subroutine->Reserve()});
       ir::Reg from_ref = c.current_block()->Append(
           ir::StructIndexInstruction{.addr        = val,
                                      .index       = i,
                                      .struct_type = s,
-                                     .result = c.current().group->Reserve()});
+                                     .result = c.current().subroutine->Reserve()});
 
       ir::PartialResultBuffer buffer;
       buffer.append(PtrFix(c.current(), from_ref, s->fields()[i].type));
@@ -137,12 +137,12 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
           ir::StructIndexInstruction{.addr        = var,
                                      .index       = i,
                                      .struct_type = s,
-                                     .result = c.current().group->Reserve()});
+                                     .result = c.current().subroutine->Reserve()});
       ir::Reg from_ref = c.current_block()->Append(
           ir::StructIndexInstruction{.addr        = val,
                                      .index       = i,
                                      .struct_type = s,
-                                     .result = c.current().group->Reserve()});
+                                     .result = c.current().subroutine->Reserve()});
       ir::PartialResultBuffer buffer;
       buffer.append(PtrFix(c.current(), from_ref, s->fields()[i].type));
       c.EmitCopyAssign(
@@ -238,7 +238,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
     if (inserted) {
       data.push_current(&*full_dtor);
       absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-      data.current_block()  = data.current().group->entry();
+      data.current_block()  = data.current().subroutine->entry();
       auto var              = ir::Reg::Arg(0);
       if (user_dtor) {
         // TODO: Should probably force-inline this.
@@ -255,7 +255,7 @@ std::optional<ir::CompiledFn> StructCompletionFn(
                .addr        = var,
                .index       = i,
                .struct_type = s,
-               .result      = c.current().group->Reserve()}));
+               .result      = c.current().subroutine->Reserve()}));
       }
 
       data.current_block()->set_jump(ir::JumpCmd::Return());

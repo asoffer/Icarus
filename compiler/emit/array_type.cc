@@ -17,7 +17,7 @@ void Compiler::EmitToBuffer(ast::ArrayType const *node,
                    .back()
                    .get<ir::Integer>();
     t = current_block()->Append(type::ArrayInstruction{
-        .length = len, .data_type = t, .result = current().group->Reserve()});
+        .length = len, .data_type = t, .result = current().subroutine->Reserve()});
   }
   out.append(t);
 }

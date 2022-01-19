@@ -18,8 +18,8 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/module.h"
-#include "ir/blocks/basic.h"
-#include "ir/blocks/group.h"
+#include "ir/basic_block.h"
+#include "ir/subroutine.h"
 #include "ir/compiled_scope.h"
 #include "ir/instruction/core.h"
 #include "ir/instruction/jump.h"
@@ -32,8 +32,7 @@ namespace compiler {
 namespace {
 
 absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *>
-InsertUnadjustedBlocks(ir::internal::BlockGroupBase &to,
-                       ir::internal::BlockGroupBase const &from) {
+InsertUnadjustedBlocks(ir::Subroutine &to, ir::Subroutine const &from) {
   absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *> result;
   for (auto const *block : from.blocks()) {
     auto [iter, inserted] = result.try_emplace(block, to.AppendBlock(*block));
@@ -54,7 +53,7 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
     ir::Inliner &inliner,
     absl::flat_hash_map<ir::BasicBlock const *, ir::BasicBlock *> const
         &block_mapping) {
-  auto *landing = c.current().group->AppendBlock();
+  auto *landing = c.current().subroutine->AppendBlock();
   for (auto const &[from, to] : block_mapping) {
     to->jump().Visit([&, jump = &to->jump()](auto &j) {
       constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
@@ -74,7 +73,7 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
         size_t block_index  = j.block.value();
         auto *block_to_emit = &node->blocks()[block_index];
 
-        auto *block_start = c.current().group->AppendBlock();
+        auto *block_start = c.current().subroutine->AppendBlock();
         *jump             = ir::JumpCmd::Uncond(block_start);
 
         c.current_block() = block_start;
@@ -89,7 +88,7 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
             type::Type param_type = c.context().qual_types(&id)[0].type();
             ir::PartialResultBuffer buffer;
             buffer.append(r);
-            c.state().set_addr(&id, c.current().group->Alloca(param_type));
+            c.state().set_addr(&id, c.current().subroutine->Alloca(param_type));
             c.EmitCopyAssign(type::Typed(c.state().addr(&id), param_type),
                              type::Typed(buffer[0], param_type));
           }
@@ -168,15 +167,15 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
     EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
                   node->arguments(), constant_arguments, argument_buffer);
 
-    ir::Inliner inliner(current().group->num_regs(), scope->num_args());
+    ir::Inliner inliner(current().subroutine->num_regs(), scope->num_args());
 
     size_t j = 0;
     for (auto const &p : scope.type()->params()) {
       RegisterReferencing(current(), p.value.type(), argument_buffer[j++]);
     }
 
-    current().group->MergeAllocationsFrom(*scope, inliner);
-    auto block_mapping = InsertUnadjustedBlocks(*current().group, *scope);
+    current().subroutine->MergeAllocationsFrom(*scope, inliner);
+    auto block_mapping = InsertUnadjustedBlocks(*current().subroutine, *scope);
     AdjustInstructions(inliner, block_mapping);
 
     current_block() = start;
@@ -187,7 +186,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
         AdjustJumpsAndEmitBlocks(*this, node, scope, inliner, block_mapping);
     current_block() = landing;
   }
-  LOG("ScopeNode", "%s", *current().group);
+  LOG("ScopeNode", "%s", *current().subroutine);
 }
 
 void Compiler::EmitCopyInit(

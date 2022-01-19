@@ -25,7 +25,7 @@ namespace ir {
 // tied) so that the interpreter could reuse stack space for allocations with
 // non-overlapping lifetimes.
 struct RegisterAllocator {
-  // Constructs a register allocatior to be used with a group that has
+  // Constructs a register allocatior to be used with a subroutine that has
   // `num_input_regs` already allocated to inputs (input parameters or state).
   explicit RegisterAllocator(size_t num_input_regs)
       : num_regs_(num_input_regs), num_args_(num_input_regs) {}
@@ -61,9 +61,9 @@ struct RegisterAllocator {
   size_t num_allocs() const { return allocs_.size() + raw_allocs_.size(); }
 
   // Merge allocations from another RegisterAllocator. This method is used when
-  // inlining another group into this one. The callable `f` is applied to each
-  // allocated register from `a`, so that its value does not conflict with a
-  // register in `*this`. It is up to the caller to ensure register values do
+  // inlining another subroutine into this one. The callable `f` is applied to
+  // each allocated register from `a`, so that its value does not conflict with
+  // a register in `*this`. It is up to the caller to ensure register values do
   // not consflict.
   void MergeFrom(RegisterAllocator const& a,
                  std::invocable<ir::Reg&> auto&& f) {

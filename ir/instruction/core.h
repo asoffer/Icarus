@@ -12,7 +12,7 @@
 #include "base/extend/serialize.h"
 #include "base/extend/traverse.h"
 #include "base/serialize.h"
-#include "ir/blocks/basic.h"
+#include "ir/basic_block.h"
 #include "ir/byte_code/reader.h"
 #include "ir/byte_code/writer.h"
 #include "ir/instruction/debug.h"

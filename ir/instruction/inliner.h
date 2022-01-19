@@ -11,7 +11,7 @@
 namespace ir {
 
 // Instruction traversal which replaces register values so that the instruction
-// can be inlined from one block group into another, avoiding register
+// can be inlined from one subroutine into another, avoiding register
 // collisions.
 struct Inliner {
   explicit Inliner(size_t register_offset, size_t num_params)
@@ -47,7 +47,7 @@ struct Inliner {
 
  private:
   size_t register_offset_;
-  size_t num_params_;  // The number of parameters in the to-be-inlined group.
+  size_t num_params_;  // The number of parameters in the to-be-inlined subroutine.
 };
 
 }  // namespace ir

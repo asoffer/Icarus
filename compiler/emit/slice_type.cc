@@ -10,7 +10,7 @@ void Compiler::EmitToBuffer(ast::SliceType const *node,
   auto t = out.get<type::Type>(0);
   out.pop_back();
   out.append(current_block()->Append(type::SliceInstruction{
-      .data_type = t, .result = current().group->Reserve()}));
+      .data_type = t, .result = current().subroutine->Reserve()}));
 }
 
 void Compiler::EmitCopyAssign(

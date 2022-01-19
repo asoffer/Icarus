@@ -110,7 +110,7 @@ std::optional<ir::CompiledFn> CompileExecutable(
     Context &context, PersistentResources const &resources,
     base::PtrSpan<ast::Node const> nodes) {
   WorkGraph w(resources);
-  ir::CompiledFn f = ir::CompiledFn(type::Func({}, {}), {});
+  ir::CompiledFn f(type::Func({}, {}));
 
   bool success = w.ExecuteCompilationSequence(
       context, nodes,
@@ -243,7 +243,7 @@ WorkGraph::EvaluateToBuffer(Context &context,
   auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
   ir::NativeFn::Data data{
       .fn        = &thunk,
-      .type      = thunk.type(),
+      .type      = &thunk.type()->as<type::Function>(),
       .byte_code = byte_code.begin(),
   };
 

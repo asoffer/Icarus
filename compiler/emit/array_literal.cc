@@ -31,7 +31,7 @@ void Compiler::EmitCopyInit(
         ir::PtrIncrInstruction{.addr   = elem,
                                .index  = 1,
                                .ptr    = data_type_ptr,
-                               .result = current().group->Reserve()});
+                               .result = current().subroutine->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
   EmitCopyInit(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
@@ -54,7 +54,7 @@ void Compiler::EmitMoveInit(
         ir::PtrIncrInstruction{.addr   = elem,
                                .index  = 1,
                                .ptr    = data_type_ptr,
-                               .result = current().group->Reserve()});
+                               .result = current().subroutine->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
   EmitMoveInit(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
@@ -76,7 +76,7 @@ void Compiler::EmitCopyAssign(
         ir::PtrIncrInstruction{.addr   = elem,
                                .index  = 1,
                                .ptr    = data_type_ptr,
-                               .result = current().group->Reserve()});
+                               .result = current().subroutine->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
   EmitCopyAssign(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
@@ -99,7 +99,7 @@ void Compiler::EmitMoveAssign(
         ir::PtrIncrInstruction{.addr   = elem,
                                .index  = 1,
                                .ptr    = data_type_ptr,
-                               .result = current().group->Reserve()});
+                               .result = current().subroutine->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
   EmitMoveAssign(node->elems().back(), absl::MakeConstSpan(&to_var, 1));

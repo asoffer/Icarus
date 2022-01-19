@@ -16,9 +16,9 @@ void EmitConstantIf(Compiler &c, ast::IfStmt const *node,
 
 void EmitNonConstantIf(Compiler &c, ast::IfStmt const *node,
                        ir::PartialResultBuffer &out) {
-  auto *true_block = c.current().group->AppendBlock();
+  auto *true_block = c.current().subroutine->AppendBlock();
   auto *false_block =
-      node->has_false_block() ? c.current().group->AppendBlock() : nullptr;
+      node->has_false_block() ? c.current().subroutine->AppendBlock() : nullptr;
   auto *landing =
       c.state().scaffolding.back().landing_blocks.at(&node->true_scope());
 
@@ -78,9 +78,9 @@ void Compiler::EmitToBuffer(ast::IfStmt const *node,
 
 void Compiler::EmitToBuffer(ast::WhileStmt const *node,
                             ir::PartialResultBuffer &out) {
-  auto *start_block = current().group->AppendBlock();
-  auto *body_block  = current().group->AppendBlock();
-  auto *landing     = current().group->AppendBlock();
+  auto *start_block = current().subroutine->AppendBlock();
+  auto *body_block  = current().subroutine->AppendBlock();
+  auto *landing     = current().subroutine->AppendBlock();
 
   current_block()->set_jump(ir::JumpCmd::Uncond(start_block));
 

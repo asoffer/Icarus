@@ -104,7 +104,7 @@ struct DebugIrInstruction
   static constexpr std::string_view kDebugFormat = "debug-ir(%s)";
 
   void Apply(interpreter::ExecutionContext&) const { std::cerr << *fn; }
-  internal::BlockGroupBase const* fn;
+  Subroutine const* fn;
 };
 
 struct AbortInstruction

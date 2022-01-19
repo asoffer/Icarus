@@ -41,7 +41,7 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
       out.append(current_block()->Append(ir::LoadInstruction{
           .type   = t,
           .addr   = addr,
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }));
     } else {
       out.append(addr);
@@ -94,7 +94,7 @@ ir::Reg Compiler::EmitRef(ast::Identifier const *node) {
     }
     ASSERT(buffer != nullptr);
 
-    ir::Reg r = current().group->Reserve();
+    ir::Reg r = current().subroutine->Reserve();
     current_block()->Append(ir::RegisterInstruction<ir::addr_t>{
         .operand = const_cast<ir::addr_t>((*buffer)[0].raw().data()),
         .result  = r,

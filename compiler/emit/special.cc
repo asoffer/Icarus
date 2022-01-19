@@ -19,7 +19,7 @@ enum Kind { Move, Copy };
 template <Kind K>
 void EmitArrayAssignment(Compiler &c, type::Array const *to,
                          type::Array const *from) {
-  auto &fn          = *c.current().group;
+  auto &fn          = *c.current().subroutine;
   c.current_block() = fn.entry();
   auto to_ptr       = ir::Reg::Arg(0);
   auto from_ptr     = ir::Reg::Arg(1);
@@ -31,11 +31,11 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
       ir::PtrIncrInstruction{.addr   = from_ptr,
                              .index  = from->length().value(),
                              .ptr    = from_data_ptr_type,
-                             .result = c.current().group->Reserve()});
+                             .result = c.current().subroutine->Reserve()});
 
-  auto *loop_body  = c.current().group->AppendBlock();
-  auto *land_block = c.current().group->AppendBlock();
-  auto *cond_block = c.current().group->AppendBlock();
+  auto *loop_body  = c.current().subroutine->AppendBlock();
+  auto *land_block = c.current().subroutine->AppendBlock();
+  auto *cond_block = c.current().subroutine->AppendBlock();
 
   c.current_block()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
@@ -45,7 +45,7 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
   ir::Reg condition = c.current_block()->Append(
       ir::EqInstruction<ir::addr_t>{.lhs    = from_phi->result,
                                     .rhs    = from_end_ptr,
-                                    .result = c.current().group->Reserve()});
+                                    .result = c.current().subroutine->Reserve()});
   c.current_block()->set_jump(
       ir::JumpCmd::Cond(condition, land_block, loop_body));
 
@@ -69,12 +69,12 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
       ir::PtrIncrInstruction{.addr   = to_phi->result,
                              .index  = 1,
                              .ptr    = to_data_ptr_type,
-                             .result = c.current().group->Reserve()});
+                             .result = c.current().subroutine->Reserve()});
   ir::Reg next_from = c.current_block()->Append(
       ir::PtrIncrInstruction{.addr   = from_phi->result,
                              .index  = 1,
                              .ptr    = from_data_ptr_type,
-                             .result = c.current().group->Reserve()});
+                             .result = c.current().subroutine->Reserve()});
   c.current_block()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   to_phi->add(fn.entry(), to_ptr);
@@ -89,7 +89,7 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
 template <Kind K>
 void EmitArrayInit(Compiler &c, type::Array const *to,
                    type::Array const *from) {
-  auto &fn          = *c.current().group;
+  auto &fn          = *c.current().subroutine;
   c.current_block() = fn.entry();
   auto from_ptr     = ir::Reg::Arg(0);
   auto to_ptr       = ir::Reg::Out(0);
@@ -99,11 +99,11 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
       ir::PtrIncrInstruction{.addr   = from_ptr,
                              .index  = from->length().value(),
                              .ptr    = from_data_ptr_type,
-                             .result = c.current().group->Reserve()});
+                             .result = c.current().subroutine->Reserve()});
 
-  auto *loop_body  = c.current().group->AppendBlock();
-  auto *land_block = c.current().group->AppendBlock();
-  auto *cond_block = c.current().group->AppendBlock();
+  auto *loop_body  = c.current().subroutine->AppendBlock();
+  auto *land_block = c.current().subroutine->AppendBlock();
+  auto *cond_block = c.current().subroutine->AppendBlock();
 
   c.current_block()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
@@ -113,7 +113,7 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
   ir::Reg condition = c.current_block()->Append(
       ir::EqInstruction<ir::addr_t>{.lhs    = from_phi->result,
                                     .rhs    = from_end_ptr,
-                                    .result = c.current().group->Reserve()});
+                                    .result = c.current().subroutine->Reserve()});
   c.current_block()->set_jump(
       ir::JumpCmd::Cond(condition, land_block, loop_body));
 
@@ -135,12 +135,12 @@ void EmitArrayInit(Compiler &c, type::Array const *to,
       ir::PtrIncrInstruction{.addr   = to_phi->result,
                              .index  = 1,
                              .ptr    = from_data_ptr_type,
-                             .result = c.current().group->Reserve()});
+                             .result = c.current().subroutine->Reserve()});
   ir::Reg next_from = c.current_block()->Append(
       ir::PtrIncrInstruction{.addr   = from_phi->result,
                              .index  = 1,
                              .ptr    = from_data_ptr_type,
-                             .result = c.current().group->Reserve()});
+                             .result = c.current().subroutine->Reserve()});
   c.current_block()->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   to_phi->add(fn.entry(), to_ptr);
@@ -467,7 +467,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
   if (inserted) {
     push_current(&*fn);
     absl::Cleanup c = [&] { state().current.pop_back(); };
-    current_block() = current().group->entry();
+    current_block() = current().subroutine->entry();
     auto var        = ir::Reg::Arg(0);
 
     for (size_t i = 0; i < r.type()->fields().size(); ++i) {
@@ -477,7 +477,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
               ir::StructIndexInstruction{.addr        = var,
                                          .index       = i,
                                          .struct_type = r.type(),
-                                         .result = current().group->Reserve()}),
+                                         .result = current().subroutine->Reserve()}),
           r.type()->fields()[i].type);
       if (not field.initial_value.empty()) {
         EmitCopyInit(field_reg, field.initial_value);
@@ -561,32 +561,32 @@ void Compiler::EmitMoveInit(type::Typed<ir::Reg, type::Slice> to,
       .type   = type::BufPtr(to.type()->data_type()),
       .addr   = current_block()->Append(type::SliceDataInstruction{
           .slice  = from[0].get<ir::addr_t>(),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
-      .result = current().group->Reserve(),
+      .result = current().subroutine->Reserve(),
   });
   ir::RegOr<type::Slice::length_t> length =
       current_block()->Append(ir::LoadInstruction{
           .type   = type::Slice::LengthType(),
           .addr   = current_block()->Append(type::SliceLengthInstruction{
               .slice  = from.get<ir::addr_t>(0),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       });
 
   current_block()->Append(ir::StoreInstruction<ir::addr_t>{
       .value    = data,
       .location = current_block()->Append(type::SliceDataInstruction{
           .slice  = *to,
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
   });
   current_block()->Append(ir::StoreInstruction<type::Slice::length_t>{
       .value    = length,
       .location = current_block()->Append(type::SliceLengthInstruction{
           .slice  = *to,
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
   });
 }
@@ -604,13 +604,13 @@ void Compiler::EmitCopyAssign(
           .type   = type::BufPtr(to.type()->data_type()),
           .addr   = current_block()->Append(type::SliceDataInstruction{
               .slice  = from->get<ir::addr_t>(),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
       .location = current_block()->Append(type::SliceDataInstruction{
           .slice  = *to,
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
   });
 
@@ -619,13 +619,13 @@ void Compiler::EmitCopyAssign(
           .type   = type::Slice::LengthType(),
           .addr   = current_block()->Append(type::SliceLengthInstruction{
               .slice  = *to,
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
       .location = current_block()->Append(type::SliceLengthInstruction{
           .slice  = *to,
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
   });
 }
@@ -638,13 +638,13 @@ void Compiler::EmitMoveAssign(
           .type   = type::BufPtr(to.type()->data_type()),
           .addr   = current_block()->Append(type::SliceDataInstruction{
               .slice  = from->get<ir::addr_t>(),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
       .location = current_block()->Append(type::SliceDataInstruction{
           .slice  = *to,
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
   });
 
@@ -653,13 +653,13 @@ void Compiler::EmitMoveAssign(
           .type   = type::Slice::LengthType(),
           .addr   = current_block()->Append(type::SliceLengthInstruction{
               .slice  = from->get<ir::addr_t>(),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
       .location = current_block()->Append(type::SliceLengthInstruction{
           .slice  = *to,
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }),
   });
 }

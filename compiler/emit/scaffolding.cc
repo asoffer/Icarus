@@ -5,7 +5,7 @@
 namespace compiler {
 
 ScaffoldingCleanup EmitScaffolding(CompilationDataReference ref,
-                                   ir::internal::BlockGroupBase &group,
+                                   ir::Subroutine &subroutine,
                                    ast::Scope const &scope) {
   auto &[stack_allocations, landing_blocks, destruction_blocks] =
       ref.state().scaffolding.emplace_back();
@@ -17,15 +17,16 @@ ScaffoldingCleanup EmitScaffolding(CompilationDataReference ref,
       return;
     }
     for (ast::Declaration::Id const &id : decl->ids()) {
-      allocs->emplace(&id, group.Alloca(ref.context().typed(&id).type()));
+      allocs->emplace(&id, subroutine.Alloca(ref.context().typed(&id).type()));
     }
   });
 
   for (auto const *descendant : scope.executable_descendants()) {
-    landing_blocks.emplace(descendant, group.AppendBlock());
+    landing_blocks.emplace(descendant, subroutine.AppendBlock());
 
     for (auto const *s = descendant; s != scope.parent(); s = s->parent()) {
-      destruction_blocks.emplace(std::pair(descendant, s), group.AppendBlock());
+      destruction_blocks.emplace(std::pair(descendant, s),
+                                 subroutine.AppendBlock());
     }
   }
 

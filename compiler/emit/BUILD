@@ -653,6 +653,6 @@ cc_library(
         "//base:debug",
         "//compiler:compilation_data",
         "//compiler:transient_state",
-        "//ir/blocks:group",
+        "//ir:subroutine",
     ]
 )

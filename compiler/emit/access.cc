@@ -34,9 +34,9 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
               .type   = type::Slice::LengthType(),
               .addr   = c.current_block()->Append(type::SliceLengthInstruction{
                   .slice  = c.EmitAs<ir::addr_t>(node->operand()),
-                  .result = c.current().group->Reserve(),
+                  .result = c.current().subroutine->Reserve(),
               }),
-              .result = c.current().group->Reserve()}),
+              .result = c.current().subroutine->Reserve()}),
           .location = to,
       });
     } else if (node->member_name() == "data") {
@@ -45,9 +45,9 @@ bool EmitAssignForAlwaysCopyTypes(Compiler &c, ast::Access const *node,
               .type   = type::BufPtr(s->data_type()),
               .addr   = c.current_block()->Append(type::SliceDataInstruction{
                   .slice  = c.EmitAs<ir::addr_t>(node->operand()),
-                  .result = c.current().group->Reserve(),
+                  .result = c.current().subroutine->Reserve(),
               }),
-              .result = c.current().group->Reserve()}),
+              .result = c.current().subroutine->Reserve()}),
           .location = to,
       });
     } else {
@@ -95,17 +95,17 @@ void Compiler::EmitToBuffer(ast::Access const *node,
           .type   = type::Slice::LengthType(),
           .addr   = current_block()->Append(type::SliceLengthInstruction{
               .slice  = EmitAs<ir::addr_t>(node->operand()),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve()}));
+          .result = current().subroutine->Reserve()}));
     } else if (node->member_name() == "data") {
       out.append(current_block()->Append(ir::LoadInstruction{
           .type   = type::BufPtr(s->data_type()),
           .addr   = current_block()->Append(type::SliceDataInstruction{
               .slice  = EmitAs<ir::addr_t>(node->operand()),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve()}));
+          .result = current().subroutine->Reserve()}));
     } else {
       UNREACHABLE(node->member_name());
     }
@@ -140,7 +140,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
                             .addr  = *temp,
                             .index = struct_type.index(node->member_name()),
                             .struct_type = &struct_type,
-                            .result      = current().group->Reserve()}),
+                            .result      = current().subroutine->Reserve()}),
                         t));
     }
   }
@@ -176,7 +176,7 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
       reg = current_block()->Append(ir::LoadInstruction{
           .type   = t,
           .addr   = reg,
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       });
       t   = tp->pointee();
       tp  = t.if_as<type::Pointer>();
@@ -188,7 +188,7 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
       .addr        = reg,
       .index       = struct_type.index(node->member_name()),
       .struct_type = &struct_type,
-      .result      = current().group->Reserve()});
+      .result      = current().subroutine->Reserve()});
 }
 
 // TODO: Unit tests
@@ -233,9 +233,9 @@ void Compiler::EmitMoveInit(
           .type   = type::Slice::LengthType(),
           .addr   = current_block()->Append(type::SliceLengthInstruction{
               .slice  = EmitAs<ir::addr_t>(node->operand()),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }));
       EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else if (node->member_name() == "data") {
@@ -244,9 +244,9 @@ void Compiler::EmitMoveInit(
           .type   = to[0].type(),
           .addr   = current_block()->Append(type::SliceDataInstruction{
               .slice  = EmitAs<ir::addr_t>(node->operand()),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }));
       EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else {
@@ -271,7 +271,7 @@ void Compiler::EmitMoveInit(
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
-                               .result      = current().group->Reserve()}),
+                               .result      = current().subroutine->Reserve()}),
                            t));
       EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     }
@@ -318,9 +318,9 @@ void Compiler::EmitCopyInit(
           .type   = type::Slice::LengthType(),
           .addr   = current_block()->Append(type::SliceLengthInstruction{
               .slice  = EmitAs<ir::addr_t>(node->operand()),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }));
       EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else if (node->member_name() == "data") {
@@ -329,9 +329,9 @@ void Compiler::EmitCopyInit(
           .type   = to[0].type(),
           .addr   = current_block()->Append(type::SliceDataInstruction{
               .slice  = EmitAs<ir::addr_t>(node->operand()),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       }));
       EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
     } else {
@@ -354,7 +354,7 @@ void Compiler::EmitCopyInit(
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
-                               .result      = current().group->Reserve()}),
+                               .result      = current().subroutine->Reserve()}),
                            t));
       EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     }
@@ -404,7 +404,7 @@ void Compiler::EmitMoveAssign(
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
-                               .result      = current().group->Reserve()}),
+                               .result      = current().subroutine->Reserve()}),
                            t));
       EmitMoveAssign(to[0], type::Typed(buffer[0], t));
     }
@@ -452,7 +452,7 @@ void Compiler::EmitCopyAssign(
                                .addr  = *temp,
                                .index = struct_type.index(node->member_name()),
                                .struct_type = &struct_type,
-                               .result      = current().group->Reserve()}),
+                               .result      = current().subroutine->Reserve()}),
                            t));
     }
     EmitMoveAssign(to[0], type::Typed(buffer[0], t));

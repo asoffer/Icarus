@@ -38,7 +38,7 @@ cc_library(
         "//base:untyped_buffer",
         "//base:untyped_buffer_view",
         "//core:arch",
-        "//ir/blocks:basic",
+        "//ir:basic_block",
         "//ir/value:native_fn",
         "//ir/value:reg",
         "//ir/value:scope",

@@ -5,7 +5,7 @@
 #include "base/debug.h"
 #include "compiler/compilation_data.h"
 #include "compiler/transient_state.h"
-#include "ir/blocks/group.h"
+#include "ir/subroutine.h"
 
 namespace compiler {
 
@@ -19,7 +19,7 @@ struct ScaffoldingCleanup {
 };
 
 ScaffoldingCleanup EmitScaffolding(CompilationDataReference ref,
-                                   ir::internal::BlockGroupBase &group,
+                                   ir::Subroutine &subroutine,
                                    ast::Scope const &scope);
 
 }  // namespace compiler

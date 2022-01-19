@@ -1,4 +1,4 @@
-#include "ir/blocks/basic.h"
+#include "ir/basic_block.h"
 
 namespace ir {
 

@@ -127,7 +127,7 @@ cc_library(
         ":debug",
         "//base:extend",
         "//base/extend:traverse",
-        "//ir/blocks:basic",
+        "//ir:basic_block",
         "//ir/interpreter:architecture",
         "//ir/byte_code:reader",
         "//ir/byte_code:writer",

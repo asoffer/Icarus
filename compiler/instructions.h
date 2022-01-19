@@ -37,7 +37,7 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
     ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments);
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn fn);
-ir::ByteCode EmitByteCode(ir::internal::BlockGroupBase const &g);
+ir::ByteCode EmitByteCode(ir::Subroutine const &sr);
 
 namespace internal_type {
 template <typename T>

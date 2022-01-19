@@ -1,10 +1,25 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "basic_block",
+    hdrs = ["basic_block.h"],
+    srcs = ["basic_block.cc"],
+    deps = [
+        "//ir/value:addr",
+        "//ir/value:reg_or",
+        "//ir/instruction:base",
+        "//ir/instruction:op_codes",
+        "//ir/instruction:jump",
+        "//base:ptr_span",
+        "//base:untyped_buffer",
+    ],
+)
+
+cc_library(
     name = "compiled_fn",
     hdrs = ["compiled_fn.h"],
     deps = [
-        "//ir/blocks:group",
+        ":subroutine",
         "//type:function",
     ],
 )
@@ -49,11 +64,27 @@ cc_library(
     hdrs = ["scope_state.h"],
     deps = [
         "//base:any_invocable",
-        "//ir/blocks:basic",
+        "//ir:basic_block",
         "//ir/value:label",
         "//ir/value:result_buffer",
         "//ir/value:scope",
         "//type:qual_type",
         "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_library(
+    name = "subroutine",
+    hdrs = ["subroutine.h"],
+    srcs = ["subroutine.cc"],
+    deps = [
+        "//base:ptr_span",
+        "//base:strong_types",
+        "//core:alignment",
+        "//core:bytes",
+        "//core:params",
+        "//ir:basic_block",
+        "//ir/blocks:register_allocator",
+        "//type:callable",
     ],
 )

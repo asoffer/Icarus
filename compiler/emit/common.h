@@ -48,7 +48,7 @@ void EmitArguments(
 // Requires that the last value in `buffer` has type `FromType`, and replaces it
 // with that value cast to `ToType`.
 template <typename FromType, typename ToType>
-void EmitCast(GroupBlockReference &ref, ir::PartialResultBuffer &buffer) {
+void EmitCast(SubroutineBlockReference &ref, ir::PartialResultBuffer &buffer) {
   if constexpr (base::meta<FromType> == base::meta<ToType>) {
     return;
   } else if constexpr (base::meta<ToType> == base::meta<ir::Integer>) {
@@ -58,7 +58,7 @@ void EmitCast(GroupBlockReference &ref, ir::PartialResultBuffer &buffer) {
   } else {
     auto result = ref.block->Append(ir::CastInstruction<ToType(FromType)>{
         .value  = buffer.back().template get<FromType>(),
-        .result = ref.group->Reserve(),
+        .result = ref.subroutine->Reserve(),
     });
     buffer.pop_back();
     buffer.append(result);
@@ -67,7 +67,7 @@ void EmitCast(GroupBlockReference &ref, ir::PartialResultBuffer &buffer) {
 
 // Requires that the last value in `buffer` has type `from`, and replaces it
 // with that value cast to `to`.
-void EmitCast(GroupBlockReference &ref, type::Type from, type::Type to,
+void EmitCast(SubroutineBlockReference &ref, type::Type from, type::Type to,
               ir::PartialResultBuffer &buffer);
 
 void EmitCast(Compiler &c, type::Typed<ast::Expression const *> node,
@@ -81,9 +81,9 @@ ir::PartialResultBuffer EmitCast(Compiler &c,
 // register) held in `value`. If `t` is big, `value` is either another register
 // or the address of the big value and a new register referencing that address
 // (or register) is created.
-ir::Reg RegisterReferencing(GroupBlockReference current, type::Type t,
+ir::Reg RegisterReferencing(SubroutineBlockReference current, type::Type t,
                             ir::PartialResultRef const &value);
-ir::Reg PtrFix(GroupBlockReference current, ir::RegOr<ir::addr_t> addr,
+ir::Reg PtrFix(SubroutineBlockReference current, ir::RegOr<ir::addr_t> addr,
                type::Type desired_type);
 
 // Usually it is sufficient to determine all the inputs to a phi instruction
@@ -93,14 +93,14 @@ ir::Reg PtrFix(GroupBlockReference current, ir::RegOr<ir::addr_t> addr,
 // TODO: Right now we are relying on the fact that Inst stores values on the
 // heap, but this may not always be the case.
 template <typename T>
-ir::PhiInstruction<T> *PhiInst(GroupBlockReference ref) {
+ir::PhiInstruction<T> *PhiInst(SubroutineBlockReference ref) {
   ir::PhiInstruction<T> inst;
-  inst.result = ref.group->Reserve();
+  inst.result = ref.subroutine->Reserve();
   ref.block->Append(std::move(inst));
   return &ref.block->instructions().back().template as<ir::PhiInstruction<T>>();
 }
 
-void OnEachArrayElement(GroupBlockReference &ref, type::Array const *t,
+void OnEachArrayElement(SubroutineBlockReference &ref, type::Array const *t,
                         ir::Reg array_reg, std::invocable<ir::Reg> auto &&fn) {
   auto *data_ptr_type = type::Ptr(t->data_type());
 
@@ -108,11 +108,11 @@ void OnEachArrayElement(GroupBlockReference &ref, type::Array const *t,
       ref.block->Append(ir::PtrIncrInstruction{.addr   = array_reg,
                                                .index  = t->length().value(),
                                                .ptr    = data_ptr_type,
-                                               .result = ref.group->Reserve()});
+                                               .result = ref.subroutine->Reserve()});
   auto *start_block = ref.block;
-  auto *loop_body   = ref.group->AppendBlock();
-  auto *land_block  = ref.group->AppendBlock();
-  auto *cond_block  = ref.group->AppendBlock();
+  auto *loop_body   = ref.subroutine->AppendBlock();
+  auto *land_block  = ref.subroutine->AppendBlock();
+  auto *cond_block  = ref.subroutine->AppendBlock();
 
   ref.block->set_jump(ir::JumpCmd::Uncond(cond_block));
 
@@ -120,7 +120,7 @@ void OnEachArrayElement(GroupBlockReference &ref, type::Array const *t,
   auto *phi = PhiInst<ir::addr_t>(ref);
 
   ir::Reg condition = ref.block->Append(ir::EqInstruction<ir::addr_t>{
-      .lhs = phi->result, .rhs = end_ptr, .result = ref.group->Reserve()});
+      .lhs = phi->result, .rhs = end_ptr, .result = ref.subroutine->Reserve()});
   ref.block->set_jump(ir::JumpCmd::Cond(condition, land_block, loop_body));
 
   ref.block = loop_body;
@@ -129,7 +129,7 @@ void OnEachArrayElement(GroupBlockReference &ref, type::Array const *t,
       ref.block->Append(ir::PtrIncrInstruction{.addr   = phi->result,
                                                .index  = 1,
                                                .ptr    = data_ptr_type,
-                                               .result = ref.group->Reserve()});
+                                               .result = ref.subroutine->Reserve()});
   ref.block->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   phi->add(start_block, array_reg);

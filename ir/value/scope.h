@@ -13,7 +13,7 @@
 #include "base/ptr_union.h"
 #include "compiler/work_resources.h"
 #include "core/params.h"
-#include "ir/blocks/group.h"
+#include "ir/subroutine.h"
 #include "ir/value/block.h"
 #include "ir/value/reg.h"
 #include "ir/value/result_buffer.h"
@@ -27,7 +27,7 @@ struct ScopeLiteral;
 
 namespace ir {
 
-using CompiledScope = BlockGroup<type::Scope>;
+using CompiledScope = Subroutine;
 
 struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
                                             base::AbslHashExtension> {

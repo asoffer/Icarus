@@ -33,7 +33,7 @@ struct CompilationDataReference {
       : data_(*ASSERT_NOT_NULL(data)) {}
 
   Context &context() const { return *data_.context; }
-  GroupBlockReference &current() {
+  SubroutineBlockReference &current() {
     auto &v = state().current;
     ASSERT(v.size() != 0u);
     return v.back();
@@ -44,8 +44,8 @@ struct CompilationDataReference {
   }
   ir::BasicBlock *&current_block() { return current().block; }
 
-  void push_current(ir::internal::BlockGroupBase *group) {
-    state().current.push_back({.group = group, .block = group->entry()});
+  void push_current(ir::Subroutine *subroutine) {
+    state().current.push_back({.subroutine = subroutine, .block = subroutine->entry()});
   }
 
   ir::BasicBlock *EmitDestructionPath(ast::Scope const *start,

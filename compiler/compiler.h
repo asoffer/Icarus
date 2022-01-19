@@ -463,14 +463,14 @@ struct Compiler
             .value    = data,
             .location = current_block()->Append(type::SliceDataInstruction{
                 .slice  = alloc,
-                .result = current().group->Reserve(),
+                .result = current().subroutine->Reserve(),
             }),
         });
         current_block()->Append(ir::StoreInstruction<type::Slice::length_t>{
             .value    = length,
             .location = current_block()->Append(type::SliceLengthInstruction{
                 .slice  = alloc,
-                .result = current().group->Reserve(),
+                .result = current().subroutine->Reserve(),
             }),
         });
         buffer.clear();
@@ -491,7 +491,7 @@ struct Compiler
           ir::RegOr<T> result =
               current_block()->Append(ir::CastInstruction<T(ir::Integer)>{
                   .value  = buffer.back().get<ir::Integer>(),
-                  .result = current().group->Reserve(),
+                  .result = current().subroutine->Reserve(),
               });
           buffer.pop_back();
           buffer.append(result);
@@ -518,14 +518,14 @@ struct Compiler
             .value    = data,
             .location = current_block()->Append(type::SliceDataInstruction{
                 .slice  = alloc,
-                .result = current().group->Reserve(),
+                .result = current().subroutine->Reserve(),
             }),
         });
         current_block()->Append(ir::StoreInstruction<type::Slice::length_t>{
             .value    = length,
             .location = current_block()->Append(type::SliceLengthInstruction{
                 .slice  = alloc,
-                .result = current().group->Reserve(),
+                .result = current().subroutine->Reserve(),
             }),
         });
         buffer.clear();
@@ -562,7 +562,7 @@ struct Compiler
       regs.push_back(
           types[i].get()->is_big()
               ? (to.empty() ? state().TmpAlloca(types[i]) : to[i]->reg())
-              : current().group->Reserve());
+              : current().subroutine->Reserve());
     }
     return ir::OutParams(std::move(regs));
   }

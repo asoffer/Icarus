@@ -5,7 +5,7 @@
 #include <string_view>
 
 #include "absl/container/flat_hash_map.h"
-#include "ir/blocks/basic.h"
+#include "ir/basic_block.h"
 #include "ir/value/label.h"
 #include "ir/value/result_buffer.h"
 #include "ir/value/scope.h"

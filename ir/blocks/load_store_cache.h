@@ -39,7 +39,7 @@ struct LoadStoreCache {
   // all types). This is useful to ensure the cache is invalidated
   // conservatively when we cannot be sure which allocations have escaped. When
   // a non-void type is specified, the cache is cleared only for that type. This
-  // is useful primarily within the same block-group.
+  // is useful primarily within the same subroutine.
   //
   // A store to a stack-allocation of type `i64` can only invalidate load
   // caches of the type `i64`. Note that this fact is somewhat subtle. If

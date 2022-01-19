@@ -1,20 +1,20 @@
-#ifndef ICARUS_COMPILER_BLOCK_GROUP_SCAFFOLDING_H
-#define ICARUS_COMPILER_BLOCK_GROUP_SCAFFOLDING_H
+#ifndef ICARUS_COMPILER_SUBROUTINE_SCAFFOLDING_H
+#define ICARUS_COMPILER_SUBROUTINE_SCAFFOLDING_H
 
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
 #include "ast/scope.h"
-#include "ir/blocks/basic.h"
-#include "ir/blocks/group.h"
+#include "ir/basic_block.h"
+#include "ir/subroutine.h"
 
 namespace compiler {
 
-// When constructing a block group, there are afew things that either must or
-// are convinnent to do upfront rather than on the fly during IR emission.
+// When constructing a subroutine, there are afew things that either must or are
+// convinnent to do upfront rather than on the fly during IR emission.
 // Specifically, stack allocations for local variables and destructors. This
 // struct holds the mapping that IR emitters need to use the destruction paths.
-struct BlockGroupScaffolding {
+struct SubroutineScaffolding {
   // Allocations for local variables
   absl::flat_hash_map<ast::Declaration::Id const *, ir::RegOr<ir::addr_t>>
       stack_allocations;
@@ -42,4 +42,4 @@ struct BlockGroupScaffolding {
 
 }  // namespace compiler
 
-#endif  // ICARUS_COMPILER_BLOCK_GROUP_SCAFFOLDING_H
+#endif  // ICARUS_COMPILER_SUBROUTINE_SCAFFOLDING_H

@@ -102,7 +102,7 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
   push_current(&*ir_func);
   absl::Cleanup c = [&] { state().current.pop_back(); };
 
-  current_block() = current().group->entry();
+  current_block() = current().subroutine->entry();
 
   // TODO arguments should be renumbered to not waste space on const values
   size_t i = 0;

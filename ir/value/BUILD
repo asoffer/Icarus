@@ -289,7 +289,7 @@ cc_library(
         "//base/extend:serialize",
         "//base:ptr_union",
         "//compiler:work_resources",
-        "//ir/blocks:group",
+        "//ir:subroutine",
         "//type:block",
         "//type:generic",
         "//type:scope",

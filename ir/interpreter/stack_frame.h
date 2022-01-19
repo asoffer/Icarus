@@ -7,7 +7,7 @@
 #include "base/meta.h"
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
-#include "ir/blocks/basic.h"
+#include "ir/basic_block.h"
 #include "ir/value/fn.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"

@@ -135,12 +135,12 @@ cc_library(
 )
 
 cc_library(
-    name = "block_group_scaffolding",
-    hdrs = ["block_group_scaffolding.h"],
+    name = "subroutine_scaffolding",
+    hdrs = ["subroutine_scaffolding.h"],
     deps = [
         "//ast:scope",
-        "//ir/blocks:basic",
-        "//ir/blocks:group",
+        "//ir:basic_block",
+        "//ir:subroutine",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -166,7 +166,7 @@ cc_library(
     name = "transient_state",
     hdrs = ["transient_state.h"],
     deps = [
-        ":block_group_scaffolding",
+        ":subroutine_scaffolding",
         "//ir:scope_state",
     ],
 )

@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "ast/node.h"
-#include "compiler/block_group_scaffolding.h"
+#include "compiler/subroutine_scaffolding.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "ir/scope_state.h"
 #include "ir/value/result_buffer.h"
@@ -21,8 +21,8 @@ struct PatternMatchingContext {
   size_t array_type_index = 0;
 };
 
-struct GroupBlockReference {
-  ir::internal::BlockGroupBase *group;
+struct SubroutineBlockReference {
+  ir::Subroutine *subroutine;
   ir::BasicBlock *block;
 };
 
@@ -37,8 +37,8 @@ struct TransientState {
     verify_pattern_type_queues.back().emplace(node, match_type);
   }
 
-  std::vector<GroupBlockReference> current;
-  std::vector<BlockGroupScaffolding> scaffolding;
+  std::vector<SubroutineBlockReference> current;
+  std::vector<SubroutineScaffolding> scaffolding;
 
   std::vector<std::queue<std::pair<ast::Node const *, type::Type>>>
       verify_pattern_type_queues;
@@ -62,7 +62,7 @@ struct TransientState {
   }
 
   ir::Reg TmpAlloca(type::Type t) {
-    auto reg = current.back().group->Alloca(t);
+    auto reg = current.back().subroutine->Alloca(t);
     temporaries_to_destroy.emplace_back(reg, t);
     return reg;
   }

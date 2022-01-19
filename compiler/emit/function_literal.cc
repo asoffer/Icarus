@@ -120,7 +120,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
       type::Type out_decl_type = context().qual_types(out_decl)[0].type();
       auto alloc               = out_decl_type.is_big()
                        ? ir::Reg::Out(i)
-                       : current().group->Alloca(out_decl_type);
+                       : current().subroutine->Alloca(out_decl_type);
 
       ASSERT(out_decl->ids().size() == 1u);
       state().set_addr(&out_decl->ids()[0], alloc);

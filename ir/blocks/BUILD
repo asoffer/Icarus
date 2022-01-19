@@ -1,21 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "basic",
-    hdrs = ["basic.h"],
-    srcs = ["basic.cc"],
-    deps = [
-        "//ir/value:addr",
-        "//ir/value:reg_or",
-        "//ir/instruction:base",
-        "//ir/instruction:op_codes",
-        "//ir/instruction:jump",
-        "//base:ptr_span",
-        "//base:untyped_buffer",
-    ],
-)
-
-cc_library(
     name = "offset_cache",
     hdrs = ["offset_cache.h"],
     deps = [
@@ -53,23 +38,6 @@ cc_test(
     deps = [
         ":load_store_cache",
         "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "group",
-    hdrs = ["group.h"],
-    srcs = ["group.cc"],
-    deps = [
-        ":basic",
-        ":register_allocator",
-        "//base:ptr_span",
-        "//base:strong_types",
-        "//core:alignment",
-        "//core:bytes",
-        "//core:params",
-        "//type:type_fwd",
-        "//type:typed_value",
     ],
 )
 

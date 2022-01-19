@@ -44,9 +44,9 @@ void Compiler::EmitToBuffer(ast::Index const *node,
           .type   = type::BufPtr(s->data_type()),
           .addr   = current_block()->Append(type::SliceDataInstruction{
               .slice  = EmitAs<ir::addr_t>(node->lhs()),
-              .result = current().group->Reserve(),
+              .result = current().subroutine->Reserve(),
           }),
-          .result = current().group->Reserve(),
+          .result = current().subroutine->Reserve(),
       });
 
       // TODO: Remove assumption that the pointer difference type is int64_t.
@@ -60,7 +60,7 @@ void Compiler::EmitToBuffer(ast::Index const *node,
           ir::PtrIncrInstruction{.addr   = data,
                                  .index  = index,
                                  .ptr    = type::Ptr(s->data_type()),
-                                 .result = current().group->Reserve()});
+                                 .result = current().subroutine->Reserve()});
       out.append(PtrFix(current(), incr, s->data_type()));
     }
   } else if (auto const *array_type = qt.type().if_as<type::Array>()) {
@@ -78,7 +78,7 @@ void Compiler::EmitToBuffer(ast::Index const *node,
           ir::PtrIncrInstruction{.addr   = EmitRef(node->lhs()),
                                  .index  = index,
                                  .ptr    = type::Ptr(array_type->data_type()),
-                                 .result = current().group->Reserve()});
+                                 .result = current().subroutine->Reserve()});
       out.append(PtrFix(current(), incr, array_type->data_type()));
     }
   } else if (auto const *buf_ptr_type =
@@ -97,7 +97,7 @@ void Compiler::EmitToBuffer(ast::Index const *node,
           ir::PtrIncrInstruction{.addr   = EmitAs<ir::addr_t>(node->lhs()),
                                  .index  = index,
                                  .ptr    = buf_ptr_type,
-                                 .result = current().group->Reserve()});
+                                 .result = current().subroutine->Reserve()});
       out.append(PtrFix(current(), incr, buf_ptr_type->pointee()));
     }
   } else {
@@ -121,27 +121,27 @@ ir::Reg Compiler::EmitRef(ast::Index const *node) {
         ir::PtrIncrInstruction{.addr   = lval,
                                .index  = index,
                                .ptr    = type::Ptr(a->data_type()),
-                               .result = current().group->Reserve()});
+                               .result = current().subroutine->Reserve()});
   } else if (auto *buf_ptr_type = lhs_type.if_as<type::BufferPointer>()) {
     return current_block()->Append(
         ir::PtrIncrInstruction{.addr   = EmitAs<ir::addr_t>(node->lhs()),
                                .index  = index,
                                .ptr    = type::Ptr(buf_ptr_type->pointee()),
-                               .result = current().group->Reserve()});
+                               .result = current().subroutine->Reserve()});
   } else if (auto const *s = lhs_type.if_as<type::Slice>()) {
     auto data = current_block()->Append(ir::LoadInstruction{
         .type   = type::BufPtr(s->data_type()),
         .addr   = current_block()->Append(type::SliceDataInstruction{
             .slice  = EmitAs<ir::addr_t>(node->lhs()),
-            .result = current().group->Reserve(),
+            .result = current().subroutine->Reserve(),
         }),
-        .result = current().group->Reserve(),
+        .result = current().subroutine->Reserve(),
     });
     return current_block()->Append(
         ir::PtrIncrInstruction{.addr   = data,
                                .index  = index,
                                .ptr    = type::BufPtr(s->data_type()),
-                               .result = current().group->Reserve()});
+                               .result = current().subroutine->Reserve()});
   }
   UNREACHABLE(lhs_type.to_string());
 }
