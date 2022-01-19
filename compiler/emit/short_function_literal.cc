@@ -112,8 +112,6 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
     state().set_addr(&ids[0], ir::Reg::Arg(i++));
   }
 
-  MakeAllStackAllocations(*this, &node->body_scope());
-
   type::Type ret_type = ir_func.type()->return_types()[0];
   if (ret_type.is_big()) {
     type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(

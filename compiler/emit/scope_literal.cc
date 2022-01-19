@@ -75,7 +75,6 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
     state().set_addr(&ids[0], ir::Reg::Arg(i++));
   }
 
-  MakeAllStackAllocations(*this, &node->body_scope());
   EmitIrForStatements(*this, &node->body_scope(), node->stmts());
   current_block()->set_jump(ir::JumpCmd::Return());
 

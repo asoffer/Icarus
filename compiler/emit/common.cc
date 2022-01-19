@@ -203,22 +203,6 @@ void EmitArguments(
   }
 }
 
-void MakeAllStackAllocations(Compiler &compiler, ast::Scope const *scope) {
-  scope->ForEachDeclaration([&](ast::Declaration const *decl) {
-    if (decl->flags() &
-        (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
-      return;
-    }
-    for (ast::Declaration::Id const &id : decl->ids()) {
-      LOG("MakeAllStackAllocations", "allocating %s", id.name());
-
-      compiler.state().set_addr(
-          &id, compiler.current().group->Alloca(
-                   compiler.context().qual_types(&id)[0].type()));
-    }
-  });
-}
-
 void EmitIrForStatements(Compiler &c, ast::Scope const *scope,
                          base::PtrSpan<ast::Node const> stmts) {
   std::vector<type::Typed<ir::Reg>> temporaries =

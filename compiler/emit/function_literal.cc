@@ -113,7 +113,6 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
     state().set_addr(&ids[0], ir::Reg::Arg(i++));
   }
 
-  MakeAllStackAllocations(*this, &node->body_scope());
   if (auto outputs = node->outputs()) {
     for (size_t i = 0; i < outputs->size(); ++i) {
       auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();

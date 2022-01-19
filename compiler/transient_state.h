@@ -54,10 +54,11 @@ struct TransientState {
   CyclicDependencyTracker cyclic_dependency_tracker;
 
   ir::RegOr<ir::addr_t> addr(ast::Declaration::Id const *id) const {
-    return addr_.at(id);
+    return scaffolding.back().stack_allocations.at(id);
   }
   void set_addr(ast::Declaration::Id const *id, ir::RegOr<ir::addr_t> addr) {
-    addr_.emplace(id, addr);
+    ASSERT(scaffolding.size() != 0u);
+    scaffolding.back().stack_allocations.emplace(id, addr);
   }
 
   ir::Reg TmpAlloca(type::Type t) {
@@ -70,11 +71,6 @@ struct TransientState {
   // pointer to a buffer where temporary allocations can register themselves for
   // deletion.
   std::vector<type::Typed<ir::Reg>> temporaries_to_destroy;
-
- private:
-  // Stores addresses of local identifiers
-  absl::flat_hash_map<ast::Declaration::Id const *, ir::RegOr<ir::addr_t>>
-      addr_;
 };
 
 }  // namespace compiler

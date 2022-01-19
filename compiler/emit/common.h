@@ -18,10 +18,6 @@
 
 namespace compiler {
 
-// Makes space for every local variable in this stack frame, but does not
-// initialize any such object.
-void MakeAllStackAllocations(Compiler &compiler, ast::Scope const *scope);
-
 // Emits IR for each statement in `stmts`.
 void EmitIrForStatements(Compiler &compiler, ast::Scope const *scope,
                          base::PtrSpan<ast::Node const> stmts);

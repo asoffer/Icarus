@@ -7,8 +7,19 @@ namespace compiler {
 ScaffoldingCleanup EmitScaffolding(CompilationDataReference ref,
                                    ir::internal::BlockGroupBase &group,
                                    ast::Scope const &scope) {
-  auto &[landing_blocks, destruction_blocks] =
+  auto &[stack_allocations, landing_blocks, destruction_blocks] =
       ref.state().scaffolding.emplace_back();
+
+  scope.ForEachDeclaration([&, allocs = &stack_allocations](
+                               ast::Declaration const *decl) {
+    if (decl->flags() &
+        (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
+      return;
+    }
+    for (ast::Declaration::Id const &id : decl->ids()) {
+      allocs->emplace(&id, group.Alloca(ref.context().typed(&id).type()));
+    }
+  });
 
   for (auto const *descendant : scope.executable_descendants()) {
     landing_blocks.emplace(descendant, group.AppendBlock());

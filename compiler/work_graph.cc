@@ -95,14 +95,14 @@ bool CompileLibrary(Context &context, PersistentResources const &resources,
                                      nodes);
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        for (auto const *node : nodes) {
           CompilationData data{.context        = &context,
                                .work_resources = w.work_resources(),
                                .resources      = w.resources()};
           Compiler c(&data);
-          c.EmitVoid(node);
-        }
-        return true;
+          c.state().scaffolding.emplace_back();
+          for (auto const *node : nodes) { c.EmitVoid(node); }
+          c.state().scaffolding.pop_back();
+          return true;
       });
 }
 
@@ -132,10 +132,7 @@ std::optional<ir::CompiledFn> CompileExecutable(
         auto scaffolding_cleanup = EmitScaffolding(c, f, mod_scope);
         c.push_current(&f);
         absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-        if (not nodes.empty()) {
-          MakeAllStackAllocations(c, &mod_scope);
-          EmitIrForStatements(c, &mod_scope, nodes);
-        }
+        if (not nodes.empty()) { EmitIrForStatements(c, &mod_scope, nodes); }
         c.current_block()->set_jump(ir::JumpCmd::Return());
 
         return true;
@@ -163,6 +160,8 @@ bool WorkGraph::Execute(WorkItem const &w) {
                        .work_resources = work_resources(),
                        .resources      = resources_};
   Compiler c(&data);
+  c.state().scaffolding.emplace_back();
+  absl::Cleanup cleanup = [&] { c.state().scaffolding.pop_back(); };
   bool result;
   LOG("WorkGraph", "Starting work %u on %s (%p)", (int)w.kind,
       w.node->DebugString(), this);
@@ -238,6 +237,8 @@ WorkGraph::EvaluateToBuffer(Context &context,
                                    .work_resources = w.work_resources(),
                                    .resources      = w.resources()};
   Compiler c(&compilation_data);
+  c.state().scaffolding.emplace_back();
+  absl::Cleanup cleanup = [&] { c.state().scaffolding.pop_back(); };
 
   auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
   ir::NativeFn::Data data{

@@ -15,6 +15,10 @@ namespace compiler {
 // Specifically, stack allocations for local variables and destructors. This
 // struct holds the mapping that IR emitters need to use the destruction paths.
 struct BlockGroupScaffolding {
+  // Allocations for local variables
+  absl::flat_hash_map<ast::Declaration::Id const *, ir::RegOr<ir::addr_t>>
+      stack_allocations;
+
   ir::BasicBlock *EmitDestructionPath(ir::BasicBlock *from_block,
                                       ast::Scope const *from,
                                       ast::Scope const *to) {
