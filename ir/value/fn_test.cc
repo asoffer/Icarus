@@ -26,10 +26,10 @@ TEST(Fn, ForeignFn) {
 }
 
 TEST(Fn, NativeFn) {
-  ir::Subroutine f(type::Func({}, {}), {});
+  ir::Subroutine f(type::Func({}, {}));
   ir::NativeFn::Data data{
       .fn   = &f,
-      .type = f.type(),
+      .type = &f.type()->as<type::Function>(),
   };
   ir::Fn a{ir::NativeFn(&data)};
   ASSERT_EQ(a.kind(), ir::Fn::Kind::Native);

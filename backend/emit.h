@@ -67,7 +67,7 @@ struct Emitter {
     emitter.AllocateLocalVariables(*fn);
     emitter.EmitBasicBlocks(*fn);
 
-    bool returns_void = fn->type()->return_types().empty();
+    bool returns_void = fn->type()->as<type::Function>().return_types().empty();
 
     for (auto const *block : fn->blocks()) {
       emitter.EmitBasicBlockJump(block, contexts_.at(fn), returns_void);
