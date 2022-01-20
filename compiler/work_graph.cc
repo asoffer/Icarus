@@ -81,32 +81,7 @@ std::pair<ir::Subroutine, ir::ByteCode> MakeThunk(Compiler &c,
 
 }  // namespace
 
-bool CompileLibrary(Context &context, PersistentResources const &resources,
-                    base::PtrSpan<ast::Node const> nodes) {
-  WorkGraph w(resources);
-  return w.ExecuteCompilationSequence(
-      context, nodes,
-      [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-        if (not VerifyNodesSatisfying(IsConstantDeclaration, context, w, nodes,
-                                      true)) {
-          return false;
-        }
-        return VerifyNodesSatisfying(IsNotConstantDeclaration, context, w,
-                                     nodes);
-      },
-      [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
-          CompilationData data{.context        = &context,
-                               .work_resources = w.work_resources(),
-                               .resources      = w.resources()};
-          Compiler c(&data);
-          c.state().scaffolding.emplace_back();
-          for (auto const *node : nodes) { c.EmitVoid(node); }
-          c.state().scaffolding.pop_back();
-          return true;
-      });
-}
-
-std::optional<ir::Subroutine> CompileExecutable(
+std::optional<ir::Subroutine> CompileModule(
     Context &context, PersistentResources const &resources,
     base::PtrSpan<ast::Node const> nodes) {
   WorkGraph w(resources);

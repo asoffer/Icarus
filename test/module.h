@@ -118,7 +118,7 @@ struct TestModule : compiler::CompiledModule {
 
     frontend::SourceBuffer buffer(std::move(content));
     auto parsed_nodes = frontend::Parse(buffer, consumer);
-    compiler::CompileLibrary(
+    compiler::CompileModule(
         imported_mod.context(), import_resources,
         imported_mod.insert(parsed_nodes.begin(), parsed_nodes.end()));
 

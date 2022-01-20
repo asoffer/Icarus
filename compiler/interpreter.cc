@@ -84,7 +84,7 @@ int Interpret(frontend::FileName const &file_name) {
   auto parsed_nodes = frontend::Parse(*src, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   ASSIGN_OR(return 1,  //
-                   auto main_fn, CompileExecutable(context, resources, nodes));
+                   auto main_fn, CompileModule(context, resources, nodes));
 
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }

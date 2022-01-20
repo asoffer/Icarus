@@ -103,9 +103,7 @@ struct WorkGraph {
   absl::flat_hash_map<WorkItem, absl::flat_hash_set<WorkItem>> dependencies_;
 };
 
-bool CompileLibrary(Context &context, PersistentResources const &resources,
-                    base::PtrSpan<ast::Node const> nodes);
-std::optional<ir::Subroutine> CompileExecutable(
+std::optional<ir::Subroutine> CompileModule(
     Context &context, PersistentResources const &resources,
     base::PtrSpan<ast::Node const> nodes);
 

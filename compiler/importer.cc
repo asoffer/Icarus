@@ -85,7 +85,8 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
       .diagnostic_consumer = diagnostic_consumer_,
       .importer            = this,
   };
-  CompileLibrary(context, resources, nodes);
+  // TODO: Do something interesting with the executable part.
+  CompileModule(context, resources, nodes);
   return id;
 }
 

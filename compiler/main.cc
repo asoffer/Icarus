@@ -166,7 +166,7 @@ int Compile(frontend::FileName const &file_name) {
 
   auto parsed_nodes = frontend::Parse(*src, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
-  auto main_fn      = CompileExecutable(context, resources, nodes);
+  auto main_fn      = CompileModule(context, resources, nodes);
   return CompileToObjectFile(exec_mod, *main_fn, target_machine);
 }
 

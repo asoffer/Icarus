@@ -300,7 +300,7 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
            .context = &context()});
     }
     if (ret.get()->completeness() == type::Completeness::Incomplete) {
-      NOT_YET();
+      NOT_YET(ret);
     }
   }
 

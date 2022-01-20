@@ -148,7 +148,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
 
   auto parsed_nodes = frontend::Parse(*src, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
-  auto main_fn      = compiler::CompileExecutable(context, resources, nodes);
+  auto main_fn      = compiler::CompileModule(context, resources, nodes);
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }
 
   output << "digraph {\n";
