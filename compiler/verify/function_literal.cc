@@ -291,12 +291,27 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
     }
   }
   for (type::Type ret : fn_type.return_types()) {
-    if (const auto *s = ret.if_as<type::Struct>()) {
+    if (auto const *s = ret.if_as<type::Struct>()) {
       EnsureComplete(
           {.kind = WorkItem::Kind::CompleteStruct,
            .node = ASSERT_NOT_NULL(
                s->defining_module()->as<CompiledModule>().context().AstLiteral(
                    s)),
+           .context = &context()});
+    } else if (auto const *e = ret.if_as<type::Enum>()) {
+      EnsureComplete(
+          {.kind = WorkItem::Kind::CompleteEnum,
+           .node = ASSERT_NOT_NULL(
+               e->defining_module()->as<CompiledModule>().context().AstLiteral(
+                   e)),
+           .context = &context()});
+
+    } else if (auto const *f = ret.if_as<type::Flags>()) {
+      EnsureComplete(
+          {.kind = WorkItem::Kind::CompleteEnum,
+           .node = ASSERT_NOT_NULL(
+               f->defining_module()->as<CompiledModule>().context().AstLiteral(
+                   f)),
            .context = &context()});
     }
     if (ret.get()->completeness() == type::Completeness::Incomplete) {
