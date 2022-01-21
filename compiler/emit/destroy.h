@@ -27,7 +27,7 @@ struct DestructionEmitter : CompilationDataReference {
     EmitDestroy(t, addr);
   }
   void operator()(auto const *t, ir::RegOr<ir::addr_t> addr) {
-    operator()(type::Type(t), addr);
+    EmitDestroy(t, addr);
   }
   void EmitDestroy(type::Type t, ir::RegOr<ir::addr_t> addr) {
     t.visit(*this, addr);

@@ -213,11 +213,9 @@ void EmitIrForStatements(Compiler &c, ast::Scope const *scope,
 
   ir::PartialResultBuffer buffer;
   for (auto *stmt : stmts) {
-    LOG("EmitIrForStatements", "%s", stmt->DebugString());
     buffer.clear();
     c.EmitToBuffer(stmt, buffer);
     c.DestroyTemporaries();
-    LOG("EmitIrForStatements", "%p %s", c.current_block(), *c.current().subroutine);
   }
 
   c.current_block() = c.EmitDestructionPath(scope, scope);

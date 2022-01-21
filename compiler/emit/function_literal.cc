@@ -102,9 +102,9 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   LOG("EmitFunctionBody", "%s", node->DebugString());
 
   ir::NativeFn ir_func = context().FindNativeFn(node);
-  auto cleanup         = EmitScaffolding(*this, *ir_func, node->body_scope());
   push_current(&*ir_func);
   absl::Cleanup c = [&] { state().current.pop_back(); };
+  auto cleanup         = EmitScaffolding(*this, *ir_func, node->body_scope());
 
   size_t i = 0;
   for (auto const &param : node->params()) {
@@ -138,6 +138,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   EmitIrForStatements(*this, &node->body_scope(), node->stmts());
   current_block()->set_jump(ir::JumpCmd::Return());
 
+  LOG("EmitFunctionBody", "%s", *current().subroutine);
   context().ir().WriteByteCode<EmitByteCode>(ir_func);
   return true;
 }

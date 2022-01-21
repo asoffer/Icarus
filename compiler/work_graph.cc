@@ -104,8 +104,8 @@ std::optional<ir::Subroutine> CompileModule(
         Compiler c(&data);
         ast::Scope const &mod_scope = w.resources().module->scope();
 
-        auto scaffolding_cleanup = EmitScaffolding(c, f, mod_scope);
         c.push_current(&f);
+        auto scaffolding_cleanup = EmitScaffolding(c, f, mod_scope);
         absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
         if (not nodes.empty()) { EmitIrForStatements(c, &mod_scope, nodes); }
         c.current_block()->set_jump(ir::JumpCmd::Return());
@@ -135,8 +135,7 @@ bool WorkGraph::Execute(WorkItem const &w) {
                        .work_resources = work_resources(),
                        .resources      = resources_};
   Compiler c(&data);
-  c.state().scaffolding.emplace_back();
-  absl::Cleanup cleanup = [&] { c.state().scaffolding.pop_back(); };
+
   bool result;
   LOG("WorkGraph", "Starting work %u on %s (%p)", (int)w.kind,
       w.node->DebugString(), this);

@@ -3,7 +3,9 @@
 namespace ast {
 
 void Scope::InsertDeclaration(ast::Declaration const *decl) {
-  ordered_declarations_.push_back(decl);
+  if (not(decl->flags() & Declaration::f_IsConst)) {
+    ordered_non_constant_declarations_.push_back(decl);
+  }
   for (auto const &id : decl->ids()) {
     if (id.name() == "move" or id.name() == "copy" or id.name() == "destroy") {
       continue;
@@ -33,10 +35,10 @@ void Scope::set_parent(Scope *p) {
   parent_  = reinterpret_cast<uintptr_t>(p);
   Scope *s = this;
   if (s->kind() != Kind::BoundaryExecutable) {
-    p->ordered_declarations_.push_back(this);
+    p->ordered_non_constant_declarations_.push_back(this);
   }
   while (s->kind() != Kind::BoundaryExecutable) { s = s->parent(); }
-  s->executable_descendants_.push_back(this);
+  if (s != this) { s->executable_descendants_.push_back(this); }
 }
 
 }  // namespace ast

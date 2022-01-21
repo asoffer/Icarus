@@ -22,6 +22,8 @@ struct BasicModule;
 namespace ast {
 
 struct Scope : base::Cast<Scope> {
+  using code_location_t = base::PtrUnion<Declaration const, Scope const>;
+
   enum class Kind {
     Declarative,
     BoundaryExecutable,
@@ -97,13 +99,36 @@ struct Scope : base::Cast<Scope> {
 
   // Invokes `f` on each declaration in this and all descendant scopes in the
   // order of occurence.
-  void ForEachDeclaration(std::invocable<Declaration const *> auto &&f) const {
-    for (auto p : ordered_declarations_) {
+  void ForEachNonConstantDeclaration(std::invocable<Declaration const *> auto &&f) const {
+    for (auto p : ordered_non_constant_declarations_) {
       if (auto const *decl = p.get_if<Declaration>()) {
         f(decl);
       } else {
-        p.get<Scope>()->ForEachDeclaration(f);
+        p.get<Scope>()->ForEachNonConstantDeclaration(f);
       }
+    }
+  }
+
+  void ForEachNonConstantDeclarationSpan(
+      std::invocable<absl::Span<code_location_t const>> auto &&f) const {
+    auto start = ordered_non_constant_declarations_.begin();
+    auto iter  = std::find_if(
+        start, ordered_non_constant_declarations_.end(),
+        [](code_location_t loc) -> bool { return loc.get_if<Scope>(); });
+    absl::Span<code_location_t const> span(&*start, std::distance(start, iter));
+    if (not span.empty()) { f(span); }
+
+    while (iter != ordered_non_constant_declarations_.end()) {
+      ASSERT(iter->template get_if<Scope>() != nullptr);
+      iter->template get<Scope>()->ForEachNonConstantDeclarationSpan(f);
+
+      auto start = std::next(iter);
+      iter       = std::find_if(
+          start, ordered_non_constant_declarations_.end(),
+          [](code_location_t loc) -> bool { return loc.get_if<Scope>(); });
+      absl::Span<code_location_t const> span(&*start,
+                                             std::distance(start, iter));
+      if (not span.empty()) { f(span); }
     }
   }
 
@@ -143,8 +168,7 @@ struct Scope : base::Cast<Scope> {
 
   // Sequence consisting of pointers to either a declaration or a child scope in
   // the order that they appear.
-  std::vector<base::PtrUnion<Declaration const, Scope const>>
-      ordered_declarations_;
+  std::vector<code_location_t> ordered_non_constant_declarations_;
 };
 
 }  // namespace ast
