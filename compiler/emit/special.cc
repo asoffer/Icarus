@@ -161,9 +161,13 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
     absl::Cleanup c = [&] { state().current.pop_back(); };
 
     current_block() = fn->entry();
-    OnEachArrayElement(current(), r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
-      EmitDefaultInit(type::Typed<ir::Reg>(reg, r.type()->data_type()));
-    });
+    current_block() = OnEachArrayElement(
+        current(), r.type(), ir::Reg::Arg(0),
+        [=](ir::BasicBlock *entry, ir::Reg reg) {
+          current_block() = entry;
+          EmitDefaultInit(type::Typed<ir::Reg>(reg, r.type()->data_type()));
+          return current_block();
+        });
     current_block()->set_jump(ir::JumpCmd::Return());
 
     context().ir().WriteByteCode<EmitByteCode>(fn);

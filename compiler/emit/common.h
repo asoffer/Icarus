@@ -100,8 +100,9 @@ ir::PhiInstruction<T> *PhiInst(SubroutineBlockReference ref) {
   return &ref.block->instructions().back().template as<ir::PhiInstruction<T>>();
 }
 
-void OnEachArrayElement(SubroutineBlockReference &ref, type::Array const *t,
-                        ir::Reg array_reg, std::invocable<ir::Reg> auto &&fn) {
+ir::BasicBlock *OnEachArrayElement(
+    SubroutineBlockReference ref, type::Array const *t, ir::Reg array_reg,
+    std::invocable<ir::BasicBlock *, ir::Reg> auto &&fn) {
   auto *data_ptr_type = type::Ptr(t->data_type());
 
   ir::Reg end_ptr =
@@ -123,19 +124,19 @@ void OnEachArrayElement(SubroutineBlockReference &ref, type::Array const *t,
       .lhs = phi->result, .rhs = end_ptr, .result = ref.subroutine->Reserve()});
   ref.block->set_jump(ir::JumpCmd::Cond(condition, land_block, loop_body));
 
-  ref.block = loop_body;
-  fn(phi->result);
-  ir::Reg next =
-      ref.block->Append(ir::PtrIncrInstruction{.addr   = phi->result,
-                                               .index  = 1,
-                                               .ptr    = data_ptr_type,
-                                               .result = ref.subroutine->Reserve()});
+  ref.block    = fn(loop_body, phi->result);
+
+  ir::Reg next = ref.block->Append(
+      ir::PtrIncrInstruction{.addr   = phi->result,
+                             .index  = 1,
+                             .ptr    = data_ptr_type,
+                             .result = ref.subroutine->Reserve()});
   ref.block->set_jump(ir::JumpCmd::Uncond(cond_block));
 
   phi->add(start_block, array_reg);
   phi->add(ref.block, next);
 
-  ref.block = land_block;
+  return land_block;
 }
 
 }  // namespace compiler

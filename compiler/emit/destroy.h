@@ -41,9 +41,13 @@ struct DestructionEmitter : CompilationDataReference {
       absl::Cleanup c = [&] { state().current.pop_back(); };
 
       current_block() = fn->entry();
-      OnEachArrayElement(current(), t, ir::Reg::Arg(0), [=](ir::Reg reg) {
-        EmitDestroy(t->data_type(), reg);
-      });
+      current_block() =
+          OnEachArrayElement(current(), t, ir::Reg::Arg(0),
+                             [=](ir::BasicBlock *entry, ir::Reg reg) {
+                               current_block() = entry;
+                               EmitDestroy(t->data_type(), reg);
+                               return current_block();
+                             });
       current_block()->set_jump(ir::JumpCmd::Return());
       context().ir().WriteByteCode<EmitByteCode>(fn);
       // TODO: Remove const_cast.
