@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/initialize.h"
 #include "compiler/emit/scaffolding.h"
 #include "compiler/instantiate.h"
 #include "compiler/instructions.h"
@@ -125,7 +126,8 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
       ASSERT(out_decl->ids().size() == 1u);
       state().set_addr(&out_decl->ids()[0], alloc);
       if (out_decl->IsDefaultInitialized()) {
-        EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
+        DefaultInitializationEmitter emitter(*this);
+        emitter(out_decl_type, alloc);
       } else {
         ir::PartialResultBuffer buffer;
         EmitToBuffer(out_decl->init_val(), buffer);

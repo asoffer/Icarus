@@ -51,10 +51,7 @@
 namespace compiler {
 
 struct EmitRefTag {};
-struct EmitCopyInitTag {};
-struct EmitMoveInitTag {};
 struct EmitToBufferTag {};
-struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
 struct EmitMoveAssignTag {};
 struct PatternTypeTag {};
@@ -164,11 +161,6 @@ struct Compiler
       RefEmitter<Compiler>,
       IrEmitter<Compiler>,
       PatternMatcher<Compiler>,
-      type::Visitor<EmitMoveInitTag,
-                    void(ir::Reg, ir::PartialResultBuffer const *)>,
-      type::Visitor<EmitCopyInitTag,
-                    void(ir::Reg, ir::PartialResultBuffer const *)>,
-      type::Visitor<EmitDefaultInitTag, void(ir::Reg)>,
       type::Visitor<EmitMoveAssignTag,
                     void(ir::RegOr<ir::addr_t>,
                          type::Typed<ir::PartialResultRef> const &)>,
@@ -234,25 +226,6 @@ struct Compiler
   ir::RegOr<T> EmitAs(ast::Node const *node) {
     ir::PartialResultBuffer buffer;
     return EmitAs<T>(node, buffer);
-  }
-
-  void EmitDefaultInit(type::Typed<ir::Reg> r) {
-    type::Visitor<EmitDefaultInitTag, void(ir::Reg)>::Visit(r.type().get(),
-                                                            r.get());
-  }
-
-  void EmitMoveInit(type::Typed<ir::Reg> to,
-                    ir::PartialResultBuffer const &from) {
-    type::Visitor<EmitMoveInitTag, void(ir::Reg, ir::PartialResultBuffer const
-                                                     *)>::Visit(to.type().get(),
-                                                                *to, &from);
-  }
-
-  void EmitCopyInit(type::Typed<ir::Reg> to,
-                    ir::PartialResultBuffer const &from) {
-    type::Visitor<EmitCopyInitTag, void(ir::Reg, ir::PartialResultBuffer const
-                                                     *)>::Visit(to.type().get(),
-                                                                *to, &from);
   }
 
   void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
@@ -355,46 +328,6 @@ struct Compiler
   DEFINE_EMIT_ASSIGN(type::Struct);
 
 #undef DEFINE_EMIT_ASSIGN
-
-#define DEFINE_EMIT_DEFAULT_INIT(T)                                            \
-  void Visit(EmitDefaultInitTag, T const *ty, ir::Reg r) override {            \
-    EmitDefaultInit(type::Typed<ir::Reg, T>(r, ty));                           \
-  }                                                                            \
-  void EmitDefaultInit(type::Typed<ir::Reg, T> const &r)
-
-  DEFINE_EMIT_DEFAULT_INIT(type::Array);
-  DEFINE_EMIT_DEFAULT_INIT(type::Flags);
-  DEFINE_EMIT_DEFAULT_INIT(type::Pointer);
-  DEFINE_EMIT_DEFAULT_INIT(type::BufferPointer);
-  DEFINE_EMIT_DEFAULT_INIT(type::Primitive);
-  DEFINE_EMIT_DEFAULT_INIT(type::Struct);
-
-#undef DEFINE_EMIT_DEFAULT_INIT
-
-#define DEFINE_EMIT_INIT(T)                                                    \
-  void Visit(EmitMoveInitTag, T const *ty, ir::Reg r,                          \
-             ir::PartialResultBuffer const *from) override {                   \
-    EmitMoveInit(type::Typed<ir::Reg, T>(r, ty), *from);                       \
-  }                                                                            \
-  void EmitMoveInit(type::Typed<ir::Reg, T> to,                                \
-                    ir::PartialResultBuffer const &from);                      \
-                                                                               \
-  void Visit(EmitCopyInitTag, T const *ty, ir::Reg r,                          \
-             ir::PartialResultBuffer const *from) override {                   \
-    EmitCopyInit(type::Typed<ir::Reg, T>(r, ty), *from);                       \
-  }                                                                            \
-  void EmitCopyInit(type::Typed<ir::Reg, T> to,                                \
-                    ir::PartialResultBuffer const &from);
-
-  DEFINE_EMIT_INIT(type::Array);
-  DEFINE_EMIT_INIT(type::Enum);
-  DEFINE_EMIT_INIT(type::Flags);
-  DEFINE_EMIT_INIT(type::Function);
-  DEFINE_EMIT_INIT(type::Pointer);
-  DEFINE_EMIT_INIT(type::BufferPointer);
-  DEFINE_EMIT_INIT(type::Primitive);
-  DEFINE_EMIT_INIT(type::Slice);
-  DEFINE_EMIT_INIT(type::Struct);
 
 #undef DEFINE_EMIT_INIT
 

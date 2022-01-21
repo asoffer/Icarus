@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/initialize.h"
 #include "compiler/module.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
@@ -209,7 +210,8 @@ void Compiler::EmitMoveInit(
         type::QualType node_qt = context().qual_types(node)[0];
         ir::PartialResultBuffer buffer;
         mod.context().LoadConstant(decl_ids[0], buffer);
-        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+        MoveInitializationEmitter emitter(*this);
+        emitter(to[0], buffer);
       }
         return;
       default: NOT_YET();
@@ -221,11 +223,13 @@ void Compiler::EmitMoveInit(
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
     ir::PartialResultBuffer buffer;
     buffer.append(*enum_type->EmitLiteral(node->member_name()));
-    EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), enum_type), buffer);
+    MoveInitializationEmitter emitter(*this);
+    emitter(enum_type, *to[0], buffer);
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
     ir::PartialResultBuffer buffer;
     buffer.append(*flags_type->EmitLiteral(node->member_name()));
-    EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), flags_type), buffer);
+    MoveInitializationEmitter emitter(*this);
+    emitter(flags_type, *to[0], buffer);
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
       ir::PartialResultBuffer buffer;
@@ -237,7 +241,8 @@ void Compiler::EmitMoveInit(
           }),
           .result = current().subroutine->Reserve(),
       }));
-      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+      MoveInitializationEmitter emitter(*this);
+      emitter(to[0], buffer);
     } else if (node->member_name() == "data") {
       ir::PartialResultBuffer buffer;
       buffer.append(current_block()->Append(ir::LoadInstruction{
@@ -248,7 +253,8 @@ void Compiler::EmitMoveInit(
           }),
           .result = current().subroutine->Reserve(),
       }));
-      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+      MoveInitializationEmitter emitter(*this);
+      emitter(to[0], buffer);
     } else {
       UNREACHABLE(node->member_name());
     }
@@ -256,7 +262,8 @@ void Compiler::EmitMoveInit(
     ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
       buffer.append(PtrFix(current(), EmitRef(node), node_qt.type()));
-      EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+      MoveInitializationEmitter emitter(*this);
+      emitter(to[0], buffer);
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           state().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -295,7 +302,8 @@ void Compiler::EmitCopyInit(
       case 1: {
         ir::PartialResultBuffer buffer;
         mod.context().LoadConstant(decl_ids[0], buffer);
-        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+        MoveInitializationEmitter emitter(*this);
+        emitter(to[0], buffer);
         return;
       }
       default: NOT_YET();
@@ -303,14 +311,17 @@ void Compiler::EmitCopyInit(
   }
 
   type::QualType node_qt = context().qual_types(node)[0];
+
   if (auto const *enum_type = node_qt.type().if_as<type::Enum>()) {
     ir::PartialResultBuffer buffer;
     buffer.append(*enum_type->EmitLiteral(node->member_name()));
-    EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+    CopyInitializationEmitter emitter(*this);
+    emitter(to[0], buffer);
   } else if (auto const *flags_type = node_qt.type().if_as<type::Flags>()) {
     ir::PartialResultBuffer buffer;
     buffer.append(*flags_type->EmitLiteral(node->member_name()));
-    EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+    CopyInitializationEmitter emitter(*this);
+    emitter(to[0], buffer);
   } else if (auto const *s = operand_qt.type().if_as<type::Slice>()) {
     if (node->member_name() == "length") {
       ir::PartialResultBuffer buffer;
@@ -322,7 +333,8 @@ void Compiler::EmitCopyInit(
           }),
           .result = current().subroutine->Reserve(),
       }));
-      EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+      CopyInitializationEmitter emitter(*this);
+      emitter(to[0], buffer);
     } else if (node->member_name() == "data") {
       ir::PartialResultBuffer buffer;
       buffer.append(current_block()->Append(ir::LoadInstruction{
@@ -333,7 +345,8 @@ void Compiler::EmitCopyInit(
           }),
           .result = current().subroutine->Reserve(),
       }));
-      EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+      CopyInitializationEmitter emitter(*this);
+      emitter(to[0], buffer);
     } else {
       UNREACHABLE(node->member_name());
     }
@@ -378,7 +391,8 @@ void Compiler::EmitMoveAssign(
       case 1: {
         ir::PartialResultBuffer buffer;
         mod.context().LoadConstant(decl_ids[0], buffer);
-        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+        MoveInitializationEmitter emitter(*this);
+        emitter(to[0], buffer);
         return;
       }
       default: NOT_YET();
@@ -427,7 +441,8 @@ void Compiler::EmitCopyAssign(
       case 1: {
         ir::PartialResultBuffer buffer;
         mod.context().LoadConstant(decl_ids[0], buffer);
-        EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+        MoveInitializationEmitter emitter(*this);
+        emitter(to[0], buffer);
         return;
       }
       default: NOT_YET();

@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/initialize.h"
 #include "compiler/module.h"
 
 namespace compiler {
@@ -10,7 +11,8 @@ void Compiler::EmitMoveInit(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+  MoveInitializationEmitter emitter(*this);
+  emitter(to[0], buffer);
 }
 
 void Compiler::EmitCopyInit(
@@ -18,7 +20,8 @@ void Compiler::EmitCopyInit(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyInit(type::Typed<ir::Reg>(to[0]->reg(), to[0].type()), buffer);
+  CopyInitializationEmitter emitter(*this);
+  emitter(to[0], buffer);
 }
 
 void Compiler::EmitToBuffer(ast::Identifier const *node,

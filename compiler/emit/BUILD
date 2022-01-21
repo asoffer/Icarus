@@ -5,6 +5,7 @@ cc_library(
     srcs = ["access.cc"],
     deps = [
         ":common",
+        ":initialize",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:module",
@@ -219,6 +220,7 @@ cc_library(
     name = "declaration",
     srcs = ["declaration.cc"],
     deps = [
+        ":initialize",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:module",
@@ -236,6 +238,7 @@ cc_library(
     name = "designated_initializer",
     srcs = ["designated_initializer.cc"],
     deps = [
+        ":initialize",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:addr",
@@ -294,6 +297,7 @@ cc_library(
     srcs = ["function_literal.cc"],
     deps = [
         ":common",
+        ":initialize",
         ":scaffolding",
         "//ast",
         "//compiler:compiler_header",
@@ -315,6 +319,7 @@ cc_library(
     srcs = ["identifier.cc"],
     deps = [
         ":common",
+        ":initialize",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:module",
@@ -543,6 +548,7 @@ cc_library(
     deps = [
         ":common",
         ":destroy",
+        ":initialize",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instructions",
@@ -584,6 +590,7 @@ cc_library(
     deps = [
         ":common",
         ":destroy",
+        ":initialize",
         "//ast",
         "//frontend/lex:operators",
         "//compiler:compiler_header",
@@ -619,6 +626,30 @@ cc_library(
 )
 
 # TODO: YieldStmt tests.
+
+cc_library(
+    name = "initialize",
+    hdrs = ["initialize.h"],
+    srcs = ["initialize.cc"],
+    deps = [
+        ":common",
+        "//compiler:compilation_data",
+        "//compiler:instructions",
+        "//type:cast",
+        "//ir/value:addr",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:array",
+        "//type:enum",
+        "//type:flags",
+        "//type:function",
+        "//type:pointer",
+        "//type:primitive",
+        "//type:slice",
+        "//type:scope",
+    ],
+)
 
 cc_library(
     name = "destroy",

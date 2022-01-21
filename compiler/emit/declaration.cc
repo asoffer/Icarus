@@ -4,6 +4,7 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/initialize.h"
 #include "compiler/module.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
@@ -87,13 +88,14 @@ void EmitNonConstantDeclaration(Compiler &c, ast::Declaration const *node,
       c.ApplyImplicitCasts(initial_value_qt.type(),
                            type::QualType::NonConstant(addrs[0].type()),
                            buffer);
-      c.EmitMoveInit(type::Typed<ir::Reg>(addrs[0]->reg(), addrs[0].type()),
-                     buffer);
+      MoveInitializationEmitter emitter(c);
+      emitter(addrs[0], buffer);
     }
 
   } else {
     if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
-      c.EmitDefaultInit(type::Typed<ir::Reg>(addrs[0]->reg(), addrs[0].type()));
+      DefaultInitializationEmitter emitter(c);
+      emitter(addrs[0].type(), *addrs[0]);
     }
   }
   out.append(addrs[0]);

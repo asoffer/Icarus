@@ -5,6 +5,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/emit/destroy.h"
+#include "compiler/emit/initialize.h"
 #include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "ir/value/addr.h"
@@ -46,7 +47,8 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
       ir::RegOr<ir::addr_t> r(PtrFix(c.current(), from_val, field.type));
       ir::PartialResultBuffer buffer;
       buffer.append(r);
-      c.EmitMoveInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
+      MoveInitializationEmitter emitter(c);
+      emitter(field.type, to_ref, buffer);
       ++i;
     }
     c.current_block()->set_jump(ir::JumpCmd::Return());
@@ -80,7 +82,9 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
 
       ir::PartialResultBuffer buffer;
       buffer.append(PtrFix(c.current(), from_val, field.type));
-      c.EmitCopyInit(type::Typed<ir::Reg>(to_ref, field.type), buffer);
+
+      CopyInitializationEmitter emitter(c);
+      emitter(field.type, to_ref, buffer);
       ++i;
     }
     c.current_block()->set_jump(ir::JumpCmd::Return());

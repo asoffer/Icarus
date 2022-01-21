@@ -3,6 +3,7 @@
 #include "absl/types/span.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/initialize.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
 #include "type/typed_value.h"
@@ -67,7 +68,8 @@ void Compiler::EmitMoveInit(
                                          .result = current().subroutine->Reserve()}),
           struct_type.fields()[i].type);
       if (field.initial_value.empty()) {
-        EmitDefaultInit(field_reg);
+        DefaultInitializationEmitter emitter(*this);
+        emitter(field_reg.type(), *field_reg);
       } else {
         EmitCopyAssign(field_reg,
                        type::Typed(field.initial_value[0], field.type));
@@ -123,7 +125,8 @@ void Compiler::EmitCopyInit(
                                          .result = current().subroutine->Reserve()}),
           struct_type.fields()[i].type);
       if (field.initial_value.empty()) {
-        EmitDefaultInit(field_reg);
+        DefaultInitializationEmitter emitter(*this);
+        emitter(field_reg.type(), *field_reg);
       } else {
         EmitCopyAssign(field_reg,
                        type::Typed(field.initial_value[0], field.type));

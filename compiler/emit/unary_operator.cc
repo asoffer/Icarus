@@ -2,6 +2,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/emit/destroy.h"
+#include "compiler/emit/initialize.h"
 #include "frontend/lex/operators.h"
 #include "ir/instruction/arithmetic.h"
 #include "type/interface/ir.h"
@@ -18,7 +19,8 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       auto operand_type = context().qual_types(node->operand())[0].type();
       auto reg          = state().TmpAlloca(operand_type);
       EmitToBuffer(node->operand(), out);
-      EmitCopyInit(type::Typed<ir::Reg>(reg, operand_type), out);
+      CopyInitializationEmitter emitter(*this);
+      emitter(operand_type, reg, out);
       out.pop_back();
       out.append(PtrFix(current(), reg, operand_type));
       return;
@@ -35,7 +37,8 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       auto operand_type = context().qual_types(node->operand())[0].type();
       auto reg          = state().TmpAlloca(operand_type);
       EmitToBuffer(node->operand(), out);
-      EmitMoveInit(type::Typed<ir::Reg>(reg, operand_type), out);
+      MoveInitializationEmitter emitter(*this);
+      emitter(operand_type, reg, out);
       out.pop_back();
       out.append(PtrFix(current(), reg, operand_type));
       return;
