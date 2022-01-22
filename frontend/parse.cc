@@ -2178,9 +2178,10 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
     SourceBuffer &buffer, diagnostic::DiagnosticConsumer &diag, size_t chunk) {
   src = &buffer;
 
+  size_t num_consumed = diag.num_consumed();
   auto nodes = Lex(buffer, diag, chunk);
   // If lexing failed, don't bother trying to parse.
-  if (diag.num_consumed() > 0) { return {}; }
+  if (diag.num_consumed() > num_consumed) { return {}; }
   // TODO: Shouldn't need this protection.
   if (nodes.size() == 1) { return {}; }
   ParseState state(std::move(nodes), diag);
@@ -2207,11 +2208,12 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
   CleanUpReduction(&state);
 
   // end()
+  num_consumed = diag.num_consumed();
   switch (state.node_stack_.size()) {
     case 0: UNREACHABLE();
     case 1:
       // TODO: log an error
-      if (diag.num_consumed() > 0) { return {}; }
+      if (diag.num_consumed() > num_consumed) { return {}; }
       if (state.tag_stack_.back() & eof) { return {}; }
       return std::move(move_as<Statements>(state.node_stack_.back())->content_);
 

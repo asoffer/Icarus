@@ -17,7 +17,6 @@ cc_library(
         "//compiler",
         "//compiler:resources",
         "//compiler:work_graph",
-        "//diagnostic/consumer:aborting",
         "//diagnostic/consumer:tracking",
         "//frontend/source:buffer",
         "//frontend:parse",

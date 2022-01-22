@@ -11,7 +11,6 @@
 #include "compiler/resources.h"
 #include "compiler/verify/verify.h"
 #include "compiler/work_graph.h"
-#include "diagnostic/consumer/aborting.h"
 #include "diagnostic/consumer/tracking.h"
 #include "frontend/parse.h"
 #include "frontend/source/buffer.h"
@@ -35,8 +34,9 @@ struct TestModule : compiler::CompiledModule {
   void AppendCode(std::string code) {
     code.push_back('\n');
     source_.AppendChunk(std::move(code));
-    diagnostic::AbortingConsumer diag(&source_);
-    auto stmts = frontend::Parse(source_, diag, source_.num_chunks() - 1);
+    size_t num = consumer.num_consumed();
+    auto stmts = frontend::Parse(source_, consumer, source_.num_chunks() - 1);
+    if (consumer.num_consumed() != num) { return; }
     auto nodes = insert(stmts.begin(), stmts.end());
     compiler::CompilationData data{
         .context        = &context(),
@@ -66,8 +66,9 @@ struct TestModule : compiler::CompiledModule {
     code.push_back('\n');
     source_.AppendChunk(std::move(code));
 
-    diagnostic::AbortingConsumer diag(&source_);
-    auto stmts = frontend::Parse(source_, diag, source_.num_chunks() - 1);
+    size_t num = consumer.num_consumed();
+    auto stmts = frontend::Parse(source_, consumer, source_.num_chunks() - 1);
+    if (consumer.num_consumed() != num) { return nullptr; }
     if (auto* ptr = stmts[0]->template if_as<NodeType>()) {
       std::vector<std::unique_ptr<ast::Node>> ns;
       ns.push_back(std::move(stmts[0]));
@@ -117,7 +118,9 @@ struct TestModule : compiler::CompiledModule {
     };
 
     frontend::SourceBuffer buffer(std::move(content));
+    size_t num = consumer.num_consumed();
     auto parsed_nodes = frontend::Parse(buffer, consumer);
+    if (consumer.num_consumed() != num) { return; }
     compiler::CompileModule(
         imported_mod.context(), import_resources,
         imported_mod.insert(parsed_nodes.begin(), parsed_nodes.end()));
