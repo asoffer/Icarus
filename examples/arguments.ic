@@ -1,0 +1,7 @@
+-- ::= import "core.ic"
+io ::= import "io.ic"
+
+io.Print("There are ", arguments.length, " program Argument(s):\n")
+for (0, arguments.length as i64) do [i: i64] {
+  io.Print("  ", arguments[i], "\n")
+}

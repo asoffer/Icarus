@@ -194,18 +194,20 @@ ir::ByteCode EmitByteCode(ir::Subroutine const& sr) {
   return byte_code;
 }
 
-void InterpretAtCompileTime(ir::Subroutine const& fn) {
+void InterpretAtCompileTime(ir::Subroutine const& fn,
+                            ir::CompleteResultBuffer const& arguments) {
   ir::ByteCode byte_code = EmitByteCode(fn);
   ir::NativeFn::Data data{
       .fn        = &const_cast<ir::Subroutine&>(fn),
       .type      = &fn.type()->as<type::Function>(),
       .byte_code = byte_code.begin(),
   };
-  InterpretAtCompileTime(ir::NativeFn(&data));
+  InterpretAtCompileTime(ir::NativeFn(&data), arguments);
 }
 
-void InterpretAtCompileTime(ir::NativeFn f) {
-  interpreter::Execute<instruction_set_t>(f);
+void InterpretAtCompileTime(ir::NativeFn f,
+                            ir::CompleteResultBuffer const& arguments) {
+  interpreter::Execute<instruction_set_t>(f, arguments);
 }
 
 std::vector<ir::Block> InterpretScopeAtCompileTime(

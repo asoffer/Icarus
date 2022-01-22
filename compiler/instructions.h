@@ -31,8 +31,11 @@
 
 namespace compiler {
 
-void InterpretAtCompileTime(ir::NativeFn f);
-void InterpretAtCompileTime(ir::Subroutine const &fn);
+void InterpretAtCompileTime(ir::NativeFn f,
+                            ir::CompleteResultBuffer const &arguments = {});
+void InterpretAtCompileTime(ir::Subroutine const &fn,
+                            ir::CompleteResultBuffer const &arguments = {});
+
 std::vector<ir::Block> InterpretScopeAtCompileTime(
     ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments);

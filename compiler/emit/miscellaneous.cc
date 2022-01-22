@@ -99,4 +99,9 @@ void Compiler::EmitToBuffer(ast::WhileStmt const *node,
   current_block() = landing;
 }
 
+void Compiler::EmitToBuffer(ast::ProgramArguments const *node,
+                            ir::PartialResultBuffer &out) {
+  out.append(ir::Reg::Arg(0));
+}
+
 }  // namespace compiler

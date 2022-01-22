@@ -48,6 +48,7 @@ struct StackFrame {
 
   void set_raw(ir::Reg r, void const *src, uint16_t num_bytes) {
     ASSERT(num_bytes <= register_value_size);
+    ASSERT(offset(r) + num_bytes <= data_.size());
     std::memcpy(data_.raw(offset(r)), src, num_bytes);
   }
 

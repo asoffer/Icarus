@@ -12,7 +12,7 @@
 namespace interpreter {
 
 template <typename InstSet>
-void Execute(ir::NativeFn fn) {
+void Execute(ir::NativeFn fn, ir::CompleteResultBuffer const& arguments = {}) {
   ASSERT(fn.type()->return_types().size() == 0u);
   auto save_errno = std::exchange(errno, 0);
   absl::Cleanup c = [&] { errno = save_errno; };
@@ -20,6 +20,11 @@ void Execute(ir::NativeFn fn) {
   LOG("Execute", "%s", fn);
   ExecutionContext ctx;
   StackFrame frame(fn, ctx.stack());
+
+  for (size_t i = 0; i < arguments.num_entries(); ++i) {
+    base::untyped_buffer_view argument = arguments[i].raw();
+    frame.set_raw(ir::Reg::Arg(i), argument.data(), argument.size());
+  }
   ctx.Execute<InstSet>(fn, frame);
 }
 

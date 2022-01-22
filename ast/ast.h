@@ -995,6 +995,25 @@ struct ParameterizedStructLiteral : ParameterizedExpression, WithScope {
   std::vector<Declaration> fields_;
 };
 
+// ProgramArguments:
+// Represents the identifier `arguments` which holds arguments provided to the
+// program on the command-line.
+struct ProgramArguments : Expression {
+  explicit ProgramArguments(frontend::SourceRange const &range)
+      : Expression(IndexOf<ProgramArguments>(), range) {}
+  std::string_view name() const { return name_; }
+
+  void DebugStrAppend(std::string *out, size_t indent) const override {
+    out->append("arguments");
+  }
+  void Initialize(Node::Initializer &initializer) override {
+    scope_ = initializer.scope;
+  }
+
+ private:
+  std::string name_;
+};
+
 // ReturnStmt:
 // Represents a return statement. Arbitrarily many expressions can be passed.
 //

@@ -9,6 +9,7 @@ root=$(dirname "$examples")
 binary="$root/bazel-bin/compiler/interpret"
 export ICARUS_MODULE_PATH="$root/stdlib"
 
+$binary "$examples/arguments.ic" --program_arguments="hello world!" >/dev/null && echo arguments OK
 $binary "$examples/c_file.ic" >/dev/null && echo c_file OK
 $binary "$examples/constant_scopes.ic" >/dev/null && echo constant_scopes OK
 $binary "$examples/date_time.ic" >/dev/null && echo date_time OK

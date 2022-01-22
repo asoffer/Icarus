@@ -30,6 +30,7 @@ cc_library(
         "miscellaneous.cc",
         "parameterized_struct_literal.cc",
         "pattern_match.cc",
+        "program_arguments.cc",
         "scope_literal.cc",
         "slice_type.cc",
         "short_function_literal.cc",
@@ -266,6 +267,16 @@ cc_test(
 cc_test(
     name = "pattern_match_test",
     srcs = ["pattern_match_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "program_arguments_test",
+    srcs = ["program_arguments_test.cc"],
     deps = [
         "//compiler",
         "//test:module",
