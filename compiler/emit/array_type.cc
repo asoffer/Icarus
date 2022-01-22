@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/compiler_common.h"
 #include "type/array.h"
 
 namespace compiler {

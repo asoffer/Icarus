@@ -37,7 +37,11 @@ cc_test(
 cc_library(
     name = "compare",
     hdrs = ["compare.h"],
-    deps = ["//base:extend"],
+    deps = [
+        "//base:extend",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+    ],
 )
 
 cc_library(

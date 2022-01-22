@@ -150,7 +150,6 @@ cc_library(
     hdrs = ["resources.h"],
     deps = [
         ":context",
-        ":cyclic_dependency_tracker",
         ":transient_state",
         ":work_item",
         "//ast:node",
@@ -165,6 +164,7 @@ cc_library(
     name = "transient_state",
     hdrs = ["transient_state.h"],
     deps = [
+        ":cyclic_dependency_tracker",
         ":subroutine_scaffolding",
     ],
 )
@@ -195,7 +195,6 @@ IR_EMISSION = [
     "//compiler/emit:scope_node",
     "//compiler/emit:slice_type",
     "//compiler/emit:short_function_literal",
-    "//compiler/emit:special",
     "//compiler/emit:struct_literal",
     "//compiler/emit:terminal",
     "//compiler/emit:unary_operator",
@@ -265,7 +264,7 @@ cc_library(
         ":instructions",
         "//ast",
         "//base:log",
-        "//compiler/emit:common",
+        "//compiler/emit:compiler_common",
         "//compiler/verify",
         "//ir:subroutine",
         "//ir/interpreter:evaluate",
@@ -302,6 +301,7 @@ cc_library(
         ":compiler_header",
         ":context",
         ":module",
+        "//compiler/emit:common",
         "//core:arguments",
         "//ir/value:result_buffer",
         "//type:typed_value",

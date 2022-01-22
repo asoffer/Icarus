@@ -1,5 +1,8 @@
 #include "compiler/emit/initialize.h"
 
+#include "compiler/emit/common.h"
+#include "compiler/instructions.h"
+
 namespace compiler {
 namespace {
 

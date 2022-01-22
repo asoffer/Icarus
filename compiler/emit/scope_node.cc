@@ -17,12 +17,13 @@
 #include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/compiler_common.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "compiler/module.h"
 #include "ir/basic_block.h"
-#include "ir/subroutine.h"
-#include "ir/subroutine.h"
 #include "ir/instruction/core.h"
 #include "ir/instruction/jump.h"
+#include "ir/subroutine.h"
 #include "ir/value/char.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
@@ -89,8 +90,9 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
             ir::PartialResultBuffer buffer;
             buffer.append(r);
             c.state().set_addr(&id, c.current().subroutine->Alloca(param_type));
-            c.EmitCopyAssign(type::Typed(c.state().addr(&id), param_type),
-                             type::Typed(buffer[0], param_type));
+            CopyAssignmentEmitter emitter(c);
+            emitter(param_type, c.state().addr(&id),
+                    type::Typed(buffer[0], param_type));
           }
 
           ir::PartialResultBuffer ignored;
@@ -210,7 +212,8 @@ void Compiler::EmitCopyAssign(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0], type::Typed(buffer[0], t));
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
 }
 
 void Compiler::EmitMoveAssign(
@@ -221,7 +224,8 @@ void Compiler::EmitMoveAssign(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0], type::Typed(buffer[0], t));
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
 }
 
 }  // namespace compiler

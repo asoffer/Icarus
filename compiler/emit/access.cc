@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "compiler/emit/initialize.h"
 #include "compiler/module.h"
 #include "ir/value/addr.h"
@@ -280,7 +281,8 @@ void Compiler::EmitMoveInit(
                                .struct_type = &struct_type,
                                .result      = current().subroutine->Reserve()}),
                            t));
-      EmitMoveAssign(to[0], type::Typed(buffer[0], t));
+      MoveAssignmentEmitter emitter(*this);
+      emitter(to[0], type::Typed(buffer[0], t));
     }
   }
 }
@@ -354,7 +356,8 @@ void Compiler::EmitCopyInit(
     ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
       buffer.append(PtrFix(current(), EmitRef(node), node_qt.type()));
-      EmitCopyAssign(to[0], type::Typed(buffer[0], node_qt.type()));
+      CopyAssignmentEmitter emitter(*this);
+      emitter(to[0], type::Typed(buffer[0], node_qt.type()));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           state().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -369,7 +372,8 @@ void Compiler::EmitCopyInit(
                                .struct_type = &struct_type,
                                .result      = current().subroutine->Reserve()}),
                            t));
-      EmitMoveAssign(to[0], type::Typed(buffer[0], t));
+      MoveAssignmentEmitter emitter(*this);
+      emitter(to[0], type::Typed(buffer[0], node_qt.type()));
     }
   }
 }
@@ -405,7 +409,8 @@ void Compiler::EmitMoveAssign(
     if (operand_qt.quals() >= type::Quals::Ref()) {
       type::Type t = context().qual_types(node)[0].type();
       buffer.append(PtrFix(current(), EmitRef(node), t));
-      EmitMoveAssign(to[0], type::Typed(buffer[0], t));
+      MoveAssignmentEmitter emitter(*this);
+      emitter(to[0], type::Typed(buffer[0], t));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
           state().TmpAlloca(operand_qt.type()), operand_qt.type());
@@ -420,7 +425,8 @@ void Compiler::EmitMoveAssign(
                                .struct_type = &struct_type,
                                .result      = current().subroutine->Reserve()}),
                            t));
-      EmitMoveAssign(to[0], type::Typed(buffer[0], t));
+      MoveAssignmentEmitter emitter(*this);
+      emitter(to[0], type::Typed(buffer[0], t));
     }
   }
 }
@@ -470,7 +476,8 @@ void Compiler::EmitCopyAssign(
                                .result      = current().subroutine->Reserve()}),
                            t));
     }
-    EmitMoveAssign(to[0], type::Typed(buffer[0], t));
+    MoveAssignmentEmitter emitter(*this);
+    emitter(to[0], type::Typed(buffer[0], t));
   }
 }
 

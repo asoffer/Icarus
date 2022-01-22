@@ -2,6 +2,7 @@
 #include "base/universal_print.h"
 #include "compiler/compiler.h"
 #include "compiler/context.h"
+#include "compiler/emit/copy_move_assignment.h"
 
 namespace compiler {
 
@@ -41,7 +42,8 @@ void Compiler::EmitCopyAssign(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0], type::Typed(buffer[0], t));
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
 }
 
 // TODO: Unit tests
@@ -52,7 +54,8 @@ void Compiler::EmitMoveAssign(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0], type::Typed(buffer[0], t));
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
 }
 
 // TODO: Unit tests
@@ -63,7 +66,8 @@ void Compiler::EmitCopyInit(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0], type::Typed(buffer[0], t));
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
 }
 
 // TODO: Unit tests
@@ -74,7 +78,8 @@ void Compiler::EmitMoveInit(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0], type::Typed(buffer[0], t));
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
 }
 
 bool Compiler::PatternMatch(

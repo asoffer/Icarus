@@ -3,6 +3,7 @@
 #include "absl/types/span.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "compiler/emit/initialize.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
@@ -26,8 +27,8 @@ void Compiler::EmitMoveAssign(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0],
-                 type::Typed(buffer[0], context().qual_types(node)[0].type()));
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], context().qual_types(node)[0].type()));
 }
 
 void Compiler::EmitCopyAssign(
@@ -36,8 +37,8 @@ void Compiler::EmitCopyAssign(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0],
-                 type::Typed(buffer[0], context().qual_types(node)[0].type()));
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], context().qual_types(node)[0].type()));
 }
 
 void Compiler::EmitMoveInit(
@@ -71,8 +72,8 @@ void Compiler::EmitMoveInit(
         DefaultInitializationEmitter emitter(*this);
         emitter(field_reg.type(), *field_reg);
       } else {
-        EmitCopyAssign(field_reg,
-                       type::Typed(field.initial_value[0], field.type));
+        CopyAssignmentEmitter emitter(*this);
+        emitter(field_reg, type::Typed(field.initial_value[0], field.type));
       }
     }
   next_field:;
@@ -128,8 +129,8 @@ void Compiler::EmitCopyInit(
         DefaultInitializationEmitter emitter(*this);
         emitter(field_reg.type(), *field_reg);
       } else {
-        EmitCopyAssign(field_reg,
-                       type::Typed(field.initial_value[0], field.type));
+        CopyAssignmentEmitter emitter(*this);
+        emitter(field_reg, type::Typed(field.initial_value[0], field.type));
       }
     }
   next_field:;

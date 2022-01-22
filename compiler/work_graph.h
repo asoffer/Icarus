@@ -11,7 +11,7 @@
 #include "ast/expression.h"
 #include "ast/node.h"
 #include "compiler/compiler.h"
-#include "compiler/emit/common.h"
+#include "compiler/emit/compiler_common.h"
 #include "compiler/module.h"
 #include "compiler/resources.h"
 #include "compiler/work_item.h"

@@ -2,8 +2,6 @@
 #define ICARUS_COMPILER_EMIT_INITIALIZE_H
 
 #include "compiler/compilation_data.h"
-#include "compiler/emit/common.h"
-#include "compiler/instructions.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"

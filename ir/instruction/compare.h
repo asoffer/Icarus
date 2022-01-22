@@ -7,6 +7,8 @@
 #include "base/extend/serialize.h"
 #include "base/extend/traverse.h"
 #include "ir/instruction/debug.h"
+#include "ir/value/reg.h"
+#include "ir/value/reg_or.h"
 
 namespace ir {
 

@@ -2,7 +2,7 @@
 #include "ast/ast.h"
 #include "ast/scope.h"
 #include "compiler/compiler.h"
-#include "compiler/emit/common.h"
+#include "compiler/emit/compiler_common.h"
 #include "ir/value/addr.h"
 #include "ir/value/char.h"
 #include "ir/value/reg.h"

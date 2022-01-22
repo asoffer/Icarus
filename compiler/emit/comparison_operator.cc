@@ -1,6 +1,9 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/compiler_common.h"
+#include "compiler/emit/copy_move_assignment.h"
+#include "compiler/emit/initialize.h"
 #include "ir/value/char.h"
 #include "type/cast.h"
 
@@ -189,7 +192,8 @@ void Compiler::EmitCopyAssign(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0], type::Typed(buffer[0], type::Bool));
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], type::Bool));
 }
 
 void Compiler::EmitMoveAssign(
@@ -198,7 +202,8 @@ void Compiler::EmitMoveAssign(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0], type::Typed(buffer[0], type::Bool));
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], type::Bool));
 }
 
 void Compiler::EmitCopyInit(
@@ -207,7 +212,8 @@ void Compiler::EmitCopyInit(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0], type::Typed(buffer[0], type::Bool));
+  CopyInitializationEmitter emitter(*this);
+  emitter(to[0], buffer);
 }
 
 void Compiler::EmitMoveInit(
@@ -216,7 +222,8 @@ void Compiler::EmitMoveInit(
   ASSERT(to.size() == 1u);
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0], type::Typed(buffer[0], type::Bool));
+  MoveInitializationEmitter emitter(*this);
+  emitter(to[0], buffer);
 }
 
 }  // namespace compiler

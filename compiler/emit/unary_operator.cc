@@ -1,6 +1,8 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/compiler_common.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "compiler/emit/destroy.h"
 #include "compiler/emit/initialize.h"
 #include "frontend/lex/operators.h"
@@ -143,9 +145,9 @@ void Compiler::EmitCopyInit(
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitCopyAssign(
-            to[0],
-            type::Typed(buffer[0], context().qual_types(node)[0].type()));
+        CopyAssignmentEmitter emitter(*this);
+        emitter(to[0],
+                type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }
@@ -170,9 +172,9 @@ void Compiler::EmitMoveInit(
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitMoveAssign(
-            to[0],
-            type::Typed(buffer[0], context().qual_types(node)[0].type()));
+        MoveAssignmentEmitter emitter(*this);
+        emitter(to[0],
+                type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }
@@ -203,9 +205,9 @@ void Compiler::EmitCopyAssign(
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitMoveAssign(
-            to[0],
-            type::Typed(buffer[0], context().qual_types(node)[0].type()));
+        MoveAssignmentEmitter emitter(*this);
+        emitter(to[0],
+                type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }
@@ -231,9 +233,9 @@ void Compiler::EmitMoveAssign(
       ir::PartialResultBuffer buffer;
       EmitToBuffer(node, buffer);
       if (to.size() == 1) {
-        EmitMoveAssign(
-            to[0],
-            type::Typed(buffer[0], context().qual_types(node)[0].type()));
+        MoveAssignmentEmitter emitter(*this);
+        emitter(to[0],
+                type::Typed(buffer[0], context().qual_types(node)[0].type()));
       } else {
         NOT_YET();
       }

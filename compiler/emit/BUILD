@@ -5,6 +5,7 @@ cc_library(
     srcs = ["access.cc"],
     deps = [
         ":common",
+        ":copy_move_assignment",
         ":initialize",
         "//ast",
         "//compiler:compiler_header",
@@ -51,6 +52,7 @@ cc_library(
     name = "array_type",
     srcs = ["array_type.cc"],
     deps = [
+        ":compiler_common", 
         ":common",
         "//ast",
         "//compiler:compiler_header",
@@ -72,6 +74,7 @@ cc_library(
     srcs = ["assignment.cc"],
     deps = [
         ":common",
+        ":copy_move_assignment",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:addr",
@@ -98,9 +101,12 @@ cc_library(
     name = "binary_operator",
     srcs = ["binary_operator.cc"],
     deps = [
+        ":common", 
+        ":compiler_common", 
+        ":copy_move_assignment",
+        ":initialize",
         "//ast",
         "//compiler:compiler_header", 
-        "//compiler/emit:common", 
         "//type:cast",
     ],
 )
@@ -122,6 +128,7 @@ cc_library(
     srcs = ["block_node.cc"],
     deps = [
         ":common",
+        ":compiler_common",
         "//ast",
         "//compiler:compiler_header",
     ],
@@ -132,6 +139,9 @@ cc_library(
     srcs = ["call.cc"],
     deps = [
         ":common",
+        ":compiler_common",
+        ":copy_move_assignment",
+        ":initialize",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instantiate",
@@ -157,6 +167,9 @@ cc_library(
     srcs = ["cast.cc"],
     deps = [
         ":common",
+        ":compiler_common",
+        ":copy_move_assignment",
+        ":initialize",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:char",
@@ -179,6 +192,9 @@ cc_library(
     srcs = ["comparison_operator.cc"],
     deps = [
         ":common",
+        ":compiler_common",
+        ":copy_move_assignment",
+        ":initialize",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:char",
@@ -202,6 +218,30 @@ cc_library(
     hdrs = ["common.h"],
     srcs = ["common.cc"],
     deps = [
+        "//compiler:compilation_data",
+        "//compiler:instructions",
+        "//compiler:transient_state",
+        "//core:arguments",
+        "//core:params",
+        "//ir/instruction",
+        "//ir/instruction:compare",
+        "//ir/value:result_buffer",
+        "//type",
+        "//type:cast",
+        "//type:enum",
+        "//type:flags",
+        "//type:qual_type",
+        "//type:typed_value",
+    ],
+)
+
+cc_library(
+    name = "compiler_common",
+    hdrs = ["compiler_common.h"],
+    srcs = ["compiler_common.cc"],
+    deps = [
+        ":common",
+        ":copy_move_assignment",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instantiate",
@@ -238,6 +278,7 @@ cc_library(
     name = "designated_initializer",
     srcs = ["designated_initializer.cc"],
     deps = [
+        ":copy_move_assignment",
         ":initialize",
         "//ast",
         "//compiler:compiler_header",
@@ -263,6 +304,7 @@ cc_library(
     srcs = ["enum_literal.cc"],
     deps = [
         ":common",
+        ":compiler_common",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:module",
@@ -297,6 +339,8 @@ cc_library(
     srcs = ["function_literal.cc"],
     deps = [
         ":common",
+        ":compiler_common",
+        ":copy_move_assignment",
         ":initialize",
         ":scaffolding",
         "//ast",
@@ -319,6 +363,7 @@ cc_library(
     srcs = ["identifier.cc"],
     deps = [
         ":common",
+        ":compiler_common",
         ":initialize",
         "//ast",
         "//compiler:compiler_header",
@@ -340,9 +385,11 @@ cc_library(
     name = "index",
     srcs = ["index.cc"],
     deps = [
+        ":common",
+        ":compiler_common",
+        ":copy_move_assignment",
         "//ast",
         "//compiler:compiler_header",
-        "//compiler/emit:common",
     ],
 )
 
@@ -372,6 +419,7 @@ cc_library(
     srcs = ["miscellaneous.cc"],
     deps = [
         ":common",
+        ":compiler_common",
         "//ast",
         "//compiler:compiler_header",
     ],
@@ -383,11 +431,11 @@ cc_library(
     name = "parameterized_struct_literal",
     srcs = ["parameterized_struct_literal.cc"],
     deps = [
+        ":common",
         ":struct_literal",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instructions",
-        "//compiler/emit:common",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",
@@ -424,9 +472,10 @@ cc_library(
     name = "return_stmt",
     srcs = ["return_stmt.cc"],
     deps = [
+        ":common",
+        ":compiler_common",
         "//ast",
         "//compiler:compiler_header",
-        "//compiler/emit:common",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",
@@ -442,6 +491,7 @@ cc_library(
     srcs = ["scope_literal.cc"],
     deps = [
         ":common",
+        ":compiler_common",
         ":scaffolding",
         "//ast",
         "//compiler:compiler_header",
@@ -457,6 +507,7 @@ cc_library(
     srcs = ["scope_node.cc"],
     deps = [
         ":common",
+        ":compiler_common",
         "//ast",
         "//compiler:common",
         "//compiler:compiler_header",
@@ -483,6 +534,7 @@ cc_library(
     srcs = ["short_function_literal.cc"],
     deps = [
         ":common",
+        ":compiler_common",
         ":scaffolding",
         "//ast",
         "//compiler:compiler_header",
@@ -520,17 +572,31 @@ cc_test(
 )
 
 cc_library(
-    name = "special",
-    srcs = ["special.cc"],
+    name = "copy_move_assignment",
+    hdrs = ["copy_move_assignment.h"],
+    srcs = ["copy_move_assignment.cc"],
     deps = [
         ":common",
-        "//ast",
-        "//compiler:compiler_header",
+        "//compiler:compilation_data",
         "//compiler:instructions",
         "//type:cast",
+        "//ir/value:addr",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//type",
+        "//type:array",
+        "//type:enum",
+        "//type:flags",
+        "//type:function",
+        "//type:pointer",
+        "//type:primitive",
+        "//type:slice",
+        "//type:scope",
+        "//type:typed_value",
     ],
 )
 
+# TODO: Figure out what to do with this.
 cc_test(
     name = "special_test",
     srcs = ["special_test.cc"],
@@ -547,6 +613,7 @@ cc_library(
     srcs = ["struct_literal.cc"],
     deps = [
         ":common",
+        ":copy_move_assignment",
         ":destroy",
         ":initialize",
         "//ast",
@@ -567,6 +634,8 @@ cc_library(
     name = "terminal",
     srcs = ["terminal.cc"],
     deps = [
+        ":copy_move_assignment",
+        ":initialize",
         "//ast",
         "//compiler:compiler_header",
         "//type:primitive",
@@ -589,6 +658,8 @@ cc_library(
     srcs = ["unary_operator.cc"],
     deps = [
         ":common",
+        ":compiler_common", 
+        ":copy_move_assignment",
         ":destroy",
         ":initialize",
         "//ast",
@@ -613,9 +684,10 @@ cc_library(
     name = "yield_stmt",
     srcs = ["yield_stmt.cc"],
     deps = [
+        ":common",
+        ":compiler_common",
         "//ast",
         "//compiler:compiler_header",
-        "//compiler/emit:common",
         "//ir/value:addr",
         "//ir/value:char",
         "//ir/value:reg_or",
@@ -648,6 +720,7 @@ cc_library(
         "//type:primitive",
         "//type:slice",
         "//type:scope",
+        "//type:typed_value",
     ],
 )
 

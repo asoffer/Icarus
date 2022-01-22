@@ -4,6 +4,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
@@ -49,12 +50,13 @@ void Compiler::EmitToBuffer(ast::Assignment const *node,
     temp_iter += num_rets;
   }
 
+  MoveAssignmentEmitter emitter(*this);
   ir::PartialResultBuffer buffer;
   for (auto temp_iter = temps.begin(), ref_iter = lhs_refs.begin();
        temp_iter != temps.end(); ++temp_iter, ++ref_iter) {
     buffer.clear();
     buffer.append(PtrFix(current(), (*temp_iter)->reg(), temp_iter->type()));
-    EmitMoveAssign(*ref_iter, type::Typed(buffer[0], temp_iter->type()));
+    emitter(*ref_iter, type::Typed(buffer[0], temp_iter->type()));
   }
   return;
 }

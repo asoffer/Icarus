@@ -1,6 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/emit/common.h"
+#include "compiler/emit/compiler_common.h"
 #include "compiler/emit/scaffolding.h"
 #include "compiler/instantiate.h"
 #include "compiler/instructions.h"

@@ -4,6 +4,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "compiler/emit/destroy.h"
 #include "compiler/emit/initialize.h"
 #include "compiler/instructions.h"
@@ -116,9 +117,10 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
 
       ir::PartialResultBuffer buffer;
       buffer.append(PtrFix(c.current(), from_ref, s->fields()[i].type));
-      c.EmitCopyAssign(
-          type::Typed<ir::RegOr<ir::addr_t>>(to_ref, s->fields()[i].type),
-          type::Typed(buffer[0], s->fields()[i].type));
+
+      CopyAssignmentEmitter emitter(c);
+      emitter(s->fields()[i].type, to_ref,
+              type::Typed(buffer[0], s->fields()[i].type));
     }
 
     c.current_block()->set_jump(ir::JumpCmd::Return());
@@ -149,9 +151,9 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
                                      .result = c.current().subroutine->Reserve()});
       ir::PartialResultBuffer buffer;
       buffer.append(PtrFix(c.current(), from_ref, s->fields()[i].type));
-      c.EmitCopyAssign(
-          type::Typed<ir::RegOr<ir::addr_t>>(to_ref, s->fields()[i].type),
-          type::Typed(buffer[0], s->fields()[i].type));
+      CopyAssignmentEmitter emitter(c);
+      emitter(s->fields()[i].type, to_ref,
+              type::Typed(buffer[0], s->fields()[i].type));
     }
 
     c.current_block()->set_jump(ir::JumpCmd::Return());

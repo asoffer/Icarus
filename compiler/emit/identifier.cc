@@ -1,6 +1,8 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/compiler_common.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "compiler/emit/initialize.h"
 #include "compiler/module.h"
 
@@ -72,7 +74,8 @@ void Compiler::EmitCopyAssign(
   auto t = context().qual_types(node)[0].type();
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitCopyAssign(to[0], type::Typed(buffer[0], t));
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
 }
 
 void Compiler::EmitMoveAssign(
@@ -82,7 +85,8 @@ void Compiler::EmitMoveAssign(
   auto t = context().qual_types(node)[0].type();
   ir::PartialResultBuffer buffer;
   EmitToBuffer(node, buffer);
-  EmitMoveAssign(to[0], type::Typed(buffer[0], t));
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
 }
 
 ir::Reg Compiler::EmitRef(ast::Identifier const *node) {

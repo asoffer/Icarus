@@ -2,6 +2,9 @@
 #include "base/meta.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/compiler_common.h"
+#include "compiler/emit/copy_move_assignment.h"
+#include "compiler/emit/initialize.h"
 #include "compiler/instantiate.h"
 #include "compiler/module.h"
 #include "compiler/resources.h"
@@ -53,16 +56,17 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
               .slice  = slice,
               .result = c.current().subroutine->Reserve(),
           }),
-          type::U64);
+          type::Slice::LengthType());
 
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(&args[0].expr(), buffer);
-      c.EmitMoveAssign(
-          data, type::Typed(buffer[0],
-                            type::Type(type::BufPtr(slice_type->data_type()))));
+      MoveAssignmentEmitter emitter(c);
+      emitter(data,
+              type::Typed(buffer[0],
+                          type::Type(type::BufPtr(slice_type->data_type()))));
       buffer.clear();
       c.EmitToBuffer(&args[1].expr(), buffer);
-      c.EmitMoveAssign(length, type::Typed(buffer[0], type::U64));
+      emitter(length, type::Typed(buffer[0], type::Slice::LengthType()));
       out.append(slice);
       return;
     } break;
@@ -201,8 +205,8 @@ void Compiler::EmitMoveInit(
     ir::PartialResultBuffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    EmitMoveAssign(to[0],
-                   type::Typed(out[0], context().qual_types(node)[0].type()));
+    MoveAssignmentEmitter emitter(*this);
+    emitter(to[0], type::Typed(out[0], context().qual_types(node)[0].type()));
     return;
   }
 
@@ -220,7 +224,9 @@ void Compiler::EmitMoveInit(
         type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
-    EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
+
+    CopyAssignmentEmitter emitter(*this);
+    emitter(to[0], type::Typed(t_buf[0], type::Type_));
     return;
   }
 
@@ -235,8 +241,8 @@ void Compiler::EmitCopyInit(
     ir::PartialResultBuffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    EmitCopyAssign(to[0],
-                   type::Typed(out[0], context().qual_types(node)[0].type()));
+    CopyInitializationEmitter emitter(*this);
+    emitter(to[0], out);
     return;
   }
 
@@ -255,7 +261,8 @@ void Compiler::EmitCopyInit(
         type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
-    EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
+    CopyAssignmentEmitter emitter(*this);
+    emitter(to[0], type::Typed(t_buf[0], type::Type_));
     return;
   }
 
@@ -270,8 +277,8 @@ void Compiler::EmitMoveAssign(
     ir::PartialResultBuffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    EmitMoveAssign(to[0],
-                   type::Typed(out[0], context().qual_types(node)[0].type()));
+    MoveAssignmentEmitter emitter(*this);
+    emitter(to[0], type::Typed(out[0], context().qual_types(node)[0].type()));
     return;
   }
 
@@ -290,7 +297,8 @@ void Compiler::EmitMoveAssign(
         type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
-    EmitMoveAssign(to[0], type::Typed(t_buf[0], type::Type_));
+    MoveAssignmentEmitter emitter(*this);
+    emitter(to[0], type::Typed(t_buf[0], type::Type_));
   }
 
   EmitCall(*this, context().CallMetadata(node).resolved(), constant_arguments,
@@ -304,8 +312,8 @@ void Compiler::EmitCopyAssign(
     ir::PartialResultBuffer out;
     EmitBuiltinCall(*this, b, node->arguments(), out);
     if (out.empty()) { return; }
-    EmitCopyAssign(to[0],
-                   type::Typed(out[0], context().qual_types(node)[0].type()));
+    CopyAssignmentEmitter emitter(*this);
+    emitter(to[0], type::Typed(out[0], context().qual_types(node)[0].type()));
     return;
   }
 
@@ -324,7 +332,8 @@ void Compiler::EmitCopyAssign(
         type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
     t_buf.append(t);
-    EmitCopyAssign(to[0], type::Typed(t_buf[0], type::Type_));
+    CopyAssignmentEmitter emitter(*this);
+    emitter(to[0], type::Typed(t_buf[0], type::Type_));
   }
 
   EmitCall(*this, context().CallMetadata(node).resolved(), constant_arguments,

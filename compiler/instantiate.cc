@@ -9,6 +9,7 @@
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "compiler/module.h"
 #include "core/params.h"
 #include "ir/value/result_buffer.h"
@@ -119,7 +120,7 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
 
         auto qt =
             bound_parameters.binding(&dep_node.node()->ids()[0]).qual_type();
-        c.ApplyImplicitCasts(buffer.type(), qt, *buffer);
+        ApplyImplicitCasts(c, buffer.type(), qt, *buffer);
 
         // TODO: Support multiple declarations
         if (not c.context().Constant(&dep_node.node()->ids()[0])) {

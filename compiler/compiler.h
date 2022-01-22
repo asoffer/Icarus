@@ -52,8 +52,6 @@ namespace compiler {
 
 struct EmitRefTag {};
 struct EmitToBufferTag {};
-struct EmitCopyAssignTag {};
-struct EmitMoveAssignTag {};
 struct PatternTypeTag {};
 struct PatternMatchTag {};
 
@@ -152,21 +150,14 @@ struct PatternMatcher {
   }
 };
 
-struct Compiler
-    : CompilationDataReference,
-      MoveInitEmitter<Compiler>,
-      CopyInitEmitter<Compiler>,
-      MoveAssignEmitter<Compiler>,
-      CopyAssignEmitter<Compiler>,
-      RefEmitter<Compiler>,
-      IrEmitter<Compiler>,
-      PatternMatcher<Compiler>,
-      type::Visitor<EmitMoveAssignTag,
-                    void(ir::RegOr<ir::addr_t>,
-                         type::Typed<ir::PartialResultRef> const &)>,
-      type::Visitor<EmitCopyAssignTag,
-                    void(ir::RegOr<ir::addr_t>,
-                         type::Typed<ir::PartialResultRef> const &)> {
+struct Compiler : CompilationDataReference,
+                  MoveInitEmitter<Compiler>,
+                  CopyInitEmitter<Compiler>,
+                  MoveAssignEmitter<Compiler>,
+                  CopyAssignEmitter<Compiler>,
+                  RefEmitter<Compiler>,
+                  IrEmitter<Compiler>,
+                  PatternMatcher<Compiler> {
   explicit Compiler(CompilationData *data) : CompilationDataReference(data){};
   explicit Compiler(CompilationDataReference ref)
       : CompilationDataReference(ref){};
@@ -228,22 +219,6 @@ struct Compiler
     return EmitAs<T>(node, buffer);
   }
 
-  void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
-                      type::Typed<ir::PartialResultRef> const &from) {
-    using V = type::Visitor<EmitMoveAssignTag,
-                            void(ir::RegOr<ir::addr_t>,
-                                 type::Typed<ir::PartialResultRef> const &)>;
-    V::Visit(to.type().get(), to.get(), from);
-  }
-
-  void EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>> const &to,
-                      type::Typed<ir::PartialResultRef> const &from) {
-    using V = type::Visitor<EmitCopyAssignTag,
-                            void(ir::RegOr<ir::addr_t>,
-                                 type::Typed<ir::PartialResultRef> const &)>;
-    V::Visit(to.type().get(), to.get(), from);
-  }
-
   // Evaluates `expr` in the current context as a value of type `T`. If
   // evaluation succeeds, returns the vaule, otherwise adds a diagnostic for the
   // failure and returns `nullopt`. If the expresison is no tof type `T`, the
@@ -302,35 +277,6 @@ struct Compiler
   ir::Reg EmitRef(ast::Index const *node);
   ir::Reg EmitRef(ast::UnaryOperator const *node);
 
-#define DEFINE_EMIT_ASSIGN(T)                                                  \
-  void Visit(EmitCopyAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,          \
-             type::Typed<ir::PartialResultRef> const &v) override {            \
-    EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), v);           \
-  }                                                                            \
-  void EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>, T> const &,           \
-                      type::Typed<ir::PartialResultRef> const &);              \
-                                                                               \
-  void Visit(EmitMoveAssignTag, T const *ty, ir::RegOr<ir::addr_t> r,          \
-             type::Typed<ir::PartialResultRef> const &v) override {            \
-    EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T>(r, ty), v);           \
-  }                                                                            \
-  void EmitMoveAssign(type::Typed<ir::RegOr<ir::addr_t>, T> const &r,          \
-                      type::Typed<ir::PartialResultRef> const &);
-
-  DEFINE_EMIT_ASSIGN(type::Array);
-  DEFINE_EMIT_ASSIGN(type::Enum);
-  DEFINE_EMIT_ASSIGN(type::Flags);
-  DEFINE_EMIT_ASSIGN(type::Function);
-  DEFINE_EMIT_ASSIGN(type::Pointer);
-  DEFINE_EMIT_ASSIGN(type::BufferPointer);
-  DEFINE_EMIT_ASSIGN(type::Primitive);
-  DEFINE_EMIT_ASSIGN(type::Slice);
-  DEFINE_EMIT_ASSIGN(type::Struct);
-
-#undef DEFINE_EMIT_ASSIGN
-
-#undef DEFINE_EMIT_INIT
-
 #define DEFINE_EMIT(node_type)                                                 \
   void EmitCopyInit(                                                           \
       node_type const *node,                                                   \
@@ -377,113 +323,6 @@ struct Compiler
       // TODO:EmitDestroy(*iter);
     }
     state().temporaries_to_destroy.clear();
-  }
-
-  void ApplyImplicitCasts(type::Type from, type::QualType to,
-                          ir::PartialResultBuffer &buffer) {
-    if (not type::CanCastImplicitly(from, to.type())) {
-      UNREACHABLE(from, "casting implicitly to", to);
-    }
-    if (from == to.type()) { return; }
-    if (to.type().is<type::Slice>()) {
-      if (from.is<type::Slice>()) { return; }
-      if (auto const *a = from.if_as<type::Array>()) {
-        ir::RegOr<ir::addr_t> data   = buffer[0].get<ir::addr_t>();
-        type::Slice::length_t length = a->length().value();
-        auto alloc                   = state().TmpAlloca(to.type());
-
-        current_block()->Append(ir::StoreInstruction<ir::addr_t>{
-            .value    = data,
-            .location = current_block()->Append(type::SliceDataInstruction{
-                .slice  = alloc,
-                .result = current().subroutine->Reserve(),
-            }),
-        });
-        current_block()->Append(ir::StoreInstruction<type::Slice::length_t>{
-            .value    = length,
-            .location = current_block()->Append(type::SliceLengthInstruction{
-                .slice  = alloc,
-                .result = current().subroutine->Reserve(),
-            }),
-        });
-        buffer.clear();
-        buffer.append(alloc);
-      }
-    }
-
-    auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
-    auto const *ptr_to_type      = to.type().if_as<type::Pointer>();
-    if (bufptr_from_type and ptr_to_type and
-        type::CanCastImplicitly(bufptr_from_type, ptr_to_type)) {
-      return;
-    }
-
-    if (from == type::Integer and type::IsIntegral(to.type())) {
-      to.type().as<type::Primitive>().Apply([&]<typename T>() {
-        if constexpr (std::is_integral_v<T>) {
-          ir::RegOr<T> result =
-              current_block()->Append(ir::CastInstruction<T(ir::Integer)>{
-                  .value  = buffer.back().get<ir::Integer>(),
-                  .result = current().subroutine->Reserve(),
-              });
-          buffer.pop_back();
-          buffer.append(result);
-        } else {
-          UNREACHABLE(typeid(T).name());
-        }
-      });
-    }
-  }
-
-  void ApplyImplicitCasts(type::Type from, type::QualType to,
-                          ir::CompleteResultBuffer &buffer) {
-    if (not type::CanCastImplicitly(from, to.type())) {
-      UNREACHABLE(from, "casting implicitly to", to);
-    }
-    if (from == to.type()) { return; }
-    if (to.type().is<type::Slice>()) {
-      if (from.is<type::Slice>()) { return; }
-      if (auto const *a = from.if_as<type::Array>()) {
-        ir::addr_t data              = buffer[0].get<ir::addr_t>();
-        type::Slice::length_t length = a->length().value();
-        auto alloc                   = state().TmpAlloca(to.type());
-        current_block()->Append(ir::StoreInstruction<ir::addr_t>{
-            .value    = data,
-            .location = current_block()->Append(type::SliceDataInstruction{
-                .slice  = alloc,
-                .result = current().subroutine->Reserve(),
-            }),
-        });
-        current_block()->Append(ir::StoreInstruction<type::Slice::length_t>{
-            .value    = length,
-            .location = current_block()->Append(type::SliceLengthInstruction{
-                .slice  = alloc,
-                .result = current().subroutine->Reserve(),
-            }),
-        });
-        buffer.clear();
-        buffer.append(alloc);
-      }
-    }
-
-    auto const *bufptr_from_type = from.if_as<type::BufferPointer>();
-    auto const *ptr_to_type      = to.type().if_as<type::Pointer>();
-    if (bufptr_from_type and ptr_to_type and
-        type::CanCastImplicitly(bufptr_from_type, ptr_to_type)) {
-      return;
-    }
-
-    if (from == type::Integer and type::IsIntegral(to.type())) {
-      to.type().as<type::Primitive>().Apply([&]<typename T>() {
-        if constexpr (std::is_integral_v<T>) {
-          auto result = buffer.back().get<ir::Integer>();
-          buffer.pop_back();
-          buffer.append(static_cast<T>(result.value()));
-        } else {
-          UNREACHABLE(typeid(T).name());
-        }
-      });
-    }
   }
 
   ir::OutParams OutParams(

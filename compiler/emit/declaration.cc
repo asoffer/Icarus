@@ -4,6 +4,7 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/common.h"
 #include "compiler/emit/initialize.h"
 #include "compiler/module.h"
 #include "ir/value/addr.h"
@@ -85,9 +86,8 @@ void EmitNonConstantDeclaration(Compiler &c, ast::Declaration const *node,
     } else {
       ir::PartialResultBuffer buffer;
       c.EmitToBuffer(initial_value, buffer);
-      c.ApplyImplicitCasts(initial_value_qt.type(),
-                           type::QualType::NonConstant(addrs[0].type()),
-                           buffer);
+      ApplyImplicitCasts(c, initial_value_qt.type(),
+                         type::QualType::NonConstant(addrs[0].type()), buffer);
       MoveInitializationEmitter emitter(c);
       emitter(addrs[0], buffer);
     }

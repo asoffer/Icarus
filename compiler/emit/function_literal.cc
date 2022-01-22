@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/emit/common.h"
+#include "compiler/emit/compiler_common.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "compiler/emit/initialize.h"
 #include "compiler/emit/scaffolding.h"
 #include "compiler/instantiate.h"
@@ -131,8 +132,8 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
       } else {
         ir::PartialResultBuffer buffer;
         EmitToBuffer(out_decl->init_val(), buffer);
-        EmitCopyAssign(type::Typed<ir::RegOr<ir::addr_t>>(alloc, out_decl_type),
-                       type::Typed(buffer[0], out_decl_type));
+        CopyAssignmentEmitter emitter(*this);
+        emitter(out_decl_type, alloc, type::Typed(buffer[0], out_decl_type));
       }
     }
   }
