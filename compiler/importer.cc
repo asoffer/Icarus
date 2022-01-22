@@ -49,11 +49,17 @@ frontend::CanonicalFileName ResolveModulePath(
 
 }  // namespace
 
-ir::ModuleId FileImporter::Import(std::string_view module_locator) {
+ir::ModuleId FileImporter::Import(module::BasicModule const* requestor,
+                                  std::string_view module_locator) {
   auto file_name = frontend::CanonicalFileName::Make(
       frontend::FileName(std::string(module_locator)));
   auto [iter, inserted] = modules_.try_emplace(file_name);
-  if (not inserted) { return iter->second->id; }
+  if (not inserted) {
+    // Even if it's already been imported, this edge may not have been added
+    // yet.
+    graph_.add_edge(requestor, &get(iter->second->id));
+    return iter->second->id;
+  }
 
   auto maybe_file_src = frontend::SourceBufferFromFile(
       ResolveModulePath(file_name, module_lookup_paths_));
@@ -85,8 +91,14 @@ ir::ModuleId FileImporter::Import(std::string_view module_locator) {
       .diagnostic_consumer = diagnostic_consumer_,
       .importer            = this,
   };
-  // TODO: Do something interesting with the executable part.
-  CompileModule(context, resources, nodes);
+
+  graph_.add_edge(requestor, &module);
+  std::optional subroutine = CompileModule(context, resources, nodes);
+  if (subroutine) {
+    subroutine_by_module_.emplace(&module, *std::move(subroutine));
+  }
+  // A nullopt subroutine means there were errors. We can still emit the `id`.
+  // Errors will already be diagnosed.
   return id;
 }
 

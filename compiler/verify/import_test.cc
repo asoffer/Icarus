@@ -6,6 +6,7 @@
 namespace compiler {
 namespace {
 
+using ::testing::_;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::Return;
@@ -52,7 +53,7 @@ TEST(Import, NonConstantAndInvalidType) {
 TEST(Import, StringLiteral) {
   constexpr std::string_view kModule = "some-module";
   test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import(kModule)).WillOnce(Return(ir::ModuleId(7)));
+  EXPECT_CALL(mod.importer, Import(_, kModule)).WillOnce(Return(ir::ModuleId(7)));
   auto const *import = mod.Append<ast::Expression>(R"(import "some-module")");
   auto qts           = mod.context().qual_types(import);
   EXPECT_THAT(qts,
@@ -63,7 +64,7 @@ TEST(Import, StringLiteral) {
 TEST(Import, ConstantCharSlice) {
   constexpr std::string_view kModule = "some-module";
   test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import(kModule)).WillOnce(Return(ir::ModuleId(7)));
+  EXPECT_CALL(mod.importer, Import(_, kModule)).WillOnce(Return(ir::ModuleId(7)));
   mod.AppendCode(R"(str ::= "some-module")");
   auto const *import = mod.Append<ast::Expression>(R"(import str)");
   auto qts           = mod.context().qual_types(import);

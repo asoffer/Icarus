@@ -1,6 +1,7 @@
 #ifndef ICARUS_BASE_GRAPH_H
 #define ICARUS_BASE_GRAPH_H
 
+#include <concepts>
 #include <queue>
 
 #include "absl/container/flat_hash_map.h"
@@ -21,8 +22,7 @@ struct Graph {
     return adj_lists_.at(t);
   }
 
-  template <typename Fn>
-  void topologically(Fn&& fn) const {
+  void topologically(std::invocable<T const&> auto&& fn) const {
     auto adj_list = adj_lists_;
 
     base::Graph<T> reverse;

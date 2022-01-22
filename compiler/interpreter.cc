@@ -85,10 +85,13 @@ int Interpret(frontend::FileName const &file_name) {
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   ASSIGN_OR(return 1,  //
                    auto main_fn, CompileModule(context, resources, nodes));
-
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
-  InterpretAtCompileTime(main_fn);
+
+  importer.set_subroutine(&exec_mod, std::move(main_fn));
+  importer.ForEachSubroutine([&](ir::Subroutine const &subroutine) {
+    InterpretAtCompileTime(subroutine);
+  });
 
   return 0;
 }

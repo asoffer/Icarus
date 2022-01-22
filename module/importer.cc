@@ -10,7 +10,7 @@ bool Importer::SetImplicitlyEmbeddedModules(
   ASSERT(embedded_module_ids_.size() == 0u);
   embedded_module_ids_.reserve(module_locators.size());
   for (std::string_view module : module_locators) {
-    auto id = Import(module);
+    auto id = Import(nullptr, module);
     embedded_module_ids_.push_back(id);
     if (id == ir::ModuleId::Invalid()) { return false; }
   }

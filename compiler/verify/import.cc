@@ -77,7 +77,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   }
 
   auto slice          = source_locator->get<ir::Slice>(0);
-  ir::ModuleId mod_id = importer().Import(slice);
+  ir::ModuleId mod_id = importer().Import(ModuleFor(node), slice);
   if (mod_id == ir::ModuleId::Invalid()) {
     qt.MarkError();
   } else {

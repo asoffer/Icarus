@@ -122,8 +122,9 @@ struct TestModule : compiler::CompiledModule {
         imported_mod.context(), import_resources,
         imported_mod.insert(parsed_nodes.begin(), parsed_nodes.end()));
 
-    ON_CALL(importer, Import(testing::Eq(name)))
-        .WillByDefault([id](std::string_view) { return id; });
+    ON_CALL(importer, Import(testing::_, testing::Eq(name)))
+        .WillByDefault(
+            [id](module::BasicModule const*, std::string_view) { return id; });
     ON_CALL(importer, get(id))
         .WillByDefault([&imported_mod](ir::ModuleId) -> module::BasicModule& {
           return imported_mod;
