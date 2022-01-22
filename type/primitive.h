@@ -29,10 +29,6 @@ struct Primitive : LegacyType {
                                      .has_destructor           = 0}),
         type_(pt) {}
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   template <typename Fn>
   auto Apply(Fn &&fn) const {
     return ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, ir::Integer, int8_t,

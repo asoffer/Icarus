@@ -18,10 +18,6 @@ struct Block : ReturningType {
                                         .has_destructor           = 0},
                       std::move(params), {}) {}
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   bool is_big() const override { return false; }
   void ShowValue(std::ostream &, ir::CompleteResultRef const &) const override;
 

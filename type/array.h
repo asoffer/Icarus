@@ -32,10 +32,6 @@ struct Array : LegacyType {
                    ir::CompleteResultRef const &rhs) const override;
   size_t HashValue(ir::CompleteResultRef const &value) const override;
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   length_t length() const { return len_; }
   Type data_type() const { return data_type_; }
 

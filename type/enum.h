@@ -47,10 +47,6 @@ struct Enum : type::LegacyType {
   Completeness completeness() const override { return completeness_; }
   void complete() { completeness_ = Completeness::Complete; }
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   std::optional<underlying_type> Get(std::string_view name) const;
   Typed<underlying_type, Enum> EmitLiteral(std::string_view member_name) const;
 

@@ -21,10 +21,6 @@ struct Pointer : LegacyType {
 
   bool is_big() const override { return false; }
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   Type pointee() const { return pointee_; }
 
   bool EqualsValue(ir::CompleteResultRef const &lhs,

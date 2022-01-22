@@ -46,7 +46,6 @@
 #include "type/slice.h"
 #include "type/struct.h"
 #include "type/type.h"
-#include "type/visitor.h"
 
 namespace compiler {
 

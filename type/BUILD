@@ -185,6 +185,7 @@ cc_library(
     hdrs = ["generic.h"],
     deps = [
         ":type",
+        ":type_fwd",
         ":typed_value",
         "//base:any_invocable",
         "//compiler:work_resources",
@@ -297,7 +298,6 @@ cc_library(
     deps = CONCRETE_TYPES + [
         ":generic",
         ":overload_set",
-        ":visitor",
         "//module",
     ],
 )
@@ -386,7 +386,6 @@ cc_library(
     name = "type",
     hdrs = ["type.h"],
     deps = [
-        ":visitor_base",
         "//base:cast",
         "//base:visitable",
         "//base:meta",
@@ -402,23 +401,5 @@ cc_test(
     deps = [
         ":type",
         "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "visitor_base",
-    hdrs = ["visitor_base.h"],
-    deps = [
-        ":type_fwd",
-        "//base:debug",
-    ],
-)
-
-cc_library(
-    name = "visitor",
-    hdrs = ["visitor.h"],
-    deps = [
-        ":type",
-        ":visitor_base",
     ],
 )

@@ -52,10 +52,6 @@ struct Struct : LegacyType {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   Completeness completeness() const override { return completeness_; }
   void data_complete() { completeness_ = Completeness::DataComplete; }
   void complete() { completeness_ = Completeness::Complete; }

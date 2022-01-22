@@ -48,7 +48,6 @@ cc_library(
         "//type:slice",
         "//type:struct",
         "//type:type",
-        "//type:visitor",
     ],
 )
 
@@ -66,7 +65,6 @@ cc_test(
         "//type:primitive",
         "//type:struct",
         "//type:type",
-        "//type:visitor",
         "@com_google_googletest//:gtest_main",
     ],
 )

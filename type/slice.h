@@ -29,10 +29,6 @@ struct Slice : LegacyType {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   void ShowValue(std::ostream &os,
                  ir::CompleteResultRef const &value) const override;
 

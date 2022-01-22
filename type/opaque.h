@@ -20,10 +20,6 @@ struct Opaque : LegacyType {
                                      .has_destructor           = 0}),
         mod_(mod) {}
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   void WriteTo(std::string *result) const override {
     result->append("<opaque>");
   }

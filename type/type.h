@@ -9,7 +9,6 @@
 #include "base/visitable.h"
 #include "core/arch.h"
 #include "ir/value/result_buffer.h"
-#include "type/visitor_base.h"
 
 namespace type {
 
@@ -62,9 +61,6 @@ struct LegacyType : base::Visitable<LegacyType, AllTypeTypes>,
   bool IsCopyable() const { return flags_.is_copyable; }
   bool IsMovable() const { return flags_.is_movable; }
   bool HasDestructor() const { return flags_.has_destructor; }
-
-  virtual void Accept(VisitorBase *visitor, void *ret,
-                      void *arg_tuple) const = 0;
 
   std::string to_string() const {
     std::string result;
@@ -147,9 +143,6 @@ struct TypeVTable {
     return true;
   };
   size_t (*Hash)(void const *) = [](void const *) -> size_t { return 0; };
-  void (*Accept)(void const *, VisitorBase &, void *,
-                 void *) = [](void const *, VisitorBase &, void *, void *) {};
-
   bool (*EqualsValue)(void const *, ir::CompleteResultRef const &,
                       ir::CompleteResultRef const &) =
       [](void const *, ir::CompleteResultRef const &,
@@ -190,10 +183,6 @@ inline TypeVTable TypeVTableFor = TypeVTable{
         [](void const *lhs) {
           return absl::Hash<T>{}(*reinterpret_cast<T const *>(lhs));
         },
-    .Accept =
-        [](void const *self, VisitorBase &v, void *ret, void *args) {
-          reinterpret_cast<T const *>(self)->Accept(v, ret, args);
-        },
     .EqualsValue =
         [](void const *self, ir::CompleteResultRef const &lhs,
            ir::CompleteResultRef const &rhs) {
@@ -218,10 +207,6 @@ struct LegacyTypeWrapper {
     return t_->alignment(arch);
   }
   std::string to_string() const { return t_->to_string(); }
-
-  void Accept(VisitorBase &v, void *ret, void *args) const {
-    return get()->Accept(&v, ret, args);
-  }
 
   LegacyType const *get() const { return t_; }
   bool is_big() const { return t_->is_big(); }
@@ -277,10 +262,6 @@ struct Type {
 
   operator bool() const { return vptr_ != &internal_type::DefaultTypeVTable; }
   bool valid() const { return vptr_ != &internal_type::DefaultTypeVTable; }
-
-  void Accept(VisitorBase &v, void *ret, void *args) {
-    vptr_->Accept(&data_, v, ret, args);
-  }
 
   // Template avoids implicit conversions.
   template <std::same_as<Type> T>

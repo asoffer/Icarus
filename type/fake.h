@@ -21,11 +21,6 @@ struct FakeType : type::LegacyType {
         b_(b),
         a_(a) {}
 
-  void Accept(type::VisitorBase *visitor, void *ret,
-              void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   Completeness completeness() const override { return Completeness::Complete; }
 
   void WriteTo(std::string *out) const override {

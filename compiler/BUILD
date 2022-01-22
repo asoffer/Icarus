@@ -251,7 +251,6 @@ cc_library(
         "//type:slice",
         "//type:type_fwd",
         "//type:qual_type",
-        "//type:visitor",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

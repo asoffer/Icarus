@@ -10,57 +10,30 @@
 #include "type/slice.h"
 #include "type/struct.h"
 #include "type/type.h"
-#include "type/visitor.h"
 
 namespace type {
 namespace {
-struct ProvenanceTag {};
 
-struct ProvenanceVisitor
-    : Visitor<ProvenanceTag, module::BasicModule const *()> {
-  module::BasicModule const *Visit(Type t) {
-    return Visitor<ProvenanceTag, module::BasicModule const *()>::Visit(
-        t.get());
+struct ProvenanceVisitor {
+  using signature = module::BasicModule const *();
+
+  module::BasicModule const *operator()(type::Type t) {
+    return t.visit<ProvenanceVisitor>(*this);
   }
-  module::BasicModule const *Visit(ProvenanceTag, Array const *a) final {
-    return Visit(a->data_type());
-  }
-  module::BasicModule const *Visit(ProvenanceTag,
-                                   BufferPointer const *p) final {
-    return Visit(p->pointee());
-  }
-  module::BasicModule const *Visit(ProvenanceTag, Enum const *e) final {
-    return e->defining_module();
-  }
-  module::BasicModule const *Visit(ProvenanceTag, Flags const *f) final {
-    return f->defining_module();
-  }
-  module::BasicModule const *Visit(ProvenanceTag, Function const *) final {
-    return nullptr;
-  }
-  module::BasicModule const *Visit(ProvenanceTag,
-                                   Generic<Function> const *) final {
-    return nullptr;
-  }
-  module::BasicModule const *Visit(ProvenanceTag,
-                                   Generic<Struct> const *) final {
-    // TODO: Implement.
-    return nullptr;
-  }
-  module::BasicModule const *Visit(ProvenanceTag, Opaque const *o) final {
-    return o->defining_module();
-  }
-  module::BasicModule const *Visit(ProvenanceTag, Pointer const *p) final {
-    return Visit(p->pointee());
-  }
-  module::BasicModule const *Visit(ProvenanceTag, Primitive const *) final {
-    return nullptr;
-  }
-  module::BasicModule const *Visit(ProvenanceTag, Slice const *s) final {
-    return Visit(s->data_type());
-  }
-  module::BasicModule const *Visit(ProvenanceTag, Struct const *s) final {
-    return s->defining_module();
+
+  module::BasicModule const *operator()(auto const *t) {
+    using type = std::decay_t<decltype(*t)>;
+    if constexpr (requires { t->defining_module(); }) {
+      return t->defining_module();
+    } else if constexpr (base::meta<type> == base::meta<Array> or
+                         base::meta<type> == base::meta<Slice>) {
+      return (*this)(t->data_type());
+    } else if constexpr (base::meta<type> == base::meta<Pointer> or
+                         base::meta<type> == base::meta<BufferPointer>) {
+      return (*this)(t->pointee());
+    } else {
+      return nullptr;
+    }
   }
 };
 
@@ -69,7 +42,8 @@ struct ProvenanceVisitor
 // Returns a pointer to the module which defines this type (or null if the type
 // is constructed from entirely built-in types and type-constructors).
 module::BasicModule const *Provenance(Type t) {
-  return ProvenanceVisitor{}.Visit(t);
+  ProvenanceVisitor v;
+  return t.visit<ProvenanceVisitor>(v);
 }
 
 }  // namespace type

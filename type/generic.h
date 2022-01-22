@@ -36,10 +36,6 @@ struct InstantiatedGeneric : T {
     return arguments_;
   }
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
  private:
   Generic<instantiation_type> const *generic_;
   core::Arguments<Typed<ir::CompleteResultBuffer>> arguments_;
@@ -81,10 +77,6 @@ struct Generic : LegacyType {
   }
 
   Completeness completeness() const override { return Completeness::Complete; }
-
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
 
   core::Bytes bytes(core::Arch const &) const override {
     return core::Host.pointer().bytes();

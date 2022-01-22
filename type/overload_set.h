@@ -9,10 +9,6 @@
 namespace type {
 
 struct OverloadSet : LegacyType {
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   absl::flat_hash_set<Type> const &members() const { return members_; }
 
   Completeness completeness() const override { return Completeness::Complete; }

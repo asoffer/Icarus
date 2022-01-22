@@ -18,11 +18,6 @@ struct FakeType : type::LegacyType {
                              .has_destructor           = (n & 8) != 0,
                          }) {}
 
-  void Accept(type::VisitorBase *visitor, void *ret,
-              void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
   type::Completeness completeness() const override {
     return type::Completeness::Complete;
   }
