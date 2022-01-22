@@ -208,6 +208,44 @@ TEST(Access, IntoModuleWithError) {
               UnorderedElementsAre(Pair("type-error", "invalid-cast")));
 }
 
+TEST(Access, CrossModuleStructFieldAccess) {
+  test::TestModule mod;
+  test::TestModule imported_module;
+  mod.CompileImportedLibrary(imported_module, "imported", R"(
+  #{export} S ::= struct {
+    #{export} n: i64
+  }
+  )");
+
+  mod.AppendCode(R"(
+    mod ::= import "imported"
+    s: mod.S
+    s.n
+  )");
+
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(Access, CrossModuleStructFieldError) {
+  test::TestModule mod;
+  test::TestModule imported_module;
+  mod.CompileImportedLibrary(imported_module, "imported", R"(
+  #{export} S ::= struct {
+    #{export} n: i64
+  }
+  )");
+
+  mod.AppendCode(R"(
+    mod ::= import "imported"
+    s: mod.S
+    s.m
+  )");
+
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "missing-member")));
+}
+
 TEST(Access, Pattern) {
   test::TestModule mod;
 

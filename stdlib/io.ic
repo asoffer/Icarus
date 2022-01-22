@@ -165,3 +165,14 @@ Print ::= (a0: ~`A0, a1: ~`A1, a2: ~`A2, a3: ~`A3, a4: ~`A4, a5: ~`A5,
   Print(a0, a1, a2, "\n")
   abort()
 }
+
+#{export}
+foo ::= struct {
+  #{export}
+  length: u64
+}
+
+#{export}
+make ::= (len: u64) -> foo {
+  return foo.{ length = len }
+}

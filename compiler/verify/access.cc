@@ -276,16 +276,16 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
   }
 
   if (auto *s = evaled_type.if_as<type::Struct>()) {
+    auto &s_mod = const_cast<module::BasicModule *>(s->defining_module())
+                      ->as<compiler::CompiledModule>();
+    auto const *struct_lit = s_mod.context().AstLiteral(s);
     c.EnsureComplete({
         .kind    = WorkItem::Kind::CompleteStruct,
-        .node    = c.context().AstLiteral(s),
-        .context = &c.context(),
+        .node    = struct_lit,
+        .context = &s_mod.context(),
     });
     if (auto const *member = s->constant(node->member_name())) {
       absl::flat_hash_set<ast::Expression const *> ids;
-
-      auto &s_mod = s->defining_module()->as<compiler::CompiledModule>();
-      auto const *struct_lit = s_mod.context().AstLiteral(s);
 
       if (c.diag().num_consumed() != 0) {
         c.resources().module->set_dependent_module_with_errors();
@@ -325,10 +325,13 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
 type::QualType AccessStructMember(CompilationDataReference data,
                                   ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
+  auto &s_mod = const_cast<module::BasicModule *>(s->defining_module())
+                    ->as<compiler::CompiledModule>();
+  auto const *struct_lit = ASSERT_NOT_NULL(s_mod.context().AstLiteral(s));
   data.EnsureComplete({
       .kind    = WorkItem::Kind::CompleteStructData,
-      .node    = ASSERT_NOT_NULL(data.context().AstLiteral(s)),
-      .context = &data.context(),
+      .node    = ASSERT_NOT_NULL(struct_lit),
+      .context = &s_mod.context(),
   });
   ASSERT(s->completeness() >= type::Completeness::DataComplete);
 
