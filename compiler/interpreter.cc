@@ -14,6 +14,7 @@
 #include "absl/flags/usage_config.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
+#include "absl/types/span.h"
 #include "base/log.h"
 #include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
@@ -25,8 +26,8 @@
 #include "frontend/parse.h"
 #include "frontend/source/file.h"
 #include "frontend/source/file_name.h"
-#include "ir/subroutine.h"
 #include "ir/interpreter/evaluate.h"
+#include "ir/subroutine.h"
 #include "module/module.h"
 #include "opt/opt.h"
 
@@ -41,14 +42,12 @@ ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Defaults to $ICARUS_MODULE_PATH.");
 ABSL_FLAG(std::vector<std::string>, implicitly_embedded_modules, {},
           "Comma-separated list of modules that are embedded implicitly.");
-ABSL_FLAG(std::string, program_arguments, {},
-          "A space-separated list of arguments provided to the interpreted "
-          "program as if they werepassed on the command-line.");
 
 namespace compiler {
 namespace {
 
-int Interpret(frontend::FileName const &file_name) {
+int Interpret(frontend::FileName const &file_name,
+              absl::Span<char *> program_arguments) {
   diagnostic::StreamingConsumer diag(stderr, nullptr);
   auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
   auto maybe_file_src = frontend::SourceBufferFromFile(canonical_file_name);
@@ -91,13 +90,10 @@ int Interpret(frontend::FileName const &file_name) {
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
 
-  std::string program_arguments = absl::GetFlag(FLAGS_program_arguments);
   std::vector<ir::Slice> arguments;
-  for (std::string_view argument :
-       absl::StrSplit(program_arguments, ' ', absl::SkipEmpty())) {
-    arguments.emplace_back(
-        reinterpret_cast<ir::addr_t>(const_cast<char *>(argument.data())),
-        argument.size());
+  for (char *argument : program_arguments) {
+    arguments.emplace_back(reinterpret_cast<ir::addr_t>(argument),
+                           strlen(argument));
   }
   ir::Slice argument_slice(
       reinterpret_cast<ir::addr_t>(const_cast<ir::Slice *>(arguments.data())),
@@ -147,10 +143,6 @@ int main(int argc, char *argv[]) {
               << std::endl;
     return 1;
   }
-  if (args.size() > 2) {
-    std::cerr << "Too many positional arguments." << std::endl;
-    return 1;
-  }
-
-  return compiler::Interpret(frontend::FileName(args[1]));
+  absl::Span<char *> arguments = absl::MakeSpan(args).subspan(2);
+  return compiler::Interpret(frontend::FileName(args[1]), arguments);
 }
