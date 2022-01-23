@@ -50,7 +50,7 @@ struct OpaqueTypeInstruction
                                                 ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = opaque %1$s";
 
-  Type Resolve() const { return type::Allocate<type::Opaque>(mod); }
+  Type Resolve() const { return Allocate<Opaque>(mod); }
 
   module::BasicModule const *mod;
   ir::Reg result;

@@ -151,7 +151,7 @@ struct StructDataInstruction
     return "struct TODO";
   }
 
-  Struct *struct_;
+  ir::RegOr<Type> struct_;
   std::vector<Field> fields;
 };
 
@@ -174,11 +174,26 @@ struct StructInstruction
     return "struct TODO";
   }
 
-  Struct *struct_;
+  ir::RegOr<Type> struct_;
   std::vector<Field> constants;
   std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
       copy_assignments;
   std::optional<ir::Fn> dtor;
+};
+
+struct AllocateStructInstruction
+    : base::Extend<AllocateStructInstruction>::With<
+          base::BaseSerializeExtension, base::BaseTraverseExtension,
+          ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = allocate-struct %1$s";
+
+  Type Resolve() const {
+    return Allocate<Struct>(
+        mod, Struct::Options{.is_copyable = true, .is_movable = true});
+  }
+
+  module::BasicModule const *mod;
+  ir::Reg result;
 };
 
 }  // namespace type

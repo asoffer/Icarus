@@ -49,11 +49,6 @@
 
 namespace compiler {
 
-struct EmitRefTag {};
-struct EmitToBufferTag {};
-struct PatternTypeTag {};
-struct PatternMatchTag {};
-
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a
 // particular order. Certainly for any given AST node we need to verify its type
@@ -308,13 +303,14 @@ struct Compiler : CompilationDataReference,
   DEFINE_EMIT(ast::UnaryOperator)
 #undef DEFINE_EMIT
 
-  bool CompleteStructData(ast::StructLiteral const *node);
   bool CompleteStruct(ast::StructLiteral const *node);
   bool CompleteStruct(ast::ParameterizedStructLiteral const *node);
   bool CompleteEnum(ast::EnumLiteral const *node);
   bool EmitScopeBody(ast::ScopeLiteral const *node);
   bool EmitFunctionBody(ast::FunctionLiteral const *node);
   bool EmitShortFunctionBody(ast::ShortFunctionLiteral const *node);
+  bool EmitParameterizedStructFunctionBody(
+      ast::ParameterizedStructLiteral const *node);
 
   void DestroyTemporaries() {
     for (auto iter = state().temporaries_to_destroy.rbegin();

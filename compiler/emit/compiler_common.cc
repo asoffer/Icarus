@@ -93,6 +93,26 @@ CalleeResult EmitCallee(
             .type     = find_subcontext_result.fn_type,
             .defaults = DefaultsFor(callable, find_subcontext_result.context),
             .context  = &find_subcontext_result.context};
+  } else if (auto const *gs_type =
+                 qt.type().if_as<type::Generic<type::Struct>>()) {
+    ir::Fn fn = c.EmitAs<ir::Fn>(callable).value();
+
+    // TODO: declarations aren't callable so we shouldn't have to check this
+    // here.
+    if (auto const *id = callable->if_as<ast::Declaration::Id>()) {
+      // TODO: make this more robust.
+      // TODO: support multiple declarations
+      callable = id->declaration().init_val();
+    }
+
+    auto *parameterized_expr = &callable->as<ast::ParameterizedExpression>();
+    auto find_subcontext_result =
+        FindInstantiation(c, parameterized_expr, constants);
+    return {.callee   = fn,
+            .type     = find_subcontext_result.fn_type,
+            .defaults = DefaultsFor(callable, find_subcontext_result.context),
+            .context  = &find_subcontext_result.context};
+
   } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
     if (type::Quals::Const() <= qt.quals()) {
       return {.callee   = c.EmitAs<ir::Fn>(callable),

@@ -17,11 +17,13 @@ struct WorkItem : base::Extend<WorkItem>::With<base::AbslHashExtension> {
     VerifyEnumBody,
     VerifyFunctionBody,
     VerifyStructBody,
+    VerifyParameterizedStructLiteralBody,
     CompleteStructData,
     CompleteStruct,
     CompleteEnum,
     EmitFunctionBody,
     EmitShortFunctionBody,
+    EmitParameterizedStructFunction,
     EmitScopeBody,
   };
 

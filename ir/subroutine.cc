@@ -12,10 +12,10 @@ Reg Subroutine::Alloca(core::TypeContour tc) {
   return alloc_.StackAllocate(tc);
 }
 
-std::ostream &operator<<(std::ostream &os, Subroutine const &b) {
-  os << "\n" << b.alloc_;
-  for (size_t i = 0; i < b.blocks().size(); ++i) {
-    os << "\n block #" << i << " (" << b.blocks()[i] << ")\n" << *b.blocks()[i];
+std::ostream &operator<<(std::ostream &os, Subroutine const &s) {
+  os << "subroutine: " << s.type()->to_string() << "\n" << s.alloc_;
+  for (size_t i = 0; i < s.blocks().size(); ++i) {
+    os << "\n block #" << i << " (" << s.blocks()[i] << ")\n" << *s.blocks()[i];
   }
   return os;
 }

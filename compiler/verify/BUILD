@@ -51,6 +51,7 @@ cc_library(
         "//compiler:instructions",
         "//compiler:module",
         "//compiler:resources",
+        "//compiler:struct",
         "//compiler:type_for_diagnostic",
         "//compiler:work_item",
         "//core:arguments",

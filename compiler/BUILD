@@ -461,3 +461,15 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "struct",
+    hdrs = ["struct.h"],
+    srcs = ["struct.cc"],
+    deps = [
+        ":compilation_data",
+        ":instructions",
+        "//ast:declaration",
+        "//type:struct",
+        "@com_google_absl//absl/types:span",
+    ],
+)

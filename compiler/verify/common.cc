@@ -13,6 +13,7 @@
 #include "type/cast.h"
 #include "type/overload_set.h"
 #include "type/provenance.h"
+#include "type/struct.h"
 #include "type/typed_value.h"
 
 namespace compiler {
@@ -70,6 +71,10 @@ absl::flat_hash_set<type::Typed<ast::Expression const *>> ResolveCall(
       auto const *i = gb->Instantiate(tv.work_resources(), arguments);
       if (not i) { continue; }
       ValidateCallable(overload, i, arguments, valid, errors);
+    } else if (auto const *gs = t.if_as<type::Generic<type::Struct>>()) {
+      auto const *i = gs->Instantiate(tv.work_resources(), arguments);
+      if (not i) { continue; }
+      valid.emplace(overload, type::Type_);
     }
   }
   return valid;

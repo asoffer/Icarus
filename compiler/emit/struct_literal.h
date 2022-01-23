@@ -17,6 +17,8 @@ std::optional<ir::Subroutine> StructCompletionFn(
     CompilationDataReference data, type::Struct *s,
     absl::Span<ast::Declaration const> field_decls);
 
+void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
+                          absl::Span<ast::Declaration const> field_decls);
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_STRUCT_LITERAL_H

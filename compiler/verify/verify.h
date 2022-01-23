@@ -87,6 +87,8 @@ std::optional<ir::Subroutine> StructDataCompletionFn(
 
 bool CompleteStructData(CompilationDataReference data,
                         ast::StructLiteral const *node);
+bool CompleteStructData(CompilationDataReference data,
+                        ast::ParameterizedStructLiteral const *node);
 
 }  // namespace compiler
 

@@ -189,8 +189,9 @@ void StructDataInstruction::Apply(interpreter::ExecutionContext &ctx) const {
     }
   }
 
-  struct_->AppendFields(std::move(struct_fields));
-  struct_->data_complete();
+  Struct &s = const_cast<Struct &>(ctx.resolve(struct_).as<Struct>());
+  s.AppendFields(std::move(struct_fields));
+  s.data_complete();
 }
 
 void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
@@ -218,11 +219,12 @@ void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
     }
   }
 
-  struct_->AppendConstants(std::move(constant_fields));
-  struct_->SetInits(move_inits, copy_inits);
-  struct_->SetAssignments(move_assignments, copy_assignments);
-  if (dtor) { struct_->SetDestructor(*dtor); }
-  struct_->complete();
+  Struct &s = const_cast<Struct &>(ctx.resolve(struct_).as<Struct>());
+  s.AppendConstants(std::move(constant_fields));
+  s.SetInits(move_inits, copy_inits);
+  s.SetAssignments(move_assignments, copy_assignments);
+  if (dtor) { s.SetDestructor(*dtor); }
+  s.complete();
 }
 
 }  // namespace type

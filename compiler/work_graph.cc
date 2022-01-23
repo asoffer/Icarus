@@ -160,19 +160,46 @@ bool WorkGraph::Execute(WorkItem const &w) {
       result = VerifyBody(c, &w.node->as<ast::StructLiteral>());
       break;
     case WorkItem::Kind::CompleteStructData:
-      result = Execute({.kind    = WorkItem::Kind::VerifyStructBody,
-                        .node    = w.node,
-                        .context = w.context}) and
-               CompleteStructData(c, &w.node->as<ast::StructLiteral>());
+      if (auto const *s = w.node->if_as<ast::StructLiteral>()) {
+        result = Execute({.kind    = WorkItem::Kind::VerifyStructBody,
+                          .node    = w.node,
+                          .context = w.context}) and
+                 CompleteStructData(c, s);
+      } else {
+        result = Execute({.kind    = WorkItem::Kind::VerifyStructBody,
+                          .node    = w.node,
+                          .context = w.context}) and
+                 CompleteStructData(
+                     c, &w.node->as<ast::ParameterizedStructLiteral>());
+      }
       break;
     case WorkItem::Kind::CompleteStruct:
-      result = Execute({.kind    = WorkItem::Kind::CompleteStructData,
-                        .node    = w.node,
-                        .context = w.context}) and
-               c.CompleteStruct(&w.node->as<ast::StructLiteral>());
+      if (auto const *s = w.node->if_as<ast::StructLiteral>()) {
+        result = Execute({.kind    = WorkItem::Kind::CompleteStructData,
+                          .node    = w.node,
+                          .context = w.context}) and
+                 c.CompleteStruct(s);
+      } else {
+        result =
+            Execute({.kind    = WorkItem::Kind::CompleteStructData,
+                     .node    = w.node,
+                     .context = w.context}) and
+            c.CompleteStruct(&w.node->as<ast::ParameterizedStructLiteral>());
+      }
       break;
     case WorkItem::Kind::CompleteEnum:
       result = c.CompleteEnum(&w.node->as<ast::EnumLiteral>());
+      break;
+    case WorkItem::Kind::VerifyParameterizedStructLiteralBody:
+      result = VerifyBody(c, &w.node->as<ast::ParameterizedStructLiteral>());
+      break;
+    case WorkItem::Kind::EmitParameterizedStructFunction:
+      result =
+          Execute({.kind = WorkItem::Kind::VerifyParameterizedStructLiteralBody,
+                   .node = w.node,
+                   .context = w.context}) and
+          c.EmitParameterizedStructFunctionBody(
+              &w.node->as<ast::ParameterizedStructLiteral>());
       break;
     case WorkItem::Kind::EmitScopeBody:
       result = c.EmitScopeBody(&w.node->as<ast::ScopeLiteral>());
@@ -226,7 +253,10 @@ WorkGraph::EvaluateToBuffer(Context &context,
   };
 
   for (auto const &[item, deps] : w.dependencies_) {
-    if (item.kind == WorkItem::Kind::EmitFunctionBody) { Execute(item); }
+    if (item.kind == WorkItem::Kind::EmitFunctionBody or
+        item.kind == WorkItem::Kind::EmitParameterizedStructFunction) {
+      Execute(item);
+    }
   }
 
   // Anything that hasn't been completed gets shunted to the parent.

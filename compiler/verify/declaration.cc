@@ -150,7 +150,6 @@ type::QualType VerifyDefaultInitialization(CompilationDataReference data,
                                            ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(), auto qt,
                    VerifyDeclarationType(data, node));
-
   if (not(node->flags() & ast::Declaration::f_IsFnParam) and
       not qt.type().get()->IsDefaultInitializable()) {
     data.diag().Consume(NoDefaultValue{

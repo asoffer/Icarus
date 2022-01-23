@@ -57,7 +57,8 @@ using TypeConstructorInstructions = ir::InstructionSet<
     type::FunctionTypeInstruction, type::SliceInstruction,
     interface::ConvertsToInstruction, interface::JustInstruction,
     interface::CallableInstruction, type::StructDataInstruction,
-    type::StructInstruction, type::EnumInstruction, type::FlagsInstruction>;
+    type::StructInstruction, type::AllocateStructInstruction,
+    type::EnumInstruction, type::FlagsInstruction>;
 
 struct instruction_set_t
     : ir::InstructionSet<

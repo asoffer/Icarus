@@ -436,6 +436,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instructions",
+        "//compiler:struct",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",

@@ -24,11 +24,8 @@ def should_display(f):
 
     for pattern in [
             r"^ast::Node::visit",
+            r"^compiler::TypeVerifier::operator",
             r"^base::Visitable",
-            r"^compiler::Compiler::VerifyType\(ast::Node const",
-            r"^compiler::Compiler::EmitToBuffer\(ast::Node const",
-            r"^type::Visitor<",
-            r"^type::[^:]*::Accept",
             r"^std::__invoke",
             r"^std::_[A-Z]",
             r"^std::function",

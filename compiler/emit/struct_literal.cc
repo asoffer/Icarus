@@ -164,18 +164,10 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
 
 }  // namespace
 
-std::optional<ir::Subroutine> StructCompletionFn(
-    CompilationDataReference data, type::Struct *s,
-    absl::Span<ast::Declaration const> field_decls) {
+void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
+                          absl::Span<ast::Declaration const> field_decls) {
   ASSERT(s->completeness() == type::Completeness::DataComplete);
-
-  ir::Subroutine fn(type::Func({}, {}));
-  data.push_current(&fn);
-  absl::Cleanup cleanup = [&] { data.state().current.pop_back(); };
   Compiler c(data);
-  // TODO this is essentially a copy of the body of
-  // FunctionLiteral::EmitToBuffer. Factor these out together.
-  data.current_block() = fn.entry();
 
   std::vector<type::StructInstruction::Field> constants;
   bool needs_dtor = false;
@@ -284,7 +276,7 @@ std::optional<ir::Subroutine> StructCompletionFn(
   }
 
   data.current_block()->Append(
-      type::StructInstruction{.struct_          = s,
+      type::StructInstruction{.struct_          = type::Type(s),
                               .constants        = std::move(constants),
                               .move_inits       = std::move(move_inits),
                               .copy_inits       = std::move(copy_inits),
@@ -292,6 +284,21 @@ std::optional<ir::Subroutine> StructCompletionFn(
                               .copy_assignments = std::move(copy_assignments),
                               .dtor             = dtor});
   data.current_block()->set_jump(ir::JumpCmd::Return());
+}
+
+std::optional<ir::Subroutine> StructCompletionFn(
+    CompilationDataReference data, type::Struct *s,
+    absl::Span<ast::Declaration const> field_decls) {
+  ASSERT(s->completeness() == type::Completeness::DataComplete);
+
+  ir::Subroutine fn(type::Func({}, {}));
+  data.push_current(&fn);
+  absl::Cleanup cleanup = [&] { data.state().current.pop_back(); };
+  Compiler c(data);
+  // TODO this is essentially a copy of the body of
+  // FunctionLiteral::EmitToBuffer. Factor these out together.
+  data.current_block() = fn.entry();
+  EmitStructCompletion(data, s, field_decls);
 
   return fn;
 }

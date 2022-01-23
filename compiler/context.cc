@@ -95,7 +95,7 @@ absl::Span<type::QualType const> Context::qual_types(
   auto iter = qual_types_.find(expr);
   if (iter != qual_types_.end()) { return iter->second; }
   if (auto const *p = parent()) { return p->qual_types(expr); }
-  UNREACHABLE(expr->DebugString(), this);
+  UNREACHABLE(expr->DebugString(), DebugString());
 }
 
 absl::Span<type::QualType const> Context::maybe_qual_type(

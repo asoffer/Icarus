@@ -14,33 +14,6 @@
 
 namespace type {
 
-template <typename, typename>
-struct Generic;
-
-template <typename T>
-struct InstantiatedGeneric : T {
-  using instantiation_type = T;
-
-  template <typename... Args>
-  InstantiatedGeneric(Generic<instantiation_type> const *g, Args &&... args)
-      : T(std::forward<Args>(args)...), generic_(ASSERT_NOT_NULL(g)) {}
-
-  Generic<instantiation_type> const &generic() const { return *generic_; }
-
-  void set_arguments(core::Arguments<Typed<ir::CompleteResultBuffer>> args) {
-    arguments_ = std::move(args);
-  }
-
-  // Returns the arguments used to instantiate this type.
-  core::Arguments<Typed<ir::CompleteResultBuffer>> const &arguments() const {
-    return arguments_;
-  }
-
- private:
-  Generic<instantiation_type> const *generic_;
-  core::Arguments<Typed<ir::CompleteResultBuffer>> arguments_;
-};
-
 template <typename T, typename InstantiationType>
 struct Generic : LegacyType {
   using type               = T;

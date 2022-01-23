@@ -344,29 +344,7 @@ bool Compiler::PatternMatch(
     ast::Call const *node, PatternMatchingContext &pmc,
     absl::flat_hash_map<ast::Declaration::Id const *, ir::CompleteResultBuffer>
         &bindings) {
-  // TODO: Only supporting parameterized structs right now.
-  if (pmc.type != type::Type_) { return false; }
-
-  auto const *i = pmc.value.get<type::Type>(0)
-                      .if_as<type::InstantiatedGeneric<type::Struct>>();
-
-  if (not i) { return false; }
-
-  // TODO: Named arguments as well.
-  size_t index = 0;
-  for (auto const &a : i->arguments().pos()) {
-    // TODO: Check that the type is what we expect.
-    ir::CompleteResultBuffer buffer;
-    buffer.append(a->get<type::Type>(0));
-
-    // TODO: Support non-type parameters.
-    state().EnqueuePatternMatch(
-        &node->arguments()[index].expr(),
-        {.type = type::Type_, .value = std::move(buffer)});
-    ++i;
-  }
-
-  return true;
+  NOT_YET();
 }
 
 }  // namespace compiler
