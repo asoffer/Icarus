@@ -10,7 +10,16 @@ static base::Global<absl::flat_hash_map<
     core::Params<QualType>, absl::node_hash_map<std::vector<Type>, Function>>>
     funcs_;
 Function const *Func(core::Params<QualType> in, std::vector<Type> out) {
-  auto f                = Function(in, out);
+  auto f                = Function(in, out, false);
+  auto handle           = funcs_.lock();
+  auto &ret_map         = (*handle)[std::move(in)];
+  auto [iter, inserted] = ret_map.emplace(out, std::move(f));
+  auto const &[ret, fn] = *iter;
+  return &fn;
+}
+
+Function const *EagerFunc(core::Params<QualType> in, std::vector<Type> out) {
+  auto f                = Function(in, out, true);
   auto handle           = funcs_.lock();
   auto &ret_map         = (*handle)[std::move(in)];
   auto [iter, inserted] = ret_map.emplace(out, std::move(f));

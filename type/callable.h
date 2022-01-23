@@ -27,13 +27,15 @@ struct Callable : LegacyType {
 
 struct ReturningType : Callable {
   absl::Span<Type const> return_types() const { return return_types_; }
+  bool eager() const { return eager_; }
 
  protected:
   explicit ReturningType(int8_t which, LegacyType::Flags flags,
                          core::Params<type::QualType> parameters,
-                         std::vector<Type> return_types)
+                         std::vector<Type> return_types, bool eager)
       : Callable(which, flags, std::move(parameters)),
-        return_types_(std::move(return_types)) {
+        return_types_(std::move(return_types)),
+        eager_(eager) {
 #if defined(ICARUS_DEBUG)
     for (Type t : return_types_) { ASSERT(t.valid() == true); }
 #endif  // defined(ICARUS_DEBUG)
@@ -41,6 +43,7 @@ struct ReturningType : Callable {
 
  private:
   std::vector<Type> return_types_;
+  bool eager_ = false;
 };
 
 }  // namespace type

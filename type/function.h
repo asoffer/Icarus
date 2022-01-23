@@ -19,13 +19,13 @@
 namespace type {
 
 struct Function : ReturningType {
-  Function(core::Params<QualType> in, std::vector<Type> out)
+  Function(core::Params<QualType> in, std::vector<Type> out, bool eager)
       : ReturningType(IndexOf<Function>(),
                       LegacyType::Flags{.is_default_initializable = 0,
                                         .is_copyable              = 1,
                                         .is_movable               = 1,
                                         .has_destructor           = 0},
-                      std::move(in), std::move(out)) {}
+                      std::move(in), std::move(out), eager) {}
 
   bool is_big() const override { return false; }
   void ShowValue(std::ostream &, ir::CompleteResultRef const &) const override;
@@ -38,6 +38,7 @@ struct Function : ReturningType {
 };
 
 Function const *Func(core::Params<QualType> in, std::vector<Type> out);
+Function const *EagerFunc(core::Params<QualType> in, std::vector<Type> out);
 
 struct FunctionTypeInstruction
     : base::Extend<FunctionTypeInstruction>::With<base::BaseSerializeExtension,

@@ -191,8 +191,15 @@ VerifyReturningCall(TypeVerifier &tv, VerifyCallParameters const &vcp) {
   // TODO: Expansion is relevant too.
   std::vector<type::QualType> qts;
   auto expr = std::get<type::Typed<ast::Expression const *>>(result);
-  for (type::Type t : expr.type().as<type::ReturningType>().return_types()) {
-    qts.push_back(type::QualType::NonConstant(t));
+  type::ReturningType const &rt = expr.type().as<type::ReturningType>();
+  if (rt.eager()) {
+    for (type::Type t : rt.return_types()) {
+      qts.push_back(type::QualType::Constant(t));
+    }
+  } else {
+    for (type::Type t : rt.return_types()) {
+      qts.push_back(type::QualType::NonConstant(t));
+    }
   }
 
   return qts;

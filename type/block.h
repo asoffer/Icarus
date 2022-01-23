@@ -16,7 +16,7 @@ struct Block : ReturningType {
                                         .is_copyable              = 1,
                                         .is_movable               = 1,
                                         .has_destructor           = 0},
-                      std::move(params), {}) {}
+                      std::move(params), {}, false) {}
 
   bool is_big() const override { return false; }
   void ShowValue(std::ostream &, ir::CompleteResultRef const &) const override;
