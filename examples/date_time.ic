@@ -10,4 +10,4 @@ io.Print("In UTC: ", c.asctime(timeinfo))
 
 buffer: [256; char]
 used := c.strftime(&buffer[0], 256, "%A, %B %e %Y".data, timeinfo)
-io.Print("Formatted: ", slice(&buffer[0], used as u64), !\n)
+io.Print("Formatted: ", slice(&buffer[0], used as u64), !'\n')

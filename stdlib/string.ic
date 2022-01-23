@@ -57,7 +57,7 @@ resize_buffer ::= (s: *string, new_capacity: u64) -> () {
 make ::= (fill: char, len: u64) -> string {
   buffer := memory.allocate(char, len + 1)
   memory.fill(buffer, fill as u8)
-  buffer[len] = init !\0
+  buffer[len] = init !'\0'
   return string.{
     _data     = buffer.data
     _length   = len
@@ -79,7 +79,7 @@ make ::= (s: []char) -> string {
 #{export}
 make ::= (capacity: u64) -> string {
   buffer := memory.allocate(char, capacity + 1)
-  buffer[0] = init !\0
+  buffer[0] = init !'\0'
   return string.{
     _data     = buffer.data
     _length   = 0
@@ -102,7 +102,7 @@ append ::= (s: *string, character: char) -> () {
   }
   s._data[s._length] = init character
   s._length += 1
-  s._data[s._length] = init !\0
+  s._data[s._length] = init !'\0'
 }
 
 #{export}

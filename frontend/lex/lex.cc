@@ -174,24 +174,17 @@ static base::Global kKeywords =
         {"xor", {Operator::Xor}},
         {"not", {Operator::Not}}};
 
-static bool BeginsWith(std::string_view prefix, std::string_view s) {
-  if (s.size() < prefix.size()) { return false; }
-  auto p_iter = prefix.begin();
-  auto s_iter = s.begin();
-  while (p_iter != prefix.end()) {
-    if (*p_iter++ != *s_iter++) { return false; }
-  }
-  return true;
-}
-
 // Consumes a character literal represented by a bang (!) followed by one
-// of:
+// of the following wrapped in single quotation marks:
 // * A single non backslash character,
 // * A backslash and then any character in the set [abfnrtv0!\]
 Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
   SourceLoc start_loc = cursor;
   ASSERT(buffer[cursor] == '!');
-  cursor += Offset(1);
+  // TODO: This shouldn't be an assert. it should be a genuine error we can
+  // check for.
+  ASSERT(buffer[cursor + Offset(1)] == '\'');
+  cursor += Offset(2);
   // TODO: Ensure the character is printable.
   char c;
   if (buffer[cursor] == '\\') {
@@ -214,6 +207,10 @@ Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
     c = buffer[cursor];
     cursor += Offset(1);
   }
+  // TODO: This shouldn't be an assert. it should be a genuine error we can
+  // check for.
+  ASSERT(buffer[cursor] == '\'');
+  cursor += Offset(1);
   return Lexeme(std::make_unique<ast::Terminal>(SourceRange(start_loc, cursor),
                                                 ir::Char(c)));
 }
@@ -248,13 +245,13 @@ static base::Global kOps =
     };
 
 Lexeme NextOperator(SourceCursor &cursor, SourceBuffer const &buffer) {
-  if (BeginsWith("--", cursor.view())) {
+  if (cursor.view().starts_with("--")) {
     auto range = cursor.remove_prefix(2).range();
     return Lexeme(std::make_unique<ast::Identifier>(range, ""));
   }
 
   for (auto [prefix, x] : *kOps) {
-    if (BeginsWith(prefix, cursor.view())) {
+    if (cursor.view().starts_with(prefix)) {
       auto range = cursor.remove_prefix(prefix.size()).range();
       return std::visit([&](auto x) { return Lexeme(x, range); }, x);
     }
