@@ -15,7 +15,7 @@ TEST(AnyInvocable, Traits) {
 }
 
 TEST(AnyInvocable, ComparisonToNullptr) {
-  EXPECT_TRUE(any_invocable<int()>{});
+  EXPECT_FALSE(any_invocable<int()>{});
   EXPECT_EQ(any_invocable<int()>{}, nullptr);
   EXPECT_EQ(nullptr, any_invocable<int()>{});
 }
@@ -54,6 +54,22 @@ TEST(AnyInvocable, MoveAssignment) {
 TEST(AnyInvocable, Lambda) {
   EXPECT_EQ(Invoke(any_invocable<int()>([u = Uncopyable(10)] { return u(); })),
             10);
+}
+
+TEST(AnyInvocable, Comparison) {
+  any_invocable<int()> a;
+  EXPECT_TRUE(a == nullptr);
+  EXPECT_FALSE(a != nullptr);
+  EXPECT_TRUE(nullptr == a);
+  EXPECT_FALSE(nullptr != a);
+  EXPECT_FALSE(a);
+
+  a = Uncopyable(10);
+  EXPECT_TRUE(a != nullptr);
+  EXPECT_FALSE(a == nullptr);
+  EXPECT_TRUE(nullptr != a);
+  EXPECT_FALSE(nullptr == a);
+  EXPECT_TRUE(a);
 }
 
 }  // namespace

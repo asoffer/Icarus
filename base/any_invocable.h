@@ -84,7 +84,7 @@ struct any_invocable<R(Args...)> {
     return vtable_->invoke(data_, std::forward<Ts>(args)...);
   }
 
-  constexpr explicit operator bool() const { return data_ == nullptr; }
+  constexpr explicit operator bool() const { return data_ != nullptr; }
   friend constexpr bool operator==(std::nullptr_t, any_invocable const& a) {
     return not static_cast<bool>(a.data_);
   }
