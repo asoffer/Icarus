@@ -29,6 +29,7 @@ cc_library(
     hdrs = ["common.h"],
     srcs = ["common.cc"],
     deps = [
+        ":module",
         "//ast:node",
         "//ast:scope",
         "//base:debug",

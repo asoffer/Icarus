@@ -340,6 +340,24 @@ struct Context {
     return type::Typed<ast::Expression const *>(expr, qts[0].type());
   }
 
+  // TODO: This is a temporary mechanism to get Id information into
+  // CompiledModule as we migrate to merging these two and separating out
+  // pre-compiled modules to not be AST-dependent.
+  void set_callback(
+      base::any_invocable<void(ast::Declaration::Id const *, type::QualType)>
+          f) {
+    ASSERT(callback_ == nullptr);
+    ASSERT(f != nullptr);
+    callback_ = std::move(f);
+  }
+
+  base::any_invocable<void(ast::Declaration::Id const *, type::QualType)> const
+      &
+      callback() const {
+    if (callback_) { return callback_; }
+    return ASSERT_NOT_NULL(parent())->callback();
+  }
+
  private:
   explicit Context(Context *parent);
 
@@ -402,6 +420,9 @@ struct Context {
 
   absl::node_hash_set<std::vector<ir::ScopeContext::block_type>>
       scope_context_data_;
+
+  base::any_invocable<void(ast::Declaration::Id const *, type::QualType)>
+      callback_;
 };
 
 // TODO: Probably deserves it's own translation unit?

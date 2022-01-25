@@ -1,35 +1,44 @@
 #ifndef ICARUS_MODULE_MODULE_H
 #define ICARUS_MODULE_MODULE_H
 
-#include <forward_list>
-#include <memory>
 #include <string_view>
-#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/container/node_hash_map.h"
 #include "ast/declaration.h"
 #include "ast/module.h"
 #include "ast/scope.h"
 #include "base/cast.h"
 #include "base/guarded.h"
 #include "base/macros.h"
-#include "base/ptr_span.h"
-#include "frontend/source/buffer.h"
+#include "type/qual_type.h"
 
 namespace module {
 
 enum class Linkage { Internal, External };
 
-// BasicModule:
+// Module:
 //
 // Represents a unit of compilation, beyond which all intercommunication must be
 // explicit.
-struct BasicModule : base::Cast<BasicModule> {
-  explicit BasicModule(frontend::SourceBuffer const *buffer)
-      : module_(this), buffer_(buffer) {}
-  virtual ~BasicModule() {}
+struct Module : base::Cast<Module> {
+  virtual ~Module() {}
+
+  struct SymbolInformation {
+    type::QualType qualified_type;
+    ir::CompleteResultRef value;
+  };
+
+  // Given a symbol `name`, returns a range of `SymbolInformation` describing
+  // any exported symbols of that name in the module. The range of symbol
+  // information has no ordering guarantees.
+  virtual absl::Span<SymbolInformation const> Exported(
+      std::string_view name) = 0;
+};
+
+// TODO: Rename this and merge with CompiledModule.
+struct BasicModule : Module {
+  explicit BasicModule() : module_(this) {}
 
   // Pointers to modules are passed around, so moving a module is not safe.
   BasicModule(BasicModule &&) noexcept = delete;
@@ -45,48 +54,13 @@ struct BasicModule : base::Cast<BasicModule> {
   ast::Scope const &scope() const { return module_.body_scope(); }
   ast::Scope &scope() { return module_.body_scope(); }
 
-  frontend::SourceBuffer const &buffer() const {
-    return *ASSERT_NOT_NULL(buffer_);
-  }
-
-  template <std::input_iterator Iter>
-  base::PtrSpan<ast::Node const> insert(Iter b, Iter e) {
-    auto ptr_span = module_.insert(b, e);
-
-    for (auto const *node : ptr_span) {
-      if (auto *decl = node->template if_as<ast::Declaration>();
-          decl and decl->hashtags.contains(ir::Hashtag::Export)) {
-        for (auto const &id : decl->ids()) {
-          exported_declarations_[id.name()].push_back(&id);
-        }
-      }
-    }
-
-    return ptr_span;
-  }
-
-  bool has_error_in_dependent_module() const {
-    return depends_on_module_with_errors_;
-  }
-  void set_dependent_module_with_errors() {
-    depends_on_module_with_errors_ = true;
-  }
-
   absl::Span<ast::Declaration::Id const *const> ExportedDeclarationIds(
       std::string_view name) const;
 
- private:
+  absl::Span<SymbolInformation const> Exported(std::string_view name) override;
+
+ protected:
   ast::Module module_;
-  frontend::SourceBuffer const *buffer_;
-
-  // This flag should be set to true if this module is ever found to depend on
-  // another which has errors, even if those errors do not effect
-  // code-generation in this module.
-  //
-  // TODO: As we move towards separate compilation in separate processes, this
-  // will become irrelevant.
-  bool depends_on_module_with_errors_ = false;
-
   absl::flat_hash_map<std::string_view,
                       std::vector<ast::Declaration::Id const *>>
       exported_declarations_;

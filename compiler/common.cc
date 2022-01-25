@@ -2,6 +2,7 @@
 
 #include "ast/scope.h"
 #include "base/debug.h"
+#include "compiler/module.h"
 
 namespace compiler {
 
@@ -10,7 +11,12 @@ module::BasicModule *ModuleFor(ast::Node const *node) {
 }
 
 frontend::SourceBuffer const *SourceBufferFor(ast::Node const *node) {
-  return &ModuleFor(node)->buffer();
+  auto const *m = ModuleFor(node);
+  if (auto const *cm = m->if_as<CompiledModule>()) {
+    return &cm->buffer();
+  } else {
+    return nullptr;
+  }
 }
 
 frontend::SourceView SourceViewFor(ast::Node const *node) {

@@ -109,12 +109,19 @@ absl::Span<type::QualType const> Context::maybe_qual_type(
 absl::Span<type::QualType const> Context::set_qual_types(
     ast::Expression const *expr, absl::Span<type::QualType const> qts) {
   auto [iter, inserted] = qual_types_.try_emplace(expr, qts.begin(), qts.end());
+  if (auto const *id = expr->if_as<ast::Declaration::Id>()) {
+    ASSERT(qts.size() == 1);
+    callback()(id, qts[0]);
+  }
   return iter->second;
 }
 
 absl::Span<type::QualType const> Context::set_qual_type(
     ast::Expression const *expr, type::QualType r) {
   auto [iter, inserted] = qual_types_.try_emplace(expr, 1, r);
+  if (auto const *id = expr->if_as<ast::Declaration::Id>()) {
+    callback()(id, r);
+  }
   return iter->second;
 }
 
