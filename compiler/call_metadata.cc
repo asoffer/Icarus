@@ -7,12 +7,12 @@ namespace {
 // in the scope `primary`, or exported from the modules contained in `modules`.
 absl::flat_hash_set<ast::Expression const *> Overloads(
     std::string_view name, ast::Scope const *primary,
-    absl::flat_hash_set<module::BasicModule const *> const &modules) {
+    absl::flat_hash_set<module::BasicModule *> const &modules) {
   auto exprs = module::AllVisibleDeclsTowardsRoot(primary, name);
   absl::flat_hash_set<ast::Expression const *> overloads(exprs.begin(),
                                                          exprs.end());
   exprs.clear();
-  for (auto const *mod : modules) {
+  for (auto *mod : modules) {
     auto ids = mod->ExportedDeclarationIds(name);
     for (auto const *decl_id : ids) { overloads.insert(decl_id); }
   }
@@ -23,7 +23,7 @@ absl::flat_hash_set<ast::Expression const *> Overloads(
 
 CallMetadata::CallMetadata(
     std::string_view name, ast::Scope const *primary,
-    absl::flat_hash_set<module::BasicModule const *> const &modules)
+    absl::flat_hash_set<module::BasicModule *> const &modules)
     : CallMetadata(Overloads(name, primary, modules)) {}
 
 }  // namespace compiler

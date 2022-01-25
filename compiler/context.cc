@@ -111,7 +111,7 @@ absl::Span<type::QualType const> Context::set_qual_types(
   auto [iter, inserted] = qual_types_.try_emplace(expr, qts.begin(), qts.end());
   if (auto const *id = expr->if_as<ast::Declaration::Id>()) {
     ASSERT(qts.size() == 1);
-    callback()(id, qts[0]);
+    qt_callback()(id, qts[0]);
   }
   return iter->second;
 }
@@ -120,7 +120,7 @@ absl::Span<type::QualType const> Context::set_qual_type(
     ast::Expression const *expr, type::QualType r) {
   auto [iter, inserted] = qual_types_.try_emplace(expr, 1, r);
   if (auto const *id = expr->if_as<ast::Declaration::Id>()) {
-    callback()(id, r);
+    qt_callback()(id, r);
   }
   return iter->second;
 }
@@ -159,7 +159,9 @@ ir::CompleteResultBuffer const &Context::SetConstant(
 
 ir::CompleteResultBuffer const &Context::SetConstant(
     ast::Declaration::Id const *id, ir::CompleteResultBuffer const &buffer) {
-  return constants_.try_emplace(id, std::move(buffer)).first->second;
+  auto const &buf = constants_.try_emplace(id, std::move(buffer)).first->second;
+  value_callback()(id, buf);
+  return buf;
 }
 
 ir::CompleteResultBuffer const *Context::Constant(

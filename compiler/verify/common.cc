@@ -82,11 +82,14 @@ absl::flat_hash_set<type::Typed<ast::Expression const *>> ResolveCall(
 
 }  // namespace
 
-absl::flat_hash_set<module::BasicModule const *> ModulesFromTypeProvenance(
+absl::flat_hash_set<module::BasicModule *> ModulesFromTypeProvenance(
     absl::flat_hash_set<type::Type> const &adl_types) {
-  absl::flat_hash_set<module::BasicModule const *> adl_modules;
+  absl::flat_hash_set<module::BasicModule *> adl_modules;
   for (type::Type t : adl_types) {
-    if (auto const *mod = type::Provenance(t)) { adl_modules.insert(mod); }
+    if (auto const *mod = type::Provenance(t)) {
+      // TODO: Remove const_cast.
+      adl_modules.insert(const_cast<module::BasicModule *>(mod));
+    }
   }
   return adl_modules;
 }

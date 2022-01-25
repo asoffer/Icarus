@@ -8,12 +8,20 @@ namespace compiler {
 
 struct CompiledModule : module::BasicModule {
   explicit CompiledModule(frontend::SourceBuffer const *buffer,
-                          Context *context = nullptr)
+                          Context *context)
       : context_(ASSERT_NOT_NULL(context)), buffer_(ASSERT_NOT_NULL(buffer)) {
-    context_->set_callback(
+    context_->set_qt_callback(
         [&](ast::Declaration::Id const *id, type::QualType qt) {
-          exported_[id->name()].push_back(
-              Module::SymbolInformation{.qualified_type = qt});
+          auto &entries = exported_[id->name()];
+          indices_.emplace(id, entries.size());
+          entries.push_back(Module::SymbolInformation{.qualified_type = qt});
+        });
+
+    context_->set_value_callback(
+        [&](ast::Declaration::Id const *id, ir::CompleteResultBuffer buffer) {
+          auto iter = indices_.find(id);
+          if (iter == indices_.end()) { return; }
+          exported_[id->name()][iter->second].value = std::move(buffer);
         });
   }
 
@@ -61,7 +69,7 @@ struct CompiledModule : module::BasicModule {
 
   absl::flat_hash_map<std::string_view, std::vector<SymbolInformation>>
       exported_;
-
+  absl::flat_hash_map<ast::Declaration::Id const *, size_t> indices_;
   // This flag should be set to true if this module is ever found to depend on
   // another which has errors, even if those errors do not effect
   // code-generation in this module.

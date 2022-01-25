@@ -1,9 +1,12 @@
 #include "compiler/cyclic_dependency_tracker.h"
 
 #include "ast/ast.h"
+#include "compiler/context.h"
+#include "compiler/module.h"
 #include "diagnostic/consumer/tracking.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "ir/module.h"
 
 namespace compiler {
 namespace {
@@ -51,8 +54,10 @@ TEST(CyclicDependencyTracker, Errors) {
   ast::Identifier id1(frontend::SourceRange(), "a");
   ast::Identifier id2(frontend::SourceRange(), "a");
 
+  ir::Module mod;
   frontend::SourceBuffer buffer("\n");
-  module::BasicModule module(&buffer);
+  Context context(&mod);
+  CompiledModule module(&buffer, &context);
   ast::Scope scope(&module);
   ast::Node::Initializer i{.scope = &scope};
   id1.Initialize(i);

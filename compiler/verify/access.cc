@@ -368,79 +368,68 @@ type::QualType AccessStructMember(CompilationDataReference data,
 
 // Verifies access to a symbol in a different module. If there are multiple
 // symbols of the same name, verify that they form a valid overload set.
-type::QualType AccessModuleMember(CompilationDataReference c,
+type::QualType AccessModuleMember(CompilationDataReference ref,
                                   ast::Access const *node,
                                   type::QualType operand_qt) {
   if (not operand_qt.constant()) {
-    c.diag().Consume(NonConstantModuleMemberAccess{
+    ref.diag().Consume(NonConstantModuleMemberAccess{
         .view = SourceViewFor(node),
     });
     return type::QualType::Error();
   }
 
-  std::optional mod_id = c.EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand());
+  std::optional mod_id =
+      ref.EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand());
   if (not mod_id) { return type::QualType::Error(); }
 
   // There is no way to refer to the current module, but a bug here could cause
   // a deadlock as this module waits for the notification that it's declarations
   // can be exported, so we would prefer to abort.
-  auto const &mod = c.importer().get(*mod_id).as<CompiledModule>();
-  ASSERT(&mod != c.resources().module);
+  module::Module &mod = ref.importer().get(*mod_id);
+  ASSERT(&mod != ref.resources().module);
 
   // Note: for any declarations read across module boundaries, we set the
   // QualType of the imported declaration on the importing module context. This
   // makes it findable when it's called via an overload set as is type-checked
   // in VerifyCallee.
-  auto ids = mod.ExportedDeclarationIds(node->member_name());
+  absl::Span<module::Module::SymbolInformation const> symbols =
+      mod.Exported(node->member_name());
 
-  switch (ids.size()) {
+  switch (symbols.size()) {
     case 0: {
-      c.diag().Consume(UndeclaredIdentifierInModule{
+      ref.diag().Consume(UndeclaredIdentifierInModule{
           .id   = node->member_name(),
           .view = SourceViewFor(node),
       });
       return type::QualType::Error();
     } break;
     case 1: {
-      type::QualType qt = mod.context().qual_types(ids[0])[0];
-
-      if (c.diag().num_consumed() != 0) {
-        c.resources().module->set_dependent_module_with_errors();
-      }
-
-      if (not qt.ok()) {
+      if (not symbols[0].qualified_type.ok()) {
         LOG("AccessModuleMember",
             "Found member in a different module that is missing a type. "
             "Suspected error generated from that module: %s",
             node->DebugString());
         return type::QualType::Error();
       } else {
-        return c.context().set_qual_type(ids[0], qt)[0];
+        return symbols[0].qualified_type;
       }
     } break;
     default: {
       // TODO: these may also be an overload set of scopes
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Type> member_types;
-      auto const &ctx = mod.context();
 
-      if (c.diag().num_consumed() != 0) {
-        c.resources().module->set_dependent_module_with_errors();
-      }
-
-      for (auto const *id : ids) {
-        auto qt = ctx.qual_types(id)[0];
-        if (not qt.ok()) {
+      for (auto const &symbol_info : symbols) {
+        if (not symbol_info.qualified_type.ok()) {
           LOG("AccessModuleMember",
               "Found member in a different module that is missing a type. "
               "Suspected error generated from that module: %s",
-              id->DebugString());
+              node->member_name());
           return type::QualType::Error();
         }
 
-        quals &= qt.quals();
-        c.context().set_qual_type(id, qt);
-        member_types.insert(qt.type());
+        quals &= symbol_info.qualified_type.quals();
+        member_types.insert(symbol_info.qualified_type.type());
       }
 
       return type::QualType(type::MakeOverloadSet(member_types), quals);

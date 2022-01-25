@@ -26,7 +26,7 @@ struct Module : base::Cast<Module> {
 
   struct SymbolInformation {
     type::QualType qualified_type;
-    ir::CompleteResultRef value;
+    ir::CompleteResultBuffer value;
   };
 
   // Given a symbol `name`, returns a range of `SymbolInformation` describing

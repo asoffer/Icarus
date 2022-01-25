@@ -69,14 +69,13 @@ void Compiler::EmitToBuffer(ast::Access const *node,
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    auto const &mod =
+    absl::Span symbol_infos =
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
-            .as<CompiledModule>();
-    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
-    switch (decl_ids.size()) {
+            .Exported(node->member_name());
+    switch (symbol_infos.size()) {
       case 0: NOT_YET();
-      case 1: mod.context().LoadConstant(decl_ids[0], out); return;
+      case 1: out.append(symbol_infos[0].value); return;
       default: NOT_YET();
     }
   }
@@ -200,21 +199,17 @@ void Compiler::EmitMoveInit(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    auto const &mod =
+    absl::Span symbol_infos =
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
-            .as<CompiledModule>();
-    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
-    switch (decl_ids.size()) {
+            .Exported(node->member_name());
+    switch (symbol_infos.size()) {
       case 0: NOT_YET();
       case 1: {
-        type::QualType node_qt = context().qual_types(node)[0];
-        ir::PartialResultBuffer buffer;
-        mod.context().LoadConstant(decl_ids[0], buffer);
         MoveInitializationEmitter emitter(*this);
-        emitter(to[0], buffer);
-      }
+        emitter(to[0], ir::PartialResultBuffer(symbol_infos[0].value));
         return;
+      }
       default: NOT_YET();
     }
   }
@@ -294,18 +289,15 @@ void Compiler::EmitCopyInit(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    auto const &mod =
+    absl::Span symbol_infos =
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
-            .as<CompiledModule>();
-    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
-    switch (decl_ids.size()) {
+            .Exported(node->member_name());
+    switch (symbol_infos.size()) {
       case 0: NOT_YET();
       case 1: {
-        ir::PartialResultBuffer buffer;
-        mod.context().LoadConstant(decl_ids[0], buffer);
-        MoveInitializationEmitter emitter(*this);
-        emitter(to[0], buffer);
+        CopyInitializationEmitter emitter(*this);
+        emitter(to[0], ir::PartialResultBuffer(symbol_infos[0].value));
         return;
       }
       default: NOT_YET();
@@ -385,18 +377,17 @@ void Compiler::EmitMoveAssign(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    auto const &mod =
+    absl::Span symbol_infos =
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
-            .as<CompiledModule>();
-    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
-    switch (decl_ids.size()) {
+            .Exported(node->member_name());
+    switch (symbol_infos.size()) {
       case 0: NOT_YET();
       case 1: {
-        ir::PartialResultBuffer buffer;
-        mod.context().LoadConstant(decl_ids[0], buffer);
-        MoveInitializationEmitter emitter(*this);
-        emitter(to[0], buffer);
+        MoveAssignmentEmitter emitter(*this);
+        emitter(to[0], type::Typed<ir::PartialResultRef>(
+                           symbol_infos[0].value[0],
+                           symbol_infos[0].qualified_type.type()));
         return;
       }
       default: NOT_YET();
@@ -437,18 +428,18 @@ void Compiler::EmitCopyAssign(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    auto const &mod =
+    absl::Span symbol_infos =
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
-            .as<CompiledModule>();
-    auto decl_ids = mod.ExportedDeclarationIds(node->member_name());
-    switch (decl_ids.size()) {
+            .Exported(node->member_name());
+
+    switch (symbol_infos.size()) {
       case 0: NOT_YET();
       case 1: {
-        ir::PartialResultBuffer buffer;
-        mod.context().LoadConstant(decl_ids[0], buffer);
-        MoveInitializationEmitter emitter(*this);
-        emitter(to[0], buffer);
+        CopyAssignmentEmitter emitter(*this);
+        emitter(to[0], type::Typed<ir::PartialResultRef>(
+                           symbol_infos[0].value[0],
+                           symbol_infos[0].qualified_type.type()));
         return;
       }
       default: NOT_YET();

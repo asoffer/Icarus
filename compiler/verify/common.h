@@ -10,7 +10,7 @@
 
 namespace compiler {
 
-absl::flat_hash_set<module::BasicModule const *> ModulesFromTypeProvenance(
+absl::flat_hash_set<module::BasicModule *> ModulesFromTypeProvenance(
     absl::flat_hash_set<type::Type> const &adl_types);
 
 std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>

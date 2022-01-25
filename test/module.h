@@ -19,11 +19,19 @@
 
 namespace test {
 
-struct TestModule : compiler::CompiledModule {
+// Used to guarantee that context is initialized before module.
+struct ContextHolder {
+ protected:
+  ContextHolder() : ctx_(&ir_module_) {}
+  ir::Module ir_module_;
+  compiler::Context ctx_;
+};
+
+struct TestModule : ContextHolder, compiler::CompiledModule {
   TestModule()
-      : compiler::CompiledModule(&source_, &context_),
+      : ContextHolder(),
+        compiler::CompiledModule(&source_, &ctx_),
         source_("test-module", "\n"),
-        context_(&ir_module_),
         work_graph_(compiler::PersistentResources{
             .work                = &work_set,
             .module              = this,
@@ -140,8 +148,6 @@ struct TestModule : compiler::CompiledModule {
 
  private:
   frontend::SourceBuffer source_;
-  ir::Module ir_module_;
-  compiler::Context context_;
   compiler::WorkGraph work_graph_;
 };
 

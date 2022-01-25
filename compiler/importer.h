@@ -29,7 +29,7 @@ struct FileImporter : module::Importer {
   ir::ModuleId Import(module::BasicModule const* requestor,
                       std::string_view module_locator) override;
 
-  module::BasicModule const& get(ir::ModuleId id) override {
+  module::BasicModule& get(ir::ModuleId id) override {
     return *modules_by_id_.at(id);
   }
 

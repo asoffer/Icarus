@@ -23,7 +23,7 @@ struct CallMetadata {
 
   explicit CallMetadata(
       std::string_view name, ast::Scope const *primary,
-      absl::flat_hash_set<module::BasicModule const *> const &modules = {});
+      absl::flat_hash_set<module::BasicModule *> const &modules = {});
 
   void SetResolved(ast::Expression const *expr) {
     ASSERT(std::holds_alternative<absl::flat_hash_set<ast::Expression const *>>(

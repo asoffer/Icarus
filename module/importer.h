@@ -20,7 +20,7 @@ struct Importer {
   virtual ~Importer() {}
   virtual ir::ModuleId Import(BasicModule const* requestor,
                               std::string_view module_locator) = 0;
-  virtual BasicModule const& get(ir::ModuleId id)              = 0;
+  virtual BasicModule& get(ir::ModuleId id)                    = 0;
 
   bool SetImplicitlyEmbeddedModules(
       absl::Span<std::string const> module_locators);

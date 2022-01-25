@@ -298,6 +298,9 @@ struct Context {
     auto [iter, inserted] = constants_.try_emplace(expr);
     ASSERT(inserted == true);
     iter->second.append(value);
+    if (auto const *id = expr->if_as<ast::Declaration::Id>()) {
+      value_callback()(id, iter->second);
+    }
   }
 
   ir::CompleteResultBuffer const *Constant(
@@ -343,23 +346,37 @@ struct Context {
   // TODO: This is a temporary mechanism to get Id information into
   // CompiledModule as we migrate to merging these two and separating out
   // pre-compiled modules to not be AST-dependent.
-  void set_callback(
+  void set_qt_callback(
       base::any_invocable<void(ast::Declaration::Id const *, type::QualType)>
           f) {
-    ASSERT(callback_ == nullptr);
+    ASSERT(qt_callback_ == nullptr);
     ASSERT(f != nullptr);
-    callback_ = std::move(f);
+    qt_callback_ = std::move(f);
   }
-
-  base::any_invocable<void(ast::Declaration::Id const *, type::QualType)> const
-      &
-      callback() const {
-    if (callback_) { return callback_; }
-    return ASSERT_NOT_NULL(parent())->callback();
+  void set_value_callback(base::any_invocable<void(ast::Declaration::Id const *,
+                                                   ir::CompleteResultBuffer)>
+                              f) {
+    ASSERT(value_callback_ == nullptr);
+    ASSERT(f != nullptr);
+    value_callback_ = std::move(f);
   }
 
  private:
   explicit Context(Context *parent);
+
+  base::any_invocable<void(ast::Declaration::Id const *, type::QualType)> const
+      &
+      qt_callback() const {
+    if (qt_callback_) { return qt_callback_; }
+    return ASSERT_NOT_NULL(parent())->qt_callback();
+  }
+
+  base::any_invocable<void(ast::Declaration::Id const *,
+                           ir::CompleteResultBuffer)> const &
+  value_callback() const {
+    if (value_callback_) { return value_callback_; }
+    return ASSERT_NOT_NULL(parent())->value_callback();
+  }
 
   // Each Context is an intrusive node in a tree structure. Each Context has a
   // pointer to it's parent (accessible via `this->parent()`, and each node owns
@@ -421,8 +438,11 @@ struct Context {
   absl::node_hash_set<std::vector<ir::ScopeContext::block_type>>
       scope_context_data_;
 
+
   base::any_invocable<void(ast::Declaration::Id const *, type::QualType)>
-      callback_;
+      qt_callback_;
+  base::any_invocable<void(ast::Declaration::Id const *, ir::CompleteResultBuffer)>
+      value_callback_;
 };
 
 // TODO: Probably deserves it's own translation unit?
