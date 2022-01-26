@@ -140,12 +140,9 @@ struct Scope : base::Cast<Scope> {
     return absl::Span<Declaration::Id const *const>();
   }
 
-  void embed(module::BasicModule const *module) {
-    embedded_modules_.insert(module);
-  }
+  void embed(module::BasicModule *module) { embedded_modules_.insert(module); }
 
-  absl::flat_hash_set<module::BasicModule const *> const &embedded_modules()
-      const {
+  absl::flat_hash_set<module::BasicModule *> const &embedded_modules() const {
     return embedded_modules_;
   }
 
@@ -163,7 +160,7 @@ struct Scope : base::Cast<Scope> {
   // storing.
   absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       child_decls_;
-  absl::flat_hash_set<module::BasicModule const *> embedded_modules_;
+  absl::flat_hash_set<module::BasicModule *> embedded_modules_;
   std::vector<Scope *> executable_descendants_;
 
   // Sequence consisting of pointers to either a declaration or a child scope in

@@ -132,7 +132,9 @@ struct StringifyType {
   std::string operator()(ast::Call const *node) {
     auto old_kind = std::exchange(kind_, VisitationKind::ReturnType);
     absl::Cleanup c([&] { kind_ = old_kind; });
-    return operator()(context_.CallMetadata(node).resolved());
+    // TODO: Handle the case where it's imported.
+    return operator()(
+        context_.CallMetadata(node).resolved().get<ast::Expression>());
   }
 
   std::string operator()(ast::Declaration const *node) {

@@ -146,15 +146,13 @@ type::QualType VerifyUnaryOverload(
     type::Typed<ir::CompleteResultRef> const &operand) {
   absl::flat_hash_set<type::Function const *> member_types;
 
-  ForEachDeclIdTowardsRoot(
-      node->scope(), symbol, [&](ast::Declaration::Id const *id) {
-        ASSIGN_OR(return false, auto qt, context.qual_types(id)[0]);
-        // Must be callable because we're looking at overloads for operators
-        // which have previously been type-checked to ensure callability.
-        auto &c = qt.type().as<type::Function>();
-        member_types.insert(&c);
-        return true;
-      });
+  ForEachSymbolQualType(node->scope(), symbol, [&](type::QualType qt) {
+    // Must be callable because we're looking at overloads for operators
+    // which have previously been type-checked to ensure callability.
+    auto &c = qt.type().as<type::Function>();
+    member_types.insert(&c);
+    return true;
+  });
 
   if (member_types.empty()) {
     return context.set_qual_type(node, type::QualType::Error())[0];

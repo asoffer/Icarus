@@ -28,7 +28,7 @@ void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
 
 // Note: The `CompleteResultRef`s passed in `constant_arguments` must refer to a
 // buffer that outlives the call to this function.
-void EmitCall(Compiler &compiler, ast::Expression const *callee,
+void EmitCall(Compiler &compiler, CallMetadata::callee_locator_t callee,
               core::Arguments<type::Typed<ir::CompleteResultRef>> const
                   &constant_arguments,
               absl::Span<ast::Call::Argument const> arg_exprs,

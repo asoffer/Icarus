@@ -64,60 +64,73 @@ struct CalleeResult {
 };
 
 CalleeResult EmitCallee(
-    Compiler &c, ast::Expression const *callable,
+    Compiler &c, CallMetadata::callee_locator_t callable,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
+  if (auto const *symbol_info =
+          callable.get_if<module::Module::SymbolInformation>()) {
+    ASSERT(symbol_info->qualified_type.constant() == true);
+    // TODO: Handle non-constant and non-function types.
+    return {.callee = symbol_info->value[0].get<ir::Fn>(),
+            .type   = &symbol_info->qualified_type.type().as<type::Function>(),
+            // TODO Defaults.
+            .context = nullptr};
+  }
+  auto const *callable_expr = callable.get<ast::Expression>();
+  auto &context     = ModuleFor(callable_expr)->as<CompiledModule>().context();
+
   Context const &context_root = c.context().root();
   Context const &callable_root =
-      ModuleFor(callable)->as<CompiledModule>().context();
-  // TODO: This is fraught, because we still don't have access to
-  // instantiated contexts if that's what's needed here.
+      ModuleFor(callable_expr)->as<CompiledModule>().context();
   type::QualType qt = (&context_root == &callable_root)
-                          ? c.context().qual_types(callable)[0]
-                          : callable_root.qual_types(callable)[0];
+                          ? c.context().qual_types(callable_expr)[0]
+                          : callable_root.qual_types(callable_expr)[0];
 
   if (auto const *gf_type = qt.type().if_as<type::Generic<type::Function>>()) {
-    ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(callable).value();
+    ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(callable_expr).value();
 
-    // TODO: declarations aren't callable so we shouldn't have to check this
-    // here.
-    if (auto const *id = callable->if_as<ast::Declaration::Id>()) {
+    // TODO: declarations aren't callable_expr so we shouldn't have to check
+    // this here.
+    if (auto const *id = callable_expr->if_as<ast::Declaration::Id>()) {
       // TODO: make this more robust.
       // TODO: support multiple declarations
-      callable = id->declaration().init_val();
+      callable_expr = id->declaration().init_val();
     }
 
-    auto *parameterized_expr = &callable->as<ast::ParameterizedExpression>();
+    auto *parameterized_expr =
+        &callable_expr->as<ast::ParameterizedExpression>();
     auto find_subcontext_result =
         FindInstantiation(c, parameterized_expr, constants);
-    return {.callee   = ir::Fn(gen_fn.concrete(c.work_resources(), constants)),
-            .type     = find_subcontext_result.fn_type,
-            .defaults = DefaultsFor(callable, find_subcontext_result.context),
-            .context  = &find_subcontext_result.context};
+    return {
+        .callee   = ir::Fn(gen_fn.concrete(c.work_resources(), constants)),
+        .type     = find_subcontext_result.fn_type,
+        .defaults = DefaultsFor(callable_expr, find_subcontext_result.context),
+        .context  = &find_subcontext_result.context};
   } else if (auto const *gs_type =
                  qt.type().if_as<type::Generic<type::Struct>>()) {
-    ir::Fn fn = c.EmitAs<ir::Fn>(callable).value();
+    ir::Fn fn = c.EmitAs<ir::Fn>(callable_expr).value();
 
-    // TODO: declarations aren't callable so we shouldn't have to check this
-    // here.
-    if (auto const *id = callable->if_as<ast::Declaration::Id>()) {
+    // TODO: declarations aren't callable_expr so we shouldn't have to check
+    // this here.
+    if (auto const *id = callable_expr->if_as<ast::Declaration::Id>()) {
       // TODO: make this more robust.
       // TODO: support multiple declarations
-      callable = id->declaration().init_val();
+      callable_expr = id->declaration().init_val();
     }
 
-    auto *parameterized_expr = &callable->as<ast::ParameterizedExpression>();
+    auto *parameterized_expr =
+        &callable_expr->as<ast::ParameterizedExpression>();
     auto find_subcontext_result =
         FindInstantiation(c, parameterized_expr, constants);
-    return {.callee   = fn,
-            .type     = find_subcontext_result.fn_type,
-            .defaults = DefaultsFor(callable, find_subcontext_result.context),
-            .context  = &find_subcontext_result.context};
-
+    return {
+        .callee   = fn,
+        .type     = find_subcontext_result.fn_type,
+        .defaults = DefaultsFor(callable_expr, find_subcontext_result.context),
+        .context  = &find_subcontext_result.context};
   } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
     if (type::Quals::Const() <= qt.quals()) {
-      return {.callee   = c.EmitAs<ir::Fn>(callable),
+      return {.callee   = c.EmitAs<ir::Fn>(callable_expr),
               .type     = f_type,
-              .defaults = DefaultsFor(callable, c.context()),
+              .defaults = DefaultsFor(callable_expr, context),
               .context  = nullptr};
     } else {
       // NOTE: If the overload is a declaration, it's not because a
@@ -127,14 +140,15 @@ CalleeResult EmitCallee(
       // ask to emit IR for the declaration because that will emit the
       // initialization for the declaration. Instead, we need load the
       // address.
-      if (auto *fn_decl = callable->if_as<ast::Declaration>()) {
+      if (auto *fn_decl = callable_expr->if_as<ast::Declaration>()) {
         return {.callee  = c.current_block()->Append(ir::LoadInstruction{
                     .type   = f_type,
                     .addr   = c.state().addr(&fn_decl->ids()[0]),
                     .result = c.current().subroutine->Reserve()}),
                 .type    = f_type,
                 .context = nullptr};
-      } else if (auto *fn_decl_id = callable->if_as<ast::Declaration::Id>()) {
+      } else if (auto *fn_decl_id =
+                     callable_expr->if_as<ast::Declaration::Id>()) {
         return {.callee  = c.current_block()->Append(ir::LoadInstruction{
                     .type   = f_type,
                     .addr   = c.state().addr(fn_decl_id),
@@ -144,14 +158,14 @@ CalleeResult EmitCallee(
       } else {
         return {.callee  = c.current_block()->Append(ir::LoadInstruction{
                     .type   = f_type,
-                    .addr   = c.EmitAs<ir::addr_t>(callable),
+                    .addr   = c.EmitAs<ir::addr_t>(callable_expr),
                     .result = c.current().subroutine->Reserve()}),
                 .type    = f_type,
                 .context = nullptr};
       }
     }
   } else {
-    UNREACHABLE(callable->DebugString(), "\n", qt.type().to_string());
+    UNREACHABLE(callable_expr->DebugString(), "\n", qt.type().to_string());
   }
 }
 
@@ -258,7 +272,7 @@ void AppendToPartialResultBuffer(Compiler &c, type::QualType qt,
   buffer.append(result);
 }
 
-void EmitCall(Compiler &c, ast::Expression const *callee,
+void EmitCall(Compiler &c, CallMetadata::callee_locator_t callee,
               core::Arguments<type::Typed<ir::CompleteResultRef>> const
                   &constant_arguments,
               absl::Span<ast::Call::Argument const> arg_exprs,

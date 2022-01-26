@@ -122,7 +122,9 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
                             ir::PartialResultBuffer &out) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
 
-  auto const *callee = context().CallMetadata(node).resolved();
+  // TODO: Cross module support.
+  auto const *callee =
+      context().CallMetadata(node).resolved().get<ast::Expression>();
   CompilationData data{
       .context        = &ModuleFor(callee)->as<CompiledModule>().context(),
       .work_resources = work_resources(),

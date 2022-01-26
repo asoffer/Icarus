@@ -171,11 +171,10 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       // if any exist.
 
       bool present = false;
-      ForEachDeclIdTowardsRoot(node->scope(), node->name(),
-                               [&](ast::Declaration::Id const *id) {
-                                 present = true;
-                                 return false;
-                               });
+      ForEachSymbolQualType(node->scope(), node->name(), [&](type::QualType) {
+        present = true;
+        return false;
+      });
       if (present) {
         diag().Consume(UncapturedIdentifier{
             .id   = node->name(),

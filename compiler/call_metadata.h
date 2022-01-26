@@ -16,7 +16,10 @@ namespace compiler {
 // overloads to check, or the resolved overload actually chosen.
 
 struct CallMetadata {
-  explicit CallMetadata(ast::Expression const *expr) : data_(expr) {}
+  using callee_locator_t =
+      base::PtrUnion<ast::Expression const,
+                     module::Module::SymbolInformation const>;
+  explicit CallMetadata(callee_locator_t loc) : data_(loc) {}
 
   explicit CallMetadata(absl::flat_hash_set<ast::Expression const *> overloads)
       : data_(std::move(overloads)) {}
@@ -25,25 +28,23 @@ struct CallMetadata {
       std::string_view name, ast::Scope const *primary,
       absl::flat_hash_set<module::BasicModule *> const &modules = {});
 
-  void SetResolved(ast::Expression const *expr) {
+  void SetResolved(callee_locator_t loc) {
     ASSERT(std::holds_alternative<absl::flat_hash_set<ast::Expression const *>>(
                data_) == true);
-    data_ = expr;
+    data_ = loc;
   }
 
   absl::flat_hash_set<ast::Expression const *> const &overloads() const {
     return std::get<absl::flat_hash_set<ast::Expression const *>>(data_);
   }
 
-  ast::Expression const *resolved() const {
-    ast::Expression const *const *e =
-        std::get_if<ast::Expression const *>(&data_);
-    return e ? *e : nullptr;
+  callee_locator_t resolved() const {
+    auto loc = std::get_if<callee_locator_t>(&data_);
+    return loc ? *loc : static_cast<ast::Expression const *>(nullptr);
   }
 
  private:
-  std::variant<ast::Expression const *,
-               absl::flat_hash_set<ast::Expression const *>>
+  std::variant<callee_locator_t, absl::flat_hash_set<ast::Expression const *>>
       data_;
 };
 
