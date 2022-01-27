@@ -58,27 +58,9 @@ struct BasicModule : Module {
   ast::Scope const &scope() const { return module_.body_scope(); }
   ast::Scope &scope() { return module_.body_scope(); }
 
-  absl::Span<ast::Declaration::Id const *const> ExportedDeclarationIds(
-      std::string_view name) const;
-
  protected:
   ast::Module module_;
-  absl::flat_hash_map<std::string_view,
-                      std::vector<ast::Declaration::Id const *>>
-      exported_declarations_;
 };
-
-// Returns a container of all visible declarations in this scope with the given
-// identifier. This means any declarations in the path to the ancestor
-// function/jump, and any constant declarations above that.
-std::vector<ast::Declaration::Id const *> AllVisibleDeclsTowardsRoot(
-    ast::Scope const *starting_scope, std::string_view id);
-
-// Returns a container of all declaration ids with the given identifier that are
-// in a scope directly related to this one (i.e., one of the scopes is an
-// ancestor of the other, or is the root scope of an embedded module).
-std::vector<ast::Declaration::Id const *> AllAccessibleDeclIds(
-    ast::Scope const *starting_scope, std::string_view id);
 
 }  // namespace module
 

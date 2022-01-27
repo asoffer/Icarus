@@ -48,42 +48,50 @@ struct UncapturedIdentifier {
   frontend::SourceView view;
 };
 
+struct PotentialIdentifiers {
+  using symbol_ref_t = base::PtrUnion<ast::Declaration::Id const,
+                                      module::Module::SymbolInformation const>;
+  std::vector<std::pair<symbol_ref_t, type::QualType>> viable;
+  std::vector<ast::Declaration::Id const *> errors;
+  std::vector<ast::Declaration::Id const *> unreachable;
+};
+
 // Returns the declaration ids along with their qualified type that may be
 // referenced by the given identifier, or nullopt if any one of them is an
 // error.
-std::optional<
-    std::vector<std::pair<ast::Declaration::Id const *, type::QualType>>>
-PotentialIds(CompilationDataReference data, ast::Identifier const &id) {
-  std::optional<
-      std::vector<std::pair<ast::Declaration::Id const *, type::QualType>>>
-      result(std::in_place);
+PotentialIdentifiers PotentialIds(CompilationDataReference data,
+                                  ast::Identifier const &id) {
+  PotentialIdentifiers result;
+  bool only_constants = false;
+  for (ast::Scope const &s : id.scope()->ancestors()) {
+    if (auto iter = s.decls_.find(id.name()); iter != s.decls_.end()) {
+      for (auto const *id : iter->second) {
+        auto const *decl_id_qt = data.context().maybe_qual_type(id).data();
+        type::QualType qt = decl_id_qt ? *decl_id_qt : VerifyType(data, id)[0];
 
-  for (auto const *decl_id :
-       module::AllVisibleDeclsTowardsRoot(id.scope(), id.name())) {
-    type::QualType qt;
-    if (auto const *decl_id_qt =
-            data.context().maybe_qual_type(decl_id).data()) {
-      qt = *decl_id_qt;
-    } else {
-      auto const *mod = &ModuleFor(decl_id)->as<CompiledModule>();
-      if (mod != data.resources().module) {
-        qt = mod->context().qual_types(decl_id)[0];
-      } else {
-        // TODO: Eventually we may want to relax this for functions where we
-        // don't need the entire decl we just need to know if it's callable.
-        qt = VerifyType(data, decl_id)[0];
-      }
-
-      if (not qt.ok()) {
-        // Rather than returning immediately, we continue processing in case
-        // further calls to VerifyType help us collect more error messages,
-        result = std::nullopt;
+        if (not qt.ok()) {
+          result.errors.push_back(id);
+        } else {
+          if (only_constants and
+              not(id->declaration().flags() & ast::Declaration::f_IsConst)) {
+            result.unreachable.push_back(id);
+          } else {
+            result.viable.emplace_back(id, qt);
+          }
+        }
       }
     }
-    if (result) { result->emplace_back(decl_id, qt); }
-  }
 
-  // TODO: Fill out overloads based on adl modules
+    for (auto *mod : s.embedded_modules()) {
+      for (auto const &symbol : mod->Exported(id.name())) {
+        result.viable.emplace_back(&symbol, symbol.qualified_type);
+      }
+    }
+
+    if (s.kind() == ast::Scope::Kind::BoundaryExecutable) {
+      only_constants = true;
+    }
+  }
 
   return result;
 }
@@ -105,67 +113,64 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   // TODO: In what circumstances could this have been seen more than once?
   if (auto qts = context().maybe_qual_type(node); qts.data()) { return qts; }
 
-  auto potential_decl_ids = PotentialIds(*this, *node);
+  auto [viable, errors, unreachable] = PotentialIds(*this, *node);
 
-  LOG("Identifier", "%s: %p %s", node->DebugString(), node, potential_decl_ids);
-
-  if (not potential_decl_ids) {
+  if (not errors.empty()) {
     return context().set_qual_type(node, type::QualType::Error());
   }
 
   type::QualType qt;
-  switch (potential_decl_ids->size()) {
+  switch (viable.size()) {
     case 1: {
-      auto const &potential_id = (*potential_decl_ids)[0];
-      auto const &[id, id_qt]  = potential_id;
-      auto const *decl         = &id->declaration();
-      if (decl->flags() & ast::Declaration::f_IsConst) {
-        qt = id_qt;
-        if (not qt.ok() or qt.HasErrorMark()) {
-          return context().set_qual_type(node, qt);
-        }
+      auto const &[symbol_ref, symbol_qt] = viable[0];
+      if (symbol_qt.constant()) {
+        qt = symbol_qt;
+        if (qt.HasErrorMark()) { return context().set_qual_type(node, qt); }
       } else {
-        if (node->range().begin() < id->range().begin()) {
-          diag().Consume(DeclOutOfOrder{
-              .id       = node->name(),
-              .id_view  = SourceViewFor(potential_id.first),
-              .use_view = SourceViewFor(node),
-          });
-          // Haven't seen the declaration yet, so we can't proceed.
-          return context().set_qual_type(node, type::QualType::Error());
-        } else {
-          qt = context().qual_types(id)[0];
+        // TODO: Use `ordered_decls` on the scope or something similar to make
+        // this less gross.
+        // if (node->range().begin() < id->range().begin()) {
+        //   diag().Consume(DeclOutOfOrder{
+        //       .id       = node->name(),
+        //       .id_view  = SourceViewFor(potential_id.first),
+        //       .use_view = SourceViewFor(node),
+        //   });
+        //   // Haven't seen the declaration yet, so we can't proceed.
+        //   return context().set_qual_type(node, type::QualType::Error());
+        // } else {
+          qt = symbol_qt;
+        //}
+
+        if (qt.HasErrorMark()) { return context().set_qual_type(node, qt); }
+
+        if (qt.type().is<type::Array>()) {
+          qt = type::QualType(qt.type(), qt.quals() | type::Quals::Buf());
         }
 
-        if (not qt.ok() or qt.HasErrorMark()) {
-          return context().set_qual_type(node, qt);
-        }
-
-        if (not qt.constant()) {
-          if (qt.type().is<type::Array>()) {
-            qt = type::QualType(qt.type(), qt.quals() | type::Quals::Buf());
-          }
-
-          // TODO: shouldn't need to reconstruct just to set the quals.
-          qt = type::QualType(qt.type(), qt.quals() | type::Quals::Ref());
-        }
+        // TODO: shouldn't need to reconstruct just to set the quals.
+        qt = type::QualType(qt.type(), qt.quals() | type::Quals::Ref());
       }
 
       if (qt.type().is<type::Callable>() or
           qt.type().is<type::Generic<type::Function>>() or
           qt.type().is<type::Generic<type::Block>>()) {
-        context().SetCallMetadata(
-            node,
-            CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
-                static_cast<ast::Expression const *>(id)}));
+        absl::flat_hash_set<CallMetadata::callee_locator_t> set;
+        if (auto const *id = symbol_ref.get_if<ast::Declaration::Id>()) {
+          set.insert(static_cast<ast::Expression const *>(id));
+        } else {
+          set.insert(symbol_ref.get<module::Module::SymbolInformation>());
+        }
+        context().SetCallMetadata(node, CallMetadata(std::move(set)));
       }
 
       LOG("Identifier", "setting %s: %s", node->name(), qt);
-      std::vector<ast::Declaration::Id const *> decl_ids;
-      for (auto const &[id, id_qt] : *potential_decl_ids) {
-        decl_ids.push_back(id);
+      std::vector<ast::Declaration::Id const *> v;
+      if (auto const *id = symbol_ref.get_if<ast::Declaration::Id>()) {
+        v.push_back(id);
+      } else {
+        v.push_back(symbol_ref.get<module::Module::SymbolInformation>()->id);
       }
-      context().set_decls(node, std::move(decl_ids));
+      context().set_decls(node, std::move(v));
     } break;
     case 0: {
       // TODO: Performance. We don't need to look at these, we just need to know
@@ -195,9 +200,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       absl::flat_hash_set<type::Type> member_types;
       bool error = false;
 
-      for (auto const &[id, id_qt] : *potential_decl_ids) {
+      for (auto const &[symbol_ref, id_qt] : viable) {
         qt = id_qt;
-        if (not qt.ok() or qt.HasErrorMark()) { error = true; }
+        if (qt.HasErrorMark()) { error = true; }
         quals &= qt.quals();
         member_types.insert(qt.type());
       }
@@ -206,19 +211,28 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         return context().set_qual_type(node, type::QualType::Error());
       }
 
+      // TODO: The conversion here from Decl::Id to Expression indicates
+      // caller_locator_t should become more specific.
       absl::flat_hash_set<CallMetadata::callee_locator_t> potential_ids;
-      potential_ids.reserve(potential_decl_ids->size());
-      for (auto const &[id, id_qt] : *potential_decl_ids) {
-        potential_ids.insert(static_cast<ast::Expression const *>(id));
-      }
-      context().SetCallMetadata(node, CallMetadata(std::move(potential_ids)));
-      qt = type::QualType(type::MakeOverloadSet(member_types), quals);
-      LOG("Identifier", "setting %s", node->name());
       std::vector<ast::Declaration::Id const *> decl_ids;
-      for (auto const &[id, id_qt] : *potential_decl_ids) {
-        decl_ids.push_back(id);
+      potential_ids.reserve(viable.size());
+      for (auto const &[symbol_ref, id_qt] : viable) {
+        if (auto const *id = symbol_ref.get_if<ast::Declaration::Id>()) {
+          potential_ids.insert(static_cast<ast::Expression const *>(id));
+          decl_ids.push_back(id);
+        } else {
+          potential_ids.insert(
+              symbol_ref.get<module::Module::SymbolInformation>());
+
+          decl_ids.push_back(
+              symbol_ref.get<module::Module::SymbolInformation>()->id);
+        }
       }
+      LOG("Identifier", "setting %s", node->name());
+
+      context().SetCallMetadata(node, CallMetadata(std::move(potential_ids)));
       context().set_decls(node, std::move(decl_ids));
+      qt = type::QualType(type::MakeOverloadSet(member_types), quals);
     } break;
   }
 

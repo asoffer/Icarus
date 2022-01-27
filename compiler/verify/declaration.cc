@@ -375,20 +375,23 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         &id, node_qual_types[i].type());
     // TODO: struct field decls shouldn't have issues with shadowing local
     // variables.
-    for (auto const *accessible_id :
-         module::AllAccessibleDeclIds(node->scope(), id.name())) {
-      if (&id == accessible_id) { continue; }
-      auto qts = context().maybe_qual_type(accessible_id);
-      if (not qts.data()) { continue; }
-      if (Shadow(typed_id, type::Typed<ast::Declaration::Id const *>(
-                               &id, qts[0].type()))) {
-        // TODO: If one of these declarations shadows the other
-        node_qual_types[i].MarkError();
+    for (auto const &s : node->scope()->ancestors()) {
+      if (auto iter = s.decls_.find(id.name()); iter != s.decls_.end()) {
+        for (auto const *accessible_id : iter->second) {
+          if (&id == accessible_id) { continue; }
+          auto qts = context().maybe_qual_type(accessible_id);
+          if (not qts.data()) { continue; }
+          if (Shadow(typed_id, type::Typed<ast::Declaration::Id const *>(
+                                   &id, qts[0].type()))) {
+            // TODO: If one of these declarations shadows the other
+            node_qual_types[i].MarkError();
 
-        diag().Consume(ShadowingDeclaration{
-            .view1 = SourceViewFor(node),
-            .view2 = SourceViewFor(&id),
-        });
+            diag().Consume(ShadowingDeclaration{
+                .view1 = SourceViewFor(node),
+                .view2 = SourceViewFor(&id),
+            });
+          }
+        }
       }
     }
   }

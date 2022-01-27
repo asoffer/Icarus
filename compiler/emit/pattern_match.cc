@@ -67,13 +67,17 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
   }
 
   for (auto &[name, value] : bindings) {
-    auto const *id =
-        module::AllVisibleDeclsTowardsRoot(node->scope(), name->name())[0];
-
-    LOG("PatternMatch", "Binding %s (%p) to %s on %s", name->name(), id,
-        context().qual_types(id)[0].type().Representation(value[0]),
-        context().DebugString());
-    context().SetConstant(id, std::move(value));
+    for (auto const &s : node->scope()->ancestors()) {
+      auto iter = s.decls_.find(name->name());
+      if (iter != s.decls_.end()) {
+        auto const *id = iter->second[0];
+        LOG("PatternMatch", "Binding %s (%p) to %s on %s", name->name(), id,
+            context().qual_types(id)[0].type().Representation(value[0]),
+            context().DebugString());
+        context().SetConstant(id, std::move(value));
+        return;
+      }
+    }
   }
 }
 
