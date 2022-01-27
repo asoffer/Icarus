@@ -14,7 +14,7 @@ namespace module {
 //
 // Represents a unit of compilation, beyond which all intercommunication must be
 // explicit.
-struct BuiltinModule : Module {
+struct BuiltinModule final : Module {
   absl::Span<SymbolInformation const> Exported(std::string_view name) override {
     auto iter = symbols_.find(name);
     if (iter == symbols_.end()) { return {}; }

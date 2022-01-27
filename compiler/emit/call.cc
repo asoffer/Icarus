@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "base/meta.h"
+#include "compiler/builtin_module.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/emit/compiler_common.h"
@@ -149,7 +150,7 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       return;
 
     case ir::BuiltinFn::Which::Abort:
-      c.current_block()->Append(ir::AbortInstruction{});
+      c.current_block()->Append(AbortInstruction{});
       return;
     case ir::BuiltinFn::Which::CompilationError: UNREACHABLE();
   }

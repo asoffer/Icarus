@@ -13,6 +13,16 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "builtin_module_test",
+    srcs = ["builtin_module_test.cc"],
+    deps = [
+        ":instructions",
+        "//ir/interpreter:evaluate",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "call_metadata",
     hdrs = ["call_metadata.h"],
@@ -108,11 +118,37 @@ cc_library(
 
 cc_library(
     name = "instructions",
-    hdrs = ["instructions.h"],
-    srcs = ["instructions.cc"],
+    hdrs = [
+        "instructions.h",
+        "builtin_module.h",
+    ],
+    srcs = [
+        "instructions.cc",
+        "builtin_module.cc",
+    ],
     visibility = ["//visibility:public"],
     deps = [
+        "//base:extend",
+        "//base/extend:serialize",
+        "//base/extend:traverse",
         "//core:call",
+        "//module:builtin",
+        "//ir:subroutine",
+        "//ir/byte_code",
+        "//ir/instruction",
+        "//ir/instruction:arithmetic",
+        "//ir/instruction:compare",
+        "//ir/instruction:core",
+        "//ir/instruction:debug",
+        "//ir/interpreter:execution_context",
+        "//ir/instruction:set",
+        "//ir/interpreter:evaluate",
+        "//ir/value:char",
+        "//ir/value:generic_fn",
+        "//ir/value:module_id",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//ir/value:result_buffer",
         "//type:array",
         "//type:block",
         "//type:enum",
@@ -126,16 +162,6 @@ cc_library(
         "//type:struct",
         "//type:generic",
         "//type",
-        "//ir/byte_code",
-        "//ir/instruction:arithmetic",
-        "//ir/instruction:compare",
-        "//ir/instruction:core",
-        "//ir/instruction:set",
-        "//ir/interpreter:evaluate",
-        "//ir/value:char",
-        "//ir/value:generic_fn",
-        "//ir/value:module_id",
-        "//ir/value:result_buffer",
     ],
 )
 

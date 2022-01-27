@@ -1,5 +1,6 @@
 #include "compiler/instructions.h"
 
+#include "compiler/builtin_module.h"
 #include "core/call.h"
 #include "ir/instruction/arithmetic.h"
 #include "ir/instruction/compare.h"
@@ -148,7 +149,7 @@ struct instruction_set_t
           ir::InitInstruction, ir::DestroyInstruction, ir::MoveInitInstruction,
           ir::CopyInitInstruction, ir::MoveInstruction, ir::CopyInstruction,
           type::SliceLengthInstruction, type::SliceDataInstruction,
-          ir::DebugIrInstruction, ir::AbortInstruction,
+          ir::DebugIrInstruction, BuiltinInstructions,
           TypeConstructorInstructions, InsertBlockInstruction> {};
 
 void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
@@ -234,8 +235,14 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
   return result;
 }
 
-ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f) {
-  return interpreter::EvaluateToBuffer<instruction_set_t>(f);
+namespace internal_instructions {
+
+
+ir::CompleteResultBuffer EvaluateAtCompileTimeToBufferImpl(
+    ir::NativeFn fn, ir::CompleteResultBuffer const & arguments) {
+  return interpreter::Evaluate<instruction_set_t>(fn, arguments);
 }
+
+}  // namespace internal_instructions
 
 }  // namespace compiler

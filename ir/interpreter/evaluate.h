@@ -29,13 +29,19 @@ void Execute(ir::NativeFn fn, ir::CompleteResultBuffer const& arguments = {}) {
 }
 
 template <typename InstSet>
-ir::CompleteResultBuffer EvaluateToBuffer(ir::NativeFn fn) {
+ir::CompleteResultBuffer EvaluateToBuffer(
+    ir::NativeFn fn, ir::CompleteResultBuffer const& arguments) {
   LOG("EvaluateToBuffer", "%s", fn);
 
   ASSERT(fn.type()->return_types().size() != 0u);
 
   ExecutionContext ctx;
   StackFrame frame(fn, ctx.stack());
+
+  for (size_t i = 0; i < arguments.num_entries(); ++i) {
+    base::untyped_buffer_view argument = arguments[i].raw();
+    frame.set_raw(ir::Reg::Arg(i), argument.data(), argument.size());
+  }
 
   ir::CompleteResultBuffer result;
   auto outputs = fn.type()->return_types();
@@ -51,6 +57,13 @@ ir::CompleteResultBuffer EvaluateToBuffer(ir::NativeFn fn) {
 
   ctx.Execute<InstSet>(fn, frame);
   return result;
+}
+
+template <typename InstSet, typename... Args>
+ir::CompleteResultBuffer Evaluate(ir::NativeFn fn, Args const&... args) {
+  ir::CompleteResultBuffer arguments;
+  (arguments.append(args), ...);
+  return EvaluateToBuffer<InstSet>(fn, arguments);
 }
 
 }  // namespace interpreter

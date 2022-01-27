@@ -107,15 +107,6 @@ struct DebugIrInstruction
   Subroutine const* fn;
 };
 
-struct AbortInstruction
-    : base::Extend<AbortInstruction>::With<base::BaseTraverseExtension,
-                                           base::BaseSerializeExtension,
-                                           DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "abort";
-
-  void Apply(interpreter::ExecutionContext&) const { std::abort(); }
-};
-
 struct InitInstruction
     : base::Extend<InitInstruction>::With<base::BaseSerializeExtension,
                                           DebugFormatExtension> {
