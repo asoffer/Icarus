@@ -31,7 +31,7 @@ type::QualType VerifyGeneric(CompilationDataReference data,
     auto const &[params, rets_ref, context, inserted] = result;
 
     if (inserted) {
-      LOG("FunctionLiteral", "inserted! %s", node->DebugString());
+      LOG("ShortFunctionLiteral", "inserted! %s", node->DebugString());
       CompilationData data{.context        = &context,
                            .work_resources = wr,
                            .resources      = comp_data.resources};

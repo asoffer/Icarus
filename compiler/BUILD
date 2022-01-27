@@ -20,6 +20,10 @@ cc_library(
     deps = [
         "//ast:expression",
         "//module",
+        "//type:block",
+        "//type:function",
+        "//type:generic",
+        "//type:struct",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
 )

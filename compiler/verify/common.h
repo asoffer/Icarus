@@ -24,12 +24,12 @@ std::optional<core::Params<type::QualType>> VerifyParameters(
 
 struct VerifyCallParameters {
   ast::Expression const *call;
-  ast::Expression const *callee;
+  CallMetadata::callee_locator_t callee;
   core::Arguments<type::Typed<ir::CompleteResultRef>> const arguments;
 };
 
 std::variant<
-    type::Typed<ast::Expression const *>,
+    type::Typed<CallMetadata::callee_locator_t>,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
 VerifyCall(TypeVerifier &tv, VerifyCallParameters const &vcp);
 

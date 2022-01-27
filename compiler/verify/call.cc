@@ -460,7 +460,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       case ir::BuiltinFn::Which::Slice: {
         context().SetCallMetadata(
             node,
-            CallMetadata(absl::flat_hash_set<ast::Expression const *>{node}));
+            CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
+                static_cast<ast::Expression const *>(node)}));
         qt = VerifySliceCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::HasBlock: {
@@ -472,7 +473,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       case ir::BuiltinFn::Which::Foreign: {
         context().SetCallMetadata(
             node,
-            CallMetadata(absl::flat_hash_set<ast::Expression const *>{node}));
+            CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
+                static_cast<ast::Expression const *>(node)}));
         qt = VerifyForeignCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::CompilationError: {
@@ -530,13 +532,13 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
                        ir::ModuleId mod_id,
                        EvaluateOrDiagnoseAs<ir::ModuleId>(access->operand()));
-      context().SetCallMetadata(node,
-                                CallMetadata(access->member_name(), nullptr,
-                                             {&importer().get(mod_id)}));
+      context().SetCallMetadata(
+          node, CallMetadata(access->member_name(), &importer().get(mod_id)));
     } else {
       context().SetCallMetadata(
-          node, CallMetadata(absl::flat_hash_set<ast::Expression const *>{
-                    node->callee()}));
+          node,
+          CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
+              node->callee()}));
     }
   }
 

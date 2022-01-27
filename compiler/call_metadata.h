@@ -21,21 +21,23 @@ struct CallMetadata {
                      module::Module::SymbolInformation const>;
   explicit CallMetadata(callee_locator_t loc) : data_(loc) {}
 
-  explicit CallMetadata(absl::flat_hash_set<ast::Expression const *> overloads)
+  explicit CallMetadata(absl::flat_hash_set<callee_locator_t> overloads)
       : data_(std::move(overloads)) {}
+
+  explicit CallMetadata(std::string_view name, module::BasicModule *mod);
 
   explicit CallMetadata(
       std::string_view name, ast::Scope const *primary,
       absl::flat_hash_set<module::BasicModule *> const &modules = {});
 
   void SetResolved(callee_locator_t loc) {
-    ASSERT(std::holds_alternative<absl::flat_hash_set<ast::Expression const *>>(
+    ASSERT(std::holds_alternative<absl::flat_hash_set<callee_locator_t>>(
                data_) == true);
     data_ = loc;
   }
 
-  absl::flat_hash_set<ast::Expression const *> const &overloads() const {
-    return std::get<absl::flat_hash_set<ast::Expression const *>>(data_);
+  absl::flat_hash_set<callee_locator_t> const &overloads() const {
+    return std::get<absl::flat_hash_set<callee_locator_t>>(data_);
   }
 
   callee_locator_t resolved() const {
@@ -44,8 +46,7 @@ struct CallMetadata {
   }
 
  private:
-  std::variant<callee_locator_t, absl::flat_hash_set<ast::Expression const *>>
-      data_;
+  std::variant<callee_locator_t, absl::flat_hash_set<callee_locator_t>> data_;
 };
 
 }  // namespace compiler

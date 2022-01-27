@@ -19,10 +19,9 @@
 namespace compiler {
 namespace {
 
-void ValidateCallable(
-    ast::Expression const *e, type::Callable const *callable,
+bool ValidateCallable(
+    type::Callable const *callable,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments,
-    absl::flat_hash_set<type::Typed<ast::Expression const *>> &valid,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
         &errors) {
   auto callability = core::Callability(
@@ -32,45 +31,49 @@ void ValidateCallable(
         return type::CanCastImplicitly(argument.type(), parameter.type());
       });
   if (callability.ok()) {
-    valid.emplace(e, type::Type(callable));
+    return true;
   } else {
     errors.emplace(callable, std::move(callability));
+    return false;
   }
 }
 
-absl::flat_hash_set<type::Typed<ast::Expression const *>> ResolveCall(
+absl::flat_hash_set<type::Typed<CallMetadata::callee_locator_t>> ResolveCall(
     TypeVerifier &tv, CallMetadata const &metadata,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
         &errors) {
   // TODO: if (auto const *r = metadata.resolved()) { return {r}; }
 
-  absl::flat_hash_set<type::Typed<ast::Expression const *>> valid;
+  absl::flat_hash_set<type::Typed<CallMetadata::callee_locator_t>> valid;
 
   Context const &context_root = tv.context().root();
 
-  for (auto const *overload : metadata.overloads()) {
-    Context const &callee_root =
-        ModuleFor(overload)->as<CompiledModule>().context();
-    // TODO: This is fraught, because we still don't have access to
-    // instantiated contexts if that's what's needed here.
+  for (auto overload : metadata.overloads()) {
     type::Type t;
-    if (&context_root == &callee_root) {
-      t = tv.VerifyType(overload)[0].type();
+    if (auto const *e = overload.get_if<ast::Expression>()) {
+      t = tv.VerifyType(e)[0].type();
     } else {
-      t = callee_root.qual_types(overload)[0].type();
+      t = overload.get<module::Module::SymbolInformation>()
+              ->qualified_type.type();
     }
 
     if (auto const *callable = t.if_as<type::Callable>()) {
-      ValidateCallable(overload, callable, arguments, valid, errors);
+      if (ValidateCallable(callable, arguments, errors)) {
+        valid.emplace(overload, callable);
+      }
     } else if (auto const *gf = t.if_as<type::Generic<type::Function>>()) {
       auto const *i = gf->Instantiate(tv.work_resources(), arguments);
       if (not i) { continue; }  // TODO: Save an error.
-      ValidateCallable(overload, i, arguments, valid, errors);
+      if (ValidateCallable(i, arguments, errors)) {
+        valid.emplace(overload, i);
+      }
     } else if (auto const *gb = t.if_as<type::Generic<type::Block>>()) {
       auto const *i = gb->Instantiate(tv.work_resources(), arguments);
       if (not i) { continue; }
-      ValidateCallable(overload, i, arguments, valid, errors);
+      if (ValidateCallable(i, arguments, errors)) {
+        valid.emplace(overload, i);
+      }
     } else if (auto const *gs = t.if_as<type::Generic<type::Struct>>()) {
       auto const *i = gs->Instantiate(tv.work_resources(), arguments);
       if (not i) { continue; }
@@ -164,7 +167,7 @@ VerifyArguments(TypeVerifier &tv,
 }
 
 std::variant<
-    type::Typed<ast::Expression const *>,
+    type::Typed<CallMetadata::callee_locator_t>,
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
 VerifyCall(TypeVerifier &tv, VerifyCallParameters const &vcp) {
   auto const &[call, callee, arguments] = vcp;
@@ -175,12 +178,16 @@ VerifyCall(TypeVerifier &tv, VerifyCallParameters const &vcp) {
   if (exprs.size() == 1) {
     auto typed_expr = *exprs.begin();
     tv.context().SetCallMetadata(call, CallMetadata(*typed_expr));
-    // TODO: This doesn't need to be a constant.
-    tv.context().set_qual_type(callee,
-                               type::QualType::Constant(typed_expr.type()));
+    if (auto *c = callee.get_if<ast::Expression>()) {
+      // TODO: This doesn't need to be a constant.
+      tv.context().set_qual_type(c,
+                                 type::QualType::Constant(typed_expr.type()));
+    }
     return typed_expr;
   } else {
-    tv.context().set_qual_type(callee, type::QualType::Error());
+    if (auto *c = callee.get_if<ast::Expression>()) {
+      tv.context().set_qual_type(c, type::QualType::Error());
+    }
     return errors;
   }
 }
@@ -198,7 +205,7 @@ VerifyReturningCall(TypeVerifier &tv, VerifyCallParameters const &vcp) {
 
   // TODO: Expansion is relevant too.
   std::vector<type::QualType> qts;
-  auto expr = std::get<type::Typed<ast::Expression const *>>(result);
+  auto expr = std::get<type::Typed<CallMetadata::callee_locator_t>>(result);
   type::ReturningType const &rt = expr.type().as<type::ReturningType>();
   if (rt.eager()) {
     for (type::Type t : rt.return_types()) {

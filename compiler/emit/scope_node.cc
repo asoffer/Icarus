@@ -122,16 +122,21 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
                             ir::PartialResultBuffer &out) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
 
-  // TODO: Cross module support.
-  auto const *callee =
-      context().CallMetadata(node).resolved().get<ast::Expression>();
-  CompilationData data{
-      .context        = &ModuleFor(callee)->as<CompiledModule>().context(),
-      .work_resources = work_resources(),
-      .resources      = resources(),
-  };
-  Compiler c(&data);
-  auto unbound_scope = *c.EvaluateOrDiagnoseAs<ir::UnboundScope>(callee);
+  auto resolved = context().CallMetadata(node).resolved();
+  ir::UnboundScope unbound_scope;
+  if (auto const *callee = resolved.get_if<ast::Expression>()) {
+    CompilationData data{
+        .context        = &ModuleFor(callee)->as<CompiledModule>().context(),
+        .work_resources = work_resources(),
+        .resources      = resources(),
+    };
+    Compiler c(&data);
+    unbound_scope = *c.EvaluateOrDiagnoseAs<ir::UnboundScope>(callee);
+  } else {
+    unbound_scope = resolved.get<module::Module::SymbolInformation>()
+                        ->value[0]
+                        .get<ir::UnboundScope>();
+  }
 
   auto scope_context = context().LoadConstant<ir::ScopeContext>(node);
 

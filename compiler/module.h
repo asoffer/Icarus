@@ -12,16 +12,21 @@ struct CompiledModule : module::BasicModule {
       : context_(ASSERT_NOT_NULL(context)), buffer_(ASSERT_NOT_NULL(buffer)) {
     context_->set_qt_callback(
         [&](ast::Declaration::Id const *id, type::QualType qt) {
-          auto &entries = exported_[id->name()];
-          indices_.emplace(id, entries.size());
-          entries.push_back(Module::SymbolInformation{.qualified_type = qt});
+          if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
+            auto &entries = exported_[id->name()];
+            indices_.emplace(id, entries.size());
+            entries.push_back(
+                Module::SymbolInformation{.qualified_type = qt, .id = id});
+          }
         });
 
     context_->set_value_callback(
         [&](ast::Declaration::Id const *id, ir::CompleteResultBuffer buffer) {
-          auto iter = indices_.find(id);
-          if (iter == indices_.end()) { return; }
-          exported_[id->name()][iter->second].value = std::move(buffer);
+          if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
+            auto iter = indices_.find(id);
+            if (iter == indices_.end()) { return; }
+            exported_[id->name()][iter->second].value = std::move(buffer);
+          }
         });
   }
 
@@ -30,18 +35,7 @@ struct CompiledModule : module::BasicModule {
 
   template <std::input_iterator Iter>
   base::PtrSpan<ast::Node const> insert(Iter b, Iter e) {
-    auto ptr_span = module_.insert(b, e);
-
-    for (auto const *node : ptr_span) {
-      if (auto *decl = node->template if_as<ast::Declaration>();
-          decl and decl->hashtags.contains(ir::Hashtag::Export)) {
-        for (auto const &id : decl->ids()) {
-          exported_declarations_[id.name()].push_back(&id);
-        }
-      }
-    }
-
-    return ptr_span;
+    return module_.insert(b, e);
   }
 
   absl::Span<Module::SymbolInformation const> Exported(std::string_view name) {

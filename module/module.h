@@ -27,6 +27,10 @@ struct Module : base::Cast<Module> {
   struct SymbolInformation {
     type::QualType qualified_type;
     ir::CompleteResultBuffer value;
+    // TODO: Remove this. It's only here as a temporary mechanism to work nicely
+    // with generics until we have a decent cross-module solution for them. It
+    // will only be populated for generics.
+    ast::Declaration::Id const *id;
   };
 
   // Given a symbol `name`, returns a range of `SymbolInformation` describing
@@ -56,8 +60,6 @@ struct BasicModule : Module {
 
   absl::Span<ast::Declaration::Id const *const> ExportedDeclarationIds(
       std::string_view name) const;
-
-  absl::Span<SymbolInformation const> Exported(std::string_view name) override;
 
  protected:
   ast::Module module_;

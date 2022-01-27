@@ -99,12 +99,13 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         return context().set_qual_type(node, type::QualType::Error());
       }
 
-      auto ids =
-          importer().get(*mod_id).as<CompiledModule>().ExportedDeclarationIds(
-              access->member_name());
-      context().SetCallMetadata(
-          node, CallMetadata(absl::flat_hash_set<ast::Expression const *>(
-                    ids.begin(), ids.end())));
+      absl::flat_hash_set<CallMetadata::callee_locator_t> locs;
+      for (auto &loc :
+           importer().get(*mod_id).Exported(access->member_name())) {
+        locs.insert(&loc);
+      }
+
+      context().SetCallMetadata(node, CallMetadata(std::move(locs)));
     } else {
       context().SetCallMetadata(node, CallMetadata(node->name()));
     }

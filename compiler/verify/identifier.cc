@@ -156,7 +156,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
           qt.type().is<type::Generic<type::Block>>()) {
         context().SetCallMetadata(
             node,
-            CallMetadata(absl::flat_hash_set<ast::Expression const *>{id}));
+            CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
+                static_cast<ast::Expression const *>(id)}));
       }
 
       LOG("Identifier", "setting %s: %s", node->name(), qt);
@@ -169,12 +170,13 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     case 0: {
       // TODO: Performance. We don't need to look at these, we just need to know
       // if any exist.
-
       bool present = false;
-      ForEachSymbolQualType(node->scope(), node->name(), [&](type::QualType) {
-        present = true;
-        return false;
-      });
+      for (auto *s = node->scope(); s; s = s->parent()) {
+        if (s->decls_.contains(node->name())) {
+          present = true;
+          break;
+        }
+      }
       if (present) {
         diag().Consume(UncapturedIdentifier{
             .id   = node->name(),
@@ -204,10 +206,10 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         return context().set_qual_type(node, type::QualType::Error());
       }
 
-      absl::flat_hash_set<ast::Expression const *> potential_ids;
+      absl::flat_hash_set<CallMetadata::callee_locator_t> potential_ids;
       potential_ids.reserve(potential_decl_ids->size());
       for (auto const &[id, id_qt] : *potential_decl_ids) {
-        potential_ids.insert(id);
+        potential_ids.insert(static_cast<ast::Expression const *>(id));
       }
       context().SetCallMetadata(node, CallMetadata(std::move(potential_ids)));
       qt = type::QualType(type::MakeOverloadSet(member_types), quals);

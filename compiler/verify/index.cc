@@ -190,13 +190,21 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       qt = type::QualType::Error();
     } else {
       absl::flat_hash_set<type::Function const *> member_types;
-      ast::Expression const *resolved_call;
-      for (auto const *overload : metadata.overloads()) {
-        if (auto qts = ModuleFor(overload)
+      CallMetadata::callee_locator_t resolved_call =
+          static_cast<ast::Expression const *>(nullptr);
+      for (auto overload : metadata.overloads()) {
+        if (auto *info = overload.get_if<module::Module::SymbolInformation>()) {
+          // Must be callable because we're looking at overloads for operators
+          // which have previously been type-checked to ensure callability.
+          member_types.insert(
+              &info->qualified_type.type().as<type::Function>());
+          resolved_call = overload;
+        } else if (auto qts =
+                       ModuleFor(overload.get<ast::Expression>())
                            ->as<CompiledModule>()
                            .context()
-                           .maybe_qual_type(overload);
-            not qts.empty()) {
+                           .maybe_qual_type(overload.get<ast::Expression>());
+                   not qts.empty()) {
           ASSIGN_OR(continue, auto qt, qts[0]);
           // Must be callable because we're looking at overloads for operators
           // which have previously been type-checked to ensure callability.

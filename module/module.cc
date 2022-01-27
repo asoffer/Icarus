@@ -14,11 +14,6 @@ BasicModule::ExportedDeclarationIds(std::string_view name) const {
   return iter->second;
 }
 
-absl::Span<Module::SymbolInformation const> BasicModule::Exported(
-    std::string_view name) {
-  return {};
-}
-
 // TODO: Add a version of this function that also gives the declarations that
 // are inaccessible. Particularly interesting would be the case of an overlaod
 // set mixing constant and non-constants. It should also be an error to

@@ -285,7 +285,7 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
         .context = &s_mod.context(),
     });
     if (auto const *member = s->constant(node->member_name())) {
-      absl::flat_hash_set<ast::Expression const *> ids;
+      absl::flat_hash_set<CallMetadata::callee_locator_t> locs;
 
       if (c.diag().num_consumed() != 0) {
         c.resources().module->set_dependent_module_with_errors();
@@ -300,10 +300,10 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
         }
         for (auto const &id : decl.ids()) {
           if (id.name() != node->member_name()) { continue; }
-          ids.insert(&id);
+          locs.insert(static_cast<ast::Expression const *>(&id));
         }
       }
-      c.context().SetCallMetadata(node, CallMetadata(std::move(ids)));
+      c.context().SetCallMetadata(node, CallMetadata(std::move(locs)));
       return c.context().set_qual_type(node,
                                        type::QualType::Constant(member->type));
     }
@@ -499,8 +499,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         auto const *b = possibly_generic_block.get_if<type::Block>();
 
         context().SetCallMetadata(
-            node, CallMetadata(absl::flat_hash_set<ast::Expression const *>{
-                      block_node}));
+            node,
+            CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
+                static_cast<ast::Expression const *>(block_node)}));
 
         return context().set_qual_type(
             node,

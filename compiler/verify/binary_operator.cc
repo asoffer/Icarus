@@ -116,19 +116,25 @@ type::QualType VerifyOperatorOverload(
   if (metadata.overloads().empty()) { return type::QualType::Error(); }
 
   absl::flat_hash_set<type::Function const *> member_types;
-  ast::Expression const *resolved_call = nullptr;
-  for (auto const *overload : metadata.overloads()) {
-    if (auto qts =
-            ModuleFor(overload)->as<CompiledModule>().context().maybe_qual_type(
-                overload);
-        not qts.empty()) {
-      ASSIGN_OR(continue, auto qt, qts[0]);
-      // Must be callable because we're looking at overloads for operators which
-      // have previously been type-checked to ensure callability.
-      auto &c = qt.type().as<type::Function>();
-      member_types.insert(&c);
-      resolved_call = overload;
+  CallMetadata::callee_locator_t resolved_call =
+      static_cast<ast::Expression const *>(nullptr);
+  for (auto overload : metadata.overloads()) {
+    type::QualType qt;
+    if (auto const *e = overload.get_if<ast::Expression>()) {
+      if (auto qts =
+              ModuleFor(e)->as<CompiledModule>().context().maybe_qual_type(e);
+          not qts.empty()) {
+        ASSIGN_OR(continue, qt, qts[0]);
+      }
+    } else {
+      qt = overload.get<module::Module::SymbolInformation>()->qualified_type;
     }
+
+    // Must be callable because we're looking at overloads for operators
+    // which have previously been type-checked to ensure callability.
+    auto &c = qt.type().as<type::Function>();
+    member_types.insert(&c);
+    resolved_call = overload;
   }
 
   tv.context().SetCallMetadata(node, CallMetadata(resolved_call));
