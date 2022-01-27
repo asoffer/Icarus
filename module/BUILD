@@ -18,6 +18,28 @@ cc_library(
 )
 
 cc_library(
+    name = "builtin",
+    hdrs = ["builtin.h"],
+    deps = [
+        ":module",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+
+cc_test(
+    name = "builtin_test",
+    srcs = ["builtin_test.cc"],
+    deps = [
+        ":builtin",
+        "//type:primitive",
+        "//type:qual_type",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "importer",
     hdrs = ["importer.h"],
     srcs = ["importer.cc"],
