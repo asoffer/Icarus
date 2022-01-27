@@ -16,14 +16,7 @@
 namespace compiler {
 namespace {
 
-// TODO: Checking if an AST node is a builtin is problematic because something
-// as simple as
-// ```
-// f ::= bytes
-// f(int)
-// ```
-// breaks.
-//
+// TODO: Replace with `builtin` module.
 void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
                      absl::Span<ast::Call::Argument const> args,
                      ir::PartialResultBuffer &out) {
@@ -115,43 +108,11 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
                                       .result = c.current().subroutine->Reserve()}));
       return;
 
-    case ir::BuiltinFn::Which::Bytes: {
-      auto const &fn_type = *ir::Fn(ir::BuiltinFn::Bytes()).type();
-      ir::OutParams outs  = c.OutParams(fn_type.return_types());
-      ir::Reg reg         = outs[0];
-      ir::PartialResultBuffer buffer;
-      c.EmitToBuffer(&args[0].expr(), buffer);
-      c.current_block()->Append(
-          ir::CallInstruction(&fn_type, ir::Fn{ir::BuiltinFn::Bytes()},
-                              std::move(buffer), std::move(outs)));
-
-      // TODO: Return an integer
-      out.append(reg);
-      return;
-    } break;
-
-    case ir::BuiltinFn::Which::Alignment: {
-      // TODO: Return an integer
-      auto const &fn_type = *ir::Fn(ir::BuiltinFn::Alignment()).type();
-      ir::OutParams outs  = c.OutParams(fn_type.return_types());
-      ir::Reg reg         = outs[0];
-      ir::PartialResultBuffer buffer;
-      c.EmitToBuffer(&args[0].expr(), buffer);
-      c.current_block()->Append(
-          ir::CallInstruction(&fn_type, ir::Fn{ir::BuiltinFn::Alignment()},
-                              std::move(buffer), std::move(outs)));
-      out.append(reg);
-      return;
-    } break;
-
     case ir::BuiltinFn::Which::DebugIr:
       c.current_block()->Append(
           ir::DebugIrInstruction{.fn = c.current().subroutine});
       return;
 
-    case ir::BuiltinFn::Which::Abort:
-      c.current_block()->Append(AbortInstruction{});
-      return;
     case ir::BuiltinFn::Which::CompilationError: UNREACHABLE();
   }
   UNREACHABLE();

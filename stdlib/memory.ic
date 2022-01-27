@@ -7,14 +7,14 @@ cstr ::= import "c/string.ic"
 allocate ::= (T :: type) -> *T {
   // TODO: This should get moved to cstdlib.ic
   malloc ::= foreign("malloc", u64 -> *T)
-  return malloc(T'bytes)
+  return malloc(builtin.bytes(T))
 }
 
 #{export}
 allocate ::= (T :: type, l: u64) -> []T {
   // TODO: This should get moved to cstdlib.ic
   malloc ::= foreign("malloc", u64 -> [*]T)
-  return slice(malloc(T'bytes * l), l)
+  return slice(malloc(builtin.bytes(T) * l), l)
 }
 
 #{export}
@@ -56,4 +56,4 @@ Copy ::= (from: []byte, to: []byte) -> () {
 
 // TODO: If we don't require length to be a multiple of alignment, we need to account for that here.
 #{export}
-to_raw ::= (s: ~[]`T) => slice(s.data as [*]byte, s.length * T'bytes)
+to_raw ::= (s: ~[]`T) => slice(s.data as [*]byte, s.length * builtin.bytes(T))

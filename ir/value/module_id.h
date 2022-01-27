@@ -24,6 +24,10 @@ struct ModuleId : base::Extend<ModuleId, 1>::With<base::AbslHashExtension,
   constexpr ModuleId() : id_(std::numeric_limits<size_t>::max()) {}
   constexpr explicit ModuleId(size_t n) : id_(n) {}
 
+  static constexpr ModuleId Builtin() {
+    return ModuleId(std::numeric_limits<size_t>::max() - 1);
+  }
+
   static constexpr ModuleId Invalid() {
     return ModuleId(std::numeric_limits<size_t>::max());
   }

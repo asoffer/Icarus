@@ -14,7 +14,7 @@ array ::= struct (T :: type) {
 
   #{export}
   make ::= (fill: T, len: u64) -> array(T) {
-    buffer := memory.allocate(byte, len * T'bytes)
+    buffer := memory.allocate(byte, len * builtin.bytes(T))
     core.for (0, len as i64) do [i: i64] {
       (buffer.data as [*]T)[i] = init fill
     }

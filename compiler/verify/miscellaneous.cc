@@ -183,4 +183,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   return context().set_qual_type(node, type::QualType::NonConstant(type::Void));
 }
 
+absl::Span<type::QualType const> TypeVerifier::VerifyType(
+    ast::Builtin const *node) {
+  return context().set_qual_type(node, type::QualType::Constant(type::Module));
+}
+
 }  // namespace compiler

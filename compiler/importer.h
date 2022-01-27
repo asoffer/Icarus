@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "compiler/builtin_module.h"
 #include "compiler/context.h"
 #include "compiler/module.h"
 #include "compiler/work_item.h"
@@ -22,8 +23,11 @@ struct FileImporter : module::Importer {
                         diagnostic::DiagnosticConsumer* diagnostic_consumer,
                         std::vector<std::string> module_lookup_paths)
       : work_set_(ASSERT_NOT_NULL(work_set)),
+        builtin_(MakeBuiltinModule()),
+        modules_by_id_{{ir::ModuleId::Builtin(), &builtin_}},
         diagnostic_consumer_(ASSERT_NOT_NULL(diagnostic_consumer)),
         module_lookup_paths_(std::move(module_lookup_paths)) {}
+
   ~FileImporter() override {}
 
   ir::ModuleId Import(module::Module const* requestor,
@@ -61,7 +65,8 @@ struct FileImporter : module::Importer {
   WorkSet* work_set_;
   absl::flat_hash_map<frontend::CanonicalFileName, std::unique_ptr<ModuleData>>
       modules_;
-  absl::flat_hash_map<ir::ModuleId, CompiledModule*> modules_by_id_;
+  module::BuiltinModule builtin_;
+  absl::flat_hash_map<ir::ModuleId, module::Module*> modules_by_id_;
   base::Graph<module::Module const*> graph_;
   absl::flat_hash_map<module::Module const*, ir::Subroutine>
       subroutine_by_module_;

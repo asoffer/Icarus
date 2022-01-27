@@ -104,4 +104,8 @@ void Compiler::EmitToBuffer(ast::ProgramArguments const *node,
   out.append(ir::Reg::Arg(0));
 }
 
+void Compiler::EmitToBuffer(ast::Builtin const *node,
+                            ir::PartialResultBuffer &out) {
+  out.append(ir::ModuleId::Builtin());
+}
 }  // namespace compiler

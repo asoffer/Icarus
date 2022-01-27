@@ -33,16 +33,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "builtin_fn_test",
-    srcs = ["builtin_fn_test.cc"],
-    deps = [
-        ":builtin_fn",
-        "//type:primitive",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_library(
     name = "char",
     hdrs = ["char.h"],

@@ -102,6 +102,7 @@ cc_library(
     deps = [
         ":context",
         ":module",
+        ":instructions",
         ":resources",
         ":work_graph",
         "//module",

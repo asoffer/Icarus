@@ -117,7 +117,7 @@ struct ExecutionContext {
   void Execute(ir::Fn fn, StackFrame &frame) {
     switch (fn.kind()) {
       case ir::Fn::Kind::Native: CallNative<InstSet>(frame); break;
-      case ir::Fn::Kind::Builtin: CallFn(fn.builtin(), frame); break;
+      case ir::Fn::Kind::Builtin: UNREACHABLE();
       case ir::Fn::Kind::Foreign: CallFn(fn.foreign(), frame); break;
     }
   }
@@ -132,8 +132,6 @@ struct ExecutionContext {
     absl::Cleanup c = [&] { current_frame_ = old; };
     ExecuteBlocks<InstSet>();
   }
-
-  static void CallFn(ir::BuiltinFn fn, StackFrame &frame);
 
   void CallFn(ir::ForeignFn f, StackFrame &frame);
 

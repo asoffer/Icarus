@@ -136,24 +136,6 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
   }
 }
 
-void ExecutionContext::CallFn(ir::BuiltinFn fn, StackFrame &frame) {
-  switch (fn.which()) {
-    case ir::BuiltinFn::Which::Alignment: {
-      type::Type type = frame.get<type::Type>(ir::Reg::Arg(0));
-      auto out        = frame.get<ir::addr_t>(ir::Reg::Out(0));
-      *reinterpret_cast<uint64_t *>(ASSERT_NOT_NULL(out)) =
-          type.alignment(kArchitecture).value();
-    } break;
-    case ir::BuiltinFn::Which::Bytes: {
-      type::Type type = frame.get<type::Type>(ir::Reg::Arg(0));
-      auto out        = frame.get<ir::addr_t>(ir::Reg::Out(0));
-      *reinterpret_cast<uint64_t *>(ASSERT_NOT_NULL(out)) =
-          type.bytes(kArchitecture).value();
-    } break;
-    default: NOT_YET();
-  }
-}
-
 void ExecutionContext::Load(ir::Reg result, ir::addr_t addr,
                             core::Bytes num_bytes) {
   LOG("Load", "%s %p %u", result, addr, num_bytes.value());

@@ -520,6 +520,19 @@ struct BlockNode : ParameterizedExpression, WithScope {
   ScopeNode *parent_ = nullptr;
 };
 
+// Represents the identifier `builtin` which can be accessed to get any builtin
+// (language-supported) functions/values.
+struct Builtin : Expression {
+  explicit Builtin(frontend::SourceRange const &range)
+      : Expression(IndexOf<Builtin>(), range) {}
+  void DebugStrAppend(std::string *out, size_t indent) const override {
+    out->append("builtin");
+  }
+  void Initialize(Node::Initializer &initializer) override {
+    scope_ = initializer.scope;
+  }
+};
+
 // Represents a builtin (possibly generic) function. Examples include `foreign`,
 // which declares a foreign-function by name, or `opaque` which constructs a new
 // type with no known size or alignment (users can pass around pointers to

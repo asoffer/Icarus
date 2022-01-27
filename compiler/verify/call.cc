@@ -355,93 +355,6 @@ type::QualType VerifyOpaqueCall(
   return qt;
 }
 
-type::QualType VerifyBytesCall(
-    CompilationDataReference data, frontend::SourceView view,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
-  auto qt = type::QualType::Constant(
-      ir::Fn(ir::BuiltinFn::Bytes()).type()->return_types()[0]);
-
-  if (not arg_vals.named().empty()) {
-    data.diag().Consume(BuiltinError{.view = view,
-                                     .message =
-                                         "Built-in function `bytes` cannot be "
-                                         "called with named arguments."});
-    qt.MarkError();
-  } else {
-    if (size_t size = arg_vals.size(); size != 1u) {
-      data.diag().Consume(BuiltinError{
-          .view    = view,
-          .message = absl::StrCat("Built-in function `bytes` takes exactly "
-                                  "one argument (You provided ",
-                                  size, ")."),
-      });
-
-      qt.MarkError();
-    } else if (arg_vals[0].type() != type::Type_) {
-      data.diag().Consume(BuiltinError{
-          .view = view,
-          .message =
-              absl::StrCat("Built-in function `bytes` must take a single "
-                           "argument of type `type` (You provided a(n) ",
-                           arg_vals[0].type().to_string(), ").")});
-      qt.MarkError();
-    }
-  }
-
-  return qt;
-}
-
-type::QualType VerifyAlignmentCall(
-    CompilationDataReference data, frontend::SourceView view,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
-  auto qt = type::QualType::Constant(
-      ir::Fn(ir::BuiltinFn::Alignment()).type()->return_types()[0]);
-
-  if (not arg_vals.named().empty()) {
-    data.diag().Consume(
-        BuiltinError{.view    = view,
-                     .message = "Built-in function `alignment` cannot be "
-                                "called with named arguments."});
-    qt.MarkError();
-  } else {
-    if (size_t size = arg_vals.size(); size != 1u) {
-      data.diag().Consume(BuiltinError{
-          .view    = view,
-          .message = absl::StrCat("Built-in function `alignment` takes exactly "
-                                  "one argument (You provided ",
-                                  size, ")."),
-      });
-
-      qt.MarkError();
-    } else if (arg_vals[0].type() != type::Type_) {
-      data.diag().Consume(BuiltinError{
-          .view = view,
-          .message =
-              absl::StrCat("Built-in function `alignment` must take a single "
-                           "argument of type `type` (You provided a(n) ",
-                           arg_vals[0].type().to_string(), ").")});
-      qt.MarkError();
-    }
-  }
-
-  return qt;
-}
-
-type::QualType VerifyAbortCall(
-    CompilationDataReference data, frontend::SourceView view,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
-  auto qt = type::QualType::NonConstant(type::Void);
-
-  if (not arg_vals.empty()) {
-    data.diag().Consume(BuiltinError{
-        .view    = view,
-        .message = "Built-in function `abort` takes no arguments."});
-    qt.MarkError();
-  }
-
-  return qt;
-}
-
 }  // namespace
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
@@ -482,15 +395,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       } break;
       case ir::BuiltinFn::Which::Opaque: {
         qt = VerifyOpaqueCall(*this, SourceViewFor(b), arg_vals);
-      } break;
-      case ir::BuiltinFn::Which::Bytes: {
-        qt = VerifyBytesCall(*this, SourceViewFor(b), arg_vals);
-      } break;
-      case ir::BuiltinFn::Which::Alignment: {
-        qt = VerifyAlignmentCall(*this, SourceViewFor(b), arg_vals);
-      } break;
-      case ir::BuiltinFn::Which::Abort: {
-        qt = VerifyAbortCall(*this, SourceViewFor(b), arg_vals);
       } break;
       case ir::BuiltinFn::Which::DebugIr: {
         // This is for debugging the compiler only, so there's no need to

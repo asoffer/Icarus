@@ -320,6 +320,8 @@ Lexeme ConsumeWord(SourceLoc &cursor, SourceBuffer const &buffer) {
     return Lexeme(std::make_unique<ast::Terminal>(range, ir::Null()));
   } else if (word == "arguments") {
     return Lexeme(std::make_unique<ast::ProgramArguments>(range));
+  } else if (word == "builtin") {
+    return Lexeme(std::make_unique<ast::Builtin>(range));
   }
 
   if (auto iter = kReservedTypes->find(word); iter != kReservedTypes->end()) {
