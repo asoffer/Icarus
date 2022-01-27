@@ -24,11 +24,11 @@ struct CallMetadata {
   explicit CallMetadata(absl::flat_hash_set<callee_locator_t> overloads)
       : data_(std::move(overloads)) {}
 
-  explicit CallMetadata(std::string_view name, module::BasicModule *mod);
+  explicit CallMetadata(std::string_view name, module::Module *mod);
 
   explicit CallMetadata(
       std::string_view name, ast::Scope const *primary,
-      absl::flat_hash_set<module::BasicModule *> const &modules = {});
+      absl::flat_hash_set<module::Module *> const &modules = {});
 
   void SetResolved(callee_locator_t loc) {
     ASSERT(std::holds_alternative<absl::flat_hash_set<callee_locator_t>>(

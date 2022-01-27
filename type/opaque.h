@@ -12,7 +12,7 @@
 
 namespace type {
 struct Opaque : LegacyType {
-  explicit Opaque(module::BasicModule const *mod)
+  explicit Opaque(module::Module const *mod)
       : LegacyType(IndexOf<Opaque>(),
                    LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 0,
@@ -38,10 +38,10 @@ struct Opaque : LegacyType {
 
   bool IsDefaultInitializable() const { UNREACHABLE(); }
 
-  module::BasicModule const *defining_module() const { return mod_; }
+  module::Module const *defining_module() const { return mod_; }
 
  private:
-  module::BasicModule const *mod_;
+  module::Module const *mod_;
 };
 
 struct OpaqueTypeInstruction
@@ -52,7 +52,7 @@ struct OpaqueTypeInstruction
 
   Type Resolve() const { return Allocate<Opaque>(mod); }
 
-  module::BasicModule const *mod;
+  module::Module const *mod;
   ir::Reg result;
 };
 

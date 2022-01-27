@@ -15,13 +15,13 @@ namespace type {
 namespace {
 
 struct ProvenanceVisitor {
-  using signature = module::BasicModule const *();
+  using signature = module::Module const *();
 
-  module::BasicModule const *operator()(type::Type t) {
+  module::Module const *operator()(type::Type t) {
     return t.visit<ProvenanceVisitor>(*this);
   }
 
-  module::BasicModule const *operator()(auto const *t) {
+  module::Module const *operator()(auto const *t) {
     using type = std::decay_t<decltype(*t)>;
     if constexpr (requires { t->defining_module(); }) {
       return t->defining_module();
@@ -41,7 +41,7 @@ struct ProvenanceVisitor {
 
 // Returns a pointer to the module which defines this type (or null if the type
 // is constructed from entirely built-in types and type-constructors).
-module::BasicModule const *Provenance(Type t) {
+module::Module const *Provenance(Type t) {
   ProvenanceVisitor v;
   return t.visit<ProvenanceVisitor>(v);
 }

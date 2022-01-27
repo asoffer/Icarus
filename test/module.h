@@ -135,9 +135,9 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
 
     ON_CALL(importer, Import(testing::_, testing::Eq(name)))
         .WillByDefault(
-            [id](module::BasicModule const*, std::string_view) { return id; });
+            [id](module::Module const*, std::string_view) { return id; });
     ON_CALL(importer, get(id))
-        .WillByDefault([&imported_mod](ir::ModuleId) -> module::BasicModule& {
+        .WillByDefault([&imported_mod](ir::ModuleId) -> module::Module& {
           return imported_mod;
         });
   }

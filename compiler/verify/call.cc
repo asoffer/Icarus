@@ -503,12 +503,12 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   }
 
   if (auto const *id = node->callee()->if_as<ast::Identifier>()) {
-    absl::flat_hash_set<module::BasicModule *> lookup_modules;
+    absl::flat_hash_set<module::Module *> lookup_modules;
     for (auto const &arg : node->prefix_arguments()) {
       if (auto const *mod =
               type::Provenance(context().qual_types(&arg.expr())[0].type())) {
         // TODO: Remove const_cast. Propagate through Provenance.
-        lookup_modules.insert(const_cast<module::BasicModule *>(mod));
+        lookup_modules.insert(const_cast<module::Module *>(mod));
       }
     }
     CallMetadata metadata(id->name(), node->scope(), std::move(lookup_modules));

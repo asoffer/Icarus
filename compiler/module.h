@@ -6,10 +6,12 @@
 
 namespace compiler {
 
-struct CompiledModule : module::BasicModule {
+struct CompiledModule : module::Module {
   explicit CompiledModule(frontend::SourceBuffer const *buffer,
                           Context *context)
-      : context_(ASSERT_NOT_NULL(context)), buffer_(ASSERT_NOT_NULL(buffer)) {
+      : context_(ASSERT_NOT_NULL(context)),
+        buffer_(ASSERT_NOT_NULL(buffer)),
+        module_(this) {
     context_->set_qt_callback(
         [&](ast::Declaration::Id const *id, type::QualType qt) {
           if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
@@ -57,6 +59,9 @@ struct CompiledModule : module::BasicModule {
     depends_on_module_with_errors_ = true;
   }
 
+  ast::Scope const &scope() const { return module_.body_scope(); }
+  ast::Scope &scope() { return module_.body_scope(); }
+
  private:
   Context *context_;
   frontend::SourceBuffer const *buffer_;
@@ -71,6 +76,8 @@ struct CompiledModule : module::BasicModule {
   // TODO: As we move towards separate compilation in separate processes, this
   // will become irrelevant.
   bool depends_on_module_with_errors_ = false;
+
+  ast::Module module_;
 };
 
 }  // namespace compiler

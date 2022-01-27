@@ -11,9 +11,9 @@ namespace module {
 
 struct MockImporter : Importer {
   MOCK_METHOD(ir::ModuleId, Import,
-              (BasicModule const* requestor, std::string_view module_locator),
+              (Module const* requestor, std::string_view module_locator),
               (override));
-  MOCK_METHOD(BasicModule&, get, (ir::ModuleId id), (override));
+  MOCK_METHOD(Module&, get, (ir::ModuleId id), (override));
 };
 
 }  // namespace module

@@ -16,7 +16,7 @@
 #include "base/ptr_union.h"
 
 namespace module {
-struct BasicModule;
+struct Module;
 }  // namespace module
 
 namespace ast {
@@ -31,7 +31,7 @@ struct Scope : base::Cast<Scope> {
   };
 
   explicit Scope(Kind kind);
-  explicit Scope(module::BasicModule *module);
+  explicit Scope(module::Module *module);
 
   Kind kind() const { return kind_; }
 
@@ -71,19 +71,19 @@ struct Scope : base::Cast<Scope> {
     return parent_ & 1 ? nullptr : reinterpret_cast<Scope *>(parent_);
   }
 
-  module::BasicModule &module() {
+  module::Module &module() {
     ASSERT(parent_ != 0u);
     return parent_ & 1
                ? *ASSERT_NOT_NULL(
-                     reinterpret_cast<module::BasicModule *>(parent_ - 1))
+                     reinterpret_cast<module::Module *>(parent_ - 1))
                : parent()->module();
   }
 
-  module::BasicModule const &module() const {
+  module::Module const &module() const {
     ASSERT(parent_ != 0u);
     return parent_ & 1
                ? *ASSERT_NOT_NULL(
-                     reinterpret_cast<module::BasicModule *>(parent_ - 1))
+                     reinterpret_cast<module::Module *>(parent_ - 1))
                : parent()->module();
   }
 
@@ -140,9 +140,9 @@ struct Scope : base::Cast<Scope> {
     return absl::Span<Declaration::Id const *const>();
   }
 
-  void embed(module::BasicModule *module) { embedded_modules_.insert(module); }
+  void embed(module::Module *module) { embedded_modules_.insert(module); }
 
-  absl::flat_hash_set<module::BasicModule *> const &embedded_modules() const {
+  absl::flat_hash_set<module::Module *> const &embedded_modules() const {
     return embedded_modules_;
   }
 
@@ -160,7 +160,7 @@ struct Scope : base::Cast<Scope> {
   // storing.
   absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       child_decls_;
-  absl::flat_hash_set<module::BasicModule *> embedded_modules_;
+  absl::flat_hash_set<module::Module *> embedded_modules_;
   std::vector<Scope *> executable_descendants_;
 
   // Sequence consisting of pointers to either a declaration or a child scope in

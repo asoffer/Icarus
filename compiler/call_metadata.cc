@@ -12,7 +12,7 @@ namespace {
 // in the scope `primary`, or exported from the modules contained in `modules`.
 absl::flat_hash_set<CallMetadata::callee_locator_t> Overloads(
     std::string_view name, ast::Scope const *primary,
-    absl::flat_hash_set<module::BasicModule *> const &modules) {
+    absl::flat_hash_set<module::Module *> const &modules) {
   absl::flat_hash_set<CallMetadata::callee_locator_t> overloads;
 
   bool only_constants = false;
@@ -50,7 +50,7 @@ absl::flat_hash_set<CallMetadata::callee_locator_t> Overloads(
 }
 
 absl::flat_hash_set<CallMetadata::callee_locator_t> Overloads(
-    std::string_view name, module::BasicModule *module) {
+    std::string_view name, module::Module *module) {
   absl::flat_hash_set<CallMetadata::callee_locator_t> overloads;
   absl::Span symbols = module->Exported(name);
   for (auto const &symbol : symbols) { overloads.insert(&symbol); }
@@ -61,10 +61,10 @@ absl::flat_hash_set<CallMetadata::callee_locator_t> Overloads(
 
 CallMetadata::CallMetadata(
     std::string_view name, ast::Scope const *primary,
-    absl::flat_hash_set<module::BasicModule *> const &modules)
+    absl::flat_hash_set<module::Module *> const &modules)
     : CallMetadata(Overloads(name, primary, modules)) {}
 
-CallMetadata::CallMetadata(std::string_view name, module::BasicModule *mod)
+CallMetadata::CallMetadata(std::string_view name, module::Module *mod)
     : CallMetadata(Overloads(name, mod)) {}
 
 }  // namespace compiler

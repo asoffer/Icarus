@@ -49,7 +49,7 @@ frontend::CanonicalFileName ResolveModulePath(
 
 }  // namespace
 
-ir::ModuleId FileImporter::Import(module::BasicModule const* requestor,
+ir::ModuleId FileImporter::Import(module::Module const* requestor,
                                   std::string_view module_locator) {
   auto file_name = frontend::CanonicalFileName::Make(
       frontend::FileName(std::string(module_locator)));

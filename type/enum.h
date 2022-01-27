@@ -25,7 +25,7 @@ struct Enum : type::LegacyType {
   using underlying_type = uint64_t;
   static type::Type UnderlyingType() { return type::U64; }
 
-  explicit Enum(module::BasicModule const *mod)
+  explicit Enum(module::Module const *mod)
       : LegacyType(IndexOf<Enum>(),
                    LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 1,
@@ -56,10 +56,10 @@ struct Enum : type::LegacyType {
     return it->second;
   }
 
-  module::BasicModule const *defining_module() const { return mod_; }
+  module::Module const *defining_module() const { return mod_; }
 
  private:
-  module::BasicModule const *mod_;
+  module::Module const *mod_;
   Completeness completeness_;
   absl::flat_hash_map<std::string, underlying_type> vals_;
   absl::flat_hash_map<underlying_type, std::string_view> members_;

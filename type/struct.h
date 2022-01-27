@@ -36,7 +36,7 @@ struct Struct : LegacyType {
     uint8_t is_copyable : 1;
     uint8_t is_movable : 1;
   };
-  Struct(module::BasicModule const *mod, Options options);
+  Struct(module::Module const *mod, Options options);
 
   ir::Fn Destructor() const;
 
@@ -59,7 +59,7 @@ struct Struct : LegacyType {
   Field const *field(std::string_view name) const;
   Field const *constant(std::string_view name) const;
 
-  module::BasicModule const *defining_module() const { return mod_; }
+  module::Module const *defining_module() const { return mod_; }
 
   core::Bytes offset(size_t n, core::Arch const &arch) const;
 
@@ -67,8 +67,8 @@ struct Struct : LegacyType {
   absl::Span<Field const> constants() const { return constants_; }
   size_t index(std::string_view name) const;
 
-  module::BasicModule const *mod_ = nullptr;
-  Completeness completeness_      = Completeness::Incomplete;
+  module::Module const *mod_ = nullptr;
+  Completeness completeness_ = Completeness::Incomplete;
 
   // TODO: Make these private.
   std::vector<ir::Hashtag> hashtags;
@@ -185,14 +185,15 @@ struct AllocateStructInstruction
     : base::Extend<AllocateStructInstruction>::With<
           base::BaseSerializeExtension, base::BaseTraverseExtension,
           ir::DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "%2$s = allocate-struct %1$s";
+  static constexpr std::string_view kDebugFormat =
+      "%2$s = allocate-struct %1$s";
 
   Type Resolve() const {
     return Allocate<Struct>(
         mod, Struct::Options{.is_copyable = true, .is_movable = true});
   }
 
-  module::BasicModule const *mod;
+  module::Module const *mod;
   ir::Reg result;
 };
 

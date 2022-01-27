@@ -224,7 +224,7 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
   // clear that node is supposed to be a member so we should emit an error but
   // carry on assuming that node is an element of that enum type.
   if (auto *e = evaled_type.if_as<type::Enum>()) {
-    auto &e_mod = const_cast<module::BasicModule *>(e->defining_module())
+    auto &e_mod = const_cast<module::Module *>(e->defining_module())
                       ->as<compiler::CompiledModule>();
     ast::EnumLiteral const *enum_lit =
         ASSERT_NOT_NULL(e_mod.context().AstLiteral(e));
@@ -250,7 +250,7 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
   }
 
   if (auto *f = evaled_type.if_as<type::Flags>()) {
-    auto &f_mod = const_cast<module::BasicModule *>(f->defining_module())
+    auto &f_mod = const_cast<module::Module *>(f->defining_module())
                       ->as<compiler::CompiledModule>();
     ast::EnumLiteral const *flags_lit =
         ASSERT_NOT_NULL(f_mod.context().AstLiteral(f));
@@ -276,7 +276,7 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
   }
 
   if (auto *s = evaled_type.if_as<type::Struct>()) {
-    auto &s_mod = const_cast<module::BasicModule *>(s->defining_module())
+    auto &s_mod = const_cast<module::Module *>(s->defining_module())
                       ->as<compiler::CompiledModule>();
     auto const *struct_lit = s_mod.context().AstLiteral(s);
     c.EnsureComplete({
@@ -325,7 +325,7 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
 type::QualType AccessStructMember(CompilationDataReference data,
                                   ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
-  auto &s_mod = const_cast<module::BasicModule *>(s->defining_module())
+  auto &s_mod = const_cast<module::Module *>(s->defining_module())
                     ->as<compiler::CompiledModule>();
   auto const *struct_lit = ASSERT_NOT_NULL(s_mod.context().AstLiteral(s));
   data.EnsureComplete({

@@ -26,7 +26,7 @@ struct Flags : type::LegacyType {
   using underlying_type = uint64_t;
   static type::Type UnderlyingType() { return type::U64; }
 
-  Flags(module::BasicModule const *mod)
+  Flags(module::Module const *mod)
       : LegacyType(IndexOf<Flags>(),
                    LegacyType::Flags{.is_default_initializable = 1,
                                      .is_copyable              = 1,
@@ -60,7 +60,7 @@ struct Flags : type::LegacyType {
     return it->second;
   }
 
-  module::BasicModule const *defining_module() const { return mod_; }
+  module::Module const *defining_module() const { return mod_; }
 
   bool IsDefaultInitializable() const { return false; }
 
@@ -69,7 +69,7 @@ struct Flags : type::LegacyType {
   Completeness completeness_;
 
  private:
-  module::BasicModule const *mod_;
+  module::Module const *mod_;
   // TODO combine these into a single bidirectional map?
   absl::flat_hash_map<std::string, underlying_type> vals_;
   absl::flat_hash_map<underlying_type, std::string> members_;

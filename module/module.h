@@ -40,28 +40,6 @@ struct Module : base::Cast<Module> {
       std::string_view name) = 0;
 };
 
-// TODO: Rename this and merge with CompiledModule.
-struct BasicModule : Module {
-  explicit BasicModule() : module_(this) {}
-
-  // Pointers to modules are passed around, so moving a module is not safe.
-  BasicModule(BasicModule &&) noexcept = delete;
-  BasicModule &operator=(BasicModule &&) noexcept = delete;
-
-  // Copying a module is implicitly disallowed as modules hold move-only types.
-  // We explicitly delete them to improve error messages, and because even if
-  // they were not implicitly deleted, we would not want modules to be copyable
-  // anyway for reasons similar to those explaining why we disallow moves.
-  BasicModule(BasicModule const &) = delete;
-  BasicModule &operator=(BasicModule const &) = delete;
-
-  ast::Scope const &scope() const { return module_.body_scope(); }
-  ast::Scope &scope() { return module_.body_scope(); }
-
- protected:
-  ast::Module module_;
-};
-
 }  // namespace module
 
 #endif  // ICARUS_MODULE_MODULE_H

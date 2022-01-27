@@ -6,7 +6,7 @@
 
 namespace compiler {
 
-module::BasicModule *ModuleFor(ast::Node const *node) {
+module::Module *ModuleFor(ast::Node const *node) {
   return &ASSERT_NOT_NULL(ASSERT_NOT_NULL(node)->scope())->module();
 }
 
