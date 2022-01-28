@@ -332,7 +332,7 @@ void CopyAssignmentEmitter::EmitAssignment(
       .value    = current_block()->Append(ir::LoadInstruction{
           .type   = type::Slice::LengthType(),
           .addr   = current_block()->Append(type::SliceLengthInstruction{
-              .slice  = to,
+              .slice  = from->get<ir::addr_t>(),
               .result = current().subroutine->Reserve(),
           }),
           .result = current().subroutine->Reserve(),
