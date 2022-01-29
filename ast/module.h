@@ -40,6 +40,10 @@ struct Module : Node {
     return base::PtrSpan<Node const>(stmts_.begin() + prev_size, stmts_.end());
   }
 
+  void insert(std::unique_ptr<ast::Node> node) {
+    stmts_.push_back(std::move(node));
+  }
+
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
   void DebugStrAppend(std::string *out, size_t indent) const override {

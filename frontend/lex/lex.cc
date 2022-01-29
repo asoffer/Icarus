@@ -4,6 +4,11 @@
 
 #include "frontend/lex/char_range.h"
 
+// TODO: The lexer's error messages do not refer to the source locations at
+// which the errors are encountered yet.
+
+// TODO: Parsing for character literals, numbers, etc. Has not been done yet.
+
 namespace frontend {
 namespace {
 

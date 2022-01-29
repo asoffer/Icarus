@@ -1,16 +1,9 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "parse_rule",
-    hdrs = ["parse_rule.h"],
-    deps = [
-        "//ast:node",
-        "//base:no_destructor",
-        "//diagnostic/consumer",
-        "//frontend/lex:tag",
-        "@com_google_absl//absl/types:span",
-    ],
-    test_deps = None,
+    name = "lexeme",
+    hdrs = ["lexeme.h"],
+    deps = ["//base:debug"],
 )
 
 cc_library(
@@ -18,32 +11,21 @@ cc_library(
     hdrs = ["parse.h"],
     srcs = ["parse.cc"],
     deps = [
-        ":parse_rule",
+        ":lexeme",
         "//ast:ast",
-        "//ast:ast_fwd",
-        "//base:global",
+        "//ast:module",
         "//diagnostic/consumer",
-        "//frontend/lex:lex",
-        "//frontend/lex:tagged_node",
-        "//frontend/lex:token",
-        "//frontend/source:buffer",
-        "//frontend/source:view",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/types:span",
     ],
-    test_deps = None,
 )
 
 cc_binary(
     name = "parse_fuzz_test",
     srcs = ["parse_fuzz_test.cc"],
     deps = [
+        "//frontend/lex",
         ":parse",
         "//diagnostic/consumer:trivial",
-        "//frontend/source:buffer",
     ],
     copts = ["-fsanitize=fuzzer"],
     linkopts = ["-fsanitize=fuzzer"],

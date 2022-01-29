@@ -10,9 +10,7 @@
 namespace ast {
 
 struct Expression : Node {
-  Expression(int8_t which,
-             frontend::SourceRange const &range = frontend::SourceRange())
-      : Node(which, range) {}
+  Expression(int8_t which, std::string_view range) : Node(which, range) {}
 
   Expression(Expression &&) noexcept      = default;
   Expression(Expression const &) noexcept = default;
@@ -24,7 +22,7 @@ struct Expression : Node {
   absl::flat_hash_set<ir::Hashtag> hashtags;
 
   // Add an extra layer of parentheses around this one.
-  void wrap_parentheses(frontend::SourceRange const &range) {
+  void wrap_parentheses(std::string_view range) {
     parentheses_.push_back(range);
   }
 
@@ -34,7 +32,7 @@ struct Expression : Node {
  private:
   // Source locations of layers of parentheses. Earlier entries are inner
   // expressions.
-  std::vector<frontend::SourceRange> parentheses_;
+  std::vector<std::string_view> parentheses_;
 };
 
 }  // namespace ast

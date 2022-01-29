@@ -2,21 +2,15 @@
 #define ICARUS_FRONTEND_PARSE_H
 
 #include <memory>
-#include <vector>
 
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
-#include "ast/node.h"
-#include "diagnostic/consumer/consumer.h"
-#include "frontend/source/source.h"
-
-ABSL_DECLARE_FLAG(bool, debug_parser);
+#include "absl/types/span.h"
+#include "ast/module.h"
+#include "frontend/lexeme.h"
 
 namespace frontend {
 
-std::vector<std::unique_ptr<ast::Node>> Parse(
-    SourceBuffer& buffer, diagnostic::DiagnosticConsumer& diag,
-    size_t chunk = 0);
+std::unique_ptr<ast::Module> ParseModule(absl::Span<Lexeme const> lexemes);
+
 }  // namespace frontend
 
 #endif  // ICARUS_FRONTEND_PARSE_H

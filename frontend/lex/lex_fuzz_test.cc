@@ -1,10 +1,7 @@
-#include <cstdint>
-#include <iostream>
-#include <string>
+#include <string_view>
 
 #include "diagnostic/consumer/trivial.h"
 #include "frontend/lex/lex.h"
-#include "test/fuzz.h"
 
 extern "C" int LLVMFuzzerTestOneInput(uint8_t const* data, size_t length) {
   diagnostic::TrivialConsumer diag;

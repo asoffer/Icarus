@@ -14,8 +14,9 @@ cc_library(
     srcs = ["lex.cc"],
     deps = [
         ":char_range",
-        "//base:debug",
+        "//frontend:lexeme",
         "//diagnostic/consumer",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -26,9 +27,21 @@ cc_binary(
         ":lex",
         "//diagnostic/consumer:trivial",
         "//frontend/source:buffer",
-        "//test:fuzz",
     ],
     copts = ["-fsanitize=fuzzer"],
     linkopts = ["-fsanitize=fuzzer"],
     testonly = True,
+)
+
+cc_library(
+    name = "operators",
+    hdrs = ["operators.h"],
+    textual_hdrs = ["operators.xmacro.h"],
+    deps = [":tag", "//base:debug"],
+)
+
+cc_library(
+    name = "tag",
+    hdrs = ["tag.h"],
+    deps = [],
 )
