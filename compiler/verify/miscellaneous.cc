@@ -125,7 +125,11 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   std::vector<ir::ScopeContext::block_type> blocks;
   blocks.reserve(node->blocks().size());
   for (auto const &block : node->blocks()) {
-    type::Type t   = VerifyType(&block)[0].type();
+    auto qt        = VerifyType(&block)[0];
+    if (qt.HasErrorMark()) {
+      return context().set_qual_type(node, type::QualType::Error());
+    }
+    type::Type t   = qt.type();
     auto *as_block = t.if_as<type::Block>();
     using ptr_union_type =
         base::PtrUnion<type::Block const, type::Generic<type::Block> const>;

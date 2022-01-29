@@ -35,7 +35,7 @@ diagnostic::DiagnosticMessage UncallableWithArguments::ToMessage() const {
         items.push_back(
             absl::StrCat(callable_type->to_string(),
                          " -- The following parameters do not have default "
-                         "arguments and are not provided at the call-site:",
+                         "arguments and are not provided at the call-site: ",
                          absl::StrJoin(names, ", ")));
       } else if constexpr (type == base::meta<call_error::TypeMismatch>) {
         std::string param_str;

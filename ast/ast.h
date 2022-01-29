@@ -1124,18 +1124,12 @@ struct ScopeLiteral : ParameterizedExpression, WithScope {
 
 // ScopeNode:
 //
-// Represents the usage of a scope such as `if`, `while`, or any other
-// user-defined scope. This encompasses all blocks (e.g., in the case of `if`,
-// it encompasses the `then` and `else` blocks if they are present.
+// Represents the usage of a user-defined scope.
 //
 // Examples:
 //  ```
-//  if (condition1) then {
-//    do_something()
-//  } else if (condition2) then {
-//    do_something_else()
-//  } else {
-//    do_third_thing()
+//  for (0, 100) do [i: i64] {
+//    do_something(i)
 //  }
 //  ```
 //
@@ -1184,6 +1178,7 @@ struct ScopeNode : Expression {
     return std::move(blocks);
   }
 
+  ScopeNode const * parent_;
   std::optional<Label> label_;
   std::unique_ptr<Expression> name_;
   std::vector<Call::Argument> args_;
