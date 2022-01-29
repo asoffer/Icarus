@@ -1,57 +1,62 @@
 #include "frontend/lex/lex.h"
 
-#include <cctype>
-#include <cmath>
+#include <utility>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/container/node_hash_set.h"
-#include "absl/status/statusor.h"
-#include "ast/ast.h"
-#include "base/meta.h"
-#include "frontend/lex/numbers.h"
-#include "frontend/lex/operators.h"
-#include "frontend/lex/syntax.h"
-#include "ir/value/builtin_fn.h"
-#include "ir/value/integer.h"
-#include "ir/value/slice.h"
-#include "type/primitive.h"
+#include "frontend/lex/char_range.h"
 
 namespace frontend {
 namespace {
 
-absl::node_hash_set<std::string> GlobalStringTable;
+// Lexer will not process more than 1 terabyte of data. The precise value here
+// is chosen somewhat arbitrarily. We need a limit but do not expect files this
+// large in practice anyway.
+constexpr size_t kMaxLexableBytes = uint64_t{1024} * 1024 * 1024 * 1024;
 
-struct NumberParsingFailure {
+struct MaxLexableBytesExceeded {
   static constexpr std::string_view kCategory = "lex";
-  static constexpr std::string_view kName     = "number-parsing-failure";
+  static constexpr std::string_view kName     = "max-lexable-bytes-exceeded";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    std::string message;
-    switch (error) {
-      case NumberParsingError::kUnknownBase:
-        message = "Unknown base for numeric literal.";
-        break;
-      case NumberParsingError::kTooManyDots:
-        message = "Too many `.` characters in numeric literal.";
-        break;
-      case NumberParsingError::kNoDigits:
-        message = "No digits in numeric literal.";
-        break;
-      case NumberParsingError::kInvalidDigit:
-        message = "Invalid digit encountered in numeric literal.";
-        break;
-      case NumberParsingError::kTooLarge:
-        message = "Numeric literal is too large.";
-        break;
-    }
-
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text(message),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::Text("Lexer can only process at most %u bytes but the "
+                         "provided input has %u bytes.",
+                         kMaxLexableBytes, length));
+  }
+  size_t length;
+};
+
+struct HashFollowedByWhitespace {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "max-lexable-bytes-exceeded";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Hash `#` must not be followed by whitespace."));
+  }
+};
+
+struct InvalidEscapedCharacterLiteral {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName = "invalid-escaped-character-literal";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Invalid escaped character literal."));
+  }
+};
+
+struct ExpectedCharacterLiteralDelimiter {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName =
+      "expected-character-literal-delimiter";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Expected %s character literal delimiter `'`.",
+                         opening ? "opening" : "closing"));
   }
 
-  NumberParsingError error;
-  SourceRange range;
+  bool opening;
 };
 
 struct UnprintableSourceCharacter {
@@ -59,139 +64,74 @@ struct UnprintableSourceCharacter {
   static constexpr std::string_view kName     = "unprintable-source-character";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Encountered unprintable character '\\x%02x' "
-                         "encountered in source.",
-                         value),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+    return diagnostic::DiagnosticMessage(diagnostic::Text(
+        "Encountered an unprintable source-character (%02x).", character));
   }
-
-  int value;
-  SourceRange range;
+  char character;
 };
 
-struct InvalidSourceCharacter {
+struct InvalidOperator {
   static constexpr std::string_view kCategory = "lex";
-  static constexpr std::string_view kName     = "invalid-source-character";
+  static constexpr std::string_view kName     = "invalid-operator";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(diagnostic::Text("Invalid operator"));
+  }
+};
+
+struct UnmatchedDelimiter {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "unmatched-delimiter";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Invalid character '%c' encountered in source.",
-                         value),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::Text("Unmatched delimiter."));
   }
-
-  char value;
-  SourceRange range;
 };
 
-struct StringLiteralParsingFailure {
-  static constexpr std::string_view kCategory = "lex";
-  static constexpr std::string_view kName = "string-literal-parsing-failure";
-
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    // TODO: Display the contents of the errors.
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Failure to parse string literal: %d error%s.",
-                         errors.size(), errors.size() == 1 ? "" : "s"),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  std::vector<StringLiteralError> errors;
-  SourceRange range;
-};
-
-struct HashtagParsingFailure {
-  static constexpr std::string_view kCategory = "lex";
-  static constexpr std::string_view kName     = "hashtag-parsing-failure";
-
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text(message),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  std::string message;
-  SourceRange range;
-};
-
-struct NonWhitespaceAfterNewlineEscape {
+struct InvalidCharacterFollowingNumber {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName =
-      "non-whitespace-after-newline-escape";
+      "invalid-character-following-number";
 
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Invalid escaped newline."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::Text("Invalid character following number."));
   }
-
-  SourceRange range;
 };
 
-constexpr inline bool IsLower(char c) { return ('a' <= c and c <= 'z'); }
-constexpr inline bool IsUpper(char c) { return ('A' <= c and c <= 'Z'); }
-constexpr inline bool IsDigit(char c) { return ('0' <= c and c <= '9'); }
+struct EndOfLineInStringLiteral {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "eol-in-string-literal";
 
-constexpr inline bool IsAlpha(char c) { return IsLower(c) or IsUpper(c); }
-constexpr inline bool IsAlphaNumeric(char c) {
-  return IsAlpha(c) or IsDigit(c);
-}
-constexpr inline bool IsWhitespace(char c) {
-  return c == ' ' or c == '\t' or c == '\n' or c == '\r';
-}
-constexpr inline bool IsHorizontalWhitespace(char c) {
-  return c == ' ' or c == '\t';
-}
-constexpr inline bool IsAlphaOrUnderscore(char c) {
-  return IsAlpha(c) or (c == '_');
-}
-constexpr inline bool IsAlphaNumericOrUnderscore(char c) {
-  return IsAlphaNumeric(c) or (c == '_');
-}
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(diagnostic::Text(
+        "No closing `\"` for string literal before end of line."));
+  }
+};
 
-SourceCursor NextSimpleWord(SourceCursor &cursor) {
-  return cursor.ConsumeWhile(IsAlphaNumericOrUnderscore);
-}
+struct EndOfFileInStringLiteral {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "eof-in-string-literal";
 
-static base::Global kKeywords =
-    absl::flat_hash_map<std::string_view, std::variant<Operator, Syntax>>{
-        {"import", {Operator::Import}},
-        {"flags", {Syntax::Flags}},
-        {"enum", {Syntax::Enum}},
-        {"struct", {Syntax::Struct}},
-        {"return", {Operator::Return}},
-        {"interface", {Syntax::Interface}},
-        {"as", {Operator::As}},
-        {"copy", {Operator::Copy}},
-        {"init", {Operator::Init}},
-        {"move", {Operator::Move}},
-        {"destroy", {Operator::Destroy}},
-        {"and", {Operator::And}},
-        {"if", {Syntax::If}},
-        {"while", {Syntax::While}},
-        {"or", {Operator::Or}},
-        {"xor", {Operator::Xor}},
-        {"not", {Operator::Not}}};
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(diagnostic::Text(
+        "No closing `\"` for string literal before end of file."));
+  }
+};
 
-// Consumes a character literal represented by a bang (!) followed by one
-// of the following wrapped in single quotation marks:
-// * A single non backslash character,
-// * A backslash and then any character in the set [abfnrtv0!\]
-Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
-  SourceLoc start_loc = cursor;
-  ASSERT(buffer[cursor] == '!');
-  // TODO: This shouldn't be an assert. it should be a genuine error we can
-  // check for.
-  ASSERT(buffer[cursor + Offset(1)] == '\'');
-  cursor += Offset(2);
-  // TODO: Ensure the character is printable.
+std::optional<Lexeme> ConsumeCharLiteral(
+    char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
+  ASSERT(range.size() >= 2);
+  ASSERT(range[0] == '!');
+  ASSERT(range[1] == '\'');
+  char const *p = range.data() + 2;
+
   char c;
-  if (buffer[cursor] == '\\') {
-    cursor += Offset(1);
-    switch (buffer[cursor]) {
+  if (*p == '\\') {
+    ++p;
+    switch (*p) {
       case '\\':
-      case '!': c = buffer[cursor]; break;
       case 'a': c = '\a'; break;
       case 'b': c = '\b'; break;
       case 'f': c = '\f'; break;
@@ -200,401 +140,258 @@ Lexeme ConsumeCharLiteral(SourceLoc &cursor, SourceBuffer const &buffer) {
       case 't': c = '\t'; break;
       case 'v': c = '\v'; break;
       case '0': c = '\0'; break;
-      default: NOT_YET(); break;
-    }
-    cursor += Offset(1);
-  } else {
-    c = buffer[cursor];
-    cursor += Offset(1);
-  }
-  // TODO: This shouldn't be an assert. it should be a genuine error we can
-  // check for.
-  ASSERT(buffer[cursor] == '\'');
-  cursor += Offset(1);
-  return Lexeme(std::make_unique<ast::Terminal>(SourceRange(start_loc, cursor),
-                                                ir::Char(c)));
-}
-
-// Note: The order here is somewhat important. Because we choose the first
-// match, we cannot, for example, put `:` before `::=`.
-static base::Global kOps =
-    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 46>{
-        {{"@", {Operator::At}},           {",", {Operator::Comma}},
-         {"[*]", {Operator::BufPtr}},     {"$", {Operator::ArgType}},
-         {"+=", {Operator::AddEq}},       {"+", {Operator::Add}},
-         {"-=", {Operator::SubEq}},       {"..", {Operator::VariadicPack}},
-         {"->", {Operator::Arrow}},       {"-", {Operator::Sub}},
-         {"*=", {Operator::MulEq}},       {"*", {Operator::Mul}},
-         {"%=", {Operator::ModEq}},       {"%", {Operator::Mod}},
-         {"&=", {Operator::SymbolAndEq}}, {"&", {Operator::SymbolAnd}},
-         {"|=", {Operator::SymbolOrEq}},  {"|", {Operator::SymbolOr}},
-         {"^=", {Operator::SymbolXorEq}}, {"^", {Operator::SymbolXor}},
-         {">>", {Operator::BlockJump}},   {">=", {Operator::Ge}},
-         {">", {Operator::Gt}},           {"::=", {Operator::DoubleColonEq}},
-         {":?", {Operator::TypeOf}},      {"::", {Operator::DoubleColon}},
-         {":=", {Operator::ColonEq}},     {".", {Syntax::Dot}},
-         {"!=", {Operator::Ne}},          {":", {Operator::Colon}},
-         {"<<", {Operator::Yield}},       {"<=", {Operator::Le}},
-         {"<", {Operator::Lt}},           {"==", {Operator::Eq}},
-         {"=>", {Operator::Rocket}},      {"=", {Operator::Assign}},
-         {"'", {Operator::Call}},         {"(", {Syntax::LeftParen}},
-         {")", {Syntax::RightParen}},     {"[", {Syntax::LeftBracket}},
-         {"]", {Syntax::RightBracket}},   {"{", {Syntax::LeftBrace}},
-         {"}", {Syntax::RightBrace}},     {"~", {Operator::Tilde}},
-         {";", {Syntax::Semicolon}},      {"`", {Operator::Backtick}}},
-    };
-
-Lexeme NextOperator(SourceCursor &cursor, SourceBuffer const &buffer) {
-  if (cursor.view().starts_with("--")) {
-    auto range = cursor.remove_prefix(2).range();
-    return Lexeme(std::make_unique<ast::Identifier>(range, ""));
-  }
-
-  for (auto [prefix, x] : *kOps) {
-    if (cursor.view().starts_with(prefix)) {
-      auto range = cursor.remove_prefix(prefix.size()).range();
-      return std::visit([&](auto x) { return Lexeme(x, range); }, x);
-    }
-  }
-
-  SourceLoc loc      = cursor.loc();
-  std::string_view v = cursor.view();
-  ASSERT(buffer[loc] == '!');
-  auto result = ConsumeCharLiteral(loc, buffer);
-  v.remove_prefix((loc - cursor.loc()).value);
-  cursor = SourceCursor(loc, v);
-  return result;
-}
-
-std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
-    SourceCursor &cursor) {
-  SourceRange span;
-  span.begin() = cursor.loc();
-  cursor.remove_prefix(1);
-  // TODO support multi-line comments?
-  switch (cursor.view()[0]) {
-    case '/':  // line comment
-      cursor.ConsumeWhile([](char c) { return c != '\n'; });
-      return std::nullopt;
-    case '=':
-      cursor.remove_prefix(1);
-      span.end() = span.begin() + Offset(2);
-      return std::pair{span, Operator::DivEq};
-    default:
-      span.end() = span.begin() + Offset(1);
-      return std::pair{span, Operator::Div};
-  }
-}
-
-static base::Global kReservedTypes =
-    absl::flat_hash_map<std::string_view, type::Type>{
-        {"bool", type::Bool},       {"char", type::Char},
-        {"i8", type::I8},           {"i16", type::I16},
-        {"i32", type::I32},         {"i64", type::I64},
-        {"u8", type::U8},           {"u16", type::U16},
-        {"u32", type::U32},         {"u64", type::U64},
-        {"f32", type::F32},         {"f64", type::F64},
-        {"integer", type::Integer}, {"type", type::Type_},
-        {"module", type::Module}};
-
-// Consumes as many alpha-numeric or underscore characters as possible, assuming
-// the character under the cursor is an alpha or underscore character. Returns a
-// Lexeme representing either an identifier or the builtin keyword or value for
-// this word.
-Lexeme ConsumeWord(SourceLoc &cursor, SourceBuffer const &buffer) {
-  ASSERT(IsAlphaOrUnderscore(buffer[cursor]) == true);
-
-  // Because we have already verified that the character locateted at `cursor`
-  // is not numeric, it is safe to consume alhpanumeric and underscore
-  // characters.
-  auto [range, word] =
-      buffer.ConsumeChunkWhile(cursor, IsAlphaNumericOrUnderscore);
-
-  if (word == "true") {
-    return Lexeme(std::make_unique<ast::Terminal>(range, true));
-  } else if (word == "false") {
-    return Lexeme(std::make_unique<ast::Terminal>(range, false));
-  } else if (word == "byte") {
-    return Lexeme(std::make_unique<ast::Terminal>(range, type::Byte));
-  } else if (word == "null") {
-    return Lexeme(std::make_unique<ast::Terminal>(range, ir::Null()));
-  } else if (word == "arguments") {
-    return Lexeme(std::make_unique<ast::ProgramArguments>(range));
-  } else if (word == "builtin") {
-    return Lexeme(std::make_unique<ast::Builtin>(range));
-  }
-
-  if (auto iter = kReservedTypes->find(word); iter != kReservedTypes->end()) {
-    return Lexeme(std::make_unique<ast::Terminal>(range, iter->second));
-  }
-
-  if (auto maybe_builtin = ir::BuiltinFn::ByName(word)) {
-    return Lexeme(std::make_unique<ast::BuiltinFn>(range, *maybe_builtin));
-  }
-
-  if (auto iter = kKeywords->find(word); iter != kKeywords->end()) {
-    return std::visit([r = range](auto x) { return Lexeme(x, r); },
-                      iter->second);
-  }
-
-  // TODO: Scope used to be special due it it being a keyword signifying a scope
-  // and the type of such a construct, but this is no longer relevant, so we
-  // don't need to treat it specially.
-  if (word == "scope") { return Lexeme(Syntax::Scope, range); }
-
-  return Lexeme(std::make_unique<ast::Identifier>(range, std::string{word}));
-}
-
-struct StringLiteralLexResult {
-  std::string value;
-  SourceRange range;
-  std::vector<StringLiteralError> errors;
-};
-
-StringLiteralLexResult NextStringLiteral(SourceCursor &cursor) {
-  StringLiteralLexResult result;
-  cursor.remove_prefix(1);
-  bool escaped        = false;
-  int offset          = -1;
-  auto str_lit_cursor = cursor.ConsumeWhile([&](char c) {
-    ++offset;
-    if (not escaped) {
-      switch (c) {
-        case '\\': escaped = true; return true;
-        case '"': return false;
-        // TODO non-printable chars?
-        default: result.value.push_back(c); return true;
-      }
-    }
-
-    escaped = false;
-    switch (c) {
-      case '\\':
-      case '"': result.value.push_back(c); break;
-      case 'a': result.value.push_back('\a'); break;
-      case 'b': result.value.push_back('\b'); break;
-      case 'f': result.value.push_back('\f'); break;
-      case 'n': result.value.push_back('\n'); break;
-      case 'r': result.value.push_back('\r'); break;
-      case 't': result.value.push_back('\t'); break;
-      case 'v': result.value.push_back('\v'); break;
       default: {
-        result.errors.push_back(StringLiteralError{
-            .kind   = StringLiteralError::Kind::kInvalidEscapedChar,
-            .offset = offset,
-        });
+        diagnostic_consumer.Consume(InvalidEscapedCharacterLiteral{});
       } break;
     }
-
-    return true;
-  });
-
-  result.range = str_lit_cursor.range();
-  if (cursor.view().empty()) {
-    result.errors.push_back(StringLiteralError{
-        .kind   = StringLiteralError::Kind::kRunaway,
-        .offset = -1,
-    });
-  } else {
-    cursor.remove_prefix(1);  // Ending '"'
   }
 
-  return result;
-}
-
-absl::StatusOr<Lexeme> NextHashtag(SourceCursor &cursor) {
-  SourceRange span;
-  std::string_view token;
-  if (cursor.view().empty()) {
-    // TODO: use a better error code?
-    return absl::InvalidArgumentError("Nothing after # character.");
-  } else if (cursor.view()[0] == '{') {
-    cursor.remove_prefix(1);
-    auto word_cursor = NextSimpleWord(cursor);
-    token            = std::string_view{word_cursor.view().data() - 1,
-                             word_cursor.view().size() + 2};
-    span             = word_cursor.range();
-
-    if (cursor.view().empty() or cursor.view()[0] != '}') {
-      return absl::InvalidArgumentError(
-          "Missing close brace on system hashtag.");
-    }
-    cursor.remove_prefix(1);
-    span = span.expanded(Offset(1));
-
-    for (auto [name, tag] : ir::BuiltinHashtagsByName) {
-      if (token == name) { return Lexeme(tag, span); }
-    }
-
-    return absl::InvalidArgumentError("Unrecognized system hashtag.");
-  } else if (cursor.view()[0] == '!') {
-    cursor.remove_prefix(1);
-    return absl::InvalidArgumentError("Shebang directives are not supported.");
-  } else {
-    auto word_cursor = NextSimpleWord(cursor);
-    token            = word_cursor.view();
-    span             = word_cursor.range();
-
-    // TODO
-    return absl::InvalidArgumentError(
-        "User-defined hashtags are not yet supported.");
+  ++p;
+  if (*p != '\'') {
+    diagnostic_consumer.Consume(
+        ExpectedCharacterLiteralDelimiter{.opening = false});
+    return std::nullopt;
   }
+
+  size_t length = p - range.data();
+  return Lexeme(Lexeme::Kind::Character, range.extract_prefix(length));
 }
 
-Lexeme ConsumeNumber(SourceLoc &cursor, SourceBuffer const &buffer,
-                     diagnostic::DiagnosticConsumer &diag) {
-  auto [range, number_str] = buffer.ConsumeChunkWhile(cursor, [](char c) {
-    return IsDigit(c)
-           // For hex digits, as well as 0b and 0d prefixes.
-           or ('a' <= c and c <= 'f') or ('A' <= c and c <= 'F') or
-           c == 'o'      // For octal
-           or c == 'x'   // For hexadecimal
-           or c == '_'   // For separators
-           or c == '.';  // For non-integers
-  });
+std::optional<Lexeme> ConsumeOperator(
+    char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
+  ASSERT(range.size() > 0);
+  if (range.size() >= 2 and range[0] == '-' and range[1] == '-') {
+    return Lexeme(Lexeme::Kind::Identifier, range.extract_prefix(2));
+  }
 
-  return std::visit(
-      [&diag, r = range](auto num) {
-        constexpr auto type = base::meta<decltype(num)>;
-        if constexpr (type == base::meta<ir::Integer>) {
-          return Lexeme(std::make_unique<ast::Terminal>(r, num));
-        } else if constexpr (type == base::meta<double>) {
-          return Lexeme(std::make_unique<ast::Terminal>(r, num));
-        } else if constexpr (type == base::meta<NumberParsingError>) {
-          // Even though we could try to be helpful by guessing the type, it's
-          // unlikely to be useful. The value may also be important if it's used
-          // at compile-time (e.g., as an array extent). Generally proceeding
-          // further if we can't lex the input is likely not going to be useful.
-          diag.Consume(NumberParsingFailure{.error = num, .range = r});
-          return Lexeme(std::make_unique<ast::Terminal>(r, ir::Integer{}));
-        } else {
-          static_assert(base::always_false(type));
-        }
-      },
-      ParseNumber(number_str));
+  constexpr std::array kOperators{
+      "@",  ",",   "[*]", "$",  "+=", "+",  "-=", "..", "->", "-",  "*=",
+      "*",  "%=",  "%",   "&=", "&",  "|=", "|",  "^=", "^",  ">>", ">=",
+      ">",  "::=", ":?",  "::", ":=", ".",  "!=", ":",  "<<", "<=", "<",
+      "==", "=>",  "=",   "'",  "~",  ";",  "`",  "/=", "/",
+  };
+
+  for (std::string_view op : kOperators) {
+    if (range.starts_with(op)) {
+      return Lexeme(Lexeme::Kind::Operator, range.extract_prefix(op.size()));
+    }
+  }
+
+  // Delimiters are processed after operators, because some operators contain
+  // (balanced) delimiters and it's easier to search for them first than to
+  // attempt to match them in the parser. The key example here is the unary
+  // operator `[*]`.
+
+  for (char delimiter : {'(', '{', '['}) {
+    if (range[0] == delimiter) {
+      return Lexeme(Lexeme::Kind::LeftDelimiter, range.extract_prefix(1));
+    }
+  }
+
+  for (char delimiter : {')', '}', ']'}) {
+    if (range[0] == delimiter) {
+      return Lexeme(Lexeme::Kind::RightDelimiter, range.extract_prefix(1));
+    }
+  }
+
+  if (range.starts_with("//")) {
+    char const *p = range.data() + 2;
+    while (not IsVerticalWhitespace(*p)) { ++p; }
+    size_t length = p - range.data();
+    return Lexeme(Lexeme::Kind::Comment, range.extract_prefix(length));
+  }
+
+  diagnostic_consumer.Consume(InvalidOperator{});
+  return std::nullopt;
+}
+
+std::optional<Lexeme> ConsumeStringLiteral(
+    char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
+  ASSERT(range.size() != 0);
+  char const *p = range.data();
+  ++p;
+  bool escaped = false;
+  while (p != range.end() and not IsVerticalWhitespace(*p)) {
+    switch (*p) {
+      case '\0': break;
+      case '\\': escaped = not escaped; break;
+      case '"':
+        if (not escaped) { goto end_loop; }
+        [[fallthrough]];
+      default: escaped = false;
+    }
+
+    if (not IsPrintable(*p)) {
+      diagnostic_consumer.Consume(UnprintableSourceCharacter{.character = *p});
+      return std::nullopt;
+    }
+
+    ++p;
+  }
+
+  if (p == range.end() or *p == '\0') {
+    diagnostic_consumer.Consume(EndOfFileInStringLiteral{});
+    return std::nullopt;
+  } else if (IsVerticalWhitespace(*p)) {
+    diagnostic_consumer.Consume(EndOfLineInStringLiteral{});
+    return std::nullopt;
+  }
+
+end_loop:
+  size_t length = p - range.data();
+  return Lexeme(Lexeme::Kind::String, range.extract_prefix(length));
+}
+
+std::optional<Lexeme> ConsumeNumber(
+    char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
+  ASSERT(range.size() != 0);
+  char const *p = range.data();
+  if (range[0] == '0' and range.size() > 1 and
+      (range[1] == 'x' or range[1] == 'o' or range[1] == 'd' or
+       range[1] == 'b')) {
+    p += 2;
+    // Consume any possible sequence of characters that could show up in a
+    // number whether or not they are a valid number, and check for validity
+    // after the fact.
+    while (p != range.end() and (IsHexDigit(*p) or *p == '_' or *p == '.')) {
+      ++p;
+    }
+  } else {
+    while (p != range.end() and (IsDigit(*p) or *p == '_' or *p == '.')) {
+      ++p;
+    }
+  }
+  size_t length = p - range.data();
+  if (p != range.end() and IsAlpha(*p)) {
+    diagnostic_consumer.Consume(InvalidCharacterFollowingNumber{});
+    return std::nullopt;
+  }
+
+  return Lexeme(Lexeme::Kind::Number, range.extract_prefix(length));
+}
+
+std::optional<Lexeme> ConsumeIdentifier(char_range &range) {
+  char const *p = range.data();
+  while (p != range.end() and IsAlphaNumericOrUnderscore(*p)) { ++p; }
+  size_t length = p - range.data();
+  return Lexeme(Lexeme::Kind::Identifier, range.extract_prefix(length));
+}
+
+std::optional<Lexeme> ConsumeOneLexeme(
+    char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
+  ASSERT(range.size() != 0);
+
+  // Remove all non-newline whitespace
+  while (IsHorizontalWhitespace(range[0])) {
+    range.remove_prefix(1);
+    if (range.empty()) {
+      return Lexeme(Lexeme::Kind::EndOfFile, std::string_view(range.data(), 0));
+    }
+  }
+
+  // Non-emptiness invariant should still hold.
+  ASSERT(range.size() != 0);
+
+  char c = range[0];
+  if (IsDigit(c) or c == '.') {
+    return ConsumeNumber(range, diagnostic_consumer);
+  } else if (IsAlphaOrUnderscore(c)) {
+    return ConsumeIdentifier(range);
+  } else if (IsVerticalWhitespace(c)) {
+    return Lexeme(Lexeme::Kind::Newline, range.extract_prefix(1));
+  } else if (not IsPrintable(c)) {
+    range.remove_prefix(1);
+    diagnostic_consumer.Consume(UnprintableSourceCharacter{.character = c});
+    return std::nullopt;
+  }
+  switch (c) {
+    case '"': return ConsumeStringLiteral(range, diagnostic_consumer);
+    case '#': {
+      if (range.size() > 1 and IsWhitespace(range[1])) {
+        diagnostic_consumer.Consume(HashFollowedByWhitespace{});
+        return std::nullopt;
+      }
+      return Lexeme(Lexeme::Kind::Hash, range.extract_prefix(1));
+    }
+    case '!':
+      if (range.size() >= 2 and range[1] == '\'') {
+        return ConsumeCharLiteral(range, diagnostic_consumer);
+      }
+      [[fallthrough]];
+    default: return ConsumeOperator(range, diagnostic_consumer);
+  }
 }
 
 }  // namespace
 
-std::vector<Lexeme> Lex(SourceBuffer &buffer,
-                        diagnostic::DiagnosticConsumer &diag, size_t chunk) {
-  std::vector<Lexeme> result;
-  LexState state(&buffer, diag, chunk);
-  do { result.push_back(NextToken(&state)); } while (not result.back().eof());
-  return result;
-}
+struct LexResultBuilder {
+  explicit LexResultBuilder(LexResult *result,
+                            diagnostic::DiagnosticConsumer *diagnostic_consumer)
+      : lex_result_(*ASSERT_NOT_NULL(result)),
+        diagnostic_consumer_(*ASSERT_NOT_NULL(diagnostic_consumer)) {}
 
-Lexeme NextToken(LexState *state) {
-restart:
-  // Delegate based on the next character in the file stream
-  SourceLoc loc      = state->cursor_.loc();
-  std::string_view v = state->cursor_.view();
-  if (state->cursor_.view().empty()) {
-    return Lexeme(Syntax::EndOfFile, state->cursor_.remove_prefix(0).range());
-  } else if (IsAlphaOrUnderscore(state->peek())) {
-    auto result = ConsumeWord(loc, state->buffer_);
-    v.remove_prefix((loc - state->cursor_.loc()).value);
-    state->cursor_ = SourceCursor(loc, v);
-    return result;
-  } else if (IsDigit(state->peek()) or
-             (state->peek() == '.' and state->cursor_.view().size() > 1 and
-              IsDigit(state->cursor_.view()[1]))) {
-    auto result = ConsumeNumber(loc, state->buffer_, state->diag_);
-    v.remove_prefix((loc - state->cursor_.loc()).value);
-    state->cursor_ = SourceCursor(loc, v);
-    return result;
-  }
-
-  char peek = state->peek();
-  if (peek == '\n') {
-    return Lexeme(Syntax::ImplicitNewline,
-                  state->cursor_.remove_prefix(1).range());
-  } else if (static_cast<uint8_t>(peek) >= 0x80 or
-             not(std::isprint(peek) or std::isspace(peek))) {
-    auto loc = state->cursor_.loc();
-    state->cursor_.remove_prefix(1);
-    state->diag_.Consume(UnprintableSourceCharacter{
-        .value = peek,
-        .range = SourceRange(loc, loc + Offset(1)),
-    });
-    goto restart;
-  }
-  switch (peek) {
-    case '"': {
-      auto [str, range, errors] = NextStringLiteral(state->cursor_);
-      if (not errors.empty()) {
-        state->diag_.Consume(StringLiteralParsingFailure{
-            .errors = std::move(errors),
-            .range  = range,
-        });
-      }
-
-      auto iter = GlobalStringTable.insert(std::move(str)).first;
-      return Lexeme(std::make_unique<ast::Terminal>(
-          range, ir::Slice(ir::Addr(iter->data()), iter->size())));
-
-    } break;
-    case '#': {
-      state->cursor_.remove_prefix(1);
-      if (state->peek() == '.') {
-        state->cursor_.remove_prefix(1);
-        auto word_cursor       = NextSimpleWord(state->cursor_);
-        std::string_view token = word_cursor.view();
-
-        return Lexeme(std::make_unique<ast::Label>(word_cursor.range(),
-                                                   std::string{token}));
-
-      } else {
-        auto result = NextHashtag(state->cursor_);
-        if (result.ok()) { return std::move(*result); }
-
-        state->diag_.Consume(HashtagParsingFailure{
-            .message = std::string(result.status().message()),
-            .range   = SourceRange(loc, state->cursor_.loc()),
-        });
-        goto restart;
-      }
-    } break;
-    case '/': {
-      // TODO just check for comments early and roll this into NextOperator.
-      if (auto maybe_op = NextSlashInitiatedToken(state->cursor_)) {
-        auto &[span, op] = *maybe_op;
-        return Lexeme(op, state->cursor_.range());
-      }
-      goto restart;
-    } break;
-    case '\n':
-    case '\r':
-      return Lexeme(Syntax::ImplicitNewline,
-                    state->cursor_.remove_prefix(1).range());
-    case '\v':  // TODO: Should we disallow out vertical tabs entirely?
-    case '\t':
-    case ' ': state->cursor_.ConsumeWhile(IsHorizontalWhitespace); goto restart;
-    case '?': {
-      auto loc = state->cursor_.loc();
-      state->cursor_.remove_prefix(1);
-      state->diag_.Consume(InvalidSourceCharacter{
-          .value = peek,
-          .range = SourceRange(loc, loc + Offset(1)),
-      });
-      goto restart;
+  bool append(Lexeme l) {
+    switch (l.kind()) {
+      case Lexeme::Kind::LeftDelimiter: {
+        unmatched_delimiters_.push_back(lex_result_.lexemes_.size());
+      } break;
+      case Lexeme::Kind::RightDelimiter: {
+        if (unmatched_delimiters_.empty()) {
+          diagnostic_consumer_.Consume(UnmatchedDelimiter{});
+          return false;
+        }
+        size_t match_index = unmatched_delimiters_.back();
+        size_t offset      = lex_result_.lexemes_.size() - match_index;
+        unmatched_delimiters_.pop_back();
+        auto &matching_lexeme = lex_result_.lexemes_[match_index];
+        // In ASCII, the character values for matching delimiters are always
+        // within two of each other, with the right-delimiter having a higher
+        // value than the left-delimiter.
+        int diff = static_cast<int>(l.content()[0]) -
+                   static_cast<int>(matching_lexeme.content()[0]);
+        if (diff < 0 or diff > 2) {
+          diagnostic_consumer_.Consume(UnmatchedDelimiter{});
+          return false;
+        }
+        matching_lexeme.set_match_offset(offset);
+        l.set_match_offset(offset);
+      } break;
+      default: break;
     }
-    case '\\': {
-      if (state->cursor_.view().size() >= 2 and
-          state->cursor_.view()[1] == '\\') {
-        return Lexeme(Syntax::ExplicitNewline,
-                      state->cursor_.remove_prefix(2).range());
-      }
-      auto span = state->cursor_.remove_prefix(1).range();
-      state->cursor_.ConsumeWhile(IsWhitespace);
-      if (not state->cursor_.view().empty()) {
-        state->diag_.Consume(NonWhitespaceAfterNewlineEscape{.range = span});
-      }
-      goto restart;
-    } break;
-    default: return NextOperator(state->cursor_, state->buffer_); break;
+    lex_result_.lexemes_.push_back(l);
+    return true;
   }
-  UNREACHABLE();
+
+  bool balanced() const { return unmatched_delimiters_.empty(); }
+
+ private:
+  std::vector<size_t> unmatched_delimiters_;
+  LexResult &lex_result_;
+  diagnostic::DiagnosticConsumer &diagnostic_consumer_;
+};
+
+std::optional<LexResult> Lex(
+    std::string_view source,
+    diagnostic::DiagnosticConsumer &diagnostic_consumer) {
+  if (source.size() > kMaxLexableBytes) {
+    diagnostic_consumer.Consume(MaxLexableBytesExceeded{
+        .length = source.size(),
+    });
+    return std::nullopt;
+  }
+
+  LexResult result;
+  LexResultBuilder builder(&result, &diagnostic_consumer);
+
+  char_range range = source;
+  while (not range.empty()) {
+    auto maybe_lexeme = ConsumeOneLexeme(range, diagnostic_consumer);
+    if (not maybe_lexeme) { return std::nullopt; }
+    if (not builder.append(*std::move(maybe_lexeme))) { return std::nullopt; }
+  }
+
+  if (not builder.balanced()) { return std::nullopt; }
+  return result;
 }
 
 }  // namespace frontend
