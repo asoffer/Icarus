@@ -5,7 +5,6 @@
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/lex/lexeme.h"
 #include "frontend/source/buffer.h"
-#include "frontend/source/cursor.h"
 #include "frontend/source/source.h"
 #include "ir/value/hashtag.h"
 
@@ -14,17 +13,12 @@ namespace frontend {
 struct LexState {
   LexState(SourceBuffer *buffer, diagnostic::DiagnosticConsumer &diag,
            size_t chunk = 0)
-      : buffer_(*buffer),
-        cursor_(SourceLoc(chunk, 0), buffer_.last_chunk()),
-        diag_(diag) {}
+      : buffer_(*buffer), cursor_(buffer_.chunk(chunk)), diag_(diag) {}
 
-  char peek() {
-    ASSERT(cursor_.view().size() != 0u);
-    return cursor_.view()[0];
-  }
+  char peek() { return cursor_[0]; }
 
   SourceBuffer &buffer_;
-  SourceCursor cursor_;
+  std::string_view cursor_;
   diagnostic::DiagnosticConsumer &diag_;
 };
 

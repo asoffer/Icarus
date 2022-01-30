@@ -17,7 +17,7 @@ struct IncompleteField {
             range, diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceRange range;
+  std::string_view range;
 };
 
 }  // namespace

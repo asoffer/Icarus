@@ -112,37 +112,10 @@ TEST(SourceBuffer, LineNumberAndOffset) {
   EXPECT_EQ(buffer.line_and_offset(loc), std::pair(LineNum(4), Offset(1)));
 }
 
-TEST(SourceBuffer, Range) {
-  SourceBuffer buffer("abc\ndef\n\nghi");
-  SourceRange range(SourceLoc(0, 1), SourceLoc(0, 5));
-  EXPECT_EQ(buffer[range], "bc\nd");
-}
-
-TEST(SourceBuffer, ConsumeChunkWhile) {
-  SourceBuffer buffer("abc\ndef\n\nghi");
-  {
-    SourceLoc loc(0, 0);
-    EXPECT_EQ(buffer.ConsumeChunkWhile(loc, [](char c) { return c != 'e'; }),
-              std::pair(SourceRange(SourceLoc(0, 0), SourceLoc(0, 5)),
-                        std::string_view("abc\nd")));
-    EXPECT_EQ(loc, SourceLoc(0, 5));
-  }
-
-  {
-    SourceLoc loc(0, 1);
-    EXPECT_EQ(buffer.ConsumeChunkWhile(loc, [](char) { return false; }),
-              std::pair(SourceRange(SourceLoc(0, 1), SourceLoc(0, 1)),
-                        std::string_view("")));
-    EXPECT_EQ(loc, SourceLoc(0, 1));
-  }
-}
-
 TEST(SourceBuffer, Indexing) {
   SourceBuffer buffer("abc\ndef\n\nghi");
   EXPECT_EQ(buffer[SourceLoc(0, 1)], 'b');
   EXPECT_EQ(buffer[SourceLoc(0, 5)], 'e');
-  EXPECT_EQ(buffer[SourceRange(SourceLoc(0, 1), SourceLoc(0, 5))], "bc\nd");
-  EXPECT_EQ(buffer[SourceRange(SourceLoc(0, 1), SourceLoc(0, 1))], "");
 }
 
 TEST(SourceLoc, Offset) {

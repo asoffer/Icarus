@@ -13,12 +13,11 @@ namespace {
 TEST(ExpansionSize, Matches) {
   diagnostic::TrivialConsumer diag;
   frontend::SourceBuffer buffer("\n");
-  frontend::SourceRange range;
 
-  EXPECT_TRUE(VerifyInitialization(diag, frontend::SourceView(&buffer, range),
+  EXPECT_TRUE(VerifyInitialization(diag, frontend::SourceView(&buffer, ""),
                                    type::QualType::NonConstant(type::I64),
                                    type::QualType::Constant(type::I64)));
-  EXPECT_TRUE(VerifyAssignment(diag, frontend::SourceView(&buffer, range),
+  EXPECT_TRUE(VerifyAssignment(diag, frontend::SourceView(&buffer, ""),
                                type::QualType::NonConstant(type::I64),
                                type::QualType::Constant(type::I64)));
 }
@@ -26,13 +25,12 @@ TEST(ExpansionSize, Matches) {
 TEST(Initialization, AllowsConstants) {
   diagnostic::TrivialConsumer diag;
   frontend::SourceBuffer buffer("\n");
-  frontend::SourceRange range;
 
-  EXPECT_TRUE(VerifyInitialization(diag, frontend::SourceView(&buffer, range),
+  EXPECT_TRUE(VerifyInitialization(diag, frontend::SourceView(&buffer, ""),
                                    type::QualType::Constant(type::I64),
                                    type::QualType::Constant(type::I64)));
 
-  EXPECT_FALSE(VerifyInitialization(diag, frontend::SourceView(&buffer, range),
+  EXPECT_FALSE(VerifyInitialization(diag, frontend::SourceView(&buffer, ""),
                                     type::QualType::Constant(type::F32),
                                     type::QualType::Constant(type::I64)));
 }
@@ -40,17 +38,16 @@ TEST(Initialization, AllowsConstants) {
 TEST(Assignment, AllowsConstants) {
   diagnostic::TrivialConsumer diag;
   frontend::SourceBuffer buffer("\n");
-  frontend::SourceRange range;
 
   EXPECT_EQ(diag.num_consumed(), 0);
 
-  EXPECT_FALSE(VerifyAssignment(diag, frontend::SourceView(&buffer, range),
+  EXPECT_FALSE(VerifyAssignment(diag, frontend::SourceView(&buffer, ""),
                                 type::QualType::Constant(type::I64),
                                 type::QualType::Constant(type::I64)));
 
   EXPECT_EQ(diag.num_consumed(), 1);
 
-  EXPECT_FALSE(VerifyAssignment(diag, frontend::SourceView(&buffer, range),
+  EXPECT_FALSE(VerifyAssignment(diag, frontend::SourceView(&buffer, ""),
                                 type::QualType::Constant(type::F32),
                                 type::QualType::Constant(type::I64)));
 
@@ -63,15 +60,14 @@ TEST(Assignment, AllowsConstants) {
 TEST(Casts, AreAllowed) {
   diagnostic::TrivialConsumer diag;
   frontend::SourceBuffer buffer("\n");
-  frontend::SourceRange range;
 
   EXPECT_TRUE(VerifyInitialization(
-      diag, frontend::SourceView(&buffer, range),
+      diag, frontend::SourceView(&buffer, ""),
       type::QualType::NonConstant(type::Ptr(type::Ptr(type::I64))),
       type::QualType::NonConstant(type::BufPtr(type::BufPtr(type::I64)))));
 
   EXPECT_TRUE(VerifyAssignment(
-      diag, frontend::SourceView(&buffer, range),
+      diag, frontend::SourceView(&buffer, ""),
       type::QualType::NonConstant(type::Ptr(type::Ptr(type::I64))),
       type::QualType::NonConstant(type::BufPtr(type::BufPtr(type::I64)))));
 }

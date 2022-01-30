@@ -19,17 +19,12 @@ struct Declaration;
 //
 // TODO: Does it make sense for this to be an expression?
 struct Declaration_Id : Expression {
-  explicit Declaration_Id(std::string name, frontend::SourceRange const &range)
-      : Expression(IndexOf<Declaration_Id>(), range), name_(std::move(name)) {}
+  explicit Declaration_Id(std::string_view range)
+      : Expression(IndexOf<Declaration_Id>(), range) {}
 
-  std::string_view name() const { return name_; }
+  std::string_view name() const { return range(); }
   ast::Declaration const &declaration() const {
     return *ASSERT_NOT_NULL(decl_);
-  }
-
-  std::pair<std::string, frontend::SourceRange> extract() && {
-    return std::pair<std::string, frontend::SourceRange>(std::move(name_),
-                                                         std::move(range_));
   }
 
   void DebugStrAppend(std::string *out, size_t) const override {
@@ -44,7 +39,6 @@ struct Declaration_Id : Expression {
   void set_decl(Declaration const *decl) { decl_ = decl; }
 
   ast::Declaration const *decl_;
-  std::string name_;
 };
 
 // Declaration:
@@ -75,7 +69,7 @@ struct Declaration : Expression {
 
   using Id = Declaration_Id;
 
-  explicit Declaration(frontend::SourceRange const &range, std::vector<Id> ids,
+  explicit Declaration(std::string_view range, std::vector<Id> ids,
                        std::unique_ptr<Expression> type_expression,
                        std::unique_ptr<Expression> initial_val, Flags flags)
       : Expression(IndexOf<Declaration>(), range),

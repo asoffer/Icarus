@@ -24,7 +24,7 @@ struct InconsistentArrayType {
   }
 
   frontend::SourceBuffer const *buffer;
-  std::vector<frontend::SourceRange> highlights;
+  std::vector<std::string_view> highlights;
 };
 
 // Guesses the intended array literal type. For instance, if all but one element
@@ -74,7 +74,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     return context().set_qual_type(node, qt);
   } else {
     if (type::Type t = GuessIntendedArrayType(elem_type_count)) {
-      std::vector<frontend::SourceRange> mistyped_elements;
+      std::vector<std::string_view> mistyped_elements;
       size_t i = 0;
       for (type::QualType const &qt : elem_qts) {
         if (qt.type() != t) {

@@ -46,15 +46,14 @@ struct WithScope {
 //  * `(some + computation).member`
 //
 struct Access : Expression {
-  explicit Access(frontend::SourceRange const &range,
-                  std::unique_ptr<Expression> operand, std::string member_name)
+  explicit Access(std::string_view range, std::unique_ptr<Expression> operand,
+                  std::string member_name)
       : Expression(IndexOf<Access>(), range),
         operand_(std::move(operand)),
         member_name_(std::move(member_name)) {}
   constexpr std::string_view member_name() const { return member_name_; }
-  constexpr frontend::SourceRange member_range() const {
-    return frontend::SourceRange(
-        range().end() - frontend::Offset(member_name_.size()), range().end());
+  constexpr std::string_view member_range() const {
+    return std::string_view(range().end() - member_name_.size(), range().end());
   }
   Expression const *operand() const { return operand_.get(); }
 
@@ -81,7 +80,7 @@ struct Access : Expression {
 // bound to `x`. The type of the parameter `y` must match the type of the
 // argument bound to `x`.
 struct ArgumentType : Expression {
-  explicit ArgumentType(frontend::SourceRange const &range, std::string name)
+  explicit ArgumentType(std::string_view range, std::string name)
       : Expression(IndexOf<ArgumentType>(), range), name_(std::move(name)) {}
   std::string_view name() const { return name_; }
 
@@ -102,7 +101,7 @@ struct ArgumentType : Expression {
 //  * `[im_the_only_thing]`
 //  * `[]`
 struct ArrayLiteral : Expression {
-  ArrayLiteral(frontend::SourceRange const &range,
+  ArrayLiteral(std::string_view range,
                std::vector<std::unique_ptr<Expression>> elems)
       : Expression(IndexOf<ArrayLiteral>(), range), elems_(std::move(elems)) {}
   bool empty() const { return elems_.empty(); }
@@ -127,7 +126,7 @@ struct ArrayLiteral : Expression {
 // * `(a, b) = (c, d)`
 //
 struct Assignment : Node {
-  explicit Assignment(frontend::SourceRange const &range,
+  explicit Assignment(std::string_view range,
                       std::vector<std::unique_ptr<Expression>> lhs,
                       std::vector<std::unique_ptr<Expression>> rhs)
       : Node(IndexOf<Assignment>(), range),
@@ -162,14 +161,13 @@ struct Assignment : Node {
 //                         8-bit integers.
 //  * `[3, 2; i8]`   ... A shorthand syntax for `[3; [2; i8]]`
 struct ArrayType : Expression {
-  explicit ArrayType(frontend::SourceRange const &range,
-                     std::unique_ptr<Expression> length,
+  explicit ArrayType(std::string_view range, std::unique_ptr<Expression> length,
                      std::unique_ptr<Expression> data_type)
       : Expression(IndexOf<ArrayType>(), range),
         data_type_(std::move(data_type)) {
     lengths_.push_back(std::move(length));
   }
-  ArrayType(frontend::SourceRange const &range,
+  ArrayType(std::string_view range,
             std::vector<std::unique_ptr<Expression>> lengths,
             std::unique_ptr<Expression> data_type)
       : Expression(IndexOf<ArrayType>(), range),
@@ -222,9 +220,8 @@ struct BinaryOperator : Expression {
 
   explicit BinaryOperator(std::unique_ptr<Expression> lhs, Kind kind,
                           std::unique_ptr<Expression> rhs)
-      : Expression(
-            IndexOf<BinaryOperator>(),
-            frontend::SourceRange(lhs->range().begin(), rhs->range().end())),
+      : Expression(IndexOf<BinaryOperator>(),
+                   std::string_view(lhs->range().begin(), rhs->range().end())),
         kind_(kind),
         lhs_(std::move(lhs)),
         rhs_(std::move(rhs)) {}
@@ -270,12 +267,11 @@ struct BinaryAssignmentOperator : BinaryOperator {
 // handle those parameters uniformly. oreover, this gives us the ability to key
 // hash-tables on `ParameterizedExpression const *`.
 struct ParameterizedExpression : Expression {
-  explicit ParameterizedExpression(int8_t which,
-                                   frontend::SourceRange const &range)
+  explicit ParameterizedExpression(int8_t which, std::string_view range)
       : Expression(which, range) {}
 
   explicit ParameterizedExpression(
-      int8_t which, frontend::SourceRange const &range,
+      int8_t which, std::string_view range,
       std::vector<std::unique_ptr<Declaration>> params)
       : Expression(which, range) {
     for (auto &param : params) {
@@ -327,12 +323,12 @@ struct PatternMatch : Expression {
   explicit PatternMatch(std::unique_ptr<Expression> expr_to_match,
                         std::unique_ptr<Expression> pattern)
       : Expression(IndexOf<PatternMatch>(),
-                   frontend::SourceRange(expr_to_match->range().begin(),
-                                         pattern->range().end())),
+                   std::string_view(expr_to_match->range().begin(),
+                                    pattern->range().end())),
         expr_to_match_(reinterpret_cast<uintptr_t>(expr_to_match.release()) |
                        uintptr_t{1}),
         pattern_(std::move(pattern)) {}
-  explicit PatternMatch(frontend::SourceRange const &range,
+  explicit PatternMatch(std::string_view range,
                         std::unique_ptr<Expression> pattern)
       : Expression(IndexOf<PatternMatch>(), range),
         expr_to_match_(0),
@@ -373,8 +369,7 @@ struct PatternMatch : Expression {
 //
 // For example: `N
 struct BindingDeclaration : Declaration {
-  explicit BindingDeclaration(frontend::SourceRange const &range,
-                              Declaration::Id id)
+  explicit BindingDeclaration(std::string_view range, Declaration::Id id)
       : Declaration(range, ToVector(std::move(id)), nullptr, nullptr,
                     f_IsConst) {
     which_ = IndexOf<BindingDeclaration>();
@@ -417,7 +412,7 @@ struct BindingDeclaration : Declaration {
 struct DesignatedInitializer : Expression {
   // The `assignments` passed in to this constructor must have all left-hand
   // sides be `Identifier`s.
-  DesignatedInitializer(frontend::SourceRange const &range,
+  DesignatedInitializer(std::string_view range,
                         std::unique_ptr<Expression> type,
                         std::vector<std::unique_ptr<Assignment>> assignments)
       : Expression(IndexOf<DesignatedInitializer>(), range),
@@ -471,16 +466,16 @@ struct DesignatedInitializer : Expression {
 // This will likely change in the future so that blocks can take arguments
 // (likely in the form of `core::Arguments<std::unique_ptr<Expression>>`).
 struct BlockNode : ParameterizedExpression, WithScope {
-  explicit BlockNode(frontend::SourceRange const &range, std::string name,
-                     frontend::SourceLoc const &name_end,
+  explicit BlockNode(std::string_view range, std::string name,
+                     char const *name_end,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(IndexOf<BlockNode>(), range),
         WithScope(Scope::Kind::Executable),
         name_(std::move(name)),
         name_end_(name_end),
         stmts_(std::move(stmts)) {}
-  explicit BlockNode(frontend::SourceRange const &range, std::string name,
-                     frontend::SourceLoc const &name_end,
+  explicit BlockNode(std::string_view range, std::string name,
+                     char const *name_end,
                      std::vector<std::unique_ptr<Declaration>> params,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(IndexOf<BlockNode>(), range, std::move(params)),
@@ -503,8 +498,8 @@ struct BlockNode : ParameterizedExpression, WithScope {
   base::PtrSpan<Node const> stmts() const { return stmts_; }
   ScopeNode const *parent() const { return parent_; }
 
-  frontend::SourceRange name_range() const {
-    return frontend::SourceRange(range().begin(), name_end_);
+  std::string_view name_range() const {
+    return std::string_view(range().begin(), name_end_);
   }
 
   std::vector<std::unique_ptr<Node>> extract() && { return std::move(stmts_); }
@@ -515,7 +510,7 @@ struct BlockNode : ParameterizedExpression, WithScope {
  private:
   friend struct ScopeNode;
   std::string name_;
-  frontend::SourceLoc name_end_;
+  char const *name_end_;
   std::vector<std::unique_ptr<Node>> stmts_;
   ScopeNode *parent_ = nullptr;
 };
@@ -523,7 +518,7 @@ struct BlockNode : ParameterizedExpression, WithScope {
 // Represents the identifier `builtin` which can be accessed to get any builtin
 // (language-supported) functions/values.
 struct Builtin : Expression {
-  explicit Builtin(frontend::SourceRange const &range)
+  explicit Builtin(std::string_view range)
       : Expression(IndexOf<Builtin>(), range) {}
   void DebugStrAppend(std::string *out, size_t indent) const override {
     out->append("builtin");
@@ -538,7 +533,7 @@ struct Builtin : Expression {
 // type with no known size or alignment (users can pass around pointers to
 // values of an opaque type, but not actual values).
 struct BuiltinFn : Expression {
-  explicit BuiltinFn(frontend::SourceRange const &range, ir::BuiltinFn b)
+  explicit BuiltinFn(std::string_view range, ir::BuiltinFn b)
       : Expression(IndexOf<BuiltinFn>(), range), val_(b) {}
   ir::BuiltinFn value() const { return val_; }
 
@@ -589,8 +584,7 @@ struct Call : Expression {
     std::unique_ptr<Expression> expr_;
   };
 
-  explicit Call(frontend::SourceRange const &range,
-                std::unique_ptr<Expression> callee,
+  explicit Call(std::string_view range, std::unique_ptr<Expression> callee,
                 std::vector<Argument> arguments, size_t prefix_split)
       : Expression(IndexOf<Call>(), range),
         callee_(std::move(callee)),
@@ -648,8 +642,7 @@ struct Call : Expression {
 //  * `3 as u32`
 //  * `null as *i64`
 struct Cast : Expression {
-  explicit Cast(frontend::SourceRange const &range,
-                std::unique_ptr<Expression> expr,
+  explicit Cast(std::string_view range, std::unique_ptr<Expression> expr,
                 std::unique_ptr<Expression> type_expr)
       : Expression(IndexOf<Cast>(), range),
         expr_(std::move(expr)),
@@ -676,7 +669,7 @@ struct Cast : Expression {
 //  `a < b == c < d`
 struct ComparisonOperator : Expression {
   // TODO consider having a construct-or-append static function.
-  explicit ComparisonOperator(frontend::SourceRange const &range,
+  explicit ComparisonOperator(std::string_view range,
                               std::unique_ptr<Expression> expr)
       : Expression(IndexOf<ComparisonOperator>(), range) {
     exprs_.push_back(std::move(expr));
@@ -692,9 +685,9 @@ struct ComparisonOperator : Expression {
 
   // Returns a source range consisting of the `i`th (zero-indexed) operator and
   // surrounding expressions in this chain of comparison operators.
-  frontend::SourceRange binary_range(size_t i) const {
-    return frontend::SourceRange(exprs_[i]->range().begin(),
-                                 exprs_[i + 1]->range().end());
+  std::string_view binary_range(size_t i) const {
+    return std::string_view(exprs_[i]->range().begin(),
+                            exprs_[i + 1]->range().end());
   }
 
   auto extract() && { return std::move(exprs_); }
@@ -741,7 +734,7 @@ struct EnumLiteral : Expression, WithScope {
   enum Kind : char { Enum, Flags };
 
   EnumLiteral(
-      frontend::SourceRange const &range, std::vector<std::string> enumerators,
+      std::string_view range, std::vector<std::string> enumerators,
       absl::flat_hash_map<std::string, std::unique_ptr<Expression>> values,
       Kind kind)
       : Expression(IndexOf<EnumLiteral>(), range),
@@ -779,7 +772,7 @@ struct EnumLiteral : Expression, WithScope {
 //
 struct FunctionLiteral : ParameterizedExpression, WithScope {
   explicit FunctionLiteral(
-      frontend::SourceRange const &range,
+      std::string_view range,
       std::vector<std::unique_ptr<Declaration>> in_params,
       std::vector<std::unique_ptr<Node>> stmts,
       std::optional<std::vector<std::unique_ptr<Expression>>> out_params =
@@ -825,7 +818,7 @@ struct FunctionLiteral : ParameterizedExpression, WithScope {
 // * `(n: i64, b: bool) -> (f32, f32)
 //
 struct FunctionType : Expression {
-  FunctionType(frontend::SourceRange const &range,
+  FunctionType(std::string_view range,
                std::vector<std::unique_ptr<Expression>> params,
                std::vector<std::unique_ptr<Expression>> output)
       : Expression(IndexOf<FunctionType>(), range),
@@ -849,18 +842,13 @@ struct FunctionType : Expression {
 // Identifier:
 // Represents any user-defined identifier.
 struct Identifier : Expression {
-  Identifier(frontend::SourceRange const &range, std::string name)
-      : Expression(IndexOf<Identifier>(), range), name_(std::move(name)) {}
+  Identifier(std::string_view range)
+      : Expression(IndexOf<Identifier>(), range) {}
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;
 
-  std::string_view name() const { return name_; }
-
-  std::string extract() && { return std::move(name_); }
-
- private:
-  std::string name_;
+  std::string_view name() const { return range_; }
 };
 
 // Import:
@@ -870,8 +858,7 @@ struct Identifier : Expression {
 //  * `import "a_module.ic"`
 //  * `import function_returning_a_string()`
 struct Import : Expression {
-  explicit Import(frontend::SourceRange const &range,
-                  std::unique_ptr<Expression> expr)
+  explicit Import(std::string_view range, std::unique_ptr<Expression> expr)
       : Expression(IndexOf<Import>(), range), operand_(std::move(expr)) {}
 
   Expression const *operand() const { return operand_.get(); }
@@ -891,8 +878,7 @@ struct Import : Expression {
 //  * `buf_ptr[3]`
 //  * `my_array[4]`
 struct Index : Expression {
-  explicit Index(frontend::SourceRange const &range,
-                 std::unique_ptr<Expression> lhs,
+  explicit Index(std::string_view range, std::unique_ptr<Expression> lhs,
                  std::unique_ptr<Expression> rhs)
       : Expression(IndexOf<Index>(), range),
         lhs_(std::move(lhs)),
@@ -928,7 +914,7 @@ struct Index : Expression {
 //
 struct InterfaceLiteral : Expression, WithScope {
   explicit InterfaceLiteral(
-      frontend::SourceRange const &range,
+      std::string_view range,
       std::vector<std::pair<std::unique_ptr<ast::Expression>,
                             std::unique_ptr<ast::Expression>>>
           entries)
@@ -958,7 +944,7 @@ struct InterfaceLiteral : Expression, WithScope {
 // Example:
 // `#.my_label`
 struct Label : Expression {
-  explicit Label(frontend::SourceRange const &range, std::string label)
+  explicit Label(std::string_view range, std::string label)
       : Expression(IndexOf<Label>(), range), label_(std::move(label)) {}
 
   ir::Label value() const { return ir::Label(&label_); }
@@ -988,7 +974,7 @@ struct Label : Expression {
 // }
 // ```
 struct ParameterizedStructLiteral : ParameterizedExpression, WithScope {
-  ParameterizedStructLiteral(frontend::SourceRange const &range,
+  ParameterizedStructLiteral(std::string_view range,
                              std::vector<std::unique_ptr<Declaration>> params,
                              std::vector<Declaration> fields)
       : ParameterizedExpression(IndexOf<ParameterizedStructLiteral>(), range,
@@ -1012,7 +998,7 @@ struct ParameterizedStructLiteral : ParameterizedExpression, WithScope {
 // Represents the identifier `arguments` which holds arguments provided to the
 // program on the command-line.
 struct ProgramArguments : Expression {
-  explicit ProgramArguments(frontend::SourceRange const &range)
+  explicit ProgramArguments(std::string_view range)
       : Expression(IndexOf<ProgramArguments>(), range) {}
   std::string_view name() const { return name_; }
 
@@ -1036,7 +1022,7 @@ struct ProgramArguments : Expression {
 //  ```
 //
 struct ReturnStmt : Node {
-  explicit ReturnStmt(frontend::SourceRange const &range,
+  explicit ReturnStmt(std::string_view range,
                       std::vector<std::unique_ptr<Expression>> exprs = {})
       : Node(IndexOf<ReturnStmt>(), range), exprs_(std::move(exprs)) {}
 
@@ -1063,7 +1049,7 @@ struct ReturnStmt : Node {
 // `true`, `false`, or `null`.
 struct Terminal : Expression {
   template <typename T>
-  explicit Terminal(frontend::SourceRange const &range, T const &value)
+  explicit Terminal(std::string_view range, T const &value)
       : Expression(IndexOf<Terminal>(), range), type_(base::meta<T>) {
     value_.append(value);
   }
@@ -1092,7 +1078,7 @@ struct Terminal : Expression {
 //  }
 //  ```
 struct ScopeLiteral : ParameterizedExpression, WithScope {
-  explicit ScopeLiteral(frontend::SourceRange const &range,
+  explicit ScopeLiteral(std::string_view range,
                         Declaration::Id context_identifier,
                         std::vector<std::unique_ptr<Declaration>> params,
                         std::vector<std::unique_ptr<Node>> stmts)
@@ -1136,9 +1122,8 @@ struct ScopeLiteral : ParameterizedExpression, WithScope {
 //  `unwrap (maybe_object) or { return -1 }`
 //
 struct ScopeNode : Expression {
-  ScopeNode(frontend::SourceRange const &range,
-            std::unique_ptr<Expression> name, std::vector<Call::Argument> args,
-            std::vector<BlockNode> blocks)
+  ScopeNode(std::string_view range, std::unique_ptr<Expression> name,
+            std::vector<Call::Argument> args, std::vector<BlockNode> blocks)
       : Expression(IndexOf<ScopeNode>(), range),
         name_(std::move(name)),
         args_(std::move(args)),
@@ -1178,7 +1163,7 @@ struct ScopeNode : Expression {
     return std::move(blocks);
   }
 
-  ScopeNode const * parent_;
+  ScopeNode const *parent_;
   std::optional<Label> label_;
   std::unique_ptr<Expression> name_;
   std::vector<Call::Argument> args_;
@@ -1195,7 +1180,7 @@ struct ScopeNode : Expression {
 //  `i32[]`  ... Represnts a slice of 32-bit itnegers
 //
 struct SliceType : Expression {
-  explicit SliceType(frontend::SourceRange const &range,
+  explicit SliceType(std::string_view range,
                      std::unique_ptr<Expression> data_type)
       : Expression(IndexOf<SliceType>(), range),
         data_type_(std::move(data_type)) {}
@@ -1222,8 +1207,7 @@ struct SliceType : Expression {
 //
 struct ShortFunctionLiteral : ParameterizedExpression, WithScope {
   explicit ShortFunctionLiteral(
-      frontend::SourceRange const &range,
-      std::vector<std::unique_ptr<Declaration>> params,
+      std::string_view range, std::vector<std::unique_ptr<Declaration>> params,
       std::unique_ptr<Expression> body)
       : ParameterizedExpression(IndexOf<ShortFunctionLiteral>(), range,
                                 std::move(params)),
@@ -1253,7 +1237,7 @@ struct ShortFunctionLiteral : ParameterizedExpression, WithScope {
 // struct {}
 // ```
 struct StructLiteral : Expression, WithScope {
-  explicit StructLiteral(frontend::SourceRange const &range,
+  explicit StructLiteral(std::string_view range,
                          std::vector<Declaration> fields)
       : Expression(IndexOf<StructLiteral>(), range),
         WithScope(Scope::Kind::Declarative),
@@ -1295,7 +1279,7 @@ struct UnaryOperator : Expression {
     BlockJump,
   };
 
-  explicit UnaryOperator(frontend::SourceRange const &range, Kind kind,
+  explicit UnaryOperator(std::string_view range, Kind kind,
                          std::unique_ptr<Expression> operand)
       : Expression(IndexOf<UnaryOperator>(), range),
         operand_(std::move(operand)),
@@ -1320,8 +1304,7 @@ struct UnaryOperator : Expression {
 //  * `#.my_label <<`
 //
 struct YieldStmt : Node {
-  explicit YieldStmt(frontend::SourceRange const &range,
-                     std::vector<Call::Argument> args,
+  explicit YieldStmt(std::string_view range, std::vector<Call::Argument> args,
                      std::unique_ptr<Label> label = nullptr)
       : Node(IndexOf<YieldStmt>(), range),
         args_(std::move(args)),
@@ -1349,8 +1332,7 @@ struct YieldStmt : Node {
 // if (condition) then { z() }
 // ```
 struct IfStmt : Expression {
-  explicit IfStmt(frontend::SourceRange const &range,
-                  std::unique_ptr<Expression> condition,
+  explicit IfStmt(std::string_view range, std::unique_ptr<Expression> condition,
                   std::vector<std::unique_ptr<Node>> true_block)
       : Expression(IndexOf<IfStmt>(), range),
         condition_(std::move(condition)),
@@ -1412,7 +1394,7 @@ struct IfStmt : Expression {
 // }
 // ```
 struct WhileStmt : Expression, WithScope {
-  explicit WhileStmt(frontend::SourceRange const &range,
+  explicit WhileStmt(std::string_view range,
                      std::unique_ptr<Expression> condition,
                      std::vector<std::unique_ptr<Node>> body)
       : Expression(IndexOf<WhileStmt>(), range),

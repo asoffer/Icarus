@@ -23,7 +23,7 @@ struct PatternMatchingFailed {
             range, diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceRange range;
+  std::string_view range;
 };
 
 template <template <typename> typename Op, typename... Ts>

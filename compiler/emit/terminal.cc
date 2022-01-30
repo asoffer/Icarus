@@ -20,7 +20,7 @@ struct TerminalMatchError {
             range, diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceRange range;
+  std::string_view range;
   std::string pattern_value;
   std::string matched_value;
 };

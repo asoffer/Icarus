@@ -125,8 +125,8 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
         .importer            = &importer,
     };
 
-    frontend::SourceBuffer buffer(std::move(content));
-    size_t num = consumer.num_consumed();
+    auto& buffer      = imported_.emplace_back(std::move(content));
+    size_t num        = consumer.num_consumed();
     auto parsed_nodes = frontend::Parse(buffer, consumer);
     if (consumer.num_consumed() != num) { return; }
     compiler::CompileModule(
@@ -148,6 +148,7 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
 
  private:
   frontend::SourceBuffer source_;
+  std::deque<frontend::SourceBuffer> imported_;
   compiler::WorkGraph work_graph_;
 };
 

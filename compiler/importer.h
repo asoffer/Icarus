@@ -72,6 +72,7 @@ struct FileImporter : module::Importer {
       subroutine_by_module_;
   diagnostic::DiagnosticConsumer* diagnostic_consumer_;
   std::vector<std::string> module_lookup_paths_;
+  std::deque<frontend::SourceBuffer> buffers_;
 };
 
 }  // namespace compiler

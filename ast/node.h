@@ -24,7 +24,7 @@ constexpr ssize_t IndexOf() {
 }
 
 struct Node : base::Visitable<Node, AllNodeTypes>, base::Cast<Node> {
-  explicit constexpr Node(int8_t which, frontend::SourceRange const &range = {})
+  explicit constexpr Node(int8_t which, std::string_view range = "")
       : base::Visitable<Node, AllNodeTypes>(which), range_(range) {}
 
   virtual ~Node() {}
@@ -39,7 +39,7 @@ struct Node : base::Visitable<Node, AllNodeTypes>, base::Cast<Node> {
   bool covers_binding() const { return covers_binding_; }
   bool is_dependent() const { return is_dependent_; }
 
-  constexpr frontend::SourceRange range() const { return range_; }
+  constexpr std::string_view range() const { return range_; }
   Scope *scope() const { return scope_; }
 
   // Object used to track state while initializing the syntax tree.
@@ -58,7 +58,7 @@ struct Node : base::Visitable<Node, AllNodeTypes>, base::Cast<Node> {
   virtual void Initialize(Initializer &initializer) {}
 
  protected:
-  frontend::SourceRange range_;
+  std::string_view range_;
   Scope *scope_ = nullptr;
   // TODO: We can compress these bit somewhere.
   bool covers_binding_ = false;

@@ -23,15 +23,6 @@ cc_test(
 )
 
 cc_library(
-    name = "cursor",
-    hdrs = ["cursor.h"],
-    deps = [
-        ":buffer",
-        "//base:debug",
-    ],
-)
-
-cc_library(
     name = "file",
     hdrs = ["file.h"],
     srcs = ["file.cc"],

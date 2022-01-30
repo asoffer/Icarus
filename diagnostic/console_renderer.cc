@@ -11,19 +11,19 @@
 
 namespace diagnostic {
 
-namespace {
-inline int NumDigits(frontend::LineNum line) {
-  auto n = line.value;
-  if (n == 0) { return 1; }
-  int counter = 0;
-  while (n != 0) {
-    n /= 10;
-    ++counter;
-  }
-  return counter;
-}
-
-}  // namespace
+// namespace {
+// inline int NumDigits(frontend::LineNum line) {
+//   auto n = line.value;
+//   if (n == 0) { return 1; }
+//   int counter = 0;
+//   while (n != 0) {
+//     n /= 10;
+//     ++counter;
+//   }
+//   return counter;
+// }
+// 
+// }  // namespace
 
 void ConsoleRenderer::Flush() {
   if (not has_data_) { return; }
@@ -33,6 +33,7 @@ void ConsoleRenderer::Flush() {
 }
 
 void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
+#if 0
   ASSERT(quote.lines.empty() == false);
 
   auto highlight_iter   = quote.highlights.begin();
@@ -128,6 +129,7 @@ void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
   // line of the source quote didn't include a newline.
   if (not quote.source->line(last_line).ends_with('\n'))
     absl::FPrintF(out_, "\n");
+#endif
 }
 
 void ConsoleRenderer::Add(frontend::SourceBuffer const *source, Category cat,

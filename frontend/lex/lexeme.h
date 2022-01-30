@@ -20,11 +20,11 @@ struct Lexeme {
   explicit Lexeme(std::unique_ptr<ast::Node>&& n)
       : value_(std::move(n)),
         range_(std::get<std::unique_ptr<ast::Node>>(value_)->range()) {}
-  explicit Lexeme(Operator op, SourceRange const& range)
+  explicit Lexeme(Operator op, std::string_view range)
       : value_(op), range_(range) {}
-  explicit Lexeme(Syntax s, SourceRange const& range)
+  explicit Lexeme(Syntax s, std::string_view range)
       : value_(s), range_(range) {}
-  explicit Lexeme(ir::Hashtag h, SourceRange const& range)
+  explicit Lexeme(ir::Hashtag h, std::string_view range)
       : value_(h), range_(range) {}
 
   constexpr Operator op() const { return std::get<Operator>(value_); }
@@ -63,12 +63,12 @@ struct Lexeme {
         value_);
   }
 
-  SourceRange range() const { return range_; }
+  std::string_view range() const { return range_; }
 
  private:
   std::variant<std::unique_ptr<ast::Node>, Operator, Syntax, ir::Hashtag>
       value_;
-  SourceRange range_;
+  std::string_view range_;
 };
 
 }  // namespace frontend

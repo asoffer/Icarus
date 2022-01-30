@@ -20,7 +20,7 @@ struct PatternMatchFailure {
   }
 
   std::string type;
-  frontend::SourceRange range;
+  std::string_view range;
 };
 
 }  // namespace

@@ -47,6 +47,8 @@ struct SourceLoc {
     return Offset(lhs.offset_ - rhs.offset_);
   }
 
+  int32_t offset() const { return offset_; }
+
   constexpr auto operator<=>(SourceLoc const &) const = default;
 
   std::string DebugString() const;
@@ -56,41 +58,6 @@ struct SourceLoc {
 
   size_t chunk_   = 0;
   int32_t offset_ = 0;
-};
-
-// Represents a half-open range of source in an implicit SourceBuffer (defined
-// below).
-struct SourceRange {
-  constexpr SourceRange() : begin_(0, 0), end_(0, 0) {}
-  explicit constexpr SourceRange(SourceLoc const &b, SourceLoc const &e)
-      : begin_(b), end_(e) {}
-
-  // Constructs a SourceRange. If `n` is positive the range starts at `l` and
-  // has length `n`. If `n` is negative, the range ends at `l` and has length
-  // `n`. In either case, assumes that no newline characters are present inside
-  // the constructed range.
-  explicit constexpr SourceRange(SourceLoc const &l, int n)
-      : SourceRange(l + Offset{std::min(n, 0)}, l + Offset{std::max(n, 0)}) {}
-
-  base::Interval<LineNum> lines(SourceBuffer const &buffer) const;
-
-  constexpr SourceRange expanded(Offset o) {
-    return SourceRange(begin() - o, end() + o);
-  }
-
-  constexpr SourceLoc begin() const { return begin_; }
-  constexpr SourceLoc end() const { return end_; }
-
-  constexpr SourceLoc &begin() { return begin_; }
-  constexpr SourceLoc &end() { return end_; }
-
-  bool operator==(SourceRange const &) const = default;
-  bool operator!=(SourceRange const &) const = default;
-
- private:
-  friend struct SourceBuffer;
-
-  SourceLoc begin_, end_;
 };
 
 // Represents source code held in memory. There are two common ways a
@@ -166,34 +133,13 @@ struct SourceBuffer {
   // number.
   SourceLoc location(LineNum line_num) const;
 
-  // Returns a string_view of the source code in this buffer in the given range.
-  std::string_view operator[](SourceRange const &range) const;
-
   // Returns the character at the given source location.
   char operator[](SourceLoc loc) const {
     return chunks_[loc.chunk_][loc.offset_];
   }
 
-  // Starting at `loc`, finds the next sequence of characters satisfying the
-  // predicate `pred` and returns the pair of the corresponding SourceRange and
-  // a std::string_view representing that source text. The in-out parameter
-  // `loc` is updated to be the next location at which `pred` no longer holds.
-  // Each predicate must return false at some point between `loc` and the end of
-  // the chunk referenced by `loc` (behavior is undefined otherwise).
-  template <std::predicate<char> P>
-  std::pair<SourceRange, std::string_view> ConsumeChunkWhile(SourceLoc &loc,
-                                                             P &&pred) const {
-    SourceLoc start_loc = loc;
-    ASSERT(loc.chunk_ < chunks_.size());
-    std::string_view chunk = chunks_[loc.chunk_];
-    size_t offset          = loc.offset_;
-    while (pred(chunk[offset])) {
-      ++offset;
-      ASSERT(offset < chunk.size());
-    }
-    std::string_view result = chunk.substr(loc.offset_, offset - loc.offset_);
-    loc.offset_             = offset;
-    return std::make_pair(SourceRange(start_loc, loc), result);
+  char const *get(SourceLoc loc) const {
+    return &chunks_[loc.chunk_][loc.offset_];
   }
 
   // Returns a SourceLoc referring to one character passed the end of the source
@@ -204,7 +150,7 @@ struct SourceBuffer {
   // Computes and stores the indices for the start location of each line.
   void IndexLineStarts(std::string_view chunk, size_t chunk_index);
 
-  absl::InlinedVector<std::string, 1> chunks_;
+  std::deque<std::string> chunks_;
 
   // Offsets of lines stored with begin and end sentinels.
   std::vector<SourceLoc> line_start_ = {SourceLoc(0, 0)};

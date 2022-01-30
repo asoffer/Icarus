@@ -10,11 +10,6 @@ std::string SourceLoc::DebugString() const {
   return absl::StrCat("<", chunk_, ":", offset_, ">");
 }
 
-base::Interval<LineNum> SourceRange::lines(SourceBuffer const &buffer) const {
-  return base::Interval<LineNum>(buffer.line_number(begin()),
-                                 buffer.line_number(end()) + 1);
-}
-
 void SourceBuffer::AppendChunk(std::string chunk) {
   if (not chunks_.empty()) {
     ASSERT(chunks_.back().size() != 0);
@@ -60,13 +55,6 @@ std::pair<LineNum, Offset> SourceBuffer::line_and_offset(SourceLoc loc) const {
 SourceLoc SourceBuffer::location(LineNum line_num) const {
   ASSERT(line_num.value <= line_start_.size());
   return line_start_[line_num.value - 1];
-}
-
-std::string_view SourceBuffer::operator[](SourceRange const &range) const {
-  ASSERT(range.begin().chunk_ == range.end().chunk_);
-  return std::string_view(chunks_[range.begin().chunk_])
-      .substr(range.begin().offset_,
-              range.end().offset_ - range.begin().offset_);
 }
 
 }  // namespace frontend
