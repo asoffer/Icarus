@@ -249,7 +249,7 @@ diagnostic::DiagnosticMessage UninferrableType::ToMessage() const {
 
   return diagnostic::DiagnosticMessage(
       diagnostic::Text(text),
-      diagnostic::SourceQuote(&view.buffer())
+      diagnostic::SourceQuote()
           .Highlighted(view.range(), diagnostic::Style{}));
 }
 

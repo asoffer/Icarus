@@ -110,6 +110,7 @@ cc_library(
         "//frontend/source",
         "//frontend/source:file",
         "//frontend/source:file_name",
+        "//frontend/source:indexer",
         "//frontend:parse",
         "//ir/value:module_id",
         "@com_google_absl//absl/cleanup",

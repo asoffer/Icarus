@@ -21,7 +21,7 @@ struct NonConstantDesignatedInitializerType {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Designated initializer type must be a constant."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -38,7 +38,7 @@ struct NonTypeDesignatedInitializerType {
         diagnostic::Text("Designated initializer type must be a type, but you "
                          "provided an expression which is a `%s`.",
                          type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -57,7 +57,7 @@ struct NonStructDesignatedInitializer {
             "Designated initializers can only be used with structs, but you "
             "provided a `%s`",
             type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -76,7 +76,7 @@ struct InvalidInitializerType {
             "  Expected: A type convertible to `%s`\n"
             "  Actual:   `%s`",
             expected, actual),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -93,7 +93,7 @@ struct NonExportedField {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Field named `%s` in struct `%s` is not exported.",
                          member_name, type::Type(struct_type)),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -110,7 +110,7 @@ struct MissingStructField {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No field named `%s` in struct `%s`.", member_name,
                          struct_type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

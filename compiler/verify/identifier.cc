@@ -21,7 +21,7 @@ struct DeclOutOfOrder {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Variable `%s` used before it was declared.", id),
-        diagnostic::SourceQuote(&use_view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(use_view.range(), diagnostic::Style::ErrorText())
             .Highlighted(id_view.range(), diagnostic::Style::ErrorText()));
   }
@@ -40,7 +40,7 @@ struct UncapturedIdentifier {
         diagnostic::Text("Found an identifier '%s' which is not visible in the "
                          "current scope:",
                          id),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 

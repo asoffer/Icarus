@@ -40,6 +40,8 @@ struct Highlight {
 struct SourceQuote {
   explicit SourceQuote(frontend::SourceBuffer const* source) {}
   explicit SourceQuote(frontend::Source const* source) {}
+  explicit SourceQuote(std::string_view) {}
+  explicit SourceQuote() {}
 
   // TODO: implement for real.
   SourceQuote& Highlighted(std::string_view range, Style style) {

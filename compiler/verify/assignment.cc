@@ -20,7 +20,7 @@ struct TypeMismatch {
         diagnostic::Text(
             "Cannot assign a value of type `%s` to a reference of type `%s`:",
             rhs_type, lhs_type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -36,7 +36,7 @@ struct AssigningToNonReference {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Assigning to a non-reference expression:"),
-        diagnostic::SourceQuote(&lhs.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(lhs.range(), diagnostic::Style::ErrorText()));
   }
 

@@ -20,7 +20,7 @@ struct ProgramArgumentAccess {
             "Program arguments cannot be accessed from within a function or "
             "user-defined scope. If you would like to access them, they must "
             "be passed in through a parameter."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

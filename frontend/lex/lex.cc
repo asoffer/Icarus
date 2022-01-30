@@ -193,7 +193,7 @@ static base::Global kKeywords =
 // of the following wrapped in single quotation marks:
 // * A single non backslash character,
 // * A backslash and then any character in the set [abfnrtv0!\]
-Lexeme ConsumeCharLiteral(char const *&cursor, SourceBuffer const &buffer) {
+Lexeme ConsumeCharLiteral(char const *&cursor) {
   char const *start_loc = cursor;
   ASSERT(*cursor == '!');
   // TODO: This shouldn't be an assert. it should be a genuine error we can
@@ -258,7 +258,7 @@ static base::Global kOps =
          {";", {Syntax::Semicolon}},      {"`", {Operator::Backtick}}},
     };
 
-Lexeme NextOperator(std::string_view &cursor, SourceBuffer const &buffer) {
+Lexeme NextOperator(std::string_view &cursor) {
   if (cursor.starts_with("--")) {
     cursor.remove_prefix(2);
     return Lexeme(std::make_unique<ast::Identifier>(
@@ -274,7 +274,7 @@ Lexeme NextOperator(std::string_view &cursor, SourceBuffer const &buffer) {
   }
 
   char const *loc    = cursor.data();
-  auto result = ConsumeCharLiteral(loc, buffer);
+  auto result = ConsumeCharLiteral(loc);
   cursor.remove_prefix(loc - cursor.data());
   return result;
 }
@@ -310,7 +310,7 @@ static base::Global kReservedTypes =
 // the character under the cursor is an alpha or underscore character. Returns a
 // Lexeme representing either an identifier or the builtin keyword or value for
 // this word.
-Lexeme ConsumeWord(std::string_view &cursor, SourceBuffer const &buffer) {
+Lexeme ConsumeWord(std::string_view &cursor) {
   ASSERT(IsAlphaOrUnderscore(cursor[0]) == true);
 
   // Because we have already verified that the character locateted at `cursor`
@@ -443,7 +443,7 @@ absl::StatusOr<Lexeme> NextHashtag(std::string_view &cursor) {
   }
 }
 
-Lexeme ConsumeNumber(std::string_view &cursor, SourceBuffer const &buffer,
+Lexeme ConsumeNumber(std::string_view &cursor,
                      diagnostic::DiagnosticConsumer &diag) {
   std::string_view number_str = ConsumeWhile(cursor, [](char c) {
     return IsDigit(c)
@@ -479,10 +479,10 @@ Lexeme ConsumeNumber(std::string_view &cursor, SourceBuffer const &buffer,
 
 }  // namespace
 
-std::vector<Lexeme> Lex(SourceBuffer &buffer,
-                        diagnostic::DiagnosticConsumer &diag, size_t chunk) {
+std::vector<Lexeme> Lex(std::string_view content,
+                        diagnostic::DiagnosticConsumer &diag) {
   std::vector<Lexeme> result;
-  LexState state(&buffer, diag, chunk);
+  LexState state(content, diag);
   do { result.push_back(NextToken(&state)); } while (not result.back().eof());
   return result;
 }
@@ -493,11 +493,11 @@ restart:
   if (state->cursor_.empty()) {
     return Lexeme(Syntax::EndOfFile, state->cursor_);
   } else if (IsAlphaOrUnderscore(state->peek())) {
-    return ConsumeWord(state->cursor_, state->buffer_);
+    return ConsumeWord(state->cursor_);
   } else if (IsDigit(state->peek()) or
              (state->peek() == '.' and state->cursor_.size() > 1 and
               IsDigit(state->cursor_[1]))) {
-    return ConsumeNumber(state->cursor_, state->buffer_, state->diag_);
+    return ConsumeNumber(state->cursor_, state->diag_);
   }
 
   char peek = state->peek();
@@ -589,7 +589,7 @@ restart:
       }
       goto restart;
     } break;
-    default: return NextOperator(state->cursor_, state->buffer_); break;
+    default: return NextOperator(state->cursor_); break;
   }
   UNREACHABLE();
 }

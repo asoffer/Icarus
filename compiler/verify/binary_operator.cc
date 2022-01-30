@@ -27,7 +27,7 @@ struct UnexpandedBinaryOperatorArgument {
         diagnostic::Text("Binary operator argument expands to %u values. Each "
                          "operand must expand to exactly 1 value.",
                          num_arguments),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -44,7 +44,7 @@ struct LogicalBinaryOperatorNeedsBool {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Operator '%s' must be called with boolean arguments.",
                          ast::BinaryOperator::Symbol(kind)),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -61,7 +61,7 @@ struct InvalidAssignmentOperatorLhsValueCategory {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Lefthand-side of binary logical assignment operator "
                          "must not be constant."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -76,7 +76,7 @@ struct BinaryOperatorTypeMismatch {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Mismatched types `%s` and `%s` in binary operator.",
                          lhs_type, rhs_type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -94,7 +94,7 @@ struct NoMatchingBinaryOperator {
         diagnostic::Text(
             "No matching binary operator (%s) for types `%s` and `%s`.", op,
             lhs_type, rhs_type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 

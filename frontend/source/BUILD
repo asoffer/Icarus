@@ -81,3 +81,12 @@ cc_library(
         "//base:debug",
     ]
 )
+
+cc_library(
+    name = "indexer",
+    hdrs = ["indexer.h"],
+    deps = [
+        "//ir/value:module_id",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)

@@ -19,7 +19,7 @@ struct CyclicDependency {
   static constexpr std::string_view kName     = "cyclic-dependency";
 
   diagnostic::DiagnosticMessage ToMessage() const {
-    diagnostic::SourceQuote quote(&cycle.front().buffer());
+    diagnostic::SourceQuote quote;
     for (auto const &view : cycle) {
       quote = quote.Highlighted(view.range(), diagnostic::Style::ErrorText());
     }

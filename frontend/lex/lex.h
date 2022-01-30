@@ -11,13 +11,11 @@
 namespace frontend {
 
 struct LexState {
-  LexState(SourceBuffer *buffer, diagnostic::DiagnosticConsumer &diag,
-           size_t chunk = 0)
-      : buffer_(*buffer), cursor_(buffer_.chunk(chunk)), diag_(diag) {}
+  LexState(std::string_view content, diagnostic::DiagnosticConsumer &diag)
+      : cursor_(content), diag_(diag) {}
 
   char peek() { return cursor_[0]; }
 
-  SourceBuffer &buffer_;
   std::string_view cursor_;
   diagnostic::DiagnosticConsumer &diag_;
 };
@@ -32,8 +30,8 @@ struct StringLiteralError {
   int offset;
 };
 
-std::vector<Lexeme> Lex(SourceBuffer &buffer,
-                        diagnostic::DiagnosticConsumer &diag, size_t chunk = 0);
+std::vector<Lexeme> Lex(std::string_view content,
+                        diagnostic::DiagnosticConsumer &diag);
 Lexeme NextToken(LexState *state);
 
 }  // namespace frontend

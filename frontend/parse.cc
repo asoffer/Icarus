@@ -281,42 +281,14 @@ struct NonAssignmentInDesignatedInitializer {
   std::string_view error_range, context_range;
 };
 
-struct UnknownParseError {
-  static constexpr std::string_view kCategory = "parse-error";
-  static constexpr std::string_view kName     = "unknown-parse-error";
-
-  diagnostic::DiagnosticMessage ToMessage() const {
-    diagnostic::SourceQuote quote(src);
-    for (auto const &range : lines) {
-      quote.Highlighted(range, diagnostic::Style{});
-    }
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Parse errors found in \"%s\" on the following lines:",
-                         src->name()),
-        std::move(quote));
-  }
-
-  SourceBuffer const *src;
-  std::vector<std::string_view> lines;
-};
-
 struct ExceedinglyCrappyParseError {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName = "exceedingly-crappy-parse-error";
 
   diagnostic::DiagnosticMessage ToMessage() const {
-    diagnostic::SourceQuote quote(src);
-    for (auto const &range : lines) {
-      quote.Highlighted(range, diagnostic::Style{});
-    }
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Parse errors found somewhere in \"%s\":",
-                         src->name()),
-        std::move(quote));
+        diagnostic::Text("Parse errors found somewhere"));
   }
-
-  SourceBuffer const *src;
-  std::vector<std::string_view> lines;
 };
 
 struct CommaSeparatedListStatement {
@@ -2173,11 +2145,9 @@ void CleanUpReduction(ParseState *state) {
 }  // namespace
 
 std::vector<std::unique_ptr<ast::Node>> Parse(
-    SourceBuffer &buffer, diagnostic::DiagnosticConsumer &diag, size_t chunk) {
-  src = &buffer;
-
+    std::string_view content, diagnostic::DiagnosticConsumer &diag) {
   size_t num_consumed = diag.num_consumed();
-  auto nodes          = Lex(buffer, diag, chunk);
+  auto nodes          = Lex(content, diag);
   // If lexing failed, don't bother trying to parse.
   if (diag.num_consumed() > num_consumed) { return {}; }
   // TODO: Shouldn't need this protection.
@@ -2227,11 +2197,8 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
         for (const auto &ns : state.node_stack_) {
           lines.push_back(ns->range());
         }
-        diag.Consume(
-            ExceedinglyCrappyParseError{.src = src, .lines = std::move(lines)});
-      } else {
-        diag.Consume(UnknownParseError{.src = src, .lines = std::move(lines)});
       }
+      diag.Consume(ExceedinglyCrappyParseError{});
       return {};
     }
   }

@@ -23,7 +23,7 @@ struct UnexpandedUnaryOperatorArgument {
         diagnostic::Text("Unary operator argument expands to %u values. Each "
                          "operand must expand to exactly 1 value.",
                          num_arguments),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -38,7 +38,7 @@ struct UncopyableType {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Attempting to copy an uncopyable type `%s`.", from),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -53,7 +53,7 @@ struct NonConstantInterface {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Non-constant type in interface constructor `~`"),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -67,7 +67,7 @@ struct InvalidUnaryOperatorOverload {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No valid operator overload for (%s)", op),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -84,7 +84,7 @@ struct InvalidUnaryOperatorCall {
         diagnostic::Text(
             "Invalid call to unary operator (%s) with argument type `%s`", op,
             type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -101,7 +101,7 @@ struct NegatingUnsignedInteger {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to negate an unsigned integer of type `%s`.", type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -116,7 +116,7 @@ struct NonAddressableExpression {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expression is not addressable."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -132,7 +132,7 @@ struct DereferencingNonPointer {
         diagnostic::Text("Attempting to dereference an object of type `%s` "
                          "which is not a pointer",
                          type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 

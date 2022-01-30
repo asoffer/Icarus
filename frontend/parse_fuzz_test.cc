@@ -5,7 +5,6 @@
 #include "base/log.h"
 #include "diagnostic/consumer/trivial.h"
 #include "frontend/parse.h"
-#include "frontend/source/buffer.h"
 
 static constexpr auto kTokens = std::array{
     // Keywords
@@ -61,16 +60,8 @@ extern "C" int LLVMFuzzerTestOneInput(uint8_t const* data, size_t length) {
     string_source.append(" ");
   }
 
-  LOG("", R"(
-=============== SOURCE ===============
-%s
-======================================
-)",
-      string_source);
-
-  frontend::SourceBuffer buffer(std::move(string_source));
   diagnostic::TrivialConsumer diag;
-  frontend::Parse(buffer, diag);
+  frontend::Parse(string_source, diag);
 
   return 0;
 }

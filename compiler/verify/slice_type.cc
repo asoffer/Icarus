@@ -17,7 +17,7 @@ struct SliceDataTypeNotAType {
         diagnostic::Text(
             "Slice type has underlying data type specified as a value which "
             "is not a type."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -33,7 +33,7 @@ struct NonTypeSliceTypeMatch {
         diagnostic::Text(
             "Attempting to match a slice type against a value of type `%s`.",
             type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

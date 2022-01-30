@@ -16,7 +16,7 @@ struct NonTypeFunctionInput {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "The specified input type for a function must be a type."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
   frontend::SourceView view;
@@ -30,7 +30,7 @@ struct NonTypeFunctionOutput {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "The specified return type for a function must be a type."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
   frontend::SourceView view;

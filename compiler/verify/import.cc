@@ -19,7 +19,7 @@ struct NonConstantImport {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot import a non-constant module."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -34,7 +34,7 @@ struct InvalidImport {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot import a module from a value of type `%s`.",
                          type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

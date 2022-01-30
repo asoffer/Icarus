@@ -24,7 +24,7 @@ struct ReturningNonType {
         diagnostic::Text("Expected a type for the function's return-type but "
                          "found an expression of type `%s`",
                          type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -40,7 +40,7 @@ struct NoReturnTypes {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to return a value when function returns nothing."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -72,7 +72,7 @@ struct ReturningWrongNumber {
             "Attempting to return %u value%s from a function which has %u "
             "return value%s.",
             actual, actual == 1 ? "" : "s", expected, expected == 1 ? "" : "s"),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

@@ -28,7 +28,7 @@ struct UndeclaredIdentifier {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Found an undeclared identifier '%s':", id),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -45,7 +45,7 @@ struct NotAType {
         diagnostic::Text("Expression was expected to be a type, but instead "
                          "was a value of type `%s`.",
                          type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -60,7 +60,7 @@ struct InvalidCast {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No viable cast from `%s` to `%s`.", from, to),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -77,7 +77,7 @@ struct AssigningToConstant {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot assign to a constant (of type `%s`).", to),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -92,7 +92,7 @@ struct ImmovableType {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Attempting to move an immovable type `%s`.", from),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -111,7 +111,7 @@ struct PatternTypeMismatch {
   Type from pattern:          %s
   Type being matched against: %s)",
             pattern_type, matched_type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 

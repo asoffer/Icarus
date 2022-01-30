@@ -11,7 +11,7 @@ diagnostic::DiagnosticMessage UncallableWithArguments::ToMessage() const {
   if (errors.empty()) {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expression cannot be called"),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -73,7 +73,7 @@ diagnostic::DiagnosticMessage UncallableWithArguments::ToMessage() const {
 
   return diagnostic::DiagnosticMessage(
       diagnostic::Text("Expression cannot be called with the given arguments."),
-      diagnostic::SourceQuote(&view.buffer())
+      diagnostic::SourceQuote()
           .Highlighted(view.range(), diagnostic::Style::ErrorText()),
       diagnostic::List(std::move(items)));
 }

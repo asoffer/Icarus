@@ -14,6 +14,7 @@
 #include "diagnostic/consumer/tracking.h"
 #include "frontend/parse.h"
 #include "frontend/source/buffer.h"
+#include "frontend/source/indexer.h"
 #include "module/mock_importer.h"
 #include "module/module.h"
 
@@ -30,8 +31,7 @@ struct ContextHolder {
 struct TestModule : ContextHolder, compiler::CompiledModule {
   TestModule()
       : ContextHolder(),
-        compiler::CompiledModule(&source_, &ctx_),
-        source_("test-module", "\n"),
+        compiler::CompiledModule("", &ctx_),
         work_graph_(compiler::PersistentResources{
             .work                = &work_set,
             .module              = this,
@@ -41,9 +41,10 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
 
   void AppendCode(std::string code) {
     code.push_back('\n');
-    source_.AppendChunk(std::move(code));
+    std::string_view content =
+        indexer_.insert(ir::ModuleId::New(), std::move(code));
     size_t num = consumer.num_consumed();
-    auto stmts = frontend::Parse(source_, consumer, source_.num_chunks() - 1);
+    auto stmts               = frontend::Parse(content, consumer);
     if (consumer.num_consumed() != num) { return; }
     auto nodes = insert(stmts.begin(), stmts.end());
     compiler::CompilationData data{
@@ -72,10 +73,11 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
   template <typename NodeType>
   NodeType const* Append(std::string code) {
     code.push_back('\n');
-    source_.AppendChunk(std::move(code));
+    std::string_view content =
+        indexer_.insert(ir::ModuleId::New(), std::move(code));
 
     size_t num = consumer.num_consumed();
-    auto stmts = frontend::Parse(source_, consumer, source_.num_chunks() - 1);
+    auto stmts = frontend::Parse(content, consumer);
     if (consumer.num_consumed() != num) { return nullptr; }
     if (auto* ptr = stmts[0]->template if_as<NodeType>()) {
       std::vector<std::unique_ptr<ast::Node>> ns;
@@ -115,7 +117,7 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
   }
 
   void CompileImportedLibrary(compiler::CompiledModule& imported_mod,
-                              std::string_view name, std::string content) {
+                              std::string_view name, std::string s) {
     auto id = ir::ModuleId::New();
 
     compiler::PersistentResources import_resources{
@@ -125,9 +127,10 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
         .importer            = &importer,
     };
 
-    auto& buffer      = imported_.emplace_back(std::move(content));
+    std::string_view content =
+        indexer_.insert(ir::ModuleId::New(), std::move(s));
     size_t num        = consumer.num_consumed();
-    auto parsed_nodes = frontend::Parse(buffer, consumer);
+    auto parsed_nodes = frontend::Parse(content, consumer);
     if (consumer.num_consumed() != num) { return; }
     compiler::CompileModule(
         imported_mod.context(), import_resources,
@@ -147,8 +150,7 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
   compiler::WorkSet work_set;
 
  private:
-  frontend::SourceBuffer source_;
-  std::deque<frontend::SourceBuffer> imported_;
+  frontend::SourceIndexer indexer_;
   compiler::WorkGraph work_graph_;
 };
 

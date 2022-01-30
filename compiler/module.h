@@ -7,11 +7,8 @@
 namespace compiler {
 
 struct CompiledModule : module::Module {
-  explicit CompiledModule(frontend::SourceBuffer const *buffer,
-                          Context *context)
-      : context_(ASSERT_NOT_NULL(context)),
-        buffer_(ASSERT_NOT_NULL(buffer)),
-        module_(this) {
+  explicit CompiledModule(std::string_view content, Context *context)
+      : context_(ASSERT_NOT_NULL(context)), content_(content), module_(this) {
     context_->set_qt_callback(
         [&](ast::Declaration::Id const *id, type::QualType qt) {
           if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
@@ -48,9 +45,7 @@ struct CompiledModule : module::Module {
     return iter->second;
   }
 
-  frontend::SourceBuffer const &buffer() const {
-    return *ASSERT_NOT_NULL(buffer_);
-  }
+  std::string_view buffer() const { return content_; }
 
   bool has_error_in_dependent_module() const {
     return depends_on_module_with_errors_;
@@ -64,7 +59,7 @@ struct CompiledModule : module::Module {
 
  private:
   Context *context_;
-  frontend::SourceBuffer const *buffer_;
+  std::string_view content_;
 
   absl::flat_hash_map<std::string_view, std::vector<SymbolInformation>>
       exported_;

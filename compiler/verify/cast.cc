@@ -19,7 +19,7 @@ struct CastToNonConstantType {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Cannot cast to a type which is not declared constant."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

@@ -13,7 +13,7 @@ struct NonConstantEnumerator {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Values for enumerators must be declared as constants."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -28,7 +28,7 @@ struct NonIntegralEnumerator {
         diagnostic::Text("Values for enumerators must be integers, but we "
                          "found an enumerator of type `%s`.",
                          type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

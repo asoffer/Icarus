@@ -16,7 +16,7 @@ struct NonIntegralArrayLength {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Array length indexed by non-integral type"),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -32,7 +32,7 @@ struct ArrayDataTypeNotAType {
         diagnostic::Text(
             "Array type has underlying data type specified as a value which "
             "is not a type."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -48,7 +48,7 @@ struct NonTypeArrayTypeMatch {
         diagnostic::Text(
             "Attempting to match an array type against a value of type `%s`.",
             type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

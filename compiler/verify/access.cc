@@ -28,7 +28,7 @@ struct DeducingAccess {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("The type of an object cannot be deduced from the "
                          "type of a member."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -43,7 +43,7 @@ struct [[maybe_unused]] IncompleteTypeMemberAccess {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot access a member of an incomplete type `%s`.",
                          type),
-        diagnostic::SourceQuote(&member_view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(member_view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -59,7 +59,7 @@ struct MissingMember {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expressions of type `%s` have no member named `%s`.",
                          type, member),
-        diagnostic::SourceQuote(&member_view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(expr_view.range(), diagnostic::Style{})
             .Highlighted(member_view.range(), diagnostic::Style::ErrorText()));
   }
@@ -77,7 +77,7 @@ struct MissingConstantMember {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No member named `%s` in this expression.", member),
-        diagnostic::SourceQuote(&member_view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(expr_view.range(), diagnostic::Style{})
             .Highlighted(member_view.range(), diagnostic::Style::ErrorText()));
   }
@@ -94,7 +94,7 @@ struct NonConstantTypeMemberAccess {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot access a member of a non-constant type."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -109,7 +109,7 @@ struct TypeHasNoMembers {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("The type `%s` does not have `%s` as a member.", type,
                          member),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 
@@ -127,7 +127,7 @@ struct NonExportedMember {
         diagnostic::Text(
             "Expressions of type `%s` do not export the member `%s`.", type,
             member),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -143,7 +143,7 @@ struct NonConstantModuleMemberAccess {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot access a member of a non-constant module."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -157,7 +157,7 @@ struct UndeclaredIdentifierInModule {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Module contains no exported member `%s`", id),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style::ErrorText()));
   }
 

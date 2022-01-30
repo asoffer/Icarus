@@ -122,14 +122,12 @@ int Compile(frontend::FileName const &file_name) {
     return 1;
   }
 
-  auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
-  auto maybe_file_src = frontend::SourceBufferFromFile(canonical_file_name);
-  if (not maybe_file_src.ok()) {
+  auto content = LoadFileContent(file_name.value.c_str());
+  if (not content.ok()) {
     diag.Consume(frontend::MissingModule{
-        .source    = canonical_file_name,
+        .source    = file_name.value,
         .requestor = "",
-        .reason    = std::string(maybe_file_src.status().message()),
-    });
+        .reason    = std::string(content.status().message())});
     return 1;
   }
 
@@ -140,10 +138,9 @@ int Compile(frontend::FileName const &file_name) {
   llvm::TargetMachine *target_machine = target->createTargetMachine(
       target_triple, cpu, features, target_options, relocation_model);
 
-  auto *src = &*maybe_file_src;
-  diag      = diagnostic::StreamingConsumer(stderr, src);
   compiler::WorkSet work_set;
-  compiler::FileImporter importer(&work_set, &diag,
+  frontend::SourceIndexer source_indexer;
+  compiler::FileImporter importer(&work_set, &diag, &source_indexer,
                                   absl::GetFlag(FLAGS_module_paths));
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
@@ -152,7 +149,7 @@ int Compile(frontend::FileName const &file_name) {
 
   ir::Module ir_module;
   compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(src, &context);
+  compiler::CompiledModule exec_mod(*content, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }
@@ -164,7 +161,7 @@ int Compile(frontend::FileName const &file_name) {
       .importer            = &importer,
   };
 
-  auto parsed_nodes = frontend::Parse(*src, diag);
+  auto parsed_nodes = frontend::Parse(*content, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   auto main_fn      = CompileModule(context, resources, nodes);
   return CompileToObjectFile(exec_mod, *main_fn, target_machine);

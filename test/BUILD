@@ -19,6 +19,7 @@ cc_library(
         "//compiler:work_graph",
         "//diagnostic/consumer:tracking",
         "//frontend/source:buffer",
+        "//frontend/source:indexer",
         "//frontend:parse",
         "//module:module",
         "//module:mock_importer",

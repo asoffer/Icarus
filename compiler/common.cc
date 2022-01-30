@@ -11,12 +11,8 @@ module::Module *ModuleFor(ast::Node const *node) {
 }
 
 frontend::SourceBuffer const *SourceBufferFor(ast::Node const *node) {
-  auto const *m = ModuleFor(node);
-  if (auto const *cm = m->if_as<CompiledModule>()) {
-    return &cm->buffer();
-  } else {
-    return nullptr;
-  }
+  // TODO: Implement or remove.
+  return nullptr;
 }
 
 frontend::SourceView SourceViewFor(ast::Node const *node) {

@@ -18,7 +18,7 @@ struct NonBooleanCondition {
         diagnostic::Text("If statements require the condition to be of type "
                          "`bool`, but you provided a value of type `%s`.",
                          type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

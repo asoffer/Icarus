@@ -21,7 +21,7 @@ struct InvalidIndexType {
                          "non-integral index. Indices must be integers, but "
                          "you provided an index of type `%s`.",
                          type, index_type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -40,7 +40,7 @@ struct IndexingArrayOutOfBounds {
             "Array is indexed out of bounds. Array of type `%s` has size %u "
             "but you are attempting to access position %d.",
             type::Type(array), array->length(), index),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -56,7 +56,7 @@ struct NegativeArrayIndex {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Array is indexed with a negative value."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -73,7 +73,7 @@ struct InvalidIndexing {
             "Cannot index into a non-array, non-buffer type. Indexed type is "
             "a `%s`.",
             type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

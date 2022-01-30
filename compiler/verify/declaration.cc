@@ -19,7 +19,7 @@ struct DeclaringHoleAsNonModule {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Declaring `--` as non-module type `%s`.", type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -34,7 +34,7 @@ struct ShadowingDeclaration {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Ambiguous declarations:"),
-        diagnostic::SourceQuote(&view1.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view1.range(), diagnostic::Style{})
             .Highlighted(view2.range(), diagnostic::Style{}));
   }
@@ -50,7 +50,7 @@ struct NoDefaultValue {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("There is no default value for the type `%s`.", type),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -65,7 +65,7 @@ struct NonConstantTypeInDeclaration {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Non-constant type encountered in declaration."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 
@@ -80,7 +80,7 @@ struct UninitializedConstant {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to define a constant with an uninitialized value."),
-        diagnostic::SourceQuote(&view.buffer())
+        diagnostic::SourceQuote()
             .Highlighted(view.range(), diagnostic::Style{}));
   }
 

@@ -15,10 +15,10 @@ struct MissingModule {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(diagnostic::Text(
-        "Could not find module named \"%s\":\n%s", source.name(), reason));
+        "Could not find module named \"%s\":\n%s", source, reason));
   }
 
-  CanonicalFileName source;
+  std::string source;
   std::string requestor;  // TODO: Set this correctly or remove it.
   std::string reason;
 };
