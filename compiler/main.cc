@@ -112,7 +112,8 @@ int Compile(frontend::FileName const &file_name) {
   llvm::InitializeAllAsmParsers();
   llvm::InitializeAllAsmPrinters();
 
-  diagnostic::StreamingConsumer diag(stderr, nullptr);
+  frontend::SourceIndexer source_indexer;
+  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
 
   auto target_triple = llvm::sys::getDefaultTargetTriple();
   std::string error;
@@ -139,7 +140,6 @@ int Compile(frontend::FileName const &file_name) {
       target_triple, cpu, features, target_options, relocation_model);
 
   compiler::WorkSet work_set;
-  frontend::SourceIndexer source_indexer;
   compiler::FileImporter importer(&work_set, &diag, &source_indexer,
                                   absl::GetFlag(FLAGS_module_paths));
   if (not importer.SetImplicitlyEmbeddedModules(
@@ -147,9 +147,12 @@ int Compile(frontend::FileName const &file_name) {
     return 1;
   }
 
+  std::string_view file_content =
+      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
+
   ir::Module ir_module;
   compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(*content, &context);
+  compiler::CompiledModule exec_mod(file_content, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }
@@ -161,7 +164,7 @@ int Compile(frontend::FileName const &file_name) {
       .importer            = &importer,
   };
 
-  auto parsed_nodes = frontend::Parse(*content, diag);
+  auto parsed_nodes = frontend::Parse(file_content, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   auto main_fn      = CompileModule(context, resources, nodes);
   return CompileToObjectFile(exec_mod, *main_fn, target_machine);

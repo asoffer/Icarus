@@ -13,8 +13,8 @@ struct IncompleteField {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Struct field has incomplete type."),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(range,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string_view range;

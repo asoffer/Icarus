@@ -14,9 +14,6 @@ namespace diagnostic {
 // A DiagnosticConsumer which tracks the category and name of all diagnostics it
 // consumes.
 struct TrackingConsumer : DiagnosticConsumer {
-  explicit TrackingConsumer() : DiagnosticConsumer(nullptr) {}
-  ~TrackingConsumer() override {}
-
   void ConsumeImpl(std::string_view category, std::string_view name,
                    DiagnosticMessage&&) override {
     diagnostics_.emplace_back(category, name);

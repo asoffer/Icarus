@@ -7,7 +7,7 @@ cc_library(
         ":consumer",
         "//diagnostic:console_renderer",
         "//diagnostic:message",
-        "//frontend/source:buffer",
+        "//frontend/source:indexer",
     ],
 )
 
@@ -29,7 +29,7 @@ cc_library(
         "//base:debug",
         "//diagnostic:console_renderer",
         "//diagnostic:message",
-        "//frontend/source:buffer",
+        "//frontend/source:indexer",
     ],
 )
 

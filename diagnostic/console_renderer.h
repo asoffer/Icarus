@@ -5,12 +5,15 @@
 #include <type_traits>
 
 #include "diagnostic/message.h"
+#include "frontend/source/indexer.h"
 
 namespace diagnostic {
 
 struct ConsoleRenderer {
   // Assumes the file is already open.
-  constexpr explicit ConsoleRenderer(std::FILE* out) : out_(out) {}
+  constexpr explicit ConsoleRenderer(std::FILE* out,
+                                     frontend::SourceIndexer* source_indexer)
+      : source_indexer_(*ASSERT_NOT_NULL(source_indexer)), out_(out) {}
 
   void AddError(frontend::SourceBuffer const* source,
                 DiagnosticMessage const& diag) {
@@ -25,6 +28,7 @@ struct ConsoleRenderer {
   void WriteSourceQuote(SourceQuote const& quote);
 
   bool has_data_ = false;
+  frontend::SourceIndexer& source_indexer_;
   std::FILE* out_;
 };
 

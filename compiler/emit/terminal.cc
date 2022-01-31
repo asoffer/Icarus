@@ -16,8 +16,8 @@ struct TerminalMatchError {
   Pattern value: %s
   Matched value: %s)",
                          pattern_value, matched_value),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(range,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string_view range;

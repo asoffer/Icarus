@@ -57,7 +57,7 @@ struct NumberParsingFailure {
 
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(message),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   NumberParsingError error;
@@ -73,7 +73,7 @@ struct UnprintableSourceCharacter {
         diagnostic::Text("Encountered unprintable character '\\x%02x' "
                          "encountered in source.",
                          value),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   int value;
@@ -88,7 +88,7 @@ struct InvalidSourceCharacter {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Invalid character '%c' encountered in source.",
                          value),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   char value;
@@ -104,7 +104,7 @@ struct StringLiteralParsingFailure {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Failure to parse string literal: %d error%s.",
                          errors.size(), errors.size() == 1 ? "" : "s"),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   std::vector<StringLiteralError> errors;
@@ -118,7 +118,7 @@ struct HashtagParsingFailure {
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(message),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   std::string message;
@@ -133,7 +133,7 @@ struct NonWhitespaceAfterNewlineEscape {
   diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Invalid escaped newline."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   std::string_view range;

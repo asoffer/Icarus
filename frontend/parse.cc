@@ -35,7 +35,7 @@ struct TodoDiagnostic {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("TODO: Diagnostic emit from %s, line %u.",
                          loc.file_name(), loc.line()),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   std::experimental::source_location loc =
@@ -51,7 +51,7 @@ struct NonIdentifierBinding {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("A backtick (`) must be followed by an identifier"),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   SourceBuffer const *src;
@@ -66,8 +66,8 @@ struct DeclaringNonIdentifier {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Encountered a declaration where the expression being "
                          "declared is not an identifier."),
-        diagnostic::SourceQuote(src).Highlighted(
-            id_range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(id_range,
+                                              diagnostic::Style::ErrorText()));
   }
 
   SourceBuffer const *src;
@@ -82,8 +82,8 @@ struct AssigningNonIdentifier {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Encountered an assignment where the expression being "
                          "assigned to is not an identifier."),
-        diagnostic::SourceQuote(src).Highlighted(
-            id_range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(id_range,
+                                              diagnostic::Style::ErrorText()));
   }
 
   SourceBuffer const *src;
@@ -97,7 +97,7 @@ struct AccessRhsNotIdentifier {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Right-hand side must be an identifier"),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   SourceBuffer const *src;
@@ -114,7 +114,7 @@ struct ScopeNodeAlreadyHasLabel {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("This scope already has a label."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   SourceBuffer const *src;
@@ -129,7 +129,7 @@ struct ReservedKeyword {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Identifier `%s` is a reserved keyword.", keyword),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   SourceBuffer const *src;
@@ -144,7 +144,7 @@ struct CallingDeclaration {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Declarations cannot be called"),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   SourceBuffer const *src;
@@ -158,7 +158,7 @@ struct IndexingDeclaration {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Declarations cannot be indexed"),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   SourceBuffer const *src;
@@ -172,7 +172,7 @@ struct UnknownDeclarationInBlock {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Scope blocks may only declare 'before' and 'after'."),
-        diagnostic::SourceQuote(src)
+        diagnostic::SourceQuote()
             .Highlighted(error_range, diagnostic::Style::ErrorText())
             .Highlighted(context_range, diagnostic::Style{}));
   }
@@ -188,7 +188,7 @@ struct NonDeclarationInBlock {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Scope blocks may only contain declarations."),
-        diagnostic::SourceQuote(src)
+        diagnostic::SourceQuote()
             .Highlighted(error_range, diagnostic::Style::ErrorText())
             .Highlighted(context_range, diagnostic::Style{}));
   }
@@ -204,7 +204,7 @@ struct NonDeclarationInScope {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Scopes may only contain declarations."),
-        diagnostic::SourceQuote(src)
+        diagnostic::SourceQuote()
             .Highlighted(error_range, diagnostic::Style::ErrorText())
             .Highlighted(context_range, diagnostic::Style{}));
   }
@@ -221,7 +221,7 @@ struct NonDeclarationInStruct {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Each struct member must be defined using a declaration."),
-        diagnostic::SourceQuote(src)
+        diagnostic::SourceQuote()
             .Highlighted(error_range, diagnostic::Style::ErrorText())
             .Highlighted(context_range, diagnostic::Style{}));
   }
@@ -238,7 +238,7 @@ struct NonDeclarationInInterface {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Each interface member must be defined using a declaration."),
-        diagnostic::SourceQuote(src)
+        diagnostic::SourceQuote()
             .Highlighted(error_range, diagnostic::Style::ErrorText())
             .Highlighted(context_range, diagnostic::Style{}));
   }
@@ -254,7 +254,7 @@ struct InvalidArgumentTypeVar {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Argument type variables must be valid identifiers."),
-        diagnostic::SourceQuote(src)
+        diagnostic::SourceQuote()
             .Highlighted(error_range, diagnostic::Style::ErrorText())
             .Highlighted(context_range, diagnostic::Style{}));
   }
@@ -272,7 +272,7 @@ struct NonAssignmentInDesignatedInitializer {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Each struct member must be initialized with an assignment."),
-        diagnostic::SourceQuote(src)
+        diagnostic::SourceQuote()
             .Highlighted(error_range, diagnostic::Style::ErrorText())
             .Highlighted(context_range, diagnostic::Style{}));
   }
@@ -298,7 +298,7 @@ struct CommaSeparatedListStatement {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Comma-separated lists are not allowed as statements"),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   SourceBuffer const *src;
@@ -314,7 +314,7 @@ struct DeclarationUsedInUnaryOperator {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Declarations cannot be used as argument to unary operator."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   SourceBuffer const *src;
@@ -327,7 +327,7 @@ struct PositionalArgumentFollowingNamed {
       "positional-argument-followed-by-named";
 
   diagnostic::DiagnosticMessage ToMessage() const {
-    diagnostic::SourceQuote quote(src);
+    diagnostic::SourceQuote quote;
     quote.Highlighted(last_named, diagnostic::Style{});
     for (auto const &pos_range : pos_ranges) {
       quote.Highlighted(pos_range, diagnostic::Style{});
@@ -350,7 +350,7 @@ struct UnknownBuiltinHashtag {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Unknown builtin hashtag #%s", token),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
   SourceBuffer const *src;
@@ -365,7 +365,7 @@ struct BracedShortFunctionLiteral {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Unexpected braces in short function literal."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}),
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}),
         diagnostic::Text(
             "\nShort function literals do not use braces in Icarus.\n"
             "Rather than writing `(n: i64) => { n * n }`, remove the braces "
@@ -1555,10 +1555,10 @@ std::unique_ptr<ast::Node> KeepOnly(
 std::unique_ptr<ast::Node> CombineColonEq(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto *tk_node = &nodes[0]->as<Token>();
+  auto *tk_node  = &nodes[0]->as<Token>();
   tk_node->token = std::string_view(nodes.front()->range().begin(),
                                     nodes.back()->range().end());
-  tk_node->op = Operator::ColonEq;
+  tk_node->op    = Operator::ColonEq;
   return KeepOnly<0>(std::move(nodes), diag);
 }
 

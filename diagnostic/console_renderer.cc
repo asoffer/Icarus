@@ -33,8 +33,25 @@ void ConsoleRenderer::Flush() {
 }
 
 void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
+  ASSERT(quote.highlights.empty() == false);
+
+  // TODO: We should just keep them sorted. In a flat_set or something.
+  auto highlights = quote.highlights;
+  std::sort(highlights.begin(), highlights.end(),
+            [](auto const &l, auto const &r) {
+              return std::less<char const *>{}(l.range.data(), r.range.data());
+            });
+
+  for (auto const &highlight : highlights) {
+    auto &entry       = source_indexer_.EntryFor(highlight.range);
+    auto [start, end] = entry.lines_containing(highlight.range);
+    for (size_t line_number = start; line_number < end; ++line_number) {
+      absl::FPrintF(out_, "\033[97;1m%*d | \033[0m%s\n", 4, line_number,
+                    entry.line(line_number));
+    }
+  }
+
 #if 0
-  ASSERT(quote.lines.empty() == false);
 
   auto highlight_iter   = quote.highlights.begin();
   bool inside_highlight = false;

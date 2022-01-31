@@ -15,8 +15,8 @@ struct PatternMatchFailure {
         diagnostic::Text("Failed to match type of function parameter against "
                          "provided argument of type `%s`.",
                          type),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(range,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string type;

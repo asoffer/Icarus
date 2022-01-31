@@ -114,7 +114,8 @@ void DumpControlFlowGraph(ir::Subroutine const *fn, std::ostream &output) {
 
 int DumpControlFlowGraph(frontend::FileName const &file_name,
                          std::ostream &output) {
-  diagnostic::StreamingConsumer diag(stderr, nullptr);
+  frontend::SourceIndexer source_indexer;
+  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
   auto content = compiler::LoadFileContent(file_name.value.c_str());
   if (not content.ok()) {
     diag.Consume(frontend::MissingModule{
@@ -125,13 +126,15 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
   }
 
   compiler::WorkSet work_set;
-  frontend::SourceIndexer source_indexer;
   compiler::FileImporter importer(&work_set, &diag, &source_indexer,
                                   absl::GetFlag(FLAGS_module_paths));
 
+  std::string_view file_content =
+      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
+
   ir::Module ir_module;
   compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(*content, &context);
+  compiler::CompiledModule exec_mod(file_content, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }
@@ -143,7 +146,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
       .importer            = &importer,
   };
 
-  auto parsed_nodes = frontend::Parse(*content, diag);
+  auto parsed_nodes = frontend::Parse(file_content, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   auto main_fn      = compiler::CompileModule(context, resources, nodes);
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }

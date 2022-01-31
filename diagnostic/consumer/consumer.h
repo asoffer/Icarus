@@ -14,7 +14,6 @@ struct ConsumedMessage {
 };
 
 struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
-  explicit DiagnosticConsumer(frontend::SourceBuffer const* src) : src_(src) {}
   virtual ~DiagnosticConsumer() {}
 
   void Consume(ConsumedMessage m) {
@@ -32,7 +31,8 @@ struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
     ++num_consumed_;
   }
 
-  frontend::SourceBuffer const* source() const { return src_; }
+  // TODO: Remove
+  frontend::SourceBuffer const* source() const { return nullptr; }
 
   // TODO this should be overridable. What it means to count the number consumed
   // is dependent on what it consumes. For example, if warnings are considered
@@ -43,7 +43,6 @@ struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
                            DiagnosticMessage&& diag) = 0;
 
  private:
-  frontend::SourceBuffer const* src_;
   size_t num_consumed_ = 0;
 };
 

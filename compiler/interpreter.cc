@@ -48,7 +48,8 @@ namespace {
 
 int Interpret(frontend::FileName const &file_name,
               absl::Span<char *> program_arguments) {
-  diagnostic::StreamingConsumer diag(stderr, nullptr);
+  frontend::SourceIndexer source_indexer;
+  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
   auto content             = LoadFileContent(file_name.value.c_str());
   if (not content.ok()) {
     diag.Consume(frontend::MissingModule{
@@ -59,7 +60,6 @@ int Interpret(frontend::FileName const &file_name,
   }
 
   WorkSet work_set;
-  frontend::SourceIndexer source_indexer;
   FileImporter importer(&work_set, &diag, &source_indexer,
                         absl::GetFlag(FLAGS_module_paths));
   if (not importer.SetImplicitlyEmbeddedModules(
@@ -67,9 +67,12 @@ int Interpret(frontend::FileName const &file_name,
     return 1;
   }
 
+  std::string_view file_content =
+      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
+
   ir::Module ir_module;
   Context context(&ir_module);
-  CompiledModule exec_mod(*content, &context);
+  CompiledModule exec_mod(file_content, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }
@@ -81,7 +84,7 @@ int Interpret(frontend::FileName const &file_name,
       .importer            = &importer,
   };
 
-  auto parsed_nodes = frontend::Parse(*content, diag);
+  auto parsed_nodes = frontend::Parse(file_content, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   ASSIGN_OR(return 1,  //
                    auto main_fn, CompileModule(context, resources, nodes));

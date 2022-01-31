@@ -13,7 +13,7 @@ struct InconsistentArrayType {
   static constexpr std::string_view kName = "inconsistent-array-element-type";
 
   diagnostic::DiagnosticMessage ToMessage() const {
-    auto quote = diagnostic::SourceQuote(buffer);
+    diagnostic::SourceQuote quote;
     for (auto const &range : highlights) {
       quote.Highlighted(range, diagnostic::Style{});
     }

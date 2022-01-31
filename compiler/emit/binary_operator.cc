@@ -19,8 +19,8 @@ struct PatternMatchingFailed {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Pattern matching failed"),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(range,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string_view range;

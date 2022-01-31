@@ -6,13 +6,13 @@
 #include "diagnostic/console_renderer.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/message.h"
-#include "frontend/source/buffer.h"
+#include "frontend/source/indexer.h"
 
 namespace diagnostic {
 
 struct AbortingConsumer : DiagnosticConsumer {
-  explicit AbortingConsumer(frontend::SourceBuffer const* src)
-      : DiagnosticConsumer(src), renderer_(stderr) {}
+  explicit AbortingConsumer(frontend::SourceIndexer* source_indexer)
+      : renderer_(stderr, source_indexer) {}
   ~AbortingConsumer() override {}
 
   void ConsumeImpl(std::string_view category, std::string_view name,
