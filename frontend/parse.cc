@@ -587,13 +587,15 @@ void MergeIntoArgs(std::vector<ast::Call::Argument> &args,
         }
         // TODO: Error if there are multiple entries in this assignment.
         auto [lhs, rhs] = std::move(*a).extract();
-        args.emplace_back(std::string(lhs[0]->as<ast::Identifier>().name()),
+        args.emplace_back(lhs[0]->as<ast::Identifier>().range(),
                           std::move(rhs[0]));
       } else {
         if (last_named_range_before_error.has_value()) {
           positional_error_ranges.push_back(expr->range());
         }
-        args.emplace_back("", move_as<ast::Expression>(expr));
+        char const *p = args_expr->range().data();
+        args.emplace_back(std::string_view(p, 0),
+                          move_as<ast::Expression>(expr));
       }
     }
 
@@ -606,10 +608,12 @@ void MergeIntoArgs(std::vector<ast::Call::Argument> &args,
     if (auto *a = args_expr->if_as<ast::Assignment>()) {
       auto [lhs, rhs] = std::move(*a).extract();
       // TODO: Error if there are multiple entries in this assignment.
-      args.emplace_back(std::string(lhs[0]->as<ast::Identifier>().name()),
+      args.emplace_back(lhs[0]->as<ast::Identifier>().range(),
                         std::move(rhs[0]));
     } else {
-      args.emplace_back("", move_as<ast::Expression>(args_expr));
+      char const *p = args_expr->range().data();
+      args.emplace_back(std::string_view(p, 0),
+                        move_as<ast::Expression>(args_expr));
     }
   }
 }
@@ -678,16 +682,13 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     return std::make_unique<ast::PatternMatch>(
         range, move_as<ast::Expression>(nodes[1]));
   } else if (tk == "$") {
-    std::string id_str;
-    if (auto *id = nodes[1]->if_as<ast::Identifier>()) {
-      id_str = std::string(id->name());
-    } else {
+    if (not nodes[1]->is<ast::Identifier>()) {
       diag.Consume(InvalidArgumentTypeVar{
           .error_range   = nodes[1]->range(),
           .context_range = range,
       });
     }
-    return std::make_unique<ast::ArgumentType>(range, std::move(id_str));
+    return std::make_unique<ast::ArgumentType>(range, nodes[1]->range().data());
   }
 
   static base::Global kUnaryOperatorMap =
@@ -826,13 +827,12 @@ std::unique_ptr<ast::Node> BuildAccess(
   auto &&operand = move_as<ast::Expression>(nodes[0]);
   if (not nodes[2]->is<ast::Identifier>()) {
     diag.Consume(AccessRhsNotIdentifier{.range = nodes[2]->range()});
-    return std::make_unique<ast::Access>(range, std::move(operand),
-                                         "invalid_node");
+    return std::make_unique<ast::Access>(range, nodes[2]->range().size(),
+                                         std::move(operand));
   }
 
-  return std::make_unique<ast::Access>(
-      range, std::move(operand),
-      std::string{nodes[2]->as<ast::Identifier>().name()});
+  return std::make_unique<ast::Access>(range, nodes[2]->range().size(),
+                                       std::move(operand));
 }
 
 std::unique_ptr<ast::Node> BuildIndexOperator(
@@ -1163,16 +1163,15 @@ std::unique_ptr<ast::Node> BuildBlockNode(
           ExtractIfCommaList<ast::Declaration>(std::move(nodes[2]), true);
 
       return std::make_unique<ast::BlockNode>(
-          range, std::string{id->name()}, id->range().end(), std::move(params),
-          std::move(stmts));
+          range, id->range().end(), std::move(params), std::move(stmts));
     } else {
-      return std::make_unique<ast::BlockNode>(
-          range, std::string{id->name()}, id->range().end(), std::move(stmts));
+      return std::make_unique<ast::BlockNode>(range, id->range().end(),
+                                              std::move(stmts));
     }
   } else {
     diag.Consume(TodoDiagnostic{.range = range});
-    return std::make_unique<ast::BlockNode>(
-        range, "", nodes.front()->range().end(), std::move(stmts));
+    return std::make_unique<ast::BlockNode>(range, nodes.front()->range().end(),
+                                            std::move(stmts));
   }
 }
 
@@ -1203,8 +1202,8 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
     nodes[0]             = std::move(scope_node);
   }
   nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
-      ast::BlockNode(range, std::string{nodes[1]->as<ast::Identifier>().name()},
-                     nodes[1]->range().end(), std::move(block_stmt_nodes)),
+      ast::BlockNode(range, nodes[1]->range().end(),
+                     std::move(block_stmt_nodes)),
       updated_last_scope_node);
   return std::move(nodes[0]);
 }
@@ -1328,15 +1327,16 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes, ast::EnumLiteral::Kind kind,
     diagnostic::DiagnosticConsumer &diag) {
   std::string_view range(nodes[0]->range().begin(), nodes[1]->range().end());
-  std::vector<std::string> enumerators;
-  absl::flat_hash_map<std::string, std::unique_ptr<ast::Expression>> values;
+  std::vector<std::string_view> enumerators;
+  absl::flat_hash_map<std::string_view, std::unique_ptr<ast::Expression>>
+      values;
   auto stmts = ExtractStatements(std::move(nodes[1]));
 
   // TODO: if you want these values to depend on compile-time parameters,
   // you'll need to actually build the AST nodes.
   for (auto &stmt : stmts) {
     if (auto *id = stmt->if_as<ast::Identifier>()) {
-      enumerators.push_back(std::string(id->name()));
+      enumerators.push_back(id->range());
     } else if (auto *decl = stmt->if_as<ast::Declaration>()) {
       if (not(decl->flags() & ast::Declaration::f_IsConst)) {
         diag.Consume(TodoDiagnostic{.range = range});
@@ -1344,7 +1344,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
       auto [ids, type_expr, init_val] = std::move(*decl).extract();
       // TODO: Use the type expression?
       for (auto &id : ids) {
-        enumerators.push_back(std::string(id.name()));
+        enumerators.push_back(id.range());
         // TODO: Support multiple declarations
         values.emplace(enumerators.back(), std::move(init_val));
       }

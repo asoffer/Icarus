@@ -46,14 +46,14 @@ struct WithScope {
 //  * `(some + computation).member`
 //
 struct Access : Expression {
-  explicit Access(std::string_view range, std::unique_ptr<Expression> operand,
-                  std::string member_name)
+  explicit Access(std::string_view range, size_t length,
+                  std::unique_ptr<Expression> operand)
       : Expression(IndexOf<Access>(), range),
         operand_(std::move(operand)),
-        member_name_(std::move(member_name)) {}
-  constexpr std::string_view member_name() const { return member_name_; }
+        member_name_length_(length) {}
+  constexpr std::string_view member_name() const { return member_range(); }
   constexpr std::string_view member_range() const {
-    return std::string_view(range().end() - member_name_.size(), range().end());
+    return std::string_view(range().end() - member_name_length_, range().end());
   }
   Expression const *operand() const { return operand_.get(); }
 
@@ -62,7 +62,7 @@ struct Access : Expression {
 
  private:
   std::unique_ptr<Expression> operand_;
-  std::string member_name_;
+  size_t member_name_length_;
 };
 
 // ArgumentType:
@@ -80,15 +80,17 @@ struct Access : Expression {
 // bound to `x`. The type of the parameter `y` must match the type of the
 // argument bound to `x`.
 struct ArgumentType : Expression {
-  explicit ArgumentType(std::string_view range, std::string name)
-      : Expression(IndexOf<ArgumentType>(), range), name_(std::move(name)) {}
-  std::string_view name() const { return name_; }
+  explicit ArgumentType(std::string_view range, char const *name_start)
+      : Expression(IndexOf<ArgumentType>(), range), name_start_(name_start) {}
+  std::string_view name() const {
+    return std::string_view(name_start_, range().end());
+  }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;
 
  private:
-  std::string name_;
+  char const *name_start_;
 };
 
 // ArrayLiteral:
@@ -466,21 +468,17 @@ struct DesignatedInitializer : Expression {
 // This will likely change in the future so that blocks can take arguments
 // (likely in the form of `core::Arguments<std::unique_ptr<Expression>>`).
 struct BlockNode : ParameterizedExpression, WithScope {
-  explicit BlockNode(std::string_view range, std::string name,
-                     char const *name_end,
+  explicit BlockNode(std::string_view range, char const *name_end,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(IndexOf<BlockNode>(), range),
         WithScope(Scope::Kind::Executable),
-        name_(std::move(name)),
         name_end_(name_end),
         stmts_(std::move(stmts)) {}
-  explicit BlockNode(std::string_view range, std::string name,
-                     char const *name_end,
+  explicit BlockNode(std::string_view range, char const *name_end,
                      std::vector<std::unique_ptr<Declaration>> params,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(IndexOf<BlockNode>(), range, std::move(params)),
         WithScope(Scope::Kind::Executable),
-        name_(std::move(name)),
         name_end_(name_end),
         stmts_(std::move(stmts)) {
     // TODO: We only track that this is a block parameter because arguments
@@ -494,7 +492,7 @@ struct BlockNode : ParameterizedExpression, WithScope {
   BlockNode(BlockNode &&) noexcept = default;
   BlockNode &operator=(BlockNode &&) noexcept = default;
 
-  std::string_view name() const { return name_; }
+  std::string_view name() const { return name_range(); }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
   ScopeNode const *parent() const { return parent_; }
 
@@ -509,7 +507,6 @@ struct BlockNode : ParameterizedExpression, WithScope {
 
  private:
   friend struct ScopeNode;
-  std::string name_;
   char const *name_end_;
   std::vector<std::unique_ptr<Node>> stmts_;
   ScopeNode *parent_ = nullptr;
@@ -552,16 +549,16 @@ struct BuiltinFn : Expression {
 //  * `arg'func`
 struct Call : Expression {
   struct Argument {
-    explicit Argument(std::string name, std::unique_ptr<Expression> expr)
-        : name_(std::move(name)), expr_(std::move(expr)) {}
+    explicit Argument(std::string_view name, std::unique_ptr<Expression> expr)
+        : name_(name), expr_(std::move(expr)) {}
 
     bool named() const { return not name_.empty(); }
     std::string_view name() const { return name_; }
     ast::Expression const &expr() const { return *expr_; }
     ast::Expression &expr() { return *expr_; }
 
-    std::pair<std::string, std::unique_ptr<ast::Expression>> extract() && {
-      return std::pair(std::move(name_), std::move(expr_));
+    std::pair<std::string_view, std::unique_ptr<ast::Expression>> extract() && {
+      return std::pair(name_, std::move(expr_));
     }
 
     // TODO: Remove this.
@@ -580,7 +577,7 @@ struct Call : Expression {
     }
 
    private:
-    std::string name_;
+    std::string_view name_;
     std::unique_ptr<Expression> expr_;
   };
 
@@ -734,16 +731,18 @@ struct EnumLiteral : Expression, WithScope {
   enum Kind : char { Enum, Flags };
 
   EnumLiteral(
-      std::string_view range, std::vector<std::string> enumerators,
-      absl::flat_hash_map<std::string, std::unique_ptr<Expression>> values,
+      std::string_view range, std::vector<std::string_view> enumerators,
+      absl::flat_hash_map<std::string_view, std::unique_ptr<Expression>> values,
       Kind kind)
       : Expression(IndexOf<EnumLiteral>(), range),
         WithScope(Scope::Kind::Declarative),
         enumerators_(std::move(enumerators)),
         values_(std::move(values)),
         kind_(kind) {}
-  absl::Span<std::string const> enumerators() const { return enumerators_; }
-  absl::flat_hash_map<std::string, std::unique_ptr<Expression>> const &
+  absl::Span<std::string_view const> enumerators() const {
+    return enumerators_;
+  }
+  absl::flat_hash_map<std::string_view, std::unique_ptr<Expression>> const &
   specified_values() const {
     return values_;
   }
@@ -753,8 +752,8 @@ struct EnumLiteral : Expression, WithScope {
   void Initialize(Node::Initializer &initializer) override;
 
  private:
-  std::vector<std::string> enumerators_;
-  absl::flat_hash_map<std::string, std::unique_ptr<Expression>> values_;
+  std::vector<std::string_view> enumerators_;
+  absl::flat_hash_map<std::string_view, std::unique_ptr<Expression>> values_;
   Kind kind_;
 };
 
@@ -1000,7 +999,7 @@ struct ParameterizedStructLiteral : ParameterizedExpression, WithScope {
 struct ProgramArguments : Expression {
   explicit ProgramArguments(std::string_view range)
       : Expression(IndexOf<ProgramArguments>(), range) {}
-  std::string_view name() const { return name_; }
+  std::string_view name() const { return range(); }
 
   void DebugStrAppend(std::string *out, size_t indent) const override {
     out->append("arguments");
@@ -1008,9 +1007,6 @@ struct ProgramArguments : Expression {
   void Initialize(Node::Initializer &initializer) override {
     scope_ = initializer.scope;
   }
-
- private:
-  std::string name_;
 };
 
 // ReturnStmt:
