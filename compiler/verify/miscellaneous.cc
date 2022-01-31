@@ -18,11 +18,10 @@ struct NonBooleanCondition {
         diagnostic::Text("If statements require the condition to be of type "
                          "`bool`, but you provided a value of type `%s`.",
                          type),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
   std::string type;
 };
 
@@ -155,7 +154,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   auto qt = VerifyType(&node->condition())[0];
   if (qt.type() != type::Bool) {
     diag().Consume(NonBooleanCondition{
-        .view = SourceViewFor(node),
+        .view = node->range(),
         .type = TypeForDiagnostic(&node->condition(), context()),
     });
   }

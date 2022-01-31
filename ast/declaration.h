@@ -9,7 +9,6 @@
 #include "absl/types/span.h"
 #include "ast/expression.h"
 #include "ast/node.h"
-#include "frontend/source/buffer.h"
 
 namespace ast {
 

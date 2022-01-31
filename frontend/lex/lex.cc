@@ -35,7 +35,7 @@ struct NumberParsingFailure {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "number-parsing-failure";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     std::string message;
     switch (error) {
       case NumberParsingError::kUnknownBase:
@@ -68,7 +68,7 @@ struct UnprintableSourceCharacter {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "unprintable-source-character";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Encountered unprintable character '\\x%02x' "
                          "encountered in source.",
@@ -84,7 +84,7 @@ struct InvalidSourceCharacter {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "invalid-source-character";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Invalid character '%c' encountered in source.",
                          value),
@@ -99,7 +99,7 @@ struct StringLiteralParsingFailure {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName = "string-literal-parsing-failure";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     // TODO: Display the contents of the errors.
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Failure to parse string literal: %d error%s.",
@@ -115,7 +115,7 @@ struct HashtagParsingFailure {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "hashtag-parsing-failure";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(message),
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
@@ -130,7 +130,7 @@ struct NonWhitespaceAfterNewlineEscape {
   static constexpr std::string_view kName =
       "non-whitespace-after-newline-escape";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Invalid escaped newline."),
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));

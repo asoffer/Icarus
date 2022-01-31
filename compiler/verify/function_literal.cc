@@ -24,11 +24,10 @@ struct ReturningNonType {
         diagnostic::Text("Expected a type for the function's return-type but "
                          "found an expression of type `%s`",
                          type),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
   type::Type type;
 };
 
@@ -40,11 +39,10 @@ struct NoReturnTypes {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to return a value when function returns nothing."),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct ReturnTypeMismatch {
@@ -72,13 +70,12 @@ struct ReturningWrongNumber {
             "Attempting to return %u value%s from a function which has %u "
             "return value%s.",
             actual, actual == 1 ? "" : "s", expected, expected == 1 ? "" : "s"),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   size_t actual;
   size_t expected;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 // `InferReturnTypes` looks at the possible return type of a function only
@@ -132,7 +129,7 @@ std::optional<std::vector<type::Type>> JoinReturnTypes(
       error = true;
       diag.Consume(ReturningWrongNumber{.actual   = types.size(),
                                         .expected = num_returns,
-                                        .view     = SourceViewFor(stmt)});
+                                        .view     = stmt->range()});
     }
   }
   if (error) { return std::nullopt; }
@@ -182,7 +179,7 @@ type::QualType VerifyConcrete(CompilationDataReference data,
         error = true;
         // TODO: Declarations are given the type of the variable being declared.
         data.diag().Consume(ReturningNonType{
-            .view = SourceViewFor(output),
+            .view = output->range(),
             .type = result.type(),
         });
       }
@@ -334,7 +331,7 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
         .actual   = maybe_return_types->size(),
         .expected = fn_type.return_types().size(),
         // TODO: The location specified here is really wide.
-        .view = SourceViewFor(node)});
+        .view = node->range()});
     return false;
   }
 

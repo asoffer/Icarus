@@ -11,13 +11,26 @@
 #include "compiler/module.h"
 #include "compiler/work_item.h"
 #include "diagnostic/consumer/streaming.h"
-#include "frontend/source/file_name.h"
 #include "frontend/source/indexer.h"
 #include "ir/value/module_id.h"
 #include "module/importer.h"
 #include "module/module.h"
 
 namespace compiler {
+
+struct MissingModule {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "missing-module";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(diagnostic::Text(
+        "Could not find module named \"%s\":\n%s", source, reason));
+  }
+
+  std::string source;
+  std::string requestor;  // TODO: Set this correctly or remove it.
+  std::string reason;
+};
 
 struct FileImporter : module::Importer {
   explicit FileImporter(WorkSet* work_set,

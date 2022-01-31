@@ -19,11 +19,10 @@ struct NonConstantImport {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot import a non-constant module."),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct InvalidImport {
@@ -34,12 +33,11 @@ struct InvalidImport {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot import a module from a value of type `%s`.",
                          type),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   type::Type type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 }  // namespace
@@ -53,13 +51,13 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   auto qt  = type::QualType::Constant(type::Module);
   bool err = false;
   if (result.type() != type::Slc(type::Char)) {
-    diag().Consume(InvalidImport{.type = result.type(),
-                                 .view = SourceViewFor(node->operand())});
+    diag().Consume(
+        InvalidImport{.type = result.type(), .view = node->operand()->range()});
     err = true;
   }
 
   if (not result.constant()) {
-    diag().Consume(NonConstantImport{.view = SourceViewFor(node->operand())});
+    diag().Consume(NonConstantImport{.view = node->operand()->range()});
     err = true;
   }
 

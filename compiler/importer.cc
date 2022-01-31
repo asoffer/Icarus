@@ -15,8 +15,6 @@
 #include "compiler/resources.h"
 #include "compiler/work_graph.h"
 #include "frontend/parse.h"
-#include "frontend/source/file.h"
-#include "frontend/source/file_name.h"
 
 namespace compiler {
 
@@ -80,7 +78,7 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
       LoadFileContent(file_name, module_lookup_paths_);
   if (not file_content.ok()) {
     modules_.erase(iter);
-    diagnostic_consumer_->Consume(frontend::MissingModule{
+    diagnostic_consumer_->Consume(MissingModule{
         .source    = file_name,
         .requestor = "",
         .reason    = std::string(file_content.status().message()),

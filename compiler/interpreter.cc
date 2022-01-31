@@ -24,8 +24,6 @@
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
-#include "frontend/source/file.h"
-#include "frontend/source/file_name.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/subroutine.h"
 #include "module/module.h"
@@ -46,16 +44,15 @@ ABSL_FLAG(std::vector<std::string>, implicitly_embedded_modules, {},
 namespace compiler {
 namespace {
 
-int Interpret(frontend::FileName const &file_name,
-              absl::Span<char *> program_arguments) {
+int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
   frontend::SourceIndexer source_indexer;
   diagnostic::StreamingConsumer diag(stderr, &source_indexer);
-  auto content             = LoadFileContent(file_name.value.c_str());
+  auto content = LoadFileContent(file_name);
   if (not content.ok()) {
-    diag.Consume(frontend::MissingModule{
-        .source    = file_name.value,
-        .requestor = "",
-        .reason    = std::string(content.status().message())});
+    diag.Consume(
+        MissingModule{.source    = file_name,
+                      .requestor = "",
+                      .reason    = std::string(content.status().message())});
     return 1;
   }
 
@@ -145,5 +142,5 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   absl::Span<char *> arguments = absl::MakeSpan(args).subspan(2);
-  return compiler::Interpret(frontend::FileName(args[1]), arguments);
+  return compiler::Interpret(args[1], arguments);
 }

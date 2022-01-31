@@ -22,8 +22,6 @@
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
-#include "frontend/source/file.h"
-#include "frontend/source/file_name.h"
 #include "ir/subroutine.h"
 #include "ir/interpreter/execution_context.h"
 #include "llvm/ADT/Optional.h"
@@ -63,7 +61,7 @@ struct InvalidTargetTriple {
   static constexpr std::string_view kCategory = "todo";
   static constexpr std::string_view kName     = "todo";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Invalid target-triple. %s", message));
   }
@@ -105,7 +103,7 @@ int CompileToObjectFile(CompiledModule const &module, ir::Subroutine const &fn,
   return 0;
 }
 
-int Compile(frontend::FileName const &file_name) {
+int Compile(char const *file_name) {
   llvm::InitializeAllTargetInfos();
   llvm::InitializeAllTargets();
   llvm::InitializeAllTargetMCs();
@@ -123,12 +121,12 @@ int Compile(frontend::FileName const &file_name) {
     return 1;
   }
 
-  auto content = LoadFileContent(file_name.value.c_str());
+  auto content = LoadFileContent(file_name);
   if (not content.ok()) {
-    diag.Consume(frontend::MissingModule{
-        .source    = file_name.value,
-        .requestor = "",
-        .reason    = std::string(content.status().message())});
+    diag.Consume(
+        MissingModule{.source    = file_name,
+                      .requestor = "",
+                      .reason    = std::string(content.status().message())});
     return 1;
   }
 
@@ -212,7 +210,7 @@ int main(int argc, char *argv[]) {
   }
   int return_code = 0;
   for (int i = 1; i < args.size(); ++i) {
-    return_code += compiler::Compile(frontend::FileName(args[i]));
+    return_code += compiler::Compile(args[i]);
   }
   return return_code;
 }

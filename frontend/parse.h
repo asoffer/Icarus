@@ -8,7 +8,6 @@
 #include "absl/flags/parse.h"
 #include "ast/node.h"
 #include "diagnostic/consumer/consumer.h"
-#include "frontend/source/source.h"
 
 ABSL_DECLARE_FLAG(bool, debug_parser);
 

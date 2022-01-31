@@ -10,7 +10,6 @@ cc_library(
         "//ast:ast",
         "//base:global",
         "//diagnostic/consumer",
-        "//frontend/source:buffer",
         "//ir/value:builtin_fn",
         "//ir/value:hashtag",
         "//ir/value:integer",
@@ -28,7 +27,6 @@ cc_binary(
     deps = [
         ":lex",
         "//diagnostic/consumer:trivial",
-        "//frontend/source:buffer",
         "//test:fuzz",
     ],
     copts = ["-fsanitize=fuzzer"],

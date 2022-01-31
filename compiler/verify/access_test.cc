@@ -1,6 +1,5 @@
 #include "compiler/compiler.h"
 #include "compiler/module.h"
-#include "frontend/source/buffer.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/module.h"

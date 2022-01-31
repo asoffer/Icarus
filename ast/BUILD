@@ -14,7 +14,6 @@ cc_library(
     deps = [
         ":expression",
         ":node",
-        "//frontend/source:buffer",
     ],
 )
 
@@ -87,7 +86,6 @@ cc_library(
         "//base:cast",
         "//base:meta",
         "//base:visitable",
-        "//frontend/source:buffer",
     ],
 )
 

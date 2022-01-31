@@ -5,7 +5,6 @@
 #include <variant>
 
 #include "diagnostic/message.h"
-#include "frontend/source/view.h"
 #include "type/type.h"
 
 namespace type {
@@ -52,7 +51,7 @@ struct UninferrableType {
   diagnostic::DiagnosticMessage ToMessage() const;
 
   InferenceResult::Kind kind;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 // Given a type, returns a reason explaining why this type cannot be infered, or

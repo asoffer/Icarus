@@ -30,10 +30,9 @@ struct BuiltinError {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("%s", message),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
-  frontend::SourceView view;
+  std::string_view view;
   std::string message;
 };
 
@@ -44,15 +43,14 @@ struct UserDefinedError {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("%s", message),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
-  frontend::SourceView view;
+  std::string_view view;
   std::string message;
 };
 
 type::QualType VerifyHasBlockCall(
-    CompilationDataReference data, frontend::SourceView view,
+    CompilationDataReference data, std::string_view view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
@@ -106,7 +104,7 @@ type::QualType VerifyHasBlockCall(
 }
 
 type::QualType VerifySliceCall(
-    CompilationDataReference data, frontend::SourceView view,
+    CompilationDataReference data, std::string_view view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
@@ -159,7 +157,7 @@ type::QualType VerifySliceCall(
 }
 
 type::QualType VerifyCompilationErrorCall(
-    CompilationDataReference data, frontend::SourceView view,
+    CompilationDataReference data, std::string_view view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
@@ -228,7 +226,7 @@ type::QualType VerifyCompilationErrorCall(
 }
 
 type::QualType VerifyForeignCall(
-    CompilationDataReference data, frontend::SourceView view,
+    CompilationDataReference data, std::string_view view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   bool error = false;
   if (not arg_vals.named().empty()) {
@@ -303,7 +301,7 @@ type::QualType VerifyForeignCall(
 }
 
 type::QualType VerifyReserveMemoryCall(
-    CompilationDataReference data, frontend::SourceView view,
+    CompilationDataReference data, std::string_view view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   type::QualType qt = type::QualType::NonConstant(type::BufPtr(type::Byte));
   size_t size       = arg_vals.size();
@@ -342,7 +340,7 @@ type::QualType VerifyReserveMemoryCall(
 }
 
 type::QualType VerifyOpaqueCall(
-    CompilationDataReference data, frontend::SourceView view,
+    CompilationDataReference data, std::string_view view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
   type::QualType qt = type::QualType::Constant(
       ir::Fn(ir::BuiltinFn::Opaque()).type()->return_types()[0]);
@@ -375,26 +373,26 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             node,
             CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
                 static_cast<ast::Expression const *>(node)}));
-        qt = VerifySliceCall(*this, SourceViewFor(b), arg_vals);
+        qt = VerifySliceCall(*this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::HasBlock: {
-        qt = VerifyHasBlockCall(*this, SourceViewFor(b), arg_vals);
+        qt = VerifyHasBlockCall(*this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::ReserveMemory: {
-        qt = VerifyReserveMemoryCall(*this, SourceViewFor(b), arg_vals);
+        qt = VerifyReserveMemoryCall(*this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Foreign: {
         context().SetCallMetadata(
             node,
             CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
                 static_cast<ast::Expression const *>(node)}));
-        qt = VerifyForeignCall(*this, SourceViewFor(b), arg_vals);
+        qt = VerifyForeignCall(*this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::CompilationError: {
-        qt = VerifyCompilationErrorCall(*this, SourceViewFor(b), arg_vals);
+        qt = VerifyCompilationErrorCall(*this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Opaque: {
-        qt = VerifyOpaqueCall(*this, SourceViewFor(b), arg_vals);
+        qt = VerifyOpaqueCall(*this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::DebugIr: {
         // This is for debugging the compiler only, so there's no need to
@@ -419,7 +417,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     if (metadata.overloads().empty()) {
       diag().Consume(UndeclaredIdentifier{
           .id   = id->name(),
-          .view = SourceViewFor(node->callee()),
+          .view = node->callee()->range(),
       });
       return context().set_qual_type(node, type::QualType::Error());
     }

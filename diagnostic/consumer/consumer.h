@@ -3,7 +3,6 @@
 
 #include "base/debug.h"
 #include "diagnostic/message.h"
-#include "frontend/source/buffer.h"
 
 namespace diagnostic {
 
@@ -23,16 +22,9 @@ struct DiagnosticConsumer : base::Cast<DiagnosticConsumer> {
 
   template <typename Diag>
   void Consume(Diag const& diag) {
-    if constexpr (requires { diag.ToMessage(); }) {
-      ConsumeImpl(Diag::kCategory, Diag::kName, diag.ToMessage());
-    } else {
-      ConsumeImpl(Diag::kCategory, Diag::kName, diag.ToMessage(nullptr));
-    }
+    ConsumeImpl(Diag::kCategory, Diag::kName, diag.ToMessage());
     ++num_consumed_;
   }
-
-  // TODO: Remove
-  frontend::SourceBuffer const* source() const { return nullptr; }
 
   // TODO this should be overridable. What it means to count the number consumed
   // is dependent on what it consumes. For example, if warnings are considered

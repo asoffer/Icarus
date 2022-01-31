@@ -13,11 +13,10 @@ struct NonConstantEnumerator {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Values for enumerators must be declared as constants."),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 struct NonIntegralEnumerator {
   static constexpr std::string_view kCategory = "type-error";
@@ -28,11 +27,10 @@ struct NonIntegralEnumerator {
         diagnostic::Text("Values for enumerators must be integers, but we "
                          "found an enumerator of type `%s`.",
                          type),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
   type::Type type;
 };
 
@@ -42,12 +40,12 @@ bool BodyVerifier::VerifyBody(ast::EnumLiteral const *node) {
     auto qts = VerifyType(*this, value.get());
     if (not(qts[0].quals() >= type::Quals::Const())) {
       success = false;
-      diag().Consume(NonConstantEnumerator{.view = SourceViewFor(value.get())});
+      diag().Consume(NonConstantEnumerator{.view = value->range()});
     }
     if (not type::IsIntegral(qts[0].type())) {
       success = false;
       diag().Consume(NonIntegralEnumerator{
-          .view = SourceViewFor(value.get()),
+          .view = value.get()->range(),
           .type = qts[0].type(),
       });
     }

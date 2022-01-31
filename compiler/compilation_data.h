@@ -9,8 +9,6 @@
 #include "compiler/transient_state.h"
 #include "compiler/work_item.h"
 #include "diagnostic/consumer/consumer.h"
-#include "frontend/source/buffer.h"
-#include "frontend/source/view.h"
 #include "ir/value/integer.h"
 #include "ir/value/module_id.h"
 #include "ir/value/result_buffer.h"

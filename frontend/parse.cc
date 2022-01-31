@@ -16,16 +16,12 @@
 #include "frontend/lex/tagged_node.h"
 #include "frontend/lex/token.h"
 #include "frontend/parse_rule.h"
-#include "frontend/source/buffer.h"
-#include "frontend/source/view.h"
 
 ABSL_FLAG(bool, debug_parser, false,
           "Step through the parser step-by-step for debugging.");
 
 namespace frontend {
 namespace {
-// TODO: Out of sheer laziness, I haven't wired this through yet.
-SourceBuffer const *src;
 
 struct TodoDiagnostic {
   static constexpr std::string_view kCategory = "todo";
@@ -40,7 +36,6 @@ struct TodoDiagnostic {
 
   std::experimental::source_location loc =
       std::experimental::source_location::current();
-  SourceBuffer const *src;
   std::string_view range;
 };
 
@@ -54,7 +49,6 @@ struct NonIdentifierBinding {
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view range;
 };
 
@@ -70,7 +64,6 @@ struct DeclaringNonIdentifier {
                                               diagnostic::Style::ErrorText()));
   }
 
-  SourceBuffer const *src;
   std::string_view id_range;
 };
 
@@ -86,7 +79,6 @@ struct AssigningNonIdentifier {
                                               diagnostic::Style::ErrorText()));
   }
 
-  SourceBuffer const *src;
   std::string_view id_range;
 };
 
@@ -100,7 +92,6 @@ struct AccessRhsNotIdentifier {
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view range;
 };
 
@@ -117,7 +108,6 @@ struct ScopeNodeAlreadyHasLabel {
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view label_range;
   std::string_view range;
 };
@@ -132,7 +122,6 @@ struct ReservedKeyword {
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view range;
   std::string keyword;
 };
@@ -147,7 +136,6 @@ struct CallingDeclaration {
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view range;
 };
 
@@ -161,7 +149,6 @@ struct IndexingDeclaration {
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view range;
 };
 
@@ -177,7 +164,6 @@ struct UnknownDeclarationInBlock {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view error_range, context_range;
 };
 
@@ -193,7 +179,6 @@ struct NonDeclarationInBlock {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view error_range, context_range;
 };
 
@@ -209,7 +194,6 @@ struct NonDeclarationInScope {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view error_range, context_range;
 };
 
@@ -226,7 +210,6 @@ struct NonDeclarationInStruct {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view error_range, context_range;
 };
 
@@ -243,7 +226,6 @@ struct NonDeclarationInInterface {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view error_range, context_range;
 };
 
@@ -259,7 +241,6 @@ struct InvalidArgumentTypeVar {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view error_range, context_range;
 };
 
@@ -277,7 +258,6 @@ struct NonAssignmentInDesignatedInitializer {
             .Highlighted(context_range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view error_range, context_range;
 };
 
@@ -301,7 +281,6 @@ struct CommaSeparatedListStatement {
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view range;
 };
 
@@ -317,7 +296,6 @@ struct DeclarationUsedInUnaryOperator {
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string_view range;
 };
 
@@ -338,7 +316,6 @@ struct PositionalArgumentFollowingNamed {
         std::move(quote));
   }
 
-  SourceBuffer const *src;
   std::vector<std::string_view> pos_ranges;
   std::string_view last_named;
 };
@@ -353,7 +330,6 @@ struct UnknownBuiltinHashtag {
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
-  SourceBuffer const *src;
   std::string token;
   std::string_view range;
 };
@@ -372,7 +348,6 @@ struct BracedShortFunctionLiteral {
             "and write `(n: i64) => n * n`."));
   }
 
-  SourceBuffer const *src;
   std::string_view range;
 };
 
@@ -445,7 +420,7 @@ std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
 void ValidateStatementSyntax(ast::Node *node,
                              diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = node->if_as<CommaList>()) {
-    diag.Consume(CommaSeparatedListStatement{.src = src, .range = cl->range()});
+    diag.Consume(CommaSeparatedListStatement{.range = cl->range()});
     // TODO: Do we call this more than once?
   }
 }
@@ -484,8 +459,7 @@ std::unique_ptr<ast::Node> AddHashtag(
   }
 
   if (token.front() == '{' or token.back() == '}') {
-    diag.Consume(UnknownBuiltinHashtag{.src   = src,
-                                       .token = std::string{token},
+    diag.Consume(UnknownBuiltinHashtag{.token = std::string{token},
                                        .range = nodes.front()->range()});
   } else {
     // TODO: User-defined hashtag.
@@ -588,8 +562,8 @@ std::unique_ptr<ast::Node> BuildRightUnop(
 
     if (unop->operand()->is<ast::Declaration>() and
         not unop->operand()->is<ast::BindingDeclaration>()) {
-      diag.Consume(DeclarationUsedInUnaryOperator{
-          .src = src, .range = unop->operand()->range()});
+      diag.Consume(
+          DeclarationUsedInUnaryOperator{.range = unop->operand()->range()});
     }
 
     return unop;
@@ -625,7 +599,6 @@ void MergeIntoArgs(std::vector<ast::Call::Argument> &args,
 
     if (not positional_error_ranges.empty()) {
       diag.Consume(PositionalArgumentFollowingNamed{
-          .src        = src,
           .pos_ranges = positional_error_ranges,
           .last_named = *last_named_range_before_error});
     }
@@ -657,7 +630,7 @@ std::unique_ptr<ast::Node> BuildFullCall(
   auto callee = move_as<ast::Expression>(nodes[2]);
 
   if (callee->is<ast::Declaration>()) {
-    diag.Consume(CallingDeclaration{.src = src, .range = callee->range()});
+    diag.Consume(CallingDeclaration{.range = callee->range()});
   }
 
   return std::make_unique<ast::Call>(range, std::move(callee), std::move(args),
@@ -675,7 +648,7 @@ std::unique_ptr<ast::Node> BuildParenCall(
   MergeIntoArgs(args, std::move(nodes[1]), diag);
 
   if (callee->is<ast::Declaration>()) {
-    diag.Consume(CallingDeclaration{.src = src, .range = callee->range()});
+    diag.Consume(CallingDeclaration{.range = callee->range()});
   }
 
   return std::make_unique<ast::Call>(range, std::move(callee), std::move(args),
@@ -694,8 +667,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 
   } else if (tk == "`") {
     if (not nodes[1]->is<ast::Identifier>()) {
-      diag.Consume(
-          NonIdentifierBinding{.src = src, .range = nodes[0]->range()});
+      diag.Consume(NonIdentifierBinding{.range = nodes[0]->range()});
     }
 
     return std::make_unique<ast::BindingDeclaration>(
@@ -711,7 +683,6 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       id_str = std::string(id->name());
     } else {
       diag.Consume(InvalidArgumentTypeVar{
-          .src           = src,
           .error_range   = nodes[1]->range(),
           .context_range = range,
       });
@@ -739,12 +710,12 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 
   if (operand->is<ast::Declaration>() and
       not operand->is<ast::BindingDeclaration>()) {
-    diag.Consume(DeclarationUsedInUnaryOperator{.src = src, .range = range});
+    diag.Consume(DeclarationUsedInUnaryOperator{.range = range});
     return std::make_unique<ast::UnaryOperator>(
         range, op, MakeInvalidNode(nodes[1]->range()));
 
   } else if (not operand->is<ast::Expression>()) {
-    diag.Consume(TodoDiagnostic{.src = src, .range = range});
+    diag.Consume(TodoDiagnostic{.range = range});
     return std::make_unique<ast::UnaryOperator>(
         range, op, MakeInvalidNode(nodes[1]->range()));
 
@@ -854,8 +825,7 @@ std::unique_ptr<ast::Node> BuildAccess(
       std::string_view(nodes[0]->range().begin(), nodes[2]->range().end());
   auto &&operand = move_as<ast::Expression>(nodes[0]);
   if (not nodes[2]->is<ast::Identifier>()) {
-    diag.Consume(
-        AccessRhsNotIdentifier{.src = src, .range = nodes[2]->range()});
+    diag.Consume(AccessRhsNotIdentifier{.range = nodes[2]->range()});
     return std::make_unique<ast::Access>(range, std::move(operand),
                                          "invalid_node");
   }
@@ -875,7 +845,7 @@ std::unique_ptr<ast::Node> BuildIndexOperator(
                                    move_as<ast::Expression>(nodes[2]));
 
   if (index->lhs()->is<ast::Declaration>()) {
-    diag.Consume(IndexingDeclaration{.src = src, .range = nodes[0]->range()});
+    diag.Consume(IndexingDeclaration{.range = nodes[0]->range()});
   }
 
   // TODO: This check is correct except that we're using indexes as a temporary
@@ -961,15 +931,13 @@ std::unique_ptr<ast::Node> BuildDeclaration(
       if (auto *id = i->if_as<ast::Identifier>()) {
         ids.emplace_back(id->range());
       } else {
-        diag.Consume(
-            DeclaringNonIdentifier{.src = src, .id_range = i->range()});
+        diag.Consume(DeclaringNonIdentifier{.id_range = i->range()});
         error = true;
       }
     }
 
   } else {
-    diag.Consume(
-        DeclaringNonIdentifier{.src = src, .id_range = nodes[0]->range()});
+    diag.Consume(DeclaringNonIdentifier{.id_range = nodes[0]->range()});
     error = true;
   }
   if (error) { return MakeInvalidNode(decl_range); }
@@ -1034,13 +1002,12 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
       initializers.push_back(move_as<ast::Assignment>(stmt));
       for (auto const *expr : assignment->lhs()) {
         if (not expr->is<ast::Identifier>()) {
-          diag.Consume(
-              AssigningNonIdentifier{.src = src, .id_range = expr->range()});
+          diag.Consume(AssigningNonIdentifier{.id_range = expr->range()});
         }
       }
     } else {
       diag.Consume(NonAssignmentInDesignatedInitializer{
-          .src           = src,
+
           .error_range   = stmt->range(),
           .context_range = range,
       });
@@ -1060,7 +1027,7 @@ std::unique_ptr<ast::Node> HandleBracedShortFunctionLiteral(
     diagnostic::DiagnosticConsumer &diag) {
   std::string_view range(nodes[0]->range().begin(),
                          nodes.back()->range().end());
-  diag.Consume(BracedShortFunctionLiteral{.src = src, .range = range});
+  diag.Consume(BracedShortFunctionLiteral{.range = range});
   return MakeInvalidNode(range);
 }
 
@@ -1203,7 +1170,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
           range, std::string{id->name()}, id->range().end(), std::move(stmts));
     }
   } else {
-    diag.Consume(TodoDiagnostic{.src = src, .range = range});
+    diag.Consume(TodoDiagnostic{.range = range});
     return std::make_unique<ast::BlockNode>(
         range, "", nodes.front()->range().end(), std::move(stmts));
   }
@@ -1251,7 +1218,7 @@ std::unique_ptr<ast::Node> BuildDeclarationInitialization(
   if (not decl->type_expr()) {
     // NOTE: It might be that this was supposed to be a bool ==? How can we
     // give a good error message if that's what is intended?
-    diag.Consume(TodoDiagnostic{.src = src, .range = range});
+    diag.Consume(TodoDiagnostic{.range = range});
     return move_as<ast::Declaration>(nodes[0]);
   }
 
@@ -1278,7 +1245,7 @@ std::unique_ptr<ast::Node> BuildTickCall(
       move_as<ast::Expression>(nodes.back());
 
   if (callee->is<ast::Declaration>()) {
-    diag.Consume(CallingDeclaration{.src = src, .range = callee->range()});
+    diag.Consume(CallingDeclaration{.range = callee->range()});
   }
 
   std::vector<ast::Call::Argument> args;
@@ -1372,7 +1339,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
       enumerators.push_back(std::string(id->name()));
     } else if (auto *decl = stmt->if_as<ast::Declaration>()) {
       if (not(decl->flags() & ast::Declaration::f_IsConst)) {
-        diag.Consume(TodoDiagnostic{.src = src, .range = range});
+        diag.Consume(TodoDiagnostic{.range = range});
       }
       auto [ids, type_expr, init_val] = std::move(*decl).extract();
       // TODO: Use the type expression?
@@ -1383,7 +1350,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
       }
     } else {
       LOG("", "%s", stmt->DebugString());
-      diag.Consume(TodoDiagnostic{.src = src, .range = range});
+      diag.Consume(TodoDiagnostic{.range = range});
     }
   }
 
@@ -1427,7 +1394,7 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
       fields.push_back(std::move(*decl));
     } else {
       diag.Consume(NonDeclarationInStruct{
-          .src           = src,
+
           .error_range   = stmt->range(),
           .context_range = range,
       });
@@ -1455,7 +1422,7 @@ std::unique_ptr<ast::InterfaceLiteral> BuildInterfaceLiteral(
                          std::move(type_expr));
     } else {
       diag.Consume(NonDeclarationInInterface{
-          .src           = src,
+
           .error_range   = stmt->range(),
           .context_range = range,
       });
@@ -1482,7 +1449,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
         fields.push_back(std::move(*decl));
       } else {
         diag.Consume(NonDeclarationInStruct{
-            .src           = src,
+
             .error_range   = stmt->range(),
             .context_range = range,
         });
@@ -1495,7 +1462,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
       if (expr->is<ast::Declaration>()) {
         params.push_back(move_as<ast::Declaration>(expr));
       } else {
-        diag.Consume(TodoDiagnostic{.src = src, .range = expr->range()});
+        diag.Consume(TodoDiagnostic{.range = expr->range()});
       }
     }
 
@@ -1567,7 +1534,7 @@ std::unique_ptr<ast::Node> ReservedKeywords(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   (diag.Consume(ReservedKeyword{
-       .src     = src,
+
        .range   = nodes[ReservedIndices]->range(),
        .keyword = std::string(nodes[ReservedIndices]->as<Token>().token)}),
    ...);
@@ -1587,8 +1554,7 @@ std::unique_ptr<ast::Node> LabelScopeNode(
   auto scope_node = move_as<ast::ScopeNode>(nodes[1]);
   if (scope_node->label()) {
     diag.Consume(
-        ScopeNodeAlreadyHasLabel{.src         = src,
-                                 .label_range = scope_node->label()->range(),
+        ScopeNodeAlreadyHasLabel{.label_range = scope_node->label()->range(),
                                  .range       = scope_node->range()});
   } else {
     scope_node->range() =

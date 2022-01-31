@@ -15,13 +15,9 @@ struct ConsoleRenderer {
                                      frontend::SourceIndexer* source_indexer)
       : source_indexer_(*ASSERT_NOT_NULL(source_indexer)), out_(out) {}
 
-  void AddError(frontend::SourceBuffer const* source,
-                DiagnosticMessage const& diag) {
-    Add(source, Category::Error, diag);
-  }
+  void AddError(DiagnosticMessage const& diag) { Add(Category::Error, diag); }
 
-  void Add(frontend::SourceBuffer const* source, Category cat,
-           DiagnosticMessage const& diag);
+  void Add(Category cat, DiagnosticMessage const& diag);
   void Flush();
 
  private:

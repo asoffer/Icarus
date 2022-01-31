@@ -7,8 +7,6 @@
 
 #include "absl/strings/str_format.h"
 #include "base/meta.h"
-#include "frontend/source/buffer.h"
-#include "frontend/source/source.h"
 #include "type/type.h"
 
 namespace diagnostic {

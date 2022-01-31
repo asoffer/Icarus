@@ -23,7 +23,6 @@ struct InconsistentArrayType {
         quote);
   }
 
-  frontend::SourceBuffer const *buffer;
   std::vector<std::string_view> highlights;
 };
 
@@ -83,7 +82,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         ++i;
       }
       diag().Consume(InconsistentArrayType{
-          .buffer     = SourceBufferFor(node),
           .highlights = std::move(mistyped_elements),
       });
       auto qt = type::QualType(type::Arr(num_elements, t), quals);
@@ -91,7 +89,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       return context().set_qual_type(node, qt);
     } else {
       diag().Consume(InconsistentArrayType{
-          .buffer     = SourceBufferFor(node),
           .highlights = {node->range()},
       });
       return context().set_qual_type(node, type::QualType::Error());

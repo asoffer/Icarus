@@ -17,7 +17,6 @@ cc_library(
     deps = [
         "//base:debug",
         "//diagnostic:message",
-        "//frontend/source:buffer",
     ],
 )
 
@@ -39,7 +38,6 @@ cc_library(
     deps = [
         ":consumer",
         "//diagnostic:message",
-        "//frontend/source:buffer",
     ],
     testonly = True,
 )
@@ -50,7 +48,6 @@ cc_library(
     deps = [
         ":consumer",
         "//diagnostic:message",
-        "//frontend/source:buffer",
     ],
 )
 
@@ -60,6 +57,5 @@ cc_library(
     deps = [
         ":consumer",
         "//diagnostic:message",
-        "//frontend/source:buffer",
     ],
 )

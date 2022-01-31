@@ -249,8 +249,7 @@ diagnostic::DiagnosticMessage UninferrableType::ToMessage() const {
 
   return diagnostic::DiagnosticMessage(
       diagnostic::Text(text),
-      diagnostic::SourceQuote()
-          .Highlighted(view.range(), diagnostic::Style{}));
+      diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
 }
 
 }  // namespace type

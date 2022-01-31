@@ -55,7 +55,6 @@ cc_library(
     hdrs = ["mock_importer.h"],
     deps = [
         ":importer",
-        "//frontend/source:file_name",
         "//ir/value:module_id",
         "@com_google_googletest//:gtest",
     ],

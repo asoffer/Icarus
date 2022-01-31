@@ -22,13 +22,13 @@ struct DeclOutOfOrder {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Variable `%s` used before it was declared.", id),
         diagnostic::SourceQuote()
-            .Highlighted(use_view.range(), diagnostic::Style::ErrorText())
-            .Highlighted(id_view.range(), diagnostic::Style::ErrorText()));
+            .Highlighted(use_view, diagnostic::Style::ErrorText())
+            .Highlighted(id_view, diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;
-  frontend::SourceView id_view;
-  frontend::SourceView use_view;
+  std::string_view id_view;
+  std::string_view use_view;
 };
 
 struct UncapturedIdentifier {
@@ -40,12 +40,12 @@ struct UncapturedIdentifier {
         diagnostic::Text("Found an identifier '%s' which is not visible in the "
                          "current scope:",
                          id),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct PotentialIdentifiers {
@@ -132,8 +132,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         // if (node->range().begin() < id->range().begin()) {
         //   diag().Consume(DeclOutOfOrder{
         //       .id       = node->name(),
-        //       .id_view  = SourceViewFor(potential_id.first),
-        //       .use_view = SourceViewFor(node),
+        //       .id_view  = potential_id.first->range(),
+        //       .use_view = node->range(),
         //   });
         //   // Haven't seen the declaration yet, so we can't proceed.
         //   return context().set_qual_type(node, type::QualType::Error());
@@ -185,12 +185,12 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       if (present) {
         diag().Consume(UncapturedIdentifier{
             .id   = node->name(),
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
       } else {
         diag().Consume(UndeclaredIdentifier{
             .id   = node->name(),
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
       }
       return context().set_qual_type(node, type::QualType::Error());

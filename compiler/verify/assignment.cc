@@ -20,13 +20,13 @@ struct TypeMismatch {
         diagnostic::Text(
             "Cannot assign a value of type `%s` to a reference of type `%s`:",
             rhs_type, lhs_type),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   type::Type lhs_type;
   type::Type rhs_type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct AssigningToNonReference {
@@ -36,11 +36,11 @@ struct AssigningToNonReference {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Assigning to a non-reference expression:"),
-        diagnostic::SourceQuote()
-            .Highlighted(lhs.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(lhs,
+                                              diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceView lhs;
+  std::string_view lhs;
 };
 
 }  // namespace
@@ -64,9 +64,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     } else {
       if (qt.quals() >= type::Quals::Const()) {
         diag().Consume(
-            AssigningToConstant{.to = qt.type(), .view = SourceViewFor(l)});
+            AssigningToConstant{.to = qt.type(), .view = l->range()});
       } else if (not(qt.quals() >= type::Quals::Ref())) {
-        diag().Consume(AssigningToNonReference{.lhs = SourceViewFor(l)});
+        diag().Consume(AssigningToNonReference{.lhs = l->range()});
       }
     }
     lhs_qts.push_back(qt);
@@ -109,7 +109,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
           .rhs_type = rhs_type,
           // TODO: set the range to point more directly to the things we care
           // about.
-          .view = SourceViewFor(node),
+          .view = node->range(),
       });
     }
     ++lhs_iter;

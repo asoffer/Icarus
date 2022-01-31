@@ -8,7 +8,6 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "diagnostic/consumer/consumer.h"
-#include "frontend/source/view.h"
 #include "module/module.h"
 
 namespace compiler {
@@ -21,14 +20,14 @@ struct CyclicDependency {
   diagnostic::DiagnosticMessage ToMessage() const {
     diagnostic::SourceQuote quote;
     for (auto const &view : cycle) {
-      quote = quote.Highlighted(view.range(), diagnostic::Style::ErrorText());
+      quote = quote.Highlighted(view, diagnostic::Style::ErrorText());
     }
 
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Found a cyclic dependency:"), std::move(quote));
   }
 
-  std::vector<frontend::SourceView> cycle;
+  std::vector<std::string_view> cycle;
 };
 
 }  // namespace
@@ -73,11 +72,11 @@ struct CyclicDependencyTracker {
       return DependencyToken(this);
     }
 
-    std::vector<frontend::SourceView> views;
+    std::vector<std::string_view> views;
     views.reserve(std::distance(iter, dependencies_.end()));
     for (auto it = iter; it != dependencies_.end(); ++it) {
       ast::Identifier const *id = *it;
-      views.push_back(frontend::SourceView(SourceBufferFor(id), id->range()));
+      views.push_back(id->range());
     }
 
     diag.Consume(CyclicDependency{.cycle = std::move(views)});

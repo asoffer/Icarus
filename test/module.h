@@ -13,7 +13,6 @@
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/tracking.h"
 #include "frontend/parse.h"
-#include "frontend/source/buffer.h"
 #include "frontend/source/indexer.h"
 #include "module/mock_importer.h"
 #include "module/module.h"

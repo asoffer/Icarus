@@ -21,11 +21,10 @@ struct NonConstantDesignatedInitializerType {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Designated initializer type must be a constant."),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonTypeDesignatedInitializerType {
@@ -38,12 +37,11 @@ struct NonTypeDesignatedInitializerType {
         diagnostic::Text("Designated initializer type must be a type, but you "
                          "provided an expression which is a `%s`.",
                          type),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   std::string type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonStructDesignatedInitializer {
@@ -57,12 +55,11 @@ struct NonStructDesignatedInitializer {
             "Designated initializers can only be used with structs, but you "
             "provided a `%s`",
             type),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   std::string type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct InvalidInitializerType {
@@ -76,13 +73,12 @@ struct InvalidInitializerType {
             "  Expected: A type convertible to `%s`\n"
             "  Actual:   `%s`",
             expected, actual),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   type::Type expected;
   type::Type actual;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonExportedField {
@@ -93,13 +89,12 @@ struct NonExportedField {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Field named `%s` in struct `%s` is not exported.",
                          member_name, type::Type(struct_type)),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   std::string member_name;
   type::Struct const *struct_type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct MissingStructField {
@@ -110,13 +105,12 @@ struct MissingStructField {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No field named `%s` in struct `%s`.", member_name,
                          struct_type),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   std::string member_name;
   std::string struct_type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 // Returns whether `qt` is a const type, emitting diagnostics for both constness
@@ -128,7 +122,7 @@ bool ValidateConstType(ast::DesignatedInitializer const &node,
 
   if (not qt.constant()) {
     diagnostic_consumer.Consume(NonConstantDesignatedInitializerType{
-        .view = SourceViewFor(node.type()),
+        .view = node.type()->range(),
     });
     result = false;
   }
@@ -136,7 +130,7 @@ bool ValidateConstType(ast::DesignatedInitializer const &node,
   if (qt.type() != type::Type_) {
     diagnostic_consumer.Consume(NonTypeDesignatedInitializerType{
         .type = TypeForDiagnostic(&node, context),
-        .view = SourceViewFor(node.type()),
+        .view = node.type()->range(),
     });
     result = false;
   }
@@ -174,7 +168,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   if (not struct_type) {
     diag().Consume(NonStructDesignatedInitializer{
         .type = t.to_string(),
-        .view = SourceViewFor(node->type()),
+        .view = node->type()->range(),
     });
     return context().set_qual_type(node, type::QualType::Error());
   }
@@ -208,7 +202,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
           diag().Consume(NonExportedField{
               .member_name = std::string(field_name),
               .struct_type = struct_type,
-              .view        = SourceViewFor(field),
+              .view        = field->range(),
           });
           recovered_error = true;
           quals           = type::Quals::Unqualified();
@@ -217,7 +211,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         diag().Consume(MissingStructField{
             .member_name = std::string(field_name),
             .struct_type = TypeForDiagnostic(node, context()),
-            .view        = SourceViewFor(field),
+            .view        = field->range(),
         });
         recovered_error = true;
         quals           = type::Quals::Unqualified();
@@ -250,7 +244,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         diag().Consume(InvalidInitializerType{
             .expected = rhs_type,
             .actual   = lhs_type,
-            .view     = SourceViewFor(field),
+            .view     = field->range(),
         });
         recovered_error = true;
         quals           = type::Quals::Unqualified();

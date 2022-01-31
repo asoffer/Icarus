@@ -149,15 +149,12 @@ void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
 #endif
 }
 
-void ConsoleRenderer::Add(frontend::SourceBuffer const *source, Category cat,
-                          DiagnosticMessage const &diag) {
+void ConsoleRenderer::Add(Category cat, DiagnosticMessage const &diag) {
   has_data_ = true;
-  if (source and not source->name().empty()) {
-    absl::FPrintF(out_, "\033[31;1mError\033[0m in \033[1m%s\033[0m:\n",
-                  source->name());
-  } else {
-    std::fputs("\033[31;1mError\033[0m:\n", out_);
-  }
+
+  // TODO: Source file name.
+  std::fputs("\033[31;1mError\033[0m:\n", out_);
+
   diag.for_each_component([&](auto const &component) {
     constexpr auto type = base::meta<std::decay_t<decltype(component)>>;
     if constexpr (type == base::meta<Text>) {

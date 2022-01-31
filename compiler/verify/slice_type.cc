@@ -17,11 +17,10 @@ struct SliceDataTypeNotAType {
         diagnostic::Text(
             "Slice type has underlying data type specified as a value which "
             "is not a type."),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonTypeSliceTypeMatch {
@@ -33,11 +32,10 @@ struct NonTypeSliceTypeMatch {
         diagnostic::Text(
             "Attempting to match a slice type against a value of type `%s`.",
             type),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
   type::Type type;
 };
 
@@ -53,7 +51,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   type::QualType qt(type::Type_, quals);
   if (data_qual_type.type() != type::Type_) {
     diag().Consume(SliceDataTypeNotAType{
-        .view = SourceViewFor(node->data_type()),
+        .view = node->data_type()->range(),
     });
     qt.MarkError();
   }
@@ -65,7 +63,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::SliceType const *node,
                                             type::Type t) {
   if (t != type::Type_) {
     diag().Consume(
-        NonTypeSliceTypeMatch{.view = SourceViewFor(node), .type = t});
+        NonTypeSliceTypeMatch{.view = node->range(), .type = t});
     return false;
   }
 

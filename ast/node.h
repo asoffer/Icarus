@@ -6,7 +6,6 @@
 #include "base/cast.h"
 #include "base/meta.h"
 #include "base/visitable.h"
-#include "frontend/source/buffer.h"
 
 namespace ast {
 struct Expression;

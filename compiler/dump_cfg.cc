@@ -24,8 +24,6 @@
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
-#include "frontend/source/file.h"
-#include "frontend/source/file_name.h"
 #include "ir/subroutine.h"
 #include "ir/interpreter/execution_context.h"
 #include "module/module.h"
@@ -112,14 +110,13 @@ void DumpControlFlowGraph(ir::Subroutine const *fn, std::ostream &output) {
   output << "}\n";
 }
 
-int DumpControlFlowGraph(frontend::FileName const &file_name,
-                         std::ostream &output) {
+int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
   frontend::SourceIndexer source_indexer;
   diagnostic::StreamingConsumer diag(stderr, &source_indexer);
-  auto content = compiler::LoadFileContent(file_name.value.c_str());
+  auto content = compiler::LoadFileContent(file_name);
   if (not content.ok()) {
-    diag.Consume(frontend::MissingModule{
-        .source    = file_name.value,
+    diag.Consume(compiler::MissingModule{
+        .source    = file_name,
         .requestor = "",
         .reason    = std::string(content.status().message())});
     return 1;
@@ -189,5 +186,5 @@ int main(int argc, char *argv[]) {
     std::cerr << "Too many positional arguments." << std::endl;
     return 1;
   }
-  return DumpControlFlowGraph(frontend::FileName(args[1]), std::cout);
+  return DumpControlFlowGraph(args[1], std::cout);
 }

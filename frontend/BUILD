@@ -26,8 +26,6 @@ cc_library(
         "//frontend/lex:lex",
         "//frontend/lex:tagged_node",
         "//frontend/lex:token",
-        "//frontend/source:buffer",
-        "//frontend/source:view",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
@@ -43,7 +41,6 @@ cc_binary(
     deps = [
         ":parse",
         "//diagnostic/consumer:trivial",
-        "//frontend/source:buffer",
     ],
     copts = ["-fsanitize=fuzzer"],
     linkopts = ["-fsanitize=fuzzer"],

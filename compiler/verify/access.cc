@@ -28,11 +28,11 @@ struct DeducingAccess {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("The type of an object cannot be deduced from the "
                          "type of a member."),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct [[maybe_unused]] IncompleteTypeMemberAccess {
@@ -43,11 +43,11 @@ struct [[maybe_unused]] IncompleteTypeMemberAccess {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot access a member of an incomplete type `%s`.",
                          type),
-        diagnostic::SourceQuote()
-            .Highlighted(member_view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(member_view,
+                                              diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceView member_view;
+  std::string_view member_view;
   type::Type type;
 };
 
@@ -60,12 +60,12 @@ struct MissingMember {
         diagnostic::Text("Expressions of type `%s` have no member named `%s`.",
                          type, member),
         diagnostic::SourceQuote()
-            .Highlighted(expr_view.range(), diagnostic::Style{})
-            .Highlighted(member_view.range(), diagnostic::Style::ErrorText()));
+            .Highlighted(expr_view, diagnostic::Style{})
+            .Highlighted(member_view, diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceView expr_view;
-  frontend::SourceView member_view;
+  std::string_view expr_view;
+  std::string_view member_view;
   std::string member;
   std::string type;
 };
@@ -78,12 +78,12 @@ struct MissingConstantMember {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No member named `%s` in this expression.", member),
         diagnostic::SourceQuote()
-            .Highlighted(expr_view.range(), diagnostic::Style{})
-            .Highlighted(member_view.range(), diagnostic::Style::ErrorText()));
+            .Highlighted(expr_view, diagnostic::Style{})
+            .Highlighted(member_view, diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceView expr_view;
-  frontend::SourceView member_view;
+  std::string_view expr_view;
+  std::string_view member_view;
   std::string member;
 };
 
@@ -94,11 +94,10 @@ struct NonConstantTypeMemberAccess {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot access a member of a non-constant type."),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct TypeHasNoMembers {
@@ -109,13 +108,13 @@ struct TypeHasNoMembers {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("The type `%s` does not have `%s` as a member.", type,
                          member),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string type;
   std::string member;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonExportedMember {
@@ -127,13 +126,12 @@ struct NonExportedMember {
         diagnostic::Text(
             "Expressions of type `%s` do not export the member `%s`.", type,
             member),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   std::string member;
   type::Type type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonConstantModuleMemberAccess {
@@ -143,11 +141,10 @@ struct NonConstantModuleMemberAccess {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot access a member of a non-constant module."),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct UndeclaredIdentifierInModule {
@@ -157,12 +154,12 @@ struct UndeclaredIdentifierInModule {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Module contains no exported member `%s`", id),
-        diagnostic::SourceQuote()
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 // Returns a pair whose first element is the type obtained by dereferencing the
@@ -192,7 +189,7 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
   LOG("Access", "%s", node->DebugString());
   if (not operand_qt.constant()) {
     c.diag().Consume(NonConstantTypeMemberAccess{
-        .view = SourceViewFor(node),
+        .view = node->range(),
     });
     return c.context().set_qual_type(node, type::QualType::Error());
   }
@@ -211,10 +208,9 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
     } else {
       auto qts = c.context().set_qual_type(node, type::QualType::Error());
       c.diag().Consume(MissingConstantMember{
-          .expr_view = SourceViewFor(node->operand()),
-          .member_view =
-              frontend::SourceView(SourceBufferFor(node), node->member_range()),
-          .member = std::string{node->member_name()},
+          .expr_view   = node->operand()->range(),
+          .member_view = node->member_range(),
+          .member      = std::string{node->member_name()},
       });
       return qts;
     }
@@ -238,10 +234,9 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
       auto qts = c.context().set_qual_type(node, qt);
 
       c.diag().Consume(MissingConstantMember{
-          .expr_view = SourceViewFor(node->operand()),
-          .member_view =
-              frontend::SourceView(SourceBufferFor(node), node->member_range()),
-          .member = std::string{node->member_name()},
+          .expr_view   = node->operand()->range(),
+          .member_view = node->member_range(),
+          .member      = std::string{node->member_name()},
       });
       return qts;
     } else {
@@ -264,10 +259,9 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
       auto qts = c.context().set_qual_type(node, qt);
 
       c.diag().Consume(MissingConstantMember{
-          .expr_view = SourceViewFor(node->operand()),
-          .member_view =
-              frontend::SourceView(SourceBufferFor(node), node->member_range()),
-          .member = std::string(node->member_name()),
+          .expr_view   = node->operand()->range(),
+          .member_view = node->member_range(),
+          .member      = std::string(node->member_name()),
       });
       return qts;
     } else {
@@ -315,7 +309,7 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
   c.diag().Consume(TypeHasNoMembers{
       .type   = ExpressionForDiagnostic(node->operand(), c.context()),
       .member = std::string(node->member_name()),
-      .view = frontend::SourceView(SourceBufferFor(node), node->member_range()),
+      .view   = node->member_range(),
   });
   return qts;
 }
@@ -338,11 +332,10 @@ type::QualType AccessStructMember(CompilationDataReference data,
   auto const *member = s->field(node->member_name());
   if (not member) {
     data.diag().Consume(MissingMember{
-        .expr_view = SourceViewFor(node->operand()),
-        .member_view =
-            frontend::SourceView(SourceBufferFor(node), node->member_range()),
-        .member = std::string{node->member_name()},
-        .type   = TypeForDiagnostic(node->operand(), data.context()),
+        .expr_view   = node->operand()->range(),
+        .member_view = node->member_range(),
+        .member      = std::string{node->member_name()},
+        .type        = TypeForDiagnostic(node->operand(), data.context()),
     });
     return type::QualType::Error();
   }
@@ -355,7 +348,7 @@ type::QualType AccessStructMember(CompilationDataReference data,
     data.diag().Consume(NonExportedMember{
         .member = std::string{node->member_name()},
         .type   = s,
-        .view   = SourceViewFor(node),
+        .view   = node->range(),
     });
 
     // We can continue passed this error because we are confident about the
@@ -373,7 +366,7 @@ type::QualType AccessModuleMember(CompilationDataReference ref,
                                   type::QualType operand_qt) {
   if (not operand_qt.constant()) {
     ref.diag().Consume(NonConstantModuleMemberAccess{
-        .view = SourceViewFor(node),
+        .view = node->range(),
     });
     return type::QualType::Error();
   }
@@ -399,7 +392,7 @@ type::QualType AccessModuleMember(CompilationDataReference ref,
     case 0: {
       ref.diag().Consume(UndeclaredIdentifierInModule{
           .id   = node->member_name(),
-          .view = SourceViewFor(node),
+          .view = node->range(),
       });
       return type::QualType::Error();
     } break;
@@ -467,9 +460,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                                  quals | type::Quals::Ref()));
       } else {
         diag().Consume(MissingMember{
-            .expr_view   = SourceViewFor(node->operand()),
-            .member_view = frontend::SourceView(SourceBufferFor(node),
-                                                node->member_range()),
+            .expr_view   = node->operand()->range(),
+            .member_view = node->member_range(),
             .member      = std::string{node->member_name()},
             .type        = TypeForDiagnostic(node->operand(), context()),
         });
@@ -486,9 +478,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       auto block = scope_context.find(node->member_name());
       if (block == ir::Block::Invalid()) {
         diag().Consume(MissingMember{
-            .expr_view   = SourceViewFor(node->operand()),
-            .member_view = frontend::SourceView(SourceBufferFor(node),
-                                                node->member_range()),
+            .expr_view   = node->operand()->range(),
+            .member_view = node->member_range(),
             .member      = std::string{node->member_name()},
             .type        = TypeForDiagnostic(node->operand(), context()),
         });
@@ -516,11 +507,10 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       // value of this type. Also, we're emitting the type of the operand even
       // if we want to follow multiple layers of pointers.
       diag().Consume(MissingMember{
-          .expr_view = SourceViewFor(node->operand()),
-          .member_view =
-              frontend::SourceView(SourceBufferFor(node), node->member_range()),
-          .member = std::string{node->member_name()},
-          .type   = TypeForDiagnostic(node->operand(), context()),
+          .expr_view   = node->operand()->range(),
+          .member_view = node->member_range(),
+          .member      = std::string{node->member_name()},
+          .type        = TypeForDiagnostic(node->operand(), context()),
       });
       return context().set_qual_types(node, type::QualType::ErrorSpan());
     }
@@ -530,7 +520,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
 bool PatternTypeVerifier::VerifyPatternType(ast::Access const *node,
                                             type::Type t) {
   context().set_qual_type(node, type::QualType::Constant(t));
-  diag().Consume(DeducingAccess{.view = SourceViewFor(node)});
+  diag().Consume(DeducingAccess{.view = node->range()});
   return false;
 }
 
