@@ -1,4 +1,4 @@
-#include "frontend/source/indexer.h"
+#include "frontend/source_indexer.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

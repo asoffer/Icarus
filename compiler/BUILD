@@ -102,7 +102,7 @@ cc_library(
         ":work_graph",
         "//module",
         "//diagnostic/consumer:streaming",
-        "//frontend/source:indexer",
+        "//frontend:source_indexer",
         "//frontend:parse",
         "//ir/value:module_id",
         "@com_google_absl//absl/cleanup",

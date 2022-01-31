@@ -5,7 +5,7 @@
 #include <type_traits>
 
 #include "diagnostic/message.h"
-#include "frontend/source/indexer.h"
+#include "frontend/source_indexer.h"
 
 namespace diagnostic {
 

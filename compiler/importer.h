@@ -11,7 +11,7 @@
 #include "compiler/module.h"
 #include "compiler/work_item.h"
 #include "diagnostic/consumer/streaming.h"
-#include "frontend/source/indexer.h"
+#include "frontend/source_indexer.h"
 #include "ir/value/module_id.h"
 #include "module/importer.h"
 #include "module/module.h"

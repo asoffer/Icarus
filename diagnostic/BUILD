@@ -20,7 +20,7 @@ cc_library(
         "//base:macros",
         "//base:meta",
         "//base:interval",
-        "//frontend/source:indexer",
+        "//frontend:source_indexer",
         "@com_google_absl//absl/strings:str_format",
     ],
 )
