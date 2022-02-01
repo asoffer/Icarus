@@ -23,7 +23,7 @@ constexpr ssize_t IndexOf() {
 }
 
 struct Node : base::Visitable<Node, AllNodeTypes>, base::Cast<Node> {
-  explicit constexpr Node(int8_t which, std::string_view range = {})
+  explicit constexpr Node(int8_t which, std::string_view range)
       : base::Visitable<Node, AllNodeTypes>(which), range_(range) {}
 
   virtual ~Node() {}

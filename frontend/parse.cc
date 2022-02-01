@@ -23,9 +23,6 @@ std::string_view ExtractRange(absl::Span<Lexeme const> &lexemes,
   return result;
 }
 
-// TODO: Out of sheer laziness, I haven't wired this through yet.
-SourceBuffer const *src;
-
 template <typename NodeType, auto... Ps>
 auto FirstOf(absl::Span<Lexeme const> &lexemes) {
   std::unique_ptr<NodeType> e;
@@ -44,23 +41,22 @@ CommaSeparatedListOf(absl::Span<Lexeme const> &lexemes) {
   auto n = P(range);
   if (not n) { return std::nullopt; }
   result.push_back(std::move(n));
-  while () {}
 }
 
-// TODO TryParseBracedDeclarations
-// TODO TryParseParenthesizedExpressionList;
-// TODO TryParseParenthesizedDeclarationList;
-// TODO TryParseParenthesizedDeclarationIdList
-// TODO TryParseParameterizedStructLiteral;
-// TODO TryParseScopeLiteral;
-// TODO TryParseUnaryOperator;
-// TODO TryParseBinaryOperator;
+// TODO ParseBracedDeclarations
+// TODO ParseParenthesizedExpressionList;
+// TODO ParseParenthesizedDeclarationList;
+// TODO ParseParenthesizedDeclarationIdList
+// TODO ParseParameterizedStructLiteral;
+// TODO ParseScopeLiteral;
+// TODO ParseUnaryOperator;
+// TODO ParseBinaryOperator;
 
-std::unique_ptr<ast::Node> TryParseStatement(absl::Span<Lexeme const> &lexemes);
-std::unique_ptr<ast::Expression> TryParseExpression(
+std::unique_ptr<ast::Node> ParseStatement(absl::Span<Lexeme const> &lexemes);
+std::unique_ptr<ast::Expression> ParseExpression(
     absl::Span<Lexeme const> &lexemes);
 
-std::unique_ptr<ast::Expression> TryParseIdentifier(
+std::unique_ptr<ast::Expression> ParseIdentifier(
     absl::Span<Lexeme const> &lexemes) {
   if (lexemes.empty()) { return nullptr; }
   auto const &lexeme = lexemes[0];
@@ -92,17 +88,17 @@ std::unique_ptr<ast::Expression> TryParseIdentifier(
   return std::make_unique<ast::Identifier>(lexeme.content());
 }
 
-std::unique_ptr<ast::Expression> TryParseDeclaration(
-    absl::Span<Lexeme const> &lexemes);
+// std::unique_ptr<ast::Expression> ParseDeclaration(
+//     absl::Span<Lexeme const> &lexemes);
 
-std::unique_ptr<ast::Expression> TryParseParenthesizedExpression(
+std::unique_ptr<ast::Expression> ParseParenthesizedExpression(
     absl::Span<Lexeme const> &lexemes) {
   if (lexemes.empty()) { return nullptr; }
 
   if (lexemes.front().content() != "(") { return nullptr; }
   size_t offset = lexemes.front().match_offset();
   auto range = lexemes.subspan(1, offset - 1);
-  if (auto e = TryParseExpression(range)) {
+  if (auto e = ParseExpression(range)) {
     lexemes = lexemes.subspan(offset + 1);
     return e;
   } else {
@@ -110,7 +106,7 @@ std::unique_ptr<ast::Expression> TryParseParenthesizedExpression(
   }
 }
 
-std::optional<std::vector<std::unique_ptr<ast::Node>>> TryParseBracedStatements(
+std::optional<std::vector<std::unique_ptr<ast::Node>>> ParseBracedStatements(
     absl::Span<Lexeme const> &lexemes) {
   if (lexemes.empty()) { return std::nullopt; }
 
@@ -118,7 +114,7 @@ std::optional<std::vector<std::unique_ptr<ast::Node>>> TryParseBracedStatements(
   size_t offset = lexemes.front().match_offset();
   auto range    = lexemes.subspan(1, offset - 1);
   std::vector<std::unique_ptr<ast::Node>> nodes;
-  while (auto stmt = TryParseStatement(range)) {
+  while (auto stmt = ParseStatement(range)) {
     nodes.push_back(std::move(stmt));
   }
   if (range.empty()) { return nodes; }
@@ -126,20 +122,20 @@ std::optional<std::vector<std::unique_ptr<ast::Node>>> TryParseBracedStatements(
 }
 
 #if 0
-std::unique_ptr<ast::FunctionLiteral> TryParseFunctionLiteral(
+std::unique_ptr<ast::FunctionLiteral> ParseFunctionLiteral(
     absl::Span<Lexeme const> &lexemes) {
   auto range = lexemes;
-  auto decls = TryParseParenthesizedDeclarationList(range);
+  auto decls = ParseParenthesizedDeclarationList(range);
   if (range.front().content() != "->") { return nullptr; }
   range.consume_prefix(1);
 
   std::vector<std::unique_ptr<ast::Expression>> outs;
-  if (outs = TryParseParenthesizedExpressionList()) {
-  } else if (auto e = TryParseExpression()) {
+  if (outs = ParseParenthesizedExpressionList()) {
+  } else if (auto e = ParseExpression()) {
     outs.push_back(std::move(e));
   }
 
-  auto body = TryParseBracedStatements(range);
+  auto body = ParseBracedStatements(range);
   if (not body) { return nullptr; }
 
   return std::make_unique<ast::FunctionLiteral>(
@@ -147,31 +143,31 @@ std::unique_ptr<ast::FunctionLiteral> TryParseFunctionLiteral(
       std::move(outs));
 }
 
-std::unique_ptr<ast::StructLiteral> TryParseStructLiteral(
+std::unique_ptr<ast::StructLiteral> ParseStructLiteral(
     absl::Span<Lexeme const> &lexemes) {
   if (lexemes[0].content() != "struct") { return nullptr; }
   auto range = lexemes.subspan(1);
-  auto decls = TryParseBracedDeclarations(range);
+  auto decls = ParseBracedDeclarations(range);
   if (not decls) { return nullptr; }
   return std::make_unique<ast::StructLiteral>(ExtractRange(lexemes, range),
                                               *std::move(decls));
 }
 #endif
 
-std::unique_ptr<ast::IfStmt> TryParseIfStatement(
+std::unique_ptr<ast::IfStmt> ParseIfStatement(
     absl::Span<Lexeme const> &lexemes) {
   if (lexemes.empty()) { return nullptr; }
 
   if (lexemes[0].content() != "if") { return nullptr; }
   auto range     = lexemes.subspan(1);
-  auto condition = TryParseParenthesizedExpression(range);
+  auto condition = ParseParenthesizedExpression(range);
   if (not condition) { return nullptr; }
-  auto true_body = TryParseBracedStatements(range);
+  auto true_body = ParseBracedStatements(range);
   if (not true_body) { return nullptr; }
 
   if (range[0].content() == "else") {
     auto else_range = range.subspan(1);
-    auto false_body = TryParseBracedStatements(else_range);
+    auto false_body = ParseBracedStatements(else_range);
     if (not false_body) { return nullptr; }
     return std::make_unique<ast::IfStmt>(
         ExtractRange(lexemes, else_range), std::move(condition),
@@ -183,42 +179,44 @@ std::unique_ptr<ast::IfStmt> TryParseIfStatement(
   }
 }
 
-std::unique_ptr<ast::WhileStmt> TryParseWhileStatement(
+std::unique_ptr<ast::WhileStmt> ParseWhileStatement(
     absl::Span<Lexeme const> &lexemes) {
   if (lexemes.empty()) { return nullptr; }
 
   if (lexemes[0].content() != "while") { return nullptr; }
   auto range     = lexemes.subspan(1);
-  auto condition = TryParseParenthesizedExpression(range);
+  auto condition = ParseParenthesizedExpression(range);
   if (not condition) { return nullptr; }
-  auto body = TryParseBracedStatements(range);
+  auto body = ParseBracedStatements(range);
   if (not body) { return nullptr; }
 
   return std::make_unique<ast::WhileStmt>(
       ExtractRange(lexemes, range), std::move(condition), *std::move(body));
 }
 
-std::unique_ptr<ast::Expression> TryParseExpression(
+std::unique_ptr<ast::Expression> ParseExpression(
     absl::Span<Lexeme const> &lexemes) {
   return FirstOf<ast::Expression,
-                 TryParseParenthesizedExpression, /* TryParseFunctionLiteral,
- TryParseStructLiteral, TryParseParameterizedStructLiteral,
- TryParseScopeLiteral, TryParseUnaryOperator,
- TryParseBinaryOperator, */
-                 TryParseIdentifier>(lexemes);
+                 ParseParenthesizedExpression, /* ParseFunctionLiteral,
+ ParseStructLiteral, ParseParameterizedStructLiteral,
+ ParseScopeLiteral, ParseUnaryOperator,
+ ParseBinaryOperator, */
+                 ParseIdentifier>(lexemes);
 }
 
-std::unique_ptr<ast::Node> TryParseStatement(
+std::unique_ptr<ast::Node> ParseStatement(
     absl::Span<Lexeme const> &lexemes) {
-  return FirstOf<ast::Node, TryParseIfStatement, TryParseWhileStatement>(
+  return FirstOf<ast::Node, ParseIfStatement, ParseWhileStatement>(
       lexemes);
 }
 
 }  // namespace
 
 std::unique_ptr<ast::Module> ParseModule(absl::Span<Lexeme const> lexemes) {
-  auto module = std::make_unique<ast::Module>(nullptr);
-  while (auto stmt = TryParseStatement(lexemes)) {
+  auto module = std::make_unique<ast::Module>(
+      nullptr, std::string_view(lexemes.front().content().begin(),
+                                lexemes.back().content().end()));
+  while (auto stmt = ParseStatement(lexemes)) {
     module->insert(std::move(stmt));
   }
   return module;

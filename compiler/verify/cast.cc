@@ -19,11 +19,10 @@ struct CastToNonConstantType {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Cannot cast to a type which is not declared constant."),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 }  // namespace
@@ -38,11 +37,11 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
 
   if (type_qt.type() != type::Type_) {
     diag().Consume(
-        NotAType{.view = SourceViewFor(node), .type = type_qt.type()});
+        NotAType{.view = node->range(), .type = type_qt.type()});
     return context().set_qual_type(node, type::QualType::Error());
   }
   if (not type_qt.constant()) {
-    diag().Consume(CastToNonConstantType{.view = SourceViewFor(node)});
+    diag().Consume(CastToNonConstantType{.view = node->range()});
     return context().set_qual_type(node, type::QualType::Error());
   }
 
@@ -53,7 +52,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     diag().Consume(InvalidCast{
         .from = TypeForDiagnostic(node->expr(), context()),
         .to   = TypeForDiagnostic(node, context()),
-        .view = SourceViewFor(node),
+        .view = node->range(),
     });
     qt.MarkError();
   }

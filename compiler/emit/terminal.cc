@@ -10,17 +10,17 @@ struct TerminalMatchError {
   static constexpr std::string_view kCategory = "terminal-match-error";
   static constexpr std::string_view kName     = "pattern-error";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(R"(Pattern matching failed due to unequal values.
   Pattern value: %s
   Matched value: %s)",
                          pattern_value, matched_value),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(range,
+                                              diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceRange range;
+  std::string_view range;
   std::string pattern_value;
   std::string matched_value;
 };

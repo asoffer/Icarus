@@ -7,13 +7,11 @@
 #include "diagnostic/console_renderer.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/message.h"
-#include "frontend/source/buffer.h"
 
 namespace diagnostic {
 
 struct BufferingConsumer : DiagnosticConsumer {
-  explicit BufferingConsumer(DiagnosticConsumer* c)
-      : DiagnosticConsumer(ASSERT_NOT_NULL(c)->source()), consumer_(*c) {}
+  explicit BufferingConsumer(DiagnosticConsumer* c) : consumer_(*c) {}
 
   void ConsumeImpl(std::string_view category, std::string_view name,
                    DiagnosticMessage&& diag) override {

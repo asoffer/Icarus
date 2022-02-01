@@ -86,7 +86,6 @@ cc_test(
     deps = [
         "//compiler",
         "//compiler:module",
-        "//frontend/source:buffer",
         "//test:module",
         "@com_google_googletest//:gtest_main",
     ],
@@ -151,7 +150,6 @@ cc_test(
     deps = [
         "//compiler",
         "//compiler:module",
-        "//frontend/source:buffer",
         "//test:module",
         "@com_google_googletest//:gtest_main",
     ],
@@ -195,7 +193,6 @@ cc_test(
     deps = [
         "//compiler",
         "//compiler:module",
-        "//frontend/source:buffer",
         "//test:module",
         "@com_google_googletest//:gtest_main",
     ],

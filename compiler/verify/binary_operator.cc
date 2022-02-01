@@ -27,12 +27,12 @@ struct UnexpandedBinaryOperatorArgument {
         diagnostic::Text("Binary operator argument expands to %u values. Each "
                          "operand must expand to exactly 1 value.",
                          num_arguments),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   size_t num_arguments;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct LogicalBinaryOperatorNeedsBool {
@@ -44,12 +44,12 @@ struct LogicalBinaryOperatorNeedsBool {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Operator '%s' must be called with boolean arguments.",
                          ast::BinaryOperator::Symbol(kind)),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   ast::BinaryOperator::Kind kind;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct InvalidAssignmentOperatorLhsValueCategory {
@@ -61,11 +61,11 @@ struct InvalidAssignmentOperatorLhsValueCategory {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Lefthand-side of binary logical assignment operator "
                          "must not be constant."),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct BinaryOperatorTypeMismatch {
@@ -76,13 +76,13 @@ struct BinaryOperatorTypeMismatch {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Mismatched types `%s` and `%s` in binary operator.",
                          lhs_type, rhs_type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   type::Type lhs_type;
   type::Type rhs_type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NoMatchingBinaryOperator {
@@ -94,14 +94,14 @@ struct NoMatchingBinaryOperator {
         diagnostic::Text(
             "No matching binary operator (%s) for types `%s` and `%s`.", op,
             lhs_type, rhs_type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string op;
   std::string lhs_type;
   std::string rhs_type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 template <
@@ -156,7 +156,7 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
       tv.diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qt.type(),
           .rhs_type = rhs_qt.type(),
-          .view     = SourceViewFor(node),
+          .view     = node->range(),
       });
       return tv.context().set_qual_type(node, type::QualType::Error());
     }
@@ -198,7 +198,7 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
         .op       = std::string(ast::BinaryOperator::Symbol(node->kind())),
         .lhs_type = TypeForDiagnostic(&node->lhs(), tv.context()),
         .rhs_type = TypeForDiagnostic(&node->rhs(), tv.context()),
-        .view     = SourceViewFor(node),
+        .view     = node->range(),
     });
   }
   return tv.context().set_qual_type(node, qt);
@@ -213,7 +213,7 @@ std::optional<std::pair<type::QualType, type::QualType>> VerifyOperands(
   if (lhs_qts.size() != 1) {
     tv.diag().Consume(UnexpandedBinaryOperatorArgument{
         .num_arguments = lhs_qts.size(),
-        .view          = SourceViewFor(&node->lhs()),
+        .view          = node->lhs().range(),
     });
     error = true;
   }
@@ -221,7 +221,7 @@ std::optional<std::pair<type::QualType, type::QualType>> VerifyOperands(
   if (rhs_qts.size() != 1) {
     tv.diag().Consume(UnexpandedBinaryOperatorArgument{
         .num_arguments = rhs_qts.size(),
-        .view          = SourceViewFor(&node->rhs()),
+        .view          = node->rhs().range(),
     });
     error = true;
   }
@@ -244,7 +244,7 @@ absl::Span<type::QualType const> VerifyArithmeticAssignment(
       tv.diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qt.type(),
           .rhs_type = rhs_qt.type(),
-          .view     = SourceViewFor(node),
+          .view     = node->range(),
       });
       return tv.context().set_qual_type(node, type::QualType::Error());
     }
@@ -276,7 +276,7 @@ absl::Span<type::QualType const> VerifyArithmeticAssignment(
         .op = std::string(ast::BinaryAssignmentOperator::Symbol(node->kind())),
         .lhs_type = TypeForDiagnostic(&node->lhs(), tv.context()),
         .rhs_type = TypeForDiagnostic(&node->rhs(), tv.context()),
-        .view     = SourceViewFor(node),
+        .view     = node->range(),
     });
   }
 
@@ -307,7 +307,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         // TODO: Get an actual range for the operator.
         diag().Consume(LogicalBinaryOperatorNeedsBool{
             .kind = node->kind(),
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
       }
       auto qt = type::QualType::NonConstant(type::Bool);
@@ -325,7 +325,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
           diag().Consume(BinaryOperatorTypeMismatch{
               .lhs_type = lhs_qt.type(),
               .rhs_type = rhs_qt.type(),
-              .view     = SourceViewFor(node),
+              .view     = node->range(),
           });
           return context().set_qual_type(node, type::QualType::Error());
         }
@@ -341,7 +341,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
               .op = std::string(ast::BinaryOperator::Symbol(node->kind())),
               .lhs_type = TypeForDiagnostic(&node->lhs(), context()),
               .rhs_type = TypeForDiagnostic(&node->rhs(), context()),
-              .view     = SourceViewFor(node),
+              .view     = node->range(),
           });
         }
         return context().set_qual_type(node, qt);
@@ -407,7 +407,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   if (lhs_qt.quals() >= type::Quals::Const() or
       not(lhs_qt.quals() >= type::Quals::Ref())) {
     diag().Consume(InvalidAssignmentOperatorLhsValueCategory{
-        .view = SourceViewFor(&node->lhs()),
+        .view = node->lhs().range(),
     });
   }
 
@@ -429,7 +429,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
               .op = std::string(ast::BinaryOperator::Symbol(node->kind())),
               .lhs_type = TypeForDiagnostic(&node->lhs(), context()),
               .rhs_type = TypeForDiagnostic(&node->rhs(), context()),
-              .view     = SourceViewFor(node),
+              .view     = node->range(),
           });
         }
         return context().set_qual_type(node, qt);

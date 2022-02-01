@@ -21,14 +21,14 @@ struct DeclOutOfOrder {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Variable `%s` used before it was declared.", id),
-        diagnostic::SourceQuote(&use_view.buffer())
-            .Highlighted(use_view.range(), diagnostic::Style::ErrorText())
-            .Highlighted(id_view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote()
+            .Highlighted(use_view, diagnostic::Style::ErrorText())
+            .Highlighted(id_view, diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;
-  frontend::SourceView id_view;
-  frontend::SourceView use_view;
+  std::string_view id_view;
+  std::string_view use_view;
 };
 
 struct UncapturedIdentifier {
@@ -40,12 +40,12 @@ struct UncapturedIdentifier {
         diagnostic::Text("Found an identifier '%s' which is not visible in the "
                          "current scope:",
                          id),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct PotentialIdentifiers {
@@ -64,22 +64,22 @@ PotentialIdentifiers PotentialIds(CompilationDataReference data,
   PotentialIdentifiers result;
   bool only_constants = false;
   for (ast::Scope const &s : id.scope()->ancestors()) {
-    if (auto iter = s.decls_.find(id.name()); iter != s.decls_.end()) {
-      for (auto const *id : iter->second) {
-        auto const *decl_id_qt = data.context().maybe_qual_type(id).data();
-        type::QualType qt = decl_id_qt ? *decl_id_qt : VerifyType(data, id)[0];
+  if (auto iter = s.decls_.find(id.name()); iter != s.decls_.end()) {
+    for (auto const *id : iter->second) {
+      auto const *decl_id_qt = data.context().maybe_qual_type(id).data();
+      type::QualType qt = decl_id_qt ? *decl_id_qt : VerifyType(data, id)[0];
 
-        if (not qt.ok()) {
-          result.errors.push_back(id);
+      if (not qt.ok()) {
+        result.errors.push_back(id);
+      } else {
+        if (only_constants and
+            not(id->declaration().flags() & ast::Declaration::f_IsConst)) {
+          result.unreachable.push_back(id);
         } else {
-          if (only_constants and
-              not(id->declaration().flags() & ast::Declaration::f_IsConst)) {
-            result.unreachable.push_back(id);
-          } else {
-            result.viable.emplace_back(id, qt);
-          }
+          result.viable.emplace_back(id, qt);
         }
       }
+    }
     }
 
     for (auto *mod : s.embedded_modules()) {
@@ -132,8 +132,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         // if (node->range().begin() < id->range().begin()) {
         //   diag().Consume(DeclOutOfOrder{
         //       .id       = node->name(),
-        //       .id_view  = SourceViewFor(potential_id.first),
-        //       .use_view = SourceViewFor(node),
+        //       .id_view  = potential_id.first->range(),
+        //       .use_view = node->range(),
         //   });
         //   // Haven't seen the declaration yet, so we can't proceed.
         //   return context().set_qual_type(node, type::QualType::Error());
@@ -185,12 +185,12 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       if (present) {
         diag().Consume(UncapturedIdentifier{
             .id   = node->name(),
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
       } else {
         diag().Consume(UndeclaredIdentifier{
             .id   = node->name(),
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
       }
       return context().set_qual_type(node, type::QualType::Error());

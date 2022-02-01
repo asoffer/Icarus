@@ -11,22 +11,38 @@
 #include "compiler/module.h"
 #include "compiler/work_item.h"
 #include "diagnostic/consumer/streaming.h"
-#include "frontend/source/file_name.h"
+#include "frontend/source_indexer.h"
 #include "ir/value/module_id.h"
 #include "module/importer.h"
 #include "module/module.h"
 
 namespace compiler {
 
+struct MissingModule {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "missing-module";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(diagnostic::Text(
+        "Could not find module named \"%s\":\n%s", source, reason));
+  }
+
+  std::string source;
+  std::string requestor;  // TODO: Set this correctly or remove it.
+  std::string reason;
+};
+
 struct FileImporter : module::Importer {
   explicit FileImporter(WorkSet* work_set,
                         diagnostic::DiagnosticConsumer* diagnostic_consumer,
+                        frontend::SourceIndexer* source_indexer,
                         std::vector<std::string> module_lookup_paths)
       : work_set_(ASSERT_NOT_NULL(work_set)),
         builtin_(MakeBuiltinModule()),
         modules_by_id_{{ir::ModuleId::Builtin(), &builtin_}},
         diagnostic_consumer_(ASSERT_NOT_NULL(diagnostic_consumer)),
-        module_lookup_paths_(std::move(module_lookup_paths)) {}
+        module_lookup_paths_(std::move(module_lookup_paths)),
+        source_indexer_(*ASSERT_NOT_NULL(source_indexer)) {}
 
   ~FileImporter() override {}
 
@@ -51,11 +67,10 @@ struct FileImporter : module::Importer {
 
  private:
   struct ModuleData {
-    // TODO: SourceBuffer*
-    ModuleData(frontend::SourceBuffer* buffer)
-        : id(ir::ModuleId::New()),
+    ModuleData(ir::ModuleId id, std::string_view file_content)
+        : id(id),
           root_context(&ir_module),
-          module(buffer, &root_context) {}
+          module(file_content, &root_context) {}
     ir::ModuleId id;
     ir::Module ir_module;
     Context root_context;
@@ -63,8 +78,7 @@ struct FileImporter : module::Importer {
   };
 
   WorkSet* work_set_;
-  absl::flat_hash_map<frontend::CanonicalFileName, std::unique_ptr<ModuleData>>
-      modules_;
+  absl::flat_hash_map<std::string, std::unique_ptr<ModuleData>> modules_;
   module::BuiltinModule builtin_;
   absl::flat_hash_map<ir::ModuleId, module::Module*> modules_by_id_;
   base::Graph<module::Module const*> graph_;
@@ -72,7 +86,12 @@ struct FileImporter : module::Importer {
       subroutine_by_module_;
   diagnostic::DiagnosticConsumer* diagnostic_consumer_;
   std::vector<std::string> module_lookup_paths_;
+  frontend::SourceIndexer& source_indexer_;
 };
+
+absl::StatusOr<std::string> LoadFileContent(
+    std::string const& file_name,
+    absl::Span<std::string const> lookup_paths = {});
 
 }  // namespace compiler
 

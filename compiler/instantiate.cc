@@ -36,7 +36,7 @@ std::optional<type::Type> ComputeParameterTypeOrDiagnose(
     auto type_expr_type = VerifyType(c, type_expr)[0].type();
     if (type_expr_type != type::Type_) {
       c.diag().Consume(
-          NotAType{.view = SourceViewFor(type_expr), .type = type_expr_type});
+          NotAType{.view = type_expr->range(), .type = type_expr_type});
       return std::nullopt;
     }
 

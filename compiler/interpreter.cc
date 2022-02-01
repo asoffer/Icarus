@@ -24,8 +24,6 @@
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
-#include "frontend/source/file.h"
-#include "frontend/source/file_name.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/subroutine.h"
 #include "module/module.h"
@@ -46,32 +44,32 @@ ABSL_FLAG(std::vector<std::string>, implicitly_embedded_modules, {},
 namespace compiler {
 namespace {
 
-int Interpret(frontend::FileName const &file_name,
-              absl::Span<char *> program_arguments) {
-  diagnostic::StreamingConsumer diag(stderr, nullptr);
-  auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
-  auto maybe_file_src = frontend::SourceBufferFromFile(canonical_file_name);
-  if (not maybe_file_src.ok()) {
-    diag.Consume(frontend::MissingModule{
-        .source    = canonical_file_name,
-        .requestor = "",
-        .reason    = std::string(maybe_file_src.status().message())});
+int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
+  frontend::SourceIndexer source_indexer;
+  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
+  auto content = LoadFileContent(file_name);
+  if (not content.ok()) {
+    diag.Consume(
+        MissingModule{.source    = file_name,
+                      .requestor = "",
+                      .reason    = std::string(content.status().message())});
     return 1;
   }
 
-  auto *src = &*maybe_file_src;
-  diag      = diagnostic::StreamingConsumer(stderr, src);
-
   WorkSet work_set;
-  FileImporter importer(&work_set, &diag, absl::GetFlag(FLAGS_module_paths));
+  FileImporter importer(&work_set, &diag, &source_indexer,
+                        absl::GetFlag(FLAGS_module_paths));
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;
   }
 
+  std::string_view file_content =
+      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
+
   ir::Module ir_module;
   Context context(&ir_module);
-  CompiledModule exec_mod(src, &context);
+  CompiledModule exec_mod(file_content, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }
@@ -83,7 +81,7 @@ int Interpret(frontend::FileName const &file_name,
       .importer            = &importer,
   };
 
-  auto parsed_nodes = frontend::Parse(*src, diag);
+  auto parsed_nodes = frontend::Parse(file_content, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   ASSIGN_OR(return 1,  //
                    auto main_fn, CompileModule(context, resources, nodes));
@@ -144,5 +142,5 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   absl::Span<char *> arguments = absl::MakeSpan(args).subspan(2);
-  return compiler::Interpret(frontend::FileName(args[1]), arguments);
+  return compiler::Interpret(args[1], arguments);
 }

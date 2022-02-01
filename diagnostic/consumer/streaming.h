@@ -7,18 +7,19 @@
 #include "diagnostic/console_renderer.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/message.h"
-#include "frontend/source/buffer.h"
+#include "frontend/source_indexer.h"
 
 namespace diagnostic {
 
 struct StreamingConsumer : DiagnosticConsumer {
-  explicit StreamingConsumer(std::FILE* file, frontend::SourceBuffer const* src)
-      : DiagnosticConsumer(src), renderer_(file) {}
+  explicit StreamingConsumer(std::FILE* file,
+                             frontend::SourceIndexer* source_indexer)
+      : renderer_(file, source_indexer) {}
   ~StreamingConsumer() override {}
 
   void ConsumeImpl(std::string_view category, std::string_view name,
                    DiagnosticMessage&& diag) override {
-    renderer_.AddError(source(), diag);
+    renderer_.AddError(diag);
   }
 
  private:

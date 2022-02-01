@@ -104,7 +104,6 @@ cc_library(
         ":slice",
         ":type",
         "//diagnostic:message",
-        "//frontend/source:view",
         "@com_google_absl//absl/algorithm:container",
     ],
 )

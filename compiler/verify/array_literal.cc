@@ -13,7 +13,7 @@ struct InconsistentArrayType {
   static constexpr std::string_view kName = "inconsistent-array-element-type";
 
   diagnostic::DiagnosticMessage ToMessage() const {
-    auto quote = diagnostic::SourceQuote(buffer);
+    diagnostic::SourceQuote quote;
     for (auto const &range : highlights) {
       quote.Highlighted(range, diagnostic::Style{});
     }
@@ -23,8 +23,7 @@ struct InconsistentArrayType {
         quote);
   }
 
-  frontend::SourceBuffer const *buffer;
-  std::vector<frontend::SourceRange> highlights;
+  std::vector<std::string_view> highlights;
 };
 
 // Guesses the intended array literal type. For instance, if all but one element
@@ -74,7 +73,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     return context().set_qual_type(node, qt);
   } else {
     if (type::Type t = GuessIntendedArrayType(elem_type_count)) {
-      std::vector<frontend::SourceRange> mistyped_elements;
+      std::vector<std::string_view> mistyped_elements;
       size_t i = 0;
       for (type::QualType const &qt : elem_qts) {
         if (qt.type() != t) {
@@ -83,7 +82,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         ++i;
       }
       diag().Consume(InconsistentArrayType{
-          .buffer     = SourceBufferFor(node),
           .highlights = std::move(mistyped_elements),
       });
       auto qt = type::QualType(type::Arr(num_elements, t), quals);
@@ -91,7 +89,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       return context().set_qual_type(node, qt);
     } else {
       diag().Consume(InconsistentArrayType{
-          .buffer     = SourceBufferFor(node),
           .highlights = {node->range()},
       });
       return context().set_qual_type(node, type::QualType::Error());

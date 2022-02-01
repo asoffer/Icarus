@@ -16,11 +16,10 @@ struct NonIntegralArrayLength {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Array length indexed by non-integral type"),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct ArrayDataTypeNotAType {
@@ -32,11 +31,10 @@ struct ArrayDataTypeNotAType {
         diagnostic::Text(
             "Array type has underlying data type specified as a value which "
             "is not a type."),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonTypeArrayTypeMatch {
@@ -48,11 +46,10 @@ struct NonTypeArrayTypeMatch {
         diagnostic::Text(
             "Attempting to match an array type against a value of type `%s`.",
             type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
   type::Type type;
 };
 
@@ -71,7 +68,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     length_results.push_back(result);
     if (not type::IsIntegral(result.type())) {
       diag().Consume(NonIntegralArrayLength{
-          .view = SourceViewFor(node),
+          .view = node->range(),
       });
     }
   }
@@ -81,7 +78,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   type::QualType qt(type::Type_, quals);
   if (data_qual_type.type() != type::Type_) {
     diag().Consume(ArrayDataTypeNotAType{
-        .view = SourceViewFor(node->data_type()),
+        .view = node->data_type()->range(),
     });
     qt.MarkError();
   }
@@ -92,8 +89,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
 bool PatternTypeVerifier::VerifyPatternType(ast::ArrayType const *node,
                                             type::Type t) {
   if (t != type::Type_) {
-    diag().Consume(
-        NonTypeArrayTypeMatch{.view = SourceViewFor(node), .type = t});
+    diag().Consume(NonTypeArrayTypeMatch{.view = node->range(), .type = t});
     return false;
   }
 

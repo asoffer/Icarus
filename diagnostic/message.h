@@ -7,8 +7,6 @@
 
 #include "absl/strings/str_format.h"
 #include "base/meta.h"
-#include "frontend/source/buffer.h"
-#include "frontend/source/source.h"
 #include "type/type.h"
 
 namespace diagnostic {
@@ -31,34 +29,18 @@ struct Style {
 };
 
 struct Highlight {
-  Highlight(frontend::SourceRange range, Style style)
+  Highlight(std::string_view range, Style style)
       : range(range), style(style) {}
-  frontend::SourceRange range;
+  std::string_view range;
   Style style;
 };
 
 struct SourceQuote {
-  explicit SourceQuote(frontend::SourceBuffer const* source)
-      : source(ASSERT_NOT_NULL(source)) {}
-  explicit SourceQuote(frontend::Source const* source)
-      : source(&source->buffer()) {}
-
-  // TODO: implement for real.
-  SourceQuote& Highlighted(frontend::SourceRange range, Style style) {
-    lines.insert(range.lines(*source));
+  SourceQuote& Highlighted(std::string_view range, Style style) {
     highlights.emplace_back(range, style);
     return *this;
   }
 
-  SourceQuote& Line(frontend::LineNum l) {
-    lines.insert(
-        base::Interval<frontend::LineNum>(l, l + 1).expanded(1).clamped_below(
-            frontend::LineNum(1)));
-    return *this;
-  }
-
-  frontend::SourceBuffer const* source;
-  base::IntervalSet<frontend::LineNum> lines;
   std::vector<Highlight> highlights;
 };
 

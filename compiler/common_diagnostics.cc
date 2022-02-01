@@ -11,8 +11,8 @@ diagnostic::DiagnosticMessage UncallableWithArguments::ToMessage() const {
   if (errors.empty()) {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expression cannot be called"),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::vector<std::string> items;
@@ -35,7 +35,7 @@ diagnostic::DiagnosticMessage UncallableWithArguments::ToMessage() const {
         items.push_back(
             absl::StrCat(callable_type->to_string(),
                          " -- The following parameters do not have default "
-                         "arguments and are not provided at the call-site:",
+                         "arguments and are not provided at the call-site: ",
                          absl::StrJoin(names, ", ")));
       } else if constexpr (type == base::meta<call_error::TypeMismatch>) {
         std::string param_str;
@@ -73,8 +73,8 @@ diagnostic::DiagnosticMessage UncallableWithArguments::ToMessage() const {
 
   return diagnostic::DiagnosticMessage(
       diagnostic::Text("Expression cannot be called with the given arguments."),
-      diagnostic::SourceQuote(&view.buffer())
-          .Highlighted(view.range(), diagnostic::Style::ErrorText()),
+      diagnostic::SourceQuote()
+          .Highlighted(view, diagnostic::Style::ErrorText()),
       diagnostic::List(std::move(items)));
 }
 
@@ -84,7 +84,7 @@ UncallableWithArguments UncallableError(
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
         errors) {
   UncallableWithArguments result;
-  result.view = SourceViewFor(name);
+  result.view = name->range();
 
   size_t i = 0;
   for (; i < arguments.size(); ++i) {

@@ -7,7 +7,7 @@ cc_library(
         ":consumer",
         "//diagnostic:console_renderer",
         "//diagnostic:message",
-        "//frontend/source:buffer",
+        "//frontend:source_indexer",
     ],
 )
 
@@ -17,7 +17,6 @@ cc_library(
     deps = [
         "//base:debug",
         "//diagnostic:message",
-        "//frontend/source:buffer",
     ],
 )
 
@@ -29,7 +28,7 @@ cc_library(
         "//base:debug",
         "//diagnostic:console_renderer",
         "//diagnostic:message",
-        "//frontend/source:buffer",
+        "//frontend:source_indexer",
     ],
 )
 
@@ -39,7 +38,6 @@ cc_library(
     deps = [
         ":consumer",
         "//diagnostic:message",
-        "//frontend/source:buffer",
     ],
     testonly = True,
 )
@@ -50,7 +48,6 @@ cc_library(
     deps = [
         ":consumer",
         "//diagnostic:message",
-        "//frontend/source:buffer",
     ],
 )
 
@@ -60,6 +57,5 @@ cc_library(
     deps = [
         ":consumer",
         "//diagnostic:message",
-        "//frontend/source:buffer",
     ],
 )

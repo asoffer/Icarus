@@ -20,9 +20,9 @@ TEST(CyclicDependencyTracker, NoErrors) {
   diagnostic::TrackingConsumer diag;
 
   // No errors even if they have the same name.
-  ast::Identifier id1(frontend::SourceRange(), "a");
-  ast::Identifier id2(frontend::SourceRange(), "b");
-  ast::Identifier id3(frontend::SourceRange(), "a");
+  ast::Identifier id1("a");
+  ast::Identifier id2("b");
+  ast::Identifier id3("a");
 
   auto token1 = dep_tracker.PushDependency(&id1, diag);
   ASSERT_TRUE(static_cast<bool>(token1));
@@ -51,13 +51,12 @@ TEST(CyclicDependencyTracker, Errors) {
   diagnostic::TrackingConsumer diag;
 
   // No errors even if they have the same name.
-  ast::Identifier id1(frontend::SourceRange(), "a");
-  ast::Identifier id2(frontend::SourceRange(), "a");
+  ast::Identifier id1("a");
+  ast::Identifier id2("a");
 
   ir::Module mod;
-  frontend::SourceBuffer buffer("\n");
   Context context(&mod);
-  CompiledModule module(&buffer, &context);
+  CompiledModule module("\n", &context);
   ast::Scope scope(&module);
   ast::Node::Initializer i{.scope = &scope};
   id1.Initialize(i);

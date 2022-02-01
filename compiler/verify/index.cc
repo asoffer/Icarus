@@ -21,11 +21,10 @@ struct InvalidIndexType {
                          "non-integral index. Indices must be integers, but "
                          "you provided an index of type `%s`.",
                          type, index_type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
   type::Type type;
   type::Type index_type;
 };
@@ -40,11 +39,10 @@ struct IndexingArrayOutOfBounds {
             "Array is indexed out of bounds. Array of type `%s` has size %u "
             "but you are attempting to access position %d.",
             type::Type(array), array->length(), index),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
   type::Array const *array;
   ir::Integer index;
 };
@@ -56,11 +54,10 @@ struct NegativeArrayIndex {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Array is indexed with a negative value."),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct InvalidIndexing {
@@ -73,11 +70,10 @@ struct InvalidIndexing {
             "Cannot index into a non-array, non-buffer type. Indexed type is "
             "a `%s`.",
             type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
   std::string type;
 };
 
@@ -87,7 +83,7 @@ bool ValidIndexType(CompilationDataReference data, ast::Index const *node,
   if (index_qt.ok()) {
     if (type::IsIntegral(index_qt.type())) { return true; }
     data.diag().Consume(InvalidIndexType{
-        .view       = SourceViewFor(node),
+        .view       = node->range(),
         .type       = type,
         .index_type = index_qt.type(),
     });
@@ -130,12 +126,12 @@ type::QualType VerifyArrayIndex(CompilationDataReference data,
 
     if (index < 0) {
       data.diag().Consume(NegativeArrayIndex{
-          .view = SourceViewFor(node),
+          .view = node->range(),
       });
       qt.MarkError();
     } else if (index >= array_type->length()) {
       data.diag().Consume(IndexingArrayOutOfBounds{
-          .view  = SourceViewFor(node),
+          .view  = node->range(),
           .array = array_type,
           .index = index,
       });
@@ -184,7 +180,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         ModulesFromTypeProvenance({lhs_qt.type(), index_qt.type()}));
     if (metadata.overloads().empty()) {
       diag().Consume(InvalidIndexing{
-          .view = SourceViewFor(node),
+          .view = node->range(),
           .type = TypeForDiagnostic(node->lhs(), context()),
       });
       qt = type::QualType::Error();

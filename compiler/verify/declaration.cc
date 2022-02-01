@@ -19,12 +19,11 @@ struct DeclaringHoleAsNonModule {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Declaring `--` as non-module type `%s`.", type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   type::Type type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct ShadowingDeclaration {
@@ -34,13 +33,13 @@ struct ShadowingDeclaration {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Ambiguous declarations:"),
-        diagnostic::SourceQuote(&view1.buffer())
-            .Highlighted(view1.range(), diagnostic::Style{})
-            .Highlighted(view2.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote()
+            .Highlighted(view1, diagnostic::Style{})
+            .Highlighted(view2, diagnostic::Style{}));
   }
 
-  frontend::SourceView view1;
-  frontend::SourceView view2;
+  std::string_view view1;
+  std::string_view view2;
 };
 
 struct NoDefaultValue {
@@ -50,12 +49,11 @@ struct NoDefaultValue {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("There is no default value for the type `%s`.", type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   type::Type type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonConstantTypeInDeclaration {
@@ -65,11 +63,10 @@ struct NonConstantTypeInDeclaration {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Non-constant type encountered in declaration."),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct UninitializedConstant {
@@ -80,11 +77,10 @@ struct UninitializedConstant {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to define a constant with an uninitialized value."),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 // TODO: what about shadowing of symbols across module boundaries imported with
@@ -123,7 +119,7 @@ type::QualType VerifyDeclarationType(CompilationDataReference data,
   if (type_expr_qt.type() == type::Type_) {
     if (not type_expr_qt.constant()) {
       data.diag().Consume(NonConstantTypeInDeclaration{
-          .view = SourceViewFor(node->type_expr()),
+          .view = node->type_expr()->range(),
       });
       return type::QualType::Error();
     }
@@ -138,7 +134,7 @@ type::QualType VerifyDeclarationType(CompilationDataReference data,
   } else {
     // TODO: Not a type or *INTERFACE*
     data.diag().Consume(NotAType{
-        .view = SourceViewFor(node->type_expr()),
+        .view = node->type_expr()->range(),
         .type = type_expr_qt.type(),
     });
     return type::QualType::Error();
@@ -154,7 +150,7 @@ type::QualType VerifyDefaultInitialization(CompilationDataReference data,
       not qt.type().get()->IsDefaultInitializable()) {
     data.diag().Consume(NoDefaultValue{
         .type = qt.type(),
-        .view = SourceViewFor(node),
+        .view = node->range(),
     });
   }
   return qt;
@@ -182,7 +178,7 @@ std::vector<type::QualType> VerifyInferred(CompilationDataReference data,
     } else {
       data.diag().Consume(type::UninferrableType{
           .kind = inference_result.failure(),
-          .view = SourceViewFor(node->init_val()),
+          .view = node->init_val()->range(),
       });
       inference_failure = true;
     }
@@ -191,7 +187,7 @@ std::vector<type::QualType> VerifyInferred(CompilationDataReference data,
   if (inference_failure) { return {type::QualType::Error()}; }
 
   for (auto &qt : init_val_qts) {
-    if (not internal::VerifyInitialization(data.diag(), SourceViewFor(node), qt,
+    if (not internal::VerifyInitialization(data.diag(), node->range(), qt,
                                            qt)) {
       qt.MarkError();
     }
@@ -208,9 +204,8 @@ type::QualType VerifyCustom(TypeVerifier &tv, ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(), auto qt,
                    VerifyDeclarationType(tv, node));
 
-  if (not init_val_qt.ok() or
-      not internal::VerifyInitialization(tv.diag(), SourceViewFor(node), qt,
-                                         init_val_qt)) {
+  if (not init_val_qt.ok() or not internal::VerifyInitialization(
+                                  tv.diag(), node->range(), qt, init_val_qt)) {
     qt.MarkError();
   }
 
@@ -220,7 +215,7 @@ type::QualType VerifyCustom(TypeVerifier &tv, ast::Declaration const *node) {
 type::QualType VerifyUninitialized(TypeVerifier &tv,
                                    ast::Declaration const *node) {
   if (node->flags() & ast::Declaration::f_IsConst) {
-    tv.diag().Consume(UninitializedConstant{.view = SourceViewFor(node)});
+    tv.diag().Consume(UninitializedConstant{.view = node->range()});
   }
 
   return VerifyDeclarationType(tv, node);
@@ -262,10 +257,10 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     case ast::Declaration::kInferredAndUninitialized: {
       diag().Consume(type::UninferrableType{
           .kind = type::InferenceResult::Kind::Uninitialized,
-          .view = SourceViewFor(node->init_val()),
+          .view = node->init_val()->range(),
       });
       if (node->flags() & ast::Declaration::f_IsConst) {
-        diag().Consume(UninitializedConstant{.view = SourceViewFor(node)});
+        diag().Consume(UninitializedConstant{.view = node->range()});
       }
       node_qual_types = {type::QualType::Error()};
     } break;
@@ -319,7 +314,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       } else {
         diag().Consume(DeclaringHoleAsNonModule{
             .type = node_qual_types[i].type(),
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
         node_qual_types[i].MarkError();
       }
@@ -387,8 +382,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             node_qual_types[i].MarkError();
 
             diag().Consume(ShadowingDeclaration{
-                .view1 = SourceViewFor(node),
-                .view2 = SourceViewFor(&id),
+                .view1 = node->range(),
+                .view2 = id.range(),
             });
           }
         }

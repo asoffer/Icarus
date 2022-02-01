@@ -11,19 +11,19 @@
 
 namespace diagnostic {
 
-namespace {
-inline int NumDigits(frontend::LineNum line) {
-  auto n = line.value;
-  if (n == 0) { return 1; }
-  int counter = 0;
-  while (n != 0) {
-    n /= 10;
-    ++counter;
-  }
-  return counter;
-}
-
-}  // namespace
+// namespace {
+// inline int NumDigits(frontend::LineNum line) {
+//   auto n = line.value;
+//   if (n == 0) { return 1; }
+//   int counter = 0;
+//   while (n != 0) {
+//     n /= 10;
+//     ++counter;
+//   }
+//   return counter;
+// }
+// 
+// }  // namespace
 
 void ConsoleRenderer::Flush() {
   if (not has_data_) { return; }
@@ -33,7 +33,25 @@ void ConsoleRenderer::Flush() {
 }
 
 void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
-  ASSERT(quote.lines.empty() == false);
+  ASSERT(quote.highlights.empty() == false);
+
+  // TODO: We should just keep them sorted. In a flat_set or something.
+  auto highlights = quote.highlights;
+  std::sort(highlights.begin(), highlights.end(),
+            [](auto const &l, auto const &r) {
+              return std::less<char const *>{}(l.range.data(), r.range.data());
+            });
+
+  for (auto const &highlight : highlights) {
+    auto &entry       = source_indexer_.EntryFor(highlight.range);
+    auto [start, end] = entry.lines_containing(highlight.range);
+    for (size_t line_number = start; line_number < end; ++line_number) {
+      absl::FPrintF(out_, "\033[97;1m%*d | \033[0m%s\n", 4, line_number,
+                    entry.line(line_number));
+    }
+  }
+
+#if 0
 
   auto highlight_iter   = quote.highlights.begin();
   bool inside_highlight = false;
@@ -128,17 +146,15 @@ void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
   // line of the source quote didn't include a newline.
   if (not quote.source->line(last_line).ends_with('\n'))
     absl::FPrintF(out_, "\n");
+#endif
 }
 
-void ConsoleRenderer::Add(frontend::SourceBuffer const *source, Category cat,
-                          DiagnosticMessage const &diag) {
+void ConsoleRenderer::Add(Category cat, DiagnosticMessage const &diag) {
   has_data_ = true;
-  if (source and not source->name().empty()) {
-    absl::FPrintF(out_, "\033[31;1mError\033[0m in \033[1m%s\033[0m:\n",
-                  source->name());
-  } else {
-    std::fputs("\033[31;1mError\033[0m:\n", out_);
-  }
+
+  // TODO: Source file name.
+  std::fputs("\033[31;1mError\033[0m:\n", out_);
+
   diag.for_each_component([&](auto const &component) {
     constexpr auto type = base::meta<std::decay_t<decltype(component)>>;
     if constexpr (type == base::meta<Text>) {

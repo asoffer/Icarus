@@ -23,13 +23,13 @@ struct ComparingIncomparables {
             "Values of type `%s` and `%s` are being compared but no such "
             "comparison is allowed:",
             lhs, rhs),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   type::Type lhs;
   type::Type rhs;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 // TODO: Consider combining this with unary and binary overloads.
@@ -41,12 +41,12 @@ struct InvalidComparisonOperatorOverload {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No valid operator overload for (%s)", op),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string op;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NoMatchingComparisonOperator {
@@ -57,13 +57,13 @@ struct NoMatchingComparisonOperator {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No matching comparison operator for types %s and %s.",
                          lhs, rhs),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   type::Type lhs;
   type::Type rhs;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 // NOTE: the order of these enumerators is meaningful and relied upon! They are
@@ -180,8 +180,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       if (not result.ok()) {
         diag().Consume(InvalidComparisonOperatorOverload{
             .op   = token,
-            .view = frontend::SourceView(SourceBufferFor(node),
-                                         node->binary_range(i)),
+            .view = node->binary_range(i),
         });
         qt.MarkError();
       } else if (result.type() != type::Bool) {
@@ -204,8 +203,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
               diag().Consume(ComparingIncomparables{
                   .lhs  = lhs_qual_type.type(),
                   .rhs  = rhs_qual_type.type(),
-                  .view = frontend::SourceView(SourceBufferFor(node),
-                                               node->binary_range(i)),
+                  .view = node->binary_range(i),
               });
               qt.MarkError();
               continue;
@@ -222,8 +220,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
               diag().Consume(ComparingIncomparables{
                   .lhs  = lhs_qual_type.type(),
                   .rhs  = rhs_qual_type.type(),
-                  .view = frontend::SourceView(SourceBufferFor(node),
-                                               node->binary_range(i)),
+                  .view = node->binary_range(i),
               });
               qt.MarkError();
               continue;
@@ -235,8 +232,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       diag().Consume(NoMatchingComparisonOperator{
           .lhs  = lhs_qual_type.type(),
           .rhs  = rhs_qual_type.type(),
-          .view = frontend::SourceView(SourceBufferFor(node),
-                                       node->binary_range(i)),
+          .view = node->binary_range(i),
       });
 
       qt.MarkError();

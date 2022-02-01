@@ -18,11 +18,10 @@ struct NonBooleanCondition {
         diagnostic::Text("If statements require the condition to be of type "
                          "`bool`, but you provided a value of type `%s`.",
                          type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
   std::string type;
 };
 
@@ -125,7 +124,11 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   std::vector<ir::ScopeContext::block_type> blocks;
   blocks.reserve(node->blocks().size());
   for (auto const &block : node->blocks()) {
-    type::Type t   = VerifyType(&block)[0].type();
+    auto qt        = VerifyType(&block)[0];
+    if (qt.HasErrorMark()) {
+      return context().set_qual_type(node, type::QualType::Error());
+    }
+    type::Type t   = qt.type();
     auto *as_block = t.if_as<type::Block>();
     using ptr_union_type =
         base::PtrUnion<type::Block const, type::Generic<type::Block> const>;
@@ -151,7 +154,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   auto qt = VerifyType(&node->condition())[0];
   if (qt.type() != type::Bool) {
     diag().Consume(NonBooleanCondition{
-        .view = SourceViewFor(node),
+        .view = node->range(),
         .type = TypeForDiagnostic(&node->condition(), context()),
     });
   }

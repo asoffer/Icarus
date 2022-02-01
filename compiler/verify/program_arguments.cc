@@ -20,11 +20,10 @@ struct ProgramArgumentAccess {
             "Program arguments cannot be accessed from within a function or "
             "user-defined scope. If you would like to access them, they must "
             "be passed in through a parameter."),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 }  // namespace
@@ -34,7 +33,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   auto qt  = type::QualType::NonConstant(type::Slc(type::Slc(type::Char)));
   for (ast::Scope const &s : node->scope()->ancestors()) {
     if (s.kind() == ast::Scope::Kind::BoundaryExecutable and s.parent()) {
-      diag().Consume(ProgramArgumentAccess{.view = SourceViewFor(node)});
+      diag().Consume(ProgramArgumentAccess{.view = node->range()});
       qt.MarkError();
       break;
     }

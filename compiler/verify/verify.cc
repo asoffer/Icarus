@@ -10,14 +10,14 @@ struct IncompleteField {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "incomplete-field";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Struct field has incomplete type."),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(range,
+                                              diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceRange range;
+  std::string_view range;
 };
 
 }  // namespace

@@ -6,8 +6,6 @@ cc_library(
     srcs = ["message.cc"],
     deps = [
         "//base:meta",
-        "//frontend/source",
-        "//frontend/source:buffer",
         "//type",
         "@com_google_absl//absl/strings:str_format",
     ],
@@ -22,6 +20,7 @@ cc_library(
         "//base:macros",
         "//base:meta",
         "//base:interval",
+        "//frontend:source_indexer",
         "@com_google_absl//absl/strings:str_format",
     ],
 )

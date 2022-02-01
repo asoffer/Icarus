@@ -24,8 +24,6 @@
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
-#include "frontend/source/file.h"
-#include "frontend/source/file_name.h"
 #include "ir/subroutine.h"
 #include "ir/interpreter/execution_context.h"
 #include "module/module.h"
@@ -112,29 +110,28 @@ void DumpControlFlowGraph(ir::Subroutine const *fn, std::ostream &output) {
   output << "}\n";
 }
 
-int DumpControlFlowGraph(frontend::FileName const &file_name,
-                         std::ostream &output) {
-  diagnostic::StreamingConsumer diag(stderr, nullptr);
-  auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
-  auto maybe_file_src = frontend::SourceBufferFromFile(canonical_file_name);
-  if (not maybe_file_src.ok()) {
-    diag.Consume(frontend::MissingModule{
-        .source    = canonical_file_name,
+int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
+  frontend::SourceIndexer source_indexer;
+  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
+  auto content = compiler::LoadFileContent(file_name);
+  if (not content.ok()) {
+    diag.Consume(compiler::MissingModule{
+        .source    = file_name,
         .requestor = "",
-        .reason    = std::string(maybe_file_src.status().message()),
-    });
+        .reason    = std::string(content.status().message())});
     return 1;
   }
 
-  auto *src = &*maybe_file_src;
-  diag      = diagnostic::StreamingConsumer(stderr, src);
   compiler::WorkSet work_set;
-  compiler::FileImporter importer(&work_set, &diag,
+  compiler::FileImporter importer(&work_set, &diag, &source_indexer,
                                   absl::GetFlag(FLAGS_module_paths));
+
+  std::string_view file_content =
+      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
 
   ir::Module ir_module;
   compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(src, &context);
+  compiler::CompiledModule exec_mod(file_content, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }
@@ -146,7 +143,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
       .importer            = &importer,
   };
 
-  auto parsed_nodes = frontend::Parse(*src, diag);
+  auto parsed_nodes = frontend::Parse(file_content, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   auto main_fn      = compiler::CompileModule(context, resources, nodes);
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }
@@ -189,5 +186,5 @@ int main(int argc, char *argv[]) {
     std::cerr << "Too many positional arguments." << std::endl;
     return 1;
   }
-  return DumpControlFlowGraph(frontend::FileName(args[1]), std::cout);
+  return DumpControlFlowGraph(args[1], std::cout);
 }

@@ -12,9 +12,8 @@ namespace frontend {
 // ast node used only for holding tokens which have been lexed but not yet
 // parsed.
 struct Token : ast::Node {
-  Token(const SourceRange &range = SourceRange(), std::string str = "",
-        bool is_hashtag = false)
-      : Node(-1, range), token(std::move(str)) {
+  Token(std::string_view range = "", bool is_hashtag = false)
+      : Node(-1, range), token(range) {
     if (is_hashtag) {
       op = Operator::Hashtag;
     } else {
@@ -29,16 +28,14 @@ struct Token : ast::Node {
     }
   }
 
-  ~Token() override {}
-
   void DebugStrAppend(std::string *out, size_t indent) const override {
     out->append("[token: ");
-    out->append(token);
+    out->append(range());
     out->append("]");
   }
 
-  std::string token;
   Operator op;
+  std::string_view token;
 };
 
 }  // namespace frontend

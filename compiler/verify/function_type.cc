@@ -16,10 +16,9 @@ struct NonTypeFunctionInput {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "The specified input type for a function must be a type."),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonTypeFunctionOutput {
@@ -30,10 +29,9 @@ struct NonTypeFunctionOutput {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "The specified return type for a function must be a type."),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
@@ -51,7 +49,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     if (not p->is<ast::Declaration>()) { quals &= qt.quals(); }
     if (not p->is<ast::Declaration>() and qt.type() != type::Type_) {
       t = nullptr;
-      diag().Consume(NonTypeFunctionInput{.view = SourceViewFor(p)});
+      diag().Consume(NonTypeFunctionInput{.view = p->range()});
     }
   }
 
@@ -64,7 +62,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     quals &= qt.quals();
     if (qt.type() != type::Type_) {
       t = nullptr;
-      diag().Consume(NonTypeFunctionOutput{.view = SourceViewFor(p)});
+      diag().Consume(NonTypeFunctionOutput{.view = p->range()});
     }
   }
 

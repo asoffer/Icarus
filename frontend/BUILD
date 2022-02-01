@@ -31,3 +31,23 @@ cc_binary(
     linkopts = ["-fsanitize=fuzzer"],
     testonly = True,
 )
+
+cc_library(
+    name = "source_indexer",
+    hdrs = ["source_indexer.h"],
+    srcs = ["source_indexer.cc"],
+    deps = [
+        "//base:debug",
+        "//ir/value:module_id",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "source_indexer_test",
+    srcs = ["source_indexer_test.cc"],
+    deps = [
+        ":source_indexer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

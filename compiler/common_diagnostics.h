@@ -14,8 +14,6 @@
 #include "compiler/type_for_diagnostic.h"
 #include "core/call.h"
 #include "diagnostic/message.h"
-#include "frontend/source/buffer.h"
-#include "frontend/source/view.h"
 #include "type/callable.h"
 #include "type/type.h"
 
@@ -28,12 +26,12 @@ struct UndeclaredIdentifier {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Found an undeclared identifier '%s':", id),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NotAType {
@@ -45,11 +43,10 @@ struct NotAType {
         diagnostic::Text("Expression was expected to be a type, but instead "
                          "was a value of type `%s`.",
                          type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
   type::Type type;
 };
 
@@ -60,13 +57,12 @@ struct InvalidCast {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No viable cast from `%s` to `%s`.", from, to),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   std::string from;
   std::string to;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct AssigningToConstant {
@@ -77,12 +73,11 @@ struct AssigningToConstant {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Cannot assign to a constant (of type `%s`).", to),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   type::Type to;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct ImmovableType {
@@ -92,12 +87,11 @@ struct ImmovableType {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Attempting to move an immovable type `%s`.", from),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style{}));
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   type::Type from;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct PatternTypeMismatch {
@@ -111,13 +105,13 @@ struct PatternTypeMismatch {
   Type from pattern:          %s
   Type being matched against: %s)",
             pattern_type, matched_type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   type::Type pattern_type;
   std::string matched_type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct UncallableWithArguments {
@@ -128,7 +122,7 @@ struct UncallableWithArguments {
 
   core::Arguments<std::string> arguments;
   absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 UncallableWithArguments UncallableError(

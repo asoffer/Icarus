@@ -21,7 +21,7 @@ struct MaxLexableBytesExceeded {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "max-lexable-bytes-exceeded";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Lexer can only process at most %u bytes but the "
                          "provided input has %u bytes.",
@@ -34,7 +34,7 @@ struct HashFollowedByWhitespace {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "max-lexable-bytes-exceeded";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Hash `#` must not be followed by whitespace."));
   }
@@ -44,7 +44,7 @@ struct InvalidEscapedCharacterLiteral {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName = "invalid-escaped-character-literal";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Invalid escaped character literal."));
   }
@@ -55,7 +55,7 @@ struct ExpectedCharacterLiteralDelimiter {
   static constexpr std::string_view kName =
       "expected-character-literal-delimiter";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expected %s character literal delimiter `'`.",
                          opening ? "opening" : "closing"));
@@ -68,7 +68,7 @@ struct UnprintableSourceCharacter {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "unprintable-source-character";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(diagnostic::Text(
         "Encountered an unprintable source-character (%02x).", character));
   }
@@ -79,7 +79,7 @@ struct InvalidOperator {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "invalid-operator";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(diagnostic::Text("Invalid operator"));
   }
 };
@@ -88,7 +88,7 @@ struct UnmatchedDelimiter {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "unmatched-delimiter";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Unmatched delimiter."));
   }
@@ -99,7 +99,7 @@ struct InvalidCharacterFollowingNumber {
   static constexpr std::string_view kName =
       "invalid-character-following-number";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Invalid character following number."));
   }
@@ -109,7 +109,7 @@ struct EndOfLineInStringLiteral {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "eol-in-string-literal";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(diagnostic::Text(
         "No closing `\"` for string literal before end of line."));
   }
@@ -119,7 +119,7 @@ struct EndOfFileInStringLiteral {
   static constexpr std::string_view kCategory = "lex";
   static constexpr std::string_view kName     = "eof-in-string-literal";
 
-  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(diagnostic::Text(
         "No closing `\"` for string literal before end of file."));
   }

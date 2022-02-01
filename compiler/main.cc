@@ -22,8 +22,6 @@
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
-#include "frontend/source/file.h"
-#include "frontend/source/file_name.h"
 #include "ir/subroutine.h"
 #include "ir/interpreter/execution_context.h"
 #include "llvm/ADT/Optional.h"
@@ -63,7 +61,7 @@ struct InvalidTargetTriple {
   static constexpr std::string_view kCategory = "todo";
   static constexpr std::string_view kName     = "todo";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Invalid target-triple. %s", message));
   }
@@ -105,14 +103,15 @@ int CompileToObjectFile(CompiledModule const &module, ir::Subroutine const &fn,
   return 0;
 }
 
-int Compile(frontend::FileName const &file_name) {
+int Compile(char const *file_name) {
   llvm::InitializeAllTargetInfos();
   llvm::InitializeAllTargets();
   llvm::InitializeAllTargetMCs();
   llvm::InitializeAllAsmParsers();
   llvm::InitializeAllAsmPrinters();
 
-  diagnostic::StreamingConsumer diag(stderr, nullptr);
+  frontend::SourceIndexer source_indexer;
+  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
 
   auto target_triple = llvm::sys::getDefaultTargetTriple();
   std::string error;
@@ -122,14 +121,12 @@ int Compile(frontend::FileName const &file_name) {
     return 1;
   }
 
-  auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
-  auto maybe_file_src = frontend::SourceBufferFromFile(canonical_file_name);
-  if (not maybe_file_src.ok()) {
-    diag.Consume(frontend::MissingModule{
-        .source    = canonical_file_name,
-        .requestor = "",
-        .reason    = std::string(maybe_file_src.status().message()),
-    });
+  auto content = LoadFileContent(file_name);
+  if (not content.ok()) {
+    diag.Consume(
+        MissingModule{.source    = file_name,
+                      .requestor = "",
+                      .reason    = std::string(content.status().message())});
     return 1;
   }
 
@@ -140,19 +137,20 @@ int Compile(frontend::FileName const &file_name) {
   llvm::TargetMachine *target_machine = target->createTargetMachine(
       target_triple, cpu, features, target_options, relocation_model);
 
-  auto *src = &*maybe_file_src;
-  diag      = diagnostic::StreamingConsumer(stderr, src);
   compiler::WorkSet work_set;
-  compiler::FileImporter importer(&work_set, &diag,
+  compiler::FileImporter importer(&work_set, &diag, &source_indexer,
                                   absl::GetFlag(FLAGS_module_paths));
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;
   }
 
+  std::string_view file_content =
+      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
+
   ir::Module ir_module;
   compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(src, &context);
+  compiler::CompiledModule exec_mod(file_content, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }
@@ -164,7 +162,7 @@ int Compile(frontend::FileName const &file_name) {
       .importer            = &importer,
   };
 
-  auto parsed_nodes = frontend::Parse(*src, diag);
+  auto parsed_nodes = frontend::Parse(file_content, diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   auto main_fn      = CompileModule(context, resources, nodes);
   return CompileToObjectFile(exec_mod, *main_fn, target_machine);
@@ -212,7 +210,7 @@ int main(int argc, char *argv[]) {
   }
   int return_code = 0;
   for (int i = 1; i < args.size(); ++i) {
-    return_code += compiler::Compile(frontend::FileName(args[i]));
+    return_code += compiler::Compile(args[i]);
   }
   return return_code;
 }

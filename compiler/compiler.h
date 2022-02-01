@@ -21,8 +21,6 @@
 #include "compiler/work_item.h"
 #include "core/call.h"
 #include "diagnostic/consumer/consumer.h"
-#include "frontend/source/buffer.h"
-#include "frontend/source/view.h"
 #include "ir/instruction/instructions.h"
 #include "ir/instruction/set.h"
 #include "ir/interpreter/evaluate.h"

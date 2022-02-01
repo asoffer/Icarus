@@ -23,12 +23,12 @@ struct UnexpandedUnaryOperatorArgument {
         diagnostic::Text("Unary operator argument expands to %u values. Each "
                          "operand must expand to exactly 1 value.",
                          num_arguments),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   size_t num_arguments;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct UncopyableType {
@@ -38,12 +38,12 @@ struct UncopyableType {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Attempting to copy an uncopyable type `%s`.", from),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   type::Type from;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonConstantInterface {
@@ -53,11 +53,11 @@ struct NonConstantInterface {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Non-constant type in interface constructor `~`"),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct InvalidUnaryOperatorOverload {
@@ -67,12 +67,12 @@ struct InvalidUnaryOperatorOverload {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("No valid operator overload for (%s)", op),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   char const *op;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct InvalidUnaryOperatorCall {
@@ -84,13 +84,13 @@ struct InvalidUnaryOperatorCall {
         diagnostic::Text(
             "Invalid call to unary operator (%s) with argument type `%s`", op,
             type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   char const *op;
   std::string type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NegatingUnsignedInteger {
@@ -101,12 +101,12 @@ struct NegatingUnsignedInteger {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Attempting to negate an unsigned integer of type `%s`.", type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   type::Type type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct NonAddressableExpression {
@@ -116,11 +116,11 @@ struct NonAddressableExpression {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expression is not addressable."),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 struct DereferencingNonPointer {
@@ -132,12 +132,12 @@ struct DereferencingNonPointer {
         diagnostic::Text("Attempting to dereference an object of type `%s` "
                          "which is not a pointer",
                          type),
-        diagnostic::SourceQuote(&view.buffer())
-            .Highlighted(view.range(), diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
   }
 
   type::Type type;
-  frontend::SourceView view;
+  std::string_view view;
 };
 
 // TODO: Replace `symbol` with an enum.
@@ -173,7 +173,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   if (operand_qts.size() != 1) {
     diag().Consume(UnexpandedUnaryOperatorArgument{
         .num_arguments = operand_qts.size(),
-        .view          = SourceViewFor(node->operand()),
+        .view          = node->operand()->range(),
     });
     return context().set_qual_type(node, type::QualType::Error());
   }
@@ -198,7 +198,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       if (not operand_type.get()->IsCopyable()) {
         diag().Consume(UncopyableType{
             .from = operand_type,
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
       }
       qt = type::QualType(operand_type,
@@ -223,7 +223,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       if (not operand_type.get()->IsMovable()) {
         diag().Consume(ImmovableType{
             .from = operand_type,
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
       }
       qt = type::QualType(operand_type,
@@ -235,7 +235,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                             operand_qt.quals() & ~type::Quals::Buf());
       } else {
         diag().Consume(NotAType{
-            .view = SourceViewFor(node->operand()),
+            .view = node->operand()->range(),
             .type = operand_type,
         });
         qt = type::QualType::Error();
@@ -252,7 +252,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       } else {
         diag().Consume(DereferencingNonPointer{
             .type = operand_type,
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
         qt = type::QualType::Error();
       }
@@ -265,7 +265,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         qt =
             type::QualType(type::Ptr(operand_type), type::Quals::Unqualified());
       } else {
-        diag().Consume(NonAddressableExpression{.view = SourceViewFor(node)});
+        diag().Consume(NonAddressableExpression{.view = node->range()});
         qt = type::QualType::Error();
       }
     } break;
@@ -275,7 +275,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                             operand_qt.quals() & ~type::Quals::Buf());
       } else {
         diag().Consume(NotAType{
-            .view = SourceViewFor(node->operand()),
+            .view = node->operand()->range(),
             .type = operand_type,
         });
         qt = type::QualType::Error();
@@ -288,7 +288,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       } else if (type::IsUnsignedNumeric(operand_type)) {
         diag().Consume(NegatingUnsignedInteger{
             .type = operand_type,
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
         qt = type::QualType::Error();
       } else if (operand_type.is<type::Struct>()) {
@@ -300,14 +300,14 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         if (not qt.ok()) {
           diag().Consume(InvalidUnaryOperatorOverload{
               .op   = "-",
-              .view = SourceViewFor(node),
+              .view = node->range(),
           });
         }
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
             .op   = "-",
             .type = TypeForDiagnostic(node->operand(), context()),
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
         qt = type::QualType::Error();
       }
@@ -328,7 +328,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         if (not qt.ok()) {
           diag().Consume(InvalidUnaryOperatorOverload{
               .op   = "not",
-              .view = SourceViewFor(node),
+              .view = node->range(),
           });
           qt = type::QualType::Error();
         }
@@ -336,7 +336,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         diag().Consume(InvalidUnaryOperatorCall{
             .op   = "not",
             .type = TypeForDiagnostic(node->operand(), context()),
-            .view = SourceViewFor(node),
+            .view = node->range(),
         });
         qt = type::QualType::Error();
       }
@@ -374,7 +374,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::UnaryOperator const *node,
         diag().Consume(PatternTypeMismatch{
             .pattern_type = t,
             .matched_type = "bool",
-            .view         = SourceViewFor(node),
+            .view         = node->range(),
         });
         return false;
       }
@@ -386,7 +386,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::UnaryOperator const *node,
         diag().Consume(PatternTypeMismatch{
             .pattern_type = t,
             .matched_type = "type",
-            .view         = SourceViewFor(node),
+            .view         = node->range(),
         });
         return false;
       }
@@ -397,7 +397,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::UnaryOperator const *node,
         diag().Consume(PatternTypeMismatch{
             .pattern_type = t,
             .matched_type = "Must be a numeric primitive type",
-            .view         = SourceViewFor(node),
+            .view         = node->range(),
         });
         return false;
       } else {

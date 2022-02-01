@@ -10,17 +10,17 @@ struct PatternMatchFailure {
   static constexpr std::string_view kCategory = "pattern-error";
   static constexpr std::string_view kName     = "pattern-match-fail";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Failed to match type of function parameter against "
                          "provided argument of type `%s`.",
                          type),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(range,
+                                              diagnostic::Style::ErrorText()));
   }
 
   std::string type;
-  frontend::SourceRange range;
+  std::string_view range;
 };
 
 }  // namespace

@@ -26,7 +26,7 @@ cc_binary(
     deps = [
         ":lex",
         "//diagnostic/consumer:trivial",
-        "//frontend/source:buffer",
+        "//test:fuzz",
     ],
     copts = ["-fsanitize=fuzzer"],
     linkopts = ["-fsanitize=fuzzer"],

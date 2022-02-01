@@ -16,14 +16,14 @@ struct PatternMatchingFailed {
   static constexpr std::string_view kCategory = "pattern-match-error";
   static constexpr std::string_view kName     = "pattern-matching-failed";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Pattern matching failed"),
-        diagnostic::SourceQuote(src).Highlighted(
-            range, diagnostic::Style::ErrorText()));
+        diagnostic::SourceQuote().Highlighted(range,
+                                              diagnostic::Style::ErrorText()));
   }
 
-  frontend::SourceRange range;
+  std::string_view range;
 };
 
 template <template <typename> typename Op, typename... Ts>
