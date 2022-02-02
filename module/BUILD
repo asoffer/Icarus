@@ -27,7 +27,6 @@ cc_library(
     ],
 )
 
-
 cc_test(
     name = "builtin_test",
     srcs = ["builtin_test.cc"],
@@ -59,4 +58,36 @@ cc_library(
         "@com_google_googletest//:gtest",
     ],
     testonly = True,
+)
+
+cc_library(
+    name = "precompiled",
+    hdrs = ["precompiled.h"],
+    srcs = ["precompiled.cc"],
+    deps = [
+        ":module",
+        ":reader",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_library(
+    name = "reader",
+    hdrs = ["reader.h"],
+    deps = [
+        "//base:debug",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "writer",
+    hdrs = ["writer.h"],
+    deps = [
+        "//base:debug",
+        "@com_google_absl//absl/types:span",
+    ],
 )

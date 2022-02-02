@@ -163,6 +163,11 @@ struct CompleteResultBuffer {
 
   void append();
 
+  void append_raw(base::untyped_buffer_view data) {
+    offsets_.push_back(buffer_.size());
+    buffer_.write(buffer_.size(), data.data(), data.size());
+  }
+
   template <typename S>
   friend void BaseSerialize(S &s, CompleteResultBuffer const &buffer) {
     base::Serialize(s, buffer.offsets_, buffer.buffer_.size());

@@ -10,10 +10,11 @@
 #include "module/module.h"
 
 namespace module {
-// Module:
+
+// BuiltinModule:
 //
-// Represents a unit of compilation, beyond which all intercommunication must be
-// explicit.
+// Represents a builtin module of symbols predefined, rather than those coming
+// from a source file.
 struct BuiltinModule final : Module {
   absl::Span<SymbolInformation const> Exported(std::string_view name) override {
     auto iter = symbols_.find(name);
@@ -25,6 +26,7 @@ struct BuiltinModule final : Module {
     symbols_.try_emplace(symbol).first->second.push_back(info);
   }
 
+ private:
   absl::flat_hash_map<std::string, std::vector<SymbolInformation>> symbols_;
 };
 

@@ -335,6 +335,7 @@ cc_library(
     deps = [
         ":context",
         "//module",
+        "//module:writer",
     ],
 )
 

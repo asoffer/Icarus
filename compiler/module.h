@@ -3,6 +3,7 @@
 
 #include "compiler/context.h"
 #include "module/module.h"
+#include "module/writer.h"
 
 namespace compiler {
 
@@ -27,6 +28,10 @@ struct CompiledModule : module::Module {
             exported_[id->name()][iter->second].value = std::move(buffer);
           }
         });
+  }
+
+  friend void BaseSerialize(module::ModuleWriter &w, CompiledModule const &m) {
+    base::Serialize(w, m.exported_);
   }
 
   Context const &context() const { return *context_; }
