@@ -66,7 +66,10 @@ struct CompiledModule : module::Module {
   Context *context_;
   std::string_view content_;
 
-  absl::flat_hash_map<std::string_view, std::vector<SymbolInformation>>
+  // It is important for caching that symbols be exported in a consistent
+  // manner. We use an ordered container to guarantee repeated invocations
+  // produce the same output.
+  absl::btree_map<std::string_view, std::vector<SymbolInformation>>
       exported_;
   absl::flat_hash_map<ast::Declaration::Id const *, size_t> indices_;
   // This flag should be set to true if this module is ever found to depend on

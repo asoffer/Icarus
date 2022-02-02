@@ -19,6 +19,24 @@ struct ModuleReader {
     base::Deserialize(*this, information.qualified_type, information.value);
   }
 
+  void write(std::string_view s) {
+    write_bytes(absl::MakeConstSpan(
+        reinterpret_cast<std::byte const*>(s.data()), s.size()));
+  }
+
+  void read(type::QualType& qt) {
+    type::Quals quals;
+    type::Type t;
+    base::Deserialize(*this, quals, t);
+    qt = type::QualType(qt);
+  }
+
+  void read(type::Type& t) {
+    type::Primitive::Kind k;
+    base::Deserialize(*this, k);
+    t = type::MakePrimitive(k);
+  }
+
  private:
   char const* head_;
   char const* end_;

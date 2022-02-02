@@ -22,6 +22,23 @@ struct ModuleWriter {
     base::Serialize(*this, information.qualified_type, information.value);
   }
 
+  void write(std::string_view s) {
+    write_bytes(absl::MakeConstSpan(
+        reinterpret_cast<std::byte const*>(s.data()), s.size()));
+  }
+
+  void write(type::QualType qt) {
+    base::Serialize(*this, qt.quals(), qt.type());
+  }
+
+  void write(type::Type t) {
+    if (auto const* p = t.if_as<type::Primitive>()) {
+      base::Serialize(*this, p->kind());
+    } else {
+      NOT_YET();
+    }
+  }
+
  private:
   std::string& out_;
 };

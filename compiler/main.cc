@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <fstream>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -22,8 +23,8 @@
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
-#include "ir/subroutine.h"
 #include "ir/interpreter/execution_context.h"
+#include "ir/subroutine.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
@@ -48,11 +49,12 @@ ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
 ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Comma-separated list of paths to search when importing modules. "
           "Defaults to $ICARUS_MODULE_PATH.");
-ABSL_FLAG(
-    std::string, output, "",
-    "Name of the output file to which the generated output should be written.");
 ABSL_FLAG(std::vector<std::string>, implicitly_embedded_modules, {},
           "Comma-separated list of modules that are embedded implicitly.");
+ABSL_FLAG(std::string, byte_code, "",
+          "Specifies that code should be compiled to byte-code");
+ABSL_FLAG(std::string, object_file, "",
+          "Specifies that code should be compiled to byte-code");
 
 namespace compiler {
 namespace {
@@ -69,6 +71,29 @@ struct InvalidTargetTriple {
   std::string message;
 };
 
+llvm::TargetMachine *InitializeLlvm(diagnostic::DiagnosticConsumer &diag) {
+  llvm::InitializeAllTargetInfos();
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmParsers();
+  llvm::InitializeAllAsmPrinters();
+
+  auto target_triple = llvm::sys::getDefaultTargetTriple();
+  std::string error;
+  auto target = llvm::TargetRegistry::lookupTarget(target_triple, error);
+  if (not target) {
+    diag.Consume(InvalidTargetTriple{.message = std::move(error)});
+    return nullptr;
+  }
+
+  char const cpu[]      = "generic";
+  char const features[] = "";
+  llvm::TargetOptions target_options;
+  llvm::Optional<llvm::Reloc::Model> relocation_model;
+  return target->createTargetMachine(target_triple, cpu, features,
+                                     target_options, relocation_model);
+}
+
 int CompileToObjectFile(CompiledModule const &module, ir::Subroutine const &fn,
                         llvm::TargetMachine *target_machine) {
   llvm::LLVMContext context;
@@ -76,7 +101,7 @@ int CompileToObjectFile(CompiledModule const &module, ir::Subroutine const &fn,
   llvm_module.setDataLayout(target_machine->createDataLayout());
 
   std::error_code error_code;
-  llvm::raw_fd_ostream destination(absl::GetFlag(FLAGS_output), error_code,
+  llvm::raw_fd_ostream destination(absl::GetFlag(FLAGS_object_file), error_code,
                                    llvm::sys::fs::OF_None);
   llvm::legacy::PassManager pass;
   auto file_type = llvm::LLVMTargetMachine::CGFT_ObjectFile;
@@ -103,21 +128,20 @@ int CompileToObjectFile(CompiledModule const &module, ir::Subroutine const &fn,
   return 0;
 }
 
-int Compile(char const *file_name) {
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmParsers();
-  llvm::InitializeAllAsmPrinters();
-
+int Compile(char const *file_name, std::string const &output_byte_code,
+            std::string const &output_object_file) {
   frontend::SourceIndexer source_indexer;
   diagnostic::StreamingConsumer diag(stderr, &source_indexer);
 
-  auto target_triple = llvm::sys::getDefaultTargetTriple();
-  std::string error;
-  auto target = llvm::TargetRegistry::lookupTarget(target_triple, error);
-  if (not target) {
-    diag.Consume(InvalidTargetTriple{.message = std::move(error)});
+  llvm::TargetMachine *target_machine = InitializeLlvm(diag);
+  if (not target_machine) { return 1; }
+
+  compiler::WorkSet work_set;
+  compiler::FileImporter importer(&work_set, &diag, &source_indexer,
+                                  absl::GetFlag(FLAGS_module_paths));
+
+  if (not importer.SetImplicitlyEmbeddedModules(
+          absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;
   }
 
@@ -127,21 +151,6 @@ int Compile(char const *file_name) {
         MissingModule{.source    = file_name,
                       .requestor = "",
                       .reason    = std::string(content.status().message())});
-    return 1;
-  }
-
-  char const cpu[]      = "generic";
-  char const features[] = "";
-  llvm::TargetOptions target_options;
-  llvm::Optional<llvm::Reloc::Model> relocation_model;
-  llvm::TargetMachine *target_machine = target->createTargetMachine(
-      target_triple, cpu, features, target_options, relocation_model);
-
-  compiler::WorkSet work_set;
-  compiler::FileImporter importer(&work_set, &diag, &source_indexer,
-                                  absl::GetFlag(FLAGS_module_paths));
-  if (not importer.SetImplicitlyEmbeddedModules(
-          absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;
   }
 
@@ -155,17 +164,32 @@ int Compile(char const *file_name) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }
 
+  auto parsed_nodes = frontend::Parse(file_content, diag);
+  auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
+
   compiler::PersistentResources resources{
       .work                = &work_set,
       .module              = &exec_mod,
       .diagnostic_consumer = &diag,
       .importer            = &importer,
   };
+  auto main_fn = CompileModule(context, resources, nodes);
 
-  auto parsed_nodes = frontend::Parse(file_content, diag);
-  auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
-  auto main_fn      = CompileModule(context, resources, nodes);
-  return CompileToObjectFile(exec_mod, *main_fn, target_machine);
+  int return_code = 0;
+  if (not output_byte_code.empty()) {
+    std::string s;
+    module::ModuleWriter w(&s);
+    base::Serialize(w, exec_mod);
+    std::ofstream os(absl::GetFlag(FLAGS_byte_code).c_str(), std::ofstream::out);
+    os << s;
+    os.close();
+  }
+
+  if (not output_object_file.empty()) {
+    return_code += CompileToObjectFile(exec_mod, *main_fn, target_machine);
+  }
+
+  return return_code;
 }
 
 }  // namespace
@@ -191,11 +215,6 @@ int main(int argc, char *argv[]) {
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
 
-  if (absl::GetFlag(FLAGS_output).empty()) {
-    std::cerr << "--output must be specified.";
-    return 1;
-  }
-
   std::vector<std::string> log_keys = absl::GetFlag(FLAGS_log);
   for (std::string_view key : log_keys) { base::EnableLogging(key); }
 
@@ -203,14 +222,22 @@ int main(int argc, char *argv[]) {
     ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
   }
 
-  if (args.size() < 2) {
-    std::cerr << "Missing required positional argument: source file"
-              << std::endl;
+  std::string output_byte_code   = absl::GetFlag(FLAGS_byte_code);
+  std::string output_object_file = absl::GetFlag(FLAGS_object_file);
+
+  if (output_byte_code.empty() and output_object_file.empty()) {
+    std::cerr
+        << "At least one of --byte_code or --object_file must be specified.\n";
     return 1;
   }
-  int return_code = 0;
-  for (int i = 1; i < args.size(); ++i) {
-    return_code += compiler::Compile(args[i]);
+
+  if (args.size() < 2) {
+    std::cerr << "Missing required positional argument: source file.\n";
+    return 1;
+  } else if (args.size() > 2) {
+    std::cerr << "Provide exactly one positional argument: source file.\n";
+    return 1;
   }
-  return return_code;
+
+  return compiler::Compile(args[1], output_byte_code, output_object_file);
 }
