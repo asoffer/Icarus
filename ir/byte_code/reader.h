@@ -20,6 +20,13 @@ struct ByteCodeReader {
   }
 
   template <typename T>
+  bool read(T &t) requires(std::is_trivially_copyable_v<T>) {
+    std::memcpy(&t, iter_.raw(), sizeof(t));
+    iter_.skip(sizeof(t));
+    return true;
+  }
+
+  template <typename T>
   static T DeserializeTo(base::untyped_buffer::const_iterator& iter) {
     ByteCodeReader d(iter);
     T result = base::Deserialize<T>(d);

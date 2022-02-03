@@ -184,7 +184,9 @@ struct CommentInstruction
   static constexpr std::string_view kDebugFormat = "comment: %1$s";
 
   friend void BaseSerialize(ByteCodeWriter& w, CommentInstruction const&) {}
-  friend void BaseDeserialize(ByteCodeReader&, CommentInstruction const&) {}
+  friend bool BaseDeserialize(ByteCodeReader&, CommentInstruction const&) {
+    return true;
+  }
 
   template <typename ExecContext>
   void Apply(ExecContext&) const {}

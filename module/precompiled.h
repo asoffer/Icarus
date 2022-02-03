@@ -19,8 +19,8 @@ struct PrecompiledModule final : Module {
   absl::Span<SymbolInformation const> Exported(std::string_view name) override;
 
  private:
-  friend void BaseDeserialize(ModuleReader& r, PrecompiledModule& m) {
-    base::Deserialize(r, m.symbols_);
+  friend bool BaseDeserialize(ModuleReader& r, PrecompiledModule& m) {
+    return base::Deserialize(r, m.symbols_);
   }
 
   PrecompiledModule() = default;

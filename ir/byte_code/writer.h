@@ -22,6 +22,16 @@ struct ByteCodeWriter {
     byte_code_.write_bytes(bytes);
   }
 
+  template <typename T>
+  void write(T const &t) requires(std::is_trivially_copyable_v<T>) {
+    auto const *p = reinterpret_cast<std::byte const *>(&t);
+    write_bytes(absl::MakeConstSpan(p, p + sizeof(T)));
+  }
+
+  void write(BasicBlock* block) {
+    replacements_[block].push_back(byte_code_.append_block_slot());
+  }
+
   void write(BasicBlock const* block) {
     replacements_[block].push_back(byte_code_.append_block_slot());
   }

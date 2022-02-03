@@ -34,6 +34,12 @@ struct Serializer {
     output_->append(reinterpret_cast<char const *>(bytes.data()), bytes.size());
   }
 
+  template <typename T>
+  void write(T const &t) requires(std::is_trivially_copyable_v<T>) {
+    auto const *p = reinterpret_cast<std::byte const *>(&t);
+    write_bytes(absl::MakeConstSpan(p, p + sizeof(T)));
+  }
+
   void write(TreatedSpecially t) { output_->push_back(t.value()); }
 
  private:
@@ -50,8 +56,17 @@ struct Deserializer {
         reinterpret_cast<std::byte const *>(&*start), num_bytes);
   }
 
-  void read(TreatedSpecially &t) {
+  template <typename T>
+  bool read(T &t) requires(std::is_trivially_copyable_v<T>) {
+    if (std::distance(iter_, end_) < sizeof(T)) { return false; }
+    std::memcpy(&t, &*iter_, sizeof(T));
+    iter_ += sizeof(T);
+    return true;
+  }
+
+  bool read(TreatedSpecially &t) {
     t = TreatedSpecially(*reinterpret_cast<char const *>(read_bytes(1).data()));
+    return true;
   }
 
  private:
@@ -84,10 +99,11 @@ struct Twice {
     Serialize(serializer, value.n_ / 2);
   }
 
-  friend void BaseDeserialize(auto &deserializer, Twice &value) {
+  friend bool BaseDeserialize(auto &deserializer, Twice &value) {
     int n;
-    Deserialize(deserializer, n);
+    bool b = Deserialize(deserializer, n);
     value = Twice(n);
+    return b;
   }
 
   bool operator==(Twice const &) const = default;

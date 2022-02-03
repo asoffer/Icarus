@@ -125,7 +125,7 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
     return 1;
   }
 
-  auto module_map = MakeModuleMap(absl::GetFlag(FLAGS_module_map));
+  auto module_map = compiler::MakeModuleMap(absl::GetFlag(FLAGS_module_map));
   if (not module_map) { return 1; }
 
   compiler::WorkSet work_set;

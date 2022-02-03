@@ -18,6 +18,14 @@ struct ModuleWriter {
                                  bytes.size()));
   }
 
+  template <typename T>
+  void write(T const& t) requires(std::is_enum_v<T> or
+                                  std::is_arithmetic_v<T> or
+                                  base::meta<T> == base::meta<type::Quals>) {
+    auto const* p = reinterpret_cast<std::byte const*>(&t);
+    write_bytes(absl::MakeConstSpan(p, p + sizeof(T)));
+  }
+
   void write(Module::SymbolInformation const& information) {
     base::Serialize(*this, information.qualified_type, information.value);
   }

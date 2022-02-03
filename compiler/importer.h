@@ -57,6 +57,7 @@ struct FileImporter : module::Importer {
   }
 
   void set_subroutine(module::Module const* mod, ir::Subroutine subroutine) {
+    graph_.add_node(mod);
     subroutine_by_module_.emplace(mod, std::move(subroutine));
   }
 
