@@ -38,6 +38,9 @@ ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
 ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Comma-separated list of paths to search when importing modules. "
           "Defaults to $ICARUS_MODULE_PATH.");
+ABSL_FLAG(std::string, module_map, "",
+          "Filename holding information about the module-map describing the "
+          "location precompiled modules");
 
 namespace {
 
@@ -122,8 +125,12 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
     return 1;
   }
 
+  auto module_map = MakeModuleMap(absl::GetFlag(FLAGS_module_map));
+  if (not module_map) { return 1; }
+
   compiler::WorkSet work_set;
   compiler::FileImporter importer(&work_set, &diag, &source_indexer,
+                                  *std::move(module_map),
                                   absl::GetFlag(FLAGS_module_paths));
 
   std::string_view file_content =

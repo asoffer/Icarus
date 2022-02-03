@@ -14,7 +14,7 @@ namespace module {
 // Represents a module that has already been compiled, rather than those coming
 // from a source file.
 struct PrecompiledModule final : Module {
-  absl::StatusOr<PrecompiledModule> Make(std::string_view file_name);
+  static absl::StatusOr<PrecompiledModule> Make(std::string_view file_name);
 
   absl::Span<SymbolInformation const> Exported(std::string_view name) override;
 

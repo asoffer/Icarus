@@ -40,6 +40,9 @@ ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Defaults to $ICARUS_MODULE_PATH.");
 ABSL_FLAG(std::vector<std::string>, implicitly_embedded_modules, {},
           "Comma-separated list of modules that are embedded implicitly.");
+ABSL_FLAG(std::string, module_map, "",
+          "Filename holding information about the module-map describing the "
+          "location precompiled modules");
 
 namespace compiler {
 namespace {
@@ -56,9 +59,14 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
     return 1;
   }
 
-  WorkSet work_set;
-  FileImporter importer(&work_set, &diag, &source_indexer,
-                        absl::GetFlag(FLAGS_module_paths));
+  auto module_map = MakeModuleMap(absl::GetFlag(FLAGS_module_map));
+  if (not module_map) { return 1; }
+
+  compiler::WorkSet work_set;
+  compiler::FileImporter importer(&work_set, &diag, &source_indexer,
+                                  *std::move(module_map),
+                                  absl::GetFlag(FLAGS_module_paths));
+
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;

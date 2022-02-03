@@ -79,6 +79,7 @@ cc_library(
     hdrs = ["reader.h"],
     deps = [
         "//base:debug",
+        "//type:primitive",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -88,6 +89,7 @@ cc_library(
     hdrs = ["writer.h"],
     deps = [
         "//base:debug",
+        "//type:primitive",
         "@com_google_absl//absl/types:span",
     ],
 )

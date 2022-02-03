@@ -55,6 +55,9 @@ ABSL_FLAG(std::string, byte_code, "",
           "Specifies that code should be compiled to byte-code");
 ABSL_FLAG(std::string, object_file, "",
           "Specifies that code should be compiled to byte-code");
+ABSL_FLAG(std::string, module_map, "",
+          "Filename holding information about the module-map describing the "
+          "location precompiled modules");
 
 namespace compiler {
 namespace {
@@ -136,8 +139,12 @@ int Compile(char const *file_name, std::string const &output_byte_code,
   llvm::TargetMachine *target_machine = InitializeLlvm(diag);
   if (not target_machine) { return 1; }
 
+  auto module_map = MakeModuleMap(absl::GetFlag(FLAGS_module_map));
+  if (not module_map) { return 1; }
+
   compiler::WorkSet work_set;
   compiler::FileImporter importer(&work_set, &diag, &source_indexer,
+                                  *std::move(module_map),
                                   absl::GetFlag(FLAGS_module_paths));
 
   if (not importer.SetImplicitlyEmbeddedModules(

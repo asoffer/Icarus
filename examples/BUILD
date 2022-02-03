@@ -1,4 +1,4 @@
-load("//toolchain:ic_rule.bzl", "ic_interpret")
+load("//toolchain:ic_rule.bzl", "ic_interpret", "ic_low_level_interpret")
 
 filegroup(
     name = "example_file",
@@ -59,4 +59,9 @@ ic_interpret(
 ic_interpret(
     name = "string_demo",
     src = "string_demo.ic",
+)
+ic_low_level_interpret(
+    name = "test",
+    src = "test.ic",
+    deps = ["//stdlib/c:types"],
 )

@@ -2,17 +2,18 @@ IcarusInfo = provider(
     "Information needed to compile and link an Icarus binary",
     fields = {
         "sources": "depset of Files from compilation.",
+        "precompiled": "depset of (File, File) pairs from precompiled modules.",
     },
 )
 
-def _interpreter_transition_impl(settings, attr):
+def _tooling_transition_impl(settings, attr):
     return {
         "//command_line_option:compilation_mode": "opt",
         "//command_line_option:cpu": "clang",
     }
 
-_interpreter_transition = transition(
-    implementation = _interpreter_transition_impl,
+_tooling_transition = transition(
+    implementation = _tooling_transition_impl,
     inputs = [
         "//command_line_option:compilation_mode",
         "//command_line_option:cpu", 
@@ -25,12 +26,31 @@ _interpreter_transition = transition(
 
 
 def _ic_library_impl(ctx):
+    precompiled_files = []
+    interpreted_files = []
+    if ctx.attr.precompile:
+        output = ctx.actions.declare_file(ctx.label.name + ".icm")
+        precompiled_files = [(src, output) for src in ctx.attr.srcs]
+        # TODO: Support data dependencies.
+        ctx.actions.run(
+            inputs = depset(transitive = [f.files for f in ctx.attr.srcs]).to_list(),
+            outputs = [output],
+            arguments = ["--byte_code={}".format(output.path), "--"] + [
+                f.path for f in depset(transitive = [f.files for f in ctx.attr.srcs]).to_list()],
+            progress_message = "Compiling {}".format(ctx.label.name),
+            executable = ctx.attr._compile[0][DefaultInfo].files_to_run.executable,
+        )
+    else:
+        interpreted_files = ctx.attr.srcs
+
+
     return [IcarusInfo(
         sources = depset(
-            ctx.attr.srcs,
-            transitive = ([dep[IcarusInfo].sources for dep in ctx.attr.deps] + 
-                          getattr(ctx.attr, "_implicit_deps", [])),
+            interpreted_files,
+            transitive = ([dep[IcarusInfo].sources for dep in ctx.attr.deps] +
+                          getattr(ctx.attr, "_implicit_deps", []))
         ),
+        precompiled = depset(precompiled_files),
     )]
 
 
@@ -45,38 +65,76 @@ ic_library = rule(
         "srcs": attr.label_list(allow_files = [".ic"]),
         "deps": attr.label_list(providers = [IcarusInfo]),
         "_implicit_deps": attr.label_list(default = [Label("//stdlib")]),
+        "_compile": attr.label(
+            default = Label("//:icarus"),
+            allow_single_file = True,
+            executable = True,
+            cfg = _tooling_transition,
+        ),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist"
+        ),
     },
 )
 
 
 # A rule for building low-level libraries. This is identical to `ic_library`
 # except that it has no implicit depenedncies. Any dependency that would be
-# implicit is `ic_library` must be defined with `ic_low_level_library`.
+# implicit in `ic_library` must be defined with `ic_low_level_library`.
 ic_low_level_library = rule(
     implementation = _ic_library_impl,
     attrs = {
         "srcs": attr.label_list(allow_files = [".ic"]),
         "deps": attr.label_list(providers = [IcarusInfo]),
+        "precompile": attr.bool(
+            default = True,
+            doc = """
+            A temporary flag defaulting to True that indicates whether the
+            library should be pre-compiled or needs to be reprocessed for each
+            module containing it. This is to be used while module precompilation
+            is only partially supported.
+            """),
+        "_compile": attr.label(
+            default = Label("//:icarus"),
+            allow_single_file = True,
+            executable = True,
+            cfg = _tooling_transition,
+        ),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist"
+        ),
     },
 )
 
 
 def _ic_interpret_impl(ctx):
-    executable = ctx.actions.declare_file(ctx.label.name)
-
     data_deps_attribute = getattr(ctx.attr, "data", [])
     data_deps = depset(transitive = [d[DefaultInfo].files for d in data_deps_attribute]).to_list()
     target_deps = ctx.attr.deps + getattr(ctx.attr, "_implicit_deps", [])
+
+    module_map = ctx.actions.declare_file(ctx.label.name + ".module_map")
+    precompiled_files = depset(transitive = [f[IcarusInfo].precompiled for f in target_deps])
+    ctx.actions.write(
+        output = module_map,
+        content = '\n'.join([
+            "{}:{}".format(f.path, m.short_path)
+             for (files, m) in precompiled_files.to_list()
+             for f in files.files.to_list()
+        ])
+    )
+
     input_file_targets = depset(transitive = [dep[IcarusInfo].sources for dep in target_deps])
-    input_files = depset(data_deps,
+    input_files = depset(data_deps + [module_map] + [m for (files, m) in precompiled_files.to_list()],
                          transitive = [f.files for f in input_file_targets.to_list()])
 
+    executable = ctx.actions.declare_file(ctx.label.name)
     ctx.actions.write(
         output = executable,
         content = ('./' +
                    ctx.attr._interpreter[0][DefaultInfo].files_to_run.executable.short_path +
-                   ' ' + 
-                   ' '.join([f.path for f in ctx.attr.src[DefaultInfo].files.to_list()]) + 
+                   ' ' +
+                   ' '.join([f.path for f in ctx.attr.src[DefaultInfo].files.to_list()]) +
+                   ' --module_map=' + module_map.short_path +
                    ' --module_paths=stdlib'),
         is_executable = True,
     )
@@ -107,7 +165,7 @@ ic_interpret = rule(
             default = Label("//:interpreter"),
             allow_single_file = True,
             executable = True,
-            cfg = _interpreter_transition,
+            cfg = _tooling_transition,
         ),
         "_allowlist_function_transition": attr.label(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist"
@@ -127,7 +185,7 @@ ic_low_level_interpret = rule(
             default = Label("//:interpreter"),
             allow_single_file = True,
             executable = True,
-            cfg = _interpreter_transition,
+            cfg = _tooling_transition,
         ),
         "_allowlist_function_transition": attr.label(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist"

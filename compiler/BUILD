@@ -101,6 +101,7 @@ cc_library(
         ":resources",
         ":work_graph",
         "//module",
+        "//module:precompiled",
         "//diagnostic/consumer:streaming",
         "//frontend:source_indexer",
         "//frontend:parse",

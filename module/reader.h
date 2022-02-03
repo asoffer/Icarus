@@ -2,6 +2,7 @@
 #define ICARUS_MODULE_READER_H
 
 #include "base/debug.h"
+#include "type/primitive.h"
 
 namespace module {
 
@@ -19,13 +20,8 @@ struct ModuleReader {
     base::Deserialize(*this, information.qualified_type, information.value);
   }
 
-  void write(std::string_view s) {
-    write_bytes(absl::MakeConstSpan(
-        reinterpret_cast<std::byte const*>(s.data()), s.size()));
-  }
-
   void read(type::QualType& qt) {
-    type::Quals quals;
+    auto quals = type::Quals::Unqualified();
     type::Type t;
     base::Deserialize(*this, quals, t);
     qt = type::QualType(qt);
