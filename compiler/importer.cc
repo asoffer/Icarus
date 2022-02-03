@@ -46,17 +46,16 @@ absl::StatusOr<std::string> LoadFileContent(
     return result;
   };
 
-  if (file_name.starts_with("/") or lookup_paths.empty()) {
-    if (auto maybe_content = load_file(file_name)) {
-      return *std::move(maybe_content);
-    }
-  } else {
+  if (!file_name.starts_with("/")) {
     for (std::string_view base_path : lookup_paths) {
       if (auto maybe_content =
               load_file(absl::StrCat(base_path, "/", file_name))) {
         return *std::move(maybe_content);
       }
     }
+  }
+  if (auto maybe_content = load_file(file_name)) {
+    return *std::move(maybe_content);
   }
   return absl::NotFoundError(
       absl::StrFormat(R"(Failed to open file "%s")", file_name));
