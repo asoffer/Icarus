@@ -30,22 +30,33 @@ struct ModuleReader {
   }
 
   bool read(Module::SymbolInformation& information) {
-    return base::Deserialize(*this, information.qualified_type, information.value);
+    bool ok = base::Deserialize(*this, information.qualified_type);
+    if (not ok) { return false; }
+    if (information.qualified_type.type() == type::Type_) {
+      type::Primitive::Kind k;
+      ok = base::Deserialize(*this, k);
+      if (not ok) { return false; }
+      information.value.append(type::MakePrimitive(k));
+    } else {
+      NOT_YET();
+    }
+    return true;
   }
 
   bool read(type::QualType& qt) {
     auto quals = type::Quals::Unqualified();
     type::Type t;
     bool result = base::Deserialize(*this, quals, t);
-    qt = type::QualType(qt);
+    qt = type::QualType(t, quals);
     return result;
   }
 
   bool read(type::Type& t) {
     type::Primitive::Kind k;
     bool result = base::Deserialize(*this, k);
+    if (not result) { return false; }
     t = type::MakePrimitive(k);
-    return result;
+    return true;
   }
 
  private:

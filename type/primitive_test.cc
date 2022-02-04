@@ -36,4 +36,11 @@ TEST(Primitive, PointerDifferenceType) {
             type::I64);
 }
 
+TEST(Primitive, MakePrimitive) {
+  EXPECT_EQ(MakePrimitive(type::Primitive::Kind::U16), type::U16);
+  EXPECT_EQ(MakePrimitive(type::Primitive::Kind::I16), type::I16);
+  EXPECT_EQ(MakePrimitive(type::Primitive::Kind::Bool), type::Bool);
+  EXPECT_EQ(MakePrimitive(type::Primitive::Kind::Module), type::Module);
+  EXPECT_EQ(MakePrimitive(type::Primitive::Kind::Void), type::Void);
+}
 }  // namespace

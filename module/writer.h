@@ -27,7 +27,17 @@ struct ModuleWriter {
   }
 
   void write(Module::SymbolInformation const& information) {
-    base::Serialize(*this, information.qualified_type, information.value);
+    base::Serialize(*this, information.qualified_type);
+    if (information.qualified_type.type() == type::Type_) {
+      if (auto const* p =
+              information.value[0].get<type::Type>().if_as<type::Primitive>()) {
+        base::Serialize(*this, p->kind());
+      } else {
+        NOT_YET();
+      }
+    } else {
+      NOT_YET();
+    }
   }
 
   void write(std::string_view s) {
