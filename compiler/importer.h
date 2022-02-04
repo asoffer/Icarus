@@ -64,8 +64,9 @@ struct FileImporter : module::Importer {
   void ForEachSubroutine(std::invocable<ir::Subroutine const&> auto&& f) const {
     graph_.topologically([&](module::Module const* mod) {
       auto iter = subroutine_by_module_.find(mod);
-      ASSERT(iter != subroutine_by_module_.end());
-      f(iter->second);
+      // TODO: Every module should have a subroutine but we're not yet handling
+      // this for precompiled modules.
+      if (iter != subroutine_by_module_.end()) { f(iter->second); }
     });
   }
 
