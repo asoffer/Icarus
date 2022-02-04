@@ -44,5 +44,4 @@ ic_low_level_library(
     name = "types",
     visibility = ["//visibility:public"],
     srcs = ["types.ic"],
-    precompile = False,
 )

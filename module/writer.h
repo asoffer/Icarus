@@ -31,6 +31,7 @@ struct ModuleWriter {
   }
 
   void write(std::string_view s) {
+    base::Serialize(*this, s.size());
     write_bytes(absl::MakeConstSpan(
         reinterpret_cast<std::byte const*>(s.data()), s.size()));
   }

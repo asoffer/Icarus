@@ -121,8 +121,8 @@ struct DeserializingIterator {
 
   friend bool operator==(DeserializingIterator const& lhs,
                          DeserializingIterator const& rhs) {
-    return lhs.deserializer_ == rhs.deserializer_ and
-           lhs.num_elements_ == rhs.num_elements_;
+    ASSERT(lhs.deserializer_ == rhs.deserializer_);
+    return lhs.num_elements_ == rhs.num_elements_;
   }
   friend bool operator!=(DeserializingIterator const& lhs,
                          DeserializingIterator const& rhs) {
