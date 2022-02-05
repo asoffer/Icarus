@@ -5,6 +5,7 @@
 #include "base/meta.h"
 #include "base/serialize.h"
 #include "type/primitive.h"
+#include "type/serialize.h"
 
 namespace module {
 
@@ -29,33 +30,26 @@ struct ModuleReader {
     return true;
   }
 
-  bool read(Module::SymbolInformation& information) {
-    bool ok = base::Deserialize(*this, information.qualified_type);
-    if (not ok) { return false; }
-    if (information.qualified_type.type() == type::Type_) {
-      type::Primitive::Kind k;
-      ok = base::Deserialize(*this, k);
-      if (not ok) { return false; }
-      information.value.append(type::MakePrimitive(k));
-    } else {
-      NOT_YET();
-    }
+  bool read(Module::SymbolInformation& info) {
+    if (not base::Deserialize(*this, info.qualified_type)) { return false; }
+    ssize_t num_read = type::DeserializeValue(
+        info.qualified_type.type(), absl::MakeConstSpan(head_, end_ - head_),
+        info.value);
+    if (num_read < 0) { return false; }
+    head_ += num_read;
     return true;
   }
 
   bool read(type::QualType& qt) {
-    auto quals = type::Quals::Unqualified();
-    type::Type t;
-    bool result = base::Deserialize(*this, quals, t);
-    qt = type::QualType(t, quals);
-    return result;
-  }
-
-  bool read(type::Type& t) {
-    type::Primitive::Kind k;
-    bool result = base::Deserialize(*this, k);
-    if (not result) { return false; }
-    t = type::MakePrimitive(k);
+    auto quals  = type::Quals::Unqualified();
+    if (not base::Deserialize(*this, quals)) { return false; }
+    ir::CompleteResultBuffer buffer;
+    ssize_t num_read = type::DeserializeValue(
+        type::Type_, absl::MakeConstSpan(head_, end_ - head_), buffer);
+    if (num_read < 0) { return false; }
+    head_ += num_read;
+    ASSERT(buffer.num_entries() == 1);
+    qt = type::QualType(buffer[0].get<type::Type>(), quals);
     return true;
   }
 

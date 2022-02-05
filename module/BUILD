@@ -80,6 +80,7 @@ cc_library(
     deps = [
         "//base:debug",
         "//type:primitive",
+        "//type:serialize",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -90,6 +91,7 @@ cc_library(
     deps = [
         "//base:debug",
         "//type:primitive",
+        "//type:serialize",
         "@com_google_absl//absl/types:span",
     ],
 )

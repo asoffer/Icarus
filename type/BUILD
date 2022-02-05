@@ -383,7 +383,9 @@ cc_library(
 
 cc_library(
     name = "type",
-    hdrs = ["type.h"],
+    hdrs = [
+        "type.h",
+    ],
     deps = [
         "//base:cast",
         "//base:visitable",
@@ -402,3 +404,16 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "serialize",
+    hdrs = ["serialize.h"],
+    srcs = ["serialize.cc"],
+    deps = CONCRETE_TYPES + [
+        ":generic",
+        ":overload_set",
+        "//ir/value:result_buffer",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+

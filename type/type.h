@@ -120,6 +120,7 @@ concept TypeFamilyRequirements = requires(T const t) {
                 std::declval<ir::CompleteResultRef>()) }
                                               -> std::same_as<void>;
 };
+
 // clang-format on
 
 template <typename T>

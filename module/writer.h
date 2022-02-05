@@ -6,6 +6,7 @@
 
 #include "absl/types/span.h"
 #include "base/debug.h"
+#include "type/serialize.h"
 
 namespace module {
 
@@ -26,18 +27,10 @@ struct ModuleWriter {
     write_bytes(absl::MakeConstSpan(p, p + sizeof(T)));
   }
 
-  void write(Module::SymbolInformation const& information) {
-    base::Serialize(*this, information.qualified_type);
-    if (information.qualified_type.type() == type::Type_) {
-      if (auto const* p =
-              information.value[0].get<type::Type>().if_as<type::Primitive>()) {
-        base::Serialize(*this, p->kind());
-      } else {
-        NOT_YET();
-      }
-    } else {
-      NOT_YET();
-    }
+  void write(Module::SymbolInformation const& info) {
+    ASSERT(info.value.num_entries() == 1);
+    base::Serialize(*this, info.qualified_type);
+    type::SerializeValue(info.qualified_type.type(), info.value[0], out_);
   }
 
   void write(std::string_view s) {
@@ -51,11 +44,9 @@ struct ModuleWriter {
   }
 
   void write(type::Type t) {
-    if (auto const* p = t.if_as<type::Primitive>()) {
-      base::Serialize(*this, p->kind());
-    } else {
-      NOT_YET();
-    }
+    ir::CompleteResultBuffer buffer;
+    buffer.append(t);
+    type::SerializeValue(type::Type_, buffer[0], out_);
   }
 
  private:
