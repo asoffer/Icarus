@@ -19,6 +19,18 @@
 
 namespace compiler {
 
+struct MissingModuleMap {
+  static constexpr std::string_view kCategory = "tool-failure";
+  static constexpr std::string_view kName     = "missing-module-map";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Could not find module map \"%s\"", module_map));
+  }
+
+  std::string module_map;
+};
+
 struct MissingModule {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "missing-module";

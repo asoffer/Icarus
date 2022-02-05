@@ -136,11 +136,16 @@ int Compile(char const *file_name, std::string const &output_byte_code,
   frontend::SourceIndexer source_indexer;
   diagnostic::StreamingConsumer diag(stderr, &source_indexer);
 
-  llvm::TargetMachine *target_machine = InitializeLlvm(diag);
-  if (not target_machine) { return 1; }
+  llvm::TargetMachine *target_machine;
+  if (not output_object_file.empty()) {
+    target_machine = InitializeLlvm(diag);
+    if (not target_machine) { return 1; }
+  }
 
   auto module_map = MakeModuleMap(absl::GetFlag(FLAGS_module_map));
-  if (not module_map) { return 1; }
+  if (not module_map) {
+    std::cerr << "Failed to initailize module map.\n"; return 1;
+  }
 
   compiler::WorkSet work_set;
   compiler::FileImporter importer(&work_set, &diag, &source_indexer,
@@ -182,7 +187,7 @@ int Compile(char const *file_name, std::string const &output_byte_code,
   };
   auto main_fn = CompileModule(context, resources, nodes);
 
-  int return_code = 0;
+  if (diag.num_consumed() != 0) { return 1; }
   if (not output_byte_code.empty()) {
     std::string s;
     module::ModuleWriter w(&s);
@@ -192,8 +197,9 @@ int Compile(char const *file_name, std::string const &output_byte_code,
     os.close();
   }
 
+  int return_code = 0;
   if (not output_object_file.empty()) {
-    return_code += CompileToObjectFile(exec_mod, *main_fn, target_machine);
+    return_code = CompileToObjectFile(exec_mod, *main_fn, target_machine);
   }
 
   return return_code;

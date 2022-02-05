@@ -60,7 +60,7 @@ struct ValueSerializer {
       write(static_cast<std::underlying_type_t<Primitive::Kind>>(
           t.as<Primitive>().kind()));
     } else {
-      NOT_YET();
+      NOT_YET(t.to_string());
     }
   }
 

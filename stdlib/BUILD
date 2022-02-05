@@ -70,6 +70,7 @@ ic_low_level_library(
         "//stdlib/c:stdlib",
         "//stdlib/c:stdio",
         "//stdlib/c:string",
+        "//stdlib/c:types",
         "//stdlib/math",
     ],
     precompile = False,

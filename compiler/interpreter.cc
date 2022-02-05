@@ -59,8 +59,14 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
     return 1;
   }
 
-  auto module_map = MakeModuleMap(absl::GetFlag(FLAGS_module_map));
-  if (not module_map) { return 1; }
+  std::string module_map_file = absl::GetFlag(FLAGS_module_map);
+  auto module_map             = MakeModuleMap(module_map_file);
+  if (not module_map) {
+    diag.Consume(MissingModuleMap{
+        .module_map = std::move(module_map_file),
+    });
+    return 1;
+  }
 
   compiler::WorkSet work_set;
   compiler::FileImporter importer(&work_set, &diag, &source_indexer,

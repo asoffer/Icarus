@@ -5,7 +5,6 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["ctype.ic"],
     deps = [":types"],
-    precompile = False,
 )
 
 ic_low_level_library(

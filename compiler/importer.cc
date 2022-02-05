@@ -46,18 +46,30 @@ std::optional<std::string> ReadFileToString(std::string const& file_name) {
 }
 
 absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
-    std::string_view file_name, absl::Span<std::string const> lookup_paths,
+    std::string const& file_name, absl::Span<std::string const> lookup_paths,
     absl::flat_hash_map<std::string, std::string> const& module_map) {
-  for (std::string_view base_path : lookup_paths) {
-    auto iter = module_map.find(absl::StrCat(base_path, "/", file_name));
-    if (iter == module_map.end()) { continue; }
-    std::optional content = ReadFileToString(iter->second);
-    if (not content) { continue; }
-    return module::PrecompiledModule::Make(*content);
+  if (!file_name.starts_with("/")) {
+    for (std::string_view base_path : lookup_paths) {
+      auto iter = module_map.find(absl::StrCat(base_path, "/", file_name));
+      if (iter == module_map.end()) { continue; }
+      if (auto maybe_content = ReadFileToString(iter->second)) {
+        return module::PrecompiledModule::Make(*maybe_content);
+      }
+    }
+  }
+
+  auto iter = module_map.find(file_name);
+ if (iter == module_map.end()) {
+    return absl::NotFoundError(absl::StrFormat(
+        R"(Failed to find module map entry for '%s')", file_name));
+  }
+
+  if (auto maybe_content = ReadFileToString(iter->second)) {
+    return module::PrecompiledModule::Make(*maybe_content);
   }
 
   return absl::NotFoundError(
-      absl::StrCat("Failed to find module map entry for \"", file_name, "\""));
+      absl::StrFormat(R"(Failed to load precompiled module for '%s')", file_name));
 }
 
 }  // namespace
