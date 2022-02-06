@@ -77,6 +77,7 @@ cc_library(
 cc_library(
     name = "reader",
     hdrs = ["reader.h"],
+    srcs = ["reader.cc"],
     deps = [
         "//base:debug",
         "//type:primitive",

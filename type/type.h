@@ -55,6 +55,8 @@ struct LegacyType : base::Visitable<LegacyType, AllTypeTypes>,
   virtual core::Bytes bytes(core::Arch const &arch) const         = 0;
   virtual core::Alignment alignment(core::Arch const &arch) const = 0;
 
+  using base::Visitable<LegacyType, AllTypeTypes>::which;
+
   bool IsDefaultInitializable() const {
     return flags_.is_default_initializable;
   }

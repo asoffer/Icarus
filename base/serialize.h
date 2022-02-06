@@ -172,7 +172,8 @@ void SerializeOne(base::Serializer auto& s, value_type const& value) {
   } else if constexpr (requires {
                          value.begin();
                          value.end();
-                         ++value.begin();
+                         ++std::declval<typename std::decay_t<decltype(
+                             value)>::const_iterator&>();
                        }) {
     size_t num_elements = std::distance(value.begin(), value.end());
     base::Serialize(s, num_elements);

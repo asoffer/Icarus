@@ -19,6 +19,9 @@ struct Visitable {
         static_cast<T const *>(this), v, std::forward<Args>(args)...);
   }
 
+ protected:
+  int8_t which() const { return which_; }
+
   int8_t which_;
 
  private:
