@@ -67,26 +67,12 @@ cc_test(
 cc_library(
     name = "foreign_fn",
     hdrs = ["foreign_fn.h"],
-    srcs = ["foreign_fn.cc"],
     deps = [
-        "//base:debug",
-        "//base:flyweight_map",
         "//base:extend",
         "//base/extend:absl_format",
         "//base/extend:equality",
-        "//base:guarded",
+        "//base:flyweight_map",
         "//type:function",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_test(
-    name = "foreign_fn_test",
-    srcs = ["foreign_fn_test.cc"],
-    deps = [
-        ":foreign_fn",
-        "//type:primitive",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 

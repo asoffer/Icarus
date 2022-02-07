@@ -12,7 +12,11 @@ void TestFn() {}
 namespace {
 
 TEST(Fn, ForeignFn) {
-  ir::ForeignFn f(TestFn, type::Func({}, {}));
+  base::flyweight_map<std::pair<std::string, type::Function const *>,
+                      void (*)()>
+      map = {{{"TestFn", type::Func({}, {})}, TestFn}};
+
+  ir::ForeignFn f(&*map.begin());
   ir::Fn a(f);
   ASSERT_EQ(a.kind(), ir::Fn::Kind::Foreign);
 

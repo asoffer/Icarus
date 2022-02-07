@@ -3,8 +3,10 @@
 namespace module {
 
 absl::StatusOr<PrecompiledModule> PrecompiledModule::Make(
-    std::string_view file_content) {
-  ModuleReader r(file_content);
+    std::string_view file_content,
+    base::flyweight_map<std::pair<std::string, type::Function const*>,
+                        void (*)()>* foreign_fn_map) {
+  ModuleReader r(file_content, foreign_fn_map);
   PrecompiledModule m;
   base::Deserialize(r, m.symbols_);
   return m;

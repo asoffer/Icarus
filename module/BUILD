@@ -67,6 +67,8 @@ cc_library(
     deps = [
         ":module",
         ":reader",
+        "//base:flyweight_map",
+        "//type",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
@@ -80,6 +82,7 @@ cc_library(
     srcs = ["reader.cc"],
     deps = [
         "//base:debug",
+        "//base:flyweight_map",
         "//type:primitive",
         "//type:serialize",
         "@com_google_absl//absl/types:span",

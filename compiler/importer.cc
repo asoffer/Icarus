@@ -47,13 +47,15 @@ std::optional<std::string> ReadFileToString(std::string const& file_name) {
 
 absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
     std::string const& file_name, absl::Span<std::string const> lookup_paths,
-    absl::flat_hash_map<std::string, std::string> const& module_map) {
+    absl::flat_hash_map<std::string, std::string> const& module_map,
+    Context const& context) {
   if (!file_name.starts_with("/")) {
     for (std::string_view base_path : lookup_paths) {
       auto iter = module_map.find(absl::StrCat(base_path, "/", file_name));
       if (iter == module_map.end()) { continue; }
       if (auto maybe_content = ReadFileToString(iter->second)) {
-        return module::PrecompiledModule::Make(*maybe_content);
+        return module::PrecompiledModule::Make(*maybe_content,
+                                               &context.foreign_function_map());
       }
     }
   }
@@ -65,7 +67,8 @@ absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
   }
 
   if (auto maybe_content = ReadFileToString(iter->second)) {
-    return module::PrecompiledModule::Make(*maybe_content);
+    return module::PrecompiledModule::Make(*maybe_content,
+                                           &context.foreign_function_map());
   }
 
   return absl::NotFoundError(
@@ -104,7 +107,8 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   }
 
   auto maybe_module =
-      LoadPrecompiledModule(file_name, module_lookup_paths_, module_map_);
+      LoadPrecompiledModule(file_name, module_lookup_paths_, module_map_,
+                            requestor->as<CompiledModule>().context());
   if (maybe_module.ok()) {
     ir::ModuleId id = ir::ModuleId::New();
     iter->second    = std::make_pair(

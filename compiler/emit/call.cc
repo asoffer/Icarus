@@ -89,13 +89,14 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       auto slice = name_buffer->get<ir::Slice>(0);
 
       std::string name(slice);
-      auto result = c.current_block()->Append(
-          ir::LoadSymbolInstruction{.name   = std::move(name),
-                                    .type   = *maybe_foreign_type,
-                                    .result = c.current().subroutine->Reserve()});
-      if (maybe_foreign_type->is<type::Pointer>() or
-          maybe_foreign_type->is<type::Function>()) {
+      if (maybe_foreign_type->is<type::Pointer>()) {
+        auto result = c.current_block()->Append(ir::LoadDataSymbolInstruction{
+            .name   = std::move(name),
+            .result = c.current().subroutine->Reserve()});
         out.append(result);
+      } else if (auto const *f = maybe_foreign_type->if_as<type::Function>()) {
+        ir::ForeignFn fn = c.context().ForeignFunction(std::move(name), f);
+        out.append(ir::Fn(fn));
       } else {
         UNREACHABLE();
       }

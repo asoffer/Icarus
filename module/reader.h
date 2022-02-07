@@ -1,6 +1,7 @@
 #ifndef ICARUS_MODULE_READER_H
 #define ICARUS_MODULE_READER_H
 
+#include "base/flyweight_map.h"
 #include "base/meta.h"
 #include "base/serialize.h"
 #include "module/module.h"
@@ -9,9 +10,13 @@
 namespace module {
 
 struct ModuleReader {
-  explicit ModuleReader(std::string_view s)
+  explicit ModuleReader(
+      std::string_view s,
+      base::flyweight_map<std::pair<std::string, type::Function const*>,
+                          void (*)()>* foreign_fn_map)
       : head_(reinterpret_cast<std::byte const*>(s.begin())),
-        end_(reinterpret_cast<std::byte const*>(s.end())) {}
+        end_(reinterpret_cast<std::byte const*>(s.end())),
+        foreign_fn_map_(*ASSERT_NOT_NULL(foreign_fn_map)) {}
 
   absl::Span<std::byte const> read_bytes(size_t num_bytes);
 
@@ -24,12 +29,16 @@ struct ModuleReader {
     return true;
   }
 
+  bool read(std::string& s);
   bool read(Module::SymbolInformation& info);
   bool read(type::QualType& qt);
 
-private:
+ private:
   std::byte const* head_;
   std::byte const* end_;
+
+  base::flyweight_map<std::pair<std::string, type::Function const*>,
+                      void (*)()>& foreign_fn_map_;
 };
 
 }  // namespace module

@@ -412,8 +412,17 @@ cc_library(
     deps = CONCRETE_TYPES + [
         ":generic",
         ":overload_set",
+        "//base:flyweight_map",
         "//ir/value:result_buffer",
         "@com_google_absl//absl/types:span",
     ],
 )
 
+cc_test(
+    name = "serialize_test",
+    srcs = ["serialize_test.cc"],
+    deps = [
+        ":serialize",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

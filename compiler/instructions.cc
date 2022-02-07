@@ -144,7 +144,7 @@ struct instruction_set_t
               double(float)>,
           ir::AndInstruction, ir::NotInstruction, type::XorFlagsInstruction,
           type::AndFlagsInstruction, type::OrFlagsInstruction,
-          ir::LoadSymbolInstruction, type::ArrayInstruction,
+          ir::LoadDataSymbolInstruction, type::ArrayInstruction,
           ir::StructIndexInstruction, ir::PtrIncrInstruction,
           ir::InitInstruction, ir::DestroyInstruction, ir::MoveInitInstruction,
           ir::CopyInitInstruction, ir::MoveInstruction, ir::CopyInstruction,

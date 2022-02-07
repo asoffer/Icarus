@@ -46,6 +46,7 @@ struct ModuleWriter {
   void write(type::Type t) {
     ir::CompleteResultBuffer buffer;
     buffer.append(t);
+    size_t n = out_.size();
     type::SerializeValue(type::Type_, buffer[0], out_);
   }
 

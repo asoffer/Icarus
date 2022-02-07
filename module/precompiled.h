@@ -4,8 +4,10 @@
 #include <string>
 
 #include "absl/status/statusor.h"
+#include "base/flyweight_map.h"
 #include "module/module.h"
 #include "module/reader.h"
+#include "type/type.h"
 
 namespace module {
 
@@ -14,7 +16,10 @@ namespace module {
 // Represents a module that has already been compiled, rather than those coming
 // from a source file.
 struct PrecompiledModule final : Module {
-  static absl::StatusOr<PrecompiledModule> Make(std::string_view file_name);
+  static absl::StatusOr<PrecompiledModule> Make(
+      std::string_view file_name,
+      base::flyweight_map<std::pair<std::string, type::Function const*>,
+                          void (*)()>* foreign_fn_map);
 
   absl::Span<SymbolInformation const> Exported(std::string_view name) override;
 
