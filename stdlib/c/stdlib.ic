@@ -1,7 +1,7 @@
 // This module provides an interface to functions in the <stdlib.h> C-header
 // file.
 
-c ::= import "c/types.ic"
+c ::= import "stdlib/c/types.ic"
 
 #{export} atoi  ::= foreign("atoi", [*]char -> c.int)
 #{export} atol  ::= foreign("atol", [*]char -> c.long)

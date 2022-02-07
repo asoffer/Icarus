@@ -82,6 +82,8 @@ struct ValueSerializer {
       write(static_cast<std::underlying_type_t<Primitive::Kind>>(p->kind()));
     } else if (auto const* f = t.if_as<Function>()) {
       base::Serialize(*this, f->params(), f->return_types());
+    } else if (auto const* p = t.if_as<Pointer>()) {
+      base::Serialize(*this, p->pointee());
     } else {
       NOT_YET(t.to_string());
     }
@@ -195,6 +197,18 @@ struct ValueDeserializer {
           return false;
         }
         t = type::Type(type::Func(std::move(params), std::move(return_types)));
+        return true;
+      }
+      case IndexOf<BufferPointer>(): {
+        Type pointee;
+        if (not base::Deserialize(*this, pointee)) { return false; }
+        t = type::Type(type::BufPtr(pointee));
+        return true;
+      }
+      case IndexOf<Pointer>(): {
+        Type pointee;
+        if (not base::Deserialize(*this, pointee)) { return false; }
+        t = type::Type(type::Ptr(pointee));
         return true;
       }
       default: NOT_YET();

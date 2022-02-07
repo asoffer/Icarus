@@ -12,7 +12,6 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["math.ic"],
     deps = [":types"],
-    precompile = False,
 )
 
 ic_low_level_library(
@@ -20,7 +19,6 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["stdlib.ic"],
     deps = [":types"],
-    precompile = False,
 )
 
 ic_low_level_library(
@@ -36,7 +34,6 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["string.ic"],
     deps = [":types"],
-    precompile = False,
 )
 
 ic_low_level_library(

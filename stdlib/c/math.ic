@@ -1,4 +1,4 @@
-c ::= import "c/types.ic"
+c ::= import "stdlib/c/types.ic"
 
 #{export} acos  ::= foreign("acos", c.double -> c.double)
 #{export} asin  ::= foreign("asin", c.double -> c.double)
