@@ -208,20 +208,6 @@ struct Context {
     return ir::NativeFn();
   }
 
-  ir::ForeignFn ForeignFunction(std::string &&s, type::Function const *f) {
-    return ir::ForeignFn(
-        foreign_fns_.try_emplace(std::pair(std::move(s), f)).first);
-  }
-  ir::ForeignFn ForeignFunction(std::string_view s, type::Function const *f) {
-    return ForeignFunction(std::string(s), f);
-  }
-
-  base::flyweight_map<std::pair<std::string, type::Function const *>,
-                      void (*)()>
-      &foreign_function_map() const {
-    return foreign_fns_;
-  }
-
   std::pair<ir::Scope, bool> add_scope(
       ast::ParameterizedExpression const *expr) {
     type::Scope const *scope_type =
@@ -457,11 +443,6 @@ struct Context {
       qt_callback_;
   base::any_invocable<void(ast::Declaration::Id const *, ir::CompleteResultBuffer)>
       value_callback_;
-
-  // TODO: Remove mutability by making ownership clearer.
-  mutable base::flyweight_map<std::pair<std::string, type::Function const *>,
-                              void (*)()>
-      foreign_fns_;
 };
 
 // TODO: Probably deserves it's own translation unit?

@@ -16,7 +16,6 @@
 #include "absl/strings/str_split.h"
 #include "absl/types/span.h"
 #include "base/log.h"
-#include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
 #include "compiler/importer.h"
 #include "compiler/instructions.h"
@@ -27,6 +26,7 @@
 #include "ir/interpreter/evaluate.h"
 #include "ir/subroutine.h"
 #include "module/module.h"
+#include "module/shared_context.h"
 #include "opt/opt.h"
 
 ABSL_FLAG(std::vector<std::string>, log, {},
@@ -69,9 +69,10 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
   }
 
   compiler::WorkSet work_set;
-  compiler::FileImporter importer(&work_set, &diag, &source_indexer,
-                                  *std::move(module_map),
-                                  absl::GetFlag(FLAGS_module_paths));
+  module::SharedContext shared_context;
+  compiler::FileImporter importer(
+      &work_set, &diag, &source_indexer, *std::move(module_map),
+      absl::GetFlag(FLAGS_module_paths), shared_context);
 
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
@@ -93,6 +94,7 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
       .module              = &exec_mod,
       .diagnostic_consumer = &diag,
       .importer            = &importer,
+      .shared_context      = &shared_context,
   };
 
   auto parsed_nodes = frontend::Parse(file_content, diag);

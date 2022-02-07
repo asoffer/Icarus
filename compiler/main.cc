@@ -16,7 +16,6 @@
 #include "absl/strings/str_split.h"
 #include "backend/llvm.h"
 #include "base/log.h"
-#include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
 #include "compiler/importer.h"
 #include "compiler/module.h"
@@ -38,6 +37,7 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "module/module.h"
+#include "module/shared_context.h"
 #include "opt/opt.h"
 
 ABSL_FLAG(std::vector<std::string>, log, {},
@@ -148,9 +148,10 @@ int Compile(char const *file_name, std::string const &output_byte_code,
   }
 
   compiler::WorkSet work_set;
-  compiler::FileImporter importer(&work_set, &diag, &source_indexer,
-                                  *std::move(module_map),
-                                  absl::GetFlag(FLAGS_module_paths));
+  module::SharedContext shared_context;
+  compiler::FileImporter importer(
+      &work_set, &diag, &source_indexer, *std::move(module_map),
+      absl::GetFlag(FLAGS_module_paths), shared_context);
 
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
@@ -184,6 +185,7 @@ int Compile(char const *file_name, std::string const &output_byte_code,
       .module              = &exec_mod,
       .diagnostic_consumer = &diag,
       .importer            = &importer,
+      .shared_context      = &shared_context,
   };
   auto main_fn = CompileModule(context, resources, nodes);
 

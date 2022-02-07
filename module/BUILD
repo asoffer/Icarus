@@ -81,11 +81,22 @@ cc_library(
     hdrs = ["reader.h"],
     srcs = ["reader.cc"],
     deps = [
+        ":shared_context",
         "//base:debug",
         "//base:flyweight_map",
         "//type:primitive",
         "//type:serialize",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "shared_context",
+    hdrs = ["shared_context.h"],
+    deps = [
+        "//base:flyweight_map",
+        "//ir/value:foreign_fn",
+        "//type:function",
     ],
 )
 

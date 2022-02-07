@@ -95,7 +95,8 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
             .result = c.current().subroutine->Reserve()});
         out.append(result);
       } else if (auto const *f = maybe_foreign_type->if_as<type::Function>()) {
-        ir::ForeignFn fn = c.context().ForeignFunction(std::move(name), f);
+        ir::ForeignFn fn =
+            c.shared_context().ForeignFunction(std::move(name), f);
         out.append(ir::Fn(fn));
       } else {
         UNREACHABLE();

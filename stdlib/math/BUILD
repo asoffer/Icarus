@@ -12,7 +12,6 @@ ic_low_level_library(
     name = "constants",
     visibility = ["//visibility:public"],
     srcs = ["constants.ic"],
-    precompile = False,
 )
 
 ic_low_level_library(

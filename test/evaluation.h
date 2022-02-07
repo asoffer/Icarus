@@ -42,6 +42,7 @@ TEST_P(EvaluationTest, Test) {
               .module              = &mod,
               .diagnostic_consumer = &mod.consumer,
               .importer            = &mod.importer,
+              .shared_context      = &mod.shared_context(),
           },
   };
   compiler::Compiler c(&data);

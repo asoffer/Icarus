@@ -50,14 +50,16 @@ struct FileImporter : module::Importer {
       WorkSet* work_set, diagnostic::DiagnosticConsumer* diagnostic_consumer,
       frontend::SourceIndexer* source_indexer,
       absl::flat_hash_map<std::string, std::string> module_map,
-      std::vector<std::string> module_lookup_paths)
+      std::vector<std::string> module_lookup_paths,
+      module::SharedContext& shared_context)
       : work_set_(ASSERT_NOT_NULL(work_set)),
         builtin_(MakeBuiltinModule()),
         modules_by_id_{{ir::ModuleId::Builtin(), &builtin_}},
         diagnostic_consumer_(ASSERT_NOT_NULL(diagnostic_consumer)),
         module_map_(std::move(module_map)),
         module_lookup_paths_(std::move(module_lookup_paths)),
-        source_indexer_(*ASSERT_NOT_NULL(source_indexer)) {}
+        source_indexer_(*ASSERT_NOT_NULL(source_indexer)),
+        shared_context_(shared_context) {}
 
   ~FileImporter() override {}
 
@@ -107,6 +109,7 @@ struct FileImporter : module::Importer {
   absl::flat_hash_map<std::string, std::string> module_map_;
   std::vector<std::string> module_lookup_paths_;
   frontend::SourceIndexer& source_indexer_;
+  module::SharedContext& shared_context_;
 };
 
 absl::StatusOr<std::string> LoadFileContent(

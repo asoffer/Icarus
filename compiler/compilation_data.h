@@ -13,6 +13,7 @@
 #include "ir/value/module_id.h"
 #include "ir/value/result_buffer.h"
 #include "module/importer.h"
+#include "module/shared_context.h"
 #include "module/module.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -31,6 +32,11 @@ struct CompilationDataReference {
       : data_(*ASSERT_NOT_NULL(data)) {}
 
   Context &context() const { return *data_.context; }
+
+  module::SharedContext &shared_context() {
+    return *ASSERT_NOT_NULL(data_.resources.shared_context);
+  }
+
   SubroutineBlockReference &current() {
     auto &v = state().current;
     ASSERT(v.size() != 0u);

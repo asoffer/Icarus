@@ -26,7 +26,7 @@ bool ModuleReader::read(Module::SymbolInformation& info) {
   if (not base::Deserialize(*this, info.qualified_type)) { return false; }
   ssize_t num_read = type::DeserializeValue(
       info.qualified_type.type(), absl::MakeConstSpan(head_, end_ - head_),
-      info.value, foreign_fn_map_);
+      info.value, context_.foreign_function_map());
   if (num_read < 0) { return false; }
   head_ += num_read;
   return true;
@@ -38,7 +38,7 @@ bool ModuleReader::read(type::QualType& qt) {
   ir::CompleteResultBuffer buffer;
   ssize_t num_read = type::DeserializeValue(
       type::Type_, absl::MakeConstSpan(head_, end_ - head_), buffer,
-      foreign_fn_map_);
+      context_.foreign_function_map());
   if (num_read < 0) { return false; }
   head_ += num_read;
   ASSERT(buffer.num_entries() == 1);

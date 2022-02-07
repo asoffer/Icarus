@@ -16,6 +16,7 @@
 #include "compiler/resources.h"
 #include "compiler/work_graph.h"
 #include "frontend/parse.h"
+#include "module/shared_context.h"
 
 namespace compiler {
 namespace {
@@ -48,14 +49,13 @@ std::optional<std::string> ReadFileToString(std::string const& file_name) {
 absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
     std::string const& file_name, absl::Span<std::string const> lookup_paths,
     absl::flat_hash_map<std::string, std::string> const& module_map,
-    Context const& context) {
+    module::SharedContext& shared_context) {
   if (!file_name.starts_with("/")) {
     for (std::string_view base_path : lookup_paths) {
       auto iter = module_map.find(absl::StrCat(base_path, "/", file_name));
       if (iter == module_map.end()) { continue; }
       if (auto maybe_content = ReadFileToString(iter->second)) {
-        return module::PrecompiledModule::Make(*maybe_content,
-                                               &context.foreign_function_map());
+        return module::PrecompiledModule::Make(*maybe_content, shared_context);
       }
     }
   }
@@ -67,8 +67,7 @@ absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
   }
 
   if (auto maybe_content = ReadFileToString(iter->second)) {
-    return module::PrecompiledModule::Make(*maybe_content,
-                                           &context.foreign_function_map());
+    return module::PrecompiledModule::Make(*maybe_content, shared_context);
   }
 
   return absl::NotFoundError(
@@ -106,9 +105,8 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
     return iter->second.first;
   }
 
-  auto maybe_module =
-      LoadPrecompiledModule(file_name, module_lookup_paths_, module_map_,
-                            requestor->as<CompiledModule>().context());
+  auto maybe_module = LoadPrecompiledModule(file_name, module_lookup_paths_,
+                                            module_map_, shared_context_);
   if (maybe_module.ok()) {
     ir::ModuleId id = ir::ModuleId::New();
     iter->second    = std::make_pair(
@@ -154,6 +152,7 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
       .module              = &module,
       .diagnostic_consumer = diagnostic_consumer_,
       .importer            = this,
+      .shared_context      = &shared_context_,
   };
 
   graph_.add_edge(requestor, &module);
