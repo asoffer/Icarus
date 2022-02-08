@@ -3,7 +3,7 @@
 
 // Locale-aware functions are intentionally omitted.
 
-c ::= import "c/types.ic"
+c ::= import "stdlib/c/types.ic"
 
 #{export} strcpy   ::= foreign("strcpy", ([*]char, [*]char) -> [*]char)
 #{export} strncpy  ::= foreign("strcpy", ([*]char, [*]char, c.size_t) -> [*]char)

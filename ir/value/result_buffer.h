@@ -26,6 +26,12 @@ struct Writer {
     buffer_.write(buffer_.size(), bytes.data(), bytes.size());
   }
 
+  template <typename T>
+  void write(T const &t) requires(std::is_trivially_copyable_v<T>) {
+    auto const *p = reinterpret_cast<std::byte const *>(&t);
+    write_bytes(absl::MakeConstSpan(p, p + sizeof(T)));
+  }
+
  private:
   base::untyped_buffer &buffer_;
 };
@@ -37,6 +43,13 @@ struct Reader {
     absl::Span<std::byte const> span(iter_.raw(), count);
     iter_.skip(count);
     return span;
+  }
+
+  template <typename T>
+  bool read(T &t) requires(std::is_trivially_copyable_v<T>) {
+    std::memcpy(&t, iter_.raw(), sizeof(t));
+    iter_.skip(sizeof(t));
+    return true;
   }
 
  private:
@@ -163,6 +176,11 @@ struct CompleteResultBuffer {
 
   void append();
 
+  void append_raw(base::untyped_buffer_view data) {
+    offsets_.push_back(buffer_.size());
+    buffer_.write(buffer_.size(), data.data(), data.size());
+  }
+
   template <typename S>
   friend void BaseSerialize(S &s, CompleteResultBuffer const &buffer) {
     base::Serialize(s, buffer.offsets_, buffer.buffer_.size());
@@ -171,10 +189,12 @@ struct CompleteResultBuffer {
   }
 
   template <typename D>
-  friend void BaseDeserialize(D &d, CompleteResultBuffer &buffer) {
+  friend bool BaseDeserialize(D &d, CompleteResultBuffer &buffer) {
     size_t num_bytes;
-    base::Deserialize(d, buffer.offsets_, num_bytes);
+    bool ok = base::Deserialize(d, buffer.offsets_, num_bytes);
+    if (not ok) { return false; }
     buffer.buffer_.write(0, d.read_bytes(num_bytes).data(), num_bytes);
+    return true;
   }
 
   base::untyped_buffer &&buffer() && { return std::move(buffer_); }
@@ -258,10 +278,12 @@ struct PartialResultBuffer {
   }
 
   template <typename D>
-  friend void BaseDeserialize(D &d, PartialResultBuffer &buffer) {
+  friend bool BaseDeserialize(D &d, PartialResultBuffer &buffer) {
     size_t num_bytes;
-    base::Deserialize(d, buffer.offsets_, num_bytes);
+    bool ok = base::Deserialize(d, buffer.offsets_, num_bytes);
+    if (not ok) { return false; }
     buffer.buffer_.write(0, d.read_bytes(num_bytes).data(), num_bytes);
+    return true;
   }
 
   bool is_register(size_t i) const { return offsets_[i].is_register; }

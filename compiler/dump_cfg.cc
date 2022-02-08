@@ -38,6 +38,9 @@ ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
 ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Comma-separated list of paths to search when importing modules. "
           "Defaults to $ICARUS_MODULE_PATH.");
+ABSL_FLAG(std::string, module_map, "",
+          "Filename holding information about the module-map describing the "
+          "location precompiled modules");
 
 namespace {
 
@@ -122,9 +125,14 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
     return 1;
   }
 
+  auto module_map = compiler::MakeModuleMap(absl::GetFlag(FLAGS_module_map));
+  if (not module_map) { return 1; }
+
   compiler::WorkSet work_set;
-  compiler::FileImporter importer(&work_set, &diag, &source_indexer,
-                                  absl::GetFlag(FLAGS_module_paths));
+  module::SharedContext shared_context;
+  compiler::FileImporter importer(
+      &work_set, &diag, &source_indexer, *std::move(module_map),
+      absl::GetFlag(FLAGS_module_paths), shared_context);
 
   std::string_view file_content =
       source_indexer.insert(ir::ModuleId::New(), *std::move(content));
@@ -141,6 +149,7 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
       .module              = &exec_mod,
       .diagnostic_consumer = &diag,
       .importer            = &importer,
+      .shared_context      = &shared_context,
   };
 
   auto parsed_nodes = frontend::Parse(file_content, diag);

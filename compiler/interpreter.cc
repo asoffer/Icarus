@@ -16,7 +16,6 @@
 #include "absl/strings/str_split.h"
 #include "absl/types/span.h"
 #include "base/log.h"
-#include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
 #include "compiler/importer.h"
 #include "compiler/instructions.h"
@@ -27,6 +26,7 @@
 #include "ir/interpreter/evaluate.h"
 #include "ir/subroutine.h"
 #include "module/module.h"
+#include "module/shared_context.h"
 #include "opt/opt.h"
 
 ABSL_FLAG(std::vector<std::string>, log, {},
@@ -40,6 +40,9 @@ ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Defaults to $ICARUS_MODULE_PATH.");
 ABSL_FLAG(std::vector<std::string>, implicitly_embedded_modules, {},
           "Comma-separated list of modules that are embedded implicitly.");
+ABSL_FLAG(std::string, module_map, "",
+          "Filename holding information about the module-map describing the "
+          "location precompiled modules");
 
 namespace compiler {
 namespace {
@@ -56,9 +59,21 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
     return 1;
   }
 
-  WorkSet work_set;
-  FileImporter importer(&work_set, &diag, &source_indexer,
-                        absl::GetFlag(FLAGS_module_paths));
+  std::string module_map_file = absl::GetFlag(FLAGS_module_map);
+  auto module_map             = MakeModuleMap(module_map_file);
+  if (not module_map) {
+    diag.Consume(MissingModuleMap{
+        .module_map = std::move(module_map_file),
+    });
+    return 1;
+  }
+
+  compiler::WorkSet work_set;
+  module::SharedContext shared_context;
+  compiler::FileImporter importer(
+      &work_set, &diag, &source_indexer, *std::move(module_map),
+      absl::GetFlag(FLAGS_module_paths), shared_context);
+
   if (not importer.SetImplicitlyEmbeddedModules(
           absl::GetFlag(FLAGS_implicitly_embedded_modules))) {
     return 1;
@@ -79,6 +94,7 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
       .module              = &exec_mod,
       .diagnostic_consumer = &diag,
       .importer            = &importer,
+      .shared_context      = &shared_context,
   };
 
   auto parsed_nodes = frontend::Parse(file_content, diag);

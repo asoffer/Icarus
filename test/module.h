@@ -36,6 +36,7 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
             .module              = this,
             .diagnostic_consumer = &consumer,
             .importer            = &importer,
+            .shared_context      = &shared_context_,
         }) {}
 
   void AppendCode(std::string code) {
@@ -124,6 +125,7 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
         .module              = &imported_mod,
         .diagnostic_consumer = &consumer,
         .importer            = &importer,
+        .shared_context      = &shared_context_,
     };
 
     std::string_view content =
@@ -144,12 +146,15 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
         });
   }
 
+  module::SharedContext& shared_context() { return shared_context_; }
+
   module::MockImporter importer;
   diagnostic::TrackingConsumer consumer;
   compiler::WorkSet work_set;
 
  private:
   frontend::SourceIndexer indexer_;
+  module::SharedContext shared_context_;
   compiler::WorkGraph work_graph_;
 };
 

@@ -49,7 +49,17 @@ cc_library(
     hdrs = ["flyweight_map.h"],
     deps = [
         ":debug",
-        "@com_google_absl//absl/container:node_hash_map",
+        ":meta",
+        "@com_google_absl//absl/container:flat_hash_set"
+    ],
+)
+
+cc_test(
+    name = "flyweight_map_test",
+    srcs = ["flyweight_map_test.cc"],
+    deps = [
+        ":flyweight_map",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

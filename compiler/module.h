@@ -3,6 +3,7 @@
 
 #include "compiler/context.h"
 #include "module/module.h"
+#include "module/writer.h"
 
 namespace compiler {
 
@@ -27,6 +28,10 @@ struct CompiledModule : module::Module {
             exported_[id->name()][iter->second].value = std::move(buffer);
           }
         });
+  }
+
+  friend void BaseSerialize(module::ModuleWriter &w, CompiledModule const &m) {
+    base::Serialize(w, m.exported_);
   }
 
   Context const &context() const { return *context_; }
@@ -61,7 +66,10 @@ struct CompiledModule : module::Module {
   Context *context_;
   std::string_view content_;
 
-  absl::flat_hash_map<std::string_view, std::vector<SymbolInformation>>
+  // It is important for caching that symbols be exported in a consistent
+  // manner. We use an ordered container to guarantee repeated invocations
+  // produce the same output.
+  absl::btree_map<std::string_view, std::vector<SymbolInformation>>
       exported_;
   absl::flat_hash_map<ast::Declaration::Id const *, size_t> indices_;
   // This flag should be set to true if this module is ever found to depend on

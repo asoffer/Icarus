@@ -4,6 +4,7 @@ ic_low_level_library(
     name = "core",
     visibility = ["//visibility:public"],
     srcs = ["core.ic"],
+    precompile = False,
 )
 
 ic_low_level_library(
@@ -11,6 +12,7 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["errno.ic"],
     deps = ["//stdlib/c:types"],
+    precompile = False,
 )
 
 ic_low_level_library(
@@ -18,6 +20,7 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["io.ic"],
     deps = [],
+    precompile = False,
 )
 
 ic_low_level_library(
@@ -29,6 +32,7 @@ ic_low_level_library(
         ":memory",
         "//stdlib/c:stdio",
     ],
+    precompile = False,
 )
 
 ic_low_level_library(
@@ -40,6 +44,7 @@ ic_low_level_library(
         "//stdlib/c:string",
         "//stdlib/c:types",
     ],
+    precompile = False,
 )
 
 ic_low_level_library(
@@ -49,6 +54,7 @@ ic_low_level_library(
     deps = [
         ":memory",
     ],
+    precompile = False,
 )
 
 ic_low_level_library(
@@ -64,6 +70,8 @@ ic_low_level_library(
         "//stdlib/c:stdlib",
         "//stdlib/c:stdio",
         "//stdlib/c:string",
+        "//stdlib/c:types",
         "//stdlib/math",
     ],
+    precompile = False,
 )

@@ -314,35 +314,22 @@ struct MoveInitInstruction
   std::terminate();
 }
 
-struct LoadSymbolInstruction
-    : base::Extend<LoadSymbolInstruction>::With<base::BaseSerializeExtension,
-                                                DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat =
-      "%3$s = load-symbol %1$s: %2$s";
+struct LoadDataSymbolInstruction
+    : base::Extend<LoadDataSymbolInstruction>::With<
+          base::BaseSerializeExtension, DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = load-symbol %1$s";
 
   void Apply(interpreter::ExecutionContext& ctx) const {
-    // TODO: We could probably extract this into two separate instructions (one
-    // for functions and one for pointers) so that we can surface errors during
-    // code-gen without the UNREACHABLE.
-    if (auto* fn_type = type.if_as<type::Function>()) {
-      auto sym = interpreter::LoadFunctionSymbol(name);
-      if (not sym.ok()) { FatalInterpreterError(sym.status().message()); }
-      ctx.current_frame().set(result, ir::Fn(ir::ForeignFn(*sym, fn_type)));
-    } else if (type.is<type::Pointer>()) {
-      absl::StatusOr<void*> sym = interpreter::LoadDataSymbol(name);
-      if (not sym.ok()) { FatalInterpreterError(sym.status().message()); }
-      ctx.current_frame().set(result, ir::Addr(*sym));
-    } else {
-      UNREACHABLE(type.to_string());
-    }
+    absl::StatusOr<void*> sym = interpreter::LoadDataSymbol(name);
+    if (not sym.ok()) { FatalInterpreterError(sym.status().message()); }
+    ctx.current_frame().set(result, ir::Addr(*sym));
   }
 
-  friend void BaseTraverse(Inliner& inl, LoadSymbolInstruction& inst) {
+  friend void BaseTraverse(Inliner& inl, LoadDataSymbolInstruction& inst) {
     inl(inst.result);
   }
 
   std::string name;
-  type::Type type;
   Reg result;
 };
 

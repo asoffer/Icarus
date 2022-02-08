@@ -8,6 +8,7 @@
 #include "diagnostic/consumer/buffering.h"
 #include "diagnostic/consumer/consumer.h"
 #include "module/importer.h"
+#include "module/shared_context.h"
 #include "type/typed_value.h"
 
 namespace compiler {
@@ -18,6 +19,7 @@ struct PersistentResources {
   CompiledModule* module;
   diagnostic::DiagnosticConsumer* diagnostic_consumer;
   module::Importer* importer;
+  module::SharedContext* shared_context;
   core::Arch architecture = core::Host;
 };
 

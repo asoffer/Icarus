@@ -15,19 +15,21 @@ namespace type {
 
 struct Primitive : LegacyType {
  public:
-  enum class BasicType : uint8_t {
+  enum class Kind : uint8_t {
 #define PRIMITIVE_MACRO(EnumName, name) EnumName,
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
   };
 
-  constexpr Primitive(BasicType pt)
+  constexpr Primitive(Kind pt)
       : LegacyType(IndexOf<Primitive>(),
                    LegacyType::Flags{.is_default_initializable = 1,
                                      .is_copyable              = 1,
                                      .is_movable               = 1,
                                      .has_destructor           = 0}),
-        type_(pt) {}
+        kind_(pt) {}
+
+  Kind kind() const { return kind_; }
 
   template <typename Fn>
   auto Apply(Fn &&fn) const {
@@ -58,43 +60,43 @@ struct Primitive : LegacyType {
 
   bool is_big() const override { return false; }
 
-  BasicType type_;
-
  private:
+  Kind kind_;
+
   template <typename... Ts, typename Fn>
   decltype(std::declval<Fn>().template operator()<base::first_t<Ts...>>())
   ApplyImpl(Fn &&fn) const;
 };
 
-namespace internal {
+namespace internal_primitive {
 
 inline base::Global kPrimitiveArray = std::array{
-    Primitive(Primitive::BasicType::U8),
-    Primitive(Primitive::BasicType::U16),
-    Primitive(Primitive::BasicType::U32),
-    Primitive(Primitive::BasicType::U64),
-    Primitive(Primitive::BasicType::Integer),
-    Primitive(Primitive::BasicType::I8),
-    Primitive(Primitive::BasicType::I16),
-    Primitive(Primitive::BasicType::I32),
-    Primitive(Primitive::BasicType::I64),
-    Primitive(Primitive::BasicType::F32),
-    Primitive(Primitive::BasicType::F64),
-    Primitive(Primitive::BasicType::Bool),
-    Primitive(Primitive::BasicType::Char),
-    Primitive(Primitive::BasicType::Byte),
-    Primitive(Primitive::BasicType::Type_),
-    Primitive(Primitive::BasicType::Module),
-    Primitive(Primitive::BasicType::ScopeContext),
-    Primitive(Primitive::BasicType::UnboundScope),
-    Primitive(Primitive::BasicType::NullPtr),
-    Primitive(Primitive::BasicType::EmptyArray),
-    Primitive(Primitive::BasicType::Label),
-    Primitive(Primitive::BasicType::Interface),
-    Primitive(Primitive::BasicType::Void),
+    Primitive(Primitive::Kind::U8),
+    Primitive(Primitive::Kind::U16),
+    Primitive(Primitive::Kind::U32),
+    Primitive(Primitive::Kind::U64),
+    Primitive(Primitive::Kind::Integer),
+    Primitive(Primitive::Kind::I8),
+    Primitive(Primitive::Kind::I16),
+    Primitive(Primitive::Kind::I32),
+    Primitive(Primitive::Kind::I64),
+    Primitive(Primitive::Kind::F32),
+    Primitive(Primitive::Kind::F64),
+    Primitive(Primitive::Kind::Bool),
+    Primitive(Primitive::Kind::Char),
+    Primitive(Primitive::Kind::Byte),
+    Primitive(Primitive::Kind::Type_),
+    Primitive(Primitive::Kind::Module),
+    Primitive(Primitive::Kind::ScopeContext),
+    Primitive(Primitive::Kind::UnboundScope),
+    Primitive(Primitive::Kind::NullPtr),
+    Primitive(Primitive::Kind::EmptyArray),
+    Primitive(Primitive::Kind::Label),
+    Primitive(Primitive::Kind::Interface),
+    Primitive(Primitive::Kind::Void),
 };
 
-}  // namespace internal
+}  // namespace internal_primitive
 
 template <typename... Ts, typename Fn>
 decltype(std::declval<Fn>().template operator()<base::first_t<Ts...>>())
@@ -104,35 +106,41 @@ Primitive::ApplyImpl(Fn &&fn) const {
   // Because primitive types are unique, we can compare the address to
   // `kPrimitiveArray->data()` and use the offset to index into a collection of
   // function of our own creation.
-  int index = static_cast<int>(this - internal::kPrimitiveArray->data());
+  int index =
+      static_cast<int>(this - internal_primitive::kPrimitiveArray->data());
   return std::array{absl::FunctionRef<return_type()>([&] {
     return std::forward<Fn>(fn).template operator()<Ts>();
   })...}[index]();
 }
 
-inline Type U8           = &(*internal::kPrimitiveArray)[0];
-inline Type U16          = &(*internal::kPrimitiveArray)[1];
-inline Type U32          = &(*internal::kPrimitiveArray)[2];
-inline Type U64          = &(*internal::kPrimitiveArray)[3];
-inline Type Integer      = &(*internal::kPrimitiveArray)[4];
-inline Type I8           = &(*internal::kPrimitiveArray)[5];
-inline Type I16          = &(*internal::kPrimitiveArray)[6];
-inline Type I32          = &(*internal::kPrimitiveArray)[7];
-inline Type I64          = &(*internal::kPrimitiveArray)[8];
-inline Type F32          = &(*internal::kPrimitiveArray)[9];
-inline Type F64          = &(*internal::kPrimitiveArray)[10];
-inline Type Bool         = &(*internal::kPrimitiveArray)[11];
-inline Type Char         = &(*internal::kPrimitiveArray)[12];
-inline Type Byte         = &(*internal::kPrimitiveArray)[13];
-inline Type Type_        = &(*internal::kPrimitiveArray)[14];
-inline Type Module       = &(*internal::kPrimitiveArray)[15];
-inline Type ScopeContext = &(*internal::kPrimitiveArray)[16];
-inline Type UnboundScope = &(*internal::kPrimitiveArray)[17];
-inline Type NullPtr      = &(*internal::kPrimitiveArray)[18];
-inline Type EmptyArray   = &(*internal::kPrimitiveArray)[19];
-inline Type Label        = &(*internal::kPrimitiveArray)[20];
-inline Type Interface    = &(*internal::kPrimitiveArray)[21];
-inline Type Void         = &(*internal::kPrimitiveArray)[22];
+inline Type U8           = &(*internal_primitive::kPrimitiveArray)[0];
+inline Type U16          = &(*internal_primitive::kPrimitiveArray)[1];
+inline Type U32          = &(*internal_primitive::kPrimitiveArray)[2];
+inline Type U64          = &(*internal_primitive::kPrimitiveArray)[3];
+inline Type Integer      = &(*internal_primitive::kPrimitiveArray)[4];
+inline Type I8           = &(*internal_primitive::kPrimitiveArray)[5];
+inline Type I16          = &(*internal_primitive::kPrimitiveArray)[6];
+inline Type I32          = &(*internal_primitive::kPrimitiveArray)[7];
+inline Type I64          = &(*internal_primitive::kPrimitiveArray)[8];
+inline Type F32          = &(*internal_primitive::kPrimitiveArray)[9];
+inline Type F64          = &(*internal_primitive::kPrimitiveArray)[10];
+inline Type Bool         = &(*internal_primitive::kPrimitiveArray)[11];
+inline Type Char         = &(*internal_primitive::kPrimitiveArray)[12];
+inline Type Byte         = &(*internal_primitive::kPrimitiveArray)[13];
+inline Type Type_        = &(*internal_primitive::kPrimitiveArray)[14];
+inline Type Module       = &(*internal_primitive::kPrimitiveArray)[15];
+inline Type ScopeContext = &(*internal_primitive::kPrimitiveArray)[16];
+inline Type UnboundScope = &(*internal_primitive::kPrimitiveArray)[17];
+inline Type NullPtr      = &(*internal_primitive::kPrimitiveArray)[18];
+inline Type EmptyArray   = &(*internal_primitive::kPrimitiveArray)[19];
+inline Type Label        = &(*internal_primitive::kPrimitiveArray)[20];
+inline Type Interface    = &(*internal_primitive::kPrimitiveArray)[21];
+inline Type Void         = &(*internal_primitive::kPrimitiveArray)[22];
+
+inline Type MakePrimitive(Primitive::Kind k) {
+  return &(*internal_primitive::kPrimitiveArray)
+      [static_cast<std::underlying_type_t<Primitive::Kind>>(k)];
+}
 
 inline bool IsNumeric(Type t) {
   auto const *p = t.if_as<Primitive>();
