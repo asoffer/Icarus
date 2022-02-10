@@ -22,6 +22,7 @@
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
 #include "diagnostic/consumer/streaming.h"
+#include "frontend/lex/lex.h"
 #include "frontend/parse.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/subroutine.h"
@@ -97,10 +98,11 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
       .shared_context      = &shared_context,
   };
 
-  auto parsed_nodes = frontend::Parse(file_content, diag);
-  auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
-  ASSIGN_OR(return 1,  //
-                   auto main_fn, CompileModule(context, resources, nodes));
+  ASSIGN_OR(return 1, auto lexemes, frontend::Lex(file_content, diag));
+  auto module = frontend::ParseModule(lexemes.lexemes_);
+  if (not module) { return 1; }
+  base::PtrSpan nodes = exec_mod.set_module(std::move(*module));
+  ASSIGN_OR(return 1, auto main_fn, CompileModule(context, resources, nodes));
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
 

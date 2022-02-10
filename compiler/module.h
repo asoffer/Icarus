@@ -9,7 +9,9 @@ namespace compiler {
 
 struct CompiledModule : module::Module {
   explicit CompiledModule(std::string_view content, Context *context)
-      : context_(ASSERT_NOT_NULL(context)), content_(content), module_(this) {
+      : context_(ASSERT_NOT_NULL(context)),
+        content_(content),
+        module_(this, content) {
     context_->set_qt_callback(
         [&](ast::Declaration::Id const *id, type::QualType qt) {
           if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
@@ -40,6 +42,11 @@ struct CompiledModule : module::Module {
   template <std::input_iterator Iter>
   base::PtrSpan<ast::Node const> insert(Iter b, Iter e) {
     return module_.insert(b, e);
+  }
+
+  base::PtrSpan<ast::Node const> set_module(ast::Module m) {
+    module_ = std::move(m);
+    return module_.stmts();
   }
 
   absl::Span<Module::SymbolInformation const> Exported(std::string_view name) {

@@ -20,7 +20,7 @@ struct char_range {
 
   constexpr char const *data() const { return head_; }
 
-  constexpr size_t size() const { return head_ != tail_; }
+  constexpr size_t size() const { return tail_ - head_; }
   constexpr bool empty() const { return head_ == tail_; }
 
   constexpr char const *begin() const { return head_; }
@@ -59,21 +59,26 @@ inline constexpr std::array<char_bits, 256> kCharBitsTable = [] {
   std::array<char_bits, 256> result{};
   for (int n = 0; n < 256; ++n) {
     if ('a' <= n and n <= 'z') {
-      result[n].alpha = true;
+      result[n].alpha     = true;
+      result[n].printable = true;
       if (n <= 'f') { result[n].hex_digit = true; }
     } else if ('A' <= n and n <= 'Z') {
       result[n].alpha = true;
       result[n].upper = true;
       if (n <= 'F') { result[n].hex_digit = true; }
+      result[n].printable = true;
     } else if ('0' <= n and n <= '9') {
       result[n].digit     = true;
       result[n].hex_digit = true;
+      result[n].printable = true;
     } else if (n == '\n' or n == '\r') {
       result[n].horizontal_whitespace = true;
+      result[n].printable             = true;
     } else if (n == ' ' or n == '\t') {
       // Note: Vertical tabs are not considered valid as either horizontal or
       // vertical whitespace.
       result[n].vertical_whitespace = true;
+      result[n].printable           = true;
     } else {
       result[n].printable = (n > 31 and n < 127);
     }

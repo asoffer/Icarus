@@ -30,9 +30,19 @@ struct MaxLexableBytesExceeded {
   size_t length;
 };
 
+struct SingleBackslash {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "single-backslash";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Single backslash character encountered."));
+  }
+};
+
 struct HashFollowedByWhitespace {
   static constexpr std::string_view kCategory = "lex";
-  static constexpr std::string_view kName     = "max-lexable-bytes-exceeded";
+  static constexpr std::string_view kName     = "hash-followed-by-whitespace";
 
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
@@ -221,7 +231,10 @@ std::optional<Lexeme> ConsumeStringLiteral(
       case '\0': break;
       case '\\': escaped = not escaped; break;
       case '"':
-        if (not escaped) { goto end_loop; }
+        if (not escaped) {
+          ++p;
+          goto end_loop;
+        }
         [[fallthrough]];
       default: escaped = false;
     }
@@ -298,7 +311,7 @@ std::optional<Lexeme> ConsumeOneLexeme(
   ASSERT(range.size() != 0);
 
   char c = range[0];
-  if (IsDigit(c) or c == '.') {
+  if (IsDigit(c)) {
     return ConsumeNumber(range, diagnostic_consumer);
   } else if (IsAlphaOrUnderscore(c)) {
     return ConsumeIdentifier(range);
@@ -311,6 +324,18 @@ std::optional<Lexeme> ConsumeOneLexeme(
   }
   switch (c) {
     case '"': return ConsumeStringLiteral(range, diagnostic_consumer);
+    case '\\':
+      if (range.size() > 1 and range[1] == '\\') {
+        return Lexeme(Lexeme::Kind::Newline, range.extract_prefix(2));
+      } else {
+        diagnostic_consumer.Consume(SingleBackslash{});
+        return std::nullopt;
+      }
+      if (range.size() > 1 and IsWhitespace(range[1])) {
+        diagnostic_consumer.Consume(HashFollowedByWhitespace{});
+        return std::nullopt;
+      }
+      return Lexeme(Lexeme::Kind::Hash, range.extract_prefix(1));
     case '#': {
       if (range.size() > 1 and IsWhitespace(range[1])) {
         diagnostic_consumer.Consume(HashFollowedByWhitespace{});

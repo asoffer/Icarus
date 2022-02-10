@@ -550,7 +550,8 @@ struct BuiltinFn : Expression {
 //  * `arg'func`
 struct Call : Expression {
   struct Argument {
-    explicit Argument(std::string_view name, std::unique_ptr<Expression> expr)
+    explicit Argument(std::string_view name            = "",
+                      std::unique_ptr<Expression> expr = nullptr)
         : name_(name), expr_(std::move(expr)) {}
 
     bool named() const { return not name_.empty(); }

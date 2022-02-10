@@ -68,6 +68,8 @@ struct Declaration : Expression {
 
   using Id = Declaration_Id;
 
+  explicit Declaration() : Expression(IndexOf<Declaration>(), "") {}
+
   explicit Declaration(std::string_view range, std::vector<Id> ids,
                        std::unique_ptr<Expression> type_expression,
                        std::unique_ptr<Expression> initial_val, Flags flags)

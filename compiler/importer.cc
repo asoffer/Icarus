@@ -15,6 +15,7 @@
 #include "compiler/context.h"
 #include "compiler/resources.h"
 #include "compiler/work_graph.h"
+#include "frontend/lex/lex.h"
 #include "frontend/parse.h"
 #include "module/shared_context.h"
 
@@ -144,8 +145,10 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
     module.scope().embed(&get(embedded_id));
   }
 
-  auto parsed_nodes = frontend::Parse(content, *diagnostic_consumer_);
-  auto nodes        = module.insert(parsed_nodes.begin(), parsed_nodes.end());
+  ASSIGN_OR(return ir::ModuleId::Invalid(),  //
+                   auto lexemes, frontend::Lex(content, *diagnostic_consumer_));
+  auto m = frontend::ParseModule(lexemes.lexemes_);
+  base::PtrSpan nodes = module.set_module(std::move(*m));
 
   PersistentResources resources{
       .work                = work_set_,
