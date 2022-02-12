@@ -3,7 +3,6 @@
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
 #include "compiler/module.h"
-#include "compiler/verify/assignment_and_initialization.h"
 #include "compiler/verify/common.h"
 #include "type/cast.h"
 #include "type/qual_type.h"
@@ -156,6 +155,21 @@ type::QualType VerifyDefaultInitialization(CompilationDataReference data,
   return qt;
 }
 
+bool VerifyInitialization(diagnostic::DiagnosticConsumer &diag,
+                          std::string_view view, type::QualType to,
+                          type::QualType from) {
+  if (not type::CanCastImplicitly(from.type(), to.type())) {
+    // TODO: Wire through the expressions relevant to this type so we can emit
+    // better error messages.
+    diag.Consume(InvalidCast{.from = from.type().to_string(),
+                             .to   = to.type().to_string(),
+                             .view = view});
+    return false;
+  } else {
+    return true;
+  }
+}
+
 // Verifies the type of a declaration of the form `x := y`.
 std::vector<type::QualType> VerifyInferred(CompilationDataReference data,
                                            ast::Declaration const *node) {
@@ -187,8 +201,7 @@ std::vector<type::QualType> VerifyInferred(CompilationDataReference data,
   if (inference_failure) { return {type::QualType::Error()}; }
 
   for (auto &qt : init_val_qts) {
-    if (not internal::VerifyInitialization(data.diag(), node->range(), qt,
-                                           qt)) {
+    if (not VerifyInitialization(data.diag(), node->range(), qt, qt)) {
       qt.MarkError();
     }
     qt.set_quals(quals);
@@ -204,8 +217,8 @@ type::QualType VerifyCustom(TypeVerifier &tv, ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(), auto qt,
                    VerifyDeclarationType(tv, node));
 
-  if (not init_val_qt.ok() or not internal::VerifyInitialization(
-                                  tv.diag(), node->range(), qt, init_val_qt)) {
+  if (not init_val_qt.ok() or
+      not VerifyInitialization(tv.diag(), node->range(), qt, init_val_qt)) {
     qt.MarkError();
   }
 

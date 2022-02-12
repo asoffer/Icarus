@@ -8,8 +8,6 @@ cc_library(
         "array_literal.cc",
         "array_type.cc",
         "assignment.cc",
-        "assignment_and_initialization.h",  # TODO: Merge with assignemnt
-        "assignment_and_initialization.cc",
         "binary_operator.cc",
         "block_node.cc",
         "call.cc",
@@ -117,17 +115,6 @@ cc_test(
     deps = [
         "//compiler",
         "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "assignment_and_initialization_test",
-    srcs = ["assignment_and_initialization_test.cc"],
-    deps = [
-        "//compiler",
-        "//diagnostic/consumer:trivial",
-        "//type:pointer",
         "@com_google_googletest//:gtest_main",
     ],
 )
