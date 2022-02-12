@@ -11,7 +11,7 @@
 namespace ast {
 
 base::Graph<core::DependencyNode<Declaration>> BuildParamDependencyGraph(
-    core::Params<std::unique_ptr<Declaration>> const &params);
+    core::Params<Declaration> const &params);
 
 }  // namespace ast
 

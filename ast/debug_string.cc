@@ -89,10 +89,10 @@ void DumpArguments(std::string *out, size_t indent,
 
 std::string indentation(size_t indent) { return std::string(2 * indent, ' '); }
 
-std::string ParametersToString(
-    core::Params<std::unique_ptr<Declaration>> const &params, size_t indent) {
+std::string ParametersToString(core::Params<Declaration> const &params,
+                               size_t indent) {
   return absl::StrJoin(params, ", ", [&](std::string *out, auto const &p) {
-    p.value->DebugStrAppend(out, indent);
+    p.value.DebugStrAppend(out, indent);
   });
 }
 
