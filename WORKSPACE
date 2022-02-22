@@ -15,3 +15,10 @@ http_archive(
   sha256 = "d27641a853c49d3e8d7b9bbced1ceb861336134cd148bf6db720a40ccde66516",
 )
 
+http_archive(
+    name = "github_nlohmann_json",
+    urls = ["https://github.com/nlohmann/json/archive/e4643d1f1b03fc7a1d7b65f17e012ca93680cad8.zip"],
+    sha256 = "1372f344749dd5dad917f96f49d9bf727495297f46fcb7ab998a1176d9504791",
+    strip_prefix = "json-e4643d1f1b03fc7a1d7b65f17e012ca93680cad8",
+    build_file = "//third_party:nlohmann_json.BUILD",
+)

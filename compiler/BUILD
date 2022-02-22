@@ -429,6 +429,7 @@ cc_binary(
         ":work_graph",
         "//base:log",
         "//base:untyped_buffer",
+        "//diagnostic/consumer:json",
         "//diagnostic/consumer:streaming",
         "//ir/interpreter:evaluate",
         "//ir:subroutine",
@@ -443,6 +444,7 @@ cc_binary(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:span",
+        "@github_nlohmann_json//:json",
     ],
 )
 

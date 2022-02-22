@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
 #include "absl/flags/flag.h"
@@ -21,12 +22,14 @@
 #include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
+#include "diagnostic/consumer/json.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/subroutine.h"
 #include "module/module.h"
 #include "module/shared_context.h"
+#include "nlohmann/json.hpp"
 #include "opt/opt.h"
 
 ABSL_FLAG(std::vector<std::string>, log, {},
@@ -43,13 +46,15 @@ ABSL_FLAG(std::vector<std::string>, implicitly_embedded_modules, {},
 ABSL_FLAG(std::string, module_map, "",
           "Filename holding information about the module-map describing the "
           "location precompiled modules");
-
+ABSL_FLAG(std::string, diagnostics, "console",
+          "Indicates how diagnostics should be emitted. Options: console "
+          "(default), or json.");
 namespace compiler {
 namespace {
 
-int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
-  frontend::SourceIndexer source_indexer;
-  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
+int Interpret(char const *file_name, absl::Span<char *> program_arguments,
+              frontend::SourceIndexer &source_indexer,
+              diagnostic::DiagnosticConsumer &diag) {
   auto content = LoadFileContent(file_name);
   if (not content.ok()) {
     diag.Consume(
@@ -126,6 +131,25 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
 }  // namespace
 }  // namespace compiler
 
+namespace {
+
+enum class DiagnosticOutputKind {
+  Console,
+  Json,
+};
+
+absl::StatusOr<DiagnosticOutputKind> GetDiagnosticOutputKind() {
+  std::string diagnostics = absl::GetFlag(FLAGS_diagnostics);
+  if (diagnostics == "console") { return DiagnosticOutputKind::Console; }
+  if (diagnostics == "json") { return DiagnosticOutputKind::Json; }
+  return absl::InvalidArgumentError(
+      absl::StrFormat("Invalid value for --diagnostics flag '%s'. Valid values "
+                      "are 'console' or 'json'\n",
+                      diagnostics));
+}
+
+}  // namespace
+
 bool HelpFilter(std::string_view module) {
   return absl::EndsWith(module, "/interpreter.cc");
 }
@@ -152,11 +176,33 @@ int main(int argc, char *argv[]) {
     ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
   }
 
-  if (args.size() < 2) {
-    std::cerr << "Missing required positional argument: source file"
-              << std::endl;
+  auto kind = GetDiagnosticOutputKind();
+  if (not kind.ok()) {
+    std::cerr << kind.status().message();
     return 1;
   }
+
+  if (args.size() < 2) {
+    std::cerr << "Missing required positional argument: source file";
+    return 1;
+  }
+
   absl::Span<char *> arguments = absl::MakeSpan(args).subspan(2);
-  return compiler::Interpret(args[1], arguments);
+
+  frontend::SourceIndexer source_indexer;
+  switch (*kind) {
+    case DiagnosticOutputKind::Console: {
+      diagnostic::StreamingConsumer diag(stderr, &source_indexer);
+      return compiler::Interpret(args[1], arguments, source_indexer, diag);
+    }
+    case DiagnosticOutputKind::Json: {
+      nlohmann::json json;
+      absl::Cleanup c = [&] {
+        if (not json.empty()) { std::cerr << json.dump(2); }
+      };
+      diagnostic::JsonConsumer diag(source_indexer, json);
+      return compiler::Interpret(args[1], arguments, source_indexer, diag);
+    }
+    default: UNREACHABLE();
+  }
 }

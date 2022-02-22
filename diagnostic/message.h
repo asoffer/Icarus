@@ -64,6 +64,7 @@ struct Text {
       : message_(absl::StrFormat(format, internal_text::Transform(args)...)) {}
 
   char const* c_str() const { return message_.c_str(); }
+  operator std::string const &() const { return message_; }
 
  private:
   std::string message_;
