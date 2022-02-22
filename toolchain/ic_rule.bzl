@@ -93,7 +93,8 @@ def _ic_library_impl(ctx):
                      ),
             outputs = [output],
             arguments = ["--byte_code={}".format(output.path),
-                         '--module_map=' + module_map_file.path,
+                         "--module_map=" + module_map_file.path,
+                         "--module_paths=stdlib",
                          "--"] + [
                 f.path for f in depset(transitive = [f.files for f in ctx.attr.srcs]).to_list()],
             progress_message = "Compiling {}".format(ctx.label.name),
@@ -186,7 +187,7 @@ def _ic_interpret_impl(ctx):
 
     cmd_template = '''
     #!/bin/bash
-    ./{interpreter} {src} --module_map={module_map} {module_paths}
+    ./{interpreter} {src} --module_map={module_map} --module_paths={module_paths}
     '''
     module_map = _merge_module_maps([
         t[IcarusInfo].module_map for t in target_deps if IcarusInfo in t
@@ -200,7 +201,7 @@ def _ic_interpret_impl(ctx):
             interpreter = interpreter,
             src = src,
             module_map = module_map_file.short_path,
-            module_paths = "--module_paths=stdlib",
+            module_paths = "stdlib",
         ),
         is_executable = True,
     )
