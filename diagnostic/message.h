@@ -44,24 +44,11 @@ struct SourceQuote {
   std::vector<Highlight> highlights;
 };
 
-namespace internal_text {
-
-template <typename T>
-inline T const& Transform(T const& value) {
-  return value;
-}
-
-std::string Transform(type::Type t);
-
-}  // namespace internal_text
-
 struct Text {
   explicit Text(std::string message) : message_(std::move(message)) {}
   template <typename... Args, std::enable_if_t<sizeof...(Args) != 0>* = nullptr>
-  explicit Text(absl::FormatSpec<std::decay_t<decltype(internal_text::Transform(
-                    std::declval<Args>()))>...> const& format,
-                Args const&... args)
-      : message_(absl::StrFormat(format, internal_text::Transform(args)...)) {}
+  explicit Text(absl::FormatSpec<Args...> const& format, Args const&... args)
+      : message_(absl::StrFormat(format, args...)) {}
 
   char const* c_str() const { return message_.c_str(); }
   operator std::string const &() const { return message_; }

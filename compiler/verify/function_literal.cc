@@ -7,6 +7,7 @@
 #include "compiler/module.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
+#include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
 #include "compiler/verify/verify.h"
 #include "type/cast.h"
@@ -28,7 +29,7 @@ struct ReturningNonType {
   }
 
   std::string_view view;
-  type::Type type;
+  std::string type;
 };
 
 struct NoReturnTypes {
@@ -56,8 +57,8 @@ struct ReturnTypeMismatch {
         actual, expected));
   }
 
-  type::Type actual;
-  type::Type expected;
+  std::string actual;
+  std::string expected;
 };
 
 struct ReturningWrongNumber {
@@ -180,7 +181,7 @@ type::QualType VerifyConcrete(CompilationDataReference data,
         // TODO: Declarations are given the type of the variable being declared.
         data.diag().Consume(ReturningNonType{
             .view = output->range(),
-            .type = result.type(),
+            .type = TypeForDiagnostic(output, data.context()),
         });
       }
     }
@@ -340,8 +341,12 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
     if (not type::CanCastImplicitly((*maybe_return_types)[i],
                                     fn_type.return_types()[i])) {
       error = true;
-      diag().Consume(ReturnTypeMismatch{.actual   = (*maybe_return_types)[i],
-                                        .expected = fn_type.return_types()[i]});
+      diag().Consume(ReturnTypeMismatch{
+          .actual =
+              (*maybe_return_types)[i].to_string(),  // TODO: Improve this.
+          .expected =
+              fn_type.return_types()[i].to_string(),  // TODO: Improve this.
+      });
     }
   }
 

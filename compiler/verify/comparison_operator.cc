@@ -1,4 +1,5 @@
 #include "compiler/common.h"
+#include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/common.h"
 #include "compiler/verify/verify.h"
 #include "type/array.h"
@@ -27,8 +28,8 @@ struct ComparingIncomparables {
                                               diagnostic::Style::ErrorText()));
   }
 
-  type::Type lhs;
-  type::Type rhs;
+  std::string lhs;
+  std::string rhs;
   std::string_view view;
 };
 
@@ -61,8 +62,8 @@ struct NoMatchingComparisonOperator {
                                               diagnostic::Style::ErrorText()));
   }
 
-  type::Type lhs;
-  type::Type rhs;
+  std::string lhs;
+  std::string rhs;
   std::string_view view;
 };
 
@@ -201,8 +202,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             case ComparisonKind::Equality: continue;
             case ComparisonKind::None:
               diag().Consume(ComparingIncomparables{
-                  .lhs  = lhs_qual_type.type(),
-                  .rhs  = rhs_qual_type.type(),
+                  .lhs  = TypeForDiagnostic(node->exprs()[i], context()),
+                  .rhs  = TypeForDiagnostic(node->exprs()[i+1], context()),
                   .view = node->binary_range(i),
               });
               qt.MarkError();
@@ -218,8 +219,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             case ComparisonKind::Equality:
             case ComparisonKind::None:
               diag().Consume(ComparingIncomparables{
-                  .lhs  = lhs_qual_type.type(),
-                  .rhs  = rhs_qual_type.type(),
+                  .lhs  = TypeForDiagnostic(node->exprs()[i], context()),
+                  .rhs  = TypeForDiagnostic(node->exprs()[i+1], context()),
                   .view = node->binary_range(i),
               });
               qt.MarkError();
@@ -230,8 +231,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       }
     } else {
       diag().Consume(NoMatchingComparisonOperator{
-          .lhs  = lhs_qual_type.type(),
-          .rhs  = rhs_qual_type.type(),
+          .lhs  = TypeForDiagnostic(node->exprs()[i], context()),
+          .rhs  = TypeForDiagnostic(node->exprs()[i + 1], context()),
           .view = node->binary_range(i),
       });
 

@@ -24,8 +24,8 @@ struct TypeMismatch {
                                               diagnostic::Style::ErrorText()));
   }
 
-  type::Type lhs_type;
-  type::Type rhs_type;
+  std::string lhs_type;
+  std::string rhs_type;
   std::string_view view;
 };
 
@@ -63,8 +63,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       if (first_lhs_error_index == -1) { first_lhs_error_index = i; }
     } else {
       if (qt.quals() >= type::Quals::Const()) {
-        diag().Consume(
-            AssigningToConstant{.to = qt.type(), .view = l->range()});
+        diag().Consume(AssigningToConstant{
+            .to = TypeForDiagnostic(l, context()), .view = l->range()});
       } else if (not(qt.quals() >= type::Quals::Ref())) {
         diag().Consume(AssigningToNonReference{.lhs = l->range()});
       }
@@ -105,8 +105,10 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     type::Type rhs_type = (*rhs_iter).type();
     if (not type::CanCastImplicitly(rhs_type, lhs_type)) {
       diag().Consume(TypeMismatch{
-          .lhs_type = lhs_type,
-          .rhs_type = rhs_type,
+          .lhs_type = TypeForDiagnostic(
+              node->lhs()[std::distance(lhs_qts.begin(), lhs_iter)], context()),
+          .rhs_type = TypeForDiagnostic(
+              node->rhs()[std::distance(rhs_qts.begin(), rhs_iter)], context()),
           // TODO: set the range to point more directly to the things we care
           // about.
           .view = node->range(),

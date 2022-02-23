@@ -3,6 +3,7 @@
 
 #include "ast/ast.h"
 #include "compiler/common.h"
+#include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/verify.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"
@@ -36,7 +37,7 @@ struct InvalidImport {
         diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  type::Type type;
+  std::string type;
   std::string_view view;
 };
 
@@ -52,7 +53,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   bool err = false;
   if (result.type() != type::Slc(type::Char)) {
     diag().Consume(
-        InvalidImport{.type = result.type(), .view = node->operand()->range()});
+        InvalidImport{.type = TypeForDiagnostic(node->operand(), context()),
+                      .view = node->operand()->range()});
     err = true;
   }
 

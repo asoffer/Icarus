@@ -21,7 +21,7 @@ struct DeclaringHoleAsNonModule {
         diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  type::Type type;
+  std::string type;
   std::string_view view;
 };
 
@@ -51,7 +51,7 @@ struct NoDefaultValue {
         diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  type::Type type;
+  std::string type;
   std::string_view view;
 };
 
@@ -134,7 +134,7 @@ type::QualType VerifyDeclarationType(CompilationDataReference data,
     // TODO: Not a type or *INTERFACE*
     data.diag().Consume(NotAType{
         .view = node->type_expr()->range(),
-        .type = type_expr_qt.type(),
+        .type = TypeForDiagnostic(node->type_expr(), data.context()),
     });
     return type::QualType::Error();
   }
@@ -148,7 +148,7 @@ type::QualType VerifyDefaultInitialization(CompilationDataReference data,
   if (not(node->flags() & ast::Declaration::f_IsFnParam) and
       not qt.type().get()->IsDefaultInitializable()) {
     data.diag().Consume(NoDefaultValue{
-        .type = qt.type(),
+        .type = TypeForDiagnostic(node, data.context()),
         .view = node->range(),
     });
   }
@@ -326,7 +326,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         }
       } else {
         diag().Consume(DeclaringHoleAsNonModule{
-            .type = node_qual_types[i].type(),
+            .type = TypeForDiagnostic(node, context()),
             .view = node->range(),
         });
         node_qual_types[i].MarkError();
