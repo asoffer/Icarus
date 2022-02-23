@@ -91,6 +91,20 @@ cc_test(
 )
 
 cc_library(
+    name = "flags",
+    hdrs = ["flags.h"],
+    srcs = ["flags.cc"],
+    deps = [
+        "//diagnostic/consumer",
+        "//diagnostic/consumer:json",
+        "//diagnostic/consumer:streaming",
+        "//frontend:source_indexer",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "importer",
     hdrs = ["importer.h"],
     srcs = ["importer.cc"],
@@ -102,7 +116,7 @@ cc_library(
         ":work_graph",
         "//module",
         "//module:precompiled",
-        "//diagnostic/consumer:streaming",
+        "//diagnostic/consumer",
         "//frontend:source_indexer",
         "//frontend:parse",
         "//ir/value:module_id",
@@ -373,12 +387,12 @@ cc_binary(
     name = "dump_cfg",
     srcs = ["dump_cfg.cc"],
     deps = [
+        ":flags",
         ":module",
         ":importer",
         ":work_graph",
         "//base:log",
         "//base:untyped_buffer",
-        "//diagnostic/consumer:streaming",
         "//ir/interpreter:evaluate",
         "//ir:subroutine",
         "//module",
@@ -397,6 +411,7 @@ cc_binary(
     name = "compile",
     srcs = ["main.cc"],
     deps = [
+        ":flags",
         ":module",
         ":importer",
         ":work_graph",
@@ -404,7 +419,6 @@ cc_binary(
         "//backend:llvm",
         "//base:no_destructor",
         "//base:untyped_buffer",
-        "//diagnostic/consumer:streaming",
         "//ir/interpreter:evaluate",
         "//ir:subroutine",
         "//module",
@@ -423,14 +437,13 @@ cc_binary(
     name = "interpret",
     srcs = ["interpreter.cc"],
     deps = [
+        ":flags",
         ":module",
         ":importer",
         ":instructions",
         ":work_graph",
         "//base:log",
         "//base:untyped_buffer",
-        "//diagnostic/consumer:json",
-        "//diagnostic/consumer:streaming",
         "//ir/interpreter:evaluate",
         "//ir:subroutine",
         "//module",

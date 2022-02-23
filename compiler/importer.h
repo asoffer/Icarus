@@ -10,7 +10,7 @@
 #include "compiler/context.h"
 #include "compiler/module.h"
 #include "compiler/work_item.h"
-#include "diagnostic/consumer/streaming.h"
+#include "diagnostic/consumer/consumer.h"
 #include "frontend/source_indexer.h"
 #include "ir/value/module_id.h"
 #include "module/importer.h"

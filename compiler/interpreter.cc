@@ -18,12 +18,11 @@
 #include "absl/types/span.h"
 #include "base/log.h"
 #include "base/untyped_buffer.h"
+#include "compiler/flags.h"
 #include "compiler/importer.h"
 #include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
-#include "diagnostic/consumer/json.h"
-#include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/subroutine.h"
@@ -46,9 +45,11 @@ ABSL_FLAG(std::vector<std::string>, implicitly_embedded_modules, {},
 ABSL_FLAG(std::string, module_map, "",
           "Filename holding information about the module-map describing the "
           "location precompiled modules");
+
 ABSL_FLAG(std::string, diagnostics, "console",
           "Indicates how diagnostics should be emitted. Options: console "
           "(default), or json.");
+
 namespace compiler {
 namespace {
 
@@ -131,25 +132,6 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
 }  // namespace
 }  // namespace compiler
 
-namespace {
-
-enum class DiagnosticOutputKind {
-  Console,
-  Json,
-};
-
-absl::StatusOr<DiagnosticOutputKind> GetDiagnosticOutputKind() {
-  std::string diagnostics = absl::GetFlag(FLAGS_diagnostics);
-  if (diagnostics == "console") { return DiagnosticOutputKind::Console; }
-  if (diagnostics == "json") { return DiagnosticOutputKind::Json; }
-  return absl::InvalidArgumentError(
-      absl::StrFormat("Invalid value for --diagnostics flag '%s'. Valid values "
-                      "are 'console' or 'json'\n",
-                      diagnostics));
-}
-
-}  // namespace
-
 bool HelpFilter(std::string_view module) {
   return absl::EndsWith(module, "/interpreter.cc");
 }
@@ -176,12 +158,6 @@ int main(int argc, char *argv[]) {
     ASSERT_NOT_NULL(dlopen(lib.c_str(), RTLD_LAZY));
   }
 
-  auto kind = GetDiagnosticOutputKind();
-  if (not kind.ok()) {
-    std::cerr << kind.status().message();
-    return 1;
-  }
-
   if (args.size() < 2) {
     std::cerr << "Missing required positional argument: source file";
     return 1;
@@ -190,19 +166,10 @@ int main(int argc, char *argv[]) {
   absl::Span<char *> arguments = absl::MakeSpan(args).subspan(2);
 
   frontend::SourceIndexer source_indexer;
-  switch (*kind) {
-    case DiagnosticOutputKind::Console: {
-      diagnostic::StreamingConsumer diag(stderr, &source_indexer);
-      return compiler::Interpret(args[1], arguments, source_indexer, diag);
-    }
-    case DiagnosticOutputKind::Json: {
-      nlohmann::json json;
-      absl::Cleanup c = [&] {
-        if (not json.empty()) { std::cerr << json.dump(2); }
-      };
-      diagnostic::JsonConsumer diag(source_indexer, json);
-      return compiler::Interpret(args[1], arguments, source_indexer, diag);
-    }
-    default: UNREACHABLE();
+  auto diag = compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
+  if (not diag.ok()) {
+    std::cerr << diag.status().message();
+    return 1;
   }
+  return compiler::Interpret(args[1], arguments, source_indexer, **diag);
 }

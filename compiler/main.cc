@@ -17,10 +17,10 @@
 #include "backend/llvm.h"
 #include "base/log.h"
 #include "base/untyped_buffer.h"
+#include "compiler/flags.h"
 #include "compiler/importer.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
-#include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/subroutine.h"
@@ -58,6 +58,9 @@ ABSL_FLAG(std::string, object_file, "",
 ABSL_FLAG(std::string, module_map, "",
           "Filename holding information about the module-map describing the "
           "location precompiled modules");
+ABSL_FLAG(std::string, diagnostics, "console",
+          "Indicates how diagnostics should be emitted. Options: console "
+          "(default), or json.");
 
 namespace compiler {
 namespace {
@@ -134,11 +137,15 @@ int CompileToObjectFile(CompiledModule const &module, ir::Subroutine const &fn,
 int Compile(char const *file_name, std::string const &output_byte_code,
             std::string const &output_object_file) {
   frontend::SourceIndexer source_indexer;
-  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
+  auto diag = compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
+  if (not diag.ok()) {
+    std::cerr << diag.status().message();
+    return 1;
+  }
 
   llvm::TargetMachine *target_machine;
   if (not output_object_file.empty()) {
-    target_machine = InitializeLlvm(diag);
+    target_machine = InitializeLlvm(**diag);
     if (not target_machine) { return 1; }
   }
 
@@ -150,7 +157,7 @@ int Compile(char const *file_name, std::string const &output_byte_code,
   compiler::WorkSet work_set;
   module::SharedContext shared_context;
   compiler::FileImporter importer(
-      &work_set, &diag, &source_indexer, *std::move(module_map),
+      &work_set, diag->get(), &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);
 
   if (not importer.SetImplicitlyEmbeddedModules(
@@ -160,7 +167,7 @@ int Compile(char const *file_name, std::string const &output_byte_code,
 
   auto content = LoadFileContent(file_name);
   if (not content.ok()) {
-    diag.Consume(
+    (*diag)->Consume(
         MissingModule{.source    = file_name,
                       .requestor = "",
                       .reason    = std::string(content.status().message())});
@@ -177,19 +184,19 @@ int Compile(char const *file_name, std::string const &output_byte_code,
     exec_mod.scope().embed(&importer.get(embedded_id));
   }
 
-  auto parsed_nodes = frontend::Parse(file_content, diag);
+  auto parsed_nodes = frontend::Parse(file_content, **diag);
   auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
 
   compiler::PersistentResources resources{
       .work                = &work_set,
       .module              = &exec_mod,
-      .diagnostic_consumer = &diag,
+      .diagnostic_consumer = diag->get(),
       .importer            = &importer,
       .shared_context      = &shared_context,
   };
   auto main_fn = CompileModule(context, resources, nodes);
 
-  if (diag.num_consumed() != 0) { return 1; }
+  if ((*diag)->num_consumed() != 0) { return 1; }
   if (not output_byte_code.empty()) {
     std::string s;
     module::ModuleWriter w(&s);

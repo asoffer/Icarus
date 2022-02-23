@@ -2,6 +2,10 @@
 
 namespace diagnostic {
 
+void JsonConsumer::Flush() {
+  std::fputs(std::exchange(json_, {}).dump().c_str(), out_);
+}
+
 void JsonConsumer::ConsumeImpl(std::string_view category, std::string_view name,
                                DiagnosticMessage &&diag) {
   nlohmann::json error{

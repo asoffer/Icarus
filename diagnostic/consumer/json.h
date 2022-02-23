@@ -11,18 +11,21 @@
 namespace diagnostic {
 
 struct JsonConsumer : DiagnosticConsumer {
-  explicit JsonConsumer(frontend::SourceIndexer& source_indexer,
-                        nlohmann::json& json)
-      : json_(json), source_indexer_(source_indexer) {}
+  explicit JsonConsumer(std::FILE* file,
+                        frontend::SourceIndexer& source_indexer)
+      : source_indexer_(source_indexer), out_(file) {}
 
-  ~JsonConsumer() override {}
+  ~JsonConsumer() override { Flush(); }
 
   void ConsumeImpl(std::string_view category, std::string_view name,
                    DiagnosticMessage&& diag) override;
 
+  void Flush();
+
  private:
-  nlohmann::json& json_;
+  nlohmann::json json_;
   frontend::SourceIndexer& source_indexer_;
+  std::FILE* out_;
 };
 
 }  // namespace diagnostic
