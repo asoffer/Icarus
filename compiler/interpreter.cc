@@ -104,7 +104,8 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
   };
 
   auto parsed_nodes = frontend::Parse(file_content, diag);
-  auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
+  if (diag.num_consumed() > 0) { return 1; }
+  auto nodes = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
   ASSIGN_OR(return 1,  //
                    auto main_fn, CompileModule(context, resources, nodes));
   // TODO All the functions? In all the modules?
@@ -159,7 +160,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (args.size() < 2) {
-    std::cerr << "Missing required positional argument: source file";
+    std::cerr << "Missing required positional argument: source file\n";
     return 1;
   }
 
