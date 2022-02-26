@@ -253,10 +253,13 @@ void CopyAssignmentEmitter::EmitAssignment(
   buffer.append(*from);
   EmitCast(current(), from.type(), t, buffer);
   t->Apply([&]<typename T>() {
-    current_block()->Append(ir::StoreInstruction<T>{
-        .value    = buffer.back().get<T>(),
-        .location = to,
-    });
+    if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      current_block()->Append(ir::CompileTime<ir::Action::CopyAssign, T>{
+          .from = from->get<ir::addr_t>(), .to = to});
+    } else {
+      current_block()->Append(ir::StoreInstruction<T>{
+          .value = buffer.back().get<T>(), .location = to});
+    }
   });
 }
 
@@ -267,10 +270,13 @@ void MoveAssignmentEmitter::EmitAssignment(
   buffer.append(*from);
   EmitCast(current(), from.type(), t, buffer);
   t->Apply([&]<typename T>() {
-    current_block()->Append(ir::StoreInstruction<T>{
-        .value    = buffer.back().get<T>(),
-        .location = to,
-    });
+    if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      current_block()->Append(ir::CompileTime<ir::Action::MoveAssign, T>{
+          .from = from->get<ir::addr_t>(), .to = to});
+    } else {
+      current_block()->Append(ir::StoreInstruction<T>{
+          .value = buffer.back().get<T>(), .location = to});
+    }
   });
 }
 

@@ -63,11 +63,11 @@ using TypeConstructorInstructions = ir::InstructionSet<
 
 struct instruction_set_t
     : ir::InstructionSet<
-          ir::CoreInstructions<bool, ir::Char, ir::Integer, uint8_t, int8_t,
-                               uint16_t, int16_t, uint32_t, int32_t, uint64_t,
-                               int64_t, float, double, type::Type, ir::addr_t,
-                               ir::Fn, ir::Scope, ir::ModuleId,
-                               ir::UnboundScope, interface::Interface>,
+          ir::CoreInstructions<bool, ir::Char, uint8_t, int8_t, uint16_t,
+                               int16_t, uint32_t, int32_t, uint64_t, int64_t,
+                               float, double, type::Type, ir::addr_t, ir::Fn,
+                               ir::Scope, ir::ModuleId, ir::UnboundScope,
+                               interface::Interface>,
           ir::SetReturnInstruction<ir::GenericFn>,
           ir::SetReturnInstruction<ir::ScopeContext>,
           ir::SetReturnInstruction<ir::Block>,
@@ -79,12 +79,12 @@ struct instruction_set_t
           ir::ModInstruction<uint16_t>, ir::ModInstruction<int16_t>,
           ir::ModInstruction<uint32_t>, ir::ModInstruction<int32_t>,
           ir::ModInstruction<uint64_t>, ir::ModInstruction<int64_t>,
-          EqualityComparisonInstructions<ir::Integer, bool, uint8_t, int8_t,
+          EqualityComparisonInstructions</*ir::Integer,*/ bool, uint8_t, int8_t,
                                          uint16_t, int16_t, uint32_t, int32_t,
                                          uint64_t, int64_t, float, double,
                                          type::Type, ir::addr_t>,
           OrderedComparisonInstructions<
-              ir::Integer, ir::Char, uint8_t, int8_t, uint16_t, int16_t,
+              /*ir::Integer,*/ ir::Char, uint8_t, int8_t, uint16_t, int16_t,
               uint32_t, int32_t, uint64_t, int64_t, float, double, ir::addr_t>,
           ir::NegInstruction<ir::Integer>, ir::NegInstruction<int8_t>,
           ir::NegInstruction<int16_t>, ir::NegInstruction<int32_t>,
@@ -141,7 +141,11 @@ struct instruction_set_t
               double(uint8_t), double(int8_t), double(uint16_t),
               double(int16_t), double(uint32_t), double(int32_t),
               double(uint64_t), double(int64_t), double(ir::Integer),
-              double(float)>,
+              double(float),
+              // integer from regular numeric primitives
+              ir::Integer(uint8_t), ir::Integer(int8_t), ir::Integer(uint16_t),
+              ir::Integer(int16_t), ir::Integer(uint32_t), ir::Integer(int32_t),
+              ir::Integer(uint64_t), ir::Integer(int64_t)>,
           ir::AndInstruction, ir::NotInstruction, type::XorFlagsInstruction,
           type::AndFlagsInstruction, type::OrFlagsInstruction,
           ir::LoadDataSymbolInstruction, type::ArrayInstruction,
@@ -150,7 +154,11 @@ struct instruction_set_t
           ir::CopyInitInstruction, ir::MoveInstruction, ir::CopyInstruction,
           type::SliceLengthInstruction, type::SliceDataInstruction,
           ir::DebugIrInstruction, BuiltinInstructions,
-          TypeConstructorInstructions, InsertBlockInstruction> {};
+          TypeConstructorInstructions, InsertBlockInstruction,
+          ir::CompileTime<ir::Action::CopyInit, ir::Integer>,
+          ir::CompileTime<ir::Action::MoveInit, ir::Integer>,
+          ir::CompileTime<ir::Action::CopyAssign, ir::Integer>,
+          ir::CompileTime<ir::Action::MoveAssign, ir::Integer>> {};
 
 void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
   writer.set_block(&block);

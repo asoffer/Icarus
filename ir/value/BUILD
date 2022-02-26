@@ -116,6 +116,7 @@ cc_library(
     name = "integer",
     hdrs = ["integer.h"],
     deps = [
+        "//base:serialize",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/strings",
     ],

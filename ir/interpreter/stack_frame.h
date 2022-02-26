@@ -87,6 +87,10 @@ struct StackFrame {
   base::untyped_buffer data_;
 };
 
+template <typename T>
+concept FitsInRegister = (sizeof(T) <= StackFrame::register_value_size) and
+                         std::is_trivially_copyable_v<T>;
+
 struct Stack {
   Stack();
 

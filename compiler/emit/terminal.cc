@@ -27,7 +27,8 @@ struct TerminalMatchError {
 
 void Compiler::EmitToBuffer(ast::Terminal const *node,
                             ir::PartialResultBuffer &out) {
-  if (node->type() == base::meta<ir::Slice>) {
+  if (node->type() == base::meta<ir::Slice> or
+      node->type() == base::meta<ir::Integer>) {
     out.append(node->value().raw().data());
   } else {
     out.append(node->value());

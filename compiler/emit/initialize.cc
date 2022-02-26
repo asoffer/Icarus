@@ -158,10 +158,14 @@ void DefaultInitializationEmitter::EmitInitialize(type::BufferPointer const *t,
 void DefaultInitializationEmitter::EmitInitialize(type::Primitive const *t,
                                                   ir::RegOr<ir::addr_t> addr) {
   t->Apply([&]<typename T>() {
-    current_block()->Append(ir::StoreInstruction<T>{
-        .value    = T{},
-        .location = addr,
-    });
+    if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      NOT_YET();
+    } else {
+      current_block()->Append(ir::StoreInstruction<T>{
+          .value    = T{},
+          .location = addr,
+      });
+    }
   });
 }
 
@@ -298,10 +302,15 @@ void MoveInitializationEmitter::EmitInitialize(
     type::Primitive const *t, ir::RegOr<ir::addr_t> addr,
     ir::PartialResultBuffer const &from) {
   t->Apply([&]<typename T>() {
-    current_block()->Append(ir::StoreInstruction<T>{
-        .value    = from.template get<T>(0),
-        .location = addr,
-    });
+    if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      current_block()->Append(ir::CompileTime<ir::Action::MoveInit, T>{
+          .from = from.get<ir::addr_t>(0), .to = addr});
+    } else {
+      current_block()->Append(ir::StoreInstruction<T>{
+          .value    = from.template get<T>(0),
+          .location = addr,
+      });
+    }
   });
 }
 
@@ -309,10 +318,15 @@ void CopyInitializationEmitter::EmitInitialize(
     type::Primitive const *t, ir::RegOr<ir::addr_t> addr,
     ir::PartialResultBuffer const &from) {
   t->Apply([&]<typename T>() {
-    current_block()->Append(ir::StoreInstruction<T>{
-        .value    = from.template get<T>(0),
-        .location = addr,
-    });
+    if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      current_block()->Append(ir::CompileTime<ir::Action::CopyInit, T>{
+          .from = from.get<ir::addr_t>(0), .to = addr});
+    } else {
+      current_block()->Append(ir::StoreInstruction<T>{
+          .value    = from.template get<T>(0),
+          .location = addr,
+      });
+    }
   });
 }
 
@@ -347,7 +361,6 @@ void CopyInitializationEmitter::EmitInitialize(
   current_block()->Append(ir::CopyInitInstruction{
       .type = t, .from = from.get<ir::addr_t>(0), .to = addr});
 }
-
 
 void MoveInitializationEmitter::EmitInitialize(
     type::Slice const *t, ir::RegOr<ir::addr_t> addr,

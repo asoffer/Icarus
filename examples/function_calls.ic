@@ -172,7 +172,7 @@ compile_time_arguments ::= () -> () {
 
   // One benefit of compile-time arguments is that they can be used in the
   // return type of a function.
-  default_int_array ::= (len :: i64) -> [len; i64] {
+  default_int_array ::= (len :: integer) -> [len; i64] {
     result: [len; i64]
     return result
   }

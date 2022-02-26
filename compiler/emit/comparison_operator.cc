@@ -74,54 +74,54 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
 
   } else {
     type::Type t                       = type::Meet(lhs.type(), rhs.type());
-    ir::PartialResultBuffer lhs_buffer = *lhs, rhs_buffer = *rhs;
-    EmitCast(c.current(), t, lhs.type(), lhs_buffer);
-    EmitCast(c.current(), t, rhs.type(), rhs_buffer);
+    ir::PartialResultBuffer lhs_buffer = std::move(*lhs);
+    ir::PartialResultBuffer rhs_buffer = std::move(*rhs);
+    EmitCast(c.current(), lhs.type(), t, lhs_buffer);
+    EmitCast(c.current(), rhs.type(), t, rhs_buffer);
+
     switch (op) {
       case frontend::Operator::Gt:
         std::swap(lhs_buffer, rhs_buffer);
         [[fallthrough]];
       case frontend::Operator::Lt:
-        return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
-                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, ir::addr_t>(
-            t, [&]<typename T>() -> ir::RegOr<bool> {
-              return c.current_block()->Append(
-                  ir::LtInstruction<T>{.lhs    = lhs_buffer.back().get<T>(),
-                                       .rhs    = rhs_buffer.back().get<T>(),
-                                       .result = c.current().subroutine->Reserve()});
-            });
+        return ApplyTypes<ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                          uint16_t, uint32_t, uint64_t, float, double,
+                          ir::addr_t>(t, [&]<typename T>() -> ir::RegOr<bool> {
+          return c.current_block()->Append(ir::LtInstruction<T>{
+              .lhs    = lhs_buffer.back().get<T>(),
+              .rhs    = rhs_buffer.back().get<T>(),
+              .result = c.current().subroutine->Reserve()});
+        });
 
       case frontend::Operator::Ge:
         std::swap(lhs_buffer, rhs_buffer);
         [[fallthrough]];
       case frontend::Operator::Le:
-        return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
-                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, ir::addr_t>(
-            t, [&]<typename T>() -> ir::RegOr<bool> {
-              return c.current_block()->Append(
-                  ir::LeInstruction<T>{.lhs    = lhs_buffer.back().get<T>(),
-                                       .rhs    = rhs_buffer.back().get<T>(),
-                                       .result = c.current().subroutine->Reserve()});
-            });
+        return ApplyTypes<ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                          uint16_t, uint32_t, uint64_t, float, double,
+                          ir::addr_t>(t, [&]<typename T>() -> ir::RegOr<bool> {
+          return c.current_block()->Append(ir::LeInstruction<T>{
+              .lhs    = lhs_buffer.back().get<T>(),
+              .rhs    = rhs_buffer.back().get<T>(),
+              .result = c.current().subroutine->Reserve()});
+        });
       case frontend::Operator::Eq:
-        return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
-                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, type::Type, ir::addr_t>(t, [&]<typename T>() {
-          return c.current_block()->Append(
-              ir::EqInstruction<T>{.lhs    = lhs->back().get<T>(),
-                                   .rhs    = rhs->back().get<T>(),
-                                   .result = c.current().subroutine->Reserve()});
+        return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
+                          uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                          type::Type, ir::addr_t>(t, [&]<typename T>() {
+          return c.current_block()->Append(ir::EqInstruction<T>{
+              .lhs    = lhs_buffer.back().get<T>(),
+              .rhs    = rhs_buffer.back().get<T>(),
+              .result = c.current().subroutine->Reserve()});
         });
       case frontend::Operator::Ne:
-        return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
-                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, type::Type, ir::addr_t>(t, [&]<typename T>() {
-          return c.current_block()->Append(
-              ir::NeInstruction<T>{.lhs    = lhs->back().get<T>(),
-                                   .rhs    = rhs->back().get<T>(),
-                                   .result = c.current().subroutine->Reserve()});
+        return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
+                          uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                          type::Type, ir::addr_t>(t, [&]<typename T>() {
+          return c.current_block()->Append(ir::NeInstruction<T>{
+              .lhs    = lhs_buffer.back().get<T>(),
+              .rhs    = rhs_buffer.back().get<T>(),
+              .result = c.current().subroutine->Reserve()});
         });
       default: UNREACHABLE();
     }

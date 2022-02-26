@@ -34,10 +34,17 @@ void Apply(type::Typed<ast::Expression const *> lhs,
   auto lhs_result = EmitCast(c, lhs, meet);
   auto rhs_result = EmitCast(c, rhs, meet);
   ApplyTypes<Ts...>(meet, [&]<typename T>() {
-    out.append(c.current_block()->Append(
-        Op<T>{.lhs    = lhs_result.back().get<T>(),
-              .rhs    = rhs_result.back().get<T>(),
-              .result = c.current().subroutine->Reserve()}));
+    if constexpr (interpreter::FitsInRegister<T>) {
+      out.append(c.current_block()->Append(
+          Op<T>{.lhs    = lhs_result.back().get<T>(),
+                .rhs    = rhs_result.back().get<T>(),
+                .result = c.current().subroutine->Reserve()}));
+    } else {
+      out.append(c.current_block()->Append(
+          Op<T>{.lhs    = lhs_result.back().get<ir::addr_t>(),
+                .rhs    = rhs_result.back().get<ir::addr_t>(),
+                .result = c.state().TmpAlloca(meet)}));
+    }
   });
 }
 
@@ -394,8 +401,8 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
             .addr   = lhs_lval,
             .result = current().subroutine->Reserve(),
         });
-        ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                   uint16_t, uint32_t, uint64_t, float, double>(
+        ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                   uint32_t, uint64_t, float, double>(
             lhs_type, [&]<typename T>() {
               current_block()->Append(ir::StoreInstruction<T>{
                   .value    = current_block()->Append(ir::AddInstruction<T>{
@@ -436,8 +443,8 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
             .addr   = lhs_lval,
             .result = current().subroutine->Reserve(),
         });
-        ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                   uint16_t, uint32_t, uint64_t, float, double>(
+        ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                   uint32_t, uint64_t, float, double>(
             lhs_type, [&]<typename T>() {
               current_block()->Append(ir::StoreInstruction<T>{
                   .value    = current_block()->Append(ir::SubInstruction<T>{
@@ -484,8 +491,8 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
           .addr   = lhs_lval,
           .result = current().subroutine->Reserve(),
       });
-      ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                 uint16_t, uint32_t, uint64_t, float, double>(
+      ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
+                 uint64_t, float, double>(
           lhs_type, [&]<typename T>() {
             current_block()->Append(ir::StoreInstruction<T>{
                 .value    = current_block()->Append(ir::DivInstruction<T>{
@@ -508,8 +515,8 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
           .addr   = lhs_lval,
           .result = current().subroutine->Reserve(),
       });
-      ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                 uint16_t, uint32_t, uint64_t>(lhs_type, [&]<typename T>() {
+      ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
+                 uint64_t>(lhs_type, [&]<typename T>() {
         current_block()->Append(ir::StoreInstruction<T>{
             .value = current_block()->Append(
                 ir::ModInstruction<T>{.lhs    = loaded,

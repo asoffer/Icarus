@@ -49,23 +49,19 @@ std::pair<ir::Subroutine, ir::ByteCode> MakeThunk(Compiler &c,
   ir::Subroutine fn(type::Func({}, {type}));
   c.push_current(&fn);
   absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-  // TODO this is essentially a copy of the body of
-  // FunctionLiteral::EmitToBuffer Factor these out together.
   c.current_block() = fn.entry();
 
   ir::PartialResultBuffer buffer;
   c.EmitToBuffer(expr, buffer);
 
-  // TODO: Treating slices specially is a big hack. We need to fix treating
-  // these things special just because they're big.
   if (type.is_big()) {
     ASSERT(buffer.num_entries() != 0);
     // TODO: guaranteed move-elision
     MoveInitializationEmitter emitter(c);
     emitter(type, ir::Reg::Out(0), buffer);
   } else {
-    ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
-               uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
+    ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+               uint16_t, uint32_t, uint64_t, float, double, type::Type,
                ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
                ir::UnboundScope, ir::ScopeContext, ir::Block,
                interface::Interface>(type, [&]<typename T>() {

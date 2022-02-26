@@ -58,7 +58,7 @@ struct Primitive : LegacyType {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
-  bool is_big() const override { return false; }
+  bool is_big() const override;
 
  private:
   Kind kind_;

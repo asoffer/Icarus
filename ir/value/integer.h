@@ -8,13 +8,14 @@
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
+#include "base/serialize.h"
 
 namespace ir {
 
 // TODO: Implement arbitrary-precision integers
 struct Integer {
   Integer(int64_t n = 0) : data_(n) {}
-
+  ~Integer() {}
   auto operator<=>(Integer const &) const = default;
 
   template <typename H>
@@ -47,18 +48,23 @@ struct Integer {
     return {true};
   }
 
+  friend void BaseSerialize(auto &s, Integer n) { base::Serialize(s, n.data_); }
+  friend bool BaseDeserialize(auto &d, Integer &n) {
+    return base::Deserialize(d, n.data_);
+  }
+
   friend std::ostream &operator<<(std::ostream &os, Integer const &n) {
     absl::Format(&os, "%d", n);
     return os;
   }
 
   template <std::integral T>
-  T as_type() {
+  T as_type() const {
     return data_;
   }
 
   template <std::floating_point T>
-  T as_type() {
+  T as_type() const {
     return data_;
   }
 

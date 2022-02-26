@@ -17,10 +17,17 @@ ir::Reg RegisterReferencing(SubroutineBlockReference current, type::Type t,
   } else {
     if (auto const *p = t.if_as<type::Primitive>()) {
       return p->Apply([&]<typename T>() {
-        return current.block->Append(ir::RegisterInstruction<T>{
-            .operand = value.get<T>(),
-            .result  = current.subroutine->Reserve(),
-        });
+        if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+          return current.block->Append(ir::RegisterInstruction<ir::addr_t>{
+              .operand = value.get<ir::addr_t>(),
+              .result  = current.subroutine->Reserve(),
+          });
+        } else {
+          return current.block->Append(ir::RegisterInstruction<T>{
+              .operand = value.get<T>(),
+              .result  = current.subroutine->Reserve(),
+          });
+        }
       });
     } else if (auto const *e = t.if_as<type::Enum>()) {
       return current.block->Append(
@@ -181,7 +188,7 @@ void ApplyImplicitCasts(CompilationDataReference ref, type::Type from,
       if constexpr (std::is_integral_v<T>) {
         ir::RegOr<T> result =
             ref.current_block()->Append(ir::CastInstruction<T(ir::Integer)>{
-                .value  = buffer.back().get<ir::Integer>(),
+                .value  = buffer.back().get<ir::addr_t>(),
                 .result = ref.current().subroutine->Reserve(),
             });
         buffer.pop_back();

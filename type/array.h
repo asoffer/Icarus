@@ -102,9 +102,12 @@ struct ArrayInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = array %1$s %2$s";
   using length_t                                 = Array::length_t;
 
-  Type Resolve() const { return Arr(length.value(), data_type.value()); }
+  Type Resolve() const {
+    return Arr(*reinterpret_cast<length_t const *>(length.value()),
+               data_type.value());
+  }
 
-  ir::RegOr<length_t> length;
+  ir::RegOr<ir::addr_t> length;
   ir::RegOr<Type> data_type;
   ir::Reg result;
 };

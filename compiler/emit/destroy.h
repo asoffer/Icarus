@@ -60,7 +60,12 @@ struct DestructionEmitter : CompilationDataReference {
   void EmitDestroy(type::Function const *t, ir::RegOr<ir::addr_t> addr) {}
   void EmitDestroy(type::Pointer const *t, ir::RegOr<ir::addr_t> addr) {}
   void EmitDestroy(type::BufferPointer const *t, ir::RegOr<ir::addr_t> addr) {}
-  void EmitDestroy(type::Primitive const *t, ir::RegOr<ir::addr_t> addr) {}
+  void EmitDestroy(type::Primitive const *t, ir::RegOr<ir::addr_t> addr) {
+    if (type::Type(t) == type::Integer) {
+      current_block()->Append(
+          ir::CompileTime<ir::Action::Destroy, ir::Integer>{.addr = addr});
+    }
+  }
   void EmitDestroy(type::Slice const *t, ir::RegOr<ir::addr_t> addr) {}
   void EmitDestroy(type::Struct const *t, ir::RegOr<ir::addr_t> addr) {
     if (not t->HasDestructor()) { return; }

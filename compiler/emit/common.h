@@ -87,10 +87,13 @@ template <typename FromType, typename ToType>
 void EmitCast(SubroutineBlockReference &ref, ir::PartialResultBuffer &buffer) {
   if constexpr (base::meta<FromType> == base::meta<ToType>) {
     return;
-  } else if constexpr (base::meta<ToType> == base::meta<ir::Integer>) {
-    auto result = buffer.back().get<ToType>().value();
+  } else if constexpr (base::meta<FromType> == base::meta<ir::Integer>) {
+    auto result = ref.block->Append(ir::CastInstruction<ToType(FromType)>{
+        .value  = buffer.back().template get<ir::addr_t>(),
+        .result = ref.subroutine->Reserve(),
+    });
     buffer.pop_back();
-    buffer.append(ir::Integer(result));
+    buffer.append(result);
   } else {
     auto result = ref.block->Append(ir::CastInstruction<ToType(FromType)>{
         .value  = buffer.back().template get<FromType>(),

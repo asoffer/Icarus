@@ -199,7 +199,7 @@ struct ExecutionContext {
         LOG("CallInstruction", "%s", inst);
         ir::Fn f                      = ctx.resolve(inst.func());
         type::Function const *fn_type = f.type();
-        LOG("CallInstruction", "%s: %s", f, *fn_type);
+        LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
 
         StackFrame frame(f, ctx.stack());
 
