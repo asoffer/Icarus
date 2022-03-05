@@ -60,9 +60,3 @@ ic_interpret(
     name = "string_demo",
     src = "string_demo.ic",
 )
-
-ic_low_level_library(
-    name = "test",
-    srcs = ["test.ic"],
-    deps = ["//stdlib/c:stdlib"],
-)
