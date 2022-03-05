@@ -30,7 +30,10 @@ struct ContextHolder {
 struct TestModule : ContextHolder, compiler::CompiledModule {
   TestModule()
       : ContextHolder(),
-        compiler::CompiledModule("", &ctx_),
+        compiler::CompiledModule(
+            absl::StrCat("test-module-", test_module_count.fetch_add(
+                                             1, std::memory_order_relaxed)),
+            "", &ctx_),
         work_graph_(compiler::PersistentResources{
             .work                = &work_set,
             .module              = this,
@@ -156,7 +159,10 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
   frontend::SourceIndexer indexer_;
   module::SharedContext shared_context_;
   compiler::WorkGraph work_graph_;
+  static std::atomic<int> test_module_count;
 };
+
+inline std::atomic<int> TestModule::test_module_count = 0;
 
 }  // namespace test
 

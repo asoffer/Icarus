@@ -16,6 +16,8 @@ namespace module {
 // Represents a builtin module of symbols predefined, rather than those coming
 // from a source file.
 struct BuiltinModule final : Module {
+  BuiltinModule() : Module("~builtin") {}
+
   absl::Span<SymbolInformation const> Exported(std::string_view name) override {
     auto iter = symbols_.find(name);
     if (iter == symbols_.end()) { return {}; }

@@ -38,6 +38,8 @@ struct Opaque : LegacyType {
 
   bool IsDefaultInitializable() const { UNREACHABLE(); }
 
+  uintptr_t numeric_id() const { return reinterpret_cast<uintptr_t>(this); }
+
   module::Module const *defining_module() const { return mod_; }
 
  private:

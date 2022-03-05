@@ -1,6 +1,7 @@
 #ifndef ICARUS_MODULE_MODULE_H
 #define ICARUS_MODULE_MODULE_H
 
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -22,6 +23,8 @@ enum class Linkage { Internal, External };
 // Represents a unit of compilation, beyond which all intercommunication must be
 // explicit.
 struct Module : base::Cast<Module> {
+  explicit Module(std::string identifier)
+      : identifier_(std::move(identifier)) {}
   virtual ~Module() {}
 
   struct SymbolInformation {
@@ -33,11 +36,18 @@ struct Module : base::Cast<Module> {
     ast::Declaration::Id const *id;
   };
 
+  // Returns an identifier for this module unique across all modules being
+  // linked together.
+  std::string_view identifier() const { return identifier_; }
+
   // Given a symbol `name`, returns a range of `SymbolInformation` describing
   // any exported symbols of that name in the module. The range of symbol
   // information has no ordering guarantees.
   virtual absl::Span<SymbolInformation const> Exported(
       std::string_view name) = 0;
+
+ private:
+  std::string identifier_;
 };
 
 }  // namespace module

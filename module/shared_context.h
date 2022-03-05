@@ -1,6 +1,7 @@
 #ifndef ICARUS_MODULE_SHARED_CONTEXT_H
 #define ICARUS_MODULE_SHARED_CONTEXT_H
 
+#include <concepts>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -33,7 +34,22 @@ struct SharedContext {
 
   auto &foreign_function_map() { return foreign_fn_map_; }
 
+  template <std::derived_from<Module> ModuleType, typename... Args>
+  ModuleType &add_module(std::string id, Args &&... args) requires(
+      std::constructible_from<ModuleType, std::string, Args...>) {
+    auto iter = modules_.find(id);
+    if (iter != modules_.end()) { return iter->second->as<ModuleType>(); }
+
+    auto m = std::make_unique<ModuleType>(std::move(id),
+                                          std::forward<Args>(args)...);
+
+    std::string_view module_id = m->identifier();
+    return modules_.emplace(module_id, std::move(m))
+        .first->second->template as<ModuleType>();
+  }
+
  private:
+  absl::flat_hash_map<std::string_view, std::unique_ptr<Module>> modules_;
   base::flyweight_map<std::pair<std::string, type::Function const*>, void (*)()>
       foreign_fn_map_;
 };

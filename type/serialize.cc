@@ -239,6 +239,10 @@ struct TypeSystemSerializingVisitor {
     base::Serialize(*this, f->eager(), f->params(), f->return_types());
   }
 
+  void Visit(Opaque const* o) {
+    base::Serialize(*this, o->defining_module()->identifier(), o->numeric_id());
+  }
+
   void Visit(Slice const* s) { base::Serialize(*this, s->data_type()); }
 
   void Visit(auto const* s) { NOT_YET(); }
@@ -339,6 +343,13 @@ struct TypeSystemDeserializingVisitor {
         [[maybe_unused]] auto [iter, inserted] = system_.insert(f);
         ASSERT(inserted == true);
         return true;
+      }
+      case IndexOf<Opaque>(): {
+        std::string module_identifier;
+        uintptr_t numeric_id;
+        if (not base::Deserialize(*this, module_identifier, numeric_id)) {
+          return false;
+        }
       }
       default: UNREACHABLE((int)which);
     }

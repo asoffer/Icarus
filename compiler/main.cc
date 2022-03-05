@@ -63,7 +63,8 @@ ABSL_FLAG(std::string, diagnostics, "console",
           "(default), or json.");
 ABSL_FLAG(std::string, module_identifier, "",
           "Identifier to be used to uniquely identify this module amongst all "
-          "modules being linked together.");
+          "modules being linked together, and must not begin with a tilde (~) "
+          "character.");
 
 namespace compiler {
 namespace {
@@ -245,6 +246,10 @@ int main(int argc, char *argv[]) {
   std::string module_id = absl::GetFlag(FLAGS_module_identifier);
   if (module_id.empty()) {
     std::cerr << "--module_identifier must not be empty.";
+    return 1;
+  } else if (module_id[0] == '~') {
+    std::cerr << "--module_identifier starts with the character '~'. "
+                 "Identifiers starting with a tilde are reserved.";
     return 1;
   }
 

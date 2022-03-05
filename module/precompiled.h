@@ -27,9 +27,9 @@ struct PrecompiledModule final : Module {
     return base::Deserialize(r, m.symbols_);
   }
 
-  PrecompiledModule() = default;
+  explicit PrecompiledModule(std::string identifier)
+      : Module(std::move(identifier)) {}
 
-  std::string identifier_;
   absl::flat_hash_map<std::string, std::vector<SymbolInformation>> symbols_;
 };
 

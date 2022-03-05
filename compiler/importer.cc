@@ -135,32 +135,35 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   std::string_view content =
       source_indexer_.insert(id, *std::move(file_content));
 
-  std::string identifier = absl::StrFormat("gen-id-%s", id);
-  iter->second =
-      std::make_pair(id, std::make_unique<ModuleData>(identifier, content));
-  auto& [ir_module, context, module] =
+  std::string identifier = absl::StrFormat("~gen-id-%s", id);
+
+  iter->second = std::make_pair(id, std::make_unique<ModuleData>());
+  auto& [ir_module, root_context, module] =
       *std::get<std::unique_ptr<ModuleData>>(iter->second.second);
-  modules_by_id_.emplace(id, &module);
+  module = &shared_context_.add_module<CompiledModule>(std::move(identifier),
+                                                       content, &root_context);
+
+  modules_by_id_.emplace(id, module);
 
   for (ir::ModuleId embedded_id : implicitly_embedded_modules()) {
-    module.scope().embed(&get(embedded_id));
+    module->scope().embed(&get(embedded_id));
   }
 
   auto parsed_nodes = frontend::Parse(content, *diagnostic_consumer_);
-  auto nodes        = module.insert(parsed_nodes.begin(), parsed_nodes.end());
+  auto nodes        = module->insert(parsed_nodes.begin(), parsed_nodes.end());
 
   PersistentResources resources{
       .work                = work_set_,
-      .module              = &module,
+      .module              = module,
       .diagnostic_consumer = diagnostic_consumer_,
       .importer            = this,
       .shared_context      = &shared_context_,
   };
 
-  graph_.add_edge(requestor, &module);
-  std::optional subroutine = CompileModule(context, resources, nodes);
+  graph_.add_edge(requestor, module);
+  std::optional subroutine = CompileModule(root_context, resources, nodes);
   if (subroutine) {
-    subroutine_by_module_.emplace(&module, *std::move(subroutine));
+    subroutine_by_module_.emplace(module, *std::move(subroutine));
   }
   // A nullopt subroutine means there were errors. We can still emit the `id`.
   // Errors will already be diagnosed.
