@@ -1,12 +1,24 @@
 #include "module/precompiled.h"
 
+#include "type/serialize.h"
+#include "type/system.h"
+
 namespace module {
 
 absl::StatusOr<PrecompiledModule> PrecompiledModule::Make(
     std::string_view file_content, SharedContext& context) {
-  ModuleReader r(file_content, context);
   PrecompiledModule m;
-  base::Deserialize(r, m.symbols_);
+
+  type::TypeSystem local_system;
+  if (not type::DeserializeTypeSystem(file_content, local_system)) {
+    return absl::InvalidArgumentError("Failed to deserialize type system.");
+  }
+
+  ModuleReader r(file_content, context, local_system);
+  uint64_t n;
+  if (not base::Deserialize(r, n, m.symbols_)) {
+    return absl::InvalidArgumentError("Failed to deserialize symbol table.");
+  }
   return m;
 }
 

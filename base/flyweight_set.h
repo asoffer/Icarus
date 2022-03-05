@@ -150,6 +150,13 @@ struct flyweight_set {
     return iter == set_.end() ? end_index() : index(*iter);
   }
 
+  // Returns a reference to the element indexed by `n` if one exists. Behavior
+  // is undefined if no such element exists.
+  value_type const& from_index(size_t n) const {
+    ASSERT(n < values_.size());
+    return values_[n];
+  }
+
   // Returns a value for which `index(v) == end_index()` is false for every `v`
   // in the container. The value returned by `end_index()` is not dependent of
   // the values in the container.

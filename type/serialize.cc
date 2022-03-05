@@ -24,7 +24,8 @@ struct ValueSerializer {
   // it.
   void write_bytes(absl::Span<std::byte const> bytes) { UNREACHABLE(); }
 
-  explicit ValueSerializer(std::string* out) : out_(*ASSERT_NOT_NULL(out)) {}
+  explicit ValueSerializer(TypeSystem const* system, std::string* out)
+      : system_(*ASSERT_NOT_NULL(system)), out_(*ASSERT_NOT_NULL(out)) {}
 
   void operator()(Type t, ir::CompleteResultRef ref) {
     t.visit<ValueSerializer>(*this, ref);
@@ -56,12 +57,14 @@ struct ValueSerializer {
       case Primitive::Kind::F64: write(ref.get<double>()); break;
       case Primitive::Kind::Byte: write(ref.get<std::byte>()); break;
       case Primitive::Kind::Type_: write(ref.get<Type>()); break;
-      default: NOT_YET();
+      default: NOT_YET((int)p->kind());
     }
   }
 
   template <typename T>
   void write(T const& t) requires(std::integral<T> or std::floating_point<T> or
+                                  base::meta<T> ==
+                                      base::meta<core::ParamFlags> or
                                   base::meta<T> == base::meta<Quals>) {
     out_.append(std::string_view(reinterpret_cast<char const*>(&t), sizeof(t)));
   }
@@ -69,27 +72,11 @@ struct ValueSerializer {
   void write(ir::Char c) { out_.push_back(static_cast<char>(c)); }
   void write(std::byte b) { out_.push_back(static_cast<char>(b)); }
 
-  void write(core::Param<QualType> const& p) {
-    // TODO: Flags.
-    base::Serialize(*this, p.name, p.value);
-  }
-
   void write(QualType qt) { base::Serialize(*this, qt.quals(), qt.type()); }
-
-  void write(Type t) {
-    write(t.get()->which());
-    if (auto const* p = t.if_as<Primitive>()) {
-      write(static_cast<std::underlying_type_t<Primitive::Kind>>(p->kind()));
-    } else if (auto const* f = t.if_as<Function>()) {
-      base::Serialize(*this, f->params(), f->return_types());
-    } else if (auto const* p = t.if_as<Pointer>()) {
-      base::Serialize(*this, p->pointee());
-    } else {
-      NOT_YET(t.to_string());
-    }
-  }
+  void write(Type t) { base::Serialize(*this, system_.index(t)); }
 
  private:
+  TypeSystem const& system_;
   std::string& out_;
 };
 
@@ -99,10 +86,12 @@ struct ValueDeserializer {
   explicit ValueDeserializer(
       absl::Span<std::byte const> span,
       base::flyweight_map<std::pair<std::string, Function const*>, void (*)()>*
-          foreign_fn_map)
+          foreign_fn_map,
+      TypeSystem* system)
       : head_(span.begin()),
         end_(span.end()),
-        foreign_fn_map_(*ASSERT_NOT_NULL(foreign_fn_map)) {}
+        foreign_fn_map_(*ASSERT_NOT_NULL(foreign_fn_map)),
+        system_(*ASSERT_NOT_NULL(system)) {}
 
   bool operator()(Type t, ir::CompleteResultBuffer& buffer) {
     return t.visit<ValueDeserializer>(*this, buffer);
@@ -153,6 +142,7 @@ struct ValueDeserializer {
   bool read(T& t) requires(std::integral<T> or std::floating_point<T> or
                            base::meta<T> == base::meta<ir::Char> or
                            base::meta<T> == base::meta<std::byte> or
+                           base::meta<T> == base::meta<core::ParamFlags> or
                            base::meta<T> == base::meta<Quals>) {
     if (end_ - head_ < sizeof(T)) { return false; }
     std::memcpy(&t, head_, sizeof(T));
@@ -167,11 +157,6 @@ struct ValueDeserializer {
     return true;
   }
 
-  bool read(core::Param<QualType>& p) {
-    // TODO: Flags.
-    return base::Deserialize(*this, p.name, p.value);
-  }
-
   bool read(QualType& qt) {
     Quals quals = Quals::Unqualified();
     Type t;
@@ -181,38 +166,10 @@ struct ValueDeserializer {
   }
 
   bool read(Type& t) {
-    int8_t which_type;
-    if (not base::Deserialize(*this, which_type)) { return false; }
-    switch (which_type) {
-      case IndexOf<Primitive>(): {
-        std::underlying_type_t<Primitive::Kind> k;
-        if (not base::Deserialize(*this, k)) { return false; }
-        t = MakePrimitive(static_cast<Primitive::Kind>(k));
-        return true;
-      } break;
-      case IndexOf<Function>(): {
-        core::Params<QualType> params;
-        std::vector<Type> return_types;
-        if (not base::Deserialize(*this, params, return_types)) {
-          return false;
-        }
-        t = type::Type(type::Func(std::move(params), std::move(return_types)));
-        return true;
-      }
-      case IndexOf<BufferPointer>(): {
-        Type pointee;
-        if (not base::Deserialize(*this, pointee)) { return false; }
-        t = type::Type(type::BufPtr(pointee));
-        return true;
-      }
-      case IndexOf<Pointer>(): {
-        Type pointee;
-        if (not base::Deserialize(*this, pointee)) { return false; }
-        t = type::Type(type::Ptr(pointee));
-        return true;
-      }
-      default: NOT_YET();
-    }
+    size_t index;
+    if (not base::Deserialize(*this, index)) { return false; }
+    t = system_.from_index(index);
+    return true;
   }
 
   std::byte const* head() const { return head_; }
@@ -231,21 +188,199 @@ struct ValueDeserializer {
 
   base::flyweight_map<std::pair<std::string, Function const*>, void (*)()>&
       foreign_fn_map_;
+  TypeSystem& system_;
+};
+
+struct TypeSystemSerializingVisitor {
+  using signature = void();
+
+  explicit TypeSystemSerializingVisitor(TypeSystem const* system,
+                                        std::string* out)
+      : system_(*ASSERT_NOT_NULL(system)), out_(*ASSERT_NOT_NULL(out)) {}
+
+  void operator()(Type t) { t.visit(*this); }
+
+  void operator()(auto const* t) {
+    base::Serialize(*this, IndexOf<std::decay_t<decltype(*t)>>());
+    Visit(t);
+  }
+
+  void write_bytes(absl::Span<std::byte const> bytes) {
+    out_.append(std::string_view(reinterpret_cast<char const*>(bytes.data()),
+                                 bytes.size()));
+  }
+
+  template <typename T>
+  void write(T const& t) requires(std::is_enum_v<T> or
+                                  std::is_arithmetic_v<T> or
+                                  base::meta<T> == base::meta<type::Quals>) {
+    auto const* p = reinterpret_cast<std::byte const*>(&t);
+    write_bytes(absl::MakeConstSpan(p, p + sizeof(T)));
+  }
+
+  void write(Type t) {
+    size_t index = system_.index(t);
+    ASSERT(index != system_.end_index());
+    base::Serialize(*this, index);
+  }
+
+  void write(QualType qt) { base::Serialize(*this, qt.quals(), qt.type()); }
+
+ private:
+  void Visit(Primitive const* p) { base::Serialize(*this, p->kind()); }
+
+  void Visit(Array const* a) {
+    base::Serialize(*this, a->length(), a->data_type());
+  }
+  void Visit(Pointer const* p) { base::Serialize(*this, p->pointee()); }
+  void Visit(BufferPointer const* p) { base::Serialize(*this, p->pointee()); }
+
+  void Visit(Function const* f) {
+    base::Serialize(*this, f->eager(), f->params(), f->return_types());
+  }
+
+  void Visit(Slice const* s) { base::Serialize(*this, s->data_type()); }
+
+  void Visit(auto const* s) { NOT_YET(); }
+
+  TypeSystem const& system_;
+  std::string& out_;
+};
+
+struct TypeSystemDeserializingVisitor {
+  explicit TypeSystemDeserializingVisitor(std::string_view* content,
+                                          TypeSystem* system)
+      : content_(*ASSERT_NOT_NULL(content)),
+        system_(*ASSERT_NOT_NULL(system)) {}
+
+  absl::Span<std::byte const> read_bytes(size_t num_bytes) {
+    absl::Span<std::byte const> result(
+        reinterpret_cast<std::byte const*>(content_.data()), num_bytes);
+    content_.remove_prefix(num_bytes);
+    return result;
+  }
+
+  template <typename T>
+  bool read(T& t) requires(std::is_arithmetic_v<T> or std::is_enum_v<T> or
+                           base::meta<T> == base::meta<Quals>) {
+    absl::Span span = read_bytes(sizeof(t));
+    std::memcpy(&t, span.data(), sizeof(t));
+    return true;
+  }
+
+  bool read(Type& t) {
+    size_t index;
+    if (not base::Deserialize(*this, index)) { return false; }
+    t = system_.from_index(index);
+    return true;
+  }
+
+  bool read(QualType& qt) {
+    Quals quals = Quals::Unqualified();
+    Type t;
+    if (not base::Deserialize(*this, quals, t)) { return false; }
+    qt = QualType(t, quals);
+    return true;
+  }
+
+  bool operator()() {
+    int8_t which;
+    base::Deserialize(*this, which);
+    switch (which) {
+      case IndexOf<Array>(): {
+        ir::Integer length;
+        Type t;
+        if (not base::Deserialize(*this, length, t)) { return false; }
+        [[maybe_unused]] auto [iter, inserted] = system_.insert(Arr(length, t));
+        ASSERT(inserted == true);
+        return true;
+      }
+      case IndexOf<Primitive>(): {
+        Primitive::Kind k;
+        if (not base::Deserialize(*this, k)) { return false; }
+        [[maybe_unused]] auto [iter, inserted] =
+            system_.insert(MakePrimitive(k));
+        ASSERT(inserted == true);
+        return true;
+      }
+      case IndexOf<Pointer>(): {
+        Type pointee;
+        if (not base::Deserialize(*this, pointee)) { return false; }
+        [[maybe_unused]] auto [iter, inserted] = system_.insert(Ptr(pointee));
+        ASSERT(inserted == true);
+        return true;
+      }
+      case IndexOf<BufferPointer>(): {
+        Type pointee;
+        if (not base::Deserialize(*this, pointee)) { return false; }
+        [[maybe_unused]] auto [iter, inserted] =
+            system_.insert(BufPtr(pointee));
+        ASSERT(inserted == true);
+        return true;
+      }
+      case IndexOf<Slice>(): {
+        Type data_type;
+        if (not base::Deserialize(*this, data_type)) { return false; }
+        [[maybe_unused]] auto [iter, inserted] = system_.insert(Slc(data_type));
+        ASSERT(inserted == true);
+        return true;
+      }
+      case IndexOf<Function>(): {
+        bool eager;
+        core::Params<QualType> params;
+        std::vector<Type> return_types;
+
+        if (not base::Deserialize(*this, eager, params, return_types)) {
+          return false;
+        }
+
+        auto* f = eager ? EagerFunc(std::move(params), std::move(return_types))
+                        : Func(std::move(params), std::move(return_types));
+        [[maybe_unused]] auto [iter, inserted] = system_.insert(f);
+        ASSERT(inserted == true);
+        return true;
+      }
+      default: UNREACHABLE((int)which);
+    }
+  }
+
+ private:
+  std::string_view &content_;
+  TypeSystem& system_;
 };
 
 }  // namespace
 
-void SerializeValue(Type t, ir::CompleteResultRef ref, std::string& out) {
-  ValueSerializer vs(&out);
+void SerializeValue(TypeSystem const& system, Type t, ir::CompleteResultRef ref,
+                    std::string& out) {
+  ValueSerializer vs(&system, &out);
   vs(t, ref);
 }
 
 ssize_t DeserializeValue(
     Type t, absl::Span<std::byte const> span, ir::CompleteResultBuffer& buffer,
     base::flyweight_map<std::pair<std::string, Function const*>, void (*)()>&
-        foreign_fn_map) {
-  ValueDeserializer vd(span, &foreign_fn_map);
+        foreign_fn_map,
+    TypeSystem& system) {
+  ValueDeserializer vd(span, &foreign_fn_map, &system);
   return vd(t, buffer) ? vd.head() - span.begin() : -1;
+}
+
+void SerializeTypeSystem(TypeSystem const& system, std::string& out) {
+  TypeSystemSerializingVisitor v(&system, &out);
+  base::Serialize(v, system.size());
+  for (Type t : system.types()) { v(t); }
+}
+
+bool DeserializeTypeSystem(std::string_view& content, TypeSystem& system) {
+  TypeSystemDeserializingVisitor v(&content, &system);
+  size_t num_types;
+  base::Deserialize(v, num_types);
+  for (size_t i = 0; i < num_types; ++i) {
+    if (not v()) { return false; }
+  }
+
+  return true;
 }
 
 }  // namespace type

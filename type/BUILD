@@ -41,6 +41,7 @@ cc_library(
     srcs = ["array.cc"],
     deps = [
         ":primitive",
+        ":system",
         ":type",
         "//base:extend",
         "//base/extend:serialize",
@@ -166,6 +167,7 @@ cc_library(
     deps = [
         ":callable",
         ":qual_type",
+        ":system",
         ":type",
         ":typed_value",
         "//base:extend",
@@ -175,7 +177,7 @@ cc_library(
         "//core:params",
         "//ir/instruction:base",
         "//ir/instruction:debug",
-        "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/container:node_hash_set",
     ],
 )
 
@@ -218,6 +220,7 @@ cc_library(
     hdrs = ["pointer.h"],
     srcs = ["pointer.cc"],
     deps = [
+        ":system",
         ":type",
         "//base:extend",
         "//base/extend:serialize",
@@ -245,6 +248,7 @@ cc_library(
     srcs = ["primitive.cc"],
     textual_hdrs = ["primitive.xmacro.h"],
     deps = [
+        ":system",
         ":type",
         "//base:meta",
         "//base:global",
@@ -412,6 +416,7 @@ cc_library(
     deps = CONCRETE_TYPES + [
         ":generic",
         ":overload_set",
+        ":system",
         "//base:flyweight_map",
         "//ir/value:result_buffer",
         "@com_google_absl//absl/types:span",
@@ -424,5 +429,15 @@ cc_test(
     deps = [
         ":serialize",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "system",
+    hdrs = ["system.h"],
+    deps = [
+        ":type",
+        "//base:iterator",
+        "//base:flyweight_set",
     ],
 )

@@ -84,11 +84,13 @@ using AssignableType = typename AssignableTypeImpl<T>::type;
 
 template <base::Deserializer D, typename T>
 struct DeserializingIterator {
-  using difference_type   = size_t;
+  using difference_type   = ssize_t;
   using value_type        = T;
   using pointer           = T const*;
   using reference         = T const&;
   using iterator_category = std::input_iterator_tag;
+
+  DeserializingIterator() = default;
 
   DeserializingIterator(D* deserializer, size_t num_elements, bool* ok)
       : deserializer_(deserializer), num_elements_(num_elements), ok_(ok) {}
@@ -104,8 +106,8 @@ struct DeserializingIterator {
     return DeserializingIterator(deserializer, 0, nullptr);
   }
 
-  reference operator*() { return *get(); }
-  pointer operator->() { return get(); }
+  reference operator*() const { return *get(); }
+  pointer operator->() const { return get(); }
 
   DeserializingIterator& operator++() {
     get();
@@ -150,8 +152,12 @@ struct DeserializingIterator {
     value_.reset();
   }
 
-  pointer get() {
-    if (not value_.has_value()) { ReadValue(); }
+  pointer get() const {
+    if (not value_.has_value()) {
+      // TODO: Is there a way to avoid the const_cast and still meet the
+      // input_iterator requirements?
+      const_cast<DeserializingIterator<D, T>*>(this)->ReadValue();
+    }
     return &*value_;
   }
 
@@ -172,8 +178,7 @@ void SerializeOne(base::Serializer auto& s, value_type const& value) {
   } else if constexpr (requires {
                          value.begin();
                          value.end();
-                         ++std::declval<typename std::decay_t<decltype(
-                             value)>::const_iterator&>();
+                         ++std::declval<typename value_type::const_iterator&>();
                        }) {
     size_t num_elements = std::distance(value.begin(), value.end());
     base::Serialize(s, num_elements);

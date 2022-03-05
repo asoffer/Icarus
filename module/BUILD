@@ -69,6 +69,7 @@ cc_library(
         ":reader",
         "//base:flyweight_map",
         "//type",
+        "//type:system",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
@@ -86,6 +87,7 @@ cc_library(
         "//base:flyweight_map",
         "//type:primitive",
         "//type:serialize",
+        "//type:system",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -107,6 +109,7 @@ cc_library(
         "//base:debug",
         "//type:primitive",
         "//type:serialize",
+        "//type:system",
         "@com_google_absl//absl/types:span",
     ],
 )

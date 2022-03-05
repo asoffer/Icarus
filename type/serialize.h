@@ -7,12 +7,14 @@
 #include "base/flyweight_map.h"
 #include "ir/value/result_buffer.h"
 #include "type/function.h"
+#include "type/system.h"
 #include "type/type.h"
 
 namespace type {
 
 // Serializes the value of type `t` held in `ref`  into `out`.
-void SerializeValue(Type t, ir::CompleteResultRef ref, std::string& out);
+void SerializeValue(TypeSystem const& system, Type t, ir::CompleteResultRef ref,
+                    std::string& out);
 
 // Deserializes the value of type `t` serialized in `span`, writing it into
 // `buffer`. If deserialization succeeds, the number of bytes read is returned.
@@ -20,7 +22,11 @@ void SerializeValue(Type t, ir::CompleteResultRef ref, std::string& out);
 ssize_t DeserializeValue(
     Type t, absl::Span<std::byte const> span, ir::CompleteResultBuffer& buffer,
     base::flyweight_map<std::pair<std::string, Function const*>, void (*)()>&
-        foreign_fn_map);
+        foreign_fn_map,
+    TypeSystem& system);
+
+void SerializeTypeSystem(TypeSystem const& system, std::string& out);
+bool DeserializeTypeSystem(std::string_view& content, TypeSystem& system);
 
 }  // namespace type
 
