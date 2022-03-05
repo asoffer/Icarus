@@ -90,7 +90,7 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
 
   ir::Module ir_module;
   Context context(&ir_module);
-  CompiledModule exec_mod(file_content, &context);
+  CompiledModule exec_mod("", file_content, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }

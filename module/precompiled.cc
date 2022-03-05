@@ -15,8 +15,7 @@ absl::StatusOr<PrecompiledModule> PrecompiledModule::Make(
   }
 
   ModuleReader r(file_content, context, local_system);
-  uint64_t n;
-  if (not base::Deserialize(r, n, m.symbols_)) {
+  if (not base::Deserialize(r, m.identifier_, m.symbols_)) {
     return absl::InvalidArgumentError("Failed to deserialize symbol table.");
   }
   return m;

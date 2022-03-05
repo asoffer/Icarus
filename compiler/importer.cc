@@ -135,7 +135,9 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   std::string_view content =
       source_indexer_.insert(id, *std::move(file_content));
 
-  iter->second = std::make_pair(id, std::make_unique<ModuleData>(content));
+  std::string identifier = absl::StrFormat("gen-id-%s", id);
+  iter->second =
+      std::make_pair(id, std::make_unique<ModuleData>(identifier, content));
   auto& [ir_module, context, module] =
       *std::get<std::unique_ptr<ModuleData>>(iter->second.second);
   modules_by_id_.emplace(id, &module);

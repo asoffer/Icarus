@@ -61,6 +61,9 @@ ABSL_FLAG(std::string, module_map, "",
 ABSL_FLAG(std::string, diagnostics, "console",
           "Indicates how diagnostics should be emitted. Options: console "
           "(default), or json.");
+ABSL_FLAG(std::string, module_identifier, "",
+          "Identifier to be used to uniquely identify this module amongst all "
+          "modules being linked together.");
 
 namespace compiler {
 namespace {
@@ -134,7 +137,8 @@ int CompileToObjectFile(CompiledModule const &module, ir::Subroutine const &fn,
   return 0;
 }
 
-int Compile(char const *file_name, std::string const &output_byte_code,
+int Compile(char const *file_name, std::string module_identifier,
+            std::string const &output_byte_code,
             std::string const &output_object_file) {
   frontend::SourceIndexer source_indexer;
   auto diag = compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
@@ -179,7 +183,8 @@ int Compile(char const *file_name, std::string const &output_byte_code,
 
   ir::Module ir_module;
   compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(file_content, &context);
+  compiler::CompiledModule exec_mod(std::move(module_identifier), file_content,
+                                    &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }
@@ -237,6 +242,12 @@ int main(int argc, char *argv[]) {
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
 
+  std::string module_id = absl::GetFlag(FLAGS_module_identifier);
+  if (module_id.empty()) {
+    std::cerr << "--module_identifier must not be empty.";
+    return 1;
+  }
+
   std::vector<std::string> log_keys = absl::GetFlag(FLAGS_log);
   for (std::string_view key : log_keys) { base::EnableLogging(key); }
 
@@ -261,5 +272,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  return compiler::Compile(args[1], output_byte_code, output_object_file);
+  return compiler::Compile(args[1], std::move(module_id), output_byte_code,
+                           output_object_file);
 }

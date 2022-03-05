@@ -26,7 +26,6 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["stdio.ic"],
     deps = [":types"],
-    precompile = False,
 )
 
 ic_low_level_library(

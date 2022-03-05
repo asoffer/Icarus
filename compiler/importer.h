@@ -86,8 +86,9 @@ struct FileImporter : module::Importer {
 
  private:
   struct ModuleData {
-    ModuleData(std::string_view file_content)
-        : root_context(&ir_module), module(file_content, &root_context) {}
+    ModuleData(std::string identifier, std::string_view file_content)
+        : root_context(&ir_module),
+          module(std::move(identifier), file_content, &root_context) {}
     ir::Module ir_module;
     Context root_context;
     CompiledModule module;

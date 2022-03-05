@@ -147,7 +147,7 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
 
   ir::Module ir_module;
   compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(file_content, &context);
+  compiler::CompiledModule exec_mod("", file_content, &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod.scope().embed(&importer.get(embedded_id));
   }

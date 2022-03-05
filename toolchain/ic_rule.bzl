@@ -93,6 +93,7 @@ def _ic_library_impl(ctx):
                      ),
             outputs = [output],
             arguments = ["--byte_code={}".format(output.path),
+                         "--module_identifier={}".format(str(ctx.label)),
                          "--module_map=" + module_map_file.path,
                          "--module_paths=stdlib",
                          "--"] + [

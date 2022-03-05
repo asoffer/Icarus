@@ -29,6 +29,7 @@ struct PrecompiledModule final : Module {
 
   PrecompiledModule() = default;
 
+  std::string identifier_;
   absl::flat_hash_map<std::string, std::vector<SymbolInformation>> symbols_;
 };
 

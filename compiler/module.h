@@ -8,8 +8,12 @@
 namespace compiler {
 
 struct CompiledModule : module::Module {
-  explicit CompiledModule(std::string_view content, Context *context)
-      : context_(ASSERT_NOT_NULL(context)), content_(content), module_(this) {
+  explicit CompiledModule(std::string identifier, std::string_view content,
+                          Context *context)
+      : identifier_(std::move(identifier)),
+        context_(ASSERT_NOT_NULL(context)),
+        content_(content),
+        module_(this) {
     context_->set_qt_callback(
         [&](ast::Declaration::Id const *id, type::QualType qt) {
           if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
@@ -31,8 +35,7 @@ struct CompiledModule : module::Module {
   }
 
   friend void BaseSerialize(module::ModuleWriter &w, CompiledModule const &m) {
-    uint64_t n = 0xaaaaaaaabbbbbbbb;
-    base::Serialize(w, type::GlobalTypeSystem, n, m.exported_);
+    base::Serialize(w, type::GlobalTypeSystem, m.identifier_, m.exported_);
   }
 
   Context const &context() const { return *context_; }
@@ -64,6 +67,7 @@ struct CompiledModule : module::Module {
   ast::Scope &scope() { return module_.body_scope(); }
 
  private:
+  std::string identifier_;
   Context *context_;
   std::string_view content_;
 
