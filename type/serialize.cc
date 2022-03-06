@@ -253,8 +253,10 @@ struct TypeSystemSerializingVisitor {
 
 struct TypeSystemDeserializingVisitor {
   explicit TypeSystemDeserializingVisitor(std::string_view* content,
+                                          module::SharedContext* context,
                                           TypeSystem* system)
       : content_(*ASSERT_NOT_NULL(content)),
+        context_(*ASSERT_NOT_NULL(context)),
         system_(*ASSERT_NOT_NULL(system)) {}
 
   absl::Span<std::byte const> read_bytes(size_t num_bytes) {
@@ -350,6 +352,10 @@ struct TypeSystemDeserializingVisitor {
         if (not base::Deserialize(*this, module_identifier, numeric_id)) {
           return false;
         }
+        auto const* o = Opaq(
+            ASSERT_NOT_NULL(context_.module(module_identifier)), numeric_id);
+        system_.insert(o);
+        return true;
       }
       default: UNREACHABLE((int)which);
     }
@@ -357,6 +363,7 @@ struct TypeSystemDeserializingVisitor {
 
  private:
   std::string_view &content_;
+  module::SharedContext& context_;
   TypeSystem& system_;
 };
 
@@ -383,8 +390,9 @@ void SerializeTypeSystem(TypeSystem const& system, std::string& out) {
   for (Type t : system.types()) { v(t); }
 }
 
-bool DeserializeTypeSystem(std::string_view& content, TypeSystem& system) {
-  TypeSystemDeserializingVisitor v(&content, &system);
+bool DeserializeTypeSystem(std::string_view& content,
+                           module::SharedContext& context, TypeSystem& system) {
+  TypeSystemDeserializingVisitor v(&content, &context, &system);
   size_t num_types;
   base::Deserialize(v, num_types);
   for (size_t i = 0; i < num_types; ++i) {

@@ -8,6 +8,7 @@
 
 #include "base/flyweight_map.h"
 #include "ir/value/foreign_fn.h"
+#include "module/module.h"
 #include "type/function.h"
 
 namespace module {
@@ -46,6 +47,12 @@ struct SharedContext {
     std::string_view module_id = m->identifier();
     return modules_.emplace(module_id, std::move(m))
         .first->second->template as<ModuleType>();
+  }
+
+  Module const *module(std::string_view id) const {
+    auto iter = modules_.find(id);
+    if (iter == modules_.end()) { return nullptr; }
+    return iter->second.get();
   }
 
  private:

@@ -198,13 +198,16 @@ cc_library(
 cc_library(
     name = "opaque",
     hdrs = ["opaque.h"],
+    srcs = ["opaque.cc"],
     deps = [
+        ":system",
         ":type",
         "//base:debug",
         "//base:extend",
         "//base/extend:traverse",
         "//ir/instruction:base",
         "//module",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 
@@ -419,6 +422,7 @@ cc_library(
         ":system",
         "//base:flyweight_map",
         "//ir/value:result_buffer",
+        "//module:shared_context",
         "@com_google_absl//absl/types:span",
     ],
 )

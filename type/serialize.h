@@ -6,6 +6,7 @@
 #include "absl/types/span.h"
 #include "base/flyweight_map.h"
 #include "ir/value/result_buffer.h"
+#include "module/shared_context.h"
 #include "type/function.h"
 #include "type/system.h"
 #include "type/type.h"
@@ -26,7 +27,8 @@ ssize_t DeserializeValue(
     TypeSystem& system);
 
 void SerializeTypeSystem(TypeSystem const& system, std::string& out);
-bool DeserializeTypeSystem(std::string_view& content, TypeSystem& system);
+bool DeserializeTypeSystem(std::string_view& content,
+                           module::SharedContext& context, TypeSystem& system);
 
 }  // namespace type
 

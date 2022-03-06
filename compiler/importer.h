@@ -93,11 +93,8 @@ struct FileImporter : module::Importer {
   };
 
   WorkSet* work_set_;
-  absl::flat_hash_map<
-      std::string,
-      std::pair<ir::ModuleId,
-                std::variant<std::unique_ptr<module::PrecompiledModule>,
-                             std::unique_ptr<ModuleData>>>>
+  absl::flat_hash_map<std::string,
+                      std::pair<ir::ModuleId, std::unique_ptr<ModuleData>>>
       modules_;
   module::BuiltinModule builtin_;
   absl::flat_hash_map<ir::ModuleId, module::Module*> modules_by_id_;

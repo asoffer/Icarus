@@ -36,17 +36,17 @@ std::optional<std::string> ReadFileToString(std::string const& file_name) {
 
   result.emplace();
 #if defined(__cpp_lib_string_resize_and_overwrite)
-    result->resize_and_overwrite(file_size, [&](char* buffer, size_t size) {
-      std::fread(buffer, sizeof(char), file_size, file);
-    });
+  result->resize_and_overwrite(file_size, [&](char* buffer, size_t size) {
+    std::fread(buffer, sizeof(char), file_size, file);
+  });
 #else
-    result->resize(file_size, '\0');
-    std::fread(result->data(), sizeof(char), file_size, file);
+  result->resize(file_size, '\0');
+  std::fread(result->data(), sizeof(char), file_size, file);
 #endif
-    return result;
+  return result;
 }
 
-absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
+absl::StatusOr<module::PrecompiledModule*> LoadPrecompiledModule(
     std::string const& file_name, absl::Span<std::string const> lookup_paths,
     absl::flat_hash_map<std::string, std::string> const& module_map,
     module::SharedContext& shared_context) {
@@ -61,7 +61,7 @@ absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
   }
 
   auto iter = module_map.find(file_name);
- if (iter == module_map.end()) {
+  if (iter == module_map.end()) {
     return absl::NotFoundError(absl::StrFormat(
         R"(Failed to find module map entry for '%s')", file_name));
   }
@@ -70,8 +70,8 @@ absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
     return module::PrecompiledModule::Make(*maybe_content, shared_context);
   }
 
-  return absl::NotFoundError(
-      absl::StrFormat(R"(Failed to load precompiled module for '%s')", file_name));
+  return absl::NotFoundError(absl::StrFormat(
+      R"(Failed to load precompiled module for '%s')", file_name));
 }
 
 }  // namespace
@@ -109,14 +109,8 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
                                             module_map_, shared_context_);
   if (maybe_module.ok()) {
     ir::ModuleId id = ir::ModuleId::New();
-    iter->second    = std::make_pair(
-        id,
-        std::make_unique<module::PrecompiledModule>(*std::move(maybe_module)));
-    auto* module = std::get<std::unique_ptr<module::PrecompiledModule>>(
-                       iter->second.second)
-                       .get();
-    modules_by_id_.emplace(id, module);
-    graph_.add_edge(requestor, module);
+    modules_by_id_.emplace(id, *maybe_module);
+    graph_.add_edge(requestor, *maybe_module);
     return id;
   }
 
@@ -138,8 +132,8 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   std::string identifier = absl::StrFormat("~gen-id-%s", id);
 
   iter->second = std::make_pair(id, std::make_unique<ModuleData>());
-  auto& [ir_module, root_context, module] =
-      *std::get<std::unique_ptr<ModuleData>>(iter->second.second);
+  auto& [ir_module, root_context, module] = *iter->second.second;
+
   module = &shared_context_.add_module<CompiledModule>(std::move(identifier),
                                                        content, &root_context);
 

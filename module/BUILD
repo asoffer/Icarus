@@ -96,6 +96,7 @@ cc_library(
     name = "shared_context",
     hdrs = ["shared_context.h"],
     deps = [
+        ":module",
         "//base:flyweight_map",
         "//ir/value:foreign_fn",
         "//type:function",

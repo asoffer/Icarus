@@ -35,7 +35,7 @@ struct CompiledModule : module::Module {
   }
 
   friend void BaseSerialize(module::ModuleWriter &w, CompiledModule const &m) {
-    base::Serialize(w, type::GlobalTypeSystem, m.identifier(), m.exported_);
+    base::Serialize(w, m.identifier(), type::GlobalTypeSystem, m.exported_);
   }
 
   Context const &context() const { return *context_; }
