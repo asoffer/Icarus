@@ -158,6 +158,7 @@ cc_test(
     deps = [
         "//compiler",
         "//test:evaluation",
+        "//test:module",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -352,8 +352,10 @@ struct TypeSystemDeserializingVisitor {
         if (not base::Deserialize(*this, module_identifier, numeric_id)) {
           return false;
         }
-        auto const* o = Opaq(
-            ASSERT_NOT_NULL(context_.module(module_identifier)), numeric_id);
+        auto const* o =
+            Opaq(ASSERT_NOT_NULL(
+                     context_.module_table().module(module_identifier).second),
+                 numeric_id);
         system_.insert(o);
         return true;
       }

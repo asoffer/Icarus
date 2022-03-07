@@ -30,8 +30,8 @@ struct SimpleDeserializer {
 
 }  // namespace
 
-absl::StatusOr<PrecompiledModule*> PrecompiledModule::Make(
-    std::string_view file_content, SharedContext& context) {
+absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>>
+PrecompiledModule::Make(std::string_view file_content, SharedContext& context) {
   std::string identifier;
   if (SimpleDeserializer d(file_content);
       not base::Deserialize(d, identifier)) {
@@ -39,7 +39,8 @@ absl::StatusOr<PrecompiledModule*> PrecompiledModule::Make(
         "Failed to deserialize module identifier.");
   }
 
-  auto& m = context.add_module<PrecompiledModule>(std::move(identifier));
+  auto [id, m] = context.module_table().add_module<PrecompiledModule>(
+      std::move(identifier));
 
   type::TypeSystem local_system;
   if (not type::DeserializeTypeSystem(file_content, context, local_system)) {
@@ -48,11 +49,11 @@ absl::StatusOr<PrecompiledModule*> PrecompiledModule::Make(
 
   ModuleReader r(file_content, context, local_system);
 
-  if (not base::Deserialize(r, m.symbols_)) {
+  if (not base::Deserialize(r, m->symbols_)) {
     // TODO: Is it necessary to remove the module on failure?
     return absl::InvalidArgumentError("Failed to deserialize symbol table.");
   }
-  return &m;
+  return std::pair<ir::ModuleId, PrecompiledModule const*>(id, m);
 }
 
 absl::Span<Module::SymbolInformation const> PrecompiledModule::Exported(

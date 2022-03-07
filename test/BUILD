@@ -41,7 +41,11 @@ cc_library(
     hdrs = ["evaluation.h"],
     deps = [
         ":expected_value",
-        ":module",
+        "//compiler:module",
+        "//compiler:work_graph",
+        "//diagnostic/consumer:tracking",
+        "//frontend:parse",
+        "//module:trivial_importer",
         "//type",
         "//type:typed_value",
         "@com_google_googletest//:gtest",

@@ -1,7 +1,6 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/evaluation.h"
-#include "test/module.h"
 #include "type/primitive.h"
 
 namespace compiler {

@@ -20,8 +20,8 @@ struct PrecompiledModule final : Module {
   explicit PrecompiledModule(std::string identifier)
       : Module(std::move(identifier)) {}
 
-  static absl::StatusOr<PrecompiledModule*> Make(std::string_view file_name,
-                                                 SharedContext& context);
+  static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>> Make(
+      std::string_view file_name, SharedContext& context);
 
   absl::Span<SymbolInformation const> Exported(std::string_view name) override;
 

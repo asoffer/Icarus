@@ -46,7 +46,8 @@ std::optional<std::string> ReadFileToString(std::string const& file_name) {
   return result;
 }
 
-absl::StatusOr<module::PrecompiledModule*> LoadPrecompiledModule(
+absl::StatusOr<std::pair<ir::ModuleId, module::PrecompiledModule const*>>
+LoadPrecompiledModule(
     std::string const& file_name, absl::Span<std::string const> lookup_paths,
     absl::flat_hash_map<std::string, std::string> const& module_map,
     module::SharedContext& shared_context) {
@@ -105,12 +106,11 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
     return iter->second.first;
   }
 
-  auto maybe_module = LoadPrecompiledModule(file_name, module_lookup_paths_,
-                                            module_map_, shared_context_);
-  if (maybe_module.ok()) {
-    ir::ModuleId id = ir::ModuleId::New();
-    modules_by_id_.emplace(id, *maybe_module);
-    graph_.add_edge(requestor, *maybe_module);
+  if (auto maybe_module = LoadPrecompiledModule(file_name, module_lookup_paths_,
+                                                module_map_, shared_context_);
+      maybe_module.ok()) {
+    auto [id, module] = *maybe_module;
+    graph_.add_edge(requestor, module);
     return id;
   }
 
@@ -125,23 +125,26 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
     });
     return ir::ModuleId::Invalid();
   }
-  ir::ModuleId id = ir::ModuleId::New();
-  std::string_view content =
-      source_indexer_.insert(id, *std::move(file_content));
 
-  std::string identifier = absl::StrFormat("~gen-id-%s", id);
-
-  iter->second = std::make_pair(id, std::make_unique<ModuleData>());
+  iter->second =
+      std::make_pair(ir::ModuleId::Invalid(), std::make_unique<ModuleData>());
   auto& [ir_module, root_context, module] = *iter->second.second;
 
-  module = &shared_context_.add_module<CompiledModule>(std::move(identifier),
-                                                       content, &root_context);
+  ir::ModuleId& mod_id = iter->second.first;
 
-  modules_by_id_.emplace(id, module);
+  static std::atomic<int> id_num = 0;
+  std::tie(mod_id, module) =
+      shared_context_.module_table().add_module<CompiledModule>(
+          absl::StrFormat("~gen-id-%u",
+                          id_num.fetch_add(1, std::memory_order_relaxed)),
+          &root_context);
 
   for (ir::ModuleId embedded_id : implicitly_embedded_modules()) {
     module->scope().embed(&get(embedded_id));
   }
+
+  std::string_view content =
+      source_indexer_.insert(mod_id, *std::move(file_content));
 
   auto parsed_nodes = frontend::Parse(content, *diagnostic_consumer_);
   auto nodes        = module->insert(parsed_nodes.begin(), parsed_nodes.end());
@@ -161,7 +164,7 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   }
   // A nullopt subroutine means there were errors. We can still emit the `id`.
   // Errors will already be diagnosed.
-  return id;
+  return mod_id;
 }
 
 std::optional<absl::flat_hash_map<std::string, std::string>> MakeModuleMap(

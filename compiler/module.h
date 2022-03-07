@@ -8,11 +8,9 @@
 namespace compiler {
 
 struct CompiledModule : module::Module {
-  explicit CompiledModule(std::string identifier, std::string_view content,
-                          Context *context)
+  explicit CompiledModule(std::string identifier, Context *context)
       : Module(std::move(identifier)),
         context_(ASSERT_NOT_NULL(context)),
-        content_(content),
         module_(this) {
     context_->set_qt_callback(
         [&](ast::Declaration::Id const *id, type::QualType qt) {
@@ -54,8 +52,6 @@ struct CompiledModule : module::Module {
     return iter->second;
   }
 
-  std::string_view buffer() const { return content_; }
-
   bool has_error_in_dependent_module() const {
     return depends_on_module_with_errors_;
   }
@@ -68,7 +64,6 @@ struct CompiledModule : module::Module {
 
  private:
   Context *context_;
-  std::string_view content_;
 
   // It is important for caching that symbols be exported in a consistent
   // manner. We use an ordered container to guarantee repeated invocations

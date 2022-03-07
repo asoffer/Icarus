@@ -85,19 +85,22 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
     return 1;
   }
 
-  std::string_view file_content =
-      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
-
   ir::Module ir_module;
   Context context(&ir_module);
-  CompiledModule exec_mod("", file_content, &context);
+
+  auto [mod_id, exec_mod] =
+      shared_context.module_table().add_module<compiler::CompiledModule>(
+          "", &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
-    exec_mod.scope().embed(&importer.get(embedded_id));
+    exec_mod->scope().embed(&importer.get(embedded_id));
   }
+
+  std::string_view file_content =
+      source_indexer.insert(mod_id, *std::move(content));
 
   PersistentResources resources{
       .work                = &work_set,
-      .module              = &exec_mod,
+      .module              = exec_mod,
       .diagnostic_consumer = &diag,
       .importer            = &importer,
       .shared_context      = &shared_context,
@@ -105,7 +108,7 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
 
   auto parsed_nodes = frontend::Parse(file_content, diag);
   if (diag.num_consumed() > 0) { return 1; }
-  auto nodes = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
+  auto nodes = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
   ASSIGN_OR(return 1,  //
                    auto main_fn, CompileModule(context, resources, nodes));
   // TODO All the functions? In all the modules?
@@ -122,7 +125,7 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
   ir::CompleteResultBuffer argument_buffer;
   argument_buffer.append(&argument_slice);
 
-  importer.set_subroutine(&exec_mod, std::move(main_fn));
+  importer.set_subroutine(exec_mod, std::move(main_fn));
   importer.ForEachSubroutine([&](ir::Subroutine const &subroutine) {
     InterpretAtCompileTime(subroutine, argument_buffer);
   });

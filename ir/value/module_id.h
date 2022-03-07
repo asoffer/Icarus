@@ -1,46 +1,43 @@
 #ifndef ICARUS_IR_VALUE_MODULE_ID_H
 #define ICARUS_IR_VALUE_MODULE_ID_H
 
-#include <atomic>
 #include <cstddef>
-#include <memory>
+#include <string_view>
 
 #include "base/extend.h"
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
 
 namespace ir {
-namespace internal_module {
-
-inline constinit std::atomic<size_t> generator{0};
-
-}  // namespace internal_module
 
 // A value-type representing a module (unit of compilation).
 struct ModuleId : base::Extend<ModuleId, 1>::With<base::AbslHashExtension,
                                                   base::AbslFormatExtension> {
+  using underlying_type = uint32_t;
+
   static constexpr std::string_view kAbslFormatString = "ModuleId(%u)";
 
-  constexpr ModuleId() : id_(std::numeric_limits<size_t>::max()) {}
-  constexpr explicit ModuleId(size_t n) : id_(n) {}
+  constexpr ModuleId() : id_(std::numeric_limits<underlying_type>::max()) {}
+  constexpr explicit ModuleId(underlying_type n) : id_(n) {}
 
-  static constexpr ModuleId Builtin() {
-    return ModuleId(std::numeric_limits<size_t>::max() - 1);
+  // An identifier for the module which holds all builtin data accessible
+  // through the `builtin` keyword.
+  static constexpr ModuleId Builtin() { return ModuleId(0); }
+
+  // An identifier for a synthetic module where all foreign symbols live.
+  static constexpr ModuleId Foreign() {
+    return ModuleId(std::numeric_limits<underlying_type>::max() - 1);
   }
 
-  static constexpr ModuleId Invalid() {
-    return ModuleId(std::numeric_limits<size_t>::max());
-  }
+  // No module has this identifier.
+  static constexpr ModuleId Invalid() { return ModuleId(); }
 
-  static ModuleId New() {
-    return ModuleId(
-        internal_module::generator.fetch_add(1, std::memory_order_relaxed));
-  }
+  underlying_type value() const { return id_; }
 
  private:
   friend base::EnableExtensions;
 
-  size_t id_;
+  underlying_type id_;
 };
 
 }  // namespace ir

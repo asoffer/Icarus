@@ -18,6 +18,11 @@
 #include "module/module.h"
 
 namespace test {
+namespace internal_module {
+
+inline module::SharedContext shared_context;
+
+}  // namespace internal_module
 
 // Used to guarantee that context is initialized before module.
 struct ContextHolder {
@@ -27,29 +32,34 @@ struct ContextHolder {
   compiler::Context ctx_;
 };
 
-struct TestModule : ContextHolder, compiler::CompiledModule {
+struct TestModule : ContextHolder {
   TestModule()
       : ContextHolder(),
-        compiler::CompiledModule(
-            absl::StrCat("test-module-", test_module_count.fetch_add(
-                                             1, std::memory_order_relaxed)),
-            "", &ctx_),
+        module_data_(internal_module::shared_context.module_table()
+                         .add_module<compiler::CompiledModule>(
+                             absl::StrCat("~test-module-",
+                                          test_module_count.fetch_add(
+                                              1, std::memory_order_relaxed)),
+                             &ctx_)),
         work_graph_(compiler::PersistentResources{
             .work                = &work_set,
-            .module              = this,
+            .module              = module_data_.second,
             .diagnostic_consumer = &consumer,
             .importer            = &importer,
-            .shared_context      = &shared_context_,
+            .shared_context      = &internal_module::shared_context,
         }) {}
+
+  compiler::Context& context() { return ctx_; }
 
   void AppendCode(std::string code) {
     code.push_back('\n');
+
     std::string_view content =
-        indexer_.insert(ir::ModuleId::New(), std::move(code));
+        indexer_.insert(module_data_.first, std::move(code));
     size_t num = consumer.num_consumed();
     auto stmts               = frontend::Parse(content, consumer);
     if (consumer.num_consumed() != num) { return; }
-    auto nodes = insert(stmts.begin(), stmts.end());
+    auto nodes = module_data_.second->insert(stmts.begin(), stmts.end());
     compiler::CompilationData data{
         .context        = &context(),
         .work_resources = work_graph_.work_resources(),
@@ -77,7 +87,7 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
   NodeType const* Append(std::string code) {
     code.push_back('\n');
     std::string_view content =
-        indexer_.insert(ir::ModuleId::New(), std::move(code));
+        indexer_.insert(module_data_.first, std::move(code));
 
     size_t num = consumer.num_consumed();
     auto stmts = frontend::Parse(content, consumer);
@@ -85,7 +95,7 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
     if (auto* ptr = stmts[0]->template if_as<NodeType>()) {
       std::vector<std::unique_ptr<ast::Node>> ns;
       ns.push_back(std::move(stmts[0]));
-      auto nodes = insert(ns.begin(), ns.end());
+      auto nodes = module_data_.second->insert(ns.begin(), ns.end());
       compiler::CompilationData data{
           .context        = &context(),
           .work_resources = work_graph_.work_resources(),
@@ -119,37 +129,38 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
     return work_graph_.work_resources();
   }
 
-  void CompileImportedLibrary(compiler::CompiledModule& imported_mod,
-                              std::string_view name, std::string s) {
-    auto id = ir::ModuleId::New();
+  void CompileImportedLibrary(TestModule& imported_mod, std::string_view name,
+                              std::string s) {
+    auto id = imported_mod.module_data_.first;
 
     compiler::PersistentResources import_resources{
         .work                = &work_set,
-        .module              = &imported_mod,
+        .module              = imported_mod.module_data_.second,
         .diagnostic_consumer = &consumer,
         .importer            = &importer,
-        .shared_context      = &shared_context_,
+        .shared_context      = &internal_module::shared_context,
     };
 
-    std::string_view content =
-        indexer_.insert(ir::ModuleId::New(), std::move(s));
+    std::string_view content = indexer_.insert(id, std::move(s));
     size_t num        = consumer.num_consumed();
     auto parsed_nodes = frontend::Parse(content, consumer);
     if (consumer.num_consumed() != num) { return; }
     compiler::CompileModule(
         imported_mod.context(), import_resources,
-        imported_mod.insert(parsed_nodes.begin(), parsed_nodes.end()));
+        imported_mod.module_data_.second->insert(parsed_nodes.begin(), parsed_nodes.end()));
 
     ON_CALL(importer, Import(testing::_, testing::Eq(name)))
         .WillByDefault(
             [id](module::Module const*, std::string_view) { return id; });
     ON_CALL(importer, get(id))
         .WillByDefault([&imported_mod](ir::ModuleId) -> module::Module& {
-          return imported_mod;
+          return *imported_mod.module_data_.second;
         });
   }
 
-  module::SharedContext& shared_context() { return shared_context_; }
+  module::SharedContext& shared_context() {
+    return internal_module::shared_context;
+  }
 
   module::MockImporter importer;
   diagnostic::TrackingConsumer consumer;
@@ -157,7 +168,7 @@ struct TestModule : ContextHolder, compiler::CompiledModule {
 
  private:
   frontend::SourceIndexer indexer_;
-  module::SharedContext shared_context_;
+  std::pair<ir::ModuleId, compiler::CompiledModule*> module_data_;
   compiler::WorkGraph work_graph_;
   static std::atomic<int> test_module_count;
 };

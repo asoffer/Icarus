@@ -179,23 +179,25 @@ int Compile(char const *file_name, std::string module_identifier,
     return 1;
   }
 
-  std::string_view file_content =
-      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
-
   ir::Module ir_module;
   compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(std::move(module_identifier), file_content,
-                                    &context);
+
+  auto [mod_id, exec_mod] =
+      shared_context.module_table().add_module<compiler::CompiledModule>(
+          std::move(module_identifier), &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
-    exec_mod.scope().embed(&importer.get(embedded_id));
+    exec_mod->scope().embed(&importer.get(embedded_id));
   }
 
+  std::string_view file_content =
+      source_indexer.insert(mod_id, *std::move(content));
+
   auto parsed_nodes = frontend::Parse(file_content, **diag);
-  auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
+  auto nodes        = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
 
   compiler::PersistentResources resources{
       .work                = &work_set,
-      .module              = &exec_mod,
+      .module              = exec_mod,
       .diagnostic_consumer = diag->get(),
       .importer            = &importer,
       .shared_context      = &shared_context,
@@ -206,15 +208,16 @@ int Compile(char const *file_name, std::string module_identifier,
   if (not output_byte_code.empty()) {
     std::string s;
     module::ModuleWriter w(&s);
-    base::Serialize(w, exec_mod);
-    std::ofstream os(absl::GetFlag(FLAGS_byte_code).c_str(), std::ofstream::out);
+    base::Serialize(w, *exec_mod);
+    std::ofstream os(absl::GetFlag(FLAGS_byte_code).c_str(),
+                     std::ofstream::out);
     os << s;
     os.close();
   }
 
   int return_code = 0;
   if (not output_object_file.empty()) {
-    return_code = CompileToObjectFile(exec_mod, *main_fn, target_machine);
+    return_code = CompileToObjectFile(*exec_mod, *main_fn, target_machine);
   }
 
   return return_code;

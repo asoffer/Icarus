@@ -142,26 +142,29 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
       &work_set, diag->get(), &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);
 
-  std::string_view file_content =
-      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
-
   ir::Module ir_module;
   compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod("", file_content, &context);
+
+  auto [mod_id, exec_mod] =
+      shared_context.module_table().add_module<compiler::CompiledModule>(
+          "", &context);
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
-    exec_mod.scope().embed(&importer.get(embedded_id));
+    exec_mod->scope().embed(&importer.get(embedded_id));
   }
+
+  std::string_view file_content =
+      source_indexer.insert(mod_id, *std::move(content));
 
   compiler::PersistentResources resources{
       .work                = &work_set,
-      .module              = &exec_mod,
+      .module              = exec_mod,
       .diagnostic_consumer = diag->get(),
       .importer            = &importer,
       .shared_context      = &shared_context,
   };
 
   auto parsed_nodes = frontend::Parse(file_content, **diag);
-  auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
+  auto nodes        = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
   auto main_fn      = compiler::CompileModule(context, resources, nodes);
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }
 
