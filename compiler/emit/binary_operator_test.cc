@@ -33,47 +33,34 @@ using BinaryOperatorTest =
     testing::TestWithParam<std::tuple<TestCase, TestData>>;
 TEST_P(BinaryOperatorTest, Constants) {
   auto const &[test_case, test_data] = GetParam();
-  test::TestModule mod;
+  test::CompilerInfrastructure infra;
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
-  mod.AppendCode(kCommonDefinitions);
-  auto const *e = mod.Append<ast::Expression>(absl::StrFormat(
-      R"((%s) %s (%s))", test_data.lhs, test_case.op, test_data.rhs));
-  auto t        = mod.context().qual_types(e)[0].type();
-  ASSERT_TRUE(t.valid());
-  CompilationData data{.context        = &mod.context(),
-                       .work_resources = mod.work_resources(),
-                       .resources      = mod.resources()};
-  Compiler c(&data);
-  ASSERT_THAT(
-      c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
-      Optional(test_data.expected));
+  auto &mod     = infra.add_module(absl::StrCat(
+      kCommonDefinitions, absl::StrFormat(R"((%s) %s (%s))", test_data.lhs,
+                                          test_case.op, test_data.rhs)));
+  auto const *e = mod.get<ast::Expression>();
+  ASSERT_THAT(test::Evaluate(mod, e), Optional(test_data.expected));
 }
 
 TEST_P(BinaryOperatorTest, NonConstants) {
   auto const &[test_case, test_data] = GetParam();
-  test::TestModule mod;
+  test::CompilerInfrastructure infra;
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
-  mod.AppendCode(kCommonDefinitions);
-  auto const *e = mod.Append<ast::Expression>(absl::StrFormat(
-      R"(
+  auto &mod     = infra.add_module(absl::StrCat(
+      kCommonDefinitions,
+      absl::StrFormat(
+          R"(
       (() -> %s {
         lhs := %s
         rhs := %s
         return lhs %s rhs
       })()
       )",
-      test_case.type, test_data.lhs, test_data.rhs, test_case.op));
-  auto t        = mod.context().qual_types(e)[0].type();
-  ASSERT_TRUE(t.valid());
-  CompilationData data{.context        = &mod.context(),
-                       .work_resources = mod.work_resources(),
-                       .resources      = mod.resources()};
-  Compiler c(&data);
-  ASSERT_THAT(
-      c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
-      Optional(test_data.expected));
+          test_case.type, test_data.lhs, test_data.rhs, test_case.op)));
+  auto const *e = mod.get<ast::Expression>();
+  ASSERT_THAT(test::Evaluate(mod, e), Optional(test_data.expected));
 }
 
 TEST_P(BinaryOperatorTest, Assignment) {
@@ -81,29 +68,22 @@ TEST_P(BinaryOperatorTest, Assignment) {
   // TODO: Find a better way to do this.
   if (std::isalpha(test_case.op[0])) GTEST_SKIP();
 
-  test::TestModule mod;
+  test::CompilerInfrastructure infra;
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
-  mod.AppendCode(kCommonDefinitions);
-  std::string s;
-  auto const *e = mod.Append<ast::Expression>(absl::StrFormat(
-      R"(
+  auto &mod     = infra.add_module(absl::StrCat(
+      kCommonDefinitions,
+      absl::StrFormat(
+          R"(
       (() -> %s {
         lhs := %s
         lhs %s= %s
         return lhs
       })()
       )",
-      test_case.type, test_data.lhs, test_case.op, test_data.rhs));
-  auto t        = mod.context().qual_types(e)[0].type();
-  ASSERT_TRUE(t.valid());
-  CompilationData data{.context        = &mod.context(),
-                       .work_resources = mod.work_resources(),
-                       .resources      = mod.resources()};
-  Compiler c(&data);
-  ASSERT_THAT(
-      c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
-      Optional(test_data.expected));
+          test_case.type, test_data.lhs, test_case.op, test_data.rhs)));
+  auto const *e = mod.get<ast::Expression>();
+  ASSERT_THAT(test::Evaluate(mod, e), Optional(test_data.expected));
 }
 
 // Note: We test both with literals and with a unary-operator applied directly
@@ -594,10 +574,8 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::ValuesIn(MakeModTestDataSet<uint64_t>())));
 
 TEST(BinaryOperator, Overload) {
-  test::TestModule mod;
-  std::string s;
-  auto const *e = mod.Append<ast::Expression>(
-      R"((() -> i64 {
+  test::CompilerInfrastructure infra;
+  auto &mod     = infra.add_module(R"((() -> i64 {
         S ::= struct {
           n: i64
         }
@@ -611,15 +589,9 @@ TEST(BinaryOperator, Overload) {
 
         return (a + b).n
       })())");
-  auto t = mod.context().qual_types(e)[0].type();
-  ASSERT_TRUE(t.valid());
-  CompilationData data{.context        = &mod.context(),
-                       .work_resources = mod.work_resources(),
-                       .resources      = mod.resources()};
-  Compiler c(&data);
-  ASSERT_THAT(
-      c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
-      Optional(test::ExpectedValue(int64_t{7})));
+  auto const *e = mod.get<ast::Expression>();
+  ASSERT_THAT(test::Evaluate(mod, e),
+              Optional(test::ExpectedValue(int64_t{7})));
 }
 
 struct BufferPointerTestData {
@@ -629,10 +601,10 @@ struct BufferPointerTestData {
 using BufferPointerTest = testing::TestWithParam<BufferPointerTestData>;
 TEST_P(BufferPointerTest, Arithmetic) {
   auto const &[expr, expected_result] = GetParam();
-  test::TestModule mod;
+  test::CompilerInfrastructure infra;
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
-  auto const *e = mod.Append<ast::Expression>(absl::StrFormat(
+  auto &mod     = infra.add_module(absl::StrFormat(
       R"((() -> i64 {
         a := [1 as i64, 2 as i64, 3 as i64]
         p: [*]i64 = &a[1]
@@ -640,15 +612,9 @@ TEST_P(BufferPointerTest, Arithmetic) {
       })()
       )",
       expr));
-  auto t        = mod.context().qual_types(e)[0].type();
-  ASSERT_TRUE(t.valid());
-  CompilationData data{.context        = &mod.context(),
-                       .work_resources = mod.work_resources(),
-                       .resources      = mod.resources()};
-  Compiler c(&data);
-  ASSERT_THAT(
-      c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(e, t)),
-      Optional(test::ExpectedValue(expected_result)));
+  auto const *e = mod.get<ast::Expression>();
+  ASSERT_THAT(test::Evaluate(mod, e),
+              Optional(test::ExpectedValue(expected_result)));
 }
 
 INSTANTIATE_TEST_SUITE_P(

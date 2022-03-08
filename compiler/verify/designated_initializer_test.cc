@@ -12,8 +12,8 @@ using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
 TEST(DesignatedInitializer, NonConstantType) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   S := struct {
     n: i64
   }
@@ -27,8 +27,8 @@ TEST(DesignatedInitializer, NonConstantType) {
 }
 
 TEST(DesignatedInitializer, NonType) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   NotAType ::= 3
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAType.{})");
@@ -40,8 +40,8 @@ TEST(DesignatedInitializer, NonType) {
 }
 
 TEST(DesignatedInitializer, NonConstantNonType) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   NotAType: i64
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAType.{})");
@@ -57,8 +57,8 @@ TEST(DesignatedInitializer, NonConstantNonType) {
 // TODO: Evaluation error test
 
 TEST(DesignatedInitializer, NonStrucType) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   NotAStruct ::= i64
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAStruct.{})");
@@ -72,8 +72,8 @@ TEST(DesignatedInitializer, NonStrucType) {
 TEST(DesignatedInitializer, FieldErrorsAndStructErrors) {
   // Verify that errors on fields are emit even when there's an error on the
   // struct type.
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   NotAStruct ::= i64
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAStruct.{
@@ -92,8 +92,8 @@ TEST(DesignatedInitializer, FieldErrorsAndStructErrors) {
 TEST(DesignatedInitializer, NonMember) {
   // Verify that errors on fields are emit even when there's an error on the
   // struct type.
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   S ::= struct {
     n: i64
   }
@@ -112,8 +112,8 @@ TEST(DesignatedInitializer, NonMember) {
 TEST(DesignatedInitializer, MemberInvalidConversion) {
   // Verify that errors on fields are emit even when there's an error on the
   // struct type.
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   S ::= struct {
     n: i64
   }
@@ -133,8 +133,8 @@ TEST(DesignatedInitializer, MemberInvalidConversion) {
 TEST(DesignatedInitializer, Valid) {
   // Verify that errors on fields are emit even when there's an error on the
   // struct type.
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   S ::= struct {
     n: i64
   }
@@ -151,8 +151,8 @@ TEST(DesignatedInitializer, Valid) {
 TEST(DesignatedInitializer, MultipleMemberAssignments) {
   // Verify that errors on fields are emit even when there's an error on the
   // struct type.
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   f ::= () -> (i64, bool) { return 3, true }
   S ::= struct {
     n: i64
@@ -172,8 +172,8 @@ TEST(DesignatedInitializer, MultipleMemberAssignments) {
 TEST(DesignatedInitializer, MultipleMemberInvalidAssignments) {
   // Verify that errors on fields are emit even when there's an error on the
   // struct type.
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   f ::= () -> (i64, i64) { return 3, 4 }
   S ::= struct {
     n: i64
@@ -195,8 +195,8 @@ TEST(DesignatedInitializer, MultipleMemberInvalidAssignments) {
 TEST(DesignatedInitializer, MemberValidConversion) {
   // Verify that errors on fields are emit even when there's an error on the
   // struct type.
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   buffer_pointer: [*]i64
 
   S ::= struct {
@@ -216,8 +216,8 @@ TEST(DesignatedInitializer, MemberValidConversion) {
 TEST(DesignatedInitializer, ErrorInInitializerAndField) {
   // Verify that errors on fields are emit even when there's an error on the
   // struct type.
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   NotAType ::= 0
   S ::= struct {
     n: i64
@@ -237,14 +237,13 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
 }
 
 TEST(DesignatedInitializer, CrossModule) {
-  test::TestModule mod;
-  test::TestModule imported_mod;
-  mod.CompileImportedLibrary(imported_mod, "imported", R"(
+  test::CompilerInfrastructure infra;
+  auto &imported_mod = infra.add_module("imported", R"(
   #{export} S ::= struct {
     #{export} n: i64
   }
   )");
-  mod.AppendCode(R"(-- ::= import "imported")");
+  auto &mod = infra.add_module(R"(-- ::= import "imported")");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_TRUE(qts[0].type().is<type::Struct>());
@@ -252,14 +251,13 @@ TEST(DesignatedInitializer, CrossModule) {
 }
 
 TEST(DesignatedInitializer, NotExported) {
-  test::TestModule mod;
-  test::TestModule imported_mod;
-  mod.CompileImportedLibrary(imported_mod, "imported", R"(
+  test::CompilerInfrastructure infra;
+  auto &imported_mod = infra.add_module("imported", R"(
   #{export} S ::= struct {
     n: i64
   }
   )");
-  mod.AppendCode(R"(-- ::= import "imported")");
+  auto &mod = infra.add_module(R"(-- ::= import "imported")");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{ n = 3 })");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_TRUE(qts[0].type().is<type::Struct>());

@@ -13,8 +13,8 @@ using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 
 TEST(Identifier, Success) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n: i64
   )");
   auto const *id = mod.Append<ast::Identifier>("n");
@@ -36,8 +36,8 @@ TEST(Identifier, Undeclared) {
 }
 
 TEST(Identifier, UndeclaredDoesNotRepeat) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   x := f(1)
   x + 1
   )");
@@ -47,8 +47,8 @@ TEST(Identifier, UndeclaredDoesNotRepeat) {
 }
 
 TEST(Identifier, OverloadSetSuccess) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   f := () => 3
   f ::= (b: bool) => 4
   )");
@@ -60,8 +60,8 @@ TEST(Identifier, OverloadSetSuccess) {
 }
 
 TEST(Identifier, NonCallableOverloads) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   f ::= (b: bool) => 4
   f := 3
   )");
@@ -74,8 +74,8 @@ TEST(Identifier, NonCallableOverloads) {
 }
 
 TEST(Identifier, CyclicDependency) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   x ::= y + 1
   y ::= z + 1
   z ::= x + 1
@@ -91,8 +91,8 @@ TEST(Identifier, CyclicDependency) {
 }
 
 TEST(Identifier, InaccessibleDeclaration) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n := 0
   f ::= () => n
   )");

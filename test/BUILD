@@ -11,6 +11,7 @@ cc_library(
     name = "module",
     hdrs = ["module.h"],
     deps = [
+        ":evaluation",
         "//ast:ast",
         "//ast:expression",
         "//base:ptr_span",

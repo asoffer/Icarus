@@ -20,8 +20,8 @@ TEST(Index, SliceConstantIndex) {
 }
 
 TEST(Index, SliceNonConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(n: i64)");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(n: i64)");
   auto const *expr = mod.Append<ast::Expression>(R"("abc"[n])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
@@ -30,8 +30,8 @@ TEST(Index, SliceNonConstantIndex) {
 }
 
 TEST(Index, NonConstantSliceConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(s := "abc")");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(s := "abc")");
   auto const *expr = mod.Append<ast::Expression>(R"(s[0])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
@@ -40,8 +40,8 @@ TEST(Index, NonConstantSliceConstantIndex) {
 }
 
 TEST(Index, NonConstantSliceNonConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
   s := "abc"
   n := 0
   )");
@@ -90,8 +90,8 @@ TEST(Index, ArrayConstantIndex) {
 }
 
 TEST(Index, ArrayNonConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(n: i64)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(n: i64)");
   auto const *expr =
       mod.Append<ast::Expression>(R"([1 as i64, 2 as i64, 3 as i64][n])");
   auto qts = mod.context().qual_types(expr);
@@ -101,8 +101,8 @@ TEST(Index, ArrayNonConstantIndex) {
 }
 
 TEST(Index, NonConstantArrayConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(s := [1 as i64, 2 as i64, 3 as i64])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(s := [1 as i64, 2 as i64, 3 as i64])");
   auto const *expr = mod.Append<ast::Expression>(R"(s[0])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(
@@ -111,8 +111,8 @@ TEST(Index, NonConstantArrayConstantIndex) {
 }
 
 TEST(Index, NonConstantArrayNonConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
   s := [1 as i64, 2 as i64, 3 as i64]
   n := 0
   )");
@@ -156,8 +156,8 @@ TEST(Index, ArrayOutOfBoundsLarge) {
 }
 
 TEST(Index, OverloadSuccess) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
   S ::= struct {}
   __index__ ::= (s: *S, x: f64) -> bool { return true }
 

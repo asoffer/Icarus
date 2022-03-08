@@ -48,8 +48,8 @@ TEST(StructLiteral, FieldError) {
 }
 
 TEST(StructLiteral, SelfReferential) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   list ::= struct {
     data: i64
     next: *list
@@ -66,8 +66,8 @@ TEST(StructLiteral, SelfReferential) {
 }
 
 TEST(StructLiteral, DISABLED_SelfReferentialError) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   list ::= struct {
     data: i64
     next: list
@@ -80,8 +80,8 @@ TEST(StructLiteral, DISABLED_SelfReferentialError) {
 
 TEST(StructLiteral, MutuallyReferential) {
   base::EnableLogging("compile-work-queue");
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   A ::= struct { b_ptr: *B }
   B ::= struct { a_ptr: *A }
   a: A
@@ -106,8 +106,8 @@ TEST(StructLiteral, MutuallyReferential) {
 // that.
 TEST(StructLiteral, DISABLED_MutuallyReferentialError) {
   base::EnableLogging("compile-work-queue");
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   A ::= struct { b: B }
   B ::= struct { a: A }
   )");

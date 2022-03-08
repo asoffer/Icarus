@@ -27,8 +27,8 @@ TEST(Copy, Success) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     a := [1 as i64, 2 as i64, 3 as i64]
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("copy a");
@@ -60,8 +60,8 @@ TEST(Init, Success) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     a := [1 as i64, 2 as i64, 3 as i64]
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("init a");
@@ -73,8 +73,8 @@ TEST(Init, Success) {
 }
 
 TEST(Copy, Uncopyable) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   T ::= #{uncopyable} struct {}
   t: T
   )");
@@ -101,8 +101,8 @@ TEST(Move, Success) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     a := [1 as i64, 2 as i64, 3 as i64]
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("move a");
@@ -114,8 +114,8 @@ TEST(Move, Success) {
 }
 
 TEST(Move, Immovable) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   T ::= #{immovable} struct {}
   t: T
   )");
@@ -141,8 +141,8 @@ TEST(BufferPointer, Success) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     T := i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("[*]T");
@@ -171,8 +171,8 @@ TEST(TypeOf, Success) {
 }
 
 TEST(At, Pointer) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   p: *i64
   )");
   auto const *expr = mod.Append<ast::UnaryOperator>("@p");
@@ -183,8 +183,8 @@ TEST(At, Pointer) {
 }
 
 TEST(At, BufferPointer) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   p: [*]i64
   )");
   auto const *expr = mod.Append<ast::UnaryOperator>("@p");
@@ -195,8 +195,8 @@ TEST(At, BufferPointer) {
 }
 
 TEST(At, NonPointer) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   p: i64
   )");
   auto const *expr = mod.Append<ast::UnaryOperator>("@p");
@@ -208,8 +208,8 @@ TEST(At, NonPointer) {
 }
 
 TEST(And, Success) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n: i64
   )");
   auto const *expr = mod.Append<ast::UnaryOperator>("&n");
@@ -239,8 +239,8 @@ TEST(Pointer, Success) {
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     T := i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("*T");
@@ -262,8 +262,8 @@ TEST(Pointer, NotAType) {
 
 TEST(Negate, SignedInteger) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
@@ -274,8 +274,8 @@ TEST(Negate, SignedInteger) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
@@ -287,8 +287,8 @@ TEST(Negate, SignedInteger) {
 
 TEST(Negate, FloatingPoint) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     x: f64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-x");
@@ -299,8 +299,8 @@ TEST(Negate, FloatingPoint) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     x :: f64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-x");
@@ -312,8 +312,8 @@ TEST(Negate, FloatingPoint) {
 
 TEST(Negate, UnsignedInteger) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: u64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
@@ -325,8 +325,8 @@ TEST(Negate, UnsignedInteger) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: u64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
@@ -340,8 +340,8 @@ TEST(Negate, UnsignedInteger) {
 
 TEST(Negate, InvalidType) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n := [1, 2, 3]
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
@@ -353,8 +353,8 @@ TEST(Negate, InvalidType) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n ::= [1, 2, 3]
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("-n");
@@ -367,8 +367,8 @@ TEST(Negate, InvalidType) {
 }
 
 TEST(Negate, Overload) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
     S ::= struct {}
     (-) ::= (s: S) -> i64 { return 0 }
     )");
@@ -380,8 +380,8 @@ TEST(Negate, Overload) {
 }
 
 TEST(Negate, MissingOverload) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
     S ::= struct {}
     )");
   auto const *expr = mod.Append<ast::UnaryOperator>("-S.{}");
@@ -394,8 +394,8 @@ TEST(Negate, MissingOverload) {
 
 TEST(Not, Bool) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     b: bool
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("not b");
@@ -406,8 +406,8 @@ TEST(Not, Bool) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     b :: bool
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("not b");
@@ -420,8 +420,8 @@ TEST(Not, Bool) {
 
 TEST(Not, Flags) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     F ::= flags { A \\ B \\ C }
     f: F
     )");
@@ -432,8 +432,8 @@ TEST(Not, Flags) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     F ::= flags { A \\ B \\ C }
     f :: F
     )");
@@ -446,8 +446,8 @@ TEST(Not, Flags) {
 
 TEST(Not, InvalidType) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("not n");
@@ -459,8 +459,8 @@ TEST(Not, InvalidType) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("not n");
@@ -472,8 +472,8 @@ TEST(Not, InvalidType) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("not n");
@@ -485,8 +485,8 @@ TEST(Not, InvalidType) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: i64
     )");
     auto const *expr = mod.Append<ast::UnaryOperator>("not n");
@@ -499,8 +499,8 @@ TEST(Not, InvalidType) {
 }
 
 TEST(Not, Overload) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
     S ::= struct {}
     (not) ::= (s: S) -> i64 { return 0 }
     )");
@@ -512,8 +512,8 @@ TEST(Not, Overload) {
 }
 
 TEST(Not, MissingOverload) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
     S ::= struct {}
     )");
   auto const *expr = mod.Append<ast::UnaryOperator>("not S.{}");
@@ -525,8 +525,8 @@ TEST(Not, MissingOverload) {
 }
 
 TEST(Unexpanded, Failure) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
     f ::= () -> (i64, i64) { return 1, 2 }
     g ::= () -> i64 { return 1 }
     h ::= () -> () { }
@@ -541,16 +541,16 @@ TEST(Unexpanded, Failure) {
 }
 
 TEST(UnaryOperator, ValidPattern) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   true ~ not `B
   )");
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(UnaryOperator, InvalidPattern) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   true ~ -`B
   )");
   EXPECT_THAT(

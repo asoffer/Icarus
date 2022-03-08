@@ -31,8 +31,8 @@ TEST(Enum, NonIntegralEnumerator) {
 }
 
 TEST(Enum, NonConstantEnumerator) {
-  test::TestModule mod;
-  mod.AppendCode("n := 3");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module("n := 3");
   auto const *e = mod.Append<ast::EnumLiteral>(R"(enum { A \\ B \\ C ::= n })");
   auto qts      = mod.context().qual_types(e);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
@@ -62,8 +62,8 @@ TEST(Flags, NonIntegralEnumerator) {
 }
 
 TEST(Flags, NonConstantEnumerator) {
-  test::TestModule mod;
-  mod.AppendCode("n := 3");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module("n := 3");
   auto const *e = mod.Append<ast::EnumLiteral>(R"(enum { A \\ B \\ C ::= n })");
   auto qts      = mod.context().qual_types(e);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));

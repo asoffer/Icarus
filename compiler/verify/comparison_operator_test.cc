@@ -13,8 +13,8 @@ using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
 TEST(ComparisonOperator, ConstantSuccess) {
-  test::TestModule mod;
-  mod.AppendCode(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(
       R"(x ::= 1
          y ::= 2
       )");
@@ -26,8 +26,8 @@ TEST(ComparisonOperator, ConstantSuccess) {
 }
 
 TEST(ComparisonOperator, NonConstantSuccess) {
-  test::TestModule mod;
-  mod.AppendCode(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(
       R"(x := 1
          y := 2
       )");
@@ -40,8 +40,8 @@ TEST(ComparisonOperator, NonConstantSuccess) {
 }
 
 TEST(ComparisonOperator, Pointer) {
-  test::TestModule mod;
-  mod.AppendCode(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(
       R"(x: i64
          p := &x
       )");
@@ -53,8 +53,8 @@ TEST(ComparisonOperator, Pointer) {
 }
 
 TEST(ComparisonOperator, UnorderedPointers) {
-  test::TestModule mod;
-  mod.AppendCode(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(
       R"(x := 1
          p := &x
       )");
@@ -68,8 +68,8 @@ TEST(ComparisonOperator, UnorderedPointers) {
 }
 
 TEST(ComparisonOperator, BufferPointerOrder) {
-  test::TestModule mod;
-  mod.AppendCode(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(
       R"(p: [*]i64
       )");
   auto const *expr = mod.Append<ast::ComparisonOperator>("p < p == p >= p");
@@ -81,8 +81,8 @@ TEST(ComparisonOperator, BufferPointerOrder) {
 
 using OperatorOverload = testing::TestWithParam<char const *>;
 TEST_P(OperatorOverload, Overloads) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(S ::= struct {}
          (%s) ::= (lhs: S, rhs: S) -> bool { return true }
       )",
@@ -96,8 +96,8 @@ TEST_P(OperatorOverload, Overloads) {
 }
 
 TEST_P(OperatorOverload, MissingOverloads) {
-  test::TestModule mod;
-  mod.AppendCode(R"(S ::= struct {}
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(S ::= struct {}
   )");
   auto const *expr = mod.Append<ast::ComparisonOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));

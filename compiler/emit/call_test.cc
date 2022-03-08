@@ -132,8 +132,8 @@ int64_t ForeignFunctionI64() { return 17; }
 namespace {
 
 TEST(CallTest, Foreign) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   f_ptr ::= foreign("ForeignFunctionPtr", () -> *i64)
   f_i8  ::= foreign("ForeignFunctionI8", () -> i8)
   f_i64 ::= foreign("ForeignFunctionI64", () -> i64)

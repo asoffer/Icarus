@@ -15,8 +15,8 @@ using ::testing::UnorderedElementsAre;
 
 using FlagsLogicalOperatorEq = testing::TestWithParam<char const *>;
 TEST_P(FlagsLogicalOperatorEq, Success) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(R"(
     F ::= flags { A \\ B \\ C }
     f: F
     f %s f
@@ -26,8 +26,8 @@ TEST_P(FlagsLogicalOperatorEq, Success) {
 }
 
 TEST_P(FlagsLogicalOperatorEq, NonReference) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(R"(
     F ::= flags { A \\ B \\ C }
     f: F
     not f %s f
@@ -40,8 +40,8 @@ TEST_P(FlagsLogicalOperatorEq, NonReference) {
 }
 
 TEST_P(FlagsLogicalOperatorEq, Constant) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(R"(
     F ::= flags { A \\ B \\ C }
     f :: F
     f %s F.A
@@ -54,8 +54,8 @@ TEST_P(FlagsLogicalOperatorEq, Constant) {
 }
 
 TEST_P(FlagsLogicalOperatorEq, InvalidLhsType) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(R"(
     F ::= flags { A \\ B \\ C }
     n: i64
     n %s F.A
@@ -68,8 +68,8 @@ TEST_P(FlagsLogicalOperatorEq, InvalidLhsType) {
 }
 
 TEST_P(FlagsLogicalOperatorEq, InvalidRhsType) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(R"(
     F ::= flags { A \\ B \\ C }
     f: F
     f %s 3
@@ -88,8 +88,8 @@ using IntegerArithmeticOperatorEq =
     testing::TestWithParam<std::tuple<char const *, char const *>>;
 TEST_P(IntegerArithmeticOperatorEq, Success) {
   auto [type, op] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(n: %s
          n %s n
       )",
@@ -99,8 +99,8 @@ TEST_P(IntegerArithmeticOperatorEq, Success) {
 
 TEST_P(IntegerArithmeticOperatorEq, NonReference) {
   auto [type, op] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(n: %s
          // `n + n` is a valid non-reference expression for all integral types.
          (n + n) %s n
@@ -114,8 +114,8 @@ TEST_P(IntegerArithmeticOperatorEq, NonReference) {
 
 TEST_P(IntegerArithmeticOperatorEq, Constant) {
   auto [type, op] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(n :: %s
          n %s n
       )",
@@ -128,8 +128,8 @@ TEST_P(IntegerArithmeticOperatorEq, Constant) {
 
 TEST_P(IntegerArithmeticOperatorEq, InvalidLhsType) {
   auto [type, op] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(n: %s
          b: bool
          b %s n
@@ -143,8 +143,8 @@ TEST_P(IntegerArithmeticOperatorEq, InvalidLhsType) {
 
 TEST_P(IntegerArithmeticOperatorEq, InvalidRhsType) {
   auto [type, op] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(n: %s
          n %s true
       )",
@@ -164,8 +164,8 @@ using FloatingPointArithmeticOperatorEq =
     testing::TestWithParam<std::tuple<char const *, char const *>>;
 TEST_P(FloatingPointArithmeticOperatorEq, Success) {
   auto [type, op] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(n: %s
          n %s n
       )",
@@ -175,8 +175,8 @@ TEST_P(FloatingPointArithmeticOperatorEq, Success) {
 
 TEST_P(FloatingPointArithmeticOperatorEq, NonReference) {
   auto [type, op] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(x: %s
          // `x + x` is a valid non-reference expression for all floating-point types.
          (x + x) %s x
@@ -190,8 +190,8 @@ TEST_P(FloatingPointArithmeticOperatorEq, NonReference) {
 
 TEST_P(FloatingPointArithmeticOperatorEq, Constant) {
   auto [type, op] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(x :: %s
          x %s x
       )",
@@ -204,8 +204,8 @@ TEST_P(FloatingPointArithmeticOperatorEq, Constant) {
 
 TEST_P(FloatingPointArithmeticOperatorEq, InvalidLhsType) {
   auto [type, op] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(x: %s
          b: bool
          b %s x
@@ -219,8 +219,8 @@ TEST_P(FloatingPointArithmeticOperatorEq, InvalidLhsType) {
 
 TEST_P(FloatingPointArithmeticOperatorEq, InvalidRhsType) {
   auto [type, op] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(x: %s
          x %s true
       )",
@@ -240,9 +240,12 @@ using BinaryOperator =
 TEST_P(BinaryOperator, Success) {
   auto [type, op] = GetParam();
   {
-    test::TestModule mod;
-    mod.AppendCode("FlagType ::= flags {}");
-    mod.AppendCode(absl::StrCat(R"(x: )", type));
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(absl::StrFormat(
+        R"(FlagType ::= flags {}
+           x: %s
+           )",
+        type));
     auto const *expr =
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
     auto qts = mod.context().qual_types(expr);
@@ -251,9 +254,12 @@ TEST_P(BinaryOperator, Success) {
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
   {
-    test::TestModule mod;
-    mod.AppendCode("FlagType ::= flags {}");
-    mod.AppendCode(absl::StrCat(R"(x :: )", type));
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(absl::StrFormat(
+        R"(FlagType ::= flags {}
+           x :: %s
+           )",
+        type));
     auto const *expr =
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
     auto qts = mod.context().qual_types(expr);
@@ -287,8 +293,8 @@ INSTANTIATE_TEST_SUITE_P(
 
 using OperatorOverload = testing::TestWithParam<char const *>;
 TEST_P(OperatorOverload, Overloads) {
-  test::TestModule mod;
-  mod.AppendCode(absl::StrFormat(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrFormat(
       R"(S ::= struct {}
          (%s) ::= (lhs: S, rhs: S) -> i64 { return 0 }
       )",
@@ -302,8 +308,8 @@ TEST_P(OperatorOverload, Overloads) {
 }
 
 TEST_P(OperatorOverload, MissingOverloads) {
-  test::TestModule mod;
-  mod.AppendCode(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(
       R"(S ::= struct {}
       )");
   auto const *expr = mod.Append<ast::BinaryOperator>(
@@ -320,8 +326,8 @@ INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
                                             "|"}));
 
 TEST(BufferPointerArithmetic, Success) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
     p: [*]i64
     p += 1 as u8
     p += 1
@@ -336,8 +342,8 @@ TEST(BufferPointerArithmetic, Success) {
 }
 
 TEST(BufferPointerArithmetic, Failure) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
     p: [*]i64
     q: [*]u64
     p + p
@@ -354,8 +360,8 @@ TEST(BufferPointerArithmetic, Failure) {
 }
 
 TEST(Unexpanded, Failure) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
     f ::= () -> (i64, i64) { return 1, 2 }
     g ::= () -> i64 { return 1 }
     h ::= () -> () { }

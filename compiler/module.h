@@ -59,6 +59,8 @@ struct CompiledModule : module::Module {
     depends_on_module_with_errors_ = true;
   }
 
+  ast::Module const &module() const { return module_; }
+
   ast::Scope const &scope() const { return module_.body_scope(); }
   ast::Scope &scope() { return module_.body_scope(); }
 

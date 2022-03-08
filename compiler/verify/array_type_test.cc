@@ -44,9 +44,8 @@ TEST(ArrayType, Correct) {
 }
 
 TEST(ArrayType, NonConstantType) {
-  test::TestModule mod;
-
-  mod.AppendCode(R"(T := i64)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(T := i64)");
   auto const *expr = mod.Append<ast::Expression>(R"([3; T])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
@@ -68,8 +67,8 @@ TEST(ArrayType, NonTypeElement) {
 }
 
 TEST(ArrayType, NonConstantLength) {
-  test::TestModule mod;
-  mod.AppendCode(R"(n := 3)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(n := 3)");
   auto const *expr = mod.Append<ast::Expression>(R"([3, n, 2; i64])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
@@ -89,8 +88,8 @@ TEST(ArrayType, NonIntegerLength) {
 }
 
 TEST(ArrayType, NonIntegerNonConstant) {
-  test::TestModule mod;
-  mod.AppendCode(R"(x := 3.0)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(x := 3.0)");
   auto const *expr = mod.Append<ast::Expression>(R"([x; i64])");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
@@ -102,16 +101,16 @@ TEST(ArrayType, NonIntegerNonConstant) {
 }
 
 TEST(ArrayType, InvalidPattern) {
-  test::TestModule mod;
-  mod.AppendCode(R"(3 ~ [2; `T])");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(3 ~ [2; `T])");
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("pattern-error", "non-type-array-type-match")));
 }
 
 TEST(ArrayType, ValidPattern) {
-  test::TestModule mod;
-  mod.AppendCode(R"([2, 3; i64] ~ [`N; `T])");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"([2, 3; i64] ~ [`N; `T])");
   {
     auto const *expr = mod.Append<ast::Identifier>(R"(N)");
     auto qts         = mod.context().qual_types(expr);

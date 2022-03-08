@@ -19,8 +19,8 @@ TEST(Cast, ConstantSuccess) {
 }
 
 TEST(Cast, NonConstant) {
-  test::TestModule mod;
-  mod.AppendCode("n := 3");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module("n := 3");
   auto const *expr = mod.Append<ast::Expression>("n as f64");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,

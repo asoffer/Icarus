@@ -11,8 +11,8 @@ using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
 TEST(Assignment, SimpleSuccess) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n: i64
   n = 0
   )");
@@ -20,8 +20,8 @@ TEST(Assignment, SimpleSuccess) {
 }
 
 TEST(Assignment, NonReference) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   f ::= () => 3
   f() = 4
   )");
@@ -31,8 +31,8 @@ TEST(Assignment, NonReference) {
 }
 
 TEST(Assignment, Constant) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n ::= 3
   n = 0
   )");
@@ -42,8 +42,8 @@ TEST(Assignment, Constant) {
 }
 
 TEST(Assignment, WithCast) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n: [*]i64
   m: *i64
   n = null
@@ -53,8 +53,8 @@ TEST(Assignment, WithCast) {
 }
 
 TEST(Assignment, TypeMismatch) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n := 3
   n = "hello"
   )");

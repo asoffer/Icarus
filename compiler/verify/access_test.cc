@@ -83,8 +83,8 @@ TEST(Access, TypeHasNoMembers) {
 }
 
 TEST(Access, AccessStructField) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod                = infra.add_module(R"(
   S ::= struct {
     n: i64
     b: bool
@@ -105,8 +105,8 @@ TEST(Access, AccessStructField) {
 }
 
 TEST(Access, NoFieldInStruct) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
   S ::= struct {
     n: i64
     b: bool
@@ -130,8 +130,8 @@ TEST(Access, ConstantSliceLength) {
 }
 
 TEST(Access, NonConstantSliceLength) {
-  test::TestModule mod;
-  mod.AppendCode(R"(s := "abc")");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(s := "abc")");
   auto const *expr = mod.Append<ast::Expression>(R"(s.length)");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType(type::U64, type::Quals::Ref())));
@@ -139,8 +139,8 @@ TEST(Access, NonConstantSliceLength) {
 }
 
 TEST(Access, NonConstantSliceData) {
-  test::TestModule mod;
-  mod.AppendCode(R"(s := "abc")");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(s := "abc")");
   auto const *expr = mod.Append<ast::Expression>(R"(s.data)");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType(type::BufPtr(type::Char),
@@ -149,8 +149,8 @@ TEST(Access, NonConstantSliceData) {
 }
 
 TEST(Access, SliceInvalidMember) {
-  test::TestModule mod;
-  mod.AppendCode(R"(s := "abc")");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(s := "abc")");
   auto const *expr = mod.Append<ast::Expression>(R"(s.size)");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType::Error()));
@@ -195,20 +195,20 @@ TEST(Access, ArrayInvalidMember) {
 }
 
 TEST(Access, IntoModuleWithError) {
-  test::TestModule mod;
+  test::CompilerInfrastructure infra;
   test::TestModule imported_module;
   mod.CompileImportedLibrary(imported_module, "imported", R"(
   #{export} N :: bool = 3
   )");
 
-  mod.AppendCode("mod ::= import \"imported\"");
+  auto &mod = infra.add_module("mod ::= import \"imported\"");
   auto const *expr = mod.Append<ast::Expression>(R"(mod.N)");
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "invalid-cast")));
 }
 
 TEST(Access, CrossModuleStructFieldAccess) {
-  test::TestModule mod;
+  test::CompilerInfrastructure infra;
   test::TestModule imported_module;
   mod.CompileImportedLibrary(imported_module, "imported", R"(
   #{export} S ::= struct {
@@ -216,7 +216,7 @@ TEST(Access, CrossModuleStructFieldAccess) {
   }
   )");
 
-  mod.AppendCode(R"(
+  auto &mod = infra.add_module(R"(
     mod ::= import "imported"
     s: mod.S
     s.n
@@ -226,7 +226,7 @@ TEST(Access, CrossModuleStructFieldAccess) {
 }
 
 TEST(Access, CrossModuleStructFieldError) {
-  test::TestModule mod;
+  test::CompilerInfrastructure infra;
   test::TestModule imported_module;
   mod.CompileImportedLibrary(imported_module, "imported", R"(
   #{export} S ::= struct {
@@ -234,21 +234,19 @@ TEST(Access, CrossModuleStructFieldError) {
   }
   )");
 
-  mod.AppendCode(R"(
+  auto &mod = infra.add_module(R"(
     mod ::= import "imported"
     s: mod.S
     s.m
   )");
 
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "missing-member")));
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "missing-member")));
 }
 
 TEST(Access, Pattern) {
-  test::TestModule mod;
-
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   S ::= struct {
     n: i64
   }

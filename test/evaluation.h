@@ -24,6 +24,47 @@
 
 namespace test {
 
+// Evaluates the expression `e` which must be part of the given `module`.
+// Returns a buffer holding its value if evaluation succeeds and nullopt
+// (alerting GoogleTest to failures) otherwise.
+std::optional<ir::CompleteResultBuffer> Evaluate(
+    compiler::CompiledModule &module, ast::Expression const *e) {
+  compiler::WorkSet work_set;
+  module::SharedContext shared_context;
+  diagnostic::TrackingConsumer consumer;
+  module::TrivialImporter importer;
+  ir::Module ir_module;
+
+  compiler::PersistentResources resources{
+      .work                = &work_set,
+      .module              = &module,
+      .diagnostic_consumer = &consumer,
+      .importer            = &importer,
+      .shared_context      = &shared_context,
+  };
+
+  compiler::WorkGraph work_graph(resources);
+
+  compiler::CompilationData data{.context        = &module.context(),
+                                 .work_resources = work_graph.work_resources(),
+                                 .resources      = resources};
+  compiler::Compiler c(&data);
+
+  auto qts = module.context().qual_types(e);
+  if (qts.size() != 1) {
+    ADD_FAILURE() << "Expected evaluation of a single expression but got "
+                  << qts.size();
+    return std::nullopt;
+  }
+  auto t = qts[0].type();
+  if (not t.valid()) {
+    ADD_FAILURE() << "Type is unexpectedly invalid.";
+    return std::nullopt;
+  }
+  return c.EvaluateToBufferOrDiagnose(
+      type::Typed<ast::Expression const *>(e, t));
+}
+
 struct TestCase {
   std::string context;
   std::string expr;
@@ -51,7 +92,7 @@ TEST_P(EvaluationTest, Test) {
   auto stmts =
       frontend::Parse(absl::StrCat(context, "\n", expr, "\n"), consumer);
   if (consumer.num_consumed() != num) {
-    FAIL() << "Parisng failure.";
+    ADD_FAILURE() << "Parisng failure.";
     return;
   }
 
@@ -69,25 +110,7 @@ TEST_P(EvaluationTest, Test) {
   compiler::CompileModule(ctx, resources,
                           module->insert(stmts.begin(), stmts.end()));
 
-  auto qts = ctx.qual_types(e);
-  ASSERT_EQ(qts.size(), 1);
-  ASSERT_EQ(qts[0].type(), type);
-
-  compiler::CompilationData data{
-      .context        = &ctx,
-      .work_resources = work_graph.work_resources(),
-      .resources =
-          {
-              .work                = &work_set,
-              .module              = module,
-              .diagnostic_consumer = &consumer,
-              .importer            = &importer,
-              .shared_context      = &shared_context,
-          },
-  };
-  compiler::Compiler c(&data);
-  EXPECT_THAT(c.EvaluateToBufferOrDiagnose(
-                  type::Typed<ast::Expression const *>(e, type)),
+  EXPECT_THAT(Evaluate(*module, e),
               ::testing::Optional(::testing::Eq(expected)));
 }
 

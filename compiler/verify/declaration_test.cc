@@ -13,8 +13,8 @@ using ::testing::UnorderedElementsAre;
 
 TEST(Declaration, DefaultInitSuccess) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: i64
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
@@ -24,8 +24,8 @@ TEST(Declaration, DefaultInitSuccess) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: i64
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
@@ -37,8 +37,8 @@ TEST(Declaration, DefaultInitSuccess) {
 
 TEST(Declaration, DefaultInitTypeNotAType) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: 3 
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -46,8 +46,8 @@ TEST(Declaration, DefaultInitTypeNotAType) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: 3 
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -57,8 +57,8 @@ TEST(Declaration, DefaultInitTypeNotAType) {
 
 TEST(Declaration, DefaultInitNonConstantType) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     T := i64
     n: T 
     )");
@@ -68,8 +68,8 @@ TEST(Declaration, DefaultInitNonConstantType) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     T := i64
     n :: T
     )");
@@ -84,8 +84,8 @@ TEST(Declaration, DefaultInitNonConstantType) {
 
 TEST(Declaration, InferredSuccess) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n := 3
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
@@ -95,8 +95,8 @@ TEST(Declaration, InferredSuccess) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n ::= 3
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
@@ -108,8 +108,8 @@ TEST(Declaration, InferredSuccess) {
 
 TEST(Declaration, InferredUninferralbe) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n := []
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -117,8 +117,8 @@ TEST(Declaration, InferredUninferralbe) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n ::= []
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -128,8 +128,8 @@ TEST(Declaration, InferredUninferralbe) {
 
 TEST(Declaration, InferredAndUninitialized) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n := --
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -137,8 +137,8 @@ TEST(Declaration, InferredAndUninitialized) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n ::= --
     )");
     EXPECT_THAT(
@@ -150,8 +150,8 @@ TEST(Declaration, InferredAndUninitialized) {
 
 TEST(Declaration, CustomInitSuccess) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: i64 = 3
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
@@ -161,8 +161,8 @@ TEST(Declaration, CustomInitSuccess) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: i64 = 3
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
@@ -174,8 +174,8 @@ TEST(Declaration, CustomInitSuccess) {
 
 TEST(Declaration, CustomInitTypeNotAType) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: 3 = 4
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -183,8 +183,8 @@ TEST(Declaration, CustomInitTypeNotAType) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: 3  = 4
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -194,8 +194,8 @@ TEST(Declaration, CustomInitTypeNotAType) {
 
 TEST(Declaration, CustomInitNonConstantType) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     T := i64
     n: T = 3
     )");
@@ -205,8 +205,8 @@ TEST(Declaration, CustomInitNonConstantType) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     T := i64
     n :: T = 3
     )");
@@ -218,8 +218,8 @@ TEST(Declaration, CustomInitNonConstantType) {
 
 TEST(Declaration, CustomInitAllowsConversions) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: [0; i64] = []
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
@@ -229,8 +229,8 @@ TEST(Declaration, CustomInitAllowsConversions) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: [0; i64] = []
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
@@ -242,8 +242,8 @@ TEST(Declaration, CustomInitAllowsConversions) {
 
 TEST(Declaration, UninitializedSuccess) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: i64 = --
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
@@ -253,8 +253,8 @@ TEST(Declaration, UninitializedSuccess) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: i64 = --
     )");
     auto qts = mod.context().qual_types(mod.Append<ast::Identifier>("n"));
@@ -268,8 +268,8 @@ TEST(Declaration, UninitializedSuccess) {
 
 TEST(Declaration, UninitializedTypeNotAType) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n: 3 = --
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -277,8 +277,8 @@ TEST(Declaration, UninitializedTypeNotAType) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     n :: 3  = --
     )");
     EXPECT_THAT(
@@ -290,8 +290,8 @@ TEST(Declaration, UninitializedTypeNotAType) {
 
 TEST(Declaration, UninitializedNonConstantType) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     T := i64
     n: T = --
     )");
@@ -301,8 +301,8 @@ TEST(Declaration, UninitializedNonConstantType) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     T := i64
     n :: T = --
     )");
@@ -315,8 +315,8 @@ TEST(Declaration, UninitializedNonConstantType) {
 
 TEST(Declaration, NonModuleHole) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     -- := 3
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -325,8 +325,8 @@ TEST(Declaration, NonModuleHole) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     -- ::= 3
     )");
     EXPECT_THAT(mod.consumer.diagnostics(),
@@ -336,8 +336,8 @@ TEST(Declaration, NonModuleHole) {
 }
 
 TEST(Declaration, NoShadowing) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
     x := 3
     y := 4
     )");
@@ -346,8 +346,8 @@ TEST(Declaration, NoShadowing) {
 
 TEST(Declaration, Shadowing) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     x := 3
     x := 4
     )");
@@ -357,8 +357,8 @@ TEST(Declaration, Shadowing) {
   }
 
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     x := 3
     x := () => 0
     )");
@@ -369,8 +369,8 @@ TEST(Declaration, Shadowing) {
 }
 
 TEST(Declaration, FunctionsCanShadow) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
     f ::= (n: i64) => n
     f ::= (b: bool) => b
     )");
@@ -379,8 +379,8 @@ TEST(Declaration, FunctionsCanShadow) {
 
 TEST(Declaration, AmbiguouslyCallableFunctionsCannotShadow) {
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     f ::= (n := 0) => n
     f ::= (b := true) => b
     )");
@@ -389,8 +389,8 @@ TEST(Declaration, AmbiguouslyCallableFunctionsCannotShadow) {
         UnorderedElementsAre(Pair("type-error", "shadowing-declaration")));
   }
   {
-    test::TestModule mod;
-    mod.AppendCode(R"(
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
     f ::= (n: [0; i64]) => 0
     f ::= (b: [0; bool]) => 0
     )");

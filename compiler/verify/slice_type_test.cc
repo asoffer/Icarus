@@ -21,9 +21,8 @@ TEST(SliceType, Correct) {
 }
 
 TEST(SliceType, NonConstantType) {
-  test::TestModule mod;
-
-  mod.AppendCode(R"(T := i64)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(T := i64)");
   auto const *expr = mod.Append<ast::Expression>(R"([]T)");
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
@@ -44,16 +43,16 @@ TEST(SliceType, NonTypeData) {
 }
 
 TEST(UnaryOperator, ValidPattern) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   []i64 ~ []`T
   )");
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(SliceType, InvalidPattern) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   true ~ []`T
   )");
   EXPECT_THAT(

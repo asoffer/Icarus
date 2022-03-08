@@ -21,8 +21,8 @@ TEST(BuiltinReserveMemory, FunctionSuccess) {
 }
 
 TEST(BuiltinReserveMemory, NonConstantArgument) {
-  test::TestModule mod;
-  mod.AppendCode(R"(n := 3 as u64)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(n := 3 as u64)");
   auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(n, 1))");
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt,
@@ -132,8 +132,8 @@ TEST(BuiltinForeign, FirstParameterCharSlice) {
 }
 
 TEST(BuiltinForeign, NonConstantType) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   f := () -> ()
   )");
   auto const *call  = mod.Append<ast::Call>(R"(foreign("f", f))");
@@ -180,14 +180,13 @@ TEST(Call, Uncallable) {
 }
 
 TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
-  test::TestModule mod;
-  test::TestModule imported_mod;
-  mod.CompileImportedLibrary(imported_mod, "imported", R"(
+  test::CompilerInfrastructure infra;
+  auto &imported_mod = infra.add_module("imported", R"(
   #{export} S ::= struct {}
   #{export} f ::= (s: S) => true
   )");
 
-  mod.AppendCode(R"(
+  auto &mod = infra.add_module(R"(
     mod ::= import "imported"
     s: mod.S
     f(s)
@@ -199,14 +198,13 @@ TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
 }
 
 TEST(Call, CrossModuleWithADLSucceed) {
-  test::TestModule mod;
-  test::TestModule imported_mod;
-  mod.CompileImportedLibrary(imported_mod, "imported", R"(
+  test::CompilerInfrastructure infra;
+  auto &imported_mod = infra.add_module("imported", R"(
   #{export} S ::= struct {}
   #{export} f ::= (s: S) => 3 as i64
   )");
 
-  mod.AppendCode(R"(
+  auto &mod = infra.add_module(R"(
     mod ::= import "imported"
     f ::= (n: i64) => true
     s: mod.S
@@ -216,14 +214,12 @@ TEST(Call, CrossModuleWithADLSucceed) {
 }
 
 TEST(Call, CrossModuleWithADLWithoutExport) {
-  test::TestModule mod;
-  test::TestModule imported_mod;
-  mod.CompileImportedLibrary(imported_mod, "imported", R"(
+  test::CompilerInfrastructure infra;
+  auto &imported_mod = infra.add_module("imported", R"(
   #{export} S ::= struct {}
   f ::= (s: S) => 3 as i64
   )");
-
-  mod.AppendCode(R"(
+  auto &mod = infra.add_module(R"(
     mod ::= import "imported"
     s: mod.S
     s'f
@@ -248,8 +244,8 @@ using CallTest = testing::TestWithParam<TestCase>;
 TEST_P(CallTest, Call) {
   auto const &[context, expr, expected_qual_type, expected_diagnostics] =
       GetParam();
-  test::TestModule mod;
-  mod.AppendCode(context);
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(context);
   auto const *e = mod.Append<ast::Expression>(expr);
   auto qts      = mod.context().qual_types(e);
   EXPECT_THAT(qts, UnorderedElementsAre(expected_qual_type));

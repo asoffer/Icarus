@@ -24,9 +24,9 @@ TEST(Import, InvalidTypeBeingImported) {
 }
 
 TEST(Import, NonConstantImport) {
-  test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import).Times(0);
-  mod.AppendCode(R"(str := "abc")");
+  test::CompilerInfrastructure infra;
+  EXPECT_CALL(infra.importer, Import).Times(0);
+  auto &mod          = infra.add_module(R"(str := "abc")");
   auto const *import = mod.Append<ast::Expression>(R"(import str)");
   auto qts           = mod.context().qual_types(import);
   EXPECT_THAT(qts,
@@ -37,9 +37,9 @@ TEST(Import, NonConstantImport) {
 }
 
 TEST(Import, NonConstantAndInvalidType) {
-  test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import).Times(0);
-  mod.AppendCode(R"(x := 3)");
+  test::CompilerInfrastructure infra;
+  EXPECT_CALL(infra.importer, Import).Times(0);
+  auto &mod = infra.add_module(R"(x := 3)");
   auto const *import = mod.Append<ast::Expression>(R"(import x)");
   auto qts           = mod.context().qual_types(import);
   EXPECT_THAT(qts,
@@ -52,8 +52,10 @@ TEST(Import, NonConstantAndInvalidType) {
 
 TEST(Import, StringLiteral) {
   constexpr std::string_view kModule = "some-module";
-  test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import(_, kModule)).WillOnce(Return(ir::ModuleId(7)));
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module("");
+  EXPECT_CALL(infra.importer, Import(_, kModule))
+      .WillOnce(Return(ir::ModuleId(7)));
   auto const *import = mod.Append<ast::Expression>(R"(import "some-module")");
   auto qts           = mod.context().qual_types(import);
   EXPECT_THAT(qts,
@@ -63,9 +65,10 @@ TEST(Import, StringLiteral) {
 
 TEST(Import, ConstantCharSlice) {
   constexpr std::string_view kModule = "some-module";
-  test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import(_, kModule)).WillOnce(Return(ir::ModuleId(7)));
-  mod.AppendCode(R"(str ::= "some-module")");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(str ::= "some-module")");
+  EXPECT_CALL(infra.importer, Import(_, kModule))
+      .WillOnce(Return(ir::ModuleId(7)));
   auto const *import = mod.Append<ast::Expression>(R"(import str)");
   auto qts           = mod.context().qual_types(import);
   EXPECT_THAT(qts,

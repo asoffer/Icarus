@@ -19,8 +19,8 @@ struct TestCase {
 using TypeForDiagnosticTest = testing::TestWithParam<TestCase>;
 TEST_P(TypeForDiagnosticTest, Test) {
   auto const &[context, expr, expected] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(context);
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(context);
   auto const *e = mod.Append<ast::Expression>(expr);
   EXPECT_EQ(TypeForDiagnostic(e, mod.context()), expected);
 }
@@ -109,17 +109,16 @@ INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
                          }));
 
 TEST(CrossModule, TypeForDiagnostic) {
-  test::TestModule mod, imported_mod1, imported_mod2;
-  mod.CompileImportedLibrary(imported_mod1, "imported1", R"(
+  test::CompilerInfrastructure infra;
+
+  auto &imported_mod1 = infra.add_module("imported1", R"(
   #{export} S ::= struct {}
   )");
-
-  mod.CompileImportedLibrary(imported_mod2, "imported2", R"(
+  auto &imported_mod2 = infra.add_module("imported2", R"(
   #{export} S ::= struct {}
   #{export} P ::= struct (T :: type) {}
   )");
-
-  mod.AppendCode(R"(
+  auto &mod = infra.add_module(R"(
   --  ::= import "imported1"
   mod ::= import "imported2"
   )");
