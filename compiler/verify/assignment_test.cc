@@ -16,7 +16,7 @@ TEST(Assignment, SimpleSuccess) {
   n: i64
   n = 0
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Assignment, NonReference) {
@@ -25,7 +25,7 @@ TEST(Assignment, NonReference) {
   f ::= () => 3
   f() = 4
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("value-category-error", "assigning-to-non-reference")));
 }
@@ -36,7 +36,7 @@ TEST(Assignment, Constant) {
   n ::= 3
   n = 0
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("value-category-error", "assigning-to-constant")));
 }
@@ -49,7 +49,7 @@ TEST(Assignment, WithCast) {
   n = null
   (m, n) = (n, null)
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Assignment, TypeMismatch) {
@@ -59,7 +59,7 @@ TEST(Assignment, TypeMismatch) {
   n = "hello"
   )");
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "assignment-type-mismatch")));
 }
 

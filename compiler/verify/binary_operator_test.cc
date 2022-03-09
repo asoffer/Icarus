@@ -21,8 +21,8 @@ TEST_P(FlagsLogicalOperatorEq, Success) {
     f: F
     f %s f
     )",
-                                 GetParam()));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+                                               GetParam()));
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST_P(FlagsLogicalOperatorEq, NonReference) {
@@ -32,9 +32,9 @@ TEST_P(FlagsLogicalOperatorEq, NonReference) {
     f: F
     not f %s f
     )",
-                                 GetParam()));
+                                               GetParam()));
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("value-category-error",
                                 "invalid-assignment-lhs-value-category")));
 }
@@ -46,9 +46,9 @@ TEST_P(FlagsLogicalOperatorEq, Constant) {
     f :: F
     f %s F.A
     )",
-                                 GetParam()));
+                                               GetParam()));
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("value-category-error",
                                 "invalid-assignment-lhs-value-category")));
 }
@@ -60,10 +60,10 @@ TEST_P(FlagsLogicalOperatorEq, InvalidLhsType) {
     n: i64
     n %s F.A
     )",
-                                 GetParam()));
+                                               GetParam()));
 
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
 
@@ -74,10 +74,10 @@ TEST_P(FlagsLogicalOperatorEq, InvalidRhsType) {
     f: F
     f %s 3
     )",
-                                 GetParam()));
+                                               GetParam()));
 
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
 
@@ -94,7 +94,7 @@ TEST_P(IntegerArithmeticOperatorEq, Success) {
          n %s n
       )",
       type, op));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST_P(IntegerArithmeticOperatorEq, NonReference) {
@@ -107,7 +107,7 @@ TEST_P(IntegerArithmeticOperatorEq, NonReference) {
       )",
       type, op));
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("value-category-error",
                                 "invalid-assignment-lhs-value-category")));
 }
@@ -121,7 +121,7 @@ TEST_P(IntegerArithmeticOperatorEq, Constant) {
       )",
       type, op));
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("value-category-error",
                                 "invalid-assignment-lhs-value-category")));
 }
@@ -137,7 +137,7 @@ TEST_P(IntegerArithmeticOperatorEq, InvalidLhsType) {
       type, op));
 
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
 
@@ -151,7 +151,7 @@ TEST_P(IntegerArithmeticOperatorEq, InvalidRhsType) {
       type, op));
 
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -170,7 +170,7 @@ TEST_P(FloatingPointArithmeticOperatorEq, Success) {
          n %s n
       )",
       type, op));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST_P(FloatingPointArithmeticOperatorEq, NonReference) {
@@ -183,7 +183,7 @@ TEST_P(FloatingPointArithmeticOperatorEq, NonReference) {
       )",
       type, op));
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("value-category-error",
                                 "invalid-assignment-lhs-value-category")));
 }
@@ -197,7 +197,7 @@ TEST_P(FloatingPointArithmeticOperatorEq, Constant) {
       )",
       type, op));
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("value-category-error",
                                 "invalid-assignment-lhs-value-category")));
 }
@@ -213,7 +213,7 @@ TEST_P(FloatingPointArithmeticOperatorEq, InvalidLhsType) {
       type, op));
 
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
 
@@ -227,7 +227,7 @@ TEST_P(FloatingPointArithmeticOperatorEq, InvalidRhsType) {
       type, op));
 
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -241,31 +241,33 @@ TEST_P(BinaryOperator, Success) {
   auto [type, op] = GetParam();
   {
     test::CompilerInfrastructure infra;
-    auto &mod = infra.add_module(absl::StrFormat(
-        R"(FlagType ::= flags {}
-           x: %s
-           )",
-        type));
-    auto const *expr =
-        mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
-    auto qts = mod.context().qual_types(expr);
+    auto &mod        = infra.add_module(absl::StrFormat(
+        R"(
+        FlagType ::= flags {}
+        x: %s
+
+        x %s x)",
+        type, op));
+    auto const *expr = mod.get<ast::BinaryOperator>();
+    auto qts         = mod.context().qual_types(expr);
     EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
     EXPECT_EQ(qts[0].type(), mod.context().qual_types(&expr->lhs())[0].type());
-    EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
   {
     test::CompilerInfrastructure infra;
-    auto &mod = infra.add_module(absl::StrFormat(
-        R"(FlagType ::= flags {}
-           x :: %s
-           )",
-        type));
-    auto const *expr =
-        mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
-    auto qts = mod.context().qual_types(expr);
+    auto &mod        = infra.add_module(absl::StrFormat(
+        R"(
+        FlagType ::= flags {}
+        x :: %s
+        
+        x %s x)",
+        type, op));
+    auto const *expr = mod.get<ast::BinaryOperator>();
+    auto qts         = mod.context().qual_types(expr);
     EXPECT_EQ(qts[0].quals(), type::Quals::Const());
     EXPECT_EQ(qts[0].type(), mod.context().qual_types(&expr->lhs())[0].type());
-    EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 }
 
@@ -294,30 +296,32 @@ INSTANTIATE_TEST_SUITE_P(
 using OperatorOverload = testing::TestWithParam<char const *>;
 TEST_P(OperatorOverload, Overloads) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(absl::StrFormat(
+  auto &mod        = infra.add_module(absl::StrFormat(
       R"(S ::= struct {}
          (%s) ::= (lhs: S, rhs: S) -> i64 { return 0 }
+         S.{} %s S.{}
       )",
-      GetParam()));
-  auto const *expr = mod.Append<ast::BinaryOperator>(
-      absl::StrFormat("S.{} %s S.{}", GetParam()));
-  auto qts = mod.context().qual_types(expr);
+      GetParam(), GetParam()));
+  auto const *expr = mod.get<ast::BinaryOperator>();
+  auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::I64)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST_P(OperatorOverload, MissingOverloads) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(
-      R"(S ::= struct {}
-      )");
-  auto const *expr = mod.Append<ast::BinaryOperator>(
-      absl::StrFormat("S.{} %s S.{}", GetParam()));
-  auto qts = mod.context().qual_types(expr);
+  auto &mod        = infra.add_module(absl::StrFormat(
+      R"(
+      S ::= struct {}
+      S.{} %s S.{}
+      )",
+      GetParam()));
+  auto const *expr = mod.get<ast::BinaryOperator>();
+  auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
 
@@ -338,7 +342,7 @@ TEST(BufferPointerArithmetic, Success) {
     p = 1 + p
     n: i64 = p - p
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(BufferPointerArithmetic, Failure) {
@@ -352,7 +356,7 @@ TEST(BufferPointerArithmetic, Failure) {
     q - p
   )");
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator"),
                            Pair("type-error", "no-matching-binary-operator"),
                            Pair("type-error", "no-matching-binary-operator"),
@@ -369,7 +373,7 @@ TEST(Unexpanded, Failure) {
     'g * 1
     'h * 1
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "unexpanded-binary-operator-argument"),
                   Pair("type-error", "unexpanded-binary-operator-argument")));

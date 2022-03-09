@@ -6,9 +6,8 @@
 namespace compiler {
 namespace {
 
-using Test = test::EvaluationTest;
 INSTANTIATE_TEST_SUITE_P(
-    All, Test,
+    All, EvaluationTest,
     testing::ValuesIn({
         test::TestCase{.expr     = R"([]i32)",
                        .expected = type::Type(type::Slc(type::I32))},

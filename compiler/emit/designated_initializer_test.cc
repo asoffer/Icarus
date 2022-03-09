@@ -10,15 +10,14 @@ std::string Context() {
   return R"(
   Int ::= struct { n := 3 }
   Pair ::= struct { a: i64 \\ b: bool }
-  Wrap ::= struct (T ::= i64) { x: T }
+  // Wrap ::= struct (T ::= i64) { x: T }
 
   f ::= () -> (i64, bool) { return 3, true }
   )";
 }
 
-using Test = test::EvaluationTest;
 INSTANTIATE_TEST_SUITE_P(
-    All, Test,
+    All, EvaluationTest,
     testing::ValuesIn({
         test::TestCase{.context  = Context(),
                        .expr     = R"(Int.{}.n)",
@@ -49,24 +48,24 @@ INSTANTIATE_TEST_SUITE_P(
         test::TestCase{.context  = Context(),
                        .expr     = R"(Pair.{a = 3 \\ b = true}.b)",
                        .expected = true},
-        test::TestCase{.context  = Context(),
-                       .expr     = R"(Wrap(i64).{}.x)",
-                       .expected = int64_t{0}},
-        test::TestCase{.context  = Context(),
-                       .expr     = R"(Wrap(i64).{x = 3}.x)",
-                       .expected = int64_t{3}},
-        test::TestCase{.context  = Context(),
-                       .expr     = R"(Wrap(bool).{}.x)",
-                       .expected = false},
-        test::TestCase{.context  = Context(),
-                       .expr     = R"(Wrap(bool).{x = true}.x)",
-                       .expected = true},
-        test::TestCase{.context  = Context(),
-                       .expr     = R"(Wrap(f64).{}.x)",
-                       .expected = double{0}},
-        test::TestCase{.context  = Context(),
-                       .expr     = R"(Wrap(f64).{x = 3.1}.x)",
-                       .expected = 3.1},
+        // test::TestCase{.context  = Context(),
+        //                .expr     = R"(Wrap(i64).{}.x)",
+        //                .expected = int64_t{0}},
+        // test::TestCase{.context  = Context(),
+        //                .expr     = R"(Wrap(i64).{x = 3}.x)",
+        //                .expected = int64_t{3}},
+        // test::TestCase{.context  = Context(),
+        //                .expr     = R"(Wrap(bool).{}.x)",
+        //                .expected = false},
+        // test::TestCase{.context  = Context(),
+        //                .expr     = R"(Wrap(bool).{x = true}.x)",
+        //                .expected = true},
+        // test::TestCase{.context  = Context(),
+        //                .expr     = R"(Wrap(f64).{}.x)",
+        //                .expected = double{0}},
+        // test::TestCase{.context  = Context(),
+        //                .expr     = R"(Wrap(f64).{x = 3.1}.x)",
+        //                .expected = 3.1},
 
         // TODO: Enable these tests once you allow simultaneous assignments.
         // test::TestCase{.context=Context(),.expr     = R"(Pair.{ (a, b) = 'f

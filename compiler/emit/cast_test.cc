@@ -13,9 +13,8 @@ std::string Context() {
   )";
 }
 
-using Test = test::EvaluationTest;
 INSTANTIATE_TEST_SUITE_P(
-    All, Test,
+    All, EvaluationTest,
     testing::ValuesIn(
         {test::TestCase{.expr = R"(3 as u64)", .expected = uint64_t{3}},
          test::TestCase{.expr = R"(3 as i64)", .expected = int64_t{3}},
@@ -24,8 +23,8 @@ INSTANTIATE_TEST_SUITE_P(
          test::TestCase{.expr = R"(null as *i64)", .expected = ir::Null()},
          test::TestCase{.expr = R"(null as [*]i64)", .expected = ir::Null()},
          test::TestCase{.context  = Context(),
-                        .expr     = R"(E.A as i64)",
-                        .expected = int64_t{1}},
+                        .expr     = R"(E.A as u64)",
+                        .expected = uint64_t{1}},
          test::TestCase{.context  = Context(),
                         .expr     = R"((F.A | F.B) as u64)",
                         .expected = uint64_t{3}},

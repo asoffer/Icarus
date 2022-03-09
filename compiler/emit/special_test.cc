@@ -15,8 +15,7 @@ std::string Context() {
   )";
 }
 
-using Test = test::EvaluationTest;
-INSTANTIATE_TEST_SUITE_P(All, Test,
+INSTANTIATE_TEST_SUITE_P(All, EvaluationTest,
                          testing::ValuesIn({
                              test::TestCase{.expr     = R"((() -> {
                                b: bool

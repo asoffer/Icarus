@@ -76,6 +76,7 @@ cc_library(
     hdrs = ["trivial_importer.h"],
     deps = [
         ":importer",
+        ":shared_context",
         "//ir/value:module_id",
     ],
     testonly = True,

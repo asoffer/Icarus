@@ -16,9 +16,8 @@ std::string Context() {
 )";
 }
 
-using Test = test::EvaluationTest;
 INSTANTIATE_TEST_SUITE_P(
-    All, Test,
+    All, EvaluationTest,
     testing::ValuesIn({
         test::TestCase{.context  = Context(),
                        .expr     = R"((() -> i64 {

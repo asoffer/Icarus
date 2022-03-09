@@ -5,10 +5,9 @@
 
 namespace compiler {
 namespace {
-using Test = test::EvaluationTest;
 
 INSTANTIATE_TEST_SUITE_P(
-    All, Test,
+    All, EvaluationTest,
     testing::ValuesIn({
         test::TestCase{.expr = "move 3", .expected = int64_t{3}},
         test::TestCase{.context  = "f ::= () => 3",

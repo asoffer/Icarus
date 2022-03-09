@@ -56,6 +56,24 @@ struct ModuleTable {
     return result;
   }
 
+  // Adds the module `m` to the module table, provided that no module is already
+  // present with the same identifier `m.identifier()`.
+  template <int &..., std::derived_from<Module> ModuleType>
+  std::pair<ir::ModuleId, ModuleType *> add_module(ModuleType &&m) {
+    std::string_view string_id = m.identifier();
+    if (auto [numeric_id, mod] = module(string_id); mod) {
+      return std::pair<ir::ModuleId, ModuleType *>(numeric_id,
+                                                   &mod->as<ModuleType>());
+    }
+
+    ir::ModuleId numeric_id(modules_.size());
+    auto mp = std::make_unique<ModuleType>(std::move(m));
+    std::pair<ir::ModuleId, ModuleType *> result(numeric_id, mp.get());
+    modules_.push_back(std::move(mp));
+    numeric_id_.emplace(string_id, numeric_id);
+    return result;
+  }
+
   // If a module identified by `id` is present in the table, returns a pair
   // consisting of its numeric id and a pointer to that module. Otherwise,
   // returns a pair consisting of `ir::ModuleId::Invalid()` and a null pointer.

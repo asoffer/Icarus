@@ -11,41 +11,47 @@ using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
 TEST(Cast, ConstantSuccess) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>("3 as f64");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module("3 as f64");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::F64)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Cast, NonConstant) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module("n := 3");
-  auto const *expr = mod.Append<ast::Expression>("n as f64");
+  auto &mod        = infra.add_module(R"(
+  n := 3
+  n as f64
+  )");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::F64)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Cast, Error) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>("3.0 as i8");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module("3.0 as i8");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   // Continues assuming the type is correct
   ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::I8)));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "invalid-cast")));
   EXPECT_TRUE(qts[0].HasErrorMark());
 }
 
 TEST(Cast, InvalidType) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>("3.0 as true");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module("3.0 as true");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   // Continues assuming the type is correct
   ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }
 

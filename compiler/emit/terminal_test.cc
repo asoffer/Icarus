@@ -6,9 +6,8 @@
 namespace compiler {
 namespace {
 
-using Test = test::EvaluationTest;
 INSTANTIATE_TEST_SUITE_P(
-    All, Test,
+    All, EvaluationTest,
     testing::ValuesIn({
         test::TestCase{.expr = "true", .expected = true},
         test::TestCase{.expr = "false", .expected = false},

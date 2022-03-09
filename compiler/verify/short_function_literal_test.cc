@@ -13,50 +13,55 @@ using ::testing::UnorderedElementsAre;
 // TODO: Check that function body verification is scheduled.
 
 TEST(ShortFunctionLiteral, OneValidReturnType) {
-  test::TestModule mod;
-  auto qts =
-      mod.context().qual_types(mod.Append<ast::Expression>("() => 3 as i64"));
+  test::CompilerInfrastructure infra;
+  auto &mod     = infra.add_module("() => 3 as i64");
+  auto const *e = mod.get<ast::Expression>();
+  auto qts      = mod.context().qual_types(e);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType::Constant(type::Func({}, {type::I64}))));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(ShortFunctionLiteral, DISABLED_MultipleValidReturnTypes) {
-  test::TestModule mod;
-  auto qts = mod.context().qual_types(
-      mod.Append<ast::Expression>("() => (3 as i64, true)"));
+  test::CompilerInfrastructure infra;
+  auto &mod     = infra.add_module("() => (3 as i64, true)");
+  auto const *e = mod.get<ast::Expression>();
+  auto qts      = mod.context().qual_types(e);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
                        type::Func({}, {type::I64, type::Bool}))));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(ShortFunctionLiteral, OneParameterOneReturnType) {
-  test::TestModule mod;
-  auto qts = mod.context().qual_types(
-      mod.Append<ast::Expression>("(b: bool) => 3 as i64"));
+  test::CompilerInfrastructure infra;
+  auto &mod     = infra.add_module("(b: bool) => 3 as i64");
+  auto const *e = mod.get<ast::Expression>();
+  auto qts      = mod.context().qual_types(e);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool))},
                   {type::I64}))));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(ShortFunctionLiteral, MultipleParametersOneReturnType) {
-  test::TestModule mod;
-  auto qts = mod.context().qual_types(
-      mod.Append<ast::Expression>(R"((b: bool, n: i64) => 3 as i64)"));
+  test::CompilerInfrastructure infra;
+  auto &mod     = infra.add_module(R"((b: bool, n: i64) => 3 as i64)");
+  auto const *e = mod.get<ast::Expression>();
+  auto qts      = mod.context().qual_types(e);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool)),
                    core::Param("n", type::QualType::NonConstant(type::I64))},
                   {type::I64}))));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(ShortFunctionLiteral, ConstantParameter) {
-  test::TestModule mod;
-  auto qts = mod.context().qual_types(
-      mod.Append<ast::Expression>(R"((n :: i64) => n)"));
+  test::CompilerInfrastructure infra;
+  auto &mod     = infra.add_module(R"((n :: i64) => n)");
+  auto const *e = mod.get<ast::Expression>();
+  auto qts      = mod.context().qual_types(e);
   EXPECT_GE(qts[0].quals(), type::Quals::Const());
   EXPECT_TRUE(qts[0].type().is<type::Generic<type::Function>>());
 }

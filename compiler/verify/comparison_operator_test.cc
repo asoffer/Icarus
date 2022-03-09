@@ -17,12 +17,13 @@ TEST(ComparisonOperator, ConstantSuccess) {
   auto &mod = infra.add_module(
       R"(x ::= 1
          y ::= 2
+
+         x < y <= 3 == x != y >= 3 > x
       )");
-  auto const *expr =
-      mod.Append<ast::ComparisonOperator>("x < y <= 3 == x != y >= 3 > x");
-  auto qts = mod.context().qual_types(expr);
+  auto const *expr = mod.get<ast::ComparisonOperator>();
+  auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Bool)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(ComparisonOperator, NonConstantSuccess) {
@@ -30,13 +31,14 @@ TEST(ComparisonOperator, NonConstantSuccess) {
   auto &mod = infra.add_module(
       R"(x := 1
          y := 2
+
+         x < y <= 3 == x != y >= 3 > x
       )");
-  auto const *expr =
-      mod.Append<ast::ComparisonOperator>("x < y <= 3 == x != y >= 3 > x");
-  auto qts = mod.context().qual_types(expr);
+  auto const *expr = mod.get<ast::ComparisonOperator>();
+  auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(ComparisonOperator, Pointer) {
@@ -44,12 +46,14 @@ TEST(ComparisonOperator, Pointer) {
   auto &mod = infra.add_module(
       R"(x: i64
          p := &x
+
+         null != p == &x
       )");
-  auto const *expr = mod.Append<ast::ComparisonOperator>("null != p == &x");
+  auto const *expr = mod.get<ast::ComparisonOperator>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(ComparisonOperator, UnorderedPointers) {
@@ -57,54 +61,60 @@ TEST(ComparisonOperator, UnorderedPointers) {
   auto &mod = infra.add_module(
       R"(x := 1
          p := &x
+
+         p < &x
       )");
-  auto const *expr = mod.Append<ast::ComparisonOperator>("p < &x");
+  auto const *expr = mod.get<ast::ComparisonOperator>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "comparing-incomparables")));
 }
 
 TEST(ComparisonOperator, BufferPointerOrder) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(
-      R"(p: [*]i64
-      )");
-  auto const *expr = mod.Append<ast::ComparisonOperator>("p < p == p >= p");
+  auto &mod        = infra.add_module(R"(
+  p: [*]i64
+  p < p == p >= p
+  )");
+  auto const *expr = mod.get<ast::ComparisonOperator>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 using OperatorOverload = testing::TestWithParam<char const *>;
 TEST_P(OperatorOverload, Overloads) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(absl::StrFormat(
+  auto &mod        = infra.add_module(absl::StrFormat(
       R"(S ::= struct {}
          (%s) ::= (lhs: S, rhs: S) -> bool { return true }
+         S.{} %s S.{}
       )",
-      GetParam()));
-  auto const *expr = mod.Append<ast::ComparisonOperator>(
-      absl::StrFormat("S.{} %s S.{}", GetParam()));
-  auto qts = mod.context().qual_types(expr);
+      GetParam(), GetParam()));
+  auto const *expr = mod.get<ast::ComparisonOperator>();
+  auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST_P(OperatorOverload, MissingOverloads) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(R"(S ::= struct {}
-  )");
-  auto const *expr = mod.Append<ast::ComparisonOperator>(
-      absl::StrFormat("S.{} %s S.{}", GetParam()));
-  auto qts = mod.context().qual_types(expr);
+  auto &mod        = infra.add_module(absl::StrFormat(
+      R"(
+      S ::= struct {}
+      S.{} %s S.{}
+      )",
+      GetParam()));
+  auto const *expr = mod.get<ast::ComparisonOperator>();
+  auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "invalid-comparison-operator-overload")));
 }
@@ -113,13 +123,14 @@ INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
                          testing::ValuesIn({"<", "<=", "==", "!=", ">=", ">"}));
 
 TEST(ComparisonOperator, PriorError) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::ComparisonOperator>("(3 + true) < 3");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module("(3 + true) < 3");
+  auto const *expr = mod.get<ast::ComparisonOperator>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
 }
 

@@ -6,9 +6,8 @@
 namespace compiler {
 namespace {
 
-using Test = test::EvaluationTest;
 INSTANTIATE_TEST_SUITE_P(
-    All, Test,
+    All, EvaluationTest,
     testing::ValuesIn({
         test::TestCase{.expr     = R"((() -> i64 { return [3][0] })())",
                        .expected = int64_t{3}},
