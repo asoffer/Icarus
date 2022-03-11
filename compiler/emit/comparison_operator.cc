@@ -76,8 +76,8 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
     type::Type t                       = type::Meet(lhs.type(), rhs.type());
     ir::PartialResultBuffer lhs_buffer = std::move(*lhs);
     ir::PartialResultBuffer rhs_buffer = std::move(*rhs);
-    EmitCast(c.current(), lhs.type(), t, lhs_buffer);
-    EmitCast(c.current(), rhs.type(), t, rhs_buffer);
+    EmitCast(c, lhs.type(), t, lhs_buffer);
+    EmitCast(c, rhs.type(), t, rhs_buffer);
 
     switch (op) {
       case frontend::Operator::Gt:

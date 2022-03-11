@@ -12,7 +12,6 @@
 #include "base/extend.h"
 #include "base/extend/traverse.h"
 #include "base/meta.h"
-#include "ir/subroutine.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/interpreter/architecture.h"
@@ -20,6 +19,7 @@
 #include "ir/interpreter/foreign.h"
 #include "ir/interpreter/stack_frame.h"
 #include "ir/out_params.h"
+#include "ir/subroutine.h"
 #include "ir/value/fn.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/scope.h"
@@ -34,6 +34,80 @@ namespace ir {
 
 template <typename>
 struct CastInstruction;
+
+template <interpreter::FitsInRegister ToType, typename FromType>
+struct CastInstruction<ToType(FromType)>
+    : base::Extend<CastInstruction<ToType(FromType)>>::template With<
+          base::BaseTraverseExtension, base::BaseSerializeExtension> {
+  using from_type = FromType;
+  using to_type   = ToType;
+  using from_operand_type =
+      std::conditional_t<interpreter::FitsInRegister<from_type>, from_type,
+                         addr_t>;
+
+  std::string to_string() const {
+    return absl::StrFormat("%s = cast %s (%s -> %s)",
+                           base::UniversalPrintToString(result),
+                           base::UniversalPrintToString(value),
+                           typeid(from_type).name(), typeid(to_type).name());
+  }
+
+  void Apply(interpreter::ExecutionContext& ctx) const
+      requires(not interpreter::FitsInRegister<from_type>) {
+    ctx.current_frame().set(
+        result, reinterpret_cast<from_type const*>(ctx.resolve(value))
+                    ->template as_type<to_type>());
+  }
+
+  to_type Resolve() const requires(interpreter::FitsInRegister<from_type>) {
+    if constexpr (base::meta<to_type> == base::meta<Char>) {
+      static_assert(sizeof(from_type) == 1, "Invalid cast to Char");
+      return static_cast<uint8_t>(value.value());
+    }
+    from_type from = value.value();
+    if constexpr (std::is_integral_v<from_type> or
+                  std::is_floating_point_v<from_type>) {
+      return from;
+    } else {
+      return from.template as_type<to_type>();
+    }
+  }
+
+  RegOr<from_operand_type> value;
+  Reg result;
+};
+
+template <interpreter::NotFitsInRegister ToType, typename FromType>
+struct CastInstruction<ToType(FromType)>
+    : base::Extend<CastInstruction<ToType(FromType)>>::template With<
+          base::BaseTraverseExtension, base::BaseSerializeExtension> {
+  using from_type = FromType;
+  using to_type   = ToType;
+  using from_operand_type =
+      std::conditional_t<interpreter::FitsInRegister<from_type>, from_type,
+                         addr_t>;
+
+  std::string to_string() const {
+    return absl::StrFormat("%s = cast %s (%s -> %s)",
+                           base::UniversalPrintToString(into),
+                           base::UniversalPrintToString(value),
+                           typeid(from_type).name(), typeid(to_type).name());
+  }
+
+  void Apply(interpreter::ExecutionContext& ctx) const {
+    if constexpr (interpreter::FitsInRegister<from_type>) {
+      // Casting is a construction operation, but for to-types that don't fit in
+      // registers that requires allocation first.
+      new (ctx.resolve(into)) to_type(ctx.resolve(value));
+    } else {
+      new (ctx.resolve(into))
+          to_type(*reinterpret_cast<from_type const*>(ctx.resolve(value)));
+    }
+  }
+
+  RegOr<from_operand_type> value;
+  RegOr<addr_t> into;
+};
 
 template <typename ToType, typename FromType>
 struct CastInstruction<ToType(FromType)>
@@ -56,6 +130,8 @@ struct CastInstruction<ToType(FromType)>
       requires(not interpreter::FitsInRegister<from_type> or
                not interpreter::FitsInRegister<to_type>) {
     if constexpr (interpreter::FitsInRegister<from_type>) {
+      // Casting is a construction operation, but for to-types that don't fit in
+      // registers that requires allocation first.
       new (ctx.resolve<addr_t>(result)) to_type(ctx.resolve(value));
     } else if constexpr (interpreter::FitsInRegister<to_type>) {
       ctx.current_frame().set(
@@ -67,7 +143,7 @@ struct CastInstruction<ToType(FromType)>
     }
   }
 
-  to_type Resolve() const requires(interpreter::FitsInRegister<from_type> and
+  to_type Resolve() const requires(interpreter::FitsInRegister<from_type>and
                                        interpreter::FitsInRegister<to_type>) {
     if constexpr (base::meta<to_type> == base::meta<Char>) {
       static_assert(sizeof(from_type) == 1, "Invalid cast to Char");
@@ -259,7 +335,7 @@ struct CopyInitInstruction
   }
 };
 
-enum class Action { CopyInit, MoveInit, CopyAssign, MoveAssign , Destroy};
+enum class Action { CopyInit, MoveInit, CopyAssign, MoveAssign, Destroy };
 template <Action A, typename T>
 struct CompileTime : base::Extend<CompileTime<A, T>>::template With<
                          base::BaseSerializeExtension, DebugFormatExtension> {
@@ -276,7 +352,6 @@ struct CompileTime : base::Extend<CompileTime<A, T>>::template With<
     if constexpr (A == Action::CopyInit) {
       new (to_ptr) T(*from_ptr);
     } else if constexpr (A == Action::MoveInit) {
-
       new (to_ptr) T(std::move(*from_ptr));
     } else if constexpr (A == Action::CopyAssign) {
       *to_ptr = *from_ptr;

@@ -251,7 +251,7 @@ void CopyAssignmentEmitter::EmitAssignment(
     type::Typed<ir::PartialResultRef> const &from) {
   ir::PartialResultBuffer buffer;
   buffer.append(*from);
-  EmitCast(current(), from.type(), t, buffer);
+  EmitCast(*this, from.type(), t, buffer);
   t->Apply([&]<typename T>() {
     if constexpr (base::meta<T> == base::meta<ir::Integer>) {
       current_block()->Append(ir::CompileTime<ir::Action::CopyAssign, T>{
@@ -268,7 +268,7 @@ void MoveAssignmentEmitter::EmitAssignment(
     type::Typed<ir::PartialResultRef> const &from) {
   ir::PartialResultBuffer buffer;
   buffer.append(*from);
-  EmitCast(current(), from.type(), t, buffer);
+  EmitCast(*this, from.type(), t, buffer);
   t->Apply([&]<typename T>() {
     if constexpr (base::meta<T> == base::meta<ir::Integer>) {
       current_block()->Append(ir::CompileTime<ir::Action::MoveAssign, T>{

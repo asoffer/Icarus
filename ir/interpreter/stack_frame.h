@@ -90,6 +90,8 @@ struct StackFrame {
 template <typename T>
 concept FitsInRegister = (sizeof(T) <= StackFrame::register_value_size) and
                          std::is_trivially_copyable_v<T>;
+template <typename T>
+concept NotFitsInRegister = not FitsInRegister<T>;
 
 struct Stack {
   Stack();

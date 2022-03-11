@@ -51,8 +51,16 @@ std::optional<ir::CompleteResultBuffer> CompilerInfrastructure::Evaluate(
     ADD_FAILURE() << "Type is unexpectedly invalid.";
     return std::nullopt;
   }
-  return c.EvaluateToBufferOrDiagnose(
-      type::Typed<ast::Expression const *>(e, t));
+
+  auto result = work_graph.work_resources().evaluate(
+      module.context(), type::Typed<ast::Expression const*>(e, t));
+  if (auto* diagnostics =
+          std::get_if<std::vector<diagnostic::ConsumedMessage>>(&result)) {
+    ADD_FAILURE() << "Unable to evaluate.";
+    return std::nullopt;
+  } else {
+    return std::get<ir::CompleteResultBuffer>(std::move(result));
+  }
 }
 
 TestModule& CompilerInfrastructure::add_module(std::string code) {

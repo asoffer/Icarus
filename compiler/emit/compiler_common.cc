@@ -381,7 +381,7 @@ core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
 void EmitCast(Compiler &c, type::Typed<ast::Expression const *> node,
               type::Type to, ir::PartialResultBuffer &buffer) {
   c.EmitToBuffer(*node, buffer);
-  EmitCast(c.current(), node.type(), to, buffer);
+  EmitCast(c, node.type(), to, buffer);
 }
 
 ir::PartialResultBuffer EmitCast(Compiler &c,

@@ -100,7 +100,7 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
   ir::NativeFn ir_func = context().FindNativeFn(node);
   push_current(&*ir_func);
   absl::Cleanup c = [&] { state().current.pop_back(); };
-  auto cleanup         = EmitScaffolding(*this, *ir_func, node->body_scope());
+  auto cleanup    = EmitScaffolding(*this, *ir_func, node->body_scope());
 
   current_block() = current().subroutine->entry();
 

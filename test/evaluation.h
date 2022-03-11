@@ -38,14 +38,15 @@ TEST_P(EvaluationTest, Test) {
   test::CompilerInfrastructure infra;
   auto const &[context, expr, type, expected] = GetParam();
   auto &module = infra.add_module(absl::StrCat(context, "\n", expr, "\n"));
-
+  ASSERT_THAT(infra.diagnostics(), testing::IsEmpty());
+  ASSERT_THAT(module.module().stmts(), testing::Not(testing::IsEmpty()));
   auto const *e = module.get<ast::Expression>();
   auto qts = module.context().qual_types(e);
   ASSERT_THAT(qts, testing::SizeIs(1));
   auto t = qts[0].type();
   ASSERT_TRUE(t.valid());
-  EXPECT_THAT(infra.Evaluate(module, e),
-              testing::Optional(testing::Eq(expected)));
+  EXPECT_THAT(test::AsType(infra.Evaluate(module, e), t),
+              testing::Eq(expected));
 }
 
 #endif  // ICARUS_TEST_EVALUATION_H

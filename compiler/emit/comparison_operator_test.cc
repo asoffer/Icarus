@@ -9,7 +9,7 @@ namespace {
 INSTANTIATE_TEST_SUITE_P(
     All, EvaluationTest,
     testing::ValuesIn({
-        test::TestCase{.expr     = R"(((x: i64, y: i64) => x < y)(1, 2))",
+        test::TestCase{.expr     = R"(((x: i64, y: i64) => x < y)(1, 3))",
                        .expected = true},
         test::TestCase{.expr     = R"(((x: i64, y: i64) => x < y)(1, 1))",
                        .expected = false},

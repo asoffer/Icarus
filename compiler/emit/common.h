@@ -78,29 +78,41 @@ ir::BasicBlock *OnEachArrayElement(
 
 // Requires that the last value in `buffer` has type `from`, and replaces it
 // with that value cast to `to`.
-void EmitCast(SubroutineBlockReference &ref, type::Type from, type::Type to,
+void EmitCast(CompilationDataReference ref, type::Type from, type::Type to,
               ir::PartialResultBuffer &buffer);
 
 // Requires that the last value in `buffer` has type `FromType`, and replaces it
 // with that value cast to `ToType`.
 template <typename FromType, typename ToType>
-void EmitCast(SubroutineBlockReference &ref, ir::PartialResultBuffer &buffer) {
+void EmitCast(CompilationDataReference ref, ir::PartialResultBuffer &buffer) {
   if constexpr (base::meta<FromType> == base::meta<ToType>) {
     return;
   } else if constexpr (base::meta<FromType> == base::meta<ir::Integer>) {
-    auto result = ref.block->Append(ir::CastInstruction<ToType(FromType)>{
-        .value  = buffer.back().template get<ir::addr_t>(),
-        .result = ref.subroutine->Reserve(),
-    });
+    auto result =
+        ref.current().block->Append(ir::CastInstruction<ToType(FromType)>{
+            .value  = buffer.back().template get<ir::addr_t>(),
+            .result = ref.current().subroutine->Reserve(),
+        });
     buffer.pop_back();
     buffer.append(result);
   } else {
-    auto result = ref.block->Append(ir::CastInstruction<ToType(FromType)>{
-        .value  = buffer.back().template get<FromType>(),
-        .result = ref.subroutine->Reserve(),
-    });
-    buffer.pop_back();
-    buffer.append(result);
+    if constexpr (interpreter::FitsInRegister<ToType>) {
+      auto result =
+          ref.current().block->Append(ir::CastInstruction<ToType(FromType)>{
+              .value  = buffer.back().template get<FromType>(),
+              .result = ref.current().subroutine->Reserve(),
+          });
+      buffer.pop_back();
+      buffer.append(result);
+    } else {
+      auto alloc = ref.state().TmpAlloca(type::Integer);
+      ref.current().block->Append(ir::CastInstruction<ToType(FromType)>{
+          .value = buffer.back().template get<FromType>(),
+          .into  = alloc,
+      });
+      buffer.pop_back();
+      buffer.append(alloc);
+    }
   }
 }
 

@@ -9,7 +9,7 @@ namespace {
 std::string Context() {
   return R"(
   S ::= struct {
-    n := 3
+    n: i64 = 3
     p: *i64
   }
   )";

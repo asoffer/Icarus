@@ -58,7 +58,7 @@ ir::Reg PtrFix(SubroutineBlockReference current, ir::RegOr<ir::addr_t> addr,
   });
 }
 
-void EmitCast(SubroutineBlockReference &ref, type::Type from, type::Type to,
+void EmitCast(CompilationDataReference ref, type::Type from, type::Type to,
               ir::PartialResultBuffer &buffer) {
 #if defined(ICARUS_DEBUG)
   ASSERT(buffer.size() != 0u);

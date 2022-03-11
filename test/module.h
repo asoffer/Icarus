@@ -56,6 +56,7 @@ struct TestModule : compiler::CompiledModule {
   NodeType const* get() {
     return &module().stmts().back()->as<NodeType>();
   }
+
  private:
   ir::ModuleId id_;
 };
