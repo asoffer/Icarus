@@ -77,12 +77,13 @@ TEST(Identifier, NonCallableOverloads) {
 TEST(Identifier, CyclicDependency) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(
-  x ::= y + 1
-  y ::= z + 1
-  z ::= x + 1
+  x := y + 1
+  y := z + 1
+  z := x + 1
 
   y
   )");
+  LOG("", "%p", mod.get<ast::Identifier>());
   ASSERT_THAT(mod.context().qual_types(mod.get<ast::Identifier>()),
               UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(infra.diagnostics(),

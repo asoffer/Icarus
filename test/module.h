@@ -23,6 +23,7 @@ struct TestModule;
 
 struct CompilerInfrastructure {
   CompilerInfrastructure();
+  CompilerInfrastructure(std::unique_ptr<module::Importer> i);
 
   auto diagnostics() const { return consumer_.diagnostics(); }
   auto& importer() { return importer_; }
@@ -40,15 +41,14 @@ struct CompilerInfrastructure {
   frontend::SourceIndexer source_indexer_;
   module::SharedContext shared_context_;
   ir::Module ir_module_;
-  compiler::Context context_;
-  module::MockImporter importer_;
+  std::unique_ptr<module::Importer> importer_;
   diagnostic::TrackingConsumer consumer_;
   compiler::WorkSet work_set_;
 };
 
 struct TestModule : compiler::CompiledModule {
-  explicit TestModule(std::string identifier, compiler::Context* context)
-      : compiler::CompiledModule(std::move(identifier), context) {}
+  explicit TestModule(std::string identifier)
+      : compiler::CompiledModule(std::move(identifier)) {}
 
   void set_id(ir::ModuleId id) { id_ = id; }
 

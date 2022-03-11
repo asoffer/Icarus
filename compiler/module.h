@@ -8,11 +8,9 @@
 namespace compiler {
 
 struct CompiledModule : module::Module {
-  explicit CompiledModule(std::string identifier, Context *context)
-      : Module(std::move(identifier)),
-        context_(ASSERT_NOT_NULL(context)),
-        module_(this) {
-    context_->set_qt_callback(
+  explicit CompiledModule(std::string identifier)
+      : Module(std::move(identifier)), context_(&ir_module_), module_(this) {
+    context_.set_qt_callback(
         [&](ast::Declaration::Id const *id, type::QualType qt) {
           if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
             auto &entries = exported_[id->name()];
@@ -22,7 +20,7 @@ struct CompiledModule : module::Module {
           }
         });
 
-    context_->set_value_callback(
+    context_.set_value_callback(
         [&](ast::Declaration::Id const *id, ir::CompleteResultBuffer buffer) {
           if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
             auto iter = indices_.find(id);
@@ -36,8 +34,8 @@ struct CompiledModule : module::Module {
     base::Serialize(w, m.identifier(), type::GlobalTypeSystem, m.exported_);
   }
 
-  Context const &context() const { return *context_; }
-  Context &context() { return *context_; }
+  Context const &context() const { return context_; }
+  Context &context() { return context_; }
 
   template <std::input_iterator Iter>
   base::PtrSpan<ast::Node const> insert(Iter b, Iter e) {
@@ -65,7 +63,8 @@ struct CompiledModule : module::Module {
   ast::Scope &scope() { return module_.body_scope(); }
 
  private:
-  Context *context_;
+  ir::Module ir_module_;
+  Context context_;
 
   // It is important for caching that symbols be exported in a consistent
   // manner. We use an ordered container to guarantee repeated invocations

@@ -126,23 +126,10 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
     return ir::ModuleId::Invalid();
   }
 
-  iter->second =
-      std::make_pair(ir::ModuleId::Invalid(), std::make_unique<ModuleData>());
-  auto& [ir_module, root_context, module] = *iter->second.second;
-
   static std::atomic<int> id_num = 0;
-  // Note: After the call to CompileModule, `iter` may be invalidated, so while
-  // it's tempting to assign these directly into the value referenced through
-  // `iter`, doing so would invalidate those references and we would need to
-  // reaccess them. It's cheaper to keep copies of the values around.
-  auto [mod_id, mod] =
-      shared_context_.module_table().add_module<CompiledModule>(
-          absl::StrFormat("~gen-id-%u",
-                          id_num.fetch_add(1, std::memory_order_relaxed)),
-          &root_context);
-
-  iter->second.first = mod_id;
-  module             = mod;
+  auto [mod_id, module] = iter->second =
+      shared_context_.module_table().add_module<CompiledModule>(absl::StrFormat(
+          "~gen-id-%u", id_num.fetch_add(1, std::memory_order_relaxed)));
 
   for (ir::ModuleId embedded_id : implicitly_embedded_modules()) {
     module->scope().embed(&get(embedded_id));
@@ -164,7 +151,7 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
 
   graph_.add_edge(requestor, module);
 
-  std::optional subroutine = CompileModule(root_context, resources, nodes);
+  std::optional subroutine = CompileModule(module->context(), resources, nodes);
   if (subroutine) {
     subroutine_by_module_.emplace(module, *std::move(subroutine));
   }

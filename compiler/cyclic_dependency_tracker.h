@@ -73,8 +73,8 @@ struct CyclicDependencyTracker {
     }
 
     std::vector<std::string_view> views;
-    views.reserve(std::distance(iter, dependencies_.end()));
-    for (auto it = iter; it != dependencies_.end(); ++it) {
+    views.reserve(std::distance(std::next(iter), dependencies_.end()));
+    for (auto it = std::next(iter); it != dependencies_.end(); ++it) {
       ast::Identifier const *id = *it;
       views.push_back(id->range());
     }

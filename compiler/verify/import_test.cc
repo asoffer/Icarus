@@ -13,8 +13,9 @@ using ::testing::Return;
 using ::testing::UnorderedElementsAre;
 
 TEST(Import, InvalidTypeBeingImported) {
-  test::CompilerInfrastructure infra;
-  EXPECT_CALL(infra.importer(), Import).Times(0);
+  auto importer = std::make_unique<module::MockImporter>();
+  EXPECT_CALL(*importer, Import).Times(0);
+  test::CompilerInfrastructure infra(std::move(importer));
   auto &mod          = infra.add_module("import 3");
   auto const *import = mod.get<ast::Expression>();
   auto qts           = mod.context().qual_types(import);
@@ -25,8 +26,9 @@ TEST(Import, InvalidTypeBeingImported) {
 }
 
 TEST(Import, NonConstantImport) {
-  test::CompilerInfrastructure infra;
-  EXPECT_CALL(infra.importer(), Import).Times(0);
+  auto importer = std::make_unique<module::MockImporter>();
+  EXPECT_CALL(*importer, Import).Times(0);
+  test::CompilerInfrastructure infra(std::move(importer));
   auto &mod          = infra.add_module(R"(
   str := "abc"
   import str
@@ -41,8 +43,9 @@ TEST(Import, NonConstantImport) {
 }
 
 TEST(Import, NonConstantAndInvalidType) {
-  test::CompilerInfrastructure infra;
-  EXPECT_CALL(infra.importer(), Import).Times(0);
+  auto importer = std::make_unique<module::MockImporter>();
+  EXPECT_CALL(*importer, Import).Times(0);
+  test::CompilerInfrastructure infra(std::move(importer));
   auto &mod          = infra.add_module(R"(
   x := 3
   import x
@@ -59,9 +62,9 @@ TEST(Import, NonConstantAndInvalidType) {
 
 TEST(Import, StringLiteral) {
   constexpr std::string_view kModule = "some-module";
-  test::CompilerInfrastructure infra;
-  EXPECT_CALL(infra.importer(), Import(_, kModule))
-      .WillOnce(Return(ir::ModuleId(7)));
+  auto importer                      = std::make_unique<module::MockImporter>();
+  EXPECT_CALL(*importer, Import(_, kModule)).WillOnce(Return(ir::ModuleId(7)));
+  test::CompilerInfrastructure infra(std::move(importer));
   auto &mod          = infra.add_module(R"(import "some-module")");
   auto const *import = mod.get<ast::Expression>();
   auto qts           = mod.context().qual_types(import);
@@ -72,9 +75,9 @@ TEST(Import, StringLiteral) {
 
 TEST(Import, ConstantCharSlice) {
   constexpr std::string_view kModule = "some-module";
-  test::CompilerInfrastructure infra;
-  EXPECT_CALL(infra.importer(), Import(_, kModule))
-      .WillOnce(Return(ir::ModuleId(7)));
+  auto importer                      = std::make_unique<module::MockImporter>();
+  EXPECT_CALL(*importer, Import(_, kModule)).WillOnce(Return(ir::ModuleId(7)));
+  test::CompilerInfrastructure infra(std::move(importer));
   auto &mod          = infra.add_module(R"(
   str ::= "some-module"
   import str

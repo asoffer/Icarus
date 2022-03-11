@@ -17,9 +17,32 @@ void ProcessModule(compiler::Context& context,
   w.complete();
 }
 
+struct TestImporter : module::Importer {
+  TestImporter(module::ModuleTable* table) : table_(*ASSERT_NOT_NULL(table)) {}
+  virtual ~TestImporter() {}
+
+  ir::ModuleId Import(module::Module const*,
+                      std::string_view module_locator) override {
+    return table_.module(module_locator).first;
+  }
+  module::Module& get(ir::ModuleId id) override {
+    return *ASSERT_NOT_NULL(table_.module(id));
+  }
+
+ private:
+  module::ModuleTable& table_;
+};
+
 }  // namespace
+
 CompilerInfrastructure::CompilerInfrastructure()
-    : shared_context_(compiler::MakeBuiltinModule()), context_(&ir_module_) {}
+    : shared_context_(compiler::MakeBuiltinModule()),
+      importer_(
+          std::make_unique<TestImporter>(&shared_context_.module_table())) {}
+
+CompilerInfrastructure::CompilerInfrastructure(
+    std::unique_ptr<module::Importer> i)
+    : shared_context_(compiler::MakeBuiltinModule()), importer_(std::move(i)) {}
 
 std::optional<ir::CompleteResultBuffer> CompilerInfrastructure::Evaluate(
     compiler::CompiledModule& module, ast::Expression const* e) {
@@ -28,7 +51,7 @@ std::optional<ir::CompleteResultBuffer> CompilerInfrastructure::Evaluate(
       .work                = &work_set,
       .module              = &module,
       .diagnostic_consumer = &consumer_,
-      .importer            = &importer_,
+      .importer            = importer_.get(),
       .shared_context      = &shared_context_,
   };
 
@@ -69,9 +92,10 @@ TestModule& CompilerInfrastructure::add_module(std::string code) {
       std::move(code));
 }
 
-TestModule& CompilerInfrastructure::add_module(std::string name, std::string code) {
-  auto [id, mod] = shared_context_.module_table().add_module<TestModule>(
-      std::move(name), &context_);
+TestModule& CompilerInfrastructure::add_module(std::string name,
+                                               std::string code) {
+  auto [id, mod] =
+      shared_context_.module_table().add_module<TestModule>(std::move(name));
   mod->set_id(id);
 
   code.push_back('\n');
@@ -83,11 +107,11 @@ TestModule& CompilerInfrastructure::add_module(std::string name, std::string cod
   if (consumer_.num_consumed() != num) { return *mod; }
   auto nodes = mod->insert(stmts.begin(), stmts.end());
 
-  ProcessModule(context_,
+  ProcessModule(mod->context(),
                 {.work                = &work_set_,
                  .module              = mod,
                  .diagnostic_consumer = &consumer_,
-                 .importer            = &importer_,
+                 .importer            = importer_.get(),
                  .shared_context      = &shared_context_},
                 nodes);
 

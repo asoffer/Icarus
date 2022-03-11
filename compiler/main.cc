@@ -179,12 +179,9 @@ int Compile(char const *file_name, std::string module_identifier,
     return 1;
   }
 
-  ir::Module ir_module;
-  compiler::Context context(&ir_module);
-
   auto [mod_id, exec_mod] =
       shared_context.module_table().add_module<compiler::CompiledModule>(
-          std::move(module_identifier), &context);
+          std::move(module_identifier));
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod->scope().embed(&importer.get(embedded_id));
   }
@@ -202,7 +199,7 @@ int Compile(char const *file_name, std::string module_identifier,
       .importer            = &importer,
       .shared_context      = &shared_context,
   };
-  auto main_fn = CompileModule(context, resources, nodes);
+  auto main_fn = CompileModule(exec_mod->context(), resources, nodes);
 
   if ((*diag)->num_consumed() != 0) { return 1; }
   if (not output_byte_code.empty()) {

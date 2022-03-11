@@ -85,12 +85,8 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
     return 1;
   }
 
-  ir::Module ir_module;
-  Context context(&ir_module);
-
   auto [mod_id, exec_mod] =
-      shared_context.module_table().add_module<compiler::CompiledModule>(
-          "", &context);
+      shared_context.module_table().add_module<compiler::CompiledModule>("");
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod->scope().embed(&importer.get(embedded_id));
   }
@@ -110,7 +106,8 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
   if (diag.num_consumed() > 0) { return 1; }
   auto nodes = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
   ASSIGN_OR(return 1,  //
-                   auto main_fn, CompileModule(context, resources, nodes));
+                   auto main_fn,
+                   CompileModule(exec_mod->context(), resources, nodes));
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
 

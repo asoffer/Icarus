@@ -83,16 +83,8 @@ struct FileImporter : module::Importer {
   }
 
  private:
-  struct ModuleData {
-    ModuleData() : root_context(&ir_module) {}
-    ir::Module ir_module;
-    Context root_context;
-    CompiledModule* module;
-  };
-
   WorkSet* work_set_;
-  absl::flat_hash_map<std::string,
-                      std::pair<ir::ModuleId, std::unique_ptr<ModuleData>>>
+  absl::flat_hash_map<std::string, std::pair<ir::ModuleId, CompiledModule*>>
       modules_;
   base::Graph<module::Module const*> graph_;
   absl::flat_hash_map<module::Module const*, ir::Subroutine>

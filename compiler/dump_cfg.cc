@@ -142,12 +142,8 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
       &work_set, diag->get(), &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);
 
-  ir::Module ir_module;
-  compiler::Context context(&ir_module);
-
   auto [mod_id, exec_mod] =
-      shared_context.module_table().add_module<compiler::CompiledModule>(
-          "", &context);
+      shared_context.module_table().add_module<compiler::CompiledModule>("");
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
     exec_mod->scope().embed(&importer.get(embedded_id));
   }
@@ -164,13 +160,13 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
   };
 
   auto parsed_nodes = frontend::Parse(file_content, **diag);
-  auto nodes        = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
-  auto main_fn      = compiler::CompileModule(context, resources, nodes);
+  auto nodes   = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
+  auto main_fn = compiler::CompileModule(exec_mod->context(), resources, nodes);
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }
 
   output << "digraph {\n";
   DumpControlFlowGraph(&*main_fn, output);
-  context.ForEachSubroutine(
+  exec_mod->context().ForEachSubroutine(
       [&](ir::Subroutine const *f) { DumpControlFlowGraph(f, output); });
   output << "}";
 
