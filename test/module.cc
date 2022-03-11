@@ -14,6 +14,7 @@ void ProcessModule(compiler::Context& context,
                                    nodes, true) and
    compiler::VerifyNodesSatisfying(compiler::IsNotConstantDeclaration, context,
                                    w, nodes));
+  w.complete();
 }
 
 }  // namespace
@@ -32,6 +33,7 @@ std::optional<ir::CompleteResultBuffer> CompilerInfrastructure::Evaluate(
   };
 
   compiler::WorkGraph work_graph(resources);
+  absl::Cleanup cleanup = [&] { work_graph.complete(); };
 
   compiler::CompilationData data{.context        = &module.context(),
                                  .work_resources = work_graph.work_resources(),

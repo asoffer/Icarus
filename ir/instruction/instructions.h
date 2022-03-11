@@ -263,7 +263,12 @@ enum class Action { CopyInit, MoveInit, CopyAssign, MoveAssign , Destroy};
 template <Action A, typename T>
 struct CompileTime : base::Extend<CompileTime<A, T>>::template With<
                          base::BaseSerializeExtension, DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "TODO %1$s %2$s";
+  static constexpr std::string_view kDebugFormat = [] {
+    if constexpr (A == Action::CopyInit) { return "copy-init %1$s %2$s"; }
+    if constexpr (A == Action::MoveInit) { return "move-init %1$s %2$s"; }
+    if constexpr (A == Action::CopyAssign) { return "copy-assign %1$s %2$s"; }
+    if constexpr (A == Action::MoveAssign) { return "move-assign %1$s %2$s"; }
+  }();
 
   void Apply(interpreter::ExecutionContext& ctx) const {
     auto* to_ptr   = reinterpret_cast<T*>(ctx.resolve(to));
@@ -271,6 +276,7 @@ struct CompileTime : base::Extend<CompileTime<A, T>>::template With<
     if constexpr (A == Action::CopyInit) {
       new (to_ptr) T(*from_ptr);
     } else if constexpr (A == Action::MoveInit) {
+
       new (to_ptr) T(std::move(*from_ptr));
     } else if constexpr (A == Action::CopyAssign) {
       *to_ptr = *from_ptr;

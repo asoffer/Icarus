@@ -130,14 +130,19 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
       std::make_pair(ir::ModuleId::Invalid(), std::make_unique<ModuleData>());
   auto& [ir_module, root_context, module] = *iter->second.second;
 
-  ir::ModuleId& mod_id = iter->second.first;
-
   static std::atomic<int> id_num = 0;
-  std::tie(mod_id, module) =
+  // Note: After the call to CompileModule, `iter` may be invalidated, so while
+  // it's tempting to assign these directly into the value referenced through
+  // `iter`, doing so would invalidate those references and we would need to
+  // reaccess them. It's cheaper to keep copies of the values around.
+  auto [mod_id, mod] =
       shared_context_.module_table().add_module<CompiledModule>(
           absl::StrFormat("~gen-id-%u",
                           id_num.fetch_add(1, std::memory_order_relaxed)),
           &root_context);
+
+  iter->second.first = mod_id;
+  module             = mod;
 
   for (ir::ModuleId embedded_id : implicitly_embedded_modules()) {
     module->scope().embed(&get(embedded_id));
@@ -158,6 +163,7 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   };
 
   graph_.add_edge(requestor, module);
+
   std::optional subroutine = CompileModule(root_context, resources, nodes);
   if (subroutine) {
     subroutine_by_module_.emplace(module, *std::move(subroutine));
