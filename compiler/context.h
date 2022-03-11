@@ -351,14 +351,12 @@ struct Context {
   void set_qt_callback(
       base::any_invocable<void(ast::Declaration::Id const *, type::QualType)>
           f) {
-    ASSERT(qt_callback_ == nullptr);
     ASSERT(f != nullptr);
     qt_callback_ = std::move(f);
   }
   void set_value_callback(base::any_invocable<void(ast::Declaration::Id const *,
                                                    ir::CompleteResultBuffer)>
                               f) {
-    ASSERT(value_callback_ == nullptr);
     ASSERT(f != nullptr);
     value_callback_ = std::move(f);
   }

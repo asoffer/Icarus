@@ -59,7 +59,7 @@ using BuiltinInstructions =
 
 // Returns a BuiltinModule consisting of all nodes built in as language
 // intrinsics.
-module::BuiltinModule MakeBuiltinModule();
+std::unique_ptr<module::BuiltinModule> MakeBuiltinModule();
 
 }  // namespace compiler
 

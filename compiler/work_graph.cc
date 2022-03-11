@@ -8,39 +8,6 @@
 namespace compiler {
 namespace {
 
-bool IsConstantDeclaration(ast::Node const *n) {
-  auto const *decl = n->if_as<ast::Declaration>();
-  if (not decl) { return false; }
-  return (decl->flags() & ast::Declaration::f_IsConst);
-}
-
-bool IsNotConstantDeclaration(ast::Node const *n) {
-  return not IsConstantDeclaration(n);
-}
-
-bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
-                           Context &context, WorkGraph &work_graph,
-                           base::PtrSpan<ast::Node const> nodes,
-                           bool stop_on_first_error = false) {
-  CompilationData data{.context        = &context,
-                       .work_resources = work_graph.work_resources(),
-                       .resources      = work_graph.resources()};
-  Compiler c(&data);
-
-  bool found_error = false;
-  for (ast::Node const *node : nodes) {
-    if (not predicate(node)) { continue; }
-    auto qts = VerifyType(c, node);
-    for (auto const &qt : qts) {
-      if (qt.HasErrorMark()) {
-        found_error = true;
-        if (stop_on_first_error) { return false; }
-      }
-    }
-  }
-  return not found_error;
-}
-
 std::pair<ir::Subroutine, ir::ByteCode> MakeThunk(Compiler &c,
                                                   ast::Expression const *expr,
                                                   type::Type type) {
@@ -79,6 +46,39 @@ std::pair<ir::Subroutine, ir::ByteCode> MakeThunk(Compiler &c,
 
 }  // namespace
 
+bool IsConstantDeclaration(ast::Node const *n) {
+  auto const *decl = n->if_as<ast::Declaration>();
+  if (not decl) { return false; }
+  return (decl->flags() & ast::Declaration::f_IsConst);
+}
+
+bool IsNotConstantDeclaration(ast::Node const *n) {
+  return not IsConstantDeclaration(n);
+}
+
+bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
+                           Context &context, WorkGraph &work_graph,
+                           base::PtrSpan<ast::Node const> nodes,
+                           bool stop_on_first_error) {
+  CompilationData data{.context        = &context,
+                       .work_resources = work_graph.work_resources(),
+                       .resources      = work_graph.resources()};
+  Compiler c(&data);
+
+  bool found_error = false;
+  for (ast::Node const *node : nodes) {
+    if (not predicate(node)) { continue; }
+    auto qts = VerifyType(c, node);
+    for (auto const &qt : qts) {
+      if (qt.HasErrorMark()) {
+        found_error = true;
+        if (stop_on_first_error) { return false; }
+      }
+    }
+  }
+  return not found_error;
+}
+
 std::optional<ir::Subroutine> CompileModule(
     Context &context, PersistentResources const &resources,
     base::PtrSpan<ast::Node const> nodes) {
@@ -90,12 +90,17 @@ std::optional<ir::Subroutine> CompileModule(
   bool success = w.ExecuteCompilationSequence(
       context, nodes,
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
+        size_t error_count = w.resources().diagnostic_consumer->num_consumed();
         if (not VerifyNodesSatisfying(IsConstantDeclaration, context, w, nodes,
                                       true)) {
           return false;
         }
-        return VerifyNodesSatisfying(IsNotConstantDeclaration, context, w,
-                                     nodes);
+        if (not VerifyNodesSatisfying(IsNotConstantDeclaration, context, w,
+                                      nodes)) {
+          return false;
+        }
+
+        return error_count == w.resources().diagnostic_consumer->num_consumed();
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
         CompilationData data{.context        = &context,
@@ -106,7 +111,7 @@ std::optional<ir::Subroutine> CompileModule(
 
         c.push_current(&f);
         auto scaffolding_cleanup = EmitScaffolding(c, f, mod_scope);
-        absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
+        absl::Cleanup cleanup    = [&] { c.state().current.pop_back(); };
         if (not nodes.empty()) { EmitIrForStatements(c, &mod_scope, nodes); }
         c.current_block()->set_jump(ir::JumpCmd::Return());
 

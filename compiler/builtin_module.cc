@@ -65,12 +65,12 @@ module::Module::SymbolInformation SymbolFor() {
 
 }  // namespace
 
-module::BuiltinModule MakeBuiltinModule() {
-  module::BuiltinModule module;
+std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
+  auto module = std::make_unique<module::BuiltinModule>();
 
-  module.insert("abort", SymbolFor<AbortFn>());
-  module.insert("alignment", SymbolFor<AlignmentFn>());
-  module.insert("bytes", SymbolFor<BytesFn>());
+  module->insert("abort", SymbolFor<AbortFn>());
+  module->insert("alignment", SymbolFor<AlignmentFn>());
+  module->insert("bytes", SymbolFor<BytesFn>());
 
   return module;
 }

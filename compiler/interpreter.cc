@@ -75,7 +75,7 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
   }
 
   compiler::WorkSet work_set;
-  module::SharedContext shared_context;
+  module::SharedContext shared_context(MakeBuiltinModule());
   compiler::FileImporter importer(
       &work_set, &diag, &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);

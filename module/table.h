@@ -17,8 +17,8 @@ namespace module {
 // provided by and must be unique amongst all modules in the table. Numeric
 // identifiers are assigned by the table itself.
 struct ModuleTable {
-  ModuleTable() {
-    modules_.push_back(std::make_unique<BuiltinModule>());
+  explicit ModuleTable(std::unique_ptr<BuiltinModule> m) {
+    modules_.push_back(std::move(m));
     numeric_id_.emplace(modules_.back()->identifier(), ir::ModuleId::Builtin());
   }
 

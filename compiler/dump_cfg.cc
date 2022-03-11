@@ -137,7 +137,7 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
   if (not module_map) { return 1; }
 
   compiler::WorkSet work_set;
-  module::SharedContext shared_context;
+  module::SharedContext shared_context(compiler::MakeBuiltinModule());
   compiler::FileImporter importer(
       &work_set, diag->get(), &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);

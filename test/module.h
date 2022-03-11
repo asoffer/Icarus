@@ -56,9 +56,6 @@ struct TestModule : compiler::CompiledModule {
   NodeType const* get() {
     return &module().stmts().back()->as<NodeType>();
   }
-  void CompileImportedLibrary(TestModule& imported_mod, std::string_view name,
-                              std::string s);
-
  private:
   ir::ModuleId id_;
 };

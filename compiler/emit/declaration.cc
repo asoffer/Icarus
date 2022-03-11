@@ -67,7 +67,8 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
         c.EmitToBuffer(&bd->pattern(), out);
       }
     } else if (node->IsDefaultInitialized()) {
-      UNREACHABLE(node->DebugString());
+      type::Type t = ctx.qual_types(&node->ids()[0])[0].type();
+      WriteDefaultValueFor(t, out);
     } else {
       UNREACHABLE();
     }

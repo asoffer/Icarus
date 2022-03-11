@@ -15,6 +15,10 @@
 
 namespace compiler {
 
+// Fills `out` with the default value associated with type `t` if one exists.
+// Behavior is only defined if such a default value exists.
+void WriteDefaultValueFor(type::Type t, ir::PartialResultBuffer &out);
+
 struct DefaultInitializationEmitter : CompilationDataReference {
   using signature = void(ir::RegOr<ir::addr_t>);
 

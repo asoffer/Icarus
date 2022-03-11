@@ -6,6 +6,60 @@
 namespace compiler {
 namespace {
 
+struct DefaultValueVisitor {
+  using signature = void(ir::PartialResultBuffer &);
+
+  void operator()(auto const *t, ir::PartialResultBuffer &buffer) { NOT_YET(t->to_string()); }
+
+  void operator()(type::Function const *t, ir::PartialResultBuffer &buffer) {
+    UNREACHABLE();
+  }
+
+  void operator()(type::Pointer const *, ir::PartialResultBuffer &buffer) {
+    buffer.append(ir::Null());
+  }
+
+  void operator()(type::BufferPointer const *,
+                  ir::PartialResultBuffer &buffer) {
+    buffer.append(ir::Null());
+  }
+
+  void operator()(type::Primitive const *p, ir::PartialResultBuffer &buffer) {
+    switch (p->kind()) {
+      case type::Primitive::Kind::NullPtr: buffer.append(ir::Null()); return;
+      case type::Primitive::Kind::Bool: buffer.append(false); return;
+      case type::Primitive::Kind::Char: buffer.append(ir::Char()); return;
+      case type::Primitive::Kind::Integer: buffer.append(ir::Integer()); return;
+      case type::Primitive::Kind::I8: buffer.append(int8_t{0}); return;
+      case type::Primitive::Kind::I16: buffer.append(int16_t{0}); return;
+      case type::Primitive::Kind::I32: buffer.append(int32_t{0}); return;
+      case type::Primitive::Kind::I64: buffer.append(int64_t{0}); return;
+      case type::Primitive::Kind::U8: buffer.append(uint8_t{0}); return;
+      case type::Primitive::Kind::U16: buffer.append(uint16_t{0}); return;
+      case type::Primitive::Kind::U32: buffer.append(uint32_t{0}); return;
+      case type::Primitive::Kind::U64: buffer.append(uint64_t{0}); return;
+      case type::Primitive::Kind::F32: buffer.append(float{0}); return;
+      case type::Primitive::Kind::F64: buffer.append(double{0}); return;
+      case type::Primitive::Kind::Byte: buffer.append(std::byte{}); return;
+      default: UNREACHABLE();
+    }
+  }
+
+  void operator()(type::Slice const *, ir::PartialResultBuffer &buffer) {
+    buffer.append(ir::Slice(ir::Null(), 0));
+  }
+
+  void operator()(type::Struct const *s, ir::PartialResultBuffer &buffer) {
+    for (auto const &field : s->fields()) {
+      if (field.initial_value.empty()) {
+        field.type.visit(*this, buffer);
+      } else {
+        buffer.append(field.initial_value[0]);
+      }
+    }
+  }
+};
+
 enum Kind { Move, Copy };
 template <Kind K>
 void EmitArrayInit(CompilationDataReference ref, type::Array const *to,
@@ -404,6 +458,11 @@ void CopyInitializationEmitter::EmitInitialize(
     ir::PartialResultBuffer const &from) {
   MoveInitializationEmitter emitter(*this);
   emitter(t, addr, from);
+}
+
+void WriteDefaultValueFor(type::Type t, ir::PartialResultBuffer &out) {
+  DefaultValueVisitor v;
+  t.visit(v, out);
 }
 
 }  // namespace compiler

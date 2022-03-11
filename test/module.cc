@@ -4,10 +4,21 @@
 #include "module/trivial_importer.h"
 
 namespace test {
+namespace {
 
-CompilerInfrastructure::CompilerInfrastructure() : context_(&ir_module_) {
-  shared_context_.module_table().add_module(compiler::MakeBuiltinModule());
+void ProcessModule(compiler::Context& context,
+                   compiler::PersistentResources const& resources,
+                   base::PtrSpan<ast::Node const> nodes) {
+  compiler::WorkGraph w(resources);
+  (compiler::VerifyNodesSatisfying(compiler::IsConstantDeclaration, context, w,
+                                   nodes, true) and
+   compiler::VerifyNodesSatisfying(compiler::IsNotConstantDeclaration, context,
+                                   w, nodes));
 }
+
+}  // namespace
+CompilerInfrastructure::CompilerInfrastructure()
+    : shared_context_(compiler::MakeBuiltinModule()), context_(&ir_module_) {}
 
 std::optional<ir::CompleteResultBuffer> CompilerInfrastructure::Evaluate(
     compiler::CompiledModule& module, ast::Expression const* e) {
@@ -59,49 +70,18 @@ TestModule& CompilerInfrastructure::add_module(std::string name, std::string cod
 
   size_t num = consumer_.num_consumed();
   auto stmts = frontend::Parse(content, consumer_);
-  if (consumer_.num_consumed() != num) {
-    ADD_FAILURE() << "Parsing failure.";
-    return *mod;
-  }
+  if (consumer_.num_consumed() != num) { return *mod; }
   auto nodes = mod->insert(stmts.begin(), stmts.end());
 
-  compiler::CompileModule(context_,
-                          {.work                = &work_set_,
-                           .module              = mod,
-                           .diagnostic_consumer = &consumer_,
-                           .importer            = &importer_,
-                           .shared_context      = &shared_context_},
-                          nodes);
+  ProcessModule(context_,
+                {.work                = &work_set_,
+                 .module              = mod,
+                 .diagnostic_consumer = &consumer_,
+                 .importer            = &importer_,
+                 .shared_context      = &shared_context_},
+                nodes);
 
   return *mod;
-}
-
-void TestModule::CompileImportedLibrary(TestModule& imported_mod,
-                                        std::string_view name, std::string s) {
-  NOT_YET();
-  // compiler::PersistentResources import_resources{
-  //     .work                = &work_set,
-  //     .module              = this,
-  //     .diagnostic_consumer = &consumer,
-  //     .importer            = &importer,
-  //     .shared_context      = &internal_module::shared_context,
-  // };
-
-  // std::string_view content = indexer_.insert(imported_mod.id_, std::move(s));
-  // size_t num        = consumer.num_consumed();
-  // auto parsed_nodes = frontend::Parse(content, consumer);
-  // if (consumer.num_consumed() != num) { return; }
-  // compiler::CompileModule(
-  //     imported_mod.context(), import_resources,
-  //     imported_mod.insert(parsed_nodes.begin(), parsed_nodes.end()));
-
-  // ON_CALL(importer, Import(testing::_, testing::Eq(name)))
-  //     .WillByDefault([imported_mod.id_](module::Module const*,
-  //                                       std::string_view) { return id; });
-  // ON_CALL(importer, get(imported_mod.id_))
-  //     .WillByDefault([&imported_mod](ir::ModuleId) -> module::Module& {
-  //       return *imported_mod;
-  //     });
 }
 
 }  // namespace test
