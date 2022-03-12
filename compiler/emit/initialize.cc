@@ -132,25 +132,28 @@ void EmitArrayInit(CompilationDataReference ref, type::Array const *to,
 
 void SetArrayInits(CompilationDataReference ref,
                    type::Array const *array_type) {
-  auto [copy_fn, copy_inserted] =
-      ref.context().ir().InsertCopyInit(array_type, array_type);
-  auto [move_fn, move_inserted] =
-      ref.context().ir().InsertMoveInit(array_type, array_type);
-  ASSERT(copy_inserted == move_inserted);
-  if (copy_inserted) {
-    ref.push_current(&*copy_fn);
-    EmitArrayInit<Copy>(ref, array_type, array_type);
-    ref.state().current.pop_back();
+  static absl::node_hash_map<type::Array const *, std::once_flag> flags;
+  std::call_once(flags[array_type], [&] {
+    auto [copy_fn, copy_inserted] =
+        ref.context().ir().InsertCopyInit(array_type, array_type);
+    auto [move_fn, move_inserted] =
+        ref.context().ir().InsertMoveInit(array_type, array_type);
+    ASSERT(copy_inserted == move_inserted);
+    if (copy_inserted) {
+      ref.push_current(&*copy_fn);
+      EmitArrayInit<Copy>(ref, array_type, array_type);
+      ref.state().current.pop_back();
 
-    ref.push_current(&*move_fn);
-    EmitArrayInit<Move>(ref, array_type, array_type);
-    ref.state().current.pop_back();
+      ref.push_current(&*move_fn);
+      EmitArrayInit<Move>(ref, array_type, array_type);
+      ref.state().current.pop_back();
 
-    ref.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
-    ref.context().ir().WriteByteCode<EmitByteCode>(move_fn);
-    // TODO: Remove const_cast.
-    const_cast<type::Array *>(array_type)->SetInits(copy_fn, move_fn);
-  }
+      ref.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
+      ref.context().ir().WriteByteCode<EmitByteCode>(move_fn);
+      // TODO: Remove const_cast.
+      const_cast<type::Array *>(array_type)->SetInits(copy_fn, move_fn);
+    }
+  });
 }
 
 }  // namespace

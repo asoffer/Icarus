@@ -136,7 +136,7 @@ struct instruction_set_t
               // f32 from regular numeric primitives
               float(uint8_t), float(int8_t), float(uint16_t), float(int16_t),
               float(uint32_t), float(int32_t), float(uint64_t), float(int64_t),
-              double(ir::Integer), float(double),
+              float(ir::Integer), float(double),
               // f64 from regular numeric primitives
               double(uint8_t), double(int8_t), double(uint16_t),
               double(int16_t), double(uint32_t), double(int32_t),
