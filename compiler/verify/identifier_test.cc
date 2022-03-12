@@ -46,7 +46,7 @@ TEST(Identifier, UndeclaredDoesNotRepeat) {
                                        "type-error", "undeclared-identifier")));
 }
 
-TEST(Identifier, OverloadSetSuccess) {
+TEST(Identifier, DISABLED_OverloadSetSuccess) {
   test::CompilerInfrastructure infra;
   auto &mod      = infra.add_module(R"(
   f := () => 3

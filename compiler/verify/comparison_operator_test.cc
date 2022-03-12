@@ -15,8 +15,8 @@ using ::testing::UnorderedElementsAre;
 TEST(ComparisonOperator, ConstantSuccess) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(
-      R"(x ::= 1
-         y ::= 2
+      R"(x ::= 1 as i64
+         y ::= 2 as i64
 
          x < y <= 3 == x != y >= 3 > x
       )");
@@ -29,8 +29,8 @@ TEST(ComparisonOperator, ConstantSuccess) {
 TEST(ComparisonOperator, NonConstantSuccess) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(
-      R"(x := 1
-         y := 2
+      R"(x := 1 as i64
+         y := 2 as i64
 
          x < y <= 3 == x != y >= 3 > x
       )");
@@ -59,7 +59,7 @@ TEST(ComparisonOperator, Pointer) {
 TEST(ComparisonOperator, UnorderedPointers) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(
-      R"(x := 1
+      R"(x := 1 as i64
          p := &x
 
          p < &x
@@ -119,8 +119,9 @@ TEST_P(OperatorOverload, MissingOverloads) {
                   Pair("type-error", "invalid-comparison-operator-overload")));
 }
 
-INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
-                         testing::ValuesIn({"<", "<=", "==", "!=", ">=", ">"}));
+// TODO: Support operator overloading for comparisons.
+// INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
+//                          testing::ValuesIn({"<", "<=", "==", "!=", ">=", ">"}));
 
 TEST(ComparisonOperator, PriorError) {
   test::CompilerInfrastructure infra;

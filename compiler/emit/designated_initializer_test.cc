@@ -8,7 +8,7 @@ namespace {
 
 std::string Context() {
   return R"(
-  Int ::= struct { n := 3 }
+  Int ::= struct { n := 3 as i64 }
   Pair ::= struct { a: i64 \\ b: bool }
   // Wrap ::= struct (T ::= i64) { x: T }
 
@@ -67,13 +67,12 @@ INSTANTIATE_TEST_SUITE_P(
         //                .expr     = R"(Wrap(f64).{x = 3.1}.x)",
         //                .expected = 3.1},
 
-        // TODO: Enable these tests once you allow simultaneous assignments.
-        // test::TestCase{.context=Context(),.expr     = R"(Pair.{ (a, b) = 'f
-        // }.a)",
-        //          .expected = int64_t{3}},
-        // test::TestCase{.context=Context(),.expr     = R"(Pair.{ (a, b) = 'f
-        // }.b)",
-        //          .expected = true},
+        test::TestCase{.context  = Context(),
+                       .expr     = R"(Pair.{ (a, b) = 'f }.a)",
+                       .expected = int64_t{3}},
+        test::TestCase{.context  = Context(),
+                       .expr     = R"(Pair.{ (a, b) = 'f }.b)",
+                       .expected = true},
     }));
 
 }  // namespace
