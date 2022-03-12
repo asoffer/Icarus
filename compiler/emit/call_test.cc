@@ -44,8 +44,8 @@ INSTANTIATE_TEST_SUITE_P(
                        .expected = int64_t{9}},
         test::TestCase{.expr     = R"(((n ::= 2) => n * n)(n = 3))",
                        .expected = int64_t{9}},
-        // test::TestCase{.expr     = R"(((n ::= 2) => n * n)())",
-        //          .expected = int64_t{4}},
+        test::TestCase{.expr     = R"(((n ::= 2) => n * n)())",
+                       .expected = int64_t{4}},
         test::TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(1, 2))",
                        .expected = int64_t{5}},
         test::TestCase{
@@ -78,7 +78,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         // Value to pointer casts
         test::TestCase{
-            .expr     = R"(((n: *i64) => @n * @n)(3))",
+            .expr     = R"(((n: *i64) => @n * @n)(3 as i64))",
             .expected = int64_t{9},
         },
         test::TestCase{
@@ -101,7 +101,7 @@ INSTANTIATE_TEST_SUITE_P(
         // TODO: Value to pointer casts with structs and with designated
         // initializers.
         test::TestCase{
-            .expr     = R"(((n: *i64) => @n * @n)(3))",
+            .expr     = R"(((n: *i64) => @n * @n)(3 as i64))",
             .expected = int64_t{9},
         },
     }));

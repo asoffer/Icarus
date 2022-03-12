@@ -76,11 +76,13 @@ void Compiler::EmitToBuffer(ast::Index const *node,
                    type::PointerDifferenceType(resources().architecture))
               .back()
               .get<int64_t>();
+      EmitToBuffer(node->lhs(), out);
       auto incr = current_block()->Append(
-          ir::PtrIncrInstruction{.addr   = EmitRef(node->lhs()),
+          ir::PtrIncrInstruction{.addr   = out.get<ir::addr_t>(0),
                                  .index  = index,
                                  .ptr    = type::Ptr(array_type->data_type()),
                                  .result = current().subroutine->Reserve()});
+      out.pop_back();
       out.append(PtrFix(current(), incr, array_type->data_type()));
     }
   } else if (auto const *buf_ptr_type =

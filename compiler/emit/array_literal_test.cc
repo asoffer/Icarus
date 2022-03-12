@@ -9,20 +9,23 @@ namespace {
 INSTANTIATE_TEST_SUITE_P(
     All, EvaluationTest,
     testing::ValuesIn({
-        test::TestCase{.expr     = R"((() -> i64 { return [3][0] })())",
+        test::TestCase{.expr     = R"((() -> i64 { return [3 as i64][0] })())",
                        .expected = int64_t{3}},
-        test::TestCase{.expr     = R"((() -> i64 { return [1, 4, 9][2] })())",
+        test::TestCase{.expr =
+                           R"((() -> i64 {
+                                return [1 as i64, 4 as i64, 9 as i64][2]
+                              })())",
                        .expected = int64_t{9}},
         test::TestCase{.expr = R"((() -> f64 { return [1.0, 4.4, 9.9][1] })())",
                        .expected = 4.4},
         test::TestCase{.expr     = R"((() -> i64 {
-                                   a := [3]
+                                   a := [3 as i64]
                                    return a[0]
                                  })()
                                  )",
                        .expected = int64_t{3}},
         test::TestCase{.expr     = R"((() -> i64 {
-                                   a := [1, 4, 9]
+                                   a := [1 as i64, 4 as i64, 9 as i64]
                                    return a[2]
                                  })()
                                  )",
@@ -35,13 +38,13 @@ INSTANTIATE_TEST_SUITE_P(
                        .expected = 4.4},
 
         test::TestCase{.expr     = R"((() -> i64 {
-                                   a := [3]
+                                   a := [3 as i64]
                                    return a[0]
                                  })()
                                  )",
                        .expected = int64_t{3}},
         test::TestCase{.expr     = R"((() -> i64 {
-                                   a := [1, 4, 9]
+                                   a := [1 as i64, 4 as i64, 9 as i64]
                                    return a[2]
                                  })()
                                  )",

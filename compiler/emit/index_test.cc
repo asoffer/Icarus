@@ -27,7 +27,7 @@ INSTANTIATE_TEST_SUITE_P(
         })()
         )",
                         .expected = int64_t{4}},
-         test::TestCase{.expr     = R"((() -> i64 {
+         test::TestCase{.expr     = R"((() -> f64 {
         S ::= struct {}
         __index__ ::= (s: *S, f: f64) => f * 2.0
         thing: S
