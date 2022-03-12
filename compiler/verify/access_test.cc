@@ -141,8 +141,9 @@ TEST(Access, NoFieldInStruct) {
     b: bool
   }
   s: S
+  s.x
   )");
-  auto const *expr = infra.add_module(R"(s.x)").get<ast::Expression>();
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType::Error()));
   EXPECT_THAT(infra.diagnostics(),
@@ -236,18 +237,6 @@ TEST(Access, ArrayInvalidMember) {
   EXPECT_THAT(
       infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "missing-constant-member")));
-}
-
-TEST(Access, IntoModuleWithError) {
-  test::CompilerInfrastructure infra;
-  infra.add_module("imported", R"(
-  #{export} N :: bool = 3
-  )");
-
-  auto &mod        = infra.add_module("mod ::= import \"imported\"");
-  auto const *expr = infra.add_module(R"(mod.N)").get<ast::Expression>();
-  EXPECT_THAT(infra.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "invalid-cast")));
 }
 
 TEST(Access, CrossModuleStructFieldAccess) {

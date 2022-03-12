@@ -602,7 +602,8 @@ bool Compiler::PatternMatch(
           auto sum  = pmc.value.template get<T>(0);
           auto term = std::get<ir::CompleteResultBuffer>(*lhs_buffer)
                           .template get<T>(0);
-          if constexpr (std::is_arithmetic_v<T>) {
+          if constexpr (std::is_arithmetic_v<T> or
+                        base::meta<T> == base::meta<ir::Integer>) {
             pmc.value.clear();
             pmc.value.append(static_cast<T>(sum - term));
           }
@@ -613,7 +614,8 @@ bool Compiler::PatternMatch(
           auto sum  = pmc.value.template get<T>(0);
           auto term = std::get<ir::CompleteResultBuffer>(*rhs_buffer)
                           .template get<T>(0);
-          if constexpr (std::is_arithmetic_v<T>) {
+          if constexpr (std::is_arithmetic_v<T> or
+                        base::meta<T> == base::meta<ir::Integer>) {
             pmc.value.clear();
             pmc.value.append(static_cast<T>(sum - term));
           }
@@ -668,7 +670,8 @@ bool Compiler::PatternMatch(
           if constexpr (std::is_integral_v<T>) {
             if (product % factor == 0) { expr = nullptr; }
           }
-          if constexpr (std::is_arithmetic_v<T>) {
+          if constexpr (std::is_arithmetic_v<T> or
+                        base::meta<T> == base::meta<ir::Integer>) {
             pmc.value.clear();
             pmc.value.append(static_cast<T>(product / factor));
           }
@@ -683,7 +686,8 @@ bool Compiler::PatternMatch(
           if constexpr (std::is_integral_v<T>) {
             if (product % factor == 0) { expr = nullptr; }
           }
-          if constexpr (std::is_arithmetic_v<T>) {
+          if constexpr (std::is_arithmetic_v<T> or
+                        base::meta<T> == base::meta<ir::Integer>) {
             pmc.value.clear();
             pmc.value.append(static_cast<T>(product / factor));
           }
