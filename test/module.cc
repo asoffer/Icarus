@@ -6,17 +6,6 @@
 namespace test {
 namespace {
 
-void ProcessModule(compiler::Context& context,
-                   compiler::PersistentResources const& resources,
-                   base::PtrSpan<ast::Node const> nodes) {
-  compiler::WorkGraph w(resources);
-  (compiler::VerifyNodesSatisfying(compiler::IsConstantDeclaration, context, w,
-                                   nodes, true) and
-   compiler::VerifyNodesSatisfying(compiler::IsNotConstantDeclaration, context,
-                                   w, nodes));
-  w.complete();
-}
-
 struct TestImporter : module::Importer {
   TestImporter(module::ModuleTable* table) : table_(*ASSERT_NOT_NULL(table)) {}
   virtual ~TestImporter() {}
@@ -107,13 +96,13 @@ TestModule& CompilerInfrastructure::add_module(std::string name,
   if (consumer_.num_consumed() != num) { return *mod; }
   auto nodes = mod->insert(stmts.begin(), stmts.end());
 
-  ProcessModule(mod->context(),
-                {.work                = &work_set_,
-                 .module              = mod,
-                 .diagnostic_consumer = &consumer_,
-                 .importer            = importer_.get(),
-                 .shared_context      = &shared_context_},
-                nodes);
+  compiler::CompileModule(mod->context(),
+                          {.work                = &work_set_,
+                           .module              = mod,
+                           .diagnostic_consumer = &consumer_,
+                           .importer            = importer_.get(),
+                           .shared_context      = &shared_context_},
+                          nodes);
 
   return *mod;
 }
