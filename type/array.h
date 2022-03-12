@@ -32,7 +32,7 @@ struct Array : LegacyType {
                    ir::CompleteResultRef const &rhs) const override;
   size_t HashValue(ir::CompleteResultRef const &value) const override;
 
-  length_t length() const { return len_; }
+  length_t const &length() const { return len_; }
   Type data_type() const { return data_type_; }
 
   Completeness completeness() const override {

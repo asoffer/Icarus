@@ -15,6 +15,10 @@ struct DefaultValueVisitor {
     UNREACHABLE();
   }
 
+  void operator()(type::Flags const *f, ir::PartialResultBuffer &buffer) {
+    f->UnderlyingType().visit(*this, buffer);
+  }
+
   void operator()(type::Pointer const *, ir::PartialResultBuffer &buffer) {
     buffer.append(ir::Null());
   }
