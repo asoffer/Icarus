@@ -2,13 +2,28 @@
 #define ICARUS_IR_BYTE_CODE_BYTE_CODE_H
 
 #include <cstddef>
+#include <utility>
+#include <variant>
+#include <vector>
 
 #include "absl/types/span.h"
 #include "base/untyped_buffer.h"
+#include "core/type_contour.h"
+#include "type/type.h"
 
 namespace ir {
 
 struct ByteCode {
+  struct Header {
+    size_t num_registers;
+    size_t num_parameters;
+    size_t num_outputs;
+    std::vector<std::variant<core::TypeContour, type::Type>> stack_allocations;
+  };
+
+  explicit ByteCode(Header h) : header_(std::move(h)) {}
+
+  Header const& header() const { return header_; }
   auto begin() const { return buffer_.begin(); }
   size_t size() const { return buffer_.size(); }
 
@@ -29,6 +44,7 @@ struct ByteCode {
     buffer_.set(write_at_offset, offset_to_write);
   }
 
+  Header header_;
   base::untyped_buffer buffer_;
 };
 

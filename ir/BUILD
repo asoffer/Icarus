@@ -40,6 +40,7 @@ cc_library(
         "//type:function",
         "//type:pointer",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:node_hash_map",
     ],
 )
 

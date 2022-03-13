@@ -51,7 +51,7 @@ module::Module::SymbolInformation SymbolFor() {
   static ir::NativeFn::Data data{
       .fn        = &subroutine,
       .type      = &subroutine.type()->template as<type::Function>(),
-      .byte_code = byte_code.begin(),
+      .byte_code = &byte_code,
   };
 
   ir::CompleteResultBuffer buffer;

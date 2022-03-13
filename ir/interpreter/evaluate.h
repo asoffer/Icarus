@@ -19,7 +19,7 @@ void Execute(ir::NativeFn fn, ir::CompleteResultBuffer const& arguments = {}) {
   // TODO actually just have a good way to construct the buffer
   LOG("Execute", "%s", fn);
   ExecutionContext ctx;
-  StackFrame frame(fn, ctx.stack());
+  StackFrame frame(&fn.byte_code(), ctx.stack());
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();
@@ -36,7 +36,7 @@ ir::CompleteResultBuffer EvaluateToBuffer(
   ASSERT(fn.type()->return_types().size() != 0u);
 
   ExecutionContext ctx;
-  StackFrame frame(fn, ctx.stack());
+  StackFrame frame(&fn.byte_code(), ctx.stack());
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();

@@ -201,7 +201,17 @@ struct ExecutionContext {
         type::Function const *fn_type = f.type();
         LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
 
-        StackFrame frame(f, ctx.stack());
+        if (f.kind() == ir::Fn::Kind::Native) {
+          ASSERT(f.native().byte_code().header().num_outputs ==
+                 fn_type->return_types().size());
+        }
+
+        StackFrame frame =
+            (f.kind() == ir::Fn::Kind::Native)
+                ? StackFrame(&f.native().byte_code(), ctx.stack())
+                : StackFrame({.num_parameters = fn_type->params().size(),
+                              .num_outputs    = fn_type->return_types().size()},
+                             ctx.stack());
 
         for (size_t i = 0; i < inst.arguments().num_entries(); ++i) {
           ir::PartialResultRef argument = inst.arguments()[i];

@@ -250,7 +250,7 @@ WorkGraph::EvaluateToBuffer(Context &context,
   ir::NativeFn::Data data{
       .fn        = &thunk,
       .type      = &thunk.type()->as<type::Function>(),
-      .byte_code = byte_code.begin(),
+      .byte_code = &byte_code,
   };
 
   for (auto const &[item, deps] : w.dependencies_) {

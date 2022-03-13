@@ -24,7 +24,7 @@ struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslHashExtension> {
   struct Data {
     Subroutine *fn;
     type::Function const *type;
-    base::untyped_buffer::const_iterator byte_code;
+    ByteCode const *byte_code;
   };
 
   explicit NativeFn(Data const *data = nullptr);
@@ -33,9 +33,7 @@ struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslHashExtension> {
 
   type::Function const *type() const;
 
-  base::untyped_buffer::const_iterator byte_code_iterator() const {
-    return data_->byte_code;
-  }
+  ByteCode const &byte_code() const { return *data_->byte_code; }
 
   Subroutine *operator->() { return data_->fn; }
   Subroutine &operator*() { return *data_->fn; }

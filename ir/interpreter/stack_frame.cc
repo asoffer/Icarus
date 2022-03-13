@@ -1,84 +1,73 @@
 #include "ir/interpreter/stack_frame.h"
 
+#include "absl/cleanup/cleanup.h"
 #include "ir/interpreter/architecture.h"
-#include "type/function.h"
 #include "type/type.h"
 
 namespace interpreter {
-
 namespace {
 
-size_t NumRegisters(ir::Fn fn) {
-  switch (fn.kind()) {
-    case ir::Fn::Kind::Native: return fn.native()->num_regs();
-    default: return 0;
-  }
+core::Bytes GetBytes(core::Arch const& arch, type::Type t) {
+  return t.bytes(arch);
 }
 
-size_t NumOutputs(ir::Fn fn) { return fn.type()->return_types().size(); }
+core::Bytes GetBytes(core::Arch const& arch, core::TypeContour tc) {
+  return tc.bytes();
+}
+
+core::Alignment GetAlignment(core::Arch const& arch, type::Type t) {
+  return t.alignment(arch);
+}
+
+core::Alignment GetAlignment(core::Arch const& arch, core::TypeContour tc) {
+  return tc.alignment();
+}
 
 }  // namespace
 
 StackFrame::~StackFrame() { stack_.Deallocate(frame_size_); }
 
-StackFrame::StackFrame(ir::Scope s, Stack& stack)
+StackFrame::StackFrame(Summary const& s, Stack& stack)
     : stack_(stack),
       frame_size_(0),
-      sizes_({.num_registers  = s->num_regs(),
-              .num_parameters = s->params().size(),
-              // TODO: 1 for the vector of blocks, but there might also be real
-              // returns.
-              .num_outputs           = 1,
-              .num_stack_allocations = s->num_allocs()}),
-      data_(base::untyped_buffer::MakeFull(
-          (sizes_.num_registers + sizes_.num_parameters + sizes_.num_outputs +
-           sizes_.num_stack_allocations) *
-          register_value_size)) {
-  absl::flat_hash_map<ir::Reg, size_t> offsets;
+      byte_code_(nullptr),
+      summary_(s),
+      data_(base::untyped_buffer::MakeFull(register_count() *
+                                           register_value_size)) {}
 
-  byte_code_iter_          = s.byte_code_iterator();
+StackFrame::StackFrame(ir::ByteCode const* bc, Stack& stack)
+    : stack_(stack),
+      byte_code_(ASSERT_NOT_NULL(bc)),
+      summary_({
+          .num_parameters = byte_code_->header().num_parameters,
+          .num_registers  = byte_code_->header().num_registers,
+          .num_outputs    = byte_code_->header().num_outputs,
+          .num_stack_allocations =
+              byte_code_->header().stack_allocations.size(),
+      }),
+      data_(base::untyped_buffer::MakeFull(register_count() *
+                                           register_value_size)) {
   core::Bytes next_reg_loc = core::Bytes(0);
-  s->for_each_alloc(kArchitecture, [&](core::TypeContour tc, ir::Reg r) {
-    next_reg_loc = core::FwdAlign(next_reg_loc, tc.alignment());
-    offsets.emplace(r, next_reg_loc.value());
-    next_reg_loc += tc.bytes();
-  });
+
+  // Offsets from the front of this stack frame for each stack allocation.
+  std::vector<size_t> stack_offsets;
+  stack_offsets.reserve(byte_code_->header().stack_allocations.size());
+
+  for (auto const& t : byte_code_->header().stack_allocations) {
+    std::visit(
+        [&](auto const& entry) {
+          next_reg_loc =
+              core::FwdAlign(next_reg_loc, GetAlignment(kArchitecture, entry));
+              stack_offsets.push_back(next_reg_loc.value());
+          next_reg_loc += GetBytes(kArchitecture, entry);
+        },
+        t);
+  }
 
   frame_size_            = next_reg_loc.value();
   ir::addr_t frame_start = stack_.Allocate(frame_size_);
-
-  for (auto [reg, offset] : offsets) { set(reg, frame_start + offset); }
-}
-
-StackFrame::StackFrame(ir::Fn fn, Stack& stack)
-    : stack_(stack),
-      frame_size_(0),
-      sizes_({.num_registers         = NumRegisters(fn),
-              .num_parameters        = fn.num_parameters(),
-              .num_outputs           = NumOutputs(fn),
-              .num_stack_allocations = fn.kind() == ir::Fn::Kind::Native
-                                           ? fn.native()->num_allocs()
-                                           : 0}),
-      data_(base::untyped_buffer::MakeFull(
-          (sizes_.num_registers + sizes_.num_parameters + sizes_.num_outputs +
-           sizes_.num_stack_allocations) *
-          register_value_size)) {
-  absl::flat_hash_map<ir::Reg, size_t> offsets;
-
-  if (fn.kind() == ir::Fn::Kind::Native) {
-    byte_code_iter_          = fn.native().byte_code_iterator();
-    core::Bytes next_reg_loc = core::Bytes(0);
-    fn.native()->for_each_alloc(
-        kArchitecture, [&](core::TypeContour tc, ir::Reg r) {
-          next_reg_loc = core::FwdAlign(next_reg_loc, tc.alignment());
-          offsets.emplace(r, next_reg_loc.value());
-          next_reg_loc += tc.bytes();
-        });
-
-    frame_size_            = next_reg_loc.value();
-    ir::addr_t frame_start = stack_.Allocate(frame_size_);
-
-    for (auto [reg, offset] : offsets) { set(reg, frame_start + offset); }
+  for (size_t i = 0; i < stack_offsets.size(); ++i) {
+    set(ir::Reg::StackAllocation(i), frame_start + stack_offsets[i]);
   }
 }
 

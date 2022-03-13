@@ -197,7 +197,23 @@ void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
 }  // namespace
 
 ir::ByteCode EmitByteCode(ir::Subroutine const& sr) {
-  ir::ByteCode byte_code;
+  std::vector<std::variant<core::TypeContour, type::Type>> allocs(
+      sr.num_allocs());
+  sr.for_each_alloc(core::Host, [&](core::TypeContour tc, ir::Reg r) {
+    allocs[r.as<ir::Reg::Kind::StackAllocation>()] = tc;
+  });
+
+  size_t num_outputs = 1;
+  if (auto const * rt = sr.type()->if_as<type::ReturningType>()) {
+    num_outputs = rt->return_types().size();
+  }
+
+  ir::ByteCode byte_code({
+      .num_registers     = sr.num_regs(),
+      .num_parameters    = sr.num_args(),
+      .num_outputs       = num_outputs,
+      .stack_allocations = std::move(allocs),
+  });
   ir::ByteCodeWriter writer(&byte_code);
   for (auto const& block : sr.blocks()) { EmitByteCode(writer, *block); }
   std::move(writer).Finalize();
@@ -210,7 +226,7 @@ void InterpretAtCompileTime(ir::Subroutine const& fn,
   ir::NativeFn::Data data{
       .fn        = &const_cast<ir::Subroutine&>(fn),
       .type      = &fn.type()->as<type::Function>(),
-      .byte_code = byte_code.begin(),
+      .byte_code = &byte_code,
   };
   InterpretAtCompileTime(ir::NativeFn(&data), arguments);
 }
@@ -224,7 +240,7 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
     ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const& arguments) {
   interpreter::ExecutionContext ctx;
-  interpreter::StackFrame frame(s, ctx.stack());
+  interpreter::StackFrame frame(&s.byte_code(), ctx.stack());
   core::BindArguments(
       s.type()->params(), arguments,
       [&, i = 0](type::QualType param,
