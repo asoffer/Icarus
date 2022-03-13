@@ -66,16 +66,24 @@ struct StackFrame {
       case ir::Reg::Kind::Output:
         offset += sizes_.num_parameters;
         [[fallthrough]];
-      case ir::Reg::Kind::Argument:
+      case ir::Reg::Kind::Parameter:
         offset += sizes_.num_registers;
         [[fallthrough]];
       case ir::Reg::Kind::Value:;
+      case ir::Reg::Kind::StackAllocation:;
     }
 
     switch (r.kind()) {
-      case ir::Reg::Kind::Argument: offset += r.arg_value(); break;
-      case ir::Reg::Kind::Output: offset += r.out_value(); break;
-      case ir::Reg::Kind::Value: offset += r.value(); break;
+      case ir::Reg::Kind::Parameter:
+        offset += r.as<ir::Reg::Kind::Parameter>();
+        break;
+      case ir::Reg::Kind::Output:
+        offset += r.as<ir::Reg::Kind::Output>();
+        break;
+      case ir::Reg::Kind::Value: offset += r.as<ir::Reg::Kind::Value>(); break;
+      case ir::Reg::Kind::StackAllocation:
+        offset += r.as<ir::Reg::Kind::StackAllocation>();
+        break;
     }
     return offset * register_value_size;
   }

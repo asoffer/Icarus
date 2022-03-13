@@ -42,7 +42,7 @@ struct DestructionEmitter : CompilationDataReference {
 
       current_block() = fn->entry();
       current_block() =
-          OnEachArrayElement(current(), t, ir::Reg::Arg(0),
+          OnEachArrayElement(current(), t, ir::Reg::Parameter(0),
                              [=](ir::BasicBlock *entry, ir::Reg reg) {
                                current_block() = entry;
                                EmitDestroy(t->data_type(), reg);

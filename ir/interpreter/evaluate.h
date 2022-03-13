@@ -23,7 +23,7 @@ void Execute(ir::NativeFn fn, ir::CompleteResultBuffer const& arguments = {}) {
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();
-    frame.set_raw(ir::Reg::Arg(i), argument.data(), argument.size());
+    frame.set_raw(ir::Reg::Parameter(i), argument.data(), argument.size());
   }
   ctx.Execute<InstSet>(fn, frame);
 }
@@ -40,7 +40,7 @@ ir::CompleteResultBuffer EvaluateToBuffer(
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();
-    frame.set_raw(ir::Reg::Arg(i), argument.data(), argument.size());
+    frame.set_raw(ir::Reg::Parameter(i), argument.data(), argument.size());
   }
 
   ir::CompleteResultBuffer result;
@@ -51,7 +51,7 @@ ir::CompleteResultBuffer EvaluateToBuffer(
   result.reserve_bytes(outputs.size(), total.value());
   for (size_t i = 0; i < outputs.size(); ++i) {
     frame.set<ir::addr_t>(
-        ir::Reg::Out(i),
+        ir::Reg::Output(i),
         result.append_slot(outputs[i].bytes(kArchitecture).value()));
   }
 

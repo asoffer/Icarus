@@ -31,7 +31,7 @@ struct InsertBlockInstruction
   void Apply(interpreter::ExecutionContext& ctx) {
     // TODO: Out(0) may not be sufficient.
     auto& blocks = *ASSERT_NOT_NULL(reinterpret_cast<std::vector<ir::Block>*>(
-        ctx.resolve<ir::addr_t>(ir::Reg::Out(0))));
+        ctx.resolve<ir::addr_t>(ir::Reg::Output(0))));
     blocks.push_back(block);
   }
 
@@ -233,12 +233,12 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
         core::Bytes size = param.type().is_big()
                                ? interpreter::kArchitecture.pointer().bytes()
                                : param.type().bytes(interpreter::kArchitecture);
-        frame.set_raw(ir::Reg::Arg(i), argument->raw().data(), size.value());
+        frame.set_raw(ir::Reg::Parameter(i), argument->raw().data(), size.value());
       });
 
   std::vector<ir::Block> result;
   auto* result_ptr = &result;
-  frame.set(ir::Reg::Out(0), reinterpret_cast<ir::addr_t>(result_ptr));
+  frame.set(ir::Reg::Output(0), reinterpret_cast<ir::addr_t>(result_ptr));
   ctx.Execute<instruction_set_t>(s, frame);
   return result;
 }

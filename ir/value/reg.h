@@ -14,9 +14,6 @@ namespace ir {
 //
 // Registers may refer to registers holding values inside a function, function
 // arguments, or function outputs.
-//
-// TODO: These registers technically store parameters rather than arguments, and
-// we should rectify the naming at some point.
 struct Reg : base::Extend<Reg, 1>::With<base::AbslHashExtension> {
  private:
   using underlying_type = uint64_t;
@@ -24,68 +21,71 @@ struct Reg : base::Extend<Reg, 1>::With<base::AbslHashExtension> {
  public:
   constexpr Reg() = default;
 
-  enum class Kind { Value = 0, Output = 1, Argument = 2 };
+  enum class Kind { Value = 0, Output = 1, Parameter = 2, StackAllocation = 3 };
 
-  explicit Reg(underlying_type val) : val_(val) {
-    ASSERT(is_arg() == false);
-    ASSERT(is_out() == false);
+  explicit Reg(underlying_type value) : value_(value) {
+    ASSERT(kind() == Kind::Value);
   }
 
-  Kind kind() const {
+  // Constructs a register with the given value representing a subroutine
+  // parameter.
+  static Reg Parameter(underlying_type value) {
+    return MakeReg(Kind::Parameter, value);
+  }
+
+  // Constructs a register with the given value representing a subroutine
+  // output.
+  static Reg Output(underlying_type value) {
+    return MakeReg(Kind::Output, value);
+  }
+
+  // Constructs a register with the given value holding the address of a stack
+  // allocation made during the subroutine execution.
+  static Reg StackAllocation(underlying_type value) {
+    return MakeReg(Kind::StackAllocation, value);
+  }
+
+  constexpr Kind kind() const {
     return static_cast<Kind>(
-        val_ >> (std::numeric_limits<underlying_type>::digits - 2));
+        value_ >> (std::numeric_limits<underlying_type>::digits - 2));
   }
 
-  static Reg Arg(underlying_type val) {
-    ASSERT((val & arg_mask) == 0u);
-    return MakeReg(val | arg_mask);
+  template <Kind k>
+  constexpr bool is() const {
+    return kind() == k;
   }
 
-  static Reg Out(underlying_type val) {
-    ASSERT((val & out_mask) == 0u);
-    return MakeReg(val | out_mask);
-  }
-
-  constexpr bool is_arg() const { return val_ & arg_mask; }
-  constexpr bool is_out() const { return val_ & out_mask; }
-
-  auto arg_value() const {
-    ASSERT(is_arg() == true);
-    return val_ & ~arg_mask;
-  }
-
-  auto out_value() const {
-    ASSERT(is_out() == true);
-    return val_ & ~out_mask;
-  }
-
-  auto value() const {
-    ASSERT(is_arg() == false);
-    ASSERT(is_out() == false);
-    return val_;
+  template <Kind k>
+  constexpr underlying_type as() const {
+    ASSERT(kind() == k);
+    return value_ & ~KindMask;
   }
 
   friend std::ostream& operator<<(std::ostream& os, Reg r) {
-    if (r.is_arg()) { return os << "arg." << r.arg_value(); }
-    if (r.is_out()) { return os << "out." << r.out_value(); }
-    return os << "r." << r.value();
+    static constexpr std::array Prefixes{"r.", "out.", "param.", "alloc."};
+    return os << Prefixes[static_cast<underlying_type>(r.kind())]
+              << (r.value_ & ~KindMask);
   }
 
  private:
   friend base::EnableExtensions;
 
-  constexpr static Reg MakeReg(underlying_type val) {
+  static Reg MakeReg(Kind k, underlying_type value) {
+    ASSERT((value & KindMask) == 0u);
     Reg r;
-    r.val_ = val;
+    r.value_ = Mask(k) | value;
     return r;
   }
 
-  constexpr static underlying_type arg_mask =
-      underlying_type{1} << (std::numeric_limits<underlying_type>::digits - 1);
-  constexpr static underlying_type out_mask =
-      underlying_type{1} << (std::numeric_limits<underlying_type>::digits - 2);
+  static constexpr underlying_type Mask(Kind k) {
+    return (static_cast<underlying_type>(k)
+            << (std::numeric_limits<underlying_type>::digits - 2));
+  }
 
-  underlying_type val_ = (std::numeric_limits<underlying_type>::max)();
+  static constexpr underlying_type KindMask =
+      underlying_type{3} << (std::numeric_limits<underlying_type>::digits - 2);
+
+  underlying_type value_ = (std::numeric_limits<underlying_type>::max)();
 };
 
 }  // namespace ir

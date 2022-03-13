@@ -160,7 +160,9 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
   auto t = op_qt.type();
 
   auto ref = EmitRef(node->operand());
-  if (ref.is_arg() and not t.get()->is_big()) { --deref_count; }
+  if (ref.is<ir::Reg::Kind::Parameter>() and not t.get()->is_big()) {
+    --deref_count;
+  }
 
   // TODO: Do not iterate through this twice.
   auto const *tp = t.if_as<type::Pointer>();

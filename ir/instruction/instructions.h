@@ -216,13 +216,13 @@ struct InitInstruction
     if (auto* s = type.if_as<type::Struct>()) {
       Fn f = *s->init_;
       interpreter::StackFrame frame(f.native(), ctx.stack());
-      frame.set(Reg::Arg(0), ctx.resolve<addr_t>(reg));
+      frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(reg));
       return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
       Fn f = a->Initializer();
       interpreter::StackFrame frame(f.native(), ctx.stack());
-      frame.set(Reg::Arg(0), ctx.resolve<addr_t>(reg));
+      frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(reg));
       return frame;
 
     } else {
@@ -245,7 +245,7 @@ struct DestroyInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.set(Reg::Arg(0), ctx.resolve(addr));
+    frame.set(Reg::Parameter(0), ctx.resolve(addr));
     return frame;
   }
 
@@ -276,8 +276,8 @@ struct CopyInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.set(Reg::Arg(0), ctx.resolve<addr_t>(to));
-    frame.set(Reg::Arg(1), ctx.resolve<addr_t>(from));
+    frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(to));
+    frame.set(Reg::Parameter(1), ctx.resolve<addr_t>(from));
     return frame;
   }
 
@@ -309,8 +309,8 @@ struct CopyInitInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.set(Reg::Arg(0), ctx.resolve<addr_t>(from));
-    frame.set(Reg::Out(0), ctx.resolve<addr_t>(to));
+    frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(from));
+    frame.set(Reg::Output(0), ctx.resolve<addr_t>(to));
     return frame;
   }
 
@@ -392,8 +392,8 @@ struct MoveInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.set(Reg::Arg(0), ctx.resolve<addr_t>(to));
-    frame.set(Reg::Arg(1), ctx.resolve<addr_t>(from));
+    frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(to));
+    frame.set(Reg::Parameter(1), ctx.resolve<addr_t>(from));
     return frame;
   }
 
@@ -425,8 +425,8 @@ struct MoveInitInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     interpreter::StackFrame frame(function(), ctx.stack());
-    frame.set(Reg::Arg(0), ctx.resolve<addr_t>(from));
-    frame.set(Reg::Out(0), ctx.resolve<addr_t>(to));
+    frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(from));
+    frame.set(Reg::Output(0), ctx.resolve<addr_t>(to));
     return frame;
   }
 

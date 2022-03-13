@@ -51,10 +51,10 @@ struct LlvmEmitter : Emitter<LlvmEmitter, LlvmBackendTraits> {
   template <typename T>
   value_type *Resolve(ir::RegOr<T> val, context_type &context) {
     if (val.is_reg()) {
-      if (val.reg().is_arg()) {
+      if (val.reg().template is<ir::Reg::Kind::Parameter>()) {
         // TODO: Use getArg when you upgrade to llvm 11.0
         return builder_.GetInsertBlock()->getParent()->arg_begin() +
-               val.reg().arg_value();
+               val.reg().template as<ir::Reg::Kind::Value>();
       }
       auto iter = context.registers.find(val.reg());
       if (iter == context.registers.end()) { return nullptr; }

@@ -28,7 +28,7 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
     type::Type ret_type = fn_type.return_types()[i];
     if (ret_type.is_big()) {
       type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
-          ir::RegOr<ir::addr_t>(ir::Reg::Out(i)), ret_type);
+          ir::RegOr<ir::addr_t>(ir::Reg::Output(i)), ret_type);
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       out.clear();

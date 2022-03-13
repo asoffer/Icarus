@@ -70,8 +70,8 @@ void EmitArrayInit(CompilationDataReference ref, type::Array const *to,
                    type::Array const *from) {
   auto &fn            = *ref.current().subroutine;
   ref.current_block() = fn.entry();
-  auto from_ptr       = ir::Reg::Arg(0);
-  auto to_ptr         = ir::Reg::Out(0);
+  auto from_ptr       = ir::Reg::Parameter(0);
+  auto to_ptr         = ir::Reg::Output(0);
 
   auto from_data_ptr_type = type::Ptr(from->data_type());
   auto from_end_ptr       = ref.current_block()->Append(
@@ -167,7 +167,7 @@ void DefaultInitializationEmitter::EmitInitialize(type::Array const *t,
 
     current_block() = fn->entry();
     current_block() = OnEachArrayElement(
-        current(), t, ir::Reg::Arg(0), [=](ir::BasicBlock *entry, ir::Reg reg) {
+        current(), t, ir::Reg::Parameter(0), [=](ir::BasicBlock *entry, ir::Reg reg) {
           current_block() = entry;
           EmitInitialize(t->data_type(), reg);
           return current_block();
@@ -242,7 +242,7 @@ void DefaultInitializationEmitter::EmitInitialize(type::Struct const *t,
     push_current(&*fn);
     absl::Cleanup c = [&] { state().current.pop_back(); };
     current_block() = current().subroutine->entry();
-    auto var        = ir::Reg::Arg(0);
+    auto var        = ir::Reg::Parameter(0);
 
     for (size_t i = 0; i < t->fields().size(); ++i) {
       auto &field = t->fields()[i];

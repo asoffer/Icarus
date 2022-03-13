@@ -25,7 +25,7 @@ std::pair<ir::Subroutine, ir::ByteCode> MakeThunk(Compiler &c,
     ASSERT(buffer.num_entries() != 0);
     // TODO: guaranteed move-elision
     MoveInitializationEmitter emitter(c);
-    emitter(type, ir::Reg::Out(0), buffer);
+    emitter(type, ir::Reg::Output(0), buffer);
   } else {
     ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                uint16_t, uint32_t, uint64_t, float, double, type::Type,

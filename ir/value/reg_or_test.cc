@@ -12,20 +12,20 @@ TEST(RegOr, ImplicitConstruction) {
   EXPECT_FALSE(id(3).is_reg());
   EXPECT_EQ(id(3).value(), 3);
 
-  EXPECT_TRUE(id(Reg::Arg(3)).is_reg());
-  EXPECT_EQ(id(Reg::Arg(3)).reg(), Reg::Arg(3));
+  EXPECT_TRUE(id(Reg::Parameter(3)).is_reg());
+  EXPECT_EQ(id(Reg::Parameter(3)).reg(), Reg::Parameter(3));
 }
 
 TEST(RegOr, Resolve) {
   auto f = [](Reg r) { return 4; };
-  EXPECT_EQ(RegOr<int>(Reg::Out(1)).resolve(f), 4);
+  EXPECT_EQ(RegOr<int>(Reg::Output(1)).resolve(f), 4);
   EXPECT_EQ(RegOr<int>(2).resolve(f), 2);
 }
 
 TEST(RegOr, Apply) {
   auto f = [](auto x) {
     if constexpr (std::is_same_v<std::decay_t<decltype(x)>, Reg>) {
-      return x.value();
+      return x.template as<Reg::Kind::Value>();
     } else {
       return x * x;
     }

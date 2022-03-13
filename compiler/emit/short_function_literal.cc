@@ -109,13 +109,13 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
   for (auto const &param : node->params()) {
     absl::Span<ast::Declaration::Id const> ids = param.value->ids();
     ASSERT(ids.size() == 1u);
-    state().set_addr(&ids[0], ir::Reg::Arg(i++));
+    state().set_addr(&ids[0], ir::Reg::Parameter(i++));
   }
 
   type::Type ret_type = ir_func.type()->return_types()[0];
   if (ret_type.is_big()) {
     type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
-        ir::RegOr<ir::addr_t>(ir::Reg::Out(0)), ret_type);
+        ir::RegOr<ir::addr_t>(ir::Reg::Output(0)), ret_type);
     EmitMoveInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
   } else {
     ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,

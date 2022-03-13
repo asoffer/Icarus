@@ -19,8 +19,8 @@ void EmitArrayAssignment(auto emitter, type::Array const *to,
                          type::Array const *from) {
   auto &fn                = *emitter.current().subroutine;
   emitter.current_block() = fn.entry();
-  auto to_ptr             = ir::Reg::Arg(0);
-  auto from_ptr           = ir::Reg::Arg(1);
+  auto to_ptr             = ir::Reg::Parameter(0);
+  auto from_ptr           = ir::Reg::Parameter(1);
 
   auto to_data_ptr_type   = type::Ptr(to->data_type());
   auto from_data_ptr_type = type::Ptr(from->data_type());

@@ -207,17 +207,17 @@ struct ExecutionContext {
           ir::PartialResultRef argument = inst.arguments()[i];
           if (argument.is_register()) {
             ir::Reg reg = argument.get<ir::Reg>();
-            frame.set_raw(ir::Reg::Arg(i), ctx.current_frame().raw(reg),
+            frame.set_raw(ir::Reg::Parameter(i), ctx.current_frame().raw(reg),
                           StackFrame::register_value_size);
-            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i), reg);
+            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Parameter(i), reg);
           } else {
             type::Type t = fn_type->params()[i].value.type();
             core::Bytes size =
                 t.is_big() ? interpreter::kArchitecture.pointer().bytes()
                            : t.bytes(interpreter::kArchitecture);
-            frame.set_raw(ir::Reg::Arg(i), argument.raw().data(), size.value());
+            frame.set_raw(ir::Reg::Parameter(i), argument.raw().data(), size.value());
 
-            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Arg(i),
+            LOG("CallInstruction", "  %s: [%s]", ir::Reg::Parameter(i),
                 argument.raw());
           }
         }
@@ -227,8 +227,8 @@ struct ExecutionContext {
           type::Type t        = fn_type->return_types()[i];
           ir::addr_t out_addr = t.is_big() ? ctx.resolve<ir::addr_t>(reg)
                                            : ctx.current_frame().raw(reg);
-          LOG("CallInstruction", "  %s: [%p]", ir::Reg::Out(i), out_addr);
-          frame.set(ir::Reg::Out(i), out_addr);
+          LOG("CallInstruction", "  %s: [%p]", ir::Reg::Output(i), out_addr);
+          frame.set(ir::Reg::Output(i), out_addr);
         }
 
         ctx.Execute<InstSet>(f, frame);
@@ -255,7 +255,7 @@ struct ExecutionContext {
           base::meta<Inst>.template is_a<ir::SetReturnInstruction>()) {
         using type          = typename Inst::type;
         auto inst           = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
-        ir::addr_t ret_slot = ctx.resolve<ir::addr_t>(ir::Reg::Out(inst.index));
+        ir::addr_t ret_slot = ctx.resolve<ir::addr_t>(ir::Reg::Output(inst.index));
         type value          = ctx.resolve(inst.value);
         *ASSERT_NOT_NULL(reinterpret_cast<type *>(ret_slot)) = value;
       } else if constexpr (internal_execution::HasResolveMemberFunction<Inst>) {

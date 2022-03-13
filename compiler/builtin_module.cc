@@ -22,7 +22,7 @@ ir::Subroutine AlignmentFn() {
   subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
       .index = 0,
       .value = subroutine.entry()->Append(AlignmentInstruction{
-          .type   = ir::Reg::Arg(0),
+          .type   = ir::Reg::Parameter(0),
           .result = subroutine.Reserve(),
       }),
   });
@@ -36,7 +36,7 @@ ir::Subroutine BytesFn() {
   subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
       .index = 0,
       .value = subroutine.entry()->Append(BytesInstruction{
-          .type   = ir::Reg::Arg(0),
+          .type   = ir::Reg::Parameter(0),
           .result = subroutine.Reserve(),
       }),
   });
