@@ -26,10 +26,13 @@ StackFrame::StackFrame(ir::Scope s, Stack& stack)
       frame_size_(0),
       sizes_({.num_registers  = s->num_regs(),
               .num_parameters = s->params().size(),
-              .num_outputs    = 1}),  // TODO: 1 for the vector of blocks, but
-                                   // there might also be real returns.
+              // TODO: 1 for the vector of blocks, but there might also be real
+              // returns.
+              .num_outputs           = 1,
+              .num_stack_allocations = s->num_allocs()}),
       data_(base::untyped_buffer::MakeFull(
-          (sizes_.num_registers + sizes_.num_parameters + sizes_.num_outputs) *
+          (sizes_.num_registers + sizes_.num_parameters + sizes_.num_outputs +
+           sizes_.num_stack_allocations) *
           register_value_size)) {
   absl::flat_hash_map<ir::Reg, size_t> offsets;
 
@@ -50,11 +53,15 @@ StackFrame::StackFrame(ir::Scope s, Stack& stack)
 StackFrame::StackFrame(ir::Fn fn, Stack& stack)
     : stack_(stack),
       frame_size_(0),
-      sizes_({.num_registers  = NumRegisters(fn),
-              .num_parameters = fn.num_parameters(),
-              .num_outputs    = NumOutputs(fn)}),
+      sizes_({.num_registers         = NumRegisters(fn),
+              .num_parameters        = fn.num_parameters(),
+              .num_outputs           = NumOutputs(fn),
+              .num_stack_allocations = fn.kind() == ir::Fn::Kind::Native
+                                           ? fn.native()->num_allocs()
+                                           : 0}),
       data_(base::untyped_buffer::MakeFull(
-          (sizes_.num_registers + sizes_.num_parameters + sizes_.num_outputs) *
+          (sizes_.num_registers + sizes_.num_parameters + sizes_.num_outputs +
+           sizes_.num_stack_allocations) *
           register_value_size)) {
   absl::flat_hash_map<ir::Reg, size_t> offsets;
 

@@ -14,15 +14,23 @@ namespace ir {
 // can be inlined from one subroutine into another, avoiding register
 // collisions.
 struct Inliner {
-  explicit Inliner(size_t register_offset, size_t num_params)
-      : register_offset_(register_offset), num_params_(num_params) {}
+  explicit Inliner(size_t register_offset, size_t num_params,
+                   size_t num_stack_allocations)
+      : register_offset_(register_offset),
+        num_params_(num_params),
+        num_stack_allocations_(num_stack_allocations) {}
   void operator()(ir::Reg &r) {
     switch (r.kind()) {
       case ir::Reg::Kind::Parameter:
         r = Reg(r.as<ir::Reg::Kind::Parameter>() + register_offset_);
         break;
-      default:
+      case ir::Reg::Kind::Output:
+      case ir::Reg::Kind::Value:
         r = Reg(r.as<ir::Reg::Kind::Value>() + register_offset_ + num_params_);
+        break;
+      case ir::Reg::Kind::StackAllocation:
+        r = Reg::StackAllocation(r.as<ir::Reg::Kind::StackAllocation>() +
+                                 num_stack_allocations_);
     }
   }
 
@@ -51,6 +59,7 @@ struct Inliner {
   size_t register_offset_;
   size_t num_params_;  // The number of parameters in the to-be-inlined
                        // subroutine.
+  size_t num_stack_allocations_;
 };
 
 }  // namespace ir

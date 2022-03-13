@@ -13,20 +13,28 @@ namespace {
 using ::testing::ElementsAre;
 
 TEST(Inliner, Reg) {
-  Inliner inliner(4, 0);
+  Inliner inliner(4, 0, 3);
   Reg r(3);
   base::Traverse(inliner, r);
   EXPECT_EQ(r, Reg(7));
+
+  r = Reg::StackAllocation(2);
+  base::Traverse(inliner, r);
+  EXPECT_EQ(r, Reg::StackAllocation(5));
 }
 
 TEST(Inliner, RegOr) {
-  Inliner inliner(4, 0);
+  Inliner inliner(4, 0, 3);
   RegOr<int> r(3);
   base::Traverse(inliner, r);
   EXPECT_EQ(r, 3);
   r = Reg(3);
   base::Traverse(inliner, r);
   EXPECT_EQ(r, Reg(7));
+
+  r = Reg::StackAllocation(2);
+  base::Traverse(inliner, r);
+  EXPECT_EQ(r, Reg::StackAllocation(5));
 }
 
 TEST(Inliner, Container) {
@@ -35,7 +43,7 @@ TEST(Inliner, Container) {
       RegOr<double>(4.4), RegOr<double>(Reg(5)),
   };
 
-  Inliner inliner(4, 0);
+  Inliner inliner(4, 0, 3);
   RegOr<int> r(3);
   base::Traverse(inliner, v);
 

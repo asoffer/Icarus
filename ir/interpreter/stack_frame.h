@@ -57,9 +57,11 @@ struct StackFrame {
     size_t num_registers;
     size_t num_parameters;
     size_t num_outputs;
+    size_t num_stack_allocations;
   };
 
-  // The buffer stores all registers, then all parameters, then all outputs.
+  // The buffer stores all stack allocations, then all registers, then all
+  // parameters, then all outputs.
   size_t offset(ir::Reg r) const {
     size_t offset = 0;
     switch (r.kind()) {
@@ -69,7 +71,9 @@ struct StackFrame {
       case ir::Reg::Kind::Parameter:
         offset += sizes_.num_registers;
         [[fallthrough]];
-      case ir::Reg::Kind::Value:;
+      case ir::Reg::Kind::Value:
+        offset += sizes_.num_stack_allocations;
+        [[fallthrough]];
       case ir::Reg::Kind::StackAllocation:;
     }
 
@@ -80,10 +84,10 @@ struct StackFrame {
       case ir::Reg::Kind::Output:
         offset += r.as<ir::Reg::Kind::Output>();
         break;
-      case ir::Reg::Kind::Value: offset += r.as<ir::Reg::Kind::Value>(); break;
       case ir::Reg::Kind::StackAllocation:
         offset += r.as<ir::Reg::Kind::StackAllocation>();
         break;
+      case ir::Reg::Kind::Value: offset += r.as<ir::Reg::Kind::Value>(); break;
     }
     return offset * register_value_size;
   }

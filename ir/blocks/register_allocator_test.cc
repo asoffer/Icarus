@@ -16,15 +16,17 @@ TEST(RegisterAllocator, NumRegs) {
   EXPECT_EQ(a.num_regs(), 3);
   EXPECT_EQ(a.num_args(), 3);
 
-  EXPECT_EQ(a.Reserve(), Reg{3});
-  EXPECT_EQ(a.Reserve(), Reg{4});
+  EXPECT_EQ(a.Reserve(), Reg(3));
+  EXPECT_EQ(a.Reserve(), Reg(4));
   EXPECT_EQ(a.num_regs(), 5);
   EXPECT_EQ(a.num_args(), 3);
 
-  EXPECT_EQ(a.StackAllocate(type::I32), Reg{5});
-  EXPECT_EQ(a.StackAllocate(type::I32), Reg{6});
+  EXPECT_EQ(a.StackAllocate(type::I32), Reg::StackAllocation(0));
+  EXPECT_EQ(a.StackAllocate(type::I32), Reg::StackAllocation(1));
   EXPECT_EQ(a.num_regs(), 7);
   EXPECT_EQ(a.num_args(), 3);
+
+  EXPECT_EQ(a.Reserve(), Reg(5));
 }
 
 TEST(RegisterAllocator, ForEachAlloc) {
@@ -57,8 +59,10 @@ TEST(RegisterAllocator, MergeFrom) {
   a2.StackAllocate(type::Bool);
 
   MockFunction<Reg(Reg)> mock_fn;
-  EXPECT_CALL(mock_fn, Call(Reg{4})).WillOnce(Return(Reg{10}));
-  EXPECT_CALL(mock_fn, Call(Reg{5})).WillOnce(Return(Reg{11}));
+  EXPECT_CALL(mock_fn, Call(Reg::StackAllocation(0)))
+      .WillOnce(Return(Reg::StackAllocation(1)));
+  EXPECT_CALL(mock_fn, Call(Reg::StackAllocation(1)))
+      .WillOnce(Return(Reg::StackAllocation(2)));
 
   a1.MergeFrom(a2, mock_fn.AsStdFunction());
   EXPECT_EQ(a1.num_regs(), 10);
