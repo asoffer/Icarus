@@ -12,7 +12,7 @@ NativeFn Module::InsertFunction(type::Function const *fn_type) {
   });
   auto *data_ptr = data.get();
   auto [iter, inserted] =
-      fn_data_.try_emplace(NativeFn(data_ptr), ByteCode({}), std::move(data));
+      fn_data_.try_emplace(NativeFn(data_ptr), ByteCode(), std::move(data));
   ASSERT(inserted == true);
   return NativeFn(ASSERT_NOT_NULL(iter->second.second.get()));
 }
@@ -25,7 +25,7 @@ Scope Module::InsertScope(type::Scope const *scope_type) {
   });
   auto *data_ptr = data.get();
   auto [iter, inserted] =
-      scope_data_.try_emplace(Scope(data_ptr), ByteCode({}), std::move(data));
+      scope_data_.try_emplace(Scope(data_ptr), ByteCode(), std::move(data));
   ASSERT(inserted == true);
   return Scope(ASSERT_NOT_NULL(iter->second.second.get()));
 }

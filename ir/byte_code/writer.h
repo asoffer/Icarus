@@ -37,14 +37,16 @@ struct ByteCodeWriter {
   }
 
   void set_block(BasicBlock const* b) {
-    offsets_.emplace(b, byte_code_.size());
+    offsets_.emplace(b, byte_code_.buffer_.size());
   }
 
   void Finalize() && {
     for (auto const& [block, locs] : replacements_) {
       auto iter = offsets_.find(block);
       ASSERT(iter != offsets_.end());
-      for (size_t loc : locs) { byte_code_.set(loc, iter->second); }
+      for (size_t loc : locs) {
+        byte_code_.set(loc, iter->second - byte_code_.initial_size_);
+      }
     }
     replacements_.clear();
   }

@@ -5,25 +5,6 @@
 #include "type/type.h"
 
 namespace interpreter {
-namespace {
-
-core::Bytes GetBytes(core::Arch const& arch, type::Type t) {
-  return t.bytes(arch);
-}
-
-core::Bytes GetBytes(core::Arch const& arch, core::TypeContour tc) {
-  return tc.bytes();
-}
-
-core::Alignment GetAlignment(core::Arch const& arch, type::Type t) {
-  return t.alignment(arch);
-}
-
-core::Alignment GetAlignment(core::Arch const& arch, core::TypeContour tc) {
-  return tc.alignment();
-}
-
-}  // namespace
 
 StackFrame::~StackFrame() { stack_.Deallocate(frame_size_); }
 
@@ -39,11 +20,10 @@ StackFrame::StackFrame(ir::ByteCode const* bc, Stack& stack)
     : stack_(stack),
       byte_code_(ASSERT_NOT_NULL(bc)),
       summary_({
-          .num_parameters = byte_code_->header().num_parameters,
-          .num_registers  = byte_code_->header().num_registers,
-          .num_outputs    = byte_code_->header().num_outputs,
-          .num_stack_allocations =
-              byte_code_->header().stack_allocations.size(),
+          .num_parameters        = byte_code_->num_parameters(),
+          .num_registers         = byte_code_->num_registers(),
+          .num_outputs           = byte_code_->num_outputs(),
+          .num_stack_allocations = byte_code_->num_stack_allocations(),
       }),
       data_(base::untyped_buffer::MakeFull(register_count() *
                                            register_value_size)) {
@@ -51,17 +31,13 @@ StackFrame::StackFrame(ir::ByteCode const* bc, Stack& stack)
 
   // Offsets from the front of this stack frame for each stack allocation.
   std::vector<size_t> stack_offsets;
-  stack_offsets.reserve(byte_code_->header().stack_allocations.size());
+  stack_offsets.reserve(byte_code_->num_stack_allocations());
 
-  for (auto const& t : byte_code_->header().stack_allocations) {
-    std::visit(
-        [&](auto const& entry) {
-          next_reg_loc =
-              core::FwdAlign(next_reg_loc, GetAlignment(kArchitecture, entry));
-              stack_offsets.push_back(next_reg_loc.value());
-          next_reg_loc += GetBytes(kArchitecture, entry);
-        },
-        t);
+  for (size_t i = 0; i < summary_.num_stack_allocations; ++i) {
+    core::TypeContour tc = byte_code_->stack_allocation(i);
+    next_reg_loc         = core::FwdAlign(next_reg_loc, tc.alignment());
+    stack_offsets.push_back(next_reg_loc.value());
+    next_reg_loc += tc.bytes();
   }
 
   frame_size_            = next_reg_loc.value();

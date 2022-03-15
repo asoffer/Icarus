@@ -25,9 +25,7 @@ struct Module {
     auto iter = scope_data_.find(s);
     ASSERT(iter != scope_data_.end());
     auto &[byte_code, data] = iter->second;
-    ASSERT(byte_code.size() == 0u);
     byte_code = EmitByteCode(*s);
-    ASSERT(byte_code.size() != 0u);
     data->byte_code = &byte_code;
   }
 
@@ -36,9 +34,7 @@ struct Module {
     auto iter = fn_data_.find(f);
     ASSERT(iter != fn_data_.end());
     auto &[byte_code, data] = iter->second;
-    ASSERT(byte_code.size() == 0u);
     byte_code = EmitByteCode(*f);
-    ASSERT(byte_code.size() != 0u);
     data->byte_code = &byte_code;
   }
 

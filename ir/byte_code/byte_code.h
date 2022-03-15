@@ -21,11 +21,45 @@ struct ByteCode {
     std::vector<std::variant<core::TypeContour, type::Type>> stack_allocations;
   };
 
-  explicit ByteCode(Header h) : header_(std::move(h)) {}
+  size_t num_registers() const { return buffer_.get<size_t>(0); }
+  size_t num_parameters() const { return buffer_.get<size_t>(sizeof(size_t)); }
+  size_t num_outputs() const { return buffer_.get<size_t>(2 * sizeof(size_t)); }
+  size_t num_stack_allocations() const {
+    return buffer_.get<size_t>(3 * sizeof(size_t));
+  }
 
-  Header const& header() const { return header_; }
-  auto begin() const { return buffer_.begin(); }
-  size_t size() const { return buffer_.size(); }
+  core::TypeContour stack_allocation(size_t i) const {
+    return buffer_.get<core::TypeContour>(4 * sizeof(size_t) +
+                                          i * sizeof(core::TypeContour));
+  }
+
+  ByteCode() = default;
+  explicit ByteCode(Header const& h) {
+    buffer_.append(h.num_registers);
+    buffer_.append(h.num_parameters);
+    buffer_.append(h.num_outputs);
+    buffer_.append(h.stack_allocations.size());
+    for (auto const& entry : h.stack_allocations) {
+      std::visit(
+          [&](auto e) {
+            if constexpr (base::meta<decltype(e)> == base::meta<type::Type>) {
+              auto tc = core::TypeContour(e.bytes(core::Host),
+                                          e.alignment(core::Host));
+              buffer_.append(tc);
+            } else {
+              buffer_.append(e);
+            }
+          },
+          entry);
+    }
+    initial_size_ = buffer_.size();
+  }
+
+  auto begin() const {
+    auto iter = buffer_.begin();
+    iter.skip(initial_size_);
+    return iter;
+  }
 
  private:
   friend struct ByteCodeWriter;
@@ -44,8 +78,8 @@ struct ByteCode {
     buffer_.set(write_at_offset, offset_to_write);
   }
 
-  Header header_;
   base::untyped_buffer buffer_;
+  size_t initial_size_;
 };
 
 }  // namespace ir
