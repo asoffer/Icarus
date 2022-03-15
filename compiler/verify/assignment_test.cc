@@ -11,55 +11,55 @@ using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
 TEST(Assignment, SimpleSuccess) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n: i64
   n = 0
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Assignment, NonReference) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   f ::= () => 3
   f() = 4
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("value-category-error", "assigning-to-non-reference")));
 }
 
 TEST(Assignment, Constant) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n ::= 3
   n = 0
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("value-category-error", "assigning-to-constant")));
 }
 
 TEST(Assignment, WithCast) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n: [*]i64
   m: *i64
   n = null
   (m, n) = (n, null)
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Assignment, TypeMismatch) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   n := 3
   n = "hello"
   )");
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "assignment-type-mismatch")));
 }
 

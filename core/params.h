@@ -10,6 +10,7 @@
 #include "absl/strings/str_join.h"
 #include "base/debug.h"
 #include "base/macros.h"
+#include "base/serialize.h"
 #include "base/universal_print.h"
 #include "core/arguments.h"
 
@@ -57,6 +58,14 @@ struct Param {
     return H::combine(std::move(h), p.name, p.value, p.flags);
   }
 
+  friend void BaseSerialize(base::Serializer auto& s, Param const& p) {
+    base::Serialize(s, p.name, p.value, p.flags);
+  }
+
+  friend bool BaseDeserialize(base::Deserializer auto& d, Param& p) {
+    return base::Deserialize(d, p.name, p.value, p.flags);
+  }
+
   friend std::ostream& operator<<(std::ostream& os, Param const& param) {
     return os << param.name << ": " << base::UniversalPrintToString(param.value)
               << "(flags = " << static_cast<int>(param.flags) << ")";
@@ -94,7 +103,8 @@ struct Params {
   // Construct a Params object representing `n` parameters all of which must
   // not be named.
 
-  Params() {}
+  Params() = default;
+
   explicit Params(size_t n) : params_(n) {
     for (auto& p : params_) { p = Param<T>("", T{}, MUST_NOT_NAME); }
     ComputeNameLookup();
@@ -108,6 +118,12 @@ struct Params {
     ComputeNameLookup();
   }
 
+  template <std::input_iterator Iter>
+  Params(Iter b, Iter e) {
+    for (auto iter = b; iter != e; ++iter) { append(*iter); }
+    ComputeNameLookup();
+  }
+
   template <typename U, std::enable_if_t<not std::is_same_v<T, U> and
                                              std::is_convertible_v<U, T>,
                                          int> = 0>
@@ -116,7 +132,6 @@ struct Params {
     for (auto const& p : params) {
       params_.push_back(static_cast<Param<T>>(p));
     }
-    ComputeNameLookup();
   }
 
   void set(size_t index, Param<T> param) {

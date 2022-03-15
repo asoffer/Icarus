@@ -42,7 +42,7 @@ struct DestructionEmitter : CompilationDataReference {
 
       current_block() = fn->entry();
       current_block() =
-          OnEachArrayElement(current(), t, ir::Reg::Arg(0),
+          OnEachArrayElement(current(), t, ir::Reg::Parameter(0),
                              [=](ir::BasicBlock *entry, ir::Reg reg) {
                                current_block() = entry;
                                EmitDestroy(t->data_type(), reg);
@@ -60,7 +60,12 @@ struct DestructionEmitter : CompilationDataReference {
   void EmitDestroy(type::Function const *t, ir::RegOr<ir::addr_t> addr) {}
   void EmitDestroy(type::Pointer const *t, ir::RegOr<ir::addr_t> addr) {}
   void EmitDestroy(type::BufferPointer const *t, ir::RegOr<ir::addr_t> addr) {}
-  void EmitDestroy(type::Primitive const *t, ir::RegOr<ir::addr_t> addr) {}
+  void EmitDestroy(type::Primitive const *t, ir::RegOr<ir::addr_t> addr) {
+    if (type::Type(t) == type::Integer) {
+      current_block()->Append(
+          ir::CompileTime<ir::Action::Destroy, ir::Integer>{.addr = addr});
+    }
+  }
   void EmitDestroy(type::Slice const *t, ir::RegOr<ir::addr_t> addr) {}
   void EmitDestroy(type::Struct const *t, ir::RegOr<ir::addr_t> addr) {
     if (not t->HasDestructor()) { return; }

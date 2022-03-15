@@ -11,18 +11,19 @@ using ::testing::Optional;
 
 template <typename T>
 std::optional<T> RoundTrip(T value, Type type) {
+  GlobalTypeSystem.insert(type);
   base::flyweight_map<std::pair<std::string, Function const *>, void (*)()>
       foreign_fn_map;
   std::string s;
   {
     ir::CompleteResultBuffer buffer;
     buffer.append(value);
-    SerializeValue(type, buffer[0], s);
+    SerializeValue(GlobalTypeSystem, type, buffer[0], s);
   }
   auto span = absl::MakeConstSpan(reinterpret_cast<std::byte const *>(s.data()),
                                   s.size());
   ir::CompleteResultBuffer out;
-  ssize_t num_read = DeserializeValue(type, span, out, foreign_fn_map);
+  ssize_t num_read = DeserializeValue(type, span, out, foreign_fn_map, GlobalTypeSystem);
   if (num_read < 0) { return std::nullopt; }
   return out[0].get<T>();
 }

@@ -26,7 +26,7 @@ bool ModuleReader::read(Module::SymbolInformation& info) {
   if (not base::Deserialize(*this, info.qualified_type)) { return false; }
   ssize_t num_read = type::DeserializeValue(
       info.qualified_type.type(), absl::MakeConstSpan(head_, end_ - head_),
-      info.value, context_.foreign_function_map());
+      info.value, context_.foreign_function_map(), system_);
   if (num_read < 0) { return false; }
   head_ += num_read;
   return true;
@@ -34,16 +34,12 @@ bool ModuleReader::read(Module::SymbolInformation& info) {
 
 bool ModuleReader::read(type::QualType& qt) {
   auto quals = type::Quals::Unqualified();
-  if (not base::Deserialize(*this, quals)) { return false; }
-  ir::CompleteResultBuffer buffer;
-  ssize_t num_read = type::DeserializeValue(
-      type::Type_, absl::MakeConstSpan(head_, end_ - head_), buffer,
-      context_.foreign_function_map());
-  if (num_read < 0) { return false; }
-  head_ += num_read;
-  ASSERT(buffer.num_entries() == 1);
-  qt = type::QualType(buffer[0].get<type::Type>(), quals);
+  size_t type_index;
+  if (not base::Deserialize(*this, quals, type_index)) { return false; }
+  qt = type::QualType(type::GlobalTypeSystem.from_index(type_index), quals);
   return true;
 }
+
+bool ModuleReader::read(type::Type& t) { NOT_YET(); }
 
 }  // namespace module

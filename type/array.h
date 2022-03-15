@@ -32,7 +32,7 @@ struct Array : LegacyType {
                    ir::CompleteResultRef const &rhs) const override;
   size_t HashValue(ir::CompleteResultRef const &value) const override;
 
-  length_t length() const { return len_; }
+  length_t const &length() const { return len_; }
   Type data_type() const { return data_type_; }
 
   Completeness completeness() const override {
@@ -102,9 +102,12 @@ struct ArrayInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = array %1$s %2$s";
   using length_t                                 = Array::length_t;
 
-  Type Resolve() const { return Arr(length.value(), data_type.value()); }
+  Type Resolve() const {
+    return Arr(*reinterpret_cast<length_t const *>(length.value()),
+               data_type.value());
+  }
 
-  ir::RegOr<length_t> length;
+  ir::RegOr<ir::addr_t> length;
   ir::RegOr<Type> data_type;
   ir::Reg result;
 };

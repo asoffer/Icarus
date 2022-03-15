@@ -2,13 +2,16 @@
 
 #include "absl/strings/str_format.h"
 #include "base/global.h"
+#include "type/system.h"
 
 namespace type {
 
 static base::Global<absl::node_hash_set<Array>> cache;
 Array const *Arr(Array::length_t len, Type t) {
   ASSERT(t.valid() == true);
-  return &*cache.lock()->insert(Array(len, t)).first;
+  auto const *a = &*cache.lock()->insert(Array(len, t)).first;
+  GlobalTypeSystem.insert(Type(a));
+  return a;
 }
 
 void Array::WriteTo(std::string *result) const {

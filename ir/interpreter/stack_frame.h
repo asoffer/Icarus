@@ -8,9 +8,9 @@
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
 #include "ir/basic_block.h"
+#include "ir/byte_code/byte_code.h"
 #include "ir/value/fn.h"
 #include "ir/value/reg.h"
-#include "ir/value/scope.h"
 
 namespace interpreter {
 
@@ -22,13 +22,20 @@ struct Stack;
 struct StackFrame {
   static constexpr size_t register_value_size = 16;
 
+  struct Summary {
+    size_t num_parameters;
+    size_t num_registers;
+    size_t num_outputs;
+    size_t num_stack_allocations;
+  };
+
   StackFrame() = delete;
-  StackFrame(ir::Fn fn, Stack &stack);
-  StackFrame(ir::Scope s, Stack &stack);
+  StackFrame(ir::ByteCode const *bc, Stack &stack);
+  StackFrame(Summary const &s, Stack &stack);
   ~StackFrame();
 
   base::untyped_buffer::const_iterator byte_code_begin() const {
-    return byte_code_iter_;
+    return byte_code_->begin();
   }
 
   std::byte const *raw(ir::Reg r) const { return data_.raw(offset(r)); }
@@ -53,39 +60,55 @@ struct StackFrame {
   }
 
  private:
-  struct Sizes {
-    size_t num_registers;
-    size_t num_parameters;
-    size_t num_outputs;
-  };
-
-  // The buffer stores all registers, then all parameters, then all outputs.
+  // The buffer stores all stack allocations, then all registers, then all
+  // parameters, then all outputs.
   size_t offset(ir::Reg r) const {
     size_t offset = 0;
     switch (r.kind()) {
       case ir::Reg::Kind::Output:
-        offset += sizes_.num_parameters;
+        offset += summary_.num_parameters;
         [[fallthrough]];
-      case ir::Reg::Kind::Argument:
-        offset += sizes_.num_registers;
+      case ir::Reg::Kind::Parameter:
+        offset += summary_.num_registers;
         [[fallthrough]];
-      case ir::Reg::Kind::Value:;
+      case ir::Reg::Kind::Value:
+        offset += summary_.num_stack_allocations;
+        [[fallthrough]];
+      case ir::Reg::Kind::StackAllocation:;
     }
 
     switch (r.kind()) {
-      case ir::Reg::Kind::Argument: offset += r.arg_value(); break;
-      case ir::Reg::Kind::Output: offset += r.out_value(); break;
-      case ir::Reg::Kind::Value: offset += r.value(); break;
+      case ir::Reg::Kind::Parameter:
+        offset += r.as<ir::Reg::Kind::Parameter>();
+        break;
+      case ir::Reg::Kind::Output:
+        offset += r.as<ir::Reg::Kind::Output>();
+        break;
+      case ir::Reg::Kind::StackAllocation:
+        offset += r.as<ir::Reg::Kind::StackAllocation>();
+        break;
+      case ir::Reg::Kind::Value: offset += r.as<ir::Reg::Kind::Value>(); break;
     }
     return offset * register_value_size;
   }
 
-  base::untyped_buffer::const_iterator byte_code_iter_;
+  size_t register_count() const {
+    return summary_.num_registers + summary_.num_parameters +
+           summary_.num_outputs + summary_.num_stack_allocations;
+  }
+
   Stack &stack_;
   size_t frame_size_;
-  Sizes sizes_;
+  ir::ByteCode const *byte_code_;
+  Summary summary_;
   base::untyped_buffer data_;
 };
+
+template <typename T>
+concept FitsInRegister = (sizeof(T) <= StackFrame::register_value_size) and
+                         std::is_trivially_copyable_v<T>;
+template <typename T>
+concept NotFitsInRegister = not FitsInRegister<T>;
 
 struct Stack {
   Stack();

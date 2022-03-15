@@ -114,7 +114,10 @@ void Compiler::EmitToBuffer(ast::Access const *node,
     if (auto t = EvaluateOrDiagnoseAs<type::Type>(node->operand())) {
       if (type::Array const *a = t->if_as<type::Array>()) {
         if (node->member_name() == "length") {
-          out.append(a->length());
+          type::Typed<ir::RegOr<ir::addr_t>> temp(
+              state().TmpAlloca(type::Integer), type::Integer);
+          EmitCopyInit(node, absl::MakeConstSpan(&temp, 1));
+          out.append(*temp);
         } else if (node->member_name() == "element_type") {
           out.append(a->data_type());
         } else {
@@ -157,7 +160,9 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
   auto t = op_qt.type();
 
   auto ref = EmitRef(node->operand());
-  if (ref.is_arg() and not t.get()->is_big()) { --deref_count; }
+  if (ref.is<ir::Reg::Kind::Parameter>() and not t.get()->is_big()) {
+    --deref_count;
+  }
 
   // TODO: Do not iterate through this twice.
   auto const *tp = t.if_as<type::Pointer>();
@@ -254,6 +259,28 @@ void Compiler::EmitMoveInit(
     } else {
       UNREACHABLE(node->member_name());
     }
+  } else if (operand_qt == type::QualType::Constant(type::Type_)) {
+    if (auto t = EvaluateOrDiagnoseAs<type::Type>(node->operand())) {
+      if (type::Array const *a = t->if_as<type::Array>()) {
+        if (node->member_name() == "length") {
+          auto *addr = &const_cast<ir::Integer &>(a->length());
+          current_block()->Append(
+              ir::CompileTime<ir::Action::CopyInit, ir::Integer>{
+                  .from = reinterpret_cast<ir::addr_t>(addr), .to = *to[0]});
+        } else if (node->member_name() == "element_type") {
+          ir::PartialResultBuffer buffer;
+          buffer.append(a->data_type());
+          MoveInitializationEmitter emitter(*this);
+          emitter(to[0], buffer);
+        } else {
+          UNREACHABLE(node->member_name());
+        }
+      } else {
+        UNREACHABLE(*t);
+      }
+    } else {
+      UNREACHABLE(node->DebugString());
+    }
   } else {
     ir::PartialResultBuffer buffer;
     if (operand_qt.quals() >= type::Quals::Ref()) {
@@ -343,6 +370,28 @@ void Compiler::EmitCopyInit(
       emitter(to[0], buffer);
     } else {
       UNREACHABLE(node->member_name());
+    }
+  } else if (operand_qt == type::QualType::Constant(type::Type_)) {
+    if (auto t = EvaluateOrDiagnoseAs<type::Type>(node->operand())) {
+      if (type::Array const *a = t->if_as<type::Array>()) {
+        if (node->member_name() == "length") {
+          auto *addr = &const_cast<ir::Integer &>(a->length());
+          current_block()->Append(
+              ir::CompileTime<ir::Action::CopyInit, ir::Integer>{
+                  .from = reinterpret_cast<ir::addr_t>(addr), .to = *to[0]});
+        } else if (node->member_name() == "element_type") {
+          ir::PartialResultBuffer buffer;
+          buffer.append(a->data_type());
+          MoveInitializationEmitter emitter(*this);
+          emitter(to[0], buffer);
+        } else {
+          UNREACHABLE(node->member_name());
+        }
+      } else {
+        UNREACHABLE(*t);
+      }
+    } else {
+      UNREACHABLE(node->DebugString());
     }
   } else {
     ir::PartialResultBuffer buffer;

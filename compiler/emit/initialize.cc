@@ -6,14 +6,72 @@
 namespace compiler {
 namespace {
 
+struct DefaultValueVisitor {
+  using signature = void(ir::PartialResultBuffer &);
+
+  void operator()(auto const *t, ir::PartialResultBuffer &buffer) { NOT_YET(t->to_string()); }
+
+  void operator()(type::Function const *t, ir::PartialResultBuffer &buffer) {
+    UNREACHABLE();
+  }
+
+  void operator()(type::Flags const *f, ir::PartialResultBuffer &buffer) {
+    f->UnderlyingType().visit(*this, buffer);
+  }
+
+  void operator()(type::Pointer const *, ir::PartialResultBuffer &buffer) {
+    buffer.append(ir::Null());
+  }
+
+  void operator()(type::BufferPointer const *,
+                  ir::PartialResultBuffer &buffer) {
+    buffer.append(ir::Null());
+  }
+
+  void operator()(type::Primitive const *p, ir::PartialResultBuffer &buffer) {
+    switch (p->kind()) {
+      case type::Primitive::Kind::NullPtr: buffer.append(ir::Null()); return;
+      case type::Primitive::Kind::Bool: buffer.append(false); return;
+      case type::Primitive::Kind::Char: buffer.append(ir::Char()); return;
+      case type::Primitive::Kind::Integer: buffer.append(ir::Integer()); return;
+      case type::Primitive::Kind::I8: buffer.append(int8_t{0}); return;
+      case type::Primitive::Kind::I16: buffer.append(int16_t{0}); return;
+      case type::Primitive::Kind::I32: buffer.append(int32_t{0}); return;
+      case type::Primitive::Kind::I64: buffer.append(int64_t{0}); return;
+      case type::Primitive::Kind::U8: buffer.append(uint8_t{0}); return;
+      case type::Primitive::Kind::U16: buffer.append(uint16_t{0}); return;
+      case type::Primitive::Kind::U32: buffer.append(uint32_t{0}); return;
+      case type::Primitive::Kind::U64: buffer.append(uint64_t{0}); return;
+      case type::Primitive::Kind::F32: buffer.append(float{0}); return;
+      case type::Primitive::Kind::F64: buffer.append(double{0}); return;
+      case type::Primitive::Kind::Byte: buffer.append(std::byte{}); return;
+      default: UNREACHABLE();
+    }
+  }
+
+  void operator()(type::Slice const *, ir::PartialResultBuffer &buffer) {
+    buffer.append(ir::Slice(ir::Null(), 0));
+  }
+
+  void operator()(type::Struct const *s, ir::PartialResultBuffer &buffer) {
+    for (auto const &field : s->fields()) {
+      if (field.initial_value.empty()) {
+        field.type.visit(*this, buffer);
+      } else {
+        buffer.append(field.initial_value[0]);
+      }
+    }
+  }
+};
+
 enum Kind { Move, Copy };
 template <Kind K>
 void EmitArrayInit(CompilationDataReference ref, type::Array const *to,
                    type::Array const *from) {
   auto &fn            = *ref.current().subroutine;
   ref.current_block() = fn.entry();
-  auto from_ptr       = ir::Reg::Arg(0);
-  auto to_ptr         = ir::Reg::Out(0);
+  auto from_ptr       = ir::Reg::Parameter(0);
+  auto to_ptr         = ir::Reg::Output(0);
 
   auto from_data_ptr_type = type::Ptr(from->data_type());
   auto from_end_ptr       = ref.current_block()->Append(
@@ -74,25 +132,28 @@ void EmitArrayInit(CompilationDataReference ref, type::Array const *to,
 
 void SetArrayInits(CompilationDataReference ref,
                    type::Array const *array_type) {
-  auto [copy_fn, copy_inserted] =
-      ref.context().ir().InsertCopyInit(array_type, array_type);
-  auto [move_fn, move_inserted] =
-      ref.context().ir().InsertMoveInit(array_type, array_type);
-  ASSERT(copy_inserted == move_inserted);
-  if (copy_inserted) {
-    ref.push_current(&*copy_fn);
-    EmitArrayInit<Copy>(ref, array_type, array_type);
-    ref.state().current.pop_back();
+  static absl::node_hash_map<type::Array const *, std::once_flag> flags;
+  std::call_once(flags[array_type], [&] {
+    auto [copy_fn, copy_inserted] =
+        ref.context().ir().InsertCopyInit(array_type, array_type);
+    auto [move_fn, move_inserted] =
+        ref.context().ir().InsertMoveInit(array_type, array_type);
+    ASSERT(copy_inserted == move_inserted);
+    if (copy_inserted) {
+      ref.push_current(&*copy_fn);
+      EmitArrayInit<Copy>(ref, array_type, array_type);
+      ref.state().current.pop_back();
 
-    ref.push_current(&*move_fn);
-    EmitArrayInit<Move>(ref, array_type, array_type);
-    ref.state().current.pop_back();
+      ref.push_current(&*move_fn);
+      EmitArrayInit<Move>(ref, array_type, array_type);
+      ref.state().current.pop_back();
 
-    ref.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
-    ref.context().ir().WriteByteCode<EmitByteCode>(move_fn);
-    // TODO: Remove const_cast.
-    const_cast<type::Array *>(array_type)->SetInits(copy_fn, move_fn);
-  }
+      ref.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
+      ref.context().ir().WriteByteCode<EmitByteCode>(move_fn);
+      // TODO: Remove const_cast.
+      const_cast<type::Array *>(array_type)->SetInits(copy_fn, move_fn);
+    }
+  });
 }
 
 }  // namespace
@@ -106,7 +167,7 @@ void DefaultInitializationEmitter::EmitInitialize(type::Array const *t,
 
     current_block() = fn->entry();
     current_block() = OnEachArrayElement(
-        current(), t, ir::Reg::Arg(0), [=](ir::BasicBlock *entry, ir::Reg reg) {
+        current(), t, ir::Reg::Parameter(0), [=](ir::BasicBlock *entry, ir::Reg reg) {
           current_block() = entry;
           EmitInitialize(t->data_type(), reg);
           return current_block();
@@ -158,10 +219,14 @@ void DefaultInitializationEmitter::EmitInitialize(type::BufferPointer const *t,
 void DefaultInitializationEmitter::EmitInitialize(type::Primitive const *t,
                                                   ir::RegOr<ir::addr_t> addr) {
   t->Apply([&]<typename T>() {
-    current_block()->Append(ir::StoreInstruction<T>{
-        .value    = T{},
-        .location = addr,
-    });
+    if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      NOT_YET();
+    } else {
+      current_block()->Append(ir::StoreInstruction<T>{
+          .value    = T{},
+          .location = addr,
+      });
+    }
   });
 }
 
@@ -177,7 +242,7 @@ void DefaultInitializationEmitter::EmitInitialize(type::Struct const *t,
     push_current(&*fn);
     absl::Cleanup c = [&] { state().current.pop_back(); };
     current_block() = current().subroutine->entry();
-    auto var        = ir::Reg::Arg(0);
+    auto var        = ir::Reg::Parameter(0);
 
     for (size_t i = 0; i < t->fields().size(); ++i) {
       auto &field = t->fields()[i];
@@ -298,10 +363,15 @@ void MoveInitializationEmitter::EmitInitialize(
     type::Primitive const *t, ir::RegOr<ir::addr_t> addr,
     ir::PartialResultBuffer const &from) {
   t->Apply([&]<typename T>() {
-    current_block()->Append(ir::StoreInstruction<T>{
-        .value    = from.template get<T>(0),
-        .location = addr,
-    });
+    if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      current_block()->Append(ir::CompileTime<ir::Action::MoveInit, T>{
+          .from = from.get<ir::addr_t>(0), .to = addr});
+    } else {
+      current_block()->Append(ir::StoreInstruction<T>{
+          .value    = from.template get<T>(0),
+          .location = addr,
+      });
+    }
   });
 }
 
@@ -309,10 +379,15 @@ void CopyInitializationEmitter::EmitInitialize(
     type::Primitive const *t, ir::RegOr<ir::addr_t> addr,
     ir::PartialResultBuffer const &from) {
   t->Apply([&]<typename T>() {
-    current_block()->Append(ir::StoreInstruction<T>{
-        .value    = from.template get<T>(0),
-        .location = addr,
-    });
+    if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      current_block()->Append(ir::CompileTime<ir::Action::CopyInit, T>{
+          .from = from.get<ir::addr_t>(0), .to = addr});
+    } else {
+      current_block()->Append(ir::StoreInstruction<T>{
+          .value    = from.template get<T>(0),
+          .location = addr,
+      });
+    }
   });
 }
 
@@ -347,7 +422,6 @@ void CopyInitializationEmitter::EmitInitialize(
   current_block()->Append(ir::CopyInitInstruction{
       .type = t, .from = from.get<ir::addr_t>(0), .to = addr});
 }
-
 
 void MoveInitializationEmitter::EmitInitialize(
     type::Slice const *t, ir::RegOr<ir::addr_t> addr,
@@ -391,6 +465,11 @@ void CopyInitializationEmitter::EmitInitialize(
     ir::PartialResultBuffer const &from) {
   MoveInitializationEmitter emitter(*this);
   emitter(t, addr, from);
+}
+
+void WriteDefaultValueFor(type::Type t, ir::PartialResultBuffer &out) {
+  DefaultValueVisitor v;
+  t.visit(v, out);
 }
 
 }  // namespace compiler

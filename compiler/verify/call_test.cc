@@ -12,226 +12,237 @@ using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
 TEST(BuiltinReserveMemory, FunctionSuccess) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(1, 1))");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(reserve_memory(1, 1))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt,
             type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinReserveMemory, NonConstantArgument) {
-  test::TestModule mod;
-  mod.AppendCode(R"(n := 3 as u64)");
-  auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(n, 1))");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(
+  n := 3 as u64
+  reserve_memory(n, 1)
+  )");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt,
             type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinReserveMemory, WrongType) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(reserve_memory(true, 1))");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(reserve_memory(true, 1))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt,
             type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinCompilationError, CompilationErrorError) {
-  test::TestModule mod;
-  auto const *call = mod.Append<ast::Call>(R"(compilation_error(0, "hello"))");
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(compilation_error(0, "hello"))");
+  auto const *call = mod.get<ast::Call>();
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinCompilationError, CompilationErrorSuccess) {
-  test::TestModule mod;
-  auto const *call =
-      mod.Append<ast::Call>(R"(compilation_error(i64, "hello"))");
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(compilation_error(i64, "hello"))");
+  auto const *call = mod.get<ast::Call>();
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "user-defined-error")));
 }
 
 TEST(BuiltinForeign, FunctionSuccess) {
-  test::TestModule mod;
-  auto const *call =
-      mod.Append<ast::Call>(R"(foreign("my_function", i64 -> bool))");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(foreign("my_function", i64 -> bool))");
+  auto const *call = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt,
             type::QualType::Constant(type::Func(
                 {core::AnonymousParam(type::QualType::NonConstant(type::I64))},
                 {type::Bool})));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinForeign, PointerSuccess) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(foreign("my_ptr", *i64))");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(foreign("my_ptr", *i64))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt, type::QualType::Constant(type::Ptr(type::I64)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinForeign, BufferPointerSuccess) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(foreign("my_array", [*]i64))");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(foreign("my_array", [*]i64))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt, type::QualType::Constant(type::BufPtr(type::I64)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinForeign, NamedArgs) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(
-      foreign(name = "my_function", foreign_type = i64 -> bool)
-      )");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(
+      R"(foreign(name = "my_function", foreign_type = i64 -> bool))");
+  auto const* call = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, NoArgs) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>("foreign()");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module("foreign()");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, OneArg) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(foreign("abc"))");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(foreign("abc"))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, TooManyArgs) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(foreign("abc", 1, 2, 3))");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(foreign("abc", 1, 2, 3))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, FirstParameterCharSlice) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(foreign(123, *i64))");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(foreign(123, *i64))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, NonConstantType) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(
   f := () -> ()
+  foreign("f", f)
   )");
-  auto const *call  = mod.Append<ast::Call>(R"(foreign("f", f))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinForeign, SecondParameterType) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>(R"(foreign("f", 3))");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(foreign("f", 3))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(BuiltinOpaque, Success) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>("opaque()");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module("opaque()");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt, type::QualType::Constant(type::Type_));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinOpaque, Arguments) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>("opaque(3)");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module("opaque(3)");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt, type::QualType::Constant(type::Type_));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
 
 TEST(Call, Uncallable) {
-  test::TestModule mod;
-  auto const *call  = mod.Append<ast::Call>("3()");
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module("3()");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "uncallable-with-arguments")));
 }
 
 TEST(Call, CrossModuleCallsWithoutADLGenerateErrors) {
-  test::TestModule mod;
-  test::TestModule imported_mod;
-  mod.CompileImportedLibrary(imported_mod, "imported", R"(
+  test::CompilerInfrastructure infra;
+  auto &imported_mod = infra.add_module("imported", R"(
   #{export} S ::= struct {}
   #{export} f ::= (s: S) => true
   )");
 
-  mod.AppendCode(R"(
+  auto &mod = infra.add_module(R"(
     mod ::= import "imported"
     s: mod.S
     f(s)
   )");
 
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "undeclared-identifier")));
+  EXPECT_THAT(infra.diagnostics(), UnorderedElementsAre(Pair(
+                                       "type-error", "undeclared-identifier")));
 }
 
 TEST(Call, CrossModuleWithADLSucceed) {
-  test::TestModule mod;
-  test::TestModule imported_mod;
-  mod.CompileImportedLibrary(imported_mod, "imported", R"(
+  test::CompilerInfrastructure infra;
+  auto &imported_mod = infra.add_module("imported", R"(
   #{export} S ::= struct {}
   #{export} f ::= (s: S) => 3 as i64
   )");
 
-  mod.AppendCode(R"(
+  auto &mod = infra.add_module(R"(
     mod ::= import "imported"
     f ::= (n: i64) => true
     s: mod.S
     s'f
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Call, CrossModuleWithADLWithoutExport) {
-  test::TestModule mod;
-  test::TestModule imported_mod;
-  mod.CompileImportedLibrary(imported_mod, "imported", R"(
+  test::CompilerInfrastructure infra;
+  auto &imported_mod = infra.add_module("imported", R"(
   #{export} S ::= struct {}
   f ::= (s: S) => 3 as i64
   )");
-
-  mod.AppendCode(R"(
+  auto &mod          = infra.add_module(R"(
     mod ::= import "imported"
     s: mod.S
     s'f
   )");
 
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "undeclared-identifier")));
+  EXPECT_THAT(infra.diagnostics(), UnorderedElementsAre(Pair(
+                                       "type-error", "undeclared-identifier")));
 }
 
 struct TestCase {
@@ -248,12 +259,11 @@ using CallTest = testing::TestWithParam<TestCase>;
 TEST_P(CallTest, Call) {
   auto const &[context, expr, expected_qual_type, expected_diagnostics] =
       GetParam();
-  test::TestModule mod;
-  mod.AppendCode(context);
-  auto const *e = mod.Append<ast::Expression>(expr);
-  auto qts      = mod.context().qual_types(e);
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrCat(context, "\n", expr));
+  auto qts  = mod.context().qual_types(mod.get<ast::Expression>());
   EXPECT_THAT(qts, UnorderedElementsAre(expected_qual_type));
-  EXPECT_THAT(mod.consumer.diagnostics(), expected_diagnostics);
+  EXPECT_THAT(infra.diagnostics(), expected_diagnostics);
 }
 
 INSTANTIATE_TEST_SUITE_P(

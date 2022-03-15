@@ -101,7 +101,7 @@ void Compiler::EmitToBuffer(ast::WhileStmt const *node,
 
 void Compiler::EmitToBuffer(ast::ProgramArguments const *node,
                             ir::PartialResultBuffer &out) {
-  out.append(ir::Reg::Arg(0));
+  out.append(ir::Reg::Parameter(0));
 }
 
 void Compiler::EmitToBuffer(ast::Builtin const *node,

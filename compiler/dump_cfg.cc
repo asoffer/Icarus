@@ -19,13 +19,13 @@
 #include "base/log.h"
 #include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
+#include "compiler/flags.h"
 #include "compiler/importer.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
-#include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
-#include "ir/subroutine.h"
 #include "ir/interpreter/execution_context.h"
+#include "ir/subroutine.h"
 #include "module/module.h"
 #include "opt/opt.h"
 
@@ -41,6 +41,9 @@ ABSL_FLAG(std::vector<std::string>, module_paths, {},
 ABSL_FLAG(std::string, module_map, "",
           "Filename holding information about the module-map describing the "
           "location precompiled modules");
+ABSL_FLAG(std::string, diagnostics, "console",
+          "Indicates how diagnostics should be emitted. Options: console "
+          "(default), or json.");
 
 namespace {
 
@@ -115,10 +118,15 @@ void DumpControlFlowGraph(ir::Subroutine const *fn, std::ostream &output) {
 
 int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
   frontend::SourceIndexer source_indexer;
-  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
+  auto diag = compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
+  if (not diag.ok()) {
+    std::cerr << diag.status().message();
+    return 1;
+  }
+
   auto content = compiler::LoadFileContent(file_name);
   if (not content.ok()) {
-    diag.Consume(compiler::MissingModule{
+    (*diag)->Consume(compiler::MissingModule{
         .source    = file_name,
         .requestor = "",
         .reason    = std::string(content.status().message())});
@@ -129,37 +137,36 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
   if (not module_map) { return 1; }
 
   compiler::WorkSet work_set;
-  module::SharedContext shared_context;
+  module::SharedContext shared_context(compiler::MakeBuiltinModule());
   compiler::FileImporter importer(
-      &work_set, &diag, &source_indexer, *std::move(module_map),
+      &work_set, diag->get(), &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);
 
-  std::string_view file_content =
-      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
-
-  ir::Module ir_module;
-  compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(file_content, &context);
+  auto [mod_id, exec_mod] =
+      shared_context.module_table().add_module<compiler::CompiledModule>("");
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
-    exec_mod.scope().embed(&importer.get(embedded_id));
+    exec_mod->scope().embed(&importer.get(embedded_id));
   }
+
+  std::string_view file_content =
+      source_indexer.insert(mod_id, *std::move(content));
 
   compiler::PersistentResources resources{
       .work                = &work_set,
-      .module              = &exec_mod,
-      .diagnostic_consumer = &diag,
+      .module              = exec_mod,
+      .diagnostic_consumer = diag->get(),
       .importer            = &importer,
       .shared_context      = &shared_context,
   };
 
-  auto parsed_nodes = frontend::Parse(file_content, diag);
-  auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
-  auto main_fn      = compiler::CompileModule(context, resources, nodes);
+  auto parsed_nodes = frontend::Parse(file_content, **diag);
+  auto nodes   = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
+  auto main_fn = compiler::CompileModule(exec_mod->context(), resources, nodes);
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }
 
   output << "digraph {\n";
   DumpControlFlowGraph(&*main_fn, output);
-  context.ForEachSubroutine(
+  exec_mod->context().ForEachSubroutine(
       [&](ir::Subroutine const *f) { DumpControlFlowGraph(f, output); });
   output << "}";
 

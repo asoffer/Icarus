@@ -18,7 +18,7 @@ void ExtractReturnValue(ExecutionContext &ctx, ffi_arg *ret,
   using ffi_ret_type = std::conditional_t<PromotesToInt, int, T>;
   ffi_ret_type value;
   std::memcpy(&value, ret, sizeof(value));
-  ctx.Store(frame.get<ir::addr_t>(ir::Reg::Out(0)), static_cast<T>(value));
+  ctx.Store(frame.get<ir::addr_t>(ir::Reg::Output(0)), static_cast<T>(value));
 }
 
 ffi_type *ToFfiType(type::Type t) {
@@ -74,9 +74,9 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
     // elements are stable.
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
-      ir::addr_t addr = frame.get<ir::addr_t>(ir::Reg::Arg(i));
+      ir::addr_t addr = frame.get<ir::addr_t>(ir::Reg::Parameter(i));
       LOG("CallFn", "Pushing pointer addr = %p stored in %s", addr,
-          ir::Reg::Arg(i));
+          ir::Reg::Parameter(i));
       pointer_values.push_back(addr);
       arg_vals.push_back(&pointer_values.back());
     } else {
@@ -85,7 +85,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
       // ir::Char where we're writing/reading `char` through the `ir::Char`
       // according to the C++ standard.
       arg_vals.push_back(reinterpret_cast<char *>(
-          const_cast<std::byte *>(frame.raw(ir::Reg::Arg(i)))));
+          const_cast<std::byte *>(frame.raw(ir::Reg::Parameter(i)))));
     }
   }
 
@@ -130,7 +130,7 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
   } else if (out_type.is<type::Pointer>()) {
     ir::addr_t ptr;
     std::memcpy(&ptr, &ret, sizeof(ptr));
-    Store(frame.get<ir::addr_t>(ir::Reg::Out(0)), ptr);
+    Store(frame.get<ir::addr_t>(ir::Reg::Output(0)), ptr);
   } else {
     UNREACHABLE(out_type);
   }

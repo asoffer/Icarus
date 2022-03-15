@@ -1,67 +1,72 @@
-#{export} Abs ::= foreign("fabsf", f32 -> f32)
-#{export} Abs ::= foreign("fabs", f64 -> f64)
-#{export} Abs ::= foreign("abs", i8 -> i8)
-#{export} Abs ::= foreign("abs", i16 -> i16)
-#{export} Abs ::= foreign("abs", i32 -> i32)
-#{export} Abs ::= foreign("abs", i64 -> i64)
+c      ::= import "c/types.ic"
+cmath  ::= import "c/math.ic"
+stdlib ::= import "c/stdlib.ic"
 
-#{export} (%) ::= foreign("fmodf", (f32, f32) -> f32)
-#{export} (%) ::= foreign("fmod", (f64, f64) -> f64)
+#{export} Abs ::= cmath.fabsf
+#{export} Abs ::= cmath.fabs
+#{export} Abs ::= stdlib.abs
+// TODO: In C/C++, `long` and `long long` are different types even if they have 
+// the same bit representations. Icarus only has one representation and so it is
+// possible that the definitions of the C library functions `labs` and `llabs`
+// have indistinguishable types in Icarus. We do not currently have a mechanism
+// that allows us to detect this and omit one conditionally, because
+// overload-sets are not entirely first-class citizens yet.
+#{export} Abs ::= stdlib.labs
+// #{export} Abs ::= stdlib.llabs
+
+#{export} (%) ::= cmath.fmodf
+#{export} (%) ::= cmath.fmod
 
 // TODO: Support compile-time rounding enumerator tag.
-#{export} Floor     ::= foreign("floorf",  f32 -> f32)
-#{export} Floor     ::= foreign("floor",   f64 -> f64)
-#{export} Ceiling   ::= foreign("ceilf",   f32 -> f32)
-#{export} Ceiling   ::= foreign("ceil",    f64 -> f64)
-#{export} Truncate  ::= foreign("truncf",  f32 -> f32)
-#{export} Truncate  ::= foreign("trunc",   f64 -> f64)
+#{export} Floor     ::= cmath.floorf
+#{export} Floor     ::= cmath.floor
+#{export} Ceiling   ::= cmath.ceilf
+#{export} Ceiling   ::= cmath.ceil
+#{export} Truncate  ::= cmath.truncf
+#{export} Truncate  ::= cmath.trunc
 
-#{export} Divide ::= (numerator: f32, denominator: f32)  -> (i32, f32) {
-  remquo ::= foreign("remquo", (f32, f32, *i32) -> f32)
-  quotient: i32
-  remainder := remquo(numerator, denominator, &quotient)
+#{export} Divide ::= (numerator: c.float, denominator: c.float)  -> (c.int, c.float) {
+  quotient: c.int
+  remainder := cmath.remquof(numerator, denominator, &quotient)
   return quotient, remainder
 }
 
-#{export} Divide ::= (numerator: f64, denominator: f64)  -> (i32, f64) {
-  remquo ::= foreign("remquof", (f64, f64, *i32) -> f64)
-  quotient: i32
-  remainder := remquo(numerator, denominator, &quotient)
+#{export} Divide ::= (numerator: c.double, denominator: c.double)  -> (c.int, c.double) {
+  quotient: c.int
+  remainder := cmath.remquo(numerator, denominator, &quotient)
   return quotient, remainder
 }
 
-#{export} SplitIntegral ::= (x: f32) -> (f32, f32) {
-  modf ::= foreign("modff", (f32, *f32) -> f32)
-  ipart: f32
-  fpart: f32
-  modf(x, &ipart)
+#{export} SplitIntegral ::= (x: c.float) -> (c.float, c.float) {
+  ipart: c.float
+  fpart: c.float
+  cmath.modff(x, &ipart)
   return ipart, fpart
 }
 
-#{export} SplitIntegral ::= (x: f64) -> (f64, f64) {
-  modf ::= foreign("modf", (f64, *f64) -> f64)
-  ipart: f64
-  fpart: f64
-  modf(x, &ipart)
+#{export} SplitIntegral ::= (x: c.double) -> (c.double, c.double) {
+  ipart: c.double
+  fpart: c.double
+  cmath.modf(x, &ipart)
   return ipart, fpart
 }
 
-#{export} SquareRoot ::= foreign("sqrtf",  f32 -> f32)
-#{export} SquareRoot ::= foreign("sqrt",   f64 -> f64)
-#{export} CubeRoot   ::= foreign("cbrtf",  f32 -> f32)
-#{export} CubeRoot   ::= foreign("cbrt",   f64 -> f64)
-#{export} Exp        ::= foreign("expf",  f32 -> f32)
-#{export} Exp        ::= foreign("exp",  f64 -> f64)
-#{export} Log        ::= foreign("logf", f32 -> f32)
-#{export} Log        ::= foreign("log",  f64 -> f64)
-#{export} Pow        ::= foreign("powf", (f32, f32) -> f32)
-#{export} Pow        ::= foreign("pow",  (f64, f64) -> f64)
+#{export} SquareRoot ::= cmath.sqrtf
+#{export} SquareRoot ::= cmath.sqrt
+#{export} CubeRoot   ::= cmath.cbrtf
+#{export} CubeRoot   ::= cmath.cbrt
+#{export} Exp        ::= cmath.expf
+#{export} Exp        ::= cmath.exp
+#{export} Log        ::= cmath.logf
+#{export} Log        ::= cmath.log
+#{export} Pow        ::= cmath.powf
+#{export} Pow        ::= cmath.pow
 
-#{export} FusedMultiplyAdd ::= foreign("fmaf",  (f32, f32, f32) -> f32)
-#{export} FusedMultiplyAdd ::= foreign("fma",   (f64, f64, f64) -> f64)
+#{export} FusedMultiplyAdd ::= cmath.fmaf
+#{export} FusedMultiplyAdd ::= cmath.fma
 
-#{export} Erf ::= foreign("erff", f32 -> f32)
-#{export} Erf ::= foreign("erf", f64 -> f64)
+#{export} Erf ::= cmath.erff
+#{export} Erf ::= cmath.erf
 
-#{export} Gamma ::= foreign("tgammaf", f32 -> f32)
-#{export} Gamma ::= foreign("tgamma", f64 -> f64)
+#{export} Gamma ::= cmath.tgammaf
+#{export} Gamma ::= cmath.tgamma

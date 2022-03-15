@@ -1,7 +1,6 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/evaluation.h"
-#include "test/module.h"
 #include "type/primitive.h"
 
 namespace compiler {
@@ -17,9 +16,8 @@ std::string Context() {
 )";
 }
 
-using Test = test::EvaluationTest;
 INSTANTIATE_TEST_SUITE_P(
-    All, Test,
+    All, EvaluationTest,
     testing::ValuesIn({
         test::TestCase{.context  = Context(),
                        .expr     = R"((() -> i64 {
@@ -107,10 +105,10 @@ INSTANTIATE_TEST_SUITE_P(
                        .type     = type::I64,
                        .expected = int64_t{9}},
         test::TestCase{.expr     = R"([3; i64].length)",
-                       .type     = type::I64,
+                       .type     = type::Integer,
                        .expected = type::Array::length_t{3}},
         test::TestCase{.expr     = R"([4, 3; i64].length)",
-                       .type     = type::I64,
+                       .type     = type::Integer,
                        .expected = type::Array::length_t{4}},
         test::TestCase{.expr     = R"([4, 3; i64].element_type)",
                        .type     = type::Type_,

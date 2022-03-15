@@ -50,7 +50,7 @@ struct NonTypeArrayTypeMatch {
   }
 
   std::string_view view;
-  type::Type type;
+  std::string type;
 };
 
 }  // namespace
@@ -89,7 +89,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
 bool PatternTypeVerifier::VerifyPatternType(ast::ArrayType const *node,
                                             type::Type t) {
   if (t != type::Type_) {
-    diag().Consume(NonTypeArrayTypeMatch{.view = node->range(), .type = t});
+    diag().Consume(NonTypeArrayTypeMatch{
+        .view = node->range(), .type = t.to_string(),  // TODO: Improve this
+    });
     return false;
   }
 

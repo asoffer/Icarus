@@ -47,7 +47,7 @@ struct NotAType {
   }
 
   std::string_view view;
-  type::Type type;
+  std::string type;
 };
 
 struct InvalidCast {
@@ -76,7 +76,7 @@ struct AssigningToConstant {
         diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  type::Type to;
+  std::string to;
   std::string_view view;
 };
 
@@ -90,7 +90,7 @@ struct ImmovableType {
         diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  type::Type from;
+  std::string from;
   std::string_view view;
 };
 
@@ -109,7 +109,7 @@ struct PatternTypeMismatch {
                                               diagnostic::Style::ErrorText()));
   }
 
-  type::Type pattern_type;
+  std::string pattern_type;
   std::string matched_type;
   std::string_view view;
 };

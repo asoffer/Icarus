@@ -172,6 +172,15 @@ ir::CompleteResultBuffer const *Context::Constant(
   return nullptr;
 }
 
+void Context::LoadConstantAddress(ast::Expression const *expr,
+                                  ir::PartialResultBuffer &out) const {
+  if (auto iter = constants_.find(expr); iter != constants_.end()) {
+    out.append(iter->second[0].raw());
+  } else {
+    ASSERT_NOT_NULL(parent())->LoadConstant(expr, out);
+  }
+}
+
 void Context::LoadConstant(ast::Expression const *expr,
                            ir::CompleteResultBuffer &out) const {
   if (auto iter = constants_.find(expr); iter != constants_.end()) {
@@ -193,7 +202,11 @@ void Context::LoadConstant(ast::Expression const *expr,
 bool Context::TryLoadConstant(ast::Declaration::Id const *id,
                               ir::PartialResultBuffer &out) const {
   if (auto iter = constants_.find(id); iter != constants_.end()) {
-    out.append(iter->second);
+    if (qual_types(id)[0].type().is_big()) {
+      out.append(iter->second[0].raw().data());
+    } else {
+      out.append(iter->second);
+    }
     return true;
   } else if (parent() != nullptr) {
     return parent()->TryLoadConstant(id, out);

@@ -19,11 +19,11 @@ void Execute(ir::NativeFn fn, ir::CompleteResultBuffer const& arguments = {}) {
   // TODO actually just have a good way to construct the buffer
   LOG("Execute", "%s", fn);
   ExecutionContext ctx;
-  StackFrame frame(fn, ctx.stack());
+  StackFrame frame(&fn.byte_code(), ctx.stack());
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();
-    frame.set_raw(ir::Reg::Arg(i), argument.data(), argument.size());
+    frame.set_raw(ir::Reg::Parameter(i), argument.data(), argument.size());
   }
   ctx.Execute<InstSet>(fn, frame);
 }
@@ -36,11 +36,11 @@ ir::CompleteResultBuffer EvaluateToBuffer(
   ASSERT(fn.type()->return_types().size() != 0u);
 
   ExecutionContext ctx;
-  StackFrame frame(fn, ctx.stack());
+  StackFrame frame(&fn.byte_code(), ctx.stack());
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();
-    frame.set_raw(ir::Reg::Arg(i), argument.data(), argument.size());
+    frame.set_raw(ir::Reg::Parameter(i), argument.data(), argument.size());
   }
 
   ir::CompleteResultBuffer result;
@@ -51,7 +51,7 @@ ir::CompleteResultBuffer EvaluateToBuffer(
   result.reserve_bytes(outputs.size(), total.value());
   for (size_t i = 0; i < outputs.size(); ++i) {
     frame.set<ir::addr_t>(
-        ir::Reg::Out(i),
+        ir::Reg::Output(i),
         result.append_slot(outputs[i].bytes(kArchitecture).value()));
   }
 

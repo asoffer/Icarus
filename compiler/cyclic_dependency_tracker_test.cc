@@ -54,9 +54,7 @@ TEST(CyclicDependencyTracker, Errors) {
   ast::Identifier id1("a");
   ast::Identifier id2("a");
 
-  ir::Module mod;
-  Context context(&mod);
-  CompiledModule module("\n", &context);
+  CompiledModule module("test");
   ast::Scope scope(&module);
   ast::Node::Initializer i{.scope = &scope};
   id1.Initialize(i);

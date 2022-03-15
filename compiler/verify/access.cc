@@ -35,22 +35,6 @@ struct DeducingAccess {
   std::string_view view;
 };
 
-struct [[maybe_unused]] IncompleteTypeMemberAccess {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "incomplete-type-member-access";
-
-  diagnostic::DiagnosticMessage ToMessage() const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Cannot access a member of an incomplete type `%s`.",
-                         type),
-        diagnostic::SourceQuote().Highlighted(member_view,
-                                              diagnostic::Style::ErrorText()));
-  }
-
-  std::string_view member_view;
-  type::Type type;
-};
-
 struct MissingMember {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "missing-member";
@@ -130,7 +114,7 @@ struct NonExportedMember {
   }
 
   std::string member;
-  type::Type type;
+  std::string type;
   std::string_view view;
 };
 
@@ -347,7 +331,7 @@ type::QualType AccessStructMember(CompilationDataReference data,
       not member->hashtags.contains(ir::Hashtag::Export)) {
     data.diag().Consume(NonExportedMember{
         .member = std::string{node->member_name()},
-        .type   = s,
+        .type   = TypeForDiagnostic(node->operand(), data.context()),
         .view   = node->range(),
     });
 

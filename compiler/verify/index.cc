@@ -25,8 +25,8 @@ struct InvalidIndexType {
   }
 
   std::string_view view;
-  type::Type type;
-  type::Type index_type;
+  std::string type;
+  std::string index_type;
 };
 
 struct IndexingArrayOutOfBounds {
@@ -36,14 +36,15 @@ struct IndexingArrayOutOfBounds {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
-            "Array is indexed out of bounds. Array of type `%s` has size %u "
+            "Array is indexed out of bounds. Array of type `%s` has size %d "
             "but you are attempting to access position %d.",
-            type::Type(array), array->length(), index),
+            array, length, index),
         diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   std::string_view view;
-  type::Array const *array;
+  std::string array;
+  ir::Integer length;
   ir::Integer index;
 };
 
@@ -84,8 +85,8 @@ bool ValidIndexType(CompilationDataReference data, ast::Index const *node,
     if (type::IsIntegral(index_qt.type())) { return true; }
     data.diag().Consume(InvalidIndexType{
         .view       = node->range(),
-        .type       = type,
-        .index_type = index_qt.type(),
+        .type       = TypeForDiagnostic(node->lhs(), data.context()),
+        .index_type = TypeForDiagnostic(node->rhs(), data.context()),
     });
   }
   return false;
@@ -131,9 +132,10 @@ type::QualType VerifyArrayIndex(CompilationDataReference data,
       qt.MarkError();
     } else if (index >= array_type->length()) {
       data.diag().Consume(IndexingArrayOutOfBounds{
-          .view  = node->range(),
-          .array = array_type,
-          .index = index,
+          .view   = node->range(),
+          .array  = TypeForDiagnostic(node->lhs(), data.context()),
+          .length = array_type->length(),
+          .index  = index,
       });
       qt.MarkError();
     }

@@ -26,7 +26,12 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
   LOG("EmitConstantDeclaration", "%s %s", node->DebugString(),
       c.context().DebugString());
   if (node->flags() & ast::Declaration::f_IsFnParam) {
-    ctx.LoadConstant(&node->ids()[0], out);
+      type::Type t = ctx.qual_types(&node->ids()[0])[0].type();
+      if (t.is_big()) {
+        ctx.LoadConstantAddress(&node->ids()[0], out);
+      } else {
+        ctx.LoadConstant(&node->ids()[0], out);
+      }
   } else {
     if (ctx.TryLoadConstant(&node->ids()[0], out)) { return; }
 
@@ -62,7 +67,8 @@ void EmitConstantDeclaration(Compiler &c, ast::Declaration const *node,
         c.EmitToBuffer(&bd->pattern(), out);
       }
     } else if (node->IsDefaultInitialized()) {
-      UNREACHABLE(node->DebugString());
+      type::Type t = ctx.qual_types(&node->ids()[0])[0].type();
+      WriteDefaultValueFor(t, out);
     } else {
       UNREACHABLE();
     }

@@ -19,7 +19,7 @@ using AllTypeTypes =
                     struct Slice, struct Struct>;
 
 template <typename T>
-constexpr ssize_t IndexOf() {
+constexpr int8_t IndexOf() {
   return base::Index<T>(AllTypeTypes{});
 }
 

@@ -29,6 +29,12 @@ void Compiler::EmitToBuffer(ast::Terminal const *node,
                             ir::PartialResultBuffer &out) {
   if (node->type() == base::meta<ir::Slice>) {
     out.append(node->value().raw().data());
+  } else if (node->type() == base::meta<ir::Integer>) {
+    auto alloc = state().TmpAlloca(type::Integer);
+    current_block()->Append(ir::CompileTime<ir::Action::CopyInit, ir::Integer>{
+        .from = const_cast<std::byte *>(node->value().raw().data()),
+        .to   = alloc});
+    out.append(alloc);
   } else {
     out.append(node->value());
   }

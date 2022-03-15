@@ -10,10 +10,9 @@
 namespace compiler {
 namespace {
 ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
-                         size_t index,
+                         frontend::Operator op,
                          type::Typed<ir::PartialResultBuffer> const &lhs,
                          type::Typed<ir::PartialResultBuffer> const &rhs) {
-  auto op = node->ops()[index];
   if (lhs.type().is<type::Array>() and rhs.type().is<type::Array>()) {
     NOT_YET();
   } else if (lhs.type().is<type::Struct>() or rhs.type().is<type::Struct>()) {
@@ -74,54 +73,54 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
 
   } else {
     type::Type t                       = type::Meet(lhs.type(), rhs.type());
-    ir::PartialResultBuffer lhs_buffer = *lhs, rhs_buffer = *rhs;
-    EmitCast(c.current(), t, lhs.type(), lhs_buffer);
-    EmitCast(c.current(), t, rhs.type(), rhs_buffer);
+    ir::PartialResultBuffer lhs_buffer = std::move(*lhs);
+    ir::PartialResultBuffer rhs_buffer = std::move(*rhs);
+    EmitCast(c, lhs.type(), t, lhs_buffer);
+    EmitCast(c, rhs.type(), t, rhs_buffer);
+
     switch (op) {
       case frontend::Operator::Gt:
         std::swap(lhs_buffer, rhs_buffer);
         [[fallthrough]];
       case frontend::Operator::Lt:
-        return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
-                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, ir::addr_t>(
-            t, [&]<typename T>() -> ir::RegOr<bool> {
-              return c.current_block()->Append(
-                  ir::LtInstruction<T>{.lhs    = lhs_buffer.back().get<T>(),
-                                       .rhs    = rhs_buffer.back().get<T>(),
-                                       .result = c.current().subroutine->Reserve()});
-            });
+        return ApplyTypes<ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                          uint16_t, uint32_t, uint64_t, float, double,
+                          ir::addr_t>(t, [&]<typename T>() -> ir::RegOr<bool> {
+          return c.current_block()->Append(ir::LtInstruction<T>{
+              .lhs    = lhs_buffer.back().get<T>(),
+              .rhs    = rhs_buffer.back().get<T>(),
+              .result = c.current().subroutine->Reserve()});
+        });
 
       case frontend::Operator::Ge:
         std::swap(lhs_buffer, rhs_buffer);
         [[fallthrough]];
       case frontend::Operator::Le:
-        return ApplyTypes<ir::Char, ir::Integer, int8_t, int16_t, int32_t,
-                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, ir::addr_t>(
-            t, [&]<typename T>() -> ir::RegOr<bool> {
-              return c.current_block()->Append(
-                  ir::LeInstruction<T>{.lhs    = lhs_buffer.back().get<T>(),
-                                       .rhs    = rhs_buffer.back().get<T>(),
-                                       .result = c.current().subroutine->Reserve()});
-            });
+        return ApplyTypes<ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                          uint16_t, uint32_t, uint64_t, float, double,
+                          ir::addr_t>(t, [&]<typename T>() -> ir::RegOr<bool> {
+          return c.current_block()->Append(ir::LeInstruction<T>{
+              .lhs    = lhs_buffer.back().get<T>(),
+              .rhs    = rhs_buffer.back().get<T>(),
+              .result = c.current().subroutine->Reserve()});
+        });
       case frontend::Operator::Eq:
-        return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
-                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, type::Type, ir::addr_t>(t, [&]<typename T>() {
-          return c.current_block()->Append(
-              ir::EqInstruction<T>{.lhs    = lhs->back().get<T>(),
-                                   .rhs    = rhs->back().get<T>(),
-                                   .result = c.current().subroutine->Reserve()});
+        return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
+                          uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                          type::Type, ir::addr_t>(t, [&]<typename T>() {
+          return c.current_block()->Append(ir::EqInstruction<T>{
+              .lhs    = lhs_buffer.back().get<T>(),
+              .rhs    = rhs_buffer.back().get<T>(),
+              .result = c.current().subroutine->Reserve()});
         });
       case frontend::Operator::Ne:
-        return ApplyTypes<bool, ir::Integer, ir::Char, int8_t, int16_t, int32_t,
-                          int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
-                          double, type::Type, ir::addr_t>(t, [&]<typename T>() {
-          return c.current_block()->Append(
-              ir::NeInstruction<T>{.lhs    = lhs->back().get<T>(),
-                                   .rhs    = rhs->back().get<T>(),
-                                   .result = c.current().subroutine->Reserve()});
+        return ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
+                          uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                          type::Type, ir::addr_t>(t, [&]<typename T>() {
+          return c.current_block()->Append(ir::NeInstruction<T>{
+              .lhs    = lhs_buffer.back().get<T>(),
+              .rhs    = rhs_buffer.back().get<T>(),
+              .result = c.current().subroutine->Reserve()});
         });
       default: UNREACHABLE();
     }
@@ -132,32 +131,23 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
 
 void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
                             ir::PartialResultBuffer &out) {
-  if (node->ops().size() == 1) {
-    ir::PartialResultBuffer lhs_buffer, rhs_buffer;
-    EmitToBuffer(node->exprs()[0], lhs_buffer);
-    EmitToBuffer(node->exprs()[1], rhs_buffer);
-    type::Type lhs_type = context().qual_types(node->exprs()[0])[0].type();
-    type::Type rhs_type = context().qual_types(node->exprs()[1])[0].type();
-    out.append(EmitPair(*this, node, 0, type::Typed(lhs_buffer, lhs_type),
-                        type::Typed(rhs_buffer, rhs_type)));
-    return;
-  }
-
-  std::vector<ir::BasicBlock const *> phi_blocks;
-  std::vector<ir::RegOr<bool>> phi_values;
-
   ir::PartialResultBuffer lhs_buffer, rhs_buffer;
   EmitToBuffer(node->exprs()[0], lhs_buffer);
   type::Type lhs_type = context().qual_types(node->exprs()[0])[0].type();
 
+  std::vector<ir::BasicBlock const *> phi_blocks;
+  std::vector<ir::RegOr<bool>> phi_values;
+
   auto *land_block = current().subroutine->AppendBlock();
   for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
+    auto const *rhs_expr = node->exprs()[i + 1];
     rhs_buffer.clear();
-    EmitToBuffer(node->exprs()[i], rhs_buffer);
-    type::Type rhs_type = context().qual_types(node->exprs()[i])[0].type();
+    EmitToBuffer(rhs_expr, rhs_buffer);
+    type::Type rhs_type = context().qual_types(rhs_expr)[0].type();
 
-    auto cmp = EmitPair(*this, node, i, type::Typed(lhs_buffer, lhs_type),
-                        type::Typed(rhs_buffer, rhs_type));
+    auto cmp =
+        EmitPair(*this, node, node->ops()[i], type::Typed(lhs_buffer, lhs_type),
+                 type::Typed(rhs_buffer, rhs_type));
 
     phi_blocks.push_back(current_block());
     phi_values.push_back(false);
@@ -169,11 +159,11 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
   }
 
   // Once more for the last element, but don't do a conditional jump.
-  EmitToBuffer(node->exprs()[0], rhs_buffer);
+  EmitToBuffer(node->exprs().back(), rhs_buffer);
   type::Type rhs_type = context().qual_types(node->exprs().back())[0].type();
 
   phi_blocks.push_back(current_block());
-  phi_values.push_back(EmitPair(*this, node, node->exprs().size() - 2,
+  phi_values.push_back(EmitPair(*this, node, node->ops().back(),
                                 type::Typed(lhs_buffer, lhs_type),
                                 type::Typed(rhs_buffer, rhs_type)));
 
@@ -181,9 +171,13 @@ void Compiler::EmitToBuffer(ast::ComparisonOperator const *node,
 
   current_block() = land_block;
 
-  ir::PhiInstruction<bool> phi(std::move(phi_blocks), std::move(phi_values));
-  phi.result = current().subroutine->Reserve();
-  out.append(current_block()->Append(std::move(phi)));
+  if (phi_values.size() == 1) {
+    out.append(phi_values.back());
+  } else {
+    ir::PhiInstruction<bool> phi(std::move(phi_blocks), std::move(phi_values));
+    phi.result = current().subroutine->Reserve();
+    out.append(current_block()->Append(std::move(phi)));
+  }
 }
 
 void Compiler::EmitCopyAssign(

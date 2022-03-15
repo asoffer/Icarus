@@ -108,4 +108,6 @@ void Primitive::ShowValue(std::ostream &os,
   });
 }
 
+bool Primitive::is_big() const { return kind_ == Kind::Integer; }
+
 }  // namespace type

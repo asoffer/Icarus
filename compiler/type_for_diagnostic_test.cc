@@ -19,10 +19,9 @@ struct TestCase {
 using TypeForDiagnosticTest = testing::TestWithParam<TestCase>;
 TEST_P(TypeForDiagnosticTest, Test) {
   auto const &[context, expr, expected] = GetParam();
-  test::TestModule mod;
-  mod.AppendCode(context);
-  auto const *e = mod.Append<ast::Expression>(expr);
-  EXPECT_EQ(TypeForDiagnostic(e, mod.context()), expected);
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(absl::StrCat(context, "\n", expr));
+  EXPECT_EQ(TypeForDiagnostic(mod.get<ast::Expression>(), mod.context()), expected);
 }
 INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
                          testing::ValuesIn({
@@ -109,26 +108,33 @@ INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
                          }));
 
 TEST(CrossModule, TypeForDiagnostic) {
-  test::TestModule mod, imported_mod1, imported_mod2;
-  mod.CompileImportedLibrary(imported_mod1, "imported1", R"(
+  test::CompilerInfrastructure infra;
+
+  auto &imported_mod1 = infra.add_module("imported1", R"(
   #{export} S ::= struct {}
   )");
-
-  mod.CompileImportedLibrary(imported_mod2, "imported2", R"(
+  auto &imported_mod2 = infra.add_module("imported2", R"(
   #{export} S ::= struct {}
   #{export} P ::= struct (T :: type) {}
   )");
-
-  mod.AppendCode(R"(
+  auto &mod1 = infra.add_module(R"(
   --  ::= import "imported1"
   mod ::= import "imported2"
+
+  mod.S.{}
+  )");
+  auto &mod2 = infra.add_module(R"(
+  --  ::= import "imported1"
+  mod ::= import "imported2"
+
+  S.{}
   )");
 
-  auto const *module_access = mod.Append<ast::Expression>(R"(mod.S.{})");
-  EXPECT_EQ(TypeForDiagnostic(module_access, mod.context()), "mod.S");
+  auto const *module_access = mod1.get<ast::Expression>();
+  EXPECT_EQ(TypeForDiagnostic(module_access, mod1.context()), "mod.S");
 
-  auto const *embedded_access = mod.Append<ast::Expression>(R"(S.{})");
-  EXPECT_EQ(TypeForDiagnostic(embedded_access, mod.context()), "S");
+  auto const *embedded_access = mod2.get<ast::Expression>();
+  EXPECT_EQ(TypeForDiagnostic(embedded_access, mod2.context()), "S");
 
   // TODO: Deal with ADL.
 }

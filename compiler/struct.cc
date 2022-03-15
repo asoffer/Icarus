@@ -20,9 +20,19 @@ void EmitStructDataCompletion(CompilationDataReference c,
       // TODO: Decide whether to support all hashtags. For now just covering
       // export.
       if (auto const *init_val = id.declaration().init_val()) {
-        // TODO init_val type may not be the same.
-        type::Type field_type = c.context().qual_types(init_val)[0].type();
+        type::Type field_type;
+        if (auto const *type_expr = id.declaration().type_expr()) {
+          std::optional t = c.EvaluateOrDiagnoseAs<type::Type>(type_expr);
+          ASSERT(t.has_value() == true);
+          field_type = *t;
+        } else {
+          field_type = c.context().qual_types(init_val)[0].type();
+        }
 
+        // TODO: If the initializer needs a cast.
+        if (field_type != c.context().qual_types(init_val)[0].type()) {
+          NOT_YET();
+        }
         ASSIGN_OR(
             NOT_YET(),  //
             auto result,

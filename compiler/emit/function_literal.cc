@@ -112,7 +112,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   for (auto const &param : node->params()) {
     absl::Span<ast::Declaration::Id const> ids = param.value->ids();
     ASSERT(ids.size() == 1u);
-    state().set_addr(&ids[0], ir::Reg::Arg(i++));
+    state().set_addr(&ids[0], ir::Reg::Parameter(i++));
   }
 
   if (auto outputs = node->outputs()) {
@@ -121,7 +121,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
       if (not out_decl) { continue; }
       type::Type out_decl_type = context().qual_types(out_decl)[0].type();
       auto alloc               = out_decl_type.is_big()
-                       ? ir::Reg::Out(i)
+                       ? ir::Reg::Output(i)
                        : current().subroutine->Alloca(out_decl_type);
 
       ASSERT(out_decl->ids().size() == 1u);

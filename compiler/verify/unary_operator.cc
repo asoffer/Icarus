@@ -42,7 +42,7 @@ struct UncopyableType {
                                               diagnostic::Style::ErrorText()));
   }
 
-  type::Type from;
+  std::string from;
   std::string_view view;
 };
 
@@ -105,7 +105,7 @@ struct NegatingUnsignedInteger {
                                               diagnostic::Style::ErrorText()));
   }
 
-  type::Type type;
+  std::string type;
   std::string_view view;
 };
 
@@ -136,7 +136,7 @@ struct DereferencingNonPointer {
                                               diagnostic::Style::ErrorText()));
   }
 
-  type::Type type;
+  std::string type;
   std::string_view view;
 };
 
@@ -197,7 +197,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
              type::Completeness::Complete);
       if (not operand_type.get()->IsCopyable()) {
         diag().Consume(UncopyableType{
-            .from = operand_type,
+            .from = TypeForDiagnostic(node->operand(), context()),
             .view = node->range(),
         });
       }
@@ -222,7 +222,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
              type::Completeness::Complete);
       if (not operand_type.get()->IsMovable()) {
         diag().Consume(ImmovableType{
-            .from = operand_type,
+            .from = TypeForDiagnostic(node->operand(), context()),
             .view = node->range(),
         });
       }
@@ -236,7 +236,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       } else {
         diag().Consume(NotAType{
             .view = node->operand()->range(),
-            .type = operand_type,
+            .type = TypeForDiagnostic(node->operand(), context()),
         });
         qt = type::QualType::Error();
       }
@@ -251,7 +251,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         qt = type::QualType(ptr_type->pointee(), type::Quals::Ref());
       } else {
         diag().Consume(DereferencingNonPointer{
-            .type = operand_type,
+            .type = TypeForDiagnostic(node->operand(), context()),
             .view = node->range(),
         });
         qt = type::QualType::Error();
@@ -276,7 +276,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       } else {
         diag().Consume(NotAType{
             .view = node->operand()->range(),
-            .type = operand_type,
+            .type = TypeForDiagnostic(node->operand(), context()),
         });
         qt = type::QualType::Error();
       }
@@ -287,7 +287,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                             operand_qt.quals() & type::Quals::Const());
       } else if (type::IsUnsignedNumeric(operand_type)) {
         diag().Consume(NegatingUnsignedInteger{
-            .type = operand_type,
+            .type = TypeForDiagnostic(node->operand(), context()),
             .view = node->range(),
         });
         qt = type::QualType::Error();
@@ -372,7 +372,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::UnaryOperator const *node,
     case ast::UnaryOperator::Kind::Not:
       if (t != type::Bool) {
         diag().Consume(PatternTypeMismatch{
-            .pattern_type = t,
+            .pattern_type = t.to_string(),  // TODO: Improve this.
             .matched_type = "bool",
             .view         = node->range(),
         });
@@ -384,7 +384,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::UnaryOperator const *node,
     case ast::UnaryOperator::Kind::Pointer:
       if (t != type::Type_) {
         diag().Consume(PatternTypeMismatch{
-            .pattern_type = t,
+            .pattern_type = t.to_string(),  // TODO: Improve this.
             .matched_type = "type",
             .view         = node->range(),
         });
@@ -395,7 +395,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::UnaryOperator const *node,
     case ast::UnaryOperator::Kind::Negate:
       if (not type::IsNumeric(t)) {
         diag().Consume(PatternTypeMismatch{
-            .pattern_type = t,
+            .pattern_type = t.to_string(),  // TODO: Improve this.
             .matched_type = "Must be a numeric primitive type",
             .view         = node->range(),
         });

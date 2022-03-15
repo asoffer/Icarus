@@ -76,8 +76,8 @@ struct InvalidInitializerType {
         diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  type::Type expected;
-  type::Type actual;
+  std::string expected;
+  std::string actual;
   std::string_view view;
 };
 
@@ -88,12 +88,12 @@ struct NonExportedField {
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Field named `%s` in struct `%s` is not exported.",
-                         member_name, type::Type(struct_type)),
+                         member_name, struct_type),
         diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
   std::string member_name;
-  type::Struct const *struct_type;
+  std::string struct_type;
   std::string_view view;
 };
 
@@ -201,7 +201,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         } else {
           diag().Consume(NonExportedField{
               .member_name = std::string(field_name),
-              .struct_type = struct_type,
+              .struct_type = TypeForDiagnostic(node, context()),
               .view        = field->range(),
           });
           recovered_error = true;
@@ -242,8 +242,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       type::Type rhs_type = iter->second->type;
       if (not type::CanCastImplicitly(lhs_type, rhs_type)) {
         diag().Consume(InvalidInitializerType{
-            .expected = rhs_type,
-            .actual   = lhs_type,
+            .expected = rhs_type.to_string(),  // TODO: Improve this
+            .actual   = lhs_type.to_string(),  // TODO: Improve this
             .view     = field->range(),
         });
         recovered_error = true;

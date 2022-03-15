@@ -31,7 +31,7 @@ struct InsertBlockInstruction
   void Apply(interpreter::ExecutionContext& ctx) {
     // TODO: Out(0) may not be sufficient.
     auto& blocks = *ASSERT_NOT_NULL(reinterpret_cast<std::vector<ir::Block>*>(
-        ctx.resolve<ir::addr_t>(ir::Reg::Out(0))));
+        ctx.resolve<ir::addr_t>(ir::Reg::Output(0))));
     blocks.push_back(block);
   }
 
@@ -63,11 +63,11 @@ using TypeConstructorInstructions = ir::InstructionSet<
 
 struct instruction_set_t
     : ir::InstructionSet<
-          ir::CoreInstructions<bool, ir::Char, ir::Integer, uint8_t, int8_t,
-                               uint16_t, int16_t, uint32_t, int32_t, uint64_t,
-                               int64_t, float, double, type::Type, ir::addr_t,
-                               ir::Fn, ir::Scope, ir::ModuleId,
-                               ir::UnboundScope, interface::Interface>,
+          ir::CoreInstructions<bool, ir::Char, uint8_t, int8_t, uint16_t,
+                               int16_t, uint32_t, int32_t, uint64_t, int64_t,
+                               float, double, type::Type, ir::addr_t, ir::Fn,
+                               ir::Scope, ir::ModuleId, ir::UnboundScope,
+                               interface::Interface>,
           ir::SetReturnInstruction<ir::GenericFn>,
           ir::SetReturnInstruction<ir::ScopeContext>,
           ir::SetReturnInstruction<ir::Block>,
@@ -79,12 +79,12 @@ struct instruction_set_t
           ir::ModInstruction<uint16_t>, ir::ModInstruction<int16_t>,
           ir::ModInstruction<uint32_t>, ir::ModInstruction<int32_t>,
           ir::ModInstruction<uint64_t>, ir::ModInstruction<int64_t>,
-          EqualityComparisonInstructions<ir::Integer, bool, uint8_t, int8_t,
+          EqualityComparisonInstructions</*ir::Integer,*/ bool, uint8_t, int8_t,
                                          uint16_t, int16_t, uint32_t, int32_t,
                                          uint64_t, int64_t, float, double,
                                          type::Type, ir::addr_t>,
           OrderedComparisonInstructions<
-              ir::Integer, ir::Char, uint8_t, int8_t, uint16_t, int16_t,
+              /*ir::Integer,*/ ir::Char, uint8_t, int8_t, uint16_t, int16_t,
               uint32_t, int32_t, uint64_t, int64_t, float, double, ir::addr_t>,
           ir::NegInstruction<ir::Integer>, ir::NegInstruction<int8_t>,
           ir::NegInstruction<int16_t>, ir::NegInstruction<int32_t>,
@@ -136,12 +136,16 @@ struct instruction_set_t
               // f32 from regular numeric primitives
               float(uint8_t), float(int8_t), float(uint16_t), float(int16_t),
               float(uint32_t), float(int32_t), float(uint64_t), float(int64_t),
-              double(ir::Integer), float(double),
+              float(ir::Integer), float(double),
               // f64 from regular numeric primitives
               double(uint8_t), double(int8_t), double(uint16_t),
               double(int16_t), double(uint32_t), double(int32_t),
               double(uint64_t), double(int64_t), double(ir::Integer),
-              double(float)>,
+              double(float),
+              // integer from regular numeric primitives
+              ir::Integer(uint8_t), ir::Integer(int8_t), ir::Integer(uint16_t),
+              ir::Integer(int16_t), ir::Integer(uint32_t), ir::Integer(int32_t),
+              ir::Integer(uint64_t), ir::Integer(int64_t)>,
           ir::AndInstruction, ir::NotInstruction, type::XorFlagsInstruction,
           type::AndFlagsInstruction, type::OrFlagsInstruction,
           ir::LoadDataSymbolInstruction, type::ArrayInstruction,
@@ -150,7 +154,11 @@ struct instruction_set_t
           ir::CopyInitInstruction, ir::MoveInstruction, ir::CopyInstruction,
           type::SliceLengthInstruction, type::SliceDataInstruction,
           ir::DebugIrInstruction, BuiltinInstructions,
-          TypeConstructorInstructions, InsertBlockInstruction> {};
+          TypeConstructorInstructions, InsertBlockInstruction,
+          ir::CompileTime<ir::Action::CopyInit, ir::Integer>,
+          ir::CompileTime<ir::Action::MoveInit, ir::Integer>,
+          ir::CompileTime<ir::Action::CopyAssign, ir::Integer>,
+          ir::CompileTime<ir::Action::MoveAssign, ir::Integer>> {};
 
 void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
   writer.set_block(&block);
@@ -189,7 +197,23 @@ void EmitByteCode(ir::ByteCodeWriter& writer, ir::BasicBlock const& block) {
 }  // namespace
 
 ir::ByteCode EmitByteCode(ir::Subroutine const& sr) {
-  ir::ByteCode byte_code;
+  std::vector<std::variant<core::TypeContour, type::Type>> allocs(
+      sr.num_allocs());
+  sr.for_each_alloc(core::Host, [&](core::TypeContour tc, ir::Reg r) {
+    allocs[r.as<ir::Reg::Kind::StackAllocation>()] = tc;
+  });
+
+  size_t num_outputs = 1;
+  if (auto const * rt = sr.type()->if_as<type::ReturningType>()) {
+    num_outputs = rt->return_types().size();
+  }
+
+  ir::ByteCode byte_code({
+      .num_registers     = sr.num_regs(),
+      .num_parameters    = sr.num_args(),
+      .num_outputs       = num_outputs,
+      .stack_allocations = std::move(allocs),
+  });
   ir::ByteCodeWriter writer(&byte_code);
   for (auto const& block : sr.blocks()) { EmitByteCode(writer, *block); }
   std::move(writer).Finalize();
@@ -202,7 +226,7 @@ void InterpretAtCompileTime(ir::Subroutine const& fn,
   ir::NativeFn::Data data{
       .fn        = &const_cast<ir::Subroutine&>(fn),
       .type      = &fn.type()->as<type::Function>(),
-      .byte_code = byte_code.begin(),
+      .byte_code = &byte_code,
   };
   InterpretAtCompileTime(ir::NativeFn(&data), arguments);
 }
@@ -216,7 +240,7 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
     ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const& arguments) {
   interpreter::ExecutionContext ctx;
-  interpreter::StackFrame frame(s, ctx.stack());
+  interpreter::StackFrame frame(&s.byte_code(), ctx.stack());
   core::BindArguments(
       s.type()->params(), arguments,
       [&, i = 0](type::QualType param,
@@ -225,12 +249,12 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
         core::Bytes size = param.type().is_big()
                                ? interpreter::kArchitecture.pointer().bytes()
                                : param.type().bytes(interpreter::kArchitecture);
-        frame.set_raw(ir::Reg::Arg(i), argument->raw().data(), size.value());
+        frame.set_raw(ir::Reg::Parameter(i), argument->raw().data(), size.value());
       });
 
   std::vector<ir::Block> result;
   auto* result_ptr = &result;
-  frame.set(ir::Reg::Out(0), reinterpret_cast<ir::addr_t>(result_ptr));
+  frame.set(ir::Reg::Output(0), reinterpret_cast<ir::addr_t>(result_ptr));
   ctx.Execute<instruction_set_t>(s, frame);
   return result;
 }

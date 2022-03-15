@@ -15,57 +15,77 @@ using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 
 TEST(Access, EnumSuccess) {
-  test::TestModule mod;
-  mod.Append<ast::Node>(R"(E ::= enum { A \\ B \\ C })");
-  auto const *enumerator = mod.Append<ast::Expression>(R"(E.A)");
+  test::CompilerInfrastructure infra;
+  auto& mod =infra.add_module(R"(
+  E ::= enum { A \\ B \\ C }
+
+  E.A
+  )");
+  auto const *enumerator = mod.get<ast::Expression>();
   auto qts               = mod.context().qual_types(enumerator);
   ASSERT_THAT(qts, SizeIs(1));
   EXPECT_TRUE(qts[0].type().is<type::Enum>());
   EXPECT_EQ(qts[0].quals(), type::Quals::Const());
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Access, EnumMisnamed) {
-  test::TestModule mod;
-  mod.Append<ast::Node>(R"(E ::= enum { A \\ B \\ C })");
-  auto const *enumerator = mod.Append<ast::Expression>(R"(E.D)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
+  E ::= enum { A \\ B \\ C }
+
+  E.D
+  )");
+  auto const *enumerator = mod.get<ast::Expression>();
   auto qts               = mod.context().qual_types(enumerator);
   EXPECT_TRUE(qts[0].type().is<type::Enum>());
   EXPECT_EQ(qts[0].quals(), type::Quals::Const());
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "missing-constant-member")));
 }
 
 TEST(Access, FlagsSuccess) {
-  test::TestModule mod;
-  mod.Append<ast::Node>(R"(F ::= flags { A \\ B \\ C })");
-  auto const *flag = mod.Append<ast::Expression>(R"(F.A)");
+  test::CompilerInfrastructure infra;
+  auto &mod              = infra.add_module(R"(
+  F ::= flags { A \\ B \\ C }
+
+  F.A
+  )");
+  auto const *flag = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(flag);
   EXPECT_TRUE(qts[0].type().is<type::Flags>());
   EXPECT_EQ(qts[0].quals(), type::Quals::Const());
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Access, FlagsMisnamed) {
-  test::TestModule mod;
-  mod.Append<ast::Node>(R"(F ::= flags { A \\ B \\ C })");
-  auto const *flag = mod.Append<ast::Expression>(R"(F.D)");
+  test::CompilerInfrastructure infra;
+  auto &mod              = infra.add_module(R"(
+  F ::= flags { A \\ B \\ C }
+
+  F.D
+  )");
+  auto const *flag = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(flag);
   EXPECT_TRUE(qts[0].type().is<type::Flags>());
   EXPECT_EQ(qts[0].quals(), type::Quals::Const());
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "missing-constant-member")));
 }
 
 TEST(Access, NonConstantType) {
-  test::TestModule mod;
-  mod.Append<ast::Node>(R"(T := i64)");
-  auto const *expr = mod.Append<ast::Expression>(R"(T.something)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
+  T := i64
+
+  T.something)");
+
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType::Error()));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "non-constant-type-member-access")));
 }
@@ -73,30 +93,39 @@ TEST(Access, NonConstantType) {
 // TODO: Test covering an evaluation error when accessing a type member.
 
 TEST(Access, TypeHasNoMembers) {
-  test::TestModule mod;
-  mod.Append<ast::Node>(R"(T ::= i64)");
-  auto const *expr = mod.Append<ast::Expression>(R"(T.something)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
+  T ::= i64
+
+  T.something)");
+
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType::Error()));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "type-has-no-members")));
 }
 
 TEST(Access, AccessStructField) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   S ::= struct {
     n: i64
     b: bool
   }
   non_constant: S
   constant :: S
+
+  non_constant.n
+  constant.n
   )");
-  auto const *non_constant = mod.Append<ast::Expression>(R"(non_constant.n)");
+
+  auto stmts               = mod.module().stmts();
+  auto const *non_constant = &stmts[stmts.size() - 2]->as<ast::Expression>();
+  auto const *constant     = &stmts[stmts.size() - 1]->as<ast::Expression>();
   auto non_constant_qts    = mod.context().qual_types(non_constant);
-  auto const *constant     = mod.Append<ast::Expression>(R"(constant.n)");
   auto constant_qts        = mod.context().qual_types(constant);
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
   EXPECT_THAT(non_constant_qts,
               ElementsAre(type::QualType(type::I64, type::Quals::Ref())));
   EXPECT_THAT(constant_qts,
@@ -105,150 +134,149 @@ TEST(Access, AccessStructField) {
 }
 
 TEST(Access, NoFieldInStruct) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   S ::= struct {
     n: i64
     b: bool
   }
   s: S
+  s.x
   )");
-  auto const *expr = mod.Append<ast::Expression>(R"(s.x)");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType::Error()));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-member")));
 }
 
 TEST(Access, ConstantSliceLength) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"("abc".length)");
+  test::CompilerInfrastructure infra;
+  auto& mod = infra.add_module(R"("abc".length)");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType(
                        type::U64, type::Quals::Ref() | type::Quals::Const())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Access, NonConstantSliceLength) {
-  test::TestModule mod;
-  mod.AppendCode(R"(s := "abc")");
-  auto const *expr = mod.Append<ast::Expression>(R"(s.length)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
+  s := "abc"
+
+  s.length)");
+
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType(type::U64, type::Quals::Ref())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Access, NonConstantSliceData) {
-  test::TestModule mod;
-  mod.AppendCode(R"(s := "abc")");
-  auto const *expr = mod.Append<ast::Expression>(R"(s.data)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
+  s := "abc"
+
+  s.data)");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType(type::BufPtr(type::Char),
                                               type::Quals::Ref())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Access, SliceInvalidMember) {
-  test::TestModule mod;
-  mod.AppendCode(R"(s := "abc")");
-  auto const *expr = mod.Append<ast::Expression>(R"(s.size)");
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
+  s := "abc"
+
+  s.size)");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType::Error()));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-member")));
 }
 
 TEST(Access, ArrayLength) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([3; i64].length)");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"([3; i64].length)");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               ElementsAre(type::QualType::Constant(type::Array::LengthType())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Access, MultidimensionalArrayLength) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([3, 2; i64].length)");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"([3, 2; i64].length)");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               ElementsAre(type::QualType::Constant(type::Array::LengthType())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Access, ArrayElementType) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([3, 2; i64].element_type)");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"([3, 2; i64].element_type)");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType::Constant(type::Type_)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Access, ArrayInvalidMember) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([3; i64].size)");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"([3; i64].size)");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType::Error()));
   EXPECT_THAT(
-      mod.consumer.diagnostics(),
+      infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "missing-constant-member")));
 }
 
-TEST(Access, IntoModuleWithError) {
-  test::TestModule mod;
-  test::TestModule imported_module;
-  mod.CompileImportedLibrary(imported_module, "imported", R"(
-  #{export} N :: bool = 3
-  )");
-
-  mod.AppendCode("mod ::= import \"imported\"");
-  auto const *expr = mod.Append<ast::Expression>(R"(mod.N)");
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "invalid-cast")));
-}
-
 TEST(Access, CrossModuleStructFieldAccess) {
-  test::TestModule mod;
-  test::TestModule imported_module;
-  mod.CompileImportedLibrary(imported_module, "imported", R"(
+  test::CompilerInfrastructure infra;
+  infra.add_module("imported", R"(
   #{export} S ::= struct {
     #{export} n: i64
   }
   )");
 
-  mod.AppendCode(R"(
+  auto &mod = infra.add_module(R"(
     mod ::= import "imported"
     s: mod.S
     s.n
   )");
 
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Access, CrossModuleStructFieldError) {
-  test::TestModule mod;
-  test::TestModule imported_module;
-  mod.CompileImportedLibrary(imported_module, "imported", R"(
+  test::CompilerInfrastructure infra;
+  infra.add_module("imported", R"(
   #{export} S ::= struct {
     #{export} n: i64
   }
   )");
 
-  mod.AppendCode(R"(
+  auto &mod = infra.add_module(R"(
     mod ::= import "imported"
     s: mod.S
     s.m
   )");
 
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "missing-member")));
+  EXPECT_THAT(infra.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "missing-member")));
 }
 
 TEST(Access, Pattern) {
-  test::TestModule mod;
-
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
   S ::= struct {
     n: i64
   }
@@ -256,7 +284,7 @@ TEST(Access, Pattern) {
   3 ~ (`s).n
   )");
 
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("pattern-error", "deducing-access")));
 }
 

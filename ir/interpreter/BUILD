@@ -38,11 +38,12 @@ cc_library(
         "//base:untyped_buffer",
         "//base:untyped_buffer_view",
         "//core:arch",
+        "//core:type_contour",
         "//ir:basic_block",
-        "//ir/value:native_fn",
+        "//ir/byte_code",
         "//ir/value:reg",
-        "//ir/value:scope",
         "//type:type",
+        "@com_google_absl//absl/cleanup",
     ],
 )
 

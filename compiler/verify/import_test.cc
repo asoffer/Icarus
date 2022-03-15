@@ -13,38 +13,48 @@ using ::testing::Return;
 using ::testing::UnorderedElementsAre;
 
 TEST(Import, InvalidTypeBeingImported) {
-  test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import).Times(0);
-  auto const *import = mod.Append<ast::Expression>(R"(import 3)");
+  auto importer = std::make_unique<module::MockImporter>();
+  EXPECT_CALL(*importer, Import).Times(0);
+  test::CompilerInfrastructure infra(std::move(importer));
+  auto &mod          = infra.add_module("import 3");
+  auto const *import = mod.get<ast::Expression>();
   auto qts           = mod.context().qual_types(import);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Module)));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "invalid-import")));
 }
 
 TEST(Import, NonConstantImport) {
-  test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import).Times(0);
-  mod.AppendCode(R"(str := "abc")");
-  auto const *import = mod.Append<ast::Expression>(R"(import str)");
+  auto importer = std::make_unique<module::MockImporter>();
+  EXPECT_CALL(*importer, Import).Times(0);
+  test::CompilerInfrastructure infra(std::move(importer));
+  auto &mod          = infra.add_module(R"(
+  str := "abc"
+  import str
+  )");
+  auto const *import = mod.get<ast::Expression>();
   auto qts           = mod.context().qual_types(import);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Module)));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("value-category-error", "non-constant-import")));
 }
 
 TEST(Import, NonConstantAndInvalidType) {
-  test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import).Times(0);
-  mod.AppendCode(R"(x := 3)");
-  auto const *import = mod.Append<ast::Expression>(R"(import x)");
+  auto importer = std::make_unique<module::MockImporter>();
+  EXPECT_CALL(*importer, Import).Times(0);
+  test::CompilerInfrastructure infra(std::move(importer));
+  auto &mod          = infra.add_module(R"(
+  x := 3
+  import x
+  )");
+  auto const *import = mod.get<ast::Expression>();
   auto qts           = mod.context().qual_types(import);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Module)));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "invalid-import"),
                   Pair("value-category-error", "non-constant-import")));
@@ -52,25 +62,31 @@ TEST(Import, NonConstantAndInvalidType) {
 
 TEST(Import, StringLiteral) {
   constexpr std::string_view kModule = "some-module";
-  test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import(_, kModule)).WillOnce(Return(ir::ModuleId(7)));
-  auto const *import = mod.Append<ast::Expression>(R"(import "some-module")");
+  auto importer                      = std::make_unique<module::MockImporter>();
+  EXPECT_CALL(*importer, Import(_, kModule)).WillOnce(Return(ir::ModuleId(7)));
+  test::CompilerInfrastructure infra(std::move(importer));
+  auto &mod          = infra.add_module(R"(import "some-module")");
+  auto const *import = mod.get<ast::Expression>();
   auto qts           = mod.context().qual_types(import);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Module)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Import, ConstantCharSlice) {
   constexpr std::string_view kModule = "some-module";
-  test::TestModule mod;
-  EXPECT_CALL(mod.importer, Import(_, kModule)).WillOnce(Return(ir::ModuleId(7)));
-  mod.AppendCode(R"(str ::= "some-module")");
-  auto const *import = mod.Append<ast::Expression>(R"(import str)");
+  auto importer                      = std::make_unique<module::MockImporter>();
+  EXPECT_CALL(*importer, Import(_, kModule)).WillOnce(Return(ir::ModuleId(7)));
+  test::CompilerInfrastructure infra(std::move(importer));
+  auto &mod          = infra.add_module(R"(
+  str ::= "some-module"
+  import str
+  )");
+  auto const *import = mod.get<ast::Expression>();
   auto qts           = mod.context().qual_types(import);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::Module)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 }  // namespace

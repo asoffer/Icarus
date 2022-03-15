@@ -8,11 +8,9 @@
 namespace compiler {
 
 struct CompiledModule : module::Module {
-  explicit CompiledModule(std::string_view content, Context *context)
-      : context_(ASSERT_NOT_NULL(context)),
-        content_(content),
-        module_(this, content) {
-    context_->set_qt_callback(
+  explicit CompiledModule(std::string identifier)
+      : Module(std::move(identifier)), context_(&ir_module_), module_(this) {
+    context_.set_qt_callback(
         [&](ast::Declaration::Id const *id, type::QualType qt) {
           if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
             auto &entries = exported_[id->name()];
@@ -22,7 +20,7 @@ struct CompiledModule : module::Module {
           }
         });
 
-    context_->set_value_callback(
+    context_.set_value_callback(
         [&](ast::Declaration::Id const *id, ir::CompleteResultBuffer buffer) {
           if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
             auto iter = indices_.find(id);
@@ -33,11 +31,11 @@ struct CompiledModule : module::Module {
   }
 
   friend void BaseSerialize(module::ModuleWriter &w, CompiledModule const &m) {
-    base::Serialize(w, m.exported_);
+    base::Serialize(w, m.identifier(), type::GlobalTypeSystem, m.exported_);
   }
 
-  Context const &context() const { return *context_; }
-  Context &context() { return *context_; }
+  Context const &context() const { return context_; }
+  Context &context() { return context_; }
 
   template <std::input_iterator Iter>
   base::PtrSpan<ast::Node const> insert(Iter b, Iter e) {
@@ -57,8 +55,6 @@ struct CompiledModule : module::Module {
     return iter->second;
   }
 
-  std::string_view buffer() const { return content_; }
-
   bool has_error_in_dependent_module() const {
     return depends_on_module_with_errors_;
   }
@@ -66,12 +62,14 @@ struct CompiledModule : module::Module {
     depends_on_module_with_errors_ = true;
   }
 
+  ast::Module const &module() const { return module_; }
+
   ast::Scope const &scope() const { return module_.body_scope(); }
   ast::Scope &scope() { return module_.body_scope(); }
 
  private:
-  Context *context_;
-  std::string_view content_;
+  ir::Module ir_module_;
+  Context context_;
 
   // It is important for caching that symbols be exported in a consistent
   // manner. We use an ordered container to guarantee repeated invocations

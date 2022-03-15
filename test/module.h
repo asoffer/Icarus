@@ -19,143 +19,46 @@
 
 namespace test {
 
-// Used to guarantee that context is initialized before module.
-struct ContextHolder {
- protected:
-  ContextHolder() : ctx_(&ir_module_) {}
-  ir::Module ir_module_;
-  compiler::Context ctx_;
-};
+struct TestModule;
 
-struct TestModule : ContextHolder, compiler::CompiledModule {
-  TestModule()
-      : ContextHolder(),
-        compiler::CompiledModule("", &ctx_),
-        work_graph_(compiler::PersistentResources{
-            .work                = &work_set,
-            .module              = this,
-            .diagnostic_consumer = &consumer,
-            .importer            = &importer,
-            .shared_context      = &shared_context_,
-        }) {}
+struct CompilerInfrastructure {
+  CompilerInfrastructure();
+  CompilerInfrastructure(std::unique_ptr<module::Importer> i);
 
-  void AppendCode(std::string code) {
-    code.push_back('\n');
-    std::string_view content =
-        indexer_.insert(ir::ModuleId::New(), std::move(code));
-    size_t num = consumer.num_consumed();
-    auto stmts               = frontend::Parse(content, consumer);
-    if (consumer.num_consumed() != num) { return; }
-    auto nodes = insert(stmts.begin(), stmts.end());
-    compiler::CompilationData data{
-        .context        = &context(),
-        .work_resources = work_graph_.work_resources(),
-        .resources      = resources(),
-    };
-    compiler::Compiler c(&data);
-    for (auto const* node : nodes) {
-      auto const* decl = node->if_as<ast::Declaration>();
-      if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
-        VerifyType(c, node);
-      }
-    }
-    for (auto const* node : nodes) {
-      auto const* decl = node->if_as<ast::Declaration>();
-      if (not decl or not(decl->flags() & ast::Declaration::f_IsConst)) {
-        VerifyType(c, node);
-      }
-    }
-    Complete();
-  }
+  auto diagnostics() const { return consumer_.diagnostics(); }
+  auto& importer() { return importer_; }
 
-  void Complete() { work_graph_.complete(); }
+  TestModule& add_module(std::string name, std::string code);
+  TestModule& add_module(std::string code);
 
-  template <typename NodeType>
-  NodeType const* Append(std::string code) {
-    code.push_back('\n');
-    std::string_view content =
-        indexer_.insert(ir::ModuleId::New(), std::move(code));
-
-    size_t num = consumer.num_consumed();
-    auto stmts = frontend::Parse(content, consumer);
-    if (consumer.num_consumed() != num) { return nullptr; }
-    if (auto* ptr = stmts[0]->template if_as<NodeType>()) {
-      std::vector<std::unique_ptr<ast::Node>> ns;
-      ns.push_back(std::move(stmts[0]));
-      auto nodes = insert(ns.begin(), ns.end());
-      compiler::CompilationData data{
-          .context        = &context(),
-          .work_resources = work_graph_.work_resources(),
-          .resources      = resources(),
-      };
-      compiler::Compiler c(&data);
-      for (auto const* node : nodes) {
-        auto const* decl = node->if_as<ast::Declaration>();
-        if (decl and (decl->flags() & ast::Declaration::f_IsConst)) {
-          VerifyType(c, node);
-        }
-      }
-      for (auto const* node : nodes) {
-        auto const* decl = node->if_as<ast::Declaration>();
-        if (not decl or not(decl->flags() & ast::Declaration::f_IsConst)) {
-          VerifyType(c, node);
-        }
-      }
-      Complete();
-      return ptr;
-    } else {
-      return nullptr;
-    }
-  }
-
-  compiler::PersistentResources const& resources() const {
-    return work_graph_.resources();
-  }
-
-  compiler::WorkResources work_resources() {
-    return work_graph_.work_resources();
-  }
-
-  void CompileImportedLibrary(compiler::CompiledModule& imported_mod,
-                              std::string_view name, std::string s) {
-    auto id = ir::ModuleId::New();
-
-    compiler::PersistentResources import_resources{
-        .work                = &work_set,
-        .module              = &imported_mod,
-        .diagnostic_consumer = &consumer,
-        .importer            = &importer,
-        .shared_context      = &shared_context_,
-    };
-
-    std::string_view content =
-        indexer_.insert(ir::ModuleId::New(), std::move(s));
-    size_t num        = consumer.num_consumed();
-    auto parsed_nodes = frontend::Parse(content, consumer);
-    if (consumer.num_consumed() != num) { return; }
-    compiler::CompileModule(
-        imported_mod.context(), import_resources,
-        imported_mod.insert(parsed_nodes.begin(), parsed_nodes.end()));
-
-    ON_CALL(importer, Import(testing::_, testing::Eq(name)))
-        .WillByDefault(
-            [id](module::Module const*, std::string_view) { return id; });
-    ON_CALL(importer, get(id))
-        .WillByDefault([&imported_mod](ir::ModuleId) -> module::Module& {
-          return imported_mod;
-        });
-  }
-
-  module::SharedContext& shared_context() { return shared_context_; }
-
-  module::MockImporter importer;
-  diagnostic::TrackingConsumer consumer;
-  compiler::WorkSet work_set;
+  // Evaluates the expression `e` which must be part of the given `module`.
+  // Returns a buffer holding its value if evaluation succeeds and nullopt
+  // (alerting GoogleTest to failures) otherwise.
+  std::optional<ir::CompleteResultBuffer> Evaluate(
+      compiler::CompiledModule& module, ast::Expression const* e);
 
  private:
-  frontend::SourceIndexer indexer_;
+  frontend::SourceIndexer source_indexer_;
   module::SharedContext shared_context_;
-  compiler::WorkGraph work_graph_;
+  ir::Module ir_module_;
+  std::unique_ptr<module::Importer> importer_;
+  diagnostic::TrackingConsumer consumer_;
+  compiler::WorkSet work_set_;
+};
+
+struct TestModule : compiler::CompiledModule {
+  explicit TestModule(std::string identifier)
+      : compiler::CompiledModule(std::move(identifier)) {}
+
+  void set_id(ir::ModuleId id) { id_ = id; }
+
+  template <std::derived_from<ast::Node> NodeType>
+  NodeType const* get() {
+    return &module().stmts().back()->as<NodeType>();
+  }
+
+ private:
+  ir::ModuleId id_;
 };
 
 }  // namespace test

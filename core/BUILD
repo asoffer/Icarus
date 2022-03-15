@@ -96,7 +96,9 @@ cc_library(
     deps = [
         ":arguments",
         "//base:debug",
+        "//base:extend",
         "//base:macros",
+        "//base:serialize",
         "//base:universal_print",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

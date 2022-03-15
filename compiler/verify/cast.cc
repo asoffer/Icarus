@@ -36,8 +36,10 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   }
 
   if (type_qt.type() != type::Type_) {
-    diag().Consume(
-        NotAType{.view = node->range(), .type = type_qt.type()});
+    diag().Consume(NotAType{
+        .view = node->range(),
+        .type = TypeForDiagnostic(node->type(), context()),
+    });
     return context().set_qual_type(node, type::QualType::Error());
   }
   if (not type_qt.constant()) {

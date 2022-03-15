@@ -29,8 +29,8 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
     c.current_block()     = c.current().subroutine->entry();
 
-    auto from = ir::Reg::Arg(0);
-    auto to   = ir::Reg::Out(0);
+    auto from = ir::Reg::Parameter(0);
+    auto to   = ir::Reg::Output(0);
 
     size_t i = 0;
     for (auto const &field : s->fields()) {
@@ -65,8 +65,8 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
     c.current_block()     = c.current().subroutine->entry();
 
-    auto from = ir::Reg::Arg(0);
-    auto to   = ir::Reg::Out(0);
+    auto from = ir::Reg::Parameter(0);
+    auto to   = ir::Reg::Output(0);
 
     size_t i = 0;
     for (auto const &field : s->fields()) {
@@ -100,8 +100,8 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
     c.push_current(&*fn);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
     c.current_block()     = fn->entry();
-    auto var              = ir::Reg::Arg(0);
-    auto val              = ir::Reg::Arg(1);
+    auto var              = ir::Reg::Parameter(0);
+    auto val              = ir::Reg::Parameter(1);
 
     for (size_t i = 0; i < s->fields().size(); ++i) {
       ir::Reg to_ref = c.current_block()->Append(
@@ -135,8 +135,8 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
     c.push_current(&*fn);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
     c.current_block()     = fn->entry();
-    auto var              = ir::Reg::Arg(0);
-    auto val              = ir::Reg::Arg(1);
+    auto var              = ir::Reg::Parameter(0);
+    auto val              = ir::Reg::Parameter(1);
 
     for (size_t i = 0; i < s->fields().size(); ++i) {
       ir::Reg to_ref = c.current_block()->Append(
@@ -237,7 +237,7 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
       data.push_current(&*full_dtor);
       absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
       data.current_block()  = data.current().subroutine->entry();
-      auto var              = ir::Reg::Arg(0);
+      auto var              = ir::Reg::Parameter(0);
       if (user_dtor) {
         // TODO: Should probably force-inline this.
         ir::PartialResultBuffer args;

@@ -16,7 +16,7 @@ void Compiler::EmitToBuffer(ast::ArrayType const *node,
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
     auto len = EmitCast(*this, context().typed(node->length(i)), type::Integer)
                    .back()
-                   .get<ir::Integer>();
+                   .get<ir::addr_t>();
     t = current_block()->Append(type::ArrayInstruction{
         .length = len, .data_type = t, .result = current().subroutine->Reserve()});
   }

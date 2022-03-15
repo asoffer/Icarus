@@ -10,7 +10,9 @@ namespace type {
 static base::Global<absl::node_hash_set<Slice>> cache;
 Slice const *Slc(Type t) {
   ASSERT(t.valid() == true);
-  return &*cache.lock()->insert(Slice(t)).first;
+  auto const *p = &*cache.lock()->insert(Slice(t)).first;
+  GlobalTypeSystem.insert(Type(p));
+  return p;
 }
 
 void Slice::WriteTo(std::string *result) const {

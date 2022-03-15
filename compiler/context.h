@@ -306,6 +306,8 @@ struct Context {
   ir::CompleteResultBuffer const *Constant(
       ast::Declaration::Id const *id) const;
 
+  void LoadConstantAddress(ast::Expression const *expr,
+                           ir::PartialResultBuffer &out) const;
   void LoadConstant(ast::Expression const *expr,
                     ir::CompleteResultBuffer &out) const;
   void LoadConstant(ast::Expression const *expr,

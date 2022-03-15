@@ -8,6 +8,44 @@
 namespace compiler {
 namespace {
 
+std::pair<ir::Subroutine, ir::ByteCode> MakeThunk(Compiler &c,
+                                                  ast::Expression const *expr,
+                                                  type::Type type) {
+  LOG("MakeThunk", "Thunk for %s: %s %p", expr->DebugString(), type.to_string(),
+      &c.context());
+  ir::Subroutine fn(type::Func({}, {type}));
+  c.push_current(&fn);
+  absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
+  c.current_block() = fn.entry();
+
+  ir::PartialResultBuffer buffer;
+  c.EmitToBuffer(expr, buffer);
+
+  if (type.is_big()) {
+    ASSERT(buffer.num_entries() != 0);
+    // TODO: guaranteed move-elision
+    MoveInitializationEmitter emitter(c);
+    emitter(type, ir::Reg::Output(0), buffer);
+  } else {
+    ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+               uint16_t, uint32_t, uint64_t, float, double, type::Type,
+               ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
+               ir::UnboundScope, ir::ScopeContext, ir::Block,
+               interface::Interface>(type, [&]<typename T>() {
+      c.current_block()->Append(ir::SetReturnInstruction<T>{
+          .index = 0,
+          .value = buffer.get<T>(0),
+      });
+    });
+  }
+  c.current_block()->set_jump(ir::JumpCmd::Return());
+  LOG("MakeThunk", "%s", fn);
+
+  return std::pair(std::move(fn), EmitByteCode(fn));
+}
+
+}  // namespace
+
 bool IsConstantDeclaration(ast::Node const *n) {
   auto const *decl = n->if_as<ast::Declaration>();
   if (not decl) { return false; }
@@ -21,7 +59,7 @@ bool IsNotConstantDeclaration(ast::Node const *n) {
 bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
                            Context &context, WorkGraph &work_graph,
                            base::PtrSpan<ast::Node const> nodes,
-                           bool stop_on_first_error = false) {
+                           bool stop_on_first_error) {
   CompilationData data{.context        = &context,
                        .work_resources = work_graph.work_resources(),
                        .resources      = work_graph.resources()};
@@ -41,48 +79,6 @@ bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
   return not found_error;
 }
 
-std::pair<ir::Subroutine, ir::ByteCode> MakeThunk(Compiler &c,
-                                                  ast::Expression const *expr,
-                                                  type::Type type) {
-  LOG("MakeThunk", "Thunk for %s: %s %p", expr->DebugString(), type.to_string(),
-      &c.context());
-  ir::Subroutine fn(type::Func({}, {type}));
-  c.push_current(&fn);
-  absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-  // TODO this is essentially a copy of the body of
-  // FunctionLiteral::EmitToBuffer Factor these out together.
-  c.current_block() = fn.entry();
-
-  ir::PartialResultBuffer buffer;
-  c.EmitToBuffer(expr, buffer);
-
-  // TODO: Treating slices specially is a big hack. We need to fix treating
-  // these things special just because they're big.
-  if (type.is_big()) {
-    ASSERT(buffer.num_entries() != 0);
-    // TODO: guaranteed move-elision
-    MoveInitializationEmitter emitter(c);
-    emitter(type, ir::Reg::Out(0), buffer);
-  } else {
-    ApplyTypes<bool, ir::Char, ir::Integer, int8_t, int16_t, int32_t, int64_t,
-               uint8_t, uint16_t, uint32_t, uint64_t, float, double, type::Type,
-               ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
-               ir::UnboundScope, ir::ScopeContext, ir::Block,
-               interface::Interface>(type, [&]<typename T>() {
-      c.current_block()->Append(ir::SetReturnInstruction<T>{
-          .index = 0,
-          .value = buffer.get<T>(0),
-      });
-    });
-  }
-  c.current_block()->set_jump(ir::JumpCmd::Return());
-  LOG("MakeThunk", "%s", fn);
-
-  return std::pair(std::move(fn), EmitByteCode(fn));
-}
-
-}  // namespace
-
 std::optional<ir::Subroutine> CompileModule(
     Context &context, PersistentResources const &resources,
     base::PtrSpan<ast::Node const> nodes) {
@@ -94,12 +90,17 @@ std::optional<ir::Subroutine> CompileModule(
   bool success = w.ExecuteCompilationSequence(
       context, nodes,
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
+        size_t error_count = w.resources().diagnostic_consumer->num_consumed();
         if (not VerifyNodesSatisfying(IsConstantDeclaration, context, w, nodes,
                                       true)) {
           return false;
         }
-        return VerifyNodesSatisfying(IsNotConstantDeclaration, context, w,
-                                     nodes);
+        if (not VerifyNodesSatisfying(IsNotConstantDeclaration, context, w,
+                                      nodes)) {
+          return false;
+        }
+
+        return error_count == w.resources().diagnostic_consumer->num_consumed();
       },
       [&](WorkGraph &w, base::PtrSpan<ast::Node const> nodes) {
         CompilationData data{.context        = &context,
@@ -110,7 +111,7 @@ std::optional<ir::Subroutine> CompileModule(
 
         c.push_current(&f);
         auto scaffolding_cleanup = EmitScaffolding(c, f, mod_scope);
-        absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
+        absl::Cleanup cleanup    = [&] { c.state().current.pop_back(); };
         if (not nodes.empty()) { EmitIrForStatements(c, &mod_scope, nodes); }
         c.current_block()->set_jump(ir::JumpCmd::Return());
 
@@ -249,7 +250,7 @@ WorkGraph::EvaluateToBuffer(Context &context,
   ir::NativeFn::Data data{
       .fn        = &thunk,
       .type      = &thunk.type()->as<type::Function>(),
-      .byte_code = byte_code.begin(),
+      .byte_code = &byte_code,
   };
 
   for (auto const &[item, deps] : w.dependencies_) {

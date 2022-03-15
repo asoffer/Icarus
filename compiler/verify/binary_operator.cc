@@ -80,8 +80,8 @@ struct BinaryOperatorTypeMismatch {
                                               diagnostic::Style::ErrorText()));
   }
 
-  type::Type lhs_type;
-  type::Type rhs_type;
+  std::string lhs_type;
+  std::string rhs_type;
   std::string_view view;
 };
 
@@ -154,8 +154,8 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
       return tv.context().set_qual_type(node, type::QualType(t, quals));
     } else {
       tv.diag().Consume(BinaryOperatorTypeMismatch{
-          .lhs_type = lhs_qt.type(),
-          .rhs_type = rhs_qt.type(),
+          .lhs_type = TypeForDiagnostic(&node->lhs(), tv.context()),
+          .rhs_type = TypeForDiagnostic(&node->rhs(), tv.context()),
           .view     = node->range(),
       });
       return tv.context().set_qual_type(node, type::QualType::Error());
@@ -242,8 +242,8 @@ absl::Span<type::QualType const> VerifyArithmeticAssignment(
       return tv.context().set_qual_types(node, {});
     } else {
       tv.diag().Consume(BinaryOperatorTypeMismatch{
-          .lhs_type = lhs_qt.type(),
-          .rhs_type = rhs_qt.type(),
+          .lhs_type = TypeForDiagnostic(&node->lhs(), tv.context()),
+          .rhs_type = TypeForDiagnostic(&node->rhs(), tv.context()),
           .view     = node->range(),
       });
       return tv.context().set_qual_type(node, type::QualType::Error());
@@ -323,8 +323,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
           return context().set_qual_type(node, type::QualType(t, quals));
         } else {
           diag().Consume(BinaryOperatorTypeMismatch{
-              .lhs_type = lhs_qt.type(),
-              .rhs_type = rhs_qt.type(),
+              .lhs_type = TypeForDiagnostic(&node->lhs(), context()),
+              .rhs_type = TypeForDiagnostic(&node->rhs(), context()),
               .view     = node->range(),
           });
           return context().set_qual_type(node, type::QualType::Error());

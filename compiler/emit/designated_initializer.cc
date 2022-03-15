@@ -62,11 +62,11 @@ void Compiler::EmitMoveInit(
 
     {
       type::Typed<ir::Reg> field_reg(
-          current_block()->Append(
-              ir::StructIndexInstruction{.addr        = to[0]->reg(),
-                                         .index       = i,
-                                         .struct_type = &struct_type,
-                                         .result = current().subroutine->Reserve()}),
+          current_block()->Append(ir::StructIndexInstruction{
+              .addr        = to[0]->reg(),
+              .index       = i,
+              .struct_type = &struct_type,
+              .result      = current().subroutine->Reserve()}),
           struct_type.fields()[i].type);
       if (field.initial_value.empty()) {
         DefaultInitializationEmitter emitter(*this);
@@ -80,21 +80,23 @@ void Compiler::EmitMoveInit(
   }
 
   for (auto const *assignment : node->assignments()) {
-    if (assignment->lhs().size() != 1) { NOT_YET(assignment->lhs().size()); }
     if (assignment->rhs().size() != 1) { NOT_YET(assignment->rhs().size()); }
 
-    auto const &id     = assignment->lhs()[0]->as<ast::Identifier>();
-    auto const *f      = struct_type.field(id.name());
-    size_t field_index = struct_type.index(f->name);
+    std::vector<type::Typed<ir::RegOr<ir::addr_t>>> field_regs;
+    field_regs.reserve(assignment->lhs().size());
+    for (auto const *l : assignment->lhs()) {
+      auto const *f      = struct_type.field(l->as<ast::Identifier>().name());
+      size_t field_index = struct_type.index(f->name);
 
-    type::Typed<ir::RegOr<ir::addr_t>> field_reg(
-        current_block()->Append(
-            ir::StructIndexInstruction{.addr        = to[0]->reg(),
-                                       .index       = field_index,
-                                       .struct_type = &struct_type,
-                                       .result = current().subroutine->Reserve()}),
-        struct_type.fields()[field_index].type);
-    EmitMoveInit(assignment->rhs()[0], absl::MakeConstSpan(&field_reg, 1));
+      field_regs.emplace_back(
+          current_block()->Append(ir::StructIndexInstruction{
+              .addr        = to[0]->reg(),
+              .index       = field_index,
+              .struct_type = &struct_type,
+              .result      = current().subroutine->Reserve()}),
+          struct_type.fields()[field_index].type);
+    }
+    EmitMoveInit(assignment->rhs()[0], field_regs);
   }
 }
 

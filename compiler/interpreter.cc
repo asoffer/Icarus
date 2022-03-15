@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
 #include "absl/flags/flag.h"
@@ -17,17 +18,17 @@
 #include "absl/types/span.h"
 #include "base/log.h"
 #include "base/untyped_buffer.h"
+#include "compiler/flags.h"
 #include "compiler/importer.h"
 #include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
-#include "diagnostic/consumer/streaming.h"
-#include "frontend/lex/lex.h"
 #include "frontend/parse.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/subroutine.h"
 #include "module/module.h"
 #include "module/shared_context.h"
+#include "nlohmann/json.hpp"
 #include "opt/opt.h"
 
 ABSL_FLAG(std::vector<std::string>, log, {},
@@ -45,12 +46,16 @@ ABSL_FLAG(std::string, module_map, "",
           "Filename holding information about the module-map describing the "
           "location precompiled modules");
 
+ABSL_FLAG(std::string, diagnostics, "console",
+          "Indicates how diagnostics should be emitted. Options: console "
+          "(default), or json.");
+
 namespace compiler {
 namespace {
 
-int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
-  frontend::SourceIndexer source_indexer;
-  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
+int Interpret(char const *file_name, absl::Span<char *> program_arguments,
+              frontend::SourceIndexer &source_indexer,
+              diagnostic::DiagnosticConsumer &diag) {
   auto content = LoadFileContent(file_name);
   if (not content.ok()) {
     diag.Consume(
@@ -70,7 +75,7 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
   }
 
   compiler::WorkSet work_set;
-  module::SharedContext shared_context;
+  module::SharedContext shared_context(MakeBuiltinModule());
   compiler::FileImporter importer(
       &work_set, &diag, &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);
@@ -80,29 +85,29 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
     return 1;
   }
 
-  std::string_view file_content =
-      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
-
-  ir::Module ir_module;
-  Context context(&ir_module);
-  CompiledModule exec_mod(file_content, &context);
+  auto [mod_id, exec_mod] =
+      shared_context.module_table().add_module<compiler::CompiledModule>("");
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
-    exec_mod.scope().embed(&importer.get(embedded_id));
+    exec_mod->scope().embed(&importer.get(embedded_id));
   }
+
+  std::string_view file_content =
+      source_indexer.insert(mod_id, *std::move(content));
 
   PersistentResources resources{
       .work                = &work_set,
-      .module              = &exec_mod,
+      .module              = exec_mod,
       .diagnostic_consumer = &diag,
       .importer            = &importer,
       .shared_context      = &shared_context,
   };
 
-  ASSIGN_OR(return 1, auto lexemes, frontend::Lex(file_content, diag));
-  auto module = frontend::ParseModule(lexemes.lexemes_);
-  if (not module) { return 1; }
-  base::PtrSpan nodes = exec_mod.set_module(std::move(*module));
-  ASSIGN_OR(return 1, auto main_fn, CompileModule(context, resources, nodes));
+  auto parsed_nodes = frontend::Parse(file_content, diag);
+  if (diag.num_consumed() > 0) { return 1; }
+  auto nodes = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
+  ASSIGN_OR(return 1,  //
+                   auto main_fn,
+                   CompileModule(exec_mod->context(), resources, nodes));
   // TODO All the functions? In all the modules?
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
 
@@ -117,7 +122,7 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments) {
   ir::CompleteResultBuffer argument_buffer;
   argument_buffer.append(&argument_slice);
 
-  importer.set_subroutine(&exec_mod, std::move(main_fn));
+  importer.set_subroutine(exec_mod, std::move(main_fn));
   importer.ForEachSubroutine([&](ir::Subroutine const &subroutine) {
     InterpretAtCompileTime(subroutine, argument_buffer);
   });
@@ -155,10 +160,17 @@ int main(int argc, char *argv[]) {
   }
 
   if (args.size() < 2) {
-    std::cerr << "Missing required positional argument: source file"
-              << std::endl;
+    std::cerr << "Missing required positional argument: source file\n";
     return 1;
   }
+
   absl::Span<char *> arguments = absl::MakeSpan(args).subspan(2);
-  return compiler::Interpret(args[1], arguments);
+
+  frontend::SourceIndexer source_indexer;
+  auto diag = compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
+  if (not diag.ok()) {
+    std::cerr << diag.status().message();
+    return 1;
+  }
+  return compiler::Interpret(args[1], arguments, source_indexer, **diag);
 }

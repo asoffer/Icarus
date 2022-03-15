@@ -2,13 +2,13 @@
 #define ICARUS_TYPE_PRIMITIVE_H
 
 #include "absl/functional/function_ref.h"
-#include "base/global.h"
 #include "base/meta.h"
 #include "ir/value/addr.h"
 #include "ir/value/char.h"
 #include "ir/value/integer.h"
 #include "ir/value/module_id.h"
 #include "ir/value/scope.h"
+#include "type/system.h"
 #include "type/type.h"
 
 namespace type {
@@ -58,7 +58,7 @@ struct Primitive : LegacyType {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
-  bool is_big() const override { return false; }
+  bool is_big() const override;
 
  private:
   Kind kind_;
@@ -70,7 +70,7 @@ struct Primitive : LegacyType {
 
 namespace internal_primitive {
 
-inline base::Global kPrimitiveArray = std::array{
+inline constinit std::array kPrimitiveArray{
     Primitive(Primitive::Kind::U8),
     Primitive(Primitive::Kind::U16),
     Primitive(Primitive::Kind::U32),
@@ -96,6 +96,11 @@ inline base::Global kPrimitiveArray = std::array{
     Primitive(Primitive::Kind::Void),
 };
 
+inline bool GlobalTypeSystemInitializer = [] {
+  for (auto const &p : kPrimitiveArray) { GlobalTypeSystem.insert(Type(&p)); }
+  return true;
+}();
+
 }  // namespace internal_primitive
 
 template <typename... Ts, typename Fn>
@@ -107,38 +112,38 @@ Primitive::ApplyImpl(Fn &&fn) const {
   // `kPrimitiveArray->data()` and use the offset to index into a collection of
   // function of our own creation.
   int index =
-      static_cast<int>(this - internal_primitive::kPrimitiveArray->data());
+      static_cast<int>(this - internal_primitive::kPrimitiveArray.data());
   return std::array{absl::FunctionRef<return_type()>([&] {
     return std::forward<Fn>(fn).template operator()<Ts>();
   })...}[index]();
 }
 
-inline Type U8           = &(*internal_primitive::kPrimitiveArray)[0];
-inline Type U16          = &(*internal_primitive::kPrimitiveArray)[1];
-inline Type U32          = &(*internal_primitive::kPrimitiveArray)[2];
-inline Type U64          = &(*internal_primitive::kPrimitiveArray)[3];
-inline Type Integer      = &(*internal_primitive::kPrimitiveArray)[4];
-inline Type I8           = &(*internal_primitive::kPrimitiveArray)[5];
-inline Type I16          = &(*internal_primitive::kPrimitiveArray)[6];
-inline Type I32          = &(*internal_primitive::kPrimitiveArray)[7];
-inline Type I64          = &(*internal_primitive::kPrimitiveArray)[8];
-inline Type F32          = &(*internal_primitive::kPrimitiveArray)[9];
-inline Type F64          = &(*internal_primitive::kPrimitiveArray)[10];
-inline Type Bool         = &(*internal_primitive::kPrimitiveArray)[11];
-inline Type Char         = &(*internal_primitive::kPrimitiveArray)[12];
-inline Type Byte         = &(*internal_primitive::kPrimitiveArray)[13];
-inline Type Type_        = &(*internal_primitive::kPrimitiveArray)[14];
-inline Type Module       = &(*internal_primitive::kPrimitiveArray)[15];
-inline Type ScopeContext = &(*internal_primitive::kPrimitiveArray)[16];
-inline Type UnboundScope = &(*internal_primitive::kPrimitiveArray)[17];
-inline Type NullPtr      = &(*internal_primitive::kPrimitiveArray)[18];
-inline Type EmptyArray   = &(*internal_primitive::kPrimitiveArray)[19];
-inline Type Label        = &(*internal_primitive::kPrimitiveArray)[20];
-inline Type Interface    = &(*internal_primitive::kPrimitiveArray)[21];
-inline Type Void         = &(*internal_primitive::kPrimitiveArray)[22];
+inline Type U8           = &internal_primitive::kPrimitiveArray[0];
+inline Type U16          = &internal_primitive::kPrimitiveArray[1];
+inline Type U32          = &internal_primitive::kPrimitiveArray[2];
+inline Type U64          = &internal_primitive::kPrimitiveArray[3];
+inline Type Integer      = &internal_primitive::kPrimitiveArray[4];
+inline Type I8           = &internal_primitive::kPrimitiveArray[5];
+inline Type I16          = &internal_primitive::kPrimitiveArray[6];
+inline Type I32          = &internal_primitive::kPrimitiveArray[7];
+inline Type I64          = &internal_primitive::kPrimitiveArray[8];
+inline Type F32          = &internal_primitive::kPrimitiveArray[9];
+inline Type F64          = &internal_primitive::kPrimitiveArray[10];
+inline Type Bool         = &internal_primitive::kPrimitiveArray[11];
+inline Type Char         = &internal_primitive::kPrimitiveArray[12];
+inline Type Byte         = &internal_primitive::kPrimitiveArray[13];
+inline Type Type_        = &internal_primitive::kPrimitiveArray[14];
+inline Type Module       = &internal_primitive::kPrimitiveArray[15];
+inline Type ScopeContext = &internal_primitive::kPrimitiveArray[16];
+inline Type UnboundScope = &internal_primitive::kPrimitiveArray[17];
+inline Type NullPtr      = &internal_primitive::kPrimitiveArray[18];
+inline Type EmptyArray   = &internal_primitive::kPrimitiveArray[19];
+inline Type Label        = &internal_primitive::kPrimitiveArray[20];
+inline Type Interface    = &internal_primitive::kPrimitiveArray[21];
+inline Type Void         = &internal_primitive::kPrimitiveArray[22];
 
 inline Type MakePrimitive(Primitive::Kind k) {
-  return &(*internal_primitive::kPrimitiveArray)
+  return &internal_primitive::kPrimitiveArray
       [static_cast<std::underlying_type_t<Primitive::Kind>>(k)];
 }
 

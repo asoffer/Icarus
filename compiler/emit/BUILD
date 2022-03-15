@@ -158,6 +158,7 @@ cc_test(
     deps = [
         "//compiler",
         "//test:evaluation",
+        "//test:module",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -520,15 +521,7 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "scope_node_test",
-    srcs = ["scope_node_test.cc"],
-    deps = [
-        "//compiler",
-        "//test:evaluation",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
+# TODO: ScopeNode test
 
 cc_library(
     name = "short_function_literal",

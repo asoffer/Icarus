@@ -107,6 +107,14 @@ std::optional<ir::Subroutine> CompileModule(
     Context &context, PersistentResources const &resources,
     base::PtrSpan<ast::Node const> nodes);
 
+bool IsConstantDeclaration(ast::Node const *n);
+bool IsNotConstantDeclaration(ast::Node const *n);
+
+bool VerifyNodesSatisfying(std::predicate<ast::Node const *> auto &&predicate,
+                           Context &context, WorkGraph &work_graph,
+                           base::PtrSpan<ast::Node const> nodes,
+                           bool stop_on_first_error = false);
+
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_WORK_GRAPH_H

@@ -28,15 +28,15 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
     type::Type ret_type = fn_type.return_types()[i];
     if (ret_type.is_big()) {
       type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
-          ir::RegOr<ir::addr_t>(ir::Reg::Out(i)), ret_type);
+          ir::RegOr<ir::addr_t>(ir::Reg::Output(i)), ret_type);
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       out.clear();
       EmitCast(*this, context().typed(expr), ret_type, out);
-      ApplyTypes<ir::Integer, bool, ir::Char, int8_t, int16_t, int32_t, int64_t,
-                 uint8_t, uint16_t, uint32_t, uint64_t, float, double,
-                 type::Type, ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
-                 ir::GenericFn, interface::Interface>(
+      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
+                 interface::Interface>(
           ret_type, [&]<typename T>() {
             current_block()->Append(ir::SetReturnInstruction<T>{
                 .index = static_cast<uint16_t>(i),

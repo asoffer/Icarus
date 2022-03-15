@@ -1,9 +1,37 @@
 #include "type/opaque.h"
 
+#include "absl/strings/str_format.h"
 #include "base/debug.h"
+#include "base/global.h"
+#include "type/system.h"
 
 namespace type {
-void Opaque::WriteTo(std::string *result) const { result->append("<opaque>"); }
+
+static base::Global<
+    absl::flat_hash_map<std::pair<std::string, uintptr_t>, Opaque const *>>
+    used_;
+
+// TODO: Using the address as the numeric id is problematic because it makes
+// values uncachable.
+Opaque const *Opaq(module::Module const *mod, uintptr_t numeric_id) {
+  auto handle = used_.lock();
+  auto [iter, inserted] = handle->try_emplace(
+      std::make_pair(std::string(mod->identifier()), numeric_id));
+  if (inserted) { iter->second = new Opaque(std::move(mod)); }
+  return iter->second;
+}
+
+Opaque::Opaque(module::Module const *mod)
+    : LegacyType(IndexOf<Opaque>(),
+                 LegacyType::Flags{.is_default_initializable = 0,
+                                   .is_copyable              = 0,
+                                   .is_movable               = 0,
+                                   .has_destructor           = 0}),
+      mod_(mod) {}
+
+void Opaque::WriteTo(std::string *result) const {
+  absl::StrAppendFormat(result, "opaque.%x", numeric_id());
+}
 
 core::Bytes Opaque::bytes(core::Arch const &a) const {
   UNREACHABLE("Must not request the size of an opaque type");
@@ -11,6 +39,15 @@ core::Bytes Opaque::bytes(core::Arch const &a) const {
 
 core::Alignment Opaque::alignment(core::Arch const &a) const {
   UNREACHABLE("Must not request the alignment of an opaque type");
+}
+
+Type OpaqueTypeInstruction::Resolve() const {
+  auto *o = Allocate<Opaque>(mod);
+  used_.lock()->emplace(std::make_pair(std::string(mod->identifier()),
+                                       reinterpret_cast<uintptr_t>(o)),
+                        o);
+  GlobalTypeSystem.insert(Type(o));
+  return o;
 }
 
 }  // namespace type

@@ -15,9 +15,9 @@ struct TestCase {
 using TerminalTest = testing::TestWithParam<TestCase>;
 TEST_P(TerminalTest, Terminal) {
   auto const &[terminal, expected] = GetParam();
-  test::TestModule mod;
-  auto const *term = mod.Append<ast::Terminal>(terminal);
-  EXPECT_THAT(mod.context().qual_types(term),
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(terminal);
+  EXPECT_THAT(mod.context().qual_types(mod.get<ast::Terminal>()),
               testing::UnorderedElementsAre(expected));
 }
 

@@ -11,84 +11,109 @@ using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
 TEST(ArrayLiteral, EmptyArray) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"([])");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::Constant(type::EmptyArray)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(ArrayLiteral, OneElement) {
-  test::TestModule mod;
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([0])");
+    test::CompilerInfrastructure infra;
+    auto &mod        = infra.add_module(R"([0])");
+    auto const *expr = mod.get<ast::Expression>();
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
                          type::Arr(1, type::Integer))));
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([0 as i64])");
+    test::CompilerInfrastructure infra;
+    auto &mod        = infra.add_module(R"([0 as i64])");
+    auto const *expr = mod.get<ast::Expression>();
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(
                          type::QualType::Constant(type::Arr(1, type::I64))));
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([true])");
+    test::CompilerInfrastructure infra;
+    auto &mod        = infra.add_module(R"([true])");
+    auto const *expr = mod.get<ast::Expression>();
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(
                          type::QualType::Constant(type::Arr(1, type::Bool))));
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([[true]])");
+    test::CompilerInfrastructure infra;
+    auto &mod        = infra.add_module(R"([[true]])");
+    auto const *expr = mod.get<ast::Expression>();
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
                          type::Arr(1, type::Arr(1, type::Bool)))));
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([[]])");
+    test::CompilerInfrastructure infra;
+    auto &mod        = infra.add_module(R"([[]])");
+    auto const *expr = mod.get<ast::Expression>();
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
                          type::Arr(1, type::EmptyArray))));
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(ArrayLiteral, MultipleMatchingElements) {
-  test::TestModule mod;
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([0, 0])");
+    test::CompilerInfrastructure infra;
+    auto &mod        = infra.add_module(R"([0, 0])");
+    auto const *expr = mod.get<ast::Expression>();
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
                          type::Arr(2, type::Integer))));
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([true, false])");
+    test::CompilerInfrastructure infra;
+    auto &mod        = infra.add_module(R"([true, false])");
+    auto const *expr = mod.get<ast::Expression>();
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(
                          type::QualType::Constant(type::Arr(2, type::Bool))));
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([[true], [false]])");
+    test::CompilerInfrastructure infra;
+    auto &mod        = infra.add_module(R"([[true], [false]])");
+    auto const *expr = mod.get<ast::Expression>();
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
                          type::Arr(2, type::Arr(1, type::Bool)))));
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
   {
-    auto const *expr = mod.Append<ast::Expression>(R"([[[]], [[]], [[]]])");
+    test::CompilerInfrastructure infra;
+    auto &mod        = infra.add_module(R"([[[]], [[]], [[]]])");
+    auto const *expr = mod.get<ast::Expression>();
     auto qts         = mod.context().qual_types(expr);
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(
                          type::Arr(3, type::Arr(1, type::EmptyArray)))));
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(ArrayLiteral, ElementTypeMismatch) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([0 as i64, 0.0])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"([0 as i64, 0.0])");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "inconsistent-array-element-type")));
 }

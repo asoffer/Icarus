@@ -19,8 +19,8 @@ void EmitArrayAssignment(auto emitter, type::Array const *to,
                          type::Array const *from) {
   auto &fn                = *emitter.current().subroutine;
   emitter.current_block() = fn.entry();
-  auto to_ptr             = ir::Reg::Arg(0);
-  auto from_ptr           = ir::Reg::Arg(1);
+  auto to_ptr             = ir::Reg::Parameter(0);
+  auto from_ptr           = ir::Reg::Parameter(1);
 
   auto to_data_ptr_type   = type::Ptr(to->data_type());
   auto from_data_ptr_type = type::Ptr(from->data_type());
@@ -251,12 +251,15 @@ void CopyAssignmentEmitter::EmitAssignment(
     type::Typed<ir::PartialResultRef> const &from) {
   ir::PartialResultBuffer buffer;
   buffer.append(*from);
-  EmitCast(current(), from.type(), t, buffer);
+  EmitCast(*this, from.type(), t, buffer);
   t->Apply([&]<typename T>() {
-    current_block()->Append(ir::StoreInstruction<T>{
-        .value    = buffer.back().get<T>(),
-        .location = to,
-    });
+    if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      current_block()->Append(ir::CompileTime<ir::Action::CopyAssign, T>{
+          .from = from->get<ir::addr_t>(), .to = to});
+    } else {
+      current_block()->Append(ir::StoreInstruction<T>{
+          .value = buffer.back().get<T>(), .location = to});
+    }
   });
 }
 
@@ -265,12 +268,15 @@ void MoveAssignmentEmitter::EmitAssignment(
     type::Typed<ir::PartialResultRef> const &from) {
   ir::PartialResultBuffer buffer;
   buffer.append(*from);
-  EmitCast(current(), from.type(), t, buffer);
+  EmitCast(*this, from.type(), t, buffer);
   t->Apply([&]<typename T>() {
-    current_block()->Append(ir::StoreInstruction<T>{
-        .value    = buffer.back().get<T>(),
-        .location = to,
-    });
+    if constexpr (base::meta<T> == base::meta<ir::Integer>) {
+      current_block()->Append(ir::CompileTime<ir::Action::MoveAssign, T>{
+          .from = from->get<ir::addr_t>(), .to = to});
+    } else {
+      current_block()->Append(ir::StoreInstruction<T>{
+          .value = buffer.back().get<T>(), .location = to});
+    }
   });
 }
 

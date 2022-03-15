@@ -9,10 +9,10 @@ namespace {
 TEST(LoadStoreCache, Caches) {
   ir::LoadStoreCache cache;
   cache.slot<int>(ir::Reg(1)).first = 3;
-  cache.slot<int>(ir::Reg(2)).first = ir::Reg::Arg(2);
+  cache.slot<int>(ir::Reg(2)).first = ir::Reg::Parameter(2);
   EXPECT_EQ(cache.slot<int>(ir::Reg(1)).first.get(), ir::RegOr<int>(3));
   EXPECT_EQ(cache.slot<int>(ir::Reg(2)).first.get(),
-            ir::RegOr<int>(ir::Reg::Arg(2)));
+            ir::RegOr<int>(ir::Reg::Parameter(2)));
 }
 
 TEST(LoadStoreCache, ClearAll) {

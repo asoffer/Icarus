@@ -18,6 +18,11 @@ ic_low_level_library(
     name = "core",
     visibility = ["//visibility:public"],
     srcs = ["core.ic"],
+    deps = [
+        "//stdlib/c:math",
+        "//stdlib/c:stdlib",
+        "//stdlib/c:types",
+    ],
     precompile = False,
 )
 

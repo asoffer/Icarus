@@ -6,14 +6,17 @@
 #include "module/module.h"
 #include "module/shared_context.h"
 #include "type/qual_type.h"
+#include "type/system.h"
 
 namespace module {
 
 struct ModuleReader {
-  explicit ModuleReader(std::string_view s, SharedContext& context)
+  explicit ModuleReader(std::string_view s, SharedContext& context,
+                        type::TypeSystem& system)
       : head_(reinterpret_cast<std::byte const*>(s.begin())),
         end_(reinterpret_cast<std::byte const*>(s.end())),
-        context_(context) {}
+        context_(context),
+        system_(system) {}
 
   absl::Span<std::byte const> read_bytes(size_t num_bytes);
 
@@ -29,12 +32,14 @@ struct ModuleReader {
   bool read(std::string& s);
   bool read(Module::SymbolInformation& info);
   bool read(type::QualType& qt);
+  bool read(type::Type& t);
 
  private:
   std::byte const* head_;
   std::byte const* end_;
 
   SharedContext& context_;
+  type::TypeSystem& system_;
 };
 
 }  // namespace module

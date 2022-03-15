@@ -17,10 +17,10 @@
 #include "backend/llvm.h"
 #include "base/log.h"
 #include "base/untyped_buffer.h"
+#include "compiler/flags.h"
 #include "compiler/importer.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
-#include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/subroutine.h"
@@ -58,6 +58,13 @@ ABSL_FLAG(std::string, object_file, "",
 ABSL_FLAG(std::string, module_map, "",
           "Filename holding information about the module-map describing the "
           "location precompiled modules");
+ABSL_FLAG(std::string, diagnostics, "console",
+          "Indicates how diagnostics should be emitted. Options: console "
+          "(default), or json.");
+ABSL_FLAG(std::string, module_identifier, "",
+          "Identifier to be used to uniquely identify this module amongst all "
+          "modules being linked together, and must not begin with a tilde (~) "
+          "character.");
 
 namespace compiler {
 namespace {
@@ -131,14 +138,19 @@ int CompileToObjectFile(CompiledModule const &module, ir::Subroutine const &fn,
   return 0;
 }
 
-int Compile(char const *file_name, std::string const &output_byte_code,
+int Compile(char const *file_name, std::string module_identifier,
+            std::string const &output_byte_code,
             std::string const &output_object_file) {
   frontend::SourceIndexer source_indexer;
-  diagnostic::StreamingConsumer diag(stderr, &source_indexer);
+  auto diag = compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
+  if (not diag.ok()) {
+    std::cerr << diag.status().message();
+    return 1;
+  }
 
   llvm::TargetMachine *target_machine;
   if (not output_object_file.empty()) {
-    target_machine = InitializeLlvm(diag);
+    target_machine = InitializeLlvm(**diag);
     if (not target_machine) { return 1; }
   }
 
@@ -148,9 +160,9 @@ int Compile(char const *file_name, std::string const &output_byte_code,
   }
 
   compiler::WorkSet work_set;
-  module::SharedContext shared_context;
+  module::SharedContext shared_context(MakeBuiltinModule());
   compiler::FileImporter importer(
-      &work_set, &diag, &source_indexer, *std::move(module_map),
+      &work_set, diag->get(), &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);
 
   if (not importer.SetImplicitlyEmbeddedModules(
@@ -160,48 +172,49 @@ int Compile(char const *file_name, std::string const &output_byte_code,
 
   auto content = LoadFileContent(file_name);
   if (not content.ok()) {
-    diag.Consume(
+    (*diag)->Consume(
         MissingModule{.source    = file_name,
                       .requestor = "",
                       .reason    = std::string(content.status().message())});
     return 1;
   }
 
-  std::string_view file_content =
-      source_indexer.insert(ir::ModuleId::New(), *std::move(content));
-
-  ir::Module ir_module;
-  compiler::Context context(&ir_module);
-  compiler::CompiledModule exec_mod(file_content, &context);
+  auto [mod_id, exec_mod] =
+      shared_context.module_table().add_module<compiler::CompiledModule>(
+          std::move(module_identifier));
   for (ir::ModuleId embedded_id : importer.implicitly_embedded_modules()) {
-    exec_mod.scope().embed(&importer.get(embedded_id));
+    exec_mod->scope().embed(&importer.get(embedded_id));
   }
 
-  auto parsed_nodes = frontend::Parse(file_content, diag);
-  auto nodes        = exec_mod.insert(parsed_nodes.begin(), parsed_nodes.end());
+  std::string_view file_content =
+      source_indexer.insert(mod_id, *std::move(content));
+
+  auto parsed_nodes = frontend::Parse(file_content, **diag);
+  auto nodes        = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
 
   compiler::PersistentResources resources{
       .work                = &work_set,
-      .module              = &exec_mod,
-      .diagnostic_consumer = &diag,
+      .module              = exec_mod,
+      .diagnostic_consumer = diag->get(),
       .importer            = &importer,
       .shared_context      = &shared_context,
   };
-  auto main_fn = CompileModule(context, resources, nodes);
+  auto main_fn = CompileModule(exec_mod->context(), resources, nodes);
 
-  if (diag.num_consumed() != 0) { return 1; }
+  if ((*diag)->num_consumed() != 0) { return 1; }
   if (not output_byte_code.empty()) {
     std::string s;
     module::ModuleWriter w(&s);
-    base::Serialize(w, exec_mod);
-    std::ofstream os(absl::GetFlag(FLAGS_byte_code).c_str(), std::ofstream::out);
+    base::Serialize(w, *exec_mod);
+    std::ofstream os(absl::GetFlag(FLAGS_byte_code).c_str(),
+                     std::ofstream::out);
     os << s;
     os.close();
   }
 
   int return_code = 0;
   if (not output_object_file.empty()) {
-    return_code = CompileToObjectFile(exec_mod, *main_fn, target_machine);
+    return_code = CompileToObjectFile(*exec_mod, *main_fn, target_machine);
   }
 
   return return_code;
@@ -230,6 +243,16 @@ int main(int argc, char *argv[]) {
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
 
+  std::string module_id = absl::GetFlag(FLAGS_module_identifier);
+  if (module_id.empty()) {
+    std::cerr << "--module_identifier must not be empty.";
+    return 1;
+  } else if (module_id[0] == '~') {
+    std::cerr << "--module_identifier starts with the character '~'. "
+                 "Identifiers starting with a tilde are reserved.";
+    return 1;
+  }
+
   std::vector<std::string> log_keys = absl::GetFlag(FLAGS_log);
   for (std::string_view key : log_keys) { base::EnableLogging(key); }
 
@@ -254,5 +277,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  return compiler::Compile(args[1], output_byte_code, output_object_file);
+  return compiler::Compile(args[1], std::move(module_id), output_byte_code,
+                           output_object_file);
 }

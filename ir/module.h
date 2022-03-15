@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/node_hash_map.h"
 #include "base/debug.h"
 #include "base/iterator.h"
 #include "ir/byte_code/byte_code.h"
@@ -24,10 +25,8 @@ struct Module {
     auto iter = scope_data_.find(s);
     ASSERT(iter != scope_data_.end());
     auto &[byte_code, data] = iter->second;
-    ASSERT(byte_code.size() == 0u);
     byte_code = EmitByteCode(*s);
-    ASSERT(byte_code.size() != 0u);
-    data->byte_code = byte_code.begin();
+    data->byte_code = &byte_code;
   }
 
   template <auto EmitByteCode>
@@ -35,10 +34,8 @@ struct Module {
     auto iter = fn_data_.find(f);
     ASSERT(iter != fn_data_.end());
     auto &[byte_code, data] = iter->second;
-    ASSERT(byte_code.size() == 0u);
     byte_code = EmitByteCode(*f);
-    ASSERT(byte_code.size() != 0u);
-    data->byte_code = byte_code.begin();
+    data->byte_code = &byte_code;
   }
 
   NativeFn InsertFunction(type::Function const *fn_type);
@@ -71,10 +68,10 @@ struct Module {
   // `ByteCode` object itself, once inserted into the map, should never be
   // modified. Iterators may reference into it. As `byte_code_` is further
   // modified, the values may be moved, but iterators will remain valid.
-  absl::flat_hash_map<NativeFn,
+  absl::node_hash_map<NativeFn,
                       std::pair<ByteCode, std::unique_ptr<NativeFn::Data>>>
       fn_data_;
-  absl::flat_hash_map<Scope, std::pair<ByteCode, std::unique_ptr<Scope::Data>>>
+  absl::node_hash_map<Scope, std::pair<ByteCode, std::unique_ptr<Scope::Data>>>
       scope_data_;
 
   absl::flat_hash_map<type::Type, NativeFn> init_, destroy_;

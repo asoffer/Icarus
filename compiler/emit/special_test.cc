@@ -9,14 +9,13 @@ namespace {
 std::string Context() {
   return R"(
   S ::= struct {
-    n := 3
+    n:= 3 as i64
     p: *i64
   }
   )";
 }
 
-using Test = test::EvaluationTest;
-INSTANTIATE_TEST_SUITE_P(All, Test,
+INSTANTIATE_TEST_SUITE_P(All, EvaluationTest,
                          testing::ValuesIn({
                              test::TestCase{.expr     = R"((() -> {
                                b: bool

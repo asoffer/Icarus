@@ -10,6 +10,7 @@ cc_library(
 cc_library(
     name = "module",
     hdrs = ["module.h"],
+    srcs = ["module.cc"],
     deps = [
         "//ast:ast",
         "//ast:expression",
@@ -22,6 +23,7 @@ cc_library(
         "//frontend:source_indexer",
         "//module:module",
         "//module:mock_importer",
+        "//module:trivial_importer",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
@@ -40,8 +42,12 @@ cc_library(
     name = "evaluation",
     hdrs = ["evaluation.h"],
     deps = [
-        ":expected_value",
         ":module",
+        ":expected_value",
+        "//compiler:module",
+        "//compiler:work_graph",
+        "//frontend:parse",
+        "//module:trivial_importer",
         "//type",
         "//type:typed_value",
         "@com_google_googletest//:gtest",

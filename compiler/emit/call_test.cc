@@ -1,6 +1,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/evaluation.h"
+#include "test/module.h"
 #include "type/primitive.h"
 
 namespace compiler {
@@ -14,23 +15,14 @@ std::string Context() {
   )";
 }
 
-using Test = test::EvaluationTest;
 INSTANTIATE_TEST_SUITE_P(
-    All, Test,
+    All, EvaluationTest,
     testing::ValuesIn({
-        test::TestCase{.expr     = R"(bytes(i64))",
+        test::TestCase{.expr     = R"(builtin.bytes(i64))",
                        .expected = uint64_t{sizeof(int64_t)}},
-        test::TestCase{.expr     = R"(alignment(i64))",
+        test::TestCase{.expr     = R"(builtin.alignment(i64))",
                        .expected = uint64_t{alignof(int64_t)}},
-        test::TestCase{.expr     = R"(callable(i64))",
-                       .expected = interface::Interface::Callable(
-                           core::Arguments<type::Type>({type::I64}, {}))},
-        test::TestCase{
-            .expr     = R"(callable(bool, n = i64))",
-            .expected = interface::Interface::Callable(
-                core::Arguments<type::Type>({type::Bool}, {{"n", type::I64}}))},
         // TODO: Test for opaque, foreign.
-
         test::TestCase{.expr = R"((() => 3)())", .expected = int64_t{3}},
 
         test::TestCase{.expr     = R"(((n: i64) => n * n)(3))",
@@ -52,9 +44,8 @@ INSTANTIATE_TEST_SUITE_P(
                        .expected = int64_t{9}},
         test::TestCase{.expr     = R"(((n ::= 2) => n * n)(n = 3))",
                        .expected = int64_t{9}},
-        // test::TestCase{.expr     = R"(((n ::= 2) => n * n)())",
-        //          .expected = int64_t{4}},
-
+        test::TestCase{.expr     = R"(((n ::= 2) => n * n)())",
+                       .expected = int64_t{4}},
         test::TestCase{.expr     = R"(((a: i64, b: i64) => a + 2 * b)(1, 2))",
                        .expected = int64_t{5}},
         test::TestCase{
@@ -87,7 +78,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         // Value to pointer casts
         test::TestCase{
-            .expr     = R"(((n: *i64) => @n * @n)(3))",
+            .expr     = R"(((n: *i64) => @n * @n)(3 as i64))",
             .expected = int64_t{9},
         },
         test::TestCase{
@@ -110,7 +101,7 @@ INSTANTIATE_TEST_SUITE_P(
         // TODO: Value to pointer casts with structs and with designated
         // initializers.
         test::TestCase{
-            .expr     = R"(((n: *i64) => @n * @n)(3))",
+            .expr     = R"(((n: *i64) => @n * @n)(3 as i64))",
             .expected = int64_t{9},
         },
     }));
@@ -131,44 +122,31 @@ int64_t ForeignFunctionI64() { return 17; }
 namespace {
 
 TEST(CallTest, Foreign) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  constexpr std::string_view kDefinitions = R"(
   f_ptr ::= foreign("ForeignFunctionPtr", () -> *i64)
   f_i8  ::= foreign("ForeignFunctionI8", () -> i8)
   f_i64 ::= foreign("ForeignFunctionI64", () -> i64)
-  )");
-
-  CompilationData data{.context        = &mod.context(),
-                       .work_resources = mod.work_resources(),
-                       .resources      = mod.resources()};
+  )";
 
   {
-    auto const *e = mod.Append<ast::Expression>("f_ptr()");
-    auto t        = mod.context().qual_types(e)[0].type();
-    ASSERT_TRUE(t.valid());
-    Compiler c(&data);
-    ASSERT_THAT(c.EvaluateToBufferOrDiagnose(
-                    type::Typed<ast::Expression const *>(e, t)),
+    test::CompilerInfrastructure infra;
+    auto &mod     = infra.add_module(absl::StrCat(kDefinitions, "f_ptr()"));
+    auto const *e = mod.get<ast::Expression>();
+    ASSERT_THAT(infra.Evaluate(mod, e),
                 Optional(test::ExpectedValue(ir::Addr(ForeignFunctionPtr()))));
   }
-
   {
-    auto const *e = mod.Append<ast::Expression>("f_i8()");
-    auto t        = mod.context().qual_types(e)[0].type();
-    ASSERT_TRUE(t.valid());
-    Compiler c(&data);
-    ASSERT_THAT(c.EvaluateToBufferOrDiagnose(
-                    type::Typed<ast::Expression const *>(e, t)),
+    test::CompilerInfrastructure infra;
+    auto &mod     = infra.add_module(absl::StrCat(kDefinitions, "f_i8()"));
+    auto const *e = mod.get<ast::Expression>();
+    ASSERT_THAT(infra.Evaluate(mod, e),
                 Optional(test::ExpectedValue(ForeignFunctionI8())));
   }
-
   {
-    auto const *e = mod.Append<ast::Expression>("f_i64()");
-    auto t        = mod.context().qual_types(e)[0].type();
-    ASSERT_TRUE(t.valid());
-    Compiler c(&data);
-    ASSERT_THAT(c.EvaluateToBufferOrDiagnose(
-                    type::Typed<ast::Expression const *>(e, t)),
+    test::CompilerInfrastructure infra;
+    auto &mod     = infra.add_module(absl::StrCat(kDefinitions, "f_i64()"));
+    auto const *e = mod.get<ast::Expression>();
+    ASSERT_THAT(infra.Evaluate(mod, e),
                 Optional(test::ExpectedValue(ForeignFunctionI64())));
   }
 }

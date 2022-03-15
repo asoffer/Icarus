@@ -35,6 +35,17 @@ struct Function : ReturningType {
   core::Alignment alignment(core::Arch const &arch) const override;
 
   Completeness completeness() const override { return Completeness::Complete; }
+
+  template <typename H>
+  friend H AbslHashValue(H h, Function const &f) {
+    return H::combine(std::move(h), f.eager(), f.params(), f.return_types());
+  }
+
+  friend bool operator==(Function const &lhs, Function const &rhs);
+
+  friend bool operator!=(Function const &lhs, Function const &rhs) {
+    return not(lhs == rhs);
+  }
 };
 
 Function const *Func(core::Params<QualType> in, std::vector<Type> out);

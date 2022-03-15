@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/common.h"
+#include "compiler/type_for_diagnostic.h"
 #include "compiler/verify/verify.h"
 #include "compiler/work_item.h"
 
@@ -31,7 +32,7 @@ struct NonIntegralEnumerator {
   }
 
   std::string_view view;
-  type::Type type;
+  std::string type;
 };
 
 bool BodyVerifier::VerifyBody(ast::EnumLiteral const *node) {
@@ -44,9 +45,9 @@ bool BodyVerifier::VerifyBody(ast::EnumLiteral const *node) {
     }
     if (not type::IsIntegral(qts[0].type())) {
       success = false;
-      diag().Consume(NonIntegralEnumerator{
-          .view = value.get()->range(),
-          .type = qts[0].type(),
+      diag().Consume(NonIntegralEnumerator {
+        .view = value->range(),
+        .type = TypeForDiagnostic(value.get(), context()),
       });
     }
   }

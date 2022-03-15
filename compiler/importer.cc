@@ -37,17 +37,18 @@ std::optional<std::string> ReadFileToString(std::string const& file_name) {
 
   result.emplace();
 #if defined(__cpp_lib_string_resize_and_overwrite)
-    result->resize_and_overwrite(file_size, [&](char* buffer, size_t size) {
-      std::fread(buffer, sizeof(char), file_size, file);
-    });
+  result->resize_and_overwrite(file_size, [&](char* buffer, size_t size) {
+    std::fread(buffer, sizeof(char), file_size, file);
+  });
 #else
-    result->resize(file_size, '\0');
-    std::fread(result->data(), sizeof(char), file_size, file);
+  result->resize(file_size, '\0');
+  std::fread(result->data(), sizeof(char), file_size, file);
 #endif
-    return result;
+  return result;
 }
 
-absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
+absl::StatusOr<std::pair<ir::ModuleId, module::PrecompiledModule const*>>
+LoadPrecompiledModule(
     std::string const& file_name, absl::Span<std::string const> lookup_paths,
     absl::flat_hash_map<std::string, std::string> const& module_map,
     module::SharedContext& shared_context) {
@@ -62,7 +63,7 @@ absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
   }
 
   auto iter = module_map.find(file_name);
- if (iter == module_map.end()) {
+  if (iter == module_map.end()) {
     return absl::NotFoundError(absl::StrFormat(
         R"(Failed to find module map entry for '%s')", file_name));
   }
@@ -71,8 +72,8 @@ absl::StatusOr<module::PrecompiledModule> LoadPrecompiledModule(
     return module::PrecompiledModule::Make(*maybe_content, shared_context);
   }
 
-  return absl::NotFoundError(
-      absl::StrFormat(R"(Failed to load precompiled module for '%s')", file_name));
+  return absl::NotFoundError(absl::StrFormat(
+      R"(Failed to load precompiled module for '%s')", file_name));
 }
 
 }  // namespace
@@ -106,17 +107,10 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
     return iter->second.first;
   }
 
-  auto maybe_module = LoadPrecompiledModule(file_name, module_lookup_paths_,
-                                            module_map_, shared_context_);
-  if (maybe_module.ok()) {
-    ir::ModuleId id = ir::ModuleId::New();
-    iter->second    = std::make_pair(
-        id,
-        std::make_unique<module::PrecompiledModule>(*std::move(maybe_module)));
-    auto* module = std::get<std::unique_ptr<module::PrecompiledModule>>(
-                       iter->second.second)
-                       .get();
-    modules_by_id_.emplace(id, module);
+  if (auto maybe_module = LoadPrecompiledModule(file_name, module_lookup_paths_,
+                                                module_map_, shared_context_);
+      maybe_module.ok()) {
+    auto [id, module] = *maybe_module;
     graph_.add_edge(requestor, module);
     return id;
   }
@@ -132,40 +126,39 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
     });
     return ir::ModuleId::Invalid();
   }
-  ir::ModuleId id = ir::ModuleId::New();
-  std::string_view content =
-      source_indexer_.insert(id, *std::move(file_content));
 
-  iter->second = std::make_pair(id, std::make_unique<ModuleData>(content));
-  auto& [ir_module, context, module] =
-      *std::get<std::unique_ptr<ModuleData>>(iter->second.second);
-  modules_by_id_.emplace(id, &module);
+  static std::atomic<int> id_num = 0;
+  auto [mod_id, module] = iter->second =
+      shared_context_.module_table().add_module<CompiledModule>(absl::StrFormat(
+          "~gen-id-%u", id_num.fetch_add(1, std::memory_order_relaxed)));
 
   for (ir::ModuleId embedded_id : implicitly_embedded_modules()) {
-    module.scope().embed(&get(embedded_id));
+    module->scope().embed(&get(embedded_id));
   }
 
-  ASSIGN_OR(return ir::ModuleId::Invalid(),  //
-                   auto lexemes, frontend::Lex(content, *diagnostic_consumer_));
-  auto m = frontend::ParseModule(lexemes.lexemes_);
-  base::PtrSpan nodes = module.set_module(std::move(*m));
+  std::string_view content =
+      source_indexer_.insert(mod_id, *std::move(file_content));
+
+  auto parsed_nodes = frontend::Parse(content, *diagnostic_consumer_);
+  auto nodes        = module->insert(parsed_nodes.begin(), parsed_nodes.end());
 
   PersistentResources resources{
       .work                = work_set_,
-      .module              = &module,
+      .module              = module,
       .diagnostic_consumer = diagnostic_consumer_,
       .importer            = this,
       .shared_context      = &shared_context_,
   };
 
-  graph_.add_edge(requestor, &module);
-  std::optional subroutine = CompileModule(context, resources, nodes);
+  graph_.add_edge(requestor, module);
+
+  std::optional subroutine = CompileModule(module->context(), resources, nodes);
   if (subroutine) {
-    subroutine_by_module_.emplace(&module, *std::move(subroutine));
+    subroutine_by_module_.emplace(module, *std::move(subroutine));
   }
   // A nullopt subroutine means there were errors. We can still emit the `id`.
   // Errors will already be diagnosed.
-  return id;
+  return mod_id;
 }
 
 std::optional<absl::flat_hash_map<std::string, std::string>> MakeModuleMap(

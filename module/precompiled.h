@@ -17,8 +17,11 @@ namespace module {
 // Represents a module that has already been compiled, rather than those coming
 // from a source file.
 struct PrecompiledModule final : Module {
-  static absl::StatusOr<PrecompiledModule> Make(std::string_view file_name,
-                                                SharedContext& context);
+  explicit PrecompiledModule(std::string identifier)
+      : Module(std::move(identifier)) {}
+
+  static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>> Make(
+      std::string_view file_name, SharedContext& context);
 
   absl::Span<SymbolInformation const> Exported(std::string_view name) override;
 
@@ -26,8 +29,6 @@ struct PrecompiledModule final : Module {
   friend bool BaseDeserialize(ModuleReader& r, PrecompiledModule& m) {
     return base::Deserialize(r, m.symbols_);
   }
-
-  PrecompiledModule() = default;
 
   absl::flat_hash_map<std::string, std::vector<SymbolInformation>> symbols_;
 };

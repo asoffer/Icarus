@@ -10,7 +10,7 @@
 #include "compiler/context.h"
 #include "compiler/module.h"
 #include "compiler/work_item.h"
-#include "diagnostic/consumer/streaming.h"
+#include "diagnostic/consumer/consumer.h"
 #include "frontend/source_indexer.h"
 #include "ir/value/module_id.h"
 #include "module/importer.h"
@@ -53,8 +53,6 @@ struct FileImporter : module::Importer {
       std::vector<std::string> module_lookup_paths,
       module::SharedContext& shared_context)
       : work_set_(ASSERT_NOT_NULL(work_set)),
-        builtin_(MakeBuiltinModule()),
-        modules_by_id_{{ir::ModuleId::Builtin(), &builtin_}},
         diagnostic_consumer_(ASSERT_NOT_NULL(diagnostic_consumer)),
         module_map_(std::move(module_map)),
         module_lookup_paths_(std::move(module_lookup_paths)),
@@ -67,7 +65,7 @@ struct FileImporter : module::Importer {
                       std::string_view module_locator) override;
 
   module::Module& get(ir::ModuleId id) override {
-    return *modules_by_id_.at(id);
+    return *shared_context_.module_table().module(id);
   }
 
   void set_subroutine(module::Module const* mod, ir::Subroutine subroutine) {
@@ -85,23 +83,9 @@ struct FileImporter : module::Importer {
   }
 
  private:
-  struct ModuleData {
-    ModuleData(std::string_view file_content)
-        : root_context(&ir_module), module(file_content, &root_context) {}
-    ir::Module ir_module;
-    Context root_context;
-    CompiledModule module;
-  };
-
   WorkSet* work_set_;
-  absl::flat_hash_map<
-      std::string,
-      std::pair<ir::ModuleId,
-                std::variant<std::unique_ptr<module::PrecompiledModule>,
-                             std::unique_ptr<ModuleData>>>>
+  absl::flat_hash_map<std::string, std::pair<ir::ModuleId, CompiledModule*>>
       modules_;
-  module::BuiltinModule builtin_;
-  absl::flat_hash_map<ir::ModuleId, module::Module*> modules_by_id_;
   base::Graph<module::Module const*> graph_;
   absl::flat_hash_map<module::Module const*, ir::Subroutine>
       subroutine_by_module_;

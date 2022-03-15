@@ -22,7 +22,7 @@ ir::Subroutine AlignmentFn() {
   subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
       .index = 0,
       .value = subroutine.entry()->Append(AlignmentInstruction{
-          .type   = ir::Reg::Arg(0),
+          .type   = ir::Reg::Parameter(0),
           .result = subroutine.Reserve(),
       }),
   });
@@ -36,7 +36,7 @@ ir::Subroutine BytesFn() {
   subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
       .index = 0,
       .value = subroutine.entry()->Append(BytesInstruction{
-          .type   = ir::Reg::Arg(0),
+          .type   = ir::Reg::Parameter(0),
           .result = subroutine.Reserve(),
       }),
   });
@@ -51,7 +51,7 @@ module::Module::SymbolInformation SymbolFor() {
   static ir::NativeFn::Data data{
       .fn        = &subroutine,
       .type      = &subroutine.type()->template as<type::Function>(),
-      .byte_code = byte_code.begin(),
+      .byte_code = &byte_code,
   };
 
   ir::CompleteResultBuffer buffer;
@@ -65,12 +65,12 @@ module::Module::SymbolInformation SymbolFor() {
 
 }  // namespace
 
-module::BuiltinModule MakeBuiltinModule() {
-  module::BuiltinModule module;
+std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
+  auto module = std::make_unique<module::BuiltinModule>();
 
-  module.insert("abort", SymbolFor<AbortFn>());
-  module.insert("alignment", SymbolFor<AlignmentFn>());
-  module.insert("bytes", SymbolFor<BytesFn>());
+  module->insert("abort", SymbolFor<AbortFn>());
+  module->insert("alignment", SymbolFor<AlignmentFn>());
+  module->insert("bytes", SymbolFor<BytesFn>());
 
   return module;
 }

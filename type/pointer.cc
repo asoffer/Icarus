@@ -2,6 +2,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/global.h"
+#include "type/system.h"
 
 namespace type {
 
@@ -10,7 +11,10 @@ static base::Global<absl::flat_hash_map<Type, Pointer const *>> pointer_cache;
 Pointer const *Ptr(Type t) {
   auto handle = pointer_cache.lock();
   auto &p     = (*handle)[t];
-  if (not p) { p = new Pointer(t); }
+  if (not p) {
+    p = new Pointer(t);
+    GlobalTypeSystem.insert(Type(p));
+  }
   return p;
 }
 
@@ -20,7 +24,10 @@ static base::Global<absl::flat_hash_map<Type, BufferPointer const *>>
 BufferPointer const *BufPtr(Type t) {
   auto handle = buffer_pointer_cache.lock();
   auto &p     = (*handle)[t];
-  if (not p) { p = new BufferPointer(t); }
+  if (not p) {
+    p = new BufferPointer(t);
+    GlobalTypeSystem.insert(Type(p));
+  }
   return p;
 }
 

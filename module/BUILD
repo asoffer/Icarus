@@ -18,6 +18,17 @@ cc_library(
 )
 
 cc_library(
+    name = "mock_module",
+    hdrs = ["mock_module.h"],
+    deps = [
+        ":module",
+        "@com_google_googletest//:gtest",
+    ],
+    testonly = True,
+)
+
+
+cc_library(
     name = "builtin",
     hdrs = ["builtin.h"],
     deps = [
@@ -61,6 +72,17 @@ cc_library(
 )
 
 cc_library(
+    name = "trivial_importer",
+    hdrs = ["trivial_importer.h"],
+    deps = [
+        ":importer",
+        ":shared_context",
+        "//ir/value:module_id",
+    ],
+    testonly = True,
+)
+
+cc_library(
     name = "precompiled",
     hdrs = ["precompiled.h"],
     srcs = ["precompiled.cc"],
@@ -69,6 +91,7 @@ cc_library(
         ":reader",
         "//base:flyweight_map",
         "//type",
+        "//type:system",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
@@ -86,6 +109,7 @@ cc_library(
         "//base:flyweight_map",
         "//type:primitive",
         "//type:serialize",
+        "//type:system",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -94,9 +118,33 @@ cc_library(
     name = "shared_context",
     hdrs = ["shared_context.h"],
     deps = [
+        ":module",
+        ":table",
         "//base:flyweight_map",
         "//ir/value:foreign_fn",
         "//type:function",
+    ],
+)
+
+cc_library(
+    name = "table",
+    hdrs = ["table.h"],
+    deps = [
+        ":builtin",
+        ":module",
+        "//ir/value:module_id",
+    ],
+)
+
+cc_test(
+    name = "table_test",
+    srcs = ["table_test.cc"],
+    deps = [
+        ":builtin",
+        ":mock_module",
+        ":module",
+        ":table",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -107,6 +155,7 @@ cc_library(
         "//base:debug",
         "//type:primitive",
         "//type:serialize",
+        "//type:system",
         "@com_google_absl//absl/types:span",
     ],
 )

@@ -5,6 +5,8 @@ cc_library(
     hdrs = ["byte_code.h"],
     deps = [
         "//base:untyped_buffer",
+        "//core:type_contour",
+        "//type",
         "@com_google_absl//absl/types:span",
     ],
 )

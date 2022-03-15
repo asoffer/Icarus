@@ -11,163 +11,184 @@ using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
 TEST(Index, SliceConstantIndex) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"("abc"[0])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"("abc"[0])");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType(
                        type::Char, type::Quals::Const() | type::Quals::Buf())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Index, SliceNonConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(n: i64)");
-  auto const *expr = mod.Append<ast::Expression>(R"("abc"[n])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
+  n: i64
+  "abc"[n]
+  )");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::Char, type::Quals::Buf())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Index, NonConstantSliceConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(s := "abc")");
-  auto const *expr = mod.Append<ast::Expression>(R"(s[0])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
+  s := "abc"
+  s[0]
+  )");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::Char, type::Quals::Buf())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Index, NonConstantSliceNonConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
   s := "abc"
   n := 0
+  s[n]
   )");
-  auto const *expr = mod.Append<ast::Expression>(R"(s[n])");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::Char, type::Quals::Buf())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Index, SliceInvalidIndexType) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"("abc"["def"])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"("abc"["def"])");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType(
                        type::Char, type::Quals::Const() | type::Quals::Buf())));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "invalid-index-type")));
 }
 
 TEST(Index, SliceOutOfBoundsNegative) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"("abc"[-1])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"("abc"[-1])");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType(
                        type::Char, type::Quals::Const() | type::Quals::Buf())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Index, SliceOutOfBoundsLarge) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"("abc"[4])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"("abc"[4])");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType(
                        type::Char, type::Quals::Const() | type::Quals::Buf())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Index, ArrayConstantIndex) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][0])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"([1, 2, 3][0])");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::Integer, type::Quals::Const())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Index, ArrayNonConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(n: i64)");
-  auto const *expr =
-      mod.Append<ast::Expression>(R"([1 as i64, 2 as i64, 3 as i64][n])");
-  auto qts = mod.context().qual_types(expr);
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
+  n: i64
+  [1 as i64, 2 as i64, 3 as i64][n]
+  )");
+  auto const *expr = mod.get<ast::Expression>();
+  auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Unqualified())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Index, NonConstantArrayConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(s := [1 as i64, 2 as i64, 3 as i64])");
-  auto const *expr = mod.Append<ast::Expression>(R"(s[0])");
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
+  s := [1 as i64, 2 as i64, 3 as i64]
+  s[0]
+  )");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(
       qts, UnorderedElementsAre(type::QualType(type::I64, type::Quals::Buf())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Index, NonConstantArrayNonConstantIndex) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
   s := [1 as i64, 2 as i64, 3 as i64]
   n := 0
+  s[n]
   )");
-  auto const *expr = mod.Append<ast::Expression>(R"(s[n])");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(
       qts, UnorderedElementsAre(type::QualType(type::I64, type::Quals::Buf())));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(Index, ArrayInvalidIndexType) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([1 as i64]["def"])");
-  auto qts         = mod.context().qual_types(expr);
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"([1 as i64]["def"])");
+  auto const *expr = mod.get<ast::Expression>();
+  auto qts = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Const())));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "invalid-index-type")));
 }
 
 TEST(Index, ArrayOutOfBoundsNegative) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([1 as i64][-1])");
-  auto qts         = mod.context().qual_types(expr);
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"([1 as i64][-1])");
+  auto const *expr = mod.get<ast::Expression>();
+  auto qts = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Const())));
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("value-error", "negative-array-index")));
+  EXPECT_THAT(infra.diagnostics(), UnorderedElementsAre(Pair(
+                                       "value-error", "negative-array-index")));
 }
 
 TEST(Index, ArrayOutOfBoundsLarge) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::Expression>(R"([1 as i64][3])");
-  auto qts         = mod.context().qual_types(expr);
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"([1 as i64][3])");
+  auto const *expr = mod.get<ast::Expression>();
+  auto qts = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(
                        type::QualType(type::I64, type::Quals::Const())));
-  EXPECT_THAT(mod.consumer.diagnostics(),
+  EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("value-error", "indexing-array-out-of-bounds")));
 }
 
 TEST(Index, OverloadSuccess) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
+  test::CompilerInfrastructure infra;
+  auto &mod        = infra.add_module(R"(
   S ::= struct {}
   __index__ ::= (s: *S, x: f64) -> bool { return true }
 
   thing: S
+  thing[3.14]
   )");
-  auto const *expr = mod.Append<ast::Expression>(R"(thing[3.14])");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts,
               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 // TODO: We have not done error-handling yet (for any operator overload). We

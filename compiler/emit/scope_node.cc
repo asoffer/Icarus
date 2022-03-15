@@ -176,7 +176,9 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
     EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
                   node->arguments(), constant_arguments, argument_buffer);
 
-    ir::Inliner inliner(current().subroutine->num_regs(), scope->num_args());
+    ir::Inliner inliner(
+        current().subroutine->num_regs() - current().subroutine->num_allocs(),
+        scope->num_args(), current().subroutine->num_allocs());
 
     size_t j = 0;
     for (auto const &p : scope.type()->params()) {

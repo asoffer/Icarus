@@ -31,12 +31,13 @@ struct RegisterAllocator {
       : num_regs_(num_input_regs), num_args_(num_input_regs) {}
 
   // Returns a `Reg` with the next available register number.
-  Reg Reserve() { return Reg(num_regs_++); }
+  Reg Reserve() { return Reg(num_regs_++ - num_allocs()); }
 
   // Adds a new stack allocation of type `t` and returns the `Reg` representing
   // the register to which it was assigned.
   Reg StackAllocate(type::Type t) {
-    auto r = Reserve();
+    Reg r = Reg::StackAllocation(num_allocs());
+    ++num_regs_;
     allocs_.emplace_back(t, r);
     return r;
   }
@@ -45,7 +46,7 @@ struct RegisterAllocator {
   // alignment) and returns the `Reg` representing the register to which it was
   // assigned.
   Reg StackAllocate(core::TypeContour tc) {
-    auto r = Reserve();
+    Reg r = Reg::StackAllocation(num_allocs());
     raw_allocs_.emplace_back(tc, r);
     return r;
   }
