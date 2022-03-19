@@ -49,7 +49,7 @@ core::Params<ast::Expression const *> DefaultsFor(ast::Expression const *expr,
   } else if (auto const *p = expr->if_as<ast::ParameterizedExpression>()) {
     return p->params().Transform(
         [](auto const &decl) -> ast::Expression const * {
-          return decl->init_val();
+          return decl.init_val();
         });
   } else {
     return {};

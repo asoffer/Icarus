@@ -17,9 +17,8 @@ namespace ast {
 // Module:
 // Represents a module, the root node for a syntax tree.
 struct Module : Node {
-  // TODO: Remove `mod` parameter.
-  explicit Module(module::Module *mod, std::string_view range)
-      : Node(IndexOf<Module>(), range), body_scope_(mod) {}
+  explicit Module(std::string_view range)
+      : Node(IndexOf<Module>(), range), body_scope_(nullptr) {}
 
   Scope const &body_scope() const { return body_scope_; }
   Scope &body_scope() { return body_scope_; }
@@ -51,6 +50,11 @@ struct Module : Node {
                                        [&](std::string *out, auto const &elem) {
                                          elem->DebugStrAppend(out, indent);
                                        }));
+  }
+
+  void Initialize() {
+    Node::Initializer initializer{.scope = &body_scope()};
+    Initialize(initializer);
   }
 
   void Initialize(Initializer &initializer) override {

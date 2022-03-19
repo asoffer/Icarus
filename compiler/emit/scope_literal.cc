@@ -70,7 +70,7 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
 
   size_t i = 0;
   for (auto const &param : node->params()) {
-    absl::Span<ast::Declaration::Id const> ids = param.value->ids();
+    absl::Span<ast::Declaration::Id const> ids = param.value.ids();
     ASSERT(ids.size() == 1u);
     state().set_addr(&ids[0], ir::Reg::Parameter(i++));
   }

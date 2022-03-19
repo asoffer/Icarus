@@ -9,7 +9,7 @@ type::QualType VerifyConcrete(CompilationDataReference data,
                               ast::BlockNode const *node) {
   bool has_error   = false;
   auto param_types = node->params().Transform([&](auto const &p) {
-    auto qt = VerifyType(data, p.get())[0];
+    auto qt = VerifyType(data, &p)[0];
     has_error |= qt.HasErrorMark();
     return qt;
   });

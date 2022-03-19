@@ -9,7 +9,7 @@ namespace compiler {
 
 struct CompiledModule : module::Module {
   explicit CompiledModule(std::string identifier)
-      : Module(std::move(identifier)), context_(&ir_module_), module_(this) {
+      : Module(std::move(identifier)), context_(&ir_module_), module_("") {
     context_.set_qt_callback(
         [&](ast::Declaration::Id const *id, type::QualType qt) {
           if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
@@ -55,13 +55,6 @@ struct CompiledModule : module::Module {
     return iter->second;
   }
 
-  bool has_error_in_dependent_module() const {
-    return depends_on_module_with_errors_;
-  }
-  void set_dependent_module_with_errors() {
-    depends_on_module_with_errors_ = true;
-  }
-
   ast::Module const &module() const { return module_; }
 
   ast::Scope const &scope() const { return module_.body_scope(); }
@@ -77,13 +70,6 @@ struct CompiledModule : module::Module {
   absl::btree_map<std::string_view, std::vector<SymbolInformation>>
       exported_;
   absl::flat_hash_map<ast::Declaration::Id const *, size_t> indices_;
-  // This flag should be set to true if this module is ever found to depend on
-  // another which has errors, even if those errors do not effect
-  // code-generation in this module.
-  //
-  // TODO: As we move towards separate compilation in separate processes, this
-  // will become irrelevant.
-  bool depends_on_module_with_errors_ = false;
 
   ast::Module module_;
 };

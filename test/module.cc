@@ -1,6 +1,8 @@
 #include "test/module.h"
 
 #include "compiler/builtin_module.h"
+#include "frontend/lex/lex.h"
+#include "frontend/parse.h"
 #include "module/trivial_importer.h"
 
 namespace test {
@@ -92,9 +94,12 @@ TestModule& CompilerInfrastructure::add_module(std::string name,
   std::string_view content = source_indexer_.insert(id, std::move(code));
 
   size_t num = consumer_.num_consumed();
-  auto stmts = frontend::Parse(content, consumer_);
-  if (consumer_.num_consumed() != num) { return *mod; }
-  auto nodes = mod->insert(stmts.begin(), stmts.end());
+  ASSIGN_OR(return *mod,  //
+                   auto result, frontend::Lex(content, consumer_));
+  ASSIGN_OR(return *mod,  //
+                   auto m, frontend::ParseModule(result.lexemes_, consumer_));
+  m.Initialize();
+  auto nodes = mod->set_module(std::move(m));
 
   compiler::CompileModule(mod->context(),
                           {.work                = &work_set_,

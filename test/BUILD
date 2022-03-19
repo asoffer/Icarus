@@ -19,6 +19,7 @@ cc_library(
         "//compiler:resources",
         "//compiler:work_graph",
         "//diagnostic/consumer:tracking",
+        "//frontend/lex",
         "//frontend:parse",
         "//frontend:source_indexer",
         "//module:module",

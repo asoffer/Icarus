@@ -265,10 +265,6 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
     if (auto const *member = s->constant(node->member_name())) {
       absl::flat_hash_set<CallMetadata::callee_locator_t> locs;
 
-      if (c.diag().num_consumed() != 0) {
-        c.resources().module->set_dependent_module_with_errors();
-      }
-
       for (auto const &decl : struct_lit->as<ast::StructLiteral>().fields()) {
         if (not(decl.flags() & ast::Declaration::f_IsConst)) { continue; }
 

@@ -10,9 +10,9 @@ void Compiler::EmitToBuffer(ast::BlockNode const *node,
 
   for (auto const &param : node->params()) {
     auto addr = current().subroutine->Alloca(
-        context().qual_types(param.value.get())[0].type());
+        context().qual_types(&param.value)[0].type());
     // TODO: Support multiple declarations?
-    state().set_addr(&param.value->ids()[0], addr);
+    state().set_addr(&param.value.ids()[0], addr);
   }
 
   EmitIrForStatements(*this, &node->body_scope(), node->stmts());

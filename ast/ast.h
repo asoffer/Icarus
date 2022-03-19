@@ -216,9 +216,12 @@ struct BinaryOperator : Expression {
   };
 
   static std::string_view Symbol(Kind k) {
-    constexpr std::array<std::string_view, 12> kSymbols{
-        "+", "-", "*", "/", "%", "and", "or", "xor", "&", "|", "^", ">>"};
     return kSymbols[static_cast<int>(k)];
+  }
+
+  static Kind KindFrom(std::string_view symbol) {
+    return static_cast<Kind>(std::distance(
+        kSymbols.begin(), std::find(kSymbols.begin(), kSymbols.end(), symbol)));
   }
 
   explicit BinaryOperator(std::unique_ptr<Expression> lhs, Kind kind,
@@ -240,6 +243,9 @@ struct BinaryOperator : Expression {
  private:
   Kind kind_;
   std::unique_ptr<Expression> lhs_, rhs_;
+
+  static constexpr std::array<std::string_view, 12> kSymbols{
+      "+", "-", "*", "/", "%", "and", "or", "xor", "&", "|", "^", ">>"};
 };
 
 // BinaryAssignmentOperator:
@@ -1274,6 +1280,15 @@ struct UnaryOperator : Expression {
     BlockJump,
   };
 
+  static std::string_view Symbol(Kind k) {
+    return kSymbols[static_cast<int>(k)];
+  }
+
+  static Kind KindFrom(std::string_view symbol) {
+    return static_cast<Kind>(std::distance(
+        kSymbols.begin(), std::find(kSymbols.begin(), kSymbols.end(), symbol)));
+  }
+
   explicit UnaryOperator(std::string_view range, Kind kind,
                          std::unique_ptr<Expression> operand)
       : Expression(IndexOf<UnaryOperator>(), range),
@@ -1288,6 +1303,9 @@ struct UnaryOperator : Expression {
  private:
   std::unique_ptr<Expression> operand_;
   Kind kind_;
+
+  static constexpr std::array<std::string_view, 11> kSymbols{
+      "init", "copy", "move", "destroy", "[*]", ":?", "@", "*", "&", "-", ">>"};
 };
 
 // YieldStmt:

@@ -85,7 +85,7 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
           for (auto const &param : block_to_emit->params()) {
             ir::Reg r = scope.parameters(ir::Block(block_index))[param_index++];
             inliner(r);
-            auto const &id        = param.value->ids()[0];
+            auto const &id        = param.value.ids()[0];
             type::Type param_type = c.context().qual_types(&id)[0].type();
             ir::PartialResultBuffer buffer;
             buffer.append(r);

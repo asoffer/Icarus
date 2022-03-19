@@ -23,6 +23,7 @@
 #include "compiler/importer.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
+#include "frontend/lex/lex.h"
 #include "frontend/parse.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/subroutine.h"
@@ -159,8 +160,10 @@ int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
       .shared_context      = &shared_context,
   };
 
-  auto parsed_nodes = frontend::Parse(file_content, **diag);
-  auto nodes   = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
+
+  ASSIGN_OR(return 1, auto lexemes, frontend::Lex(file_content, **diag));
+  ASSIGN_OR(return 1, auto m, frontend::ParseModule(lexemes.lexemes_, **diag));
+  auto nodes = exec_mod->set_module(std::move(m));
   auto main_fn = compiler::CompileModule(exec_mod->context(), resources, nodes);
   if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }
 

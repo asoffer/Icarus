@@ -139,8 +139,12 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   std::string_view content =
       source_indexer_.insert(mod_id, *std::move(file_content));
 
-  auto parsed_nodes = frontend::Parse(content, *diagnostic_consumer_);
-  auto nodes        = module->insert(parsed_nodes.begin(), parsed_nodes.end());
+  ASSIGN_OR(NOT_YET(),  //
+            auto lexemes, frontend::Lex(content, *diagnostic_consumer_));
+  ASSIGN_OR(NOT_YET(),  //
+            auto m,
+            frontend::ParseModule(lexemes.lexemes_, *diagnostic_consumer_));
+  auto nodes = module->set_module(std::move(m));
 
   PersistentResources resources{
       .work                = work_set_,

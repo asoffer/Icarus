@@ -23,6 +23,7 @@
 #include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
+#include "frontend/lex/lex.h"
 #include "frontend/parse.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/subroutine.h"
@@ -102,9 +103,9 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
       .shared_context      = &shared_context,
   };
 
-  auto parsed_nodes = frontend::Parse(file_content, diag);
-  if (diag.num_consumed() > 0) { return 1; }
-  auto nodes = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
+  ASSIGN_OR(return 1, auto lexemes, frontend::Lex(file_content, diag));
+  ASSIGN_OR(return 1, auto m, frontend::ParseModule(lexemes.lexemes_, diag));
+  auto nodes = exec_mod->set_module(std::move(m));
   ASSIGN_OR(return 1,  //
                    auto main_fn,
                    CompileModule(exec_mod->context(), resources, nodes));

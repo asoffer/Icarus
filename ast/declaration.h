@@ -18,7 +18,7 @@ struct Declaration;
 //
 // TODO: Does it make sense for this to be an expression?
 struct Declaration_Id : Expression {
-  explicit Declaration_Id(std::string_view range)
+  explicit Declaration_Id(std::string_view range = "")
       : Expression(IndexOf<Declaration_Id>(), range) {}
 
   std::string_view name() const { return range(); }
