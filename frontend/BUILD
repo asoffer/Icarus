@@ -7,11 +7,22 @@ cc_library(
 )
 
 cc_library(
+    name = "parser_dsl",
+    hdrs = ["parser_dsl.h"],
+    deps = [
+        ":lexeme",
+        "//base:meta",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "parse",
     hdrs = ["parse.h"],
     srcs = ["parse.cc"],
     deps = [
         ":lexeme",
+        ":parser_dsl",
         "//ast:ast",
         "//ast:module",
         "//diagnostic/consumer",

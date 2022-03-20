@@ -24,6 +24,7 @@ struct Lexeme {
     EndOfFile,
   };
 
+  Lexeme() : Lexeme(Kind::EndOfFile, "") {}
   explicit Lexeme(Kind k, std::string_view content)
       : data_(content.data()),
         kind_(static_cast<uint64_t>(k)),
