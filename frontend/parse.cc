@@ -20,12 +20,22 @@ bool LoggingEnabled() {
   return b;
 }
 
+constexpr std::string_view Prettify(std::string_view sv, std::string_view func) {
+  auto end = sv.find("::Parse(");
+  if (end == std::string_view::npos) { return func; }
+  auto start = sv.find("(anonymous namespace)::") + 23;
+  if (start > sv.size()) { start = sv.find("bool ") + 5; }
+  if (start > sv.size()) { start = 0; }
+  return sv.substr(start, end - start);
+}
+
 #define PARSE_DEBUG_LOG()                                                      \
   if (LoggingEnabled()) {                                                      \
     absl::Format(&std::cerr, "%s%s\n",                                         \
-                 std::string(2 * (log_indentation++), ' '), __func__);         \
+                 std::string(2 * (log_indentation++), ' '),                    \
+                 Prettify(__PRETTY_FUNCTION__, __func__));                     \
   }                                                                            \
-  absl::Cleanup c = [&, f = __func__] {                                        \
+  absl::Cleanup c = [&, f = Prettify(__PRETTY_FUNCTION__, __func__)] {         \
     if (LoggingEnabled()) {                                                    \
       absl::Format(&std::cerr, "%sFinished %s\n",                              \
                    std::string(2 * --log_indentation, ' '), f);                \
@@ -34,6 +44,92 @@ bool LoggingEnabled() {
 #else
 #define PARSE_DEBUG_LOG() (void)0
 #endif
+
+template <typename P>
+concept Parser = requires(P p) {
+  // clang-format off
+  { base::meta<typename P::type> };
+  { P::Parse(std::declval<absl::Span<Lexeme const>&>(),
+             std::ignore) } -> std::same_as<bool>;
+  { P::Parse(std::declval<absl::Span<Lexeme const>&>(),
+             std::declval<typename P::type&>()) } -> std::same_as<bool>;
+  // clang-format on
+};
+
+struct IdentifierImpl {
+  using type = std::string_view;
+
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    PARSE_DEBUG_LOG();
+    if (lexemes.empty()) { return false; }
+    auto const &lexeme = lexemes[0];
+    if (lexeme.kind() != Lexeme::Kind::Identifier) { return false; }
+    if (kKeywords.contains(lexemes[0].content())) { return false; }
+    out = lexemes[0].content();
+    lexemes.remove_prefix(1);
+    return true;
+  }
+
+ private:
+  static const absl::flat_hash_set<std::string_view> kKeywords;
+};
+
+const absl::flat_hash_set<std::string_view> IdentifierImpl::kKeywords = {
+    "false", "true",   "null", "i8",      "i16",   "i32", "i64",
+    "u8",    "u16",    "u32",  "u64",     "bool",  "f32", "f64",
+    "type",  "module", "byte", "builtin", "import"};
+
+struct OperatorImpl {
+  using type = std::string_view;
+
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    PARSE_DEBUG_LOG();
+    if (lexemes.empty()) { return false; }
+    auto const &lexeme = lexemes[0];
+    if (lexeme.kind() != Lexeme::Kind::Operator) { return false; }
+    out = lexemes[0].content();
+    lexemes.remove_prefix(1);
+    return true;
+  }
+};
+
+template <Parser L, Parser R>
+struct DisjunctionImpl {
+  using type = typename L::type;
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    return L::Parse(lexemes, out) or R::Parse(lexemes, out);
+  }
+};
+
+template <Lexeme::Kind Separator, Parser P>
+struct SeparatedListImpl {
+  using type = std::vector<typename P::type>;
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    PARSE_DEBUG_LOG();
+    type result;
+    auto span        = lexemes;
+    using value_type = typename type::value_type;
+    value_type v;
+    if (not P::Parse(span, v)) {
+      out = std::move(result);
+      return true;
+    }
+    result.push_back(std::move(v));
+    while (true) {
+      if (span.empty() or span[0].kind() != Separator) {
+        lexemes = span;
+        out     = std::move(result);
+        return true;
+      }
+      span.remove_prefix(1);
+      if (P::Parse(span, v)) {
+        result.emplace_back(std::move(v));
+      } else {
+        return false;
+      }
+    }
+  }
+};
 
 enum Precedence {
   kTimesDiv,
@@ -60,17 +156,6 @@ std::string_view ExtractRange(absl::Span<Lexeme const> &lexemes,
   std::string_view result(lexemes.front().content().data(), length);
   lexemes = remaining;
   return result;
-}
-
-bool ParseOperator(absl::Span<Lexeme const> &lexemes, std::string_view &out) {
-  PARSE_DEBUG_LOG();
-  if (lexemes.empty()) { return false; }
-  if (lexemes[0].kind() == Lexeme::Kind::Operator) {
-    out = lexemes[0].content();
-    lexemes.remove_prefix(1);
-    return true;
-  }
-  return false;
 }
 
 template <auto P, typename T>
@@ -131,20 +216,52 @@ bool ParseBraced(absl::Span<Lexeme const> &lexemes, T &out) {
   return ParseDelimited<P, '{'>(lexemes, out);
 }
 
-bool ParseIdentifier(absl::Span<Lexeme const> &lexemes, std::string_view &out) {
-  PARSE_DEBUG_LOG();
-  if (lexemes.empty()) { return false; }
-  auto const &lexeme = lexemes[0];
-  if (lexeme.kind() != Lexeme::Kind::Identifier) { return false; }
-  static const absl::flat_hash_set<std::string_view> kKeywords = {
-      "false", "true",   "null", "i8",      "i16",   "i32", "i64",
-      "u8",    "u16",    "u32",  "u64",     "bool",  "f32", "f64",
-      "type",  "module", "byte", "builtin", "import"};
-  if (kKeywords.contains(lexemes[0].content())) { return false; }
-  out = lexemes[0].content();
-  lexemes.remove_prefix(1);
-  return true;
+template <char C, typename P>
+struct DelimitedByImpl {
+  using type = typename P::type;
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    auto range = CheckBounds(lexemes);
+    if (not range.data()) { return false; }
+    bool result = P::Parse(range, out) and range.empty();
+    if (result) { lexemes.remove_prefix(lexemes.front().match_offset() + 1); }
+    return result;
+  }
+
+ private:
+  static absl::Span<Lexeme const> CheckBounds(
+      absl::Span<Lexeme const> &lexemes) {
+    if (lexemes.empty() or lexemes.front().content().size() != 1 or
+        lexemes.front().content()[0] != C) {
+      return absl::Span<Lexeme const>(nullptr, 0);
+    } else {
+      size_t offset = lexemes.front().match_offset();
+      return lexemes.subspan(1, offset - 1);
+    }
+  }
+};
+
+template <Parser L, Parser R>
+constexpr auto operator|(L, R) requires(base::meta<typename L::type> ==
+                                        base::meta<typename R::type>) {
+  return DisjunctionImpl<L, R>{};
 }
+
+template <char C>
+constexpr auto DelimitedBy(auto P) {
+  return DelimitedByImpl<C, decltype(P)>();
+}
+
+constexpr auto Bracketed(auto P) { return DelimitedBy<'['>(P); }
+constexpr auto Parenthesized(auto P) { return DelimitedBy<'('>(P); }
+constexpr auto Braced(auto P) { return DelimitedBy<'{'>(P); }
+constexpr auto CommaSeparatedListOf(auto P) {
+  return SeparatedListImpl<Lexeme::Kind::Comma, decltype(P)>();
+}
+
+constexpr auto Identifier = IdentifierImpl();
+constexpr auto AnOperator = OperatorImpl();  // TODO: Rename or remove enum so
+                                             // this can be named appropriately.
+constexpr auto DeclarationId = Identifier | Parenthesized(AnOperator);
 
 template <typename T, auto P, typename... Args>
 bool ParseSequence(absl::Span<Lexeme const> &lexemes, std::vector<T> &out,
@@ -193,7 +310,7 @@ bool ParseNamedArgument(absl::Span<Lexeme const> &lexemes,
   if (not ParseExpressionWithPrecedence(span, expr, kAssignment)) {
     return false;
   }
-  result = ast::Call::Argument(name.content(), std::move(expr));
+  result  = ast::Call::Argument(name.content(), std::move(expr));
   lexemes = span;
   return true;
 }
@@ -223,15 +340,10 @@ bool ParseExpression(absl::Span<Lexeme const> &lexemes,
 
 bool ParseDeclarationId(absl::Span<Lexeme const> &lexemes,
                         ast::Declaration::Id &out) {
-  PARSE_DEBUG_LOG();
   std::string_view sv;
-  if (ParseIdentifier(lexemes, sv) or
-      ParseParenthesized<ParseOperator>(lexemes, sv)) {
-    out = ast::Declaration::Id(sv);
-    return true;
-  } else {
-    return false;
-  }
+  if (not DeclarationId.Parse(lexemes, sv)) { return false; }
+  out = ast::Declaration::Id(sv);
+  return true;
 }
 
 bool ParseLabel(absl::Span<Lexeme const> &lexemes,
@@ -324,12 +436,12 @@ bool ParseDeclaration(absl::Span<Lexeme const> &lexemes,
                       ast::Declaration &out) {
   PARSE_DEBUG_LOG();
   auto span = lexemes;
-  std::vector<ast::Declaration::Id> ids;
-  if (not ParseParenthesized<
-          ParseCommaSeparatedList<ParseDeclarationId, ast::Declaration::Id>>(
-          span, ids)) {
-    if (not ParseDeclarationId(span, ids.emplace_back(""))) { return false; }
+  std::vector<std::string_view> sv_ids;
+  if (not Parenthesized(CommaSeparatedListOf(DeclarationId)).Parse(span, sv_ids)) {
+    if (not DeclarationId.Parse(span, sv_ids.emplace_back())) { return false; }
   }
+  std::vector<ast::Declaration::Id> ids;
+  for (std::string_view sv : sv_ids) { ids.emplace_back(sv); }
 
   std::unique_ptr<ast::Expression> type_expression;
   std::unique_ptr<ast::Expression> initial_value;
@@ -484,7 +596,7 @@ bool ParseScopeLiteral(absl::Span<Lexeme const> &lexemes,
   if (lexemes.empty() or lexemes[0].content() != "scope") { return false; }
   absl::Span span = lexemes.subspan(1);
   std::string_view id;
-  if (not ParseBracketed<ParseIdentifier>(span, id)) { return false; }
+  if (not Bracketed(Identifier).Parse(span, id)) { return false; }
 
   std::vector<ast::Declaration> parameters;
   if (not ParseParenthesized<
