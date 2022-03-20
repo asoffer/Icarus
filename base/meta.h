@@ -272,6 +272,12 @@ template <typename T, typename... Ts>
 struct tail_impl<type_list<T, Ts...>> {
   using type = type_list<Ts...>;
 };
+template <typename>
+struct head_impl;
+template <typename T, typename... Ts>
+struct head_impl<type_list<T, Ts...>> {
+  using type = T;
+};
 
 }  // namespace internal_meta
 
@@ -282,9 +288,23 @@ inline constexpr auto array_transform =
 template <typename TL>
 using tail = typename internal_meta::tail_impl<TL>::type;
 
+template <typename TL>
+using head = typename internal_meta::head_impl<TL>::type;
+
+
 template <typename H, typename T>
-concept Hasher = std::invocable<H, T> and
+concept Hasher = std::invocable<H, T>and
     std::convertible_to<std::invoke_result_t<H, T>, size_t>;
+
+template <typename>
+struct Signature;
+template <typename Ret, typename... Parameters>
+struct Signature<Ret(Parameters...)> {
+  using return_type          = Ret;
+  using parameter_type_list = type_list<Parameters...>;
+};
+template <typename Ret, typename... Parameters>
+struct Signature<Ret (*)(Parameters...)> : Signature<Ret(Parameters...)> {};
 
 }  // namespace base
 

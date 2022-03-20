@@ -949,16 +949,13 @@ struct InterfaceLiteral : Expression, WithScope {
 // Example:
 // `#.my_label`
 struct Label : Expression {
-  explicit Label(std::string_view range, std::string label)
-      : Expression(IndexOf<Label>(), range), label_(std::move(label)) {}
+  explicit Label(std::string_view range)
+      : Expression(IndexOf<Label>(), range) {}
 
-  ir::Label value() const { return ir::Label(&label_); }
+  ir::Label value() const { return ir::Label(&range_); }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;
-
- private:
-  std::string label_;
 };
 
 // ParameterizedStructLiteral:
@@ -1318,20 +1315,20 @@ struct UnaryOperator : Expression {
 //
 struct YieldStmt : Node {
   explicit YieldStmt(std::string_view range, std::vector<Call::Argument> args,
-                     std::unique_ptr<Label> label = nullptr)
+                     std::optional<Label> label = std::nullopt)
       : Node(IndexOf<YieldStmt>(), range),
         args_(std::move(args)),
         label_(std::move(label)) {}
 
   absl::Span<Call::Argument const> arguments() const { return args_; }
-  Label const *label() const { return label_.get(); }
+  Label const *label() const { return label_ ? &*label_ : nullptr; }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;
 
  private:
   std::vector<Call::Argument> args_;
-  std::unique_ptr<Label> label_;
+  std::optional<Label> label_;
 };
 
 // IfStmt:

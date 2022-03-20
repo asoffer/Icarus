@@ -56,6 +56,7 @@ void Log(absl::FormatSpec<uintptr_t, std::string_view, size_t,
 
 }  // namespace internal_logging
 
+bool LoggingEnabled(std::string_view key);
 void EnableLogging(std::string_view key);
 void DisableLogging(std::string_view key);
 

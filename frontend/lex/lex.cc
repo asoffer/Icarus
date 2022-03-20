@@ -172,6 +172,16 @@ std::optional<Lexeme> ConsumeCharLiteral(
   return Lexeme(Lexeme::Kind::Character, range.extract_prefix(length));
 }
 
+Lexeme ConsumeComment(char_range &range) {
+  ASSERT(range.size() >= 2);
+  ASSERT(range[0] == '/');
+  ASSERT(range[1] == '/');
+  char const *p   = range.data();
+  char const *end = range.end();
+  while (p < end and not IsVerticalWhitespace(*p)) { ++p; }
+  return Lexeme(Lexeme::Kind::Comment, range.extract_prefix(p - range.data()));
+}
+
 std::optional<Lexeme> ConsumeOperator(
     char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
   ASSERT(range.size() > 0);
@@ -180,11 +190,15 @@ std::optional<Lexeme> ConsumeOperator(
   }
 
   constexpr std::array kOperators{
-      "@",  ",",   "[*]", "$",  "+=", "+",  "-=", "..", "->", "-",  "*=",
-      "*",  "%=",  "%",   "&=", "&",  "|=", "|",  "^=", "^",  ">>", ">=",
-      ">",  "::=", ":?",  "::", ":=", ".",  "!=", ":",  "<<", "<=", "<",
-      "==", "=>",  "=",   "'",  "~",  ";",  "`",  "/=", "/",
+      "@",   "[*]", "$",  "+=", "+",  "-=", "..", "->", "-",  "*=", "*",
+      "%=",  "%",   "&=", "&",  "|=", "|",  "^=", "^",  ">>", ">=", ">",
+      "::=", ":?",  "::", ":=", ".",  "!=", ":",  "<<", "<=", "<",  "==",
+      "=>",  "=",   "'",  "~",  ";",  "`",  "/=", "/",
   };
+
+  if (range.starts_with(",")) {
+    return Lexeme(Lexeme::Kind::Comma, range.extract_prefix(1));
+  }
 
   for (std::string_view op : kOperators) {
     if (range.starts_with(op)) {
@@ -336,6 +350,13 @@ std::optional<Lexeme> ConsumeOneLexeme(
         return std::nullopt;
       }
       return Lexeme(Lexeme::Kind::Hash, range.extract_prefix(1));
+    case '/': {
+      if (range.size() > 1 and range[1] == '/') {
+        return ConsumeComment(range);
+      } else {
+        goto consume_operator;
+      }
+    }
     case '#': {
       if (range.size() > 1 and IsWhitespace(range[1])) {
         diagnostic_consumer.Consume(HashFollowedByWhitespace{});
@@ -346,9 +367,12 @@ std::optional<Lexeme> ConsumeOneLexeme(
     case '!':
       if (range.size() >= 2 and range[1] == '\'') {
         return ConsumeCharLiteral(range, diagnostic_consumer);
+      } else {
+        goto consume_operator;
       }
-      [[fallthrough]];
-    default: return ConsumeOperator(range, diagnostic_consumer);
+    default:
+    consume_operator:
+      return ConsumeOperator(range, diagnostic_consumer);
   }
 }
 
@@ -417,6 +441,7 @@ std::optional<LexResult> Lex(
   while (not range.empty()) {
     auto maybe_lexeme = ConsumeOneLexeme(range, diagnostic_consumer);
     if (not maybe_lexeme) { return std::nullopt; }
+    if (maybe_lexeme->kind() == Lexeme::Kind::Comment) { continue; }
     if (not builder.append(*std::move(maybe_lexeme))) { return std::nullopt; }
   }
 

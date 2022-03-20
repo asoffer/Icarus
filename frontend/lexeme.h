@@ -1,6 +1,7 @@
 #ifndef ICARUS_FRONTEND_LEXEME_H
 #define ICARUS_FRONTEND_LEXEME_H
 
+#include <ostream>
 #include <string_view>
 
 #include "base/debug.h"
@@ -11,6 +12,7 @@ struct Lexeme {
   enum class Kind {
     LeftDelimiter  = 0,
     RightDelimiter = 1,
+    Comma,
     Comment,
     Character,
     String,
@@ -45,6 +47,11 @@ struct Lexeme {
   void set_match_offset(uint64_t offset) {
     ASSERT(delimiter() == true);
     length_ = offset;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, Lexeme  l) {
+    return os << "[kind = " << static_cast<int>(l.kind()) << "](content: " << l.content()
+              << ")";
   }
 
  private:

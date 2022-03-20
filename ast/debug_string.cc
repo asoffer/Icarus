@@ -348,7 +348,7 @@ void InterfaceLiteral::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void Label::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, "#.", label_);
+  absl::StrAppend(out, range());
 }
 
 void PatternMatch::DebugStrAppend(std::string *out, size_t indent) const {

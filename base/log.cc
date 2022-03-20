@@ -20,6 +20,10 @@ void SetLogging(std::string_view key) {
 
 }  // namespace
 
+bool LoggingEnabled(std::string_view key) {
+  return ::base::internal_logging::on_logs.lock()->contains(key);
+}
+
 void EnableLogging(std::string_view key) { SetLogging<true>(key); }
 void DisableLogging(std::string_view key) { SetLogging<false>(key); }
 

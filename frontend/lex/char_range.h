@@ -72,13 +72,13 @@ inline constexpr std::array<char_bits, 256> kCharBitsTable = [] {
       result[n].hex_digit = true;
       result[n].printable = true;
     } else if (n == '\n' or n == '\r') {
-      result[n].horizontal_whitespace = true;
-      result[n].printable             = true;
+      result[n].vertical_whitespace = true;
+      result[n].printable           = true;
     } else if (n == ' ' or n == '\t') {
       // Note: Vertical tabs are not considered valid as either horizontal or
       // vertical whitespace.
-      result[n].vertical_whitespace = true;
-      result[n].printable           = true;
+      result[n].horizontal_whitespace = true;
+      result[n].printable             = true;
     } else {
       result[n].printable = (n > 31 and n < 127);
     }
