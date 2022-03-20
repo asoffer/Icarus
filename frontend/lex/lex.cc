@@ -306,7 +306,16 @@ std::optional<Lexeme> ConsumeIdentifier(char_range &range) {
   char const *p = range.data();
   while (p != range.end() and IsAlphaNumericOrUnderscore(*p)) { ++p; }
   size_t length = p - range.data();
-  return Lexeme(Lexeme::Kind::Identifier, range.extract_prefix(length));
+
+  static const absl::flat_hash_set<std::string_view> kReserved = {
+      "false", "true",   "null", "i8",      "i16",    "i32", "i64",
+      "u8",    "u16",    "u32",  "u64",     "bool",   "f32", "f64",
+      "type",  "module", "byte", "builtin", "import",
+  };
+  std::string_view result = range.extract_prefix(length);
+  return Lexeme(kReserved.contains(result) ? Lexeme::Kind::Reserved
+                                           : Lexeme::Kind::Identifier,
+                result);
 }
 
 std::optional<Lexeme> ConsumeOneLexeme(

@@ -87,7 +87,7 @@ INSTANTIATE_TEST_SUITE_P(DeclarationId, ParseTest,
                              Failure("import"), Failure("17"), Success("(+)")));
 INSTANTIATE_TEST_SUITE_P(
     Label, ParseTest,
-    InputFor<ParseLabel>(Success("#.something"), Success("#.true"),
+    InputFor<ParseLabel>(Success("#.something"), Failure("#.true"),
                          Failure("blah"), Failure("#.label more"),
                          Failure(".blah"), Failure("#blah"), Failure("# .blah"),
                          Failure("#. blah"), Failure("# . blah"),

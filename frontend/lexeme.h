@@ -17,6 +17,7 @@ struct Lexeme {
     Character,
     String,
     Identifier,
+    Reserved,
     Hash,
     Number,
     Operator,

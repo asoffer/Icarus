@@ -43,29 +43,6 @@ constexpr Parser auto operator<<(P, BindImpl<F>) {
       P, std::remove_reference_t<base::head<base::tail<parameters>>>, F>();
 }
 
-struct IdentifierImpl {
-  using type = std::string_view;
-
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    PARSE_DEBUG_LOG();
-    if (lexemes.empty()) { return false; }
-    auto const &lexeme = lexemes[0];
-    if (lexeme.kind() != Lexeme::Kind::Identifier) { return false; }
-    if (kKeywords.contains(lexemes[0].content())) { return false; }
-    out = lexemes[0].content();
-    lexemes.remove_prefix(1);
-    return true;
-  }
-
- private:
-  static const absl::flat_hash_set<std::string_view> kKeywords;
-};
-
-const absl::flat_hash_set<std::string_view> IdentifierImpl::kKeywords = {
-    "false", "true",   "null", "i8",      "i16",   "i32", "i64",
-    "u8",    "u16",    "u32",  "u64",     "bool",  "f32", "f64",
-    "type",  "module", "byte", "builtin", "import"};
-
 template <typename T, auto P, typename... Args>
 bool ParseSequence(absl::Span<Lexeme const> &lexemes, std::vector<T> &out,
                    Args &&... args) {
@@ -76,37 +53,6 @@ bool ParseSequence(absl::Span<Lexeme const> &lexemes, std::vector<T> &out,
   }
   return true;
 }
-
-template <Lexeme::Kind Separator, Parser P,
-          template <typename...> typename Container = std::vector>
-struct SeparatedListImpl {
-  using type = Container<typename P::type>;
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    PARSE_DEBUG_LOG();
-    type result;
-    auto span        = lexemes;
-    using value_type = typename type::value_type;
-    value_type v;
-    if (not P::Parse(span, v)) {
-      out = std::move(result);
-      return true;
-    }
-    result.push_back(std::move(v));
-    while (true) {
-      if (span.empty() or span[0].kind() != Separator) {
-        lexemes = span;
-        out     = std::move(result);
-        return true;
-      }
-      span.remove_prefix(1);
-      if (P::Parse(span, v)) {
-        result.emplace_back(std::move(v));
-      } else {
-        return false;
-      }
-    }
-  }
-};
 
 enum Precedence {
   kTimesDiv,
@@ -135,90 +81,10 @@ std::string_view ExtractRange(absl::Span<Lexeme const> &lexemes,
   return result;
 }
 
-template <auto P, typename T>
-bool ParseCommaSeparatedList(
-    absl::Span<Lexeme const> &lexemes,
-    std::vector<T>
-        &out) requires(std::predicate<decltype(P), decltype(lexemes), T &>) {
-  PARSE_DEBUG_LOG();
-  auto span = lexemes;
-  T t;
-  if (not P(span, t)) { return false; }
-  out.push_back(std::move(t));
-  while (true) {
-    if (span.empty() or span[0].kind() != Lexeme::Kind::Comma) {
-      lexemes = span;
-      return true;
-    }
-    span.remove_prefix(1);
-    if (P(span, t)) {
-      out.emplace_back(std::move(t));
-    } else {
-      return false;
-    }
-  }
-}
-
-template <auto P, typename T>
-bool ParseParenthesized(absl::Span<Lexeme const> &lexemes, T &out) {
-  PARSE_DEBUG_LOG();
-  if (lexemes.empty() or lexemes.front().content().size() != 1 or
-      lexemes.front().content()[0] != '(') {
-    return false;
-  }
-  size_t offset = lexemes.front().match_offset();
-  auto range    = lexemes.subspan(1, offset - 1);
-  if (P(range, out) and range.empty()) {
-    lexemes = lexemes.subspan(offset + 1);
-    return true;
-  } else {
-    return false;
-  }
-}
-
-template <char C, typename P>
-struct DelimitedByImpl {
-  using type = typename P::type;
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    auto range = CheckBounds(lexemes);
-    if (not range.data()) { return false; }
-    bool result = P::Parse(range, out) and range.empty();
-    if (result) { lexemes.remove_prefix(lexemes.front().match_offset() + 1); }
-    return result;
-  }
-
- private:
-  static absl::Span<Lexeme const> CheckBounds(
-      absl::Span<Lexeme const> &lexemes) {
-    if (lexemes.empty() or lexemes.front().content().size() != 1 or
-        lexemes.front().content()[0] != C) {
-      return absl::Span<Lexeme const>(nullptr, 0);
-    } else {
-      size_t offset = lexemes.front().match_offset();
-      return lexemes.subspan(1, offset - 1);
-    }
-  }
-};
-
-template <char C>
-constexpr auto DelimitedBy(auto P) {
-  return DelimitedByImpl<C, decltype(P)>();
-}
-
-constexpr auto Bracketed(auto P) { return DelimitedBy<'['>(P); }
-constexpr auto Parenthesized(auto P) { return DelimitedBy<'('>(P); }
-constexpr auto Braced(auto P) { return DelimitedBy<'{'>(P); }
-constexpr auto CommaSeparatedListOf(auto P) {
-  return SeparatedListImpl<Lexeme::Kind::Comma, decltype(P)>();
-}
-constexpr auto NewlineSeparatedListOf(auto P) {
-  return SeparatedListImpl<Lexeme::Kind::Newline, decltype(P)>();
-}
-
 constexpr auto Number        = Kind<Lexeme::Kind::Number>();
 constexpr auto StringLiteral = Kind<Lexeme::Kind::String>();
 constexpr auto AnOperator    = Kind<Lexeme::Kind::Operator>();
-constexpr auto Identifier    = IdentifierImpl();
+constexpr auto Identifier    = Kind<Lexeme::Kind::Identifier>();
 
 constexpr auto DeclarationId =
     (Identifier | Parenthesized(AnOperator))
@@ -252,17 +118,17 @@ bool ParseNamedArgument(absl::Span<Lexeme const> &lexemes,
                         ast::Call::Argument &result) {
   PARSE_DEBUG_LOG();
   if (lexemes.size() <= 2) { return false; }
-  auto const &name = lexemes[0];
-  if (name.kind() != Lexeme::Kind::Identifier) { return false; }
+  std::string_view  id;
+  absl::Span span = lexemes;
+  if (not Identifier.Parse(span, id)) { return false; }
 
-  absl::Span span = lexemes.subspan(1);
   if (not MatchOperator("=", span)) { return false; }
 
   std::unique_ptr<ast::Expression> expr;
   if (not ParseExpressionWithPrecedence(span, expr, kAssignment)) {
     return false;
   }
-  result  = ast::Call::Argument(name.content(), std::move(expr));
+  result  = ast::Call::Argument(id, std::move(expr));
   lexemes = span;
   return true;
 }
@@ -322,13 +188,6 @@ bool ParseStringLiteral(absl::Span<Lexeme const> &lexemes,
   return (StringLiteral << Bind(AsExpression)).Parse(lexemes, out);
 }
 
-bool ParseCallArgument(absl::Span<Lexeme const> &lexemes,
-                       ast::Call::Argument &out) {
-  PARSE_DEBUG_LOG();
-  return ParseNamedArgument(lexemes, out) or
-         ParsePositionalArgument(lexemes, out);
-}
-
 template <typename T, auto P>
 struct Wrap {
   using type = T;
@@ -337,6 +196,14 @@ struct Wrap {
     return P(lexemes, out);
   }
 };
+
+constexpr auto CallArgument =
+    Wrap<ast::Call::Argument, ParseNamedArgument>{} |
+    Wrap<ast::Call::Argument, ParsePositionalArgument>{};
+bool ParseCallArgument(absl::Span<Lexeme const> &lexemes,
+                       ast::Call::Argument &out) {
+  return CallArgument.Parse(lexemes, out);
+}
 
 bool ParseYieldStatement(absl::Span<Lexeme const> &lexemes,
                          std::unique_ptr<ast::Node> &n) {
@@ -348,9 +215,7 @@ bool ParseYieldStatement(absl::Span<Lexeme const> &lexemes,
 
   bool result =
       Optionally<ParseLabel>(span, l) and MatchOperator("<<", span) and
-      Optional(
-          CommaSeparatedListOf(Wrap<ast::Call::Argument, ParseCallArgument>{}))
-          .Parse(span, arguments);
+      Optional(CommaSeparatedListOf(CallArgument)).Parse(span, arguments);
   if (not result) { return false; }
   n = std::make_unique<ast::YieldStmt>(ExtractRange(lexemes, span),
                                        std::move(arguments), std::move(l));
@@ -615,7 +480,9 @@ bool ParseWhileStatement(absl::Span<Lexeme const> &lexemes,
   auto span = lexemes.subspan(1);
   std::unique_ptr<ast::Expression> condition;
   std::vector<std::unique_ptr<ast::Node>> body;
-  if (not ParseParenthesized<ParseExpression>(span, condition) or
+  if (not Parenthesized(
+              Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{})
+              .Parse(lexemes, condition) or
       Braced(NewlineSeparatedListOf(Statement)).Parse(span, body)) {
     return false;
   }

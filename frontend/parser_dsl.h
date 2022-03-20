@@ -70,6 +70,71 @@ struct DisjunctionImpl {
   }
 };
 
+template <Lexeme::Kind Separator, Parser P,
+          template <typename...> typename Container = std::vector>
+struct SeparatedListImpl {
+  using type = Container<typename P::type>;
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    type result;
+    auto span        = lexemes;
+    using value_type = typename type::value_type;
+    value_type v;
+    if (not P::Parse(span, v)) {
+      out = std::move(result);
+      return true;
+    }
+    result.push_back(std::move(v));
+    while (true) {
+      if (span.empty() or span[0].kind() != Separator) {
+        lexemes = span;
+        out     = std::move(result);
+        return true;
+      }
+      span.remove_prefix(1);
+      if (P::Parse(span, v)) {
+        result.emplace_back(std::move(v));
+      } else {
+        return false;
+      }
+    }
+  }
+};
+
+template <char C, typename P>
+struct DelimitedByImpl {
+  using type = typename P::type;
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    auto range = CheckBounds(lexemes);
+    if (not range.data()) { return false; }
+    bool result = P::Parse(range, out) and range.empty();
+    if (result) { lexemes.remove_prefix(lexemes.front().match_offset() + 1); }
+    return result;
+  }
+
+ private:
+  static absl::Span<Lexeme const> CheckBounds(
+      absl::Span<Lexeme const> &lexemes) {
+    if (lexemes.empty() or lexemes.front().content().size() != 1 or
+        lexemes.front().content()[0] != C) {
+      return absl::Span<Lexeme const>(nullptr, 0);
+    } else {
+      size_t offset = lexemes.front().match_offset();
+      return lexemes.subspan(1, offset - 1);
+    }
+  }
+};
+
+struct IgnoredType {};
+
+template <Parser P>
+struct Ignored {
+  using type = IgnoredType;
+
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    return P::Parse(lexemes, std::ignore);
+  }
+};
+
 }  // namespace internal_parser_dsl
 
 // Given two parsers `L` and `R` for the same type `T`, returns a parser for `T`
@@ -107,6 +172,28 @@ struct Optional {
     return true;
   }
 };
+
+template <Parser P>
+constexpr Parser auto operator--(P) {
+  return internal_parser_dsl::Ignored<P>();
+}
+
+template <char C>
+constexpr auto DelimitedBy(auto P) {
+  return internal_parser_dsl::DelimitedByImpl<C, decltype(P)>();
+}
+
+constexpr auto Bracketed(auto P) { return DelimitedBy<'['>(P); }
+constexpr auto Parenthesized(auto P) { return DelimitedBy<'('>(P); }
+constexpr auto Braced(auto P) { return DelimitedBy<'{'>(P); }
+constexpr auto CommaSeparatedListOf(auto P) {
+  return internal_parser_dsl::SeparatedListImpl<Lexeme::Kind::Comma,
+                                                decltype(P)>();
+}
+constexpr auto NewlineSeparatedListOf(auto P) {
+  return internal_parser_dsl::SeparatedListImpl<Lexeme::Kind::Newline,
+                                                decltype(P)>();
+}
 
 }  // namespace frontend
 
