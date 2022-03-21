@@ -239,6 +239,9 @@ bool ParseYieldStatement(absl::Span<Lexeme const> &lexemes,
   return true;
 }
 
+static constexpr auto Expression =
+    Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{};
+
 bool ParseReturnStatement(absl::Span<Lexeme const> &lexemes,
                           std::unique_ptr<ast::Node> &out) {
   PARSE_DEBUG_LOG();
@@ -246,9 +249,7 @@ bool ParseReturnStatement(absl::Span<Lexeme const> &lexemes,
   auto span = lexemes.subspan(1);
   std::vector<std::unique_ptr<ast::Expression>> exprs;
 
-  if (Optional(CommaSeparatedListOf(
-                   Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{}))
-          .Parse(span, exprs)) {
+  if (Optional(CommaSeparatedListOf(Expression)).Parse(span, exprs)) {
     out = std::make_unique<ast::ReturnStmt>(ExtractRange(lexemes, span),
                                             std::move(exprs));
     return true;
@@ -325,12 +326,13 @@ bool ParseKeyword(std::string_view s, absl::Span<Lexeme const> &lexemes) {
 bool ParseStatement(absl::Span<Lexeme const> &lexemes,
                     std::unique_ptr<ast::Node> &);
 
-constexpr auto Statement = Wrap<std::unique_ptr<ast::Node>, ParseStatement>{};
+constexpr auto Statement   = Wrap<std::unique_ptr<ast::Node>, ParseStatement>{};
+constexpr auto Declaration = Wrap<ast::Declaration, ParseDeclaration>{};
 
 namespace {
 bool ParseDeclarationUniquePtr(absl::Span<Lexeme const> &lexemes,
                                std::unique_ptr<ast::Node> &out) {
-  return (Wrap<ast::Declaration, ParseDeclaration>{}
+  return (Declaration
           << Bind([](std::unique_ptr<ast::Node> &out, ast::Declaration decl) {
                out = std::make_unique<ast::Declaration>(std::move(decl));
              }))
@@ -344,8 +346,7 @@ bool ParseFunctionLiteral(absl::Span<Lexeme const> &lexemes,
   std::vector<ast::Declaration> parameters;
   std::vector<std::unique_ptr<ast::Node>> stmts;
   absl::Span span = lexemes;
-  if (not Parenthesized(
-              CommaSeparatedListOf(Wrap<ast::Declaration, ParseDeclaration>{}))
+  if (not Parenthesized(CommaSeparatedListOf(Declaration))
               .Parse(span, parameters)) {
     return false;
   }
@@ -353,9 +354,7 @@ bool ParseFunctionLiteral(absl::Span<Lexeme const> &lexemes,
   if (not Match<"->">.Parse(span, std::ignore)) { return false; }
 
   std::vector<std::unique_ptr<ast::Expression>> out_params;
-  if (not Parenthesized(
-              CommaSeparatedListOf(
-                  Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{}))
+  if (not Parenthesized(CommaSeparatedListOf(Expression))
               .Parse(span, out_params)) {
     return false;
   }
@@ -377,8 +376,7 @@ bool ParseStructLiteral(absl::Span<Lexeme const> &lexemes,
   absl::Span span = lexemes;
   bool result =
       ParseKeyword("struct", span) and
-      Braced(NewlineSeparatedListOf(Wrap<ast::Declaration, ParseDeclaration>{}))
-          .Parse(span, declarations);
+      Braced(NewlineSeparatedListOf(Declaration)).Parse(span, declarations);
   if (not result) { return false; }
   out = std::make_unique<ast::StructLiteral>(ExtractRange(lexemes, span),
                                              std::move(declarations));
@@ -392,15 +390,13 @@ bool ParseParameterizedStructLiteral(absl::Span<Lexeme const> &lexemes,
   absl::Span span = lexemes.subspan(1);
 
   std::vector<ast::Declaration> parameters;
-  if (not Parenthesized(
-              CommaSeparatedListOf(Wrap<ast::Declaration, ParseDeclaration>{}))
+  if (not Parenthesized(CommaSeparatedListOf(Declaration))
               .Parse(span, parameters)) {
     return false;
   }
 
   std::vector<ast::Declaration> declarations;
-  if (not Braced(NewlineSeparatedListOf(
-                     Wrap<ast::Declaration, ParseDeclaration>{}))
+  if (not Braced(NewlineSeparatedListOf(Declaration))
               .Parse(span, declarations)) {
     return false;
   }
@@ -420,8 +416,7 @@ bool ParseScopeLiteral(absl::Span<Lexeme const> &lexemes,
   if (not Bracketed(Identifier).Parse(span, id)) { return false; }
 
   std::vector<ast::Declaration> parameters;
-  if (not Parenthesized(
-              CommaSeparatedListOf(Wrap<ast::Declaration, ParseDeclaration>{}))
+  if (not Parenthesized(CommaSeparatedListOf(Declaration))
               .Parse(span, parameters)) {
     return false;
   }
@@ -494,8 +489,8 @@ static constexpr auto StructLiteral =
     Wrap<std::unique_ptr<ast::Expression>, ParseStructLiteral>{};
 static constexpr auto FunctionLiteral =
     Wrap<std::unique_ptr<ast::Expression>, ParseFunctionLiteral>{};
-static constexpr auto Expression =
-    Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{};
+static constexpr auto TerminalOrIdentifier =
+    Wrap<std::unique_ptr<ast::Expression>, ParseTerminalOrIdentifier>{};
 
 bool ParseWhileStatement(absl::Span<Lexeme const> &lexemes,
                          std::unique_ptr<ast::Node> &out) {
@@ -514,13 +509,13 @@ bool ParseWhileStatement(absl::Span<Lexeme const> &lexemes,
   return true;
 }
 static constexpr auto AtomicExpression =
-    ((Number | StringLiteral) << Bind(AsExpression))                        //
-    | Parenthesized(Expression)                                             //
-    | FunctionLiteral                                                       //
-    | StructLiteral                                                         //
-    | ParameterizedStructLiteral                                            //
-    | ScopeLiteral                                                          //
-    | Wrap<std::unique_ptr<ast::Expression>, ParseTerminalOrIdentifier>{};  //
+    ((Number | StringLiteral) << Bind(AsExpression))  //
+    | Parenthesized(Expression)                       //
+    | FunctionLiteral                                 //
+    | StructLiteral                                   //
+    | ParameterizedStructLiteral                      //
+    | ScopeLiteral                                    //
+    | TerminalOrIdentifier;                           //
 
 bool ParseAtomicExpression(absl::Span<Lexeme const> &lexemes,
                            std::unique_ptr<ast::Expression> &e) {

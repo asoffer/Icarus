@@ -70,6 +70,31 @@ struct DisjunctionImpl {
   }
 };
 
+template <Parser... Ps>
+struct SequencedImpl {
+ private:
+  static constexpr std::array<size_t, sizeof...(Ps)> kMatchIndices =
+      [] {
+        std::array<size_t, sizeof...(Ps)> result{base::Length(typename Ps::match_type{}) ...};
+        size_t accumulation = 0;
+        for (size_t &n : result) {
+          size_t value = n;
+          n += accumulation - value;
+          accumulation += value;
+        }
+        return result;
+      }();
+
+ public:
+  using match_type = base::type_list_cat<typename Ps::match_type...>;
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&... outs) {
+    absl::Span span = lexemes;
+    bool result = (Ps::Parse(span, outs) and ...);
+    if (result) { lexemes = span; }
+    return result;
+  }
+};
+
 template <Lexeme::Kind Separator, Parser P,
           template <typename...> typename Container = std::vector>
 struct SeparatedListImpl {

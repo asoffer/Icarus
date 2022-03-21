@@ -327,6 +327,43 @@ struct Signature<Ret(Parameters...)> {
 template <typename Ret, typename... Parameters>
 struct Signature<Ret (*)(Parameters...)> : Signature<Ret(Parameters...)> {};
 
+// template <typename>
+// struct GetEntriesImpl;
+// 
+// template <size_t... Ns>
+// struct GetEntriesImpl<std::index_sequence<Ns...>> {
+//   template <typename Tuple>
+//   auto operator()(Tuple&& t) {
+//     return std::forward_as_tuple(std::get<Ns>(std::forward<Tuple>(t))...);
+//   }
+// };
+// 
+// template <size_t, typename>
+// struct AddImpl;
+// template <size_t N, size_t... Ns>
+// struct AddImpl<N, std::index_sequence<Ns...>> {
+//   using type = std::index_sequence<(N + Ns)...>;
+// };
+// 
+// template <typename, size_t...>
+// struct AddTupleImpl;
+// template <typename... Ts, size_t... Ns>
+// struct AddTupleImpl<std::tuple<Ts...>, Ns...> {
+//   using type = std::tuple<typename AddImpl<Ns, Ts>::type...>;
+// };
+// 
+// template <size_t... Lengths, typename Tuple>
+// auto SplitTuple(Tuple&& t) {
+//   using index_sequence_tuple =
+//       AddTupleImpl<std::tuple<std::make_index_sequence<Lengths>...>,
+//                    typename OffsetsImpl<Lengths...>::type>;
+//   return std::apply(
+//       [&](auto... seqs) {
+//         return std::make_tuple(GetEntriesImpl<decltype(seqs)>{}(t));
+//       },
+//       index_sequence_tuple{});
+// }
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H
