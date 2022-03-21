@@ -135,6 +135,86 @@ struct Ignored {
   }
 };
 
+template <size_t N>
+struct FixedString {
+  constexpr FixedString(char const (&s)[N + 1]) {
+    for (size_t i = 0; i < N; ++i) { data[i] = s[i]; }
+  }
+
+  constexpr bool operator==(FixedString const &) const = default;
+  constexpr bool operator!=(FixedString const &) const = default;
+
+  friend constexpr bool operator==(std::string_view s, FixedString const &f) {
+    return s.size() == N and std::memcmp(s.data(), f.data.data(), N) == 0;
+  }
+  friend constexpr bool operator==(FixedString const &f, std::string_view s) {
+    return s.size() == N and std::memcmp(s.data(), f.data.data(), N) == 0;
+  }
+  friend constexpr bool operator!=(std::string_view s, FixedString const &f) {
+    return not (s == f);
+  }
+  friend constexpr bool operator!=(FixedString const &f, std::string_view s) {
+    return not (s == f);
+  }
+
+  std::array<char, N> data;
+};
+
+template <size_t N>
+FixedString(char const (&s)[N]) -> FixedString<N - 1>;
+
+template <Parser P, typename T, typename F>
+struct ParserWith {
+  using type = T;
+
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    typename P::type value;
+    if (not P::Parse(lexemes, value)) { return false; }
+    F f;
+    f(std::move(value), out);
+    return true;
+  }
+};
+
+template <typename F>
+struct BindImpl {
+  template <Parser P>
+  friend constexpr Parser auto operator<<(P, BindImpl) {
+    return ParserWith<P, second_parameter, F>();
+  }
+
+ private:
+  using parameters =
+      typename base::Signature<decltype(+F{})>::parameter_type_list;
+  using second_parameter =
+      std::remove_reference_t<base::head<base::tail<parameters>>>;
+};
+
+// A parser that matches any one lexeme whose kind is `K`.
+template <Lexeme::Kind K>
+struct KindImpl {
+  using type = std::string_view;
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    PARSE_DEBUG_LOG();
+    if (lexemes.empty() or lexemes[0].kind() != K) { return false; }
+    out = lexemes[0].content();
+    lexemes.remove_prefix(1);
+    return true;
+  }
+};
+
+// A parser that matches a lexeme exactly.
+template <internal_parser_dsl::FixedString S>
+struct MatchImpl {
+  using type = internal_parser_dsl::IgnoredType;
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&) {
+    PARSE_DEBUG_LOG();
+    if (lexemes.empty() or S != lexemes[0].content()) { return false; }
+    lexemes.remove_prefix(1);
+    return true;
+  }
+};
+
 }  // namespace internal_parser_dsl
 
 // Given two parsers `L` and `R` for the same type `T`, returns a parser for `T`
@@ -146,18 +226,11 @@ constexpr auto operator|(L, R) requires(base::meta<typename L::type> ==
   return internal_parser_dsl::DisjunctionImpl<L, R>{};
 }
 
-// A parser that matches any one lexeme whose kind is `K`.
 template <Lexeme::Kind K>
-struct Kind {
-  using type = std::string_view;
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    PARSE_DEBUG_LOG();
-    if (lexemes.empty() or lexemes[0].kind() != K) { return false; }
-    out = lexemes[0].content();
-    lexemes.remove_prefix(1);
-    return true;
-  }
-};
+constexpr auto Kind = internal_parser_dsl::KindImpl<K>();
+
+template <internal_parser_dsl::FixedString S>
+constexpr auto Match = internal_parser_dsl::MatchImpl<S>();
 
 // A parser that attempts to parse `P`, binding if `P` parses successfully, but
 // otherwise consumes no lexemes and is considered to have parsed successfully.
@@ -193,6 +266,11 @@ constexpr auto CommaSeparatedListOf(auto P) {
 constexpr auto NewlineSeparatedListOf(auto P) {
   return internal_parser_dsl::SeparatedListImpl<Lexeme::Kind::Newline,
                                                 decltype(P)>();
+}
+
+template <typename F>
+constexpr auto Bind(F) requires(std::is_empty_v<F>) {
+  return internal_parser_dsl::BindImpl<F>();
 }
 
 }  // namespace frontend

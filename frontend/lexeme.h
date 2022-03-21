@@ -18,6 +18,7 @@ struct Lexeme {
     String,
     Identifier,
     Reserved,
+    Keyword,
     Hash,
     Number,
     Operator,
@@ -25,8 +26,8 @@ struct Lexeme {
     EndOfFile,
   };
 
-  Lexeme() : Lexeme(Kind::EndOfFile, "") {}
-  explicit Lexeme(Kind k, std::string_view content)
+  constexpr Lexeme() : Lexeme(Kind::EndOfFile, "") {}
+  constexpr explicit Lexeme(Kind k, std::string_view content)
       : data_(content.data()),
         kind_(static_cast<uint64_t>(k)),
         length_(content.size()) {

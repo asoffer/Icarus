@@ -279,7 +279,18 @@ struct head_impl<type_list<T, Ts...>> {
   using type = T;
 };
 
+template <template <typename...> typename F, typename TL>
+struct ReduceImpl;
+
+template <template <typename...> typename F, typename... Ts>
+struct ReduceImpl<F, base::type_list<Ts...>> {
+  using type = F<Ts...>;
+};
+
 }  // namespace internal_meta
+
+template <template <typename...> typename F, typename TL>
+using reduce_t = ::base::internal_meta::ReduceImpl<F, TL>;
 
 template <template <typename> typename F, typename TL>
 inline constexpr auto array_transform =

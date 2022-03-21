@@ -312,10 +312,17 @@ std::optional<Lexeme> ConsumeIdentifier(char_range &range) {
       "u8",    "u16",    "u32",  "u64",     "bool",   "f32", "f64",
       "type",  "module", "byte", "builtin", "import",
   };
+  static const absl::flat_hash_set<std::string_view> kKeyword = {
+      "if", "import", "scope", "struct", "while",
+  };
   std::string_view result = range.extract_prefix(length);
-  return Lexeme(kReserved.contains(result) ? Lexeme::Kind::Reserved
-                                           : Lexeme::Kind::Identifier,
-                result);
+  if (kReserved.contains(result)) {
+    return Lexeme(Lexeme::Kind::Reserved, result);
+  } else if (kKeyword.contains(result)) {
+    return Lexeme(Lexeme::Kind::Keyword, result);
+  } else {
+    return Lexeme(Lexeme::Kind::Identifier, result);
+  }
 }
 
 std::optional<Lexeme> ConsumeOneLexeme(
