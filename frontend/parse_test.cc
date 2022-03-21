@@ -132,8 +132,8 @@ INSTANTIATE_TEST_SUITE_P(ReturnStatement, ParseTest,
                          InputFor<ParseReturnStatement>(
                              Success("return"), Success("return 0"),
                              Success("return 3 + 4"), Success("return 3, 4"),
-                             Success("return 3, name = 4"),
-                             Success("return name = 3, other_name = 4"),
+                             Failure("return 3, name = 4"),
+                             Failure("return name = 3, other_name = 4"),
                              Failure("return 3 return 4")));
 
 INSTANTIATE_TEST_SUITE_P(

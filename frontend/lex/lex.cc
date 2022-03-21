@@ -189,15 +189,23 @@ std::optional<Lexeme> ConsumeOperator(
     return Lexeme(Lexeme::Kind::Identifier, range.extract_prefix(2));
   }
 
+  constexpr std::array kAssignmentOperators{
+      "+=", "-=", "*=", "%=", "&=", "|=", "^=", "=", "/=",
+  };
   constexpr std::array kOperators{
-      "@",   "[*]", "$",  "+=", "+",  "-=", "..", "->", "-",  "*=", "*",
-      "%=",  "%",   "&=", "&",  "|=", "|",  "^=", "^",  ">>", ">=", ">",
-      "::=", ":?",  "::", ":=", ".",  "!=", ":",  "<<", "<=", "<",  "==",
-      "=>",  "=",   "'",  "~",  ";",  "`",  "/=", "/",
+      "@",  "[*]", "$",  "+",  "..",  "->", "-",  "*",  "%", "&",  "|",
+      "^",  ">>",  ">=", ">",  "::=", ":?", "::", ":=", ".", "!=", ":",
+      "<<", "<=",  "<",  "==", "=>",  "'",  "~",  ";",  "`", "/",
   };
 
   if (range.starts_with(",")) {
     return Lexeme(Lexeme::Kind::Comma, range.extract_prefix(1));
+  }
+
+  for (std::string_view op : kAssignmentOperators) {
+    if (range.starts_with(op)) {
+      return Lexeme(Lexeme::Kind::Assignment, range.extract_prefix(op.size()));
+    }
   }
 
   for (std::string_view op : kOperators) {

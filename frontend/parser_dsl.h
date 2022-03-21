@@ -66,7 +66,10 @@ template <Parser L, Parser R>
 struct DisjunctionImpl {
   using match_type = typename L::match_type;
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    return L::Parse(lexemes, out) or R::Parse(lexemes, out);
+    absl::Span span = lexemes;
+    bool result     = L::Parse(span, out) or R::Parse(span, out);
+    if (result) { lexemes = span; }
+    return result;
   }
 };
 
@@ -111,10 +114,7 @@ struct SeparatedListImpl {
     Container<element_type> result;
     auto span        = lexemes;
     element_type v;
-    if (not P::Parse(span, v)) {
-      out = std::move(result);
-      return true;
-    }
+    if (not P::Parse(span, v)) { return true; }
     result.push_back(std::move(v));
     while (true) {
       if (span.empty() or span[0].kind() != Separator) {

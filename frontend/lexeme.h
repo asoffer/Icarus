@@ -21,6 +21,7 @@ struct Lexeme {
     Keyword,
     Hash,
     Number,
+    Assignment,
     Operator,
     Newline,
     EndOfFile,

@@ -12,6 +12,9 @@
 #include "type/primitive.h"
 
 namespace frontend {
+bool ParseExpression(absl::Span<Lexeme const> &lexemes,
+                     std::unique_ptr<ast::Expression> &out);
+
 namespace {
 
 template <typename T, auto P, typename... Args>
@@ -28,12 +31,10 @@ bool ParseSequence(absl::Span<Lexeme const> &lexemes, std::vector<T> &out,
 enum Precedence {
   kTimesDiv,
   kPlusMinus,
-  kAssignment,
   kMaxPrecedence,
 };
 
-Precedence GetPrecedence(std::string_view op) {
-  if (op == "=") { return kAssignment; }
+[[maybe_unused]] Precedence GetPrecedence(std::string_view op) {
   if (op == "+") { return kPlusMinus; }
   if (op == "-") { return kPlusMinus; }
   if (op == "*") { return kTimesDiv; }
@@ -52,6 +53,15 @@ std::string_view ExtractRange(absl::Span<Lexeme const> &lexemes,
   return result;
 }
 
+template <typename T, auto P>
+struct Wrap {
+  using match_type = base::type_list<T>;
+
+  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+    return P(lexemes, out);
+  }
+};
+
 constexpr auto Number        = Kind<Lexeme::Kind::Number>;
 constexpr auto StringLiteral = Kind<Lexeme::Kind::String>;
 constexpr auto AnOperator    = Kind<Lexeme::Kind::Operator>;
@@ -63,6 +73,9 @@ constexpr auto DeclarationId =
          out = ast::Declaration::Id(in);
        });
 
+constexpr auto Expression =
+    Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{};
+
 template <auto P>
 bool Optionally(absl::Span<Lexeme const> &lexemes, auto &out) {
   PARSE_DEBUG_LOG();
@@ -70,20 +83,48 @@ bool Optionally(absl::Span<Lexeme const> &lexemes, auto &out) {
   return true;
 }
 
-template <Precedence precedence_limit>
 bool ParseOperatorOrAtomicExpression(
     absl::Span<Lexeme const> &lexemes,
     std::variant<std::string_view, std::unique_ptr<ast::Expression>> &out);
 
-template <Precedence precedence_limit>
-bool ParseExpressionWithPrecedence(absl::Span<Lexeme const> &lexemes,
-                                   std::unique_ptr<ast::Expression> &e) {
+bool ParseNamedArgument(absl::Span<Lexeme const> &lexemes,
+                        ast::Call::Argument &result) {
+  PARSE_DEBUG_LOG();
+  if (lexemes.size() <= 2) { return false; }
+  std::string_view  id;
+  absl::Span span = lexemes;
+  if (not Identifier.Parse(span, id)) { return false; }
+
+  if (not Match<"=">.Parse(span, std::ignore)) { return false; }
+
+  std::unique_ptr<ast::Expression> expr;
+  if (not Expression.Parse(span, expr)) { return false; }
+  result  = ast::Call::Argument(id, std::move(expr));
+  lexemes = span;
+  return true;
+}
+
+constexpr auto NamedArgument = Wrap<ast::Call::Argument, ParseNamedArgument>{};
+constexpr auto PositionalArgument =
+    Expression << Bind(
+        [](ast::Call::Argument &argument, std::unique_ptr<ast::Expression> e) {
+          argument = ast::Call::Argument("", std::move(e));
+        });
+constexpr auto CallArgument = NamedArgument | PositionalArgument;
+
+bool ParseDeclarationUniquePtr(absl::Span<Lexeme const> &lexemes,
+                               std::unique_ptr<ast::Node> &out);
+
+}  // namespace
+
+// TODO: Not tested.
+bool ParseExpression(absl::Span<Lexeme const> &lexemes,
+                     std::unique_ptr<ast::Expression> &e) {
   PARSE_DEBUG_LOG();
   auto span  = lexemes;
   using type = std::variant<std::string_view, std::unique_ptr<ast::Expression>>;
   std::vector<type> elements;
-  (void)ParseSequence<type, ParseOperatorOrAtomicExpression<precedence_limit>>(
-      span, elements);
+  (void)ParseSequence<type, ParseOperatorOrAtomicExpression>(span, elements);
   if (elements.empty() or
       std::holds_alternative<std::string_view>(elements.back())) {
     return false;
@@ -133,56 +174,6 @@ bool ParseExpressionWithPrecedence(absl::Span<Lexeme const> &lexemes,
   return true;
 }
 
-template <typename T, auto P>
-struct Wrap {
-  using match_type = base::type_list<T>;
-
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    return P(lexemes, out);
-  }
-};
-
-constexpr auto ExpressionBelowAssignment =
-    Wrap<std::unique_ptr<ast::Expression>,
-         ParseExpressionWithPrecedence<kAssignment>>{};
-
-constexpr auto PositionalArgument =
-    ExpressionBelowAssignment << Bind(
-        [](ast::Call::Argument &argument, std::unique_ptr<ast::Expression> e) {
-          argument = ast::Call::Argument("", std::move(e));
-        });
-
-bool ParseNamedArgument(absl::Span<Lexeme const> &lexemes,
-                        ast::Call::Argument &result) {
-  PARSE_DEBUG_LOG();
-  if (lexemes.size() <= 2) { return false; }
-  std::string_view  id;
-  absl::Span span = lexemes;
-  if (not Identifier.Parse(span, id)) { return false; }
-
-  if (not Match<"=">.Parse(span, std::ignore)) { return false; }
-
-  std::unique_ptr<ast::Expression> expr;
-  if (not ExpressionBelowAssignment.Parse(span, expr)) { return false; }
-  result  = ast::Call::Argument(id, std::move(expr));
-  lexemes = span;
-  return true;
-}
-
-constexpr auto NamedArgument = Wrap<ast::Call::Argument, ParseNamedArgument>{};
-
-bool ParseDeclarationUniquePtr(absl::Span<Lexeme const> &lexemes,
-                               std::unique_ptr<ast::Node> &out);
-
-}  // namespace
-
-// TODO: Not tested.
-bool ParseExpression(absl::Span<Lexeme const> &lexemes,
-                     std::unique_ptr<ast::Expression> &out) {
-  PARSE_DEBUG_LOG();
-  return ParseExpressionWithPrecedence<kMaxPrecedence>(lexemes, out);
-}
-
 bool ParseDeclarationId(absl::Span<Lexeme const> &lexemes,
                         ast::Declaration::Id &out) {
   return DeclarationId.Parse(lexemes, out);
@@ -215,7 +206,6 @@ bool ParseStringLiteral(absl::Span<Lexeme const> &lexemes,
   return (StringLiteral << Bind(AsExpression)).Parse(lexemes, out);
 }
 
-constexpr auto CallArgument = NamedArgument | PositionalArgument;
 bool ParseCallArgument(absl::Span<Lexeme const> &lexemes,
                        ast::Call::Argument &out) {
   return CallArgument.Parse(lexemes, out);
@@ -229,18 +219,14 @@ bool ParseYieldStatement(absl::Span<Lexeme const> &lexemes,
   std::optional<ast::Label> l;
   std::vector<ast::Call::Argument> arguments;
 
-  bool result =
-      Optionally<ParseLabel>(span, l) and
-      Match<"<<">.Parse(span, std::ignore) and
-      Optional(CommaSeparatedListOf(CallArgument)).Parse(span, arguments);
+  bool result = Optionally<ParseLabel>(span, l) and
+                Match<"<<">.Parse(span, std::ignore) and
+                CommaSeparatedListOf(CallArgument).Parse(span, arguments);
   if (not result) { return false; }
   n = std::make_unique<ast::YieldStmt>(ExtractRange(lexemes, span),
                                        std::move(arguments), std::move(l));
   return true;
 }
-
-static constexpr auto Expression =
-    Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{};
 
 bool ParseReturnStatement(absl::Span<Lexeme const> &lexemes,
                           std::unique_ptr<ast::Node> &out) {
@@ -249,7 +235,7 @@ bool ParseReturnStatement(absl::Span<Lexeme const> &lexemes,
   auto span = lexemes.subspan(1);
   std::vector<std::unique_ptr<ast::Expression>> exprs;
 
-  if (Optional(CommaSeparatedListOf(Expression)).Parse(span, exprs)) {
+  if (CommaSeparatedListOf(Expression).Parse(span, exprs)) {
     out = std::make_unique<ast::ReturnStmt>(ExtractRange(lexemes, span),
                                             std::move(exprs));
     return true;
@@ -275,7 +261,9 @@ bool ParseDeclaration(absl::Span<Lexeme const> &lexemes,
   if (span[0].content() == ":" or span[0].content() == "::") {
     if (span[0].content().size() == 2) { flags |= ast::Declaration::f_IsConst; }
     span.remove_prefix(1);
-    if (not ParseExpression(span, type_expression)) { return false; }
+    if (not Expression.Parse(span, type_expression)) { return false; }
+    std::ignore = Match<"=">.Parse(span, std::ignore) and
+                  Expression.Parse(span, initial_value);
   } else if (span[0].content() == ":=" or span[0].content() == "::=") {
     if (span[0].content().size() == 3) { flags |= ast::Declaration::f_IsConst; }
     span.remove_prefix(1);
@@ -295,12 +283,12 @@ bool ParseAssignment(absl::Span<Lexeme const> &lexemes,
   PARSE_DEBUG_LOG();
   auto span = lexemes;
   std::unique_ptr<ast::Expression> l, r;
-  if (not ParseExpressionWithPrecedence<kAssignment>(span, l)) { return false; }
+  if (not Expression.Parse(span, l)) { return false; }
   if (span.empty()) { return false; }
-  if (span[0].kind() != Lexeme::Kind::Operator) { return false; }
+  if (span[0].kind() != Lexeme::Kind::Assignment) { return false; }
   span.remove_prefix(1);
   if (span.empty()) { return false; }
-  if (not ParseExpressionWithPrecedence<kAssignment>(span, r)) { return false; }
+  if (not Expression.Parse(span, r)) { return false; }
 
   // TODO: Multi-assignment
   std::vector<std::unique_ptr<ast::Expression>> lhs, rhs;
@@ -523,19 +511,20 @@ bool ParseAtomicExpression(absl::Span<Lexeme const> &lexemes,
 }
 
 namespace {
-template <Precedence precedence_limit>
 bool ParseOperatorOrAtomicExpression(
     absl::Span<Lexeme const> &lexemes,
     std::variant<std::string_view, std::unique_ptr<ast::Expression>> &out) {
   PARSE_DEBUG_LOG();
   std::unique_ptr<ast::Expression> e;
-  if (AtomicExpression.Parse(lexemes, e)) {
-    out = std::move(e);
+  absl::Span span = lexemes;
+  if (AtomicExpression.Parse(span, e)) {
+    lexemes = span;
+    out     = std::move(e);
     return true;
   } else if (lexemes.empty()) {
     return false;
   } else if ((lexemes[0].kind() == Lexeme::Kind::Operator and
-              GetPrecedence(lexemes[0].content()) < precedence_limit) or
+              lexemes[0].content() != "<<") or
              (lexemes[0].kind() == Lexeme::Kind::Identifier and
               (lexemes[0].content() == "import"))) {
     out = lexemes[0].content();
@@ -564,7 +553,8 @@ bool ParseStatement(absl::Span<Lexeme const> &lexemes,
   if (ParseDeclarationUniquePtr(lexemes, node)) { return true; }
   if (ParseReturnStatement(lexemes, node)) { return true; }
   if (ParseYieldStatement(lexemes, node)) { return true; }
-  if (std::unique_ptr<ast::Expression> e; ParseExpression(lexemes, e)) {
+  std::unique_ptr<ast::Expression> e;
+  if (Expression.Parse(lexemes, e)) {
     node = std::move(e);
     return true;
   };
