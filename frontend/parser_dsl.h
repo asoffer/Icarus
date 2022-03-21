@@ -12,12 +12,12 @@ namespace frontend {
 
 template <typename P>
 concept Parser = requires(P p) {
+  typename P::match_type;
   // clang-format off
-  { base::meta<typename P::type> };
   { P::Parse(std::declval<absl::Span<Lexeme const>&>(),
              std::ignore) } -> std::same_as<bool>;
   { P::Parse(std::declval<absl::Span<Lexeme const>&>(),
-             std::declval<typename P::type&>()) } -> std::same_as<bool>;
+             std::declval<base::head<typename P::match_type>&>()) } -> std::same_as<bool>;
   // clang-format on
 };
 
@@ -64,7 +64,7 @@ constexpr std::string_view Prettify(std::string_view sv,
 
 template <Parser L, Parser R>
 struct DisjunctionImpl {
-  using type = typename L::type;
+  using match_type = typename L::match_type;
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
     return L::Parse(lexemes, out) or R::Parse(lexemes, out);
   }
@@ -73,12 +73,19 @@ struct DisjunctionImpl {
 template <Lexeme::Kind Separator, Parser P,
           template <typename...> typename Container = std::vector>
 struct SeparatedListImpl {
-  using type = Container<typename P::type>;
+ private:
+  static constexpr size_t kNumMatches = base::Length(typename P::match_type{});
+  using element_type =
+      std::conditional_t<kNumMatches == 1, base::head<typename P::match_type>,
+                         base::reduce_t<std::tuple, typename P::match_type>>;
+
+ public:
+  using match_type = base::type_list<Container<element_type>>;
+
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    type result;
+    Container<element_type> result;
     auto span        = lexemes;
-    using value_type = typename type::value_type;
-    value_type v;
+    element_type v;
     if (not P::Parse(span, v)) {
       out = std::move(result);
       return true;
@@ -102,7 +109,7 @@ struct SeparatedListImpl {
 
 template <char C, typename P>
 struct DelimitedByImpl {
-  using type = typename P::type;
+  using match_type = typename P::match_type;
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
     auto range = CheckBounds(lexemes);
     if (not range.data()) { return false; }
@@ -124,11 +131,9 @@ struct DelimitedByImpl {
   }
 };
 
-struct IgnoredType {};
-
 template <Parser P>
 struct Ignored {
-  using type = IgnoredType;
+  using match_type = base::type_list<>;
 
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
     return P::Parse(lexemes, std::ignore);
@@ -163,15 +168,15 @@ struct FixedString {
 template <size_t N>
 FixedString(char const (&s)[N]) -> FixedString<N - 1>;
 
-template <Parser P, typename T, typename F>
+template <Parser P, typename TL, typename F>
 struct ParserWith {
-  using type = T;
+  using match_type = TL;
 
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    typename P::type value;
+    base::head<typename P::match_type> value;
     if (not P::Parse(lexemes, value)) { return false; }
     F f;
-    f(std::move(value), out);
+    f(out, std::move(value));
     return true;
   }
 };
@@ -180,20 +185,20 @@ template <typename F>
 struct BindImpl {
   template <Parser P>
   friend constexpr Parser auto operator<<(P, BindImpl) {
-    return ParserWith<P, second_parameter, F>();
+    return ParserWith<
+        P, base::type_list<std::remove_reference_t<base::head<parameters>>>,
+        F>();
   }
 
  private:
   using parameters =
       typename base::Signature<decltype(+F{})>::parameter_type_list;
-  using second_parameter =
-      std::remove_reference_t<base::head<base::tail<parameters>>>;
 };
 
 // A parser that matches any one lexeme whose kind is `K`.
 template <Lexeme::Kind K>
 struct KindImpl {
-  using type = std::string_view;
+  using match_type = base::type_list<std::string_view>;
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
     PARSE_DEBUG_LOG();
     if (lexemes.empty() or lexemes[0].kind() != K) { return false; }
@@ -206,7 +211,7 @@ struct KindImpl {
 // A parser that matches a lexeme exactly.
 template <internal_parser_dsl::FixedString S>
 struct MatchImpl {
-  using type = internal_parser_dsl::IgnoredType;
+  using match_type = base::type_list<>;
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&) {
     PARSE_DEBUG_LOG();
     if (lexemes.empty() or S != lexemes[0].content()) { return false; }
@@ -221,8 +226,8 @@ struct MatchImpl {
 // which attempts to match `T` first by using `L`, and if that fails, then by
 // using `R`.
 template <Parser L, Parser R>
-constexpr auto operator|(L, R) requires(base::meta<typename L::type> ==
-                                        base::meta<typename R::type>) {
+constexpr auto operator|(L, R) requires(base::meta<typename L::match_type> ==
+                                        base::meta<typename R::match_type>) {
   return internal_parser_dsl::DisjunctionImpl<L, R>{};
 }
 
@@ -236,7 +241,7 @@ constexpr auto Match = internal_parser_dsl::MatchImpl<S>();
 // otherwise consumes no lexemes and is considered to have parsed successfully.
 template <Parser P>
 struct Optional {
-  using type = typename P::type;
+  using match_type = typename P::match_type;
 
   explicit constexpr Optional(P) {}
 

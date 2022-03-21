@@ -287,10 +287,20 @@ struct ReduceImpl<F, base::type_list<Ts...>> {
   using type = F<Ts...>;
 };
 
+template <template <typename> typename F, typename TL>
+struct TransformImpl;
+template <template <typename> typename F, typename... Ts>
+struct TransformImpl<F, base::type_list<Ts...>> {
+  using type = base::type_list<F<Ts>...>;
+};
+
 }  // namespace internal_meta
 
 template <template <typename...> typename F, typename TL>
 using reduce_t = ::base::internal_meta::ReduceImpl<F, TL>;
+
+template <template <typename> typename F, typename TL>
+using transform_t = ::base::internal_meta::TransformImpl<F, TL>;
 
 template <template <typename> typename F, typename TL>
 inline constexpr auto array_transform =

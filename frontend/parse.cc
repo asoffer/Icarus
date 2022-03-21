@@ -59,7 +59,7 @@ constexpr auto Identifier    = Kind<Lexeme::Kind::Identifier>;
 
 constexpr auto DeclarationId =
     (Identifier | Parenthesized(AnOperator))
-    << Bind([](std::string_view in, ast::Declaration::Id &out) {
+    << Bind([](ast::Declaration::Id &out, std::string_view in) {
          out = ast::Declaration::Id(in);
        });
 
@@ -135,7 +135,7 @@ bool ParseExpressionWithPrecedence(absl::Span<Lexeme const> &lexemes,
 
 template <typename T, auto P>
 struct Wrap {
-  using type = T;
+  using match_type = base::type_list<T>;
 
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
     return P(lexemes, out);
@@ -148,7 +148,7 @@ constexpr auto ExpressionBelowAssignment =
 
 constexpr auto PositionalArgument =
     ExpressionBelowAssignment << Bind(
-        [](std::unique_ptr<ast::Expression> e, ast::Call::Argument &argument) {
+        [](ast::Call::Argument &argument, std::unique_ptr<ast::Expression> e) {
           argument = ast::Call::Argument("", std::move(e));
         });
 
@@ -205,8 +205,8 @@ bool ParseLabel(absl::Span<Lexeme const> &lexemes,
   return true;
 }
 
-constexpr auto AsExpression = [](std::string_view content,
-                                 std::unique_ptr<ast::Expression> &out) {
+constexpr auto AsExpression = [](std::unique_ptr<ast::Expression> &out,
+                                 std::string_view content) {
   out = std::make_unique<ast::Terminal>(content, "");
 };
 
@@ -331,7 +331,7 @@ namespace {
 bool ParseDeclarationUniquePtr(absl::Span<Lexeme const> &lexemes,
                                std::unique_ptr<ast::Node> &out) {
   return (Wrap<ast::Declaration, ParseDeclaration>{}
-          << Bind([](ast::Declaration decl, std::unique_ptr<ast::Node> &out) {
+          << Bind([](std::unique_ptr<ast::Node> &out, ast::Declaration decl) {
                out = std::make_unique<ast::Declaration>(std::move(decl));
              }))
       .Parse(lexemes, out);
