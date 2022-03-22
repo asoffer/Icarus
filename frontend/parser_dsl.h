@@ -329,7 +329,7 @@ struct Optional {
 };
 
 template <Parser P>
-constexpr Parser auto operator--(P) {
+constexpr Parser auto operator~(P) {
   return internal_parser_dsl::Ignored<P>();
 }
 

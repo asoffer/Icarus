@@ -39,17 +39,6 @@ enum Precedence {
   return kMaxPrecedence;
 }
 
-std::string_view ExtractRange(absl::Span<Lexeme const> &lexemes,
-                              absl::Span<Lexeme const> remaining) {
-  ASSERT(lexemes.size() != 0);
-  Lexeme const &last   = *(remaining.data() - 1);
-  char const *endpoint = last.content().data() + last.content().size();
-  size_t length        = endpoint - lexemes.front().content().data();
-  std::string_view result(lexemes.front().content().data(), length);
-  lexemes = remaining;
-  return result;
-}
-
 bool ParseOperatorOrAtomicExpression(
     absl::Span<Lexeme const> &lexemes,
     std::variant<std::string_view, std::unique_ptr<ast::Expression>> &out);
@@ -136,20 +125,6 @@ bool ParseCallArgument(absl::Span<Lexeme const> &lexemes,
   std::string_view consumed;
   return CallArgument.Parse(lexemes, consumed, out);
 }
-
-constexpr auto NonDeducedDeclarationMarker  =
-    (Match<":"> | Match<"::">) << Bind(
-        [](Lexeme const &l) -> ast::Declaration::Flags {
-          if (l.content().size() == 2) { return ast::Declaration::f_IsConst; }
-          return ast::Declaration::Flags{};
-        });
-
-constexpr auto DeducedDeclarationMarker  =
-    (Match<":="> | Match<"::=">) << Bind(
-        [](Lexeme const &l) -> ast::Declaration::Flags {
-          if (l.content().size() == 3) { return ast::Declaration::f_IsConst; }
-          return ast::Declaration::Flags{};
-        });
 
 // TODO: Everything above this line is tested.
 

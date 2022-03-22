@@ -56,7 +56,7 @@ inline constexpr auto DeclarationId = (Identifier | Parenthesized(AnOperator))
                                       << Bind(Construct<ast::Declaration::Id>);
 
 inline constexpr auto Label =
-    (--Kind<Lexeme::Kind::Hash> + --Match<"."> + Identifier)
+    (~Kind<Lexeme::Kind::Hash> + ~Match<"."> + Identifier)
     << Bind(Construct<std::optional<ast::Label>>);
 
 inline constexpr auto Expression =
@@ -66,7 +66,7 @@ inline constexpr auto PositionalArgument =
     Expression << Bind([](std::unique_ptr<ast::Expression> e) {
       return ast::Call::Argument("", std::move(e));
     });
-inline constexpr auto NamedArgument = (Identifier + --Match<"="> + Expression)
+inline constexpr auto NamedArgument = (Identifier + ~Match<"="> + Expression)
                                       << Bind(Construct<ast::Call::Argument>);
 
 inline constexpr auto CallArgument = NamedArgument | PositionalArgument;
@@ -77,11 +77,27 @@ inline constexpr auto Statement =
 inline constexpr auto DeclarationStart =
     (Parenthesized(CommaSeparatedListOf(DeclarationId)) |
      DeclarationId << Bind(Vector<ast::Declaration::Id>));
+
+inline constexpr auto NonDeducedDeclarationMarker  =
+    (Match<":"> | Match<"::">) << Bind(
+        [](Lexeme const &l) -> ast::Declaration::Flags {
+          if (l.content().size() == 2) { return ast::Declaration::f_IsConst; }
+          return ast::Declaration::Flags{};
+        });
+
+inline constexpr auto DeducedDeclarationMarker =
+    (Match<":="> | Match<"::=">) << Bind(
+        [](Lexeme const &l) -> ast::Declaration::Flags {
+          if (l.content().size() == 3) { return ast::Declaration::f_IsConst; }
+          return ast::Declaration::Flags{};
+        });
+
 inline constexpr auto NonDeducedDeclaration =
     (DeclarationStart + NonDeducedDeclarationMarker + Expression +
-     Optional(--Match<"="> + Expression))
-    << BindWithRange([](std::string_view range, ast::Declaration::Flags flags,
-                        std::vector<ast::Declaration::id> ids,
+     Optional(~Match<"="> + Expression))
+    << BindWithRange([](std::string_view range,
+                        std::vector<ast::Declaration::Id> ids,
+                        ast::Declaration::Flags flags,
                         std::unique_ptr<ast::Expression> type_expression,
                         std::unique_ptr<ast::Expression> initial_value) {
          // TODO: Make this Construct.
@@ -91,8 +107,9 @@ inline constexpr auto NonDeducedDeclaration =
        });
 inline constexpr auto DeducedDeclaration =
     (DeclarationStart + DeducedDeclarationMarker + Expression)
-    << BindWithRange([](std::string_view range, ast::Declaration::Flags flags,
-                        std::vector<ast::Declaration::id> ids,
+    << BindWithRange([](std::string_view range,
+                        std::vector<ast::Declaration::Id> ids,
+                        ast::Declaration::Flags flags,
                         std::unique_ptr<ast::Expression> initial_value) {
          // TODO: Make this Construct.
          return ast::Declaration(range, std::move(ids), nullptr,
@@ -101,15 +118,15 @@ inline constexpr auto DeducedDeclaration =
 
 inline constexpr auto Declaration = NonDeducedDeclaration | DeducedDeclaration;
 inline constexpr auto ReturnStatement =
-    (--Match<"return"> + CommaSeparatedListOf(Expression))
+    (~Match<"return"> + CommaSeparatedListOf(Expression))
     << BindWithRange(MakeUnique<ast::ReturnStmt, ast::Node>);
 
 inline constexpr auto YieldStatement =
-    (Optional(Label) + --Match<"<<"> + CommaSeparatedListOf(CallArgument))
+    (Optional(Label) + ~Match<"<<"> + CommaSeparatedListOf(CallArgument))
     << BindWithRange(MakeUnique<ast::YieldStmt, ast::Node>);
 
 inline constexpr auto WhileStatement =
-    --Match<"while"> + Parenthesized(Expression) +
+    ~Match<"while"> + Parenthesized(Expression) +
         Braced(NewlineSeparatedListOf(Statement))
     << BindWithRange(MakeUnique<ast::WhileStmt, ast::Node>);
 
@@ -117,7 +134,7 @@ inline constexpr auto ExpressionOrExpressionList =
     (Parenthesized(CommaSeparatedListOf(Expression)) |
      Expression << Bind(Vector<std::unique_ptr<ast::Expression>>));
 inline constexpr auto Assignment =
-    (ExpressionOrExpressionList + --Kind<Lexeme::Kind::Assignment> +
+    (ExpressionOrExpressionList + ~Kind<Lexeme::Kind::Assignment> +
      ExpressionOrExpressionList)
     << BindWithRange(MakeUnique<ast::Assignment, ast::Node>);
 
@@ -130,17 +147,17 @@ inline constexpr auto ParameterizedStructImpl =
     << BindWithRange(
            MakeUnique<ast::ParameterizedStructLiteral, ast::Expression>);
 inline constexpr auto StructLiteral =
-    --Match<"struct"> + (StructImpl | ParameterizedStructImpl);
+    ~Match<"struct"> + (StructImpl | ParameterizedStructImpl);
 
 inline constexpr auto ScopeLiteral =
-    (--Match<"scope"> +
+    (~Match<"scope"> +
      Bracketed(Identifier << Bind(Construct<ast::Declaration::Id>)) +
      Parenthesized(CommaSeparatedListOf(Declaration)) +
      Braced(NewlineSeparatedListOf(Statement)))
     << BindWithRange(MakeUnique<ast::ScopeLiteral, ast::Expression>);
 
 inline constexpr auto FunctionLiteral =
-    (Parenthesized(CommaSeparatedListOf(Declaration)) + --Match<"->"> +
+    (Parenthesized(CommaSeparatedListOf(Declaration)) + ~Match<"->"> +
      Optional(Parenthesized(CommaSeparatedListOf(Expression))) +
      Braced(NewlineSeparatedListOf(Statement)))
     << BindWithRange(MakeUnique<ast::FunctionLiteral, ast::Expression>);
@@ -162,7 +179,7 @@ inline constexpr auto AtomicExpression =
     | TerminalOrIdentifier;                           //
 
 std::optional<ast::Module> ParseModule(
-    absl::Span<Lexeme const> lexemes, diagnostic::DiagnosticConsumer& consumer);
+    absl::Span<Lexeme const> lexemes, diagnostic::DiagnosticConsumer &consumer);
 
 }  // namespace frontend
 
