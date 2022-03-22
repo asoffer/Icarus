@@ -92,5 +92,87 @@ TEST(Meta, ArrayTransform) {
               ElementsAre(sizeof(int), sizeof(bool)));
 }
 
+TEST(Meta, GetEntriesImpl) {
+  std::tuple t(0, 1, 4, 9, 16, 25);
+  EXPECT_EQ((internal_meta::GetEntriesImpl<std::index_sequence<>>{}(t)),
+            std::tuple());
+  EXPECT_EQ((internal_meta::GetEntriesImpl<std::index_sequence<3>>{}(t)),
+            std::tuple(9));
+  EXPECT_EQ((internal_meta::GetEntriesImpl<std::index_sequence<3, 5>>{}(t)),
+            std::tuple(9, 25));
+  EXPECT_EQ((internal_meta::GetEntriesImpl<std::index_sequence<5, 3>>{}(t)),
+            std::tuple(25, 9));
+  EXPECT_EQ((internal_meta::GetEntriesImpl<std::index_sequence<2, 5, 2>>{}(t)),
+            std::tuple(4, 25, 4));
+}
+
+TEST(Meta, AddImpl) {
+  EXPECT_EQ(
+      (base::meta<
+          typename internal_meta::AddImpl<3, std::index_sequence<>>::type>),
+      (base::meta<std::index_sequence<>>));
+  EXPECT_EQ(
+      (base::meta<
+          typename internal_meta::AddImpl<3, std::index_sequence<1>>::type>),
+      (base::meta<std::index_sequence<4>>));
+  EXPECT_EQ((base::meta<typename internal_meta::AddImpl<
+                 5, std::index_sequence<1, 2, 3>>::type>),
+            (base::meta<std::index_sequence<6, 7, 8>>));
+}
+
+template <typename I, typename T>
+using Wrap = typename internal_meta::AddTupleImpl<I, T>::type;
+
+TEST(Meta, AddTupleImpl) {
+  EXPECT_EQ((base::meta<Wrap<std::index_sequence<>, std::tuple<>>>),
+            (base::meta<std::tuple<>>));
+  EXPECT_EQ((base::meta<Wrap<std::index_sequence<3>,
+                             std::tuple<std::index_sequence<1, 2, 3>>>>),
+            (base::meta<std::tuple<std::index_sequence<4, 5, 6>>>));
+
+  EXPECT_EQ((base::meta<Wrap<std::index_sequence<3, 2>,
+                             std::tuple<std::index_sequence<1, 2, 3>,
+                                        std::index_sequence<10, 20>>>>),
+            (base::meta<std::tuple<std::index_sequence<4, 5, 6>,
+                                   std::index_sequence<12, 22>>>));
+}
+
+TEST(Meta, PartialSum) {
+  EXPECT_EQ(
+      (base::meta<
+          typename internal_meta::PartialSum<std::index_sequence<>>::type>),
+      (base::meta<std::index_sequence<>>));
+  EXPECT_EQ(
+      (base::meta<
+          typename internal_meta::PartialSum<std::index_sequence<1>>::type>),
+      (base::meta<std::index_sequence<0>>));
+  EXPECT_EQ(
+      (base::meta<
+          typename internal_meta::PartialSum<std::index_sequence<2>>::type>),
+      (base::meta<std::index_sequence<0>>));
+  EXPECT_EQ(
+      (base::meta<
+          typename internal_meta::PartialSum<std::index_sequence<2, 3>>::type>),
+      (base::meta<std::index_sequence<0, 2>>));
+  EXPECT_EQ((base::meta<typename internal_meta::PartialSum<
+                 std::index_sequence<2, 3, 4, 5>>::type>),
+            (base::meta<std::index_sequence<0, 2, 5, 9>>));
+}
+
+TEST(Meta, SplitTuple) {
+  std::tuple t( 1, 2, 3);
+  EXPECT_EQ(SplitTuple<3>(t),
+            (std::tuple<std::tuple<int, int, int>>(std::tuple(1, 2, 3))));
+  EXPECT_EQ((SplitTuple<1, 2>(t)),
+            (std::tuple<std::tuple<int>, std::tuple<int, int>>(
+                std::tuple(1), std::tuple(2, 3))));
+  EXPECT_EQ((SplitTuple<2, 1>(t)),
+            (std::tuple<std::tuple<int, int>, std::tuple<int>>(std::tuple(1, 2),
+                                                               std::tuple(3))));
+  EXPECT_EQ((SplitTuple<1, 1, 1>(t)),
+            (std::tuple<std::tuple<int>, std::tuple<int>, std::tuple<int>>(
+                std::tuple(1), std::tuple(2), std::tuple(3))));
+}
+
 }  // namespace
 }  // namespace base

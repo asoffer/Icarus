@@ -4,7 +4,9 @@
 #include <array>
 #include <concepts>
 #include <cstdint>
+#include <numeric>
 #include <ostream>
+#include <tuple>
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
@@ -294,6 +296,48 @@ struct TransformImpl<F, base::type_list<Ts...>> {
   using type = base::type_list<F<Ts>...>;
 };
 
+template <typename>
+struct GetEntriesImpl;
+
+template <size_t... Ns>
+struct GetEntriesImpl<std::index_sequence<Ns...>> {
+  template <typename Tuple>
+  auto operator()(Tuple&& t) {
+    return std::forward_as_tuple(std::get<Ns>(std::forward<Tuple>(t))...);
+  }
+};
+
+template <size_t, typename>
+struct AddImpl;
+template <size_t N, size_t... Ns>
+struct AddImpl<N, std::index_sequence<Ns...>> {
+  using type = std::index_sequence<(N + Ns)...>;
+};
+
+template <typename, typename>
+struct AddTupleImpl;
+template <size_t... Ns, typename... Ts>
+struct AddTupleImpl<std::index_sequence<Ns...>, std::tuple<Ts...>> {
+  using type = std::tuple<typename AddImpl<Ns, Ts>::type...>;
+};
+
+template <typename Seq, typename Iota = std::make_index_sequence<Seq::size()>>
+struct PartialSum;
+
+template <size_t... Ns, size_t... Iota>
+struct PartialSum<std::index_sequence<Ns...>, std::index_sequence<Iota...>> {
+ private:
+  static constexpr std::array<size_t, sizeof...(Ns)> kArray = [] {
+    std::array a{Ns...};
+    size_t partial_sum = 0;
+    for (size_t& n : a) { partial_sum += std::exchange(n, partial_sum); }
+    return a;
+  }();
+
+ public:
+  using type = std::index_sequence<kArray[Iota]...>;
+};
+
 }  // namespace internal_meta
 
 template <template <typename...> typename F, typename TL>
@@ -312,7 +356,6 @@ using tail = typename internal_meta::tail_impl<TL>::type;
 template <typename TL>
 using head = typename internal_meta::head_impl<TL>::type;
 
-
 template <typename H, typename T>
 concept Hasher = std::invocable<H, T>and
     std::convertible_to<std::invoke_result_t<H, T>, size_t>;
@@ -321,48 +364,24 @@ template <typename>
 struct Signature;
 template <typename Ret, typename... Parameters>
 struct Signature<Ret(Parameters...)> {
-  using return_type          = Ret;
+  using return_type         = Ret;
   using parameter_type_list = type_list<Parameters...>;
 };
 template <typename Ret, typename... Parameters>
 struct Signature<Ret (*)(Parameters...)> : Signature<Ret(Parameters...)> {};
 
-// template <typename>
-// struct GetEntriesImpl;
-// 
-// template <size_t... Ns>
-// struct GetEntriesImpl<std::index_sequence<Ns...>> {
-//   template <typename Tuple>
-//   auto operator()(Tuple&& t) {
-//     return std::forward_as_tuple(std::get<Ns>(std::forward<Tuple>(t))...);
-//   }
-// };
-// 
-// template <size_t, typename>
-// struct AddImpl;
-// template <size_t N, size_t... Ns>
-// struct AddImpl<N, std::index_sequence<Ns...>> {
-//   using type = std::index_sequence<(N + Ns)...>;
-// };
-// 
-// template <typename, size_t...>
-// struct AddTupleImpl;
-// template <typename... Ts, size_t... Ns>
-// struct AddTupleImpl<std::tuple<Ts...>, Ns...> {
-//   using type = std::tuple<typename AddImpl<Ns, Ts>::type...>;
-// };
-// 
-// template <size_t... Lengths, typename Tuple>
-// auto SplitTuple(Tuple&& t) {
-//   using index_sequence_tuple =
-//       AddTupleImpl<std::tuple<std::make_index_sequence<Lengths>...>,
-//                    typename OffsetsImpl<Lengths...>::type>;
-//   return std::apply(
-//       [&](auto... seqs) {
-//         return std::make_tuple(GetEntriesImpl<decltype(seqs)>{}(t));
-//       },
-//       index_sequence_tuple{});
-// }
+template <size_t... Lengths, typename Tuple>
+auto SplitTuple(Tuple&& t) {
+  using index_sequence_tuple = typename internal_meta::AddTupleImpl<
+      typename internal_meta::PartialSum<std::index_sequence<Lengths...>>::type,
+      std::tuple<std::make_index_sequence<Lengths>...>>::type;
+  return std::apply(
+      [&](auto... seqs) {
+        return std::make_tuple(
+            internal_meta::GetEntriesImpl<decltype(seqs)>{}(t)...);
+      },
+      index_sequence_tuple{});
+}
 
 }  // namespace base
 
