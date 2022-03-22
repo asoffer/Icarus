@@ -1314,8 +1314,8 @@ struct UnaryOperator : Expression {
 //  * `#.my_label <<`
 //
 struct YieldStmt : Node {
-  explicit YieldStmt(std::string_view range, std::vector<Call::Argument> args,
-                     std::optional<Label> label = std::nullopt)
+  explicit YieldStmt(std::string_view range, std::optional<Label> label,
+                     std::vector<Call::Argument> args)
       : Node(IndexOf<YieldStmt>(), range),
         args_(std::move(args)),
         label_(std::move(label)) {}

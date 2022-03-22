@@ -225,11 +225,14 @@ struct InvokeResultT {
   };
 };
 
-template <Parser P, typename F>
+template <Parser P, typename F, bool UseConsumedRange>
 struct ParserWith {
-  using match_type =
-      base::type_list<typename base::reduce_t<InvokeResultT<F>::template Get,
-                                              typename P::match_type>::type>;
+  using match_type = base::type_list<typename base::reduce_t<
+      InvokeResultT<F>::template Get,
+      std::conditional_t<UseConsumedRange,
+                         base::type_list_cat<base::type_list<std::string_view>,
+                                             typename P::match_type>,
+                         typename P::match_type>>::type>;
 
   static bool Parse(absl::Span<Lexeme const> &lexemes,
                     std::string_view &consumed, auto &&out) {
@@ -241,16 +244,20 @@ struct ParserWith {
         value_tuple);
     if (not result) { return false; }
     F f;
-    out = std::apply(f, std::move(value_tuple));
+    if constexpr (UseConsumedRange) {
+      out = std::apply(std::bind_front(f, consumed), std::move(value_tuple));
+    } else {
+      out = std::apply(f, std::move(value_tuple));
+    }
     return true;
   }
 };
 
-template <typename F>
+template <typename F, bool B>
 struct BindImpl {
   template <Parser P>
   friend constexpr Parser auto operator<<(P, BindImpl) {
-    return ParserWith<P, F>();
+    return ParserWith<P, F, B>();
   }
 };
 
@@ -343,7 +350,11 @@ constexpr auto NewlineSeparatedListOf(Parser auto P) {
 
 template <typename F>
 constexpr auto Bind(F) requires(std::is_empty_v<F>) {
-  return internal_parser_dsl::BindImpl<F>();
+  return internal_parser_dsl::BindImpl<F, false>();
+}
+template <typename F>
+constexpr auto BindWithRange(F) requires(std::is_empty_v<F>) {
+  return internal_parser_dsl::BindImpl<F, true>();
 }
 
 }  // namespace frontend
