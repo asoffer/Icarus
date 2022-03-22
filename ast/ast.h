@@ -779,9 +779,8 @@ struct EnumLiteral : Expression, WithScope {
 struct FunctionLiteral : ParameterizedExpression, WithScope {
   explicit FunctionLiteral(
       std::string_view range, std::vector<Declaration> in_params,
-      std::vector<std::unique_ptr<Node>> stmts,
-      std::optional<std::vector<std::unique_ptr<Expression>>> out_params =
-          std::nullopt)
+      std::optional<std::vector<std::unique_ptr<Expression>>> out_params,
+      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(IndexOf<FunctionLiteral>(), range,
                                 std::move(in_params)),
         WithScope(Scope::Kind::BoundaryExecutable),

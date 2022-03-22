@@ -12,7 +12,8 @@
 #include "type/primitive.h"
 
 namespace frontend {
-
+bool ParseTerminalOrIdentifier(absl::Span<Lexeme const> &lexemes,
+                               std::unique_ptr<ast::Expression> &out);
 bool ParseDeclaration(absl::Span<Lexeme const> &lexemes, ast::Declaration &out);
 bool ParseStatement(absl::Span<Lexeme const> &lexemes,
                     std::unique_ptr<ast::Node> &);
@@ -25,11 +26,18 @@ template <typename T>
 constexpr auto Construct = []<typename... Args>(Args &&... args) {
   return T(std::forward<Args>(args)...);
 };
-template <typename T>
-constexpr auto MakeUnique= []<typename... Args>(Args &&... args) {
+template <typename T, typename Out = T>
+constexpr auto MakeUnique =
+    []<typename... Args>(Args &&... args)
+        -> std::unique_ptr<Out> requires(std::constructible_from<T, Args...>) {
   return std::make_unique<T>(std::forward<Args>(args)...);
 };
-
+template <typename T>
+constexpr auto Vector = []<typename Arg>(Arg &&arg) {
+  std::vector<T> v;
+  v.push_back(std::forward<Arg>(arg));
+  return v;
+};
 
 template <typename T, auto P, typename... Args>
 bool ParseSequence(absl::Span<Lexeme const> &lexemes, std::vector<T> &out,
@@ -105,18 +113,64 @@ constexpr auto Declaration = Wrap<ast::Declaration, ParseDeclaration>{};
 
 constexpr auto ReturnStatement =
     (Match<"return"> + CommaSeparatedListOf(Expression))
-    << BindWithRange(MakeUnique<ast::ReturnStmt>);
+    << BindWithRange(MakeUnique<ast::ReturnStmt, ast::Node>);
 
 constexpr auto YieldStatement =
     (Optional(Label) + Match<"<<"> + CommaSeparatedListOf(CallArgument))
-    << BindWithRange(MakeUnique<ast::YieldStmt>);
+    << BindWithRange(MakeUnique<ast::YieldStmt, ast::Node>);
 
-constexpr auto WhileStatement = Match<"while"> + Parenthesized(Expression) +
-                                    Braced(NewlineSeparatedListOf(Statement))
-                                << BindWithRange(MakeUnique<ast::WhileStmt>);
+constexpr auto WhileStatement =
+    Match<"while"> + Parenthesized(Expression) +
+        Braced(NewlineSeparatedListOf(Statement))
+    << BindWithRange(MakeUnique<ast::WhileStmt, ast::Node>);
 
-bool ParseDeclarationUniquePtr(absl::Span<Lexeme const> &lexemes,
-                               std::unique_ptr<ast::Node> &out);
+constexpr auto ExpressionOrExpressionList =
+    (Parenthesized(CommaSeparatedListOf(Expression)) |
+     Expression << Bind(Vector<std::unique_ptr<ast::Expression>>));
+constexpr auto Assignment =
+    (ExpressionOrExpressionList + --Kind<Lexeme::Kind::Assignment> +
+     ExpressionOrExpressionList)
+    << BindWithRange(MakeUnique<ast::Assignment, ast::Node>);
+
+constexpr auto StructImpl =
+    Braced(NewlineSeparatedListOf(Declaration))
+    << BindWithRange(MakeUnique<ast::StructLiteral, ast::Expression>);
+constexpr auto ParameterizedStructImpl =
+    (Parenthesized(CommaSeparatedListOf(Declaration)) +
+     Braced(NewlineSeparatedListOf(Declaration)))
+    << BindWithRange(
+           MakeUnique<ast::ParameterizedStructLiteral, ast::Expression>);
+constexpr auto StructLiteral =
+    Match<"struct"> + (StructImpl | ParameterizedStructImpl);
+
+constexpr auto ScopeLiteral =
+    (Match<"scope"> +
+     Bracketed(Identifier << Bind(Construct<ast::Declaration::Id>)) +
+     Parenthesized(CommaSeparatedListOf(Declaration)) +
+     Braced(NewlineSeparatedListOf(Statement)))
+    << BindWithRange(MakeUnique<ast::ScopeLiteral, ast::Expression>);
+
+constexpr auto FunctionLiteral =
+    (Parenthesized(CommaSeparatedListOf(Declaration)) + Match<"->"> +
+     Optional(Parenthesized(CommaSeparatedListOf(Expression))) +
+     Braced(NewlineSeparatedListOf(Statement)))
+    << BindWithRange(MakeUnique<ast::FunctionLiteral, ast::Expression>);
+
+constexpr auto TerminalOrIdentifier =
+    Wrap<std::unique_ptr<ast::Expression>, ParseTerminalOrIdentifier>{};
+
+constexpr auto AsExpression =
+    [](std::string_view content) -> std::unique_ptr<ast::Expression> {
+  return std::make_unique<ast::Terminal>(content, "");
+};
+
+constexpr auto AtomicExpression =
+    ((Number | StringLiteral) << Bind(AsExpression))  //
+    | Parenthesized(Expression)                       //
+    | FunctionLiteral                                 //
+    | StructLiteral                                   //
+    | ScopeLiteral                                    //
+    | TerminalOrIdentifier;                           //
 
 bool ParseOperatorOrAtomicExpression(
     absl::Span<Lexeme const> &lexemes,
@@ -193,11 +247,6 @@ bool ParseLabel(absl::Span<Lexeme const> &lexemes,
   return Label.Parse(lexemes, consumed, out);
 }
 
-constexpr auto AsExpression =
-    [](std::string_view content) -> std::unique_ptr<ast::Expression> {
-  return std::make_unique<ast::Terminal>(content, "");
-};
-
 bool ParseStringLiteral(absl::Span<Lexeme const> &lexemes,
                         std::unique_ptr<ast::Expression> &out) {
   std::string_view consumed;
@@ -216,12 +265,11 @@ bool ParseDeclaration(absl::Span<Lexeme const> &lexemes,
   auto span = lexemes;
   std::vector<ast::Declaration::Id> ids;
   std::string_view consumed;
-  if (not Parenthesized(CommaSeparatedListOf(DeclarationId))
-              .Parse(span, consumed, ids)) {
-    if (not DeclarationId.Parse(span, consumed, ids.emplace_back())) {
-      return false;
-    }
-  }
+
+  constexpr auto DeclarationStart =
+      (Parenthesized(CommaSeparatedListOf(DeclarationId)) |
+       DeclarationId << Bind(Vector<ast::Declaration::Id>));
+  if (not DeclarationStart.Parse(span, consumed, ids)) { return false; }
 
   std::unique_ptr<ast::Expression> type_expression;
   std::unique_ptr<ast::Expression> initial_value;
@@ -251,141 +299,11 @@ bool ParseDeclaration(absl::Span<Lexeme const> &lexemes,
 bool ParseAssignment(absl::Span<Lexeme const> &lexemes,
                      std::unique_ptr<ast::Node> &out) {
   PARSE_DEBUG_LOG();
-  auto span = lexemes;
   std::string_view consumed;
-  std::unique_ptr<ast::Expression> l, r;
-  if (not Expression.Parse(span, consumed, l)) { return false; }
-  if (span.empty()) { return false; }
-  if (span[0].kind() != Lexeme::Kind::Assignment) { return false; }
-  span.remove_prefix(1);
-  if (span.empty()) { return false; }
-  if (not Expression.Parse(span, consumed, r)) { return false; }
-
-  // TODO: Multi-assignment
-  std::vector<std::unique_ptr<ast::Expression>> lhs, rhs;
-  lhs.push_back(std::move(l));
-  rhs.push_back(std::move(r));
-  out = std::make_unique<ast::Assignment>(ExtractRange(lexemes, span),
-                                          std::move(lhs), std::move(rhs));
-  return true;
+  return Assignment.Parse(lexemes, consumed, out);
 }
 
 // TODO: Everything above this line is tested.
-
-bool ParseKeyword(std::string_view s, absl::Span<Lexeme const> &lexemes) {
-  PARSE_DEBUG_LOG();
-  if (not lexemes.empty() and lexemes[0].kind() == Lexeme::Kind::Identifier and
-      lexemes[0].content() == s) {
-    lexemes.remove_prefix(1);
-    return true;
-  }
-  return false;
-}
-
-namespace {
-bool ParseDeclarationUniquePtr(absl::Span<Lexeme const> &lexemes,
-                               std::unique_ptr<ast::Node> &out) {
-  std::string_view consumed;
-  return (Declaration << Bind(MakeUnique<ast::Declaration>))
-      .Parse(lexemes, consumed, out);
-}
-}  // namespace
-
-bool ParseFunctionLiteral(absl::Span<Lexeme const> &lexemes,
-                          std::unique_ptr<ast::Expression> &out) {
-  PARSE_DEBUG_LOG();
-  std::vector<ast::Declaration> parameters;
-  std::vector<std::unique_ptr<ast::Node>> stmts;
-  absl::Span span = lexemes;
-  std::string_view consumed;
-  if (not Parenthesized(CommaSeparatedListOf(Declaration))
-              .Parse(span, consumed, parameters)) {
-    return false;
-  }
-
-  if (not Match<"->">.Parse(span, consumed)) { return false; }
-
-  std::vector<std::unique_ptr<ast::Expression>> out_params;
-  if (not Parenthesized(CommaSeparatedListOf(Expression))
-              .Parse(span, consumed, out_params)) {
-    return false;
-  }
-
-  if (not Braced(NewlineSeparatedListOf(Statement)).Parse(span, consumed, stmts)) {
-    return false;
-  }
-
-  out = std::make_unique<ast::FunctionLiteral>(
-      ExtractRange(lexemes, span), std::move(parameters), std::move(stmts),
-      std::move(out_params));
-  return true;
-}
-
-bool ParseStructLiteral(absl::Span<Lexeme const> &lexemes,
-                        std::unique_ptr<ast::Expression> &out) {
-  PARSE_DEBUG_LOG();
-  std::vector<ast::Declaration> declarations;
-  absl::Span span = lexemes;
-  std::string_view consumed;
-  bool result =
-      ParseKeyword("struct", span) and
-      Braced(NewlineSeparatedListOf(Declaration)).Parse(span, consumed, declarations);
-  if (not result) { return false; }
-  out = std::make_unique<ast::StructLiteral>(ExtractRange(lexemes, span),
-                                             std::move(declarations));
-  return true;
-}
-
-bool ParseParameterizedStructLiteral(absl::Span<Lexeme const> &lexemes,
-                                     std::unique_ptr<ast::Expression> &out) {
-  PARSE_DEBUG_LOG();
-  if (lexemes.empty() or lexemes[0].content() != "struct") { return false; }
-  absl::Span span = lexemes.subspan(1);
-
-  std::string_view consumed;
-  std::vector<ast::Declaration> parameters;
-  if (not Parenthesized(CommaSeparatedListOf(Declaration))
-              .Parse(span, consumed, parameters)) {
-    return false;
-  }
-
-  std::vector<ast::Declaration> declarations;
-  if (not Braced(NewlineSeparatedListOf(Declaration))
-              .Parse(span, consumed, declarations)) {
-    return false;
-  }
-
-  out = std::make_unique<ast::ParameterizedStructLiteral>(
-      ExtractRange(lexemes, span), std::move(parameters),
-      std::move(declarations));
-  return true;
-}
-
-bool ParseScopeLiteral(absl::Span<Lexeme const> &lexemes,
-                       std::unique_ptr<ast::Expression> &out) {
-  PARSE_DEBUG_LOG();
-  std::string_view consumed;
-  if (lexemes.empty() or lexemes[0].content() != "scope") { return false; }
-  absl::Span span = lexemes.subspan(1);
-  std::string_view id;
-  if (not Bracketed(Identifier).Parse(span, consumed, id)) { return false; }
-
-  std::vector<ast::Declaration> parameters;
-  if (not Parenthesized(CommaSeparatedListOf(Declaration))
-              .Parse(span, consumed, parameters)) {
-    return false;
-  }
-
-  std::vector<std::unique_ptr<ast::Node>> body;
-  if (not Braced(NewlineSeparatedListOf(Statement)).Parse(span, consumed, body)) {
-    return false;
-  }
-
-  out = std::make_unique<ast::ScopeLiteral>(
-      ExtractRange(lexemes, span), ast::Declaration::Id(id),
-      std::move(parameters), std::move(body));
-  return true;
-}
 
 bool ParseTerminalOrIdentifier(absl::Span<Lexeme const> &lexemes,
                                std::unique_ptr<ast::Expression> &out) {
@@ -436,26 +354,6 @@ bool ParseTerminalOrIdentifier(absl::Span<Lexeme const> &lexemes,
   return true;
 }
 
-static constexpr auto ParameterizedStructLiteral =
-    Wrap<std::unique_ptr<ast::Expression>, ParseParameterizedStructLiteral>{};
-static constexpr auto ScopeLiteral =
-    Wrap<std::unique_ptr<ast::Expression>, ParseScopeLiteral>{};
-static constexpr auto StructLiteral =
-    Wrap<std::unique_ptr<ast::Expression>, ParseStructLiteral>{};
-static constexpr auto FunctionLiteral =
-    Wrap<std::unique_ptr<ast::Expression>, ParseFunctionLiteral>{};
-static constexpr auto TerminalOrIdentifier =
-    Wrap<std::unique_ptr<ast::Expression>, ParseTerminalOrIdentifier>{};
-
-static constexpr auto AtomicExpression =
-    ((Number | StringLiteral) << Bind(AsExpression))  //
-    | Parenthesized(Expression)                       //
-    | FunctionLiteral                                 //
-    | StructLiteral                                   //
-    | ParameterizedStructLiteral                      //
-    | ScopeLiteral                                    //
-    | TerminalOrIdentifier;                           //
-
 bool ParseAtomicExpression(absl::Span<Lexeme const> &lexemes,
                            std::unique_ptr<ast::Expression> &e) {
   std::string_view consumed;
@@ -495,14 +393,9 @@ bool ParseReturnStatement(absl::Span<Lexeme const> &lexemes,
   return ReturnStatement.Parse(lexemes, consumed, out);
 }
 bool ParseYieldStatement(absl::Span<Lexeme const> &lexemes,
-                          std::unique_ptr<ast::Node> &out) {
-  std::string_view consumed;
-  return YieldStatement.Parse(lexemes, consumed, out);
-}
-bool ParseWhileStatement(absl::Span<Lexeme const> &lexemes,
                          std::unique_ptr<ast::Node> &out) {
   std::string_view consumed;
-  return WhileStatement.Parse(lexemes, consumed, out);
+  return YieldStatement.Parse(lexemes, consumed, out);
 }
 
 bool ParseStatement(absl::Span<Lexeme const> &lexemes,
@@ -517,19 +410,16 @@ bool ParseStatement(absl::Span<Lexeme const> &lexemes,
   if (iter == lexemes.end()) { return false; }
   absl::Span span = lexemes = absl::MakeConstSpan(iter, lexemes.end());
 
+  constexpr auto Statement = (                                          //
+      WhileStatement                                                    //
+      | Assignment                                                      //
+      | (Declaration << Bind(MakeUnique<ast::Declaration, ast::Node>))  //
+      | ReturnStatement                                                 //
+      | YieldStatement                                                  //
+      | (Expression << Bind([](std::unique_ptr<ast::Expression> e)
+                                -> std::unique_ptr<ast::Node> { return e; })));
   std::string_view consumed;
-  if (WhileStatement.Parse(lexemes, consumed, node)) { return true; }
-  if (ParseAssignment(lexemes, node)) { return true; }
-  if (ParseDeclarationUniquePtr(lexemes, node)) { return true; }
-  if (ReturnStatement.Parse(lexemes, consumed, node)) { return true; }
-  if (YieldStatement.Parse(lexemes, consumed, node)) { return true; }
-  std::unique_ptr<ast::Expression> e;
-  if (Expression.Parse(lexemes, consumed, e)) {
-    node = std::move(e);
-    return true;
-  };
-
-  return false;
+  return Statement.Parse(lexemes, consumed, node);
 }
 
 std::optional<ast::Module> ParseModule(absl::Span<Lexeme const> lexemes,
