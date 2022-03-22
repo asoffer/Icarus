@@ -13,12 +13,7 @@ namespace frontend {
 template <typename P>
 concept Parser = requires(P p) {
   typename P::match_type;
-  // clang-format off
-  { P::Parse(std::declval<absl::Span<Lexeme const>&>(),
-             std::ignore) } -> std::same_as<bool>;
-  { P::Parse(std::declval<absl::Span<Lexeme const>&>(),
-             std::declval<base::head<typename P::match_type>&>()) } -> std::same_as<bool>;
-  // clang-format on
+  // TODO: Reimplement
 };
 
 namespace internal_parser_dsl {
@@ -75,24 +70,24 @@ struct DisjunctionImpl {
 
 template <Parser... Ps>
 struct SequencedImpl {
- private:
-  static constexpr std::array<size_t, sizeof...(Ps)> kMatchIndices =
-      [] {
-        std::array<size_t, sizeof...(Ps)> result{base::Length(typename Ps::match_type{}) ...};
-        size_t accumulation = 0;
-        for (size_t &n : result) {
-          size_t value = n;
-          n += accumulation - value;
-          accumulation += value;
-        }
-        return result;
-      }();
-
- public:
   using match_type = base::type_list_cat<typename Ps::match_type...>;
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&... outs) {
+    LOG("", "%s", lexemes);
+    auto out_tuple_tuple =
+        base::SplitTuple<base::Length(typename Ps::match_type{})...>(
+            std::forward_as_tuple(outs...));
+
     absl::Span span = lexemes;
-    bool result = (Ps::Parse(span, outs) and ...);
+
+    bool result = std::apply(
+        [&](auto &... out_tuples) {
+          return (std::apply(
+                      [&](auto &... outs) { return Ps::Parse(span, outs...); },
+                      out_tuples) and
+                  ...);
+        },
+        out_tuple_tuple);
+
     if (result) { lexemes = span; }
     return result;
   }
@@ -156,12 +151,19 @@ struct DelimitedByImpl {
   }
 };
 
+template <typename P, size_t... Ns>
+bool CallWithIgnores(std::index_sequence<Ns...>,
+                     absl::Span<Lexeme const> &lexemes) {
+  return P::Parse(lexemes, (std::ignore = Ns)...);
+}
+
 template <Parser P>
 struct Ignored {
   using match_type = base::type_list<>;
 
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    return P::Parse(lexemes, std::ignore);
+  static bool Parse(absl::Span<Lexeme const> &lexemes) {
+    constexpr size_t N = base::Length(typename P::match_type{});
+    return CallWithIgnores<P>(std::make_index_sequence<N>{}, lexemes);
   }
 };
 
@@ -198,10 +200,14 @@ struct ParserWith {
   using match_type = TL;
 
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    base::head<typename P::match_type> value;
-    if (not P::Parse(lexemes, value)) { return false; }
+    base::reduce_t<std::tuple, typename P::match_type> value_tuple;
+    bool result = std::apply(
+        [&](auto &... values) { return P::Parse(lexemes, values...); },
+        value_tuple);
+    if (not result) { return false; }
     F f;
-    f(out, std::move(value));
+    std::apply([&](auto &&... values) { f(out, std::move(values)...); },
+               std::move(value_tuple));
     return true;
   }
 };
@@ -237,7 +243,7 @@ struct KindImpl {
 template <internal_parser_dsl::FixedString S>
 struct MatchImpl {
   using match_type = base::type_list<>;
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&) {
+  static bool Parse(absl::Span<Lexeme const> &lexemes) {
     PARSE_DEBUG_LOG();
     if (lexemes.empty() or S != lexemes[0].content()) { return false; }
     lexemes.remove_prefix(1);
@@ -256,6 +262,12 @@ constexpr auto operator|(L, R) requires(base::meta<typename L::match_type> ==
   return internal_parser_dsl::DisjunctionImpl<L, R>{};
 }
 
+// Given two parsers `L` and `R` returns a parser matching those lexeme streams
+// which matching `L` and then `R`.`
+template <Parser L, Parser R>
+constexpr auto operator+(L, R) {
+  return internal_parser_dsl::SequencedImpl<L, R>{};
+}
 template <Lexeme::Kind K>
 constexpr auto Kind = internal_parser_dsl::KindImpl<K>();
 
@@ -286,14 +298,14 @@ constexpr auto DelimitedBy(auto P) {
   return internal_parser_dsl::DelimitedByImpl<C, decltype(P)>();
 }
 
-constexpr auto Bracketed(auto P) { return DelimitedBy<'['>(P); }
-constexpr auto Parenthesized(auto P) { return DelimitedBy<'('>(P); }
-constexpr auto Braced(auto P) { return DelimitedBy<'{'>(P); }
-constexpr auto CommaSeparatedListOf(auto P) {
+constexpr auto Bracketed(Parser auto P) { return DelimitedBy<'['>(P); }
+constexpr auto Parenthesized(Parser auto P) { return DelimitedBy<'('>(P); }
+constexpr auto Braced(Parser auto P) { return DelimitedBy<'{'>(P); }
+constexpr auto CommaSeparatedListOf(Parser auto P) {
   return internal_parser_dsl::SeparatedListImpl<Lexeme::Kind::Comma,
                                                 decltype(P)>();
 }
-constexpr auto NewlineSeparatedListOf(auto P) {
+constexpr auto NewlineSeparatedListOf(Parser auto P) {
   return internal_parser_dsl::SeparatedListImpl<Lexeme::Kind::Newline,
                                                 decltype(P)>();
 }

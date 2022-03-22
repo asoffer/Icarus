@@ -341,10 +341,10 @@ struct PartialSum<std::index_sequence<Ns...>, std::index_sequence<Iota...>> {
 }  // namespace internal_meta
 
 template <template <typename...> typename F, typename TL>
-using reduce_t = ::base::internal_meta::ReduceImpl<F, TL>;
+using reduce_t = typename ::base::internal_meta::ReduceImpl<F, TL>::type;
 
 template <template <typename> typename F, typename TL>
-using transform_t = ::base::internal_meta::TransformImpl<F, TL>;
+using transform_t = typename ::base::internal_meta::TransformImpl<F, TL>::type;
 
 template <template <typename> typename F, typename TL>
 inline constexpr auto array_transform =
