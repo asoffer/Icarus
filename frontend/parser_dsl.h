@@ -57,13 +57,26 @@ constexpr std::string_view Prettify(std::string_view sv,
 #define PARSE_DEBUG_LOG() (void)0
 #endif
 
+std::string_view ExtractRange(absl::Span<Lexeme const> &lexemes,
+                              absl::Span<Lexeme const> remaining) {
+  ASSERT(lexemes.size() != 0);
+  Lexeme const &last   = *(remaining.data() - 1);
+  char const *endpoint = last.content().data() + last.content().size();
+  size_t length        = endpoint - lexemes.front().content().data();
+  std::string_view result(lexemes.front().content().data(), length);
+  lexemes = remaining;
+  return result;
+}
+
 template <Parser L, Parser R>
 struct DisjunctionImpl {
   using match_type = typename L::match_type;
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+  static bool Parse(absl::Span<Lexeme const> &lexemes,
+                    std::string_view &consumed, auto &&out) {
     absl::Span span = lexemes;
-    bool result     = L::Parse(span, out) or R::Parse(span, out);
-    if (result) { lexemes = span; }
+    bool result =
+        L::Parse(span, consumed, out) or R::Parse(span, consumed, out);
+    if (result) { consumed = ExtractRange(lexemes, span); }
     return result;
   }
 };
@@ -71,24 +84,26 @@ struct DisjunctionImpl {
 template <Parser... Ps>
 struct SequencedImpl {
   using match_type = base::type_list_cat<typename Ps::match_type...>;
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&... outs) {
-    LOG("", "%s", lexemes);
+  static bool Parse(absl::Span<Lexeme const> &lexemes,
+                    std::string_view &consumed, auto &&... outs) {
     auto out_tuple_tuple =
         base::SplitTuple<base::Length(typename Ps::match_type{})...>(
             std::forward_as_tuple(outs...));
 
     absl::Span span = lexemes;
-
+    std::string_view ignore;
     bool result = std::apply(
         [&](auto &... out_tuples) {
           return (std::apply(
-                      [&](auto &... outs) { return Ps::Parse(span, outs...); },
+                      [&](auto &... outs) {
+                        return Ps::Parse(span, ignore, outs...);
+                      },
                       out_tuples) and
                   ...);
         },
         out_tuple_tuple);
 
-    if (result) { lexemes = span; }
+    if (result) { consumed = ExtractRange(lexemes, span); }
     return result;
   }
 };
@@ -105,20 +120,21 @@ struct SeparatedListImpl {
  public:
   using match_type = base::type_list<Container<element_type>>;
 
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+  static bool Parse(absl::Span<Lexeme const> &lexemes,
+                    std::string_view &consumed, auto &&out) {
     Container<element_type> result;
-    auto span        = lexemes;
+    auto span = lexemes;
     element_type v;
-    if (not P::Parse(span, v)) { return true; }
+    if (not P::Parse(span, consumed, v)) { return true; }
     result.push_back(std::move(v));
     while (true) {
       if (span.empty() or span[0].kind() != Separator) {
-        lexemes = span;
-        out     = std::move(result);
+        consumed = ExtractRange(lexemes, span);
+        out      = std::move(result);
         return true;
       }
       span.remove_prefix(1);
-      if (P::Parse(span, v)) {
+      if (P::Parse(span, consumed, v)) {
         result.emplace_back(std::move(v));
       } else {
         return false;
@@ -130,11 +146,15 @@ struct SeparatedListImpl {
 template <char C, typename P>
 struct DelimitedByImpl {
   using match_type = typename P::match_type;
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+  static bool Parse(absl::Span<Lexeme const> &lexemes,
+                    std::string_view &consumed, auto &&out) {
     auto range = CheckBounds(lexemes);
     if (not range.data()) { return false; }
-    bool result = P::Parse(range, out) and range.empty();
-    if (result) { lexemes.remove_prefix(lexemes.front().match_offset() + 1); }
+    bool result = P::Parse(range, consumed, out) and range.empty();
+    if (result) {
+      // TODO: Update `consumed`
+      lexemes.remove_prefix(lexemes.front().match_offset() + 1);
+    }
     return result;
   }
 
@@ -153,17 +173,19 @@ struct DelimitedByImpl {
 
 template <typename P, size_t... Ns>
 bool CallWithIgnores(std::index_sequence<Ns...>,
-                     absl::Span<Lexeme const> &lexemes) {
-  return P::Parse(lexemes, (std::ignore = Ns)...);
+                     absl::Span<Lexeme const> &lexemes,
+                     std::string_view &consumed) {
+  return P::Parse(lexemes, consumed, (std::ignore = Ns)...);
 }
 
 template <Parser P>
 struct Ignored {
   using match_type = base::type_list<>;
 
-  static bool Parse(absl::Span<Lexeme const> &lexemes) {
+  static bool Parse(absl::Span<Lexeme const> &lexemes,
+                    std::string_view &consumed) {
     constexpr size_t N = base::Length(typename P::match_type{});
-    return CallWithIgnores<P>(std::make_index_sequence<N>{}, lexemes);
+    return CallWithIgnores<P>(std::make_index_sequence<N>{}, lexemes, consumed);
   }
 };
 
@@ -183,10 +205,10 @@ struct FixedString {
     return s.size() == N and std::memcmp(s.data(), f.data.data(), N) == 0;
   }
   friend constexpr bool operator!=(std::string_view s, FixedString const &f) {
-    return not (s == f);
+    return not(s == f);
   }
   friend constexpr bool operator!=(FixedString const &f, std::string_view s) {
-    return not (s == f);
+    return not(s == f);
   }
 
   std::array<char, N> data;
@@ -209,10 +231,13 @@ struct ParserWith {
       base::type_list<typename base::reduce_t<InvokeResultT<F>::template Get,
                                               typename P::match_type>::type>;
 
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+  static bool Parse(absl::Span<Lexeme const> &lexemes,
+                    std::string_view &consumed, auto &&out) {
     base::reduce_t<std::tuple, typename P::match_type> value_tuple;
     bool result = std::apply(
-        [&](auto &... values) { return P::Parse(lexemes, values...); },
+        [&](auto &... values) {
+          return P::Parse(lexemes, consumed, values...);
+        },
         value_tuple);
     if (not result) { return false; }
     F f;
@@ -233,11 +258,12 @@ struct BindImpl {
 template <Lexeme::Kind K>
 struct KindImpl {
   using match_type = base::type_list<std::string_view>;
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
+  static bool Parse(absl::Span<Lexeme const> &lexemes,
+                    std::string_view &consumed, auto &&out) {
     PARSE_DEBUG_LOG();
     if (lexemes.empty() or lexemes[0].kind() != K) { return false; }
-    out = lexemes[0].content();
-    lexemes.remove_prefix(1);
+    out      = lexemes[0].content();
+    consumed = ExtractRange(lexemes, lexemes.subspan(1));
     return true;
   }
 };
@@ -246,10 +272,11 @@ struct KindImpl {
 template <internal_parser_dsl::FixedString S>
 struct MatchImpl {
   using match_type = base::type_list<>;
-  static bool Parse(absl::Span<Lexeme const> &lexemes) {
+  static bool Parse(absl::Span<Lexeme const> &lexemes,
+                    std::string_view &consumed) {
     PARSE_DEBUG_LOG();
     if (lexemes.empty() or S != lexemes[0].content()) { return false; }
-    lexemes.remove_prefix(1);
+    consumed = ExtractRange(lexemes, lexemes.subspan(1));
     return true;
   }
 };
@@ -285,8 +312,9 @@ struct Optional {
 
   explicit constexpr Optional(P) {}
 
-  static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
-    P::Parse(lexemes, out);
+  static bool Parse(absl::Span<Lexeme const> &lexemes,
+                    std::string_view &consumed, auto &&out) {
+    P::Parse(lexemes, consumed, out);
     return true;
   }
 };
