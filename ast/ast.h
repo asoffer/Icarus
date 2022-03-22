@@ -378,8 +378,8 @@ struct PatternMatch : Expression {
 // For example: `N
 struct BindingDeclaration : Declaration {
   explicit BindingDeclaration(std::string_view range, Declaration::Id id)
-      : Declaration(range, ToVector(std::move(id)), nullptr, nullptr,
-                    f_IsConst) {
+      : Declaration(range, ToVector(std::move(id)), f_IsConst, nullptr,
+                    nullptr) {
     which_ = IndexOf<BindingDeclaration>();
   }
 
@@ -1097,8 +1097,8 @@ struct ScopeLiteral : ParameterizedExpression, WithScope {
     auto range = context_identifier.range();
     return Declaration(
         range, std::vector<Declaration::Id>{std::move(context_identifier)},
-        std::make_unique<Terminal>(range, type::ScopeContext), nullptr,
-        Declaration::f_IsConst);
+        Declaration::f_IsConst,
+        std::make_unique<Terminal>(range, type::ScopeContext), nullptr);
   }
 
   Declaration context_decl_;

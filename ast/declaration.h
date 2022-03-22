@@ -70,9 +70,13 @@ struct Declaration : Expression {
 
   explicit Declaration() : Expression(IndexOf<Declaration>(), "") {}
 
-  explicit Declaration(std::string_view range, std::vector<Id> ids,
+  explicit Declaration(std::string_view range, std::vector<Id> ids, Flags flags,
+                       std::unique_ptr<Expression> initial_val)
+      : Declaration(range, std::move(ids), flags, nullptr,
+                    std::move(initial_val)) {}
+  explicit Declaration(std::string_view range, std::vector<Id> ids, Flags flags,
                        std::unique_ptr<Expression> type_expression,
-                       std::unique_ptr<Expression> initial_val, Flags flags)
+                       std::unique_ptr<Expression> initial_val)
       : Expression(IndexOf<Declaration>(), range),
         ids_(std::move(ids)),
         type_expr_(std::move(type_expression)),

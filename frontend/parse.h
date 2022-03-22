@@ -95,26 +95,10 @@ inline constexpr auto DeducedDeclarationMarker =
 inline constexpr auto NonDeducedDeclaration =
     (DeclarationStart + NonDeducedDeclarationMarker + Expression +
      Optional(~Match<"="> + Expression))
-    << BindWithRange([](std::string_view range,
-                        std::vector<ast::Declaration::Id> ids,
-                        ast::Declaration::Flags flags,
-                        std::unique_ptr<ast::Expression> type_expression,
-                        std::unique_ptr<ast::Expression> initial_value) {
-         // TODO: Make this Construct.
-         return ast::Declaration(range, std::move(ids),
-                                 std::move(type_expression),
-                                 std::move(initial_value), flags);
-       });
+    << BindWithRange(Construct<ast::Declaration>);
 inline constexpr auto DeducedDeclaration =
     (DeclarationStart + DeducedDeclarationMarker + Expression)
-    << BindWithRange([](std::string_view range,
-                        std::vector<ast::Declaration::Id> ids,
-                        ast::Declaration::Flags flags,
-                        std::unique_ptr<ast::Expression> initial_value) {
-         // TODO: Make this Construct.
-         return ast::Declaration(range, std::move(ids), nullptr,
-                                 std::move(initial_value), flags);
-       });
+    << BindWithRange(Construct<ast::Declaration>);
 
 inline constexpr auto Declaration = NonDeducedDeclaration | DeducedDeclaration;
 inline constexpr auto ReturnStatement =
