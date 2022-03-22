@@ -39,13 +39,84 @@ enum Precedence {
   return kMaxPrecedence;
 }
 
-bool ParseOperatorOrAtomicExpression(
-    absl::Span<Lexeme const> &lexemes,
-    std::variant<std::string_view, std::unique_ptr<ast::Expression>> &out);
-
 }  // namespace
 
-// TODO: Not tested.
+bool ParseTerminalOrIdentifier(absl::Span<Lexeme const> &lexemes,
+                               std::unique_ptr<ast::Expression> &out) {
+  PARSE_DEBUG_LOG();
+  if (lexemes.empty()) { return false; }
+  auto const &lexeme = lexemes[0];
+  if (lexeme.kind() != Lexeme::Kind::Identifier) { return false; }
+
+  std::string_view s = lexeme.content();
+  if (s == "false") {
+    out = std::make_unique<ast::Terminal>(s, false);
+  } else if (s == "true") {
+    out = std::make_unique<ast::Terminal>(s, true);
+  } else if (s == "null") {
+    out = std::make_unique<ast::Terminal>(s, ir::Null());
+  } else if (s == "i8") {
+    out = std::make_unique<ast::Terminal>(s, type::I8);
+  } else if (s == "i16") {
+    out = std::make_unique<ast::Terminal>(s, type::I16);
+  } else if (s == "i32") {
+    out = std::make_unique<ast::Terminal>(s, type::I32);
+  } else if (s == "i64") {
+    out = std::make_unique<ast::Terminal>(s, type::I64);
+  } else if (s == "u8") {
+    out = std::make_unique<ast::Terminal>(s, type::U8);
+  } else if (s == "u16") {
+    out = std::make_unique<ast::Terminal>(s, type::U16);
+  } else if (s == "u32") {
+    out = std::make_unique<ast::Terminal>(s, type::U32);
+  } else if (s == "u64") {
+    out = std::make_unique<ast::Terminal>(s, type::U64);
+  } else if (s == "bool") {
+    out = std::make_unique<ast::Terminal>(s, type::Bool);
+  } else if (s == "f32") {
+    out = std::make_unique<ast::Terminal>(s, type::F32);
+  } else if (s == "f64") {
+    out = std::make_unique<ast::Terminal>(s, type::F64);
+  } else if (s == "type") {
+    out = std::make_unique<ast::Terminal>(s, type::Type_);
+  } else if (s == "module") {
+    out = std::make_unique<ast::Terminal>(s, type::Module);
+  } else if (s == "byte") {
+    out = std::make_unique<ast::Terminal>(s, type::Byte);
+  } else {
+    out = std::make_unique<ast::Identifier>(lexeme.content());
+  }
+  lexemes.remove_prefix(1);
+  return true;
+}
+
+namespace {
+bool ParseOperatorOrAtomicExpression(
+    absl::Span<Lexeme const> &lexemes,
+    std::variant<std::string_view, std::unique_ptr<ast::Expression>> &out) {
+  PARSE_DEBUG_LOG();
+  std::unique_ptr<ast::Expression> e;
+  absl::Span span = lexemes;
+  std::string_view consumed;
+  if (AtomicExpression.Parse(span, consumed, e)) {
+    lexemes = span;
+    out     = std::move(e);
+    return true;
+  } else if (lexemes.empty()) {
+    return false;
+  } else if ((lexemes[0].kind() == Lexeme::Kind::Operator and
+              lexemes[0].content() != "<<") or
+             (lexemes[0].kind() == Lexeme::Kind::Identifier and
+              (lexemes[0].content() == "import"))) {
+    out = lexemes[0].content();
+    lexemes.remove_prefix(1);
+    return true;
+  } else {
+    return false;
+  }
+}
+}  // namespace
+
 bool ParseExpression(absl::Span<Lexeme const> &lexemes,
                      std::unique_ptr<ast::Expression> &e) {
   PARSE_DEBUG_LOG();
@@ -101,114 +172,6 @@ bool ParseExpression(absl::Span<Lexeme const> &lexemes,
   lexemes = span;
   return true;
 }
-
-bool ParseDeclarationId(absl::Span<Lexeme const> &lexemes,
-                        ast::Declaration::Id &out) {
-  std::string_view consumed;
-  return DeclarationId.Parse(lexemes, consumed, out);
-}
-
-bool ParseLabel(absl::Span<Lexeme const> &lexemes,
-                std::optional<ast::Label> &out) {
-  std::string_view consumed;
-  return Label.Parse(lexemes, consumed, out);
-}
-
-bool ParseStringLiteral(absl::Span<Lexeme const> &lexemes,
-                        std::unique_ptr<ast::Expression> &out) {
-  std::string_view consumed;
-  return (StringLiteral << Bind(AsExpression)).Parse(lexemes, consumed, out);
-}
-
-bool ParseCallArgument(absl::Span<Lexeme const> &lexemes,
-                       ast::Call::Argument &out) {
-  std::string_view consumed;
-  return CallArgument.Parse(lexemes, consumed, out);
-}
-
-// TODO: Everything above this line is tested.
-
-bool ParseTerminalOrIdentifier(absl::Span<Lexeme const> &lexemes,
-                               std::unique_ptr<ast::Expression> &out) {
-  PARSE_DEBUG_LOG();
-  if (lexemes.empty()) { return false; }
-  auto const &lexeme = lexemes[0];
-  if (lexeme.kind() != Lexeme::Kind::Identifier) { return false; }
-
-  std::string_view s = lexeme.content();
-  if (s == "false") {
-    out = std::make_unique<ast::Terminal>(s, false);
-  } else if (s == "true") {
-    out = std::make_unique<ast::Terminal>(s, true);
-  } else if (s == "null") {
-    out = std::make_unique<ast::Terminal>(s, ir::Null());
-  } else if (s == "i8") {
-    out = std::make_unique<ast::Terminal>(s, type::I8);
-  } else if (s == "i16") {
-    out = std::make_unique<ast::Terminal>(s, type::I16);
-  } else if (s == "i32") {
-    out = std::make_unique<ast::Terminal>(s, type::I32);
-  } else if (s == "i64") {
-    out = std::make_unique<ast::Terminal>(s, type::I64);
-  } else if (s == "u8") {
-    out = std::make_unique<ast::Terminal>(s, type::U8);
-  } else if (s == "u16") {
-    out = std::make_unique<ast::Terminal>(s, type::U16);
-  } else if (s == "u32") {
-    out = std::make_unique<ast::Terminal>(s, type::U32);
-  } else if (s == "u64") {
-    out = std::make_unique<ast::Terminal>(s, type::U64);
-  } else if (s == "bool") {
-    out = std::make_unique<ast::Terminal>(s, type::Bool);
-  } else if (s == "f32") {
-    out = std::make_unique<ast::Terminal>(s, type::F32);
-  } else if (s == "f64") {
-    out = std::make_unique<ast::Terminal>(s, type::F64);
-  } else if (s == "type") {
-    out = std::make_unique<ast::Terminal>(s, type::Type_);
-  } else if (s == "module") {
-    out = std::make_unique<ast::Terminal>(s, type::Module);
-  } else if (s == "byte") {
-    out = std::make_unique<ast::Terminal>(s, type::Byte);
-  } else {
-    out = std::make_unique<ast::Identifier>(lexeme.content());
-  }
-  lexemes.remove_prefix(1);
-  return true;
-}
-
-bool ParseAtomicExpression(absl::Span<Lexeme const> &lexemes,
-                           std::unique_ptr<ast::Expression> &e) {
-  std::string_view consumed;
-  return AtomicExpression.Parse(lexemes, consumed, e);
-}
-
-namespace {
-bool ParseOperatorOrAtomicExpression(
-    absl::Span<Lexeme const> &lexemes,
-    std::variant<std::string_view, std::unique_ptr<ast::Expression>> &out) {
-  PARSE_DEBUG_LOG();
-  std::unique_ptr<ast::Expression> e;
-  absl::Span span = lexemes;
-  std::string_view consumed;
-  if (AtomicExpression.Parse(span, consumed, e)) {
-    lexemes = span;
-    out     = std::move(e);
-    return true;
-  } else if (lexemes.empty()) {
-    return false;
-  } else if ((lexemes[0].kind() == Lexeme::Kind::Operator and
-              lexemes[0].content() != "<<") or
-             (lexemes[0].kind() == Lexeme::Kind::Identifier and
-              (lexemes[0].content() == "import"))) {
-    out = lexemes[0].content();
-    lexemes.remove_prefix(1);
-    return true;
-  } else {
-    return false;
-  }
-}
-}  // namespace
 
 bool ParseStatement(absl::Span<Lexeme const> &lexemes,
                     std::unique_ptr<ast::Node> &node) {
