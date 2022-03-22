@@ -4,6 +4,7 @@
 #include <concepts>
 #include <type_traits>
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/types/span.h"
 #include "base/meta.h"
 #include "frontend/lexeme.h"
@@ -19,7 +20,7 @@ concept Parser = requires(P p) {
 namespace internal_parser_dsl {
 #if defined(ICARUS_DEBUG)
 inline int log_indentation = 0;
-bool LoggingEnabled() {
+inline bool LoggingEnabled() {
   static bool b = true or base::LoggingEnabled("parser");
   return b;
 }
@@ -57,8 +58,8 @@ constexpr std::string_view Prettify(std::string_view sv,
 #define PARSE_DEBUG_LOG() (void)0
 #endif
 
-std::string_view ExtractRange(absl::Span<Lexeme const> &lexemes,
-                              absl::Span<Lexeme const> remaining) {
+inline std::string_view ExtractRange(absl::Span<Lexeme const> &lexemes,
+                                     absl::Span<Lexeme const> remaining) {
   ASSERT(lexemes.size() != 0);
   Lexeme const &last   = *(remaining.data() - 1);
   char const *endpoint = last.content().data() + last.content().size();
@@ -278,11 +279,12 @@ struct KindImpl {
 // A parser that matches a lexeme exactly.
 template <internal_parser_dsl::FixedString S>
 struct MatchImpl {
-  using match_type = base::type_list<>;
+  using match_type = base::type_list<Lexeme>;
   static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed) {
+                    std::string_view &consumed, auto &&out) {
     PARSE_DEBUG_LOG();
     if (lexemes.empty() or S != lexemes[0].content()) { return false; }
+    out      = lexemes[0];
     consumed = ExtractRange(lexemes, lexemes.subspan(1));
     return true;
   }

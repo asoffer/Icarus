@@ -1,4 +1,4 @@
-#include "frontend/parse_test.h"
+#include "frontend/parse.h"
 
 #include <functional>
 
@@ -26,13 +26,16 @@ TestParameters Failure(std::string content) {
 }
 
 struct BoundTestParameters {
-  template <auto ParseFn>
+  template <auto Parser>
   static BoundTestParameters Make(TestParameters p) {
-    using output_parameter_type = std::decay_t<base::head<base::tail<
-        typename base::Signature<decltype(ParseFn)>::parameter_type_list>>>;
     return {.parse = [](absl::Span<Lexeme const> &lexemes) -> bool {
-              output_parameter_type out;
-              return ParseFn(lexemes, out);
+              base::reduce_t<std::tuple, typename decltype(Parser)::match_type> out_tuple;
+              std::string_view consumed;
+              return std::apply(
+                  [&](auto &... outs) {
+                    return Parser.Parse(lexemes, consumed, outs...);
+                  },
+                  out_tuple);
             },
             .content = std::move(p.content),
             .success = p.success};
@@ -48,12 +51,12 @@ struct BoundTestParameters {
   bool success;
 };
 
-template <auto ParseFn>
+template <auto Parser>
 auto InputFor(auto &&... input) requires(
     (base::meta<std::decay_t<decltype(input)>> ==
      base::meta<TestParameters>)and...) {
   return testing::ValuesIn(
-      {BoundTestParameters::Make<ParseFn>(std::move(input))...});
+      {BoundTestParameters::Make<Parser>(std::move(input))...});
 }
 
 struct ParseTest: testing::TestWithParam<BoundTestParameters> {};
@@ -79,40 +82,39 @@ TEST_P(ParseTest, Test) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(DeclarationId, ParseTest,
-                         InputFor<ParseDeclarationId>(
-                             Success("n"), Failure("blah blah"),
-                             Success("blah"), Failure("true"),
-                             Failure("module"), Failure("builtin"),
-                             Failure("import"), Failure("17"), Success("(+)")));
+INSTANTIATE_TEST_SUITE_P(
+    DeclarationId, ParseTest,
+    InputFor<DeclarationId>(Success("n"), Failure("blah blah"), Success("blah"),
+                            Failure("true"), Failure("module"),
+                            Failure("builtin"), Failure("import"),
+                            Failure("17"), Success("(+)")));
 INSTANTIATE_TEST_SUITE_P(
     Label, ParseTest,
-    InputFor<ParseLabel>(Success("#.something"), Failure("#.true"),
-                         Failure("blah"), Failure("#.label more"),
-                         Failure(".blah"), Failure("#blah"), Failure("# .blah"),
+    InputFor<Label>(Success("#.something"), Failure("#.true"), Failure("blah"),
+                    Failure("#.label more"), Failure(".blah"), Failure("#blah"),
+                    Failure("# .blah"),
 
-                         // TODO: This one should be a failure due to the space,
-                         // but the parser doesn't have any way to distinguish
-                         // it. It needs to be fixed in the lexer.
-                         Success("#. blah"), Failure("# . blah"),
+                    // TODO: This one should be a failure due to the space,
+                    // but the parser doesn't have any way to distinguish
+                    // it. It needs to be fixed in the lexer.
+                    Success("#. blah"), Failure("# . blah"),
 
-                         Failure("#{const}")));
+                    Failure("#{const}")));
 INSTANTIATE_TEST_SUITE_P(
     StringLiteral, ParseTest,
-    InputFor<ParseStringLiteral>(Success(R"("")"), Success(R"("\n")"),
-                                 Success(R"("\\n")"), Success(R"("blah")"),
-                                 Failure(R"("" "")"), Failure(R"("blah)"),
-                                 Success(R"("\nblah")")));
+    InputFor<StringLiteral>(Success(R"("")"), Success(R"("\n")"),
+                            Success(R"("\\n")"), Success(R"("blah")"),
+                            Failure(R"("" "")"), Failure(R"("blah)"),
+                            Success(R"("\nblah")")));
 INSTANTIATE_TEST_SUITE_P(
     CallArgument, ParseTest,
-    InputFor<ParseCallArgument>(Success("3"), Success("3 + 4"),
-                                Success("name = 3"), Success("name = 3 + 4"),
-                                Failure("3 = 4"), Failure("name = name = 3"),
-                                Failure("name =")));
+    InputFor<CallArgument>(Success("3"), Success("3 + 4"), Success("name = 3"),
+                           Success("name = 3 + 4"), Failure("3 = 4"),
+                           Failure("name = name = 3"), Failure("name =")));
 
 INSTANTIATE_TEST_SUITE_P(
     YieldStatement, ParseTest,
-    InputFor<ParseYieldStatement>(
+    InputFor<YieldStatement>(
         Success("<<"), Success("<< 0"), Success("<< 3 + 4"), Success("<< 3, 4"),
         Success("<< 3, name = 4"), Success("<< name = 3, other_name = 4"),
         Failure("<< 3 << 4"),
@@ -134,7 +136,7 @@ INSTANTIATE_TEST_SUITE_P(
         Failure("#bad_label << 3 << 4")));
 
 INSTANTIATE_TEST_SUITE_P(ReturnStatement, ParseTest,
-                         InputFor<ParseReturnStatement>(
+                         InputFor<ReturnStatement>(
                              Success("return"), Success("return 0"),
                              Success("return 3 + 4"), Success("return 3, 4"),
                              Failure("return 3, name = 4"),
@@ -143,7 +145,7 @@ INSTANTIATE_TEST_SUITE_P(ReturnStatement, ParseTest,
 
 INSTANTIATE_TEST_SUITE_P(
     Declaration, ParseTest,
-    InputFor<ParseDeclaration>(
+    InputFor<Declaration>(
         Success("x: y"), Success("x: y + z"), Success("x: y = z"),
         Success("x: y + z = a + b"), Success("x :: y"), Success("x :: y + z"),
         Success("x :: y = z"), Success("x :: y + z = a + b"), Success("x := y"),

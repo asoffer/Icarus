@@ -7,37 +7,12 @@
 #include "absl/types/span.h"
 #include "ast/ast.h"
 #include "base/debug.h"
-#include "frontend/parser_dsl.h"
 #include "ir/value/addr.h"
 #include "type/primitive.h"
 
 namespace frontend {
-bool ParseTerminalOrIdentifier(absl::Span<Lexeme const> &lexemes,
-                               std::unique_ptr<ast::Expression> &out);
-bool ParseDeclaration(absl::Span<Lexeme const> &lexemes, ast::Declaration &out);
-bool ParseStatement(absl::Span<Lexeme const> &lexemes,
-                    std::unique_ptr<ast::Node> &);
-bool ParseExpression(absl::Span<Lexeme const> &lexemes,
-                     std::unique_ptr<ast::Expression> &out);
 
 namespace {
-
-template <typename T>
-constexpr auto Construct = []<typename... Args>(Args &&... args) {
-  return T(std::forward<Args>(args)...);
-};
-template <typename T, typename Out = T>
-constexpr auto MakeUnique =
-    []<typename... Args>(Args &&... args)
-        -> std::unique_ptr<Out> requires(std::constructible_from<T, Args...>) {
-  return std::make_unique<T>(std::forward<Args>(args)...);
-};
-template <typename T>
-constexpr auto Vector = []<typename Arg>(Arg &&arg) {
-  std::vector<T> v;
-  v.push_back(std::forward<Arg>(arg));
-  return v;
-};
 
 template <typename T, auto P, typename... Args>
 bool ParseSequence(absl::Span<Lexeme const> &lexemes, std::vector<T> &out,
@@ -74,103 +49,6 @@ std::string_view ExtractRange(absl::Span<Lexeme const> &lexemes,
   lexemes = remaining;
   return result;
 }
-
-template <typename T, auto P>
-struct Wrap {
-  using match_type = base::type_list<T>;
-
-  static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed, auto &&out) {
-    return P(lexemes, out);
-  }
-};
-
-constexpr auto Number        = Kind<Lexeme::Kind::Number>;
-constexpr auto StringLiteral = Kind<Lexeme::Kind::String>;
-constexpr auto AnOperator    = Kind<Lexeme::Kind::Operator>;
-constexpr auto Identifier    = Kind<Lexeme::Kind::Identifier>;
-
-constexpr auto DeclarationId = (Identifier | Parenthesized(AnOperator))
-                               << Bind(Construct<ast::Declaration::Id>);
-
-constexpr auto Label = (--Kind<Lexeme::Kind::Hash> + Match<"."> + Identifier)
-                       << Bind(Construct<std::optional<ast::Label>>);
-
-constexpr auto Expression =
-    Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{};
-
-constexpr auto NamedArgument = (Identifier + Match<"="> + Expression)
-                               << Bind(Construct<ast::Call::Argument>);
-
-constexpr auto PositionalArgument =
-    Expression << Bind([](std::unique_ptr<ast::Expression> e) {
-      return ast::Call::Argument("", std::move(e));
-    });
-constexpr auto CallArgument = NamedArgument | PositionalArgument;
-
-constexpr auto Statement   = Wrap<std::unique_ptr<ast::Node>, ParseStatement>{};
-constexpr auto Declaration = Wrap<ast::Declaration, ParseDeclaration>{};
-
-constexpr auto ReturnStatement =
-    (Match<"return"> + CommaSeparatedListOf(Expression))
-    << BindWithRange(MakeUnique<ast::ReturnStmt, ast::Node>);
-
-constexpr auto YieldStatement =
-    (Optional(Label) + Match<"<<"> + CommaSeparatedListOf(CallArgument))
-    << BindWithRange(MakeUnique<ast::YieldStmt, ast::Node>);
-
-constexpr auto WhileStatement =
-    Match<"while"> + Parenthesized(Expression) +
-        Braced(NewlineSeparatedListOf(Statement))
-    << BindWithRange(MakeUnique<ast::WhileStmt, ast::Node>);
-
-constexpr auto ExpressionOrExpressionList =
-    (Parenthesized(CommaSeparatedListOf(Expression)) |
-     Expression << Bind(Vector<std::unique_ptr<ast::Expression>>));
-constexpr auto Assignment =
-    (ExpressionOrExpressionList + --Kind<Lexeme::Kind::Assignment> +
-     ExpressionOrExpressionList)
-    << BindWithRange(MakeUnique<ast::Assignment, ast::Node>);
-
-constexpr auto StructImpl =
-    Braced(NewlineSeparatedListOf(Declaration))
-    << BindWithRange(MakeUnique<ast::StructLiteral, ast::Expression>);
-constexpr auto ParameterizedStructImpl =
-    (Parenthesized(CommaSeparatedListOf(Declaration)) +
-     Braced(NewlineSeparatedListOf(Declaration)))
-    << BindWithRange(
-           MakeUnique<ast::ParameterizedStructLiteral, ast::Expression>);
-constexpr auto StructLiteral =
-    Match<"struct"> + (StructImpl | ParameterizedStructImpl);
-
-constexpr auto ScopeLiteral =
-    (Match<"scope"> +
-     Bracketed(Identifier << Bind(Construct<ast::Declaration::Id>)) +
-     Parenthesized(CommaSeparatedListOf(Declaration)) +
-     Braced(NewlineSeparatedListOf(Statement)))
-    << BindWithRange(MakeUnique<ast::ScopeLiteral, ast::Expression>);
-
-constexpr auto FunctionLiteral =
-    (Parenthesized(CommaSeparatedListOf(Declaration)) + Match<"->"> +
-     Optional(Parenthesized(CommaSeparatedListOf(Expression))) +
-     Braced(NewlineSeparatedListOf(Statement)))
-    << BindWithRange(MakeUnique<ast::FunctionLiteral, ast::Expression>);
-
-constexpr auto TerminalOrIdentifier =
-    Wrap<std::unique_ptr<ast::Expression>, ParseTerminalOrIdentifier>{};
-
-constexpr auto AsExpression =
-    [](std::string_view content) -> std::unique_ptr<ast::Expression> {
-  return std::make_unique<ast::Terminal>(content, "");
-};
-
-constexpr auto AtomicExpression =
-    ((Number | StringLiteral) << Bind(AsExpression))  //
-    | Parenthesized(Expression)                       //
-    | FunctionLiteral                                 //
-    | StructLiteral                                   //
-    | ScopeLiteral                                    //
-    | TerminalOrIdentifier;                           //
 
 bool ParseOperatorOrAtomicExpression(
     absl::Span<Lexeme const> &lexemes,
@@ -259,49 +137,19 @@ bool ParseCallArgument(absl::Span<Lexeme const> &lexemes,
   return CallArgument.Parse(lexemes, consumed, out);
 }
 
-bool ParseDeclaration(absl::Span<Lexeme const> &lexemes,
-                      ast::Declaration &out) {
-  PARSE_DEBUG_LOG();
-  auto span = lexemes;
-  std::vector<ast::Declaration::Id> ids;
-  std::string_view consumed;
+constexpr auto NonDeducedDeclarationMarker  =
+    (Match<":"> | Match<"::">) << Bind(
+        [](Lexeme const &l) -> ast::Declaration::Flags {
+          if (l.content().size() == 2) { return ast::Declaration::f_IsConst; }
+          return ast::Declaration::Flags{};
+        });
 
-  constexpr auto DeclarationStart =
-      (Parenthesized(CommaSeparatedListOf(DeclarationId)) |
-       DeclarationId << Bind(Vector<ast::Declaration::Id>));
-  if (not DeclarationStart.Parse(span, consumed, ids)) { return false; }
-
-  std::unique_ptr<ast::Expression> type_expression;
-  std::unique_ptr<ast::Expression> initial_value;
-  if (span.empty()) { return false; }
-  if (span[0].kind() != Lexeme::Kind::Operator) { return false; }
-  ast::Declaration::Flags flags{};
-  if (span[0].content() == ":" or span[0].content() == "::") {
-    if (span[0].content().size() == 2) { flags |= ast::Declaration::f_IsConst; }
-    span.remove_prefix(1);
-    if (not Expression.Parse(span, consumed, type_expression)) { return false; }
-    std::ignore = Match<"=">.Parse(span, consumed) and
-                  Expression.Parse(span, consumed, initial_value);
-  } else if (span[0].content() == ":=" or span[0].content() == "::=") {
-    if (span[0].content().size() == 3) { flags |= ast::Declaration::f_IsConst; }
-    span.remove_prefix(1);
-    if (not ParseExpression(span, initial_value)) { return false; }
-  } else {
-    return false;
-  }
-
-  out = ast::Declaration(ExtractRange(lexemes, span), std::move(ids),
-                         std::move(type_expression), std::move(initial_value),
-                         flags);
-  return true;
-}
-
-bool ParseAssignment(absl::Span<Lexeme const> &lexemes,
-                     std::unique_ptr<ast::Node> &out) {
-  PARSE_DEBUG_LOG();
-  std::string_view consumed;
-  return Assignment.Parse(lexemes, consumed, out);
-}
+constexpr auto DeducedDeclarationMarker  =
+    (Match<":="> | Match<"::=">) << Bind(
+        [](Lexeme const &l) -> ast::Declaration::Flags {
+          if (l.content().size() == 3) { return ast::Declaration::f_IsConst; }
+          return ast::Declaration::Flags{};
+        });
 
 // TODO: Everything above this line is tested.
 
@@ -386,17 +234,6 @@ bool ParseOperatorOrAtomicExpression(
   }
 }
 }  // namespace
-
-bool ParseReturnStatement(absl::Span<Lexeme const> &lexemes,
-                          std::unique_ptr<ast::Node> &out) {
-  std::string_view consumed;
-  return ReturnStatement.Parse(lexemes, consumed, out);
-}
-bool ParseYieldStatement(absl::Span<Lexeme const> &lexemes,
-                         std::unique_ptr<ast::Node> &out) {
-  std::string_view consumed;
-  return YieldStatement.Parse(lexemes, consumed, out);
-}
 
 bool ParseStatement(absl::Span<Lexeme const> &lexemes,
                     std::unique_ptr<ast::Node> &node) {

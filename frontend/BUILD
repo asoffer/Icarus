@@ -30,22 +30,12 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "parse_test_header",
-    hdrs = ["parse_test.h"],
-    deps = [
-        ":lexeme",
-        ":parse",
-    ],
-    testonly = True,
-)
-
 cc_test(
     name = "parse_test",
     srcs = ["parse_test.cc"],
     deps = [
         ":lexeme",
-        ":parse_test_header",
+        ":parse",
         "//diagnostic/consumer:trivial",
         "//frontend/lex",
         "@com_google_googletest//:gtest_main",
