@@ -21,6 +21,11 @@ bool ParseExpression(absl::Span<Lexeme const> &lexemes,
 
 namespace {
 
+template <typename T>
+constexpr auto Construct = []<typename... Args>(Args &&... args) {
+  return T(std::forward<Args>(args)...);
+};
+
 template <typename T, auto P, typename... Args>
 bool ParseSequence(absl::Span<Lexeme const> &lexemes, std::vector<T> &out,
                    Args &&... args) {
@@ -71,33 +76,22 @@ constexpr auto StringLiteral = Kind<Lexeme::Kind::String>;
 constexpr auto AnOperator    = Kind<Lexeme::Kind::Operator>;
 constexpr auto Identifier    = Kind<Lexeme::Kind::Identifier>;
 
-constexpr auto DeclarationId =
-    (Identifier | Parenthesized(AnOperator))
-    << Bind([](ast::Declaration::Id &out, std::string_view in) {
-         out = ast::Declaration::Id(in);
-       });
+constexpr auto DeclarationId = (Identifier | Parenthesized(AnOperator))
+                               << Bind(Construct<ast::Declaration::Id>);
 
-constexpr auto Label =
-    (--Kind<Lexeme::Kind::Hash> + Match<"."> + Identifier)
-    << Bind([](std::optional<ast::Label> &out, std::string_view id) {
-         out = ast::Label(id);
-       });
+constexpr auto Label = (--Kind<Lexeme::Kind::Hash> + Match<"."> + Identifier)
+                       << Bind(Construct<std::optional<ast::Label>>);
 
 constexpr auto Expression =
     Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{};
 
-constexpr auto NamedArgument =
-    (Identifier + Match<"="> + Expression)
-    << Bind([](ast::Call::Argument &out, std::string_view name,
-               std::unique_ptr<ast::Expression> expr) {
-         out = ast::Call::Argument(name, std::move(expr));
-       });
+constexpr auto NamedArgument = (Identifier + Match<"="> + Expression)
+                               << Bind(Construct<ast::Call::Argument>);
 
 constexpr auto PositionalArgument =
-    Expression << Bind(
-        [](ast::Call::Argument &argument, std::unique_ptr<ast::Expression> e) {
-          argument = ast::Call::Argument("", std::move(e));
-        });
+    Expression << Bind([](std::unique_ptr<ast::Expression> e) {
+      return ast::Call::Argument("", std::move(e));
+    });
 constexpr auto CallArgument = NamedArgument | PositionalArgument;
 
 constexpr auto Statement   = Wrap<std::unique_ptr<ast::Node>, ParseStatement>{};
@@ -180,9 +174,9 @@ bool ParseLabel(absl::Span<Lexeme const> &lexemes,
   return Label.Parse(lexemes, out);
 }
 
-constexpr auto AsExpression = [](std::unique_ptr<ast::Expression> &out,
-                                 std::string_view content) {
-  out = std::make_unique<ast::Terminal>(content, "");
+constexpr auto AsExpression =
+    [](std::string_view content) -> std::unique_ptr<ast::Expression> {
+  return std::make_unique<ast::Terminal>(content, "");
 };
 
 bool ParseStringLiteral(absl::Span<Lexeme const> &lexemes,
@@ -212,6 +206,9 @@ bool ParseYieldStatement(absl::Span<Lexeme const> &lexemes,
   return true;
 }
 
+// constexpr auto ReturnStatement =
+//     (Match<"return"> + CommaSeparatedListOf(Expression))
+//     << Bind(Construct<ast::ReturnStmt>);
 bool ParseReturnStatement(absl::Span<Lexeme const> &lexemes,
                           std::unique_ptr<ast::Node> &out) {
   PARSE_DEBUG_LOG();
@@ -298,10 +295,10 @@ bool ParseKeyword(std::string_view s, absl::Span<Lexeme const> &lexemes) {
 namespace {
 bool ParseDeclarationUniquePtr(absl::Span<Lexeme const> &lexemes,
                                std::unique_ptr<ast::Node> &out) {
-  return (Declaration
-          << Bind([](std::unique_ptr<ast::Node> &out, ast::Declaration decl) {
-               out = std::make_unique<ast::Declaration>(std::move(decl));
-             }))
+  return (Declaration << Bind(
+              [](ast::Declaration decl) -> std::unique_ptr<ast::Node> {
+                return std::make_unique<ast::Declaration>(std::move(decl));
+              }))
       .Parse(lexemes, out);
 }
 }  // namespace
@@ -458,6 +455,9 @@ static constexpr auto FunctionLiteral =
 static constexpr auto TerminalOrIdentifier =
     Wrap<std::unique_ptr<ast::Expression>, ParseTerminalOrIdentifier>{};
 
+// constexpr auto WhileStatement = Match<"while"> + Parenthesized(Expression) +
+//                                     Braced(NewlineSeparatedListOf(Statement))
+//                                 << Bind(Construct<ast::WhileStmt>);
 bool ParseWhileStatement(absl::Span<Lexeme const> &lexemes,
                          std::unique_ptr<ast::Node> &out) {
   PARSE_DEBUG_LOG();

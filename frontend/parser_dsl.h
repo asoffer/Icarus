@@ -195,9 +195,19 @@ struct FixedString {
 template <size_t N>
 FixedString(char const (&s)[N]) -> FixedString<N - 1>;
 
-template <Parser P, typename TL, typename F>
+template <typename F>
+struct InvokeResultT {
+  template <typename... ArgTs>
+  struct Get {
+    using type = std::invoke_result_t<F, ArgTs...>;
+  };
+};
+
+template <Parser P, typename F>
 struct ParserWith {
-  using match_type = TL;
+  using match_type =
+      base::type_list<typename base::reduce_t<InvokeResultT<F>::template Get,
+                                              typename P::match_type>::type>;
 
   static bool Parse(absl::Span<Lexeme const> &lexemes, auto &&out) {
     base::reduce_t<std::tuple, typename P::match_type> value_tuple;
@@ -206,8 +216,7 @@ struct ParserWith {
         value_tuple);
     if (not result) { return false; }
     F f;
-    std::apply([&](auto &&... values) { f(out, std::move(values)...); },
-               std::move(value_tuple));
+    out = std::apply(f, std::move(value_tuple));
     return true;
   }
 };
@@ -216,14 +225,8 @@ template <typename F>
 struct BindImpl {
   template <Parser P>
   friend constexpr Parser auto operator<<(P, BindImpl) {
-    return ParserWith<
-        P, base::type_list<std::remove_reference_t<base::head<parameters>>>,
-        F>();
+    return ParserWith<P, F>();
   }
-
- private:
-  using parameters =
-      typename base::Signature<decltype(+F{})>::parameter_type_list;
 };
 
 // A parser that matches any one lexeme whose kind is `K`.
