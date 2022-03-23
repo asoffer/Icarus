@@ -46,7 +46,10 @@ bool ParseTerminalOrIdentifier(absl::Span<Lexeme const> &lexemes,
   PARSE_DEBUG_LOG();
   if (lexemes.empty()) { return false; }
   auto const &lexeme = lexemes[0];
-  if (lexeme.kind() != Lexeme::Kind::Identifier) { return false; }
+  if (lexeme.kind() != Lexeme::Kind::Identifier and
+      lexeme.kind() != Lexeme::Kind::Reserved) {
+    return false;
+  }
 
   std::string_view s = lexeme.content();
   if (s == "false") {
@@ -95,14 +98,17 @@ bool ParseOperatorOrAtomicExpression(
     absl::Span<Lexeme const> &lexemes,
     std::variant<std::string_view, std::unique_ptr<ast::Expression>> &out) {
   PARSE_DEBUG_LOG();
+  LOG("", "%s", lexemes);
   std::unique_ptr<ast::Expression> e;
   absl::Span span = lexemes;
   std::string_view consumed;
   if (AtomicExpression.Parse(span, consumed, e)) {
     lexemes = span;
     out     = std::move(e);
+  LOG("", "%s", lexemes);
     return true;
   } else if (lexemes.empty()) {
+  LOG("", "%s", lexemes);
     return false;
   } else if ((lexemes[0].kind() == Lexeme::Kind::Operator and
               lexemes[0].content() != "<<") or
@@ -110,8 +116,10 @@ bool ParseOperatorOrAtomicExpression(
               (lexemes[0].content() == "import"))) {
     out = lexemes[0].content();
     lexemes.remove_prefix(1);
+  LOG("", "%s", lexemes);
     return true;
   } else {
+  LOG("", "%s", lexemes);
     return false;
   }
 }

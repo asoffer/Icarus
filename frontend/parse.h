@@ -46,11 +46,24 @@ struct Wrap {
     return P(lexemes, out);
   }
 };
+inline constexpr auto Expression =
+    Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{};
+inline constexpr auto Statement =
+    Wrap<std::unique_ptr<ast::Node>, ParseStatement>{};
 
 inline constexpr auto Number        = Kind<Lexeme::Kind::Number>;
 inline constexpr auto StringLiteral = Kind<Lexeme::Kind::String>;
 inline constexpr auto AnOperator    = Kind<Lexeme::Kind::Operator>;
 inline constexpr auto Identifier    = Kind<Lexeme::Kind::Identifier>;
+
+inline constexpr auto ArrayLiteral =
+    Bracketed(CommaSeparatedListOf(Expression))
+    << BindWithRange(MakeUnique<ast::ArrayLiteral, ast::Expression>);
+
+inline constexpr auto ArrayType =
+    Bracketed(CommaSeparatedListOf<1>(Expression) +
+              ~Kind<Lexeme::Kind::Semicolon> + Expression)
+    << BindWithRange(MakeUnique<ast::ArrayType, ast::Expression>);
 
 inline constexpr auto DeclarationId = (Identifier | Parenthesized(AnOperator))
                                       << Bind(Construct<ast::Declaration::Id>);
@@ -58,9 +71,6 @@ inline constexpr auto DeclarationId = (Identifier | Parenthesized(AnOperator))
 inline constexpr auto Label =
     (~Kind<Lexeme::Kind::Hash> + ~Match<"."> + Identifier)
     << Bind(Construct<std::optional<ast::Label>>);
-
-inline constexpr auto Expression =
-    Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{};
 
 inline constexpr auto PositionalArgument =
     Expression << Bind([](std::unique_ptr<ast::Expression> e) {
@@ -70,9 +80,6 @@ inline constexpr auto NamedArgument = (Identifier + ~Match<"="> + Expression)
                                       << Bind(Construct<ast::Call::Argument>);
 
 inline constexpr auto CallArgument = NamedArgument | PositionalArgument;
-
-inline constexpr auto Statement =
-    Wrap<std::unique_ptr<ast::Node>, ParseStatement>{};
 
 inline constexpr auto DeclarationStart =
     (Parenthesized(CommaSeparatedListOf(DeclarationId)) |
@@ -160,6 +167,8 @@ inline constexpr auto AtomicExpression =
     | FunctionLiteral                                 //
     | StructLiteral                                   //
     | ScopeLiteral                                    //
+    | ArrayLiteral                                    //
+    | ArrayType                                       //
     | TerminalOrIdentifier;                           //
 
 std::optional<ast::Module> ParseModule(

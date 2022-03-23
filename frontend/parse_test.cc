@@ -154,5 +154,18 @@ INSTANTIATE_TEST_SUITE_P(
         Failure("(x + y, z) :: w"), Success("(x) :: w"), Success("(+) :: w"),
         Failure("(+, -) :: w"), Success("((+), (-)) :: w")));
 
+INSTANTIATE_TEST_SUITE_P(
+    ArrayLiteral, ParseTest,
+    InputFor<ArrayLiteral>(Success("[]"), Success("[x]"), Success("[x, y]"),
+                           Failure("[x, , y]"), Success("[[]]"),
+                           Failure("[x; y]"), Success("[[x], y]")));
+
+INSTANTIATE_TEST_SUITE_P(ArrayType, ParseTest,
+                         InputFor<ArrayType>(Failure("[]"), Failure("[x]"),
+                                             Success("[1; i32]"),
+                                             Success("[1, 2; i32]"),
+                                             Failure("[; i32]"),
+                                             Success("[2; [1; i32]]")));
+
 }  // namespace
 }  // namespace frontend

@@ -13,6 +13,7 @@ struct Lexeme {
     LeftDelimiter  = 0,
     RightDelimiter = 1,
     Comma,
+    Semicolon,
     Comment,
     Character,
     String,

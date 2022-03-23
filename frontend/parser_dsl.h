@@ -109,7 +109,7 @@ struct SequencedImpl {
   }
 };
 
-template <Lexeme::Kind Separator, Parser P,
+template <Lexeme::Kind Separator, Parser P, size_t MinLength,
           template <typename...> typename Container = std::vector>
 struct SeparatedListImpl {
  private:
@@ -126,10 +126,11 @@ struct SeparatedListImpl {
     Container<element_type> result;
     auto span = lexemes;
     element_type v;
-    if (not P::Parse(span, consumed, v)) { return true; }
+    if (not P::Parse(span, consumed, v)) { return MinLength == 0; }
     result.push_back(std::move(v));
     while (true) {
-      if (span.empty() or span[0].kind() != Separator) {
+      if (result.size() >= MinLength and
+          (span.empty() or span[0].kind() != Separator)) {
         consumed = ExtractRange(lexemes, span);
         out      = std::move(result);
         return true;
@@ -148,10 +149,10 @@ template <char C, typename P>
 struct DelimitedByImpl {
   using match_type = typename P::match_type;
   static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed, auto &&out) {
+                    std::string_view &consumed, auto &&... out) {
     auto range = CheckBounds(lexemes);
     if (not range.data()) { return false; }
-    bool result = P::Parse(range, consumed, out) and range.empty();
+    bool result = P::Parse(range, consumed, out...) and range.empty();
     if (result) {
       // TODO: Update `consumed`
       lexemes.remove_prefix(lexemes.front().match_offset() + 1);
@@ -341,13 +342,15 @@ constexpr auto DelimitedBy(auto P) {
 constexpr auto Bracketed(Parser auto P) { return DelimitedBy<'['>(P); }
 constexpr auto Parenthesized(Parser auto P) { return DelimitedBy<'('>(P); }
 constexpr auto Braced(Parser auto P) { return DelimitedBy<'{'>(P); }
+
+template <size_t MinLength = 0>
 constexpr auto CommaSeparatedListOf(Parser auto P) {
   return internal_parser_dsl::SeparatedListImpl<Lexeme::Kind::Comma,
-                                                decltype(P)>();
+                                                decltype(P), MinLength>();
 }
 constexpr auto NewlineSeparatedListOf(Parser auto P) {
   return internal_parser_dsl::SeparatedListImpl<Lexeme::Kind::Newline,
-                                                decltype(P)>();
+                                                decltype(P), 0>();
 }
 
 template <typename F>

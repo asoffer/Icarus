@@ -195,8 +195,12 @@ std::optional<Lexeme> ConsumeOperator(
   constexpr std::array kOperators{
       "@",  "[*]", "$",  "+",  "..",  "->", "-",  "*",  "%", "&",  "|",
       "^",  ">>",  ">=", ">",  "::=", ":?", "::", ":=", ".", "!=", ":",
-      "<<", "<=",  "<",  "==", "=>",  "'",  "~",  ";",  "`", "/",
+      "<<", "<=",  "<",  "==", "=>",  "'",  "~",  "`",  "/",
   };
+
+  if (range.starts_with(";")) {
+    return Lexeme(Lexeme::Kind::Semicolon, range.extract_prefix(1));
+  }
 
   if (range.starts_with(",")) {
     return Lexeme(Lexeme::Kind::Comma, range.extract_prefix(1));
