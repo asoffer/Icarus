@@ -41,8 +41,9 @@ enum Precedence {
 
 }  // namespace
 
-bool ParseTerminalOrIdentifier(absl::Span<Lexeme const> &lexemes,
-                               std::unique_ptr<ast::Expression> &out) {
+bool TerminalOrIdentifier::Impl::Parse(absl::Span<Lexeme const> &lexemes,
+                                       std::string_view &consumed,
+                                       std::unique_ptr<ast::Expression> &out) {
   PARSE_DEBUG_LOG();
   if (lexemes.empty()) { return false; }
   auto const &lexeme = lexemes[0];
@@ -125,8 +126,9 @@ bool ParseOperatorOrAtomicExpression(
 }
 }  // namespace
 
-bool ParseExpression(absl::Span<Lexeme const> &lexemes,
-                     std::unique_ptr<ast::Expression> &e) {
+bool Expression::Impl::Parse(absl::Span<Lexeme const> &lexemes,
+                             std::string_view consumed,
+                             std::unique_ptr<ast::Expression> &e) {
   PARSE_DEBUG_LOG();
   auto span  = lexemes;
   using type = std::variant<std::string_view, std::unique_ptr<ast::Expression>>;
@@ -181,8 +183,9 @@ bool ParseExpression(absl::Span<Lexeme const> &lexemes,
   return true;
 }
 
-bool ParseStatement(absl::Span<Lexeme const> &lexemes,
-                    std::unique_ptr<ast::Node> &node) {
+bool Statement::Impl::Parse(absl::Span<Lexeme const> &lexemes,
+                            std::string_view &consumed,
+                            std::unique_ptr<ast::Node> &node) {
   PARSE_DEBUG_LOG();
   absl::Cleanup cl = [&] {
     if (node) { LOG("", "%s", node->DebugString()); }
@@ -201,7 +204,6 @@ bool ParseStatement(absl::Span<Lexeme const> &lexemes,
       | YieldStatement                                                  //
       | (Expression << Bind([](std::unique_ptr<ast::Expression> e)
                                 -> std::unique_ptr<ast::Node> { return e; })));
-  std::string_view consumed;
   return Statement.Parse(lexemes, consumed, node);
 }
 

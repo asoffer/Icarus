@@ -12,10 +12,13 @@
 namespace frontend {
 
 template <typename P>
-concept Parser = requires(P p) {
+concept ParserImplementation = std::is_empty_v<P> and requires(P p) {
   typename P::match_type;
   // TODO: Reimplement
 };
+
+template <typename P>
+concept Parser = ParserImplementation<decltype(P::parser)>;
 
 namespace internal_parser_dsl {
 #if defined(ICARUS_DEBUG)
@@ -70,125 +73,149 @@ inline std::string_view ExtractRange(absl::Span<Lexeme const> &lexemes,
 }
 
 template <Parser L, Parser R>
-struct DisjunctionImpl {
-  using match_type = typename L::match_type;
+struct Disjunction {
+  using match_type = typename decltype(L::parser)::match_type;
   static bool Parse(absl::Span<Lexeme const> &lexemes,
                     std::string_view &consumed, auto &&out) {
     absl::Span span = lexemes;
     bool result =
-        L::Parse(span, consumed, out) or R::Parse(span, consumed, out);
+        L::parser.Parse(span, consumed, out) or R::Parse(span, consumed, out);
     if (result) { consumed = ExtractRange(lexemes, span); }
     return result;
   }
 };
 
 template <Parser... Ps>
-struct SequencedImpl {
-  using match_type = base::type_list_cat<typename Ps::match_type...>;
-  static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed, auto &&... outs) {
-    auto out_tuple_tuple =
-        base::SplitTuple<base::Length(typename Ps::match_type{})...>(
-            std::forward_as_tuple(outs...));
+struct Sequenced {
+ private:
+  struct Impl {
+    using match_type =
+        base::type_list_cat<typename decltype(Ps::parser)::match_type...>;
+    static bool Parse(absl::Span<Lexeme const> &lexemes,
+                      std::string_view &consumed, auto &&... outs) {
+      auto out_tuple_tuple = base::SplitTuple<base::Length(typename decltype(
+          Ps::parser)::match_type{})...>(std::forward_as_tuple(outs...));
 
-    absl::Span span = lexemes;
-    std::string_view ignore;
-    bool result = std::apply(
-        [&](auto &... out_tuples) {
-          return (std::apply(
-                      [&](auto &... outs) {
-                        return Ps::Parse(span, ignore, outs...);
-                      },
-                      out_tuples) and
-                  ...);
-        },
-        out_tuple_tuple);
+      absl::Span span = lexemes;
+      std::string_view ignore;
+      bool result = std::apply(
+          [&](auto &... out_tuples) {
+            return (std::apply(
+                        [&](auto &... outs) {
+                          return Ps::parser.Parse(span, ignore, outs...);
+                        },
+                        out_tuples) and
+                    ...);
+          },
+          out_tuple_tuple);
 
-    if (result) { consumed = ExtractRange(lexemes, span); }
-    return result;
-  }
+      if (result) { consumed = ExtractRange(lexemes, span); }
+      return result;
+    }
+  };
+
+ public:
+  static constexpr auto parser = Impl();
 };
 
 template <Lexeme::Kind Separator, Parser P, size_t MinLength,
           template <typename...> typename Container = std::vector>
-struct SeparatedListImpl {
+struct SeparatedList {
  private:
-  static constexpr size_t kNumMatches = base::Length(typename P::match_type{});
-  using element_type =
-      std::conditional_t<kNumMatches == 1, base::head<typename P::match_type>,
-                         base::reduce_t<std::tuple, typename P::match_type>>;
+  static constexpr size_t kNumMatches =
+      base::Length(typename decltype(P::parser)::match_type{});
+  using element_type = std::conditional_t<
+      kNumMatches == 1, base::head<typename decltype(P::parser)::match_type>,
+      base::reduce_t<std::tuple, typename decltype(P::parser)::match_type>>;
 
- public:
-  using match_type = base::type_list<Container<element_type>>;
+  struct Impl {
+    using match_type = base::type_list<Container<element_type>>;
 
-  static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed, auto &&out) {
-    Container<element_type> result;
-    auto span = lexemes;
-    element_type v;
-    if (not P::Parse(span, consumed, v)) { return MinLength == 0; }
-    result.push_back(std::move(v));
-    while (true) {
-      if (result.size() >= MinLength and
-          (span.empty() or span[0].kind() != Separator)) {
-        consumed = ExtractRange(lexemes, span);
-        out      = std::move(result);
-        return true;
-      }
-      span.remove_prefix(1);
-      if (P::Parse(span, consumed, v)) {
-        result.emplace_back(std::move(v));
-      } else {
-        return false;
+    static bool Parse(absl::Span<Lexeme const> &lexemes,
+                      std::string_view &consumed, auto &&out) {
+      Container<element_type> result;
+      auto span = lexemes;
+      element_type v;
+      if (not P::parser.Parse(span, consumed, v)) { return MinLength == 0; }
+      result.push_back(std::move(v));
+      while (true) {
+        if (result.size() >= MinLength and
+            (span.empty() or span[0].kind() != Separator)) {
+          consumed = ExtractRange(lexemes, span);
+          out      = std::move(result);
+          return true;
+        }
+        span.remove_prefix(1);
+        if (P::parser.Parse(span, consumed, v)) {
+          result.emplace_back(std::move(v));
+        } else {
+          return false;
+        }
       }
     }
-  }
+  };
+
+ public:
+  static constexpr auto parser = Impl();
 };
 
 template <char C, typename P>
-struct DelimitedByImpl {
-  using match_type = typename P::match_type;
-  static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed, auto &&... out) {
-    auto range = CheckBounds(lexemes);
-    if (not range.data()) { return false; }
-    bool result = P::Parse(range, consumed, out...) and range.empty();
-    if (result) {
-      // TODO: Update `consumed`
-      lexemes.remove_prefix(lexemes.front().match_offset() + 1);
-    }
-    return result;
-  }
-
+struct DelimitedBy {
  private:
-  static absl::Span<Lexeme const> CheckBounds(
-      absl::Span<Lexeme const> &lexemes) {
-    if (lexemes.empty() or lexemes.front().content().size() != 1 or
-        lexemes.front().content()[0] != C) {
-      return absl::Span<Lexeme const>(nullptr, 0);
-    } else {
-      size_t offset = lexemes.front().match_offset();
-      return lexemes.subspan(1, offset - 1);
+  struct Impl {
+    using match_type = typename decltype(P::parser)::match_type;
+    static bool Parse(absl::Span<Lexeme const> &lexemes,
+                      std::string_view &consumed, auto &&... out) {
+      auto range = CheckBounds(lexemes);
+      if (not range.data()) { return false; }
+      bool result = P::parser.Parse(range, consumed, out...) and range.empty();
+      if (result) {
+        // TODO: Update `consumed`
+        lexemes.remove_prefix(lexemes.front().match_offset() + 1);
+      }
+      return result;
     }
-  }
+
+    static absl::Span<Lexeme const> CheckBounds(
+        absl::Span<Lexeme const> &lexemes) {
+      if (lexemes.empty() or lexemes.front().content().size() != 1 or
+          lexemes.front().content()[0] != C) {
+        return absl::Span<Lexeme const>(nullptr, 0);
+      } else {
+        size_t offset = lexemes.front().match_offset();
+        return lexemes.subspan(1, offset - 1);
+      }
+    }
+  };
+
+ public:
+  static constexpr auto parser = Impl();
 };
 
 template <typename P, size_t... Ns>
 bool CallWithIgnores(std::index_sequence<Ns...>,
                      absl::Span<Lexeme const> &lexemes,
                      std::string_view &consumed) {
-  return P::Parse(lexemes, consumed, (std::ignore = Ns)...);
+  return P::parser.Parse(lexemes, consumed, (std::ignore = Ns)...);
 }
 
 template <Parser P>
 struct Ignored {
-  using match_type = base::type_list<>;
+ private:
+  struct Impl {
+    using match_type = base::type_list<>;
 
-  static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed) {
-    constexpr size_t N = base::Length(typename P::match_type{});
-    return CallWithIgnores<P>(std::make_index_sequence<N>{}, lexemes, consumed);
-  }
+    static bool Parse(absl::Span<Lexeme const> &lexemes,
+                      std::string_view &consumed) {
+      constexpr size_t N =
+          base::Length(typename decltype(P::parser)::match_type{});
+      return CallWithIgnores<P>(std::make_index_sequence<N>{}, lexemes,
+                                consumed);
+    }
+  };
+
+ public:
+  static constexpr auto parser = Impl();
 };
 
 template <size_t N>
@@ -231,17 +258,19 @@ template <Parser P, typename F, bool UseConsumedRange>
 struct ParserWith {
   using match_type = base::type_list<typename base::reduce_t<
       InvokeResultT<F>::template Get,
-      std::conditional_t<UseConsumedRange,
-                         base::type_list_cat<base::type_list<std::string_view>,
-                                             typename P::match_type>,
-                         typename P::match_type>>::type>;
+      std::conditional_t<
+          UseConsumedRange,
+          base::type_list_cat<base::type_list<std::string_view>,
+                              typename decltype(P::parser)::match_type>,
+          typename decltype(P::parser)::match_type>>::type>;
 
   static bool Parse(absl::Span<Lexeme const> &lexemes,
                     std::string_view &consumed, auto &&out) {
-    base::reduce_t<std::tuple, typename P::match_type> value_tuple;
+    base::reduce_t<std::tuple, typename decltype(P::parser)::match_type>
+        value_tuple;
     bool result = std::apply(
         [&](auto &... values) {
-          return P::Parse(lexemes, consumed, values...);
+          return P::parser.Parse(lexemes, consumed, values...);
         },
         value_tuple);
     if (not result) { return false; }
@@ -258,36 +287,8 @@ struct ParserWith {
 template <typename F, bool B>
 struct BindImpl {
   template <Parser P>
-  friend constexpr Parser auto operator<<(P, BindImpl) {
+  friend constexpr auto operator<<(P, BindImpl) {
     return ParserWith<P, F, B>();
-  }
-};
-
-// A parser that matches any one lexeme whose kind is `K`.
-template <Lexeme::Kind K>
-struct KindImpl {
-  using match_type = base::type_list<std::string_view>;
-  static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed, auto &&out) {
-    PARSE_DEBUG_LOG();
-    if (lexemes.empty() or lexemes[0].kind() != K) { return false; }
-    out      = lexemes[0].content();
-    consumed = ExtractRange(lexemes, lexemes.subspan(1));
-    return true;
-  }
-};
-
-// A parser that matches a lexeme exactly.
-template <internal_parser_dsl::FixedString S>
-struct MatchImpl {
-  using match_type = base::type_list<Lexeme>;
-  static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed, auto &&out) {
-    PARSE_DEBUG_LOG();
-    if (lexemes.empty() or S != lexemes[0].content()) { return false; }
-    out      = lexemes[0];
-    consumed = ExtractRange(lexemes, lexemes.subspan(1));
-    return true;
   }
 };
 
@@ -297,46 +298,85 @@ struct MatchImpl {
 // which attempts to match `T` first by using `L`, and if that fails, then by
 // using `R`.
 template <Parser L, Parser R>
-constexpr auto operator|(L, R) requires(base::meta<typename L::match_type> ==
-                                        base::meta<typename R::match_type>) {
-  return internal_parser_dsl::DisjunctionImpl<L, R>{};
+constexpr auto operator|(L, R) requires(
+    base::meta<typename decltype(L::parser)::match_type> ==
+    base::meta<typename decltype(R::parser)::match_type>) {
+  return internal_parser_dsl::Disjunction<L, R>();
 }
 
 // Given two parsers `L` and `R` returns a parser matching those lexeme streams
 // which matching `L` and then `R`.`
 template <Parser L, Parser R>
 constexpr auto operator+(L, R) {
-  return internal_parser_dsl::SequencedImpl<L, R>{};
+  return internal_parser_dsl::Sequenced<L, R>();
 }
-template <Lexeme::Kind K>
-constexpr auto Kind = internal_parser_dsl::KindImpl<K>();
 
+// A parser that matches any one lexeme whose kind is `K`.
+template <Lexeme::Kind K>
+struct Kind {
+ private:
+  struct Impl {
+    using match_type = base::type_list<std::string_view>;
+    static bool Parse(absl::Span<Lexeme const> &lexemes,
+                      std::string_view &consumed, auto &&out) {
+      PARSE_DEBUG_LOG();
+      if (lexemes.empty() or lexemes[0].kind() != K) { return false; }
+      out      = lexemes[0].content();
+      consumed = internal_parser_dsl::ExtractRange(lexemes, lexemes.subspan(1));
+      return true;
+    }
+  };
+
+ public:
+  static constexpr auto parser = Impl();
+};
+
+// A parser that matches a lexeme exactly.
 template <internal_parser_dsl::FixedString S>
-constexpr auto Match = internal_parser_dsl::MatchImpl<S>();
+struct Match {
+ private:
+  struct Impl {
+    using match_type = base::type_list<Lexeme>;
+    static bool Parse(absl::Span<Lexeme const> &lexemes,
+                      std::string_view &consumed, auto &&out) {
+      PARSE_DEBUG_LOG();
+      if (lexemes.empty() or S != lexemes[0].content()) { return false; }
+      out      = lexemes[0];
+      consumed = internal_parser_dsl::ExtractRange(lexemes, lexemes.subspan(1));
+      return true;
+    }
+  };
+
+ public:
+  static constexpr auto parser = Impl();
+};
 
 // A parser that attempts to parse `P`, binding if `P` parses successfully, but
 // otherwise consumes no lexemes and is considered to have parsed successfully.
 template <Parser P>
 struct Optional {
-  using match_type = typename P::match_type;
+  static constexpr auto parser = Impl(P());
 
-  explicit constexpr Optional(P) {}
+ private:
+  struct Impl {
+    using match_type = typename decltype(P::parser)::match_type;
 
-  static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed, auto &&out) {
-    P::Parse(lexemes, consumed, out);
-    return true;
-  }
+    static bool Parse(absl::Span<Lexeme const> &lexemes,
+                      std::string_view &consumed, auto &&out) {
+      P::parser.Parse(lexemes, consumed, out);
+      return true;
+    }
+  };
 };
 
 template <Parser P>
-constexpr Parser auto operator~(P) {
+constexpr auto operator~(P) {
   return internal_parser_dsl::Ignored<P>();
 }
 
 template <char C>
 constexpr auto DelimitedBy(auto P) {
-  return internal_parser_dsl::DelimitedByImpl<C, decltype(P)>();
+  return internal_parser_dsl::DelimitedBy<C, decltype(P)>();
 }
 
 constexpr auto Bracketed(Parser auto P) { return DelimitedBy<'['>(P); }
@@ -345,12 +385,12 @@ constexpr auto Braced(Parser auto P) { return DelimitedBy<'{'>(P); }
 
 template <size_t MinLength = 0>
 constexpr auto CommaSeparatedListOf(Parser auto P) {
-  return internal_parser_dsl::SeparatedListImpl<Lexeme::Kind::Comma,
-                                                decltype(P), MinLength>();
+  return internal_parser_dsl::SeparatedList<Lexeme::Kind::Comma, decltype(P),
+                                            MinLength>();
 }
 constexpr auto NewlineSeparatedListOf(Parser auto P) {
-  return internal_parser_dsl::SeparatedListImpl<Lexeme::Kind::Newline,
-                                                decltype(P), 0>();
+  return internal_parser_dsl::SeparatedList<Lexeme::Kind::Newline, decltype(P),
+                                            0>();
 }
 
 template <typename F>

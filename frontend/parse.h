@@ -12,13 +12,6 @@
 
 namespace frontend {
 
-bool ParseTerminalOrIdentifier(absl::Span<Lexeme const> &lexemes,
-                               std::unique_ptr<ast::Expression> &out);
-bool ParseStatement(absl::Span<Lexeme const> &lexemes,
-                    std::unique_ptr<ast::Node> &);
-bool ParseExpression(absl::Span<Lexeme const> &lexemes,
-                     std::unique_ptr<ast::Expression> &out);
-
 template <typename T>
 inline constexpr auto Construct = []<typename... Args>(Args &&... args) {
   return T(std::forward<Args>(args)...);
@@ -36,140 +29,223 @@ inline constexpr auto Vector = []<typename Arg>(Arg &&arg) {
   return v;
 };
 
+struct Expression {
+ private:
+  struct Impl {
+    using match_type = base::type_list<std::unique_ptr<ast::Expression>>;
 
-template <typename T, auto P>
-struct Wrap {
-  using match_type = base::type_list<T>;
+    static bool Parse(absl::Span<Lexeme const> &lexemes,
+                      std::string_view &consumed, auto &&out);
+  };
 
-  static bool Parse(absl::Span<Lexeme const> &lexemes,
-                    std::string_view &consumed, auto &&out) {
-    return P(lexemes, out);
-  }
+ public:
+  static constexpr auto parser = Impl();
 };
-inline constexpr auto Expression =
-    Wrap<std::unique_ptr<ast::Expression>, ParseExpression>{};
-inline constexpr auto Statement =
-    Wrap<std::unique_ptr<ast::Node>, ParseStatement>{};
 
-inline constexpr auto Number        = Kind<Lexeme::Kind::Number>;
-inline constexpr auto StringLiteral = Kind<Lexeme::Kind::String>;
-inline constexpr auto AnOperator    = Kind<Lexeme::Kind::Operator>;
-inline constexpr auto Identifier    = Kind<Lexeme::Kind::Identifier>;
+struct Statement {
+ private:
+  struct Impl {
+    using match_type = base::type_list<std::unique_ptr<ast::Expression>>;
 
-inline constexpr auto ArrayLiteral =
-    Bracketed(CommaSeparatedListOf(Expression))
-    << BindWithRange(MakeUnique<ast::ArrayLiteral, ast::Expression>);
+    static bool Parse(absl::Span<Lexeme const> &lexemes,
+                      std::string_view &consumed, auto &&out);
+  };
 
-inline constexpr auto ArrayType =
-    Bracketed(CommaSeparatedListOf<1>(Expression) +
-              ~Kind<Lexeme::Kind::Semicolon> + Expression)
-    << BindWithRange(MakeUnique<ast::ArrayType, ast::Expression>);
+ public:
+  static constexpr auto parser = Impl();
+};
 
-inline constexpr auto DeclarationId = (Identifier | Parenthesized(AnOperator))
-                                      << Bind(Construct<ast::Declaration::Id>);
+struct Number : Kind<Lexeme::Kind::Number> {};
+struct StringLiteral : Kind<Lexeme::Kind::String> {};
+struct AnOperator : Kind<Lexeme::Kind::Operator> {};
+struct Identifier : Kind<Lexeme::Kind::Identifier> {};
 
-inline constexpr auto Label =
-    (~Kind<Lexeme::Kind::Hash> + ~Match<"."> + Identifier)
-    << Bind(Construct<std::optional<ast::Label>>);
+struct ArrayLiteral {
+  static constexpr auto parser =
+      Bracketed(CommaSeparatedListOf(Expression()))
+      << BindWithRange(MakeUnique<ast::ArrayLiteral, ast::Expression>);
+};
 
-inline constexpr auto PositionalArgument =
-    Expression << Bind([](std::unique_ptr<ast::Expression> e) {
-      return ast::Call::Argument("", std::move(e));
-    });
-inline constexpr auto NamedArgument = (Identifier + ~Match<"="> + Expression)
-                                      << Bind(Construct<ast::Call::Argument>);
+struct ArrayType {
+  static constexpr auto parser =
+      Bracketed(CommaSeparatedListOf<1>(Expression()) +
+                ~Kind<Lexeme::Kind::Semicolon>() + Expression())
+      << BindWithRange(MakeUnique<ast::ArrayType, ast::Expression>);
+};
 
-inline constexpr auto CallArgument = NamedArgument | PositionalArgument;
+struct DeclarationId {
+  static constexpr auto parser = (Identifier() | Parenthesized(AnOperator()))
+                                 << Bind(Construct<ast::Declaration::Id>);
+};
 
-inline constexpr auto DeclarationStart =
-    (Parenthesized(CommaSeparatedListOf(DeclarationId)) |
-     DeclarationId << Bind(Vector<ast::Declaration::Id>));
+struct Label {
+  static constexpr auto parser =
+      (~Kind<Lexeme::Kind::Hash>() + ~Match<".">() + Identifier())
+      << Bind(Construct<std::optional<ast::Label>>);
+};
 
-inline constexpr auto NonDeducedDeclarationMarker  =
-    (Match<":"> | Match<"::">) << Bind(
-        [](Lexeme const &l) -> ast::Declaration::Flags {
-          if (l.content().size() == 2) { return ast::Declaration::f_IsConst; }
-          return ast::Declaration::Flags{};
+struct CallArgument {
+ private:
+  struct Positional {
+    static constexpr auto parser =
+        Expression() << Bind([](std::unique_ptr<ast::Expression> e) {
+          return ast::Call::Argument("", std::move(e));
         });
+  };
+  struct Named {
+    static constexpr auto parser = (Identifier() + ~Match<"=">() + Expression())
+                                   << Bind(Construct<ast::Call::Argument>);
+  };
 
-inline constexpr auto DeducedDeclarationMarker =
-    (Match<":="> | Match<"::=">) << Bind(
-        [](Lexeme const &l) -> ast::Declaration::Flags {
-          if (l.content().size() == 3) { return ast::Declaration::f_IsConst; }
-          return ast::Declaration::Flags{};
-        });
+ public:
+  static constexpr auto parser = Named() | Positional();
+};
 
-inline constexpr auto NonDeducedDeclaration =
-    (DeclarationStart + NonDeducedDeclarationMarker + Expression +
-     Optional(~Match<"="> + Expression))
-    << BindWithRange(Construct<ast::Declaration>);
-inline constexpr auto DeducedDeclaration =
-    (DeclarationStart + DeducedDeclarationMarker + Expression)
-    << BindWithRange(Construct<ast::Declaration>);
+struct Declaration {
+ private:
+  struct Start {
+    static constexpr auto parser =
+        (Parenthesized(CommaSeparatedListOf(DeclarationId()) | DeclarationId())
+         << Bind(Vector<ast::Declaration::Id>));
+  };
 
-inline constexpr auto Declaration = NonDeducedDeclaration | DeducedDeclaration;
-inline constexpr auto ReturnStatement =
-    (~Match<"return"> + CommaSeparatedListOf(Expression))
-    << BindWithRange(MakeUnique<ast::ReturnStmt, ast::Node>);
+  struct InferredType {
+   private:
+    struct InferenceMarker {
+      static constexpr auto parser =
+          (Match<":=">() | Match<"::=">())
+          << Bind([](Lexeme const &l) -> ast::Declaration::Flags {
+               if (l.content().size() == 3) {
+                 return ast::Declaration::f_IsConst;
+               }
+               return ast::Declaration::Flags{};
+             });
+    };
 
-inline constexpr auto YieldStatement =
-    (Optional(Label) + ~Match<"<<"> + CommaSeparatedListOf(CallArgument))
-    << BindWithRange(MakeUnique<ast::YieldStmt, ast::Node>);
+   public:
+    static constexpr auto parser =
+        (Start() + InferenceMarker() + Expression() +
+         Optional(~Match<"=">() + Expression()))
+        << BindWithRange(Construct<ast::Declaration>);
+  };
 
-inline constexpr auto WhileStatement =
-    ~Match<"while"> + Parenthesized(Expression) +
-        Braced(NewlineSeparatedListOf(Statement))
-    << BindWithRange(MakeUnique<ast::WhileStmt, ast::Node>);
+  struct ExplicitType {
+   private:
+    struct Marker {
+      static constexpr auto parser =
+          (Match<":">() | Match<"::">())
+          << Bind([](Lexeme const &l) -> ast::Declaration::Flags {
+               if (l.content().size() == 2) {
+                 return ast::Declaration::f_IsConst;
+               }
+               return ast::Declaration::Flags{};
+             });
+    };
 
-inline constexpr auto ExpressionOrExpressionList =
-    (Parenthesized(CommaSeparatedListOf(Expression)) |
-     Expression << Bind(Vector<std::unique_ptr<ast::Expression>>));
-inline constexpr auto Assignment =
-    (ExpressionOrExpressionList + ~Kind<Lexeme::Kind::Assignment> +
-     ExpressionOrExpressionList)
-    << BindWithRange(MakeUnique<ast::Assignment, ast::Node>);
+   public:
+    static constexpr auto parser =
+        (Start() + Marker() + Expression())
+        << BindWithRange(Construct<ast::Declaration>);
+  };
 
-inline constexpr auto StructImpl =
-    Braced(NewlineSeparatedListOf(Declaration))
-    << BindWithRange(MakeUnique<ast::StructLiteral, ast::Expression>);
-inline constexpr auto ParameterizedStructImpl =
-    (Parenthesized(CommaSeparatedListOf(Declaration)) +
-     Braced(NewlineSeparatedListOf(Declaration)))
-    << BindWithRange(
-           MakeUnique<ast::ParameterizedStructLiteral, ast::Expression>);
-inline constexpr auto StructLiteral =
-    ~Match<"struct"> + (StructImpl | ParameterizedStructImpl);
+ public:
+  static constexpr auto parser = InferredType() | ExplicitType();
+};
 
-inline constexpr auto ScopeLiteral =
-    (~Match<"scope"> +
-     Bracketed(Identifier << Bind(Construct<ast::Declaration::Id>)) +
-     Parenthesized(CommaSeparatedListOf(Declaration)) +
-     Braced(NewlineSeparatedListOf(Statement)))
-    << BindWithRange(MakeUnique<ast::ScopeLiteral, ast::Expression>);
+struct ReturnStatement {
+  static constexpr auto parser =
+      (~Match<"return">() + CommaSeparatedListOf(Expression()))
+      << BindWithRange(MakeUnique<ast::ReturnStmt, ast::Node>);
+};
 
-inline constexpr auto FunctionLiteral =
-    (Parenthesized(CommaSeparatedListOf(Declaration)) + ~Match<"->"> +
-     Optional(Parenthesized(CommaSeparatedListOf(Expression))) +
-     Braced(NewlineSeparatedListOf(Statement)))
-    << BindWithRange(MakeUnique<ast::FunctionLiteral, ast::Expression>);
+struct YieldStatement {
+  static constexpr auto parser =
+      (Optional(Label) + ~Match<"<<">() + CommaSeparatedListOf(CallArgument()))
+      << BindWithRange(MakeUnique<ast::YieldStmt, ast::Node>);
+};
 
-inline constexpr auto TerminalOrIdentifier =
-    Wrap<std::unique_ptr<ast::Expression>, ParseTerminalOrIdentifier>{};
+struct WhileStatement {
+  static constexpr auto parser =
+      ~Match<"while">() + Parenthesized(Expression()) +
+          Braced(NewlineSeparatedListOf(Statement()))
+      << BindWithRange(MakeUnique<ast::WhileStmt, ast::Node>);
+};
+
+struct ExpressionOrExpressionList {
+  static constexpr auto parser =
+      (Parenthesized(CommaSeparatedListOf(Expression())) |
+       Expression << Bind(Vector<std::unique_ptr<ast::Expression>>));
+};
+struct Assignment {
+  static constexpr auto parser =
+      (ExpressionOrExpressionList() + ~Kind<Lexeme::Kind::Assignment>() +
+       ExpressionOrExpressionList())
+      << BindWithRange(MakeUnique<ast::Assignment, ast::Node>);
+};
+
+struct StructLiteral {
+  static constexpr auto parser =
+      ~Match<"struct">() + (Impl() | ParameterizedImpl());
+
+ private:
+  struct Impl {
+    static constexpr auto parser =
+        Braced(NewlineSeparatedListOf(Declaration()))
+        << BindWithRange(MakeUnique<ast::StructLiteral, ast::Expression>);
+  };
+
+  struct ParameterizedImpl {
+    static constexpr auto parser =
+        (Parenthesized(CommaSeparatedListOf(Declaration())) +
+         Braced(NewlineSeparatedListOf(Declaration())))
+        << BindWithRange(
+               MakeUnique<ast::ParameterizedStructLiteral, ast::Expression>);
+  };
+};
+
+struct ScopeLiteral {
+  static constexpr auto parser =
+      (~Match<"scope">() +
+       Bracketed(Identifier() << Bind(Construct<ast::Declaration::Id>)) +
+       Parenthesized(CommaSeparatedListOf(Declaration())) +
+       Braced(NewlineSeparatedListOf(Statement())))
+      << BindWithRange(MakeUnique<ast::ScopeLiteral, ast::Expression>);
+};
+
+struct FunctionLiteral {
+  static constexpr auto parser =
+      (Parenthesized(CommaSeparatedListOf(Declaration())) + ~Match<"->">() +
+       Optional(Parenthesized(CommaSeparatedListOf(Expression()))) +
+       Braced(NewlineSeparatedListOf(Statement())))
+      << BindWithRange(MakeUnique<ast::FunctionLiteral, ast::Expression>);
+};
+
+struct TerminalOrIdentifier {
+  static constexpr auto parser = Impl();
+
+ private:
+  struct Impl {
+    static bool Parse(absl::Span<Lexeme const> &lexemes,
+                      std::string_view &consumed, auto &&out);
+  };
+};
 
 inline constexpr auto AsExpression =
     [](std::string_view content) -> std::unique_ptr<ast::Expression> {
   return std::make_unique<ast::Terminal>(content, "");
 };
 
-inline constexpr auto AtomicExpression =
-    ((Number | StringLiteral) << Bind(AsExpression))  //
-    | Parenthesized(Expression)                       //
-    | FunctionLiteral                                 //
-    | StructLiteral                                   //
-    | ScopeLiteral                                    //
-    | ArrayLiteral                                    //
-    | ArrayType                                       //
-    | TerminalOrIdentifier;                           //
+struct AtomicExpression {
+  static constexpr auto parser =
+      ((Number() | StringLiteral()) << Bind(AsExpression))  //
+      | Parenthesized(Expression)                           //
+      | FunctionLiteral()                                   //
+      | StructLiteral()                                     //
+      | ScopeLiteral()                                      //
+      | ArrayLiteral()                                      //
+      | ArrayType()                                         //
+      | TerminalOrIdentifier();
+};
 
 std::optional<ast::Module> ParseModule(
     absl::Span<Lexeme const> lexemes, diagnostic::DiagnosticConsumer &consumer);
