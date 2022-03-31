@@ -240,7 +240,8 @@ struct TypeSystemSerializingVisitor {
   }
 
   void Visit(Opaque const* o) {
-    base::Serialize(*this, o->defining_module()->identifier(), o->numeric_id());
+    NOT_YET();
+    // base::Serialize(*this, o->defining_module()->identifier(), o->numeric_id());
   }
 
   void Visit(Slice const* s) { base::Serialize(*this, s->data_type()); }
@@ -352,11 +353,12 @@ struct TypeSystemDeserializingVisitor {
         if (not base::Deserialize(*this, module_identifier, numeric_id)) {
           return false;
         }
-        auto const* o =
-            Opaq(ASSERT_NOT_NULL(
-                     context_.module_table().module(module_identifier).second),
-                 numeric_id);
-        system_.insert(o);
+        NOT_YET();
+        // auto const* o =
+        //     Opaq(ASSERT_NOT_NULL(
+        //              context_.module_table().module(module_identifier).second),
+        //          numeric_id);
+        // system_.insert(o);
         return true;
       }
       default: UNREACHABLE((int)which);

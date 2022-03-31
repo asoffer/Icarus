@@ -16,7 +16,6 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
   friend struct Fn;
   using prefer_wrapper_for_type_erasure = void;
   enum class Which : uint8_t {
-    Opaque,
     CompilationError,
     Foreign,
     HasBlock,
@@ -26,7 +25,6 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
   };
   explicit constexpr BuiltinFn(Which w) : which_(w) {}
 
-  static BuiltinFn Opaque() { return BuiltinFn(Which::Opaque); }
   static BuiltinFn CompilationError() {
     return BuiltinFn(Which::CompilationError);
   }
@@ -55,8 +53,8 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
   friend base::EnableExtensions;
 
   static constexpr std::array kNames{
-      "opaque", "compilation_error", "foreign", "has_block", "reserve_memory",
-      "slice",  "debug_ir"};
+      "compilation_error", "foreign", "has_block",
+      "reserve_memory",    "slice",   "debug_ir"};
 
   Which which_;
 };

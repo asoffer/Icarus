@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "absl/hash/hash.h"
+#include "ir/value/module_id.h"
 
 namespace type {
 
@@ -40,7 +41,8 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
     case Kind::F32: return core::Bytes{4};
     case Kind::F64: return core::Bytes{8};
     case Kind::Byte: return core::Bytes{1};
-    case Kind::Module: return core::Host.pointer().bytes();
+    case Kind::CallingModule: [[fallthrough]];
+    case Kind::Module: return core::Bytes::Get<ir::ModuleId>();
     case Kind::Label: return core::Host.pointer().bytes();
     case Kind::Interface: return core::Host.pointer().bytes();
     case Kind::ScopeContext: return core::Host.pointer().bytes();
@@ -72,7 +74,8 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     case Kind::F32: return core::Alignment{4};
     case Kind::F64: return core::Alignment{8};
     case Kind::Byte: return core::Alignment{1};
-    case Kind::Module: return core::Host.pointer().alignment();
+    case Kind::CallingModule: [[fallthrough]];
+    case Kind::Module: return core::Alignment::Get<ir::ModuleId>();
     case Kind::Label: return core::Host.pointer().alignment();
     case Kind::Interface: return core::Host.pointer().alignment();
     case Kind::ScopeContext: return core::Host.pointer().alignment();

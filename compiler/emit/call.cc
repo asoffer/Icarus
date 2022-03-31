@@ -104,12 +104,6 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       return;
     } break;
 
-    case ir::BuiltinFn::Which::Opaque:
-      out.append(c.current_block()->Append(
-          type::OpaqueTypeInstruction{.mod    = c.resources().module,
-                                      .result = c.current().subroutine->Reserve()}));
-      return;
-
     case ir::BuiltinFn::Which::DebugIr:
       c.current_block()->Append(
           ir::DebugIrInstruction{.fn = c.current().subroutine});

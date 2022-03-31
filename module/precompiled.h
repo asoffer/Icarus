@@ -23,7 +23,7 @@ struct PrecompiledModule final : Module {
   static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>> Make(
       std::string_view file_name, SharedContext& context);
 
-  absl::Span<SymbolInformation const> Exported(std::string_view name) override;
+  absl::Span<SymbolInformation const> Exported(std::string_view name) const override;
 
  private:
   friend bool BaseDeserialize(ModuleReader& r, PrecompiledModule& m) {

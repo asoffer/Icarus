@@ -339,20 +339,6 @@ type::QualType VerifyReserveMemoryCall(
   return qt;
 }
 
-type::QualType VerifyOpaqueCall(
-    CompilationDataReference data, std::string_view view,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
-  type::QualType qt = type::QualType::Constant(
-      ir::Fn(ir::BuiltinFn::Opaque()).type()->return_types()[0]);
-  if (not arg_vals.empty()) {
-    data.diag().Consume(BuiltinError{
-        .view    = view,
-        .message = "Built-in function `opaque` takes no arguments."});
-    qt.MarkError();
-  }
-  return qt;
-}
-
 }  // namespace
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
@@ -391,9 +377,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       case ir::BuiltinFn::Which::CompilationError: {
         qt = VerifyCompilationErrorCall(*this, b->range(), arg_vals);
       } break;
-      case ir::BuiltinFn::Which::Opaque: {
-        qt = VerifyOpaqueCall(*this, b->range(), arg_vals);
-      } break;
       case ir::BuiltinFn::Which::DebugIr: {
         // This is for debugging the compiler only, so there's no need to
         // write decent errors here.
@@ -404,45 +387,47 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     return context().set_qual_type(node, qt);
   }
 
-  if (auto const *id = node->callee()->if_as<ast::Identifier>()) {
-    absl::flat_hash_set<module::Module *> lookup_modules;
-    for (auto const &arg : node->prefix_arguments()) {
-      if (auto const *mod =
-              type::Provenance(context().qual_types(&arg.expr())[0].type())) {
-        // TODO: Remove const_cast. Propagate through Provenance.
-        lookup_modules.insert(const_cast<module::Module *>(mod));
+    if (auto const *id = node->callee()->if_as<ast::Identifier>()) {
+      absl::flat_hash_set<module::Module *> lookup_modules;
+      for (auto const &arg : node->prefix_arguments()) {
+        if (auto const *mod =
+                type::Provenance(context().qual_types(&arg.expr())[0].type(),
+                                 shared_context().module_table())) {
+          // TODO: Remove const_cast. Propagate through Provenance.
+          lookup_modules.insert(const_cast<module::Module *>(mod));
+        }
+      }
+      CallMetadata metadata(id->name(), node->scope(),
+                            std::move(lookup_modules));
+      if (metadata.overloads().empty()) {
+        diag().Consume(UndeclaredIdentifier{
+            .id   = id->name(),
+            .view = node->callee()->range(),
+        });
+        return context().set_qual_type(node, type::QualType::Error());
+      }
+      context().SetCallMetadata(node, std::move(metadata));
+    } else {
+      auto callee_qt = VerifyType(node->callee())[0];
+
+      LOG("Call", "Callee's qual-type is %s", callee_qt);
+      if (not callee_qt.ok()) {
+        return context().set_qual_type(node, type::QualType::Error());
+      }
+
+      if (auto const *access = node->callee()->if_as<ast::Access>()) {
+        ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
+                         ir::ModuleId mod_id,
+                         EvaluateOrDiagnoseAs<ir::ModuleId>(access->operand()));
+        context().SetCallMetadata(
+            node, CallMetadata(access->member_name(), &importer().get(mod_id)));
+      } else {
+        context().SetCallMetadata(
+            node,
+            CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
+                node->callee()}));
       }
     }
-    CallMetadata metadata(id->name(), node->scope(), std::move(lookup_modules));
-    if (metadata.overloads().empty()) {
-      diag().Consume(UndeclaredIdentifier{
-          .id   = id->name(),
-          .view = node->callee()->range(),
-      });
-      return context().set_qual_type(node, type::QualType::Error());
-    }
-    context().SetCallMetadata(node, std::move(metadata));
-  } else {
-    auto callee_qt = VerifyType(node->callee())[0];
-
-    LOG("Call", "Callee's qual-type is %s", callee_qt);
-    if (not callee_qt.ok()) {
-      return context().set_qual_type(node, type::QualType::Error());
-    }
-
-    if (auto const *access = node->callee()->if_as<ast::Access>()) {
-      ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
-                       ir::ModuleId mod_id,
-                       EvaluateOrDiagnoseAs<ir::ModuleId>(access->operand()));
-      context().SetCallMetadata(
-          node, CallMetadata(access->member_name(), &importer().get(mod_id)));
-    } else {
-      context().SetCallMetadata(
-          node,
-          CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
-              node->callee()}));
-    }
-  }
 
   auto qts_or_errors = VerifyReturningCall(
       *this, {.call = node, .callee = node->callee(), .arguments = arg_vals});

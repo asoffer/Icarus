@@ -8,20 +8,19 @@
 namespace type {
 
 static base::Global<
-    absl::flat_hash_map<std::pair<std::string, uintptr_t>, Opaque const *>>
+    absl::flat_hash_map<std::pair<ir::ModuleId, uintptr_t>, Opaque const *>>
     used_;
 
 // TODO: Using the address as the numeric id is problematic because it makes
 // values uncachable.
-Opaque const *Opaq(module::Module const *mod, uintptr_t numeric_id) {
-  auto handle = used_.lock();
-  auto [iter, inserted] = handle->try_emplace(
-      std::make_pair(std::string(mod->identifier()), numeric_id));
-  if (inserted) { iter->second = new Opaque(std::move(mod)); }
+Opaque const *Opaq(ir::ModuleId mod, uintptr_t numeric_id) {
+  auto handle           = used_.lock();
+  auto [iter, inserted] = handle->try_emplace(std::make_pair(mod, numeric_id));
+  if (inserted) { iter->second = new Opaque(mod); }
   return iter->second;
 }
 
-Opaque::Opaque(module::Module const *mod)
+Opaque::Opaque(ir::ModuleId mod)
     : LegacyType(IndexOf<Opaque>(),
                  LegacyType::Flags{.is_default_initializable = 0,
                                    .is_copyable              = 0,
@@ -42,10 +41,9 @@ core::Alignment Opaque::alignment(core::Arch const &a) const {
 }
 
 Type OpaqueTypeInstruction::Resolve() const {
-  auto *o = Allocate<Opaque>(mod);
-  used_.lock()->emplace(std::make_pair(std::string(mod->identifier()),
-                                       reinterpret_cast<uintptr_t>(o)),
-                        o);
+  auto *o = Allocate<Opaque>(mod.value());
+  used_.lock()->emplace(
+      std::make_pair(mod.value(), reinterpret_cast<uintptr_t>(o)), o);
   GlobalTypeSystem.insert(Type(o));
   return o;
 }

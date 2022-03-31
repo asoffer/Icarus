@@ -49,7 +49,6 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
       case Kind::Native: return native().type();
       case Kind::Builtin: {
         switch (builtin().which()) {
-          case BuiltinFn::Which::Opaque: return type::Func({}, {type::Type_});
           case BuiltinFn::Which::ReserveMemory:
             return type::Func(
                 {core::AnonymousParam(type::QualType::Constant(type::Integer)),

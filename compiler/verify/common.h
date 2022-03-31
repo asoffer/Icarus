@@ -11,7 +11,8 @@
 namespace compiler {
 
 absl::flat_hash_set<module::Module *> ModulesFromTypeProvenance(
-    absl::flat_hash_set<type::Type> const &adl_types);
+    absl::flat_hash_set<type::Type> const &adl_types,
+    module::ModuleTable const &table);
 
 std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>
 VerifyArguments(TypeVerifier &tv,

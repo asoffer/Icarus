@@ -3,6 +3,7 @@
 #include "compiler/instructions.h"
 #include "ir/subroutine.h"
 #include "ir/value/result_buffer.h"
+#include "type/opaque.h"
 
 namespace compiler {
 namespace {
@@ -13,7 +14,6 @@ ir::Subroutine AbortFn() {
   subroutine.entry()->set_jump(ir::JumpCmd::Return());
   return subroutine;
 }
-
 
 ir::Subroutine AlignmentFn() {
   ir::Subroutine subroutine(type::Func(
@@ -29,6 +29,7 @@ ir::Subroutine AlignmentFn() {
   subroutine.entry()->set_jump(ir::JumpCmd::Return());
   return subroutine;
 }
+
 ir::Subroutine BytesFn() {
   ir::Subroutine subroutine(type::Func(
       {core::AnonymousParam(type::QualType::NonConstant(type::Type_))},
@@ -63,6 +64,24 @@ module::Module::SymbolInformation SymbolFor() {
   };
 }
 
+ir::Subroutine OpaqueFn() {
+  ir::Subroutine subroutine(
+      type::Func({core::Param<type::QualType>(
+                     "", type::QualType::NonConstant(type::CallingModule),
+                     static_cast<core::ParamFlags>(core::MUST_NOT_NAME |
+                                                   core::HAS_DEFAULT))},
+                 {type::Type_}));
+  subroutine.entry()->Append(ir::SetReturnInstruction<type::Type>{
+      .index = 0,
+      .value = subroutine.entry()->Append(type::OpaqueTypeInstruction{
+          .mod    = ir::Reg::Parameter(0),
+          .result = subroutine.Reserve(),
+      }),
+  });
+  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+  return subroutine;
+}
+
 }  // namespace
 
 std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
@@ -71,6 +90,7 @@ std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
   module->insert("abort", SymbolFor<AbortFn>());
   module->insert("alignment", SymbolFor<AlignmentFn>());
   module->insert("bytes", SymbolFor<BytesFn>());
+  module->insert("opaque", SymbolFor<OpaqueFn>());
 
   return module;
 }

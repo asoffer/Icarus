@@ -204,9 +204,11 @@ cc_library(
         ":type",
         "//base:debug",
         "//base:extend",
+        "//base/extend:serialize",
         "//base/extend:traverse",
         "//ir/instruction:base",
-        "//module",
+        "//ir/instruction:debug",
+        "//ir/value:module_id",
         "@com_google_absl//absl/strings:str_format",
     ],
 )
@@ -304,7 +306,9 @@ cc_library(
     deps = CONCRETE_TYPES + [
         ":generic",
         ":overload_set",
+        "//ir/value:module_id",
         "//module",
+        "//module:table",
     ],
 )
 

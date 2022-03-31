@@ -249,11 +249,15 @@ void EmitArguments(
         if (arg_exprs[j].name() == name) { break; }
       }
       ast::Expression const *expr;
-      if (j == arg_exprs.size()) {
+      if (j != arg_exprs.size()) {
+        expr = &arg_exprs[j].expr();
+      } else if (param.value.type() == type::CallingModule) {
+        buffer.append(
+            c.shared_context().module_table().id(c.resources().module));
+        return;
+      } else {
         size_t default_index = *ASSERT_NOT_NULL(defaults.at_or_null(name));
         expr                 = defaults[default_index].value;
-      } else {
-        expr = &arg_exprs[j].expr();
       }
       EmitAndCast(c, *expr, param.value, buffer);
     }

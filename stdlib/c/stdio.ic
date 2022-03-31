@@ -5,9 +5,9 @@ c ::= import "c/types.ic"
 
 // TODO: Opaque is insufficient here because C allows for construction of values
 // of this type.
-#{export} FPos ::= 'opaque
+#{export} FPos ::= builtin.opaque()
 
-#{export} File ::= 'opaque
+#{export} File ::= builtin.opaque()
 #{export} eof  ::= 4294967295 as c.int
 
 #{export} fopen    ::= foreign("fopen", ([*]char, [*]char) -> *File)

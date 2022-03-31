@@ -7,12 +7,12 @@
 #include "base/extend/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
-#include "module/module.h"
+#include "ir/value/module_id.h"
 #include "type/type.h"
 
 namespace type {
 struct Opaque : LegacyType {
-  explicit Opaque(module::Module const *mod);
+  explicit Opaque(ir::ModuleId mod);
 
   void WriteTo(std::string *result) const override;
 
@@ -27,10 +27,10 @@ struct Opaque : LegacyType {
 
   uintptr_t numeric_id() const { return reinterpret_cast<uintptr_t>(this); }
 
-  module::Module const *defining_module() const { return mod_; }
+  ir::ModuleId defining_module() const { return mod_; }
 
  private:
-  module::Module const *mod_;
+  ir::ModuleId mod_;
 };
 
 struct OpaqueTypeInstruction
@@ -41,11 +41,11 @@ struct OpaqueTypeInstruction
 
   Type Resolve() const;
 
-  module::Module const *mod;
+  ir::RegOr<ir::ModuleId> mod;
   ir::Reg result;
 };
 
-Opaque const *Opaq(module::Module const *mod, uintptr_t numeric_id);
+Opaque const *Opaq(ir::ModuleId mod, uintptr_t numeric_id);
 
 }  // namespace type
 #endif  // ICARUS_TYPE_OPAQUE_H

@@ -261,9 +261,8 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
 
 namespace internal_instructions {
 
-
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBufferImpl(
-    ir::NativeFn fn, ir::CompleteResultBuffer const & arguments) {
+    ir::NativeFn fn, ir::CompleteResultBuffer const& arguments) {
   return interpreter::Evaluate<instruction_set_t>(fn, arguments);
 }
 
