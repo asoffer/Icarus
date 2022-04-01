@@ -49,60 +49,6 @@ struct UserDefinedError {
   std::string message;
 };
 
-type::QualType VerifyHasBlockCall(
-    CompilationDataReference data, std::string_view view,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
-  bool error = false;
-  if (not arg_vals.named().empty()) {
-    data.diag().Consume(BuiltinError{
-        .view    = view,
-        .message = "Built-in function `has_block` cannot be called with named "
-                   "arguments.",
-    });
-    error = true;
-  }
-
-  size_t size = arg_vals.size();
-  if (size != 2u) {
-    data.diag().Consume(BuiltinError{
-        .view = view,
-        .message =
-            absl::StrCat("Built-in function `has_block` takes exactly two "
-                         "arguments (You provided ",
-                         size, ")."),
-    });
-    error = true;
-  }
-
-  if (error) { return type::QualType::Error(); }
-
-  if (not arg_vals[0].type() == type::ScopeContext) {
-    data.diag().Consume(BuiltinError{
-        .view = view,
-        .message =
-            absl::StrCat("First argument to `has_block` must be a scope_context"
-                         " (You provided a(n) ",
-                         arg_vals[0].type().to_string(), ")."),
-    });
-    error = true;
-  }
-
-  if (!type::CanCastImplicitly(arg_vals[1].type(), type::Slc(type::Char))) {
-    data.diag().Consume(BuiltinError{
-        .view    = view,
-        .message = absl::StrCat("Second argument to `has_block` must be "
-                                "implicitly convertible to `[]char` (You "
-                                "provided `",
-                                arg_vals[1].type().to_string(), "`)."),
-    });
-    error = true;
-  }
-
-  if (error) { return type::QualType::Error(); }
-
-  return type::QualType::Constant(type::Bool);
-}
-
 type::QualType VerifySliceCall(
     CompilationDataReference data, std::string_view view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
@@ -300,45 +246,6 @@ type::QualType VerifyForeignCall(
   return type::QualType::Constant(foreign_type);
 }
 
-type::QualType VerifyReserveMemoryCall(
-    CompilationDataReference data, std::string_view view,
-    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
-  type::QualType qt = type::QualType::NonConstant(type::BufPtr(type::Byte));
-  size_t size       = arg_vals.size();
-  if (size != 2u) {
-    data.diag().Consume(BuiltinError{
-        .view    = view,
-        .message = absl::StrCat("Built-in function `reserve_memory` takes "
-                                "exactly two arguments (You provided ",
-                                size, ")."),
-    });
-    qt.MarkError();
-  } else {
-    for (size_t i : {0, 1}) {
-      if (!type::CanCastImplicitly(arg_vals[i].type(), type::U64)) {
-        data.diag().Consume(BuiltinError{
-            .view = view,
-            .message =
-                absl::StrCat("Arguments to `reserve_memory` must be "
-                             "implicitly convertible to `u64` (You provided `",
-                             arg_vals[i].type().to_string(), "`)."),
-        });
-        qt.MarkError();
-        break;
-      } else if (arg_vals[i]->empty()) {
-        data.diag().Consume(
-            BuiltinError{.view    = view,
-                         .message = "Arguments to `reserve_memory` must be "
-                                    "compile-time constants."});
-        qt.MarkError();
-        break;
-      }
-    }
-  }
-
-  return qt;
-}
-
 }  // namespace
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
@@ -360,12 +267,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             CallMetadata(absl::flat_hash_set<CallMetadata::callee_locator_t>{
                 static_cast<ast::Expression const *>(node)}));
         qt = VerifySliceCall(*this, b->range(), arg_vals);
-      } break;
-      case ir::BuiltinFn::Which::HasBlock: {
-        qt = VerifyHasBlockCall(*this, b->range(), arg_vals);
-      } break;
-      case ir::BuiltinFn::Which::ReserveMemory: {
-        qt = VerifyReserveMemoryCall(*this, b->range(), arg_vals);
       } break;
       case ir::BuiltinFn::Which::Foreign: {
         context().SetCallMetadata(

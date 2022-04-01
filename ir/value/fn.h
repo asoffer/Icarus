@@ -49,19 +49,8 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
       case Kind::Native: return native().type();
       case Kind::Builtin: {
         switch (builtin().which()) {
-          case BuiltinFn::Which::ReserveMemory:
-            return type::Func(
-                {core::AnonymousParam(type::QualType::Constant(type::Integer)),
-                 core::AnonymousParam(type::QualType::Constant(type::Integer))},
-                {type::BufPtr(type::Byte)});
           case BuiltinFn::Which::Slice:
           case BuiltinFn::Which::CompilationError:
-          case BuiltinFn::Which::HasBlock:
-            return type::Func({core::AnonymousParam(type::QualType::Constant(
-                                   type::ScopeContext)),
-                               core::AnonymousParam(type::QualType::Constant(
-                                   type::Slc(type::Char)))},
-                              {type::Bool});
           case BuiltinFn::Which::Foreign:
             // Note: We do not allow passing `foreign` or `slice` around as a
             // function object. It is call-only, which means the generic part

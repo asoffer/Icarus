@@ -41,11 +41,4 @@ TEST(Fn, NativeFn) {
   ASSERT_EQ(a.native(), ir::NativeFn(&data));
 }
 
-TEST(Fn, BuiltinFn) {
-  ASSIGN_OR(FAIL(), auto f, ir ::BuiltinFn::ByName("opaque"));
-  ir::Fn a(f);
-  ASSERT_EQ(a.kind(), ir::Fn::Kind::Builtin);
-  ASSERT_EQ(a.builtin(), ir::BuiltinFn::Opaque());
-}
-
 }  // namespace

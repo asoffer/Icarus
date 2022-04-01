@@ -367,7 +367,7 @@ struct TypeSystemDeserializingVisitor {
 
  private:
   std::string_view &content_;
-  module::SharedContext& context_;
+  [[maybe_unused]] module::SharedContext& context_;
   TypeSystem& system_;
 };
 

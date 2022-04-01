@@ -106,7 +106,7 @@ void Primitive::ShowValue(std::ostream &os,
     } else if constexpr (requires { os << std::declval<T>(); }) {
       os << value.get<T>();
     } else {
-      NOT_YET();
+      NOT_YET(base::meta<T>);
     }
   });
 }

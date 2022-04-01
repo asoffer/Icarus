@@ -104,6 +104,16 @@ struct ScopeContext
     return not(lhs == rhs);
   }
 
+  friend std::ostream& operator<<(std::ostream& os, ScopeContext ctx) {
+    os << "ScopeContext(";
+    if (not ctx.block_names_) { return os << "null)"; }
+    std::string_view separator = "";
+    for (auto const &b : ctx.blocks()) {
+      os << std::exchange(separator, ", ") << b.name;
+    }
+    return os << ")";
+  }
+
  private:
   friend base::EnableExtensions;
   std::vector<block_type> const *block_names_;

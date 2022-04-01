@@ -13,7 +13,7 @@ using ::testing::UnorderedElementsAre;
 
 TEST(BuiltinReserveMemory, FunctionSuccess) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module(R"(reserve_memory(1, 1))");
+  auto &mod         = infra.add_module(R"(builtin.reserve_memory(1, 1))");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt,
@@ -25,25 +25,25 @@ TEST(BuiltinReserveMemory, NonConstantArgument) {
   test::CompilerInfrastructure infra;
   auto &mod         = infra.add_module(R"(
   n := 3 as u64
-  reserve_memory(n, 1)
+  builtin.reserve_memory(n, 1)
   )");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(qt,
-            type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
-  EXPECT_THAT(infra.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "builtin-error")));
+  EXPECT_EQ(qt, type::QualType::Error());
+  EXPECT_THAT(
+      infra.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "uncallable-with-arguments")));
 }
 
 TEST(BuiltinReserveMemory, WrongType) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module(R"(reserve_memory(true, 1))");
+  auto &mod         = infra.add_module(R"(builtin.reserve_memory(true, 1))");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(qt,
-            type::QualType::NonConstant(type::Type(type::BufPtr(type::Byte))));
-  EXPECT_THAT(infra.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "builtin-error")));
+  EXPECT_EQ(qt, type::QualType::Error());
+  EXPECT_THAT(
+      infra.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "uncallable-with-arguments")));
 }
 
 TEST(BuiltinCompilationError, CompilationErrorError) {
@@ -168,7 +168,7 @@ TEST(BuiltinForeign, SecondParameterType) {
 
 TEST(BuiltinOpaque, Success) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module("opaque()");
+  auto &mod         = infra.add_module("builtin.opaque()");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt, type::QualType::Constant(type::Type_));
@@ -177,12 +177,12 @@ TEST(BuiltinOpaque, Success) {
 
 TEST(BuiltinOpaque, Arguments) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module("opaque(3)");
+  auto &mod         = infra.add_module("builtin.opaque(3)");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(qt, type::QualType::Constant(type::Type_));
+  EXPECT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(infra.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "builtin-error")));
+              UnorderedElementsAre(Pair("type-error", "uncallable-with-arguments")));
 }
 
 TEST(Call, Uncallable) {

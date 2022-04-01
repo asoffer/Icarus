@@ -159,7 +159,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     });
   }
   if (node->hashtags.contains(ir::Hashtag::Const)) {
-    if (not qt.constant()) { NOT_YET(); }
+    if (not qt.constant()) { NOT_YET(node->DebugString()); }
     if (*EvaluateOrDiagnoseAs<bool>(&node->condition())) {
       for (auto const *stmt : node->true_block()) { VerifyType(stmt); }
     } else if (node->has_false_block()) {

@@ -21,13 +21,6 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
                      absl::Span<ast::Call::Argument const> args,
                      ir::PartialResultBuffer &out) {
   switch (callee->value().which()) {
-    case ir::BuiltinFn::Which::ReserveMemory: {
-      out.append(c.current().subroutine->Alloca(core::TypeContour(
-          core::Bytes(*c.EvaluateOrDiagnoseAs<uint64_t>(&args[0].expr())),
-          core::Alignment(
-              *c.EvaluateOrDiagnoseAs<uint64_t>(&args[1].expr())))));
-      return;
-    } break;
     case ir::BuiltinFn::Which::Slice: {
       type::Slice const *slice_type =
           type::Slc(c.context()
@@ -62,16 +55,6 @@ void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
       c.EmitToBuffer(&args[1].expr(), buffer);
       emitter(length, type::Typed(buffer[0], type::Slice::LengthType()));
       out.append(slice);
-      return;
-    } break;
-    case ir::BuiltinFn::Which::HasBlock: {
-      ir::ScopeContext sc =
-          *c.EvaluateOrDiagnoseAs<ir::ScopeContext>(&args[0].expr());
-      auto name_buffer =
-          *c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
-              &args[1].expr(), type::Slc(type::Char)));
-      out.append(sc.find(name_buffer[0].get<ir::Slice>()) !=
-                 ir::Block::Invalid());
       return;
     } break;
     case ir::BuiltinFn::Which::Foreign: {

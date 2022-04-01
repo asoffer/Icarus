@@ -53,9 +53,24 @@ struct BytesInstruction
   ir::Reg result;
 };
 
+struct HasBlockInstruction
+    : base::Extend<HasBlockInstruction>::With<base::BaseTraverseExtension,
+                                              base::BaseSerializeExtension,
+                                              ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%3$s = has_block %1$s %2$s";
+
+  bool Resolve() const {
+    return context.value().find(name.value()) != ir::Block::Invalid();
+  }
+
+  ir::RegOr<ir::ScopeContext> context;
+  ir::RegOr<ir::Slice> name;
+  ir::Reg result;
+};
+
 using BuiltinInstructions =
-    ir::InstructionSet<AbortInstruction, AlignmentInstruction,
-                       BytesInstruction>;
+    ir::InstructionSet<AbortInstruction, AlignmentInstruction, BytesInstruction,
+                       HasBlockInstruction>;
 
 // Returns a BuiltinModule consisting of all nodes built in as language
 // intrinsics.

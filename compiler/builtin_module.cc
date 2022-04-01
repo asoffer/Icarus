@@ -45,6 +45,56 @@ ir::Subroutine BytesFn() {
   return subroutine;
 }
 
+ir::Subroutine OpaqueFn() {
+  ir::Subroutine subroutine(
+      type::EagerFunc({core::Param<type::QualType>(
+                          "", type::QualType::NonConstant(type::CallingModule),
+                          static_cast<core::ParamFlags>(core::MUST_NOT_NAME |
+                                                        core::HAS_DEFAULT))},
+                      {type::Type_}));
+  subroutine.entry()->Append(ir::SetReturnInstruction<type::Type>{
+      .index = 0,
+      .value = subroutine.entry()->Append(type::OpaqueTypeInstruction{
+          .mod    = ir::Reg::Parameter(0),
+          .result = subroutine.Reserve(),
+      }),
+  });
+  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+  return subroutine;
+}
+
+ir::Subroutine ReserveMemoryFn() {
+  ir::Subroutine subroutine(type::Func(
+      {core::AnonymousParam(type::QualType::Constant(type::Integer)),
+       core::AnonymousParam(type::QualType::Constant(type::Integer))},
+      {type::BufPtr(type::Byte)}));
+  // TODO: Not yet implemented.
+
+  // out.append(c.current().subroutine->Alloca(core::TypeContour(
+  //     core::Bytes(*c.EvaluateOrDiagnoseAs<uint64_t>(&args[0].expr())),
+  //     core::Alignment(
+  //         *c.EvaluateOrDiagnoseAs<uint64_t>(&args[1].expr())))));
+  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+  return subroutine;
+}
+
+ir::Subroutine HasBlockFn() {
+  ir::Subroutine subroutine(type::EagerFunc(
+      {core::AnonymousParam(type::QualType::Constant(type::ScopeContext)),
+       core::AnonymousParam(type::QualType::Constant(type::Slc(type::Char)))},
+      {type::Bool}));
+  subroutine.entry()->Append(ir::SetReturnInstruction<bool>{
+      .index = 0,
+      .value = subroutine.entry()->Append(HasBlockInstruction{
+          .context = ir::Reg::Parameter(0),
+          .name    = ir::Reg::Parameter(1),
+          .result  = subroutine.Reserve(),
+      }),
+  });
+  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+  return subroutine;
+}
+
 template <auto F>
 module::Module::SymbolInformation SymbolFor() {
   static ir::Subroutine subroutine = F();
@@ -64,24 +114,6 @@ module::Module::SymbolInformation SymbolFor() {
   };
 }
 
-ir::Subroutine OpaqueFn() {
-  ir::Subroutine subroutine(
-      type::Func({core::Param<type::QualType>(
-                     "", type::QualType::NonConstant(type::CallingModule),
-                     static_cast<core::ParamFlags>(core::MUST_NOT_NAME |
-                                                   core::HAS_DEFAULT))},
-                 {type::Type_}));
-  subroutine.entry()->Append(ir::SetReturnInstruction<type::Type>{
-      .index = 0,
-      .value = subroutine.entry()->Append(type::OpaqueTypeInstruction{
-          .mod    = ir::Reg::Parameter(0),
-          .result = subroutine.Reserve(),
-      }),
-  });
-  subroutine.entry()->set_jump(ir::JumpCmd::Return());
-  return subroutine;
-}
-
 }  // namespace
 
 std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
@@ -91,6 +123,8 @@ std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
   module->insert("alignment", SymbolFor<AlignmentFn>());
   module->insert("bytes", SymbolFor<BytesFn>());
   module->insert("opaque", SymbolFor<OpaqueFn>());
+  module->insert("reserve_memory", SymbolFor<ReserveMemoryFn>());
+  module->insert("has_block", SymbolFor<HasBlockFn>());
 
   return module;
 }

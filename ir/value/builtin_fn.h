@@ -15,22 +15,13 @@ namespace ir {
 struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
   friend struct Fn;
   using prefer_wrapper_for_type_erasure = void;
-  enum class Which : uint8_t {
-    CompilationError,
-    Foreign,
-    HasBlock,
-    ReserveMemory,
-    Slice,
-    DebugIr
-  };
+  enum class Which : uint8_t { CompilationError, Foreign, Slice, DebugIr };
   explicit constexpr BuiltinFn(Which w) : which_(w) {}
 
   static BuiltinFn CompilationError() {
     return BuiltinFn(Which::CompilationError);
   }
   static BuiltinFn Foreign() { return BuiltinFn(Which::Foreign); }
-  static BuiltinFn HasBlock() { return BuiltinFn(Which::HasBlock); }
-  static BuiltinFn ReserveMemory() { return BuiltinFn(Which::ReserveMemory); }
   static BuiltinFn Slice() { return BuiltinFn(Which::Slice); }
   static BuiltinFn DebugIr() { return BuiltinFn(Which::DebugIr); }
 
@@ -52,9 +43,8 @@ struct BuiltinFn : base::Extend<BuiltinFn, 1>::With<base::EqualityExtension> {
  private:
   friend base::EnableExtensions;
 
-  static constexpr std::array kNames{
-      "compilation_error", "foreign", "has_block",
-      "reserve_memory",    "slice",   "debug_ir"};
+  static constexpr std::array kNames{"compilation_error", "foreign", "slice",
+                                     "debug_ir"};
 
   Which which_;
 };

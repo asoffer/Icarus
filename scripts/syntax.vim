@@ -20,7 +20,7 @@ syntax match Identifier "#\.[a-zA-Z_0-9]\+"
 syntax region MultiLineComment start=/\/\*/ skip=/\\./ end=/\*\// contains=MultiLineComment
 hi link MultiLineComment Comment
 
-syntax keyword Keyword move copy import flags enum struct return scope as foreign block init destroy and or xor not interface slice callable reserve_memory compilation_error
+syntax keyword Keyword move copy import flags enum struct return scope as foreign block init destroy and or xor not interface slice callable compilation_error
 syntax keyword Boolean    true false
 syntax keyword Constant   bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 type module null char byte
 syntax match   Character  "![^\\]\|!\\[abfnrtv0]"
