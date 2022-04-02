@@ -222,10 +222,7 @@ void DefaultInitializationEmitter::EmitInitialize(type::Primitive const *t,
     if constexpr (base::meta<T> == base::meta<ir::Integer>) {
       NOT_YET();
     } else {
-      current_block()->Append(ir::StoreInstruction<T>{
-          .value    = T{},
-          .location = addr,
-      });
+      current_block()->Append(ir::StoreInstruction<T>{.location = addr});
     }
   });
 }

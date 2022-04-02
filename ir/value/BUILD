@@ -6,15 +6,6 @@ cc_library(
 )
 
 cc_library(
-    name = "arguments",
-    hdrs = ["arguments.h"],
-    deps = [
-        ":result_buffer",
-        "//core:arguments",
-    ],
-)
-
-cc_library(
     name = "block",
     hdrs = ["block.h"],
     deps = [

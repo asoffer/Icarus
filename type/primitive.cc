@@ -47,6 +47,7 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
     case Kind::Interface: return core::Host.pointer().bytes();
     case Kind::ScopeContext: return core::Host.pointer().bytes();
     case Kind::UnboundScope: return core::Host.pointer().bytes();
+    case Kind::Argument: return core::Bytes::Get<Argument>();
     default:;
   }
   UNREACHABLE(to_string());
@@ -80,6 +81,7 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     case Kind::Interface: return core::Host.pointer().alignment();
     case Kind::ScopeContext: return core::Host.pointer().alignment();
     case Kind::UnboundScope: return core::Host.pointer().alignment();
+    case Kind::Argument: return core::Alignment::Get<Argument>();
     default:;
   }
   UNREACHABLE(to_string());
@@ -111,6 +113,8 @@ void Primitive::ShowValue(std::ostream &os,
   });
 }
 
-bool Primitive::is_big() const { return kind_ == Kind::Integer; }
+bool Primitive::is_big() const {
+  return kind_ == Kind::Integer or kind_ == Kind::Argument;
+}
 
 }  // namespace type

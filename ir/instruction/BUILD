@@ -111,7 +111,6 @@ cc_library(
         "//base:meta",
         "//base:universal_print",
         "//core:arguments",
-        "//ir/value:arguments",
         "//ir/value:block",
         "//ir/value:reg",
         "//type:qual_type",

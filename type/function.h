@@ -99,6 +99,18 @@ struct FunctionTypeInstruction
   ir::Reg result;
 };
 
+struct IsAFunctionInstruction
+    : base::Extend<IsAFunctionInstruction>::With<base::BaseSerializeExtension,
+                                                 base::BaseTraverseExtension,
+                                                 ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = is-function %1$s";
+
+  bool Resolve() const { return operand.value().is<Function>(); }
+
+  ir::RegOr<type::Type> operand;
+  ir::Reg result;
+};
+
 }  // namespace type
 
 #endif  // ICARUS_TYPE_FUNCTION_H

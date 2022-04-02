@@ -3,6 +3,15 @@ package(default_visibility = ["//visibility:public"])
 cc_library(name = "type_xmacro", textual_hdrs = ["type.xmacro.h"])
 
 cc_library(
+    name = "argument",
+    hdrs = ["argument.h"],
+    deps = [
+        ":type",
+        "//base:untyped_buffer_view",
+    ],
+)
+
+cc_library(
     name = "block",
     hdrs = ["block.h"],
     srcs = ["block.cc"],
@@ -196,6 +205,22 @@ cc_library(
 )
 
 cc_library(
+    name = "generic_function",
+    hdrs = ["generic_function.h"],
+    deps = [
+        ":argument",
+        ":function",
+        ":qual_type",
+        ":slice",
+        ":type",
+        "//ir:subroutine",
+        "//ir/byte_code",
+        "//ir/interpreter:evaluate",
+        "//ir/value:slice",
+    ],
+)
+
+cc_library(
     name = "opaque",
     hdrs = ["opaque.h"],
     srcs = ["opaque.cc"],
@@ -253,6 +278,7 @@ cc_library(
     srcs = ["primitive.cc"],
     textual_hdrs = ["primitive.xmacro.h"],
     deps = [
+        ":argument",
         ":system",
         ":type",
         "//base:meta",
@@ -422,6 +448,7 @@ cc_library(
     srcs = ["serialize.cc"],
     deps = CONCRETE_TYPES + [
         ":generic",
+        ":generic_function",
         ":overload_set",
         ":system",
         "//base:flyweight_map",

@@ -8,6 +8,7 @@
 #include "ir/value/integer.h"
 #include "ir/value/module_id.h"
 #include "ir/value/scope.h"
+#include "type/argument.h"
 #include "type/system.h"
 #include "type/type.h"
 
@@ -36,7 +37,7 @@ struct Primitive : LegacyType {
     return ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, ir::Integer, int8_t,
                      int16_t, int32_t, int64_t, float, double, bool, ir::Char,
                      std::byte, Type, ir::ModuleId, ir::ScopeContext,
-                     ir::UnboundScope, ir::ModuleId, ir::addr_t
+                     ir::UnboundScope, ir::ModuleId, ir::addr_t, Argument
                      /* TODO: Other primitives */>(std::forward<Fn>(fn));
   }
 
@@ -90,6 +91,7 @@ inline constinit std::array kPrimitiveArray{
     Primitive(Primitive::Kind::UnboundScope),
     Primitive(Primitive::Kind::CallingModule),
     Primitive(Primitive::Kind::NullPtr),
+    Primitive(Primitive::Kind::Argument),
     Primitive(Primitive::Kind::EmptyArray),
     Primitive(Primitive::Kind::Label),
     Primitive(Primitive::Kind::Interface),
@@ -138,10 +140,11 @@ inline Type ScopeContext  = &internal_primitive::kPrimitiveArray[16];
 inline Type UnboundScope  = &internal_primitive::kPrimitiveArray[17];
 inline Type CallingModule = &internal_primitive::kPrimitiveArray[18];
 inline Type NullPtr       = &internal_primitive::kPrimitiveArray[19];
-inline Type EmptyArray    = &internal_primitive::kPrimitiveArray[20];
-inline Type Label         = &internal_primitive::kPrimitiveArray[21];
-inline Type Interface     = &internal_primitive::kPrimitiveArray[22];
-inline Type Void          = &internal_primitive::kPrimitiveArray[23];
+inline Type Argument_     = &internal_primitive::kPrimitiveArray[20];
+inline Type EmptyArray    = &internal_primitive::kPrimitiveArray[21];
+inline Type Label         = &internal_primitive::kPrimitiveArray[22];
+inline Type Interface     = &internal_primitive::kPrimitiveArray[23];
+inline Type Void          = &internal_primitive::kPrimitiveArray[24];
 
 inline Type MakePrimitive(Primitive::Kind k) {
   return &internal_primitive::kPrimitiveArray
