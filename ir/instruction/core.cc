@@ -1,5 +1,6 @@
 #include "ir/instruction/core.h"
 
+#include "absl/strings/str_join.h"
 #include "ir/value/slice.h"
 
 namespace ir {

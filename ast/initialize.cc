@@ -1,4 +1,5 @@
 #include "absl/cleanup/cleanup.h"
+#include "absl/strings/str_join.h"
 #include "ast/ast.h"
 #include "ast/build_param_dependency_graph.h"
 #include "ast/scope.h"
@@ -65,7 +66,7 @@ void ParameterizedExpression::InitializeParams() {
   for (auto& param : params_) {
     param.value->flags() |= Declaration::f_IsFnParam;
     if (not param.value->IsDefaultInitialized()) {
-      param.flags = core::HAS_DEFAULT;
+      param.flags = core::ParameterFlags::HasDefault();
     }
     if (not is_generic_) {
       is_generic_ = (param.value->flags() & Declaration::f_IsConst) or

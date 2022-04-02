@@ -27,7 +27,7 @@ TEST(BuiltinModule, Alignment) {
       UnorderedElementsAre(Field(
           &module::Module::SymbolInformation::qualified_type,
           Eq(type::QualType::Constant(type::Func(
-              {core::AnonymousParam(type::QualType::NonConstant(type::Type_))},
+              {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
               {type::U64}))))));
   auto f = module->Exported("alignment").begin()->value[0].get<ir::Fn>();
 
@@ -46,7 +46,7 @@ TEST(BuiltinModule, Bytes) {
       UnorderedElementsAre(Field(
           &module::Module::SymbolInformation::qualified_type,
           Eq(type::QualType::Constant(type::Func(
-              {core::AnonymousParam(type::QualType::NonConstant(type::Type_))},
+              {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
               {type::U64}))))));
   auto f = module->Exported("bytes").begin()->value[0].get<ir::Fn>();
 

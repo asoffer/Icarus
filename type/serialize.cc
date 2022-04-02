@@ -64,7 +64,7 @@ struct ValueSerializer {
   template <typename T>
   void write(T const& t) requires(std::integral<T> or std::floating_point<T> or
                                   base::meta<T> ==
-                                      base::meta<core::ParamFlags> or
+                                      base::meta<core::ParameterFlags> or
                                   base::meta<T> == base::meta<Quals>) {
     out_.append(std::string_view(reinterpret_cast<char const*>(&t), sizeof(t)));
   }
@@ -142,7 +142,7 @@ struct ValueDeserializer {
   bool read(T& t) requires(std::integral<T> or std::floating_point<T> or
                            base::meta<T> == base::meta<ir::Char> or
                            base::meta<T> == base::meta<std::byte> or
-                           base::meta<T> == base::meta<core::ParamFlags> or
+                           base::meta<T> == base::meta<core::ParameterFlags> or
                            base::meta<T> == base::meta<Quals>) {
     if (end_ - head_ < sizeof(T)) { return false; }
     std::memcpy(&t, head_, sizeof(T));
@@ -150,10 +150,10 @@ struct ValueDeserializer {
     return true;
   }
 
-  bool read(core::Params<QualType>& params) {
-    std::vector<core::Param<QualType>> qts;
+  bool read(core::Parameters<QualType>& params) {
+    std::vector<core::Parameter<QualType>> qts;
     if (not base::Deserialize(*this, qts)) { return false; }
-    params = core::Params<QualType>(std::move(qts));
+    params = core::Parameters<QualType>(std::move(qts));
     return true;
   }
 
@@ -334,7 +334,7 @@ struct TypeSystemDeserializingVisitor {
       }
       case IndexOf<Function>(): {
         bool eager;
-        core::Params<QualType> params;
+        core::Parameters<QualType> params;
         std::vector<Type> return_types;
 
         if (not base::Deserialize(*this, eager, params, return_types)) {

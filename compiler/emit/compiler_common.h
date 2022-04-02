@@ -39,8 +39,8 @@ core::Arguments<type::Typed<ir::CompleteResultRef>> EmitConstantArguments(
     ir::CompleteResultBuffer &buffer);
 
 void EmitArguments(
-    Compiler &c, core::Params<type::QualType> const &param_qts,
-    core::Params<ast::Expression const *> const &defaults,
+    Compiler &c, core::Parameters<type::QualType> const &param_qts,
+    core::Parameters<ast::Expression const *> const &defaults,
     absl::Span<ast::Call::Argument const> arg_exprs,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants,
     ir::PartialResultBuffer &buffer);

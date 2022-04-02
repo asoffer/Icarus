@@ -5,8 +5,8 @@
 
 namespace type {
 
-static base::Global<absl::node_hash_map<core::Params<QualType>, Scope>> scopes_;
-Scope const *Scp(core::Params<QualType> in) {
+static base::Global<absl::node_hash_map<core::Parameters<QualType>, Scope>> scopes_;
+Scope const *Scp(core::Parameters<QualType> in) {
   auto f      = Scope(in);
   auto handle = scopes_.lock();
   auto const &[iter, inserted] =

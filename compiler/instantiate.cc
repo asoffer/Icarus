@@ -11,7 +11,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/module.h"
-#include "core/params.h"
+#include "core/parameters.h"
 #include "ir/value/result_buffer.h"
 #include "type/cast.h"
 #include "type/type.h"

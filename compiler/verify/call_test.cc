@@ -69,7 +69,7 @@ TEST(BuiltinForeign, FunctionSuccess) {
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt,
             type::QualType::Constant(type::Func(
-                {core::AnonymousParam(type::QualType::NonConstant(type::I64))},
+                {core::AnonymousParameter(type::QualType::NonConstant(type::I64))},
                 {type::Bool})));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }

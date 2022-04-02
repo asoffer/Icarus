@@ -83,7 +83,7 @@ std::optional<ir::Subroutine> CompileModule(
     Context &context, PersistentResources const &resources,
     base::PtrSpan<ast::Node const> nodes) {
   WorkGraph w(resources);
-  ir::Subroutine f(type::Func({core::AnonymousParam(type::QualType::NonConstant(
+  ir::Subroutine f(type::Func({core::AnonymousParameter(type::QualType::NonConstant(
                                   type::Slc(type::Slc(type::Char))))},
                               {}));
 

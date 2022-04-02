@@ -40,7 +40,7 @@ cc_library(
         "//base:untyped_buffer",
         "//core:arguments",
         "//core:dependency_node",
-        "//core:params",
+        "//core:parameters",
         "//frontend/lex:operators",
         "//ir/value:addr",
         "//ir/value:builtin_fn",

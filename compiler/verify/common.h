@@ -19,9 +19,9 @@ VerifyArguments(TypeVerifier &tv,
                 absl::Span<ast::Call::Argument const> arguments,
                 ir::CompleteResultBuffer &out);
 
-std::optional<core::Params<type::QualType>> VerifyParameters(
+std::optional<core::Parameters<type::QualType>> VerifyParameters(
     TypeVerifier &tv,
-    core::Params<std::unique_ptr<ast::Declaration>> const &params);
+    core::Parameters<std::unique_ptr<ast::Declaration>> const &params);
 
 struct VerifyCallParameters {
   ast::Expression const *call;

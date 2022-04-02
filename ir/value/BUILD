@@ -45,7 +45,7 @@ cc_library(
         ":builtin_fn",
         ":foreign_fn",
         ":native_fn",
-        "//core:params",
+        "//core:parameters",
         "//type:function",
         "//type:pointer",
         "//type:primitive",

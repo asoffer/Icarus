@@ -17,7 +17,7 @@ ir::Subroutine AbortFn() {
 
 ir::Subroutine AlignmentFn() {
   ir::Subroutine subroutine(type::Func(
-      {core::AnonymousParam(type::QualType::NonConstant(type::Type_))},
+      {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
       {type::U64}));
   subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
       .index = 0,
@@ -32,7 +32,7 @@ ir::Subroutine AlignmentFn() {
 
 ir::Subroutine BytesFn() {
   ir::Subroutine subroutine(type::Func(
-      {core::AnonymousParam(type::QualType::NonConstant(type::Type_))},
+      {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
       {type::U64}));
   subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
       .index = 0,
@@ -46,12 +46,13 @@ ir::Subroutine BytesFn() {
 }
 
 ir::Subroutine OpaqueFn() {
-  ir::Subroutine subroutine(
-      type::EagerFunc({core::Param<type::QualType>(
-                          "", type::QualType::NonConstant(type::CallingModule),
-                          static_cast<core::ParamFlags>(core::MUST_NOT_NAME |
-                                                        core::HAS_DEFAULT))},
-                      {type::Type_}));
+  ir::Subroutine subroutine(type::EagerFunc(
+      {core::Parameter<type::QualType>{
+          .name  = "",
+          .value = type::QualType::NonConstant(type::CallingModule),
+          .flags = core::ParameterFlags::MustNotName() |
+                   core::ParameterFlags::HasDefault()}},
+      {type::Type_}));
   subroutine.entry()->Append(ir::SetReturnInstruction<type::Type>{
       .index = 0,
       .value = subroutine.entry()->Append(type::OpaqueTypeInstruction{
@@ -65,8 +66,8 @@ ir::Subroutine OpaqueFn() {
 
 ir::Subroutine ReserveMemoryFn() {
   ir::Subroutine subroutine(type::Func(
-      {core::AnonymousParam(type::QualType::Constant(type::Integer)),
-       core::AnonymousParam(type::QualType::Constant(type::Integer))},
+      {core::AnonymousParameter(type::QualType::Constant(type::Integer)),
+       core::AnonymousParameter(type::QualType::Constant(type::Integer))},
       {type::BufPtr(type::Byte)}));
   // TODO: Not yet implemented.
 
@@ -80,8 +81,8 @@ ir::Subroutine ReserveMemoryFn() {
 
 ir::Subroutine HasBlockFn() {
   ir::Subroutine subroutine(type::EagerFunc(
-      {core::AnonymousParam(type::QualType::Constant(type::ScopeContext)),
-       core::AnonymousParam(type::QualType::Constant(type::Slc(type::Char)))},
+      {core::AnonymousParameter(type::QualType::Constant(type::ScopeContext)),
+       core::AnonymousParameter(type::QualType::Constant(type::Slc(type::Char)))},
       {type::Bool}));
   subroutine.entry()->Append(ir::SetReturnInstruction<bool>{
       .index = 0,

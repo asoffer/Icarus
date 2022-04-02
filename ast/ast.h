@@ -16,7 +16,7 @@
 #include "base/ptr_span.h"
 #include "base/untyped_buffer.h"
 #include "core/arguments.h"
-#include "core/params.h"
+#include "core/parameters.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/addr.h"
 #include "ir/value/builtin_fn.h"
@@ -282,12 +282,12 @@ struct ParameterizedExpression : Expression {
       // tree.
       //
       ASSERT(param->ids().size() == 1u);
-      params_.append(param->ids()[0].name(), std::move(param));
+      params_.append(std::string(param->ids()[0].name()), std::move(param));
     }
   }
 
-  // TODO params() should be a reference to core::Params?
-  using params_type = core::Params<std::unique_ptr<Declaration>>;
+  // TODO params() should be a reference to core::Parameters?
+  using params_type = core::Parameters<std::unique_ptr<Declaration>>;
   params_type const &params() const { return params_; }
 
   // Returns a sequence of (parameter-index, dependency-node) pairs ordered in
@@ -304,7 +304,7 @@ struct ParameterizedExpression : Expression {
  protected:
   void InitializeParams();
 
-  core::Params<std::unique_ptr<Declaration>> params_;
+  core::Parameters<std::unique_ptr<Declaration>> params_;
   std::vector<std::pair<int, core::DependencyNode<Declaration>>>
       ordered_dependency_nodes_;
   bool is_generic_ = false;

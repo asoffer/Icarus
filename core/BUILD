@@ -36,7 +36,7 @@ cc_library(
     deps = [
         ":dependency_node",
         ":arguments",
-        ":params",
+        ":parameters",
         "//base:extend",
         "//base/extend:equality",
         "@com_google_absl//absl/types:span",
@@ -91,24 +91,22 @@ cc_test(
 )
 
 cc_library(
-    name = "params",
-    hdrs = ["params.h"],
+    name = "parameters",
+    hdrs = ["parameters.h"],
     deps = [
-        ":arguments",
         "//base:debug",
         "//base:extend",
+        "//base/extend:absl_hash",
+        "//base/extend:serialize",
         "//base:macros",
-        "//base:serialize",
-        "//base:universal_print",
-        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
 cc_test(
-    name = "params_test",
-    srcs = ["params_test.cc"],
+    name = "parameters_test",
+    srcs = ["parameters_test.cc"],
     deps = [
-        ":params",
+        ":parameters",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -44,12 +44,12 @@ void Struct::AppendFields(std::vector<Struct::Field> fields) {
 void Struct::SetInits(absl::Span<ir::Fn const> move_inits,
                       absl::Span<ir::Fn const> copy_inits) {
   for (ir::Fn init : move_inits) {
-    core::Params<QualType> const &params = init.type()->params();
+    core::Parameters<QualType> const &params = init.type()->params();
     ASSERT(params.size() == 1u);
     move_inits_.emplace(params[0].value.type(), init);
   }
   for (ir::Fn init : copy_inits) {
-    core::Params<QualType> const &params = init.type()->params();
+    core::Parameters<QualType> const &params = init.type()->params();
     ASSERT(params.size() == 1u);
     copy_inits_.emplace(params[0].value.type(), init);
 
@@ -72,12 +72,12 @@ ir::Fn Struct::Destructor() const {
 void Struct::SetAssignments(absl::Span<ir::Fn const> move_assignments,
                             absl::Span<ir::Fn const> copy_assignments) {
   for (ir::Fn assignment : move_assignments) {
-    core::Params<QualType> const &params = assignment.type()->params();
+    core::Parameters<QualType> const &params = assignment.type()->params();
     ASSERT(params.size() == 2u);
     move_assignments_.emplace(params[1].value.type(), assignment);
   }
   for (ir::Fn assignment : copy_assignments) {
-    core::Params<QualType> const &params = assignment.type()->params();
+    core::Parameters<QualType> const &params = assignment.type()->params();
     ASSERT(params.size() == 2u);
     copy_assignments_.emplace(params[1].value.type(), assignment);
 

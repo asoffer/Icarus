@@ -7,7 +7,7 @@
 #include "base/debug.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
-#include "core/params.h"
+#include "core/parameters.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"

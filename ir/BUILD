@@ -53,7 +53,7 @@ cc_library(
         "//base:strong_types",
         "//core:alignment",
         "//core:bytes",
-        "//core:params",
+        "//core:parameters",
         "//ir:basic_block",
         "//ir/blocks:register_allocator",
         "//type:callable",

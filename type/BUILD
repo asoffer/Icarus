@@ -12,7 +12,7 @@ cc_library(
         ":type",
         ":typed_value",
         "//base:global",
-        "//core:params",
+        "//core:parameters",
         "@com_google_absl//absl/container:node_hash_map",
     ],
 )
@@ -86,7 +86,7 @@ cc_library(
     deps = [
         ":type",
         ":qual_type",
-        "//core:params",
+        "//core:parameters",
     ],
 )
 
@@ -174,7 +174,7 @@ cc_library(
         "//base/extend:serialize",
         "//base/extend:traverse",
         "//base:global",
-        "//core:params",
+        "//core:parameters",
         "//ir/instruction:base",
         "//ir/instruction:debug",
         "@com_google_absl//absl/container:node_hash_set",
@@ -325,7 +325,7 @@ cc_library(
         "//base/extend:serialize",
         "//base/extend:traverse",
         "//base:global",
-        "//core:params",
+        "//core:parameters",
         "//ir/instruction:base",
         "//ir/instruction:debug",
         "@com_google_absl//absl/container:node_hash_map",

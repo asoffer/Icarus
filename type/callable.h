@@ -3,18 +3,18 @@
 
 #include <vector>
 
-#include "core/params.h"
+#include "core/parameters.h"
 #include "type/qual_type.h"
 #include "type/type.h"
 
 namespace type {
 
 struct Callable : LegacyType {
-  core::Params<type::QualType> const& params() const { return parameters_; }
+  core::Parameters<type::QualType> const& params() const { return parameters_; }
 
  protected:
   explicit Callable(int8_t which, LegacyType::Flags flags,
-                    core::Params<type::QualType> parameters)
+                    core::Parameters<type::QualType> parameters)
       : LegacyType(which, flags), parameters_(std::move(parameters)) {
 #if defined(ICARUS_DEBUG)
     for (auto const& p : parameters_) { ASSERT(p.value != QualType::Error()); }
@@ -22,7 +22,7 @@ struct Callable : LegacyType {
   }
 
  private:
-  core::Params<type::QualType> parameters_;
+  core::Parameters<type::QualType> parameters_;
 };
 
 struct ReturningType : Callable {
@@ -31,7 +31,7 @@ struct ReturningType : Callable {
 
  protected:
   explicit ReturningType(int8_t which, LegacyType::Flags flags,
-                         core::Params<type::QualType> parameters,
+                         core::Parameters<type::QualType> parameters,
                          std::vector<Type> return_types, bool eager)
       : Callable(which, flags, std::move(parameters)),
         return_types_(std::move(return_types)),

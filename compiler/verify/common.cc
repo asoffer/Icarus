@@ -98,14 +98,14 @@ absl::flat_hash_set<module::Module *> ModulesFromTypeProvenance(
   return adl_modules;
 }
 
-std::optional<core::Params<type::QualType>> VerifyParameters(
+std::optional<core::Parameters<type::QualType>> VerifyParameters(
     TypeVerifier &tv,
-    core::Params<std::unique_ptr<ast::Declaration>> const &params) {
+    core::Parameters<std::unique_ptr<ast::Declaration>> const &params) {
   // Parameter types cannot be dependent in concrete implementations so it is
   // safe to verify each of them separately (to generate more errors that are
   // likely correct).
 
-  core::Params<type::QualType> type_params;
+  core::Parameters<type::QualType> type_params;
   type_params.reserve(params.size());
   bool err = false;
   for (auto &d : params) {

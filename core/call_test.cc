@@ -8,69 +8,77 @@ namespace {
 constexpr bool Ambiguity(int lhs, int rhs) { return (lhs & rhs) != 0; }
 
 TEST(AmbiguouslyCallable, BothEmpty) {
-  Params<int> p1, p2;
+  Parameters<int> p1, p2;
   EXPECT_TRUE(AmbiguouslyCallable(p1, p2, Ambiguity));
   EXPECT_TRUE(AmbiguouslyCallable(p2, p1, Ambiguity));
 }
 
 TEST(AmbiguouslyCallable, OneEmpty) {
-  Params<int> p1{Param<int>{"a", 1}};
-  Params<int> p2;
+  Parameters<int> p1{Parameter<int>{.name = "a", .value = 1}};
+  Parameters<int> p2;
   EXPECT_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
   EXPECT_FALSE(AmbiguouslyCallable(p2, p1, Ambiguity));
 }
 
 TEST(AmbiguouslyCallable, OneEmptyWithDefault) {
-  Params<int> p1{Param<int>{"a", 1, HAS_DEFAULT}};
-  Params<int> p2;
+  Parameters<int> p1{Parameter<int>{
+      .name = "a", .value = 1, .flags = ParameterFlags::HasDefault()}};
+  Parameters<int> p2;
   EXPECT_TRUE(AmbiguouslyCallable(p1, p2, Ambiguity));
   EXPECT_TRUE(AmbiguouslyCallable(p2, p1, Ambiguity));
 }
 
 TEST(AmbiguouslyCallable, SameTypeDifferentNames) {
-  Params<int> p1{Param<int>{"a1", 1}};
-  Params<int> p2{Param<int>{"a2", 1}};
+  Parameters<int> p1{Parameter<int>{.name = "a1", .value = 1}};
+  Parameters<int> p2{Parameter<int>{.name = "a2", .value = 1}};
   EXPECT_TRUE(AmbiguouslyCallable(p1, p2, Ambiguity));
   EXPECT_TRUE(AmbiguouslyCallable(p2, p1, Ambiguity));
 }
 
 TEST(AmbiguouslyCallable, SameTypeSameName) {
-  Params<int> p{Param<int>{"a1", 1}};
+  Parameters<int> p{Parameter<int>{.name = "a1", .value = 1}};
   EXPECT_TRUE(AmbiguouslyCallable(p, p, Ambiguity));
 }
 
 TEST(AmbiguouslyCallable, SameNameDifferentTypes) {
-  Params<int> p1{Param<int>{"a", 1}};
-  Params<int> p2{Param<int>{"a", 2}};
+  Parameters<int> p1{Parameter<int>{.name = "a", .value = 1}};
+  Parameters<int> p2{Parameter<int>{.name = "a", .value = 2}};
   EXPECT_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
   EXPECT_FALSE(AmbiguouslyCallable(p2, p1, Ambiguity));
 }
 
 TEST(AmbiguouslyCallable, UnambiguousBecauseParamaterNeedsName) {
-  Params<int> p1{Param<int>{"a", 1}, Param<int>{"b", 2, HAS_DEFAULT}};
-  Params<int> p2{Param<int>{"b", 2}};
+  Parameters<int> p1{
+      Parameter<int>{.name = "a", .value = 1},
+      Parameter<int>{
+          .name = "b", .value = 2, .flags = ParameterFlags::HasDefault()}};
+  Parameters<int> p2{Parameter<int>{.name = "b", .value = 2}};
   EXPECT_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
   EXPECT_FALSE(AmbiguouslyCallable(p2, p1, Ambiguity));
 }
 
 TEST(AmbiguouslyCallable, BothDefaultableDifferentTypes) {
-  Params<int> p1{Param<int>{"a", 1, HAS_DEFAULT}};
-  Params<int> p2{Param<int>{"b", 2, HAS_DEFAULT}};
+  Parameters<int> p1{Parameter<int>{
+      .name = "a", .value = 1, .flags = ParameterFlags::HasDefault()}};
+  Parameters<int> p2{Parameter<int>{
+      .name = "b", .value = 2, .flags = ParameterFlags::HasDefault()}};
   EXPECT_TRUE(AmbiguouslyCallable(p1, p2, Ambiguity));
   EXPECT_TRUE(AmbiguouslyCallable(p2, p1, Ambiguity));
 }
 
-// TODO Many many more tests covering MUST_NOT_NAME
+// TODO Many many more tests covering ParameterFlags::MustNotName()
 TEST(AmbiguouslyCallable, Anonymous) {
-  Params<int> p1{Param<int>{"", 1, MUST_NOT_NAME}};
-  Params<int> p2{Param<int>{"", 2, MUST_NOT_NAME}};
+  Parameters<int> p1{Parameter<int>{
+      .name = "", .value = 1, .flags = ParameterFlags::MustNotName()}};
+  Parameters<int> p2{Parameter<int>{
+      .name = "", .value = 2, .flags = ParameterFlags::MustNotName()}};
   EXPECT_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
 }
 
-TEST(Callability, EmptyParams) {
+TEST(Callability, EmptyParameters) {
   auto convertible = [](int from, int to) { return from == to; };
 
-  Params<int> p;
+  Parameters<int> p;
   EXPECT_EQ(Callability(p, Arguments<int>{}, convertible),
             CallabilityResult::Valid{});
   EXPECT_EQ(Callability(p, Arguments<int>{{3}, {}}, convertible),
@@ -86,7 +94,7 @@ TEST(Callability, EmptyParams) {
 
 TEST(Callability, OneParamWithoutDefault) {
   auto convertible = [](int from, int to) { return from == to; };
-  Params<int> p{Param<int>{"a", 4}};
+  Parameters<int> p{Parameter<int>{.name = "a", .value = 4}};
   EXPECT_EQ(Callability(p, Arguments<int>{}, convertible),
             CallabilityResult::MissingNonDefaultableArguments{.names = {"a"}});
   EXPECT_EQ(Callability(p, Arguments<int>{{3}, {}}, convertible),
@@ -107,7 +115,8 @@ TEST(Callability, OneParamWithoutDefault) {
 
 TEST(Callability, OneParamWithDefault) {
   auto convertible = [](int from, int to) { return from == to; };
-  Params<int> p{Param<int>{"a", 4, HAS_DEFAULT}};
+  Parameters<int> p{Parameter<int>{
+      .name = "a", .value = 4, .flags = ParameterFlags::HasDefault()}};
   EXPECT_EQ(Callability(p, Arguments<int>{}, convertible),
             CallabilityResult::Valid{});
   EXPECT_EQ(Callability(p, Arguments<int>{{3}, {}}, convertible),
@@ -126,10 +135,13 @@ TEST(Callability, OneParamWithDefault) {
                                                  .max_num_accepted = 1}));
 }
 
-TEST(Callability, MultipleParamsWithNonTrailingDefault) {
+TEST(Callability, MultipleParametersWithNonTrailingDefault) {
   auto convertible = [](int from, int to) { return from == to; };
 
-  Params<int> p{Param<int>{"a", 4, HAS_DEFAULT}, Param<int>{"b", 7}};
+  Parameters<int> p{
+      Parameter<int>{
+          .name = "a", .value = 4, .flags = ParameterFlags::HasDefault()},
+      Parameter<int>{.name = "b", .value = 7}};
   EXPECT_EQ(Callability(p, Arguments<int>{}, convertible),
             CallabilityResult::MissingNonDefaultableArguments{.names = {"b"}});
   EXPECT_EQ(Callability(p, Arguments<int>{{3}, {}}, convertible),
@@ -150,8 +162,11 @@ TEST(Callability, MultipleParamsWithNonTrailingDefault) {
 TEST(Callability, MultipleParametersWithDefaults) {
   auto convertible = [](int from, int to) { return from == to; };
 
-  Params<int> p{Param<int>{"a", 1, HAS_DEFAULT},
-                Param<int>{"b", 2, HAS_DEFAULT}};
+  Parameters<int> p{
+      Parameter<int>{
+          .name = "a", .value = 1, .flags = ParameterFlags::HasDefault()},
+      Parameter<int>{
+          .name = "b", .value = 2, .flags = ParameterFlags::HasDefault()}};
 
   EXPECT_EQ(Callability(p, Arguments<int>{}, convertible),
             CallabilityResult::Valid{});

@@ -34,8 +34,8 @@ std::pair<NativeFn, bool> Module::InsertInit(type::Type t) {
   auto [iter, inserted] = init_.try_emplace(t);
   if (not inserted) { return std::pair(iter->second, inserted); }
   iter->second = InsertFunction(type::Func(
-      core::Params<type::QualType>{
-          core::AnonymousParam(type::QualType::NonConstant(type::Ptr(t)))},
+      core::Parameters<type::QualType>{
+          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(t)))},
       {}));
   return std::pair(iter->second, inserted);
 }
@@ -44,8 +44,8 @@ std::pair<NativeFn, bool> Module::InsertDestroy(type::Type t) {
   auto [iter, inserted] = destroy_.try_emplace(t);
   if (not inserted) { return std::pair(iter->second, inserted); }
   iter->second = InsertFunction(type::Func(
-      core::Params<type::QualType>{
-          core::AnonymousParam(type::QualType::NonConstant(type::Ptr(t)))},
+      core::Parameters<type::QualType>{
+          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(t)))},
       {}));
   return std::pair(iter->second, inserted);
 }
@@ -55,9 +55,9 @@ std::pair<NativeFn, bool> Module::InsertCopyAssign(type::Type to,
   auto [iter, inserted] = copy_assign_.try_emplace(std::pair(to, from));
   if (not inserted) { return std::pair(iter->second, inserted); }
   iter->second = InsertFunction(type::Func(
-      core::Params<type::QualType>{
-          core::AnonymousParam(type::QualType::NonConstant(type::Ptr(to))),
-          core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
+      core::Parameters<type::QualType>{
+          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(to))),
+          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(from)))},
       {}));
   return std::pair(iter->second, inserted);
 }
@@ -67,9 +67,9 @@ std::pair<NativeFn, bool> Module::InsertMoveAssign(type::Type to,
   auto [iter, inserted] = move_assign_.try_emplace(std::pair(to, from));
   if (not inserted) { return std::pair(iter->second, inserted); }
   iter->second = InsertFunction(type::Func(
-      core::Params<type::QualType>{
-          core::AnonymousParam(type::QualType::NonConstant(type::Ptr(to))),
-          core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
+      core::Parameters<type::QualType>{
+          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(to))),
+          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(from)))},
       {}));
   return std::pair(iter->second, inserted);
 }
@@ -80,8 +80,8 @@ std::pair<NativeFn, bool> Module::InsertCopyInit(type::Type to,
   auto &entry           = iter->second;
   if (not inserted) { return std::pair(iter->second, inserted); }
   iter->second = InsertFunction(type::Func(
-      core::Params<type::QualType>{
-          core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
+      core::Parameters<type::QualType>{
+          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(from)))},
       {to}));
   return std::pair(iter->second, inserted);
 }
@@ -92,8 +92,8 @@ std::pair<NativeFn, bool> Module::InsertMoveInit(type::Type to,
   auto &entry           = iter->second;
   if (not inserted) { return std::pair(iter->second, inserted); }
   iter->second = InsertFunction(type::Func(
-      core::Params<type::QualType>{
-          core::AnonymousParam(type::QualType::NonConstant(type::Ptr(from)))},
+      core::Parameters<type::QualType>{
+          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(from)))},
       {to}));
   return std::pair(iter->second, inserted);
 }

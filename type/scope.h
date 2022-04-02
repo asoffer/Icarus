@@ -8,7 +8,7 @@
 #include "base/extend.h"
 #include "base/extend/serialize.h"
 #include "base/extend/traverse.h"
-#include "core/params.h"
+#include "core/parameters.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "type/callable.h"
@@ -19,7 +19,7 @@
 namespace type {
 
 struct Scope : Callable {
-  Scope(core::Params<QualType> params)
+  Scope(core::Parameters<QualType> params)
       : Callable(IndexOf<Scope>(),
                  LegacyType::Flags{.is_default_initializable = 0,
                                    .is_copyable              = 1,
@@ -37,20 +37,22 @@ struct Scope : Callable {
   Completeness completeness() const override { return Completeness::Complete; }
 };
 
-Scope const *Scp(core::Params<QualType> params);
+Scope const *Scp(core::Parameters<QualType> params);
 
 struct ScopeTypeInstruction
     : base::Extend<ScopeTypeInstruction>::With<base::BaseSerializeExtension,
                                                base::BaseTraverseExtension> {
   Type Resolve() const {
-    core::Params<QualType> params;
+    core::Parameters<QualType> params;
     params.reserve(inputs.size());
     for (auto const &[name, t] : inputs) {
       params.append(
           name.empty()
-              ? core::AnonymousParam(QualType::NonConstant(t.value()))
-              : core::Param<type::QualType>(std::move(name),
-                                            QualType::NonConstant(t.value())));
+              ? core::AnonymousParameter(QualType::NonConstant(t.value()))
+              : core::Parameter<type::QualType>{
+                    .name  = std::move(name),
+                    .value = QualType::NonConstant(t.value()),
+                });
     }
 
     std::vector<Type> outputs_types;

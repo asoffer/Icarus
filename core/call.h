@@ -9,12 +9,13 @@
 #include "base/extend/equality.h"
 #include "core/arguments.h"
 #include "core/dependency_node.h"
-#include "core/params.h"
+#include "core/parameters.h"
 
 namespace core {
 
 template <typename T, typename AmbiguityFn>
-bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
+bool AmbiguouslyCallable(Parameters<T> const& params1,
+                         Parameters<T> const& params2,
                          AmbiguityFn&& ambiguity) {
   // In order to determine ambiguity, we consider separately each case where we
   // have a given number of positional arguments. This allows us to use an
@@ -41,10 +42,9 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
   std::vector<int> diffs(1 + min_size, 0);
   for (size_t i = 0; i < min_size; ++i) {
     auto const& p1 = params1[i];
-    if (size_t const* j = params2.at_or_null(p1.name)) {
-      auto const& p2 = params2[*j];
-      if (p2.flags & HAS_DEFAULT) { continue; }
-      auto [min, max] = std::minmax(i, *j);
+    if (auto [p2, j] = params2.try_get(p1.name); p2) {
+      if (p2->flags >= ParameterFlags::HasDefault()) { continue; }
+      auto [min, max] = std::minmax(i, j);
       diffs[min]++;
       diffs[max]--;
       if (max > min_size) { return false; }
@@ -53,13 +53,15 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
     }
   }
 
-  // Returns the index just after the last instance of MUST_NOT_NAME. If
-  // MUST_NOT_NAME is the last parameter, then we return params.size(). If it is
-  // not present at all, we return 0.
-  constexpr auto MustNotNameTailIndex = [](Params<T> const& params) -> size_t {
+  // Returns the index just after the last instance of
+  // ParameterFlags::MustNotName(). If ParameterFlags::MustNotName() is the last
+  // parameter, then we return params.size(). If it is not present at all, we
+  // return 0.
+  constexpr auto MustNotNameTailIndex =
+      [](Parameters<T> const& params) -> size_t {
     if (params.empty()) { return 0; }
     for (int i = params.size() - 1; i >= 0; --i) {
-      if (params[i].flags & MUST_NOT_NAME) { return i + 1; }
+      if (params[i].flags >= ParameterFlags::MustNotName()) { return i + 1; }
     }
     return 0;
   };
@@ -75,29 +77,25 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
     if (accumulator != 0 or i < starting_named_index) { continue; }
     // Ensure that any parameter name has a default value if it only appears in
     // one parameter set.
-    for (auto [name, index1] : params1.lookup_) {
-      if (index1 < i) { continue; }
-      auto const& p1 = params1[index1];
-      if (p1.flags & HAS_DEFAULT) {
+    for (auto iter = std::next(params1.begin(), i); iter != params1.end();
+         ++iter) {
+      auto const& p1 = *iter;
+      if (p1.flags >= ParameterFlags::HasDefault()) {
         continue;
-      } else if (size_t const* index2 = params2.at_or_null(name)) {
-        auto const& p2 = params2[*index2];
-        if (ambiguity(p1.value, p2.value)) { continue; }
+      } else if (auto const* p2 = params2.try_get(p1.name).first) {
+        if (ambiguity(p1.value, p2->value)) { continue; }
         goto next_named_positional_breakpoint;
       } else {
         goto next_named_positional_breakpoint;
       }
     }
-
-    for (auto [name, index2] : params2.lookup_) {
-      if (index2 < i) { continue; }
-      auto const& p2 = params2[index2];
-      if (p2.flags & HAS_DEFAULT) {
+    for (auto iter = std::next(params2.begin(), i); iter != params2.end();
+         ++iter) {
+      auto const& p2 = *iter;
+      if (p2.flags >= ParameterFlags::HasDefault()) {
         continue;
-      } else if (size_t const* index1 = params1.at_or_null(name)) {
-        auto const& p1 = params1[*index1];
-
-        if (ambiguity(p1.value, p2.value)) { continue; }
+      } else if (auto const* p1 = params1.try_get(p2.name).first) {
+        if (ambiguity(p2.value, p1->value)) { continue; }
         goto next_named_positional_breakpoint;
       } else {
         goto next_named_positional_breakpoint;
@@ -192,7 +190,8 @@ struct CallabilityResult
 // Returns true if and only if a callable with parameters given by `params` can
 // be called with arguments given by `args`.
 template <typename T, typename U>
-CallabilityResult Callability(Params<T> const& params, Arguments<U> const& args,
+CallabilityResult Callability(Parameters<T> const& params,
+                              Arguments<U> const& args,
                               std::predicate<U, T> auto fn) {
   if (params.size() < args.size()) {
     return CallabilityResult::TooManyArguments{
@@ -206,15 +205,15 @@ CallabilityResult Callability(Params<T> const& params, Arguments<U> const& args,
   }
 
   for (auto const& [name, type] : args.named()) {
-    auto* index = params.at_or_null(name);
-    if (not index) { return CallabilityResult::NoParameterNamed{.name = name}; }
+    auto [p, index] = params.try_get(name);
+    if (not p) { return CallabilityResult::NoParameterNamed{.name = name}; }
 
-    if (*index < args.pos().size()) {
-      return CallabilityResult::PositionalArgumentNamed{.index = *index,
+    if (index < args.pos().size()) {
+      return CallabilityResult::PositionalArgumentNamed{.index = index,
                                                         .name  = name};
     }
 
-    if (not fn(type, params[*index].value)) {
+    if (not fn(type, p->value)) {
       return CallabilityResult::TypeMismatch{.parameter = name,
                                              .argument  = name};
     }
@@ -222,7 +221,7 @@ CallabilityResult Callability(Params<T> const& params, Arguments<U> const& args,
 
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const& param = params[i];
-    if (param.flags & HAS_DEFAULT) { continue; }
+    if (param.flags >= ParameterFlags::HasDefault()) { continue; }
     if (args.at_or_null(param.name) == nullptr) {
       return CallabilityResult::MissingNonDefaultableArguments{
           .names = {param.name}};
@@ -233,7 +232,7 @@ CallabilityResult Callability(Params<T> const& params, Arguments<U> const& args,
 }
 
 template <typename T, typename U>
-void BindArguments(Params<T> const& params, Arguments<U> const& args,
+void BindArguments(Parameters<T> const& params, Arguments<U> const& args,
                    std::invocable<T, U> auto&& f) {
   for (size_t i = 0; i < args.pos().size(); ++i) {
     f(params[i].value, args[i]);

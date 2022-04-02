@@ -6,12 +6,12 @@
 #include "ast/ast_fwd.h"
 #include "base/graph.h"
 #include "core/dependency_node.h"
-#include "core/params.h"
+#include "core/parameters.h"
 
 namespace ast {
 
 base::Graph<core::DependencyNode<Declaration>> BuildParamDependencyGraph(
-    core::Params<std::unique_ptr<Declaration>> const &params);
+    core::Parameters<std::unique_ptr<Declaration>> const &params);
 
 }  // namespace ast
 

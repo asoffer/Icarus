@@ -10,7 +10,7 @@ namespace {
 struct ParamDependencyGraphBuilder {
   using signature = void(core::DependencyNode<Declaration const *>);
   explicit ParamDependencyGraphBuilder(
-      core::Params<std::unique_ptr<Declaration>> const &params) {
+      core::Parameters<std::unique_ptr<Declaration>> const &params) {
     to_process_.reserve(params.size());
     for (auto const &param : params) {
       // Parameters must not be multiple-declarations.
@@ -295,7 +295,7 @@ struct ParamDependencyGraphBuilder {
 }  // namespace
 
 base::Graph<core::DependencyNode<Declaration>> BuildParamDependencyGraph(
-    core::Params<std::unique_ptr<Declaration>> const &params) {
+    core::Parameters<std::unique_ptr<Declaration>> const &params) {
   return ParamDependencyGraphBuilder(params).Visit();
 }
 

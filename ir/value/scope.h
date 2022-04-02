@@ -12,7 +12,7 @@
 #include "base/extend/serialize.h"
 #include "base/ptr_union.h"
 #include "compiler/work_resources.h"
-#include "core/params.h"
+#include "core/parameters.h"
 #include "ir/subroutine.h"
 #include "ir/value/block.h"
 #include "ir/value/reg.h"

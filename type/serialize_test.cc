@@ -23,7 +23,8 @@ std::optional<T> RoundTrip(T value, Type type) {
   auto span = absl::MakeConstSpan(reinterpret_cast<std::byte const *>(s.data()),
                                   s.size());
   ir::CompleteResultBuffer out;
-  ssize_t num_read = DeserializeValue(type, span, out, foreign_fn_map, GlobalTypeSystem);
+  ssize_t num_read =
+      DeserializeValue(type, span, out, foreign_fn_map, GlobalTypeSystem);
   if (num_read < 0) { return std::nullopt; }
   return out[0].get<T>();
 }
@@ -97,16 +98,25 @@ TEST(Types, RoundTripTest) {
   EXPECT_THAT(RoundTrip(Type(Func({}, {Bool})), Type_),
               Optional(Func({}, {Bool})));
   EXPECT_THAT(
-      RoundTrip(Type(Func({core::Param("", QualType::Constant(I32))}, {Bool})),
+      RoundTrip(Type(Func({core::Parameter<QualType>{
+                              .name = "", .value = QualType::Constant(I32)}},
+                          {Bool})),
                 Type_),
-      Optional(Func({core::Param("", QualType::Constant(I32))}, {Bool})));
-  EXPECT_THAT(RoundTrip(Type(Func({core::Param("", QualType::NonConstant(F32)),
-                                   core::Param("", QualType::Constant(I32))},
-                                  {Bool})),
-                        Type_),
-              Optional(Func({core::Param("", QualType::NonConstant(F32)),
-                             core::Param("", QualType::Constant(I32))},
-                            {Bool})));
+      Optional(Func({core::Parameter<QualType>{
+                        .name = "", .value = QualType::Constant(I32)}},
+                    {Bool})));
+  EXPECT_THAT(
+      RoundTrip(Type(Func({core::Parameter<QualType>{
+                               .name = "", .value = QualType::NonConstant(F32)},
+                           core::Parameter<QualType>{
+                               .name = "", .value = QualType::Constant(I32)}},
+                          {Bool})),
+                Type_),
+      Optional(Func({core::Parameter<QualType>{
+                         .name = "", .value = QualType::NonConstant(F32)},
+                     core::Parameter<QualType>{
+                         .name = "", .value = QualType::Constant(I32)}},
+                    {Bool})));
 }
 
 }  // namespace type
