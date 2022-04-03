@@ -63,7 +63,7 @@ TEST(StructLiteral, SelfReferential) {
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
-TEST(StructLiteral, SelfReferentialError) {
+TEST(StructLiteral, DISABLED_SelfReferentialError) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(
   list ::= struct {
@@ -104,7 +104,7 @@ TEST(StructLiteral, MutuallyReferential) {
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
-TEST(StructLiteral, MutuallyReferentialError) {
+TEST(StructLiteral, DISABLED_MutuallyReferentialError) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(
   A ::= struct { b: B }
