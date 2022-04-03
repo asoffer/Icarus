@@ -226,7 +226,7 @@ void EmitArguments(
     absl::Cleanup cleanup = [&] { ++i; };
     auto const &param     = param_qts[i];
     if (param.value.constant()) {
-      buffer.append(constants[i]);
+      buffer.append(*constants[i]);
     } else {
       EmitAndCast(c, arg_exprs[i].expr(), param.value, buffer);
     }

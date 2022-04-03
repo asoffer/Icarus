@@ -80,29 +80,36 @@ struct ScopeContext
   explicit ScopeContext(std::vector<block_type> const *block_names)
       : block_names_(ASSERT_NOT_NULL(block_names)) {}
 
-  absl::Span<block_type const> blocks() const { return *block_names_; }
+  absl::Span<block_type const> blocks() const {
+    return *ASSERT_NOT_NULL(block_names_);
+  }
 
-  size_t size() const { return block_names_->size(); }
+  size_t size() const { return ASSERT_NOT_NULL(block_names_)->size(); }
 
   Block find(std::string_view name) const {
-    for (size_t i = 0; i < block_names_->size(); ++i) {
-      if ((*block_names_)[i].name == name) { return Block(i); }
+    absl::Span block_names = blocks();
+    for (size_t i = 0; i < block_names.size(); ++i) {
+      if (block_names[i].name == name) { return Block(i); }
     }
     return Block::Invalid();
   }
 
   auto const &operator[](Block b) const {
     ASSERT(b != Block::Invalid());
-    return (*block_names_)[b.value()];
+    ASSERT(b.value() < block_names_->size());
+    return blocks()[b.value()];
   }
 
   friend bool operator==(ScopeContext const &lhs, ScopeContext const &rhs) {
-    return *lhs.block_names_ == *rhs.block_names_;
+    return *ASSERT_NOT_NULL(lhs.block_names_) ==
+           *ASSERT_NOT_NULL(rhs.block_names_);
   }
 
   friend bool operator!=(ScopeContext const &lhs, ScopeContext const &rhs) {
     return not(lhs == rhs);
   }
+
+  void const *data() { return block_names_; }
 
   friend std::ostream& operator<<(std::ostream& os, ScopeContext ctx) {
     os << "ScopeContext(";

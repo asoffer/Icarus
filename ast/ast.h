@@ -1097,7 +1097,7 @@ struct ScopeLiteral : ParameterizedExpression, WithScope {
     return std::make_unique<Declaration>(
         range, std::vector<Declaration::Id>{std::move(context_identifier)},
         std::make_unique<Terminal>(range, type::ScopeContext), nullptr,
-        Declaration::f_IsConst);
+        Declaration::f_IsConst | Declaration::f_IsFnParam);
   }
 
   std::unique_ptr<Declaration> context_decl_;

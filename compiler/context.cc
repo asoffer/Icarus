@@ -160,7 +160,7 @@ ir::CompleteResultBuffer const &Context::SetConstant(
 
 ir::CompleteResultBuffer const &Context::SetConstant(
     ast::Declaration::Id const *id, ir::CompleteResultBuffer const &buffer) {
-  auto const &buf = constants_.try_emplace(id, std::move(buffer)).first->second;
+  auto const &buf = constants_.try_emplace(id, buffer).first->second;
   value_callback()(id, buf);
   return buf;
 }
