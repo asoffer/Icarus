@@ -11,7 +11,6 @@
 #include "module/module.h"
 
 namespace compiler {
-namespace {
 
 struct CyclicDependency {
   static constexpr std::string_view kCategory = "type-error";
@@ -29,8 +28,6 @@ struct CyclicDependency {
 
   std::vector<std::string_view> cycle;
 };
-
-}  // namespace
 
 // During type-verification, when a dependency on an identifier is encountered,
 // we write it down here. If the same dependency is encountered more than once,

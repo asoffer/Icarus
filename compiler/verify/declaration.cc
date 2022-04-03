@@ -297,7 +297,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         context().set_qual_type(&id, type::QualType::Error());
       }
       return context().set_qual_type(node, type::QualType::Error());
-    } else {
     }
   }
 

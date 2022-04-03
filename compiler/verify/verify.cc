@@ -4,23 +4,6 @@
 #include "compiler/struct.h"
 
 namespace compiler {
-namespace {
-
-struct IncompleteField {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "incomplete-field";
-
-  diagnostic::DiagnosticMessage ToMessage() const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Struct field has incomplete type."),
-        diagnostic::SourceQuote().Highlighted(range,
-                                              diagnostic::Style::ErrorText()));
-  }
-
-  std::string_view range;
-};
-
-}  // namespace
 
 absl::Span<type::QualType const> VerifyType(CompilationDataReference data,
                                             ast::Node const *node) {

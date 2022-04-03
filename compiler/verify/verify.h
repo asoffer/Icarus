@@ -8,6 +8,20 @@
 
 namespace compiler {
 
+struct IncompleteField {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "incomplete-field";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Struct field has incomplete type."),
+        diagnostic::SourceQuote().Highlighted(range,
+                                              diagnostic::Style::ErrorText()));
+  }
+
+  std::string_view range;
+};
+
 struct TypeVerifier : CompilationDataReference {
   using signature = absl::Span<type::QualType const>();
 
