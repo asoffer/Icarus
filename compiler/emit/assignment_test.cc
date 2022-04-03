@@ -74,13 +74,13 @@ INSTANTIATE_TEST_SUITE_P(
                              )",
                                       .expected = int64_t{21}},
                        // Assignment from constants allows implicit conversion
-                       test::TestCase{.expr     = R"(((n: i64) -> i64 {
+                       test::TestCase{.expr     = R"((() -> i64 {
                                   a: i64
-                                  a = a + 4
+                                  a = 4
                                return a
-                             })(3)
+                             })()
                              )",
-                                      .expected = int64_t{7}}}));
+                                      .expected = int64_t{4}}}));
 
 }  // namespace
 }  // namespace compiler

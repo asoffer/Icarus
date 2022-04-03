@@ -142,24 +142,40 @@ struct DereferencingNonPointer {
 
 // TODO: Replace `symbol` with an enum.
 type::QualType VerifyUnaryOverload(
-    Context &context, char const *symbol, ast::Expression const *node,
+    TypeVerifier &tv, char const *symbol, ast::Expression const *node,
     type::Typed<ir::CompleteResultRef> const &operand) {
-  absl::flat_hash_set<type::Function const *> member_types;
+  CallMetadata metadata(
+      symbol, node->scope(),
+      ModulesFromTypeProvenance({operand.type()},
+                                tv.shared_context().module_table()));
+  if (metadata.overloads().empty()) { return type::QualType::Error(); }
 
-  ForEachSymbolQualType(node->scope(), symbol, [&](type::QualType qt) {
+  absl::flat_hash_set<type::Function const *> member_types;
+  CallMetadata::callee_locator_t resolved_call =
+      static_cast<ast::Expression const *>(nullptr);
+
+  for (auto overload : metadata.overloads()) {
+    type::QualType qt;
+    if (auto const *e = overload.get_if<ast::Expression>()) {
+      if (auto qts =
+              ModuleFor(e)->as<CompiledModule>().context().maybe_qual_type(e);
+          not qts.empty()) {
+        ASSIGN_OR(continue, qt, qts[0]);
+      }
+    } else {
+      qt = overload.get<module::Module::SymbolInformation>()->qualified_type;
+    }
+
     // Must be callable because we're looking at overloads for operators
     // which have previously been type-checked to ensure callability.
     auto &c = qt.type().as<type::Function>();
     member_types.insert(&c);
-    return true;
-  });
-
-  if (member_types.empty()) {
-    return context.set_qual_type(node, type::QualType::Error())[0];
+    resolved_call = overload;
   }
 
+  tv.context().SetCallMetadata(node, CallMetadata(resolved_call));
+
   ASSERT(member_types.size() == 1u);
-  // TODO: Check that we only have one return type on each of these overloads.
   return type::QualType((*member_types.begin())->return_types()[0],
                         type::Quals::Unqualified());
 }
@@ -294,7 +310,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       } else if (operand_type.is<type::Struct>()) {
         // TODO: support calling with constant arguments.
         qt = VerifyUnaryOverload(
-            context(), "-", node,
+            *this, "-", node,
             type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
                                                operand_qt.type()));
         if (not qt.ok()) {
@@ -319,19 +335,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       } else if (operand_type.is<type::Flags>()) {
         qt = type::QualType(operand_type,
                             operand_qt.quals() & type::Quals::Const());
-      } else if (operand_type.is<type::Struct>()) {
-        // TODO: support calling with constant arguments.
-        qt = VerifyUnaryOverload(
-            context(), "not", node,
-            type::Typed<ir::CompleteResultRef>(ir::CompleteResultRef(),
-                                               operand_qt.type()));
-        if (not qt.ok()) {
-          diag().Consume(InvalidUnaryOperatorOverload{
-              .op   = "not",
-              .view = node->range(),
-          });
-          qt = type::QualType::Error();
-        }
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
             .op   = "not",

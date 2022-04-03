@@ -155,6 +155,7 @@ struct instruction_set_t
           type::SliceLengthInstruction, type::SliceDataInstruction,
           ir::DebugIrInstruction, BuiltinInstructions,
           TypeConstructorInstructions, InsertBlockInstruction,
+          type::IsAFunctionInstruction,
           ir::CompileTime<ir::Action::CopyInit, ir::Integer>,
           ir::CompileTime<ir::Action::MoveInit, ir::Integer>,
           ir::CompileTime<ir::Action::CopyAssign, ir::Integer>,
@@ -261,9 +262,8 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
 
 namespace internal_instructions {
 
-
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBufferImpl(
-    ir::NativeFn fn, ir::CompleteResultBuffer const & arguments) {
+    ir::NativeFn fn, ir::CompleteResultBuffer const& arguments) {
   return interpreter::Evaluate<instruction_set_t>(fn, arguments);
 }
 

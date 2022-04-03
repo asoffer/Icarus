@@ -1,10 +1,11 @@
+#include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
 #include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
-#include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/module.h"
 #include "compiler/verify/common.h"
 #include "compiler/verify/verify.h"
+#include "core/cycle_tracker.h"
 #include "type/array.h"
 #include "type/overload_set.h"
 #include "type/qual_type.h"
@@ -46,6 +47,23 @@ struct UncapturedIdentifier {
 
   std::string_view id;
   std::string_view view;
+};
+
+struct CyclicIdentifierDependency {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "cyclic-dependency";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    diagnostic::SourceQuote quote;
+    for (auto const &view : cycle) {
+      quote = quote.Highlighted(view, diagnostic::Style::ErrorText());
+    }
+
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Found a cyclic dependency:"), std::move(quote));
+  }
+
+  std::vector<std::string_view> cycle;
 };
 
 struct PotentialIdentifiers {
@@ -104,11 +122,19 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     return context().set_qual_type(node, type::QualType::Error());
   }
 
-  // Dependency pushed until `token` is destroyed.
-  auto token = state().cyclic_dependency_tracker.PushDependency(node, diag());
-  if (not token) {
+  bool has_cyclic_dep = false;
+  state().cyclic_dependency_tracker.push(
+      node, [&](absl::Span<ast::Identifier const *const> ids) {
+        has_cyclic_dep = true;
+        std::vector<std::string_view> cycle;
+        cycle.reserve(ids.size());
+        for (auto const *id : ids) { cycle.push_back(id->range()); }
+        diag().Consume(CyclicIdentifierDependency{.cycle = std::move(cycle)});
+      });
+  if (has_cyclic_dep) {
     return context().set_qual_type(node, type::QualType::Error());
   }
+  absl::Cleanup cleanup = [&] { state().cyclic_dependency_tracker.pop(); };
 
   // TODO: In what circumstances could this have been seen more than once?
   if (auto qts = context().maybe_qual_type(node); qts.data()) { return qts; }

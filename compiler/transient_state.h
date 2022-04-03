@@ -7,7 +7,7 @@
 
 #include "ast/node.h"
 #include "compiler/subroutine_scaffolding.h"
-#include "compiler/cyclic_dependency_tracker.h"
+#include "core/cycle_tracker.h"
 #include "ir/value/result_buffer.h"
 #include "ir/value/scope.h"
 #include "type/type.h"
@@ -49,7 +49,7 @@ struct TransientState {
   std::vector<std::queue<std::pair<ast::Node const *, PatternMatchingContext>>>
       pattern_match_queues;
 
-  CyclicDependencyTracker cyclic_dependency_tracker;
+  core::CycleTracker<ast::Identifier const *> cyclic_dependency_tracker;
 
   ir::RegOr<ir::addr_t> addr(ast::Declaration::Id const *id) const {
     return scaffolding.back().stack_allocations.at(id);

@@ -7,7 +7,7 @@
 #include "base/debug.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
-#include "core/params.h"
+#include "core/parameters.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
@@ -49,20 +49,8 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
       case Kind::Native: return native().type();
       case Kind::Builtin: {
         switch (builtin().which()) {
-          case BuiltinFn::Which::Opaque: return type::Func({}, {type::Type_});
-          case BuiltinFn::Which::ReserveMemory:
-            return type::Func(
-                {core::AnonymousParam(type::QualType::Constant(type::Integer)),
-                 core::AnonymousParam(type::QualType::Constant(type::Integer))},
-                {type::BufPtr(type::Byte)});
           case BuiltinFn::Which::Slice:
           case BuiltinFn::Which::CompilationError:
-          case BuiltinFn::Which::HasBlock:
-            return type::Func({core::AnonymousParam(type::QualType::Constant(
-                                   type::ScopeContext)),
-                               core::AnonymousParam(type::QualType::Constant(
-                                   type::Slc(type::Char)))},
-                              {type::Bool});
           case BuiltinFn::Which::Foreign:
             // Note: We do not allow passing `foreign` or `slice` around as a
             // function object. It is call-only, which means the generic part

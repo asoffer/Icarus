@@ -5,8 +5,8 @@
 
 namespace type {
 
-static base::Global<absl::node_hash_map<core::Params<QualType>, Block>> blocks_;
-Block const *Blk(core::Params<QualType> in) {
+static base::Global<absl::node_hash_map<core::Parameters<QualType>, Block>> blocks_;
+Block const *Blk(core::Parameters<QualType> in) {
   auto f      = Block(in);
   auto handle = blocks_.lock();
   auto const &[iter, inserted] =

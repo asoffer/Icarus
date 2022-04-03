@@ -14,7 +14,7 @@ cc_library(
     srcs = ["lex.cc"],
     deps = [
         ":char_range",
-        "//frontend:lexeme",
+        "//core:lexeme",
         "//diagnostic/consumer",
         "@com_google_absl//absl/types:span",
     ],

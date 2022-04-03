@@ -8,6 +8,7 @@
 #include "ir/value/integer.h"
 #include "ir/value/module_id.h"
 #include "ir/value/scope.h"
+#include "type/argument.h"
 #include "type/system.h"
 #include "type/type.h"
 
@@ -35,10 +36,9 @@ struct Primitive : LegacyType {
   auto Apply(Fn &&fn) const {
     return ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, ir::Integer, int8_t,
                      int16_t, int32_t, int64_t, float, double, bool, ir::Char,
-                     std::byte, Type, ir::ModuleId, ir::addr_t,
-                     ir::ScopeContext,
-                     ir::UnboundScope /* TODO: Other primitives */>(
-        std::forward<Fn>(fn));
+                     std::byte, Type, ir::ModuleId, ir::ScopeContext,
+                     ir::UnboundScope, ir::ModuleId, ir::addr_t, Argument
+                     /* TODO: Other primitives */>(std::forward<Fn>(fn));
   }
 
   base::MetaValue meta() const {
@@ -89,7 +89,9 @@ inline constinit std::array kPrimitiveArray{
     Primitive(Primitive::Kind::Module),
     Primitive(Primitive::Kind::ScopeContext),
     Primitive(Primitive::Kind::UnboundScope),
+    Primitive(Primitive::Kind::CallingModule),
     Primitive(Primitive::Kind::NullPtr),
+    Primitive(Primitive::Kind::Argument),
     Primitive(Primitive::Kind::EmptyArray),
     Primitive(Primitive::Kind::Label),
     Primitive(Primitive::Kind::Interface),
@@ -118,29 +120,31 @@ Primitive::ApplyImpl(Fn &&fn) const {
   })...}[index]();
 }
 
-inline Type U8           = &internal_primitive::kPrimitiveArray[0];
-inline Type U16          = &internal_primitive::kPrimitiveArray[1];
-inline Type U32          = &internal_primitive::kPrimitiveArray[2];
-inline Type U64          = &internal_primitive::kPrimitiveArray[3];
-inline Type Integer      = &internal_primitive::kPrimitiveArray[4];
-inline Type I8           = &internal_primitive::kPrimitiveArray[5];
-inline Type I16          = &internal_primitive::kPrimitiveArray[6];
-inline Type I32          = &internal_primitive::kPrimitiveArray[7];
-inline Type I64          = &internal_primitive::kPrimitiveArray[8];
-inline Type F32          = &internal_primitive::kPrimitiveArray[9];
-inline Type F64          = &internal_primitive::kPrimitiveArray[10];
-inline Type Bool         = &internal_primitive::kPrimitiveArray[11];
-inline Type Char         = &internal_primitive::kPrimitiveArray[12];
-inline Type Byte         = &internal_primitive::kPrimitiveArray[13];
-inline Type Type_        = &internal_primitive::kPrimitiveArray[14];
-inline Type Module       = &internal_primitive::kPrimitiveArray[15];
-inline Type ScopeContext = &internal_primitive::kPrimitiveArray[16];
-inline Type UnboundScope = &internal_primitive::kPrimitiveArray[17];
-inline Type NullPtr      = &internal_primitive::kPrimitiveArray[18];
-inline Type EmptyArray   = &internal_primitive::kPrimitiveArray[19];
-inline Type Label        = &internal_primitive::kPrimitiveArray[20];
-inline Type Interface    = &internal_primitive::kPrimitiveArray[21];
-inline Type Void         = &internal_primitive::kPrimitiveArray[22];
+inline Type U8            = &internal_primitive::kPrimitiveArray[0];
+inline Type U16           = &internal_primitive::kPrimitiveArray[1];
+inline Type U32           = &internal_primitive::kPrimitiveArray[2];
+inline Type U64           = &internal_primitive::kPrimitiveArray[3];
+inline Type Integer       = &internal_primitive::kPrimitiveArray[4];
+inline Type I8            = &internal_primitive::kPrimitiveArray[5];
+inline Type I16           = &internal_primitive::kPrimitiveArray[6];
+inline Type I32           = &internal_primitive::kPrimitiveArray[7];
+inline Type I64           = &internal_primitive::kPrimitiveArray[8];
+inline Type F32           = &internal_primitive::kPrimitiveArray[9];
+inline Type F64           = &internal_primitive::kPrimitiveArray[10];
+inline Type Bool          = &internal_primitive::kPrimitiveArray[11];
+inline Type Char          = &internal_primitive::kPrimitiveArray[12];
+inline Type Byte          = &internal_primitive::kPrimitiveArray[13];
+inline Type Type_         = &internal_primitive::kPrimitiveArray[14];
+inline Type Module        = &internal_primitive::kPrimitiveArray[15];
+inline Type ScopeContext  = &internal_primitive::kPrimitiveArray[16];
+inline Type UnboundScope  = &internal_primitive::kPrimitiveArray[17];
+inline Type CallingModule = &internal_primitive::kPrimitiveArray[18];
+inline Type NullPtr       = &internal_primitive::kPrimitiveArray[19];
+inline Type Argument_     = &internal_primitive::kPrimitiveArray[20];
+inline Type EmptyArray    = &internal_primitive::kPrimitiveArray[21];
+inline Type Label         = &internal_primitive::kPrimitiveArray[22];
+inline Type Interface     = &internal_primitive::kPrimitiveArray[23];
+inline Type Void          = &internal_primitive::kPrimitiveArray[24];
 
 inline Type MakePrimitive(Primitive::Kind k) {
   return &internal_primitive::kPrimitiveArray

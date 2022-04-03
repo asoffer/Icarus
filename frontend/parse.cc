@@ -41,6 +41,7 @@ enum Precedence {
 
 }  // namespace
 
+#if 0
 bool TerminalOrIdentifier::Impl::Parse(absl::Span<Lexeme const> &lexemes,
                                        std::string_view &consumed,
                                        std::unique_ptr<ast::Expression> &out) {
@@ -206,29 +207,32 @@ bool Statement::Impl::Parse(absl::Span<Lexeme const> &lexemes,
                                 -> std::unique_ptr<ast::Node> { return e; })));
   return Statement.Parse(lexemes, consumed, node);
 }
+#endif
+
 
 std::optional<ast::Module> ParseModule(absl::Span<Lexeme const> lexemes,
                                        diagnostic::DiagnosticConsumer &) {
-  PARSE_DEBUG_LOG();
-  while (not lexemes.empty() and
-         (lexemes.front().kind() == Lexeme::Kind::Newline or
-          lexemes.front().kind() == Lexeme::Kind::EndOfFile)) {
-    lexemes.remove_prefix(1);
-  }
-  if (lexemes.empty()) { return std::nullopt; }
+  // PARSE_DEBUG_LOG();
+  // while (not lexemes.empty() and
+  //        (lexemes.front().kind() == Lexeme::Kind::Newline or
+  //         lexemes.front().kind() == Lexeme::Kind::EndOfFile)) {
+  //   lexemes.remove_prefix(1);
+  // }
+  // if (lexemes.empty()) { return std::nullopt; }
 
-  auto module = std::make_optional<ast::Module>(std::string_view(
-      lexemes.front().content().begin(), lexemes.back().content().end()));
-  std::unique_ptr<ast::Node> stmt;
-  while (ParseStatement(lexemes, stmt)) { module->insert(std::move(stmt)); }
-  while (not lexemes.empty() and
-         (lexemes.front().kind() == Lexeme::Kind::Newline or
-          lexemes.front().kind() == Lexeme::Kind::EndOfFile)) {
-    lexemes.remove_prefix(1);
-  }
+  // auto module = std::make_optional<ast::Module>(std::string_view(
+  //     lexemes.front().content().begin(), lexemes.back().content().end()));
+  // std::unique_ptr<ast::Node> stmt;
+  // while (ParseStatement(lexemes, stmt)) { module->insert(std::move(stmt)); }
+  // while (not lexemes.empty() and
+  //        (lexemes.front().kind() == Lexeme::Kind::Newline or
+  //         lexemes.front().kind() == Lexeme::Kind::EndOfFile)) {
+  //   lexemes.remove_prefix(1);
+  // }
 
-  if (not lexemes.empty()) { return std::nullopt; }
-  return module;
+  // if (not lexemes.empty()) { return std::nullopt; }
+  // return module;
+  return std::nullopt;
 }
 
 }  // namespace frontend

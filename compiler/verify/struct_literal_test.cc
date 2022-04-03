@@ -63,7 +63,7 @@ TEST(StructLiteral, SelfReferential) {
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
-TEST(StructLiteral, SelfReferentialError) {
+TEST(StructLiteral, DISABLED_SelfReferentialError) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(
   list ::= struct {
@@ -77,7 +77,6 @@ TEST(StructLiteral, SelfReferentialError) {
 }
 
 TEST(StructLiteral, MutuallyReferential) {
-  base::EnableLogging("compile-work-queue");
   test::CompilerInfrastructure infra;
   auto &mod  = infra.add_module(R"(
   A ::= struct { b_ptr: *B }
@@ -105,10 +104,7 @@ TEST(StructLiteral, MutuallyReferential) {
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
-// TODO: Currently we write the field errors due to `A` twice. We should fix
-// that.
 TEST(StructLiteral, DISABLED_MutuallyReferentialError) {
-  base::EnableLogging("compile-work-queue");
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(
   A ::= struct { b: B }

@@ -3,6 +3,15 @@ package(default_visibility = ["//visibility:public"])
 cc_library(name = "type_xmacro", textual_hdrs = ["type.xmacro.h"])
 
 cc_library(
+    name = "argument",
+    hdrs = ["argument.h"],
+    deps = [
+        ":type",
+        "//base:untyped_buffer_view",
+    ],
+)
+
+cc_library(
     name = "block",
     hdrs = ["block.h"],
     srcs = ["block.cc"],
@@ -12,7 +21,7 @@ cc_library(
         ":type",
         ":typed_value",
         "//base:global",
-        "//core:params",
+        "//core:parameters",
         "@com_google_absl//absl/container:node_hash_map",
     ],
 )
@@ -86,7 +95,7 @@ cc_library(
     deps = [
         ":type",
         ":qual_type",
-        "//core:params",
+        "//core:parameters",
     ],
 )
 
@@ -174,7 +183,7 @@ cc_library(
         "//base/extend:serialize",
         "//base/extend:traverse",
         "//base:global",
-        "//core:params",
+        "//core:parameters",
         "//ir/instruction:base",
         "//ir/instruction:debug",
         "@com_google_absl//absl/container:node_hash_set",
@@ -196,6 +205,22 @@ cc_library(
 )
 
 cc_library(
+    name = "generic_function",
+    hdrs = ["generic_function.h"],
+    deps = [
+        ":argument",
+        ":function",
+        ":qual_type",
+        ":slice",
+        ":type",
+        "//ir:subroutine",
+        "//ir/byte_code",
+        "//ir/interpreter:evaluate",
+        "//ir/value:slice",
+    ],
+)
+
+cc_library(
     name = "opaque",
     hdrs = ["opaque.h"],
     srcs = ["opaque.cc"],
@@ -204,9 +229,11 @@ cc_library(
         ":type",
         "//base:debug",
         "//base:extend",
+        "//base/extend:serialize",
         "//base/extend:traverse",
         "//ir/instruction:base",
-        "//module",
+        "//ir/instruction:debug",
+        "//ir/value:module_id",
         "@com_google_absl//absl/strings:str_format",
     ],
 )
@@ -251,6 +278,7 @@ cc_library(
     srcs = ["primitive.cc"],
     textual_hdrs = ["primitive.xmacro.h"],
     deps = [
+        ":argument",
         ":system",
         ":type",
         "//base:meta",
@@ -304,7 +332,9 @@ cc_library(
     deps = CONCRETE_TYPES + [
         ":generic",
         ":overload_set",
+        "//ir/value:module_id",
         "//module",
+        "//module:table",
     ],
 )
 
@@ -321,7 +351,7 @@ cc_library(
         "//base/extend:serialize",
         "//base/extend:traverse",
         "//base:global",
-        "//core:params",
+        "//core:parameters",
         "//ir/instruction:base",
         "//ir/instruction:debug",
         "@com_google_absl//absl/container:node_hash_map",
@@ -418,6 +448,7 @@ cc_library(
     srcs = ["serialize.cc"],
     deps = CONCRETE_TYPES + [
         ":generic",
+        ":generic_function",
         ":overload_set",
         ":system",
         "//base:flyweight_map",

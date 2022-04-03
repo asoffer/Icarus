@@ -12,6 +12,32 @@
 #include "type/struct.h"
 
 namespace compiler {
+namespace {
+
+void EmitUnaryOverload(Compiler &c, ast::UnaryOperator const *node,
+                       ir::PartialResultBuffer &out) {
+  // TODO: We claim ownership but later release the ownership. This is
+  // safe and correct, but it's also a bit of a lie. It would be better
+  // if we had a mechanism to hide ownership.
+  std::array<ast::Call::Argument, 1> arguments{ast::Call::Argument(
+      "", std::unique_ptr<ast::Expression>(
+              const_cast<ast::Expression *>(node->operand())))};
+
+  type::Type result_type = c.context().qual_types(node)[0].type();
+  type::Typed<ir::RegOr<ir::addr_t>> result(c.state().TmpAlloca(result_type),
+                                            result_type);
+
+  EmitCall(c, c.context().CallMetadata(node).resolved(), {}, arguments,
+           absl::MakeConstSpan(&result, 1));
+
+  for (auto &argument : arguments) {
+    auto &&[name, expr] = std::move(argument).extract();
+    expr.release();
+  }
+  out.append(PtrFix(c.current(), result->reg(), result_type));
+}
+
+}  // namespace
 
 void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
                             ir::PartialResultBuffer &out) {
@@ -71,31 +97,35 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
             .result = current().subroutine->Reserve()}));
         return;
       } else {
-        // TODO: Operator overloading
-        NOT_YET();
+        UNREACHABLE();
       }
     } break;
     case ast::UnaryOperator::Kind::Negate: {
-      EmitToBuffer(node->operand(), out);
-      type::Type t = context().qual_types(node->operand())[0].type();
-      ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, float, double>(
-          t, [&]<typename T>() {
-            if constexpr (interpreter::FitsInRegister<T>) {
-              auto value = out.back().get<T>();
-              out.pop_back();
-              out.append(current_block()->Append(ir::NegInstruction<T>{
-                  .operand = value,
-                  .result  = current().subroutine->Reserve(),
-              }));
-            } else {
-              auto value = out.back().get<ir::addr_t>();
-              out.pop_back();
-              out.append(current_block()->Append(ir::NegInstruction<T>{
-                  .operand = value,
-                  .result  = state().TmpAlloca(t),
-              }));
-            }
-          });
+      type::Type operand_type = context().qual_types(node->operand())[0].type();
+      if (operand_type.is<type::Primitive>()) {
+        EmitToBuffer(node->operand(), out);
+        type::Type t = context().qual_types(node->operand())[0].type();
+        ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, float,
+                   double>(t, [&]<typename T>() {
+          if constexpr (interpreter::FitsInRegister<T>) {
+            auto value = out.back().get<T>();
+            out.pop_back();
+            out.append(current_block()->Append(ir::NegInstruction<T>{
+                .operand = value,
+                .result  = current().subroutine->Reserve(),
+            }));
+          } else {
+            auto value = out.back().get<ir::addr_t>();
+            out.pop_back();
+            out.append(current_block()->Append(ir::NegInstruction<T>{
+                .operand = value,
+                .result  = state().TmpAlloca(t),
+            }));
+          }
+        });
+      } else {
+        EmitUnaryOverload(*this, node, out);
+      }
       return;
     } break;
     case ast::UnaryOperator::Kind::TypeOf:

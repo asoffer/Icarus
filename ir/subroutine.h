@@ -10,7 +10,7 @@
 #include "base/strong_types.h"
 #include "core/alignment.h"
 #include "core/bytes.h"
-#include "core/params.h"
+#include "core/parameters.h"
 #include "core/type_contour.h"
 #include "ir/basic_block.h"
 #include "ir/blocks/register_allocator.h"
@@ -48,7 +48,7 @@ struct Subroutine {
         .get();
   }
 
-  core::Params<type::QualType> const &params() const { return type_->params(); }
+  core::Parameters<type::QualType> const &params() const { return type_->params(); }
   type::Callable const *type() const { return type_; }
 
   template <std::invocable<type::Type, ir::Reg> Fn>

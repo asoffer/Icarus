@@ -235,15 +235,21 @@ TEST(Declaration, CustomInitAllowsConversions) {
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 
+  // TODO: `SetArrayInits` will store byte code to the `ir::Module` in `infra`
+  // but does so with a once_flag meaning the second incantation here will not
+  // recreate the byte code even though we have a new `ir::Module`. This is a
+  // bug that only manifests in tests and we are currently working around it by
+  // using a different type so we hit a unique `once_flag`. But this behavior is
+  // obviously bad and should be fixed.
   {
     test::CompilerInfrastructure infra;
     auto &mod = infra.add_module(R"(
-    n :: [0; i64] = []
+    n :: [0; i32] = []
     n
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType(
-                         type::Arr(0, type::I64), type::Quals::Const())));
+                         type::Arr(0, type::I32), type::Quals::Const())));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 }

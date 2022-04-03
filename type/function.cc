@@ -7,7 +7,7 @@
 namespace type {
 
 static base::Global<absl::node_hash_set<Function>> funcs_;
-Function const *Func(core::Params<QualType> in, std::vector<Type> out) {
+Function const *Func(core::Parameters<QualType> in, std::vector<Type> out) {
   auto handle = funcs_.lock();
   auto [iter, inserted] =
       handle->insert(Function(std::move(in), std::move(out), false));
@@ -16,7 +16,7 @@ Function const *Func(core::Params<QualType> in, std::vector<Type> out) {
   return fn;
 }
 
-Function const *EagerFunc(core::Params<QualType> in, std::vector<Type> out) {
+Function const *EagerFunc(core::Parameters<QualType> in, std::vector<Type> out) {
   auto handle = funcs_.lock();
   auto [iter, inserted] =
       handle->insert(Function(std::move(in), std::move(out), true));
@@ -34,7 +34,8 @@ void Function::WriteTo(std::string *result) const {
       absl::StrAppend(result, param.name,
                       param.value.constant() ? " :: " : ": ");
     }
-    absl::StrAppend(result, "{", (int)param.flags, "}");
+    absl::StrAppend(result, "{", base::UniversalPrintToString(param.flags),
+                    "}");
     param.value.type().get()->WriteTo(result);
     sep = ", ";
   }

@@ -179,7 +179,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   } else {
     CallMetadata metadata(
         "__index__", node->scope(),
-        ModulesFromTypeProvenance({lhs_qt.type(), index_qt.type()}));
+        ModulesFromTypeProvenance({lhs_qt.type(), index_qt.type()},
+                                  shared_context().module_table()));
     if (metadata.overloads().empty()) {
       diag().Consume(InvalidIndexing{
           .view = node->range(),

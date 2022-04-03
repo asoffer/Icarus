@@ -44,7 +44,7 @@ struct Module : base::Cast<Module> {
   // any exported symbols of that name in the module. The range of symbol
   // information has no ordering guarantees.
   virtual absl::Span<SymbolInformation const> Exported(
-      std::string_view name) = 0;
+      std::string_view name) const = 0;
 
  private:
   std::string identifier_;

@@ -111,8 +111,10 @@ type::QualType VerifyOperatorOverload(
     type::Typed<ir::CompleteResultRef> const &lhs,
     type::Typed<ir::CompleteResultRef> const &rhs) {
   auto symbol = NodeType::Symbol(node->kind());
-  CallMetadata metadata(symbol, node->scope(),
-                        ModulesFromTypeProvenance({lhs.type(), rhs.type()}));
+  CallMetadata metadata(
+      symbol, node->scope(),
+      ModulesFromTypeProvenance({lhs.type(), rhs.type()},
+                                tv.shared_context().module_table()));
   if (metadata.overloads().empty()) { return type::QualType::Error(); }
 
   absl::flat_hash_set<type::Function const *> member_types;

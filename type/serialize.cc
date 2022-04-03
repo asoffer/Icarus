@@ -7,6 +7,7 @@
 #include "type/flags.h"
 #include "type/function.h"
 #include "type/generic.h"
+#include "type/generic_function.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -64,7 +65,7 @@ struct ValueSerializer {
   template <typename T>
   void write(T const& t) requires(std::integral<T> or std::floating_point<T> or
                                   base::meta<T> ==
-                                      base::meta<core::ParamFlags> or
+                                      base::meta<core::ParameterFlags> or
                                   base::meta<T> == base::meta<Quals>) {
     out_.append(std::string_view(reinterpret_cast<char const*>(&t), sizeof(t)));
   }
@@ -142,7 +143,7 @@ struct ValueDeserializer {
   bool read(T& t) requires(std::integral<T> or std::floating_point<T> or
                            base::meta<T> == base::meta<ir::Char> or
                            base::meta<T> == base::meta<std::byte> or
-                           base::meta<T> == base::meta<core::ParamFlags> or
+                           base::meta<T> == base::meta<core::ParameterFlags> or
                            base::meta<T> == base::meta<Quals>) {
     if (end_ - head_ < sizeof(T)) { return false; }
     std::memcpy(&t, head_, sizeof(T));
@@ -150,10 +151,10 @@ struct ValueDeserializer {
     return true;
   }
 
-  bool read(core::Params<QualType>& params) {
-    std::vector<core::Param<QualType>> qts;
+  bool read(core::Parameters<QualType>& params) {
+    std::vector<core::Parameter<QualType>> qts;
     if (not base::Deserialize(*this, qts)) { return false; }
-    params = core::Params<QualType>(std::move(qts));
+    params = core::Parameters<QualType>(std::move(qts));
     return true;
   }
 
@@ -240,7 +241,8 @@ struct TypeSystemSerializingVisitor {
   }
 
   void Visit(Opaque const* o) {
-    base::Serialize(*this, o->defining_module()->identifier(), o->numeric_id());
+    NOT_YET();
+    // base::Serialize(*this, o->defining_module()->identifier(), o->numeric_id());
   }
 
   void Visit(Slice const* s) { base::Serialize(*this, s->data_type()); }
@@ -333,7 +335,7 @@ struct TypeSystemDeserializingVisitor {
       }
       case IndexOf<Function>(): {
         bool eager;
-        core::Params<QualType> params;
+        core::Parameters<QualType> params;
         std::vector<Type> return_types;
 
         if (not base::Deserialize(*this, eager, params, return_types)) {
@@ -352,11 +354,12 @@ struct TypeSystemDeserializingVisitor {
         if (not base::Deserialize(*this, module_identifier, numeric_id)) {
           return false;
         }
-        auto const* o =
-            Opaq(ASSERT_NOT_NULL(
-                     context_.module_table().module(module_identifier).second),
-                 numeric_id);
-        system_.insert(o);
+        NOT_YET();
+        // auto const* o =
+        //     Opaq(ASSERT_NOT_NULL(
+        //              context_.module_table().module(module_identifier).second),
+        //          numeric_id);
+        // system_.insert(o);
         return true;
       }
       default: UNREACHABLE((int)which);
@@ -365,7 +368,7 @@ struct TypeSystemDeserializingVisitor {
 
  private:
   std::string_view &content_;
-  module::SharedContext& context_;
+  [[maybe_unused]] module::SharedContext& context_;
   TypeSystem& system_;
 };
 

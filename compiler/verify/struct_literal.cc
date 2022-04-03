@@ -26,6 +26,8 @@ bool BodyVerifier::VerifyBody(ast::StructLiteral const *node) {
         error = true;
       } else if (field_qt.type().get()->completeness() ==
                  type::Completeness::Incomplete) {
+        // TODO: This is a bad error message. It'd be nice to correctly diagnose
+        // the cylcic dependency.
         LOG("StructLiteral",
             "Setting error due to incomplete field. Diagnostics should have "
             "already been emit.");

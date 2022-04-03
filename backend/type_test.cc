@@ -85,7 +85,7 @@ TEST(ToLlvm, FunctionNoReturn) {
   EXPECT_EQ(ToLlvmType(type::Func({}, {}), context),
             llvm::FunctionType::get(llvm::Type::getVoidTy(context), {}, false));
 
-  EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParam(
+  EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParameter(
                                       type::QualType::NonConstant(type::Bool))},
                                   {}),
                        context),
@@ -94,15 +94,15 @@ TEST(ToLlvm, FunctionNoReturn) {
   EXPECT_EQ(
       ToLlvmType(
           type::Func(
-              {core::AnonymousParam(type::QualType::Constant(type::Bool))}, {}),
+              {core::AnonymousParameter(type::QualType::Constant(type::Bool))}, {}),
           context),
       llvm::FunctionType::get(llvm::Type::getVoidTy(context), {}, false));
 
   EXPECT_EQ(
       ToLlvmType(
           type::Func(
-              {core::AnonymousParam(type::QualType::NonConstant(type::I64)),
-               core::AnonymousParam(type::QualType::NonConstant(type::Bool))},
+              {core::AnonymousParameter(type::QualType::NonConstant(type::I64)),
+               core::AnonymousParameter(type::QualType::NonConstant(type::Bool))},
               {}),
           context),
       llvm::FunctionType::get(
@@ -118,7 +118,7 @@ TEST(ToLlvm, FunctionOneRegisterSizedReturn) {
       ToLlvmType(type::Func({}, {type::I32}), context),
       llvm::FunctionType::get(llvm::Type::getInt32Ty(context), {}, false));
 
-  EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParam(
+  EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParameter(
                                       type::QualType::NonConstant(type::Bool))},
                                   {type::I32}),
                        context),
@@ -126,7 +126,7 @@ TEST(ToLlvm, FunctionOneRegisterSizedReturn) {
                                     {llvm::Type::getInt1Ty(context)}, false));
 
   EXPECT_EQ(
-      ToLlvmType(type::Func({core::AnonymousParam(
+      ToLlvmType(type::Func({core::AnonymousParameter(
                                 type::QualType::Constant(type::Bool))},
                             {type::I32}),
                  context),
@@ -135,8 +135,8 @@ TEST(ToLlvm, FunctionOneRegisterSizedReturn) {
   EXPECT_EQ(
       ToLlvmType(
           type::Func(
-              {core::AnonymousParam(type::QualType::NonConstant(type::I64)),
-               core::AnonymousParam(type::QualType::NonConstant(type::Bool))},
+              {core::AnonymousParameter(type::QualType::NonConstant(type::I64)),
+               core::AnonymousParameter(type::QualType::NonConstant(type::Bool))},
               {type::I32}),
           context),
       llvm::FunctionType::get(
@@ -155,7 +155,7 @@ TEST(ToLlvm, FunctionOneLargeReturn) {
                      ->getPointerTo()},
                 false));
 
-  EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParam(
+  EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParameter(
                                       type::QualType::NonConstant(type::Bool))},
                                   {type::Arr(100, type::I32)}),
                        context),
@@ -166,7 +166,7 @@ TEST(ToLlvm, FunctionOneLargeReturn) {
                      ->getPointerTo()},
                 false));
 
-  EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParam(
+  EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParameter(
                                       type::QualType::Constant(type::Bool))},
                                   {type::Arr(100, type::I32)}),
                        context),
@@ -179,8 +179,8 @@ TEST(ToLlvm, FunctionOneLargeReturn) {
   EXPECT_EQ(
       ToLlvmType(
           type::Func(
-              {core::AnonymousParam(type::QualType::NonConstant(type::I64)),
-               core::AnonymousParam(type::QualType::NonConstant(type::Bool))},
+              {core::AnonymousParameter(type::QualType::NonConstant(type::I64)),
+               core::AnonymousParameter(type::QualType::NonConstant(type::Bool))},
               {type::Arr(100, type::I32)}),
           context),
       llvm::FunctionType::get(
@@ -202,7 +202,7 @@ TEST(ToLlvm, FunctionMultipleReturns) {
                               false));
 
   EXPECT_EQ(
-      ToLlvmType(type::Func({core::AnonymousParam(
+      ToLlvmType(type::Func({core::AnonymousParameter(
                                 type::QualType::NonConstant(type::Bool))},
                             {type::Bool, type::I8}),
                  context),
@@ -213,7 +213,7 @@ TEST(ToLlvm, FunctionMultipleReturns) {
                               false));
 
   EXPECT_EQ(
-      ToLlvmType(type::Func({core::AnonymousParam(
+      ToLlvmType(type::Func({core::AnonymousParameter(
                                 type::QualType::Constant(type::Bool))},
                             {type::Bool, type::I8}),
                  context),
@@ -225,8 +225,8 @@ TEST(ToLlvm, FunctionMultipleReturns) {
   EXPECT_EQ(
       ToLlvmType(
           type::Func(
-              {core::AnonymousParam(type::QualType::NonConstant(type::I64)),
-               core::AnonymousParam(type::QualType::NonConstant(type::Bool))},
+              {core::AnonymousParameter(type::QualType::NonConstant(type::I64)),
+               core::AnonymousParameter(type::QualType::NonConstant(type::Bool))},
               {type::Bool, type::I8}),
           context),
       llvm::FunctionType::get(

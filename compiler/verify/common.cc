@@ -86,10 +86,11 @@ absl::flat_hash_set<type::Typed<CallMetadata::callee_locator_t>> ResolveCall(
 }  // namespace
 
 absl::flat_hash_set<module::Module *> ModulesFromTypeProvenance(
-    absl::flat_hash_set<type::Type> const &adl_types) {
+    absl::flat_hash_set<type::Type> const &adl_types,
+    module::ModuleTable const &table) {
   absl::flat_hash_set<module::Module *> adl_modules;
   for (type::Type t : adl_types) {
-    if (auto const *mod = type::Provenance(t)) {
+    if (auto const *mod = type::Provenance(t, table)) {
       // TODO: Remove const_cast.
       adl_modules.insert(const_cast<module::Module *>(mod));
     }
@@ -97,13 +98,13 @@ absl::flat_hash_set<module::Module *> ModulesFromTypeProvenance(
   return adl_modules;
 }
 
-std::optional<core::Params<type::QualType>> VerifyParameters(
-    TypeVerifier &tv, core::Params<ast::Declaration> const &params) {
+std::optional<core::Parameters<type::QualType>> VerifyParameters(
+    TypeVerifier &tv, core::Parameters<ast::Declaration> const &params) {
   // Parameter types cannot be dependent in concrete implementations so it is
   // safe to verify each of them separately (to generate more errors that are
   // likely correct).
 
-  core::Params<type::QualType> type_params;
+  core::Parameters<type::QualType> type_params;
   type_params.reserve(params.size());
   bool err = false;
   for (auto &d : params) {

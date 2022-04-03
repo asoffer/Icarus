@@ -11,15 +11,16 @@
 namespace compiler {
 
 absl::flat_hash_set<module::Module *> ModulesFromTypeProvenance(
-    absl::flat_hash_set<type::Type> const &adl_types);
+    absl::flat_hash_set<type::Type> const &adl_types,
+    module::ModuleTable const &table);
 
 std::optional<core::Arguments<type::Typed<ir::CompleteResultRef>>>
 VerifyArguments(TypeVerifier &tv,
                 absl::Span<ast::Call::Argument const> arguments,
                 ir::CompleteResultBuffer &out);
 
-std::optional<core::Params<type::QualType>> VerifyParameters(
-    TypeVerifier &tv, core::Params<ast::Declaration> const &params);
+std::optional<core::Parameters<type::QualType>> VerifyParameters(
+    TypeVerifier &tv, core::Parameters<ast::Declaration> const &params);
 
 struct VerifyCallParameters {
   ast::Expression const *call;

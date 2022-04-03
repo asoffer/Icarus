@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "absl/hash/hash.h"
+#include "ir/value/module_id.h"
 
 namespace type {
 
@@ -40,11 +41,13 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
     case Kind::F32: return core::Bytes{4};
     case Kind::F64: return core::Bytes{8};
     case Kind::Byte: return core::Bytes{1};
-    case Kind::Module: return core::Host.pointer().bytes();
+    case Kind::CallingModule: [[fallthrough]];
+    case Kind::Module: return core::Bytes::Get<ir::ModuleId>();
     case Kind::Label: return core::Host.pointer().bytes();
     case Kind::Interface: return core::Host.pointer().bytes();
     case Kind::ScopeContext: return core::Host.pointer().bytes();
     case Kind::UnboundScope: return core::Host.pointer().bytes();
+    case Kind::Argument: return core::Bytes::Get<Argument>();
     default:;
   }
   UNREACHABLE(to_string());
@@ -72,11 +75,13 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     case Kind::F32: return core::Alignment{4};
     case Kind::F64: return core::Alignment{8};
     case Kind::Byte: return core::Alignment{1};
-    case Kind::Module: return core::Host.pointer().alignment();
+    case Kind::CallingModule: [[fallthrough]];
+    case Kind::Module: return core::Alignment::Get<ir::ModuleId>();
     case Kind::Label: return core::Host.pointer().alignment();
     case Kind::Interface: return core::Host.pointer().alignment();
     case Kind::ScopeContext: return core::Host.pointer().alignment();
     case Kind::UnboundScope: return core::Host.pointer().alignment();
+    case Kind::Argument: return core::Alignment::Get<Argument>();
     default:;
   }
   UNREACHABLE(to_string());
@@ -103,11 +108,13 @@ void Primitive::ShowValue(std::ostream &os,
     } else if constexpr (requires { os << std::declval<T>(); }) {
       os << value.get<T>();
     } else {
-      NOT_YET();
+      NOT_YET(base::meta<T>);
     }
   });
 }
 
-bool Primitive::is_big() const { return kind_ == Kind::Integer; }
+bool Primitive::is_big() const {
+  return kind_ == Kind::Integer or kind_ == Kind::Argument;
+}
 
 }  // namespace type

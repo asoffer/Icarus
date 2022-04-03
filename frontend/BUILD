@@ -1,17 +1,11 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "lexeme",
-    hdrs = ["lexeme.h"],
-    deps = ["//base:debug"],
-)
-
-cc_library(
     name = "parser_dsl",
     hdrs = ["parser_dsl.h"],
     deps = [
-        ":lexeme",
         "//base:meta",
+        "//core:lexeme",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -21,10 +15,10 @@ cc_library(
     hdrs = ["parse.h"],
     srcs = ["parse.cc"],
     deps = [
-        ":lexeme",
         ":parser_dsl",
         "//ast:ast",
         "//ast:module",
+        "//core:lexeme",
         "//diagnostic/consumer",
         "@com_google_absl//absl/types:span",
     ],
@@ -34,8 +28,8 @@ cc_test(
     name = "parse_test",
     srcs = ["parse_test.cc"],
     deps = [
-        ":lexeme",
         ":parse",
+        "//core:lexeme",
         "//diagnostic/consumer:trivial",
         "//frontend/lex",
         "@com_google_googletest//:gtest_main",

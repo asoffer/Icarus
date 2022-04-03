@@ -1,7 +1,7 @@
 #ifndef ICARUS_TYPE_BLOCK_H
 #define ICARUS_TYPE_BLOCK_H
 
-#include "core/params.h"
+#include "core/parameters.h"
 #include "type/callable.h"
 #include "type/qual_type.h"
 #include "type/type.h"
@@ -10,7 +10,7 @@ namespace type {
 
 struct Block : ReturningType {
   // TODO: Support actual returns.
-  Block(core::Params<QualType> params)
+  Block(core::Parameters<QualType> params)
       : ReturningType(IndexOf<Block>(),
                       LegacyType::Flags{.is_default_initializable = 0,
                                         .is_copyable              = 1,
@@ -28,7 +28,7 @@ struct Block : ReturningType {
   Completeness completeness() const override { return Completeness::Complete; }
 };
 
-Block const *Blk(core::Params<QualType> params);
+Block const *Blk(core::Parameters<QualType> params);
 
 }  // namespace type
 

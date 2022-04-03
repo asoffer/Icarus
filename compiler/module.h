@@ -47,7 +47,8 @@ struct CompiledModule : module::Module {
     return module_.stmts();
   }
 
-  absl::Span<Module::SymbolInformation const> Exported(std::string_view name) {
+  absl::Span<Module::SymbolInformation const> Exported(
+      std::string_view name) const {
     auto iter = exported_.find(name);
     if (iter == exported_.end()) { return {}; }
 

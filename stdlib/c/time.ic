@@ -13,7 +13,7 @@ c ::= import "c/types.ic"
 #{export} clock ::= foreign("clock", () -> clock_t)
 
 // Hack, because we can't expose structs via the FFI.
-#{export} tm ::= 'opaque
+#{export} tm ::= builtin.opaque()
 #{export} mktime ::= foreign("mktime", (*tm) -> time_t)
 #{export} asctime ::= foreign("asctime", (*tm) -> [*]char)
 #{export} gmtime ::= foreign("gmtime", (*time_t) -> *tm)

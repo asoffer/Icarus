@@ -95,16 +95,20 @@ bool Compiler::PatternMatch(
   auto t        = context().qual_types(node)[0].type();
   auto const &p = t.as<type::Primitive>();
   return p.Apply([&]<typename T>() -> bool {
-    T pattern_value = node->value().template get<T>();
-    T matched_value = pmc.value.template get<T>(0);
-    if (matched_value == pattern_value) { return true; }
+    if constexpr (base::meta<T> == base::meta<type::Argument>) {
+      UNREACHABLE();
+    } else {
+      T pattern_value = node->value().template get<T>();
+      T matched_value = pmc.value.template get<T>(0);
+      if (matched_value == pattern_value) { return true; }
 
-    diag().Consume(TerminalMatchError{
-        .range         = node->range(),
-        .pattern_value = base::UniversalPrintToString(pattern_value),
-        .matched_value = base::UniversalPrintToString(matched_value),
-    });
-    return false;
+      diag().Consume(TerminalMatchError{
+          .range         = node->range(),
+          .pattern_value = base::UniversalPrintToString(pattern_value),
+          .matched_value = base::UniversalPrintToString(matched_value),
+      });
+      return false;
+    }
   });
 }
 

@@ -6,13 +6,13 @@
 #include <vector>
 
 #include "base/debug.h"
+#include "core/lexeme.h"
 #include "diagnostic/consumer/consumer.h"
-#include "frontend/lexeme.h"
 
 namespace frontend {
 
 struct LexResult {
-  std::vector<Lexeme> lexemes_;
+  std::vector<core::Lexeme> lexemes_;
 };
 
 // Analyzes `source` constructing a `LexResult` object or `nullopt` if `source`

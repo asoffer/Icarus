@@ -16,7 +16,7 @@
 #include "base/ptr_span.h"
 #include "base/untyped_buffer.h"
 #include "core/arguments.h"
-#include "core/params.h"
+#include "core/parameters.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/addr.h"
 #include "ir/value/builtin_fn.h"
@@ -292,8 +292,8 @@ struct ParameterizedExpression : Expression {
     }
   }
 
-  // TODO params() should be a reference to core::Params?
-  using params_type = core::Params<Declaration>;
+  // TODO params() should be a reference to core::Parameters?
+  using params_type = core::Parameters<Declaration>;
   params_type const &params() const { return params_; }
 
   // Returns a sequence of (parameter-index, dependency-node) pairs ordered in
@@ -310,7 +310,7 @@ struct ParameterizedExpression : Expression {
  protected:
   void InitializeParams();
 
-  core::Params<Declaration> params_;
+  core::Parameters<Declaration> params_;
   std::vector<std::pair<int, core::DependencyNode<Declaration>>>
       ordered_dependency_nodes_;
   bool is_generic_ = false;
@@ -1097,7 +1097,7 @@ struct ScopeLiteral : ParameterizedExpression, WithScope {
     auto range = context_identifier.range();
     return Declaration(
         range, std::vector<Declaration::Id>{std::move(context_identifier)},
-        Declaration::f_IsConst,
+        Declaration::f_IsConst | Declaration::f_IsFnParam,
         std::make_unique<Terminal>(range, type::ScopeContext), nullptr);
   }
 
@@ -1174,7 +1174,7 @@ struct ScopeNode : Expression {
 // which is a reference to a contiguous buffer of homogenous elements.
 //
 // Examples:
-//  `i32[]`  ... Represnts a slice of 32-bit itnegers
+//  `[]i32`  ... Represents a slice of 32-bit itnegers
 //
 struct SliceType : Expression {
   explicit SliceType(std::string_view range,

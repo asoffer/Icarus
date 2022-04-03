@@ -33,20 +33,20 @@ TEST(Satisfiability, Callable) {
   EXPECT_TRUE(Interface::Callable(
                   core::Arguments<type::Type>({type::Ptr(type::I64)}, {}))
                   .SatisfiedBy(type::Func(
-                      core::Params<type::QualType>({core::AnonymousParam(
+                      core::Parameters<type::QualType>({core::AnonymousParameter(
                           type::QualType::NonConstant(type::Ptr(type::I64)))}),
                       {})));
   EXPECT_TRUE(Interface::Callable(
                   core::Arguments<type::Type>({type::BufPtr(type::I64)}, {}))
                   .SatisfiedBy(type::Func(
-                      core::Params<type::QualType>({core::AnonymousParam(
+                      core::Parameters<type::QualType>({core::AnonymousParameter(
                           type::QualType::NonConstant(type::Ptr(type::I64)))}),
                       {})));
   EXPECT_FALSE(
       Interface::Callable(
           core::Arguments<type::Type>({type::Ptr(type::I64)}, {}))
           .SatisfiedBy(type::Func(
-              core::Params<type::QualType>({core::AnonymousParam(
+              core::Parameters<type::QualType>({core::AnonymousParameter(
                   type::QualType::NonConstant(type::BufPtr(type::I64)))}),
               {})));
 }

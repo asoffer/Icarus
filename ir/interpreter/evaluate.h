@@ -31,7 +31,7 @@ void Execute(ir::NativeFn fn, ir::CompleteResultBuffer const& arguments = {}) {
 template <typename InstSet>
 ir::CompleteResultBuffer EvaluateToBuffer(
     ir::NativeFn fn, ir::CompleteResultBuffer const& arguments) {
-  LOG("EvaluateToBuffer", "%s", fn);
+  LOG("EvaluateToBuffer", "%s", *fn);
 
   ASSERT(fn.type()->return_types().size() != 0u);
 

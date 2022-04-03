@@ -60,7 +60,9 @@ TEST(FunctionLiteral, OneParameterNoReturn) {
   EXPECT_THAT(
       qts,
       UnorderedElementsAre(type::QualType::Constant(type::Func(
-          {core::Param("b", type::QualType::NonConstant(type::Bool))}, {}))));
+          {core::Parameter<type::QualType>{
+              .name = "b", .value = type::QualType::NonConstant(type::Bool)}},
+          {}))));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -69,10 +71,12 @@ TEST(FunctionLiteral, OneParameterOneReturnType) {
   auto& mod     = infra.add_module(R"((b: bool) -> i64 { return 3 })");
   auto const* e = mod.get<ast::Expression>();
   auto qts      = mod.context().qual_types(e);
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::Constant(type::Func(
-                  {core::Param("b", type::QualType::NonConstant(type::Bool))},
-                  {type::I64}))));
+  EXPECT_THAT(
+      qts,
+      UnorderedElementsAre(type::QualType::Constant(type::Func(
+          {core::Parameter<type::QualType>{
+              .name = "b", .value = type::QualType::NonConstant(type::Bool)}},
+          {type::I64}))));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -81,11 +85,14 @@ TEST(FunctionLiteral, MultipleParametersNoReturn) {
   auto& mod     = infra.add_module(R"((b: bool, n: i64) -> () {})");
   auto const* e = mod.get<ast::Expression>();
   auto qts      = mod.context().qual_types(e);
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::Constant(type::Func(
-                  {core::Param("b", type::QualType::NonConstant(type::Bool)),
-                   core::Param("n", type::QualType::NonConstant(type::I64))},
-                  {}))));
+  EXPECT_THAT(
+      qts,
+      UnorderedElementsAre(type::QualType::Constant(type::Func(
+          {core::Parameter<type::QualType>{
+               .name = "b", .value = type::QualType::NonConstant(type::Bool)},
+           core::Parameter<type::QualType>{
+               .name = "n", .value = type::QualType::NonConstant(type::I64)}},
+          {}))));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -94,11 +101,14 @@ TEST(FunctionLiteral, MultipleParametersOneReturnType) {
   auto& mod     = infra.add_module(R"((b: bool, n: i64) -> i64 { return 3 })");
   auto const* e = mod.get<ast::Expression>();
   auto qts      = mod.context().qual_types(e);
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::Constant(type::Func(
-                  {core::Param("b", type::QualType::NonConstant(type::Bool)),
-                   core::Param("n", type::QualType::NonConstant(type::I64))},
-                  {type::I64}))));
+  EXPECT_THAT(
+      qts,
+      UnorderedElementsAre(type::QualType::Constant(type::Func(
+          {core::Parameter<type::QualType>{
+               .name = "b", .value = type::QualType::NonConstant(type::Bool)},
+           core::Parameter<type::QualType>{
+               .name = "n", .value = type::QualType::NonConstant(type::I64)}},
+          {type::I64}))));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -132,10 +142,13 @@ TEST(FunctionLiteral, ReturnTypeAllowsCasting) {
   auto& mod     = infra.add_module(R"((p: [*]i64) -> *i64 { return p })");
   auto const* e = mod.get<ast::Expression>();
   auto qts      = mod.context().qual_types(e);
-  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Func(
-                       {core::Param("p", type::QualType::NonConstant(
-                                             type::BufPtr(type::I64)))},
-                       {type::Ptr(type::I64)}))));
+  EXPECT_THAT(
+      qts,
+      UnorderedElementsAre(type::QualType::Constant(type::Func(
+          {core::Parameter<type::QualType>{
+              .name  = "p",
+              .value = type::QualType::NonConstant(type::BufPtr(type::I64))}},
+          {type::Ptr(type::I64)}))));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -177,7 +190,9 @@ TEST(FunctionLiteral, OneParameterNoReturnInferred) {
   EXPECT_THAT(
       qts,
       UnorderedElementsAre(type::QualType::Constant(type::Func(
-          {core::Param("b", type::QualType::NonConstant(type::Bool))}, {}))));
+          {core::Parameter<type::QualType>{
+              .name = "b", .value = type::QualType::NonConstant(type::Bool)}},
+          {}))));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -186,10 +201,12 @@ TEST(FunctionLiteral, OneParameterOneReturnTypeInferred) {
   auto& mod     = infra.add_module(R"((b: bool) -> { return 3 as i64 })");
   auto const* e = mod.get<ast::Expression>();
   auto qts      = mod.context().qual_types(e);
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::Constant(type::Func(
-                  {core::Param("b", type::QualType::NonConstant(type::Bool))},
-                  {type::I64}))));
+  EXPECT_THAT(
+      qts,
+      UnorderedElementsAre(type::QualType::Constant(type::Func(
+          {core::Parameter<type::QualType>{
+              .name = "b", .value = type::QualType::NonConstant(type::Bool)}},
+          {type::I64}))));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -197,11 +214,14 @@ TEST(FunctionLiteral, MultipleParametersNoReturnInferred) {
   test::CompilerInfrastructure infra;
   auto& mod = infra.add_module(R"((b: bool, n: i64) -> {})");
   auto qts  = mod.context().qual_types(mod.get<ast::Expression>());
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::Constant(type::Func(
-                  {core::Param("b", type::QualType::NonConstant(type::Bool)),
-                   core::Param("n", type::QualType::NonConstant(type::I64))},
-                  {}))));
+  EXPECT_THAT(
+      qts,
+      UnorderedElementsAre(type::QualType::Constant(type::Func(
+          {core::Parameter<type::QualType>{
+               .name = "b", .value = type::QualType::NonConstant(type::Bool)},
+           core::Parameter<type::QualType>{
+               .name = "n", .value = type::QualType::NonConstant(type::I64)}},
+          {}))));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -209,11 +229,14 @@ TEST(FunctionLiteral, MultipleParametersOneReturnTypeInferred) {
   test::CompilerInfrastructure infra;
   auto& mod = infra.add_module(R"((b: bool, n: i64) -> { return 3 as i64 })");
   auto qts  = mod.context().qual_types(mod.get<ast::Expression>());
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::Constant(type::Func(
-                  {core::Param("b", type::QualType::NonConstant(type::Bool)),
-                   core::Param("n", type::QualType::NonConstant(type::I64))},
-                  {type::I64}))));
+  EXPECT_THAT(
+      qts,
+      UnorderedElementsAre(type::QualType::Constant(type::Func(
+          {core::Parameter<type::QualType>{
+               .name = "b", .value = type::QualType::NonConstant(type::Bool)},
+           core::Parameter<type::QualType>{
+               .name = "n", .value = type::QualType::NonConstant(type::I64)}},
+          {type::I64}))));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 

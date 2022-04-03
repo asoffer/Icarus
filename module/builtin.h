@@ -20,7 +20,8 @@ struct BuiltinModule final : Module {
 
   BuiltinModule() : Module(std::string(BuiltinIdentifier)) {}
 
-  absl::Span<SymbolInformation const> Exported(std::string_view name) override {
+  absl::Span<SymbolInformation const> Exported(
+      std::string_view name) const override {
     auto iter = symbols_.find(name);
     if (iter == symbols_.end()) { return {}; }
     return iter->second;

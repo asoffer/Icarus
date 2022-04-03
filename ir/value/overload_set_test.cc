@@ -21,11 +21,11 @@ TEST(OverloadSet, Construction) {
                       void (*)()>
       map = {
           {{"TestFn1", type::Func({}, {})}, TestFn1},
-          {{"TestFn2", type::Func({core::AnonymousParam(
+          {{"TestFn2", type::Func({core::AnonymousParameter(
                                       type::QualType::NonConstant(type::I64))},
                                   {})},
            TestFn2},
-          {{"TestFn3", type::Func({core::AnonymousParam(
+          {{"TestFn3", type::Func({core::AnonymousParameter(
                                       type::QualType::NonConstant(type::Bool))},
                                   {})},
            TestFn3}};

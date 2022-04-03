@@ -57,7 +57,7 @@ PrecompiledModule::Make(std::string_view file_content, SharedContext& context) {
 }
 
 absl::Span<Module::SymbolInformation const> PrecompiledModule::Exported(
-    std::string_view name) {
+    std::string_view name) const {
   auto iter = symbols_.find(name);
   if (iter == symbols_.end()) { return {}; }
   return iter->second;

@@ -13,7 +13,6 @@
 #include "base/meta.h"
 #include "base/universal_print.h"
 #include "core/arguments.h"
-#include "ir/value/arguments.h"
 #include "ir/value/block.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"

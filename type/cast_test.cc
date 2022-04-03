@@ -236,86 +236,74 @@ TEST(CanCastInPlace, Function) {
   EXPECT_TRUE(CanCastInPlace(Func({}, {}), Func({}, {})));
   EXPECT_FALSE(CanCastInPlace(Func({}, {Bool}), Func({}, {I64})));
   EXPECT_FALSE(CanCastInPlace(
-      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {}),
-      Func({core::AnonymousParam(QualType::NonConstant(I64))}, {})));
+      Func({core::AnonymousParameter(QualType::NonConstant(Bool))}, {}),
+      Func({core::AnonymousParameter(QualType::NonConstant(I64))}, {})));
 
   EXPECT_TRUE(CanCastInPlace(
-      Func({core::Param("name", QualType::NonConstant(Bool))}, {}),
-      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
-
-  EXPECT_FALSE(CanCastInPlace(
-      Func({core::Param("name", QualType::NonConstant(Bool), core::MUST_NAME)},
+      Func({core::Parameter<QualType>{.name  = "name",
+                                      .value = QualType::NonConstant(Bool)}},
            {}),
-      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
+      Func({core::AnonymousParameter(QualType::NonConstant(Bool))}, {})));
 
   EXPECT_FALSE(CanCastInPlace(
-      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {}),
-      Func({core::Param("name", QualType::NonConstant(Bool), core::MUST_NAME)},
+      Func({core::Parameter<QualType>{.name  = "name1",
+                                      .value = QualType::NonConstant(Bool)}},
+           {}),
+      Func({core::Parameter<QualType>{.name  = "name2",
+                                      .value = QualType::NonConstant(Bool)}},
            {})));
 
-  EXPECT_FALSE(CanCastInPlace(
-      Func({core::Param("name1", QualType::NonConstant(Bool), core::MUST_NAME)},
-           {}),
-      Func({core::Param("name2", QualType::NonConstant(Bool), core::MUST_NAME)},
-           {})));
-
-  EXPECT_FALSE(CanCastInPlace(
-      Func({core::Param("name1", QualType::NonConstant(Bool))}, {}),
-      Func({core::Param("name2", QualType::NonConstant(Bool))}, {})));
-
-  // TODO, actually these should be equal.
+  // TODO: actually these should be equal.
   EXPECT_TRUE(CanCastInPlace(
-      Func({core::Param("name", QualType::NonConstant(Bool),
-                        core::MUST_NOT_NAME)},
+      Func({core::Parameter<QualType>{
+               .name  = "name",
+               .value = QualType::NonConstant(Bool),
+               .flags = core::ParameterFlags::MustNotName()}},
            {}),
-      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
+      Func({core::AnonymousParameter(QualType::NonConstant(Bool))}, {})));
 
   EXPECT_TRUE(CanCastInPlace(
-      Func({core::Param("name", QualType::NonConstant(BufPtr(Bool)))}, {}),
-      Func({core::AnonymousParam(QualType::NonConstant(Ptr(Bool)))}, {})));
+      Func({core::Parameter<QualType>{
+               .name = "name", .value = QualType::NonConstant(BufPtr(Bool))}},
+           {}),
+      Func({core::AnonymousParameter(QualType::NonConstant(Ptr(Bool)))}, {})));
 }
 
 TEST(CanCastExplicitly, Function) {
   EXPECT_TRUE(CanCastExplicitly(Func({}, {}), Func({}, {})));
   EXPECT_FALSE(CanCastExplicitly(Func({}, {Bool}), Func({}, {I64})));
   EXPECT_FALSE(CanCastExplicitly(
-      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {}),
-      Func({core::AnonymousParam(QualType::NonConstant(I64))}, {})));
+      Func({core::AnonymousParameter(QualType::NonConstant(Bool))}, {}),
+      Func({core::AnonymousParameter(QualType::NonConstant(I64))}, {})));
 
   EXPECT_TRUE(CanCastExplicitly(
-      Func({core::Param("name", QualType::NonConstant(Bool))}, {}),
-      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
-
-  EXPECT_FALSE(CanCastExplicitly(
-      Func({core::Param("name", QualType::NonConstant(Bool), core::MUST_NAME)},
+      Func({core::Parameter<QualType>{.name  = "name",
+                                      .value = QualType::NonConstant(Bool)}},
            {}),
-      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
+      Func({core::AnonymousParameter(QualType::NonConstant(Bool))}, {})));
 
   EXPECT_FALSE(CanCastExplicitly(
-      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {}),
-      Func({core::Param("name", QualType::NonConstant(Bool), core::MUST_NAME)},
+      Func({core::Parameter<QualType>{.name  = "name1",
+                                      .value = QualType::NonConstant(Bool)}},
+           {}),
+      Func({core::Parameter<QualType>{.name  = "name2",
+                                      .value = QualType::NonConstant(Bool)}},
            {})));
 
-  EXPECT_FALSE(CanCastExplicitly(
-      Func({core::Param("name1", QualType::NonConstant(Bool), core::MUST_NAME)},
-           {}),
-      Func({core::Param("name2", QualType::NonConstant(Bool), core::MUST_NAME)},
-           {})));
-
-  EXPECT_FALSE(CanCastExplicitly(
-      Func({core::Param("name1", QualType::NonConstant(Bool))}, {}),
-      Func({core::Param("name2", QualType::NonConstant(Bool))}, {})));
-
-  // TODO, actually these should be equal.
+  // TODO: actually these should be equal.
   EXPECT_TRUE(CanCastExplicitly(
-      Func({core::Param("name", QualType::NonConstant(Bool),
-                        core::MUST_NOT_NAME)},
+      Func({core::Parameter<QualType>{
+               .name  = "name",
+               .value = QualType::NonConstant(Bool),
+               .flags = core::ParameterFlags::MustNotName()}},
            {}),
-      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
+      Func({core::AnonymousParameter(QualType::NonConstant(Bool))}, {})));
 
   EXPECT_TRUE(CanCastExplicitly(
-      Func({core::Param("name", QualType::NonConstant(BufPtr(Bool)))}, {}),
-      Func({core::AnonymousParam(QualType::NonConstant(Ptr(Bool)))}, {})));
+      Func({core::Parameter<QualType>{
+               .name = "name", .value = QualType::NonConstant(BufPtr(Bool))}},
+           {}),
+      Func({core::AnonymousParameter(QualType::NonConstant(Ptr(Bool)))}, {})));
 }
 
 TEST(Meet, Integral) {

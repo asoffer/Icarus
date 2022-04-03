@@ -8,7 +8,7 @@ cc_library(
         "//base:global",
         "//core:arguments",
         "//core:call",
-        "//core:params",
+        "//core:parameters",
         "//type",
         "//type:callable",
         "//type:function",

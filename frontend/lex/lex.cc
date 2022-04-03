@@ -135,7 +135,7 @@ struct EndOfFileInStringLiteral {
   }
 };
 
-std::optional<Lexeme> ConsumeCharLiteral(
+std::optional<core::Lexeme> ConsumeCharLiteral(
     char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
   ASSERT(range.size() >= 2);
   ASSERT(range[0] == '!');
@@ -169,24 +169,27 @@ std::optional<Lexeme> ConsumeCharLiteral(
   }
 
   size_t length = p - range.data();
-  return Lexeme(Lexeme::Kind::Character, range.extract_prefix(length));
+  return core::Lexeme(core::Lexeme::Kind::Character,
+                      range.extract_prefix(length));
 }
 
-Lexeme ConsumeComment(char_range &range) {
+core::Lexeme ConsumeComment(char_range &range) {
   ASSERT(range.size() >= 2);
   ASSERT(range[0] == '/');
   ASSERT(range[1] == '/');
   char const *p   = range.data();
   char const *end = range.end();
   while (p < end and not IsVerticalWhitespace(*p)) { ++p; }
-  return Lexeme(Lexeme::Kind::Comment, range.extract_prefix(p - range.data()));
+  return core::Lexeme(core::Lexeme::Kind::Comment,
+                      range.extract_prefix(p - range.data()));
 }
 
-std::optional<Lexeme> ConsumeOperator(
+std::optional<core::Lexeme> ConsumeOperator(
     char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
   ASSERT(range.size() > 0);
   if (range.size() >= 2 and range[0] == '-' and range[1] == '-') {
-    return Lexeme(Lexeme::Kind::Identifier, range.extract_prefix(2));
+    return core::Lexeme(core::Lexeme::Kind::Identifier,
+                        range.extract_prefix(2));
   }
 
   constexpr std::array kAssignmentOperators{
@@ -199,22 +202,24 @@ std::optional<Lexeme> ConsumeOperator(
   };
 
   if (range.starts_with(";")) {
-    return Lexeme(Lexeme::Kind::Semicolon, range.extract_prefix(1));
+    return core::Lexeme(core::Lexeme::Kind::Semicolon, range.extract_prefix(1));
   }
 
   if (range.starts_with(",")) {
-    return Lexeme(Lexeme::Kind::Comma, range.extract_prefix(1));
+    return core::Lexeme(core::Lexeme::Kind::Comma, range.extract_prefix(1));
   }
 
   for (std::string_view op : kAssignmentOperators) {
     if (range.starts_with(op)) {
-      return Lexeme(Lexeme::Kind::Assignment, range.extract_prefix(op.size()));
+      return core::Lexeme(core::Lexeme::Kind::Assignment,
+                          range.extract_prefix(op.size()));
     }
   }
 
   for (std::string_view op : kOperators) {
     if (range.starts_with(op)) {
-      return Lexeme(Lexeme::Kind::Operator, range.extract_prefix(op.size()));
+      return core::Lexeme(core::Lexeme::Kind::Operator,
+                          range.extract_prefix(op.size()));
     }
   }
 
@@ -225,13 +230,15 @@ std::optional<Lexeme> ConsumeOperator(
 
   for (char delimiter : {'(', '{', '['}) {
     if (range[0] == delimiter) {
-      return Lexeme(Lexeme::Kind::LeftDelimiter, range.extract_prefix(1));
+      return core::Lexeme(core::Lexeme::Kind::LeftDelimiter,
+                          range.extract_prefix(1));
     }
   }
 
   for (char delimiter : {')', '}', ']'}) {
     if (range[0] == delimiter) {
-      return Lexeme(Lexeme::Kind::RightDelimiter, range.extract_prefix(1));
+      return core::Lexeme(core::Lexeme::Kind::RightDelimiter,
+                          range.extract_prefix(1));
     }
   }
 
@@ -239,14 +246,15 @@ std::optional<Lexeme> ConsumeOperator(
     char const *p = range.data() + 2;
     while (not IsVerticalWhitespace(*p)) { ++p; }
     size_t length = p - range.data();
-    return Lexeme(Lexeme::Kind::Comment, range.extract_prefix(length));
+    return core::Lexeme(core::Lexeme::Kind::Comment,
+                        range.extract_prefix(length));
   }
 
   diagnostic_consumer.Consume(InvalidOperator{});
   return std::nullopt;
 }
 
-std::optional<Lexeme> ConsumeStringLiteral(
+std::optional<core::Lexeme> ConsumeStringLiteral(
     char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
   ASSERT(range.size() != 0);
   char const *p = range.data();
@@ -283,10 +291,10 @@ std::optional<Lexeme> ConsumeStringLiteral(
 
 end_loop:
   size_t length = p - range.data();
-  return Lexeme(Lexeme::Kind::String, range.extract_prefix(length));
+  return core::Lexeme(core::Lexeme::Kind::String, range.extract_prefix(length));
 }
 
-std::optional<Lexeme> ConsumeNumber(
+std::optional<core::Lexeme> ConsumeNumber(
     char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
   ASSERT(range.size() != 0);
   char const *p = range.data();
@@ -311,10 +319,10 @@ std::optional<Lexeme> ConsumeNumber(
     return std::nullopt;
   }
 
-  return Lexeme(Lexeme::Kind::Number, range.extract_prefix(length));
+  return core::Lexeme(core::Lexeme::Kind::Number, range.extract_prefix(length));
 }
 
-std::optional<Lexeme> ConsumeIdentifier(char_range &range) {
+std::optional<core::Lexeme> ConsumeIdentifier(char_range &range) {
   char const *p = range.data();
   while (p != range.end() and IsAlphaNumericOrUnderscore(*p)) { ++p; }
   size_t length = p - range.data();
@@ -329,15 +337,15 @@ std::optional<Lexeme> ConsumeIdentifier(char_range &range) {
   };
   std::string_view result = range.extract_prefix(length);
   if (kReserved.contains(result)) {
-    return Lexeme(Lexeme::Kind::Reserved, result);
+    return core::Lexeme(core::Lexeme::Kind::Reserved, result);
   } else if (kKeyword.contains(result)) {
-    return Lexeme(Lexeme::Kind::Keyword, result);
+    return core::Lexeme(core::Lexeme::Kind::Keyword, result);
   } else {
-    return Lexeme(Lexeme::Kind::Identifier, result);
+    return core::Lexeme(core::Lexeme::Kind::Identifier, result);
   }
 }
 
-std::optional<Lexeme> ConsumeOneLexeme(
+std::optional<core::Lexeme> ConsumeOnecore::Lexeme(
     char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
   ASSERT(range.size() != 0);
 
@@ -345,7 +353,8 @@ std::optional<Lexeme> ConsumeOneLexeme(
   while (IsHorizontalWhitespace(range[0])) {
     range.remove_prefix(1);
     if (range.empty()) {
-      return Lexeme(Lexeme::Kind::EndOfFile, std::string_view(range.data(), 0));
+      return core::Lexeme(core::Lexeme::Kind::EndOfFile,
+                          std::string_view(range.data(), 0));
     }
   }
 
@@ -358,7 +367,7 @@ std::optional<Lexeme> ConsumeOneLexeme(
   } else if (IsAlphaOrUnderscore(c)) {
     return ConsumeIdentifier(range);
   } else if (IsVerticalWhitespace(c)) {
-    return Lexeme(Lexeme::Kind::Newline, range.extract_prefix(1));
+    return core::Lexeme(core::Lexeme::Kind::Newline, range.extract_prefix(1));
   } else if (not IsPrintable(c)) {
     range.remove_prefix(1);
     diagnostic_consumer.Consume(UnprintableSourceCharacter{.character = c});
@@ -368,7 +377,8 @@ std::optional<Lexeme> ConsumeOneLexeme(
     case '"': return ConsumeStringLiteral(range, diagnostic_consumer);
     case '\\':
       if (range.size() > 1 and range[1] == '\\') {
-        return Lexeme(Lexeme::Kind::Newline, range.extract_prefix(2));
+        return core::Lexeme(core::Lexeme::Kind::Newline,
+                            range.extract_prefix(2));
       } else {
         diagnostic_consumer.Consume(SingleBackslash{});
         return std::nullopt;
@@ -377,7 +387,7 @@ std::optional<Lexeme> ConsumeOneLexeme(
         diagnostic_consumer.Consume(HashFollowedByWhitespace{});
         return std::nullopt;
       }
-      return Lexeme(Lexeme::Kind::Hash, range.extract_prefix(1));
+      return core::Lexeme(core::Lexeme::Kind::Hash, range.extract_prefix(1));
     case '/': {
       if (range.size() > 1 and range[1] == '/') {
         return ConsumeComment(range);
@@ -390,7 +400,7 @@ std::optional<Lexeme> ConsumeOneLexeme(
         diagnostic_consumer.Consume(HashFollowedByWhitespace{});
         return std::nullopt;
       }
-      return Lexeme(Lexeme::Kind::Hash, range.extract_prefix(1));
+      return core::Lexeme(core::Lexeme::Kind::Hash, range.extract_prefix(1));
     }
     case '!':
       if (range.size() >= 2 and range[1] == '\'') {
@@ -412,12 +422,12 @@ struct LexResultBuilder {
       : lex_result_(*ASSERT_NOT_NULL(result)),
         diagnostic_consumer_(*ASSERT_NOT_NULL(diagnostic_consumer)) {}
 
-  bool append(Lexeme l) {
+  bool append(core::Lexeme l) {
     switch (l.kind()) {
-      case Lexeme::Kind::LeftDelimiter: {
+      case core::Lexeme::Kind::LeftDelimiter: {
         unmatched_delimiters_.push_back(lex_result_.lexemes_.size());
       } break;
-      case Lexeme::Kind::RightDelimiter: {
+      case core::Lexeme::Kind::RightDelimiter: {
         if (unmatched_delimiters_.empty()) {
           diagnostic_consumer_.Consume(UnmatchedDelimiter{});
           return false;
@@ -467,9 +477,9 @@ std::optional<LexResult> Lex(
 
   char_range range = source;
   while (not range.empty()) {
-    auto maybe_lexeme = ConsumeOneLexeme(range, diagnostic_consumer);
+    auto maybe_lexeme = ConsumeOnecore::Lexeme(range, diagnostic_consumer);
     if (not maybe_lexeme) { return std::nullopt; }
-    if (maybe_lexeme->kind() == Lexeme::Kind::Comment) { continue; }
+    if (maybe_lexeme->kind() == core::Lexeme::Kind::Comment) { continue; }
     if (not builder.append(*std::move(maybe_lexeme))) { return std::nullopt; }
   }
 

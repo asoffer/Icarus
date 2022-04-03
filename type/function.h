@@ -8,7 +8,7 @@
 #include "base/extend.h"
 #include "base/extend/serialize.h"
 #include "base/extend/traverse.h"
-#include "core/params.h"
+#include "core/parameters.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "type/callable.h"
@@ -19,7 +19,7 @@
 namespace type {
 
 struct Function : ReturningType {
-  Function(core::Params<QualType> in, std::vector<Type> out, bool eager)
+  Function(core::Parameters<QualType> in, std::vector<Type> out, bool eager)
       : ReturningType(IndexOf<Function>(),
                       LegacyType::Flags{.is_default_initializable = 0,
                                         .is_copyable              = 1,
@@ -48,21 +48,23 @@ struct Function : ReturningType {
   }
 };
 
-Function const *Func(core::Params<QualType> in, std::vector<Type> out);
-Function const *EagerFunc(core::Params<QualType> in, std::vector<Type> out);
+Function const *Func(core::Parameters<QualType> in, std::vector<Type> out);
+Function const *EagerFunc(core::Parameters<QualType> in, std::vector<Type> out);
 
 struct FunctionTypeInstruction
     : base::Extend<FunctionTypeInstruction>::With<base::BaseSerializeExtension,
                                                   base::BaseTraverseExtension> {
   Type Resolve() const {
-    core::Params<QualType> params;
+    core::Parameters<QualType> params;
     params.reserve(inputs.size());
     for (auto const &[name, t] : inputs) {
       params.append(
           name.empty()
-              ? core::AnonymousParam(QualType::NonConstant(t.value()))
-              : core::Param<type::QualType>(std::move(name),
-                                            QualType::NonConstant(t.value())));
+              ? core::AnonymousParameter(QualType::NonConstant(t.value()))
+              : core::Parameter<type::QualType>{
+                    .name  = std::move(name),
+                    .value = QualType::NonConstant(t.value()),
+                });
     }
 
     std::vector<Type> outputs_types;
@@ -94,6 +96,18 @@ struct FunctionTypeInstruction
 
   std::vector<std::pair<std::string, ir::RegOr<Type>>> inputs;
   std::vector<ir::RegOr<Type>> outputs;
+  ir::Reg result;
+};
+
+struct IsAFunctionInstruction
+    : base::Extend<IsAFunctionInstruction>::With<base::BaseSerializeExtension,
+                                                 base::BaseTraverseExtension,
+                                                 ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = is-function %1$s";
+
+  bool Resolve() const { return operand.value().is<Function>(); }
+
+  ir::RegOr<type::Type> operand;
   ir::Reg result;
 };
 

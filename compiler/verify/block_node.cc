@@ -8,11 +8,12 @@ namespace compiler {
 type::QualType VerifyConcrete(CompilationDataReference data,
                               ast::BlockNode const *node) {
   bool has_error   = false;
-  auto param_types = node->params().Transform([&](auto const &p) {
-    auto qt = VerifyType(data, &p)[0];
+  core::Parameters<type::QualType> param_types;
+  for (auto const &[name, value, flags] : node->params()) {
+    auto qt = VerifyType(data, &value)[0];
     has_error |= qt.HasErrorMark();
-    return qt;
-  });
+    param_types.append(name, qt, flags);
+  }
 
   if (not has_error) {
     LOG("BlockNode", "Verifying %s %s", node->DebugString(),

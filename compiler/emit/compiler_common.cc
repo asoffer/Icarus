@@ -2,13 +2,14 @@
 
 #include <vector>
 
+#include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/emit/copy_move_assignment.h"
 #include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "core/arguments.h"
-#include "core/params.h"
+#include "core/parameters.h"
 #include "type/qual_type.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -32,7 +33,7 @@ ir::OutParams SetReturns(
   }
 }
 
-core::Params<ast::Expression const *> DefaultsFor(ast::Expression const *expr,
+core::Parameters<ast::Expression const *> DefaultsFor(ast::Expression const *expr,
                                                   Context const &context) {
   if (auto const *id = expr->if_as<ast::Identifier>()) {
     auto decl_id_span = context.decls(id);
@@ -47,10 +48,11 @@ core::Params<ast::Expression const *> DefaultsFor(ast::Expression const *expr,
   } else if (auto const *id = expr->if_as<ast::Declaration::Id>()) {
     return DefaultsFor(id->declaration().init_val(), context);
   } else if (auto const *p = expr->if_as<ast::ParameterizedExpression>()) {
-    return p->params().Transform(
-        [](auto const &decl) -> ast::Expression const * {
-          return decl.init_val();
-        });
+    core::Parameters<ast::Expression const *> result;
+    for (auto const &decl : p->params()) {
+      result.append(decl.name, decl.value.init_val(), decl.flags);
+    }
+    return result;
   } else {
     return {};
   }
@@ -59,7 +61,7 @@ core::Params<ast::Expression const *> DefaultsFor(ast::Expression const *expr,
 struct CalleeResult {
   ir::RegOr<ir::Fn> callee;
   type::Function const *type;
-  core::Params<ast::Expression const *> defaults;
+  core::Parameters<ast::Expression const *> defaults;
   Context *context;
 };
 
@@ -214,8 +216,8 @@ void EmitAndCast(Compiler &c, ast::Expression const &expr, type::QualType to,
 }  // namespace
 
 void EmitArguments(
-    Compiler &c, core::Params<type::QualType> const &param_qts,
-    core::Params<ast::Expression const *> const &defaults,
+    Compiler &c, core::Parameters<type::QualType> const &param_qts,
+    core::Parameters<ast::Expression const *> const &defaults,
     absl::Span<ast::Call::Argument const> arg_exprs,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants,
     ir::PartialResultBuffer &buffer) {
@@ -224,7 +226,7 @@ void EmitArguments(
     absl::Cleanup cleanup = [&] { ++i; };
     auto const &param     = param_qts[i];
     if (param.value.constant()) {
-      buffer.append(constants[i]);
+      buffer.append(*constants[i]);
     } else {
       EmitAndCast(c, arg_exprs[i].expr(), param.value, buffer);
     }
@@ -249,11 +251,14 @@ void EmitArguments(
         if (arg_exprs[j].name() == name) { break; }
       }
       ast::Expression const *expr;
-      if (j == arg_exprs.size()) {
-        size_t default_index = *ASSERT_NOT_NULL(defaults.at_or_null(name));
-        expr                 = defaults[default_index].value;
-      } else {
+      if (j != arg_exprs.size()) {
         expr = &arg_exprs[j].expr();
+      } else if (param.value.type() == type::CallingModule) {
+        buffer.append(
+            c.shared_context().module_table().id(c.resources().module));
+        return;
+      } else {
+        expr = defaults[name].value;
       }
       EmitAndCast(c, *expr, param.value, buffer);
     }

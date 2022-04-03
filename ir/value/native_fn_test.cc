@@ -10,7 +10,7 @@ TEST(NativeFn, CastToBool) {
   ir::NativeFn f;
   EXPECT_FALSE(f);
 
-  auto *fn_type = type::Func(core::Params<type::QualType>{}, {});
+  auto *fn_type = type::Func(core::Parameters<type::QualType>{}, {});
   ir::Subroutine sr(fn_type);
   ir::NativeFn::Data d{
       .fn   = &sr,
@@ -20,7 +20,7 @@ TEST(NativeFn, CastToBool) {
 }
 
 TEST(NativeFn, Equality) {
-  auto *fn_type = type::Func(core::Params<type::QualType>{}, {});
+  auto *fn_type = type::Func(core::Parameters<type::QualType>{}, {});
 
   ir::Subroutine sr1(fn_type);
   ir::Subroutine sr2(fn_type);
@@ -42,7 +42,7 @@ TEST(NativeFn, Equality) {
 }
 
 TEST(NativeFn, Value) {
-  auto *fn_type = type::Func(core::Params<type::QualType>{}, {});
+  auto *fn_type = type::Func(core::Parameters<type::QualType>{}, {});
 
   ir::Subroutine sr(fn_type);
   ir::NativeFn::Data d{

@@ -117,6 +117,10 @@ struct ModuleTable {
     return nullptr;
   }
 
+  ir::ModuleId id(Module const *m) const {
+    return module(m->identifier()).first;
+  }
+
  private:
   std::vector<std::unique_ptr<Module>> modules_;
   absl::flat_hash_map<std::string_view, ir::ModuleId> numeric_id_;

@@ -36,15 +36,12 @@ bool CanCastFunction(Function const *from, Function const *to) {
     if (not CanCastImplicitly(from_param.value.type(), to_param.value.type())) {
       return false;
     }
-    if (from_param.flags & core::MUST_NOT_NAME) {
-      if (not(to_param.flags & core::MUST_NOT_NAME)) { return false; }
-    } else if (from_param.flags & core::MUST_NAME) {
-      if (not(to_param.flags & core::MUST_NAME) or
-          from_param.name != to_param.name) {
+    if (from_param.flags >= core::ParameterFlags::MustNotName()) {
+      if (not(to_param.flags >= core::ParameterFlags::MustNotName())) {
         return false;
       }
     } else {
-      if (not(to_param.flags & core::MUST_NOT_NAME) and
+      if (not(to_param.flags >= core::ParameterFlags::MustNotName()) and
           from_param.name != to_param.name) {
         return false;
       }

@@ -538,34 +538,6 @@ TEST(Not, InvalidType) {
   }
 }
 
-TEST(Not, Overload) {
-  test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"(
-    S ::= struct {}
-    (not) ::= (s: S) -> i64 { return 0 }
-    not S.{}
-  )");
-  auto const *expr = mod.get<ast::UnaryOperator>();
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::NonConstant(type::I64)));
-  EXPECT_THAT(infra.diagnostics(), IsEmpty());
-}
-
-TEST(Not, MissingOverload) {
-  test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"(
-    S ::= struct {}
-    not S.{}
-  )");
-  auto const *expr = mod.get<ast::UnaryOperator>();
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
-  EXPECT_THAT(infra.diagnostics(),
-              UnorderedElementsAre(
-                  Pair("type-error", "invalid-unary-operator-overload")));
-}
-
 TEST(Unexpanded, Failure) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(

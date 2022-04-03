@@ -8,7 +8,7 @@ namespace compiler {
 
 struct Context::Subcontext {
   explicit Subcontext(Context &&context) : context(std::move(context)) {}
-  core::Params<type::QualType> parameter_types;
+  core::Parameters<type::QualType> parameter_types;
   std::vector<type::Type> rets;
   Context context;
 };
@@ -61,10 +61,11 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
 
   auto &[parameter_types, rets, ctx] = *iter->second;
 
-  parameter_types =
-      node->params().Transform([&c = iter->second->context](auto const &d) {
-        return c.qual_types(&d)[0];
-      });
+  parameter_types.clear();
+  auto const &c = iter->second->context;
+  for (auto const &[name, value, flags] : node->params()) {
+    parameter_types.append(name, c.qual_types(&value)[0], flags);
+  }
 
   return InsertSubcontextResult{
       .params   = parameter_types,
@@ -159,7 +160,7 @@ ir::CompleteResultBuffer const &Context::SetConstant(
 
 ir::CompleteResultBuffer const &Context::SetConstant(
     ast::Declaration::Id const *id, ir::CompleteResultBuffer const &buffer) {
-  auto const &buf = constants_.try_emplace(id, std::move(buffer)).first->second;
+  auto const &buf = constants_.try_emplace(id, buffer).first->second;
   value_callback()(id, buf);
   return buf;
 }

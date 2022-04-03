@@ -6,15 +6,6 @@ cc_library(
 )
 
 cc_library(
-    name = "arguments",
-    hdrs = ["arguments.h"],
-    deps = [
-        ":result_buffer",
-        "//core:arguments",
-    ],
-)
-
-cc_library(
     name = "block",
     hdrs = ["block.h"],
     deps = [
@@ -45,7 +36,7 @@ cc_library(
         ":builtin_fn",
         ":foreign_fn",
         ":native_fn",
-        "//core:params",
+        "//core:parameters",
         "//type:function",
         "//type:pointer",
         "//type:primitive",
