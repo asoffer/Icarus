@@ -53,6 +53,26 @@ cc_test(
 )
 
 cc_library(
+    name = "cycle_tracker",
+    hdrs = ["cycle_tracker.h"],
+    deps = [
+        "//base:debug",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "cycle_tracker_test",
+    srcs = ["cycle_tracker_test.cc"],
+    deps = [
+        ":cycle_tracker",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "dependency_node",
     hdrs = ["dependency_node.h"],
     deps = [

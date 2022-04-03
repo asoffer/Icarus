@@ -68,29 +68,6 @@ cc_library(
 )
 
 cc_library(
-    name = "cyclic_dependency_tracker",
-    hdrs = ["cyclic_dependency_tracker.h"],
-    deps = [
-        ":common",
-        "//ast",
-        "//diagnostic/consumer",
-        "//module",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
-)
-
-cc_test(
-    name = "cyclic_dependency_tracker_test",
-    srcs = ["cyclic_dependency_tracker_test.cc"],
-    deps = [
-        ":cyclic_dependency_tracker",
-        "//ast",
-        "//diagnostic/consumer:tracking",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "flags",
     hdrs = ["flags.h"],
     srcs = ["flags.cc"],
@@ -205,8 +182,8 @@ cc_library(
     name = "transient_state",
     hdrs = ["transient_state.h"],
     deps = [
-        ":cyclic_dependency_tracker",
         ":subroutine_scaffolding",
+        "//core:cycle_tracker",
     ],
 )
 

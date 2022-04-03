@@ -244,6 +244,7 @@ cc_library(
         ":common",
         ":copy_move_assignment",
         "//ast",
+        "//compiler:common",
         "//compiler:compiler_header",
         "//compiler:instantiate",
         "//compiler:instructions",

@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
 #include "compiler/emit/copy_move_assignment.h"
