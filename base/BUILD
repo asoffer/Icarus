@@ -21,6 +21,11 @@ cc_library(
 )
 
 cc_library(
+    name = "compile_time_string",
+    hdrs = ["compile_time_string.h"],
+)
+
+cc_library(
     name = "debug",
     hdrs = ["debug.h"],
     deps = [

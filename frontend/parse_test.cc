@@ -3,9 +3,9 @@
 #include <functional>
 
 #include "base/meta.h"
+#include "core/lexeme.h"
 #include "diagnostic/consumer/trivial.h"
 #include "frontend/lex/lex.h"
-#include "frontend/lexeme.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -26,14 +26,14 @@ TestParameters Failure(std::string content) {
 }
 
 struct BoundTestParameters {
-  template <auto Parser>
+  template <Parser P>
   static BoundTestParameters Make(TestParameters p) {
-    return {.parse = [](absl::Span<Lexeme const> &lexemes) -> bool {
-              base::reduce_t<std::tuple, typename decltype(Parser)::match_type> out_tuple;
+    return {.parse = [](absl::Span<core::Lexeme const> &lexemes) -> bool {
+              base::reduce_t<std::tuple, core::MatchType<P>> out_tuple;
               std::string_view consumed;
               return std::apply(
                   [&](auto &... outs) {
-                    return Parser.Parse(lexemes, consumed, outs...);
+                    return core::Parse(P(), lexemes, consumed, outs...);
                   },
                   out_tuple);
             },
@@ -41,25 +41,25 @@ struct BoundTestParameters {
             .success = p.success};
   }
 
-  friend std::ostream& operator<<(std::ostream& os, BoundTestParameters const&btp) {
+  friend std::ostream &operator<<(std::ostream &os,
+                                  BoundTestParameters const &btp) {
     return os << "Expect " << (btp.success ? "success" : "failure") << ": "
               << btp.content;
   }
 
-  std::function<bool(absl::Span<Lexeme const> &)> parse;
+  std::function<bool(absl::Span<core::Lexeme const> &)> parse;
   std::string content;
   bool success;
 };
 
-template <auto Parser>
+template <Parser P>
 auto InputFor(auto &&... input) requires(
     (base::meta<std::decay_t<decltype(input)>> ==
      base::meta<TestParameters>)and...) {
-  return testing::ValuesIn(
-      {BoundTestParameters::Make<Parser>(std::move(input))...});
+  return testing::ValuesIn({BoundTestParameters::Make<P>(std::move(input))...});
 }
 
-struct ParseTest: testing::TestWithParam<BoundTestParameters> {};
+struct ParseTest : testing::TestWithParam<BoundTestParameters> {};
 TEST_P(ParseTest, Test) {
   auto [parse, content, success] = GetParam();
   SCOPED_TRACE(content);
@@ -73,7 +73,7 @@ TEST_P(ParseTest, Test) {
     }
   }
 
-  absl::Span<Lexeme const> lexemes = lex_result->lexemes_;
+  absl::Span<core::Lexeme const> lexemes = lex_result->lexemes_;
   if (success) {
     ASSERT_TRUE(parse(lexemes));
     EXPECT_THAT(lexemes, IsEmpty());
@@ -88,84 +88,86 @@ INSTANTIATE_TEST_SUITE_P(
                             Failure("true"), Failure("module"),
                             Failure("builtin"), Failure("import"),
                             Failure("17"), Success("(+)")));
-// INSTANTIATE_TEST_SUITE_P(
-//     Label, ParseTest,
-//     InputFor<Label>(Success("#.something"), Failure("#.true"), Failure("blah"),
-//                     Failure("#.label more"), Failure(".blah"), Failure("#blah"),
-//                     Failure("# .blah"),
-// 
-//                     // TODO: This one should be a failure due to the space,
-//                     // but the parser doesn't have any way to distinguish
-//                     // it. It needs to be fixed in the lexer.
-//                     Success("#. blah"), Failure("# . blah"),
-// 
-//                     Failure("#{const}")));
-// INSTANTIATE_TEST_SUITE_P(
-//     StringLiteral, ParseTest,
-//     InputFor<StringLiteral>(Success(R"("")"), Success(R"("\n")"),
-//                             Success(R"("\\n")"), Success(R"("blah")"),
-//                             Failure(R"("" "")"), Failure(R"("blah)"),
-//                             Success(R"("\nblah")")));
-// INSTANTIATE_TEST_SUITE_P(
-//     CallArgument, ParseTest,
-//     InputFor<CallArgument>(Success("3"), Success("3 + 4"), Success("name = 3"),
-//                            Success("name = 3 + 4"), Failure("3 = 4"),
-//                            Failure("name = name = 3"), Failure("name =")));
-// 
-// INSTANTIATE_TEST_SUITE_P(
-//     YieldStatement, ParseTest,
-//     InputFor<YieldStatement>(
-//         Success("<<"), Success("<< 0"), Success("<< 3 + 4"), Success("<< 3, 4"),
-//         Success("<< 3, name = 4"), Success("<< name = 3, other_name = 4"),
-//         Failure("<< 3 << 4"),
-// 
-//         Failure("x <<"), Failure("x << 0"), Failure("x << 3 + 4"),
-//         Failure("x << 3, 4"), Failure("x << 3, name = 4"),
-//         Failure("x << name = 3, other_name = 4"), Failure("x << 3 << 4"),
-// 
-//         Success("#.label <<"), Success("#.label << 0"),
-//         Success("#.label << 3 + 4"), Success("#.label << 3, 4"),
-//         Success("#.label << 3, name = 4"),
-//         Success("#.label << name = 3, other_name = 4"),
-//         Failure("#.label << 3 << 4"),
-// 
-//         Failure("#bad_label <<"), Failure("#bad_label << 0"),
-//         Failure("#bad_label << 3 + 4"), Failure("#bad_label << 3, 4"),
-//         Failure("#bad_label << 3, name = 4"),
-//         Failure("#bad_label << name = 3, other_name = 4"),
-//         Failure("#bad_label << 3 << 4")));
-// 
-// INSTANTIATE_TEST_SUITE_P(ReturnStatement, ParseTest,
-//                          InputFor<ReturnStatement>(
-//                              Success("return"), Success("return 0"),
-//                              Success("return 3 + 4"), Success("return 3, 4"),
-//                              Failure("return 3, name = 4"),
-//                              Failure("return name = 3, other_name = 4"),
-//                              Failure("return 3 return 4")));
-// 
+INSTANTIATE_TEST_SUITE_P(
+    Label, ParseTest,
+    InputFor<Label>(Success("#.something"), Failure("#.true"), Failure("blah"),
+                    Failure("#.label more"), Failure(".blah"), Failure("#blah"),
+                    Failure("# .blah"),
+
+                    // TODO: This one should be a failure due to the space,
+                    // but the parser doesn't have any way to distinguish
+                    // it. It needs to be fixed in the lexer.
+                    Success("#. blah"), Failure("# . blah"),
+
+                    Failure("#{const}")));
+INSTANTIATE_TEST_SUITE_P(
+    StringLiteral, ParseTest,
+    InputFor<StringLiteral>(Success(R"("")"), Success(R"("\n")"),
+                            Success(R"("\\n")"), Success(R"("blah")"),
+                            Failure(R"("" "")"), Failure(R"("blah)"),
+                            Success(R"("\nblah")")));
+INSTANTIATE_TEST_SUITE_P(
+    CallArgument, ParseTest,
+    InputFor<CallArgument>(Success("3"), Success("3 + 4"), Success("name = 3"),
+                           Success("name = 3 + 4"), Failure("3 = 4"),
+                           Failure("name = name = 3"), Failure("name =")));
+
+INSTANTIATE_TEST_SUITE_P(
+    YieldStatement, ParseTest,
+    InputFor<YieldStatement>(
+        Success("<<"), Success("<< 0"), Success("<< 3 + 4"), Success("<< 3, 4"),
+        Success("<< 3, name = 4"), Success("<< name = 3, other_name = 4"),
+        Failure("<< 3 << 4"),
+
+        Failure("x <<"), Failure("x << 0"), Failure("x << 3 + 4"),
+        Failure("x << 3, 4"), Failure("x << 3, name = 4"),
+        Failure("x << name = 3, other_name = 4"), Failure("x << 3 << 4"),
+
+        Success("#.label <<"), Success("#.label << 0"),
+        Success("#.label << 3 + 4"), Success("#.label << 3, 4"),
+        Success("#.label << 3, name = 4"),
+        Success("#.label << name = 3, other_name = 4"),
+        Failure("#.label << 3 << 4"),
+
+        Failure("#bad_label <<"), Failure("#bad_label << 0"),
+        Failure("#bad_label << 3 + 4"), Failure("#bad_label << 3, 4"),
+        Failure("#bad_label << 3, name = 4"),
+        Failure("#bad_label << name = 3, other_name = 4"),
+        Failure("#bad_label << 3 << 4")));
+
+INSTANTIATE_TEST_SUITE_P(
+    ReturnStatement, ParseTest,
+    InputFor<ReturnStatement>(Success("return"), Success("return 0"),
+                              Success("return 3 + 4"), Success("return 3, 4"),
+                              Failure("return 3, name = 4"),
+                              Failure("return name = 3, other_name = 4"),
+                              Failure("return 3 return 4")));
+
 // INSTANTIATE_TEST_SUITE_P(
 //     Declaration, ParseTest,
 //     InputFor<Declaration>(
 //         Success("x: y"), Success("x: y + z"), Success("x: y = z"),
-//         Success("x: y + z = a + b"), Success("x :: y"), Success("x :: y + z"),
-//         Success("x :: y = z"), Success("x :: y + z = a + b"), Success("x := y"),
-//         Success("x := y + z"), Success("x ::= z"), Success("x ::= y + z"),
-//         Failure("x: y z"), Success("(x, y): z"), Success("(x, y) :: z"),
+//         Success("x: y + z = a + b"), Success("x :: y"), Success("x :: y +
+//         z"), Success("x :: y = z"), Success("x :: y + z = a + b"), Success("x
+//         := y"), Success("x := y + z"), Success("x ::= z"), Success("x ::= y +
+//         z"), Failure("x: y z"), Success("(x, y): z"), Success("(x, y) :: z"),
 //         Failure("(x + y, z) :: w"), Success("(x) :: w"), Success("(+) :: w"),
 //         Failure("(+, -) :: w"), Success("((+), (-)) :: w")));
-// 
-// INSTANTIATE_TEST_SUITE_P(
-//     ArrayLiteral, ParseTest,
-//     InputFor<ArrayLiteral>(Success("[]"), Success("[x]"), Success("[x, y]"),
-//                            Failure("[x, , y]"), Success("[[]]"),
-//                            Failure("[x; y]"), Success("[[x], y]")));
-// 
-// INSTANTIATE_TEST_SUITE_P(ArrayType, ParseTest,
-//                          InputFor<ArrayType>(Failure("[]"), Failure("[x]"),
-//                                              Success("[1; i32]"),
-//                                              Success("[1, 2; i32]"),
-//                                              Failure("[; i32]"),
-//                                              Success("[2; [1; i32]]")));
-// 
+
+INSTANTIATE_TEST_SUITE_P(
+    ArrayLiteral, ParseTest,
+    InputFor<ArrayLiteral>(Success("[]"), Success("[x]"), Success("[x, y]"),
+                           Failure("[x, , y]"), Success("[[]]"),
+                           Failure("[x; y]"), Success("[[x], y]")));
+
+INSTANTIATE_TEST_SUITE_P(ArrayType, ParseTest,
+                         InputFor<ArrayType>(Failure("[]"), Failure("[x]"),
+                                             Success("[1; i32]"),
+                                             Success("[1, 2; i32]"),
+                                             Failure("[; i32]"),
+                                             Success("[2; [1; i32]]")));
+INSTANTIATE_TEST_SUITE_P(Builtin, ParseTest,
+                         InputFor<Builtin>(Success("builtin")));
+
 }  // namespace
 }  // namespace frontend

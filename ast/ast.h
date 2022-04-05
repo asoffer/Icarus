@@ -948,7 +948,7 @@ struct InterfaceLiteral : Expression, WithScope {
 // Example:
 // `#.my_label`
 struct Label : Expression {
-  explicit Label(std::string_view range)
+  explicit Label(std::string_view range = "")
       : Expression(IndexOf<Label>(), range) {}
 
   ir::Label value() const { return ir::Label(&range_); }

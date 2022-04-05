@@ -15,7 +15,7 @@ namespace frontend {
 namespace {
 
 template <typename T, auto P, typename... Args>
-bool ParseSequence(absl::Span<Lexeme const> &lexemes, std::vector<T> &out,
+bool ParseSequence(absl::Span<core::Lexeme const> &lexemes, std::vector<T> &out,
                    Args &&... args) {
   PARSE_DEBUG_LOG();
   T t;
@@ -41,15 +41,14 @@ enum Precedence {
 
 }  // namespace
 
-#if 0
-bool TerminalOrIdentifier::Impl::Parse(absl::Span<Lexeme const> &lexemes,
-                                       std::string_view &consumed,
-                                       std::unique_ptr<ast::Expression> &out) {
+bool TerminalOrIdentifier::Parse(absl::Span<core::Lexeme const> &lexemes,
+                                 std::string_view &consumed,
+                                 std::unique_ptr<ast::Expression> &out) {
   PARSE_DEBUG_LOG();
   if (lexemes.empty()) { return false; }
   auto const &lexeme = lexemes[0];
-  if (lexeme.kind() != Lexeme::Kind::Identifier and
-      lexeme.kind() != Lexeme::Kind::Reserved) {
+  if (lexeme.kind() != core::Lexeme::Kind::Identifier and
+      lexeme.kind() != core::Lexeme::Kind::Reserved) {
     return false;
   }
 
@@ -97,39 +96,34 @@ bool TerminalOrIdentifier::Impl::Parse(absl::Span<Lexeme const> &lexemes,
 
 namespace {
 bool ParseOperatorOrAtomicExpression(
-    absl::Span<Lexeme const> &lexemes,
+    absl::Span<core::Lexeme const> &lexemes,
     std::variant<std::string_view, std::unique_ptr<ast::Expression>> &out) {
   PARSE_DEBUG_LOG();
-  LOG("", "%s", lexemes);
   std::unique_ptr<ast::Expression> e;
   absl::Span span = lexemes;
   std::string_view consumed;
-  if (AtomicExpression.Parse(span, consumed, e)) {
+  if (core::Parse(AtomicExpression(), span, consumed, e)) {
     lexemes = span;
     out     = std::move(e);
-  LOG("", "%s", lexemes);
     return true;
   } else if (lexemes.empty()) {
-  LOG("", "%s", lexemes);
     return false;
-  } else if ((lexemes[0].kind() == Lexeme::Kind::Operator and
+  } else if ((lexemes[0].kind() == core::Lexeme::Kind::Operator and
               lexemes[0].content() != "<<") or
-             (lexemes[0].kind() == Lexeme::Kind::Identifier and
+             (lexemes[0].kind() == core::Lexeme::Kind::Identifier and
               (lexemes[0].content() == "import"))) {
     out = lexemes[0].content();
     lexemes.remove_prefix(1);
-  LOG("", "%s", lexemes);
     return true;
   } else {
-  LOG("", "%s", lexemes);
     return false;
   }
 }
 }  // namespace
 
-bool Expression::Impl::Parse(absl::Span<Lexeme const> &lexemes,
-                             std::string_view consumed,
-                             std::unique_ptr<ast::Expression> &e) {
+bool Expression::Parse(absl::Span<core::Lexeme const> &lexemes,
+                       std::string_view &consumed,
+                       std::unique_ptr<ast::Expression> &e) {
   PARSE_DEBUG_LOG();
   auto span  = lexemes;
   using type = std::variant<std::string_view, std::unique_ptr<ast::Expression>>;
@@ -184,38 +178,36 @@ bool Expression::Impl::Parse(absl::Span<Lexeme const> &lexemes,
   return true;
 }
 
-bool Statement::Impl::Parse(absl::Span<Lexeme const> &lexemes,
-                            std::string_view &consumed,
-                            std::unique_ptr<ast::Node> &node) {
-  PARSE_DEBUG_LOG();
-  absl::Cleanup cl = [&] {
-    if (node) { LOG("", "%s", node->DebugString()); }
-  };
-  auto iter = std::find_if(lexemes.begin(), lexemes.end(), [](Lexeme const &l) {
-    return l.kind() != Lexeme::Kind::Newline;
-  });
-  if (iter == lexemes.end()) { return false; }
-  absl::Span span = lexemes = absl::MakeConstSpan(iter, lexemes.end());
+// bool Statement::Impl::Parse(absl::Span<core::Lexeme const> &lexemes,
+//                             std::string_view &consumed,
+//                             std::unique_ptr<ast::Node> &node) {
+//   PARSE_DEBUG_LOG();
+//   absl::Cleanup cl = [&] {
+//     if (node) { LOG("", "%s", node->DebugString()); }
+//   };
+//   auto iter = std::find_if(lexemes.begin(), lexemes.end(), [](core::Lexeme const &l) {
+//     return l.kind() != core::Lexeme::Kind::Newline;
+//   });
+//   if (iter == lexemes.end()) { return false; }
+//   absl::Span span = lexemes = absl::MakeConstSpan(iter, lexemes.end());
+// 
+//   constexpr auto Statement = (                                          //
+//       WhileStatement                                                    //
+//       | Assignment                                                      //
+//       | (Declaration << Bind(MakeUnique<ast::Declaration, ast::Node>))  //
+//       | ReturnStatement                                                 //
+//       | YieldStatement                                                  //
+//       | (Expression << Bind([](std::unique_ptr<ast::Expression> e)
+//                                 -> std::unique_ptr<ast::Node> { return e; })));
+//   return Statement.Parse(lexemes, consumed, node);
+// }
 
-  constexpr auto Statement = (                                          //
-      WhileStatement                                                    //
-      | Assignment                                                      //
-      | (Declaration << Bind(MakeUnique<ast::Declaration, ast::Node>))  //
-      | ReturnStatement                                                 //
-      | YieldStatement                                                  //
-      | (Expression << Bind([](std::unique_ptr<ast::Expression> e)
-                                -> std::unique_ptr<ast::Node> { return e; })));
-  return Statement.Parse(lexemes, consumed, node);
-}
-#endif
-
-
-std::optional<ast::Module> ParseModule(absl::Span<Lexeme const> lexemes,
+std::optional<ast::Module> ParseModule(absl::Span<core::Lexeme const> lexemes,
                                        diagnostic::DiagnosticConsumer &) {
   // PARSE_DEBUG_LOG();
   // while (not lexemes.empty() and
-  //        (lexemes.front().kind() == Lexeme::Kind::Newline or
-  //         lexemes.front().kind() == Lexeme::Kind::EndOfFile)) {
+  //        (lexemes.front().kind() == core::Lexeme::Kind::Newline or
+  //         lexemes.front().kind() == core::Lexeme::Kind::EndOfFile)) {
   //   lexemes.remove_prefix(1);
   // }
   // if (lexemes.empty()) { return std::nullopt; }
@@ -225,8 +217,8 @@ std::optional<ast::Module> ParseModule(absl::Span<Lexeme const> lexemes,
   // std::unique_ptr<ast::Node> stmt;
   // while (ParseStatement(lexemes, stmt)) { module->insert(std::move(stmt)); }
   // while (not lexemes.empty() and
-  //        (lexemes.front().kind() == Lexeme::Kind::Newline or
-  //         lexemes.front().kind() == Lexeme::Kind::EndOfFile)) {
+  //        (lexemes.front().kind() == core::Lexeme::Kind::Newline or
+  //         lexemes.front().kind() == core::Lexeme::Kind::EndOfFile)) {
   //   lexemes.remove_prefix(1);
   // }
 

@@ -6,6 +6,7 @@ cc_library(
     deps = [
         "//base:meta",
         "//core:lexeme",
+        "//core:parser",
         "@com_google_absl//absl/types:span",
     ],
 )

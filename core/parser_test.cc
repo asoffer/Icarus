@@ -6,14 +6,15 @@ namespace core {
 
 struct CorrectFunctionTemplate {
   using match_type = base::type_list<int, bool, char>;
-  static bool Parse(absl::Span<Lexeme const>&, auto&, auto&, auto&) {
+  static bool Parse(absl::Span<Lexeme const>&, std::string_view&, auto&, auto&,
+                    auto&) {
     return true;
   }
 };
 
 TEST(BasicParser, Test) {
   struct MissingMatchType {
-    static bool Parse(absl::Span<Lexeme const>&);
+    static bool Parse(absl::Span<Lexeme const>&, std::string_view&);
   };
   EXPECT_FALSE(Parser<MissingMatchType>);
 
@@ -24,37 +25,39 @@ TEST(BasicParser, Test) {
 
   struct Mismatched {
     using match_type = base::type_list<int>;
-    static bool Parse(absl::Span<Lexeme const>&, float&);
+    static bool Parse(absl::Span<Lexeme const>&, std::string_view&,
+                      std::string_view&, float&);
   };
   EXPECT_FALSE(Parser<Mismatched>);
 
   struct IncorrectReturn {
     using match_type = base::type_list<int>;
-    void Parse(absl::Span<Lexeme const>&, int&);
+    void Parse(absl::Span<Lexeme const>&,std::string_view&, int&);
   };
   EXPECT_FALSE(Parser<IncorrectReturn>);
 
   struct NonStatic {
     using match_type = base::type_list<int>;
-    bool Parse(absl::Span<Lexeme const>&, int&);
+    bool Parse(absl::Span<Lexeme const>&, std::string_view&,int&);
   };
   EXPECT_FALSE(Parser<NonStatic>);
 
   struct CorrectVoid {
     using match_type = base::type_list<>;
-    static bool Parse(absl::Span<Lexeme const>&);
+    static bool Parse(absl::Span<Lexeme const>&, std::string_view&);
   };
   EXPECT_TRUE(Parser<CorrectVoid>);
 
   struct CorrectOneMatch {
     using match_type = base::type_list<int>;
-    static bool Parse(absl::Span<Lexeme const>&, int&);
+    static bool Parse(absl::Span<Lexeme const>&, std::string_view&, int&);
   };
   EXPECT_TRUE(Parser<CorrectOneMatch>);
 
   struct CorrectMultipleMatches {
     using match_type = base::type_list<int, bool, char>;
-    static bool Parse(absl::Span<Lexeme const>&, int&, bool&, char&);
+    static bool Parse(absl::Span<Lexeme const>&, std::string_view&, int&, bool&,
+                      char&);
   };
   EXPECT_TRUE(Parser<CorrectMultipleMatches>);
 

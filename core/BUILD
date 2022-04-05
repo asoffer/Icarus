@@ -143,6 +143,7 @@ cc_library(
     hdrs = ["parser.h"],
     deps = [
         ":lexeme",
+        "//base:compile_time_string",
         "//base:meta",
         "@com_google_absl//absl/types:span",
     ],

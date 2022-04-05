@@ -345,7 +345,7 @@ std::optional<core::Lexeme> ConsumeIdentifier(char_range &range) {
   }
 }
 
-std::optional<core::Lexeme> ConsumeOnecore::Lexeme(
+std::optional<core::Lexeme> ConsumeOneLexeme(
     char_range &range, diagnostic::DiagnosticConsumer &diagnostic_consumer) {
   ASSERT(range.size() != 0);
 
@@ -477,7 +477,7 @@ std::optional<LexResult> Lex(
 
   char_range range = source;
   while (not range.empty()) {
-    auto maybe_lexeme = ConsumeOnecore::Lexeme(range, diagnostic_consumer);
+    auto maybe_lexeme = ConsumeOneLexeme(range, diagnostic_consumer);
     if (not maybe_lexeme) { return std::nullopt; }
     if (maybe_lexeme->kind() == core::Lexeme::Kind::Comment) { continue; }
     if (not builder.append(*std::move(maybe_lexeme))) { return std::nullopt; }
