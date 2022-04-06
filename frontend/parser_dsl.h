@@ -121,52 +121,6 @@ struct DelimitedBy {
   }
 };
 
-template <typename F>
-struct InvokeResultT {
-  template <typename... ArgTs>
-  struct Get {
-    using type = std::invoke_result_t<F, ArgTs...>;
-  };
-};
-
-template <Parser P, typename F, bool UseConsumedRange>
-struct ParserWith {
-  using match_type = base::type_list<typename base::reduce_t<
-      InvokeResultT<F>::template Get,
-      std::conditional_t<
-          UseConsumedRange,
-          base::type_list_cat<base::type_list<std::string_view>,
-                              typename decltype(P::parser)::match_type>,
-          typename decltype(P::parser)::match_type>>::type>;
-
-  static bool Parse(absl::Span<core::Lexeme const> &lexemes,
-                    std::string_view &consumed, auto &&out) {
-    base::reduce_t<std::tuple, typename decltype(P::parser)::match_type>
-        value_tuple;
-    bool result = std::apply(
-        [&](auto &... values) {
-          return P::parser.Parse(lexemes, consumed, values...);
-        },
-        value_tuple);
-    if (not result) { return false; }
-    F f;
-    if constexpr (UseConsumedRange) {
-      out = std::apply(std::bind_front(f, consumed), std::move(value_tuple));
-    } else {
-      out = std::apply(f, std::move(value_tuple));
-    }
-    return true;
-  }
-};
-
-template <typename F, bool B>
-struct BindImpl {
-  template <Parser P>
-  friend constexpr auto operator<<(P, BindImpl) {
-    return ParserWith<P, F, B>();
-  }
-};
-
 }  // namespace internal_parser_dsl
 
 template <char C>
@@ -186,15 +140,6 @@ constexpr auto CommaSeparatedListOf(Parser auto P) {
 constexpr auto NewlineSeparatedListOf(Parser auto P) {
   return internal_parser_dsl::SeparatedList<core::Lexeme::Kind::Newline,
                                             decltype(P), 0>();
-}
-
-template <typename F>
-constexpr auto Bind(F) requires(std::is_empty_v<F>) {
-  return internal_parser_dsl::BindImpl<F, false>();
-}
-template <typename F>
-constexpr auto BindWithRange(F) requires(std::is_empty_v<F>) {
-  return internal_parser_dsl::BindImpl<F, true>();
 }
 
 }  // namespace frontend

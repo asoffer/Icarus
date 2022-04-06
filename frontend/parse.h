@@ -19,19 +19,14 @@ struct Expression {
                     std::string_view &consumed,
                     std::unique_ptr<ast::Expression> &e);
 };
-//
-// struct Statement {
-//  private:
-//   struct Impl {
-//     using match_type = base::type_list<std::unique_ptr<ast::Expression>>;
-//
-//     static bool Parse(absl::Span<core::Lexeme const> &lexemes,
-//                       std::string_view &consumed, auto &&out);
-//   };
-//
-//  public:
-//   static constexpr auto parser = Impl();
-// };
+
+struct Statement {
+  using match_type = base::type_list<std::unique_ptr<ast::Node>>;
+
+  static bool Parse(absl::Span<core::Lexeme const> &lexemes,
+                    std::string_view &consumed,
+                    std::unique_ptr<ast::Node> &out);
+};
 
 struct Number : core::Kind<core::Lexeme::Kind::Number> {};
 struct StringLiteral : core::Kind<core::Lexeme::Kind::String> {};
@@ -69,12 +64,18 @@ struct CallArgument {
   static constexpr auto bind   = core::Identity;
 };
 
-// struct ExpressionOrExpressionList {
-//   static constexpr auto parser =
-//       (Parenthesized(CommaSeparatedListOf(Expression())) |
-//        Expression << Bind(Vector<std::unique_ptr<ast::Expression>>));
-// };
-//
+struct ExpressionOrExpressionList {
+ private:
+  struct OneExpression {
+    static constexpr auto parser = Expression();
+    static constexpr auto bind = core::Vector<std::unique_ptr<ast::Expression>>;
+  };
+ public:
+  static constexpr auto parser =
+      Parenthesized(CommaSeparatedListOf(Expression())) | OneExpression();
+  static constexpr auto bind = core::Identity;
+};
+
 struct TerminalOrIdentifier {
   using match_type = base::type_list<std::unique_ptr<ast::Expression>>;
 
@@ -120,13 +121,13 @@ struct ArrayType {
       core::MakeUnique<ast::ArrayType, ast::Expression>;
 };
 
-// struct Assignment {
-//   static constexpr auto parser =
-//       (ExpressionOrExpressionList() + ~core::Kind<core::Lexeme::Kind::Assignment>() +
-//        ExpressionOrExpressionList())
-//       << BindWithRange(MakeUnique<ast::Assignment, ast::Node>);
-// };
-// 
+struct Assignment {
+  static constexpr auto parser = ExpressionOrExpressionList() +
+                                 ~core::Kind<core::Lexeme::Kind::Assignment>() +
+                                 ExpressionOrExpressionList();
+  static constexpr auto bind = core::MakeUnique<ast::Assignment>;
+};
+
 // struct BlockNode {
 //   static constexpr auto parser =
 //       Identifier() + Optional(Bracketed(CommaSeparatedListOf(Declaration()))) +
@@ -138,64 +139,71 @@ struct Builtin {
   static constexpr auto bind = core::MakeUnique<ast::Builtin, ast::Expression>;
 };
 
-// struct Declaration {
-//  private:
-//   struct Start {
-//     static constexpr auto parser =
-//         (Parenthesized(CommaSeparatedListOf(DeclarationId()) | DeclarationId())
-//          << Bind(Vector<ast::Declaration::Id>));
-//   };
-// 
-//   struct InferredType {
-//    private:
-//     struct InferenceMarker {
-//       static constexpr auto parser =
-//           (core::Match<":=">() | core::Match<"::=">())
-//           << Bind([](Lexeme const &l) -> ast::Declaration::Flags {
-//                if (l.content().size() == 3) {
-//                  return ast::Declaration::f_IsConst;
-//                }
-//                return ast::Declaration::Flags{};
-//              });
-//     };
-// 
-//    public:
-//     static constexpr auto parser =
-//         (Start() + InferenceMarker() + Expression() +
-//          Optional(~core::Match<"=">() + Expression()))
-//         << BindWithRange(Construct<ast::Declaration>);
-//   };
-// 
-//   struct ExplicitType {
-//    private:
-//     struct Marker {
-//       static constexpr auto parser =
-//           (core::Match<":">() | core::Match<"::">())
-//           << Bind([](Lexeme const &l) -> ast::Declaration::Flags {
-//                if (l.content().size() == 2) {
-//                  return ast::Declaration::f_IsConst;
-//                }
-//                return ast::Declaration::Flags{};
-//              });
-//     };
-// 
-//    public:
-//     static constexpr auto parser =
-//         (Start() + Marker() + Expression())
-//         << BindWithRange(Construct<ast::Declaration>);
-//   };
-// 
-//  public:
-//   static constexpr auto parser = InferredType() | ExplicitType();
-// };
-// 
-// struct DesignatedInitializer {
-//   static constexpr auto parser = Expression() + ~core::Match<".">() +
-//                                  Braced(NewlineSeparatedListOf(Assignment()));
-//   static constexpr auto bind =
-//       core::MakeUnique<ast::DesignatedInitializer, ast::Expression>;
-// };
-//
+struct Declaration {
+ private:
+  struct DeclarationStart {
+   private:
+    struct OneDeclarationId {
+      static constexpr auto parser = DeclarationId();
+      static constexpr auto bind   = core::Vector<ast::Declaration::Id>;
+    };
+
+   public:
+    static constexpr auto parser =
+        OneDeclarationId() |
+        Parenthesized(CommaSeparatedListOf(DeclarationId()));
+    static constexpr auto bind = core::Identity;
+  };
+
+  struct InferredType {
+   private:
+    struct InferenceMarker {
+      static constexpr auto parser = core::Match<":=">() | core::Match<"::=">();
+
+      static constexpr auto bind =
+          [](std::string_view,
+             core::Lexeme const &l) -> ast::Declaration::Flags {
+        if (l.content().size() == 3) { return ast::Declaration::f_IsConst; }
+        return ast::Declaration::Flags{};
+      };
+    };
+
+   public:
+    static constexpr auto parser = DeclarationStart() + InferenceMarker() +
+                                   Expression() +
+                                   Optional(~core::Match<"=">() + Expression());
+    static constexpr auto bind = core::Construct<ast::Declaration>;
+  };
+
+  struct ExplicitType {
+   private:
+    struct Marker {
+      static constexpr auto parser = core::Match<":">() | core::Match<"::">();
+      static constexpr auto bind =
+          [](std::string_view,
+             core::Lexeme const &l) -> ast::Declaration::Flags {
+        if (l.content().size() == 2) { return ast::Declaration::f_IsConst; }
+        return ast::Declaration::Flags{};
+      };
+    };
+
+   public:
+    static constexpr auto parser = DeclarationStart() + Marker() + Expression();
+    static constexpr auto bind   = core::Construct<ast::Declaration>;
+  };
+
+ public:
+  static constexpr auto parser = InferredType() | ExplicitType();
+  static constexpr auto bind   = core::Identity;
+};
+
+struct DesignatedInitializer {
+  static constexpr auto parser = Expression() + ~core::Match<".">() +
+                                 Braced(NewlineSeparatedListOf(Assignment()));
+  static constexpr auto bind =
+      core::MakeUnique<ast::DesignatedInitializer, ast::Expression>;
+};
+
 // struct EnumLiteral {
 //   static constexpr auto parser =
 //       ~core::Match<"enum">() + Braced(NewlineSeparatedListOf(Assignment()));
@@ -230,38 +238,44 @@ struct Builtin {
 struct Label {
   static constexpr auto parser = ~(core::Kind<core::Lexeme::Kind::Hash>() +
                                    core::Match<".">() + Identifier());
-  static constexpr auto bind = [](std::string_view range) {
-    return ast::Label(range);
+  static constexpr auto bind   = [](std::string_view range) {
+    return std::optional<ast::Label>(range);
   };
 };
 
-// struct StructLiteral {
-//   static constexpr auto parser =
-//       ~core::Match<"struct">() + (Impl() | ParameterizedImpl());
-//
-//  private:
-//   struct Impl {
-//     static constexpr auto parser =
-//         Braced(NewlineSeparatedListOf(Declaration()))
-//         << BindWithRange(MakeUnique<ast::StructLiteral, ast::Expression>);
-//   };
-//
-//   struct ParameterizedImpl {
-//     static constexpr auto parser =
-//         (Parenthesized(CommaSeparatedListOf(Declaration())) +
-//          Braced(NewlineSeparatedListOf(Declaration())))
-//         << BindWithRange(
-//                MakeUnique<ast::ParameterizedStructLiteral, ast::Expression>);
-//   };
-// };
-//
-// struct ProgramArguments : core::Match<"arguments"> {};
+struct StructLiteral {
+ private:
+  struct Impl {
+    static constexpr auto parser =
+        Braced(NewlineSeparatedListOf(Declaration()));
+    static constexpr auto bind =
+        core::MakeUnique<ast::StructLiteral, ast::Expression>;
+  };
+
+  struct ParameterizedImpl {
+    static constexpr auto parser =
+        (Parenthesized(CommaSeparatedListOf(Declaration())) +
+         Braced(NewlineSeparatedListOf(Declaration())));
+    static constexpr auto bind =
+        core::MakeUnique<ast::ParameterizedStructLiteral, ast::Expression>;
+  };
+
+ public:
+  static constexpr auto parser =
+      ~core::Match<"struct">() + (Impl() | ParameterizedImpl());
+  static constexpr auto bind = core::Identity;
+};
+
+struct ProgramArguments {
+  static constexpr auto parser = ~core::Match<"arguments">();
+  static constexpr auto bind =
+      core::MakeUnique<ast::ProgramArguments, ast::Expression>;
+};
 
 struct ReturnStatement {
   static constexpr auto parser =
       ~core::Match<"return">() + CommaSeparatedListOf(Expression());
-  static constexpr auto bind = [](auto &&...) { return 0; };
-  // WithRange(MakeUnique<ast::ReturnStmt, ast::Node>);
+  static constexpr auto bind = core::MakeUnique<ast::ReturnStmt, ast::Node>;
 };
 
 // struct ScopeLiteral {
@@ -272,13 +286,14 @@ struct ReturnStatement {
 //        Braced(NewlineSeparatedListOf(Statement())))
 //       << BindWithRange(MakeUnique<ast::ScopeLiteral, ast::Expression>);
 // };
-//
-// struct SliceType {
-//   static constexpr auto parser =
-//       (~Bracketed(Nothing()) + Expression())
-//       << BindWithRange(MakeUnique<ast::SliceType, ast::Expression>);
-// };
-//
+
+struct SliceType {
+  static constexpr auto parser =
+      ~Bracketed(core::Nothing()) + Expression();
+  static constexpr auto bind =
+      core::MakeUnique<ast::SliceType, ast::Expression>;
+};
+
 // struct ShortFunctionLiteral {
 //   static constexpr auto parser =
 //       (Parenthesized(CommaSeparatedListOf(Declaration())) +
@@ -295,13 +310,13 @@ struct YieldStatement {
   static constexpr auto bind = core::MakeUnique<ast::YieldStmt, ast::Node>;
 };
 
-// struct WhileStatement {
-//   static constexpr auto parser =
-//       ~core::Match<"while">() + Parenthesized(Expression()) +
-//           Braced(NewlineSeparatedListOf(Statement()))
-//       << BindWithRange(MakeUnique<ast::WhileStmt, ast::Node>);
-// };
-//
+struct WhileStatement {
+  static constexpr auto parser = ~core::Match<"while">() +
+                                 Parenthesized(Expression()) +
+                                 Braced(NewlineSeparatedListOf(Statement()));
+  static constexpr auto bind = core::MakeUnique<ast::WhileStmt, ast::Node>;
+};
+
 // ICARUS_AST_NODE_X(BinaryAssignmentOperator)
 // ICARUS_AST_NODE_X(BinaryOperator)
 // ICARUS_AST_NODE_X(BindingDeclaration)
@@ -327,13 +342,17 @@ struct AtomicExpression {
 
  public:
   static constexpr auto parser = NumberOrStringLiteral()        //
+                                 | Builtin()                    //
+                                 | ProgramArguments()           //
                                  | Parenthesized(Expression())  //
-      /*| FunctionLiteral()          //
-      | StructLiteral()            //
-      | ScopeLiteral()         */    //
-      | ArrayLiteral()           
-      | ArrayType()             
-      | TerminalOrIdentifier();
+                                 | StructLiteral()              //
+                                 // | FunctionLiteral()         //
+                                 // | ScopeLiteral()            //
+                                 // | DesignatedInitializer()  //
+                                 | ArrayLiteral()  //
+                                 | ArrayType()     //
+                                 | SliceType()     //
+                                 | TerminalOrIdentifier();
 
   static constexpr auto bind = core::Identity;
 };

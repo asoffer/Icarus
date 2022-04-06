@@ -180,10 +180,10 @@ namespace internal_parser {
 
 template <Parser P>
 struct OptionalImpl {
-  using match_type = base::transform_t<std::optional, typename MatchTypeImpl<P>::type>;
+  using match_type = typename MatchTypeImpl<P>::type;
 
   static bool Parse(absl::Span<Lexeme const> &lexemes, std::string_view &consumed, auto &&out) {
-    if (not core::Parse(P(), lexemes, consumed, out)) { out = std::nullopt; }
+    core::Parse(P(), lexemes, consumed, out);
     return true;
   }
 };
@@ -276,7 +276,7 @@ inline constexpr auto MakeUnique =
 };
 
 template <typename T>
-inline constexpr auto Vector = []<typename Arg>(Arg &&arg) {
+inline constexpr auto Vector = []<typename Arg>(std::string_view, Arg &&arg) {
   std::vector<T> v;
   v.push_back(std::forward<Arg>(arg));
   return v;

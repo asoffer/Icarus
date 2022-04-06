@@ -136,6 +136,24 @@ INSTANTIATE_TEST_SUITE_P(
         Failure("#bad_label << 3 << 4")));
 
 INSTANTIATE_TEST_SUITE_P(
+    Assignment, ParseTest,
+    InputFor<Assignment>(Success("a = b"), Success("(a, b) = c"),
+                         Success("a + b = c"), Success("a = b + c"),
+                         Success("(a, b) = (c, d, e)"), Failure("= a"),
+                         Success("() = a"), Failure("a == b")));
+
+INSTANTIATE_TEST_SUITE_P(DesignatedInitializer, ParseTest,
+                         InputFor<DesignatedInitializer>(Success("x.{}"),
+                                                         Success("a(b).{}"),
+                                                         Failure("x + y.{}"),
+                                                         Success("x.{ y = z }"),
+                                                         Success(R"(x.{
+                                                           y = z
+                                                           (a, b) = c
+                                                         })"),
+                                                         Failure("x.{ a }")));
+
+INSTANTIATE_TEST_SUITE_P(
     ReturnStatement, ParseTest,
     InputFor<ReturnStatement>(Success("return"), Success("return 0"),
                               Success("return 3 + 4"), Success("return 3, 4"),
@@ -143,16 +161,16 @@ INSTANTIATE_TEST_SUITE_P(
                               Failure("return name = 3, other_name = 4"),
                               Failure("return 3 return 4")));
 
-// INSTANTIATE_TEST_SUITE_P(
-//     Declaration, ParseTest,
-//     InputFor<Declaration>(
-//         Success("x: y"), Success("x: y + z"), Success("x: y = z"),
-//         Success("x: y + z = a + b"), Success("x :: y"), Success("x :: y +
-//         z"), Success("x :: y = z"), Success("x :: y + z = a + b"), Success("x
-//         := y"), Success("x := y + z"), Success("x ::= z"), Success("x ::= y +
-//         z"), Failure("x: y z"), Success("(x, y): z"), Success("(x, y) :: z"),
-//         Failure("(x + y, z) :: w"), Success("(x) :: w"), Success("(+) :: w"),
-//         Failure("(+, -) :: w"), Success("((+), (-)) :: w")));
+INSTANTIATE_TEST_SUITE_P(
+    Declaration, ParseTest,
+    InputFor<Declaration>(
+        Success("x: y"), Success("x: y + z"), Success("x: y = z"),
+        Success("x: y + z = a + b"), Success("x :: y"), Success("x :: y + z"),
+        Success("x :: y = z"), Success("x :: y + z = a + b"), Success("x := y"),
+        Success("x := y + z"), Success("x ::= z"), Success("x ::= y + z"),
+        Failure("x: y z"), Success("(x, y): z"), Success("(x, y) :: z"),
+        Failure("(x + y, z) :: w"), Success("(x) :: w"), Success("(+) :: w"),
+        Failure("(+, -) :: w"), Success("((+), (-)) :: w")));
 
 INSTANTIATE_TEST_SUITE_P(
     ArrayLiteral, ParseTest,
@@ -166,8 +184,49 @@ INSTANTIATE_TEST_SUITE_P(ArrayType, ParseTest,
                                              Success("[1, 2; i32]"),
                                              Failure("[; i32]"),
                                              Success("[2; [1; i32]]")));
+
 INSTANTIATE_TEST_SUITE_P(Builtin, ParseTest,
                          InputFor<Builtin>(Success("builtin")));
+
+INSTANTIATE_TEST_SUITE_P(ProgramArguments, ParseTest,
+                         InputFor<ProgramArguments>(Success("arguments")));
+
+INSTANTIATE_TEST_SUITE_P(
+    WhileStatement, ParseTest,
+    InputFor<WhileStatement>(Success("while (condition) {}"),
+                             Failure("while () {}"),
+                             Success("while (condition) { x }"),
+                             Success(R"(while (condition) { 
+                                          x
+                                        })"),
+                             Success(R"(while (condition) { 
+                                          x
+                                          y = z
+                                        })"),
+                             Failure("while (x, y) { z }")));
+
+INSTANTIATE_TEST_SUITE_P(SliceType, ParseTest,
+                         InputFor<SliceType>(Success("[]char"),
+                                             Failure("char[]"),
+                                             Success("[][]char"),
+                                             Success("[](x + y)")));
+INSTANTIATE_TEST_SUITE_P(
+    StructLiteral, ParseTest,
+    InputFor<StructLiteral>(Success("struct {}"), Failure("struct { a }"),
+                            Success("struct { a: b }"), Success(R"(struct {
+                              a: b
+                              c: d
+                            })"),
+                            Success(R"(struct () {
+                              a: b
+                              c: d
+                            })"),
+                            Success("struct (x :: y) {}"),
+                            Failure("struct (x :: y) { a }"),
+                            Success(R"(struct (x :: y) {
+                              a: b
+                              c: d
+                            })")));
 
 }  // namespace
 }  // namespace frontend

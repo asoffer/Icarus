@@ -178,29 +178,40 @@ bool Expression::Parse(absl::Span<core::Lexeme const> &lexemes,
   return true;
 }
 
-// bool Statement::Impl::Parse(absl::Span<core::Lexeme const> &lexemes,
-//                             std::string_view &consumed,
-//                             std::unique_ptr<ast::Node> &node) {
-//   PARSE_DEBUG_LOG();
-//   absl::Cleanup cl = [&] {
-//     if (node) { LOG("", "%s", node->DebugString()); }
-//   };
-//   auto iter = std::find_if(lexemes.begin(), lexemes.end(), [](core::Lexeme const &l) {
-//     return l.kind() != core::Lexeme::Kind::Newline;
-//   });
-//   if (iter == lexemes.end()) { return false; }
-//   absl::Span span = lexemes = absl::MakeConstSpan(iter, lexemes.end());
-// 
-//   constexpr auto Statement = (                                          //
-//       WhileStatement                                                    //
-//       | Assignment                                                      //
-//       | (Declaration << Bind(MakeUnique<ast::Declaration, ast::Node>))  //
-//       | ReturnStatement                                                 //
-//       | YieldStatement                                                  //
-//       | (Expression << Bind([](std::unique_ptr<ast::Expression> e)
-//                                 -> std::unique_ptr<ast::Node> { return e; })));
-//   return Statement.Parse(lexemes, consumed, node);
-// }
+struct AssignmentNode {
+  static constexpr auto parser = Assignment();
+  static constexpr auto bind =
+      [](std::string_view,
+         std::unique_ptr<ast::Assignment> a) -> std::unique_ptr<ast::Node> {
+    return std::move(a);
+  };
+};
+
+bool Statement::Parse(absl::Span<core::Lexeme const> &lexemes,
+                      std::string_view &consumed,
+                      std::unique_ptr<ast::Node> &node) {
+  PARSE_DEBUG_LOG();
+  absl::Cleanup cl = [&] {
+    if (node) { LOG("", "%s", node->DebugString()); }
+  };
+  auto iter =
+      std::find_if(lexemes.begin(), lexemes.end(), [](core::Lexeme const &l) {
+        return l.kind() != core::Lexeme::Kind::Newline;
+      });
+  if (iter == lexemes.end()) { return false; }
+  absl::Span span = lexemes = absl::MakeConstSpan(iter, lexemes.end());
+
+  constexpr auto BasicStatement = (  //
+      WhileStatement()               //
+      | AssignmentNode()             //
+      // | (Declaration() << Bind(MakeUnique<ast::Declaration, ast::Node>)) //
+      | ReturnStatement()  //
+      | YieldStatement()   //
+      // | (Expression() << Bind([](std::unique_ptr<ast::Expression> e)
+      //                           -> std::unique_ptr<ast::Node> { return e; }))
+  );
+  return core::Parse(BasicStatement, lexemes, consumed, node);
+}
 
 std::optional<ast::Module> ParseModule(absl::Span<core::Lexeme const> lexemes,
                                        diagnostic::DiagnosticConsumer &) {
