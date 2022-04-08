@@ -40,5 +40,5 @@ error ::= enum {
 }
 
 #{export} get ::= () -> error {
-  return @foreign("errno", *c.int) as error
+  return @builtin.foreign("errno", *c.int) as error
 }

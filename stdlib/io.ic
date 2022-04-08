@@ -2,7 +2,7 @@
 #{export} Print ::= (n: i16) -> () { Print(n as i64) }
 #{export} Print ::= (n: i32) -> () { Print(n as i64) }
 #{export} Print ::= (n: i64) -> () {
-  printf ::= foreign("printf", ([*]char, i64) -> i32)
+  printf ::= builtin.foreign("printf", ([*]char, i64) -> i32)
   printf("%lld".data, n)
 }
 
@@ -10,7 +10,7 @@
 #{export} Print ::= (n: u16) -> () { Print(n as u64) }
 #{export} Print ::= (n: u32) -> () { Print(n as u64) }
 #{export} Print ::= (n: u64) -> () {
-  printf ::= foreign("printf", ([*]char, u64) -> i32)
+  printf ::= builtin.foreign("printf", ([*]char, u64) -> i32)
   printf("%llu".data, n)
 }
 
@@ -19,25 +19,25 @@
 }
 
 #{export} Print ::= (c: char) -> () {
-  printf ::= foreign("printf", ([*]char, char) -> i32)
+  printf ::= builtin.foreign("printf", ([*]char, char) -> i32)
   printf("%c".data, c)
 }
 
 #{export} Print ::= (s: []char) -> () {
-  printf ::= foreign("printf", ([*]char, u64, [*]char) -> i32)
+  printf ::= builtin.foreign("printf", ([*]char, u64, [*]char) -> i32)
   printf("%.*s".data, s.length, &s[0])
 }
 
 // Warning: Unsafe, prints everything up to the first null byte.
 #{export} Print ::= (s: [*]char) -> () {
-  printf ::= foreign("printf", ([*]char, [*]char) -> i32)
+  printf ::= builtin.foreign("printf", ([*]char, [*]char) -> i32)
   printf("%s".data, s)
 }
 
 #{export} Print ::= (f: f32) -> () { Print(f as f64) }
 
 #{export} Print ::= (f: f64) -> () {
-  printf ::= foreign("printf", ([*]char, f64) -> i32)
+  printf ::= builtin.foreign("printf", ([*]char, f64) -> i32)
   printf("%f".data, f)
 }
 

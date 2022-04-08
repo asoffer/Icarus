@@ -121,9 +121,6 @@ struct ParamDependencyGraphBuilder {
     for (auto const *stmt : node->stmts()) { (*this)(stmt, d); }
   }
 
-  void operator()(BuiltinFn const *node,
-                  core::DependencyNode<Declaration const *> d) {}
-
   void operator()(Call const *node,
                   core::DependencyNode<Declaration const *> d) {
     (*this)(node->callee(), d);

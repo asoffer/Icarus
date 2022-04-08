@@ -17,93 +17,100 @@ namespace compiler {
 namespace {
 
 // TODO: Replace with `builtin` module.
-void EmitBuiltinCall(Compiler &c, ast::BuiltinFn const *callee,
+bool EmitBuiltinCall(Compiler &c, std::string_view f,
                      absl::Span<ast::Call::Argument const> args,
                      ir::PartialResultBuffer &out) {
-  switch (callee->value().which()) {
-    case ir::BuiltinFn::Which::Slice: {
-      type::Slice const *slice_type =
-          type::Slc(c.context()
-                        .qual_types(&args[0].expr())[0]
-                        .type()
-                        .as<type::BufferPointer>()
-                        .pointee());
-      auto slice = c.state().TmpAlloca(slice_type);
+  if (f == "slice") {
+    type::Slice const *slice_type =
+        type::Slc(c.context()
+                      .qual_types(&args[0].expr())[0]
+                      .type()
+                      .as<type::BufferPointer>()
+                      .pointee());
+    auto slice = c.state().TmpAlloca(slice_type);
 
-      // TODO: These have the wrong types, or at least these types are not the
-      // types of the values held, but that's what's expected by EmitMoveAssign.
-      type::Typed<ir::RegOr<ir::addr_t>> data(
-          c.current_block()->Append(type::SliceDataInstruction{
-              .slice  = slice,
-              .result = c.current().subroutine->Reserve(),
-          }),
-          type::BufPtr(slice_type->data_type()));
-      type::Typed<ir::RegOr<ir::addr_t>> length(
-          c.current_block()->Append(type::SliceLengthInstruction{
-              .slice  = slice,
-              .result = c.current().subroutine->Reserve(),
-          }),
-          type::Slice::LengthType());
+    // TODO: These have the wrong types, or at least these types are not the
+    // types of the values held, but that's what's expected by EmitMoveAssign.
+    type::Typed<ir::RegOr<ir::addr_t>> data(
+        c.current_block()->Append(type::SliceDataInstruction{
+            .slice  = slice,
+            .result = c.current().subroutine->Reserve(),
+        }),
+        type::BufPtr(slice_type->data_type()));
+    type::Typed<ir::RegOr<ir::addr_t>> length(
+        c.current_block()->Append(type::SliceLengthInstruction{
+            .slice  = slice,
+            .result = c.current().subroutine->Reserve(),
+        }),
+        type::Slice::LengthType());
 
-      ir::PartialResultBuffer buffer;
-      c.EmitToBuffer(&args[0].expr(), buffer);
-      MoveAssignmentEmitter emitter(c);
-      emitter(data,
-              type::Typed(buffer[0],
-                          type::Type(type::BufPtr(slice_type->data_type()))));
-      buffer.clear();
-      c.EmitToBuffer(&args[1].expr(), buffer);
-      emitter(length, type::Typed(buffer[0], type::Slice::LengthType()));
-      out.append(slice);
-      return;
-    } break;
-    case ir::BuiltinFn::Which::Foreign: {
-      // `EvaluateOrDiagnoseAs` cannot yet support slices because we it
-      // internally converts compile-time types to a type::Type and it doesn't
-      // know which instance of type::Slice it should use.
-      auto name_buffer =
-          c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
-              &args[0].expr(), type::Slc(type::Char)));
-      if (not name_buffer) { return; }
-
-      auto maybe_foreign_type =
-          c.EvaluateOrDiagnoseAs<type::Type>(&args[1].expr());
-      if (not maybe_foreign_type) { return; }
-      auto slice = name_buffer->get<ir::Slice>(0);
-
-      std::string name(slice);
-      if (maybe_foreign_type->is<type::Pointer>()) {
-        auto result = c.current_block()->Append(ir::LoadDataSymbolInstruction{
-            .name   = std::move(name),
-            .result = c.current().subroutine->Reserve()});
-        out.append(result);
-      } else if (auto const *f = maybe_foreign_type->if_as<type::Function>()) {
-        ir::ForeignFn fn =
-            c.shared_context().ForeignFunction(std::move(name), f);
-        out.append(ir::Fn(fn));
-      } else {
-        UNREACHABLE();
-      }
-      return;
-    } break;
-
-    case ir::BuiltinFn::Which::DebugIr:
-      c.current_block()->Append(
-          ir::DebugIrInstruction{.fn = c.current().subroutine});
-      return;
-
-    case ir::BuiltinFn::Which::CompilationError: UNREACHABLE();
+    ir::PartialResultBuffer buffer;
+    c.EmitToBuffer(&args[0].expr(), buffer);
+    MoveAssignmentEmitter emitter(c);
+    emitter(data,
+            type::Typed(buffer[0],
+                        type::Type(type::BufPtr(slice_type->data_type()))));
+    buffer.clear();
+    c.EmitToBuffer(&args[1].expr(), buffer);
+    emitter(length, type::Typed(buffer[0], type::Slice::LengthType()));
+    out.append(slice);
+    return true;
   }
-  UNREACHABLE();
+
+  if (f == "foreign") {
+    // `EvaluateOrDiagnoseAs` cannot yet support slices because we it
+    // internally converts compile-time types to a type::Type and it doesn't
+    // know which instance of type::Slice it should use.
+    auto name_buffer =
+        c.EvaluateToBufferOrDiagnose(type::Typed<ast::Expression const *>(
+            &args[0].expr(), type::Slc(type::Char)));
+    if (not name_buffer) { return true; }
+
+    auto maybe_foreign_type =
+        c.EvaluateOrDiagnoseAs<type::Type>(&args[1].expr());
+    if (not maybe_foreign_type) { return true; }
+    auto slice = name_buffer->get<ir::Slice>(0);
+
+    std::string name(slice);
+    if (maybe_foreign_type->is<type::Pointer>()) {
+      auto result = c.current_block()->Append(ir::LoadDataSymbolInstruction{
+          .name   = std::move(name),
+          .result = c.current().subroutine->Reserve()});
+      out.append(result);
+    } else if (auto const *f = maybe_foreign_type->if_as<type::Function>()) {
+      ir::ForeignFn fn = c.shared_context().ForeignFunction(std::move(name), f);
+      out.append(ir::Fn(fn));
+    } else {
+      UNREACHABLE();
+    }
+    return true;
+  }
+
+  if (f == "debug_ir") {
+    c.current_block()->Append(
+        ir::DebugIrInstruction{.fn = c.current().subroutine});
+    return true;
+  }
+
+  if (f == "compilation_error") { UNREACHABLE(); }
+
+  return false;
 }
 
 }  // namespace
 
 void Compiler::EmitToBuffer(ast::Call const *node,
                             ir::PartialResultBuffer &out) {
-  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    EmitBuiltinCall(*this, b, node->arguments(), out);
-    return;
+  if (auto const *a = node->callee()->if_as<ast::Access>()) {
+    if (context().qual_types(a->operand())[0] ==
+        type::QualType::Constant(type::Module)) {
+      if (*EvaluateOrDiagnoseAs<ir::ModuleId>(a->operand()) ==
+          ir::ModuleId::Builtin()) {
+        if (EmitBuiltinCall(*this, a->member_name(), node->arguments(), out)) {
+          return;
+        }
+      }
+    }
   }
 
   auto qts = context().qual_types(node);
@@ -142,13 +149,20 @@ void Compiler::EmitToBuffer(ast::Call const *node,
 void Compiler::EmitMoveInit(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
-  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    ir::PartialResultBuffer out;
-    EmitBuiltinCall(*this, b, node->arguments(), out);
-    if (out.empty()) { return; }
-    MoveAssignmentEmitter emitter(*this);
-    emitter(to[0], type::Typed(out[0], context().qual_types(node)[0].type()));
-    return;
+  if (auto const *a = node->callee()->if_as<ast::Access>()) {
+    if (context().qual_types(a->operand())[0] ==
+        type::QualType::Constant(type::Module)) {
+      if (*EvaluateOrDiagnoseAs<ir::ModuleId>(a->operand()) ==
+          ir::ModuleId::Builtin()) {
+        ir::PartialResultBuffer out;
+        if (EmitBuiltinCall(*this, a->member_name(), node->arguments(), out)) {
+          if (out.empty()) { return; }
+          MoveInitializationEmitter emitter(*this);
+          emitter(to[0], out);
+          return;
+        }
+      }
+    }
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -178,13 +192,21 @@ void Compiler::EmitMoveInit(
 void Compiler::EmitCopyInit(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
-  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    ir::PartialResultBuffer out;
-    EmitBuiltinCall(*this, b, node->arguments(), out);
-    if (out.empty()) { return; }
-    CopyInitializationEmitter emitter(*this);
-    emitter(to[0], out);
-    return;
+  if (auto const *a = node->callee()->if_as<ast::Access>()) {
+    if (context().qual_types(a->operand())[0] ==
+        type::QualType::Constant(type::Module)) {
+      if (*EvaluateOrDiagnoseAs<ir::ModuleId>(a->operand()) ==
+          ir::ModuleId::Builtin()) {
+        ir::PartialResultBuffer out;
+        if (EmitBuiltinCall(*this, a->member_name(), node->arguments(), out)) {
+          if (out.empty()) { return; }
+
+          CopyInitializationEmitter emitter(*this);
+          emitter(to[0], out);
+          return;
+        }
+      }
+    }
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -214,13 +236,22 @@ void Compiler::EmitCopyInit(
 void Compiler::EmitMoveAssign(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
-  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    ir::PartialResultBuffer out;
-    EmitBuiltinCall(*this, b, node->arguments(), out);
-    if (out.empty()) { return; }
-    MoveAssignmentEmitter emitter(*this);
-    emitter(to[0], type::Typed(out[0], context().qual_types(node)[0].type()));
-    return;
+  if (auto const *a = node->callee()->if_as<ast::Access>()) {
+    if (context().qual_types(a->operand())[0] ==
+        type::QualType::Constant(type::Module)) {
+      if (*EvaluateOrDiagnoseAs<ir::ModuleId>(a->operand()) ==
+          ir::ModuleId::Builtin()) {
+        ir::PartialResultBuffer out;
+        if (EmitBuiltinCall(*this, a->member_name(), node->arguments(), out)) {
+          if (out.empty()) { return; }
+
+          MoveAssignmentEmitter emitter(*this);
+          emitter(to[0],
+                  type::Typed(out[0], context().qual_types(node)[0].type()));
+          return;
+        }
+      }
+    }
   }
 
   // Constant arguments need to be computed entirely before being used to
@@ -249,13 +280,22 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitCopyAssign(
     ast::Call const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
-  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    ir::PartialResultBuffer out;
-    EmitBuiltinCall(*this, b, node->arguments(), out);
-    if (out.empty()) { return; }
-    CopyAssignmentEmitter emitter(*this);
-    emitter(to[0], type::Typed(out[0], context().qual_types(node)[0].type()));
-    return;
+  if (auto const *a = node->callee()->if_as<ast::Access>()) {
+    if (context().qual_types(a->operand())[0] ==
+        type::QualType::Constant(type::Module)) {
+      if (*EvaluateOrDiagnoseAs<ir::ModuleId>(a->operand()) ==
+          ir::ModuleId::Builtin()) {
+        ir::PartialResultBuffer out;
+        if (EmitBuiltinCall(*this, a->member_name(), node->arguments(), out)) {
+          if (out.empty()) { return; }
+
+          CopyAssignmentEmitter emitter(*this);
+          emitter(to[0],
+                  type::Typed(out[0], context().qual_types(node)[0].type()));
+          return;
+        }
+      }
+    }
   }
 
   // Constant arguments need to be computed entirely before being used to

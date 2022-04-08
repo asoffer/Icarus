@@ -3,20 +3,20 @@
 
 c ::= import "c/types.ic"
 
-#{export} time_t ::= i64
-#{export} time ::= foreign("time", (*time_t) -> time_t)
-#{export} difftime ::= foreign("difftime", (time_t, time_t) -> c.double)
-#{export} ctime ::= foreign("ctime", (*time_t) -> [*]char)
+#{export} time_t   ::= i64
+#{export} time     ::= builtin.foreign("time", (*time_t) -> time_t)
+#{export} difftime ::= builtin.foreign("difftime", (time_t, time_t) -> c.double)
+#{export} ctime    ::= builtin.foreign("ctime", (*time_t) -> [*]char)
 
-#{export} clock_t ::= i64
+#{export} clock_t        ::= i64
 #{export} CLOCKS_PER_SEC ::= 1000000
-#{export} clock ::= foreign("clock", () -> clock_t)
+#{export} clock          ::= builtin.foreign("clock", () -> clock_t)
 
 // Hack, because we can't expose structs via the FFI.
-#{export} tm ::= builtin.opaque()
-#{export} mktime ::= foreign("mktime", (*tm) -> time_t)
-#{export} asctime ::= foreign("asctime", (*tm) -> [*]char)
-#{export} gmtime ::= foreign("gmtime", (*time_t) -> *tm)
-#{export} localtime ::= foreign("localtime", (*time_t) -> *tm)
-#{export} strftime ::= foreign("strftime",
-                               ([*]char, c.size_t, [*]char, *tm) -> c.size_t)
+#{export} tm        ::= builtin.opaque()
+#{export} mktime    ::= builtin.foreign("mktime", (*tm) -> time_t)
+#{export} asctime   ::= builtin.foreign("asctime", (*tm) -> [*]char)
+#{export} gmtime    ::= builtin.foreign("gmtime", (*time_t) -> *tm)
+#{export} localtime ::= builtin.foreign("localtime", (*time_t) -> *tm)
+#{export} strftime  ::= builtin.foreign(
+    "strftime", ([*]char, c.size_t, [*]char, *tm) -> c.size_t)

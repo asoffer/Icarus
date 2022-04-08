@@ -48,14 +48,14 @@ next_line ::= (handle: *c.File, line: *[]char) -> bool {
   alloc_size: ctypes.size_t
   length := c.getline(&data, &alloc_size, handle)
   if (length >= 0) {
-    @line = slice(data, length as u64)
+    @line = builtin.slice(data, length as u64)
   }
   return length > 0
 }
 
 #{export}
 Lines ::= scope [ctx] (f: File) {
-  line := slice(null as [*]char, 0)
+  line := builtin.slice(null as [*]char, 0)
   while (next_line(f'CFileHandle, &line)) {
     line >> ctx.each
   }

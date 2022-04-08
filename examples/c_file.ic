@@ -14,7 +14,7 @@ if (errno.get() as u64 == 0) {
   p: [*]char
   num: u64
   c.getline(&p, &num, f)
-  io.Print(slice(p, num))
+  io.Print(builtin.slice(p, num))
   mem.deallocate(p)
   c.fclose(f)
 } else {

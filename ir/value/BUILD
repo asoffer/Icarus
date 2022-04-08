@@ -16,15 +16,6 @@ cc_library(
 )
 
 cc_library(
-    name = "builtin_fn",
-    hdrs = ["builtin_fn.h"],
-    deps = [
-        "//base:extend",
-        "//base/extend:equality",
-    ],
-)
-
-cc_library(
     name = "char",
     hdrs = ["char.h"],
 )
@@ -33,7 +24,6 @@ cc_library(
     name = "fn",
     hdrs = ["fn.h"],
     deps = [
-        ":builtin_fn",
         ":foreign_fn",
         ":native_fn",
         "//core:parameters",

@@ -117,7 +117,6 @@ struct ExecutionContext {
   void Execute(ir::Fn fn, StackFrame &frame) {
     switch (fn.kind()) {
       case ir::Fn::Kind::Native: CallNative<InstSet>(frame); break;
-      case ir::Fn::Kind::Builtin: UNREACHABLE();
       case ir::Fn::Kind::Foreign: CallFn(fn.foreign(), frame); break;
     }
   }

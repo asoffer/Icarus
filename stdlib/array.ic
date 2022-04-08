@@ -112,7 +112,7 @@ array ::= struct (T :: type) {
 // 
 // #{export}
 // Print ::= (s: *string) -> () {
-//   printf ::= foreign("printf", ([*]char, [*]char) -> i32)
+//   printf ::= builtin.foreign("printf", ([*]char, [*]char) -> i32)
 //   core.if (not s'is_empty) then { printf("%s".data, s._data) }
 // }
 // 

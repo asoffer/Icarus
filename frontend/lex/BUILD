@@ -10,7 +10,6 @@ cc_library(
         "//ast:ast",
         "//base:global",
         "//diagnostic/consumer",
-        "//ir/value:builtin_fn",
         "//ir/value:hashtag",
         "//ir/value:integer",
         "//ir/value:slice",

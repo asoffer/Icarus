@@ -3,20 +3,20 @@
 
 c ::= import "c/types.ic"
 
-#{export} atoi  ::= foreign("atoi", [*]char -> c.int)
-#{export} atol  ::= foreign("atol", [*]char -> c.long)
-#{export} atoll ::= foreign("atoll", [*]char -> c.long_long)
-#{export} atof  ::= foreign("atof", [*]char -> c.double)
+#{export} atoi  ::= builtin.foreign("atoi", [*]char -> c.int)
+#{export} atol  ::= builtin.foreign("atol", [*]char -> c.long)
+#{export} atoll ::= builtin.foreign("atoll", [*]char -> c.long_long)
+#{export} atof  ::= builtin.foreign("atof", [*]char -> c.double)
 
-#{export} strtol   ::= foreign("strtol", ([*]char, *[*]char, c.int) -> c.long)
-#{export} strtoll  ::= foreign("strtoll", ([*]char, *[*]char, c.int) -> c.long_long)
-#{export} strtoul  ::= foreign("strtoul", ([*]char, *[*]char, c.int) -> c.unsigned_long)
-#{export} strtoull ::= foreign("strtoull", ([*]char, *[*]char, c.int) -> c.unsigned_long_long)
-#{export} strtof ::= foreign("strtof", ([*]char, *[*]char) -> c.float)
-#{export} strtod ::= foreign("strtod", ([*]char, *[*]char) -> c.double)
+#{export} strtol   ::= builtin.foreign("strtol", ([*]char, *[*]char, c.int) -> c.long)
+#{export} strtoll  ::= builtin.foreign("strtoll", ([*]char, *[*]char, c.int) -> c.long_long)
+#{export} strtoul  ::= builtin.foreign("strtoul", ([*]char, *[*]char, c.int) -> c.unsigned_long)
+#{export} strtoull ::= builtin.foreign("strtoull", ([*]char, *[*]char, c.int) -> c.unsigned_long_long)
+#{export} strtof ::= builtin.foreign("strtof", ([*]char, *[*]char) -> c.float)
+#{export} strtod ::= builtin.foreign("strtod", ([*]char, *[*]char) -> c.double)
 
-#{export} abs ::= foreign("abs", c.int -> c.int)
-#{export} labs ::= foreign("labs", c.long -> c.long)
-#{export} llabs ::= foreign("llabs", c.long_long -> c.long_long)
+#{export} abs ::= builtin.foreign("abs", c.int -> c.int)
+#{export} labs ::= builtin.foreign("labs", c.long -> c.long)
+#{export} llabs ::= builtin.foreign("llabs", c.long_long -> c.long_long)
 
-#{export} system ::= foreign("system", [*]char -> c.int)
+#{export} system ::= builtin.foreign("system", [*]char -> c.int)

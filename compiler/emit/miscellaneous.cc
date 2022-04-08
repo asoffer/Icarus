@@ -52,11 +52,6 @@ void Compiler::EmitToBuffer(ast::ArgumentType const *node,
   out.append(context().arg_type(node->name()));
 }
 
-void Compiler::EmitToBuffer(ast::BuiltinFn const *node,
-                            ir::PartialResultBuffer &out) {
-  out.append(ir::Fn(node->value()));
-}
-
 void Compiler::EmitToBuffer(ast::Import const *node,
                             ir::PartialResultBuffer &out) {
   context().LoadConstant(node, out);

@@ -11,7 +11,7 @@ io    ::= import "io.ic"
 //
 // `Lines` is another user-defined scope in the `file` module. Given a handle to
 // a file, it evaluates the body of the `each` block once for every line in the
-// file (lines are delimited by newline characters, !\n).
+// file (lines are delimited by newline characters, !'\n').
 
 file.With("examples/file.ic") open [f: file.File] {
   file.Lines(f) each [line: []char] {

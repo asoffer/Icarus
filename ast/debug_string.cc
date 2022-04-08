@@ -180,12 +180,6 @@ void BlockNode::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, indentation(indent), "}\n");
 }
 
-void BuiltinFn::DebugStrAppend(std::string *out, size_t indent) const {
-  std::stringstream ss;
-  ss << value();
-  out->append(ss.str());
-}
-
 void AppendCallArgument(size_t indent, std::string *out,
                         Call::Argument const &arg) {
   if (arg.named()) { absl::StrAppend(out, arg.name(), " = "); }

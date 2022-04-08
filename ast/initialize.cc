@@ -155,10 +155,6 @@ void BlockNode::Initialize(Initializer& initializer) {
   InitializeParams();
 }
 
-void BuiltinFn::Initialize(Initializer& initializer) {
-  scope_ = initializer.scope;
-}
-
 void Call::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
   callee_->Initialize(initializer);

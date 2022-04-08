@@ -11,7 +11,6 @@
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
-#include "ir/value/builtin_fn.h"
 #include "ir/value/integer.h"
 #include "ir/value/slice.h"
 #include "type/primitive.h"
@@ -334,10 +333,6 @@ Lexeme ConsumeWord(std::string_view &cursor) {
 
   if (auto iter = kReservedTypes->find(word); iter != kReservedTypes->end()) {
     return Lexeme(std::make_unique<ast::Terminal>(word, iter->second));
-  }
-
-  if (auto maybe_builtin = ir::BuiltinFn::ByName(word)) {
-    return Lexeme(std::make_unique<ast::BuiltinFn>(word, *maybe_builtin));
   }
 
   if (auto iter = kKeywords->find(word); iter != kKeywords->end()) {

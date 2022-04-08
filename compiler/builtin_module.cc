@@ -130,4 +130,6 @@ std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
   return module;
 }
 
+// TODO: Handle slice, foreign, compilation_error, reserve_memory, debug_ir
+
 }  // namespace compiler

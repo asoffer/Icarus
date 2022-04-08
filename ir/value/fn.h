@@ -8,7 +8,6 @@
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "core/parameters.h"
-#include "ir/value/builtin_fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
 #include "type/function.h"
@@ -23,15 +22,13 @@ namespace ir {
 struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
  private:
   using underlying_type = uintptr_t;
-  static_assert(alignof(BuiltinFn) <= alignof(underlying_type));
   static_assert(alignof(NativeFn) <= alignof(underlying_type));
   static_assert(alignof(ForeignFn) <= alignof(underlying_type));
-  static_assert(sizeof(BuiltinFn) <= sizeof(underlying_type));
   static_assert(sizeof(NativeFn) <= sizeof(underlying_type));
   static_assert(sizeof(ForeignFn) <= sizeof(underlying_type));
 
  public:
-  enum class Kind { Native, Builtin, Foreign };
+  enum class Kind { Native, Foreign };
 
   Fn() : Fn(NativeFn(nullptr)) {}
 
@@ -47,22 +44,7 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
   type::Function const *type() const {
     switch (kind()) {
       case Kind::Native: return native().type();
-      case Kind::Builtin: {
-        switch (builtin().which()) {
-          case BuiltinFn::Which::Slice:
-          case BuiltinFn::Which::CompilationError:
-          case BuiltinFn::Which::Foreign:
-            // Note: We do not allow passing `foreign` or `slice` around as a
-            // function object. It is call-only, which means the generic part
-            // can be handled in the type checker. The value here may be stored,
-            // but it will never be accessed again.
-            //
-            // TODO: Why not allow passing it around?
-            return nullptr;
-          case BuiltinFn::Which::DebugIr: return type::Func({}, {});
-        }
-        case Kind::Foreign: return foreign().type();
-      }
+      case Kind::Foreign: return foreign().type();
     }
     UNREACHABLE();
   }
@@ -75,20 +57,8 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
                                2);
     ASSERT((data & high_bits) == 0u);
     data_ = (data << underlying_type{2});
-    data_ |= 2;
-    ASSERT(kind() == Kind::Foreign);
-  }
-
-  Fn(BuiltinFn f) {
-    underlying_type data;
-    std::memcpy(&data, &f, sizeof(f));
-    constexpr underlying_type high_bits =
-        underlying_type{3} << (std::numeric_limits<underlying_type>::digits -
-                               2);
-    ASSERT((data & high_bits) == 0u);
-    data_ = (data << underlying_type{2});
     data_ |= 1;
-    ASSERT(kind() == Kind::Builtin);
+    ASSERT(kind() == Kind::Foreign);
   }
 
   NativeFn native() const {
@@ -103,11 +73,6 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
     return ForeignFn(data_ >> 2);
   }
 
-  BuiltinFn builtin() const {
-    ASSERT(kind() == Kind::Builtin);
-    return BuiltinFn(static_cast<BuiltinFn::Which>(data_ >> 2));
-  }
-
  private:
   friend base::EnableExtensions;
 
@@ -117,7 +82,6 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
 inline std::ostream &operator<<(std::ostream &os, Fn f) {
   switch (f.kind()) {
     case Fn::Kind::Native: return os << f.native();
-    case Fn::Kind::Builtin: return os << f.builtin();
     case Fn::Kind::Foreign: return os << f.foreign();
   }
   UNREACHABLE();

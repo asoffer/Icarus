@@ -123,9 +123,9 @@ namespace {
 
 TEST(CallTest, Foreign) {
   constexpr std::string_view kDefinitions = R"(
-  f_ptr ::= foreign("ForeignFunctionPtr", () -> *i64)
-  f_i8  ::= foreign("ForeignFunctionI8", () -> i8)
-  f_i64 ::= foreign("ForeignFunctionI64", () -> i64)
+  f_ptr ::= builtin.foreign("ForeignFunctionPtr", () -> *i64)
+  f_i8  ::= builtin.foreign("ForeignFunctionI8", () -> i8)
+  f_i64 ::= builtin.foreign("ForeignFunctionI64", () -> i64)
   )";
 
   {

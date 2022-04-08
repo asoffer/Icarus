@@ -43,7 +43,6 @@ cc_library(
         "//core:parameters",
         "//frontend/lex:operators",
         "//ir/value:addr",
-        "//ir/value:builtin_fn",
         "//ir/value:char",
         "//ir/value:integer",
         "//ir/value:label",

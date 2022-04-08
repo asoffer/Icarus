@@ -19,7 +19,6 @@
 #include "core/parameters.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/addr.h"
-#include "ir/value/builtin_fn.h"
 #include "ir/value/label.h"
 #include "ir/value/result_buffer.h"
 #include "type/primitive.h"
@@ -523,22 +522,6 @@ struct Builtin : Expression {
   void Initialize(Node::Initializer &initializer) override {
     scope_ = initializer.scope;
   }
-};
-
-// Represents a builtin (possibly generic) function. Examples include `foreign`,
-// which declares a foreign-function by name, or `opaque` which constructs a new
-// type with no known size or alignment (users can pass around pointers to
-// values of an opaque type, but not actual values).
-struct BuiltinFn : Expression {
-  explicit BuiltinFn(std::string_view range, ir::BuiltinFn b)
-      : Expression(IndexOf<BuiltinFn>(), range), val_(b) {}
-  ir::BuiltinFn value() const { return val_; }
-
-  void DebugStrAppend(std::string *out, size_t indent) const override;
-  void Initialize(Node::Initializer &initializer) override;
-
- private:
-  ir::BuiltinFn val_;
 };
 
 // Call:

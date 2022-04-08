@@ -48,7 +48,7 @@ TEST(BuiltinReserveMemory, WrongType) {
 
 TEST(BuiltinCompilationError, CompilationErrorError) {
   test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"(compilation_error(0, "hello"))");
+  auto &mod        = infra.add_module(R"(builtin.compilation_error(0, "hello"))");
   auto const *call = mod.get<ast::Call>();
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
@@ -56,7 +56,7 @@ TEST(BuiltinCompilationError, CompilationErrorError) {
 
 TEST(BuiltinCompilationError, CompilationErrorSuccess) {
   test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"(compilation_error(i64, "hello"))");
+  auto &mod        = infra.add_module(R"(builtin.compilation_error(i64, "hello"))");
   auto const *call = mod.get<ast::Call>();
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "user-defined-error")));
@@ -64,19 +64,21 @@ TEST(BuiltinCompilationError, CompilationErrorSuccess) {
 
 TEST(BuiltinForeign, FunctionSuccess) {
   test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"(foreign("my_function", i64 -> bool))");
-  auto const *call = mod.get<ast::Call>();
+  auto &mod =
+      infra.add_module(R"(builtin.foreign("my_function", i64 -> bool))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
-  EXPECT_EQ(qt,
-            type::QualType::Constant(type::Func(
-                {core::AnonymousParameter(type::QualType::NonConstant(type::I64))},
-                {type::Bool})));
+  EXPECT_EQ(
+      qt,
+      type::QualType::Constant(type::Func(
+          {core::AnonymousParameter(type::QualType::NonConstant(type::I64))},
+          {type::Bool})));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(BuiltinForeign, PointerSuccess) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module(R"(foreign("my_ptr", *i64))");
+  auto &mod         = infra.add_module(R"(builtin.foreign("my_ptr", *i64))");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt, type::QualType::Constant(type::Ptr(type::I64)));
@@ -85,8 +87,8 @@ TEST(BuiltinForeign, PointerSuccess) {
 
 TEST(BuiltinForeign, BufferPointerSuccess) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module(R"(foreign("my_array", [*]i64))");
-  auto const *call  = mod.get<ast::Call>();
+  auto &mod        = infra.add_module(R"(builtin.foreign("my_array", [*]i64))");
+  auto const *call = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt, type::QualType::Constant(type::BufPtr(type::I64)));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
@@ -95,8 +97,8 @@ TEST(BuiltinForeign, BufferPointerSuccess) {
 TEST(BuiltinForeign, NamedArgs) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(
-      R"(foreign(name = "my_function", foreign_type = i64 -> bool))");
-  auto const* call = mod.get<ast::Call>();
+      R"(builtin.foreign(name = "my_function", foreign_type = i64 -> bool))");
+  auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
   EXPECT_THAT(infra.diagnostics(),
@@ -105,7 +107,7 @@ TEST(BuiltinForeign, NamedArgs) {
 
 TEST(BuiltinForeign, NoArgs) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module("foreign()");
+  auto &mod         = infra.add_module("builtin.foreign()");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
@@ -115,7 +117,7 @@ TEST(BuiltinForeign, NoArgs) {
 
 TEST(BuiltinForeign, OneArg) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module(R"(foreign("abc"))");
+  auto &mod         = infra.add_module(R"(builtin.foreign("abc"))");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
@@ -125,7 +127,7 @@ TEST(BuiltinForeign, OneArg) {
 
 TEST(BuiltinForeign, TooManyArgs) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module(R"(foreign("abc", 1, 2, 3))");
+  auto &mod         = infra.add_module(R"(builtin.foreign("abc", 1, 2, 3))");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
@@ -135,7 +137,7 @@ TEST(BuiltinForeign, TooManyArgs) {
 
 TEST(BuiltinForeign, FirstParameterCharSlice) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module(R"(foreign(123, *i64))");
+  auto &mod         = infra.add_module(R"(builtin.foreign(123, *i64))");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
@@ -147,7 +149,7 @@ TEST(BuiltinForeign, NonConstantType) {
   test::CompilerInfrastructure infra;
   auto &mod         = infra.add_module(R"(
   f := () -> ()
-  foreign("f", f)
+  builtin.foreign("f", f)
   )");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
@@ -158,7 +160,7 @@ TEST(BuiltinForeign, NonConstantType) {
 
 TEST(BuiltinForeign, SecondParameterType) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module(R"(foreign("f", 3))");
+  auto &mod         = infra.add_module(R"(builtin.foreign("f", 3))");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   ASSERT_EQ(qt, type::QualType::Error());
@@ -181,8 +183,9 @@ TEST(BuiltinOpaque, Arguments) {
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt, type::QualType::Error());
-  EXPECT_THAT(infra.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "uncallable-with-arguments")));
+  EXPECT_THAT(
+      infra.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "uncallable-with-arguments")));
 }
 
 TEST(Call, Uncallable) {

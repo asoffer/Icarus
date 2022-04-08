@@ -31,5 +31,5 @@ Degrees ::= (x: f64) => angle.{ _val = constants.Pi * x / 180. }
 #{export}    SinH    ::= (a: angle) => c.sinh(a._val as ctypes.double) as f64
 #{export}    CosH    ::= (a: angle) => c.cosh(a._val as ctypes.double) as f64
 #{export}    TanH    ::= (a: angle) => c.tanh(a._val as ctypes.double) as f64
-#{export} Hypotenuse ::= foreign("hypot", (f64, f64) -> f64)
-#{export} Hypotenuse ::= foreign("hypotf", (f32, f32) -> f32)
+#{export} Hypotenuse ::= builtin.foreign("hypot", (f64, f64) -> f64)
+#{export} Hypotenuse ::= builtin.foreign("hypotf", (f32, f32) -> f32)

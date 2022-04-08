@@ -46,12 +46,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
 }
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
-    ast::BuiltinFn const *node) {
-  return context().set_qual_type(
-      node, type::QualType::Constant(ir::Fn(node->value()).type()));
-}
-
-absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::ReturnStmt const *node) {
   ASSIGN_OR(return type::QualType::ErrorSpan(),  //
                    auto quals, VerifyAndGetQuals(*this, node->exprs()));

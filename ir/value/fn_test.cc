@@ -1,7 +1,6 @@
 #include "ir/value/fn.h"
 
 #include "gtest/gtest.h"
-#include "ir/value/builtin_fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
 #include "type/function.h"
