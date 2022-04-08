@@ -146,34 +146,6 @@ cc_test(
 )
 
 cc_library(
-    name = "overload_set",
-    hdrs = ["overload_set.h"],
-    srcs = ["overload_set.cc"],
-    deps = [
-        "//core:call",
-        "//ir/value:fn",
-        "//type:cast",
-        "//type:function",
-        "//type:qual_type",
-        "//type:type",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_test(
-    name = "overload_set_test",
-    srcs = ["overload_set_test.cc"],
-    deps = [
-        ":overload_set",
-        "//ir/value:fn",
-        "//type:type",
-        "//type:primitive",
-        "@com_google_googletest//:gtest_main",
-    ]
-)
-
-cc_library(
     name = "reg",
     hdrs = ["reg.h"],
     deps = [
