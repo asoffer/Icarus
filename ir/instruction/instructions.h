@@ -14,9 +14,9 @@
 #include "base/meta.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
+#include "ir/instruction/foreign.h"
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/execution_context.h"
-#include "ir/interpreter/foreign.h"
 #include "ir/interpreter/stack_frame.h"
 #include "ir/out_params.h"
 #include "ir/subroutine.h"
@@ -480,7 +480,7 @@ struct LoadDataSymbolInstruction
   static constexpr std::string_view kDebugFormat = "%2$s = load-symbol %1$s";
 
   void Apply(interpreter::ExecutionContext& ctx) const {
-    absl::StatusOr<void*> sym = interpreter::LoadDataSymbol(name);
+    absl::StatusOr<void*> sym = LoadDataSymbol(name);
     if (not sym.ok()) { FatalInterpreterError(sym.status().message()); }
     ctx.current_frame().set(result, Addr(*sym));
   }

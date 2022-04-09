@@ -54,6 +54,16 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "foreign",
+    hdrs = ["foreign.h"],
+    srcs = ["foreign.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
 
 cc_library(
     name = "inliner",
@@ -84,6 +94,7 @@ cc_library(
     deps = [
         ":base",
         ":debug",
+        ":foreign",
         "//ast:scope",
         "//base:extend",
         "//base/extend:serialize",
@@ -150,7 +161,6 @@ cc_library(
         "//base:meta",
         "//base:untyped_buffer",
         "//ir/interpreter:architecture",
-        "//ir/interpreter:foreign",
         "//ir/interpreter:stack_frame",
         "//ir/value:addr",
         "//ir/value:char",

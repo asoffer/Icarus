@@ -54,7 +54,6 @@ cc_library(
     srcs = ["execution_context.cc"],
     visibility = ["//visibility:public"],
     deps = [
-        ":foreign",
         ":stack_frame",
         "//base:untyped_buffer",
         "//ir/byte_code:reader",
@@ -66,25 +65,5 @@ cc_library(
         "//module:shared_context",
         "//type:pointer",
         "@com_google_absl//absl/cleanup",
-    ],
-)
-
-cc_library(
-    name = "foreign",
-    hdrs = ["foreign.h"],
-    srcs = ["foreign.cc"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//base:debug",
-        "//base:untyped_buffer",
-        "//base:untyped_buffer_view",
-        "//ir/value:addr",
-        "//ir/value:foreign_fn",
-        "//type:function",
-        "//type:pointer",
-        "//type:primitive",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/types:span",
     ],
 )
