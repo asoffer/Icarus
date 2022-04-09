@@ -112,6 +112,7 @@ module::Module::SymbolInformation SymbolFor() {
   return module::Module::SymbolInformation{
       .qualified_type = type::QualType::Constant(data.type),
       .value          = buffer,
+      .visibility     = module::Module::Visibility::Exported,
   };
 }
 

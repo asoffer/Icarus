@@ -14,7 +14,7 @@ using ::testing::UnorderedElementsAre;
 
 TEST(BuiltinModule, Abort) {
   auto module = MakeBuiltinModule();
-  EXPECT_THAT(module->Exported("abort"),
+  EXPECT_THAT(module->Symbols("abort"),
               UnorderedElementsAre(
                   Field(&module::Module::SymbolInformation::qualified_type,
                         Eq(type::QualType::Constant(type::Func({}, {}))))));
@@ -23,13 +23,13 @@ TEST(BuiltinModule, Abort) {
 TEST(BuiltinModule, Alignment) {
   auto module = MakeBuiltinModule();
   ASSERT_THAT(
-      module->Exported("alignment"),
+      module->Symbols("alignment"),
       UnorderedElementsAre(Field(
           &module::Module::SymbolInformation::qualified_type,
           Eq(type::QualType::Constant(type::Func(
               {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
               {type::U64}))))));
-  auto f = module->Exported("alignment").begin()->value[0].get<ir::Fn>();
+  auto f = module->Symbols("alignment").begin()->value[0].get<ir::Fn>();
 
   EXPECT_EQ(
       EvaluateAtCompileTimeToBuffer(f.native(), type::Bool)[0].get<uint64_t>(),
@@ -42,13 +42,13 @@ TEST(BuiltinModule, Alignment) {
 TEST(BuiltinModule, Bytes) {
   auto module = MakeBuiltinModule();
   ASSERT_THAT(
-      module->Exported("bytes"),
+      module->Symbols("bytes"),
       UnorderedElementsAre(Field(
           &module::Module::SymbolInformation::qualified_type,
           Eq(type::QualType::Constant(type::Func(
               {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
               {type::U64}))))));
-  auto f = module->Exported("bytes").begin()->value[0].get<ir::Fn>();
+  auto f = module->Symbols("bytes").begin()->value[0].get<ir::Fn>();
 
   EXPECT_EQ(
       EvaluateAtCompileTimeToBuffer(f.native(), type::Bool)[0].get<uint64_t>(),

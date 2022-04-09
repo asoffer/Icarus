@@ -21,7 +21,7 @@ absl::Span<type::QualType const> QualType::ErrorSpan() {
 }
 
 std::ostream &operator<<(std::ostream &os, QualType q) {
-  if (not q) { return os << "error"; }
+  if (not q or q.error_) { return os << "error"; }
   return os << q.quals() << "(" << q.type() << ")";
 }
 

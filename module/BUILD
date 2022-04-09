@@ -17,6 +17,19 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "module_test",
+    srcs = ["module_test.cc"],
+    deps = [
+        ":module",
+        ":mock_module",
+        "//type:qual_type",
+        "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+
 cc_library(
     name = "mock_module",
     hdrs = ["mock_module.h"],

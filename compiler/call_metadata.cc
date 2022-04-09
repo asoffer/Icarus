@@ -52,8 +52,9 @@ absl::flat_hash_set<CallMetadata::callee_locator_t> Overloads(
 absl::flat_hash_set<CallMetadata::callee_locator_t> Overloads(
     std::string_view name, module::Module *module) {
   absl::flat_hash_set<CallMetadata::callee_locator_t> overloads;
-  absl::Span symbols = module->Exported(name);
-  for (auto const &symbol : symbols) { overloads.insert(&symbol); }
+  for (auto const &symbol : module->Exported(name)) {
+    overloads.insert(&symbol);
+  }
   return overloads;
 }
 

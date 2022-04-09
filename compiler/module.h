@@ -10,15 +10,18 @@ namespace compiler {
 struct CompiledModule : module::Module {
   explicit CompiledModule(std::string identifier)
       : Module(std::move(identifier)), context_(&ir_module_), module_(this) {
-    context_.set_qt_callback(
-        [&](ast::Declaration::Id const *id, type::QualType qt) {
-          if (id->declaration().hashtags.contains(ir::Hashtag::Export)) {
-            auto &entries = exported_[id->name()];
-            indices_.emplace(id, entries.size());
-            entries.push_back(
-                Module::SymbolInformation{.qualified_type = qt, .id = id});
-          }
-        });
+    context_.set_qt_callback([&](ast::Declaration::Id const *id,
+                                 type::QualType qt) {
+      auto &entries = exported_[id->name()];
+      indices_.emplace(id, entries.size());
+      entries.push_back(Module::SymbolInformation{
+          .qualified_type = qt,
+          .id             = id,
+          .visibility = id->declaration().hashtags.contains(ir::Hashtag::Export)
+                            ? Visibility::Exported
+                            : Visibility::Private,
+      });
+    });
 
     context_.set_value_callback(
         [&](ast::Declaration::Id const *id, ir::CompleteResultBuffer buffer) {
@@ -42,7 +45,7 @@ struct CompiledModule : module::Module {
     return module_.insert(b, e);
   }
 
-  absl::Span<Module::SymbolInformation const> Exported(
+  absl::Span<Module::SymbolInformation const> Symbols(
       std::string_view name) const {
     auto iter = exported_.find(name);
     if (iter == exported_.end()) { return {}; }

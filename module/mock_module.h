@@ -7,7 +7,7 @@ namespace module  {
 struct MockModule : Module {
   explicit MockModule(std::string identifier) : Module(std::move(identifier)) {}
 
-  MOCK_METHOD(absl::Span<SymbolInformation const>, Exported,
+  MOCK_METHOD(absl::Span<SymbolInformation const>, Symbols,
               (std::string_view name), (const, override));
 };
 

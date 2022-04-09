@@ -369,29 +369,27 @@ type::QualType AccessModuleMember(CompilationDataReference ref,
   // QualType of the imported declaration on the importing module context. This
   // makes it findable when it's called via an overload set as is type-checked
   // in VerifyCallee.
-  absl::Span<module::Module::SymbolInformation const> symbols =
-      mod.Exported(node->member_name());
-
-  switch (symbols.size()) {
-    case 0: {
-      ref.diag().Consume(UndeclaredIdentifierInModule{
-          .id   = node->member_name(),
-          .view = node->range(),
-      });
-      return type::QualType::Error();
-    } break;
-    case 1: {
-      if (not symbols[0].qualified_type.ok()) {
+  if (auto symbols = mod.Exported(node->member_name()); symbols.empty()) {
+    ref.diag().Consume(UndeclaredIdentifierInModule{
+        .id   = node->member_name(),
+        .view = node->range(),
+    });
+    return type::QualType::Error();
+  } else {
+    auto b             = symbols.begin();
+    auto const &symbol = *b;
+    ++b;
+    if (b == symbols.end()) {
+      if (not symbol.qualified_type.ok()) {
         LOG("AccessModuleMember",
             "Found member in a different module that is missing a type. "
             "Suspected error generated from that module: %s",
             node->DebugString());
         return type::QualType::Error();
       } else {
-        return symbols[0].qualified_type;
+        return symbol.qualified_type;
       }
-    } break;
-    default: {
+    } else {
       // TODO: these may also be an overload set of scopes
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Type> member_types;
@@ -410,7 +408,7 @@ type::QualType AccessModuleMember(CompilationDataReference ref,
       }
 
       return type::QualType(type::MakeOverloadSet(member_types), quals);
-    } break;
+    }
   }
   UNREACHABLE();
 }

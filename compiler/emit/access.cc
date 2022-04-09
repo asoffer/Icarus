@@ -69,14 +69,20 @@ void Compiler::EmitToBuffer(ast::Access const *node,
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    absl::Span symbol_infos =
+    auto symbol_infos =
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
             .Exported(node->member_name());
-    switch (symbol_infos.size()) {
-      case 0: NOT_YET();
-      case 1: out.append(symbol_infos[0].value); return;
-      default: NOT_YET();
+
+    if (symbol_infos.empty()) { NOT_YET(); }
+    auto b                  = symbol_infos.begin();
+    auto const &symbol_info = *b;
+    ++b;
+    if (b == symbol_infos.end()) {
+      out.append(symbol_info.value);
+      return;
+    } else {
+      NOT_YET();
     }
   }
 
@@ -204,18 +210,21 @@ void Compiler::EmitMoveInit(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    absl::Span symbol_infos =
+    auto symbol_infos =
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
             .Exported(node->member_name());
-    switch (symbol_infos.size()) {
-      case 0: NOT_YET();
-      case 1: {
-        MoveInitializationEmitter emitter(*this);
-        emitter(to[0], ir::PartialResultBuffer(symbol_infos[0].value));
-        return;
-      }
-      default: NOT_YET();
+
+    if (symbol_infos.empty()) { NOT_YET(); }
+    auto b = symbol_infos.begin();
+    auto const & symbol_info = *b;
+    ++b;
+    if (b == symbol_infos.end()) {
+      MoveInitializationEmitter emitter(*this);
+      emitter(to[0], ir::PartialResultBuffer(symbol_info.value));
+      return;
+    } else {
+      NOT_YET();
     }
   }
 
@@ -316,18 +325,21 @@ void Compiler::EmitCopyInit(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    absl::Span symbol_infos =
+    auto symbol_infos =
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
             .Exported(node->member_name());
-    switch (symbol_infos.size()) {
-      case 0: NOT_YET();
-      case 1: {
-        CopyInitializationEmitter emitter(*this);
-        emitter(to[0], ir::PartialResultBuffer(symbol_infos[0].value));
-        return;
-      }
-      default: NOT_YET();
+
+    if (symbol_infos.empty()) { NOT_YET(); }
+    auto b                  = symbol_infos.begin();
+    auto const &symbol_info = *b;
+    ++b;
+    if (b == symbol_infos.end()) {
+      CopyInitializationEmitter emitter(*this);
+      emitter(to[0], ir::PartialResultBuffer(symbol_info.value));
+      return;
+    } else {
+      NOT_YET();
     }
   }
 
@@ -426,20 +438,23 @@ void Compiler::EmitMoveAssign(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    absl::Span symbol_infos =
+    auto symbol_infos =
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
             .Exported(node->member_name());
-    switch (symbol_infos.size()) {
-      case 0: NOT_YET();
-      case 1: {
-        MoveAssignmentEmitter emitter(*this);
-        emitter(to[0], type::Typed<ir::PartialResultRef>(
-                           symbol_infos[0].value[0],
-                           symbol_infos[0].qualified_type.type()));
-        return;
-      }
-      default: NOT_YET();
+
+    if (symbol_infos.empty()) { NOT_YET(); }
+    auto b                  = symbol_infos.begin();
+    auto const &symbol_info = *b;
+    ++b;
+    if (b == symbol_infos.end()) {
+      MoveAssignmentEmitter emitter(*this);
+      emitter(to[0],
+              type::Typed<ir::PartialResultRef>(
+                  symbol_info.value[0], symbol_info.qualified_type.type()));
+      return;
+    } else {
+      NOT_YET();
     }
   }
 
@@ -477,21 +492,23 @@ void Compiler::EmitCopyAssign(
   type::QualType operand_qt = context().qual_types(node->operand())[0];
   ASSERT(operand_qt.ok() == true);
   if (operand_qt.type() == type::Module) {
-    absl::Span symbol_infos =
+    auto symbol_infos =
         importer()
             .get(*EvaluateOrDiagnoseAs<ir::ModuleId>(node->operand()))
             .Exported(node->member_name());
 
-    switch (symbol_infos.size()) {
-      case 0: NOT_YET();
-      case 1: {
-        CopyAssignmentEmitter emitter(*this);
-        emitter(to[0], type::Typed<ir::PartialResultRef>(
-                           symbol_infos[0].value[0],
-                           symbol_infos[0].qualified_type.type()));
-        return;
-      }
-      default: NOT_YET();
+    if (symbol_infos.empty()) { NOT_YET(); }
+    auto b                  = symbol_infos.begin();
+    auto const &symbol_info = *b;
+    ++b;
+    if (b == symbol_infos.end()) {
+      CopyAssignmentEmitter emitter(*this);
+      emitter(to[0],
+              type::Typed<ir::PartialResultRef>(
+                  symbol_info.value[0], symbol_info.qualified_type.type()));
+      return;
+    } else {
+      NOT_YET();
     }
   }
 

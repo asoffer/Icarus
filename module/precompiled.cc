@@ -56,7 +56,7 @@ PrecompiledModule::Make(std::string_view file_content, SharedContext& context) {
   return std::pair<ir::ModuleId, PrecompiledModule const*>(id, m);
 }
 
-absl::Span<Module::SymbolInformation const> PrecompiledModule::Exported(
+absl::Span<Module::SymbolInformation const> PrecompiledModule::Symbols(
     std::string_view name) const {
   auto iter = symbols_.find(name);
   if (iter == symbols_.end()) { return {}; }
