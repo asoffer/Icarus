@@ -20,6 +20,7 @@ cc_test(
     deps = [
         ":module",
         ":mock_module",
+        "//type:primitive",
         "//type:qual_type",
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_googletest//:gtest_main",

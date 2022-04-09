@@ -1,12 +1,15 @@
 #ifndef ICARUS_BASE_ITERATOR_H
 #define ICARUS_BASE_ITERATOR_H
 
+#include <type_traits>
 #include <utility>
 
 namespace base {
 
 template <typename B, typename E>
 struct iterator_range {
+  using value_type = std::decay_t<decltype(*std::declval<B>())>;
+
   iterator_range(B b, E e) : begin_(std::move(b)), end_(std::move(e)) {}
 
   B begin() const { return begin_; }
