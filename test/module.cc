@@ -65,7 +65,8 @@ std::optional<ir::CompleteResultBuffer> CompilerInfrastructure::Evaluate(
   }
 
   auto result = work_graph.work_resources().evaluate(
-      module.context(), type::Typed<ast::Expression const*>(e, t));
+      shared_context_, module.context(),
+      type::Typed<ast::Expression const*>(e, t));
   if (auto* diagnostics =
           std::get_if<std::vector<diagnostic::ConsumedMessage>>(&result)) {
     ADD_FAILURE() << "Unable to evaluate.";

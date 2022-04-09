@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/str_join.h"
 #include "base/debug.h"
 #include "base/extend.h"
 #include "base/extend/serialize.h"

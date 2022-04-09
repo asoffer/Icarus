@@ -24,6 +24,7 @@ cc_library(
         "//ir:subroutine",
         "//ir/instruction",
         "//ir/value:result_buffer",
+        "//module:shared_context",
         "@com_google_absl//absl/cleanup",
     ],
 )
@@ -62,6 +63,7 @@ cc_library(
         "//ir/value:fn",
         "//ir/value:reg",
         "//ir/value:reg_or",
+        "//module:shared_context",
         "//type:pointer",
         "@com_google_absl//absl/cleanup",
     ],

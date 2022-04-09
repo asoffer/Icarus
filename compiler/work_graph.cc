@@ -224,7 +224,8 @@ bool WorkGraph::Execute(WorkItem const &w) {
 
 // Factor out the common bits of these two functions.
 std::variant<ir::CompleteResultBuffer, std::vector<diagnostic::ConsumedMessage>>
-WorkGraph::EvaluateToBuffer(Context &context,
+WorkGraph::EvaluateToBuffer(module::SharedContext const &shared_context,
+                            Context &context,
                             type::Typed<ast::Expression const *> expr) {
   if (auto qt = context.qual_types(*expr)[0];
       qt == type::QualType::Error() or qt.HasErrorMark()) {
@@ -265,7 +266,7 @@ WorkGraph::EvaluateToBuffer(Context &context,
   w.dependencies_.clear();
 
   if (buffering_consumer.empty()) {
-    return EvaluateAtCompileTimeToBuffer(ir::NativeFn(&data));
+    return EvaluateAtCompileTimeToBuffer(shared_context, ir::NativeFn(&data));
   } else {
     return std::move(buffering_consumer).extract();
   }

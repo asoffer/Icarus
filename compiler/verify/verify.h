@@ -3,6 +3,7 @@
 
 #include "absl/types/span.h"
 #include "ast/ast.h"
+#include "ast/module.h"
 #include "compiler/compilation_data.h"
 #include "type/qual_type.h"
 

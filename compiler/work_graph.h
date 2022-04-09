@@ -65,7 +65,8 @@ struct WorkGraph {
 
   std::variant<ir::CompleteResultBuffer,
                std::vector<diagnostic::ConsumedMessage>>
-  EvaluateToBuffer(Context &context, type::Typed<ast::Expression const *> expr);
+  EvaluateToBuffer(module::SharedContext const &shared_context,
+                   Context &context, type::Typed<ast::Expression const *> expr);
 
   WorkResources work_resources() {
     return {

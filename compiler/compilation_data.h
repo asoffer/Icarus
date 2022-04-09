@@ -77,7 +77,7 @@ struct CompilationDataReference {
                std::vector<diagnostic::ConsumedMessage>>
   EvaluateToBuffer(type::Typed<ast::Expression const *> expr) {
     ASSERT(data_.work_resources.evaluate != nullptr);
-    return data_.work_resources.evaluate(context(), expr);
+    return data_.work_resources.evaluate(shared_context(), context(), expr);
   }
 
   std::optional<ir::CompleteResultBuffer> EvaluateToBufferOrDiagnose(

@@ -33,26 +33,30 @@ namespace compiler {
 namespace internal_instructions {
 
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBufferImpl(
-    ir::NativeFn fn, ir::CompleteResultBuffer const &);
+    module::SharedContext const &shared_context, ir::NativeFn fn,
+    ir::CompleteResultBuffer const &);
 
 }  // namespace internal_instructions
 
-void InterpretAtCompileTime(ir::NativeFn f,
+void InterpretAtCompileTime(module::SharedContext const &shared_context,
+                            ir::NativeFn f,
                             ir::CompleteResultBuffer const &arguments = {});
-void InterpretAtCompileTime(ir::Subroutine const &fn,
+void InterpretAtCompileTime(module::SharedContext const &shared_context,
+                            ir::Subroutine const &fn,
                             ir::CompleteResultBuffer const &arguments = {});
 
 std::vector<ir::Block> InterpretScopeAtCompileTime(
-    ir::Scope s,
+    module::SharedContext const &shared_context, ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments);
 ir::ByteCode EmitByteCode(ir::Subroutine const &sr);
 
 template <typename... Args>
-ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(ir::NativeFn f,
-                                                       Args const &... args) {
+ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(
+    module::SharedContext const &shared_context, ir::NativeFn f,
+    Args const &... args) {
   ir::CompleteResultBuffer buffer;
   (buffer.append(args), ...);
-  return internal_instructions::EvaluateAtCompileTimeToBufferImpl(f, buffer);
+  return internal_instructions::EvaluateAtCompileTimeToBufferImpl(shared_context, f, buffer);
 }
 
 namespace internal_type {

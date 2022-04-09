@@ -46,7 +46,7 @@ ffi_type *ToFfiType(type::Type t) {
 // TODO return slot is always small enough that we should be able to use a
 // stack-allocated buffer for this.
 void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
-  type::Function const *fn_type = f.type();
+  type::Function const *fn_type = shared_context_.ForeignFunctionType(f);
   LOG("CallFn", "Calling %s: %s", f, fn_type->to_string());
 
   std::vector<ffi_type *> arg_types;
@@ -102,7 +102,8 @@ void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
                                   ToFfiType(out_type), arg_types.data());
   LOG("foreign-errno", "before: %d", errno);
   ASSERT(prep_result == FFI_OK);
-  ffi_call(&cif, f.get(), &ret, arg_vals.data());
+  ffi_call(&cif, shared_context_.ForeignFunctionPointer(f), &ret,
+           arg_vals.data());
   LOG("foreign-errno", "after: %d", errno);
 
   if (out_type == type::Void) {

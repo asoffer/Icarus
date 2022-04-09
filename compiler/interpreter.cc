@@ -124,7 +124,7 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
 
   importer.set_subroutine(exec_mod, std::move(main_fn));
   importer.ForEachSubroutine([&](ir::Subroutine const &subroutine) {
-    InterpretAtCompileTime(subroutine, argument_buffer);
+    InterpretAtCompileTime(shared_context, subroutine, argument_buffer);
   });
 
   return 0;

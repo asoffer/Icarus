@@ -39,6 +39,13 @@ struct SharedContext {
   }
 
   auto &foreign_function_map() { return foreign_fn_map_; }
+  auto const &foreign_function_map() const { return foreign_fn_map_; }
+
+  type::Function const *ForeignFunctionType(ir::ForeignFn f) const {
+    return f.type();
+  }
+
+  auto ForeignFunctionPointer(ir::ForeignFn f) const { return f.get(); }
 
   ModuleTable &module_table() { return table_; }
   ModuleTable const &module_table() const { return table_; }

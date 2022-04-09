@@ -136,6 +136,7 @@ cc_library(
     hdrs = ["enum.h"],
     srcs = ["enum.cc"],
     deps = [
+        ":primitive",
         ":type",
         ":typed_value",
         "//base:extend",
@@ -147,6 +148,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/random:distributions",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -155,6 +157,7 @@ cc_library(
     hdrs = ["flags.h"],
     srcs = ["flags.cc"],
     deps = [
+        ":primitive",
         ":type",
         ":typed_value",
         "//base:extend",
@@ -166,6 +169,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/random:distributions",
+        "@com_google_absl//absl/strings",
     ],
 )
 

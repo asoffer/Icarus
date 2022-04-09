@@ -84,7 +84,7 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
 
   current_block()->set_jump(ir::JumpCmd::Return());
 
-  InterpretAtCompileTime(fn);
+  InterpretAtCompileTime(shared_context(), fn);
 
   return true;
 }

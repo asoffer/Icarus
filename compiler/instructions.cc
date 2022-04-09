@@ -221,7 +221,8 @@ ir::ByteCode EmitByteCode(ir::Subroutine const& sr) {
   return byte_code;
 }
 
-void InterpretAtCompileTime(ir::Subroutine const& fn,
+void InterpretAtCompileTime(module::SharedContext const& shared_context,
+                            ir::Subroutine const& fn,
                             ir::CompleteResultBuffer const& arguments) {
   ir::ByteCode byte_code = EmitByteCode(fn);
   ir::NativeFn::Data data{
@@ -229,18 +230,18 @@ void InterpretAtCompileTime(ir::Subroutine const& fn,
       .type      = &fn.type()->as<type::Function>(),
       .byte_code = &byte_code,
   };
-  InterpretAtCompileTime(ir::NativeFn(&data), arguments);
+  InterpretAtCompileTime(shared_context, ir::NativeFn(&data), arguments);
 }
 
-void InterpretAtCompileTime(ir::NativeFn f,
+void InterpretAtCompileTime(module::SharedContext const & shared_context, ir::NativeFn f,
                             ir::CompleteResultBuffer const& arguments) {
-  interpreter::Execute<instruction_set_t>(f, arguments);
+  interpreter::Execute<instruction_set_t>(shared_context, f, arguments);
 }
 
 std::vector<ir::Block> InterpretScopeAtCompileTime(
-    ir::Scope s,
+    module::SharedContext const& shared_context, ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const& arguments) {
-  interpreter::ExecutionContext ctx;
+  interpreter::ExecutionContext ctx(&shared_context);
   interpreter::StackFrame frame(&s.byte_code(), ctx.stack());
   core::BindArguments(
       s.type()->params(), arguments,
@@ -263,8 +264,10 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
 namespace internal_instructions {
 
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBufferImpl(
-    ir::NativeFn fn, ir::CompleteResultBuffer const& arguments) {
-  return interpreter::Evaluate<instruction_set_t>(fn, arguments);
+    module::SharedContext const& shared_context, ir::NativeFn fn,
+    ir::CompleteResultBuffer const& arguments) {
+  return interpreter::Evaluate<instruction_set_t>(shared_context, fn,
+                                                  arguments);
 }
 
 }  // namespace internal_instructions

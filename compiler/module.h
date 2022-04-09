@@ -1,6 +1,7 @@
 #ifndef ICARUS_COMPILER_MODULE_H
 #define ICARUS_COMPILER_MODULE_H
 
+#include "ast/module.h"
 #include "compiler/context.h"
 #include "module/module.h"
 #include "module/writer.h"

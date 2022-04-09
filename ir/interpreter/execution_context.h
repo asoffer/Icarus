@@ -17,6 +17,7 @@
 #include "ir/value/fn.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
+#include "module/shared_context.h"
 
 namespace interpreter {
 namespace internal_execution {
@@ -75,6 +76,9 @@ struct StackFrameIterator {
 // of an `ir::Fn`. This includes references to stack frames, the state of all
 // registers, etc.
 struct ExecutionContext {
+  explicit ExecutionContext(module::SharedContext const *context)
+      : shared_context_(*ASSERT_NOT_NULL(context)) {}
+
   StackFrame const &current_frame() const {
     return *ASSERT_NOT_NULL(current_frame_);
   }
@@ -286,6 +290,7 @@ struct ExecutionContext {
     return {GetInstruction<InstSet, Insts>()...};
   }
 
+  module::SharedContext const&shared_context_;
   Stack stack_;
   StackFrame *current_frame_ = nullptr;
 };

@@ -470,6 +470,7 @@ cc_library(
         "//ast:expression",
         "//diagnostic/consumer",
         "//ir/value:result_buffer",
+        "//module:shared_context",
         "//type:typed_value",
         "@com_google_absl//absl/container:flat_hash_set",
     ],

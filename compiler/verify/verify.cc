@@ -71,7 +71,7 @@ bool CompleteStructData(CompilationDataReference data,
                    auto fn, StructDataCompletionFn(data, s, node->fields()));
 
   // TODO: What if execution fails.
-  InterpretAtCompileTime(fn);
+  InterpretAtCompileTime(data.shared_context(), fn);
 
   absl::flat_hash_set<WorkItem> prerequisites;
 
@@ -117,7 +117,7 @@ bool CompleteStructData(CompilationDataReference data,
                    auto fn, StructDataCompletionFn(data, s, node->fields()));
 
   // TODO: What if execution fails.
-  InterpretAtCompileTime(fn);
+  InterpretAtCompileTime(data.shared_context(), fn);
 
   absl::flat_hash_set<WorkItem> prerequisites;
 

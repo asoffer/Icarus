@@ -9,6 +9,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
 #include "ast/ast.h"
+#include "ast/module.h"
 #include "base/any_invocable.h"
 #include "base/debug.h"
 #include "base/log.h"

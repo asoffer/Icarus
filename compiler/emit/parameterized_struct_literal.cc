@@ -42,7 +42,7 @@ bool Compiler::CompleteStruct(ast::ParameterizedStructLiteral const *node) {
   ASSIGN_OR(return false,  //
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
-  InterpretAtCompileTime(fn);
+  InterpretAtCompileTime(shared_context(), fn);
   s->complete();
   LOG("struct", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());

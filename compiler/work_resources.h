@@ -10,6 +10,7 @@
 #include "compiler/work_item.h"
 #include "diagnostic/consumer/consumer.h"
 #include "ir/value/result_buffer.h"
+#include "module/shared_context.h"
 #include "type/typed_value.h"
 
 namespace compiler {
@@ -19,7 +20,8 @@ struct WorkResources {
   std::function<void(WorkItem, absl::flat_hash_set<WorkItem>)> enqueue;
   std::function<std::variant<ir::CompleteResultBuffer,
                              std::vector<diagnostic::ConsumedMessage>>(
-      Context &, type::Typed<ast::Expression const *>)>
+      module::SharedContext const &, Context &,
+      type::Typed<ast::Expression const *>)>
       evaluate;
   std::function<void(WorkItem const &)> complete;
 };

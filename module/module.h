@@ -6,14 +6,17 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "ast/declaration.h"
-#include "ast/module.h"
-#include "ast/scope.h"
 #include "base/cast.h"
 #include "base/guarded.h"
 #include "base/iterator.h"
 #include "base/macros.h"
 #include "type/qual_type.h"
+
+// TODO: Remove this forward declaration when, when declaration ids are no
+// longer needed on symbol information.
+namespace ast {
+struct Declaration_Id;
+}  // namespace ast
 
 namespace module {
 
@@ -35,7 +38,7 @@ struct Module : base::Cast<Module> {
     // TODO: Remove this. It's only here as a temporary mechanism to work nicely
     // with generics until we have a decent cross-module solution for them. It
     // will only be populated for generics.
-    ast::Declaration::Id const *id;
+    ast::Declaration_Id const *id;
     Visibility visibility;
   };
 

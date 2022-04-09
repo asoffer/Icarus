@@ -6,6 +6,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
+#include "ast/module.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/slice.h"
