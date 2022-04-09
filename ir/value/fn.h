@@ -11,9 +11,6 @@
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
 #include "type/function.h"
-#include "type/pointer.h"
-#include "type/primitive.h"
-#include "type/slice.h"
 
 namespace ir {
 

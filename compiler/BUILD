@@ -135,6 +135,7 @@ cc_library(
         "//ir/value:reg",
         "//ir/value:reg_or",
         "//ir/value:result_buffer",
+        "//ir/value:slice",
         "//type:array",
         "//type:block",
         "//type:enum",

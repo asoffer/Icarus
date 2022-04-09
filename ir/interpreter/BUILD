@@ -62,6 +62,8 @@ cc_library(
         "//ir/value:fn",
         "//ir/value:reg",
         "//ir/value:reg_or",
+        "//ir/value:scope",
+        "//type:primitive",
         "//module:shared_context",
         "//type:pointer",
         "@com_google_absl//absl/cleanup",

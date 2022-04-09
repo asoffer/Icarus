@@ -4,6 +4,7 @@
 #include <ffi.h>
 
 #include "type/pointer.h"
+#include "type/primitive.h"
 
 namespace interpreter {
 namespace {
@@ -45,7 +46,7 @@ ffi_type *ToFfiType(type::Type t) {
 
 // TODO return slot is always small enough that we should be able to use a
 // stack-allocated buffer for this.
-void ExecutionContext::CallFn(ir::ForeignFn f, StackFrame &frame) {
+void ExecutionContext::CallForeignFunction(ir::Fn f, StackFrame &frame) {
   type::Function const *fn_type = shared_context_.ForeignFunctionType(f);
   LOG("CallFn", "Calling %s: %s", f, fn_type->to_string());
 

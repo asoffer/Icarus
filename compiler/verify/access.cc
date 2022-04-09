@@ -13,8 +13,10 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/overload_set.h"
+#include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
+#include "type/slice.h"
 #include "type/struct.h"
 
 namespace compiler {

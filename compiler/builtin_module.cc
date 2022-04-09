@@ -3,6 +3,7 @@
 #include "compiler/instructions.h"
 #include "ir/subroutine.h"
 #include "ir/value/result_buffer.h"
+#include "ir/value/slice.h"
 #include "type/opaque.h"
 
 namespace compiler {

@@ -16,6 +16,7 @@
 #include "ir/value/fn.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
+#include "ir/value/scope.h"
 #include "module/shared_context.h"
 
 namespace interpreter {
@@ -120,7 +121,7 @@ struct ExecutionContext {
   void Execute(ir::Fn fn, StackFrame &frame) {
     switch (fn.kind()) {
       case ir::Fn::Kind::Native: CallNative<InstSet>(frame); break;
-      case ir::Fn::Kind::Foreign: CallFn(fn.foreign(), frame); break;
+      case ir::Fn::Kind::Foreign: CallForeignFunction(fn, frame); break;
     }
   }
 
@@ -135,7 +136,7 @@ struct ExecutionContext {
     ExecuteBlocks<InstSet>();
   }
 
-  void CallFn(ir::ForeignFn f, StackFrame &frame);
+  void CallForeignFunction(ir::Fn f, StackFrame &frame);
 
   template <typename InstSet>
   void ExecuteBlocks() {

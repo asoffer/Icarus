@@ -4,9 +4,11 @@
 #include "compiler/verify/common.h"
 #include "compiler/verify/verify.h"
 #include "type/array.h"
+#include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/provenance.h"
 #include "type/qual_type.h"
+#include "type/slice.h"
 
 namespace compiler {
 namespace {

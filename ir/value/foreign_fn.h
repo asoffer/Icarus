@@ -46,7 +46,6 @@ struct ForeignFn : base::Extend<ForeignFn, 1>::With<base::AbslFormatExtension,
   type::Function const* type() const { return value_->first.second; }
   std::string_view name() const { return value_->first.first; }
 
- private:
   friend base::EnableExtensions;
   friend struct Fn;
 

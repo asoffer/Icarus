@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "base/flyweight_map.h"
+#include "ir/value/fn.h"
 #include "ir/value/foreign_fn.h"
 #include "module/builtin.h"
 #include "module/module.h"
@@ -25,6 +26,10 @@ namespace module {
 // the foreign function. The `SharedContext` is a data structure that allows us
 // to reconcile these disagreements.
 struct SharedContext {
+ private:
+  using void_fn_ptr = void (*)();
+
+ public:
   explicit SharedContext(std::unique_ptr<BuiltinModule> m)
       : table_(std::move(m)) {}
   // Given a name and a function type, returns the associated foreign function,
@@ -41,11 +46,11 @@ struct SharedContext {
   auto &foreign_function_map() { return foreign_fn_map_; }
   auto const &foreign_function_map() const { return foreign_fn_map_; }
 
-  type::Function const *ForeignFunctionType(ir::ForeignFn f) const {
-    return f.type();
+  type::Function const *ForeignFunctionType(ir::Fn f) const {
+    return f.foreign().type();
   }
 
-  auto ForeignFunctionPointer(ir::ForeignFn f) const { return f.get(); }
+  void_fn_ptr ForeignFunctionPointer(ir::Fn f) const;
 
   ModuleTable &module_table() { return table_; }
   ModuleTable const &module_table() const { return table_; }

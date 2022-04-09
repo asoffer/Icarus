@@ -128,10 +128,12 @@ cc_library(
 cc_library(
     name = "shared_context",
     hdrs = ["shared_context.h"],
+    srcs = ["shared_context.cc"],
     deps = [
         ":module",
         ":table",
         "//base:flyweight_map",
+        "//ir/value:fn",
         "//ir/value:foreign_fn",
         "//type:function",
     ],
