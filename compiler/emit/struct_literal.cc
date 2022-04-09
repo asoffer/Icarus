@@ -34,16 +34,16 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
 
     size_t i = 0;
     for (auto const &field : s->fields()) {
-      auto to_ref = c.current_block()->Append(
-          ir::StructIndexInstruction{.addr        = to,
-                                     .index       = i,
-                                     .struct_type = s,
-                                     .result = c.current().subroutine->Reserve()});
-      auto from_val = c.current_block()->Append(
-          ir::StructIndexInstruction{.addr        = from,
-                                     .index       = i,
-                                     .struct_type = s,
-                                     .result = c.current().subroutine->Reserve()});
+      auto to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = to,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.current().subroutine->Reserve()});
+      auto from_val = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = from,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.current().subroutine->Reserve()});
 
       ir::RegOr<ir::addr_t> r(PtrFix(c.current(), from_val, field.type));
       ir::PartialResultBuffer buffer;
@@ -70,16 +70,16 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
 
     size_t i = 0;
     for (auto const &field : s->fields()) {
-      auto to_ref = c.current_block()->Append(
-          ir::StructIndexInstruction{.addr        = to,
-                                     .index       = i,
-                                     .struct_type = s,
-                                     .result = c.current().subroutine->Reserve()});
-      auto from_val = c.current_block()->Append(
-          ir::StructIndexInstruction{.addr        = from,
-                                     .index       = i,
-                                     .struct_type = s,
-                                     .result = c.current().subroutine->Reserve()});
+      auto to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = to,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.current().subroutine->Reserve()});
+      auto from_val = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = from,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.current().subroutine->Reserve()});
 
       ir::PartialResultBuffer buffer;
       buffer.append(PtrFix(c.current(), from_val, field.type));
@@ -104,16 +104,16 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
     auto val              = ir::Reg::Parameter(1);
 
     for (size_t i = 0; i < s->fields().size(); ++i) {
-      ir::Reg to_ref = c.current_block()->Append(
-          ir::StructIndexInstruction{.addr        = var,
-                                     .index       = i,
-                                     .struct_type = s,
-                                     .result = c.current().subroutine->Reserve()});
-      ir::Reg from_ref = c.current_block()->Append(
-          ir::StructIndexInstruction{.addr        = val,
-                                     .index       = i,
-                                     .struct_type = s,
-                                     .result = c.current().subroutine->Reserve()});
+      ir::Reg to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = var,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.current().subroutine->Reserve()});
+      ir::Reg from_ref = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = val,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.current().subroutine->Reserve()});
 
       ir::PartialResultBuffer buffer;
       buffer.append(PtrFix(c.current(), from_ref, s->fields()[i].type));
@@ -139,16 +139,16 @@ ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
     auto val              = ir::Reg::Parameter(1);
 
     for (size_t i = 0; i < s->fields().size(); ++i) {
-      ir::Reg to_ref = c.current_block()->Append(
-          ir::StructIndexInstruction{.addr        = var,
-                                     .index       = i,
-                                     .struct_type = s,
-                                     .result = c.current().subroutine->Reserve()});
-      ir::Reg from_ref = c.current_block()->Append(
-          ir::StructIndexInstruction{.addr        = val,
-                                     .index       = i,
-                                     .struct_type = s,
-                                     .result = c.current().subroutine->Reserve()});
+      ir::Reg to_ref   = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = var,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.current().subroutine->Reserve()});
+      ir::Reg from_ref = c.current_block()->Append(ir::StructIndexInstruction{
+          .addr        = val,
+          .index       = i,
+          .struct_type = s,
+          .result      = c.current().subroutine->Reserve()});
       ir::PartialResultBuffer buffer;
       buffer.append(PtrFix(c.current(), from_ref, s->fields()[i].type));
       CopyAssignmentEmitter emitter(c);
@@ -176,8 +176,8 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
   }
 
   std::optional<ir::Fn> user_dtor;
-  std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
-      copy_assignments;
+  std::vector<std::pair<ir::Fn, type::Type>> move_inits, copy_inits,
+      move_assignments, copy_assignments;
   for (auto const &field_decl : field_decls) {
     if (not(field_decl.flags() & ast::Declaration::f_IsConst)) { continue; }
     VerifyType(data, &field_decl);
@@ -190,16 +190,30 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
         user_dtor = c.EmitAs<ir::Fn>(id.declaration().init_val()).value();
       } else if (id.name() == "move") {
         auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
-        switch (f.value().type()->params().size()) {
-          case 1: move_inits.push_back(f.value()); break;
-          case 2: move_assignments.push_back(f.value()); break;
+        switch (
+            data.shared_context().FunctionType(f.value())->params().size()) {
+          case 1:
+            move_inits.emplace_back(
+                f.value(), data.shared_context().FunctionType(f.value()));
+            break;
+          case 2:
+            move_assignments.emplace_back(
+                f.value(), data.shared_context().FunctionType(f.value()));
+            break;
           default: UNREACHABLE();
         }
       } else if (id.name() == "copy") {
         auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
-        switch (f.value().type()->params().size()) {
-          case 1: copy_inits.push_back(f.value()); break;
-          case 2: copy_assignments.push_back(f.value()); break;
+        switch (
+            data.shared_context().FunctionType(f.value())->params().size()) {
+          case 1:
+            copy_inits.emplace_back(
+                f.value(), data.shared_context().FunctionType(f.value()));
+            break;
+          case 2:
+            copy_assignments.emplace_back(
+                f.value(), data.shared_context().FunctionType(f.value()));
+            break;
           default: UNREACHABLE();
         }
       } else {
@@ -266,13 +280,17 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
   }
 
   if (move_inits.empty() and copy_inits.empty()) {
-    move_inits.push_back(InsertGeneratedMoveInit(c, s));
-    copy_inits.push_back(InsertGeneratedCopyInit(c, s));
+    ir::Fn fm = InsertGeneratedMoveInit(c, s);
+    ir::Fn fc = InsertGeneratedCopyInit(c, s);
+    move_inits.emplace_back(fm, c.shared_context().FunctionType(fm));
+    copy_inits.emplace_back(fc, c.shared_context().FunctionType(fc));
   }
 
   if (move_assignments.empty() and copy_assignments.empty()) {
-    move_assignments.push_back(InsertGeneratedMoveAssign(c, s));
-    copy_assignments.push_back(InsertGeneratedCopyAssign(c, s));
+    ir::Fn fm = InsertGeneratedMoveAssign(c, s);
+    ir::Fn fc = InsertGeneratedCopyAssign(c, s);
+    move_assignments.emplace_back(fm, c.shared_context().FunctionType(fm));
+    copy_assignments.emplace_back(fc, c.shared_context().FunctionType(fc));
   }
 
   data.current_block()->Append(

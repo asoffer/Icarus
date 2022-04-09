@@ -36,16 +36,6 @@ struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
 
   constexpr Kind kind() const { return static_cast<Kind>(data_ & 3); }
 
-  size_t num_parameters() const { return type()->params().size(); }
-
-  type::Function const *type() const {
-    switch (kind()) {
-      case Kind::Native: return native().type();
-      case Kind::Foreign: return foreign().type();
-    }
-    UNREACHABLE();
-  }
-
   Fn(ForeignFn f) {
     underlying_type data;
     std::memcpy(&data, &f, sizeof(f));

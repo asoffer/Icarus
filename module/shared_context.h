@@ -46,8 +46,11 @@ struct SharedContext {
   auto &foreign_function_map() { return foreign_fn_map_; }
   auto const &foreign_function_map() const { return foreign_fn_map_; }
 
-  type::Function const *ForeignFunctionType(ir::Fn f) const {
-    return f.foreign().type();
+  type::Function const *FunctionType(ir::Fn f) const {
+    switch (f.kind()) {
+      case ir::Fn::Kind::Native: return f.native().type();
+      case ir::Fn::Kind::Foreign: return f.foreign().type();
+    }
   }
 
   void_fn_ptr ForeignFunctionPointer(ir::Fn f) const;

@@ -47,7 +47,7 @@ ffi_type *ToFfiType(type::Type t) {
 // TODO return slot is always small enough that we should be able to use a
 // stack-allocated buffer for this.
 void ExecutionContext::CallForeignFunction(ir::Fn f, StackFrame &frame) {
-  type::Function const *fn_type = shared_context_.ForeignFunctionType(f);
+  type::Function const *fn_type = shared_context_.FunctionType(f);
   LOG("CallFn", "Calling %s: %s", f, fn_type->to_string());
 
   std::vector<ffi_type *> arg_types;

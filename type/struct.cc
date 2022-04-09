@@ -41,15 +41,15 @@ void Struct::AppendFields(std::vector<Struct::Field> fields) {
   }
 }
 
-void Struct::SetInits(absl::Span<ir::Fn const> move_inits,
-                      absl::Span<ir::Fn const> copy_inits) {
-  for (ir::Fn init : move_inits) {
-    core::Parameters<QualType> const &params = init.type()->params();
+void Struct::SetInits(absl::Span<std::pair<ir::Fn, Type> const> move_inits,
+                      absl::Span<std::pair<ir::Fn, Type> const> copy_inits) {
+  for (auto [init, t] : move_inits) {
+    core::Parameters<QualType> const &params = t.as<Function>().params();
     ASSERT(params.size() == 1u);
     move_inits_.emplace(params[0].value.type(), init);
   }
-  for (ir::Fn init : copy_inits) {
-    core::Parameters<QualType> const &params = init.type()->params();
+  for (auto [init, t] : copy_inits) {
+    core::Parameters<QualType> const &params = t.as<Function>().params();
     ASSERT(params.size() == 1u);
     copy_inits_.emplace(params[0].value.type(), init);
 
@@ -69,15 +69,16 @@ ir::Fn Struct::Destructor() const {
   return *dtor_;
 }
 
-void Struct::SetAssignments(absl::Span<ir::Fn const> move_assignments,
-                            absl::Span<ir::Fn const> copy_assignments) {
-  for (ir::Fn assignment : move_assignments) {
-    core::Parameters<QualType> const &params = assignment.type()->params();
+void Struct::SetAssignments(
+    absl::Span<std::pair<ir::Fn, Type> const> move_assignments,
+    absl::Span<std::pair<ir::Fn, Type> const> copy_assignments) {
+  for (auto [assignment, t] : move_assignments) {
+    core::Parameters<QualType> const &params = t.as<Function>().params();
     ASSERT(params.size() == 2u);
     move_assignments_.emplace(params[1].value.type(), assignment);
   }
-  for (ir::Fn assignment : copy_assignments) {
-    core::Parameters<QualType> const &params = assignment.type()->params();
+  for (auto [assignment, t] : copy_assignments) {
+    core::Parameters<QualType> const &params = t.as<Function>().params();
     ASSERT(params.size() == 2u);
     copy_assignments_.emplace(params[1].value.type(), assignment);
 

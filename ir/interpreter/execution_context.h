@@ -201,7 +201,7 @@ struct ExecutionContext {
         auto inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
         LOG("CallInstruction", "%s", inst);
         ir::Fn f                      = ctx.resolve(inst.func());
-        type::Function const *fn_type = f.type();
+        type::Function const *fn_type = ctx.shared_context_.FunctionType(f);
         LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
 
         StackFrame frame =

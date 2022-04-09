@@ -82,10 +82,11 @@ struct Struct : LegacyType {
   void AppendConstants(std::vector<Struct::Field> constants);
   void AppendFields(std::vector<Field> fields);
   void SetDestructor(ir::Fn dtor);
-  void SetInits(absl::Span<ir::Fn const> move_inits,
-                absl::Span<ir::Fn const> copy_inits);
-  void SetAssignments(absl::Span<ir::Fn const> move_assignments,
-                      absl::Span<ir::Fn const> copy_assignments);
+  void SetInits(absl::Span<std::pair<ir::Fn, Type> const> move_inits,
+                absl::Span<std::pair<ir::Fn, Type> const> copy_inits);
+  void SetAssignments(
+      absl::Span<std::pair<ir::Fn, Type> const> move_assignments,
+      absl::Span<std::pair<ir::Fn, Type> const> copy_assignments);
 
   absl::flat_hash_map<type::Type, ir::Fn> move_inits_, copy_inits_,
       move_assignments_, copy_assignments_;
@@ -176,7 +177,7 @@ struct StructInstruction
 
   ir::RegOr<Type> struct_;
   std::vector<Field> constants;
-  std::vector<ir::Fn> move_inits, copy_inits, move_assignments,
+  std::vector<std::pair<ir::Fn, Type>> move_inits, copy_inits, move_assignments,
       copy_assignments;
   std::optional<ir::Fn> dtor;
 };
