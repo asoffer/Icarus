@@ -9,6 +9,7 @@
 #include "ir/interpreter/execution_context.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
+#include "ir/value/scope_context.h"
 #include "ir/value/slice.h"
 #include "module/builtin.h"
 #include "type/type.h"

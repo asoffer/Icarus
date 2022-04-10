@@ -11,31 +11,18 @@ TEST(NativeFn, CastToBool) {
   EXPECT_FALSE(f);
 
   auto *fn_type = type::Func(core::Parameters<type::QualType>{}, {});
-  ir::Subroutine sr(fn_type);
-  ir::NativeFn::Data d{
-      .fn   = &sr,
-      .type = fn_type,
-  };
-  EXPECT_TRUE(ir::NativeFn(&d));
+  ir::NativeFunctionInformation info{.fn = ir::Subroutine(fn_type)};
+  EXPECT_TRUE(ir::NativeFn(&info));
 }
 
 TEST(NativeFn, Equality) {
   auto *fn_type = type::Func(core::Parameters<type::QualType>{}, {});
 
-  ir::Subroutine sr1(fn_type);
-  ir::Subroutine sr2(fn_type);
+  ir::NativeFunctionInformation info1{.fn = ir::Subroutine(fn_type)};
+  ir::NativeFunctionInformation info2{.fn = ir::Subroutine(fn_type)};
 
-  ir::NativeFn::Data d1{
-      .fn   = &sr1,
-      .type = fn_type,
-  };
-  ir::NativeFn::Data d2{
-      .fn   = &sr2,
-      .type = fn_type,
-  };
-
-  ir::NativeFn f1(&d1);
-  ir::NativeFn f2(&d2);
+  ir::NativeFn f1(&info1);
+  ir::NativeFn f2(&info2);
 
   EXPECT_EQ(f1, f1);
   EXPECT_NE(f1, f2);
@@ -44,14 +31,9 @@ TEST(NativeFn, Equality) {
 TEST(NativeFn, Value) {
   auto *fn_type = type::Func(core::Parameters<type::QualType>{}, {});
 
-  ir::Subroutine sr(fn_type);
-  ir::NativeFn::Data d{
-      .fn   = &sr,
-      .type = fn_type,
-  };
-  ir::NativeFn f(&d);
+  ir::NativeFunctionInformation info{.fn = ir::Subroutine(fn_type)};
+  ir::NativeFn f(&info);
   EXPECT_EQ(f.type(), fn_type);
-  EXPECT_EQ(&*f, &sr);
 }
 
 }  // namespace

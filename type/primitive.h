@@ -8,6 +8,7 @@
 #include "ir/value/integer.h"
 #include "ir/value/module_id.h"
 #include "ir/value/scope.h"
+#include "ir/value/scope_context.h"
 #include "type/argument.h"
 #include "type/system.h"
 #include "type/type.h"

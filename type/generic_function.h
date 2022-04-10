@@ -15,32 +15,25 @@ namespace type {
 struct GenericFunction : LegacyType {
   explicit GenericFunction(ir::Subroutine subroutine, ir::ByteCode byte_code)
       : LegacyType(IndexOf<GenericFunction>(), {}),
-        subroutine_(std::move(subroutine)),
-        byte_code_(std::move(byte_code)) {}
+        info_{.fn = std::move(subroutine), .byte_code = std::move(byte_code)} {}
 
   template <typename InstructionSet>
   Function const *Instantiate(absl::Span<Argument> arguments) {
     static Function const *fn_type =
         Func({core::AnonymousParameter(QualType::NonConstant(Slc(Argument_)))},
              {Type_});
-    ir::NativeFn::Data data{
-        .fn        = &subroutine_,
-        .type      = fn_type,
-        .byte_code = &byte_code_,
-    };
     ir::CompleteResultBuffer argument_buffer;
     argument_buffer.append(ir::Slice(
         reinterpret_cast<ir::addr_t>(arguments.data()), arguments.size()));
     ir::CompleteResultBuffer result =
-        interpreter::EvaluateToBuffer<InstructionSet>(ir::NativeFn(&data),
+        interpreter::EvaluateToBuffer<InstructionSet>(ir::NativeFn(&info_),
                                                       argument_buffer);
     // TODO: Diagnostics.
     return &result[0].get<Type>().as<Function>();
   }
 
  private:
-   ir::Subroutine subroutine_;
- ir::ByteCode byte_code_;
+  ir::NativeFunctionInformation info_;
 };
 
 }  // namespace type

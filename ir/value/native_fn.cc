@@ -2,8 +2,8 @@
 
 namespace ir {
 
-NativeFn::NativeFn(NativeFn::Data const *data) : data_(data) {}
+NativeFn::NativeFn(NativeFn::Data *data) : data_(data) {}
 
-type::Function const *NativeFn::type() const { return data_->type; }
+type::Function const *NativeFn::type() const { return data_->type(); }
 
 }  // namespace ir

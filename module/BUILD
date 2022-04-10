@@ -8,6 +8,7 @@ cc_library(
         "//base:cast",
         "//base:debug",
         "//base:macros",
+        "//ir/byte_code",
         "//type:qual_type",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/container:node_hash_map",
@@ -44,6 +45,10 @@ cc_library(
     hdrs = ["builtin.h"],
     deps = [
         ":module",
+        "//ir:module",
+        "//ir:subroutine",
+        "//ir/value:fn",
+        "//ir/value:native_fn",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

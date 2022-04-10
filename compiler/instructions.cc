@@ -224,13 +224,11 @@ ir::ByteCode EmitByteCode(ir::Subroutine const& sr) {
 void InterpretAtCompileTime(module::SharedContext const& shared_context,
                             ir::Subroutine const& fn,
                             ir::CompleteResultBuffer const& arguments) {
-  ir::ByteCode byte_code = EmitByteCode(fn);
-  ir::NativeFn::Data data{
-      .fn        = &const_cast<ir::Subroutine&>(fn),
-      .type      = &fn.type()->as<type::Function>(),
-      .byte_code = &byte_code,
-  };
-  InterpretAtCompileTime(shared_context, ir::NativeFn(&data), arguments);
+  ir::NativeFunctionInformation info{
+      // TODO: Is this needed?
+      .fn        = ir::Subroutine(&fn.type()->as<type::Function>()),
+      .byte_code = EmitByteCode(fn)};
+  InterpretAtCompileTime(shared_context, ir::NativeFn(&info), arguments);
 }
 
 void InterpretAtCompileTime(module::SharedContext const & shared_context, ir::NativeFn f,

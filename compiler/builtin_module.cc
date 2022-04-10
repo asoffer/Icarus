@@ -98,23 +98,20 @@ ir::Subroutine HasBlockFn() {
 }
 
 template <auto F>
-module::Module::SymbolInformation SymbolFor() {
-  static ir::Subroutine subroutine = F();
-  static ir::ByteCode byte_code    = EmitByteCode(subroutine);
-  static ir::NativeFn::Data data{
-      .fn        = &subroutine,
-      .type      = &subroutine.type()->template as<type::Function>(),
-      .byte_code = &byte_code,
-  };
+void InsertSymbolFor(module::BuiltinModule& module, std::string_view name) {
+  auto subroutine = F();
+  ir::Fn f(module.insert_function(
+      F(), &subroutine.type()->template as<type::Function>(),
+      EmitByteCode(subroutine)));
 
   ir::CompleteResultBuffer buffer;
-  ir::Fn f = ir::NativeFn(&data);
   buffer.append(f);
-  return module::Module::SymbolInformation{
-      .qualified_type = type::QualType::Constant(data.type),
-      .value          = buffer,
-      .visibility     = module::Module::Visibility::Exported,
-  };
+  module.insert(
+      name, module::Module::SymbolInformation{
+                .qualified_type = type::QualType::Constant(f.native().type()),
+                .value          = buffer,
+                .visibility     = module::Module::Visibility::Exported,
+            });
 }
 
 }  // namespace
@@ -122,12 +119,12 @@ module::Module::SymbolInformation SymbolFor() {
 std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
   auto module = std::make_unique<module::BuiltinModule>();
 
-  module->insert("abort", SymbolFor<AbortFn>());
-  module->insert("alignment", SymbolFor<AlignmentFn>());
-  module->insert("bytes", SymbolFor<BytesFn>());
-  module->insert("opaque", SymbolFor<OpaqueFn>());
-  module->insert("reserve_memory", SymbolFor<ReserveMemoryFn>());
-  module->insert("has_block", SymbolFor<HasBlockFn>());
+  InsertSymbolFor<AbortFn>(*module, "abort");
+  InsertSymbolFor<AlignmentFn>(*module, "alignment");
+  InsertSymbolFor<BytesFn>(*module, "bytes");
+  InsertSymbolFor<OpaqueFn>(*module, "opaque");
+  InsertSymbolFor<ReserveMemoryFn>(*module, "reserve_memory");
+  InsertSymbolFor<HasBlockFn>(*module, "has_block");
 
   return module;
 }

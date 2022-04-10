@@ -33,15 +33,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "fn_test",
-    srcs = ["fn_test.cc"],
-    deps = [
-        ":fn",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_library(
     name = "foreign_fn",
     hdrs = ["foreign_fn.h"],
@@ -202,13 +193,31 @@ cc_test(
     ],
 )
 
+
 cc_library(
     name = "scope",
     hdrs = ["scope.h"],
     deps = [
         ":block",
         ":reg",
+        "//ir:subroutine",
+        "//base:extend",
+        "//base/extend:absl_format",
+        "//base/extend:absl_hash",
+        "//base/extend:serialize",
+        "//type:scope",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "scope_context",
+    hdrs = ["scope_context.h"],
+    deps = [
+        ":block",
+        ":reg",
         ":result_buffer",
+        ":scope",
         "//base:any_invocable",
         "//base:extend",
         "//base/extend:absl_format",

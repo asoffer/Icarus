@@ -14,6 +14,14 @@
 
 namespace ir {
 
+struct NativeFunctionInformation {
+  type::Function const *type() const {
+    return &fn.type()->as<type::Function>();
+  }
+  Subroutine fn;
+  ByteCode byte_code;
+};
+
 // `NativeFn` represents a function callable in the language that is defined
 // internally. These are "just normal functions" in the language. The are
 // distinguished from foreign functions.
@@ -21,27 +29,24 @@ struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslHashExtension> {
   static constexpr std::string_view kAbslFormatString = "NativeFn(data = %p)";
   using prefer_wrapper_for_type_erasure               = void;
 
-  struct Data {
-    Subroutine *fn;
-    type::Function const *type;
-    ByteCode const *byte_code;
-  };
+  using Data = NativeFunctionInformation;
 
-  explicit NativeFn(Data const *data = nullptr);
+  explicit NativeFn(NativeFunctionInformation *data = nullptr);
 
   explicit operator bool() const { return data_; }
 
   type::Function const *type() const;
 
-  ByteCode const &byte_code() const { return *data_->byte_code; }
+  ByteCode &byte_code() { return data_->byte_code; }
+  ByteCode const &byte_code() const { return data_->byte_code; }
 
-  Subroutine *operator->() { return data_->fn; }
-  Subroutine &operator*() { return *data_->fn; }
+  Subroutine *operator->() { return &data_->fn; }
+  Subroutine &operator*() { return data_->fn; }
 
   friend absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
   AbslFormatConvert(NativeFn fn, const absl::FormatConversionSpec &spec,
                     absl::FormatSink *s) {
-    s->Append(absl::StrFormat("NativeFn(fn = %p)", fn.data_->fn));
+    s->Append(absl::StrFormat("NativeFn(fn = %p)", &fn.data_->fn));
     return {true};
   }
 
@@ -50,11 +55,10 @@ struct NativeFn : base::Extend<NativeFn, 1>::With<base::AbslHashExtension> {
     return os;
   }
 
- private:
   friend base::EnableExtensions;
   friend struct Fn;
 
-  Data const *data_;
+  NativeFunctionInformation *data_;
 };
 
 }  // namespace ir

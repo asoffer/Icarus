@@ -1,22 +1,23 @@
 #include "compiler/work_graph.h"
 
-#include "compiler/emit/scaffolding.h"
 #include "compiler/emit/initialize.h"
+#include "compiler/emit/scaffolding.h"
 #include "compiler/instructions.h"
 #include "compiler/verify/verify.h"
+#include "ir/value/native_fn.h"
 
 namespace compiler {
 namespace {
 
-std::pair<ir::Subroutine, ir::ByteCode> MakeThunk(Compiler &c,
-                                                  ast::Expression const *expr,
-                                                  type::Type type) {
-  LOG("MakeThunk", "Thunk for %s: %s %p", expr->DebugString(), type.to_string(),
-      &c.context());
+ir::NativeFunctionInformation MakeNativeFunctionInformation(
+    Compiler &c, ast::Expression const *expr, type::Type type) {
+  LOG("MakeNativeFunctionInformation",
+      "NativeFunctionInformation for %s: %s %p", expr->DebugString(),
+      type.to_string(), &c.context());
   ir::Subroutine fn(type::Func({}, {type}));
   c.push_current(&fn);
   absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-  c.current_block() = fn.entry();
+  c.current_block()     = fn.entry();
 
   ir::PartialResultBuffer buffer;
   c.EmitToBuffer(expr, buffer);
@@ -39,9 +40,12 @@ std::pair<ir::Subroutine, ir::ByteCode> MakeThunk(Compiler &c,
     });
   }
   c.current_block()->set_jump(ir::JumpCmd::Return());
-  LOG("MakeThunk", "%s", fn);
+  LOG("MakeNativeFunctionInformation", "%s", fn);
 
-  return std::pair(std::move(fn), EmitByteCode(fn));
+  auto byte_code = EmitByteCode(fn);
+
+  return ir::NativeFunctionInformation{.fn        = std::move(fn),
+                                       .byte_code = std::move(byte_code)};
 }
 
 }  // namespace
@@ -247,12 +251,8 @@ WorkGraph::EvaluateToBuffer(module::SharedContext const &shared_context,
   c.state().scaffolding.emplace_back();
   absl::Cleanup cleanup = [&] { c.state().scaffolding.pop_back(); };
 
-  auto [thunk, byte_code] = MakeThunk(c, *expr, expr.type());
-  ir::NativeFn::Data data{
-      .fn        = &thunk,
-      .type      = &thunk.type()->as<type::Function>(),
-      .byte_code = &byte_code,
-  };
+  ir::NativeFunctionInformation info =
+      MakeNativeFunctionInformation(c, *expr, expr.type());
 
   for (auto const &[item, deps] : w.dependencies_) {
     if (item.kind == WorkItem::Kind::EmitFunctionBody or
@@ -266,7 +266,7 @@ WorkGraph::EvaluateToBuffer(module::SharedContext const &shared_context,
   w.dependencies_.clear();
 
   if (buffering_consumer.empty()) {
-    return EvaluateAtCompileTimeToBuffer(shared_context, ir::NativeFn(&data));
+    return EvaluateAtCompileTimeToBuffer(shared_context, ir::NativeFn(&info));
   } else {
     return std::move(buffering_consumer).extract();
   }

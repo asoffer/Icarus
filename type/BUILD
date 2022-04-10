@@ -290,6 +290,7 @@ cc_library(
         "//ir/value:char",
         "//ir/value:integer",
         "//ir/value:scope",
+        "//ir/value:scope_context",
         "//ir/value:module_id",
         "@com_google_absl//absl/functional:function_ref",
     ],

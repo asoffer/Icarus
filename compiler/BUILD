@@ -19,6 +19,7 @@ cc_test(
     deps = [
         ":instructions",
         "//ir/interpreter:evaluate",
+        "//ir/value:scope_context",
         "@com_google_googletest//:gtest_main",
     ],
 )

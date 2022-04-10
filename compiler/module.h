@@ -47,13 +47,15 @@ struct CompiledModule : module::Module {
   }
 
   absl::Span<Module::SymbolInformation const> Symbols(
-      std::string_view name) const {
+      std::string_view name) const override {
     auto iter = exported_.find(name);
     if (iter == exported_.end()) { return {}; }
 
     // TODO: handle exported embedded modules here too.
     return iter->second;
   }
+
+  FunctionInformation Function(uint32_t id) const override { NOT_YET(); }
 
   bool has_error_in_dependent_module() const {
     return depends_on_module_with_errors_;

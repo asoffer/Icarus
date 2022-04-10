@@ -10,6 +10,7 @@
 #include "base/guarded.h"
 #include "base/iterator.h"
 #include "base/macros.h"
+#include "ir/byte_code/byte_code.h"
 #include "type/qual_type.h"
 
 // TODO: Remove this forward declaration when, when declaration ids are no
@@ -46,9 +47,9 @@ struct Module : base::Cast<Module> {
   // linked together.
   std::string_view identifier() const { return identifier_; }
 
-  // Given a symbol `name`, returns a range of `SymbolInformation` describing
-  // any symbols of that name in the module, regardless of visibility. The range
-  // of symbol information has no ordering guarantees.
+  // Given a symbol `name`, must return a range of `SymbolInformation`
+  // describing all symbols of that name in the module, regardless of
+  // visibility. The range of symbol information has no ordering guarantees.
   virtual absl::Span<SymbolInformation const> Symbols(
       std::string_view name) const = 0;
 
@@ -65,6 +66,14 @@ struct Module : base::Cast<Module> {
     return base::iterator_range(
         filter_iterator<Visibility::Private>(Symbols(name)), filter_end{});
   }
+
+  struct FunctionInformation {
+    type::Function const *type;
+    ir::ByteCode const *byte_code;
+  };
+  // Must return a `FunctionInformation` object capturing the type and byte code
+  // for the function with the given `id` in this module.
+  virtual FunctionInformation Function(uint32_t id) const = 0;
 
  private:
   struct filter_end {};
