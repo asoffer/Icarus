@@ -227,11 +227,6 @@ concept Container = requires(T t) {
   ++std::declval<typename T::iterator&>();
 };
 
-template <typename T>
-concept HasErasureWrapper = requires {
-  typename T::prefer_wrapper_for_type_erasure;
-};
-
 template <typename T, template <typename> typename Template>
 concept is_a = base::meta<T>.template is_a<Template>();
 

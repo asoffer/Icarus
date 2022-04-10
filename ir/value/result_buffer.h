@@ -168,7 +168,6 @@ struct CompleteResultBuffer {
 
   template <typename T>
   void append(T const &value) {
-    static_assert(not base::HasErasureWrapper<T>);
     offsets_.push_back(buffer_.size());
     internal_result_buffer::Writer w(&buffer_);
     base::Serialize(w, value);
@@ -244,7 +243,6 @@ struct PartialResultBuffer {
   template <typename T>
   void append(T const &value) {
     if constexpr (base::meta<T>.template is_a<RegOr>()) {
-      static_assert(not base::HasErasureWrapper<typename T::type>);
       offsets_.push_back(internal_result_buffer::Offset{
           .index       = static_cast<uint32_t>(buffer_.size()),
           .is_register = value.is_reg()});
@@ -259,7 +257,6 @@ struct PartialResultBuffer {
           .index = static_cast<uint32_t>(buffer_.size()), .is_register = true});
       buffer_.append(value);
     } else {
-      static_assert(not base::HasErasureWrapper<T>);
       offsets_.push_back(internal_result_buffer::Offset{
           .index       = static_cast<uint32_t>(buffer_.size()),
           .is_register = false});
