@@ -24,10 +24,7 @@ cc_library(
     name = "fn",
     hdrs = ["fn.h"],
     deps = [
-        ":foreign_fn",
-        ":native_fn",
-        "//core:parameters",
-        "//type:function",
+        ":module_id",
         "//base:extend",
         "//base/extend:absl_hash",
     ],

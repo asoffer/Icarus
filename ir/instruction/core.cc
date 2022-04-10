@@ -2,6 +2,7 @@
 
 #include "absl/strings/str_join.h"
 #include "ir/value/slice.h"
+#include "type/function.h"
 
 namespace ir {
 namespace {

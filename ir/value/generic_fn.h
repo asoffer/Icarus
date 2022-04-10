@@ -34,11 +34,11 @@ struct GenericFn : base::Extend<GenericFn, 1>::With<base::EqualityExtension,
   explicit GenericFn()                                = default;
   explicit GenericFn(
       base::any_invocable<
-          NativeFn(compiler::WorkResources const &wr,
-                   core::Arguments<type::Typed<CompleteResultRef>> const &)>
+          Fn(compiler::WorkResources const &wr,
+             core::Arguments<type::Typed<CompleteResultRef>> const &)>
           gen);
 
-  NativeFn concrete(
+  Fn concrete(
       compiler::WorkResources const &wr,
       core::Arguments<type::Typed<CompleteResultRef>> const &args) const;
 

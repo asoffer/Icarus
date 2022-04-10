@@ -33,13 +33,14 @@ namespace compiler {
 namespace internal_instructions {
 
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBufferImpl(
-    module::SharedContext const &shared_context, ir::NativeFn fn,
+    module::SharedContext const &shared_context,
+    module::Module::FunctionInformation const &info,
     ir::CompleteResultBuffer const &);
 
 }  // namespace internal_instructions
 
 void InterpretAtCompileTime(module::SharedContext const &shared_context,
-                            ir::NativeFn f,
+                            ir::Fn f,
                             ir::CompleteResultBuffer const &arguments = {});
 void InterpretAtCompileTime(module::SharedContext const &shared_context,
                             ir::Subroutine const &fn,
@@ -52,11 +53,20 @@ ir::ByteCode EmitByteCode(ir::Subroutine const &sr);
 
 template <typename... Args>
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(
-    module::SharedContext const &shared_context, ir::NativeFn f,
-    Args const &... args) {
+    module::SharedContext const &shared_context,
+    module::Module::FunctionInformation const &info, Args const &... args) {
   ir::CompleteResultBuffer buffer;
   (buffer.append(args), ...);
-  return internal_instructions::EvaluateAtCompileTimeToBufferImpl(shared_context, f, buffer);
+  return internal_instructions::EvaluateAtCompileTimeToBufferImpl(
+      shared_context, info, buffer);
+}
+
+template <typename... Args>
+ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(
+    module::SharedContext const &shared_context, ir::Fn f,
+    Args const &... args) {
+  return EvaluateAtCompileTimeToBuffer(shared_context,
+                                       shared_context.Function(f), args...);
 }
 
 namespace internal_type {

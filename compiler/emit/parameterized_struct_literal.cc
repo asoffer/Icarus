@@ -57,8 +57,11 @@ bool Compiler::EmitParameterizedStructFunctionBody(
     VerifyType(*this, &field_decl);
   }
 
-  ir::NativeFn ir_func = context().FindNativeFn(node);
-  push_current(&*ir_func);
+  ir::Fn f = context().FindNativeFn(node);
+  auto &subroutine =
+      const_cast<ir::Subroutine &>(*shared_context().Function(f).subroutine);
+  push_current(&subroutine);
+
   absl::Cleanup c = [&] { state().current.pop_back(); };
 
   // TODO: We don't want to allocate each node separately: We need to cache them
@@ -77,7 +80,7 @@ bool Compiler::EmitParameterizedStructFunctionBody(
   current_block()->set_jump(ir::JumpCmd::Return());
 
   LOG("ParameterizedStructLiteral", "%s", *current().subroutine);
-  context().ir().WriteByteCode<EmitByteCode>(ir_func);
+  context().ir().WriteByteCode<EmitByteCode>(f);
   return true;
 }
 

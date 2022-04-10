@@ -189,23 +189,25 @@ struct Context {
   }
 
   // TODO Audit everything below here
-  std::pair<ir::NativeFn, bool> add_func(
-      ast::ParameterizedExpression const *expr) {
+  std::pair<ir::Fn, bool> add_func(ast::ParameterizedExpression const *expr) {
     type::Function const *fn_type =
         &qual_types(expr)[0].type().as<type::Function>();
 
     auto [iter, inserted] = ir_funcs_.try_emplace(expr);
     auto &entry           = iter->second;
 
-    if (inserted) { entry = ir_module_.InsertFunction(fn_type); }
+    if (inserted) {
+      entry =
+          ir_module_.InsertFunction(ir::Subroutine(fn_type), ir::ByteCode());
+    }
     return std::pair(entry, inserted);
   }
 
-  ir::NativeFn FindNativeFn(ast::ParameterizedExpression const *expr) {
+  ir::Fn FindNativeFn(ast::ParameterizedExpression const *expr) {
     auto iter = ir_funcs_.find(expr);
     if (iter != ir_funcs_.end()) { return iter->second; }
     if (parent()) { return parent()->FindNativeFn(expr); }
-    return ir::NativeFn();
+    return ir::Fn();
   }
 
   std::pair<ir::Scope, bool> add_scope(
@@ -425,8 +427,7 @@ struct Context {
   absl::node_hash_map<ast::Expression const *, struct CallMetadata>
       call_metadata_;
 
-  absl::node_hash_map<ast::ParameterizedExpression const *, ir::NativeFn>
-      ir_funcs_;
+  absl::node_hash_map<ast::ParameterizedExpression const *, ir::Fn> ir_funcs_;
   absl::node_hash_map<ast::ParameterizedExpression const *, ir::Scope>
       ir_scopes_;
 

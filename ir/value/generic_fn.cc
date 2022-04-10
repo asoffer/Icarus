@@ -10,7 +10,7 @@ namespace {
 
 // Functions held in this global must be invoked while the lock is not being
 // held.
-base::Global<std::vector<std::unique_ptr<base::any_invocable<NativeFn(
+base::Global<std::vector<std::unique_ptr<base::any_invocable<Fn(
     compiler::WorkResources const &wr,
     core::Arguments<type::Typed<CompleteResultRef>> const &)>>>>
     gen_fns;
@@ -19,22 +19,22 @@ base::Global<std::vector<std::unique_ptr<base::any_invocable<NativeFn(
 
 GenericFn::GenericFn(
     base::any_invocable<
-        NativeFn(compiler::WorkResources const &wr,
+        Fn(compiler::WorkResources const &wr,
                  core::Arguments<type::Typed<CompleteResultRef>> const &)>
         gen) {
   auto handle = gen_fns.lock();
   id_         = handle->size();
   handle->push_back(
-      std::make_unique<base::any_invocable<NativeFn(
+      std::make_unique<base::any_invocable<Fn(
           compiler::WorkResources const &wr,
           core::Arguments<type::Typed<CompleteResultRef>> const &)>>(
           std::move(gen)));
 }
 
-NativeFn GenericFn::concrete(
+Fn GenericFn::concrete(
     compiler::WorkResources const &wr,
     core::Arguments<type::Typed<CompleteResultRef>> const &args) const {
-  base::any_invocable<NativeFn(
+  base::any_invocable<Fn(
       compiler::WorkResources const &wr,
       core::Arguments<type::Typed<CompleteResultRef>> const &)> *fn;
   {

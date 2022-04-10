@@ -149,6 +149,7 @@ cc_library(
         "//ir:out_params",
         "//ir/value:reg_or",
         "//ir/value:slice",
+        "//type:function",
         "@com_google_absl//absl/strings",
     ],
 )

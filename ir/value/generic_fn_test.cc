@@ -9,12 +9,12 @@ TEST(GenericFn, Equality) {
   ir::GenericFn f1(
       [](compiler::WorkResources const &,
          core::Arguments<type::Typed<ir::CompleteResultRef>> const &) {
-        return ir::NativeFn(nullptr);
+        return ir::Fn();
       });
   ir::GenericFn f2(
       [](compiler::WorkResources const &,
          core::Arguments<type::Typed<ir::CompleteResultRef>> const &) {
-        return ir::NativeFn(nullptr);
+        return ir::Fn();
       });
   EXPECT_EQ(f1, f1);
   EXPECT_EQ(f2, f2);

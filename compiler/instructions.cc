@@ -224,16 +224,19 @@ ir::ByteCode EmitByteCode(ir::Subroutine const& sr) {
 void InterpretAtCompileTime(module::SharedContext const& shared_context,
                             ir::Subroutine const& fn,
                             ir::CompleteResultBuffer const& arguments) {
-  ir::NativeFunctionInformation info{
-      // TODO: Is this needed?
-      .fn        = ir::Subroutine(&fn.type()->as<type::Function>()),
-      .byte_code = EmitByteCode(fn)};
-  InterpretAtCompileTime(shared_context, ir::NativeFn(&info), arguments);
+  auto byte_code = EmitByteCode(fn);
+  module::Module::FunctionInformation info{
+      .type       = &fn.type()->as<type::Function>(),
+      .subroutine = &fn,
+      .byte_code  = &byte_code,
+  };
+  interpreter::Execute<instruction_set_t>(shared_context, info, arguments);
 }
 
-void InterpretAtCompileTime(module::SharedContext const & shared_context, ir::NativeFn f,
+void InterpretAtCompileTime(module::SharedContext const & shared_context, ir::Fn f,
                             ir::CompleteResultBuffer const& arguments) {
-  interpreter::Execute<instruction_set_t>(shared_context, f, arguments);
+  interpreter::Execute<instruction_set_t>(
+      shared_context, shared_context.Function(f), arguments);
 }
 
 std::vector<ir::Block> InterpretScopeAtCompileTime(
@@ -262,9 +265,10 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
 namespace internal_instructions {
 
 ir::CompleteResultBuffer EvaluateAtCompileTimeToBufferImpl(
-    module::SharedContext const& shared_context, ir::NativeFn fn,
+    module::SharedContext const& shared_context,
+    module::Module::FunctionInformation const& info,
     ir::CompleteResultBuffer const& arguments) {
-  return interpreter::Evaluate<instruction_set_t>(shared_context, fn,
+  return interpreter::Evaluate<instruction_set_t>(shared_context, info,
                                                   arguments);
 }
 

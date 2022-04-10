@@ -11,6 +11,7 @@
 #include "base/iterator.h"
 #include "base/macros.h"
 #include "ir/byte_code/byte_code.h"
+#include "ir/subroutine.h"
 #include "type/qual_type.h"
 
 // TODO: Remove this forward declaration when, when declaration ids are no
@@ -69,6 +70,7 @@ struct Module : base::Cast<Module> {
 
   struct FunctionInformation {
     type::Function const *type;
+    ir::Subroutine const *subroutine;
     ir::ByteCode const *byte_code;
   };
   // Must return a `FunctionInformation` object capturing the type and byte code
@@ -118,6 +120,7 @@ struct Module : base::Cast<Module> {
     pointer end_;
   };
 
+  // TODO: Move ModuleId to live here.
   std::string identifier_;
 };
 

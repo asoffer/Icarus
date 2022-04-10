@@ -99,19 +99,19 @@ ir::Subroutine HasBlockFn() {
 
 template <auto F>
 void InsertSymbolFor(module::BuiltinModule& module, std::string_view name) {
-  auto subroutine = F();
-  ir::Fn f(module.insert_function(
-      F(), &subroutine.type()->template as<type::Function>(),
-      EmitByteCode(subroutine)));
+  auto subroutine    = F();
+  type::Type fn_type = subroutine.type();
+  auto byte_code  = EmitByteCode(subroutine);
+  ir::Fn f =
+      module.insert_function(std::move(subroutine), std::move(byte_code));
 
   ir::CompleteResultBuffer buffer;
   buffer.append(f);
-  module.insert(
-      name, module::Module::SymbolInformation{
-                .qualified_type = type::QualType::Constant(f.native().type()),
-                .value          = buffer,
-                .visibility     = module::Module::Visibility::Exported,
-            });
+  module.insert(name, module::Module::SymbolInformation{
+                          .qualified_type = type::QualType::Constant(fn_type),
+                          .value          = buffer,
+                          .visibility = module::Module::Visibility::Exported,
+                      });
 }
 
 }  // namespace

@@ -17,7 +17,7 @@ namespace module {
 // Represents a module that has already been compiled, rather than those coming
 // from a source file.
 struct PrecompiledModule final : Module {
-  explicit PrecompiledModule(std::string identifier)
+  explicit PrecompiledModule(std::string identifier, ir::ModuleId)
       : Module(std::move(identifier)) {}
 
   static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>> Make(

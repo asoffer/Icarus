@@ -35,6 +35,7 @@ cc_library(
         "//base:debug",
         "//base:iterator",
         "//ir/byte_code",
+        "//ir/value:fn",
         "//ir/value:native_fn",
         "//ir/value:scope",
         "//type:function",

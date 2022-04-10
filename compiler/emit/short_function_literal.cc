@@ -17,7 +17,7 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
         [node, data = this->data()](
             WorkResources const &wr,
             core::Arguments<type::Typed<ir::CompleteResultRef>> const
-                &args) mutable -> ir::NativeFn {
+                &args) mutable -> ir::Fn {
           Compiler c(&data);
           c.set_work_resources(wr);
           auto find_subcontext_result = FindInstantiation(c, node, args);
@@ -97,10 +97,12 @@ void Compiler::EmitCopyAssign(
 }
 
 bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
-  ir::NativeFn ir_func = context().FindNativeFn(node);
-  push_current(&*ir_func);
+  ir::Fn f               = context().FindNativeFn(node);
+  module::Module::FunctionInformation info = shared_context().Function(f);
+  auto *subroutine = const_cast<ir::Subroutine *>(info.subroutine);
+  push_current(subroutine);
   absl::Cleanup c = [&] { state().current.pop_back(); };
-  auto cleanup    = EmitScaffolding(*this, *ir_func, node->body_scope());
+  auto cleanup    = EmitScaffolding(*this, *subroutine, node->body_scope());
 
   current_block() = current().subroutine->entry();
 
@@ -112,7 +114,7 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
     state().set_addr(&ids[0], ir::Reg::Parameter(i++));
   }
 
-  type::Type ret_type = ir_func.type()->return_types()[0];
+  type::Type ret_type = info.type->return_types()[0];
   if (ret_type.is_big()) {
     type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
         ir::RegOr<ir::addr_t>(ir::Reg::Output(0)), ret_type);
@@ -134,7 +136,7 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
 
   current_block()->set_jump(ir::JumpCmd::Return());
 
-  context().ir().WriteByteCode<EmitByteCode>(ir_func);
+  context().ir().WriteByteCode<EmitByteCode>(f);
   return true;
 }
 

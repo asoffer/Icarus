@@ -266,7 +266,12 @@ WorkGraph::EvaluateToBuffer(module::SharedContext const &shared_context,
   w.dependencies_.clear();
 
   if (buffering_consumer.empty()) {
-    return EvaluateAtCompileTimeToBuffer(shared_context, ir::NativeFn(&info));
+    return EvaluateAtCompileTimeToBuffer(shared_context,
+                                         module::Module::FunctionInformation{
+                                             .type       = info.type(),
+                                             .subroutine = &info.fn,
+                                             .byte_code  = &info.byte_code,
+                                         });
   } else {
     return std::move(buffering_consumer).extract();
   }

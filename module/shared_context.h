@@ -34,24 +34,21 @@ struct SharedContext {
       : table_(std::move(m)) {}
   // Given a name and a function type, returns the associated foreign function,
   // possibly declaring a new one if none already exists.
-  ir::ForeignFn ForeignFunction(std::string &&name, type::Function const *f) {
-    return ir::ForeignFn(
-        foreign_fn_map_.try_emplace(std::pair(std::move(name), f)).first);
+  ir::Fn ForeignFunction(std::string &&name, type::Function const *f) {
+    return ir::Fn(ir::ModuleId::Foreign(), 0);
+    // TODO ir::ForeignFn(
+    // foreign_fn_map_.try_emplace(std::pair(std::move(name), f)).first);
   }
-  ir::ForeignFn ForeignFunction(std::string_view name,
-                                type::Function const *f) {
+  ir::Fn ForeignFunction(std::string_view name, type::Function const *f) {
     return ForeignFunction(std::string(name), f);
+  }
+
+  Module::FunctionInformation Function(ir::Fn f) const {
+    return module_table().module(f.module())->Function(f.index());
   }
 
   auto &foreign_function_map() { return foreign_fn_map_; }
   auto const &foreign_function_map() const { return foreign_fn_map_; }
-
-  type::Function const *FunctionType(ir::Fn f) const {
-    switch (f.kind()) {
-      case ir::Fn::Kind::Native: return f.native().type();
-      case ir::Fn::Kind::Foreign: return f.foreign().type();
-    }
-  }
 
   void_fn_ptr ForeignFunctionPointer(ir::Fn f) const;
 

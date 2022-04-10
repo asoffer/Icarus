@@ -37,10 +37,12 @@ struct DestructionEmitter : CompilationDataReference {
     if (not t->HasDestructor()) { return; }
     auto [fn, inserted] = context().ir().InsertDestroy(t);
     if (inserted) {
-      push_current(&*fn);
+      auto info = shared_context().Function(fn);
+      auto * subroutine = const_cast<ir::Subroutine *>(info.subroutine);
+      push_current(subroutine);
       absl::Cleanup c = [&] { state().current.pop_back(); };
 
-      current_block() = fn->entry();
+      current_block() = subroutine->entry();
       current_block() =
           OnEachArrayElement(current(), t, ir::Reg::Parameter(0),
                              [=](ir::BasicBlock *entry, ir::Reg reg) {

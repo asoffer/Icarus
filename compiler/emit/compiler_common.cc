@@ -33,8 +33,8 @@ ir::OutParams SetReturns(
   }
 }
 
-core::Parameters<ast::Expression const *> DefaultsFor(ast::Expression const *expr,
-                                                  Context const &context) {
+core::Parameters<ast::Expression const *> DefaultsFor(
+    ast::Expression const *expr, Context const &context) {
   if (auto const *id = expr->if_as<ast::Identifier>()) {
     auto decl_id_span = context.decls(id);
     switch (decl_id_span.size()) {
@@ -86,7 +86,7 @@ CalleeResult EmitCallee(
           &callable_expr->as<ast::ParameterizedExpression>();
       auto find_subcontext_result =
           FindInstantiation(c, parameterized_expr, constants);
-      return {.callee = ir::Fn(gen_fn.concrete(c.work_resources(), constants)),
+      return {.callee = gen_fn.concrete(c.work_resources(), constants),
               .type   = find_subcontext_result.fn_type,
               .defaults =
                   DefaultsFor(callable_expr, find_subcontext_result.context),
@@ -159,17 +159,17 @@ CalleeResult EmitCallee(
   } else {
     auto const &symbol_info =
         *callable.get<module::Module::SymbolInformation>();
-    type::QualType qt       = symbol_info.qualified_type;
+    type::QualType qt = symbol_info.qualified_type;
     if (auto const *gf_type =
             qt.type().if_as<type::Generic<type::Function>>()) {
-      ir::GenericFn gen_fn = symbol_info.value[0].get<ir::GenericFn>();
+      ir::GenericFn gen_fn     = symbol_info.value[0].get<ir::GenericFn>();
       auto *parameterized_expr = &symbol_info.id->declaration()
                                       .init_val()
                                       ->as<ast::ParameterizedExpression>();
       auto find_subcontext_result =
           FindInstantiation(c, parameterized_expr, constants);
-      return {.callee = ir::Fn(gen_fn.concrete(c.work_resources(), constants)),
-              .type   = find_subcontext_result.fn_type,
+      return {.callee   = gen_fn.concrete(c.work_resources(), constants),
+              .type     = find_subcontext_result.fn_type,
               .defaults = DefaultsFor(parameterized_expr,
                                       find_subcontext_result.context),
               .context  = &find_subcontext_result.context};

@@ -2,77 +2,36 @@
 #define ICARUS_IR_VALUE_FN_H
 
 #include <cstring>
-#include <iostream>
+#include <ostream>
 
-#include "base/debug.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
-#include "core/parameters.h"
-#include "ir/value/foreign_fn.h"
-#include "ir/value/native_fn.h"
-#include "type/function.h"
+#include "ir/value/module_id.h"
 
 namespace ir {
 
-// `Fn` represents any callable function in the language (either a `NativeFn` or
-// a `ForeignFn`).
-struct Fn : base::Extend<Fn, 1>::With<base::AbslHashExtension> {
- private:
-  using underlying_type = uintptr_t;
-  static_assert(alignof(NativeFn) <= alignof(underlying_type));
-  static_assert(alignof(ForeignFn) <= alignof(underlying_type));
-  static_assert(sizeof(NativeFn) <= sizeof(underlying_type));
-  static_assert(sizeof(ForeignFn) <= sizeof(underlying_type));
+struct Fn : base::Extend<Fn, 2>::With<base::AbslHashExtension> {
+  Fn() : Fn(ModuleId::Invalid(), std::numeric_limits<uint32_t>::max()) {}
+  explicit Fn(ModuleId mod, uint32_t fn) : module_id_(mod), function_id_(fn) {}
 
- public:
   enum class Kind { Native, Foreign };
-
-  Fn() : Fn(NativeFn(nullptr)) {}
-
-  Fn(NativeFn f) {
-    std::memcpy(&data_, &f, sizeof(data_));
-    ASSERT(kind() == Kind::Native);
+  constexpr Kind kind() const {
+    return module() == ir::ModuleId::Builtin() ? Kind::Foreign : Kind::Native;
   }
 
-  constexpr Kind kind() const { return static_cast<Kind>(data_ & 3); }
+  constexpr ModuleId module() const { return module_id_; }
+  constexpr uint32_t index() const { return function_id_; }
 
-  Fn(ForeignFn f) {
-    underlying_type data;
-    std::memcpy(&data, &f, sizeof(f));
-    constexpr underlying_type high_bits =
-        underlying_type{3} << (std::numeric_limits<underlying_type>::digits -
-                               2);
-    ASSERT((data & high_bits) == 0u);
-    data_ = (data << underlying_type{2});
-    data_ |= 1;
-    ASSERT(kind() == Kind::Foreign);
-  }
-
-  NativeFn native() const {
-    ASSERT(kind() == Kind::Native);
-    NativeFn f;
-    std::memcpy(&f.data_, &data_, sizeof(Subroutine *));
-    return f;
-  }
-
-  ForeignFn foreign() const {
-    ASSERT(kind() == Kind::Foreign);
-    return ForeignFn(data_ >> 2);
+  friend std::ostream &operator<<(std::ostream &os, Fn f) {
+    return os << "Fn(" << f.module_id_ << ", " << f.function_id_ << ")";
   }
 
  private:
   friend base::EnableExtensions;
 
-  underlying_type data_;
+  ir::ModuleId module_id_;
+  uint32_t function_id_;
 };
-
-inline std::ostream &operator<<(std::ostream &os, Fn f) {
-  switch (f.kind()) {
-    case Fn::Kind::Native: return os << f.native();
-    case Fn::Kind::Foreign: return os << f.foreign();
-  }
-  UNREACHABLE();
-}
 
 }  // namespace ir
 

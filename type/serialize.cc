@@ -37,9 +37,7 @@ struct ValueSerializer {
   }
 
   void operator()(Function const* t, ir::CompleteResultRef ref) {
-    auto f = ref.get<ir::Fn>().foreign();
-    base::Serialize(*this, f.name());
-    write(type::Type(f.type()));
+    NOT_YET();
   }
 
   void operator()(Primitive const* p, ir::CompleteResultRef ref) {
@@ -103,14 +101,15 @@ struct ValueDeserializer {
   }
 
   bool operator()(Function const* f, ir::CompleteResultBuffer& buffer) {
-    std::string s;
-    Type t;
-    if (not base::Deserialize(*this, s, t)) { return false; }
-    ir::ForeignFn fn(
-        foreign_fn_map_.try_emplace(std::pair(std::move(s), &t.as<Function>()))
-            .first);
-    buffer.append(ir::Fn(fn));
-    return true;
+    NOT_YET(foreign_fn_map_);
+    // std::string s;
+    // Type t;
+    // if (not base::Deserialize(*this, s, t)) { return false; }
+    // ir::ForeignFn fn(
+    //     foreign_fn_map_.try_emplace(std::pair(std::move(s), &t.as<Function>()))
+    //         .first);
+    // buffer.append(ir::Fn(fn));
+    // return true;
   }
 
   bool operator()(Primitive const* p, ir::CompleteResultBuffer& buffer) {

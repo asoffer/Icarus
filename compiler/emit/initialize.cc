@@ -140,11 +140,13 @@ void SetArrayInits(CompilationDataReference ref,
         ref.context().ir().InsertMoveInit(array_type, array_type);
     ASSERT(copy_inserted == move_inserted);
     if (copy_inserted) {
-      ref.push_current(&*copy_fn);
+      ref.push_current(const_cast<ir::Subroutine *>(
+          ref.shared_context().Function(copy_fn).subroutine));
       EmitArrayInit<Copy>(ref, array_type, array_type);
       ref.state().current.pop_back();
 
-      ref.push_current(&*move_fn);
+      ref.push_current(const_cast<ir::Subroutine *>(
+          ref.shared_context().Function(move_fn).subroutine));
       EmitArrayInit<Move>(ref, array_type, array_type);
       ref.state().current.pop_back();
 
@@ -162,10 +164,12 @@ void DefaultInitializationEmitter::EmitInitialize(type::Array const *t,
                                                   ir::RegOr<ir::addr_t> addr) {
   auto [fn, inserted] = context().ir().InsertInit(t);
   if (inserted) {
-    push_current(&*fn);
+    auto info = shared_context().Function(fn);
+    auto *subroutine = const_cast<ir::Subroutine *>(info.subroutine);
+    push_current(subroutine);
     absl::Cleanup c = [&] { state().current.pop_back(); };
 
-    current_block() = fn->entry();
+    current_block() = subroutine->entry();
     current_block() = OnEachArrayElement(
         current(), t, ir::Reg::Parameter(0), [=](ir::BasicBlock *entry, ir::Reg reg) {
           current_block() = entry;
@@ -236,7 +240,8 @@ void DefaultInitializationEmitter::EmitInitialize(type::Struct const *t,
                                                   ir::RegOr<ir::addr_t> addr) {
   auto [fn, inserted] = context().ir().InsertInit(t);
   if (inserted) {
-    push_current(&*fn);
+    auto info = shared_context().Function(fn);
+    push_current(const_cast<ir::Subroutine *>(info.subroutine));
     absl::Cleanup c = [&] { state().current.pop_back(); };
     current_block() = current().subroutine->entry();
     auto var        = ir::Reg::Parameter(0);

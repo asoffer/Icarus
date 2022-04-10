@@ -9,8 +9,11 @@
 namespace compiler {
 
 struct CompiledModule : module::Module {
-  explicit CompiledModule(std::string identifier)
-      : Module(std::move(identifier)), context_(&ir_module_), module_(this) {
+  explicit CompiledModule(std::string identifier, ir::ModuleId id)
+      : Module(std::move(identifier)),
+        ir_module_(id),
+        context_(&ir_module_),
+        module_(this) {
     context_.set_qt_callback([&](ast::Declaration::Id const *id,
                                  type::QualType qt) {
       auto &entries = exported_[id->name()];
@@ -55,7 +58,12 @@ struct CompiledModule : module::Module {
     return iter->second;
   }
 
-  FunctionInformation Function(uint32_t id) const override { NOT_YET(); }
+  FunctionInformation Function(uint32_t id) const override {
+    auto const &info = ir_module_.function(id);
+    return FunctionInformation{.type       = info.type(),
+                               .subroutine = &info.fn,
+                               .byte_code  = &info.byte_code};
+  }
 
   bool has_error_in_dependent_module() const {
     return depends_on_module_with_errors_;

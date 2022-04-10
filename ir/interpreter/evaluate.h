@@ -13,33 +13,30 @@
 namespace interpreter {
 
 template <typename InstSet>
-void Execute(module::SharedContext const& shared_context, ir::NativeFn fn,
+void Execute(module::SharedContext const& shared_context,
+             module::Module::FunctionInformation const& info,
              ir::CompleteResultBuffer const& arguments = {}) {
-  ASSERT(fn.type()->return_types().size() == 0u);
+  ASSERT(info.type->return_types().size() == 0u);
   auto save_errno = std::exchange(errno, 0);
   absl::Cleanup c = [&] { errno = save_errno; };
   // TODO actually just have a good way to construct the buffer
-  LOG("Execute", "%s", fn);
   ExecutionContext ctx(&shared_context);
-  StackFrame frame(&fn.byte_code(), ctx.stack());
+  StackFrame frame(info.byte_code, ctx.stack());
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();
     frame.set_raw(ir::Reg::Parameter(i), argument.data(), argument.size());
   }
-  ctx.Execute<InstSet>(fn, frame);
+  ctx.CallNative<InstSet>(frame);
 }
 
 template <typename InstSet>
 ir::CompleteResultBuffer EvaluateToBuffer(
-    module::SharedContext const& shared_context, ir::NativeFn fn,
+    module::SharedContext const& shared_context,
+    module::Module::FunctionInformation const& info,
     ir::CompleteResultBuffer const& arguments) {
-  LOG("EvaluateToBuffer", "%s", *fn);
-
-  ASSERT(fn.type()->return_types().size() != 0u);
-
   ExecutionContext ctx(&shared_context);
-  StackFrame frame(&fn.byte_code(), ctx.stack());
+  StackFrame frame(info.byte_code, ctx.stack());
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();
@@ -47,7 +44,7 @@ ir::CompleteResultBuffer EvaluateToBuffer(
   }
 
   ir::CompleteResultBuffer result;
-  auto outputs = fn.type()->return_types();
+  auto outputs = info.type->return_types();
 
   core::Bytes total;
   for (auto t : outputs) { total += t.bytes(kArchitecture); }
@@ -58,8 +55,25 @@ ir::CompleteResultBuffer EvaluateToBuffer(
         result.append_slot(outputs[i].bytes(kArchitecture).value()));
   }
 
-  ctx.Execute<InstSet>(fn, frame);
+  ctx.CallNative<InstSet>(frame);
   return result;
+}
+
+template <typename InstSet>
+ir::CompleteResultBuffer EvaluateToBuffer(
+    module::SharedContext const& shared_context, ir::Fn fn,
+    ir::CompleteResultBuffer const& arguments) {
+  return EvaluateToBuffer<InstSet>(shared_context, shared_context.Function(fn),
+                                   arguments);
+}
+
+template <typename InstSet, typename... Args>
+ir::CompleteResultBuffer Evaluate(module::SharedContext const& shared_context,
+                                  module::Module::FunctionInformation const& info,
+                                  Args const&... args) {
+  ir::CompleteResultBuffer arguments;
+  (arguments.append(args), ...);
+  return EvaluateToBuffer<InstSet>(shared_context, info, arguments);
 }
 
 template <typename InstSet, typename... Args>

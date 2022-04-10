@@ -40,15 +40,14 @@ struct CompilerInfrastructure {
  private:
   frontend::SourceIndexer source_indexer_;
   module::SharedContext shared_context_;
-  ir::Module ir_module_;
   std::unique_ptr<module::Importer> importer_;
   diagnostic::TrackingConsumer consumer_;
   compiler::WorkSet work_set_;
 };
 
 struct TestModule : compiler::CompiledModule {
-  explicit TestModule(std::string identifier)
-      : compiler::CompiledModule(std::move(identifier)) {}
+  explicit TestModule(std::string identifier, ir::ModuleId id)
+      : compiler::CompiledModule(std::move(identifier), id) {}
 
   void set_id(ir::ModuleId id) { id_ = id; }
 

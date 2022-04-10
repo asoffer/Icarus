@@ -19,7 +19,7 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
         [node, data = this->data()](
             WorkResources const &wr,
             core::Arguments<type::Typed<ir::CompleteResultRef>> const
-                &args) mutable -> ir::NativeFn {
+                &args) mutable -> ir::Fn {
           Compiler c(&data);
           c.set_work_resources(wr);
           auto find_subcontext_result = FindInstantiation(c, node, args);
@@ -103,10 +103,12 @@ void Compiler::EmitCopyAssign(
 bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   LOG("EmitFunctionBody", "%s", node->DebugString());
 
-  ir::NativeFn ir_func = context().FindNativeFn(node);
-  push_current(&*ir_func);
+  ir::Fn f = context().FindNativeFn(node);
+  auto info        = shared_context().Function(f);
+  auto &subroutine = const_cast<ir::Subroutine &>(*info.subroutine);
+  push_current(&subroutine);
   absl::Cleanup c = [&] { state().current.pop_back(); };
-  auto cleanup         = EmitScaffolding(*this, *ir_func, node->body_scope());
+  auto cleanup    = EmitScaffolding(*this, subroutine, node->body_scope());
 
   size_t i = 0;
   for (auto const &param : node->params()) {
@@ -142,7 +144,7 @@ bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   current_block()->set_jump(ir::JumpCmd::Return());
 
   LOG("EmitFunctionBody", "%s", *current().subroutine);
-  context().ir().WriteByteCode<EmitByteCode>(ir_func);
+  context().ir().WriteByteCode<EmitByteCode>(f);
   return true;
 }
 

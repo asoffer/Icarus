@@ -21,6 +21,7 @@
 #include "ir/interpreter/stack_frame.h"
 #include "ir/out_params.h"
 #include "ir/value/reg_or.h"
+#include "type/function.h"
 
 namespace ir {
 // These instructions are required to appear in every instruction set. They

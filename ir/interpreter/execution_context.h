@@ -130,16 +130,15 @@ struct ExecutionContext {
 
   StackFrame MakeStackFrame(ir::Fn f) {
     if (f.kind() == ir::Fn::Kind::Native) {
-      return StackFrame(&f.native().byte_code(), stack());
+      return StackFrame(shared_context_.Function(f).byte_code, stack());
     } else {
-      return StackFrame(
-          {.num_parameters = f.foreign().type()->params().size(),
-           .num_outputs    = f.foreign().type()->return_types().size()},
-          stack());
+      type::Function const *fn_type = shared_context_.Function(f).type;
+      return StackFrame({.num_parameters = fn_type->params().size(),
+                         .num_outputs    = fn_type->return_types().size()},
+                        stack());
     }
   }
 
- private:
   template <typename InstSet>
   void CallNative(StackFrame &frame) {
     StackFrame *old = std::exchange(current_frame_, &frame);
@@ -147,6 +146,7 @@ struct ExecutionContext {
     ExecuteBlocks<InstSet>();
   }
 
+ private:
   void CallForeignFunction(ir::Fn f, StackFrame &frame);
 
   template <typename InstSet>
@@ -212,7 +212,7 @@ struct ExecutionContext {
         auto inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
         LOG("CallInstruction", "%s", inst);
         ir::Fn f                      = ctx.resolve(inst.func());
-        type::Function const *fn_type = ctx.shared_context_.FunctionType(f);
+        type::Function const *fn_type = ctx.shared_context_.Function(f).type;
         LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
 
         StackFrame frame = ctx.MakeStackFrame(f);

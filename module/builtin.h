@@ -22,7 +22,9 @@ namespace module {
 struct BuiltinModule final : Module {
   static constexpr std::string_view BuiltinIdentifier = "~builtin";
 
-  BuiltinModule() : Module(std::string(BuiltinIdentifier)) {}
+  BuiltinModule()
+      : Module(std::string(BuiltinIdentifier)),
+        module_content_(ir::ModuleId::Builtin()) {}
 
   absl::Span<SymbolInformation const> Symbols(
       std::string_view name) const override {
@@ -40,13 +42,8 @@ struct BuiltinModule final : Module {
     symbols_.try_emplace(symbol).first->second.push_back(info);
   }
 
-  ir::NativeFn insert_function(ir::Subroutine fn, type::Function const *type,
-                               ir::ByteCode byte_code) {
-    // TODO: These should be explicitly on InsertFunction.
-    ir::NativeFn f = module_content_.InsertFunction(type);
-    *f             = std::move(fn);
-    f.byte_code()  = std::move(byte_code);
-    return f;
+  ir::Fn insert_function(ir::Subroutine fn, ir::ByteCode byte_code) {
+    return module_content_.InsertFunction(std::move(fn), std::move(byte_code));
   }
 
  private:

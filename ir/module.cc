@@ -4,11 +4,19 @@
 
 namespace ir {
 
-NativeFn Module::InsertFunction(type::Function const *fn_type) {
-  auto &f = functions_.emplace_back(NativeFunctionInformation{
-      .fn   = Subroutine(fn_type),
+uint32_t Module::InsertFunctionIndex(type::Function const *fn_type) {
+  uint32_t result = functions_.size();
+  functions_.push_back(NativeFunctionInformation{.fn = Subroutine(fn_type)});
+  return result;
+}
+
+Fn Module::InsertFunction(ir::Subroutine fn, ir::ByteCode byte_code) {
+  uint32_t n = functions_.size();
+  functions_.push_back(NativeFunctionInformation{
+      .fn        = std::move(fn),
+      .byte_code = std::move(byte_code),
   });
-  return NativeFn(&f);
+  return Fn(module_id_, n);
 }
 
 Scope Module::InsertScope(type::Scope const *scope_type) {
@@ -24,72 +32,82 @@ Scope Module::InsertScope(type::Scope const *scope_type) {
   return Scope(ASSERT_NOT_NULL(iter->second.second.get()));
 }
 
-std::pair<NativeFn, bool> Module::InsertInit(type::Type t) {
+std::pair<Fn, bool> Module::InsertInit(type::Type t) {
   auto [iter, inserted] = init_.try_emplace(t);
-  if (not inserted) { return std::pair(iter->second, inserted); }
-  iter->second = InsertFunction(type::Func(
+  if (not inserted) {
+    return std::pair(ir::Fn(module_id_, iter->second), inserted);
+  }
+  iter->second = InsertFunctionIndex(type::Func(
       core::Parameters<type::QualType>{
           core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(t)))},
       {}));
-  return std::pair(iter->second, inserted);
+  return std::pair(ir::Fn(module_id_, iter->second), inserted);
 }
 
-std::pair<NativeFn, bool> Module::InsertDestroy(type::Type t) {
+std::pair<Fn, bool> Module::InsertDestroy(type::Type t) {
   auto [iter, inserted] = destroy_.try_emplace(t);
-  if (not inserted) { return std::pair(iter->second, inserted); }
-  iter->second = InsertFunction(type::Func(
+  if (not inserted) {
+    return std::pair(ir::Fn(module_id_, iter->second), inserted);
+  }
+  iter->second = InsertFunctionIndex(type::Func(
       core::Parameters<type::QualType>{
           core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(t)))},
       {}));
-  return std::pair(iter->second, inserted);
+  return std::pair(ir::Fn(module_id_, iter->second), inserted);
 }
 
-std::pair<NativeFn, bool> Module::InsertCopyAssign(type::Type to,
-                                                   type::Type from) {
+std::pair<Fn, bool> Module::InsertCopyAssign(type::Type to, type::Type from) {
   auto [iter, inserted] = copy_assign_.try_emplace(std::pair(to, from));
-  if (not inserted) { return std::pair(iter->second, inserted); }
-  iter->second = InsertFunction(type::Func(
+  if (not inserted) {
+    return std::pair(ir::Fn(module_id_, iter->second), inserted);
+  }
+  iter->second = InsertFunctionIndex(type::Func(
       core::Parameters<type::QualType>{
           core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(to))),
-          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(from)))},
+          core::AnonymousParameter(
+              type::QualType::NonConstant(type::Ptr(from)))},
       {}));
-  return std::pair(iter->second, inserted);
+  return std::pair(ir::Fn(module_id_, iter->second), inserted);
 }
 
-std::pair<NativeFn, bool> Module::InsertMoveAssign(type::Type to,
-                                                   type::Type from) {
+std::pair<Fn, bool> Module::InsertMoveAssign(type::Type to, type::Type from) {
   auto [iter, inserted] = move_assign_.try_emplace(std::pair(to, from));
-  if (not inserted) { return std::pair(iter->second, inserted); }
-  iter->second = InsertFunction(type::Func(
+  if (not inserted) {
+    return std::pair(ir::Fn(module_id_, iter->second), inserted);
+  }
+  iter->second = InsertFunctionIndex(type::Func(
       core::Parameters<type::QualType>{
           core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(to))),
-          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(from)))},
+          core::AnonymousParameter(
+              type::QualType::NonConstant(type::Ptr(from)))},
       {}));
-  return std::pair(iter->second, inserted);
+  return std::pair(ir::Fn(module_id_, iter->second), inserted);
 }
 
-std::pair<NativeFn, bool> Module::InsertCopyInit(type::Type to,
-                                                 type::Type from) {
+std::pair<Fn, bool> Module::InsertCopyInit(type::Type to, type::Type from) {
   auto [iter, inserted] = copy_init_.try_emplace(std::pair(to, from));
   auto &entry           = iter->second;
-  if (not inserted) { return std::pair(iter->second, inserted); }
-  iter->second = InsertFunction(type::Func(
-      core::Parameters<type::QualType>{
-          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(from)))},
-      {to}));
-  return std::pair(iter->second, inserted);
+  if (not inserted) {
+    return std::pair(ir::Fn(module_id_, iter->second), inserted);
+  }
+  iter->second = InsertFunctionIndex(
+      type::Func(core::Parameters<type::QualType>{core::AnonymousParameter(
+                     type::QualType::NonConstant(type::Ptr(from)))},
+                 {to}));
+  return std::pair(ir::Fn(module_id_, iter->second), inserted);
 }
 
-std::pair<NativeFn, bool> Module::InsertMoveInit(type::Type to,
-                                                 type::Type from) {
+std::pair<Fn, bool> Module::InsertMoveInit(type::Type to, type::Type from) {
   auto [iter, inserted] = move_init_.try_emplace(std::pair(to, from));
   auto &entry           = iter->second;
-  if (not inserted) { return std::pair(iter->second, inserted); }
-  iter->second = InsertFunction(type::Func(
-      core::Parameters<type::QualType>{
-          core::AnonymousParameter(type::QualType::NonConstant(type::Ptr(from)))},
-      {to}));
-  return std::pair(iter->second, inserted);
+  if (not inserted) {
+    return std::pair(ir::Fn(module_id_, iter->second), inserted);
+  }
+  iter->second = InsertFunctionIndex(
+      type::Func(core::Parameters<type::QualType>{core::AnonymousParameter(
+                     type::QualType::NonConstant(type::Ptr(from)))},
+                 {to}));
+  return std::pair(ir::Fn(module_id_, iter->second), inserted);
 }
 
 }  // namespace ir

@@ -28,7 +28,7 @@ auto Vector(auto&& range) {
 }
 
 TEST(Module, ExportedAndPrivate) {
-  MockModule m("");
+  MockModule m("", ir::ModuleId(17));
 
   absl::flat_hash_map<std::string, std::vector<Module::SymbolInformation>> const
       symbols = {

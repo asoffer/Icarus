@@ -40,14 +40,14 @@ struct ModuleTable {
   template <std::derived_from<Module> ModuleType, int &..., typename... Args>
   std::pair<ir::ModuleId, ModuleType *>
   add_module(std::string id, Args &&... args) requires(
-      std::constructible_from<ModuleType, std::string, Args...>) {
+      std::constructible_from<ModuleType, std::string, ir::ModuleId, Args...>) {
     if (auto [numeric_id, mod] = module(id); mod) {
       return std::pair<ir::ModuleId, ModuleType *>(numeric_id,
                                                    &mod->as<ModuleType>());
     }
 
     ir::ModuleId numeric_id(modules_.size());
-    auto m                     = std::make_unique<ModuleType>(std::move(id),
+    auto m = std::make_unique<ModuleType>(std::move(id), numeric_id,
                                           std::forward<Args>(args)...);
     std::string_view string_id = m->identifier();
     std::pair<ir::ModuleId, ModuleType *> result(numeric_id, m.get());

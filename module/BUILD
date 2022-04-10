@@ -8,6 +8,7 @@ cc_library(
         "//base:cast",
         "//base:debug",
         "//base:macros",
+        "//ir:subroutine",
         "//ir/byte_code",
         "//type:qual_type",
         "@com_google_absl//absl/types:span",

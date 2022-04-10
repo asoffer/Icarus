@@ -84,11 +84,13 @@ void SetArrayAssignments(CompilationDataReference ref,
       ref.context().ir().InsertMoveAssign(array_type, array_type);
   ASSERT(copy_inserted == move_inserted);
   if (copy_inserted) {
-    ref.push_current(&*copy_fn);
+    ref.push_current(const_cast<ir::Subroutine *>(
+        ref.shared_context().Function(copy_fn).subroutine));
     EmitArrayAssignment(CopyAssignmentEmitter(ref), array_type, array_type);
     ref.state().current.pop_back();
 
-    ref.push_current(&*move_fn);
+    ref.push_current(const_cast<ir::Subroutine *>(
+        ref.shared_context().Function(move_fn).subroutine));
     EmitArrayAssignment(MoveAssignmentEmitter(ref), array_type, array_type);
     ref.state().current.pop_back();
 

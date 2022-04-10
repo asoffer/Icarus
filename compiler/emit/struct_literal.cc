@@ -25,9 +25,11 @@ namespace {
 ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveInit(s, s);
   if (inserted) {
-    c.push_current(&*fn);
+    auto info        = c.shared_context().Function(fn);
+    auto *subroutine = const_cast<ir::Subroutine *>(info.subroutine);
+    c.push_current(subroutine);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-    c.current_block()     = c.current().subroutine->entry();
+    c.current_block()     = subroutine->entry();
 
     auto from = ir::Reg::Parameter(0);
     auto to   = ir::Reg::Output(0);
@@ -61,9 +63,11 @@ ir::Fn InsertGeneratedMoveInit(Compiler &c, type::Struct *s) {
 ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyInit(s, s);
   if (inserted) {
-    c.push_current(&*fn);
+    auto info        = c.shared_context().Function(fn);
+    auto *subroutine = const_cast<ir::Subroutine *>(info.subroutine);
+    c.push_current(subroutine);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-    c.current_block()     = c.current().subroutine->entry();
+    c.current_block()     = subroutine->entry();
 
     auto from = ir::Reg::Parameter(0);
     auto to   = ir::Reg::Output(0);
@@ -97,9 +101,11 @@ ir::Fn InsertGeneratedCopyInit(Compiler &c, type::Struct *s) {
 ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertMoveAssign(s, s);
   if (inserted) {
-    c.push_current(&*fn);
+    auto info        = c.shared_context().Function(fn);
+    auto *subroutine = const_cast<ir::Subroutine *>(info.subroutine);
+    c.push_current(subroutine);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-    c.current_block()     = fn->entry();
+    c.current_block()     = subroutine->entry();
     auto var              = ir::Reg::Parameter(0);
     auto val              = ir::Reg::Parameter(1);
 
@@ -132,9 +138,11 @@ ir::Fn InsertGeneratedMoveAssign(Compiler &c, type::Struct *s) {
 ir::Fn InsertGeneratedCopyAssign(Compiler &c, type::Struct *s) {
   auto [fn, inserted] = c.context().ir().InsertCopyAssign(s, s);
   if (inserted) {
-    c.push_current(&*fn);
+    auto info        = c.shared_context().Function(fn);
+    auto *subroutine = const_cast<ir::Subroutine *>(info.subroutine);
+    c.push_current(subroutine);
     absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-    c.current_block()     = fn->entry();
+    c.current_block()     = subroutine->entry();
     auto var              = ir::Reg::Parameter(0);
     auto val              = ir::Reg::Parameter(1);
 
@@ -191,28 +199,28 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
       } else if (id.name() == "move") {
         auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
         switch (
-            data.shared_context().FunctionType(f.value())->params().size()) {
+            data.shared_context().Function(f.value()).type->params().size()) {
           case 1:
             move_inits.emplace_back(
-                f.value(), data.shared_context().FunctionType(f.value()));
+                f.value(), data.shared_context().Function(f.value()).type);
             break;
           case 2:
             move_assignments.emplace_back(
-                f.value(), data.shared_context().FunctionType(f.value()));
+                f.value(), data.shared_context().Function(f.value()).type);
             break;
           default: UNREACHABLE();
         }
       } else if (id.name() == "copy") {
         auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
         switch (
-            data.shared_context().FunctionType(f.value())->params().size()) {
+            data.shared_context().Function(f.value()).type->params().size()) {
           case 1:
             copy_inits.emplace_back(
-                f.value(), data.shared_context().FunctionType(f.value()));
+                f.value(), data.shared_context().Function(f.value()).type);
             break;
           case 2:
             copy_assignments.emplace_back(
-                f.value(), data.shared_context().FunctionType(f.value()));
+                f.value(), data.shared_context().Function(f.value()).type);
             break;
           default: UNREACHABLE();
         }
@@ -248,9 +256,11 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
   if (needs_dtor) {
     auto [full_dtor, inserted] = data.context().ir().InsertDestroy(s);
     if (inserted) {
-      data.push_current(&*full_dtor);
+      auto info        = c.shared_context().Function(full_dtor);
+      auto *subroutine = const_cast<ir::Subroutine *>(info.subroutine);
+      data.push_current(subroutine);
       absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-      data.current_block()  = data.current().subroutine->entry();
+      data.current_block()  = subroutine->entry();
       auto var              = ir::Reg::Parameter(0);
       if (user_dtor) {
         // TODO: Should probably force-inline this.
@@ -258,7 +268,7 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
         args.append(var);
         // TODO: Constants
         data.current_block()->Append(ir::CallInstruction(
-            full_dtor.type(), *user_dtor, std::move(args), ir::OutParams()));
+            info.type, *user_dtor, std::move(args), ir::OutParams()));
       }
       for (int i = s->fields().size() - 1; i >= 0; --i) {
         DestructionEmitter de(c);
@@ -282,15 +292,15 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
   if (move_inits.empty() and copy_inits.empty()) {
     ir::Fn fm = InsertGeneratedMoveInit(c, s);
     ir::Fn fc = InsertGeneratedCopyInit(c, s);
-    move_inits.emplace_back(fm, c.shared_context().FunctionType(fm));
-    copy_inits.emplace_back(fc, c.shared_context().FunctionType(fc));
+    move_inits.emplace_back(fm, c.shared_context().Function(fm).type);
+    copy_inits.emplace_back(fc, c.shared_context().Function(fc).type);
   }
 
   if (move_assignments.empty() and copy_assignments.empty()) {
     ir::Fn fm = InsertGeneratedMoveAssign(c, s);
     ir::Fn fc = InsertGeneratedCopyAssign(c, s);
-    move_assignments.emplace_back(fm, c.shared_context().FunctionType(fm));
-    copy_assignments.emplace_back(fc, c.shared_context().FunctionType(fc));
+    move_assignments.emplace_back(fm, c.shared_context().Function(fm).type);
+    copy_assignments.emplace_back(fc, c.shared_context().Function(fc).type);
   }
 
   data.current_block()->Append(
