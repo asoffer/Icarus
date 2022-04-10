@@ -214,14 +214,12 @@ struct InitInstruction
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
-      Fn f = *s->init_;
-      interpreter::StackFrame frame(&f.native().byte_code(), ctx.stack());
+      interpreter::StackFrame frame = ctx.MakeStackFrame(*s->init_);
       frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(reg));
       return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
-      Fn f = a->Initializer();
-      interpreter::StackFrame frame(&f.native().byte_code(), ctx.stack());
+      interpreter::StackFrame frame = ctx.MakeStackFrame(a->Initializer());
       frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(reg));
       return frame;
 
@@ -244,9 +242,7 @@ struct DestroyInstruction
   static constexpr std::string_view kDebugFormat = "destroy %2$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    // TODO: Might not be native.
-    interpreter::StackFrame frame(&function().native().byte_code(),
-                                  ctx.stack());
+    interpreter::StackFrame frame = ctx.MakeStackFrame(function());
     frame.set(Reg::Parameter(0), ctx.resolve(addr));
     return frame;
   }
@@ -277,9 +273,7 @@ struct CopyInstruction
   static constexpr std::string_view kDebugFormat = "copy %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    // TODO: Might not be native.
-    interpreter::StackFrame frame(&function().native().byte_code(),
-                                  ctx.stack());
+    interpreter::StackFrame frame = ctx.MakeStackFrame(function());
     frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(to));
     frame.set(Reg::Parameter(1), ctx.resolve<addr_t>(from));
     return frame;
@@ -312,9 +306,7 @@ struct CopyInitInstruction
   static constexpr std::string_view kDebugFormat = "copy-init %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    // TODO: Might not be native.
-    interpreter::StackFrame frame(&function().native().byte_code(),
-                                  ctx.stack());
+    interpreter::StackFrame frame = ctx.MakeStackFrame(function());
     frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(from));
     frame.set(Reg::Output(0), ctx.resolve<addr_t>(to));
     return frame;
@@ -397,9 +389,7 @@ struct MoveInstruction
   static constexpr std::string_view kDebugFormat = "move %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    // TODO: Might not be native.
-    interpreter::StackFrame frame(&function().native().byte_code(),
-                                  ctx.stack());
+    interpreter::StackFrame frame = ctx.MakeStackFrame(function());
     frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(to));
     frame.set(Reg::Parameter(1), ctx.resolve<addr_t>(from));
     return frame;
@@ -432,9 +422,7 @@ struct MoveInitInstruction
   static constexpr std::string_view kDebugFormat = "move-init %2$s to %3$s";
 
   interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    // TODO: Might not be native.
-    interpreter::StackFrame frame(&function().native().byte_code(),
-                                  ctx.stack());
+    interpreter::StackFrame frame = ctx.MakeStackFrame(function());
     frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(from));
     frame.set(Reg::Output(0), ctx.resolve<addr_t>(to));
     return frame;

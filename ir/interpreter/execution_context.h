@@ -128,6 +128,17 @@ struct ExecutionContext {
   Stack const &stack() const & { return stack_; }
   Stack &stack() & { return stack_; }
 
+  StackFrame MakeStackFrame(ir::Fn f) {
+    if (f.kind() == ir::Fn::Kind::Native) {
+      return StackFrame(&f.native().byte_code(), stack());
+    } else {
+      return StackFrame(
+          {.num_parameters = f.foreign().type()->params().size(),
+           .num_outputs    = f.foreign().type()->return_types().size()},
+          stack());
+    }
+  }
+
  private:
   template <typename InstSet>
   void CallNative(StackFrame &frame) {
@@ -204,12 +215,7 @@ struct ExecutionContext {
         type::Function const *fn_type = ctx.shared_context_.FunctionType(f);
         LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
 
-        StackFrame frame =
-            (f.kind() == ir::Fn::Kind::Native)
-                ? StackFrame(&f.native().byte_code(), ctx.stack())
-                : StackFrame({.num_parameters = fn_type->params().size(),
-                              .num_outputs    = fn_type->return_types().size()},
-                             ctx.stack());
+        StackFrame frame = ctx.MakeStackFrame(f);
 
         for (size_t i = 0; i < inst.arguments().num_entries(); ++i) {
           ir::PartialResultRef argument = inst.arguments()[i];
@@ -290,7 +296,7 @@ struct ExecutionContext {
     return {GetInstruction<InstSet, Insts>()...};
   }
 
-  module::SharedContext const&shared_context_;
+  module::SharedContext const &shared_context_;
   Stack stack_;
   StackFrame *current_frame_ = nullptr;
 };
