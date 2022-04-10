@@ -826,14 +826,14 @@ std::unique_ptr<ast::Node> BuildAccess(
   auto range =
       std::string_view(nodes[0]->range().begin(), nodes[2]->range().end());
   auto &&operand = move_as<ast::Expression>(nodes[0]);
-  if (not nodes[2]->is<ast::Identifier>()) {
+  if (nodes[2]->is<ast::Identifier>() or nodes[2]->is<ast::Builtin>()) {
+    return std::make_unique<ast::Access>(range, nodes[2]->range().size(),
+                                         std::move(operand));
+  } else {
     diag.Consume(AccessRhsNotIdentifier{.range = nodes[2]->range()});
     return std::make_unique<ast::Access>(range, nodes[2]->range().size(),
                                          std::move(operand));
   }
-
-  return std::make_unique<ast::Access>(range, nodes[2]->range().size(),
-                                       std::move(operand));
 }
 
 std::unique_ptr<ast::Node> BuildIndexOperator(
