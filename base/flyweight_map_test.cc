@@ -8,7 +8,10 @@ namespace {
 
 using ::testing::ElementsAre;
 using ::testing::Pair;
-using ::testing::Pointee;
+
+MATCHER_P(IteratorRefersTo, matcher, "") {
+  return ::testing::ExplainMatchResult(matcher, *arg, result_listener);
+}
 
 TEST(FlyweightMap, DefaultConstruction) {
   flyweight_map<int, std::string> f;
@@ -47,22 +50,22 @@ TEST(FlyweightMap, BracketOperator) {
   f[1];
   EXPECT_FALSE(f.empty());
   EXPECT_EQ(f.size(), 1);
-  EXPECT_THAT(f.find(1), Pointee(Pair(1, "")));
+  EXPECT_THAT(f.find(1), IteratorRefersTo(Pair(1, "")));
 
   f[1] = "a";
   EXPECT_FALSE(f.empty());
   EXPECT_EQ(f.size(), 1);
-  EXPECT_THAT(f.find(1), Pointee(Pair(1, "a")));
+  EXPECT_THAT(f.find(1), IteratorRefersTo(Pair(1, "a")));
 
   f[2] = "b";
   EXPECT_FALSE(f.empty());
   EXPECT_EQ(f.size(), 2);
-  EXPECT_THAT(f.find(2), Pointee(Pair(2, "b")));
+  EXPECT_THAT(f.find(2), IteratorRefersTo(Pair(2, "b")));
 
   f[1] = "c";
   EXPECT_FALSE(f.empty());
   EXPECT_EQ(f.size(), 2);
-  EXPECT_THAT(f.find(1), Pointee(Pair(1, "c")));
+  EXPECT_THAT(f.find(1), IteratorRefersTo(Pair(1, "c")));
 
   EXPECT_THAT(f, ElementsAre(Pair(1, "c"), Pair(2, "b")));
 }
@@ -104,7 +107,7 @@ TEST(FlyweightMap, CopyConstruction) {
 
   // Ensure that the members of `g` are not referencing into `f`
   f[1] = "A";
-  EXPECT_THAT(g.find(1), Pointee(Pair(1, "a")));
+  EXPECT_THAT(g.find(1), IteratorRefersTo(Pair(1, "a")));
 }
 
 TEST(FlyweightMap, MoveConstruction) {
@@ -134,7 +137,7 @@ TEST(FlyweightMap, CopyAssignment) {
       g, ElementsAre(Pair(1, "a"), Pair(2, "b"), Pair(3, "c"), Pair(4, "d")));
 
   f[1] = "A";
-  EXPECT_THAT(g.find(1), Pointee(Pair(1, "a")));
+  EXPECT_THAT(g.find(1), IteratorRefersTo(Pair(1, "a")));
 }
 
 TEST(FlyweightMap, MoveAssignment) {
@@ -179,16 +182,18 @@ TEST(FlyweightMap, Access) {
   EXPECT_THAT(f.back(), Pair(3, "d"));
 
   f.front().second = "A";
-  f.back().second = "D";
+  f.back().second  = "D";
   EXPECT_THAT(f.front(), Pair(1, "A"));
   EXPECT_THAT(f.back(), Pair(3, "D"));
 }
 
 TEST(FlyweightMap, Find) {
   flyweight_map<int, std::string> f{{1, "a"}, {2, "b"}, {3, "c"}, {4, "d"}};
-  EXPECT_EQ(f.find(0), nullptr);
-  EXPECT_EQ(f.find(1), &*f.begin());
-  EXPECT_EQ(f.find(4), &*f.rbegin());
+  EXPECT_EQ(f.find(0), f.end());
+  EXPECT_EQ(f.find(1), f.begin());
+  EXPECT_THAT(*f.find(4), Pair(4, "d"));
+  ASSERT_NE(f.find(4), f.end());
+  EXPECT_EQ(std::distance(f.begin(), f.find(4)), 3);
 }
 
 }  // namespace

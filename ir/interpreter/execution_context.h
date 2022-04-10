@@ -132,7 +132,7 @@ struct ExecutionContext {
     if (f.kind() == ir::Fn::Kind::Native) {
       return StackFrame(shared_context_.Function(f).byte_code, stack());
     } else {
-      type::Function const *fn_type = shared_context_.Function(f).type;
+      type::Function const *fn_type = shared_context_.ForeignFunctionType(f);
       return StackFrame({.num_parameters = fn_type->params().size(),
                          .num_outputs    = fn_type->return_types().size()},
                         stack());
@@ -211,10 +211,16 @@ struct ExecutionContext {
       if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
         auto inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
         LOG("CallInstruction", "%s", inst);
-        ir::Fn f                      = ctx.resolve(inst.func());
-        type::Function const *fn_type = ctx.shared_context_.Function(f).type;
-        LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
+        ir::Fn f = ctx.resolve(inst.func());
 
+        type::Function const *fn_type;
+        if (f.module() == ir::ModuleId::Foreign()) {
+          fn_type = ctx.shared_context_.ForeignFunctionType(f);
+        } else {
+          fn_type = ctx.shared_context_.Function(f).type;
+        }
+
+        LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
         StackFrame frame = ctx.MakeStackFrame(f);
 
         for (size_t i = 0; i < inst.arguments().num_entries(); ++i) {
@@ -229,7 +235,8 @@ struct ExecutionContext {
             core::Bytes size =
                 t.is_big() ? interpreter::kArchitecture.pointer().bytes()
                            : t.bytes(interpreter::kArchitecture);
-            frame.set_raw(ir::Reg::Parameter(i), argument.raw().data(), size.value());
+            frame.set_raw(ir::Reg::Parameter(i), argument.raw().data(),
+                          size.value());
 
             LOG("CallInstruction", "  %s: [%s]", ir::Reg::Parameter(i),
                 argument.raw());
@@ -267,10 +274,11 @@ struct ExecutionContext {
         ctx.current_frame().set(iter->read<ir::Reg>(), *result);
       } else if constexpr (
           base::meta<Inst>.template is_a<ir::SetReturnInstruction>()) {
-        using type          = typename Inst::type;
-        auto inst           = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
-        ir::addr_t ret_slot = ctx.resolve<ir::addr_t>(ir::Reg::Output(inst.index));
-        type value          = ctx.resolve(inst.value);
+        using type = typename Inst::type;
+        auto inst  = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);
+        ir::addr_t ret_slot =
+            ctx.resolve<ir::addr_t>(ir::Reg::Output(inst.index));
+        type value = ctx.resolve(inst.value);
         *ASSERT_NOT_NULL(reinterpret_cast<type *>(ret_slot)) = value;
       } else if constexpr (internal_execution::HasResolveMemberFunction<Inst>) {
         Inst inst = ir::ByteCodeReader::DeserializeTo<Inst>(*iter);

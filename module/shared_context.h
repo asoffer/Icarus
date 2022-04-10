@@ -34,15 +34,17 @@ struct SharedContext {
   // Given a name and a function type, returns the associated foreign function,
   // possibly declaring a new one if none already exists.
   ir::Fn ForeignFunction(std::string &&name, type::Function const *f) {
-    return ir::Fn(ir::ModuleId::Foreign(), 0);
-    // TODO ir::ForeignFn(
-    // foreign_fn_map_.try_emplace(std::pair(std::move(name), f)).first);
+    auto [iter, inserted] =
+        foreign_fn_map_.try_emplace(std::pair(std::move(name), f));
+    return ir::Fn(ir::ModuleId::Foreign(),
+                  std::distance(foreign_fn_map_.begin(), iter));
   }
   ir::Fn ForeignFunction(std::string_view name, type::Function const *f) {
     return ForeignFunction(std::string(name), f);
   }
 
   Module::FunctionInformation Function(ir::Fn f) const {
+    ASSERT(f.module() != ir::ModuleId::Foreign());
     return module_table().module(f.module())->Function(f.index());
   }
 
@@ -50,6 +52,7 @@ struct SharedContext {
   auto const &foreign_function_map() const { return foreign_fn_map_; }
 
   void_fn_ptr ForeignFunctionPointer(ir::Fn f) const;
+  type::Function const *ForeignFunctionType(ir::Fn f) const;
 
   ModuleTable &module_table() { return table_; }
   ModuleTable const &module_table() const { return table_; }

@@ -118,26 +118,34 @@ struct flyweight_map {
   // key equivalent to the value referenced `t` before `try_emplace` was called,
   // and a boolean indicating whether an insertion actually took place.
   template <std::convertible_to<key_type> T, typename... Args>
-  std::pair<pointer, bool> try_emplace(T&& t, Args&&... args) requires(
+  std::pair<iterator, bool> try_emplace(T&& t, Args&&... args) requires(
       std::constructible_from<mapped_type, Args...>) {
-    if (auto iter = set_.find(std::addressof(t)); iter != set_.end()) {
-      return std::pair<pointer, bool>(*iter, false);
+    if (auto set_iter = set_.find(std::addressof(t)); set_iter != set_.end()) {
+      return std::pair<iterator, bool>(*set_iter, false);
     } else {
       reference ref = values_.emplace_back(std::piecewise_construct,
                                            std::forward_as_tuple(t),
                                            std::forward_as_tuple(args...));
-      auto* p       = std::addressof(ref);
-      iter          = set_.insert(p).first;
-      return std::pair<pointer, bool>(p, true);
+      auto iter     = std::prev(values_.end());
+      set_.insert(iter);
+      return std::pair<iterator, bool>(iter, true);
     }
   }
 
   // Returns a pointer to an element in the container equivalent to the object
   // referenced by `t` if one exists, or a null pointer otherwise.
   template <std::convertible_to<K> T>
-  pointer find(T const& t) const requires(Hasher<hasher, T>) {
-    auto iter = set_.find(std::addressof(t));
-    return iter != set_.end() ? *iter : nullptr;
+  iterator find(T const& t) requires(Hasher<hasher, T>) {
+    auto set_iter = set_.find(std::addressof(t));
+    return set_iter != set_.end() ? *set_iter : values_.end();
+  }
+
+  // Returns a pointer to an element in the container equivalent to the object
+  // referenced by `t` if one exists, or a null pointer otherwise.
+  template <std::convertible_to<K> T>
+  const_iterator find(T const& t) const requires(Hasher<hasher, T>) {
+    auto set_iter = set_.find(std::addressof(t));
+    return set_iter != set_.end() ? *set_iter : values_.end();
   }
 
  private:
@@ -149,23 +157,25 @@ struct flyweight_map {
       return hasher::operator()(*p);
     }
 
-    size_t operator()(pointer p) const { return hasher::operator()(p->first); }
+    size_t operator()(iterator iter) const {
+      return hasher::operator()(iter->first);
+    }
   };
 
   struct E : private key_equal {
     using is_transparent = void;
 
-    bool operator()(pointer lhs, pointer rhs) const {
+    bool operator()(iterator lhs, iterator rhs) const {
       return key_equal::operator()(lhs->first, rhs->first);
     }
 
-    bool operator()(pointer lhs, auto* rhs) const requires(
+    bool operator()(iterator lhs, auto* rhs) const requires(
         std::equivalence_relation<key_equal, std::decay_t<decltype(lhs->first)>,
                                   std::decay_t<decltype(*rhs)>>) {
       return key_equal::operator()(lhs->first, *rhs);
     }
 
-    bool operator()(auto* lhs, pointer rhs) const requires(
+    bool operator()(auto* lhs, iterator rhs) const requires(
         std::equivalence_relation<key_equal, std::decay_t<decltype(*lhs)>,
                                   std::decay_t<decltype(rhs->first)>>) {
       return key_equal::operator()(*lhs, rhs->first);
@@ -179,7 +189,7 @@ struct flyweight_map {
   };
 
   std::deque<value_type> values_;
-  absl::flat_hash_set<pointer, H, E> set_;
+  absl::flat_hash_set<iterator, H, E> set_;
 };
 
 }  // namespace base

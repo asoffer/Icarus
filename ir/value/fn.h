@@ -16,7 +16,7 @@ struct Fn : base::Extend<Fn, 2>::With<base::AbslHashExtension> {
 
   enum class Kind { Native, Foreign };
   constexpr Kind kind() const {
-    return module() == ir::ModuleId::Builtin() ? Kind::Foreign : Kind::Native;
+    return module() == ir::ModuleId::Foreign() ? Kind::Foreign : Kind::Native;
   }
 
   constexpr ModuleId module() const { return module_id_; }
