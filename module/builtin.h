@@ -10,7 +10,6 @@
 #include "ir/module.h"
 #include "ir/subroutine.h"
 #include "ir/value/fn.h"
-#include "ir/value/native_fn.h"
 #include "module/module.h"
 
 namespace module {

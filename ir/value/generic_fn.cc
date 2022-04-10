@@ -3,7 +3,6 @@
 #include <vector>
 
 #include "base/global.h"
-#include "ir/value/native_fn.h"
 
 namespace ir {
 namespace {

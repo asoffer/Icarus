@@ -9,7 +9,6 @@
 
 #include "base/flyweight_map.h"
 #include "ir/value/fn.h"
-#include "ir/value/foreign_fn.h"
 #include "module/builtin.h"
 #include "module/module.h"
 #include "module/table.h"

@@ -49,7 +49,6 @@ cc_library(
         "//ir:module",
         "//ir:subroutine",
         "//ir/value:fn",
-        "//ir/value:native_fn",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
@@ -140,7 +139,6 @@ cc_library(
         ":table",
         "//base:flyweight_map",
         "//ir/value:fn",
-        "//ir/value:foreign_fn",
         "//type:function",
     ],
 )

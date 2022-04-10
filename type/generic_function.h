@@ -26,8 +26,13 @@ struct GenericFunction : LegacyType {
     argument_buffer.append(ir::Slice(
         reinterpret_cast<ir::addr_t>(arguments.data()), arguments.size()));
     ir::CompleteResultBuffer result =
-        interpreter::EvaluateToBuffer<InstructionSet>(ir::NativeFn(&info_),
-                                                      argument_buffer);
+        interpreter::EvaluateToBuffer<InstructionSet>(
+            module::Module::FunctionInformation{
+                .type       = info_.type(),
+                .subroutine = &info_.fn,
+                .byte_code  = &info_.byte_code,
+            },
+            argument_buffer);
     // TODO: Diagnostics.
     return &result[0].get<Type>().as<Function>();
   }

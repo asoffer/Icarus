@@ -6,8 +6,8 @@
 #include "base/untyped_buffer.h"
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/execution_context.h"
+#include "ir/module.h"
 #include "ir/subroutine.h"
-#include "ir/value/native_fn.h"
 #include "module/shared_context.h"
 
 namespace interpreter {
@@ -74,14 +74,6 @@ ir::CompleteResultBuffer Evaluate(module::SharedContext const& shared_context,
   ir::CompleteResultBuffer arguments;
   (arguments.append(args), ...);
   return EvaluateToBuffer<InstSet>(shared_context, info, arguments);
-}
-
-template <typename InstSet, typename... Args>
-ir::CompleteResultBuffer Evaluate(module::SharedContext const& shared_context,
-                                  ir::NativeFn fn, Args const&... args) {
-  ir::CompleteResultBuffer arguments;
-  (arguments.append(args), ...);
-  return EvaluateToBuffer<InstSet>(shared_context, fn, arguments);
 }
 
 }  // namespace interpreter

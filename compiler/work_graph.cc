@@ -4,7 +4,7 @@
 #include "compiler/emit/scaffolding.h"
 #include "compiler/instructions.h"
 #include "compiler/verify/verify.h"
-#include "ir/value/native_fn.h"
+#include "ir/module.h"
 
 namespace compiler {
 namespace {

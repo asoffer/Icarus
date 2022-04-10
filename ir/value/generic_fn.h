@@ -11,7 +11,7 @@
 #include "base/extend/equality.h"
 #include "compiler/work_resources.h"
 #include "core/arguments.h"
-#include "ir/value/native_fn.h"
+#include "ir/module.h"
 #include "ir/value/result_buffer.h"
 #include "type/typed_value.h"
 

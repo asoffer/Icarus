@@ -31,23 +31,10 @@ cc_library(
 )
 
 cc_library(
-    name = "foreign_fn",
-    hdrs = ["foreign_fn.h"],
-    deps = [
-        "//base:extend",
-        "//base/extend:absl_format",
-        "//base/extend:equality",
-        "//base:flyweight_map",
-        "//type:function",
-    ],
-)
-
-cc_library(
     name = "generic_fn",
     hdrs = ["generic_fn.h"],
     srcs = ["generic_fn.cc"],
     deps = [
-        ":native_fn",
         ":result_buffer",
         "//base:any_invocable",
         "//base:extend",
@@ -57,6 +44,7 @@ cc_library(
         "//base:global",
         "//compiler:work_resources",
         "//core:arguments",
+        "//ir:module",
         "//type",
         "//type:typed_value",
     ],
@@ -104,29 +92,6 @@ cc_library(
         "//base:extend",
         "//base/extend:absl_format",
         "//base/extend:absl_hash",
-    ],
-)
-
-cc_library(
-    name = "native_fn",
-    hdrs = ["native_fn.h"],
-    srcs = ["native_fn.cc"],
-    deps = [
-        "//base:debug",
-        "//base:extend",
-        "//ir:subroutine",
-        "//type:function",
-        "@com_google_absl//absl/strings:str_format",
-    ],
-)
-
-cc_test(
-    name = "native_fn_test",
-    srcs = ["native_fn_test.cc"],
-    deps = [
-        ":native_fn",
-        "//type:primitive",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 

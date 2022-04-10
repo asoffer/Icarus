@@ -13,12 +13,19 @@
 #include "ir/subroutine.h"
 #include "ir/value/fn.h"
 #include "ir/value/module_id.h"
-#include "ir/value/native_fn.h"
 #include "ir/value/scope.h"
 #include "type/function.h"
 #include "type/type.h"
 
 namespace ir {
+
+struct NativeFunctionInformation {
+  type::Function const *type() const {
+    return &fn.type()->as<type::Function>();
+  }
+  Subroutine fn;
+  ByteCode byte_code;
+};
 
 // Holds all information about generated IR.
 struct Module {

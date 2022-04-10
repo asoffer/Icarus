@@ -10,11 +10,10 @@
 #include "absl/container/flat_hash_map.h"
 #include "base/meta.h"
 #include "ir/instruction/core.h"
+#include "ir/module.h"
 #include "ir/value/addr.h"
 #include "ir/value/char.h"
 #include "ir/value/fn.h"
-#include "ir/value/foreign_fn.h"
-#include "ir/value/native_fn.h"
 
 namespace ir {
 

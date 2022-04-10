@@ -17,7 +17,6 @@
 #include "ir/byte_code/byte_code.h"
 #include "ir/module.h"
 #include "ir/subroutine.h"
-#include "ir/value/foreign_fn.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
 #include "module/module.h"

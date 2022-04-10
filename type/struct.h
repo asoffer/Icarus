@@ -15,9 +15,9 @@
 #include "base/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/interpreter/execution_context.h"
+#include "ir/module.h"
 #include "ir/value/fn.h"
 #include "ir/value/hashtag.h"
-#include "ir/value/native_fn.h"
 #include "type/type.h"
 
 namespace type {
