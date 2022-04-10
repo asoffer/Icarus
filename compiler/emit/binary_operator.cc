@@ -388,7 +388,7 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
         current_block()->Append(ir::StoreInstruction<ir::addr_t>{
             .value    = current_block()->Append(ir::PtrIncrInstruction{
                 .addr   = current_block()->Append(ir::LoadInstruction{
-                    .type   = lhs_buf_ptr_type->pointee(),
+                    .type   = lhs_type,
                     .addr   = lhs_lval,
                     .result = current().subroutine->Reserve(),
                 }),
@@ -427,7 +427,7 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
         current_block()->Append(ir::StoreInstruction<ir::addr_t>{
             .value    = current_block()->Append(ir::PtrIncrInstruction{
                 .addr   = current_block()->Append(ir::LoadInstruction{
-                    .type   = lhs_buf_ptr_type->pointee(),
+                    .type   = lhs_type,
                     .addr   = lhs_lval,
                     .result = current().subroutine->Reserve(),
                 }),

@@ -165,7 +165,7 @@ struct CastInstruction<ToType(FromType)>
 struct PtrDiffInstruction
     : base::Extend<PtrDiffInstruction>::With<base::BaseSerializeExtension,
                                              DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "%3$s = ptrdiff %1$s %2$s";
+  static constexpr std::string_view kDebugFormat = "%4$s = ptrdiff %1$s %2$s";
 
   void Apply(interpreter::ExecutionContext& ctx) const {
     ctx.current_frame().set(
