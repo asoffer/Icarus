@@ -57,12 +57,18 @@ struct Module {
 
   // Inject special member functions. These functions allocate space for, but do
   // not actually compile the functions.
-  std::pair<Fn, bool> InsertInit(type::Type t);
-  std::pair<Fn, bool> InsertDestroy(type::Type t);
-  std::pair<Fn, bool> InsertMoveAssign(type::Type to, type::Type from);
-  std::pair<Fn, bool> InsertCopyAssign(type::Type to, type::Type from);
-  std::pair<Fn, bool> InsertMoveInit(type::Type to, type::Type from);
-  std::pair<Fn, bool> InsertCopyInit(type::Type to, type::Type from);
+  Fn InsertInit(type::Type t,
+                absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  Fn InsertDestroy(type::Type t,
+                   absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  Fn InsertMoveAssign(type::Type to, type::Type from,
+                      absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  Fn InsertCopyAssign(type::Type to, type::Type from,
+                      absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  Fn InsertMoveInit(type::Type to, type::Type from,
+                    absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  Fn InsertCopyInit(type::Type to, type::Type from,
+                    absl::FunctionRef<void(ir::Subroutine &)> initializer);
 
   auto functions() const {
     return base::iterator_range(functions_.begin(), functions_.end());

@@ -35,14 +35,11 @@ struct DestructionEmitter : CompilationDataReference {
 
   void EmitDestroy(type::Array const *t, ir::RegOr<ir::addr_t> addr) {
     if (not t->HasDestructor()) { return; }
-    auto [fn, inserted] = context().ir().InsertDestroy(t);
-    if (inserted) {
-      auto info = shared_context().Function(fn);
-      auto * subroutine = const_cast<ir::Subroutine *>(info.subroutine);
-      push_current(subroutine);
+    ir::Fn fn = context().ir().InsertDestroy(t, [&](ir::Subroutine &s) {
+      push_current(&s);
       absl::Cleanup c = [&] { state().current.pop_back(); };
 
-      current_block() = subroutine->entry();
+      current_block() = s.entry();
       current_block() =
           OnEachArrayElement(current(), t, ir::Reg::Parameter(0),
                              [=](ir::BasicBlock *entry, ir::Reg reg) {
@@ -51,10 +48,11 @@ struct DestructionEmitter : CompilationDataReference {
                                return current_block();
                              });
       current_block()->set_jump(ir::JumpCmd::Return());
-      context().ir().WriteByteCode<EmitByteCode>(fn);
-      // TODO: Remove const_cast.
-      const_cast<type::Array *>(t)->SetDestructor(fn);
-    }
+    });
+
+    context().ir().WriteByteCode<EmitByteCode>(fn);
+    // TODO: Remove const_cast.
+    const_cast<type::Array *>(t)->SetDestructor(fn);
     current_block()->Append(ir::DestroyInstruction{.type = t, .addr = addr});
   }
   void EmitDestroy(type::Enum const *t, ir::RegOr<ir::addr_t> addr) {}
