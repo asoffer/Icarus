@@ -37,7 +37,7 @@ struct SharedContext {
     auto [iter, inserted] =
         foreign_fn_map_.try_emplace(std::pair(std::move(name), f));
     return ir::Fn(ir::ModuleId::Foreign(),
-                  std::distance(foreign_fn_map_.begin(), iter));
+                  ir::LocalFnId(std::distance(foreign_fn_map_.begin(), iter)));
   }
   ir::Fn ForeignFunction(std::string_view name, type::Function const *f) {
     return ForeignFunction(std::string(name), f);
@@ -45,7 +45,7 @@ struct SharedContext {
 
   Module::FunctionInformation Function(ir::Fn f) const {
     ASSERT(f.module() != ir::ModuleId::Foreign());
-    return module_table().module(f.module())->Function(f.index());
+    return module_table().module(f.module())->Function(f.local());
   }
 
   auto &foreign_function_map() { return foreign_fn_map_; }

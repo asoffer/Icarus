@@ -10,7 +10,7 @@ using void_fn_ptr = void (*)();
 }  // namespace
 
 void_fn_ptr SharedContext::ForeignFunctionPointer(ir::Fn f) const {
-  auto iter           = std::next(foreign_fn_map_.begin(), f.index());
+  auto iter           = std::next(foreign_fn_map_.begin(), f.local().value());
   void_fn_ptr& fn_ptr = const_cast<void_fn_ptr&>(iter->second);
   if (not fn_ptr) {
     dlerror();  // Clear previous errors.
@@ -23,7 +23,7 @@ void_fn_ptr SharedContext::ForeignFunctionPointer(ir::Fn f) const {
 }
 
 type::Function const* SharedContext::ForeignFunctionType(ir::Fn f) const {
-  return std::next(foreign_fn_map_.begin(), f.index())->first.second;
+  return std::next(foreign_fn_map_.begin(), f.local().value())->first.second;
 }
 
 }  // namespace module

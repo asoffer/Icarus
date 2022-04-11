@@ -1,3 +1,5 @@
+Language: Cpp
+Standard: c++20
 BasedOnStyle: Google
 AlignConsecutiveAssignments: true
 AlignEscapedNewlines: Right

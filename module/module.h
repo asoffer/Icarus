@@ -12,6 +12,7 @@
 #include "base/macros.h"
 #include "ir/byte_code/byte_code.h"
 #include "ir/subroutine.h"
+#include "ir/value/fn.h"
 #include "type/qual_type.h"
 
 // TODO: Remove this forward declaration when, when declaration ids are no
@@ -75,7 +76,7 @@ struct Module : base::Cast<Module> {
   };
   // Must return a `FunctionInformation` object capturing the type and byte code
   // for the function with the given `id` in this module.
-  virtual FunctionInformation Function(uint32_t id) const = 0;
+  virtual FunctionInformation Function(ir::LocalFnId id) const = 0;
 
  private:
   struct filter_end {};

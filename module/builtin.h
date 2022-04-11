@@ -32,7 +32,7 @@ struct BuiltinModule final : Module {
     return iter->second;
   }
 
-  FunctionInformation Function(uint32_t id) const override {
+  FunctionInformation Function(ir::LocalFnId id) const override {
     auto const &info = module_content_.function(id);
     return FunctionInformation{.type = info.type(), .byte_code = &info.byte_code};
   }

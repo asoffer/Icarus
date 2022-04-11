@@ -25,7 +25,7 @@ struct PrecompiledModule final : Module {
 
   absl::Span<SymbolInformation const> Symbols(std::string_view name) const override;
 
-  FunctionInformation Function(uint32_t id) const override { NOT_YET(); }
+  FunctionInformation Function(ir::LocalFnId id) const override { NOT_YET(); }
 
  private:
   friend bool BaseDeserialize(ModuleReader& r, PrecompiledModule& m) {

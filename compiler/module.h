@@ -58,7 +58,7 @@ struct CompiledModule : module::Module {
     return iter->second;
   }
 
-  FunctionInformation Function(uint32_t id) const override {
+  FunctionInformation Function(ir::LocalFnId id) const override {
     auto const &info = ir_module_.function(id);
     return FunctionInformation{.type       = info.type(),
                                .subroutine = &info.fn,

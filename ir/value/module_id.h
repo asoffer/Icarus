@@ -1,7 +1,6 @@
 #ifndef ICARUS_IR_VALUE_MODULE_ID_H
 #define ICARUS_IR_VALUE_MODULE_ID_H
 
-#include <cstddef>
 #include <string_view>
 
 #include "base/extend.h"
