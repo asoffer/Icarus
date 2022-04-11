@@ -28,7 +28,7 @@ array ::= struct (T :: type) {
   #{export}
   make ::= (s: []T) -> array(T) {
     raw := s'memory.to_raw
-    raw = slice(raw.data, raw.length)
+    raw = builtin.slice(raw.data, raw.length)
     return array(T).{
       _data     = memory.clone(raw).data
       _length   = s.length
@@ -99,8 +99,8 @@ array ::= struct (T :: type) {
 // 
 //   core.if (char_slice.length > 0 as u64) then {
 //     len := char_slice.length + 1 as u64
-//     memory.Copy(from = slice(char_slice.data as [*]byte, len),
-//              to   = slice(s'at(s._length) as [*]byte, len))
+//     memory.Copy(from = builtin.slice(char_slice.data as [*]byte, len),
+//                 to   = builtin.slice(s'at(s._length) as [*]byte, len))
 //     s._length += char_slice.length
 //   }
 // }
@@ -120,10 +120,10 @@ array ::= struct (T :: type) {
 // at ::= (s: *string, n: u64) => &s._data[n]
 // 
 // #{export}
-// at ::= (s: *string, lo: u64, hi: u64) => slice(&s._data[lo], hi - lo)
+// at ::= (s: *string, lo: u64, hi: u64) => builtin.slice(&s._data[lo], hi - lo)
 // 
 // #{export}
-// view ::= (s: *string) => slice(s'at(0 as u64), s._length)
+// view ::= (s: *string) => builtin.slice(s'at(0 as u64), s._length)
 // 
 // r
 

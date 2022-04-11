@@ -3,16 +3,16 @@
 #{export}
 WithoutPrefix ::= (s: []char, n: u64) -> []char {
   if (s.length < n) {
-    return slice(s.data + s.length, 0)
+    return builtin.slice(s.data + s.length, 0)
   } else {
-    return slice(s.data + n, s.length - n)
+    return builtin.slice(s.data + n, s.length - n)
   }
 }
 
 #{export}
 StripPrefix ::= (s: []char, prefix: []char) -> []char {
   if (s'StartsWith(prefix)) {
-    return slice(s.data + prefix.length, s.length - prefix.length)
+    return builtin.slice(s.data + prefix.length, s.length - prefix.length)
   }
   return s
 }
@@ -20,7 +20,7 @@ StripPrefix ::= (s: []char, prefix: []char) -> []char {
 #{export}
 StripSuffix ::= (s: []char, suffix: []char) -> []char {
   if (s'EndsWith(suffix)) {
-    return slice(s.data, s.length - suffix.length)
+    return builtin.slice(s.data, s.length - suffix.length)
   }
   return s
 }
@@ -28,8 +28,8 @@ StripSuffix ::= (s: []char, suffix: []char) -> []char {
 #{export}
 WithoutSuffix ::= (s: []char, n: u64) -> []char {
   if (s.length < n) {
-    return slice(s.data, 0)
+    return builtin.slice(s.data, 0)
   } else {
-    return slice(s.data, s.length - n)
+    return builtin.slice(s.data, s.length - n)
   }
 }
