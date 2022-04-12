@@ -215,6 +215,22 @@ bool Context::TryLoadConstant(ast::Declaration::Id const *id,
   return false;
 }
 
+std::pair<ir::LocalFnId, int> Context::MakePlaceholder(
+    ast::ParameterizedExpression const *expr) {
+  auto [iter, inserted] = placeholder_fn_.try_emplace(expr);
+  if (inserted) {
+    iter->second =
+        ir().MakePlaceholder(&qual_types(expr)[0].type().as<type::Function>());
+  }
+  return std::pair(iter->second, inserted);
+}
+
+ir::LocalFnId Context::Placeholder(ast::ParameterizedExpression const *expr) {
+  auto iter = placeholder_fn_.find(expr);
+  ASSERT(iter != placeholder_fn_.end());
+  return iter->second;
+}
+
 type::Type TerminalType(ast::Terminal const &node) {
   type::Type t;
   base::MetaValue mv = node.type();

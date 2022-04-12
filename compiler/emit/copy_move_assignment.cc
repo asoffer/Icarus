@@ -78,22 +78,23 @@ void EmitArrayAssignment(auto emitter, type::Array const *to,
 
 void SetArrayAssignments(CompilationDataReference ref,
                          type::Array const *array_type) {
-  ir::Fn copy_fn = ref.context().ir().InsertCopyAssign(
+  auto [copy_fn, copy_inserted] = ref.context().ir().InsertCopyAssign(
       array_type, array_type, [&](ir::Subroutine &s) {
         ref.push_current(&s);
         EmitArrayAssignment(CopyAssignmentEmitter(ref), array_type, array_type);
         ref.state().current.pop_back();
       });
-  ref.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
-  ir::Fn move_fn = ref.context().ir().InsertMoveAssign(
+  auto [move_fn, move_inserted] = ref.context().ir().InsertMoveAssign(
       array_type, array_type, [&](ir::Subroutine &s) {
         ref.push_current(&s);
         EmitArrayAssignment(MoveAssignmentEmitter(ref), array_type, array_type);
         ref.state().current.pop_back();
       });
-  ref.context().ir().WriteByteCode<EmitByteCode>(move_fn);
-  // TODO: Remove const_cast.
-  const_cast<type::Array *>(array_type)->SetAssignments(copy_fn, move_fn);
+  ASSERT(copy_inserted == move_inserted);
+  if (move_inserted) {
+    // TODO: Remove const_cast.
+    const_cast<type::Array *>(array_type)->SetAssignments(copy_fn, move_fn);
+  }
 }
 
 void CopyAssignmentEmitter::EmitAssignment(

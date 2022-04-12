@@ -80,7 +80,7 @@ struct any_invocable<R(Args...)> {
 
   // TODO: This has the same const-bug as with std::function. Fix me.
   template <typename... Ts>
-  R operator()(Ts... args) const {
+  R operator()(Ts&&... args) const {
     return vtable_->invoke(data_, std::forward<Ts>(args)...);
   }
 

@@ -187,6 +187,10 @@ struct Context {
     }
   }
 
+  std::pair<ir::LocalFnId, int> MakePlaceholder(
+      ast::ParameterizedExpression const *expr);
+  ir::LocalFnId Placeholder(ast::ParameterizedExpression const *expr);
+
   // TODO Audit everything below here
   std::pair<ir::Fn, bool> add_func(ast::ParameterizedExpression const *expr) {
     type::Function const *fn_type =
@@ -426,6 +430,8 @@ struct Context {
   absl::node_hash_map<ast::Expression const *, struct CallMetadata>
       call_metadata_;
 
+  absl::flat_hash_map<ast::ParameterizedExpression const *, ir::LocalFnId>
+      placeholder_fn_;
   absl::node_hash_map<ast::ParameterizedExpression const *, ir::Fn> ir_funcs_;
   absl::node_hash_map<ast::ParameterizedExpression const *, ir::Scope>
       ir_scopes_;

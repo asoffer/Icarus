@@ -199,12 +199,15 @@ struct NotInstruction
 // TODO Morph this into interpreter break-point instructions.
 struct DebugIrInstruction
     : base::Extend<DebugIrInstruction>::With<base::BaseTraverseExtension,
-                                             base::BaseSerializeExtension,
-                                             DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "debug-ir(%s)";
+                                             base::BaseSerializeExtension> {
+  std::string to_string() const { return "debug-ir"; }
+  friend std::ostream& operator<<(std::ostream& os,
+                                  DebugIrInstruction const& inst) {
+    return os << inst.to_string();
+  }
 
-  void Apply(interpreter::ExecutionContext&) const { std::cerr << *fn; }
-  Subroutine const* fn;
+  void Apply(interpreter::ExecutionContext&) const { std::cerr << "TODO"; }
+  Subroutine const* fn; // TODO: Fix this.
 };
 
 struct InitInstruction

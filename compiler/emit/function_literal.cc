@@ -6,6 +6,7 @@
 #include "compiler/emit/scaffolding.h"
 #include "compiler/instantiate.h"
 #include "compiler/instructions.h"
+#include "compiler/module.h"
 #include "core/arguments.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -25,7 +26,7 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
           auto find_subcontext_result = FindInstantiation(c, node, args);
           auto &context               = find_subcontext_result.context;
 
-          auto [f, inserted] = context.add_func(node);
+          auto [placeholder, inserted] = context.MakePlaceholder(node);
 
           PersistentResources resources = c.resources();
           if (inserted) {
@@ -34,20 +35,19 @@ void Compiler::EmitToBuffer(ast::FunctionLiteral const *node,
                        .context = &context});
           }
 
-          return f;
+          return ir::Fn(resources.module->id(), placeholder);
         });
     out.append(gen_fn);
     return;
   }
 
-  // TODO Use correct constants
-  auto [f, inserted] = context().add_func(node);
+  auto [placeholder, inserted] = context().MakePlaceholder(node);
   if (inserted) {
     Enqueue({.kind    = WorkItem::Kind::EmitFunctionBody,
              .node    = node,
              .context = &context()});
   }
-  out.append(ir::Fn(f));
+  out.append(ir::Fn(resources().module->id(), placeholder));
   return;
 }
 
@@ -103,48 +103,50 @@ void Compiler::EmitCopyAssign(
 bool Compiler::EmitFunctionBody(ast::FunctionLiteral const *node) {
   LOG("EmitFunctionBody", "%s", node->DebugString());
 
-  ir::Fn f = context().FindNativeFn(node);
-  auto info        = shared_context().Function(f);
-  auto &subroutine = const_cast<ir::Subroutine &>(*info.subroutine);
-  push_current(&subroutine);
-  absl::Cleanup c = [&] { state().current.pop_back(); };
-  auto cleanup    = EmitScaffolding(*this, subroutine, node->body_scope());
+  ir::Subroutine subroutine(
+      &context().qual_types(node)[0].type().as<type::Function>());
 
-  size_t i = 0;
-  for (auto const &param : node->params()) {
-    absl::Span<ast::Declaration::Id const> ids = param.value->ids();
-    ASSERT(ids.size() == 1u);
-    state().set_addr(&ids[0], ir::Reg::Parameter(i++));
-  }
+  {
+    push_current(&subroutine);
+    absl::Cleanup c = [&] { state().current.pop_back(); };
+    auto cleanup    = EmitScaffolding(*this, subroutine, node->body_scope());
 
-  if (auto outputs = node->outputs()) {
-    for (size_t i = 0; i < outputs->size(); ++i) {
-      auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
-      if (not out_decl) { continue; }
-      type::Type out_decl_type = context().qual_types(out_decl)[0].type();
-      auto alloc               = out_decl_type.is_big()
-                       ? ir::Reg::Output(i)
-                       : current().subroutine->Alloca(out_decl_type);
+    size_t i = 0;
+    for (auto const &param : node->params()) {
+      absl::Span<ast::Declaration::Id const> ids = param.value->ids();
+      ASSERT(ids.size() == 1u);
+      state().set_addr(&ids[0], ir::Reg::Parameter(i++));
+    }
 
-      ASSERT(out_decl->ids().size() == 1u);
-      state().set_addr(&out_decl->ids()[0], alloc);
-      if (out_decl->IsDefaultInitialized()) {
-        DefaultInitializationEmitter emitter(*this);
-        emitter(out_decl_type, alloc);
-      } else {
-        ir::PartialResultBuffer buffer;
-        EmitToBuffer(out_decl->init_val(), buffer);
-        CopyAssignmentEmitter emitter(*this);
-        emitter(out_decl_type, alloc, type::Typed(buffer[0], out_decl_type));
+    if (auto outputs = node->outputs()) {
+      for (size_t i = 0; i < outputs->size(); ++i) {
+        auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
+        if (not out_decl) { continue; }
+        type::Type out_decl_type = context().qual_types(out_decl)[0].type();
+        auto alloc               = out_decl_type.is_big() ? ir::Reg::Output(i)
+                                            : subroutine.Alloca(out_decl_type);
+
+        ASSERT(out_decl->ids().size() == 1u);
+        state().set_addr(&out_decl->ids()[0], alloc);
+        if (out_decl->IsDefaultInitialized()) {
+          DefaultInitializationEmitter emitter(*this);
+          emitter(out_decl_type, alloc);
+        } else {
+          ir::PartialResultBuffer buffer;
+          EmitToBuffer(out_decl->init_val(), buffer);
+          CopyAssignmentEmitter emitter(*this);
+          emitter(out_decl_type, alloc, type::Typed(buffer[0], out_decl_type));
+        }
       }
     }
+
+    EmitIrForStatements(*this, &node->body_scope(), node->stmts());
+    current_block()->set_jump(ir::JumpCmd::Return());
+
+    LOG("EmitFunctionBody", "%s", subroutine);
   }
-
-  EmitIrForStatements(*this, &node->body_scope(), node->stmts());
-  current_block()->set_jump(ir::JumpCmd::Return());
-
-  LOG("EmitFunctionBody", "%s", *current().subroutine);
-  context().ir().WriteByteCode<EmitByteCode>(f);
+  ir::LocalFnId placeholder = context().Placeholder(node);
+  context().ir().Insert(placeholder, std::move(subroutine));
   return true;
 }
 

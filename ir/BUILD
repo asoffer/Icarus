@@ -32,6 +32,7 @@ cc_library(
     srcs = ["module.cc"],
     deps = [
         ":subroutine",
+        "//base:any_invocable",
         "//base:debug",
         "//base:iterator",
         "//ir/byte_code",

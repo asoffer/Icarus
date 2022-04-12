@@ -134,21 +134,23 @@ void SetArrayInits(CompilationDataReference ref,
                    type::Array const *array_type) {
   static absl::node_hash_map<type::Array const *, std::once_flag> flags;
   std::call_once(flags[array_type], [&] {
-    ir::Fn copy_fn = ref.context().ir().InsertCopyInit(
+    auto [copy_fn, copy_inserted] = ref.context().ir().InsertCopyInit(
         array_type, array_type, [&](ir::Subroutine &s) {
           ref.push_current(&s);
           EmitArrayInit<Copy>(ref, array_type, array_type);
           ref.state().current.pop_back();
         });
-    ref.context().ir().WriteByteCode<EmitByteCode>(copy_fn);
-    ir::Fn move_fn = ref.context().ir().InsertMoveInit(
+    auto [move_fn, move_inserted] = ref.context().ir().InsertMoveInit(
         array_type, array_type, [&](ir::Subroutine &s) {
           ref.push_current(&s);
           EmitArrayInit<Move>(ref, array_type, array_type);
           ref.state().current.pop_back();
         });
-    ref.context().ir().WriteByteCode<EmitByteCode>(move_fn);
-    const_cast<type::Array *>(array_type)->SetInits(copy_fn, move_fn);
+    ASSERT(move_inserted == copy_inserted);
+    if (move_inserted) {
+      // TODO: Remove const_cast.
+      const_cast<type::Array *>(array_type)->SetInits(copy_fn, move_fn);
+    }
   });
 }
 
@@ -156,24 +158,24 @@ void SetArrayInits(CompilationDataReference ref,
 
 void DefaultInitializationEmitter::EmitInitialize(type::Array const *t,
                                                   ir::RegOr<ir::addr_t> addr) {
-  ir::Fn fn = context().ir().InsertInit(t, [&](ir::Subroutine &subroutine) {
-    push_current(&subroutine);
-    absl::Cleanup c = [&] { state().current.pop_back(); };
+  auto [fn, inserted] =
+      context().ir().InsertInit(t, [&](ir::Subroutine &subroutine) {
+        push_current(&subroutine);
+        absl::Cleanup c = [&] { state().current.pop_back(); };
 
-    current_block() = subroutine.entry();
-    current_block() =
-        OnEachArrayElement(current(), t, ir::Reg::Parameter(0),
-                           [=](ir::BasicBlock *entry, ir::Reg reg) {
-                             current_block() = entry;
-                             EmitInitialize(t->data_type(), reg);
-                             return current_block();
-                           });
-    current_block()->set_jump(ir::JumpCmd::Return());
-  });
+        current_block() = subroutine.entry();
+        current_block() =
+            OnEachArrayElement(current(), t, ir::Reg::Parameter(0),
+                               [=](ir::BasicBlock *entry, ir::Reg reg) {
+                                 current_block() = entry;
+                                 EmitInitialize(t->data_type(), reg);
+                                 return current_block();
+                               });
+        current_block()->set_jump(ir::JumpCmd::Return());
+      });
 
-  context().ir().WriteByteCode<EmitByteCode>(fn);
   // TODO: Remove const_cast.
-  const_cast<type::Array *>(t)->SetInitializer(fn);
+  if (inserted) { const_cast<type::Array *>(t)->SetInitializer(fn); }
 
   current_block()->Append(ir::InitInstruction{.type = t, .reg = addr.reg()});
 }
@@ -230,7 +232,7 @@ void DefaultInitializationEmitter::EmitInitialize(type::Slice const *t,
 
 void DefaultInitializationEmitter::EmitInitialize(type::Struct const *t,
                                                   ir::RegOr<ir::addr_t> addr) {
-  ir::Fn fn = context().ir().InsertInit(t, [&](ir::Subroutine &s) {
+  auto [fn, inserted] = context().ir().InsertInit(t, [&](ir::Subroutine &s) {
     push_current(&s);
     absl::Cleanup c = [&] { state().current.pop_back(); };
     current_block() = s.entry();
@@ -257,9 +259,8 @@ void DefaultInitializationEmitter::EmitInitialize(type::Struct const *t,
     current_block()->set_jump(ir::JumpCmd::Return());
   });
 
-    // TODO: Remove this hack.
+  // TODO: Remove this hack.
   const_cast<type::Struct *>(t)->init_ = fn;
-  context().ir().WriteByteCode<EmitByteCode>(fn);
   current_block()->Append(ir::InitInstruction{.type = t, .reg = addr.reg()});
 }
 

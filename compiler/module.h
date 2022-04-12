@@ -3,6 +3,7 @@
 
 #include "ast/module.h"
 #include "compiler/context.h"
+#include "compiler/instructions.h"
 #include "module/module.h"
 #include "module/writer.h"
 
@@ -11,9 +12,10 @@ namespace compiler {
 struct CompiledModule : module::Module {
   explicit CompiledModule(std::string identifier, ir::ModuleId id)
       : Module(std::move(identifier)),
-        ir_module_(id),
+        ir_module_(id, EmitByteCode),
         context_(&ir_module_),
-        module_(this) {
+        module_(this),
+        id_(id) {
     context_.set_qt_callback([&](ast::Declaration::Id const *id,
                                  type::QualType qt) {
       auto &entries = exported_[id->name()];
@@ -36,6 +38,8 @@ struct CompiledModule : module::Module {
           }
         });
   }
+
+  constexpr ir::ModuleId id() const { return id_; }
 
   friend void BaseSerialize(module::ModuleWriter &w, CompiledModule const &m) {
     base::Serialize(w, m.identifier(), type::GlobalTypeSystem, m.exported_);
@@ -96,6 +100,7 @@ struct CompiledModule : module::Module {
   bool depends_on_module_with_errors_ = false;
 
   ast::Module module_;
+  ir::ModuleId id_;
 };
 
 }  // namespace compiler

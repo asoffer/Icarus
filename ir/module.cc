@@ -32,20 +32,22 @@ Scope Module::InsertScope(type::Scope const *scope_type) {
   return Scope(ASSERT_NOT_NULL(iter->second.second.get()));
 }
 
-Fn Module::InsertInit(type::Type t,
-                      absl::FunctionRef<void(ir::Subroutine &)> initializer) {
+std::pair<Fn, bool> Module::InsertInit(
+    type::Type t, absl::FunctionRef<void(ir::Subroutine &)> initializer) {
   auto [iter, inserted] = init_.try_emplace(t);
   if (inserted) {
     iter->second = InsertFunctionIndex(
         type::Func(core::Parameters<type::QualType>{core::AnonymousParameter(
                        type::QualType::NonConstant(type::Ptr(t)))},
                    {}));
-    initializer(functions_[iter->second.value()].fn);
+    auto &info = functions_[iter->second.value()];
+    initializer(info.fn);
+    info.byte_code = emit_byte_code_(info.fn);
   }
-  return Fn(module_id_, iter->second);
+  return std::pair(Fn(module_id_, iter->second), inserted);
 }
 
-Fn Module::InsertDestroy(
+std::pair<Fn, bool> Module::InsertDestroy(
     type::Type t, absl::FunctionRef<void(ir::Subroutine &)> initializer) {
   auto [iter, inserted] = destroy_.try_emplace(t);
   if (inserted) {
@@ -53,13 +55,14 @@ Fn Module::InsertDestroy(
         type::Func(core::Parameters<type::QualType>{core::AnonymousParameter(
                        type::QualType::NonConstant(type::Ptr(t)))},
                    {}));
-
-    initializer(functions_[iter->second.value()].fn);
+    auto &info = functions_[iter->second.value()];
+    initializer(info.fn);
+    info.byte_code = emit_byte_code_(info.fn);
   }
-  return Fn(module_id_, iter->second);
+  return std::pair(Fn(module_id_, iter->second), inserted);
 }
 
-Fn Module::InsertCopyAssign(
+std::pair<Fn, bool> Module::InsertCopyAssign(
     type::Type to, type::Type from,
     absl::FunctionRef<void(ir::Subroutine &)> initializer) {
   auto [iter, inserted] = copy_assign_.try_emplace(std::pair(to, from));
@@ -71,12 +74,14 @@ Fn Module::InsertCopyAssign(
             core::AnonymousParameter(
                 type::QualType::NonConstant(type::Ptr(from)))},
         {}));
-    initializer(functions_[iter->second.value()].fn);
+    auto &info   = functions_[iter->second.value()];
+    initializer(info.fn);
+    info.byte_code = emit_byte_code_(info.fn);
   }
-  return Fn(module_id_, iter->second);
+  return std::pair(Fn(module_id_, iter->second), inserted);
 }
 
-Fn Module::InsertMoveAssign(
+std::pair<Fn, bool> Module::InsertMoveAssign(
     type::Type to, type::Type from,
     absl::FunctionRef<void(ir::Subroutine &)> initializer) {
   auto [iter, inserted] = move_assign_.try_emplace(std::pair(to, from));
@@ -88,12 +93,14 @@ Fn Module::InsertMoveAssign(
             core::AnonymousParameter(
                 type::QualType::NonConstant(type::Ptr(from)))},
         {}));
-    initializer(functions_[iter->second.value()].fn);
+    auto &info   = functions_[iter->second.value()];
+    initializer(info.fn);
+    info.byte_code = emit_byte_code_(info.fn);
   }
-  return Fn(module_id_, iter->second);
+  return std::pair(Fn(module_id_, iter->second), inserted);
 }
 
-Fn Module::InsertCopyInit(
+std::pair<Fn, bool> Module::InsertCopyInit(
     type::Type to, type::Type from,
     absl::FunctionRef<void(ir::Subroutine &)> initializer) {
   auto [iter, inserted] = copy_init_.try_emplace(std::pair(to, from));
@@ -102,12 +109,14 @@ Fn Module::InsertCopyInit(
         type::Func(core::Parameters<type::QualType>{core::AnonymousParameter(
                        type::QualType::NonConstant(type::Ptr(from)))},
                    {to}));
-    initializer(functions_[iter->second.value()].fn);
+    auto &info = functions_[iter->second.value()];
+    initializer(info.fn);
+    info.byte_code = emit_byte_code_(info.fn);
   }
-  return Fn(module_id_, iter->second);
+  return std::pair(Fn(module_id_, iter->second), inserted);
 }
 
-Fn Module::InsertMoveInit(
+std::pair<Fn, bool> Module::InsertMoveInit(
     type::Type to, type::Type from,
     absl::FunctionRef<void(ir::Subroutine &)> initializer) {
   auto [iter, inserted] = move_init_.try_emplace(std::pair(to, from));
@@ -116,9 +125,11 @@ Fn Module::InsertMoveInit(
         type::Func(core::Parameters<type::QualType>{core::AnonymousParameter(
                        type::QualType::NonConstant(type::Ptr(from)))},
                    {to}));
-    initializer(functions_[iter->second.value()].fn);
+    auto &info = functions_[iter->second.value()];
+    initializer(info.fn);
+    info.byte_code = emit_byte_code_(info.fn);
   }
-  return Fn(module_id_, iter->second);
+  return std::pair(Fn(module_id_, iter->second), inserted);
 }
 
 }  // namespace ir

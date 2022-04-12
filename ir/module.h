@@ -7,6 +7,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
+#include "base/any_invocable.h"
 #include "base/debug.h"
 #include "base/iterator.h"
 #include "ir/byte_code/byte_code.h"
@@ -21,22 +22,26 @@ namespace ir {
 
 struct NativeFunctionInformation {
   type::Function const *type() const {
-    return &fn.type()->as<type::Function>();
+    return type_ ? type_ : &fn.type()->as<type::Function>();
   }
   Subroutine fn;
   ByteCode byte_code;
+  type::Function const *type_;
 };
 
 // Holds all information about generated IR.
 struct Module {
-  explicit Module(ModuleId m) : module_id_(m) {}
+  explicit Module(
+      ModuleId m,
+      base::any_invocable<ir::ByteCode(ir::Subroutine const &)> emit_byte_code)
+      : module_id_(m), emit_byte_code_(std::move(emit_byte_code)) {}
 
   template <auto EmitByteCode>
   void WriteByteCode(Scope s) {
     auto iter = scope_data_.find(s);
     ASSERT(iter != scope_data_.end());
     auto &[byte_code, data] = iter->second;
-    byte_code = EmitByteCode(*s);
+    byte_code = emit_byte_code_(*s);
     data->byte_code = &byte_code;
   }
 
@@ -44,7 +49,7 @@ struct Module {
   void WriteByteCode(Fn f) {
     ASSERT(f.module() == module_id_);
     auto &info     = functions_[f.local().value()];
-    info.byte_code = EmitByteCode(info.fn);
+    info.byte_code = emit_byte_code_(info.fn);
   }
 
   NativeFunctionInformation const &function(LocalFnId id) const {
@@ -52,23 +57,38 @@ struct Module {
     return functions_[id.value()];
   }
 
+  LocalFnId MakePlaceholder(type::Function const *f) {
+    size_t n = functions_.size();
+    functions_.push_back({.type_ = f});
+    return LocalFnId(n);
+  }
+  void Insert(LocalFnId fn, Subroutine subroutine) {
+    auto &info     = functions_[fn.value()];
+    info.byte_code = emit_byte_code_(subroutine);
+    info.fn        = std::move(subroutine);
+  }
+
   Fn InsertFunction(ir::Subroutine fn, ir::ByteCode byte_code);
   Scope InsertScope(type::Scope const *scope_type);
 
   // Inject special member functions. These functions allocate space for, but do
   // not actually compile the functions.
-  Fn InsertInit(type::Type t,
-                absl::FunctionRef<void(ir::Subroutine &)> initializer);
-  Fn InsertDestroy(type::Type t,
-                   absl::FunctionRef<void(ir::Subroutine &)> initializer);
-  Fn InsertMoveAssign(type::Type to, type::Type from,
-                      absl::FunctionRef<void(ir::Subroutine &)> initializer);
-  Fn InsertCopyAssign(type::Type to, type::Type from,
-                      absl::FunctionRef<void(ir::Subroutine &)> initializer);
-  Fn InsertMoveInit(type::Type to, type::Type from,
-                    absl::FunctionRef<void(ir::Subroutine &)> initializer);
-  Fn InsertCopyInit(type::Type to, type::Type from,
-                    absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  std::pair<Fn, bool> InsertInit(
+      type::Type t, absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  std::pair<Fn, bool> InsertDestroy(
+      type::Type t, absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  std::pair<Fn, bool> InsertMoveAssign(
+      type::Type to, type::Type from,
+      absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  std::pair<Fn, bool> InsertCopyAssign(
+      type::Type to, type::Type from,
+      absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  std::pair<Fn, bool> InsertMoveInit(
+      type::Type to, type::Type from,
+      absl::FunctionRef<void(ir::Subroutine &)> initializer);
+  std::pair<Fn, bool> InsertCopyInit(
+      type::Type to, type::Type from,
+      absl::FunctionRef<void(ir::Subroutine &)> initializer);
 
   auto functions() const {
     return base::iterator_range(functions_.begin(), functions_.end());
@@ -90,6 +110,7 @@ struct Module {
       scope_data_;
 
   ModuleId module_id_;
+  base::any_invocable<ir::ByteCode(ir::Subroutine const &)> emit_byte_code_;
   absl::flat_hash_map<type::Type, LocalFnId> init_, destroy_;
   absl::flat_hash_map<std::pair<type::Type, type::Type>, LocalFnId>
       copy_assign_, move_assign_, copy_init_, move_init_;

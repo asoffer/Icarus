@@ -35,7 +35,8 @@ struct DestructionEmitter : CompilationDataReference {
 
   void EmitDestroy(type::Array const *t, ir::RegOr<ir::addr_t> addr) {
     if (not t->HasDestructor()) { return; }
-    ir::Fn fn = context().ir().InsertDestroy(t, [&](ir::Subroutine &s) {
+    auto [fn,
+          inserted] = context().ir().InsertDestroy(t, [&](ir::Subroutine &s) {
       push_current(&s);
       absl::Cleanup c = [&] { state().current.pop_back(); };
 
@@ -50,9 +51,8 @@ struct DestructionEmitter : CompilationDataReference {
       current_block()->set_jump(ir::JumpCmd::Return());
     });
 
-    context().ir().WriteByteCode<EmitByteCode>(fn);
     // TODO: Remove const_cast.
-    const_cast<type::Array *>(t)->SetDestructor(fn);
+    if (inserted) { const_cast<type::Array *>(t)->SetDestructor(fn); }
     current_block()->Append(ir::DestroyInstruction{.type = t, .addr = addr});
   }
   void EmitDestroy(type::Enum const *t, ir::RegOr<ir::addr_t> addr) {}

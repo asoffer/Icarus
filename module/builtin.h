@@ -23,7 +23,9 @@ struct BuiltinModule final : Module {
 
   BuiltinModule()
       : Module(std::string(BuiltinIdentifier)),
-        module_content_(ir::ModuleId::Builtin()) {}
+        module_content_(
+            ir::ModuleId::Builtin(),
+            [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }) {}
 
   absl::Span<SymbolInformation const> Symbols(
       std::string_view name) const override {

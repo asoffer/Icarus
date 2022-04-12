@@ -329,6 +329,7 @@ cc_library(
     hdrs = ["module.h"],
     deps = [
         ":context",
+        ":instructions",
         "//module",
         "//module:writer",
     ],

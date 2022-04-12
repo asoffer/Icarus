@@ -27,6 +27,7 @@ namespace ir {
 // for a Jump is largely similar to that of a function with a few differences. A
 // `Subroutine` represents the parts common to both.
 struct Subroutine {
+  Subroutine() : alloc_(0) {}
   Subroutine(Subroutine const &) = delete;
   Subroutine(Subroutine &&)      = default;
   Subroutine &operator=(Subroutine const &) = delete;
