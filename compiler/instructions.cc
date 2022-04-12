@@ -226,9 +226,8 @@ void InterpretAtCompileTime(module::SharedContext const& shared_context,
                             ir::CompleteResultBuffer const& arguments) {
   auto byte_code = EmitByteCode(fn);
   module::Module::FunctionInformation info{
-      .type       = &fn.type()->as<type::Function>(),
-      .subroutine = &fn,
-      .byte_code  = &byte_code,
+      .type      = &fn.type()->as<type::Function>(),
+      .byte_code = &byte_code,
   };
   interpreter::Execute<instruction_set_t>(shared_context, info, arguments);
 }

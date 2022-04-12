@@ -6,7 +6,9 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/function_ref.h"
 #include "absl/types/span.h"
+#include "base/any_invocable.h"
 #include "ir/module.h"
 #include "ir/subroutine.h"
 #include "ir/value/fn.h"
@@ -21,11 +23,11 @@ namespace module {
 struct BuiltinModule final : Module {
   static constexpr std::string_view BuiltinIdentifier = "~builtin";
 
-  BuiltinModule()
+  BuiltinModule(base::any_invocable<ir::ByteCode(ir::Subroutine const &)>
+                    byte_code_emitter)
       : Module(std::string(BuiltinIdentifier)),
-        module_content_(
-            ir::ModuleId::Builtin(),
-            [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }) {}
+        module_content_(ir::ModuleId::Builtin(), std::move(byte_code_emitter)) {
+  }
 
   absl::Span<SymbolInformation const> Symbols(
       std::string_view name) const override {
@@ -36,15 +38,18 @@ struct BuiltinModule final : Module {
 
   FunctionInformation Function(ir::LocalFnId id) const override {
     auto const &info = module_content_.function(id);
-    return FunctionInformation{.type = info.type(), .byte_code = &info.byte_code};
+    return FunctionInformation{.type      = info.type(),
+                               .byte_code = &info.byte_code};
   }
 
   void insert(std::string_view symbol, SymbolInformation const &info) {
     symbols_.try_emplace(symbol).first->second.push_back(info);
   }
 
-  ir::Fn insert_function(ir::Subroutine fn, ir::ByteCode byte_code) {
-    return module_content_.InsertFunction(std::move(fn), std::move(byte_code));
+  ir::Fn insert_function(
+      type::Function const *fn_type,
+      absl::FunctionRef<void(ir::Subroutine &)> initialize_subroutine) {
+    return module_content_.InsertFunction(fn_type, initialize_subroutine);
   }
 
  private:

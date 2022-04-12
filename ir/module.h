@@ -21,10 +21,7 @@
 namespace ir {
 
 struct NativeFunctionInformation {
-  type::Function const *type() const {
-    return type_ ? type_ : &fn.type()->as<type::Function>();
-  }
-  Subroutine fn;
+  type::Function const *type() const { return type_; }
   ByteCode byte_code;
   type::Function const *type_;
 };
@@ -55,13 +52,14 @@ struct Module {
     functions_.push_back({.type_ = f});
     return LocalFnId(n);
   }
-  void Insert(LocalFnId fn, Subroutine subroutine) {
+  void Insert(LocalFnId fn, Subroutine const &subroutine) {
     auto &info     = functions_[fn.value()];
     info.byte_code = emit_byte_code_(subroutine);
-    info.fn        = std::move(subroutine);
   }
 
-  Fn InsertFunction(ir::Subroutine fn, ir::ByteCode byte_code);
+  Fn InsertFunction(type::Function const *t,
+                    absl::FunctionRef<void(ir::Subroutine &)> initializer);
+
   Scope InsertScope(type::Scope const *scope_type);
 
   // Inject special member functions. These functions allocate space for, but do

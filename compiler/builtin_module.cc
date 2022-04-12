@@ -9,17 +9,12 @@
 namespace compiler {
 namespace {
 
-ir::Subroutine AbortFn() {
-  ir::Subroutine subroutine(type::Func({}, {}));
+void AbortFn(ir::Subroutine& subroutine) {
   subroutine.entry()->Append(AbortInstruction{});
   subroutine.entry()->set_jump(ir::JumpCmd::Return());
-  return subroutine;
 }
 
-ir::Subroutine AlignmentFn() {
-  ir::Subroutine subroutine(type::Func(
-      {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
-      {type::U64}));
+void AlignmentFn(ir::Subroutine& subroutine) {
   subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
       .index = 0,
       .value = subroutine.entry()->Append(AlignmentInstruction{
@@ -28,13 +23,9 @@ ir::Subroutine AlignmentFn() {
       }),
   });
   subroutine.entry()->set_jump(ir::JumpCmd::Return());
-  return subroutine;
 }
 
-ir::Subroutine BytesFn() {
-  ir::Subroutine subroutine(type::Func(
-      {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
-      {type::U64}));
+void BytesFn(ir::Subroutine& subroutine) {
   subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
       .index = 0,
       .value = subroutine.entry()->Append(BytesInstruction{
@@ -43,17 +34,9 @@ ir::Subroutine BytesFn() {
       }),
   });
   subroutine.entry()->set_jump(ir::JumpCmd::Return());
-  return subroutine;
 }
 
-ir::Subroutine OpaqueFn() {
-  ir::Subroutine subroutine(type::EagerFunc(
-      {core::Parameter<type::QualType>{
-          .name  = "",
-          .value = type::QualType::NonConstant(type::CallingModule),
-          .flags = core::ParameterFlags::MustNotName() |
-                   core::ParameterFlags::HasDefault()}},
-      {type::Type_}));
+void OpaqueFn(ir::Subroutine& subroutine) {
   subroutine.entry()->Append(ir::SetReturnInstruction<type::Type>{
       .index = 0,
       .value = subroutine.entry()->Append(type::OpaqueTypeInstruction{
@@ -62,14 +45,9 @@ ir::Subroutine OpaqueFn() {
       }),
   });
   subroutine.entry()->set_jump(ir::JumpCmd::Return());
-  return subroutine;
 }
 
-ir::Subroutine ReserveMemoryFn() {
-  ir::Subroutine subroutine(type::Func(
-      {core::AnonymousParameter(type::QualType::Constant(type::Integer)),
-       core::AnonymousParameter(type::QualType::Constant(type::Integer))},
-      {type::BufPtr(type::Byte)}));
+void ReserveMemoryFn(ir::Subroutine& subroutine) {
   // TODO: Not yet implemented.
 
   // out.append(c.current().subroutine->Alloca(core::TypeContour(
@@ -77,14 +55,9 @@ ir::Subroutine ReserveMemoryFn() {
   //     core::Alignment(
   //         *c.EvaluateOrDiagnoseAs<uint64_t>(&args[1].expr())))));
   subroutine.entry()->set_jump(ir::JumpCmd::Return());
-  return subroutine;
 }
 
-ir::Subroutine HasBlockFn() {
-  ir::Subroutine subroutine(type::EagerFunc(
-      {core::AnonymousParameter(type::QualType::Constant(type::ScopeContext)),
-       core::AnonymousParameter(type::QualType::Constant(type::Slc(type::Char)))},
-      {type::Bool}));
+void HasBlockFn(ir::Subroutine& subroutine) {
   subroutine.entry()->Append(ir::SetReturnInstruction<bool>{
       .index = 0,
       .value = subroutine.entry()->Append(HasBlockInstruction{
@@ -94,16 +67,12 @@ ir::Subroutine HasBlockFn() {
       }),
   });
   subroutine.entry()->set_jump(ir::JumpCmd::Return());
-  return subroutine;
 }
 
 template <auto F>
-void InsertSymbolFor(module::BuiltinModule& module, std::string_view name) {
-  auto subroutine    = F();
-  type::Type fn_type = subroutine.type();
-  auto byte_code  = EmitByteCode(subroutine);
-  ir::Fn f =
-      module.insert_function(std::move(subroutine), std::move(byte_code));
+void InsertSymbolFor(module::BuiltinModule& module, std::string_view name,
+                     type::Function const* fn_type) {
+  ir::Fn f = module.insert_function(fn_type, F);
 
   ir::CompleteResultBuffer buffer;
   buffer.append(f);
@@ -117,14 +86,41 @@ void InsertSymbolFor(module::BuiltinModule& module, std::string_view name) {
 }  // namespace
 
 std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
-  auto module = std::make_unique<module::BuiltinModule>();
+  auto module = std::make_unique<module::BuiltinModule>(EmitByteCode);
 
-  InsertSymbolFor<AbortFn>(*module, "abort");
-  InsertSymbolFor<AlignmentFn>(*module, "alignment");
-  InsertSymbolFor<BytesFn>(*module, "bytes");
-  InsertSymbolFor<OpaqueFn>(*module, "opaque");
-  InsertSymbolFor<ReserveMemoryFn>(*module, "reserve_memory");
-  InsertSymbolFor<HasBlockFn>(*module, "has_block");
+  InsertSymbolFor<AbortFn>(*module, "abort", type::Func({}, {}));
+  InsertSymbolFor<AlignmentFn>(
+      *module, "alignment",
+      type::Func(
+          {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
+          {type::U64}));
+  InsertSymbolFor<BytesFn>(
+      *module, "bytes",
+      type::Func(
+          {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
+          {type::U64}));
+  InsertSymbolFor<OpaqueFn>(
+      *module, "opaque",
+      type::EagerFunc(
+          {core::Parameter<type::QualType>{
+              .name  = "",
+              .value = type::QualType::NonConstant(type::CallingModule),
+              .flags = core::ParameterFlags::MustNotName() |
+                       core::ParameterFlags::HasDefault()}},
+          {type::Type_}));
+  InsertSymbolFor<ReserveMemoryFn>(
+      *module, "reserve_memory",
+      type::Func(
+          {core::AnonymousParameter(type::QualType::Constant(type::Integer)),
+           core::AnonymousParameter(type::QualType::Constant(type::Integer))},
+          {type::BufPtr(type::Byte)}));
+  InsertSymbolFor<HasBlockFn>(
+      *module, "has_block",
+      type::EagerFunc({core::AnonymousParameter(
+                           type::QualType::Constant(type::ScopeContext)),
+                       core::AnonymousParameter(
+                           type::QualType::Constant(type::Slc(type::Char)))},
+                      {type::Bool}));
 
   return module;
 }

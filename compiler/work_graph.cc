@@ -44,8 +44,8 @@ ir::NativeFunctionInformation MakeNativeFunctionInformation(
 
   auto byte_code = EmitByteCode(fn);
 
-  return ir::NativeFunctionInformation{.fn        = std::move(fn),
-                                       .byte_code = std::move(byte_code)};
+  return ir::NativeFunctionInformation{.byte_code = std::move(byte_code),
+                                       .type_     = type::Func({}, {type})};
 }
 
 }  // namespace
@@ -268,9 +268,8 @@ WorkGraph::EvaluateToBuffer(module::SharedContext const &shared_context,
   if (buffering_consumer.empty()) {
     return EvaluateAtCompileTimeToBuffer(shared_context,
                                          module::Module::FunctionInformation{
-                                             .type       = info.type(),
-                                             .subroutine = &info.fn,
-                                             .byte_code  = &info.byte_code,
+                                             .type      = info.type(),
+                                             .byte_code = &info.byte_code,
                                          });
   } else {
     return std::move(buffering_consumer).extract();

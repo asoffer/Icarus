@@ -11,7 +11,8 @@ namespace {
 using ::testing::SizeIs;
 
 TEST(ModuleTable, ConstructedWithBuiltin) {
-  ModuleTable table(std::make_unique<BuiltinModule>());
+  ModuleTable table(std::make_unique<BuiltinModule>(
+      [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }));
   auto *module_by_numeric_id = table.module(ir::ModuleId::Builtin());
   ASSERT_NE(module_by_numeric_id, nullptr);
   EXPECT_TRUE(module_by_numeric_id->is<BuiltinModule>());
@@ -25,7 +26,8 @@ TEST(ModuleTable, ConstructedWithBuiltin) {
 }
 
 TEST(ModuleTable, Insertion) {
-  ModuleTable table(std::make_unique<BuiltinModule>());
+  ModuleTable table(std::make_unique<BuiltinModule>(
+      [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }));
   auto [id1, m1] = table.add_module<MockModule>("mock");
   auto [id2, m2] = table.add_module<MockModule>("mock");
   auto [id3, m3] = table.add_module<MockModule>("another_mock");
@@ -36,7 +38,8 @@ TEST(ModuleTable, Insertion) {
 }
 
 TEST(ModuleTable, Access) {
-  ModuleTable table(std::make_unique<BuiltinModule>());
+  ModuleTable table(std::make_unique<BuiltinModule>(
+      [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }));
   auto [id1, m1] = table.add_module<MockModule>("mock");
 
   auto [id2, m2] = table.module("mock");
@@ -47,7 +50,8 @@ TEST(ModuleTable, Access) {
 }
 
 TEST(ModuleTable, Size) {
-  ModuleTable table(std::make_unique<BuiltinModule>());
+  ModuleTable table(std::make_unique<BuiltinModule>(
+      [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }));
   EXPECT_THAT(table, SizeIs(1));
   table.add_module<MockModule>("mock1");
   EXPECT_THAT(table, SizeIs(2));

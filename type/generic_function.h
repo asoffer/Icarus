@@ -13,9 +13,9 @@
 namespace type {
 
 struct GenericFunction : LegacyType {
-  explicit GenericFunction(ir::Subroutine subroutine, ir::ByteCode byte_code)
+  explicit GenericFunction(ir::ByteCode byte_code)
       : LegacyType(IndexOf<GenericFunction>(), {}),
-        info_{.fn = std::move(subroutine), .byte_code = std::move(byte_code)} {}
+        info_{.byte_code = std::move(byte_code)} {}
 
   template <typename InstructionSet>
   Function const *Instantiate(absl::Span<Argument> arguments) {
@@ -28,9 +28,8 @@ struct GenericFunction : LegacyType {
     ir::CompleteResultBuffer result =
         interpreter::EvaluateToBuffer<InstructionSet>(
             module::Module::FunctionInformation{
-                .type       = info_.type(),
-                .subroutine = &info_.fn,
-                .byte_code  = &info_.byte_code,
+                .type      = info_.type(),
+                .byte_code = &info_.byte_code,
             },
             argument_buffer);
     // TODO: Diagnostics.
