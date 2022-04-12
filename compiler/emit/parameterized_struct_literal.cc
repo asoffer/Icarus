@@ -3,6 +3,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/struct_literal.h"
 #include "compiler/instructions.h"
+#include "compiler/module.h"
 #include "compiler/struct.h"
 #include "type/struct.h"
 #include "type/type.h"
@@ -17,14 +18,15 @@ void Compiler::EmitToBuffer(ast::ParameterizedStructLiteral const *node,
                             ir::PartialResultBuffer &out) {
   LOG("ParameterizedStructLiteral", "Emitting function for %s",
       node->DebugString());
-  auto [f, inserted] = context().add_func(node);
+
+  auto [placeholder, inserted] = context().MakePlaceholder(node);
   if (inserted) {
     Enqueue({.kind    = WorkItem::Kind::EmitParameterizedStructFunction,
              .node    = node,
              .context = &context()});
   }
 
-  out.append(ir::Fn(f));
+  out.append(ir::Fn(resources().module->id(), placeholder));
 }
 
 bool Compiler::CompleteStruct(ast::ParameterizedStructLiteral const *node) {
@@ -57,30 +59,32 @@ bool Compiler::EmitParameterizedStructFunctionBody(
     VerifyType(*this, &field_decl);
   }
 
-  ir::Fn f = context().FindNativeFn(node);
-  auto &subroutine =
-      const_cast<ir::Subroutine &>(*shared_context().Function(f).subroutine);
-  push_current(&subroutine);
+  ir::Subroutine subroutine(
+      &context().qual_types(node)[0].type().as<type::Function>());
+  {
+    push_current(&subroutine);
 
-  absl::Cleanup c = [&] { state().current.pop_back(); };
+    absl::Cleanup c = [&] { state().current.pop_back(); };
 
-  // TODO: We don't want to allocate each node separately: We need to cache them
-  // and look up the values.
-  // TODO: Check for copyable/movable.
-  // TODO: Set the module appropriately.
-  ir::Reg r = current_block()->Append(type::AllocateStructInstruction{
-      .mod = ModuleFor(node), .result = current().subroutine->Reserve()});
-  EmitStructDataCompletion(*this, r, node->fields());
-  current_block()->set_jump(ir::JumpCmd::Return());
+    // TODO: We don't want to allocate each node separately: We need to cache
+    // them and look up the values.
+    // TODO: Check for copyable/movable.
+    // TODO: Set the module appropriately.
+    ir::Reg r = current_block()->Append(type::AllocateStructInstruction{
+        .mod = ModuleFor(node), .result = current().subroutine->Reserve()});
+    EmitStructDataCompletion(*this, r, node->fields());
+    current_block()->set_jump(ir::JumpCmd::Return());
 
-  current_block()->Append(ir::SetReturnInstruction<type::Type>{
-      .index = 0,
-      .value = r,
-  });
-  current_block()->set_jump(ir::JumpCmd::Return());
+    current_block()->Append(ir::SetReturnInstruction<type::Type>{
+        .index = 0,
+        .value = r,
+    });
+    current_block()->set_jump(ir::JumpCmd::Return());
 
-  LOG("ParameterizedStructLiteral", "%s", *current().subroutine);
-  context().ir().WriteByteCode<EmitByteCode>(f);
+    LOG("ParameterizedStructLiteral", "%s", *current().subroutine);
+  }
+  ir::LocalFnId placeholder = context().Placeholder(node);
+  context().ir().Insert(placeholder, std::move(subroutine));
   return true;
 }
 

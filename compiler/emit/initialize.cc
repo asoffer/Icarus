@@ -260,7 +260,7 @@ void DefaultInitializationEmitter::EmitInitialize(type::Struct const *t,
   });
 
   // TODO: Remove this hack.
-  const_cast<type::Struct *>(t)->init_ = fn;
+  if (inserted) { const_cast<type::Struct *>(t)->init_ = fn; }
   current_block()->Append(ir::InitInstruction{.type = t, .reg = addr.reg()});
 }
 

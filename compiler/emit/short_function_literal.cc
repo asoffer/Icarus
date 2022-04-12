@@ -4,6 +4,7 @@
 #include "compiler/emit/scaffolding.h"
 #include "compiler/instantiate.h"
 #include "compiler/instructions.h"
+#include "compiler/module.h"
 #include "core/arguments.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -23,7 +24,8 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
           auto find_subcontext_result = FindInstantiation(c, node, args);
           auto &context               = find_subcontext_result.context;
 
-          auto [f, inserted]            = context.add_func(node);
+          auto [placeholder, inserted] = context.MakePlaceholder(node);
+
           PersistentResources resources = c.resources();
           if (inserted) {
             c.Enqueue({.kind    = WorkItem::Kind::EmitShortFunctionBody,
@@ -32,19 +34,19 @@ void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
                       {});
           }
 
-          return f;
+          return ir::Fn(resources.module->id(), placeholder);
         });
     out.append(gen_fn);
     return;
   }
 
-  auto [f, inserted] = context().add_func(node);
+  auto [placeholder, inserted] = context().MakePlaceholder(node);
   if (inserted) {
     Enqueue({.kind    = WorkItem::Kind::EmitShortFunctionBody,
              .node    = node,
              .context = &context()});
   }
-  out.append(ir::Fn(f));
+  out.append(ir::Fn(resources().module->id(), placeholder));
   return;
 }
 
@@ -97,46 +99,49 @@ void Compiler::EmitCopyAssign(
 }
 
 bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
-  ir::Fn f               = context().FindNativeFn(node);
-  module::Module::FunctionInformation info = shared_context().Function(f);
-  auto *subroutine = const_cast<ir::Subroutine *>(info.subroutine);
-  push_current(subroutine);
-  absl::Cleanup c = [&] { state().current.pop_back(); };
-  auto cleanup    = EmitScaffolding(*this, *subroutine, node->body_scope());
+  type::Function const *fn_type =
+      &context().qual_types(node)[0].type().as<type::Function>();
+  ir::Subroutine subroutine(fn_type);
 
-  current_block() = current().subroutine->entry();
+  {
+    push_current(&subroutine);
+    absl::Cleanup c = [&] { state().current.pop_back(); };
+    auto cleanup    = EmitScaffolding(*this, subroutine, node->body_scope());
 
-  // TODO arguments should be renumbered to not waste space on const values
-  size_t i = 0;
-  for (auto const &param : node->params()) {
-    absl::Span<ast::Declaration::Id const> ids = param.value->ids();
-    ASSERT(ids.size() == 1u);
-    state().set_addr(&ids[0], ir::Reg::Parameter(i++));
-  }
+    current_block() = subroutine.entry();
 
-  type::Type ret_type = info.type->return_types()[0];
-  if (ret_type.is_big()) {
-    type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
-        ir::RegOr<ir::addr_t>(ir::Reg::Output(0)), ret_type);
-    EmitMoveInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
-  } else {
-    ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-               uint16_t, uint32_t, uint64_t, float, double, type::Type,
-               ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
-               interface::Interface>(ret_type, [&]<typename T>() {
-      auto value = this->EmitAs<T>(node->body());
-      current_block()->Append(ir::SetReturnInstruction<T>{
-          .index = 0,
-          .value = value,
+    // TODO arguments should be renumbered to not waste space on const values
+    size_t i = 0;
+    for (auto const &param : node->params()) {
+      absl::Span<ast::Declaration::Id const> ids = param.value->ids();
+      ASSERT(ids.size() == 1u);
+      state().set_addr(&ids[0], ir::Reg::Parameter(i++));
+    }
+
+    type::Type ret_type = fn_type->return_types()[0];
+    if (ret_type.is_big()) {
+      type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
+          ir::RegOr<ir::addr_t>(ir::Reg::Output(0)), ret_type);
+      EmitMoveInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
+    } else {
+      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
+                 interface::Interface>(ret_type, [&]<typename T>() {
+        auto value = this->EmitAs<T>(node->body());
+        current_block()->Append(ir::SetReturnInstruction<T>{
+            .index = 0,
+            .value = value,
+        });
       });
-    });
+    }
+
+    DestroyTemporaries();
+
+    current_block()->set_jump(ir::JumpCmd::Return());
   }
-
-  DestroyTemporaries();
-
-  current_block()->set_jump(ir::JumpCmd::Return());
-
-  context().ir().WriteByteCode<EmitByteCode>(f);
+  ir::LocalFnId placeholder = context().Placeholder(node);
+  context().ir().Insert(placeholder, std::move(subroutine));
   return true;
 }
 

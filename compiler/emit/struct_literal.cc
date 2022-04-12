@@ -274,8 +274,6 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
                   data.current_block()->set_jump(ir::JumpCmd::Return());
                 })
             .first;
-
-    data.context().ir().WriteByteCode<EmitByteCode>(*dtor);
   } else {
     if (user_dtor) { dtor = *user_dtor; }
   }

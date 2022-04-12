@@ -45,13 +45,6 @@ struct Module {
     data->byte_code = &byte_code;
   }
 
-  template <auto EmitByteCode>
-  void WriteByteCode(Fn f) {
-    ASSERT(f.module() == module_id_);
-    auto &info     = functions_[f.local().value()];
-    info.byte_code = emit_byte_code_(info.fn);
-  }
-
   NativeFunctionInformation const &function(LocalFnId id) const {
     ASSERT(id.value() < functions_.size());
     return functions_[id.value()];
