@@ -14,7 +14,6 @@
 #include "absl/flags/usage_config.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
-#include "backend/llvm.h"
 #include "base/log.h"
 #include "base/untyped_buffer.h"
 #include "compiler/flags.h"
@@ -24,18 +23,6 @@
 #include "frontend/parse.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/subroutine.h"
-#include "llvm/ADT/Optional.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/TargetRegistry.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetOptions.h"
 #include "module/module.h"
 #include "module/shared_context.h"
 #include "opt/opt.h"
@@ -81,63 +68,6 @@ struct InvalidTargetTriple {
   std::string message;
 };
 
-llvm::TargetMachine *InitializeLlvm(diagnostic::DiagnosticConsumer &diag) {
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmParsers();
-  llvm::InitializeAllAsmPrinters();
-
-  auto target_triple = llvm::sys::getDefaultTargetTriple();
-  std::string error;
-  auto target = llvm::TargetRegistry::lookupTarget(target_triple, error);
-  if (not target) {
-    diag.Consume(InvalidTargetTriple{.message = std::move(error)});
-    return nullptr;
-  }
-
-  char const cpu[]      = "generic";
-  char const features[] = "";
-  llvm::TargetOptions target_options;
-  llvm::Optional<llvm::Reloc::Model> relocation_model;
-  return target->createTargetMachine(target_triple, cpu, features,
-                                     target_options, relocation_model);
-}
-
-int CompileToObjectFile(CompiledModule const &module, ir::Subroutine const &fn,
-                        llvm::TargetMachine *target_machine) {
-  llvm::LLVMContext context;
-  llvm::Module llvm_module("module", context);
-  llvm_module.setDataLayout(target_machine->createDataLayout());
-
-  std::error_code error_code;
-  llvm::raw_fd_ostream destination(absl::GetFlag(FLAGS_object_file), error_code,
-                                   llvm::sys::fs::OF_None);
-  llvm::legacy::PassManager pass;
-  auto file_type = llvm::LLVMTargetMachine::CGFT_ObjectFile;
-
-  if (target_machine->addPassesToEmitFile(pass, destination, nullptr,
-                                          file_type)) {
-    // TODO: Add a diagnostic: The target machine cannot emit a file of this
-    // type.
-    std::cerr << "Failed";
-    return 1;
-  }
-
-  llvm::IRBuilder<> builder(context);
-
-  backend::LlvmEmitter emitter(builder, &llvm_module);
-
-  emitter.EmitModule(module);
-  auto *f = emitter.EmitFunction(&fn, module::Linkage::External);
-  f->setName("main");
-
-  pass.run(llvm_module);
-
-  destination.flush();
-  return 0;
-}
-
 int Compile(char const *file_name, std::string module_identifier,
             std::string const &output_byte_code,
             std::string const &output_object_file) {
@@ -146,12 +76,6 @@ int Compile(char const *file_name, std::string module_identifier,
   if (not diag.ok()) {
     std::cerr << diag.status().message();
     return 1;
-  }
-
-  llvm::TargetMachine *target_machine;
-  if (not output_object_file.empty()) {
-    target_machine = InitializeLlvm(**diag);
-    if (not target_machine) { return 1; }
   }
 
   auto module_map = MakeModuleMap(absl::GetFlag(FLAGS_module_map));
@@ -212,12 +136,7 @@ int Compile(char const *file_name, std::string module_identifier,
     os.close();
   }
 
-  int return_code = 0;
-  if (not output_object_file.empty()) {
-    return_code = CompileToObjectFile(*exec_mod, *main_fn, target_machine);
-  }
-
-  return return_code;
+  return 0;
 }
 
 }  // namespace

@@ -32,11 +32,9 @@ TEST(BuiltinModule, Alignment) {
                             {type::U64}))))));
   auto f = module->Symbols("alignment").begin()->value[0].get<ir::Fn>();
 
-  EXPECT_EQ(EvaluateAtCompileTimeToBuffer(ctx, f.native(), type::Bool)[0]
-                .get<uint64_t>(),
-            1);
-  EXPECT_EQ(EvaluateAtCompileTimeToBuffer(ctx, f.native(), type::I64)[0]
-                .get<uint64_t>(),
+  EXPECT_EQ(
+      EvaluateAtCompileTimeToBuffer(ctx, f, type::Bool)[0].get<uint64_t>(), 1);
+  EXPECT_EQ(EvaluateAtCompileTimeToBuffer(ctx, f, type::I64)[0].get<uint64_t>(),
             8);
 }
 
@@ -52,11 +50,9 @@ TEST(BuiltinModule, Bytes) {
                             {type::U64}))))));
   auto f = module->Symbols("bytes").begin()->value[0].get<ir::Fn>();
 
-  EXPECT_EQ(EvaluateAtCompileTimeToBuffer(ctx, f.native(), type::Bool)[0]
-                .get<uint64_t>(),
-            1);
-  EXPECT_EQ(EvaluateAtCompileTimeToBuffer(ctx, f.native(), type::I64)[0]
-                .get<uint64_t>(),
+  EXPECT_EQ(
+      EvaluateAtCompileTimeToBuffer(ctx, f, type::Bool)[0].get<uint64_t>(), 1);
+  EXPECT_EQ(EvaluateAtCompileTimeToBuffer(ctx, f, type::I64)[0].get<uint64_t>(),
             8);
 }
 

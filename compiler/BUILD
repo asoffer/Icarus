@@ -363,29 +363,29 @@ cc_test(
 )
 
 
-cc_binary(
-    name = "dump_cfg",
-    srcs = ["dump_cfg.cc"],
-    deps = [
-        ":flags",
-        ":module",
-        ":importer",
-        ":work_graph",
-        "//base:log",
-        "//base:untyped_buffer",
-        "//ir/interpreter:evaluate",
-        "//ir:subroutine",
-        "//module",
-        "//module:shared_context",
-        "//opt",
-        "@com_google_absl//absl/debugging:failure_signal_handler",
-        "@com_google_absl//absl/debugging:symbolize",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
-    ],
-)
+# cc_binary(
+#     name = "dump_cfg",
+#     srcs = ["dump_cfg.cc"],
+#     deps = [
+#         ":flags",
+#         ":module",
+#         ":importer",
+#         ":work_graph",
+#         "//base:log",
+#         "//base:untyped_buffer",
+#         "//ir/interpreter:evaluate",
+#         "//ir:subroutine",
+#         "//module",
+#         "//module:shared_context",
+#         "//opt",
+#         "@com_google_absl//absl/debugging:failure_signal_handler",
+#         "@com_google_absl//absl/debugging:symbolize",
+#         "@com_google_absl//absl/flags:flag",
+#         "@com_google_absl//absl/flags:parse",
+#         "@com_google_absl//absl/strings",
+#         "@com_google_absl//absl/strings:str_format",
+#     ],
+# )
 
 cc_binary(
     name = "compile",
@@ -396,7 +396,6 @@ cc_binary(
         ":importer",
         ":work_graph",
         "//base:log",
-        "//backend:llvm",
         "//base:no_destructor",
         "//base:untyped_buffer",
         "//ir/interpreter:evaluate",
