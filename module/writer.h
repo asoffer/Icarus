@@ -52,9 +52,30 @@ struct ModuleWriter {
     type::SerializeTypeSystem(system, out_);
   }
 
+  struct DelayToken {
+    explicit DelayToken(std::string* s) : s_(s), offset_(s_->size()) {}
+    void set(size_t n) const {
+      std::memcpy(s_->data() + offset_, &n, sizeof(n));
+    }
+
+   private:
+    std::string * s_;
+    size_t offset_;
+  };
+
+  template <std::same_as<size_t>>
+  DelayToken delayed() {
+    DelayToken token(&out_);
+    out_.resize(out_.size() + sizeof(size_t));
+    return token;
+  }
+
+  size_t size() const { return out_.size(); }
+
  private:
   std::string& out_;
 };
+static_assert(base::SupportsDelayed<ModuleWriter, size_t>);
 
 }  // namespace module
 

@@ -61,6 +61,8 @@ struct ByteCode {
     return iter;
   }
 
+  base::untyped_buffer_view raw_buffer() const { return buffer_; }
+
  private:
   friend struct ByteCodeWriter;
 

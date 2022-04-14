@@ -29,10 +29,31 @@ struct PrecompiledModule final : Module {
 
  private:
   friend bool BaseDeserialize(ModuleReader& r, PrecompiledModule& m) {
-    return base::Deserialize(r, m.symbols_);
+    std::string id;
+    return base::Deserialize(r, id, m.symbols_);
   }
 
   absl::flat_hash_map<std::string, std::vector<SymbolInformation>> symbols_;
+
+  struct FunctionByteCode {
+    std::string_view operator[](size_t n) const {
+      return std::string_view(content_.data() + offsets_[n],
+                              offsets_[n + 1] - offsets_[n]);
+    }
+
+    bool friend BaseDeserialize(ModuleReader & r, FunctionByteCode & f) {
+      size_t total_size;
+      if (not base::Deserialize(r, total_size, f.offsets_)) { return false; }
+      absl::Span<std::byte const > bytes =  r.read_bytes(total_size);
+      f.content_ = std::string(reinterpret_cast<char const*>(bytes.data()),
+                               bytes.size());
+      return true;
+    }
+   private:
+    std::vector<size_t> offsets_;
+    std::string content_;
+  };
+  FunctionByteCode function_byte_code_;
 };
 
 }  // namespace module

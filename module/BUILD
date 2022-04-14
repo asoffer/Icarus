@@ -171,7 +171,6 @@ cc_library(
     hdrs = ["writer.h"],
     deps = [
         "//base:debug",
-        "//type:primitive",
         "//type:serialize",
         "//type:system",
         "@com_google_absl//absl/types:span",

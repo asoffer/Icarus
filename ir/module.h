@@ -88,6 +88,31 @@ struct Module {
     return base::iterator_range(scopes_.begin(), scopes_.end());
   }
 
+  template <base::Serializer S>
+  friend void BaseSerialize(S &s, Module const &m) requires(
+      base::SupportsDelayed<S, size_t>) {
+    using delay_token = decltype(s.template delayed<size_t>());
+    std::vector<delay_token> delay_tokens;
+    
+    base::Serialize(s, m.functions_.size());
+
+    // Reserve space for us to write the offset of each function.
+    delay_tokens.reserve(m.functions_.size());
+    for (auto const &f : m.functions_) {
+      delay_tokens.push_back(s.template delayed<size_t>());
+    }
+    auto token_iter = delay_tokens.begin();
+    for (auto const &f : m.functions_) {
+      token_iter->set(s.size());
+      ++token_iter;
+      base::untyped_buffer_view buffer = f.byte_code.raw_buffer();
+      base::Serialize(
+          s, f.type(),
+          std::string_view(reinterpret_cast<char const *>(buffer.data()),
+                           buffer.size()));
+    }
+  }
+
  private:
   LocalFnId InsertFunctionIndex(type::Function const *fn_type);
 

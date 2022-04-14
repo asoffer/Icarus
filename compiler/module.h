@@ -42,7 +42,8 @@ struct CompiledModule : module::Module {
   constexpr ir::ModuleId id() const { return id_; }
 
   friend void BaseSerialize(module::ModuleWriter &w, CompiledModule const &m) {
-    base::Serialize(w, m.identifier(), type::GlobalTypeSystem, m.exported_);
+    base::Serialize(w, m.identifier(), type::GlobalTypeSystem, m.exported_,
+                    m.ir_module_);
   }
 
   Context const &context() const { return context_; }

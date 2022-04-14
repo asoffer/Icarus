@@ -77,6 +77,9 @@ struct Module : base::Cast<Module> {
   // for the function with the given `id` in this module.
   virtual FunctionInformation Function(ir::LocalFnId id) const = 0;
 
+ protected:
+  void set_identifier(std::string id) { identifier_ = std::move(id); }
+
  private:
   struct filter_end {};
   template <Visibility V>
