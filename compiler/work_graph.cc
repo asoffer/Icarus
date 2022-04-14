@@ -269,7 +269,7 @@ WorkGraph::EvaluateToBuffer(module::SharedContext const &shared_context,
     return EvaluateAtCompileTimeToBuffer(shared_context,
                                          module::Module::FunctionInformation{
                                              .type      = info.type(),
-                                             .byte_code = &info.byte_code,
+                                             .byte_code = info.byte_code,
                                          });
   } else {
     return std::move(buffering_consumer).extract();

@@ -9,6 +9,7 @@
 #include "base/untyped_buffer_view.h"
 #include "ir/basic_block.h"
 #include "ir/byte_code/byte_code.h"
+#include "ir/byte_code/byte_code_view.h"
 #include "ir/value/fn.h"
 #include "ir/value/reg.h"
 
@@ -30,12 +31,12 @@ struct StackFrame {
   };
 
   StackFrame() = delete;
-  StackFrame(ir::ByteCode const *bc, Stack &stack);
+  StackFrame(ir::ByteCodeView bc, Stack &stack);
   StackFrame(Summary const &s, Stack &stack);
   ~StackFrame();
 
   base::untyped_buffer::const_iterator byte_code_begin() const {
-    return byte_code_->begin();
+    return byte_code_.begin();
   }
 
   std::byte const *raw(ir::Reg r) const { return data_.raw(offset(r)); }
@@ -99,7 +100,7 @@ struct StackFrame {
 
   Stack &stack_;
   size_t frame_size_;
-  ir::ByteCode const *byte_code_;
+  ir::ByteCodeView byte_code_;
   Summary summary_;
   base::untyped_buffer data_;
 };

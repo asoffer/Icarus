@@ -29,7 +29,7 @@ struct GenericFunction : LegacyType {
         interpreter::EvaluateToBuffer<InstructionSet>(
             module::Module::FunctionInformation{
                 .type      = info_.type(),
-                .byte_code = &info_.byte_code,
+                .byte_code = info_.byte_code,
             },
             argument_buffer);
     // TODO: Diagnostics.

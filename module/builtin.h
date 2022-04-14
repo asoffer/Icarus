@@ -39,7 +39,7 @@ struct BuiltinModule final : Module {
   FunctionInformation Function(ir::LocalFnId id) const override {
     auto const &info = module_content_.function(id);
     return FunctionInformation{.type      = info.type(),
-                               .byte_code = &info.byte_code};
+                               .byte_code = info.byte_code};
   }
 
   void insert(std::string_view symbol, SymbolInformation const &info) {

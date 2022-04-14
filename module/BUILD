@@ -10,6 +10,7 @@ cc_library(
         "//base:macros",
         "//ir:subroutine",
         "//ir/byte_code",
+        "//ir/byte_code:byte_code_view",
         "//ir/value:fn",
         "//type:qual_type",
         "@com_google_absl//absl/types:span",

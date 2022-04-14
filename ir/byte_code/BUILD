@@ -10,6 +10,17 @@ cc_library(
         "@com_google_absl//absl/types:span",
     ],
 )
+cc_library(
+    name = "byte_code_view",
+    hdrs = ["byte_code_view.h"],
+    deps = [
+        ":byte_code",
+        "//core:type_contour",
+        "//type",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 
 cc_library(
     name = "reader",

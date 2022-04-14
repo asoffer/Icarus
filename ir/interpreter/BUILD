@@ -42,6 +42,7 @@ cc_library(
         "//core:type_contour",
         "//ir:basic_block",
         "//ir/byte_code",
+        "//ir/byte_code:byte_code_view",
         "//ir/value:reg",
         "//type:type",
         "@com_google_absl//absl/cleanup",

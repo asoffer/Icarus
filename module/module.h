@@ -11,6 +11,7 @@
 #include "base/iterator.h"
 #include "base/macros.h"
 #include "ir/byte_code/byte_code.h"
+#include "ir/byte_code/byte_code_view.h"
 #include "ir/subroutine.h"
 #include "ir/value/fn.h"
 #include "type/qual_type.h"
@@ -71,7 +72,7 @@ struct Module : base::Cast<Module> {
 
   struct FunctionInformation {
     type::Function const *type;
-    ir::ByteCode const *byte_code;
+    ir::ByteCodeView byte_code;
   };
   // Must return a `FunctionInformation` object capturing the type and byte code
   // for the function with the given `id` in this module.

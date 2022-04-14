@@ -227,7 +227,7 @@ void InterpretAtCompileTime(module::SharedContext const& shared_context,
   auto byte_code = EmitByteCode(fn);
   module::Module::FunctionInformation info{
       .type      = &fn.type()->as<type::Function>(),
-      .byte_code = &byte_code,
+      .byte_code = byte_code,
   };
   interpreter::Execute<instruction_set_t>(shared_context, info, arguments);
 }
@@ -242,7 +242,7 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
     module::SharedContext const& shared_context, ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const& arguments) {
   interpreter::ExecutionContext ctx(&shared_context);
-  interpreter::StackFrame frame(&s.byte_code(), ctx.stack());
+  interpreter::StackFrame frame(s.byte_code(), ctx.stack());
   core::BindArguments(
       s.type()->params(), arguments,
       [&, i = 0](type::QualType param,
