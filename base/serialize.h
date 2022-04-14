@@ -24,6 +24,11 @@ concept Deserializer = requires(D d) {
   ->std::convertible_to<absl::Span<std::byte const>>;
 };
 
+template <typename S, typename T>
+concept SupportsDelayed = (Serializer<S> and requires(S s, T t) {
+  { s.template delayed<T>().set(t) }
+  ->std::same_as<void>;
+});
 
 // Primary entry-points to this library. `Serialize` accepts an object `s`
 // satisfying the `base::Serializer` concept, along with any number of values

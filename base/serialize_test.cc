@@ -180,5 +180,92 @@ TEST(RoundTrip, SpecialTreatment) {
   EXPECT_EQ(RoundTrip(TreatedSpecially('x')), TreatedSpecially('x'));
 }
 
+struct SerializerWithDelay {
+  explicit SerializerWithDelay(std::string *output) : output_(output) {}
+
+  void write_bytes(absl::Span<std::byte const> bytes) {
+    output_->append(reinterpret_cast<char const *>(bytes.data()), bytes.size());
+  }
+
+  struct DelayedToken {
+    size_t index;
+    std::string *output;
+    void set(int n) { std::memcpy(output->data() + index, &n, sizeof(int)); }
+  };
+  template <std::same_as<int> T>
+  DelayedToken delayed() {
+    DelayedToken token{.index = output_->size(), .output = output_};
+    output_->resize(output_->size() + sizeof(T));
+    return token;
+  }
+
+  void write(int n)  {
+    auto const *p = reinterpret_cast<std::byte const *>(&n);
+    write_bytes(absl::MakeConstSpan(p, p + sizeof(int)));
+  }
+
+ private:
+  std::string *output_;
+};
+
+struct DeserializerWithDelay {
+  explicit DeserializerWithDelay(std::string *input)
+      : iter_(input->cbegin()), end_(input->cend()) {}
+
+  absl::Span<std::byte const> read_bytes(size_t num_bytes) {
+    auto start = std::exchange(iter_, iter_ + num_bytes);
+    return absl::Span<std::byte const>(
+        reinterpret_cast<std::byte const *>(&*start), num_bytes);
+  }
+
+  bool read(int &n) {
+    if (std::distance(iter_, end_) < sizeof(int)) { return false; }
+    std::memcpy(&n, &*iter_, sizeof(int));
+    iter_ += sizeof(int);
+    return true;
+  }
+
+ private:
+  std::string::const_iterator iter_;
+  std::string::const_iterator end_;
+};
+
+struct UsesDelayed {
+  UsesDelayed() = default;
+  explicit UsesDelayed(int x, int y) : x_(x), y_(y) {}
+
+  bool operator==(UsesDelayed const &) const = default;
+
+  friend void BaseSerialize(base::Serializer auto &s, UsesDelayed const &u) {
+    auto token = s.template delayed<int>();
+    base::Serialize(s, u.y_);
+    token.set(u.x_);
+  }
+
+  friend bool BaseDeserialize(base::Deserializer auto &d, UsesDelayed &u) {
+    // When serializing, we fill in `x` after `y` but space for them is reserved
+    // in the correct order, so it should still be deserializable in this order.
+     bool result =  base::Deserialize(d, u.x_, u.y_);
+    return result;
+  }
+
+ private:
+  int x_;
+  int y_;
+};
+
+TEST(RoundTrip, SupportsDelayedInt) {
+  static_assert(base::SupportsDelayed<SerializerWithDelay, int>);
+  std::string output;
+  SerializerWithDelay s(&output);
+  UsesDelayed in(3, 10);
+  base::Serialize(s, in);
+
+  DeserializerWithDelay d(&output);
+  UsesDelayed out;
+  base::Deserialize(d, out);
+  EXPECT_EQ(in, out);
+}
+
 }  // namespace
 }  // namespace base
