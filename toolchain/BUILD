@@ -54,16 +54,16 @@ cc_toolchain(
 
 cc_toolchain_config(
     name = 'clang_toolchain_config',
-    compiler_path = '/usr/bin/clang++-12',
+    compiler_path = '/usr/bin/clang-12',
     warnings = [
-        "all",
-        "error",
-        "extra",
-        "no-sign-compare",
-        "no-unused-parameter",
-        "no-unused-variable",
-        "no-overloaded-shift-op-parentheses", # because of ASSERT macro.
-        "no-overloaded-virtual",  # TODO fix this. The visitor pattern is gross.
-        "uninitialized",
+        "-Wall",
+        "-Werror",
+        "-Wextra",
+        "-Wno-sign-compare",
+        "-Wno-unused-parameter",
+        "-Wno-unused-variable",
+        "-Wno-overloaded-shift-op-parentheses", # because of ASSERT macro.
+        "-Wno-unused-command-line-argument",
+        "-Wuninitialized",
     ]
 )

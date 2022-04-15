@@ -7,22 +7,50 @@ load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl",
 )
 load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
 
-def std_lib_version(version):
+def make_flags(name, actions, flags):
     return feature(
-        name = "std_lib_version",
+        name = name,
         enabled = True,
         flag_sets = [
             flag_set(
-                actions = [
-                    ACTION_NAMES.cpp_compile,
-                    ACTION_NAMES.cpp_header_parsing,
-                    ACTION_NAMES.cpp_module_compile,
-                    ACTION_NAMES.cpp_module_codegen,
-                ],
-                flag_groups = [flag_group(flags = ["-std=c++" + version])],
+                actions = actions,
+                flag_groups = [flag_group(flags = flags)],
             ),
         ],
     )
+
+ALL_COMPILE_ACTIONS = [
+    ACTION_NAMES.assemble,
+    ACTION_NAMES.preprocess_assemble,
+    ACTION_NAMES.linkstamp_compile,
+    ACTION_NAMES.c_compile,
+    ACTION_NAMES.cpp_compile,
+    ACTION_NAMES.cpp_header_parsing,
+    ACTION_NAMES.cpp_module_codegen,
+    ACTION_NAMES.cpp_module_compile,
+    ACTION_NAMES.clif_match,
+    ACTION_NAMES.lto_backend,
+]
+
+ALL_LINK_ACTIONS= [
+    ACTION_NAMES.cpp_link_dynamic_library,
+    ACTION_NAMES.cpp_link_nodeps_dynamic_library,
+    ACTION_NAMES.cpp_link_executable,
+]
+
+
+def std_lib_version(version):
+    return make_flags(
+        name = "std_lib_version",
+        actions = [
+            ACTION_NAMES.cpp_compile,
+            ACTION_NAMES.cpp_header_parsing,
+            ACTION_NAMES.cpp_module_codegen,
+            ACTION_NAMES.cpp_module_compile,
+        ],
+        flags = ["-std=c++" + version],
+    )
+
 
 def mode_dependent_flags(dictionary):
     return feature(
@@ -37,43 +65,20 @@ def mode_dependent_flags(dictionary):
         ],
     )
 
-def compiler_flags(name, prefix_char, flags):
-    return feature(
-        name = name,
-        enabled = True,
-        flag_sets = [
-            flag_set(
-                actions = [
-                    ACTION_NAMES.cpp_compile,
-                    ACTION_NAMES.cpp_header_parsing,
-                    ACTION_NAMES.cpp_module_compile,
-                    ACTION_NAMES.cpp_module_codegen,
-                ],
-                flag_groups = [flag_group(flags = ["-" + prefix_char + f for f in flags])]
-            )
-        ],
+
+def compiler_flags(flags):
+    return make_flags(
+        name = "compiler_flags",
+        actions = ALL_COMPILE_ACTIONS,
+        flags = flags,
     )
 
-def compiler_features(fs):
-    return compiler_flags("compiler_features", "f", fs)
 
-def compiler_warnings(ws):
-    return compiler_flags("compiler_warnings", "W", ws)
-
-def linkopts(ls):
-    return feature(
-        name = "linkopts",
-        enabled = True,
-        flag_sets = [
-            flag_set(
-                actions = [
-                    ACTION_NAMES.cpp_link_dynamic_library,
-                    ACTION_NAMES.cpp_link_nodeps_dynamic_library,
-                    ACTION_NAMES.cpp_link_executable,
-                ],
-                flag_groups = [flag_group(flags = ls)]
-            )
-        ],
+def linking_flags(ls):
+    return make_flags(
+        name = "linking_flags",
+        actions = ALL_LINK_ACTIONS,
+        flags = ls,
     )
 
 def _impl(ctx):
@@ -89,17 +94,18 @@ def _impl(ctx):
     ]
     features = [
         std_lib_version("2a"),
-        compiler_warnings(ctx.attr.warnings),
-        compiler_features([
-            "bracket-depth=1024",
-            "diagnostics-color=always",
-            "no-exceptions",
+        compiler_flags(ctx.attr.warnings + [
+            "-fbracket-depth=1024",
+            "-fdiagnostics-color=always",
+            "-fno-exceptions",
         ]),
-        linkopts([
+        linking_flags([
             "-ldl",
+            "-lm",
             "-lpthread",
             "-lffi",
             "-rdynamic",
+            "-lstdc++",
         ]),
         mode_dependent_flags({
             "dbg": ["-g", "-O0", "-DICARUS_DEBUG"],

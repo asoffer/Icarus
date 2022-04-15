@@ -107,6 +107,7 @@ cc_library(
     deps = [
         ":module",
         ":module_proto_cc",
+        ":shared_context",
         "//base:flyweight_map",
         "//type",
         "//type:system",

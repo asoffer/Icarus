@@ -1,6 +1,5 @@
 #include "module/precompiled.h"
 
-#include "type/serialize.h"
 #include "type/system.h"
 
 namespace module {
