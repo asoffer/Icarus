@@ -106,6 +106,7 @@ cc_library(
     srcs = ["precompiled.cc"],
     deps = [
         ":module",
+        ":module_proto_cc",
         ":reader",
         "//base:flyweight_map",
         "//type",
@@ -176,4 +177,14 @@ cc_library(
         "//type:system",
         "@com_google_absl//absl/types:span",
     ],
+)
+
+proto_library(
+    name = "module_proto",
+    srcs = ["module.proto"],
+)
+
+cc_proto_library(
+    name = "module_proto_cc",
+    deps = [":module_proto"],
 )

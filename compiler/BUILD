@@ -331,6 +331,7 @@ cc_library(
         ":context",
         ":instructions",
         "//module",
+        "//module:module_proto_cc",
         "//module:writer",
     ],
 )

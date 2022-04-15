@@ -2,6 +2,7 @@
 #define ICARUS_IR_BYTE_CODE_BYTE_CODE_H
 
 #include <cstddef>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -62,6 +63,10 @@ struct ByteCode {
   }
 
   base::untyped_buffer_view raw_buffer() const { return buffer_; }
+  std::string_view view() const {
+    return std::string_view(reinterpret_cast<char const*>(buffer_.data()),
+                            buffer_.size());
+  }
 
  private:
   friend struct ByteCodeWriter;

@@ -65,7 +65,5 @@ cc_toolchain_config(
         "no-overloaded-shift-op-parentheses", # because of ASSERT macro.
         "no-overloaded-virtual",  # TODO fix this. The visitor pattern is gross.
         "uninitialized",
-				# The following is required for clang 11:
-				# "no-deprecated-anon-enum-enum-conversion",
     ]
 )

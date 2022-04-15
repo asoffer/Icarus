@@ -6,6 +6,7 @@
 #include "absl/status/statusor.h"
 #include "base/flyweight_map.h"
 #include "module/module.h"
+#include "module/module.pb.h"
 #include "module/reader.h"
 #include "module/shared_context.h"
 #include "type/type.h"
@@ -17,43 +18,26 @@ namespace module {
 // Represents a module that has already been compiled, rather than those coming
 // from a source file.
 struct PrecompiledModule final : Module {
-  explicit PrecompiledModule(std::string identifier, ir::ModuleId)
-      : Module(std::move(identifier)) {}
+  explicit PrecompiledModule(std::string identifier, ir::ModuleId,
+                             module_proto::Module module_proto)
+      : Module(std::move(identifier)), proto_(std::move(module_proto)) {}
 
   static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>> Make(
-      std::string_view file_name, SharedContext& context);
+      std::string const& file_name, SharedContext& context);
 
-  absl::Span<SymbolInformation const> Symbols(std::string_view name) const override;
+  absl::Span<SymbolInformation const> Symbols(
+      std::string_view name) const override;
 
-  FunctionInformation Function(ir::LocalFnId id) const override { NOT_YET(); }
-
- private:
-  friend bool BaseDeserialize(ModuleReader& r, PrecompiledModule& m) {
-    std::string id;
-    return base::Deserialize(r, id, m.symbols_);
+  FunctionInformation Function(ir::LocalFnId id) const override {
+    ASSERT(id.value() < proto_.function().size());
+    return FunctionInformation{
+        .type      = nullptr,
+        .byte_code = ir::ByteCodeView(proto_.function(id.value()).byte_code()),
+    };
   }
 
-  absl::flat_hash_map<std::string, std::vector<SymbolInformation>> symbols_;
-
-  struct FunctionByteCode {
-    std::string_view operator[](size_t n) const {
-      return std::string_view(content_.data() + offsets_[n],
-                              offsets_[n + 1] - offsets_[n]);
-    }
-
-    bool friend BaseDeserialize(ModuleReader & r, FunctionByteCode & f) {
-      size_t total_size;
-      if (not base::Deserialize(r, total_size, f.offsets_)) { return false; }
-      absl::Span<std::byte const > bytes =  r.read_bytes(total_size);
-      f.content_ = std::string(reinterpret_cast<char const*>(bytes.data()),
-                               bytes.size());
-      return true;
-    }
-   private:
-    std::vector<size_t> offsets_;
-    std::string content_;
-  };
-  FunctionByteCode function_byte_code_;
+ private:
+  module_proto::Module proto_;
 };
 
 }  // namespace module

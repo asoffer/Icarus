@@ -44,6 +44,11 @@ struct ByteCodeView {
       : byte_code_(bc.raw_buffer().data(), bc.raw_buffer().size()),
         initial_size_(std::distance(bc.raw_buffer().data(), bc.begin().raw())) {
   }
+  explicit ByteCodeView(std::string_view sv)
+      : byte_code_(reinterpret_cast<std::byte const*>(sv.data()), sv.size()) {
+    initial_size_ = 4 * sizeof(size_t) +
+                    num_stack_allocations() * sizeof(core::TypeContour);
+  }
   explicit ByteCodeView(base::untyped_buffer_view buffer) : byte_code_(buffer) {
     initial_size_ = 4 * sizeof(size_t) +
                     num_stack_allocations() * sizeof(core::TypeContour);

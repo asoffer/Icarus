@@ -5,6 +5,7 @@
 #include "compiler/context.h"
 #include "compiler/instructions.h"
 #include "module/module.h"
+#include "module/module.pb.h"
 #include "module/writer.h"
 
 namespace compiler {
@@ -41,9 +42,22 @@ struct CompiledModule : module::Module {
 
   constexpr ir::ModuleId id() const { return id_; }
 
-  friend void BaseSerialize(module::ModuleWriter &w, CompiledModule const &m) {
-    base::Serialize(w, m.identifier(), type::GlobalTypeSystem, m.exported_,
-                    m.ir_module_);
+  module_proto::Module ToProto() {
+    module_proto::Module proto;
+    proto.set_identifier(std::string(identifier()));
+    for (auto const &f : ir_module_.functions()) {
+      proto.add_function()->set_byte_code(std::string(f.byte_code.view()));
+    };
+    auto& symbols = *proto.mutable_symbols();
+    for (auto const &[name, infos] : exported_) {
+      auto &named_symbol = symbols[std::string(name)];
+      for (auto const &info : infos) {
+        auto &s = *named_symbol.add_symbol();
+        // TODO: Flesh this out.
+      }
+    }
+
+    return proto;
   }
 
   Context const &context() const { return context_; }
