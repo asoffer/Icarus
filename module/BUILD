@@ -107,7 +107,6 @@ cc_library(
     deps = [
         ":module",
         ":module_proto_cc",
-        ":reader",
         "//base:flyweight_map",
         "//type",
         "//type:system",
@@ -115,21 +114,6 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_library(
-    name = "reader",
-    hdrs = ["reader.h"],
-    srcs = ["reader.cc"],
-    deps = [
-        ":shared_context",
-        "//base:debug",
-        "//base:flyweight_map",
-        "//type:primitive",
-        "//type:serialize",
-        "//type:system",
-        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -165,17 +149,6 @@ cc_test(
         ":module",
         ":table",
         "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "writer",
-    hdrs = ["writer.h"],
-    deps = [
-        "//base:debug",
-        "//type:serialize",
-        "//type:system",
-        "@com_google_absl//absl/types:span",
     ],
 )
 

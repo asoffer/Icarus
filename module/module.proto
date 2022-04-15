@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package module_proto;
+
+message Function {
+  bytes byte_code = 1;
+}
+
+message SymbolInformation {
+  int64 type_id = 1;
+  int32 type_qualifier = 2;
+  bytes value = 3;
+  bool visible = 4;
+}
+
+message SymbolInformationList {
+  repeated SymbolInformation symbol = 1;
+}
+
+message Module {
+  // An identifier for this module unique amongst all modules being linked
+  // together.
+  string identifier = 1;
+
+  // All functions available from this module, regardless of their visibility or
+  // whether they are bound to names.
+  repeated Function function = 2;
+
+  map<string, SymbolInformationList> symbols = 3;
+}

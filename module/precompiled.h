@@ -7,7 +7,6 @@
 #include "base/flyweight_map.h"
 #include "module/module.h"
 #include "module/module.pb.h"
-#include "module/reader.h"
 #include "module/shared_context.h"
 #include "type/type.h"
 

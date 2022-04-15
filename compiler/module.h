@@ -6,7 +6,6 @@
 #include "compiler/instructions.h"
 #include "module/module.h"
 #include "module/module.pb.h"
-#include "module/writer.h"
 
 namespace compiler {
 
