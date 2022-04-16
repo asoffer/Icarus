@@ -458,7 +458,6 @@ cc_library(
         ":system",
         "//base:flyweight_map",
         "//ir/value:result_buffer",
-        "//module:module_proto_cc",
         "//module:shared_context",
         "@com_google_absl//absl/types:span",
     ],

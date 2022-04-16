@@ -6,39 +6,45 @@
 #include "absl/status/statusor.h"
 #include "base/flyweight_map.h"
 #include "module/module.h"
-#include "module/module.pb.h"
 #include "module/shared_context.h"
+#include "precompiled/module.pb.h"
+#include "type/system.h"
 #include "type/type.h"
 
-namespace module {
+namespace precompiled {
 
 // PrecompiledModule:
 //
 // Represents a module that has already been compiled, rather than those coming
 // from a source file.
-struct PrecompiledModule final : Module {
+struct PrecompiledModule final : module::Module {
   explicit PrecompiledModule(std::string identifier, ir::ModuleId,
-                             module_proto::Module module_proto)
-      : Module(std::move(identifier)), proto_(std::move(module_proto)) {}
+                             ModuleProto module_proto)
+      : module::Module(std::move(identifier)),
+        proto_(std::move(module_proto)) {}
 
   static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>> Make(
-      std::string const& file_name, SharedContext& context);
+      std::string const& file_name, module::SharedContext& context);
 
-  absl::Span<SymbolInformation const> Symbols(
+  absl::Span<module::Module::SymbolInformation const> Symbols(
       std::string_view name) const override;
 
-  FunctionInformation Function(ir::LocalFnId id) const override {
+  module::Module::FunctionInformation Function(
+      ir::LocalFnId id) const override {
     ASSERT(id.value() < proto_.function().size());
-    return FunctionInformation{
+    return module::Module::FunctionInformation{
         .type      = nullptr,
         .byte_code = ir::ByteCodeView(proto_.function(id.value()).byte_code()),
     };
   }
 
  private:
-  module_proto::Module proto_;
+  ModuleProto proto_;
 };
 
-}  // namespace module
+TypeSystem ToProto(type::TypeSystem const& system);
+void FromProto(TypeSystem& proto, type::TypeSystem& system);
+
+}  // namespace precompiled
 
 #endif  // ICARUS_MODULE_PRECOMPILED_H

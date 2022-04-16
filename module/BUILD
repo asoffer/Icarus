@@ -101,24 +101,6 @@ cc_library(
 )
 
 cc_library(
-    name = "precompiled",
-    hdrs = ["precompiled.h"],
-    srcs = ["precompiled.cc"],
-    deps = [
-        ":module",
-        ":module_proto_cc",
-        ":shared_context",
-        "//base:flyweight_map",
-        "//type",
-        "//type:system",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/types:span",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_library(
     name = "shared_context",
     hdrs = ["shared_context.h"],
     srcs = ["shared_context.cc"],
@@ -151,14 +133,4 @@ cc_test(
         ":table",
         "@com_google_googletest//:gtest_main",
     ],
-)
-
-proto_library(
-    name = "module_proto",
-    srcs = ["module.proto"],
-)
-
-cc_proto_library(
-    name = "module_proto_cc",
-    deps = [":module_proto"],
 )

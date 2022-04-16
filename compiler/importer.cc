@@ -46,7 +46,7 @@ std::optional<std::string> ReadFileToString(std::string const& file_name) {
   return result;
 }
 
-absl::StatusOr<std::pair<ir::ModuleId, module::PrecompiledModule const*>>
+absl::StatusOr<std::pair<ir::ModuleId, precompiled::PrecompiledModule const*>>
 LoadPrecompiledModule(
     std::string const& file_name, absl::Span<std::string const> lookup_paths,
     absl::flat_hash_map<std::string, std::string> const& module_map,
@@ -56,7 +56,8 @@ LoadPrecompiledModule(
       auto iter = module_map.find(absl::StrCat(base_path, "/", file_name));
       if (iter == module_map.end()) { continue; }
       if (auto maybe_content = ReadFileToString(iter->second)) {
-        return module::PrecompiledModule::Make(*maybe_content, shared_context);
+        return precompiled::PrecompiledModule::Make(*maybe_content,
+                                                    shared_context);
       }
     }
   }
@@ -68,7 +69,7 @@ LoadPrecompiledModule(
   }
 
   if (auto maybe_content = ReadFileToString(iter->second)) {
-    return module::PrecompiledModule::Make(*maybe_content, shared_context);
+    return precompiled::PrecompiledModule::Make(*maybe_content, shared_context);
   }
 
   return absl::NotFoundError(absl::StrFormat(

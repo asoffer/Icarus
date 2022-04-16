@@ -190,52 +190,6 @@ struct ValueDeserializer {
   TypeSystem& system_;
 };
 
-struct TypeSystemSerializingVisitor {
-  using signature = void(module_proto::TypeDefinition& out);
-
-  explicit TypeSystemSerializingVisitor(TypeSystem const* system)
-      : system_(*ASSERT_NOT_NULL(system)) {}
-
-  void operator()(Type t, module_proto::TypeDefinition& out) {
-    t.visit(*this, out);
-  }
-
-  void operator()(auto const* t, module_proto::TypeDefinition& out) {
-    Visit(t, out);
-  }
-
- private:
-  void Visit(Primitive const* p, module_proto::TypeDefinition& out) {
-    out.set_primitive(static_cast<int>(p->kind()));
-  }
-
-  void Visit(Array const* a, module_proto::TypeDefinition& out) { ; }
-  void Visit(Pointer const* p, module_proto::TypeDefinition& out) {
-    out.set_pointer(system_.index(p->pointee()));
-  }
-  void Visit(BufferPointer const* p, module_proto::TypeDefinition& out) {
-    out.set_buffer_pointer(system_.index(p->pointee()));
-  }
-  void Visit(Function const* f, module_proto::TypeDefinition& out) {
-    auto& fn = *out.mutable_function();
-    fn.set_eager(f->eager());
-    for (auto const& param : f->params()) {
-      auto& p = *fn.add_parameter();
-      p.set_name(param.name);
-      p.set_type(system_.index(param.value.type()));
-      p.set_flags((param.flags.value() << uint8_t{8}) |
-                  param.value.quals().value());
-    }
-    for (Type t : f->return_types()) { fn.add_return_type(system_.index(t)); }
-  }
-  void Visit(Slice const* s, module_proto::TypeDefinition& out) {
-    out.set_slice(system_.index(s->data_type()));
-  }
-  void Visit(auto const* s, module_proto::TypeDefinition& out) { ; }
-
-  TypeSystem const& system_;
-};
-
 }  // namespace
 
 void SerializeValue(TypeSystem const& system, Type t, ir::CompleteResultRef ref,
@@ -251,55 +205,6 @@ ssize_t DeserializeValue(
     TypeSystem& system) {
   ValueDeserializer vd(span, &foreign_fn_map, &system);
   return vd(t, buffer) ? vd.head() - span.begin() : -1;
-}
-
-module_proto::TypeSystem SerializeTypeSystem(TypeSystem const& system) {
-  module_proto::TypeSystem proto;
-  TypeSystemSerializingVisitor v(&system);
-  for (Type t : system.types()) { v(t, *proto.add_type()); }
-  return proto;
-}
-
-bool DeserializeTypeSystem(module_proto::TypeSystem& proto,
-                           module::SharedContext& context, TypeSystem& system) {
-  for (auto const& t : proto.type()) {
-    switch (t.type_case()) {
-      case module_proto::TypeDefinition::kPrimitive:
-        system.insert(
-            MakePrimitive(static_cast<Primitive::Kind>(t.primitive())));
-        break;
-      case module_proto::TypeDefinition::kPointer:
-        system.insert(Ptr(system.from_index(t.pointer())));
-        break;
-      case module_proto::TypeDefinition::kBufferPointer:
-        system.insert(BufPtr(system.from_index(t.buffer_pointer())));
-        break;
-      case module_proto::TypeDefinition::kFunction: {
-        core::Parameters<QualType> parameters;
-        for (auto const& p : t.function().parameter()) {
-          parameters.append(
-              p.name(),
-              QualType(system.from_index(p.type()),
-                       Quals::FromValue(p.flags() & 0xff)),
-              core::ParameterFlags::FromValue(p.flags() >> uint8_t{8}));
-        }
-        std::vector<Type> return_types;
-        return_types.reserve(t.function().return_type().size());
-        for (int64_t n : t.function().return_type()) {
-          return_types.push_back(system.from_index(n));
-        }
-
-        auto* make_func = (t.function().eager() ? EagerFunc : Func);
-        system.insert(
-            make_func(std::move(parameters), std::move(return_types)));
-      } break;
-      case module_proto::TypeDefinition::kSlice:
-        system.insert(Slc(system.from_index(t.slice())));
-        break;
-      case module_proto::TypeDefinition::TYPE_NOT_SET: UNREACHABLE();
-    }
-  }
-  return true;
 }
 
 }  // namespace type

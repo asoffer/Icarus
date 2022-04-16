@@ -5,8 +5,8 @@
 #include "compiler/context.h"
 #include "compiler/instructions.h"
 #include "module/module.h"
-#include "module/module.pb.h"
-#include "type/serialize.h"
+#include "precompiled/module.h"
+#include "precompiled/module.pb.h"
 
 namespace compiler {
 
@@ -42,8 +42,8 @@ struct CompiledModule : module::Module {
 
   constexpr ir::ModuleId id() const { return id_; }
 
-  module_proto::Module ToProto() const {
-    module_proto::Module proto;
+  precompiled::ModuleProto ToProto() const {
+    precompiled::ModuleProto proto;
     proto.set_identifier(std::string(identifier()));
     for (auto const &f : ir_module_.functions()) {
       proto.add_function()->set_byte_code(std::string(f.byte_code.view()));
@@ -57,8 +57,7 @@ struct CompiledModule : module::Module {
       }
     }
 
-    *proto.mutable_type_system() =
-        type::SerializeTypeSystem(type::GlobalTypeSystem);
+    *proto.mutable_type_system() = precompiled::ToProto(type::GlobalTypeSystem);
 
     return proto;
   }

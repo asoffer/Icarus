@@ -6,7 +6,6 @@
 #include "absl/types/span.h"
 #include "base/flyweight_map.h"
 #include "ir/value/result_buffer.h"
-#include "module/module.pb.h"
 #include "module/shared_context.h"
 #include "type/function.h"
 #include "type/system.h"
@@ -26,11 +25,6 @@ ssize_t DeserializeValue(
     base::flyweight_map<std::pair<std::string, Function const*>, void (*)()>&
         foreign_fn_map,
     TypeSystem& system);
-
-module_proto::TypeSystem SerializeTypeSystem(TypeSystem const& system);
-
-bool DeserializeTypeSystem(module_proto::TypeSystem& proto,
-                           module::SharedContext& context, TypeSystem& system);
 
 }  // namespace type
 

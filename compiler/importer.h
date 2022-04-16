@@ -15,7 +15,7 @@
 #include "ir/value/module_id.h"
 #include "module/importer.h"
 #include "module/module.h"
-#include "module/precompiled.h"
+#include "precompiled/module.h"
 
 namespace compiler {
 
