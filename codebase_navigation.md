@@ -19,10 +19,6 @@ We use C++20 and a style that is largely based on the [Google Style Guide](https
 
 All code formatting should be handled by clang-format using the checked in [.clang-format](https://github.com/asoffer/Icarus/blob/main/.clang-format) options file. There are very few instances where we turn off clang-formatting in the source. Use your judgment, but lean heavily towards preferring the automatically formatted code. The only notable exception where we expect to commonly turn off clang-format is with C++20 concepts (which are not yet supported by clang-format).
 
-### External dependencies
-
-Icarus depends on the C++ standard library, Abseil, LLVM, and GoogleTest. Other dependencies are unlikely to be added.
-
 ## High-level design philosophy
 
 The Icarus project intends to build high-quality libraries and executables for working with the Icarus programming language. This includes an interpreter, compiler, REPL, code formatter, syntax-tree matching library, and several other language extension mechanisms. We wish for the codebase to be strongly modular. Each binary should only require the components it needs. For example, the code formatter may rely the syntax tree, but should not require any type-checking facilities.
