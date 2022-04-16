@@ -92,6 +92,7 @@ cc_library(
         ":instructions",
         ":resources",
         ":work_graph",
+        "//base:file",
         "//module",
         "//diagnostic/consumer",
         "//frontend:source_indexer",

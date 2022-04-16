@@ -30,6 +30,15 @@ cc_library(
 )
 
 cc_library(
+    name = "file",
+    hdrs = ["file.h"],
+    srcs = ["file.cc"],
+    deps = [
+        "@com_google_absl//absl/cleanup",
+    ]
+)
+
+cc_library(
     name = "extend",
     hdrs = ["extend.h"],
     deps = [":meta"],

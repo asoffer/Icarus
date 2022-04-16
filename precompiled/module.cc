@@ -1,5 +1,6 @@
 #include "precompiled/module.h"
 
+#include "base/file.h"
 #include "core/parameters.h"
 #include "type/array.h"
 #include "type/enum.h"
@@ -136,6 +137,36 @@ void FromProto(TypeSystem& proto, type::TypeSystem& system) {
       case TypeDefinition::TYPE_NOT_SET: UNREACHABLE();
     }
   }
+}
+
+absl::StatusOr<std::pair<ir::ModuleId, precompiled::PrecompiledModule const*>>
+PrecompiledModule::Load(
+    std::string const& file_name, absl::Span<std::string const> lookup_paths,
+    absl::flat_hash_map<std::string, std::string> const& module_map,
+    module::SharedContext& shared_context) {
+  if (!file_name.starts_with("/")) {
+    for (std::string_view base_path : lookup_paths) {
+      auto iter = module_map.find(absl::StrCat(base_path, "/", file_name));
+      if (iter == module_map.end()) { continue; }
+      if (auto maybe_content = base::ReadFileToString(iter->second)) {
+        return precompiled::PrecompiledModule::Make(*maybe_content,
+                                                    shared_context);
+      }
+    }
+  }
+
+  auto iter = module_map.find(file_name);
+  if (iter == module_map.end()) {
+    return absl::NotFoundError(absl::StrFormat(
+        R"(Failed to find module map entry for '%s')", file_name));
+  }
+
+  if (auto maybe_content = base::ReadFileToString(iter->second)) {
+    return precompiled::PrecompiledModule::Make(*maybe_content, shared_context);
+  }
+
+  return absl::NotFoundError(absl::StrFormat(
+      R"(Failed to load precompiled module for '%s')", file_name));
 }
 
 }  // namespace precompiled

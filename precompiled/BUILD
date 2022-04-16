@@ -27,6 +27,7 @@ cc_library(
     srcs = ["module.cc"],
     deps = [
         ":module_cc_proto",
+        "//base:file",
         "//base:flyweight_map",
         "//module",
         "//module:shared_context",

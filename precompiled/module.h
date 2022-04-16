@@ -23,8 +23,11 @@ struct PrecompiledModule final : module::Module {
       : module::Module(std::move(identifier)),
         proto_(std::move(module_proto)) {}
 
-  static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>> Make(
-      std::string const& file_name, module::SharedContext& context);
+  static absl::StatusOr<
+      std::pair<ir::ModuleId, precompiled::PrecompiledModule const*>>
+  Load(std::string const& file_name, absl::Span<std::string const> lookup_paths,
+       absl::flat_hash_map<std::string, std::string> const& module_map,
+       module::SharedContext& shared_context);
 
   absl::Span<module::Module::SymbolInformation const> Symbols(
       std::string_view name) const override;
@@ -39,6 +42,9 @@ struct PrecompiledModule final : module::Module {
   }
 
  private:
+  static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>> Make(
+      std::string const& file_name, module::SharedContext& context);
+
   ModuleProto proto_;
 };
 
