@@ -38,7 +38,7 @@ read_to ::= (f: File, T :: type) -> T {
   buffer: [CHUNK_SIZE; char]
   while (num_read == CHUNK_SIZE) {
     num_read = c.fread(&buffer[0], builtin.bytes(char), CHUNK_SIZE, f._handle)
-    result'append(slice(&buffer[0], num_read))
+    result'append(builtin.slice(&buffer[0], num_read))
   }
   return result
 }

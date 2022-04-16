@@ -27,7 +27,7 @@ Find ::= (s: []char, needle: []char) -> [*]char {
   if (needle.length > s.length) { return end }
   stop := end - needle.length
   while (ptr != stop) {
-    if (Equals(slice(ptr, needle.length), needle)) { return ptr }
+    if (Equals(builtin.slice(ptr, needle.length), needle)) { return ptr }
     ptr += 1
   }
   return end

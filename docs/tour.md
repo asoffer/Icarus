@@ -176,8 +176,9 @@ can be indexed and dereferenced just like buffer pointers.
 
 ```
 a := [1, 2, 3, 4, 5]
-s := slice(&a[1], 3)  // A slice referring to the elements in `a` whose values
-                      // are currently 2, 3, and 4.
+// A slice referring to the elements in `a` whose values
+// are currently 2, 3, and 4.
+s := builtin.slice(&a[1], 3)
 s[1] = 30
 
 // Now a == [1, 2, 30, 4, 5]
