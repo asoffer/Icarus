@@ -459,6 +459,7 @@ cc_library(
         "//base:flyweight_map",
         "//ir/value:result_buffer",
         "//module:shared_context",
+        "//precompiled:value_cc_proto",
         "@com_google_absl//absl/types:span",
     ],
 )

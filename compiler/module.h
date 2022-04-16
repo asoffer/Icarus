@@ -53,17 +53,8 @@ struct CompiledModule : module::Module {
     for (auto const &[name, infos] : exported_) {
       auto &named_symbol = symbols[std::string(name)];
       for (auto const &info : infos) {
-        auto &s = *named_symbol.add_symbol();
-        auto &qt = *s.mutable_qualified_type();
-        qt.set_type_id(
-            type::GlobalTypeSystem.index(info.qualified_type.type()));
-        qt.set_qualifiers(info.qualified_type.quals().value());
-        s.set_visible(info.visibility == module::Module::Visibility::Exported);
-
-        std::string out;
-        type::SerializeValue(type::GlobalTypeSystem, info.qualified_type.type(),
-                             info.value[0], out);
-        s.set_value(std::move(out));
+        *named_symbol.add_symbol() =
+            precompiled::ToProto(type::GlobalTypeSystem, info);
       }
     }
 

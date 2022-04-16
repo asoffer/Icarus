@@ -11,6 +11,7 @@
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/serialize.h"
 #include "type/slice.h"
 #include "type/struct.h"
 #include "type/type.h"
@@ -167,6 +168,16 @@ PrecompiledModule::Load(
 
   return absl::NotFoundError(absl::StrFormat(
       R"(Failed to load precompiled module for '%s')", file_name));
+}
+
+SymbolInformation ToProto(type::TypeSystem const& system,
+                          module::Module::SymbolInformation const& info) {
+  SymbolInformation s;
+  s.set_qualifiers(info.qualified_type.quals().value());
+  s.set_visible(info.visibility == module::Module::Visibility::Exported);
+  type::SerializeValue(type::GlobalTypeSystem, info.qualified_type.type(),
+                       info.value[0], *s.mutable_value());
+  return s;
 }
 
 }  // namespace precompiled

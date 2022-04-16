@@ -41,6 +41,7 @@ cc_library(
         "//type:opaque",
         "//type:pointer",
         "//type:primitive",
+        "//type:serialize",
         "//type:slice",
         "//type:struct",
         "//type:system",

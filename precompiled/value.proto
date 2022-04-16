@@ -2,33 +2,54 @@ syntax = "proto3";
 
 package precompiled;
 
+message Value {
+  int64 type_id = 1;
+  oneof value {
+    bool boolean = 2;
+    // TODO: Support for arbitrary precision
+    int64 signed_integer = 3;
+    // TODO: Support for arbitrary precision
+    uint64 unsigned_integer = 4;
+    // TODO: Support for arbitrary precision
+    double real = 5;
+
+    // Represented as the type-id relative to the module's type system.
+    uint64 type = 6;
+
+    // The 32 most-significant bits represent the module identifier, and the
+    // 32 least significant bits represent the function local identifier
+    // relative to the given module.
+    uint64 function = 7;
+  }
+}
+
 message Function {
   bytes byte_code = 1;
 }
 
 message QualifiedType {
-  int64 type_id = 1;
+  uint64 type_id = 1;
   int32 qualifiers = 2;
 }
 
 message FunctionTypeDefinition {
   message Parameter {
     string name = 1;
-    int64 type = 2;
+    uint64 type = 2;
     uint32 flags = 3;
   }
   repeated Parameter parameter = 1;
-  repeated int32 return_type = 2;
+  repeated uint64 return_type = 2;
   bool eager = 3;
 }
 
 message TypeDefinition {
   oneof type {
-    int64 primitive = 1;
-    int64 pointer = 2;
-    int64 buffer_pointer = 3;
+    uint64 primitive = 1;
+    uint64 pointer = 2;
+    uint64 buffer_pointer = 3;
     FunctionTypeDefinition function = 4;
-    int64 slice = 5;
+    uint64 slice = 5;
   }
 }
 

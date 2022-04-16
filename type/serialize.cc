@@ -21,12 +21,8 @@ namespace {
 struct ValueSerializer {
   using signature = void(ir::CompleteResultRef);
 
-  // TODO: This is a weird requirement to be a serializer since we're not using
-  // it.
-  void write_bytes(absl::Span<std::byte const> bytes) { UNREACHABLE(); }
-
-  explicit ValueSerializer(TypeSystem const* system, std::string* out)
-      : system_(*ASSERT_NOT_NULL(system)), out_(*ASSERT_NOT_NULL(out)) {}
+  explicit ValueSerializer(TypeSystem const* system, precompiled::Value* value)
+      : system_(*ASSERT_NOT_NULL(system)), value_(*ASSERT_NOT_NULL(value)) {}
 
   void operator()(Type t, ir::CompleteResultRef ref) {
     t.visit<ValueSerializer>(*this, ref);
@@ -40,171 +36,155 @@ struct ValueSerializer {
 
   void operator()(Primitive const* p, ir::CompleteResultRef ref) {
     switch (p->kind()) {
-      case Primitive::Kind::Bool: write(ref.get<bool>()); break;
-      case Primitive::Kind::Char: write(ref.get<ir::Char>()); break;
-      case Primitive::Kind::I8: write(ref.get<int8_t>()); break;
-      case Primitive::Kind::I16: write(ref.get<int16_t>()); break;
-      case Primitive::Kind::I32: write(ref.get<int32_t>()); break;
-      case Primitive::Kind::I64: write(ref.get<int64_t>()); break;
-      case Primitive::Kind::U8: write(ref.get<uint8_t>()); break;
-      case Primitive::Kind::U16: write(ref.get<uint16_t>()); break;
-      case Primitive::Kind::U32: write(ref.get<uint32_t>()); break;
-      case Primitive::Kind::U64: write(ref.get<uint64_t>()); break;
-      case Primitive::Kind::F32: write(ref.get<float>()); break;
-      case Primitive::Kind::F64: write(ref.get<double>()); break;
-      case Primitive::Kind::Byte: write(ref.get<std::byte>()); break;
-      case Primitive::Kind::Type_: write(ref.get<Type>()); break;
+      case Primitive::Kind::Bool: value_.set_boolean(ref.get<bool>()); break;
+      case Primitive::Kind::Char:
+        value_.set_unsigned_integer(ref.get<ir::Char>().as_type<uint8_t>());
+        break;
+      case Primitive::Kind::I8:
+        value_.set_signed_integer(ref.get<int8_t>());
+        break;
+      case Primitive::Kind::I16:
+        value_.set_signed_integer(ref.get<int16_t>());
+        break;
+      case Primitive::Kind::I32:
+        value_.set_signed_integer(ref.get<int32_t>());
+        break;
+      case Primitive::Kind::I64:
+        value_.set_signed_integer(ref.get<int64_t>());
+        break;
+      case Primitive::Kind::U8:
+        value_.set_unsigned_integer(ref.get<uint8_t>());
+        break;
+      case Primitive::Kind::U16:
+        value_.set_unsigned_integer(ref.get<uint16_t>());
+        break;
+      case Primitive::Kind::U32:
+        value_.set_unsigned_integer(ref.get<uint32_t>());
+        break;
+      case Primitive::Kind::U64:
+        value_.set_unsigned_integer(ref.get<uint64_t>());
+        break;
+      case Primitive::Kind::F32: value_.set_real(ref.get<float>()); break;
+      case Primitive::Kind::F64: value_.set_real(ref.get<double>()); break;
+      case Primitive::Kind::Byte:
+        value_.set_unsigned_integer(static_cast<uint8_t>(ref.get<std::byte>()));
+        break;
+      case Primitive::Kind::Type_:
+        value_.set_type(system_.index(ref.get<Type>()));
+        break;
       default: NOT_YET((int)p->kind());
     }
   }
 
-  template <typename T>
-  void write(T const& t) requires(std::integral<T> or std::floating_point<T> or
-                                  base::meta<T> ==
-                                      base::meta<core::ParameterFlags> or
-                                  base::meta<T> == base::meta<Quals>) {
-    out_.append(std::string_view(reinterpret_cast<char const*>(&t), sizeof(t)));
-  }
-
-  void write(ir::Char c) { out_.push_back(static_cast<char>(c)); }
-  void write(std::byte b) { out_.push_back(static_cast<char>(b)); }
-
-  void write(QualType qt) { base::Serialize(*this, qt.quals(), qt.type()); }
-  void write(Type t) { base::Serialize(*this, system_.index(t)); }
-
  private:
   TypeSystem const& system_;
-  std::string& out_;
+  precompiled::Value& value_;
 };
 
 struct ValueDeserializer {
-  using signature = bool(ir::CompleteResultBuffer&);
+  using signature = void(ir::CompleteResultBuffer& buffer);
 
-  explicit ValueDeserializer(
-      absl::Span<std::byte const> span,
-      base::flyweight_map<std::pair<std::string, Function const*>, void (*)()>*
-          foreign_fn_map,
-      TypeSystem* system)
-      : head_(span.begin()),
-        end_(span.end()),
-        foreign_fn_map_(*ASSERT_NOT_NULL(foreign_fn_map)),
-        system_(*ASSERT_NOT_NULL(system)) {}
+  explicit ValueDeserializer(TypeSystem const* system,
+                             precompiled::Value const* value)
+      : system_(*ASSERT_NOT_NULL(system)), value_(*ASSERT_NOT_NULL(value)) {}
 
-  bool operator()(Type t, ir::CompleteResultBuffer& buffer) {
+  void operator()(Type t, ir::CompleteResultBuffer& buffer) {
     return t.visit<ValueDeserializer>(*this, buffer);
   }
 
-  bool operator()(auto const* t, ir::CompleteResultBuffer& buffer) {
+  void operator()(auto const* t, ir::CompleteResultBuffer& buffer) {
     NOT_YET();
   }
 
-  bool operator()(Function const* f, ir::CompleteResultBuffer& buffer) {
-    NOT_YET(foreign_fn_map_);
-    // std::string s;
-    // Type t;
-    // if (not base::Deserialize(*this, s, t)) { return false; }
-    // ir::ForeignFn fn(
-    //     foreign_fn_map_.try_emplace(std::pair(std::move(s),
-    //     &t.as<Function>()))
-    //         .first);
-    // buffer.append(ir::Fn(fn));
-    // return true;
+  void operator()(Function const* , ir::CompleteResultBuffer& buffer) {
+    uint64_t fn = value_.function();
+    // TODO: We need to update the module identifier to be accurate within the
+    // compilation of the given module.
+    buffer.append(ir::Fn(ir::ModuleId(fn >> uint64_t{32}),
+                         ir::LocalFnId(fn & uint64_t{0xffffffff})));
   }
 
-  bool operator()(Primitive const* p, ir::CompleteResultBuffer& buffer) {
+  void operator()(Primitive const* p, ir::CompleteResultBuffer& buffer) {
     switch (p->kind()) {
-      case Primitive::Kind::Bool: return Read<bool>(buffer);
-      case Primitive::Kind::Char: return Read<ir::Char>(buffer);
-      case Primitive::Kind::I8: return Read<int8_t>(buffer);
-      case Primitive::Kind::I16: return Read<int16_t>(buffer);
-      case Primitive::Kind::I32: return Read<int32_t>(buffer);
-      case Primitive::Kind::I64: return Read<int64_t>(buffer);
-      case Primitive::Kind::U8: return Read<uint8_t>(buffer);
-      case Primitive::Kind::U16: return Read<uint16_t>(buffer);
-      case Primitive::Kind::U32: return Read<uint32_t>(buffer);
-      case Primitive::Kind::U64: return Read<uint64_t>(buffer);
-      case Primitive::Kind::F32: return Read<float>(buffer);
-      case Primitive::Kind::F64: return Read<double>(buffer);
-      case Primitive::Kind::Byte: return Read<std::byte>(buffer);
-      case Primitive::Kind::Type_: return Read<Type>(buffer);
+      case Primitive::Kind::Bool: buffer.append(value_.boolean()); break;
+      case Primitive::Kind::Char: {
+        ASSERT(value_.unsigned_integer() <= std::numeric_limits<uint8_t>::max());
+        buffer.append(ir::Char(static_cast<uint8_t>(value_.unsigned_integer())));
+      } break;
+      case Primitive::Kind::I8: {
+        ASSERT(value_.signed_integer() <= std::numeric_limits<int8_t>::max());
+        buffer.append(static_cast<int8_t>(value_.signed_integer()));
+      } break;
+      case Primitive::Kind::I16: {
+        ASSERT(value_.signed_integer() <= std::numeric_limits<int16_t>::max());
+        buffer.append(static_cast<int16_t>(value_.signed_integer()));
+      } break;
+      case Primitive::Kind::I32: {
+        ASSERT(value_.signed_integer() <= std::numeric_limits<int32_t>::max());
+        buffer.append(static_cast<int32_t>(value_.signed_integer()));
+      } break;
+      case Primitive::Kind::I64: {
+        ASSERT(value_.signed_integer() <= std::numeric_limits<int64_t>::max());
+        buffer.append(static_cast<int64_t>(value_.signed_integer()));
+      } break;
+      case Primitive::Kind::U8: {
+        ASSERT(value_.unsigned_integer() <=
+               std::numeric_limits<uint8_t>::max());
+        buffer.append(static_cast<uint8_t>(value_.unsigned_integer()));
+      } break;
+      case Primitive::Kind::U16: {
+        ASSERT(value_.unsigned_integer() <=
+               std::numeric_limits<uint16_t>::max());
+        buffer.append(static_cast<uint16_t>(value_.unsigned_integer()));
+      } break;
+      case Primitive::Kind::U32: {
+        ASSERT(value_.unsigned_integer() >= 0);
+        buffer.append(static_cast<uint32_t>(value_.unsigned_integer()));
+      } break;
+      case Primitive::Kind::U64: {
+        ASSERT(value_.unsigned_integer() <=
+               std::numeric_limits<uint64_t>::max());
+        buffer.append(static_cast<uint64_t>(value_.unsigned_integer()));
+      } break;
+      case Primitive::Kind::F32: {
+        buffer.append(static_cast<float>(value_.real()));
+      } break;
+      case Primitive::Kind::F64: {
+        buffer.append(static_cast<double>(value_.real()));
+      } break;
+      case Primitive::Kind::Byte: {
+        ASSERT(value_.unsigned_integer() <=
+               std::numeric_limits<uint8_t>::max());
+        buffer.append(
+            std::byte(static_cast<uint8_t>(value_.unsigned_integer())));
+      } break;
+      case Primitive::Kind::Type_: {
+        buffer.append(system_.from_index(value_.type()));
+      } break;
       default: NOT_YET();
     }
   }
 
-  absl::Span<std::byte const> read_bytes(size_t n) {
-    std::byte const* p = head_;
-    head_ += n;
-    return absl::Span<std::byte const>(p, end_ - p);
-  }
-
-  template <typename T>
-  bool read(T& t) requires(std::integral<T> or std::floating_point<T> or
-                           base::meta<T> == base::meta<ir::Char> or
-                           base::meta<T> == base::meta<std::byte> or
-                           base::meta<T> == base::meta<core::ParameterFlags> or
-                           base::meta<T> == base::meta<Quals>) {
-    if (end_ - head_ < sizeof(T)) { return false; }
-    std::memcpy(&t, head_, sizeof(T));
-    head_ += sizeof(T);
-    return true;
-  }
-
-  bool read(core::Parameters<QualType>& params) {
-    std::vector<core::Parameter<QualType>> qts;
-    if (not base::Deserialize(*this, qts)) { return false; }
-    params = core::Parameters<QualType>(std::move(qts));
-    return true;
-  }
-
-  bool read(QualType& qt) {
-    Quals quals = Quals::Unqualified();
-    Type t;
-    if (not base::Deserialize(*this, quals, t)) { return false; }
-    qt = QualType(t, quals);
-    return true;
-  }
-
-  bool read(Type& t) {
-    size_t index;
-    if (not base::Deserialize(*this, index)) { return false; }
-    t = system_.from_index(index);
-    return true;
-  }
-
-  std::byte const* head() const { return head_; }
-
  private:
-  template <typename T>
-  bool Read(ir::CompleteResultBuffer& buffer) {
-    T t;
-    if (not base::Deserialize(*this, t)) { return false; }
-    buffer.append(t);
-    return true;
-  };
-
-  std::byte const* head_;
-  std::byte const* end_;
-
-  base::flyweight_map<std::pair<std::string, Function const*>, void (*)()>&
-      foreign_fn_map_;
-  TypeSystem& system_;
+  TypeSystem const& system_;
+  precompiled::Value const & value_;
 };
 
 }  // namespace
 
 void SerializeValue(TypeSystem const& system, Type t, ir::CompleteResultRef ref,
-                    std::string& out) {
-  ValueSerializer vs(&system, &out);
+                    precompiled::Value& value) {
+  value.set_type(system.index(t));
+  ValueSerializer vs(&system, &value);
   vs(t, ref);
 }
 
-ssize_t DeserializeValue(
-    Type t, absl::Span<std::byte const> span, ir::CompleteResultBuffer& buffer,
-    base::flyweight_map<std::pair<std::string, Function const*>, void (*)()>&
-        foreign_fn_map,
-    TypeSystem& system) {
-  ValueDeserializer vd(span, &foreign_fn_map, &system);
-  return vd(t, buffer) ? vd.head() - span.begin() : -1;
+ir::CompleteResultBuffer DeserializeValue(TypeSystem const& system,
+                                          precompiled::Value const& value) {
+  ir::CompleteResultBuffer result;
+  ValueDeserializer vd(&system, &value);
+  vd(system.from_index(value.type_id()), result);
+  return result;
 }
 
 }  // namespace type

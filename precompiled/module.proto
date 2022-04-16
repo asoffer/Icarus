@@ -5,8 +5,8 @@ import "precompiled/value.proto";
 package precompiled;
 
 message SymbolInformation {
-  QualifiedType qualified_type = 1;
-  bytes value = 2;
+  int32 qualifiers = 1;
+  Value value = 2;
   bool visible = 3;
 }
 

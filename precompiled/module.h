@@ -51,6 +51,9 @@ struct PrecompiledModule final : module::Module {
 TypeSystem ToProto(type::TypeSystem const& system);
 void FromProto(TypeSystem& proto, type::TypeSystem& system);
 
+SymbolInformation ToProto(type::TypeSystem const& system,
+                          module::Module::SymbolInformation const& info);
+
 }  // namespace precompiled
 
 #endif  // ICARUS_MODULE_PRECOMPILED_H
