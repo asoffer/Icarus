@@ -6,6 +6,11 @@ message Function {
   bytes byte_code = 1;
 }
 
+message QualifiedType {
+  int64 type_id = 1;
+  int32 qualifiers = 2;
+}
+
 message FunctionTypeDefinition {
   message Parameter {
     string name = 1;

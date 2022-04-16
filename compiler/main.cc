@@ -128,7 +128,9 @@ int Compile(char const *file_name, std::string module_identifier,
   if ((*diag)->num_consumed() != 0) { return 1; }
   if (not output_byte_code.empty()) {
     std::string s;
-    exec_mod->ToProto().SerializeToString(&s);
+    auto proto = exec_mod->ToProto();
+    LOG("proto", "%s", proto.DebugString());
+    proto.SerializeToString(&s);
     std::ofstream os(absl::GetFlag(FLAGS_byte_code).c_str(),
                      std::ofstream::out);
     os << s;
