@@ -29,8 +29,7 @@ ssize_t DeserializeValue(
 
 module_proto::TypeSystem SerializeTypeSystem(TypeSystem const& system);
 
-void SerializeTypeSystem(TypeSystem const& system, std::string& out);
-bool DeserializeTypeSystem(std::string_view& content,
+bool DeserializeTypeSystem(module_proto::TypeSystem& proto,
                            module::SharedContext& context, TypeSystem& system);
 
 }  // namespace type

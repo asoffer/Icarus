@@ -25,6 +25,7 @@ message FunctionTypeDefinition {
   }
   repeated Parameter parameter = 1;
   repeated int32 return_type = 2;
+  bool eager = 3;
 }
 
 message TypeDefinition {

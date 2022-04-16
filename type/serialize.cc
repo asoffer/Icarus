@@ -36,9 +36,7 @@ struct ValueSerializer {
     NOT_YET(t->to_string());
   }
 
-  void operator()(Function const* t, ir::CompleteResultRef ref) {
-    NOT_YET();
-  }
+  void operator()(Function const* t, ir::CompleteResultRef ref) { NOT_YET(); }
 
   void operator()(Primitive const* p, ir::CompleteResultRef ref) {
     switch (p->kind()) {
@@ -106,7 +104,8 @@ struct ValueDeserializer {
     // Type t;
     // if (not base::Deserialize(*this, s, t)) { return false; }
     // ir::ForeignFn fn(
-    //     foreign_fn_map_.try_emplace(std::pair(std::move(s), &t.as<Function>()))
+    //     foreign_fn_map_.try_emplace(std::pair(std::move(s),
+    //     &t.as<Function>()))
     //         .first);
     // buffer.append(ir::Fn(fn));
     // return true;
@@ -219,6 +218,7 @@ struct TypeSystemSerializingVisitor {
   }
   void Visit(Function const* f, module_proto::TypeDefinition& out) {
     auto& fn = *out.mutable_function();
+    fn.set_eager(f->eager());
     for (auto const& param : f->params()) {
       auto& p = *fn.add_parameter();
       p.set_name(param.name);
@@ -228,131 +228,12 @@ struct TypeSystemSerializingVisitor {
     }
     for (Type t : f->return_types()) { fn.add_return_type(system_.index(t)); }
   }
-  void Visit(Slice const* s, module_proto::TypeDefinition& out) { 
+  void Visit(Slice const* s, module_proto::TypeDefinition& out) {
     out.set_slice(system_.index(s->data_type()));
   }
   void Visit(auto const* s, module_proto::TypeDefinition& out) { ; }
 
   TypeSystem const& system_;
-};
-
-struct TypeSystemDeserializingVisitor {
-  explicit TypeSystemDeserializingVisitor(std::string_view* content,
-                                          module::SharedContext* context,
-                                          TypeSystem* system)
-      : content_(*ASSERT_NOT_NULL(content)),
-        context_(*ASSERT_NOT_NULL(context)),
-        system_(*ASSERT_NOT_NULL(system)) {}
-
-  absl::Span<std::byte const> read_bytes(size_t num_bytes) {
-    absl::Span<std::byte const> result(
-        reinterpret_cast<std::byte const*>(content_.data()), num_bytes);
-    content_.remove_prefix(num_bytes);
-    return result;
-  }
-
-  template <typename T>
-  bool read(T& t) requires(std::is_arithmetic_v<T> or std::is_enum_v<T> or
-                           base::meta<T> == base::meta<Quals>) {
-    absl::Span span = read_bytes(sizeof(t));
-    std::memcpy(&t, span.data(), sizeof(t));
-    return true;
-  }
-
-  bool read(Type& t) {
-    size_t index;
-    if (not base::Deserialize(*this, index)) { return false; }
-    t = system_.from_index(index);
-    return true;
-  }
-
-  bool read(QualType& qt) {
-    Quals quals = Quals::Unqualified();
-    Type t;
-    if (not base::Deserialize(*this, quals, t)) { return false; }
-    qt = QualType(t, quals);
-    return true;
-  }
-
-  bool operator()() {
-    int8_t which;
-    base::Deserialize(*this, which);
-    switch (which) {
-      case IndexOf<Array>(): {
-        ir::Integer length;
-        Type t;
-        if (not base::Deserialize(*this, length, t)) { return false; }
-        [[maybe_unused]] auto [iter, inserted] = system_.insert(Arr(length, t));
-        ASSERT(inserted == true);
-        return true;
-      }
-      case IndexOf<Primitive>(): {
-        Primitive::Kind k;
-        if (not base::Deserialize(*this, k)) { return false; }
-        [[maybe_unused]] auto [iter, inserted] =
-            system_.insert(MakePrimitive(k));
-        ASSERT(inserted == true);
-        return true;
-      }
-      case IndexOf<Pointer>(): {
-        Type pointee;
-        if (not base::Deserialize(*this, pointee)) { return false; }
-        [[maybe_unused]] auto [iter, inserted] = system_.insert(Ptr(pointee));
-        ASSERT(inserted == true);
-        return true;
-      }
-      case IndexOf<BufferPointer>(): {
-        Type pointee;
-        if (not base::Deserialize(*this, pointee)) { return false; }
-        [[maybe_unused]] auto [iter, inserted] =
-            system_.insert(BufPtr(pointee));
-        ASSERT(inserted == true);
-        return true;
-      }
-      case IndexOf<Slice>(): {
-        Type data_type;
-        if (not base::Deserialize(*this, data_type)) { return false; }
-        [[maybe_unused]] auto [iter, inserted] = system_.insert(Slc(data_type));
-        ASSERT(inserted == true);
-        return true;
-      }
-      case IndexOf<Function>(): {
-        bool eager;
-        core::Parameters<QualType> params;
-        std::vector<Type> return_types;
-
-        if (not base::Deserialize(*this, eager, params, return_types)) {
-          return false;
-        }
-
-        auto* f = eager ? EagerFunc(std::move(params), std::move(return_types))
-                        : Func(std::move(params), std::move(return_types));
-        [[maybe_unused]] auto [iter, inserted] = system_.insert(f);
-        ASSERT(inserted == true);
-        return true;
-      }
-      case IndexOf<Opaque>(): {
-        std::string module_identifier;
-        uintptr_t numeric_id;
-        if (not base::Deserialize(*this, module_identifier, numeric_id)) {
-          return false;
-        }
-        NOT_YET();
-        // auto const* o =
-        //     Opaq(ASSERT_NOT_NULL(
-        //              context_.module_table().module(module_identifier).second),
-        //          numeric_id);
-        // system_.insert(o);
-        return true;
-      }
-      default: UNREACHABLE((int)which);
-    }
-  }
-
- private:
-  std::string_view &content_;
-  [[maybe_unused]] module::SharedContext& context_;
-  TypeSystem& system_;
 };
 
 }  // namespace
@@ -379,19 +260,45 @@ module_proto::TypeSystem SerializeTypeSystem(TypeSystem const& system) {
   return proto;
 }
 
-void SerializeTypeSystem(TypeSystem const& system, std::string& out) {
-  NOT_YET();
-}
-
-bool DeserializeTypeSystem(std::string_view& content,
+bool DeserializeTypeSystem(module_proto::TypeSystem& proto,
                            module::SharedContext& context, TypeSystem& system) {
-  TypeSystemDeserializingVisitor v(&content, &context, &system);
-  size_t num_types;
-  base::Deserialize(v, num_types);
-  for (size_t i = 0; i < num_types; ++i) {
-    if (not v()) { return false; }
-  }
+  for (auto const& t : proto.type()) {
+    switch (t.type_case()) {
+      case module_proto::TypeDefinition::kPrimitive:
+        system.insert(
+            MakePrimitive(static_cast<Primitive::Kind>(t.primitive())));
+        break;
+      case module_proto::TypeDefinition::kPointer:
+        system.insert(Ptr(system.from_index(t.pointer())));
+        break;
+      case module_proto::TypeDefinition::kBufferPointer:
+        system.insert(BufPtr(system.from_index(t.buffer_pointer())));
+        break;
+      case module_proto::TypeDefinition::kFunction: {
+        core::Parameters<QualType> parameters;
+        for (auto const& p : t.function().parameter()) {
+          parameters.append(
+              p.name(),
+              QualType(system.from_index(p.type()),
+                       Quals::FromValue(p.flags() & 0xff)),
+              core::ParameterFlags::FromValue(p.flags() >> uint8_t{8}));
+        }
+        std::vector<Type> return_types;
+        return_types.reserve(t.function().return_type().size());
+        for (int64_t n : t.function().return_type()) {
+          return_types.push_back(system.from_index(n));
+        }
 
+        auto* make_func = (t.function().eager() ? EagerFunc : Func);
+        system.insert(
+            make_func(std::move(parameters), std::move(return_types)));
+      } break;
+      case module_proto::TypeDefinition::kSlice:
+        system.insert(Slc(system.from_index(t.slice())));
+        break;
+      case module_proto::TypeDefinition::TYPE_NOT_SET: UNREACHABLE();
+    }
+  }
   return true;
 }
 

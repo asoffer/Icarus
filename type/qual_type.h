@@ -91,6 +91,7 @@ struct Quals {
     return H::combine(std::move(h), q.val_);
   }
 
+  static constexpr Quals FromValue(uint8_t value) { return Quals(value); }
   uint8_t value() const { return val_; }
 
  private:

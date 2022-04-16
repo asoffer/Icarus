@@ -89,6 +89,9 @@ struct ParameterFlags {
     return base::Deserialize(d, f.flags_);
   }
 
+  static constexpr ParameterFlags FromValue(uint8_t value) {
+    return ParameterFlags(value);
+  }
   uint8_t value() const { return flags_; }
 
  private:
