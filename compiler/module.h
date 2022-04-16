@@ -6,6 +6,7 @@
 #include "compiler/instructions.h"
 #include "module/module.h"
 #include "module/module.pb.h"
+#include "type/serialize.h"
 
 namespace compiler {
 
@@ -41,7 +42,7 @@ struct CompiledModule : module::Module {
 
   constexpr ir::ModuleId id() const { return id_; }
 
-  module_proto::Module ToProto() {
+  module_proto::Module ToProto() const {
     module_proto::Module proto;
     proto.set_identifier(std::string(identifier()));
     for (auto const &f : ir_module_.functions()) {
@@ -55,6 +56,9 @@ struct CompiledModule : module::Module {
         // TODO: Flesh this out.
       }
     }
+
+    *proto.mutable_type_system() =
+        type::SerializeTypeSystem(type::GlobalTypeSystem);
 
     return proto;
   }

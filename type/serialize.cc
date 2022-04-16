@@ -192,64 +192,48 @@ struct ValueDeserializer {
 };
 
 struct TypeSystemSerializingVisitor {
-  using signature = void();
+  using signature = void(module_proto::TypeDefinition& out);
 
-  explicit TypeSystemSerializingVisitor(TypeSystem const* system,
-                                        std::string* out)
-      : system_(*ASSERT_NOT_NULL(system)), out_(*ASSERT_NOT_NULL(out)) {}
+  explicit TypeSystemSerializingVisitor(TypeSystem const* system)
+      : system_(*ASSERT_NOT_NULL(system)) {}
 
-  void operator()(Type t) { t.visit(*this); }
-
-  void operator()(auto const* t) {
-    base::Serialize(*this, IndexOf<std::decay_t<decltype(*t)>>());
-    Visit(t);
+  void operator()(Type t, module_proto::TypeDefinition& out) {
+    t.visit(*this, out);
   }
 
-  void write_bytes(absl::Span<std::byte const> bytes) {
-    out_.append(std::string_view(reinterpret_cast<char const*>(bytes.data()),
-                                 bytes.size()));
+  void operator()(auto const* t, module_proto::TypeDefinition& out) {
+    Visit(t, out);
   }
-
-  template <typename T>
-  void write(T const& t) requires(std::is_enum_v<T> or
-                                  std::is_arithmetic_v<T> or
-                                  base::meta<T> == base::meta<type::Quals>) {
-    auto const* p = reinterpret_cast<std::byte const*>(&t);
-    write_bytes(absl::MakeConstSpan(p, p + sizeof(T)));
-  }
-
-  void write(Type t) {
-    size_t index = system_.index(t);
-    ASSERT(index != system_.end_index());
-    base::Serialize(*this, index);
-  }
-
-  void write(QualType qt) { base::Serialize(*this, qt.quals(), qt.type()); }
 
  private:
-  void Visit(Primitive const* p) { base::Serialize(*this, p->kind()); }
-
-  void Visit(Array const* a) {
-    base::Serialize(*this, a->length(), a->data_type());
-  }
-  void Visit(Pointer const* p) { base::Serialize(*this, p->pointee()); }
-  void Visit(BufferPointer const* p) { base::Serialize(*this, p->pointee()); }
-
-  void Visit(Function const* f) {
-    base::Serialize(*this, f->eager(), f->params(), f->return_types());
+  void Visit(Primitive const* p, module_proto::TypeDefinition& out) {
+    out.set_primitive(static_cast<int>(p->kind()));
   }
 
-  void Visit(Opaque const* o) {
-    NOT_YET();
-    // base::Serialize(*this, o->defining_module()->identifier(), o->numeric_id());
+  void Visit(Array const* a, module_proto::TypeDefinition& out) { ; }
+  void Visit(Pointer const* p, module_proto::TypeDefinition& out) {
+    out.set_pointer(system_.index(p->pointee()));
   }
-
-  void Visit(Slice const* s) { base::Serialize(*this, s->data_type()); }
-
-  void Visit(auto const* s) { NOT_YET(); }
+  void Visit(BufferPointer const* p, module_proto::TypeDefinition& out) {
+    out.set_buffer_pointer(system_.index(p->pointee()));
+  }
+  void Visit(Function const* f, module_proto::TypeDefinition& out) {
+    auto& fn = *out.mutable_function();
+    for (auto const& param : f->params()) {
+      auto& p = *fn.add_parameter();
+      p.set_name(param.name);
+      p.set_type(system_.index(param.value.type()));
+      p.set_flags((param.flags.value() << uint8_t{8}) |
+                  param.value.quals().value());
+    }
+    for (Type t : f->return_types()) { fn.add_return_type(system_.index(t)); }
+  }
+  void Visit(Slice const* s, module_proto::TypeDefinition& out) { 
+    out.set_slice(system_.index(s->data_type()));
+  }
+  void Visit(auto const* s, module_proto::TypeDefinition& out) { ; }
 
   TypeSystem const& system_;
-  std::string& out_;
 };
 
 struct TypeSystemDeserializingVisitor {
@@ -388,10 +372,15 @@ ssize_t DeserializeValue(
   return vd(t, buffer) ? vd.head() - span.begin() : -1;
 }
 
+module_proto::TypeSystem SerializeTypeSystem(TypeSystem const& system) {
+  module_proto::TypeSystem proto;
+  TypeSystemSerializingVisitor v(&system);
+  for (Type t : system.types()) { v(t, *proto.add_type()); }
+  return proto;
+}
+
 void SerializeTypeSystem(TypeSystem const& system, std::string& out) {
-  TypeSystemSerializingVisitor v(&system, &out);
-  base::Serialize(v, system.size());
-  for (Type t : system.types()) { v(t); }
+  NOT_YET();
 }
 
 bool DeserializeTypeSystem(std::string_view& content,

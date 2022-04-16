@@ -332,6 +332,7 @@ cc_library(
         ":instructions",
         "//module",
         "//module:module_proto_cc",
+        "//type:serialize",
     ],
 )
 

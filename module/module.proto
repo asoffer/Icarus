@@ -17,6 +17,30 @@ message SymbolInformationList {
   repeated SymbolInformation symbol = 1;
 }
 
+message FunctionTypeDefinition {
+  message Parameter {
+    string name = 1;
+    int64 type = 2;
+    uint32 flags = 3;
+  }
+  repeated Parameter parameter = 1;
+  repeated int32 return_type = 2;
+}
+
+message TypeDefinition {
+  oneof type {
+    int64 primitive = 1;
+    int64 pointer = 2;
+    int64 buffer_pointer = 3;
+    FunctionTypeDefinition function = 4;
+    int64 slice = 5;
+  }
+}
+
+message TypeSystem {
+  repeated TypeDefinition type = 1;
+}
+
 message Module {
   // An identifier for this module unique amongst all modules being linked
   // together.
@@ -27,4 +51,6 @@ message Module {
   repeated Function function = 2;
 
   map<string, SymbolInformationList> symbols = 3;
+
+  TypeSystem type_system = 4;
 }
