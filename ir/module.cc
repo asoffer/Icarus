@@ -13,17 +13,17 @@ LocalFnId Module::InsertFunctionIndex(type::Function const *fn_type) {
 Fn Module::InsertFunction(
     type::Function const *t,
     absl::FunctionRef<void(ir::Subroutine &)> initializer) {
-  LocalFnId n = LocalFnId(functions_.size());
-
   ir::Subroutine subroutine(t);
   initializer(subroutine);
 
+  ir::ByteCode byte_code = emit_byte_code_(subroutine);
+
   auto &info = functions_.emplace_back(NativeFunctionInformation{
-      .byte_code = emit_byte_code_(subroutine),
+      .byte_code = std::move(byte_code),
       .type_     = t,
   });
 
-  return Fn(module_id_, n);
+  return Fn(module_id_, LocalFnId(functions_.size() - 1));
 }
 
 Scope Module::InsertScope(type::Scope const *scope_type) {
@@ -44,12 +44,13 @@ std::pair<Fn, bool> Module::InsertInit(
   auto [iter, inserted] = init_.try_emplace(t);
   ir::Fn fn;
   if (inserted) {
+    auto &local_fn = iter->second;
     auto const *fn_type =
         type::Func(core::Parameters<type::QualType>{core::AnonymousParameter(
                        type::QualType::NonConstant(type::Ptr(t)))},
                    {});
-    fn           = InsertFunction(fn_type, initializer);
-    iter->second = fn.local();
+    fn       = InsertFunction(fn_type, initializer);
+    local_fn = fn.local();
   }
   return std::pair(fn, inserted);
 }
@@ -59,12 +60,13 @@ std::pair<Fn, bool> Module::InsertDestroy(
   auto [iter, inserted] = destroy_.try_emplace(t);
   ir::Fn fn;
   if (inserted) {
+    auto &local_fn = iter->second;
     auto const *fn_type =
         type::Func(core::Parameters<type::QualType>{core::AnonymousParameter(
                        type::QualType::NonConstant(type::Ptr(t)))},
                    {});
-    fn           = InsertFunction(fn_type, initializer);
-    iter->second = fn.local();
+    fn       = InsertFunction(fn_type, initializer);
+    local_fn = fn.local();
   }
   return std::pair(fn, inserted);
 }
@@ -75,6 +77,7 @@ std::pair<Fn, bool> Module::InsertCopyAssign(
   auto [iter, inserted] = copy_assign_.try_emplace(std::pair(to, from));
   ir::Fn fn;
   if (inserted) {
+    auto &local_fn      = iter->second;
     auto const *fn_type = type::Func(
         core::Parameters<type::QualType>{
             core::AnonymousParameter(
@@ -83,8 +86,8 @@ std::pair<Fn, bool> Module::InsertCopyAssign(
                 type::QualType::NonConstant(type::Ptr(from)))},
         {});
 
-    fn           = InsertFunction(fn_type, initializer);
-    iter->second = fn.local();
+    fn       = InsertFunction(fn_type, initializer);
+    local_fn = fn.local();
   }
   return std::pair(fn, inserted);
 }
@@ -95,6 +98,7 @@ std::pair<Fn, bool> Module::InsertMoveAssign(
   auto [iter, inserted] = move_assign_.try_emplace(std::pair(to, from));
   ir::Fn fn;
   if (inserted) {
+    auto &local_fn      = iter->second;
     auto const *fn_type = type::Func(
         core::Parameters<type::QualType>{
             core::AnonymousParameter(
@@ -103,8 +107,8 @@ std::pair<Fn, bool> Module::InsertMoveAssign(
                 type::QualType::NonConstant(type::Ptr(from)))},
         {});
 
-    fn           = InsertFunction(fn_type, initializer);
-    iter->second = fn.local();
+    fn       = InsertFunction(fn_type, initializer);
+    local_fn = fn.local();
   }
   return std::pair(fn, inserted);
 }
@@ -115,13 +119,14 @@ std::pair<Fn, bool> Module::InsertCopyInit(
   auto [iter, inserted] = copy_init_.try_emplace(std::pair(to, from));
   ir::Fn fn;
   if (inserted) {
+    auto &local_fn = iter->second;
     auto const *fn_type =
         type::Func(core::Parameters<type::QualType>{core::AnonymousParameter(
                        type::QualType::NonConstant(type::Ptr(from)))},
                    {to});
 
-    fn           = InsertFunction(fn_type, initializer);
-    iter->second = fn.local();
+    fn       = InsertFunction(fn_type, initializer);
+    local_fn = fn.local();
   }
   return std::pair(fn, inserted);
 }
@@ -132,13 +137,14 @@ std::pair<Fn, bool> Module::InsertMoveInit(
   auto [iter, inserted] = move_init_.try_emplace(std::pair(to, from));
   ir::Fn fn;
   if (inserted) {
+    auto &local_fn = iter->second;
     auto const *fn_type =
         type::Func(core::Parameters<type::QualType>{core::AnonymousParameter(
                        type::QualType::NonConstant(type::Ptr(from)))},
                    {to});
 
-    fn           = InsertFunction(fn_type, initializer);
-    iter->second = fn.local();
+    fn       = InsertFunction(fn_type, initializer);
+    local_fn = fn.local();
   }
   return std::pair(fn, inserted);
 }

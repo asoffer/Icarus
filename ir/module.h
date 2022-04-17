@@ -127,8 +127,8 @@ struct Module {
 
   ModuleId module_id_;
   base::any_invocable<ir::ByteCode(ir::Subroutine const &)> emit_byte_code_;
-  absl::flat_hash_map<type::Type, LocalFnId> init_, destroy_;
-  absl::flat_hash_map<std::pair<type::Type, type::Type>, LocalFnId>
+  absl::node_hash_map<type::Type, LocalFnId> init_, destroy_;
+  absl::node_hash_map<std::pair<type::Type, type::Type>, LocalFnId>
       copy_assign_, move_assign_, copy_init_, move_init_;
 };
 
