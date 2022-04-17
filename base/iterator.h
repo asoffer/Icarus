@@ -9,6 +9,7 @@ namespace base {
 template <typename B, typename E>
 struct iterator_range {
   using value_type = std::decay_t<decltype(*std::declval<B>())>;
+  using const_iterator = B;
 
   iterator_range(B b, E e) : begin_(std::move(b)), end_(std::move(e)) {}
 

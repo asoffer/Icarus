@@ -33,32 +33,34 @@ struct PtrSpan {
                          std::unique_ptr<T>>;
 
  public:
-  struct iterator {
+  using value_type = T *;
+
+  struct const_iterator {
     T *operator*() { return ptr_->get(); }
     T *operator->() { return ptr_->get(); }
-    iterator operator++() { return iterator{++ptr_}; }
-    iterator operator++(int) { return iterator{ptr_++}; }
+    const_iterator operator++() { return const_iterator{++ptr_}; }
+    const_iterator operator++(int) { return const_iterator{ptr_++}; }
 
-    friend bool operator==(iterator lhs, iterator rhs) {
+    friend bool operator==(const_iterator lhs, const_iterator rhs) {
       return lhs.ptr_ == rhs.ptr_;
     }
-    friend bool operator!=(iterator lhs, iterator rhs) {
+    friend bool operator!=(const_iterator lhs, const_iterator rhs) {
       return not(lhs == rhs);
     }
 
    private:
     friend struct PtrSpan<T>;
-    explicit iterator(pointer_type *ptr) : ptr_(ptr) {}
+    explicit const_iterator(pointer_type *ptr) : ptr_(ptr) {}
     pointer_type *ptr_ = nullptr;
   };
 
-  iterator begin() const { return iterator{ptr_}; }
-  iterator end() const { return iterator{ptr_ + size_}; }
+  const_iterator begin() const { return const_iterator{ptr_}; }
+  const_iterator end() const { return const_iterator{ptr_ + size_}; }
   size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
 
-  T *front() const { return ptr_->get(); }
-  T *back() const { return ptr_[size_ - 1].get(); }
+  value_type front() const { return ptr_->get(); }
+  value_type back() const { return ptr_[size_ - 1].get(); }
 
   void remove_prefix(size_t num) {
     ptr_ += num;
@@ -69,7 +71,7 @@ struct PtrSpan {
   std::unique_ptr<T> &get_front() { return get(0); }
   std::unique_ptr<T> &get_back() { return get(this->size() - 1); }
 
-  T *operator[](size_t n) const { return ptr_[n].get(); }
+  value_type operator[](size_t n) const { return ptr_[n].get(); }
 
   template <
       typename Container,

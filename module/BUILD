@@ -119,6 +119,7 @@ cc_library(
     deps = [
         ":builtin",
         ":module",
+        "//base:iterator",
         "//ir/value:module_id",
     ],
 )

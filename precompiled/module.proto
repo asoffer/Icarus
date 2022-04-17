@@ -26,4 +26,6 @@ message ModuleProto {
   map<string, SymbolInformationList> symbols = 3;
 
   TypeSystem type_system = 4;
+
+  map<uint32, string> modules = 5;
 }

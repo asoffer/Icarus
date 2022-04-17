@@ -127,9 +127,15 @@ int Compile(char const *file_name, std::string module_identifier,
 
   if ((*diag)->num_consumed() != 0) { return 1; }
   if (not output_byte_code.empty()) {
-    std::string s;
     auto proto = exec_mod->ToProto();
+    auto &mods = *proto.mutable_modules();
+    for (auto const &[name, id] : shared_context.module_table().ids()) {
+      mods[id.value()] = std::string(name);
+    }
+
     LOG("proto", "%s", proto.DebugString());
+
+    std::string s;
     proto.SerializeToString(&s);
     std::ofstream os(absl::GetFlag(FLAGS_byte_code).c_str(),
                      std::ofstream::out);

@@ -6,6 +6,7 @@
 #include <string_view>
 #include <utility>
 
+#include "base/iterator.h"
 #include "ir/value/module_id.h"
 #include "module/builtin.h"
 #include "module/module.h"
@@ -119,6 +120,10 @@ struct ModuleTable {
 
   ir::ModuleId id(Module const *m) const {
     return module(m->identifier()).first;
+  }
+
+  auto ids() const {
+    return base::iterator_range(numeric_id_.begin(), numeric_id_.end());
   }
 
  private:

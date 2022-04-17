@@ -8,7 +8,9 @@
 namespace module {
 namespace {
 
+using ::testing::Pair;
 using ::testing::SizeIs;
+using ::testing::UnorderedElementsAre;
 
 TEST(ModuleTable, ConstructedWithBuiltin) {
   ModuleTable table(std::make_unique<BuiltinModule>(
@@ -62,6 +64,21 @@ TEST(ModuleTable, Size) {
   table.add_module<MockModule>("mock3");
   EXPECT_THAT(table, SizeIs(4));
 }
+
+TEST(ModuleTable, Modules) {
+  ModuleTable table(std::make_unique<BuiltinModule>(
+      [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }));
+  ir::ModuleId m1 = table.add_module<MockModule>("mock1").first;
+  ir::ModuleId m2 = table.add_module<MockModule>("mock2").first;
+  table.add_module<MockModule>("mock1");
+  ir::ModuleId m3 = table.add_module<MockModule>("mock3").first;
+
+  EXPECT_THAT(table.ids(),
+              UnorderedElementsAre(Pair("~builtin", ir::ModuleId::Builtin()),
+                                   Pair("mock1", m1), Pair("mock2", m2),
+                                   Pair("mock3", m3)));
+}
+
 
 }  // namespace
 }  // namespace module
