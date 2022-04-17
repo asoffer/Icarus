@@ -16,14 +16,16 @@ message Value {
     // Represented as the type-id relative to the module's type system.
     uint64 type = 6;
 
-    // The 32 most-significant bits represent the module identifier, and the
-    // 32 least significant bits represent the function local identifier
-    // relative to the given module.
-    uint64 function = 7;
+    Function function = 7;
   }
 }
 
 message Function {
+  uint32 module_id = 1;
+  uint32 function_id = 2;
+}
+
+message FunctionByteCode {
   bytes byte_code = 1;
 }
 
@@ -43,6 +45,11 @@ message FunctionTypeDefinition {
   bool eager = 3;
 }
 
+message OpaqueTypeDefinition {
+  uint32 module_id = 1;
+  uint32 numeric_id= 2;
+}
+
 message TypeDefinition {
   oneof type {
     uint64 primitive = 1;
@@ -50,6 +57,7 @@ message TypeDefinition {
     uint64 buffer_pointer = 3;
     FunctionTypeDefinition function = 4;
     uint64 slice = 5;
+    OpaqueTypeDefinition opaque = 6;
   }
 }
 

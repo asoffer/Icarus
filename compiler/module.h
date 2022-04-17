@@ -51,8 +51,10 @@ struct CompiledModule : module::Module {
     };
     auto& symbols = *proto.mutable_symbols();
     for (auto const &[name, infos] : exported_) {
+      auto range = Exported(name);
+      if (range.empty()) { continue; }
       auto &named_symbol = symbols[std::string(name)];
-      for (auto const &info : infos) {
+      for (auto const &info : range) {
         *named_symbol.add_symbol() =
             precompiled::ToProto(type::GlobalTypeSystem, info);
       }

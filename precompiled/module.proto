@@ -21,7 +21,7 @@ message ModuleProto {
 
   // All functions available from this module, regardless of their visibility or
   // whether they are bound to names.
-  repeated Function function = 2;
+  repeated FunctionByteCode function = 2;
 
   map<string, SymbolInformationList> symbols = 3;
 

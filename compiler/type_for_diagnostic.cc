@@ -99,9 +99,7 @@ struct StringifyType {
       if (operand_qts[0].type().is<type::Slice>()) {
         if (node->member_name() == "length") { return "u64"; }
       }
-      // TODO: This is wrong.
-      return absl::StrCat(StringifyType(&context_, kind_)(node->operand()), ".",
-                          node->member_name());
+      return qts[0].type().to_string();
     }
   }
 

@@ -33,7 +33,10 @@ struct ValueSerializer {
   }
 
   void operator()(type::Function const* t, ir::CompleteResultRef ref) {
-    NOT_YET();
+    ir::Fn fn        = ref.get<ir::Fn>();
+    auto& proto_func = *value_.mutable_function();
+    proto_func.set_module_id(fn.module().value());
+    proto_func.set_function_id(fn.local().value());
   }
 
   void operator()(type::Primitive const* p, ir::CompleteResultRef ref) {
@@ -102,11 +105,11 @@ struct ValueDeserializer {
   }
 
   void operator()(type::Function const*, ir::CompleteResultBuffer& buffer) {
-    uint64_t fn = value_.function();
+    auto const &fn = value_.function();
     // TODO: We need to update the module identifier to be accurate within the
     // compilation of the given module.
-    buffer.append(ir::Fn(ir::ModuleId(fn >> uint64_t{32}),
-                         ir::LocalFnId(fn & uint64_t{0xffffffff})));
+    buffer.append(
+        ir::Fn(ir::ModuleId(fn.module_id()), ir::LocalFnId(fn.function_id())));
   }
 
   void operator()(type::Primitive const* p, ir::CompleteResultBuffer& buffer) {
@@ -192,7 +195,6 @@ struct TypeSystemSerializingVisitor {
     out.set_primitive(static_cast<int>(p->kind()));
   }
 
-  void Visit(type::Array const* a, TypeDefinition& out) { ; }
   void Visit(type::Pointer const* p, TypeDefinition& out) {
     out.set_pointer(system_.index(p->pointee()));
   }
@@ -216,7 +218,14 @@ struct TypeSystemSerializingVisitor {
   void Visit(type::Slice const* s, TypeDefinition& out) {
     out.set_slice(system_.index(s->data_type()));
   }
-  void Visit(auto const* s, TypeDefinition& out) { NOT_YET(); }
+
+  void Visit(type::Opaque const* o, TypeDefinition& out) {
+    auto& opaque = *out.mutable_opaque();
+    opaque.set_module_id(o->defining_module().value());
+    opaque.set_numeric_id(o->numeric_id());
+  }
+
+  void Visit(auto const* s, TypeDefinition& out) { NOT_YET(s->to_string()); }
 
   type::TypeSystem const& system_;
 };
@@ -225,7 +234,7 @@ struct TypeSystemSerializingVisitor {
 
 void SerializeValue(type::TypeSystem const& system, type::Type t,
                     ir::CompleteResultRef ref, Value& value) {
-  value.set_type(system.index(t));
+  value.set_type_id(system.index(t));
   ValueSerializer vs(&system, &value);
   vs(t, ref);
 }
@@ -289,7 +298,8 @@ void FromProto(TypeSystem const& proto, type::TypeSystem& system) {
       } break;
       case TypeDefinition::kSlice:
         system.insert(Slc(system.from_index(t.slice())));
-        break;
+       break;
+      case TypeDefinition::kOpaque: NOT_YET(); break;
       case TypeDefinition::TYPE_NOT_SET: UNREACHABLE();
     }
   }
