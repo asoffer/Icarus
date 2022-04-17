@@ -15,11 +15,11 @@ void Compiler::EmitToBuffer(ast::EnumLiteral const *node,
   switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum: {
       std::tie(t, inserted) =
-          context().EmplaceType<type::Enum>(node, resources().module);
+          context().EmplaceType<type::Enum>(node, resources().module->id());
     } break;
     case ast::EnumLiteral::Kind::Flags: {
       std::tie(t, inserted) =
-          context().EmplaceType<type::Flags>(node, resources().module);
+          context().EmplaceType<type::Flags>(node, resources().module->id());
     } break;
   }
 

@@ -3,6 +3,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/random/distributions.h"
 #include "absl/random/random.h"
+#include "type/system.h"
 
 namespace type {
 
@@ -63,6 +64,16 @@ Type EnumInstruction::Resolve() const {
   type->SetMembers(std::move(mapping));
   type->complete();
   return type;
+}
+
+Enum::Enum(ir::ModuleId mod)
+    : LegacyType(IndexOf<Enum>(),
+                 LegacyType::Flags{.is_default_initializable = 0,
+                                   .is_copyable              = 1,
+                                   .is_movable               = 1,
+                                   .has_destructor           = 0}),
+      mod_(mod) {
+  GlobalTypeSystem.insert(Type(this));
 }
 
 }  // namespace type

@@ -298,24 +298,9 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
            .context = const_cast<Context *>(
                &s->defining_module()->as<CompiledModule>().context())});
     } else if (auto const *e = ret.if_as<type::Enum>()) {
-      // TODO: This is fraught. It could have been defined in a subcontext and
-      // returned/exported.
-      EnsureComplete(
-          {.kind = WorkItem::Kind::CompleteEnum,
-           .node = ASSERT_NOT_NULL(
-               e->defining_module()->as<CompiledModule>().context().AstLiteral(
-                   e)),
-           .context = const_cast<Context *>(
-               &e->defining_module()->as<CompiledModule>().context())});
-
+      // TODO: Ensure the enum is complete.
     } else if (auto const *f = ret.if_as<type::Flags>()) {
-      EnsureComplete(
-          {.kind = WorkItem::Kind::CompleteEnum,
-           .node = ASSERT_NOT_NULL(
-               f->defining_module()->as<CompiledModule>().context().AstLiteral(
-                   f)),
-           .context = const_cast<Context *>(
-               &f->defining_module()->as<CompiledModule>().context())});
+      // TODO: Ensure the flags are complete.
     }
     if (ret.get()->completeness() == type::Completeness::Incomplete) {
       NOT_YET(ret);

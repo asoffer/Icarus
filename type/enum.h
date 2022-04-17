@@ -12,6 +12,7 @@
 #include "base/debug.h"
 #include "base/extend.h"
 #include "base/extend/serialize.h"
+#include "base/iterator.h"
 #include "base/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
@@ -26,13 +27,7 @@ struct Enum : type::LegacyType {
   using underlying_type = uint64_t;
   static type::Type UnderlyingType() { return type::U64; }
 
-  explicit Enum(module::Module const *mod)
-      : LegacyType(IndexOf<Enum>(),
-                   LegacyType::Flags{.is_default_initializable = 0,
-                                     .is_copyable              = 1,
-                                     .is_movable               = 1,
-                                     .has_destructor           = 0}),
-        mod_(mod) {}
+  explicit Enum(ir::ModuleId mod);
 
   void SetMembers(absl::flat_hash_map<std::string, underlying_type> vals) {
     vals_ = std::move(vals);
@@ -57,10 +52,14 @@ struct Enum : type::LegacyType {
     return it->second;
   }
 
-  module::Module const *defining_module() const { return mod_; }
+  auto values() const {
+    return base::iterator_range(vals_.begin(), vals_.end());
+  }
+
+  ir::ModuleId defining_module() const { return mod_; }
 
  private:
-  module::Module const *mod_;
+  ir::ModuleId mod_;
   Completeness completeness_;
   absl::flat_hash_map<std::string, underlying_type> vals_;
   absl::flat_hash_map<underlying_type, std::string_view> members_;

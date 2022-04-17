@@ -2,6 +2,7 @@
 
 #include "absl/random/distributions.h"
 #include "absl/random/random.h"
+#include "type/system.h"
 
 namespace type {
 
@@ -65,6 +66,16 @@ Type FlagsInstruction::Resolve() const {
   type->SetMembers(std::move(mapping));
   type->complete();
   return type;
+}
+
+Flags::Flags(ir::ModuleId mod)
+    : LegacyType(IndexOf<Flags>(),
+                 LegacyType::Flags{.is_default_initializable = 1,
+                                   .is_copyable              = 1,
+                                   .is_movable               = 1,
+                                   .has_destructor           = 0}),
+      mod_(mod) {
+  GlobalTypeSystem.insert(Type(this));
 }
 
 }  // namespace type

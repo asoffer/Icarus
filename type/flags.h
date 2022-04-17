@@ -13,6 +13,7 @@
 #include "base/extend.h"
 #include "base/extend/serialize.h"
 #include "base/extend/traverse.h"
+#include "base/iterator.h"
 #include "base/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
@@ -27,13 +28,7 @@ struct Flags : type::LegacyType {
   using underlying_type = uint64_t;
   static type::Type UnderlyingType() { return type::U64; }
 
-  Flags(module::Module const *mod)
-      : LegacyType(IndexOf<Flags>(),
-                   LegacyType::Flags{.is_default_initializable = 1,
-                                     .is_copyable              = 1,
-                                     .is_movable               = 1,
-                                     .has_destructor           = 0}),
-        mod_(mod) {}
+  explicit Flags(ir::ModuleId mod);
 
   void SetMembers(absl::flat_hash_map<std::string, underlying_type> vals) {
     vals_ = std::move(vals);
@@ -61,7 +56,11 @@ struct Flags : type::LegacyType {
     return it->second;
   }
 
-  module::Module const *defining_module() const { return mod_; }
+  auto values() const {
+    return base::iterator_range(vals_.begin(), vals_.end());
+  }
+
+  ir::ModuleId defining_module() const { return mod_; }
 
   bool IsDefaultInitializable() const { return false; }
 
@@ -70,7 +69,7 @@ struct Flags : type::LegacyType {
   Completeness completeness_;
 
  private:
-  module::Module const *mod_;
+  ir::ModuleId mod_;
   // TODO combine these into a single bidirectional map?
   absl::flat_hash_map<std::string, underlying_type> vals_;
   absl::flat_hash_map<underlying_type, std::string> members_;

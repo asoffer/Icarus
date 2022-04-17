@@ -45,9 +45,14 @@ message FunctionTypeDefinition {
   bool eager = 3;
 }
 
+message EnumeratedTypeDefinition {
+  uint32 module_id = 1;
+  map<string, uint64> values = 2;
+}
+
 message OpaqueTypeDefinition {
   uint32 module_id = 1;
-  uint32 numeric_id= 2;
+  uint32 numeric_id = 2;
 }
 
 message TypeDefinition {
@@ -58,6 +63,8 @@ message TypeDefinition {
     FunctionTypeDefinition function = 4;
     uint64 slice = 5;
     OpaqueTypeDefinition opaque = 6;
+    EnumeratedTypeDefinition enum_type = 7;
+    EnumeratedTypeDefinition flags_type = 8;
   }
 }
 

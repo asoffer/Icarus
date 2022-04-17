@@ -12,7 +12,6 @@ ic_low_level_library(
     visibility = ["//visibility:public"],
     srcs = ["errno.ic"],
     deps = ["//stdlib/c:types"],
-    precompile = False,
 )
 
 ic_low_level_library(

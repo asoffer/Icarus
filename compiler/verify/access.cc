@@ -206,13 +206,13 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
   // clear that node is supposed to be a member so we should emit an error but
   // carry on assuming that node is an element of that enum type.
   if (auto *e = evaled_type.if_as<type::Enum>()) {
-    auto &e_mod = const_cast<module::Module *>(e->defining_module())
-                      ->as<compiler::CompiledModule>();
-    ast::EnumLiteral const *enum_lit =
-        ASSERT_NOT_NULL(e_mod.context().AstLiteral(e));
-    c.EnsureComplete({.kind    = WorkItem::Kind::CompleteEnum,
-                      .node    = enum_lit,
-                      .context = &e_mod.context()});
+    if (e->defining_module() == c.resources().module->id()) {
+      ast::EnumLiteral const *enum_lit =
+          ASSERT_NOT_NULL(c.context().AstLiteral(e));
+      c.EnsureComplete({.kind    = WorkItem::Kind::CompleteEnum,
+                        .node    = enum_lit,
+                        .context = &c.context()});
+    }
     if (not e->Get(node->member_name()).has_value()) {
       // We can continue passed this error because we are confident that this is
       // an enumerator, but we should not emit code for it.
@@ -231,13 +231,13 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
   }
 
   if (auto *f = evaled_type.if_as<type::Flags>()) {
-    auto &f_mod = const_cast<module::Module *>(f->defining_module())
-                      ->as<compiler::CompiledModule>();
-    ast::EnumLiteral const *flags_lit =
-        ASSERT_NOT_NULL(f_mod.context().AstLiteral(f));
-    c.EnsureComplete({.kind    = WorkItem::Kind::CompleteEnum,
-                      .node    = flags_lit,
-                      .context = &f_mod.context()});
+    if (f->defining_module() == c.resources().module->id()) {
+      ast::EnumLiteral const *flags_lit =
+          ASSERT_NOT_NULL(c.context().AstLiteral(f));
+      c.EnsureComplete({.kind    = WorkItem::Kind::CompleteEnum,
+                        .node    = flags_lit,
+                        .context = &c.context()});
+    }
     if (not f->Get(node->member_name()).has_value()) {
       // We can continue passed this error because we are confident that this is
       // a flag, but we should not emit code for it.

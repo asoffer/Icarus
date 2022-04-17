@@ -78,9 +78,11 @@ struct ValueSerializer {
       case type::Primitive::Kind::Byte:
         value_.set_unsigned_integer(static_cast<uint8_t>(ref.get<std::byte>()));
         break;
-      case type::Primitive::Kind::Type_:
-        value_.set_type(system_.index(ref.get<type::Type>()));
-        break;
+      case type::Primitive::Kind::Type_: {
+        size_t index = system_.index(ref.get<type::Type>());
+        ASSERT(index != std::numeric_limits<size_t>::max());
+        value_.set_type(index);
+      } break;
       default: NOT_YET((int)p->kind());
     }
   }
@@ -225,6 +227,20 @@ struct TypeSystemSerializingVisitor {
     opaque.set_numeric_id(o->numeric_id());
   }
 
+  void Visit(type::Enum const* e, TypeDefinition& out) {
+    auto value_range = e->values();
+    auto& t          = *out.mutable_enum_type();
+    t.set_module_id(e->defining_module().value());
+    t.mutable_values()->insert(value_range.begin(), value_range.end());
+  }
+
+  void Visit(type::Flags const* f, TypeDefinition& out) {
+    auto value_range = f->values();
+    auto& t          = *out.mutable_flags_type();
+    t.set_module_id(f->defining_module().value());
+    t.mutable_values()->insert(value_range.begin(), value_range.end());
+  }
+
   void Visit(auto const* s, TypeDefinition& out) { NOT_YET(s->to_string()); }
 
   type::TypeSystem const& system_;
@@ -300,6 +316,8 @@ void FromProto(TypeSystem const& proto, type::TypeSystem& system) {
         system.insert(Slc(system.from_index(t.slice())));
        break;
       case TypeDefinition::kOpaque: NOT_YET(); break;
+      case TypeDefinition::kEnumType: NOT_YET(); break;
+      case TypeDefinition::kFlagsType: NOT_YET(); break;
       case TypeDefinition::TYPE_NOT_SET: UNREACHABLE();
     }
   }
