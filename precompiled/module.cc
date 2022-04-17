@@ -43,13 +43,42 @@ PrecompiledModule::PrecompiledModule(std::string identifier, ir::ModuleId,
 }
 
 absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>>
-PrecompiledModule::Make(std::string const& file_content,
-                        module::SharedContext& context) {
+PrecompiledModule::Make(
+    std::string_view label,
+    std::string const& file_content,
+    absl::flat_hash_map<std::string, std::pair<std::string, std::string>> const&
+        module_map,
+    module::SharedContext& context) {
   ModuleProto module_proto;
 
   if (not module_proto.ParseFromString(file_content)) {
     return absl::InvalidArgumentError(
         "Failed to deserialize module identifier.");
+  }
+
+  for (auto const& [id, name] : module_proto.modules()) {
+    ir::ModuleId mod_id(id);
+    ASSERT(mod_id != ir::ModuleId::Invalid());
+    if (mod_id == ir::ModuleId::Builtin() or
+        mod_id == ir::ModuleId::Foreign() or name == label) {
+      continue;
+    }
+
+    std::string_view module_label;
+    std::string_view icm;
+    for (auto const& [file, label_and_icm] : module_map) {
+      if (label_and_icm.first == name ) {
+        module_label = label_and_icm.first;
+        icm = label_and_icm.second;
+        break;
+      }
+    }
+    ASSERT(icm.empty() == false);
+    if (auto maybe_content = base::ReadFileToString(std::string(icm))) {
+      auto maybe_module =
+          Make(module_label, *maybe_content, module_map, context);
+      if (not maybe_module.ok()) { return std::move(maybe_module).status(); }
+    }
   }
 
   std::string identifier = module_proto.identifier();
@@ -67,18 +96,22 @@ absl::Span<module::Module::SymbolInformation const> PrecompiledModule::Symbols(
   return iter->second;
 }
 
-absl::StatusOr<std::pair<ir::ModuleId, precompiled::PrecompiledModule const*>>
+absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>>
 PrecompiledModule::Load(
     std::string const& file_name, absl::Span<std::string const> lookup_paths,
-    absl::flat_hash_map<std::string, std::string> const& module_map,
+    absl::flat_hash_map<std::string, std::pair<std::string, std::string>> const&
+        module_map,
     module::SharedContext& shared_context) {
   if (!file_name.starts_with("/")) {
     for (std::string_view base_path : lookup_paths) {
       auto iter = module_map.find(absl::StrCat(base_path, "/", file_name));
-      if (iter == module_map.end()) { continue; }
-      if (auto maybe_content = base::ReadFileToString(iter->second)) {
-        return precompiled::PrecompiledModule::Make(*maybe_content,
-                                                    shared_context);
+      if (iter == module_map.end()) {
+        continue;
+      }
+      auto const& [label, icm] = iter->second;
+      if (auto maybe_content = base::ReadFileToString(icm)) {
+        return PrecompiledModule::Make(label, *maybe_content, module_map,
+                                       shared_context);
       }
     }
   }
@@ -89,8 +122,10 @@ PrecompiledModule::Load(
         R"(Failed to find module map entry for '%s')", file_name));
   }
 
-  if (auto maybe_content = base::ReadFileToString(iter->second)) {
-    return precompiled::PrecompiledModule::Make(*maybe_content, shared_context);
+  auto const& [label, icm] = iter->second;
+  if (auto maybe_content = base::ReadFileToString(icm)) {
+    return precompiled::PrecompiledModule::Make(label, *maybe_content,
+                                                module_map, shared_context);
   }
 
   return absl::NotFoundError(absl::StrFormat(

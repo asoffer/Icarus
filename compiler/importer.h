@@ -49,7 +49,8 @@ struct FileImporter : module::Importer {
   explicit FileImporter(
       WorkSet* work_set, diagnostic::DiagnosticConsumer* diagnostic_consumer,
       frontend::SourceIndexer* source_indexer,
-      absl::flat_hash_map<std::string, std::string> module_map,
+      absl::flat_hash_map<std::string, std::pair<std::string, std::string>>
+          module_map,
       std::vector<std::string> module_lookup_paths,
       module::SharedContext& shared_context)
       : work_set_(ASSERT_NOT_NULL(work_set)),
@@ -90,7 +91,8 @@ struct FileImporter : module::Importer {
   absl::flat_hash_map<module::Module const*, ir::Subroutine>
       subroutine_by_module_;
   diagnostic::DiagnosticConsumer* diagnostic_consumer_;
-  absl::flat_hash_map<std::string, std::string> module_map_;
+  absl::flat_hash_map<std::string, std::pair<std::string, std::string>>
+      module_map_;
   std::vector<std::string> module_lookup_paths_;
   frontend::SourceIndexer& source_indexer_;
   module::SharedContext& shared_context_;
@@ -100,8 +102,9 @@ absl::StatusOr<std::string> LoadFileContent(
     std::string const& file_name,
     absl::Span<std::string const> lookup_paths = {});
 
-std::optional<absl::flat_hash_map<std::string, std::string>> MakeModuleMap(
-    std::string const& file_name);
+std::optional<
+    absl::flat_hash_map<std::string, std::pair<std::string, std::string>>>
+MakeModuleMap(std::string const& file_name);
 
 }  // namespace compiler
 

@@ -36,12 +36,15 @@ _tooling_transition = transition(
 def _module_mapping(deps):
     """
     Given a list of dependencies `deps`, returns a map keyed on source file
-    names where the associated value is the corresponding precompiled module
-    file built from that source.
+    names where the associated value is a pair consisting of:
+    * The unique label associtaed to this module.
+    * The corresponding precompiled module file built from that source.
     """
     # TODO: Take transitive into account. E.g. //stdlib target
+
     return {
-        target[IcarusInfo].sources[0]:  target[DefaultInfo].files.to_list()[0]
+        target[IcarusInfo].sources[0]:  (str(target.label),
+                                         target[DefaultInfo].files.to_list()[0])
         for target in deps if target[IcarusInfo].precompiled
     }
 
@@ -60,12 +63,16 @@ def _merge_module_maps(maps):
 
 
 def _module_map_file(ctx, mapping, run):
+    # TODO: Change the formatting so that we do not restrict substrings in file
+    # names or labels.
     module_map = ctx.actions.declare_file(ctx.label.name + ".module_map")
     ctx.actions.write(
         output = module_map,
         content = '\n'.join([
-            "{}:{}".format(src.files.to_list()[0].path, 
-                           icm.short_path if run else icm.path)
+            "{file}::{label}::{icm}".format(
+                file = src.files.to_list()[0].path, 
+                label = icm[0],
+                icm = icm[1].short_path if run else icm[1].path)
             for (src, icm) in mapping.items()
         ])
     )
@@ -88,7 +95,7 @@ def _ic_library_impl(ctx):
         ctx.actions.run(
             inputs = depset(
                          [module_map_file] + 
-                         [icm for (src, icm) in module_map.items()],
+                         [icm[1] for (src, icm) in module_map.items()],
                          transitive = [src.files for src in ctx.attr.srcs],
                      ),
             outputs = [output],
@@ -214,9 +221,14 @@ def _ic_interpret_impl(ctx):
         ),
         is_executable = True,
     )
-
+    print(cmd_template.format(
+            interpreter = interpreter,
+            src = src,
+            module_map = module_map_file.short_path,
+            module_paths = "stdlib",
+        ))
     runfile_deps = depset(
-        srcs + [module_map_file] + [icm for (src, icm) in module_map.items()],
+        srcs + [module_map_file] + [icm[1] for (src, icm) in module_map.items()],
         transitive = ([t[DefaultInfo].files for t in target_deps] +
                       [d.files for d in getattr(ctx.attr, "data", [])])
     )

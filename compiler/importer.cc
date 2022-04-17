@@ -104,21 +104,36 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   return mod_id;
 }
 
-std::optional<absl::flat_hash_map<std::string, std::string>> MakeModuleMap(
-    std::string const& file_name) {
+std::optional<
+    absl::flat_hash_map<std::string, std::pair<std::string, std::string>>>
+MakeModuleMap(std::string const& file_name) {
   if (file_name.empty()) {
-    return absl::flat_hash_map<std::string, std::string>{};
+    return absl::flat_hash_map<std::string,
+                               std::pair<std::string, std::string>>{};
   }
 
-  absl::flat_hash_map<std::string, std::string> module_map;
+  // TODO: Give this a real type.
+  absl::flat_hash_map<std::string, std::pair<std::string, std::string>>
+      module_map;
 
   std::optional content = base::ReadFileToString(file_name);
   if (not content) { return std::nullopt; }
   for (std::string_view line : absl::StrSplit(*content, absl::ByChar('\n'))) {
-    std::pair<std::string_view, std::string_view> kv =
-        absl::StrSplit(line, absl::ByChar(':'));
-    if (kv.first.empty() or kv.second.empty()) { continue; }
-    module_map.emplace(kv.first, kv.second);
+    if (line.empty()) { continue; }
+
+    size_t first_split = line.find("::");
+    if (first_split == std::string_view::npos) { continue; }
+    std::string_view file = line.substr(0, first_split);
+
+    line.remove_prefix(first_split + 2);
+    size_t second_split = line.find("::");
+    if (second_split == std::string_view::npos) { continue; }
+    std::string_view label = line.substr(0, second_split);
+
+    line.remove_prefix(second_split + 2);
+    std::string_view icm = line;
+
+    module_map.try_emplace(file, label, icm);
   }
 
   return module_map;
