@@ -1,5 +1,5 @@
-#ifndef ICARUS_MODULE_PRECOMPILED_H
-#define ICARUS_MODULE_PRECOMPILED_H
+#ifndef ICARUS_PRECOMPILED_MODULE_H
+#define ICARUS_PRECOMPILED_MODULE_H
 
 #include <string>
 
@@ -48,12 +48,6 @@ struct PrecompiledModule final : module::Module {
   ModuleProto proto_;
 };
 
-TypeSystem ToProto(type::TypeSystem const& system);
-void FromProto(TypeSystem& proto, type::TypeSystem& system);
-
-SymbolInformation ToProto(type::TypeSystem const& system,
-                          module::Module::SymbolInformation const& info);
-
 }  // namespace precompiled
 
-#endif  // ICARUS_MODULE_PRECOMPILED_H
+#endif  // ICARUS_PRECOMPILED_MODULE_H

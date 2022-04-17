@@ -334,7 +334,7 @@ cc_library(
         "//module",
         "//precompiled:module",
         "//precompiled:module_cc_proto",
-        "//type:serialize",
+        "//precompiled:serialize",
     ],
 )
 

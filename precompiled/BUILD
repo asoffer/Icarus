@@ -27,6 +27,7 @@ cc_library(
     srcs = ["module.cc"],
     deps = [
         ":module_cc_proto",
+        ":serialize",
         "//base:file",
         "//base:flyweight_map",
         "//module",
@@ -41,7 +42,6 @@ cc_library(
         "//type:opaque",
         "//type:pointer",
         "//type:primitive",
-        "//type:serialize",
         "//type:slice",
         "//type:struct",
         "//type:system",
@@ -51,3 +51,40 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
+
+cc_library(
+    name = "serialize",
+    hdrs = ["serialize.h"],
+    srcs = ["serialize.cc"],
+    deps = [
+        ":module_cc_proto",
+        ":value_cc_proto",
+        "//base:flyweight_map",
+        "//ir/value:result_buffer",
+        "//module:shared_context",
+        "//type:array",
+        "//type:enum",
+        "//type:flags",
+        "//type:function",
+        "//type:generic",
+        "//type:generic_function",
+        "//type:opaque",
+        "//type:pointer",
+        "//type:primitive",
+        "//type:slice",
+        "//type:struct",
+        "//type:system",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "serialize_test",
+    srcs = ["serialize_test.cc"],
+    deps = [
+        ":serialize",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+

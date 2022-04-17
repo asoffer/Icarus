@@ -448,32 +448,6 @@ cc_test(
 )
 
 cc_library(
-    name = "serialize",
-    hdrs = ["serialize.h"],
-    srcs = ["serialize.cc"],
-    deps = CONCRETE_TYPES + [
-        ":generic",
-        ":generic_function",
-        ":overload_set",
-        ":system",
-        "//base:flyweight_map",
-        "//ir/value:result_buffer",
-        "//module:shared_context",
-        "//precompiled:value_cc_proto",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_test(
-    name = "serialize_test",
-    srcs = ["serialize_test.cc"],
-    deps = [
-        ":serialize",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "system",
     hdrs = ["system.h"],
     deps = [

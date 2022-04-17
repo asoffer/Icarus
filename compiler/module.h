@@ -7,7 +7,7 @@
 #include "module/module.h"
 #include "precompiled/module.h"
 #include "precompiled/module.pb.h"
-#include "type/serialize.h"
+#include "precompiled/serialize.h"
 
 namespace compiler {
 
