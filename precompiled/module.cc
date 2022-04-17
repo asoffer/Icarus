@@ -64,6 +64,9 @@ PrecompiledModule::Make(
       continue;
     }
 
+    // If we have already loaded this module, there's no need to continue.
+    if (context.module_table().module(name).second) { continue; }
+
     std::string_view module_label;
     std::string_view icm;
     for (auto const& [file, label_and_icm] : module_map) {
