@@ -1,28 +1,23 @@
 core ::= import "core.ic"
 
-c ::= import "c/types.ic"
-cstr ::= import "c/string.ic"
+c       ::= import "c/types.ic"
+cstr    ::= import "c/string.ic"
+cstdlib ::= import "c/stdlib.ic"
 
 #{export}
 allocate ::= (T :: type) -> *T {
-  // TODO: This should get moved to cstdlib.ic
-  malloc ::= builtin.foreign("malloc", u64 -> *T)
-  return malloc(builtin.bytes(T))
+  return cstdlib.malloc(builtin.bytes(T)) as *T
 }
 
 #{export}
 allocate ::= (T :: type, l: u64) -> []T {
-  // TODO: This should get moved to cstdlib.ic
-  malloc ::= builtin.foreign("malloc", u64 -> [*]T)
-  return builtin.slice(malloc(builtin.bytes(T) * l), l)
+  return builtin.slice(cstdlib.malloc(builtin.bytes(T) * l) as [*]T, l)
 }
 
 #{export}
 // TODO: Accept either a pointer or a buffer pointer.
 deallocate ::= (ptr: ~`T) -> () {
-  // TODO: This should get moved to cstdlib.ic
-  free ::= builtin.foreign("free", T -> ())
-  free(ptr)
+  cstdlib.free(ptr as [*]byte)
 }
 
 #{export}

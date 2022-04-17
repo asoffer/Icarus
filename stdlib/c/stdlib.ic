@@ -12,11 +12,16 @@ c ::= import "c/types.ic"
 #{export} strtoll  ::= builtin.foreign("strtoll", ([*]char, *[*]char, c.int) -> c.long_long)
 #{export} strtoul  ::= builtin.foreign("strtoul", ([*]char, *[*]char, c.int) -> c.unsigned_long)
 #{export} strtoull ::= builtin.foreign("strtoull", ([*]char, *[*]char, c.int) -> c.unsigned_long_long)
-#{export} strtof ::= builtin.foreign("strtof", ([*]char, *[*]char) -> c.float)
-#{export} strtod ::= builtin.foreign("strtod", ([*]char, *[*]char) -> c.double)
+#{export} strtof   ::= builtin.foreign("strtof", ([*]char, *[*]char) -> c.float)
+#{export} strtod   ::= builtin.foreign("strtod", ([*]char, *[*]char) -> c.double)
 
-#{export} abs ::= builtin.foreign("abs", c.int -> c.int)
-#{export} labs ::= builtin.foreign("labs", c.long -> c.long)
+#{export} abs   ::= builtin.foreign("abs", c.int -> c.int)
+#{export} labs  ::= builtin.foreign("labs", c.long -> c.long)
 #{export} llabs ::= builtin.foreign("llabs", c.long_long -> c.long_long)
+
+#{export} malloc  ::= builtin.foreign("malloc", c.size_t -> [*]byte)
+#{export} calloc  ::= builtin.foreign("calloc", (c.size_t, c.size_t) -> [*]byte)
+#{export} realloc ::= builtin.foreign("realloc", ([*]byte, c.size_t) -> [*]byte)
+#{export} free    ::= builtin.foreign("free", ([*]byte) -> ())
 
 #{export} system ::= builtin.foreign("system", [*]char -> c.int)
