@@ -18,7 +18,7 @@ ir::CompleteResultBuffer DeserializeValue(type::TypeSystem const& system,
                                           Value const& value);
 
 TypeSystem ToProto(type::TypeSystem const& system);
-void FromProto(TypeSystem& proto, type::TypeSystem& system);
+void FromProto(TypeSystem const& proto, type::TypeSystem& system);
 
 SymbolInformation ToProto(type::TypeSystem const& system,
                           module::Module::SymbolInformation const& info);

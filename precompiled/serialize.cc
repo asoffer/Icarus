@@ -255,7 +255,7 @@ TypeSystem ToProto(type::TypeSystem const& system) {
   return proto;
 }
 
-void FromProto(TypeSystem& proto, type::TypeSystem& system) {
+void FromProto(TypeSystem const& proto, type::TypeSystem& system) {
   for (auto const& t : proto.type()) {
     switch (t.type_case()) {
       case TypeDefinition::kPrimitive:

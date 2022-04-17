@@ -19,9 +19,8 @@ namespace precompiled {
 // from a source file.
 struct PrecompiledModule final : module::Module {
   explicit PrecompiledModule(std::string identifier, ir::ModuleId,
-                             ModuleProto module_proto)
-      : module::Module(std::move(identifier)),
-        proto_(std::move(module_proto)) {}
+                             ModuleProto module_proto,
+                             module::SharedContext& shared_context);
 
   static absl::StatusOr<
       std::pair<ir::ModuleId, precompiled::PrecompiledModule const*>>
@@ -46,6 +45,10 @@ struct PrecompiledModule final : module::Module {
       std::string const& file_name, module::SharedContext& context);
 
   ModuleProto proto_;
+  [[maybe_unused]] module::SharedContext& shared_context_;
+  absl::flat_hash_map<std::string,
+                      std::vector<module::Module::SymbolInformation>>
+      symbols_;
 };
 
 }  // namespace precompiled

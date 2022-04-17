@@ -18,6 +18,28 @@
 
 namespace precompiled {
 
+PrecompiledModule::PrecompiledModule(std::string identifier, ir::ModuleId,
+                                     ModuleProto proto,
+                                     module::SharedContext& shared_context)
+    : module::Module(std::move(identifier)), shared_context_(shared_context) {
+  type::TypeSystem local_type_system;
+  FromProto(proto.type_system(), local_type_system);
+
+  for (auto const& [symbol, infos] : proto.symbols()) {
+    auto& s = symbols_[symbol];
+    for (auto const& info : infos.symbol()) {
+      s.push_back({
+          .qualified_type = type::QualType(
+              local_type_system.from_index(info.value().type_id()),
+              type::Quals::FromValue(info.qualifiers())),
+          .value      = DeserializeValue(local_type_system, info.value()),
+          .visibility = info.visible() ? module::Module::Visibility::Exported
+                                       : module::Module::Visibility::Private,
+      });
+    }
+  }
+}
+
 absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>>
 PrecompiledModule::Make(std::string const& file_content,
                         module::SharedContext& context) {
@@ -31,19 +53,16 @@ PrecompiledModule::Make(std::string const& file_content,
   std::string identifier = module_proto.identifier();
 
   auto [id, m] = context.module_table().add_module<PrecompiledModule>(
-      std::move(identifier), std::move(module_proto));
+      std::move(identifier), std::move(module_proto), context);
 
   return std::pair<ir::ModuleId, PrecompiledModule const*>(id, m);
 }
 
 absl::Span<module::Module::SymbolInformation const> PrecompiledModule::Symbols(
     std::string_view name) const {
-  auto const& symbols = proto_.symbols();
-  auto iter           = symbols.find(name);
-  if (iter == symbols.end()) { return {}; }
-  // TODO:
-  // return iter->second;
-  return {};
+  auto iter           = symbols_.find(name);
+  if (iter == symbols_.end()) { return {}; }
+  return iter->second;
 }
 
 absl::StatusOr<std::pair<ir::ModuleId, precompiled::PrecompiledModule const*>>
