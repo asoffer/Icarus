@@ -19,8 +19,10 @@ std::optional<T> RoundTrip(T value, type::Type type) {
     buffer.append(value);
     SerializeValue(GlobalTypeSystem, type, buffer[0], proto_value);
   }
+
+  google::protobuf::Map<uint32_t, std::string> module_map;
   ir::CompleteResultBuffer out =
-      DeserializeValue(GlobalTypeSystem, proto_value);
+      DeserializeValue(module_map, GlobalTypeSystem, proto_value);
   return out[0].get<T>();
 }
 

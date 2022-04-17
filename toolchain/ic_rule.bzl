@@ -131,6 +131,14 @@ ic_library = rule(
     attrs = {
         "srcs": attr.label_list(allow_files = [".ic"]),
         "deps": attr.label_list(providers = [IcarusInfo]),
+        "precompile": attr.bool(
+            default = True,
+            doc = """
+            A temporary flag defaulting to True that indicates whether the
+            library should be pre-compiled or needs to be reprocessed for each
+            module containing it. This is to be used while module precompilation
+            is only partially supported.
+            """),
         "_implicit_deps": attr.label_list(default = [Label("//stdlib")]),
         "_compile": attr.label(
             default = Label("//:icarus"),

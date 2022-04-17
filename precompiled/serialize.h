@@ -3,6 +3,7 @@
 
 #include "ir/value/result_buffer.h"
 #include "module/module.h"
+#include "module/table.h"
 #include "precompiled/module.pb.h"
 #include "precompiled/value.pb.h"
 #include "type/system.h"
@@ -14,8 +15,10 @@ namespace precompiled {
 void SerializeValue(type::TypeSystem const& system, type::Type t,
                     ir::CompleteResultRef ref, Value& value);
 
-ir::CompleteResultBuffer DeserializeValue(type::TypeSystem const& system,
-                                          Value const& value);
+ir::CompleteResultBuffer DeserializeValue(
+    module::ModuleTable const& module_table,
+    google::protobuf::Map<uint32_t, std::string> const& module_map,
+    type::TypeSystem const& system, Value const& value);
 
 TypeSystem ToProto(type::TypeSystem const& system);
 void FromProto(TypeSystem const& proto, type::TypeSystem& system);

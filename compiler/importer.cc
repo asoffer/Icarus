@@ -117,6 +117,7 @@ std::optional<absl::flat_hash_map<std::string, std::string>> MakeModuleMap(
   for (std::string_view line : absl::StrSplit(*content, absl::ByChar('\n'))) {
     std::pair<std::string_view, std::string_view> kv =
         absl::StrSplit(line, absl::ByChar(':'));
+    if (kv.first.empty() or kv.second.empty()) { continue; }
     module_map.emplace(kv.first, kv.second);
   }
 

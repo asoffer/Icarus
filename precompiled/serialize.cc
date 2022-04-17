@@ -95,8 +95,14 @@ struct ValueSerializer {
 struct ValueDeserializer {
   using signature = void(ir::CompleteResultBuffer& buffer);
 
-  explicit ValueDeserializer(type::TypeSystem const* system, Value const* value)
-      : system_(*ASSERT_NOT_NULL(system)), value_(*ASSERT_NOT_NULL(value)) {}
+  explicit ValueDeserializer(
+      module::ModuleTable const* module_table,
+      google::protobuf::Map<uint32_t, std::string> const* module_map,
+      type::TypeSystem const* system, Value const* value)
+      : module_table_(*ASSERT_NOT_NULL(module_table)),
+        module_map_(*ASSERT_NOT_NULL(module_map)),
+        system_(*ASSERT_NOT_NULL(system)),
+        value_(*ASSERT_NOT_NULL(value)) {}
 
   void operator()(type::Type t, ir::CompleteResultBuffer& buffer) {
     return t.visit<ValueDeserializer>(*this, buffer);
@@ -108,10 +114,12 @@ struct ValueDeserializer {
 
   void operator()(type::Function const*, ir::CompleteResultBuffer& buffer) {
     auto const &fn = value_.function();
-    // TODO: We need to update the module identifier to be accurate within the
-    // compilation of the given module.
-    buffer.append(
-        ir::Fn(ir::ModuleId(fn.module_id()), ir::LocalFnId(fn.function_id())));
+    auto iter = module_map_.find(fn.module_id());
+    ASSERT(iter != module_map_.end());
+    auto [id, m] = module_table_.module(iter->second);
+    ASSERT(m != nullptr);
+    ASSERT(id != ir::ModuleId::Invalid());
+    buffer.append(ir::Fn(id, ir::LocalFnId(fn.function_id())));
   }
 
   void operator()(type::Primitive const* p, ir::CompleteResultBuffer& buffer) {
@@ -178,6 +186,8 @@ struct ValueDeserializer {
   }
 
  private:
+  module::ModuleTable const& module_table_;
+  google::protobuf::Map<uint32_t, std::string> const & module_map_;
   type::TypeSystem const& system_;
   Value const& value_;
 };
@@ -255,10 +265,12 @@ void SerializeValue(type::TypeSystem const& system, type::Type t,
   vs(t, ref);
 }
 
-ir::CompleteResultBuffer DeserializeValue(type::TypeSystem const& system,
-                                          Value const& value) {
+ir::CompleteResultBuffer DeserializeValue(
+    module::ModuleTable const& module_table,
+    google::protobuf::Map<uint32_t, std::string> const& module_map,
+    type::TypeSystem const& system, Value const& value) {
   ir::CompleteResultBuffer result;
-  ValueDeserializer vd(&system, &value);
+  ValueDeserializer vd(&module_table, &module_map, &system, &value);
   vd(system.from_index(value.type_id()), result);
   return result;
 }
@@ -316,8 +328,28 @@ void FromProto(TypeSystem const& proto, type::TypeSystem& system) {
         system.insert(Slc(system.from_index(t.slice())));
        break;
       case TypeDefinition::kOpaque: NOT_YET(); break;
-      case TypeDefinition::kEnumType: NOT_YET(); break;
-      case TypeDefinition::kFlagsType: NOT_YET(); break;
+      case TypeDefinition::kEnumType: {
+        auto const& proto_enum = t.enum_type();
+        auto* e =
+            type::Allocate<type::Enum>(ir::ModuleId(proto_enum.module_id()));
+        auto [index, inserted] = system.insert(e);
+        ASSERT(inserted == true);
+        absl::flat_hash_map<std::string, type::Enum::underlying_type> members(
+            proto_enum.values().begin(), proto_enum.values().end());
+        e->SetMembers(std::move(members));
+        e->complete();
+      } break;
+      case TypeDefinition::kFlagsType: {
+        auto const& proto_flags = t.flags_type();
+        auto* f =
+            type::Allocate<type::Flags>(ir::ModuleId(proto_flags.module_id()));
+        auto [index, inserted] = system.insert(f);
+        ASSERT(inserted == true);
+        absl::flat_hash_map<std::string, type::Flags::underlying_type> members(
+            proto_flags.values().begin(), proto_flags.values().end());
+        f->SetMembers(std::move(members));
+        f->complete();
+      } break;
       case TypeDefinition::TYPE_NOT_SET: UNREACHABLE();
     }
   }

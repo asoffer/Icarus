@@ -62,6 +62,7 @@ cc_library(
         "//base:flyweight_map",
         "//ir/value:result_buffer",
         "//module:shared_context",
+        "//module:table",
         "//type:array",
         "//type:enum",
         "//type:flags",

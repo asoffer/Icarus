@@ -32,7 +32,9 @@ PrecompiledModule::PrecompiledModule(std::string identifier, ir::ModuleId,
           .qualified_type = type::QualType(
               local_type_system.from_index(info.value().type_id()),
               type::Quals::FromValue(info.qualifiers())),
-          .value      = DeserializeValue(local_type_system, info.value()),
+          .value =
+              DeserializeValue(shared_context.module_table(), proto.modules(),
+                               local_type_system, info.value()),
           .visibility = info.visible() ? module::Module::Visibility::Exported
                                        : module::Module::Visibility::Private,
       });
