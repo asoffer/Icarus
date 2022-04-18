@@ -126,8 +126,8 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
     } else {
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
-                 interface::Interface>(ret_type, [&]<typename T>() {
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn,
+                 ir::GenericFn>(ret_type, [&]<typename T>() {
         auto value = this->EmitAs<T>(node->body());
         current_block()->Append(ir::SetReturnInstruction<T>{
             .index = 0,

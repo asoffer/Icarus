@@ -18,7 +18,6 @@
 #include "type/flags.h"
 #include "type/function.h"
 #include "type/generic.h"
-#include "type/interface/interface.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -131,8 +130,6 @@ bool Compare(::type::Type t) {
     return t == type::UnboundScope or t.is<type::Scope>();
   } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
     return t.is<::type::Block>();
-  } else if constexpr (base::meta<T> == base::meta<interface::Interface>) {
-    return t == ::type::Interface;
   } else {
     UNREACHABLE(t.to_string(), " vs ", typeid(T).name());
   }

@@ -11,7 +11,6 @@
 #include "compiler/resources.h"
 #include "ir/instruction/instructions.h"
 #include "type/generic.h"
-#include "type/interface/ir.h"
 
 namespace compiler {
 namespace {

@@ -660,7 +660,6 @@ cc_library(
         "//ast",
         "//frontend/lex:operators",
         "//compiler:compiler_header",
-        "//type/interface:ir",
         "//type:struct",
     ],
 )

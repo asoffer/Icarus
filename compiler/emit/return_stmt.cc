@@ -35,8 +35,7 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
       EmitCast(*this, context().typed(expr), ret_type, out);
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
-                 interface::Interface>(
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn>(
           ret_type, [&]<typename T>() {
             current_block()->Append(ir::SetReturnInstruction<T>{
                 .index = static_cast<uint16_t>(i),

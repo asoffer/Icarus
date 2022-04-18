@@ -31,13 +31,13 @@ ir::NativeFunctionInformation MakeNativeFunctionInformation(
     ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                uint16_t, uint32_t, uint64_t, float, double, type::Type,
                ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
-               ir::UnboundScope, ir::ScopeContext, ir::Block,
-               interface::Interface>(type, [&]<typename T>() {
-      c.current_block()->Append(ir::SetReturnInstruction<T>{
-          .index = 0,
-          .value = buffer.get<T>(0),
-      });
-    });
+               ir::UnboundScope, ir::ScopeContext, ir::Block>(
+        type, [&]<typename T>() {
+          c.current_block()->Append(ir::SetReturnInstruction<T>{
+              .index = 0,
+              .value = buffer.get<T>(0),
+          });
+        });
   }
   c.current_block()->set_jump(ir::JumpCmd::Return());
   LOG("MakeNativeFunctionInformation", "%s", fn);

@@ -233,9 +233,6 @@ struct Compiler : CompilationDataReference,
       if constexpr (type == base::meta<ir::ScopeContext>) {
         return type::ScopeContext;
       }
-      if constexpr (type == base::meta<interface::Interface>) {
-        return type::Interface;
-      }
     }();
     auto result = EvaluateToBufferOrDiagnose(
         type::Typed<ast::Expression const *>(expr, t));

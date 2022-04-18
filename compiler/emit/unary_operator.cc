@@ -7,7 +7,6 @@
 #include "compiler/emit/initialize.h"
 #include "frontend/lex/operators.h"
 #include "ir/instruction/arithmetic.h"
-#include "type/interface/ir.h"
 #include "type/pointer.h"
 #include "type/struct.h"
 
