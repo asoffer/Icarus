@@ -31,6 +31,7 @@ cc_library(
         "//base:file",
         "//base:flyweight_map",
         "//module",
+        "//module:map",
         "//module:shared_context",
         "//type",
         "//type:array",

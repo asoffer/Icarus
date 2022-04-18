@@ -14,6 +14,7 @@
 #include "frontend/source_indexer.h"
 #include "ir/value/module_id.h"
 #include "module/importer.h"
+#include "module/map.h"
 #include "module/module.h"
 #include "precompiled/module.h"
 
@@ -46,13 +47,12 @@ struct MissingModule {
 };
 
 struct FileImporter : module::Importer {
-  explicit FileImporter(
-      WorkSet* work_set, diagnostic::DiagnosticConsumer* diagnostic_consumer,
-      frontend::SourceIndexer* source_indexer,
-      absl::flat_hash_map<std::string, std::pair<std::string, std::string>>
-          module_map,
-      std::vector<std::string> module_lookup_paths,
-      module::SharedContext& shared_context)
+  explicit FileImporter(WorkSet* work_set,
+                        diagnostic::DiagnosticConsumer* diagnostic_consumer,
+                        frontend::SourceIndexer* source_indexer,
+                        module::ModuleMap module_map,
+                        std::vector<std::string> module_lookup_paths,
+                        module::SharedContext& shared_context)
       : work_set_(ASSERT_NOT_NULL(work_set)),
         diagnostic_consumer_(ASSERT_NOT_NULL(diagnostic_consumer)),
         module_map_(std::move(module_map)),
@@ -91,8 +91,7 @@ struct FileImporter : module::Importer {
   absl::flat_hash_map<module::Module const*, ir::Subroutine>
       subroutine_by_module_;
   diagnostic::DiagnosticConsumer* diagnostic_consumer_;
-  absl::flat_hash_map<std::string, std::pair<std::string, std::string>>
-      module_map_;
+  module::ModuleMap module_map_;
   std::vector<std::string> module_lookup_paths_;
   frontend::SourceIndexer& source_indexer_;
   module::SharedContext& shared_context_;
@@ -101,10 +100,6 @@ struct FileImporter : module::Importer {
 absl::StatusOr<std::string> LoadFileContent(
     std::string const& file_name,
     absl::Span<std::string const> lookup_paths = {});
-
-std::optional<
-    absl::flat_hash_map<std::string, std::pair<std::string, std::string>>>
-MakeModuleMap(std::string const& file_name);
 
 }  // namespace compiler
 

@@ -26,6 +26,8 @@
 #include "frontend/parse.h"
 #include "ir/interpreter/evaluate.h"
 #include "ir/subroutine.h"
+#include "module/map.h"
+#include "module/map_bazel.h"
 #include "module/module.h"
 #include "module/shared_context.h"
 #include "nlohmann/json.hpp"
@@ -66,8 +68,9 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
   }
 
   std::string module_map_file = absl::GetFlag(FLAGS_module_map);
-  auto module_map             = MakeModuleMap(module_map_file);
-  if (not module_map) {
+  auto module_map = module::BazelModuleMap(absl::GetFlag(FLAGS_module_map),
+                                           absl::GetFlag(FLAGS_module_paths));
+  if (not module_map.ok()) {
     diag.Consume(MissingModuleMap{
         .module_map = std::move(module_map_file),
     });

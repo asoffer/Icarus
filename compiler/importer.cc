@@ -51,7 +51,7 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   }
 
   if (auto maybe_module = precompiled::PrecompiledModule::Load(
-          file_name, module_lookup_paths_, module_map_, shared_context_);
+          file_name, module_map_, shared_context_);
       maybe_module.ok()) {
     auto [id, module] = *maybe_module;
     graph_.add_edge(requestor, module);
@@ -102,41 +102,6 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   // A nullopt subroutine means there were errors. We can still emit the `id`.
   // Errors will already be diagnosed.
   return mod_id;
-}
-
-std::optional<
-    absl::flat_hash_map<std::string, std::pair<std::string, std::string>>>
-MakeModuleMap(std::string const& file_name) {
-  if (file_name.empty()) {
-    return absl::flat_hash_map<std::string,
-                               std::pair<std::string, std::string>>{};
-  }
-
-  // TODO: Give this a real type.
-  absl::flat_hash_map<std::string, std::pair<std::string, std::string>>
-      module_map;
-
-  std::optional content = base::ReadFileToString(file_name);
-  if (not content) { return std::nullopt; }
-  for (std::string_view line : absl::StrSplit(*content, absl::ByChar('\n'))) {
-    if (line.empty()) { continue; }
-
-    size_t first_split = line.find("::");
-    if (first_split == std::string_view::npos) { continue; }
-    std::string_view file = line.substr(0, first_split);
-
-    line.remove_prefix(first_split + 2);
-    size_t second_split = line.find("::");
-    if (second_split == std::string_view::npos) { continue; }
-    std::string_view label = line.substr(0, second_split);
-
-    line.remove_prefix(second_split + 2);
-    std::string_view icm = line;
-
-    module_map.try_emplace(file, label, icm);
-  }
-
-  return module_map;
 }
 
 }  // namespace compiler

@@ -24,6 +24,8 @@
 #include "ir/interpreter/execution_context.h"
 #include "ir/subroutine.h"
 #include "module/module.h"
+#include "module/map.h"
+#include "module/map_bazel.h"
 #include "module/shared_context.h"
 #include "opt/opt.h"
 
@@ -78,8 +80,9 @@ int Compile(char const *file_name, std::string module_identifier,
     return 1;
   }
 
-  auto module_map = MakeModuleMap(absl::GetFlag(FLAGS_module_map));
-  if (not module_map) {
+  auto module_map = module::BazelModuleMap(absl::GetFlag(FLAGS_module_map),
+                                           absl::GetFlag(FLAGS_module_paths));
+  if (not module_map.ok()) {
     std::cerr << "Failed to initailize module map.\n"; return 1;
   }
 

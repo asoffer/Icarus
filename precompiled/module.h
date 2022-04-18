@@ -5,6 +5,7 @@
 
 #include "absl/status/statusor.h"
 #include "base/flyweight_map.h"
+#include "module/map.h"
 #include "module/module.h"
 #include "module/shared_context.h"
 #include "precompiled/module.pb.h"
@@ -24,9 +25,7 @@ struct PrecompiledModule final : module::Module {
 
   static absl::StatusOr<
       std::pair<ir::ModuleId, precompiled::PrecompiledModule const*>>
-  Load(std::string const& file_name, absl::Span<std::string const> lookup_paths,
-       absl::flat_hash_map<
-           std::string, std::pair<std::string, std::string>> const& module_map,
+  Load(std::string const& import_name, module::ModuleMap const& module_map,
        module::SharedContext& shared_context);
 
   absl::Span<module::Module::SymbolInformation const> Symbols(
@@ -43,10 +42,8 @@ struct PrecompiledModule final : module::Module {
 
  private:
   static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>> Make(
-      std::string_view label, std::string const& file_name,
-      absl::flat_hash_map<
-          std::string, std::pair<std::string, std::string>> const& module_map,
-      module::SharedContext& context);
+      std::string_view label, std::string const& file_content,
+      module::ModuleMap const& module_map, module::SharedContext& context);
 
   ModuleProto proto_;
   [[maybe_unused]] module::SharedContext& shared_context_;

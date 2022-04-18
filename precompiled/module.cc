@@ -43,12 +43,9 @@ PrecompiledModule::PrecompiledModule(std::string identifier, ir::ModuleId,
 }
 
 absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>>
-PrecompiledModule::Make(
-    std::string_view label,
-    std::string const& file_content,
-    absl::flat_hash_map<std::string, std::pair<std::string, std::string>> const&
-        module_map,
-    module::SharedContext& context) {
+PrecompiledModule::Make(std::string_view label, std::string const& file_content,
+                        module::ModuleMap const& module_map,
+                        module::SharedContext& context) {
   ModuleProto module_proto;
 
   if (not module_proto.ParseFromString(file_content)) {
@@ -67,16 +64,8 @@ PrecompiledModule::Make(
     // If we have already loaded this module, there's no need to continue.
     if (context.module_table().module(name).second) { continue; }
 
-    std::string_view module_label;
-    std::string_view icm;
-    for (auto const& [file, label_and_icm] : module_map) {
-      if (label_and_icm.first == name ) {
-        module_label = label_and_icm.first;
-        icm = label_and_icm.second;
-        break;
-      }
-    }
-    ASSERT(icm.empty() == false);
+    auto [module_label, icm, import_name] =
+        *ASSERT_NOT_NULL(module_map.by_label(name));
     if (auto maybe_content = base::ReadFileToString(std::string(icm))) {
       auto maybe_module =
           Make(module_label, *maybe_content, module_map, context);
@@ -100,39 +89,22 @@ absl::Span<module::Module::SymbolInformation const> PrecompiledModule::Symbols(
 }
 
 absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>>
-PrecompiledModule::Load(
-    std::string const& file_name, absl::Span<std::string const> lookup_paths,
-    absl::flat_hash_map<std::string, std::pair<std::string, std::string>> const&
-        module_map,
-    module::SharedContext& shared_context) {
-  if (!file_name.starts_with("/")) {
-    for (std::string_view base_path : lookup_paths) {
-      auto iter = module_map.find(absl::StrCat(base_path, "/", file_name));
-      if (iter == module_map.end()) {
-        continue;
-      }
-      auto const& [label, icm] = iter->second;
-      if (auto maybe_content = base::ReadFileToString(icm)) {
-        return PrecompiledModule::Make(label, *maybe_content, module_map,
-                                       shared_context);
-      }
+PrecompiledModule::Load(std::string const& import_name,
+                        module::ModuleMap const& module_map,
+                        module::SharedContext& shared_context) {
+  if (auto* entry = module_map.by_import_name(import_name)) {
+    auto [label, icm, unused_import_name] = *entry;
+    if (auto maybe_content = base::ReadFileToString(icm)) {
+      return PrecompiledModule::Make(label, *maybe_content, module_map,
+                                     shared_context);
+    } else {
+      return absl::InvalidArgumentError(absl::StrFormat(
+          "Failed to load precompiledmodule `%s`.", import_name));
     }
-  }
-
-  auto iter = module_map.find(file_name);
-  if (iter == module_map.end()) {
+  } else {
     return absl::NotFoundError(absl::StrFormat(
-        R"(Failed to find module map entry for '%s')", file_name));
+        R"(Failed to find module map entry for '%s')", import_name));
   }
-
-  auto const& [label, icm] = iter->second;
-  if (auto maybe_content = base::ReadFileToString(icm)) {
-    return precompiled::PrecompiledModule::Make(label, *maybe_content,
-                                                module_map, shared_context);
-  }
-
-  return absl::NotFoundError(absl::StrFormat(
-      R"(Failed to load precompiled module for '%s')", file_name));
 }
 
 }  // namespace precompiled
