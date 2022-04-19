@@ -17,7 +17,7 @@ Scope const *Scp(core::Parameters<QualType> in) {
 void Scope::WriteTo(std::string *result) const {
   result->append("scope (");
   std::string_view sep = "";
-  for (auto const &param : params()) {
+  for (auto const &param : parameters()) {
     result->append(sep);
     if (not param.name.empty()) {
       absl::StrAppend(result, param.name,

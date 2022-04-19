@@ -63,8 +63,8 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
 
   parameter_types.clear();
   auto const &c = iter->second->context;
-  for (auto const &[name, value, flags] : node->params()) {
-    parameter_types.append(name, c.qual_types(value.get())[0], flags);
+  for (auto const &[name, value, flags] : node->parameters()) {
+    parameter_types.append(name, c.qual_types(&value)[0], flags);
   }
 
   return InsertSubcontextResult{

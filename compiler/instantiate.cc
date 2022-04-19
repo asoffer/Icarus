@@ -53,7 +53,7 @@ std::optional<BoundParameters> ComputeParamsFromArgs(
   LOG("ComputeParamsFromArgs",
       "Creating a concrete implementation with arguments %s", args);
 
-  std::vector<type::Type> argument_types(node->params().size());
+  std::vector<type::Type> argument_types(node->parameters().size());
 
   BoundParameters bound_parameters;
 

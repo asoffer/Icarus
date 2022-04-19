@@ -271,23 +271,22 @@ struct ParameterizedExpression : Expression {
   explicit ParameterizedExpression(int8_t which, std::string_view range)
       : Expression(which, range) {}
 
-  explicit ParameterizedExpression(
-      int8_t which, std::string_view range,
-      std::vector<std::unique_ptr<Declaration>> params)
+  explicit ParameterizedExpression(int8_t which, std::string_view range,
+                                   std::vector<Declaration> params)
       : Expression(which, range) {
     for (auto &param : params) {
       // NOTE: It's safe to save a `std::string_view` to a parameter because
       // both the declaration and this will live for the length of the syntax
       // tree.
       //
-      ASSERT(param->ids().size() == 1u);
-      params_.append(std::string(param->ids()[0].name()), std::move(param));
+      ASSERT(param.ids().size() == 1u);
+      parameters_.append(std::string(param.ids()[0].name()), std::move(param));
     }
   }
 
-  // TODO params() should be a reference to core::Parameters?
-  using params_type = core::Parameters<std::unique_ptr<Declaration>>;
-  params_type const &params() const { return params_; }
+  core::Parameters<Declaration> const &parameters() const {
+    return parameters_;
+  }
 
   // Returns a sequence of (parameter-index, dependency-node) pairs ordered in
   // such a way that each has no dependencies on any that come after it.
@@ -303,7 +302,7 @@ struct ParameterizedExpression : Expression {
  protected:
   void InitializeParams();
 
-  core::Parameters<std::unique_ptr<Declaration>> params_;
+  core::Parameters<Declaration> parameters_;
   std::vector<std::pair<int, core::DependencyNode<Declaration>>>
       ordered_dependency_nodes_;
   bool is_generic_ = false;
@@ -474,7 +473,7 @@ struct BlockNode : ParameterizedExpression, WithScope {
         name_end_(name_end),
         stmts_(std::move(stmts)) {}
   explicit BlockNode(std::string_view range, char const *name_end,
-                     std::vector<std::unique_ptr<Declaration>> params,
+                     std::vector<Declaration> params,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(IndexOf<BlockNode>(), range, std::move(params)),
         WithScope(Scope::Kind::Executable),
@@ -484,8 +483,8 @@ struct BlockNode : ParameterizedExpression, WithScope {
     // bound to these parameters end up being stored on the stack and we need to
     // make sure we insert the correct load instructions. There should be a more
     // cohesive way to handle this and function parameters simultaneously.
-    for (auto &param : params_) {
-      param.value->flags() |= Declaration::f_IsBlockParam;
+    for (auto &param : parameters_) {
+      param.value.flags() |= Declaration::f_IsBlockParam;
     }
   }
   BlockNode(BlockNode &&) noexcept = default;
@@ -542,21 +541,6 @@ struct Call : Expression {
 
     std::pair<std::string_view, std::unique_ptr<ast::Expression>> extract() && {
       return std::pair(name_, std::move(expr_));
-    }
-
-    // TODO: Remove this.
-    static core::Arguments<std::unique_ptr<ast::Expression>> Extract(
-        std::vector<Argument> v) {
-      core::Arguments<std::unique_ptr<ast::Expression>> args;
-      for (auto &arg : v) {
-        auto [name, expr] = std::move(arg).extract();
-        if (arg.named()) {
-          args.named_emplace(std::move(name), std::move(expr));
-        } else {
-          args.pos_emplace(std::move(expr));
-        }
-      }
-      return args;
     }
 
    private:
@@ -754,8 +738,7 @@ struct EnumLiteral : Expression, WithScope {
 //
 struct FunctionLiteral : ParameterizedExpression, WithScope {
   explicit FunctionLiteral(
-      std::string_view range,
-      std::vector<std::unique_ptr<Declaration>> in_params,
+      std::string_view range, std::vector<Declaration> in_params,
       std::vector<std::unique_ptr<Node>> stmts,
       std::optional<std::vector<std::unique_ptr<Expression>>> out_params =
           std::nullopt)
@@ -804,20 +787,20 @@ struct FunctionType : Expression {
                std::vector<std::unique_ptr<Expression>> params,
                std::vector<std::unique_ptr<Expression>> output)
       : Expression(IndexOf<FunctionType>(), range),
-        params_(std::move(params)),
+        parameters_(std::move(params)),
         output_(std::move(output)) {}
-  base::PtrSpan<Expression const> params() const { return params_; }
+  base::PtrSpan<Expression const> parameters() const { return parameters_; }
   base::PtrSpan<Expression const> outputs() const { return output_; }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;
 
   auto extract() && {
-    return std::pair(std::move(params_), std::move(output_));
+    return std::pair(std::move(parameters_), std::move(output_));
   }
 
  private:
-  std::vector<std::unique_ptr<Expression>> params_;
+  std::vector<std::unique_ptr<Expression>> parameters_;
   std::vector<std::unique_ptr<Expression>> output_;
 };
 
@@ -957,7 +940,7 @@ struct Label : Expression {
 // ```
 struct ParameterizedStructLiteral : ParameterizedExpression, WithScope {
   ParameterizedStructLiteral(std::string_view range,
-                             std::vector<std::unique_ptr<Declaration>> params,
+                             std::vector<Declaration> params,
                              std::vector<Declaration> fields)
       : ParameterizedExpression(IndexOf<ParameterizedStructLiteral>(), range,
                                 std::move(params)),
@@ -1059,7 +1042,7 @@ struct Terminal : Expression {
 struct ScopeLiteral : ParameterizedExpression, WithScope {
   explicit ScopeLiteral(std::string_view range,
                         Declaration::Id context_identifier,
-                        std::vector<std::unique_ptr<Declaration>> params,
+                        std::vector<Declaration> params,
                         std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(IndexOf<ScopeLiteral>(), range,
                                 std::move(params)),
@@ -1185,9 +1168,9 @@ struct SliceType : Expression {
 // * `(x: $x) => x`
 //
 struct ShortFunctionLiteral : ParameterizedExpression, WithScope {
-  explicit ShortFunctionLiteral(
-      std::string_view range, std::vector<std::unique_ptr<Declaration>> params,
-      std::unique_ptr<Expression> body)
+  explicit ShortFunctionLiteral(std::string_view range,
+                                std::vector<Declaration> params,
+                                std::unique_ptr<Expression> body)
       : ParameterizedExpression(IndexOf<ShortFunctionLiteral>(), range,
                                 std::move(params)),
         WithScope(Scope::Kind::BoundaryExecutable),

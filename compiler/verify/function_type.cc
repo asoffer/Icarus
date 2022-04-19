@@ -39,7 +39,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   type::Type t      = type::Type_;
   type::Quals quals = type::Quals::Const();
 
-  for (auto const *p : node->params()) {
+  for (auto const *p : node->parameters()) {
     auto qt = VerifyType(p)[0];
     if (not qt) {
       t = nullptr;

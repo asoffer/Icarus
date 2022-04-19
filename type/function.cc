@@ -28,7 +28,7 @@ Function const *EagerFunc(core::Parameters<QualType> in, std::vector<Type> out) 
 void Function::WriteTo(std::string *result) const {
   result->append(eager() ? "!(" : "(");
   std::string_view sep = "";
-  for (auto const &param : params()) {
+  for (auto const &param : parameters()) {
     result->append(sep);
     if (not param.name.empty()) {
       absl::StrAppend(result, param.name,
@@ -66,7 +66,7 @@ void Function::ShowValue(std::ostream &os,
 }
 
 bool operator==(Function const &lhs, Function const &rhs) {
-  return lhs.eager() == rhs.eager() and lhs.params() == rhs.params() and
+  return lhs.eager() == rhs.eager() and lhs.parameters() == rhs.parameters() and
          lhs.return_types() == rhs.return_types();
 }
 

@@ -10,13 +10,14 @@ namespace {
 struct ParamDependencyGraphBuilder {
   using signature = void(core::DependencyNode<Declaration const *>);
   explicit ParamDependencyGraphBuilder(
-      core::Parameters<std::unique_ptr<Declaration>> const &params) {
-    to_process_.reserve(params.size());
-    for (auto const &param : params) {
+      core::Parameters<Declaration> const &parameters) {
+    to_process_.reserve(parameters.size());
+    for (auto const &parameter : parameters) {
       // Parameters must not be multiple-declarations.
-      ASSERT(param.value->ids().size() == 1u);
-      to_process_.push_back(param.value.get());
-      relevant_decls_.emplace(param.value->ids()[0].name(), param.value.get());
+      ASSERT(parameter.value.ids().size() == 1u);
+      to_process_.push_back(&parameter.value);
+      relevant_decls_.emplace(parameter.value.ids()[0].name(),
+                              &parameter.value);
     }
   }
 
@@ -117,7 +118,7 @@ struct ParamDependencyGraphBuilder {
 
   void operator()(BlockNode const *node,
                   core::DependencyNode<Declaration const *> d) {
-    for (auto const &p : node->params()) { (*this)(p.value.get(), d); }
+    for (auto const &p : node->parameters()) { (*this)(&p.value, d); }
     for (auto const *stmt : node->stmts()) { (*this)(stmt, d); }
   }
 
@@ -161,7 +162,7 @@ struct ParamDependencyGraphBuilder {
 
   void operator()(FunctionLiteral const *node,
                   core::DependencyNode<Declaration const *> d) {
-    for (auto const &param : node->params()) { (*this)(param.value.get(), d); }
+    for (auto const &p : node->parameters()) { (*this)(&p.value, d); }
     if (auto outputs = node->outputs()) {
       for (auto const &out : *outputs) { (*this)(out, d); }
     }
@@ -169,13 +170,13 @@ struct ParamDependencyGraphBuilder {
 
   void operator()(FunctionType const *node,
                   core::DependencyNode<Declaration const *> d) {
-    for (auto const *param : node->params()) { (*this)(param, d); }
+    for (auto const *p : node->parameters()) { (*this)(p, d); }
     for (auto const *out : node->outputs()) { (*this)(out, d); }
   }
 
   void operator()(ShortFunctionLiteral const *node,
                   core::DependencyNode<Declaration const *> d) {
-    for (auto const &param : node->params()) { (*this)(param.value.get(), d); }
+    for (auto const &p : node->parameters()) { (*this)(&p.value, d); }
   }
 
   void operator()(Identifier const *node,
@@ -223,7 +224,7 @@ struct ParamDependencyGraphBuilder {
 
   void operator()(ScopeLiteral const *node,
                   core::DependencyNode<Declaration const *> d) {
-    for (auto const &param : node->params()) { (*this)(param.value.get(), d); }
+    for (auto const &p : node->parameters()) { (*this)(&p.value, d); }
     for (auto const *stmt : node->stmts()) { (*this)(stmt, d); }
   }
 
@@ -252,7 +253,7 @@ struct ParamDependencyGraphBuilder {
 
   void operator()(ParameterizedStructLiteral const *node,
                   core::DependencyNode<Declaration const *> d) {
-    for (auto const &param : node->params()) { (*this)(param.value.get(), d); }
+    for (auto const &p : node->parameters()) { (*this)(&p.value, d); }
     for (auto const &f : node->fields()) { (*this)(&f, d); }
   }
 
@@ -292,8 +293,8 @@ struct ParamDependencyGraphBuilder {
 }  // namespace
 
 base::Graph<core::DependencyNode<Declaration>> BuildParamDependencyGraph(
-    core::Parameters<std::unique_ptr<Declaration>> const &params) {
-  return ParamDependencyGraphBuilder(params).Visit();
+    core::Parameters<Declaration> const &parameters) {
+  return ParamDependencyGraphBuilder(parameters).Visit();
 }
 
 }  // namespace ast

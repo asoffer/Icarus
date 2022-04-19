@@ -199,7 +199,7 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
       } else if (id.name() == "move") {
         auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
         auto info = data.shared_context().Function(f.value());
-        switch (info.type->params().size()) {
+        switch (info.type->parameters().size()) {
           case 1: move_inits.emplace_back(f.value(), info.type); break;
           case 2: move_assignments.emplace_back(f.value(), info.type); break;
           default: UNREACHABLE();
@@ -207,7 +207,7 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
       } else if (id.name() == "copy") {
         auto f    = c.EmitAs<ir::Fn>(id.declaration().init_val());
         auto info = data.shared_context().Function(f.value());
-        switch (info.type->params().size()) {
+        switch (info.type->parameters().size()) {
           case 1: copy_inits.emplace_back(f.value(), info.type); break;
           case 2: copy_assignments.emplace_back(f.value(), info.type); break;
           default: UNREACHABLE();

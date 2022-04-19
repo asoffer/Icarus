@@ -17,7 +17,7 @@ Block const *Blk(core::Parameters<QualType> in) {
 void Block::WriteTo(std::string *result) const {
   result->append("block (");
   std::string_view sep = "";
-  for (auto const &param : params()) {
+  for (auto const &param : parameters()) {
     result->append(sep);
     if (not param.name.empty()) {
       absl::StrAppend(result, param.name,

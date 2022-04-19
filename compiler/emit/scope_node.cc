@@ -82,10 +82,10 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
         type::Type t = c.context().qual_types(block_to_emit)[0].type();
         if (t.is<type::Block>()) {
           size_t param_index = 0;
-          for (auto const &param : block_to_emit->params()) {
+          for (auto const &param : block_to_emit->parameters()) {
             ir::Reg r = scope.parameters(ir::Block(block_index))[param_index++];
             inliner(r);
-            auto const &id        = param.value->ids()[0];
+            auto const &id        = param.value.ids()[0];
             type::Type param_type = c.context().qual_types(&id)[0].type();
             ir::PartialResultBuffer buffer;
             buffer.append(r);
@@ -174,7 +174,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
     ir::PartialResultBuffer argument_buffer;
 
     auto *start = current_block();
-    EmitArguments(*this, scope.type()->params(), {/* TODO: Defaults */},
+    EmitArguments(*this, scope.type()->parameters(), {/* TODO: Defaults */},
                   node->arguments(), constant_arguments, argument_buffer);
 
     ir::Inliner inliner(
@@ -182,7 +182,7 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
         scope->num_args(), current().subroutine->num_allocs());
 
     size_t j = 0;
-    for (auto const &p : scope.type()->params()) {
+    for (auto const &p : scope.type()->parameters()) {
       RegisterReferencing(current(), p.value.type(), argument_buffer[j++]);
     }
 

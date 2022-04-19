@@ -242,7 +242,7 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
   interpreter::ExecutionContext ctx(&shared_context);
   interpreter::StackFrame frame(s.byte_code(), ctx.stack());
   core::BindArguments(
-      s.type()->params(), arguments,
+      s.type()->parameters(), arguments,
       [&, i = 0](type::QualType param,
                  type::Typed<ir::CompleteResultRef> argument) mutable {
         absl::Cleanup c  = [&] { ++i; };

@@ -49,8 +49,8 @@ core::Parameters<ast::Expression const *> DefaultsFor(
     return DefaultsFor(id->declaration().init_val(), context);
   } else if (auto const *p = expr->if_as<ast::ParameterizedExpression>()) {
     core::Parameters<ast::Expression const *> result;
-    for (auto const &decl : p->params()) {
-      result.append(decl.name, decl.value->init_val(), decl.flags);
+    for (auto const &decl : p->parameters()) {
+      result.append(decl.name, decl.value.init_val(), decl.flags);
     }
     return result;
   } else {
@@ -319,7 +319,7 @@ void EmitCall(Compiler &c, CallMetadata::callee_locator_t callee,
   // access to its address. Or worse, we may have a temporary and never have an
   // allocated address for it.
 
-  auto const &param_qts = overload_type->params();
+  auto const &param_qts = overload_type->parameters();
   ir::PartialResultBuffer prepared_arguments;
   EmitArguments(c, param_qts, defaults, arg_exprs, constant_arguments,
                 prepared_arguments);

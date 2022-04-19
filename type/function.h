@@ -38,7 +38,7 @@ struct Function : ReturningType {
 
   template <typename H>
   friend H AbslHashValue(H h, Function const &f) {
-    return H::combine(std::move(h), f.eager(), f.params(), f.return_types());
+    return H::combine(std::move(h), f.eager(), f.parameters(), f.return_types());
   }
 
   friend bool operator==(Function const &lhs, Function const &rhs);

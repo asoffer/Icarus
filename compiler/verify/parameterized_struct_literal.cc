@@ -23,7 +23,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   LOG("ParameterizedStructLiteral", "%s on %s", node->DebugString(),
       context().DebugString());
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
-                   auto params, VerifyParameters(*this, node->params()));
+                   auto params, VerifyParameters(*this, node->parameters()));
   Enqueue({.kind    = WorkItem::Kind::VerifyParameterizedStructLiteralBody,
            .node    = node,
            .context = &context()});

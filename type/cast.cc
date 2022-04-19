@@ -24,14 +24,14 @@ bool CanCastPointer(Pointer const *from, Pointer const *to) {
 }
 
 bool CanCastFunction(Function const *from, Function const *to) {
-  if (from->params().size() != to->params().size()) { return false; }
+  if (from->parameters().size() != to->parameters().size()) { return false; }
 
   if (from->return_types() != to->return_types()) { return false; }
 
-  size_t num_params = from->params().size();
+  size_t num_params = from->parameters().size();
   for (size_t i = 0; i < num_params; ++i) {
-    auto const &from_param = from->params()[i];
-    auto const &to_param   = to->params()[i];
+    auto const &from_param = from->parameters()[i];
+    auto const &to_param   = to->parameters()[i];
 
     if (not CanCastImplicitly(from_param.value.type(), to_param.value.type())) {
       return false;
@@ -202,7 +202,7 @@ InferenceResult Inference(Type t) {
     }
     return t;
   } else if (auto *f = t.if_as<Function>()) {
-    for (auto const &param : f->params()) {
+    for (auto const &param : f->parameters()) {
       ASSIGN_OR(return _, std::ignore, Inference(param.value.type()));
     }
     for (auto t : f->return_types()) {

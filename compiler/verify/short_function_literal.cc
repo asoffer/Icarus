@@ -10,7 +10,7 @@ type::QualType VerifyConcrete(CompilationDataReference data,
   LOG("ShortFunctionLiteral", "VerifyConcrete %s", node->DebugString());
   TypeVerifier tv(data);
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto params, VerifyParameters(tv, node->params()));
+                   auto params, VerifyParameters(tv, node->parameters()));
   ASSIGN_OR(return _, auto body_qt, VerifyType(data, node->body())[0]);
   return data.context().set_qual_type(
       node, type::QualType::Constant(

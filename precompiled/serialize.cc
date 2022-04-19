@@ -216,7 +216,7 @@ struct TypeSystemSerializingVisitor {
   void Visit(type::Function const* f, TypeDefinition& out) {
     auto& fn = *out.mutable_function();
     fn.set_eager(f->eager());
-    for (auto const& param : f->params()) {
+    for (auto const& param : f->parameters()) {
       auto& p = *fn.add_parameter();
       p.set_name(param.name);
       p.set_type(system_.index(param.value.type()));

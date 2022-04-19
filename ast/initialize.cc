@@ -18,39 +18,39 @@ namespace {
 std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
 OrderedDependencyNodes(ast::ParameterizedExpression const* node) {
   absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
-  for (auto const& p : node->params()) {
+  for (auto const& p : node->parameters()) {
+    deps.insert(core::DependencyNode<ast::Declaration>::ArgumentType(&p.value));
     deps.insert(
-        core::DependencyNode<ast::Declaration>::ArgumentType(p.value.get()));
-    deps.insert(
-        core::DependencyNode<ast::Declaration>::ParameterType(p.value.get()));
-    if (p.value->flags() & ast::Declaration::f_IsConst) {
-      deps.insert(core::DependencyNode<ast::Declaration>::ParameterValue(
-          p.value.get()));
+        core::DependencyNode<ast::Declaration>::ParameterType(&p.value));
+    if (p.value.flags() & ast::Declaration::f_IsConst) {
       deps.insert(
-          core::DependencyNode<ast::Declaration>::ArgumentValue(p.value.get()));
+          core::DependencyNode<ast::Declaration>::ParameterValue(&p.value));
+      deps.insert(
+          core::DependencyNode<ast::Declaration>::ArgumentValue(&p.value));
     }
   }
 
   std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
       ordered_nodes;
   ordered_nodes.reserve(4 * deps.size());
-  BuildParamDependencyGraph(node->params()).topologically([&](auto dep_node) {
-    if (not deps.contains(dep_node)) { return; }
-    LOG("OrderedDependencyNodes", "adding %s`%s`", dep_node,
-        absl::StrJoin(dep_node.node()->ids(), ", ",
-                      [](std::string* out, ast::Declaration::Id const& id) {
-                        absl::StrAppend(out, id.name());
-                      }));
-    ordered_nodes.emplace_back(0, dep_node);
-  });
+  BuildParamDependencyGraph(node->parameters())
+      .topologically([&](auto dep_node) {
+        if (not deps.contains(dep_node)) { return; }
+        LOG("OrderedDependencyNodes", "adding %s`%s`", dep_node,
+            absl::StrJoin(dep_node.node()->ids(), ", ",
+                          [](std::string* out, ast::Declaration::Id const& id) {
+                            absl::StrAppend(out, id.name());
+                          }));
+        ordered_nodes.emplace_back(0, dep_node);
+      });
 
   // Compute and set the index or `ordered_nodes` so that each node knows the
   // ordering in source code. This allows us to match parameters to arguments
   // efficiently.
   absl::flat_hash_map<ast::Declaration const*, int> param_index;
   int index = 0;
-  for (auto const& param : node->params()) {
-    param_index.emplace(param.value.get(), index++);
+  for (auto const& param : node->parameters()) {
+    param_index.emplace(&param.value, index++);
   }
 
   for (auto& [index, node] : ordered_nodes) {
@@ -63,14 +63,14 @@ OrderedDependencyNodes(ast::ParameterizedExpression const* node) {
 }  // namespace
 
 void ParameterizedExpression::InitializeParams() {
-  for (auto& param : params_) {
-    param.value->flags() |= Declaration::f_IsFnParam;
-    if (not param.value->IsDefaultInitialized()) {
+  for (auto& param : parameters_) {
+    param.value.flags() |= Declaration::f_IsFnParam;
+    if (not param.value.IsDefaultInitialized()) {
       param.flags = core::ParameterFlags::HasDefault();
     }
     if (not is_generic_) {
-      is_generic_ = (param.value->flags() & Declaration::f_IsConst) or
-                    param.value->is_dependent();
+      is_generic_ = (param.value.flags() & Declaration::f_IsConst) or
+                    param.value.is_dependent();
     }
   }
 }
@@ -149,7 +149,7 @@ void BlockNode::Initialize(Initializer& initializer) {
   body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
-  for (auto& param : params_) { param.value->Initialize(initializer); }
+  for (auto& param : parameters_) { param.value.Initialize(initializer); }
   InitializeAll(stmts_, initializer, &covers_binding_, &is_dependent_);
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
   InitializeParams();
@@ -236,10 +236,10 @@ void FunctionLiteral::Initialize(Initializer& initializer) {
     initializer.scope            = scope_;
     initializer.function_literal = f;
   };
-  for (auto& param : params_) {
-    param.value->Initialize(initializer);
-    covers_binding_ |= param.value->covers_binding();
-    is_dependent_ |= param.value->is_dependent();
+  for (auto& param : parameters_) {
+    param.value.Initialize(initializer);
+    covers_binding_ |= param.value.covers_binding();
+    is_dependent_ |= param.value.is_dependent();
   }
   if (outputs_) {
     for (auto& out : *outputs_) { out->Initialize(initializer); }
@@ -251,7 +251,7 @@ void FunctionLiteral::Initialize(Initializer& initializer) {
 
 void FunctionType::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  InitializeAll(params_, initializer, &covers_binding_, &is_dependent_);
+  InitializeAll(parameters_, initializer, &covers_binding_, &is_dependent_);
   InitializeAll(output_, initializer, &covers_binding_, &is_dependent_);
 }
 
@@ -324,7 +324,7 @@ void ScopeLiteral::Initialize(Initializer& initializer) {
   initializer.scope = &body_scope();
   context_decl_->Initialize(initializer);
   absl::Cleanup c = [&] { initializer.scope = scope_; };
-  for (auto& param : params_) { param.value->Initialize(initializer); }
+  for (auto& param : parameters_) { param.value.Initialize(initializer); }
   InitializeAll(stmts_, initializer, &covers_binding_, &is_dependent_);
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
   InitializeParams();
@@ -356,7 +356,7 @@ void ShortFunctionLiteral::Initialize(Initializer& initializer) {
   body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
-  for (auto& param : params_) { param.value->Initialize(initializer); }
+  for (auto& param : parameters_) { param.value.Initialize(initializer); }
   body_->Initialize(initializer);
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
   InitializeParams();
@@ -375,7 +375,7 @@ void ParameterizedStructLiteral::Initialize(Initializer& initializer) {
   body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   absl::Cleanup c   = [&] { initializer.scope = scope_; };
-  for (auto& param : params_) { param.value->Initialize(initializer); }
+  for (auto& param : parameters_) { param.value.Initialize(initializer); }
   for (auto& field : fields_) { field.Initialize(initializer); }
   ordered_dependency_nodes_ = OrderedDependencyNodes(this);
   InitializeParams();

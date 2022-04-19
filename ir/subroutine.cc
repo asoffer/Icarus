@@ -3,7 +3,7 @@
 namespace ir {
 
 Subroutine::Subroutine(type::Callable const *type)
-    : type_(type), alloc_(params().size()) {
+    : type_(type), alloc_(parameters().size()) {
   AppendBlock(BasicBlock::DebugInfo{.header = "Entry"});
 }
 

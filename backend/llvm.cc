@@ -194,7 +194,7 @@ bool EmitInstruction(LlvmEmitter &emitter, LlvmEmitter::context_type &context,
     std::vector<typename LlvmEmitter::value_type *> args;
     args.reserve(inst.arguments().num_entries());
     auto *fn_type   = inst.func_type();
-    auto param_iter = fn_type->params().begin();
+    auto param_iter = fn_type->parameters().begin();
     NOT_YET();
     // for (auto const &arg : inst.arguments()) {
     //   arg.template apply<bool, ir::Char, int8_t, int16_t, int32_t, int64_t,

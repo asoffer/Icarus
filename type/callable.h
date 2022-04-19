@@ -10,7 +10,7 @@
 namespace type {
 
 struct Callable : LegacyType {
-  core::Parameters<type::QualType> const& params() const { return parameters_; }
+  core::Parameters<type::QualType> const& parameters() const { return parameters_; }
 
  protected:
   explicit Callable(int8_t which, LegacyType::Flags flags,

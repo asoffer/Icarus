@@ -29,7 +29,7 @@ std::string CallInstruction::to_string() const {
       a = ss.str();
     } else {
       a = Representation(args_[i].AsComplete(),
-                         fn_type_->params()[i].value.type());
+                         fn_type_->parameters()[i].value.type());
     }
     absl::StrAppend(&arg_str, std::exchange(separator, ", "), a);
   }

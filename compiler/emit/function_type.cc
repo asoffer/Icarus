@@ -12,9 +12,9 @@ void Compiler::EmitToBuffer(ast::FunctionType const *node,
                             ir::PartialResultBuffer &out) {
   std::vector<std::pair<std::string, ir::RegOr<type::Type>>> param_vals;
   std::vector<ir::RegOr<type::Type>> out_vals;
-  param_vals.reserve(node->params().size());
+  param_vals.reserve(node->parameters().size());
   out_vals.reserve(node->outputs().size());
-  for (auto const *p : node->params()) {
+  for (auto const *p : node->parameters()) {
     if (auto const *decl = p->if_as<ast::Declaration>()) {
       ASSERT(decl->ids().size() == 1u);
       if (auto const *te = decl->type_expr()) {

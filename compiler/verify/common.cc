@@ -25,7 +25,7 @@ bool ValidateCallable(
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
         &errors) {
   auto callability = core::Callability(
-      callable->params(), arguments,
+      callable->parameters(), arguments,
       [](type::Typed<ir::CompleteResultRef> const &argument,
          type::QualType const &parameter) {
         return type::CanCastImplicitly(argument.type(), parameter.type());
@@ -99,17 +99,16 @@ absl::flat_hash_set<module::Module *> ModulesFromTypeProvenance(
 }
 
 std::optional<core::Parameters<type::QualType>> VerifyParameters(
-    TypeVerifier &tv,
-    core::Parameters<std::unique_ptr<ast::Declaration>> const &params) {
+    TypeVerifier &tv, core::Parameters<ast::Declaration> const &parameters) {
   // Parameter types cannot be dependent in concrete implementations so it is
   // safe to verify each of them separately (to generate more errors that are
   // likely correct).
 
   core::Parameters<type::QualType> type_params;
-  type_params.reserve(params.size());
+  type_params.reserve(parameters.size());
   bool err = false;
-  for (auto &d : params) {
-    auto qt = tv.VerifyType(d.value.get())[0];
+  for (auto const &d : parameters) {
+    auto qt = tv.VerifyType(&d.value)[0];
     if (qt.ok()) {
       type_params.append(d.name, qt, d.flags);
     } else {

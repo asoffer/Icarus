@@ -20,8 +20,7 @@ VerifyArguments(TypeVerifier &tv,
                 ir::CompleteResultBuffer &out);
 
 std::optional<core::Parameters<type::QualType>> VerifyParameters(
-    TypeVerifier &tv,
-    core::Parameters<std::unique_ptr<ast::Declaration>> const &params);
+    TypeVerifier &tv, core::Parameters<ast::Declaration> const &parameters);
 
 struct VerifyCallParameters {
   ast::Expression const *call;

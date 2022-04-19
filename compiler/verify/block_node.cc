@@ -9,8 +9,8 @@ type::QualType VerifyConcrete(CompilationDataReference data,
                               ast::BlockNode const *node) {
   bool has_error   = false;
   core::Parameters<type::QualType> param_types;
-  for (auto const &[name, value, flags] : node->params()) {
-    auto qt = VerifyType(data, value.get())[0];
+  for (auto const &[name, value, flags] : node->parameters()) {
+    auto qt = VerifyType(data, &value)[0];
     has_error |= qt.HasErrorMark();
     param_types.append(name, qt, flags);
   }

@@ -89,10 +89,10 @@ void DumpArguments(std::string *out, size_t indent,
 
 std::string indentation(size_t indent) { return std::string(2 * indent, ' '); }
 
-std::string ParametersToString(
-    core::Parameters<std::unique_ptr<Declaration>> const &params, size_t indent) {
-  return absl::StrJoin(params, ", ", [&](std::string *out, auto const &p) {
-    p.value->DebugStrAppend(out, indent);
+std::string ParametersToString(core::Parameters<Declaration> const &parameters,
+                               size_t indent) {
+  return absl::StrJoin(parameters, ", ", [&](std::string *out, auto const &p) {
+    p.value.DebugStrAppend(out, indent);
   });
 }
 
@@ -169,8 +169,8 @@ void BindingDeclaration::DebugStrAppend(std::string *out, size_t indent) const {
 
 void BlockNode::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, name());
-  if (not params().empty()) {
-    absl::StrAppend(out, " [", ParametersToString(params(), indent), "]");
+  if (not parameters().empty()) {
+    absl::StrAppend(out, " [", ParametersToString(parameters(), indent), "]");
   }
   absl::StrAppend(out, " {\n");
   for (auto *stmt : stmts()) {
@@ -282,7 +282,7 @@ void EnumLiteral::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void FunctionLiteral::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, "(", ParametersToString(params(), indent), ") -> ");
+  absl::StrAppend(out, "(", ParametersToString(parameters(), indent), ") -> ");
   if (outputs()) {
     absl::StrAppend(out, "(",
                     absl::StrJoin(*outputs(), ", ",
@@ -301,7 +301,7 @@ void FunctionLiteral::DebugStrAppend(std::string *out, size_t indent) const {
 
 void FunctionType::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "(",
-                  absl::StrJoin(params(), ", ",
+                  absl::StrJoin(parameters(), ", ",
                                 [&](std::string *out, auto const &p) {
                                   p->DebugStrAppend(out, indent);
                                 }),
@@ -367,7 +367,7 @@ void YieldStmt::DebugStrAppend(std::string *out, size_t indent) const {
 
 void ScopeLiteral::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppendFormat(out, "scope [%s] (%s) {", context().ids()[0].name(),
-                        ParametersToString(params(), indent));
+                        ParametersToString(parameters(), indent));
   for (auto const *stmt : stmts()) {
     absl::StrAppend(out, "\n", indentation(indent));
     stmt->DebugStrAppend(out, indent + 1);
@@ -391,7 +391,7 @@ void SliceType::DebugStrAppend(std::string *out, size_t indent) const {
 
 void ShortFunctionLiteral::DebugStrAppend(std::string *out,
                                           size_t indent) const {
-  absl::StrAppend(out, "(", ParametersToString(params(), indent), ") => ");
+  absl::StrAppend(out, "(", ParametersToString(parameters(), indent), ") => ");
   body()->DebugStrAppend(out, indent);
 }
 
@@ -407,7 +407,7 @@ void StructLiteral::DebugStrAppend(std::string *out, size_t indent) const {
 
 void ParameterizedStructLiteral::DebugStrAppend(std::string *out,
                                                 size_t indent) const {
-  absl::StrAppend(out, "struct (", ParametersToString(params(), indent),
+  absl::StrAppend(out, "struct (", ParametersToString(parameters(), indent),
                   ") {\n");
   for (auto const &f : fields()) {
     absl::StrAppend(out, indentation(indent));

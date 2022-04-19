@@ -166,7 +166,7 @@ type::QualType VerifyConcrete(CompilationDataReference data,
   LOG("FunctionLiteral", "VerifyConcrete %s", node->DebugString());
   TypeVerifier tv(data);
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto params, VerifyParameters(tv, node->params()));
+                   auto params, VerifyParameters(tv, node->parameters()));
   if (auto outputs = node->outputs()) {
     std::vector<type::Type> output_type_vec(outputs->size());
     bool error = false;
@@ -274,7 +274,7 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
   auto const &fn_type =
       context().qual_types(node)[0].type().as<type::Function>();
 
-  for (auto const &param : fn_type.params()) {
+  for (auto const &param : fn_type.parameters()) {
     type::Type t = param.value.type();
     if (const auto *s = t.if_as<type::Struct>()) {
       EnsureComplete(

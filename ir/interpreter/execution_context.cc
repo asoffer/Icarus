@@ -51,10 +51,10 @@ void ExecutionContext::CallForeignFunction(ir::Fn f, StackFrame &frame) {
   LOG("CallFn", "Calling %s: %s", f, fn_type->to_string());
 
   std::vector<ffi_type *> arg_types;
-  arg_types.reserve(fn_type->params().size());
+  arg_types.reserve(fn_type->parameters().size());
 
   std::vector<void *> arg_vals;
-  arg_vals.reserve(fn_type->params().size());
+  arg_vals.reserve(fn_type->parameters().size());
 
   // Note: libffi expects a void*[] for its arguments but we can't just take
   // pointers into `frame` when the arguments are in a different format (e.g.,
@@ -63,8 +63,8 @@ void ExecutionContext::CallForeignFunction(ir::Fn f, StackFrame &frame) {
   // that we can take a pointer into `pointer_values`.
   std::vector<void const *> pointer_values;
 
-  for (size_t i = 0; i < fn_type->params().size(); ++i) {
-    auto const &in = fn_type->params()[i];
+  for (size_t i = 0; i < fn_type->parameters().size(); ++i) {
+    auto const &in = fn_type->parameters()[i];
 
     ASSERT(in.value.constant() == false);
     auto ffi_type = ToFfiType(in.value.type());
@@ -73,7 +73,7 @@ void ExecutionContext::CallForeignFunction(ir::Fn f, StackFrame &frame) {
     // This is more than we need to reserve, but it's sufficient to ensure that
     // push_back will never cause a reallocation so the pointers we take to
     // elements are stable.
-    pointer_values.reserve(fn_type->params().size());
+    pointer_values.reserve(fn_type->parameters().size());
     if (ffi_type == &ffi_type_pointer) {
       ir::addr_t addr = frame.get<ir::addr_t>(ir::Reg::Parameter(i));
       LOG("CallFn", "Pushing pointer addr = %p stored in %s", addr,

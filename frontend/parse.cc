@@ -961,8 +961,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
 }
 
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
-    std::string_view range,
-    std::vector<std::unique_ptr<ast::Declaration>> inputs,
+    std::string_view range, std::vector<ast::Declaration> inputs,
     std::vector<std::unique_ptr<ast::Expression>> output, Statements &&stmts,
     diagnostic::DiagnosticConsumer &diag) {
   return std::make_unique<ast::FunctionLiteral>(
@@ -970,8 +969,7 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
 }
 
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
-    std::string_view range,
-    std::vector<std::unique_ptr<ast::Declaration>> inputs,
+    std::string_view range, std::vector<ast::Declaration> inputs,
     std::unique_ptr<ast::Expression> output, Statements &&stmts,
     diagnostic::DiagnosticConsumer &diag) {
   if (output == nullptr) {
@@ -1044,9 +1042,11 @@ std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
   } else {
     stmts.append(std::move(nodes[1]));
   }
-  std::vector<std::unique_ptr<ast::Declaration>> decls;
+  std::vector<ast::Declaration> decls;
   decls.reserve(params.size());
-  for (auto &p : params) { decls.push_back(move_as<ast::Declaration>(p)); }
+  for (auto &p : params) {
+    decls.push_back(std::move(p->as<ast::Declaration>()));
+  }
 
   return BuildFunctionLiteral(range, std::move(decls), std::move(outs),
                               std::move(stmts), diag);
@@ -1064,9 +1064,13 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
   } else {
     stmts.append(std::move(nodes[1]));
   }
-  return BuildFunctionLiteral(
-      range, ExtractIfCommaList<ast::Declaration>(std::move(nodes[0]), true),
-      nullptr, std::move(stmts), diag);
+  std::vector<ast::Declaration> decls;
+  for (auto& p :
+       ExtractIfCommaList<ast::Declaration>(std::move(nodes[0]), true)) {
+    decls.push_back(std::move(*p));
+  }
+  return BuildFunctionLiteral(range, std::move(decls), nullptr,
+                              std::move(stmts), diag);
 }
 
 std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
@@ -1075,7 +1079,10 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
   auto args   = move_as<ast::Expression>(nodes[0]);
   auto body   = move_as<ast::Expression>(nodes[2]);
   auto range  = std::string_view(args->range().begin(), body->range().end());
-  auto inputs = ExtractIfCommaList<ast::Declaration>(std::move(args), true);
+  std::vector<ast::Declaration> inputs;
+  for (auto &p : ExtractIfCommaList<ast::Declaration>(std::move(args), true)) {
+    inputs.push_back(std::move(*p));
+  }
 
   std::vector<std::unique_ptr<ast::Expression>> ret_vals =
       ExtractIfCommaList<ast::Expression>(std::move(body));
@@ -1160,11 +1167,14 @@ std::unique_ptr<ast::Node> BuildBlockNode(
   auto stmts = ExtractStatements(std::move(nodes.back()));
   if (auto *id = nodes.front()->if_as<ast::Identifier>()) {
     if (nodes.size() == 5) {
-      std::vector<std::unique_ptr<ast::Declaration>> params =
-          ExtractIfCommaList<ast::Declaration>(std::move(nodes[2]), true);
+      std::vector<ast::Declaration> parameters;
+      for (auto &p :
+           ExtractIfCommaList<ast::Declaration>(std::move(nodes[2]), true)) {
+        parameters.push_back(std::move(*p));
+      }
 
       return std::make_unique<ast::BlockNode>(
-          range, id->range().end(), std::move(params), std::move(stmts));
+          range, id->range().end(), std::move(parameters), std::move(stmts));
     } else {
       return std::make_unique<ast::BlockNode>(range, id->range().end(),
                                               std::move(stmts));
@@ -1365,8 +1375,11 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
   std::string_view range(nodes.front()->range().begin(),
                          nodes.back()->range().end());
   // TODO: Error handling.
-  std::vector<std::unique_ptr<ast::Declaration>> params =
-      ExtractIfCommaList<ast::Declaration>(std::move(nodes[2]), true);
+  std::vector<ast::Declaration> parameters;
+  for (auto &p :
+       ExtractIfCommaList<ast::Declaration>(std::move(nodes[2]), true)) {
+    parameters.push_back(std::move(*p));
+  }
 
   auto elements = std::move(nodes[1]->as<ast::ArrayLiteral>()).extract();
   ASSERT(elements.size() == 1u);
@@ -1381,7 +1394,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
   }
 
   return std::make_unique<ast::ScopeLiteral>(
-      range, ast::Declaration::Id(id_range), std::move(params),
+      range, ast::Declaration::Id(id_range), std::move(parameters),
       std::move(stmts).extract());
 }
 
@@ -1458,10 +1471,10 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     }
     auto inputs =
         ExtractIfCommaList<ast::Declaration>(std::move(nodes[1]), true);
-    std::vector<std::unique_ptr<ast::Declaration>> params;
+    std::vector<ast::Declaration> params;
     for (auto &expr : inputs) {
       if (expr->is<ast::Declaration>()) {
-        params.push_back(move_as<ast::Declaration>(expr));
+        params.push_back(std::move(expr->as<ast::Declaration>()));
       } else {
         diag.Consume(TodoDiagnostic{.range = expr->range()});
       }

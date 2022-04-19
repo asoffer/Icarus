@@ -45,7 +45,7 @@ struct LlvmTypeVisitor {
       // distinction in LLVM that is a qualifier-level distinction in Icarus. We
       // don't actually take this into account yet.
       std::vector<llvm::Type *> param_types;
-      for (auto const &p : t->params()) {
+      for (auto const &p : t->parameters()) {
         if (p.value.constant()) { continue; }
         param_types.push_back((*this)(p.value.type()));
       }

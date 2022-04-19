@@ -112,8 +112,8 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
 
     // TODO arguments should be renumbered to not waste space on const values
     size_t i = 0;
-    for (auto const &param : node->params()) {
-      absl::Span<ast::Declaration::Id const> ids = param.value->ids();
+    for (auto const &param : node->parameters()) {
+      absl::Span<ast::Declaration::Id const> ids = param.value.ids();
       ASSERT(ids.size() == 1u);
       state().set_addr(&ids[0], ir::Reg::Parameter(i++));
     }

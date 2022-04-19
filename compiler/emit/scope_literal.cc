@@ -69,8 +69,8 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
   auto cleanup       = EmitScaffolding(*this, *ir_scope, node->body_scope());
 
   size_t i = 0;
-  for (auto const &param : node->params()) {
-    absl::Span<ast::Declaration::Id const> ids = param.value->ids();
+  for (auto const &param : node->parameters()) {
+    absl::Span<ast::Declaration::Id const> ids = param.value.ids();
     ASSERT(ids.size() == 1u);
     state().set_addr(&ids[0], ir::Reg::Parameter(i++));
   }

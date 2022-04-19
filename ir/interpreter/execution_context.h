@@ -133,7 +133,7 @@ struct ExecutionContext {
       return StackFrame(shared_context_.Function(f).byte_code, stack());
     } else {
       type::Function const *fn_type = shared_context_.ForeignFunctionType(f);
-      return StackFrame({.num_parameters = fn_type->params().size(),
+      return StackFrame({.num_parameters = fn_type->parameters().size(),
                          .num_outputs    = fn_type->return_types().size()},
                         stack());
     }
@@ -231,7 +231,7 @@ struct ExecutionContext {
                           StackFrame::register_value_size);
             LOG("CallInstruction", "  %s: [%s]", ir::Reg::Parameter(i), reg);
           } else {
-            type::Type t = fn_type->params()[i].value.type();
+            type::Type t = fn_type->parameters()[i].value.type();
             core::Bytes size =
                 t.is_big() ? interpreter::kArchitecture.pointer().bytes()
                            : t.bytes(interpreter::kArchitecture);
