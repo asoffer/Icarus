@@ -38,7 +38,7 @@ TEST(StructLiteral, FieldError) {
     n: 3
     b := true
   })");
-  auto qts = mod.context().qual_types(mod.get<ast::StructLiteral>());
+  auto qts  = mod.context().qual_types(mod.get<ast::StructLiteral>());
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
@@ -46,7 +46,7 @@ TEST(StructLiteral, FieldError) {
 
 TEST(StructLiteral, SelfReferential) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(R"(
+  auto &mod             = infra.add_module(R"(
   list ::= struct {
     data: i64
     next: *list

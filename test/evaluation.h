@@ -41,7 +41,7 @@ TEST_P(EvaluationTest, Test) {
   ASSERT_THAT(infra.diagnostics(), testing::IsEmpty());
   ASSERT_THAT(module.module().stmts(), testing::Not(testing::IsEmpty()));
   auto const *e = module.get<ast::Expression>();
-  auto qts = module.context().qual_types(e);
+  auto qts      = module.context().qual_types(e);
   ASSERT_THAT(qts, testing::SizeIs(1));
   auto t = qts[0].type();
   ASSERT_TRUE(t.valid());

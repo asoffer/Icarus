@@ -170,7 +170,8 @@ int main(int argc, char *argv[]) {
   absl::Span<char *> arguments = absl::MakeSpan(args).subspan(2);
 
   frontend::SourceIndexer source_indexer;
-  auto diag = compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
+  auto diag =
+      compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
   if (not diag.ok()) {
     std::cerr << diag.status().message();
     return 1;

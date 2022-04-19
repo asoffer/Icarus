@@ -24,8 +24,8 @@ struct TrivialImporter : Importer {
     return *ASSERT_NOT_NULL(shared_context_.module_table().module(id));
   }
 
-  private:
-   SharedContext &shared_context_;
+ private:
+  SharedContext& shared_context_;
 };
 
 }  // namespace module

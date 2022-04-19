@@ -47,15 +47,15 @@ struct ProvenanceVisitor {
     }
   }
 
-  private:
-   module::ModuleTable const &table_;
+ private:
+  module::ModuleTable const &table_;
 };
 
 }  // namespace
 
 // Returns a pointer to the module which defines this type (or null if the type
 // is constructed from entirely built-in types and type-constructors).
-module::Module const *Provenance(Type t, module::ModuleTable const& table) {
+module::Module const *Provenance(Type t, module::ModuleTable const &table) {
   ProvenanceVisitor v(&table);
   return t.visit<ProvenanceVisitor>(v);
 }

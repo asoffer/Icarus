@@ -30,7 +30,6 @@ TEST(ParameterFlags, Equality) {
   EXPECT_TRUE(v != n);
 }
 
-
 TEST(ParameterFlags, MeetAndJoin) {
   auto d = ParameterFlags::HasDefault();
   auto n = ParameterFlags::MustNotName();

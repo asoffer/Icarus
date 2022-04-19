@@ -197,7 +197,7 @@ void EmitStructCompletion(CompilationDataReference data, type::Struct *s,
       if (id.name() == "destroy") {
         user_dtor = c.EmitAs<ir::Fn>(id.declaration().init_val()).value();
       } else if (id.name() == "move") {
-        auto f = c.EmitAs<ir::Fn>(id.declaration().init_val());
+        auto f    = c.EmitAs<ir::Fn>(id.declaration().init_val());
         auto info = data.shared_context().Function(f.value());
         switch (info.type->parameters().size()) {
           case 1: move_inits.emplace_back(f.value(), info.type); break;

@@ -35,21 +35,21 @@ struct DestructionEmitter : CompilationDataReference {
 
   void EmitDestroy(type::Array const *t, ir::RegOr<ir::addr_t> addr) {
     if (not t->HasDestructor()) { return; }
-    auto [fn,
-          inserted] = context().ir().InsertDestroy(t, [&](ir::Subroutine &s) {
-      push_current(&s);
-      absl::Cleanup c = [&] { state().current.pop_back(); };
+    auto [fn, inserted] =
+        context().ir().InsertDestroy(t, [&](ir::Subroutine &s) {
+          push_current(&s);
+          absl::Cleanup c = [&] { state().current.pop_back(); };
 
-      current_block() = s.entry();
-      current_block() =
-          OnEachArrayElement(current(), t, ir::Reg::Parameter(0),
-                             [=](ir::BasicBlock *entry, ir::Reg reg) {
-                               current_block() = entry;
-                               EmitDestroy(t->data_type(), reg);
-                               return current_block();
-                             });
-      current_block()->set_jump(ir::JumpCmd::Return());
-    });
+          current_block() = s.entry();
+          current_block() =
+              OnEachArrayElement(current(), t, ir::Reg::Parameter(0),
+                                 [=](ir::BasicBlock *entry, ir::Reg reg) {
+                                   current_block() = entry;
+                                   EmitDestroy(t->data_type(), reg);
+                                   return current_block();
+                                 });
+          current_block()->set_jump(ir::JumpCmd::Return());
+        });
 
     // TODO: Remove const_cast.
     if (inserted) { const_cast<type::Array *>(t)->SetDestructor(fn); }

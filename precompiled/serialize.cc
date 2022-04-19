@@ -113,8 +113,8 @@ struct ValueDeserializer {
   }
 
   void operator()(type::Function const*, ir::CompleteResultBuffer& buffer) {
-    auto const &fn = value_.function();
-    auto iter = module_map_.find(fn.module_id());
+    auto const& fn = value_.function();
+    auto iter      = module_map_.find(fn.module_id());
     ASSERT(iter != module_map_.end());
     auto [id, m] = module_table_.module(iter->second);
     ASSERT(m != nullptr);
@@ -187,7 +187,7 @@ struct ValueDeserializer {
 
  private:
   module::ModuleTable const& module_table_;
-  google::protobuf::Map<uint32_t, std::string> const & module_map_;
+  google::protobuf::Map<uint32_t, std::string> const& module_map_;
   type::TypeSystem const& system_;
   Value const& value_;
 };
@@ -326,7 +326,7 @@ void FromProto(TypeSystem const& proto, type::TypeSystem& system) {
       } break;
       case TypeDefinition::kSlice:
         system.insert(Slc(system.from_index(t.slice())));
-       break;
+        break;
       case TypeDefinition::kOpaque: NOT_YET(); break;
       case TypeDefinition::kEnumType: {
         auto const& proto_enum = t.enum_type();

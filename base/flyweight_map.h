@@ -37,8 +37,8 @@ struct flyweight_map {
   using pointer         = value_type*;
   using const_pointer   = value_type const*;
 
-  flyweight_map()                     = default;
-  flyweight_map(flyweight_map&&)      = default;
+  flyweight_map()                = default;
+  flyweight_map(flyweight_map&&) = default;
   flyweight_map& operator=(flyweight_map&&) = default;
 
   template <std::input_iterator Iter>

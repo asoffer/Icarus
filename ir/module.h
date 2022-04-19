@@ -38,8 +38,8 @@ struct Module {
     auto iter = scope_data_.find(s);
     ASSERT(iter != scope_data_.end());
     auto &[byte_code, data] = iter->second;
-    byte_code = emit_byte_code_(*s);
-    data->byte_code = &byte_code;
+    byte_code               = emit_byte_code_(*s);
+    data->byte_code         = &byte_code;
   }
 
   NativeFunctionInformation const &function(LocalFnId id) const {
@@ -93,7 +93,7 @@ struct Module {
       base::SupportsDelayed<S, size_t>) {
     using delay_token = decltype(s.template delayed<size_t>());
     std::vector<delay_token> delay_tokens;
-    
+
     base::Serialize(s, m.functions_.size());
 
     // Reserve space for us to write the offset of each function.

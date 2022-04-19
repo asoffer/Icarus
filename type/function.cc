@@ -16,7 +16,8 @@ Function const *Func(core::Parameters<QualType> in, std::vector<Type> out) {
   return fn;
 }
 
-Function const *EagerFunc(core::Parameters<QualType> in, std::vector<Type> out) {
+Function const *EagerFunc(core::Parameters<QualType> in,
+                          std::vector<Type> out) {
   auto handle = funcs_.lock();
   auto [iter, inserted] =
       handle->insert(Function(std::move(in), std::move(out), true));

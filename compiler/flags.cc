@@ -11,7 +11,8 @@ DiagnosticConsumerFromFlag(absl::Flag<std::string> const& f,
                            frontend::SourceIndexer& source_indexer) {
   std::string diagnostics = absl::GetFlag(f);
   if (diagnostics == "console") {
-    return std::make_unique<diagnostic::StreamingConsumer>(stderr, &source_indexer);
+    return std::make_unique<diagnostic::StreamingConsumer>(stderr,
+                                                           &source_indexer);
   } else if (diagnostics == "json") {
     return std::make_unique<diagnostic::JsonConsumer>(stderr, source_indexer);
   } else {

@@ -9,7 +9,9 @@ namespace {
 struct DefaultValueVisitor {
   using signature = void(ir::PartialResultBuffer &);
 
-  void operator()(auto const *t, ir::PartialResultBuffer &buffer) { NOT_YET(t->to_string()); }
+  void operator()(auto const *t, ir::PartialResultBuffer &buffer) {
+    NOT_YET(t->to_string());
+  }
 
   void operator()(type::Function const *t, ir::PartialResultBuffer &buffer) {
     UNREACHABLE();

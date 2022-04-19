@@ -73,18 +73,16 @@ struct Scope : base::Cast<Scope> {
 
   module::Module &module() {
     ASSERT(parent_ != 0u);
-    return parent_ & 1
-               ? *ASSERT_NOT_NULL(
-                     reinterpret_cast<module::Module *>(parent_ - 1))
-               : parent()->module();
+    return parent_ & 1 ? *ASSERT_NOT_NULL(
+                             reinterpret_cast<module::Module *>(parent_ - 1))
+                       : parent()->module();
   }
 
   module::Module const &module() const {
     ASSERT(parent_ != 0u);
-    return parent_ & 1
-               ? *ASSERT_NOT_NULL(
-                     reinterpret_cast<module::Module *>(parent_ - 1))
-               : parent()->module();
+    return parent_ & 1 ? *ASSERT_NOT_NULL(
+                             reinterpret_cast<module::Module *>(parent_ - 1))
+                       : parent()->module();
   }
 
   auto ancestors() const {
@@ -99,7 +97,8 @@ struct Scope : base::Cast<Scope> {
 
   // Invokes `f` on each declaration in this and all descendant scopes in the
   // order of occurence.
-  void ForEachNonConstantDeclaration(std::invocable<Declaration const *> auto &&f) const {
+  void ForEachNonConstantDeclaration(
+      std::invocable<Declaration const *> auto &&f) const {
     for (auto p : ordered_non_constant_declarations_) {
       if (auto const *decl = p.get_if<Declaration>()) {
         f(decl);

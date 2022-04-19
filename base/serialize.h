@@ -201,7 +201,9 @@ bool DeserializeOne(base::Deserializer auto& d, value_type& value) {
     return d.read(value);
 
   } else if constexpr (requires {
-    { BaseDeserialize(d, value) } -> std::convertible_to<bool>; }) {
+                         { BaseDeserialize(d, value) }
+                         ->std::convertible_to<bool>;
+                       }) {
     return BaseDeserialize(d, value);
 
   } else if constexpr (base::SatisfiesTupleProtocol<value_type>) {

@@ -10,7 +10,7 @@
 #include "type/qual_type.h"
 
 namespace module {
-namespace  {
+namespace {
 
 using ::testing::_;
 using ::testing::Eq;
@@ -91,4 +91,3 @@ TEST(Module, ExportedAndPrivate) {
 
 }  // namespace
 }  // namespace module
-

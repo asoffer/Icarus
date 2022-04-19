@@ -102,7 +102,7 @@ struct Twice {
   friend bool BaseDeserialize(auto &deserializer, Twice &value) {
     int n;
     bool b = Deserialize(deserializer, n);
-    value = Twice(n);
+    value  = Twice(n);
     return b;
   }
 
@@ -199,7 +199,7 @@ struct SerializerWithDelay {
     return token;
   }
 
-  void write(int n)  {
+  void write(int n) {
     auto const *p = reinterpret_cast<std::byte const *>(&n);
     write_bytes(absl::MakeConstSpan(p, p + sizeof(int)));
   }
@@ -245,7 +245,7 @@ struct UsesDelayed {
   friend bool BaseDeserialize(base::Deserializer auto &d, UsesDelayed &u) {
     // When serializing, we fill in `x` after `y` but space for them is reserved
     // in the correct order, so it should still be deserializable in this order.
-     bool result =  base::Deserialize(d, u.x_, u.y_);
+    bool result = base::Deserialize(d, u.x_, u.y_);
     return result;
   }
 

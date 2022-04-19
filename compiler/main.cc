@@ -23,9 +23,9 @@
 #include "frontend/parse.h"
 #include "ir/interpreter/execution_context.h"
 #include "ir/subroutine.h"
-#include "module/module.h"
 #include "module/map.h"
 #include "module/map_bazel.h"
+#include "module/module.h"
 #include "module/shared_context.h"
 #include "opt/opt.h"
 
@@ -74,7 +74,8 @@ int Compile(char const *file_name, std::string module_identifier,
             std::string const &output_byte_code,
             std::string const &output_object_file) {
   frontend::SourceIndexer source_indexer;
-  auto diag = compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
+  auto diag =
+      compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
   if (not diag.ok()) {
     std::cerr << diag.status().message();
     return 1;
@@ -83,7 +84,8 @@ int Compile(char const *file_name, std::string module_identifier,
   auto module_map = module::BazelModuleMap(absl::GetFlag(FLAGS_module_map),
                                            absl::GetFlag(FLAGS_module_paths));
   if (not module_map.ok()) {
-    std::cerr << "Failed to initailize module map.\n"; return 1;
+    std::cerr << "Failed to initailize module map.\n";
+    return 1;
   }
 
   compiler::WorkSet work_set;
@@ -117,7 +119,7 @@ int Compile(char const *file_name, std::string module_identifier,
       source_indexer.insert(mod_id, *std::move(content));
 
   auto parsed_nodes = frontend::Parse(file_content, **diag);
-  auto nodes        = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
+  auto nodes = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
 
   compiler::PersistentResources resources{
       .work                = &work_set,

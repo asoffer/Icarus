@@ -45,7 +45,6 @@ TEST(ArrayType, Correct) {
                 UnorderedElementsAre(type::QualType::Constant(type::Type_)));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
-
 }
 
 TEST(ArrayType, NonConstantType) {
@@ -127,7 +126,7 @@ TEST(ArrayType, ValidPattern) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Expression>());
     EXPECT_THAT(qts,
-               UnorderedElementsAre(type::QualType::Constant(type::Integer)));
+                UnorderedElementsAre(type::QualType::Constant(type::Integer)));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 

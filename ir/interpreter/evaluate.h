@@ -68,9 +68,9 @@ ir::CompleteResultBuffer EvaluateToBuffer(
 }
 
 template <typename InstSet, typename... Args>
-ir::CompleteResultBuffer Evaluate(module::SharedContext const& shared_context,
-                                  module::Module::FunctionInformation const& info,
-                                  Args const&... args) {
+ir::CompleteResultBuffer Evaluate(
+    module::SharedContext const& shared_context,
+    module::Module::FunctionInformation const& info, Args const&... args) {
   ir::CompleteResultBuffer arguments;
   (arguments.append(args), ...);
   return EvaluateToBuffer<InstSet>(shared_context, info, arguments);

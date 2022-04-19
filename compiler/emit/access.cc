@@ -216,8 +216,8 @@ void Compiler::EmitMoveInit(
             .Exported(node->member_name());
 
     if (symbol_infos.empty()) { NOT_YET(); }
-    auto b = symbol_infos.begin();
-    auto const & symbol_info = *b;
+    auto b                  = symbol_infos.begin();
+    auto const &symbol_info = *b;
     ++b;
     if (b == symbol_infos.end()) {
       MoveInitializationEmitter emitter(*this);

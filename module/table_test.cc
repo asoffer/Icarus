@@ -79,7 +79,5 @@ TEST(ModuleTable, Modules) {
                                    Pair("mock3", m3)));
 }
 
-
 }  // namespace
 }  // namespace module
-

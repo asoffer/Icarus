@@ -22,7 +22,7 @@ namespace diagnostic {
 //   }
 //   return counter;
 // }
-// 
+//
 // }  // namespace
 
 void ConsoleRenderer::Flush() {

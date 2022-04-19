@@ -5,7 +5,7 @@
 namespace frontend {
 
 std::string_view SourceIndexer::insert(ir::ModuleId module,
-                                       std::string&& content) {
+                                       std::string &&content) {
   auto [iter, inserted] = source_.try_emplace(module);
   if (inserted) { iter->second = std::make_unique<Entry>(std::move(content)); }
   return iter->second->content();
@@ -82,8 +82,9 @@ size_t SourceIndexer::Entry::line_containing(char const *p) {
 std::pair<size_t, size_t> SourceIndexer::Entry::lines_containing(
     std::string_view s) {
   absl::Span line_start_indices = line_starts();
-  auto iter1                    = std::upper_bound(line_start_indices.begin(),
-                                line_start_indices.end(), s.data() - content_.data());
+  auto iter1 =
+      std::upper_bound(line_start_indices.begin(), line_start_indices.end(),
+                       s.data() - content_.data());
   auto iter2 = std::upper_bound(iter1, line_start_indices.end(),
                                 s.data() + s.size() - 1 - content_.data());
   return std::pair(std::distance(line_start_indices.begin(), iter1),

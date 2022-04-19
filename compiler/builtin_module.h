@@ -25,13 +25,11 @@ struct AbortInstruction
   void Apply(interpreter::ExecutionContext&) const { std::abort(); }
 };
 
-
 struct AlignmentInstruction
     : base::Extend<AlignmentInstruction>::With<base::BaseTraverseExtension,
-                                           base::BaseSerializeExtension,
-                                           ir::DebugFormatExtension> {
+                                               base::BaseSerializeExtension,
+                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = alignment %1$s";
-
 
   uint64_t Resolve() const {
     return type.value().alignment(interpreter::kArchitecture).value();

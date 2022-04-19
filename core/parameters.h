@@ -112,7 +112,7 @@ struct Parameter
 
   friend std::ostream& operator<<(std::ostream& os, Parameter const& param) {
     return os << param.name << ": " << base::UniversalPrintToString(param.value)
-              << " " <<  param.flags;
+              << " " << param.flags;
   }
 
   std::string name = "";
@@ -178,7 +178,7 @@ struct Parameters
   // Removes all parameters elements.
   constexpr void clear() { params_.clear(); }
 
-  // Reserves space for up to `n` parameters. 
+  // Reserves space for up to `n` parameters.
   void reserve(size_t n) { params_.reserve(n); }
 
   constexpr auto begin() const { return params_.begin(); }
@@ -206,7 +206,7 @@ struct Parameters
   // parameter's index if such a parameter exists. If no such parameter exists,
   // returns a null pointer for the first pair element. The value of the second
   // parameter is unspecified.
-  std::pair<parameter_type const *, size_t> try_get(std::string_view s) const {
+  std::pair<parameter_type const*, size_t> try_get(std::string_view s) const {
     size_t i = 0;
     for (auto const& param : params_) {
       if (param.name == s) { return std::pair(&param, i); }

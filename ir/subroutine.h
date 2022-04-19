@@ -49,7 +49,9 @@ struct Subroutine {
         .get();
   }
 
-  core::Parameters<type::QualType> const &parameters() const { return type_->parameters(); }
+  core::Parameters<type::QualType> const &parameters() const {
+    return type_->parameters();
+  }
   type::Callable const *type() const { return type_; }
 
   template <std::invocable<type::Type, ir::Reg> Fn>

@@ -161,7 +161,8 @@ void CopyAssignmentEmitter::EmitAssignment(
   if (type::CanCastImplicitly(from.type(), t)) {
     ir::PartialResultBuffer buffer;
     buffer.append(from->get<ir::addr_t>());
-    ApplyImplicitCasts(*this, from.type(), type::QualType::NonConstant(t), buffer);
+    ApplyImplicitCasts(*this, from.type(), type::QualType::NonConstant(t),
+                       buffer);
     current_block()->Append(ir::StoreInstruction<ir::addr_t>{
         .value    = buffer.get<ir::addr_t>(0),
         .location = to,

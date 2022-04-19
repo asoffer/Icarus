@@ -156,7 +156,7 @@ struct NegInstruction
                                           num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
 
-  void Apply(interpreter::ExecutionContext& ctx) const
+  void Apply(interpreter::ExecutionContext &ctx) const
       requires(not interpreter::FitsInRegister<num_type>) {
     new (ctx.resolve<addr_t>(result)) num_type(
         -*reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(operand)));

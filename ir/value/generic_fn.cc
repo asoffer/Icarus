@@ -19,7 +19,7 @@ base::Global<std::vector<std::unique_ptr<base::any_invocable<Fn(
 GenericFn::GenericFn(
     base::any_invocable<
         Fn(compiler::WorkResources const &wr,
-                 core::Arguments<type::Typed<CompleteResultRef>> const &)>
+           core::Arguments<type::Typed<CompleteResultRef>> const &)>
         gen) {
   auto handle = gen_fns.lock();
   id_         = handle->size();

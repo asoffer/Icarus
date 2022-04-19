@@ -91,20 +91,19 @@ TEST(ToLlvm, FunctionNoReturn) {
                        context),
             llvm::FunctionType::get(llvm::Type::getVoidTy(context),
                                     {llvm::Type::getInt1Ty(context)}, false));
-  EXPECT_EQ(
-      ToLlvmType(
-          type::Func(
-              {core::AnonymousParameter(type::QualType::Constant(type::Bool))}, {}),
-          context),
-      llvm::FunctionType::get(llvm::Type::getVoidTy(context), {}, false));
+  EXPECT_EQ(ToLlvmType(type::Func({core::AnonymousParameter(
+                                      type::QualType::Constant(type::Bool))},
+                                  {}),
+                       context),
+            llvm::FunctionType::get(llvm::Type::getVoidTy(context), {}, false));
 
   EXPECT_EQ(
-      ToLlvmType(
-          type::Func(
-              {core::AnonymousParameter(type::QualType::NonConstant(type::I64)),
-               core::AnonymousParameter(type::QualType::NonConstant(type::Bool))},
-              {}),
-          context),
+      ToLlvmType(type::Func({core::AnonymousParameter(
+                                 type::QualType::NonConstant(type::I64)),
+                             core::AnonymousParameter(
+                                 type::QualType::NonConstant(type::Bool))},
+                            {}),
+                 context),
       llvm::FunctionType::get(
           llvm::Type::getVoidTy(context),
           {llvm::Type::getInt64Ty(context), llvm::Type::getInt1Ty(context)},
@@ -133,12 +132,12 @@ TEST(ToLlvm, FunctionOneRegisterSizedReturn) {
       llvm::FunctionType::get(llvm::Type::getInt32Ty(context), {}, false));
 
   EXPECT_EQ(
-      ToLlvmType(
-          type::Func(
-              {core::AnonymousParameter(type::QualType::NonConstant(type::I64)),
-               core::AnonymousParameter(type::QualType::NonConstant(type::Bool))},
-              {type::I32}),
-          context),
+      ToLlvmType(type::Func({core::AnonymousParameter(
+                                 type::QualType::NonConstant(type::I64)),
+                             core::AnonymousParameter(
+                                 type::QualType::NonConstant(type::Bool))},
+                            {type::I32}),
+                 context),
       llvm::FunctionType::get(
           llvm::Type::getInt32Ty(context),
           {llvm::Type::getInt64Ty(context), llvm::Type::getInt1Ty(context)},
@@ -177,12 +176,12 @@ TEST(ToLlvm, FunctionOneLargeReturn) {
                 false));
 
   EXPECT_EQ(
-      ToLlvmType(
-          type::Func(
-              {core::AnonymousParameter(type::QualType::NonConstant(type::I64)),
-               core::AnonymousParameter(type::QualType::NonConstant(type::Bool))},
-              {type::Arr(100, type::I32)}),
-          context),
+      ToLlvmType(type::Func({core::AnonymousParameter(
+                                 type::QualType::NonConstant(type::I64)),
+                             core::AnonymousParameter(
+                                 type::QualType::NonConstant(type::Bool))},
+                            {type::Arr(100, type::I32)}),
+                 context),
       llvm::FunctionType::get(
           llvm::Type::getVoidTy(context),
           {llvm::Type::getInt64Ty(context), llvm::Type::getInt1Ty(context),
@@ -223,12 +222,12 @@ TEST(ToLlvm, FunctionMultipleReturns) {
                               false));
 
   EXPECT_EQ(
-      ToLlvmType(
-          type::Func(
-              {core::AnonymousParameter(type::QualType::NonConstant(type::I64)),
-               core::AnonymousParameter(type::QualType::NonConstant(type::Bool))},
-              {type::Bool, type::I8}),
-          context),
+      ToLlvmType(type::Func({core::AnonymousParameter(
+                                 type::QualType::NonConstant(type::I64)),
+                             core::AnonymousParameter(
+                                 type::QualType::NonConstant(type::Bool))},
+                            {type::Bool, type::I8}),
+                 context),
       llvm::FunctionType::get(
           llvm::Type::getVoidTy(context),
           {llvm::Type::getInt64Ty(context), llvm::Type::getInt1Ty(context),

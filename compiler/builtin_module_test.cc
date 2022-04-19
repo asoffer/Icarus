@@ -58,4 +58,3 @@ TEST(BuiltinModule, Bytes) {
 
 }  // namespace
 }  // namespace compiler
-

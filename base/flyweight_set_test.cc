@@ -140,4 +140,3 @@ TEST(FlyweightSet, Index) {
 
 }  // namespace
 }  // namespace base
-

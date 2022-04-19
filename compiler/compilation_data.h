@@ -13,8 +13,8 @@
 #include "ir/value/module_id.h"
 #include "ir/value/result_buffer.h"
 #include "module/importer.h"
-#include "module/shared_context.h"
 #include "module/module.h"
+#include "module/shared_context.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -49,7 +49,8 @@ struct CompilationDataReference {
   ir::BasicBlock *&current_block() { return current().block; }
 
   void push_current(ir::Subroutine *subroutine) {
-    state().current.push_back({.subroutine = subroutine, .block = subroutine->entry()});
+    state().current.push_back(
+        {.subroutine = subroutine, .block = subroutine->entry()});
   }
 
   ir::BasicBlock *EmitDestructionPath(ast::Scope const *start,

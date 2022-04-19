@@ -207,7 +207,7 @@ struct DebugIrInstruction
   }
 
   void Apply(interpreter::ExecutionContext&) const { std::cerr << "TODO"; }
-  Subroutine const* fn; // TODO: Fix this.
+  Subroutine const* fn;  // TODO: Fix this.
 };
 
 struct InitInstruction

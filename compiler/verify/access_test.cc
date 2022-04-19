@@ -16,7 +16,7 @@ using ::testing::UnorderedElementsAre;
 
 TEST(Access, EnumSuccess) {
   test::CompilerInfrastructure infra;
-  auto& mod =infra.add_module(R"(
+  auto &mod              = infra.add_module(R"(
   E ::= enum { A \\ B \\ C }
 
   E.A
@@ -31,7 +31,7 @@ TEST(Access, EnumSuccess) {
 
 TEST(Access, EnumMisnamed) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(R"(
+  auto &mod              = infra.add_module(R"(
   E ::= enum { A \\ B \\ C }
 
   E.D
@@ -47,7 +47,7 @@ TEST(Access, EnumMisnamed) {
 
 TEST(Access, FlagsSuccess) {
   test::CompilerInfrastructure infra;
-  auto &mod              = infra.add_module(R"(
+  auto &mod        = infra.add_module(R"(
   F ::= flags { A \\ B \\ C }
 
   F.A
@@ -61,7 +61,7 @@ TEST(Access, FlagsSuccess) {
 
 TEST(Access, FlagsMisnamed) {
   test::CompilerInfrastructure infra;
-  auto &mod              = infra.add_module(R"(
+  auto &mod        = infra.add_module(R"(
   F ::= flags { A \\ B \\ C }
 
   F.D
@@ -135,7 +135,7 @@ TEST(Access, AccessStructField) {
 
 TEST(Access, NoFieldInStruct) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(R"(
+  auto &mod        = infra.add_module(R"(
   S ::= struct {
     n: i64
     b: bool
@@ -152,7 +152,7 @@ TEST(Access, NoFieldInStruct) {
 
 TEST(Access, ConstantSliceLength) {
   test::CompilerInfrastructure infra;
-  auto& mod = infra.add_module(R"("abc".length)");
+  auto &mod        = infra.add_module(R"("abc".length)");
   auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType(
@@ -175,7 +175,7 @@ TEST(Access, NonConstantSliceLength) {
 
 TEST(Access, NonConstantSliceData) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(R"(
+  auto &mod        = infra.add_module(R"(
   s := "abc"
 
   s.data)");
@@ -188,7 +188,7 @@ TEST(Access, NonConstantSliceData) {
 
 TEST(Access, SliceInvalidMember) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(R"(
+  auto &mod        = infra.add_module(R"(
   s := "abc"
 
   s.size)");

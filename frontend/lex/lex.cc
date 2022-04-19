@@ -20,8 +20,8 @@ namespace {
 
 std::string_view ConsumeWhile(std::string_view &s,
                               std::predicate<char> auto &&pred) {
-  char const * start = s.data();
-  char const *p = s.data();
+  char const *start = s.data();
+  char const *p     = s.data();
   while (pred(*p)) { ++p; }
   size_t length = p - s.data();
   s.remove_prefix(length);
@@ -161,7 +161,7 @@ constexpr inline bool IsAlphaNumericOrUnderscore(char c) {
 
 std::string_view NextSimpleWord(std::string_view &cursor) {
   char const *start = cursor.data();
-  char const *p = cursor.data();
+  char const *p     = cursor.data();
   while (IsAlphaNumericOrUnderscore(*p)) { ++p; }
   size_t length = p - cursor.data();
   cursor.remove_prefix(length);
@@ -272,8 +272,8 @@ Lexeme NextOperator(std::string_view &cursor) {
     }
   }
 
-  char const *loc    = cursor.data();
-  auto result = ConsumeCharLiteral(loc);
+  char const *loc = cursor.data();
+  auto result     = ConsumeCharLiteral(loc);
   cursor.remove_prefix(loc - cursor.data());
   return result;
 }
@@ -357,8 +357,8 @@ struct StringLiteralLexResult {
 StringLiteralLexResult NextStringLiteral(std::string_view &cursor) {
   StringLiteralLexResult result;
   cursor.remove_prefix(1);
-  bool escaped        = false;
-  int offset          = -1;
+  bool escaped                    = false;
+  int offset                      = -1;
   std::string_view str_lit_cursor = ConsumeWhile(cursor, [&](char c) {
     ++offset;
     if (not escaped) {
@@ -537,7 +537,7 @@ restart:
 
       } else {
         std::string_view loc = state->cursor_;
-        auto result = NextHashtag(state->cursor_);
+        auto result          = NextHashtag(state->cursor_);
         if (result.ok()) { return std::move(*result); }
 
         state->diag_.Consume(HashtagParsingFailure{
@@ -561,7 +561,9 @@ restart:
       return Lexeme(Syntax::ImplicitNewline, state->cursor_);
     case '\v':  // TODO: Should we disallow out vertical tabs entirely?
     case '\t':
-    case ' ': ConsumeWhile(state->cursor_, IsHorizontalWhitespace); goto restart;
+    case ' ':
+      ConsumeWhile(state->cursor_, IsHorizontalWhitespace);
+      goto restart;
     case '?': {
       auto loc = state->cursor_.data();
       state->cursor_.remove_prefix(1);

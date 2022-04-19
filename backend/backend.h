@@ -66,4 +66,3 @@ struct CompilationPassSet {
 }  // namespace backend
 
 #endif  // ICARUS_BACKEND_BACKEND_H
-

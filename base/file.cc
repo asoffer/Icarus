@@ -32,4 +32,3 @@ std::optional<std::string> ReadFileToString(std::string const& file_name) {
 }
 
 }  // namespace base
-

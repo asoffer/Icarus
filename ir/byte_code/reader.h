@@ -20,7 +20,7 @@ struct ByteCodeReader {
   }
 
   template <typename T>
-  bool read(T &t) requires(std::is_trivially_copyable_v<T>) {
+  bool read(T& t) requires(std::is_trivially_copyable_v<T>) {
     std::memcpy(&t, iter_.raw(), sizeof(t));
     iter_.skip(sizeof(t));
     return true;

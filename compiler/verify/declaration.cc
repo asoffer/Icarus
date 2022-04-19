@@ -102,11 +102,11 @@ bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
   type::Callable const *callable2 = id2.type().if_as<type::Callable>();
   if (not callable1 or not callable2) { return true; }
 
-  return core::AmbiguouslyCallable(callable1->parameters(), callable2->parameters(),
-                                   [](type::QualType lhs, type::QualType rhs) {
-                                     return type::Meet(lhs.type(),
-                                                       rhs.type()) != nullptr;
-                                   });
+  return core::AmbiguouslyCallable(
+      callable1->parameters(), callable2->parameters(),
+      [](type::QualType lhs, type::QualType rhs) {
+        return type::Meet(lhs.type(), rhs.type()) != nullptr;
+      });
 }
 
 // Verifies and evaluates the type expression, returning its value if it can be

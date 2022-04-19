@@ -83,7 +83,7 @@ PrecompiledModule::Make(std::string_view label, std::string const& file_content,
 
 absl::Span<module::Module::SymbolInformation const> PrecompiledModule::Symbols(
     std::string_view name) const {
-  auto iter           = symbols_.find(name);
+  auto iter = symbols_.find(name);
   if (iter == symbols_.end()) { return {}; }
   return iter->second;
 }

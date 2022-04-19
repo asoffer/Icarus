@@ -29,8 +29,7 @@ struct Style {
 };
 
 struct Highlight {
-  Highlight(std::string_view range, Style style)
-      : range(range), style(style) {}
+  Highlight(std::string_view range, Style style) : range(range), style(style) {}
   std::string_view range;
   Style style;
 };

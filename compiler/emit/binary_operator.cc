@@ -519,10 +519,10 @@ void Compiler::EmitToBuffer(ast::BinaryAssignmentOperator const *node,
       ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
                  uint64_t>(lhs_type, [&]<typename T>() {
         current_block()->Append(ir::StoreInstruction<T>{
-            .value = current_block()->Append(
-                ir::ModInstruction<T>{.lhs    = loaded,
-                                      .rhs    = buffer.back().get<T>(),
-                                      .result = current().subroutine->Reserve()}),
+            .value    = current_block()->Append(ir::ModInstruction<T>{
+                .lhs    = loaded,
+                .rhs    = buffer.back().get<T>(),
+                .result = current().subroutine->Reserve()}),
             .location = lhs_lval});
       });
       return;

@@ -424,10 +424,10 @@ struct Context {
   absl::node_hash_set<std::vector<ir::ScopeContext::block_type>>
       scope_context_data_;
 
-
   base::any_invocable<void(ast::Declaration::Id const *, type::QualType)>
       qt_callback_;
-  base::any_invocable<void(ast::Declaration::Id const *, ir::CompleteResultBuffer)>
+  base::any_invocable<void(ast::Declaration::Id const *,
+                           ir::CompleteResultBuffer)>
       value_callback_;
 };
 

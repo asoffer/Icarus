@@ -74,8 +74,8 @@ diagnostic::DiagnosticMessage UncallableWithArguments::ToMessage() const {
 
   return diagnostic::DiagnosticMessage(
       diagnostic::Text("Expression cannot be called with the given arguments."),
-      diagnostic::SourceQuote()
-          .Highlighted(view, diagnostic::Style::ErrorText()),
+      diagnostic::SourceQuote().Highlighted(view,
+                                            diagnostic::Style::ErrorText()),
       diagnostic::List(std::move(items)));
 }
 

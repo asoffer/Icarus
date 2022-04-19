@@ -7,7 +7,7 @@ namespace compiler {
 
 type::QualType VerifyConcrete(CompilationDataReference data,
                               ast::BlockNode const *node) {
-  bool has_error   = false;
+  bool has_error = false;
   core::Parameters<type::QualType> param_types;
   for (auto const &[name, value, flags] : node->parameters()) {
     auto qt = VerifyType(data, &value)[0];

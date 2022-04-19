@@ -1065,7 +1065,7 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
     stmts.append(std::move(nodes[1]));
   }
   std::vector<ast::Declaration> decls;
-  for (auto& p :
+  for (auto &p :
        ExtractIfCommaList<ast::Declaration>(std::move(nodes[0]), true)) {
     decls.push_back(std::move(*p));
   }
@@ -1076,9 +1076,9 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
 std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto args   = move_as<ast::Expression>(nodes[0]);
-  auto body   = move_as<ast::Expression>(nodes[2]);
-  auto range  = std::string_view(args->range().begin(), body->range().end());
+  auto args  = move_as<ast::Expression>(nodes[0]);
+  auto body  = move_as<ast::Expression>(nodes[2]);
+  auto range = std::string_view(args->range().begin(), body->range().end());
   std::vector<ast::Declaration> inputs;
   for (auto &p : ExtractIfCommaList<ast::Declaration>(std::move(args), true)) {
     inputs.push_back(std::move(*p));

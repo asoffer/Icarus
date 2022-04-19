@@ -45,9 +45,9 @@ bool BodyVerifier::VerifyBody(ast::EnumLiteral const *node) {
     }
     if (not type::IsIntegral(qts[0].type())) {
       success = false;
-      diag().Consume(NonIntegralEnumerator {
-        .view = value->range(),
-        .type = TypeForDiagnostic(value.get(), context()),
+      diag().Consume(NonIntegralEnumerator{
+          .view = value->range(),
+          .type = TypeForDiagnostic(value.get(), context()),
       });
     }
   }

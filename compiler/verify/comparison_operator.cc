@@ -203,7 +203,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             case ComparisonKind::None:
               diag().Consume(ComparingIncomparables{
                   .lhs  = TypeForDiagnostic(node->exprs()[i], context()),
-                  .rhs  = TypeForDiagnostic(node->exprs()[i+1], context()),
+                  .rhs  = TypeForDiagnostic(node->exprs()[i + 1], context()),
                   .view = node->binary_range(i),
               });
               qt.MarkError();
@@ -220,7 +220,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             case ComparisonKind::None:
               diag().Consume(ComparingIncomparables{
                   .lhs  = TypeForDiagnostic(node->exprs()[i], context()),
-                  .rhs  = TypeForDiagnostic(node->exprs()[i+1], context()),
+                  .rhs  = TypeForDiagnostic(node->exprs()[i + 1], context()),
                   .view = node->binary_range(i),
               });
               qt.MarkError();

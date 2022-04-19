@@ -59,7 +59,8 @@ struct SharedContext {
 
  private:
   ModuleTable table_;
-  base::flyweight_map<std::pair<std::string, type::Function const*>, void (*)()>
+  base::flyweight_map<std::pair<std::string, type::Function const *>,
+                      void (*)()>
       foreign_fn_map_;
 };
 

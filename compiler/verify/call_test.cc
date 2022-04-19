@@ -48,7 +48,7 @@ TEST(BuiltinReserveMemory, WrongType) {
 
 TEST(BuiltinCompilationError, CompilationErrorError) {
   test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"(builtin.compilation_error(0, "hello"))");
+  auto &mod = infra.add_module(R"(builtin.compilation_error(0, "hello"))");
   auto const *call = mod.get<ast::Call>();
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
@@ -56,7 +56,7 @@ TEST(BuiltinCompilationError, CompilationErrorError) {
 
 TEST(BuiltinCompilationError, CompilationErrorSuccess) {
   test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"(builtin.compilation_error(i64, "hello"))");
+  auto &mod = infra.add_module(R"(builtin.compilation_error(i64, "hello"))");
   auto const *call = mod.get<ast::Call>();
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "user-defined-error")));

@@ -5,8 +5,8 @@
 #include <utility>
 
 #include "base/log.h"
-#include "ir/subroutine.h"
 #include "ir/instruction/core.h"
+#include "ir/subroutine.h"
 
 namespace opt {
 

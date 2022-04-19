@@ -57,8 +57,7 @@ bool CompleteStructData(CompilationDataReference data,
   //
   // TODO: Get rid of reinterpret cast needed because of incomplete type.
   auto [t, inserted] = data.context().EmplaceType<type::Struct>(
-      node,
-      reinterpret_cast<module::Module const *>(data.resources().module),
+      node, reinterpret_cast<module::Module const *>(data.resources().module),
       type::Struct::Options{
           .is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),
@@ -103,8 +102,7 @@ bool CompleteStructData(CompilationDataReference data,
   //
   // TODO: Get rid of reinterpret cast needed because of incomplete type.
   auto [t, inserted] = data.context().EmplaceType<type::Struct>(
-      node,
-      reinterpret_cast<module::Module const *>(data.resources().module),
+      node, reinterpret_cast<module::Module const *>(data.resources().module),
       type::Struct::Options{
           .is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),

@@ -82,22 +82,22 @@ PotentialIdentifiers PotentialIds(CompilationDataReference data,
   PotentialIdentifiers result;
   bool only_constants = false;
   for (ast::Scope const &s : id.scope()->ancestors()) {
-  if (auto iter = s.decls_.find(id.name()); iter != s.decls_.end()) {
-    for (auto const *id : iter->second) {
-      auto const *decl_id_qt = data.context().maybe_qual_type(id).data();
-      type::QualType qt = decl_id_qt ? *decl_id_qt : VerifyType(data, id)[0];
+    if (auto iter = s.decls_.find(id.name()); iter != s.decls_.end()) {
+      for (auto const *id : iter->second) {
+        auto const *decl_id_qt = data.context().maybe_qual_type(id).data();
+        type::QualType qt = decl_id_qt ? *decl_id_qt : VerifyType(data, id)[0];
 
-      if (not qt.ok()) {
-        result.errors.push_back(id);
-      } else {
-        if (only_constants and
-            not(id->declaration().flags() & ast::Declaration::f_IsConst)) {
-          result.unreachable.push_back(id);
+        if (not qt.ok()) {
+          result.errors.push_back(id);
         } else {
-          result.viable.emplace_back(id, qt);
+          if (only_constants and
+              not(id->declaration().flags() & ast::Declaration::f_IsConst)) {
+            result.unreachable.push_back(id);
+          } else {
+            result.viable.emplace_back(id, qt);
+          }
         }
       }
-    }
     }
 
     for (auto *mod : s.embedded_modules()) {
@@ -164,7 +164,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         //   // Haven't seen the declaration yet, so we can't proceed.
         //   return context().set_qual_type(node, type::QualType::Error());
         // } else {
-          qt = symbol_qt;
+        qt = symbol_qt;
         //}
 
         if (qt.HasErrorMark()) { return context().set_qual_type(node, qt); }

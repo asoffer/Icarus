@@ -21,7 +21,8 @@ TEST_P(TypeForDiagnosticTest, Test) {
   auto const &[context, expr, expected] = GetParam();
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(absl::StrCat(context, "\n", expr));
-  EXPECT_EQ(TypeForDiagnostic(mod.get<ast::Expression>(), mod.context()), expected);
+  EXPECT_EQ(TypeForDiagnostic(mod.get<ast::Expression>(), mod.context()),
+            expected);
 }
 INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
                          testing::ValuesIn({
@@ -117,13 +118,13 @@ TEST(CrossModule, TypeForDiagnostic) {
   #{export} S ::= struct {}
   #{export} P ::= struct (T :: type) {}
   )");
-  auto &mod1 = infra.add_module(R"(
+  auto &mod1          = infra.add_module(R"(
   --  ::= import "imported1"
   mod ::= import "imported2"
 
   mod.S.{}
   )");
-  auto &mod2 = infra.add_module(R"(
+  auto &mod2          = infra.add_module(R"(
   --  ::= import "imported1"
   mod ::= import "imported2"
 

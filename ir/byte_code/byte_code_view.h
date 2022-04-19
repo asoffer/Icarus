@@ -21,15 +21,19 @@ struct ByteCodeView {
   };
 
   size_t num_registers() const { return byte_code_.get<size_t>(0); }
-  size_t num_parameters() const { return byte_code_.get<size_t>(sizeof(size_t)); }
-  size_t num_outputs() const { return byte_code_.get<size_t>(2 * sizeof(size_t)); }
+  size_t num_parameters() const {
+    return byte_code_.get<size_t>(sizeof(size_t));
+  }
+  size_t num_outputs() const {
+    return byte_code_.get<size_t>(2 * sizeof(size_t));
+  }
   size_t num_stack_allocations() const {
     return byte_code_.get<size_t>(3 * sizeof(size_t));
   }
 
   core::TypeContour stack_allocation(size_t i) const {
     return byte_code_.get<core::TypeContour>(4 * sizeof(size_t) +
-                                          i * sizeof(core::TypeContour));
+                                             i * sizeof(core::TypeContour));
   }
 
   auto begin() const {
@@ -37,7 +41,6 @@ struct ByteCodeView {
     iter.skip(initial_size_);
     return iter;
   }
-
 
   ByteCodeView() = default;
   ByteCodeView(ByteCode const& bc)
@@ -61,4 +64,4 @@ struct ByteCodeView {
 
 }  // namespace ir
 
-#endif // ICARUS_IR_BYTE_CODE_BYTE_CODE_VIEW_H
+#endif  // ICARUS_IR_BYTE_CODE_BYTE_CODE_VIEW_H

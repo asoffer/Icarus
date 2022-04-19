@@ -116,9 +116,10 @@ void DumpControlFlowGraph(ir::Subroutine const *fn, std::ostream &output) {
   output << "}\n";
 }
 
-int DumpControlFlowGraph(char const * file_name, std::ostream &output) {
+int DumpControlFlowGraph(char const *file_name, std::ostream &output) {
   frontend::SourceIndexer source_indexer;
-  auto diag = compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
+  auto diag =
+      compiler::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
   if (not diag.ok()) {
     std::cerr << diag.status().message();
     return 1;

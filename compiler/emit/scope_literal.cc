@@ -66,7 +66,7 @@ bool Compiler::EmitScopeBody(ast::ScopeLiteral const *node) {
   state().scopes.push_back(ir_scope);
   push_current(&*ir_scope);
   absl::Cleanup c = [&] { state().current.pop_back(); };
-  auto cleanup       = EmitScaffolding(*this, *ir_scope, node->body_scope());
+  auto cleanup    = EmitScaffolding(*this, *ir_scope, node->body_scope());
 
   size_t i = 0;
   for (auto const &param : node->parameters()) {

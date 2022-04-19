@@ -12,8 +12,8 @@ using ::testing::UnorderedElementsAre;
 
 TEST(SliceType, Correct) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(R"([]i64)");
-  auto const* expr = mod.get<ast::Expression>();
+  auto &mod        = infra.add_module(R"([]i64)");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
 
@@ -36,8 +36,8 @@ TEST(SliceType, NonConstantType) {
 
 TEST(SliceType, NonTypeData) {
   test::CompilerInfrastructure infra;
-  auto &mod = infra.add_module(R"([]3)");
-  auto const* expr = mod.get<ast::Expression>();
+  auto &mod        = infra.add_module(R"([]3)");
+  auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
 

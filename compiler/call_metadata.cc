@@ -60,9 +60,8 @@ absl::flat_hash_set<CallMetadata::callee_locator_t> Overloads(
 
 }  // namespace
 
-CallMetadata::CallMetadata(
-    std::string_view name, ast::Scope const *primary,
-    absl::flat_hash_set<module::Module *> const &modules)
+CallMetadata::CallMetadata(std::string_view name, ast::Scope const *primary,
+                           absl::flat_hash_set<module::Module *> const &modules)
     : CallMetadata(Overloads(name, primary, modules)) {}
 
 CallMetadata::CallMetadata(std::string_view name, module::Module *mod)

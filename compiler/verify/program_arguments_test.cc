@@ -62,4 +62,3 @@ TEST(ProgramArguments, CannotUseAsIdentifier) {
 
 }  // namespace
 }  // namespace compiler
-

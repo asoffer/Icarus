@@ -30,10 +30,10 @@ void Compiler::EmitToBuffer(ast::FunctionType const *node,
     out_vals.push_back(EmitAs<type::Type>(o));
   }
 
-  out.append(current_block()->Append(
-      type::FunctionTypeInstruction{.inputs  = std::move(param_vals),
-                                    .outputs = std::move(out_vals),
-                                    .result  = current().subroutine->Reserve()}));
+  out.append(current_block()->Append(type::FunctionTypeInstruction{
+      .inputs  = std::move(param_vals),
+      .outputs = std::move(out_vals),
+      .result  = current().subroutine->Reserve()}));
 }
 
 }  // namespace compiler

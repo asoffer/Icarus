@@ -71,7 +71,7 @@ ir::ModuleId FileImporter::Import(module::Module const* requestor,
   }
 
   static std::atomic<int> id_num = 0;
-  auto [mod_id, module] = iter->second =
+  auto [mod_id, module]          = iter->second =
       shared_context_.module_table().add_module<CompiledModule>(absl::StrFormat(
           "~gen-id-%u", id_num.fetch_add(1, std::memory_order_relaxed)));
 

@@ -4,7 +4,7 @@
 #include "ir/value/module_id.h"
 #include "module/module.h"
 
-namespace module  {
+namespace module {
 struct MockModule : Module {
   explicit MockModule(std::string identifier, ir::ModuleId)
       : Module(std::move(identifier)) {}

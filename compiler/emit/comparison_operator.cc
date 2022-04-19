@@ -31,10 +31,10 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
                 .lhs    = lhs_value,
                 .rhs    = rhs_value,
                 .result = c.current().subroutine->Reserve()});
-        auto mask = c.current_block()->Append(
-            type::OrFlagsInstruction{.lhs    = lhs_value,
-                                     .rhs    = rhs_value,
-                                     .result = c.current().subroutine->Reserve()});
+        auto mask = c.current_block()->Append(type::OrFlagsInstruction{
+            .lhs    = lhs_value,
+            .rhs    = rhs_value,
+            .result = c.current().subroutine->Reserve()});
         auto less_or_equal_mask =
             c.current_block()->Append(ir::LeInstruction<underlying_type>{
                 .lhs    = mask,
@@ -49,10 +49,10 @@ ir::RegOr<bool> EmitPair(Compiler &c, ast::ComparisonOperator const *node,
         std::swap(lhs_value, rhs_value);
         [[fallthrough]];
       case frontend::Operator::Le: {
-        auto mask = c.current_block()->Append(
-            type::OrFlagsInstruction{.lhs    = lhs_value,
-                                     .rhs    = rhs_value,
-                                     .result = c.current().subroutine->Reserve()});
+        auto mask = c.current_block()->Append(type::OrFlagsInstruction{
+            .lhs    = lhs_value,
+            .rhs    = rhs_value,
+            .result = c.current().subroutine->Reserve()});
         return c.current_block()->Append(ir::LeInstruction<underlying_type>{
             .lhs    = mask,
             .rhs    = rhs_value,

@@ -30,7 +30,7 @@ struct ProgramArgumentAccess {
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::ProgramArguments const *node) {
-  auto qt  = type::QualType::NonConstant(type::Slc(type::Slc(type::Char)));
+  auto qt = type::QualType::NonConstant(type::Slc(type::Slc(type::Char)));
   for (ast::Scope const &s : node->scope()->ancestors()) {
     if (s.kind() == ast::Scope::Kind::BoundaryExecutable and s.parent()) {
       diag().Consume(ProgramArgumentAccess{.view = node->range()});

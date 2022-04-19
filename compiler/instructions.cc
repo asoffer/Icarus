@@ -203,7 +203,7 @@ ir::ByteCode EmitByteCode(ir::Subroutine const& sr) {
   });
 
   size_t num_outputs = 1;
-  if (auto const * rt = sr.type()->if_as<type::ReturningType>()) {
+  if (auto const* rt = sr.type()->if_as<type::ReturningType>()) {
     num_outputs = rt->return_types().size();
   }
 
@@ -230,7 +230,8 @@ void InterpretAtCompileTime(module::SharedContext const& shared_context,
   interpreter::Execute<instruction_set_t>(shared_context, info, arguments);
 }
 
-void InterpretAtCompileTime(module::SharedContext const & shared_context, ir::Fn f,
+void InterpretAtCompileTime(module::SharedContext const& shared_context,
+                            ir::Fn f,
                             ir::CompleteResultBuffer const& arguments) {
   interpreter::Execute<instruction_set_t>(
       shared_context, shared_context.Function(f), arguments);
@@ -249,7 +250,8 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
         core::Bytes size = param.type().is_big()
                                ? interpreter::kArchitecture.pointer().bytes()
                                : param.type().bytes(interpreter::kArchitecture);
-        frame.set_raw(ir::Reg::Parameter(i), argument->raw().data(), size.value());
+        frame.set_raw(ir::Reg::Parameter(i), argument->raw().data(),
+                      size.value());
       });
 
   std::vector<ir::Block> result;

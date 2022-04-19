@@ -278,7 +278,7 @@ template <typename TL>
 using tail = typename internal_meta::tail_impl<TL>::type;
 
 template <typename H, typename T>
-concept Hasher = std::invocable<H, T> and
+concept Hasher = std::invocable<H, T>and
     std::convertible_to<std::invoke_result_t<H, T>, size_t>;
 
 }  // namespace base

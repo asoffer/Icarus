@@ -23,8 +23,8 @@ struct ByteCodeWriter {
   }
 
   template <typename T>
-  void write(T const &t) requires(std::is_trivially_copyable_v<T>) {
-    auto const *p = reinterpret_cast<std::byte const *>(&t);
+  void write(T const& t) requires(std::is_trivially_copyable_v<T>) {
+    auto const* p = reinterpret_cast<std::byte const*>(&t);
     write_bytes(absl::MakeConstSpan(p, p + sizeof(T)));
   }
 

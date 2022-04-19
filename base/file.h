@@ -12,4 +12,4 @@ std::optional<std::string> ReadFileToString(std::string const& file_name);
 
 }  // namespace base
 
-#endif // ICARUS_BASE_FILE_H
+#endif  // ICARUS_BASE_FILE_H

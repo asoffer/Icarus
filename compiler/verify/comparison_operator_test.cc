@@ -121,7 +121,8 @@ TEST_P(OperatorOverload, MissingOverloads) {
 
 // TODO: Support operator overloading for comparisons.
 // INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
-//                          testing::ValuesIn({"<", "<=", "==", "!=", ">=", ">"}));
+//                          testing::ValuesIn({"<", "<=", "==", "!=", ">=",
+//                          ">"}));
 
 TEST(ComparisonOperator, PriorError) {
   test::CompilerInfrastructure infra;

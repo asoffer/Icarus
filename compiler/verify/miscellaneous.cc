@@ -118,7 +118,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   std::vector<ir::ScopeContext::block_type> blocks;
   blocks.reserve(node->blocks().size());
   for (auto const &block : node->blocks()) {
-    auto qt        = VerifyType(&block)[0];
+    auto qt = VerifyType(&block)[0];
     if (qt.HasErrorMark()) {
       return context().set_qual_type(node, type::QualType::Error());
     }

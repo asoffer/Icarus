@@ -49,7 +49,7 @@ struct CompiledModule : module::Module {
     for (auto const &f : ir_module_.functions()) {
       proto.add_function()->set_byte_code(std::string(f.byte_code.view()));
     };
-    auto& symbols = *proto.mutable_symbols();
+    auto &symbols = *proto.mutable_symbols();
     for (auto const &[name, infos] : exported_) {
       auto range = Exported(name);
       if (range.empty()) { continue; }
@@ -107,8 +107,7 @@ struct CompiledModule : module::Module {
   // It is important for caching that symbols be exported in a consistent
   // manner. We use an ordered container to guarantee repeated invocations
   // produce the same output.
-  absl::btree_map<std::string_view, std::vector<SymbolInformation>>
-      exported_;
+  absl::btree_map<std::string_view, std::vector<SymbolInformation>> exported_;
   absl::flat_hash_map<ast::Declaration::Id const *, size_t> indices_;
   // This flag should be set to true if this module is ever found to depend on
   // another which has errors, even if those errors do not effect
