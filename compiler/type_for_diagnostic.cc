@@ -37,7 +37,7 @@ struct StringifyExpression {
                       [&](std::string *out, auto const *length_expr) {
                         absl::StrAppend(out, operator()(length_expr));
                       }),
-        "; ", (*this)(node->data_type()), "]");
+        "; ", (*this)(&node->data_type()), "]");
   }
 
   std::string operator()(ast::BindingDeclaration const *node) {
@@ -107,7 +107,7 @@ struct StringifyType {
     // TODO: Look at all the elements type-spellings and choose the best one.
     // TODO: If the element-type is also an array, shorten the lengths, unless
     // the common spelling for elements of that type is a better alias.
-    return absl::StrCat("[", node->size(), "; ", (*this)(node->elems().front()),
+    return absl::StrCat("[", node->size(), "; ", (*this)(node->elements().front()),
                         "]");
   }
 

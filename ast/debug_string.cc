@@ -115,7 +115,7 @@ void ArgumentType::DebugStrAppend(std::string *out, size_t indent) const {
 
 void ArrayLiteral::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "[",
-                  absl::StrJoin(elems(), ", ",
+                  absl::StrJoin(elements(), ", ",
                                 [&](std::string *out, auto const &elem) {
                                   return Joiner(elem, out, indent);
                                 }),
@@ -129,7 +129,7 @@ void ArrayType::DebugStrAppend(std::string *out, size_t indent) const {
                                   return Joiner(elem, out, indent);
                                 }),
                   "; ");
-  data_type()->DebugStrAppend(out, indent);
+  data_type().DebugStrAppend(out, indent);
   absl::StrAppend(out, "]");
 }
 
@@ -386,7 +386,7 @@ void ScopeNode::DebugStrAppend(std::string *out, size_t indent) const {
 
 void SliceType::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "[]");
-  data_type()->DebugStrAppend(out, indent);
+  data_type().DebugStrAppend(out, indent);
 }
 
 void ShortFunctionLiteral::DebugStrAppend(std::string *out,

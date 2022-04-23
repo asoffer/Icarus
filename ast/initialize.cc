@@ -100,7 +100,7 @@ void ArgumentType::Initialize(Initializer& initializer) {
 
 void ArrayLiteral::Initialize(Initializer& initializer) {
   scope_ = initializer.scope;
-  for (auto& expr : elems_) {
+  for (auto& expr : elements_) {
     expr->Initialize(initializer);
     covers_binding_ |= expr->covers_binding();
     is_dependent_ |= expr->is_dependent();

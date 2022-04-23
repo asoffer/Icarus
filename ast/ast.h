@@ -103,19 +103,21 @@ struct ArgumentType : Expression {
 //  * `[]`
 struct ArrayLiteral : Expression {
   ArrayLiteral(std::string_view range,
-               std::vector<std::unique_ptr<Expression>> elems)
-      : Expression(IndexOf<ArrayLiteral>(), range), elems_(std::move(elems)) {}
-  bool empty() const { return elems_.empty(); }
-  size_t size() const { return elems_.size(); }
-  Expression const *elem(size_t i) const { return elems_[i].get(); }
-  base::PtrSpan<Expression const> elems() const { return elems_; }
-  auto extract() && { return std::move(elems_); }
+               std::vector<std::unique_ptr<Expression>> elements)
+      : Expression(IndexOf<ArrayLiteral>(), range),
+        elements_(std::move(elements)) {}
+  bool empty() const { return elements_.empty(); }
+  size_t size() const { return elements_.size(); }
+
+  base::PtrSpan<Expression const> elements() const { return elements_; }
+
+  auto extract() && { return std::move(elements_); }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;
 
  private:
-  std::vector<std::unique_ptr<Expression>> elems_;
+  std::vector<std::unique_ptr<Expression>> elements_;
 };
 
 // Assignment:
@@ -175,8 +177,8 @@ struct ArrayType : Expression {
         lengths_(std::move(lengths)),
         data_type_(std::move(data_type)) {}
   base::PtrSpan<Expression const> lengths() const { return lengths_; }
-  Expression const *length(size_t i) const { return lengths_[i].get(); }
-  Expression const *data_type() const { return data_type_.get(); }
+  Expression const &length(size_t i) const { return *lengths_[i]; }
+  Expression const &data_type() const { return *data_type_; }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;
@@ -1147,7 +1149,7 @@ struct SliceType : Expression {
       : Expression(IndexOf<SliceType>(), range),
         data_type_(std::move(data_type)) {}
 
-  Expression const *data_type() const { return data_type_.get(); }
+  Expression const &data_type() const { return *data_type_; }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;

@@ -95,13 +95,13 @@ struct ParamDependencyGraphBuilder {
 
   void operator()(ArrayLiteral const *node,
                   core::DependencyNode<Declaration const *> d) {
-    for (auto const *expr : node->elems()) { (*this)(expr, d); }
+    for (auto const *expr : node->elements()) { (*this)(expr, d); }
   }
 
   void operator()(ArrayType const *node,
                   core::DependencyNode<Declaration const *> d) {
     for (auto const &len : node->lengths()) { (*this)(len, d); }
-    (*this)(node->data_type(), d);
+    (*this)(&node->data_type(), d);
   }
 
   void operator()(Assignment const *node,
@@ -237,7 +237,7 @@ struct ParamDependencyGraphBuilder {
 
   void operator()(SliceType const *node,
                   core::DependencyNode<Declaration const *> d) {
-    (*this)(node->data_type(), d);
+    (*this)(&node->data_type(), d);
   }
 
   void operator()(StructLiteral const *node,

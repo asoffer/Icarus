@@ -26,7 +26,7 @@ void Compiler::EmitCopyInit(
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
-    EmitCopyInit(node->elems()[i], absl::MakeConstSpan(&to_var, 1));
+    EmitCopyInit(node->elements()[i], absl::MakeConstSpan(&to_var, 1));
     elem = current_block()->Append(
         ir::PtrIncrInstruction{.addr   = elem,
                                .index  = 1,
@@ -34,7 +34,7 @@ void Compiler::EmitCopyInit(
                                .result = current().subroutine->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
-  EmitCopyInit(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
+  EmitCopyInit(node->elements().back(), absl::MakeConstSpan(&to_var, 1));
 }
 
 void Compiler::EmitMoveInit(
@@ -49,7 +49,7 @@ void Compiler::EmitMoveInit(
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
-    EmitMoveInit(node->elems()[i], absl::MakeConstSpan(&to_var, 1));
+    EmitMoveInit(node->elements()[i], absl::MakeConstSpan(&to_var, 1));
     elem = current_block()->Append(
         ir::PtrIncrInstruction{.addr   = elem,
                                .index  = 1,
@@ -57,7 +57,7 @@ void Compiler::EmitMoveInit(
                                .result = current().subroutine->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
-  EmitMoveInit(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
+  EmitMoveInit(node->elements().back(), absl::MakeConstSpan(&to_var, 1));
 }
 
 void Compiler::EmitCopyAssign(
@@ -71,7 +71,7 @@ void Compiler::EmitCopyAssign(
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
-    EmitCopyAssign(node->elems()[i], absl::MakeConstSpan(&to_var, 1));
+    EmitCopyAssign(node->elements()[i], absl::MakeConstSpan(&to_var, 1));
     elem = current_block()->Append(
         ir::PtrIncrInstruction{.addr   = elem,
                                .index  = 1,
@@ -79,7 +79,7 @@ void Compiler::EmitCopyAssign(
                                .result = current().subroutine->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
-  EmitCopyAssign(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
+  EmitCopyAssign(node->elements().back(), absl::MakeConstSpan(&to_var, 1));
 }
 
 void Compiler::EmitMoveAssign(
@@ -94,7 +94,7 @@ void Compiler::EmitMoveAssign(
   // Skip the last entry so we don't increment past the end of the array.
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
-    EmitMoveAssign(node->elems()[i], absl::MakeConstSpan(&to_var, 1));
+    EmitMoveAssign(node->elements()[i], absl::MakeConstSpan(&to_var, 1));
     elem = current_block()->Append(
         ir::PtrIncrInstruction{.addr   = elem,
                                .index  = 1,
@@ -102,7 +102,7 @@ void Compiler::EmitMoveAssign(
                                .result = current().subroutine->Reserve()});
   }
   type::Typed<ir::RegOr<ir::addr_t>> to_var(elem, array_type.data_type());
-  EmitMoveAssign(node->elems().back(), absl::MakeConstSpan(&to_var, 1));
+  EmitMoveAssign(node->elements().back(), absl::MakeConstSpan(&to_var, 1));
 }
 
 }  // namespace compiler

@@ -73,12 +73,12 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     }
   }
 
-  auto data_qual_type = VerifyType(node->data_type())[0];
+  auto data_qual_type = VerifyType(&node->data_type())[0];
   quals &= data_qual_type.quals();
   type::QualType qt(type::Type_, quals);
   if (data_qual_type.type() != type::Type_) {
     diag().Consume(ArrayDataTypeNotAType{
-        .view = node->data_type()->range(),
+        .view = node->data_type().range(),
     });
     qt.MarkError();
   }
@@ -95,7 +95,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::ArrayType const *node,
     return false;
   }
 
-  state().EnqueueVerifyPatternMatchType(node->data_type(), type::Type_);
+  state().EnqueueVerifyPatternMatchType(&node->data_type(), type::Type_);
   for (auto const *expr : node->lengths()) {
     state().EnqueueVerifyPatternMatchType(expr, type::Integer);
   }

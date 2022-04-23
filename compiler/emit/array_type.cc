@@ -8,13 +8,13 @@ namespace compiler {
 
 void Compiler::EmitToBuffer(ast::ArrayType const *node,
                             ir::PartialResultBuffer &out) {
-  EmitToBuffer(node->data_type(), out);
+  EmitToBuffer(&node->data_type(), out);
   ir::RegOr<type::Type> t = out.get<type::Type>(0);
   out.pop_back();
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
-    auto len = EmitCast(*this, context().typed(node->length(i)), type::Integer)
+    auto len = EmitCast(*this, context().typed(&node->length(i)), type::Integer)
                    .back()
                    .get<ir::addr_t>();
     t = current_block()->Append(
@@ -79,7 +79,7 @@ bool Compiler::PatternMatch(
   ir::CompleteResultBuffer length_buffer;
   length_buffer.append(a->length());
   state().EnqueuePatternMatch(
-      node->length(index),
+      &node->length(index),
       {.type = type::Integer, .value = std::move(length_buffer)});
 
   ir::CompleteResultBuffer data_type_buffer;
@@ -87,7 +87,7 @@ bool Compiler::PatternMatch(
 
   if (index + 1 == node->lengths().size()) {
     state().EnqueuePatternMatch(
-        node->data_type(),
+        &node->data_type(),
         {.type = type::Type_, .value = std::move(data_type_buffer)});
   } else {
     state().EnqueuePatternMatch(node, {.type  = type::Integer,

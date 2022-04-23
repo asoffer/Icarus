@@ -46,13 +46,11 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::SliceType const *node) {
   auto quals = type::Quals::Const();
 
-  auto data_qual_type = VerifyType(node->data_type())[0];
+  auto data_qual_type = VerifyType(&node->data_type())[0];
   quals &= data_qual_type.quals();
   type::QualType qt(type::Type_, quals);
   if (data_qual_type.type() != type::Type_) {
-    diag().Consume(SliceDataTypeNotAType{
-        .view = node->data_type()->range(),
-    });
+    diag().Consume(SliceDataTypeNotAType{.view = node->data_type().range()});
     qt.MarkError();
   }
 
@@ -68,7 +66,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::SliceType const *node,
     return false;
   }
 
-  return VerifyPatternType(node->data_type(), type::Type_);
+  return VerifyPatternType(&node->data_type(), type::Type_);
 }
 
 }  // namespace compiler

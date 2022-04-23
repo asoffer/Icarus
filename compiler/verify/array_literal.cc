@@ -49,9 +49,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   }
 
   std::vector<type::QualType> elem_qts;
-  elem_qts.reserve(node->elems().size());
+  elem_qts.reserve(node->elements().size());
   bool error = false;
-  for (auto const *elem : node->elems()) {
+  for (auto const *elem : node->elements()) {
     elem_qts.push_back(VerifyType(elem)[0]);
     error &= not elem_qts.back().ok();
   }
@@ -77,7 +77,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       size_t i = 0;
       for (type::QualType const &qt : elem_qts) {
         if (qt.type() != t) {
-          mistyped_elements.push_back(node->elems()[i]->range());
+          mistyped_elements.push_back(node->elements()[i]->range());
         }
         ++i;
       }
