@@ -17,4 +17,7 @@
   }                                                                            \
   var = *std::move(temp)
 
+#define ICARUS_PREDICT_TRUE [[likely]]
+#define ICARUS_PREDICT_FALSE [[unlikely]]
+
 #endif  // ICARUS_BASE_MACROS_H

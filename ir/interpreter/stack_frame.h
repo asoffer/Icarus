@@ -15,9 +15,6 @@
 
 namespace interpreter {
 
-// Represents a a collection of registers available within a given stack frame.
-struct RegisterArray {};
-
 struct Stack;
 
 struct StackFrame {

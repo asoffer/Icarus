@@ -12,6 +12,23 @@ cc_library(
 )
 
 cc_library(
+    name = "interpreter",
+    hdrs = ["interpreter.h"],
+    srcs = ["interpreter.cc"],
+    deps = [
+        ":architecture",
+        "//base:macros",
+        "//base:untyped_buffer",
+        "//core:arch",
+        "//core:bytes",
+        "//core:type_contour",
+        "//ir/instruction:base",
+        "//ir:subroutine",
+        "@com_google_absl//absl/cleanup",
+    ],
+)
+
+cc_library(
     name = "evaluate",
     hdrs = ["evaluate.h"],
     visibility = ["//visibility:public"],

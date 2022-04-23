@@ -48,5 +48,11 @@ TEST(Reg, Kind) {
   EXPECT_EQ(Reg::Output(1).kind(), Reg::Kind::Output);
 }
 
+TEST(Reg, RawValue) {
+  EXPECT_EQ(Reg(1).raw_value(), 1);
+  EXPECT_EQ(Reg::Parameter(12).raw_value(), 12);
+  EXPECT_EQ(Reg::Output(123).raw_value(), 123);
+}
+
 }  // namespace
 }  // namespace ir

@@ -58,6 +58,11 @@ struct Reg : base::Extend<Reg, 1>::With<base::AbslHashExtension> {
   template <Kind k>
   constexpr underlying_type as() const {
     ASSERT(kind() == k);
+    return raw_value();
+  }
+
+  // Returns the value ignoring the associated kind.
+  constexpr underlying_type raw_value() const {
     return value_ & ~KindMask;
   }
 
