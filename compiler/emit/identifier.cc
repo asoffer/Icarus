@@ -61,7 +61,11 @@ void Compiler::EmitToBuffer(ast::Identifier const *node,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
                  ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn>(
           t, [&]<typename T>() {
-            out.append(ir::RegOr<T>(PtrFix(current(), lval, t)));
+            out.append(current_block()->Append(ir::LoadInstruction{
+                .type   = t,
+                .addr   = lval,
+                .result = current().subroutine->Reserve(),
+            }));
           });
     }
   }

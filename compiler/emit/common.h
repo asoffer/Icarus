@@ -20,8 +20,9 @@ namespace compiler {
 // (or register) is created.
 ir::Reg RegisterReferencing(SubroutineBlockReference current, type::Type t,
                             ir::PartialResultRef const &value);
-ir::Reg PtrFix(SubroutineBlockReference current, ir::RegOr<ir::addr_t> addr,
-               type::Type desired_type);
+ir::RegOr<ir::addr_t> PtrFix(SubroutineBlockReference current,
+                             ir::RegOr<ir::addr_t> addr,
+                             type::Type desired_type);
 
 // Usually it is sufficient to determine all the inputs to a phi instruction
 // upfront, but sometimes it is useful to construct a phi instruction without

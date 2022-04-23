@@ -47,9 +47,9 @@ ir::Reg RegisterReferencing(SubroutineBlockReference current, type::Type t,
   }
 }
 
-ir::Reg PtrFix(SubroutineBlockReference current, ir::RegOr<ir::addr_t> addr,
-               type::Type desired_type) {
-  // TODO must this be a register if it's loaded?
+ir::RegOr<ir::addr_t> PtrFix(SubroutineBlockReference current,
+                             ir::RegOr<ir::addr_t> addr,
+                             type::Type desired_type) {
   if (desired_type.get()->is_big()) { return addr.reg(); }
   return current.block->Append(ir::LoadInstruction{
       .type   = desired_type,
