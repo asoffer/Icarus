@@ -56,7 +56,7 @@ resize_buffer ::= (s: *string, new_capacity: u64) -> () {
 #{export}
 make ::= (fill: char, len: u64) -> string {
   buffer := memory.allocate(char, len + 1)
-  memory.fill(buffer, fill as u8)
+  memory.fill(buffer, builtin.ascii_decode(fill))
   buffer[len] = init !'\0'
   return string.{
     _data     = buffer.data

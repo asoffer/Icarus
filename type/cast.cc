@@ -107,11 +107,6 @@ bool CanCast(Type from, Type to) {
     if (IsIntegral(from) and IsNumeric(to)) { return true; }
     if (IsFloatingPoint(from) and IsFloatingPoint(to)) { return true; }
 
-    if (from == Char and IsIntegral(to)) { return true; }
-    if ((from == I8 or from == U8 or from == Integer) and to == Char) {
-      return true;
-    }
-
     // TODO other integer types. This set of rules is weird and obviously wrong.
     if ((from == I32 or from == Integer) and
         (to.is<Enum>() or to.is<Flags>())) {

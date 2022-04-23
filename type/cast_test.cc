@@ -51,14 +51,14 @@ TEST(CanCast, Implicitly) {
 }
 
 TEST(CanCastExplicitly, Char) {
-  EXPECT_TRUE(CanCastExplicitly(U8, Char));
-  EXPECT_TRUE(CanCastExplicitly(Char, U8));
+  EXPECT_FALSE(CanCastExplicitly(U8, Char));
+  EXPECT_FALSE(CanCastExplicitly(Char, U8));
 
   EXPECT_FALSE(CanCastExplicitly(U64, Char));
   EXPECT_FALSE(CanCastExplicitly(I64, Char));
 
-  EXPECT_TRUE(CanCastExplicitly(Char, U64));
-  EXPECT_TRUE(CanCastExplicitly(Char, I64));
+  EXPECT_FALSE(CanCastExplicitly(Char, U64));
+  EXPECT_FALSE(CanCastExplicitly(Char, I64));
 }
 
 TEST(CanCastExplicitly, Integral) {

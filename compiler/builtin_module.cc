@@ -25,6 +25,29 @@ void AlignmentFn(ir::Subroutine& subroutine) {
   subroutine.entry()->set_jump(ir::JumpCmd::Return());
 }
 
+void AsciiEncode(ir::Subroutine& subroutine) {
+  subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
+      .index = 0,
+      .value = subroutine.entry()->Append(AsciiEncodeInstruction{
+          .value  = ir::Reg::Parameter(0),
+          .result = subroutine.Reserve(),
+      }),
+  });
+  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+}
+
+void AsciiDecode(ir::Subroutine& subroutine) {
+  subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
+      .index = 0,
+      .value = subroutine.entry()->Append(AsciiDecodeInstruction{
+          .character = ir::Reg::Parameter(0),
+          .result    = subroutine.Reserve(),
+      }),
+  });
+  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+}
+
+
 void BytesFn(ir::Subroutine& subroutine) {
   subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
       .index = 0,
@@ -94,6 +117,16 @@ std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
       type::Func(
           {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
           {type::U64}));
+  InsertSymbolFor<AsciiEncode>(
+      *module, "ascii_encode",
+      type::Func(
+          {core::AnonymousParameter(type::QualType::NonConstant(type::U8))},
+          {type::Char}));
+  InsertSymbolFor<AsciiDecode>(
+      *module, "ascii_decode",
+      type::Func(
+          {core::AnonymousParameter(type::QualType::NonConstant(type::Char))},
+          {type::U8}));
   InsertSymbolFor<BytesFn>(
       *module, "bytes",
       type::Func(

@@ -76,26 +76,6 @@ void EmitCast(CompilationDataReference ref, type::Type from, type::Type to,
     return;
   }
 
-  // TODO: We don't actually want to support casts to/from char. This should be
-  // done explicitly with named builtin functions like `ascii_encode :: char ->
-  // u8` and `ascii_decode :: u8 -> char`.
-  if (to == type::Char) {
-    if (from == type::U8) {
-      EmitCast<uint8_t, ir::Char>(ref, buffer);
-    } else if (from == type::I8) {
-      EmitCast<int8_t, ir::Char>(ref, buffer);
-    } else {
-      UNREACHABLE(from);
-    }
-    return;
-  } else if (from == type::Char) {
-    ASSERT(type::IsIntegral(to) == true);
-    ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
-               uint64_t>(
-        to, [&]<typename T>() { EmitCast<ir::Char, T>(ref, buffer); });
-    return;
-  }
-
   if (type::IsNumeric(from)) {
     if (auto const *enum_type = to.if_as<type::Enum>()) {
       ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,

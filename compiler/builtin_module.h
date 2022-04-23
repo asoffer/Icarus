@@ -39,6 +39,30 @@ struct AlignmentInstruction
   ir::Reg result;
 };
 
+struct AsciiEncodeInstruction
+    : base::Extend<AsciiEncodeInstruction>::With<base::BaseTraverseExtension,
+                                                 base::BaseSerializeExtension,
+                                                 ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = ascii-encode %1$s";
+
+  ir::Char Resolve() const { return ir::Char(value.value()); }
+
+  ir::RegOr<uint8_t> value;
+  ir::Reg result;
+};
+
+struct AsciiDecodeInstruction
+    : base::Extend<AsciiDecodeInstruction>::With<base::BaseTraverseExtension,
+                                                 base::BaseSerializeExtension,
+                                                 ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = ascii-decode %1$s";
+
+  uint8_t Resolve() const { return static_cast<uint8_t>(character.value()); }
+
+  ir::RegOr<ir::Char> character;
+  ir::Reg result;
+};
+
 struct BytesInstruction
     : base::Extend<BytesInstruction>::With<base::BaseTraverseExtension,
                                            base::BaseSerializeExtension,
@@ -69,8 +93,9 @@ struct HasBlockInstruction
 };
 
 using BuiltinInstructions =
-    ir::InstructionSet<AbortInstruction, AlignmentInstruction, BytesInstruction,
-                       HasBlockInstruction>;
+    ir::InstructionSet<AbortInstruction, AlignmentInstruction,
+                       AsciiEncodeInstruction, AsciiDecodeInstruction,
+                       BytesInstruction, HasBlockInstruction>;
 
 // Returns a BuiltinModule consisting of all nodes built in as language
 // intrinsics.
