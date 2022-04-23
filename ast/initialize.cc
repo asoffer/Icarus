@@ -274,19 +274,6 @@ void Index::Initialize(Initializer& initializer) {
   is_dependent_   = lhs_->is_dependent() or rhs_->is_dependent();
 }
 
-void InterfaceLiteral::Initialize(Initializer& initializer) {
-  scope_ = initializer.scope;
-  body_scope().set_parent(initializer.scope);
-  initializer.scope = &body_scope();
-  absl::Cleanup c   = [&] { initializer.scope = scope_; };
-  for (auto& [name, expr] : entries_) {
-    name->Initialize(initializer);
-    expr->Initialize(initializer);
-    covers_binding_ |= name->covers_binding() or expr->covers_binding();
-    is_dependent_ |= name->is_dependent() or expr->is_dependent();
-  }
-}
-
 void Label::Initialize(Initializer& initializer) { scope_ = initializer.scope; }
 
 void ReturnStmt::Initialize(Initializer& initializer) {

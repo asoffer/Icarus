@@ -329,18 +329,6 @@ void Index::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "]");
 }
 
-void InterfaceLiteral::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, "interface {\n");
-  for (auto const &[name, expr] : entries()) {
-    absl::StrAppend(out, indentation(indent));
-    name->DebugStrAppend(out, indent + 1);
-    absl::StrAppend(out, ":");
-    expr->DebugStrAppend(out, indent + 1);
-    absl::StrAppend(out, "\n");
-  }
-  absl::StrAppend(out, "}");
-}
-
 void Label::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "#.", label_);
 }

@@ -198,14 +198,6 @@ struct ParamDependencyGraphBuilder {
     (*this)(node->rhs(), d);
   }
 
-  void operator()(InterfaceLiteral const *node,
-                  core::DependencyNode<Declaration const *> d) {
-    for (auto &[name, expr] : node->entries()) {
-      (*this)(name.get(), d);
-      (*this)(expr.get(), d);
-    }
-  }
-
   void operator()(Module const *node,
                   core::DependencyNode<Declaration const *> d) {}
 

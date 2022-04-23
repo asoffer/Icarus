@@ -862,48 +862,6 @@ struct Index : Expression {
   std::unique_ptr<Expression> lhs_, rhs_;
 };
 
-// InterfaceLiteral:
-// Represents an interface literal block, which is used to indicate requirements
-// on a type.
-//
-// Examples:
-// ```
-// interface {
-//   this.some_integer_field: T
-// }
-// ```
-//
-// ```
-// interface {
-//   swap: (*this, *this) -> ()
-// }
-// ```
-//
-struct InterfaceLiteral : Expression, WithScope {
-  explicit InterfaceLiteral(
-      std::string_view range,
-      std::vector<std::pair<std::unique_ptr<ast::Expression>,
-                            std::unique_ptr<ast::Expression>>>
-          entries)
-      : Expression(IndexOf<InterfaceLiteral>(), range),
-        WithScope(Scope::Kind::Declarative),
-        entries_(std::move(entries)) {}
-
-  absl::Span<std::pair<std::unique_ptr<ast::Expression>,
-                       std::unique_ptr<ast::Expression>> const>
-  entries() const {
-    return entries_;
-  }
-
-  void DebugStrAppend(std::string *out, size_t indent) const override;
-  void Initialize(Node::Initializer &initializer) override;
-
- private:
-  std::vector<std::pair<std::unique_ptr<ast::Expression>,
-                        std::unique_ptr<ast::Expression>>>
-      entries_;
-};
-
 // Label:
 // Represents a label which can be the target of a yield statement in a scope.
 // Other languages used labels for "labelled-break", and this is a similar idea.

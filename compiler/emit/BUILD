@@ -406,17 +406,6 @@ cc_test(
 )
 
 cc_library(
-    name = "interface_literal",
-    srcs = ["interface_literal.cc"],
-    deps = [
-        "//ast",
-        "//compiler:compiler_header",
-    ],
-)
-
-# TODO: interface_literal_test
-
-cc_library(
     name = "miscellaneous",
     srcs = ["miscellaneous.cc"],
     deps = [

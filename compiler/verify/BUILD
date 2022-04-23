@@ -23,7 +23,6 @@ cc_library(
         "identifier.cc",
         "import.cc",
         "index.cc",
-        "interface_literal.cc",
         "module.cc",
         "miscellaneous.cc",
         "parameterized_struct_literal.cc",
@@ -245,7 +244,6 @@ cc_test(
     ],
 )
 
-# TODO: interface_literal_test
 # TODO: miscellaneous_test
 # TODO: parameterized_struct_literal_test
 

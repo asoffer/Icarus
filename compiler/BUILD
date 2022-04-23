@@ -207,7 +207,6 @@ IR_EMISSION = [
     "//compiler/emit:function_type",
     "//compiler/emit:identifier",
     "//compiler/emit:index",
-    "//compiler/emit:interface_literal",
     "//compiler/emit:miscellaneous",
     "//compiler/emit:parameterized_struct_literal",
     "//compiler/emit:pattern_match",

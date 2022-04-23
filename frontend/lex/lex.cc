@@ -175,7 +175,6 @@ static base::Global kKeywords =
         {"enum", {Syntax::Enum}},
         {"struct", {Syntax::Struct}},
         {"return", {Operator::Return}},
-        {"interface", {Syntax::Interface}},
         {"as", {Operator::As}},
         {"copy", {Operator::Copy}},
         {"init", {Operator::Init}},
