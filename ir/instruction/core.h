@@ -18,7 +18,7 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/op_codes.h"
 #include "ir/interpreter/architecture.h"
-#include "ir/interpreter/stack_frame.h"
+#include "ir/interpreter/legacy_stack_frame.h"
 #include "ir/out_params.h"
 #include "ir/value/reg_or.h"
 #include "type/function.h"
@@ -33,6 +33,13 @@ struct LoadInstruction
                                           DebugFormatExtension> {
   static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = load %2$s (%1$s)";
+
+  friend bool InterpretInstruction(LoadInstruction const& inst,
+                                   interpreter::StackFrame& frame) {
+    core::Bytes num_bytes = inst.type.bytes(::interpreter::kArchitecture);
+    frame.Load(num_bytes, inst.addr, inst.result);
+    return true;
+  }
 
   friend void BaseTraverse(Inliner& inliner, LoadInstruction& inst) {
     base::Traverse(inliner, inst.addr, inst.result);
@@ -106,6 +113,12 @@ struct RegisterInstruction
           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = %1$s";
 
+  friend bool InterpretInstruction(RegisterInstruction const& inst,
+                                   interpreter::StackFrame& frame) {
+    frame.set(inst.result, frame.resolve(inst.operand));
+    return true;
+  }
+
   T Resolve() const { return Apply(operand.value()); }
   static T Apply(T val) { return val; }
 
@@ -119,7 +132,7 @@ struct SetReturnInstruction
           base::BaseTraverseExtension, base::BaseSerializeExtension,
           DebugFormatExtension> {
   using type = T;
-  static_assert(interpreter::FitsInRegister<type>);
+  static_assert(::interpreter::FitsInRegister<type>);
   static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
 
   uint16_t index;
@@ -133,6 +146,12 @@ struct StoreInstruction
           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "store %1$s into [%2$s]";
   using type                                     = T;
+
+  friend bool InterpretInstruction(StoreInstruction const& inst,
+                                   interpreter::StackFrame& frame) {
+    frame.Store(inst.value, inst.location);
+    return true;
+  }
 
   template <typename ExecContext>
   void Apply(ExecContext& ctx) {

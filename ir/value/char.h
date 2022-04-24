@@ -18,12 +18,12 @@ struct Char {
   /* implicit */ Char(T c) : data_(c) {}
 
   template <std::integral T>
-  operator T() {
+  operator T() const {
     return data_;
   }
 
   template <std::integral T>
-  T as_type() {
+  T as_type() const {
     return data_;
   }
 

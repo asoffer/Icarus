@@ -11,7 +11,7 @@ namespace {
 
 template <typename T>
 void ExtractReturnValue(ExecutionContext &ctx, ffi_arg *ret,
-                        StackFrame &frame) {
+                        LegacyStackFrame &frame) {
   // libffi promotes return values of size wider than the system register size.
   // size.
   static constexpr bool PromotesToInt =
@@ -46,7 +46,7 @@ ffi_type *ToFfiType(type::Type t) {
 
 // TODO return slot is always small enough that we should be able to use a
 // stack-allocated buffer for this.
-void ExecutionContext::CallForeignFunction(ir::Fn f, StackFrame &frame) {
+void ExecutionContext::CallForeignFunction(ir::Fn f, LegacyStackFrame &frame) {
   type::Function const *fn_type = shared_context_.ForeignFunctionType(f);
   LOG("CallFn", "Calling %s: %s", f, fn_type->to_string());
 

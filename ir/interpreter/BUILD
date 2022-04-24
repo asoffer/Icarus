@@ -12,18 +12,35 @@ cc_library(
 )
 
 cc_library(
+    name = "stack_frame",
+    hdrs = ["stack_frame.h"],
+    srcs = ["stack_frame.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//base:untyped_buffer",
+        "//core:bytes",
+        "//ir/value:addr",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+    ],
+)
+
+cc_library(
     name = "interpreter",
     hdrs = ["interpreter.h"],
     srcs = ["interpreter.cc"],
+    visibility = ["//visibility:public"],
     deps = [
         ":architecture",
+        ":stack_frame",
         "//base:macros",
         "//base:untyped_buffer",
         "//core:arch",
         "//core:bytes",
         "//core:type_contour",
-        "//ir/instruction:base",
         "//ir:subroutine",
+        "//ir/instruction:base",
+        "//ir/value:result_buffer",
         "@com_google_absl//absl/cleanup",
     ],
 )
@@ -47,9 +64,9 @@ cc_library(
 )
 
 cc_library(
-    name = "stack_frame",
-    hdrs = ["stack_frame.h"],
-    srcs = ["stack_frame.cc"],
+    name = "legacy_stack_frame",
+    hdrs = ["legacy_stack_frame.h"],
+    srcs = ["legacy_stack_frame.cc"],
     visibility = ["//visibility:public"],
     deps = [
         ":architecture",
@@ -72,7 +89,7 @@ cc_library(
     srcs = ["execution_context.cc"],
     visibility = ["//visibility:public"],
     deps = [
-        ":stack_frame",
+        ":legacy_stack_frame",
         "//base:untyped_buffer",
         "//ir/byte_code:reader",
         "//ir/instruction:core",

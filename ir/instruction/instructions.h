@@ -17,7 +17,7 @@
 #include "ir/instruction/foreign.h"
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/execution_context.h"
-#include "ir/interpreter/stack_frame.h"
+#include "ir/interpreter/legacy_stack_frame.h"
 #include "ir/out_params.h"
 #include "ir/subroutine.h"
 #include "ir/value/fn.h"
@@ -35,14 +35,14 @@ namespace ir {
 template <typename>
 struct CastInstruction;
 
-template <interpreter::FitsInRegister ToType, typename FromType>
+template <::interpreter::FitsInRegister ToType, typename FromType>
 struct CastInstruction<ToType(FromType)>
     : base::Extend<CastInstruction<ToType(FromType)>>::template With<
           base::BaseTraverseExtension, base::BaseSerializeExtension> {
   using from_type = FromType;
   using to_type   = ToType;
   using from_operand_type =
-      std::conditional_t<interpreter::FitsInRegister<from_type>, from_type,
+      std::conditional_t<::interpreter::FitsInRegister<from_type>, from_type,
                          addr_t>;
 
   std::string to_string() const {
@@ -52,14 +52,14 @@ struct CastInstruction<ToType(FromType)>
                            typeid(from_type).name(), typeid(to_type).name());
   }
 
-  void Apply(interpreter::ExecutionContext& ctx) const
-      requires(not interpreter::FitsInRegister<from_type>) {
+  void Apply(::interpreter::ExecutionContext& ctx) const
+      requires(not ::interpreter::FitsInRegister<from_type>) {
     ctx.current_frame().set(
         result, reinterpret_cast<from_type const*>(ctx.resolve(value))
                     ->template as_type<to_type>());
   }
 
-  to_type Resolve() const requires(interpreter::FitsInRegister<from_type>) {
+  to_type Resolve() const requires(::interpreter::FitsInRegister<from_type>) {
     if constexpr (base::meta<to_type> == base::meta<Char>) {
       static_assert(sizeof(from_type) == 1, "Invalid cast to Char");
       return static_cast<uint8_t>(value.value());
@@ -77,14 +77,14 @@ struct CastInstruction<ToType(FromType)>
   Reg result;
 };
 
-template <interpreter::NotFitsInRegister ToType, typename FromType>
+template <::interpreter::NotFitsInRegister ToType, typename FromType>
 struct CastInstruction<ToType(FromType)>
     : base::Extend<CastInstruction<ToType(FromType)>>::template With<
           base::BaseTraverseExtension, base::BaseSerializeExtension> {
   using from_type = FromType;
   using to_type   = ToType;
   using from_operand_type =
-      std::conditional_t<interpreter::FitsInRegister<from_type>, from_type,
+      std::conditional_t<::interpreter::FitsInRegister<from_type>, from_type,
                          addr_t>;
 
   std::string to_string() const {
@@ -94,8 +94,8 @@ struct CastInstruction<ToType(FromType)>
                            typeid(from_type).name(), typeid(to_type).name());
   }
 
-  void Apply(interpreter::ExecutionContext& ctx) const {
-    if constexpr (interpreter::FitsInRegister<from_type>) {
+  void Apply(::interpreter::ExecutionContext& ctx) const {
+    if constexpr (::interpreter::FitsInRegister<from_type>) {
       // Casting is a construction operation, but for to-types that don't fit in
       // registers that requires allocation first.
       new (ctx.resolve(into)) to_type(ctx.resolve(value));
@@ -116,7 +116,7 @@ struct CastInstruction<ToType(FromType)>
   using from_type = FromType;
   using to_type   = ToType;
   using from_operand_type =
-      std::conditional_t<interpreter::FitsInRegister<from_type>, from_type,
+      std::conditional_t<::interpreter::FitsInRegister<from_type>, from_type,
                          addr_t>;
 
   std::string to_string() const {
@@ -126,14 +126,14 @@ struct CastInstruction<ToType(FromType)>
                            typeid(from_type).name(), typeid(to_type).name());
   }
 
-  void Apply(interpreter::ExecutionContext& ctx) const
-      requires(not interpreter::FitsInRegister<from_type> or
-               not interpreter::FitsInRegister<to_type>) {
-    if constexpr (interpreter::FitsInRegister<from_type>) {
+  void Apply(::interpreter::ExecutionContext& ctx) const
+      requires(not ::interpreter::FitsInRegister<from_type> or
+               not ::interpreter::FitsInRegister<to_type>) {
+    if constexpr (::interpreter::FitsInRegister<from_type>) {
       // Casting is a construction operation, but for to-types that don't fit in
       // registers that requires allocation first.
       new (ctx.resolve<addr_t>(result)) to_type(ctx.resolve(value));
-    } else if constexpr (interpreter::FitsInRegister<to_type>) {
+    } else if constexpr (::interpreter::FitsInRegister<to_type>) {
       ctx.current_frame().set(
           result, reinterpret_cast<from_type const*>(ctx.resolve(value))
                       ->template as_type<to_type>());
@@ -143,8 +143,9 @@ struct CastInstruction<ToType(FromType)>
     }
   }
 
-  to_type Resolve() const requires(interpreter::FitsInRegister<from_type>and
-                                       interpreter::FitsInRegister<to_type>) {
+  to_type Resolve() const
+      requires(::interpreter::FitsInRegister<
+               from_type>and ::interpreter::FitsInRegister<to_type>) {
     if constexpr (base::meta<to_type> == base::meta<Char>) {
       static_assert(sizeof(from_type) == 1, "Invalid cast to Char");
       return static_cast<uint8_t>(value.value());
@@ -167,10 +168,10 @@ struct PtrDiffInstruction
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%4$s = ptrdiff %1$s %2$s";
 
-  void Apply(interpreter::ExecutionContext& ctx) const {
+  void Apply(::interpreter::ExecutionContext& ctx) const {
     ctx.current_frame().set(
         result, (ctx.resolve(lhs) - ctx.resolve(rhs)) /
-                    pointee_type.bytes(interpreter::kArchitecture).value());
+                    pointee_type.bytes(::interpreter::kArchitecture).value());
   }
 
   friend void BaseTraverse(Inliner& inl, PtrDiffInstruction& inst) {
@@ -206,7 +207,7 @@ struct DebugIrInstruction
     return os << inst.to_string();
   }
 
-  void Apply(interpreter::ExecutionContext&) const { std::cerr << "TODO"; }
+  void Apply(::interpreter::ExecutionContext&) const { std::cerr << "TODO"; }
   Subroutine const* fn;  // TODO: Fix this.
 };
 
@@ -215,14 +216,16 @@ struct InitInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "init %2$s";
 
-  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
+  ::interpreter::LegacyStackFrame Apply(
+      ::interpreter::ExecutionContext& ctx) const {
     if (auto* s = type.if_as<type::Struct>()) {
-      interpreter::StackFrame frame = ctx.MakeStackFrame(*s->init_);
+      ::interpreter::LegacyStackFrame frame = ctx.MakeStackFrame(*s->init_);
       frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(reg));
       return frame;
 
     } else if (auto* a = type.if_as<type::Array>()) {
-      interpreter::StackFrame frame = ctx.MakeStackFrame(a->Initializer());
+      ::interpreter::LegacyStackFrame frame =
+          ctx.MakeStackFrame(a->Initializer());
       frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(reg));
       return frame;
 
@@ -244,8 +247,9 @@ struct DestroyInstruction
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "destroy %2$s";
 
-  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    interpreter::StackFrame frame = ctx.MakeStackFrame(function());
+  ::interpreter::LegacyStackFrame Apply(
+      ::interpreter::ExecutionContext& ctx) const {
+    ::interpreter::LegacyStackFrame frame = ctx.MakeStackFrame(function());
     frame.set(Reg::Parameter(0), ctx.resolve(addr));
     return frame;
   }
@@ -275,8 +279,9 @@ struct CopyInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "copy %2$s to %3$s";
 
-  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    interpreter::StackFrame frame = ctx.MakeStackFrame(function());
+  ::interpreter::LegacyStackFrame Apply(
+      ::interpreter::ExecutionContext& ctx) const {
+    ::interpreter::LegacyStackFrame frame = ctx.MakeStackFrame(function());
     frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(to));
     frame.set(Reg::Parameter(1), ctx.resolve<addr_t>(from));
     return frame;
@@ -308,8 +313,9 @@ struct CopyInitInstruction
                                               DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "copy-init %2$s to %3$s";
 
-  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    interpreter::StackFrame frame = ctx.MakeStackFrame(function());
+  ::interpreter::LegacyStackFrame Apply(
+      ::interpreter::ExecutionContext& ctx) const {
+    ::interpreter::LegacyStackFrame frame = ctx.MakeStackFrame(function());
     frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(from));
     frame.set(Reg::Output(0), ctx.resolve<addr_t>(to));
     return frame;
@@ -347,7 +353,7 @@ struct CompileTime : base::Extend<CompileTime<A, T>>::template With<
     if constexpr (A == Action::MoveAssign) { return "move-assign %1$s %2$s"; }
   }();
 
-  void Apply(interpreter::ExecutionContext& ctx) const {
+  void Apply(::interpreter::ExecutionContext& ctx) const {
     auto* to_ptr   = reinterpret_cast<T*>(ctx.resolve(to));
     auto* from_ptr = reinterpret_cast<T*>(ctx.resolve(from));
     if constexpr (A == Action::CopyInit) {
@@ -375,7 +381,7 @@ struct CompileTime<Action::Destroy, T>
           base::BaseSerializeExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "destroy %1$s";
 
-  void Apply(interpreter::ExecutionContext& ctx) const {
+  void Apply(::interpreter::ExecutionContext& ctx) const {
     reinterpret_cast<T*>(ctx.resolve(addr)).~T();
   }
 
@@ -391,8 +397,9 @@ struct MoveInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "move %2$s to %3$s";
 
-  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    interpreter::StackFrame frame = ctx.MakeStackFrame(function());
+  ::interpreter::LegacyStackFrame Apply(
+      ::interpreter::ExecutionContext& ctx) const {
+    ::interpreter::LegacyStackFrame frame = ctx.MakeStackFrame(function());
     frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(to));
     frame.set(Reg::Parameter(1), ctx.resolve<addr_t>(from));
     return frame;
@@ -424,8 +431,9 @@ struct MoveInitInstruction
                                               DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "move-init %2$s to %3$s";
 
-  interpreter::StackFrame Apply(interpreter::ExecutionContext& ctx) const {
-    interpreter::StackFrame frame = ctx.MakeStackFrame(function());
+  ::interpreter::LegacyStackFrame Apply(
+      ::interpreter::ExecutionContext& ctx) const {
+    ::interpreter::LegacyStackFrame frame = ctx.MakeStackFrame(function());
     frame.set(Reg::Parameter(0), ctx.resolve<addr_t>(from));
     frame.set(Reg::Output(0), ctx.resolve<addr_t>(to));
     return frame;
@@ -470,7 +478,7 @@ struct LoadDataSymbolInstruction
           base::BaseSerializeExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = load-symbol %1$s";
 
-  void Apply(interpreter::ExecutionContext& ctx) const {
+  void Apply(::interpreter::ExecutionContext& ctx) const {
     absl::StatusOr<void*> sym = LoadDataSymbol(name);
     if (not sym.ok()) { FatalInterpreterError(sym.status().message()); }
     ctx.current_frame().set(result, Addr(*sym));
@@ -493,7 +501,7 @@ struct StructIndexInstruction
 
   addr_t Resolve() const {
     return addr.value() +
-           struct_type->offset(index.value(), interpreter::kArchitecture)
+           struct_type->offset(index.value(), ::interpreter::kArchitecture)
                .value();
   }
 
@@ -513,8 +521,8 @@ struct PtrIncrInstruction
   addr_t Resolve() const {
     return addr.value() +
            (core::FwdAlign(
-                ptr->pointee().bytes(interpreter::kArchitecture),
-                ptr->pointee().alignment(interpreter::kArchitecture)) *
+                ptr->pointee().bytes(::interpreter::kArchitecture),
+                ptr->pointee().alignment(::interpreter::kArchitecture)) *
             index.value())
                .value();
   }

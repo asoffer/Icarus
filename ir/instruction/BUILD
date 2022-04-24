@@ -21,6 +21,7 @@ cc_library(
         "//base:untyped_buffer",
         "//ir/byte_code:writer",
         "//ir/instruction:inliner",
+        "//ir/interpreter:stack_frame",
         "//ir/value:reg",
     ]
 )
@@ -145,7 +146,7 @@ cc_library(
         "//ir/interpreter:architecture",
         "//ir/byte_code:reader",
         "//ir/byte_code:writer",
-        "//ir/interpreter:stack_frame",
+        "//ir/interpreter:legacy_stack_frame",
         "//ir:out_params",
         "//ir/value:reg_or",
         "//ir/value:slice",
@@ -163,7 +164,7 @@ cc_library(
         "//base:untyped_buffer",
         "//ir:module",
         "//ir/interpreter:architecture",
-        "//ir/interpreter:stack_frame",
+        "//ir/interpreter:legacy_stack_frame",
         "//ir/value:addr",
         "//ir/value:char",
         "//ir/value:fn",

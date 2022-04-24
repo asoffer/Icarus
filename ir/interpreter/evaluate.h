@@ -21,7 +21,7 @@ void Execute(module::SharedContext const& shared_context,
   absl::Cleanup c = [&] { errno = save_errno; };
   // TODO actually just have a good way to construct the buffer
   ExecutionContext ctx(&shared_context);
-  StackFrame frame(info.byte_code, ctx.stack());
+  LegacyStackFrame frame(info.byte_code, ctx.stack());
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();
@@ -36,7 +36,7 @@ ir::CompleteResultBuffer EvaluateToBuffer(
     module::Module::FunctionInformation const& info,
     ir::CompleteResultBuffer const& arguments) {
   ExecutionContext ctx(&shared_context);
-  StackFrame frame(info.byte_code, ctx.stack());
+  LegacyStackFrame frame(info.byte_code, ctx.stack());
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();

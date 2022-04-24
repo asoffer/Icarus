@@ -1,129 +1,91 @@
 #ifndef ICARUS_IR_INTERPRETER_STACK_FRAME_H
 #define ICARUS_IR_INTERPRETER_STACK_FRAME_H
 
+#include <array>
 #include <cstddef>
-#include <vector>
+#include <string>
+#include <type_traits>
+#include <utility>
 
-#include "base/meta.h"
 #include "base/untyped_buffer.h"
-#include "base/untyped_buffer_view.h"
-#include "ir/basic_block.h"
-#include "ir/byte_code/byte_code.h"
-#include "ir/byte_code/byte_code_view.h"
-#include "ir/value/fn.h"
+#include "core/bytes.h"
+#include "ir/value/addr.h"
 #include "ir/value/reg.h"
+#include "ir/value/reg_or.h"
 
-namespace interpreter {
-
-struct Stack;
+namespace ir::interpreter {
 
 struct StackFrame {
-  static constexpr size_t register_value_size = 16;
+  static constexpr size_t register_size = 16;
 
   struct Summary {
+    core::Bytes required_stack_space;
     size_t num_parameters;
     size_t num_registers;
     size_t num_outputs;
-    size_t num_stack_allocations;
   };
 
-  StackFrame() = delete;
-  StackFrame(ir::ByteCodeView bc, Stack &stack);
-  StackFrame(Summary const &s, Stack &stack);
-  ~StackFrame();
+  explicit StackFrame(Summary const& summary, std::string& fatal_error);
 
-  base::untyped_buffer::const_iterator byte_code_begin() const {
-    return byte_code_.begin();
-  }
-
-  std::byte const *raw(ir::Reg r) const { return data_.raw(offset(r)); }
-  std::byte *raw(ir::Reg r) { return data_.raw(offset(r)); }
-
+  // Returns the value of type `T` stored in register `r`.
   template <typename T>
-  auto get(ir::Reg r) const {
-    static_assert(sizeof(T) <= register_value_size);
-    return data_.get<T>(offset(r));
+  T resolve(Reg r) const requires(std::is_trivially_copyable_v<T>) {
+    T t;
+    std::memcpy(std::addressof(t), find(r), sizeof(t));
+    return t;
   }
 
   template <typename T>
-  auto set(ir::Reg r, T const &val) {
-    static_assert(sizeof(T) <= register_value_size);
-    return data_.set<T>(offset(r), val);
+  T resolve(RegOr<T> r) const requires(std::is_trivially_copyable_v<T>) {
+    return r.is_reg() ? resolve<T>(r.reg()) : r.value();
   }
 
-  void set_raw(ir::Reg r, void const *src, uint16_t num_bytes) {
-    ASSERT(num_bytes <= register_value_size);
-    ASSERT(offset(r) + num_bytes <= data_.size());
-    std::memcpy(data_.raw(offset(r)), src, num_bytes);
+  // Stores `value` into register `r`.
+  template <typename T>
+  void set(Reg r, T const& value) requires(std::is_trivially_copyable_v<T>) {
+    std::memcpy(find(r), std::addressof(value), sizeof(value));
+  }
+
+  void set_raw(ir::Reg r, void const *src, uint16_t num_bytes);
+
+  // Loads `num_bytes` from the address `from` and writes them to the register `to`.
+  void Load(core::Bytes num_bytes, RegOr<addr_t> from, Reg to) {
+    ASSERT(num_bytes.value() <= register_size);
+    std::memcpy(find(to), resolve(from), num_bytes.value());
+  }
+
+  // Stores `value` into `location`.
+  template <typename T>
+  void Store(RegOr<T> value,
+             RegOr<addr_t> location) requires(std::is_trivially_copyable_v<T>) {
+    if (value.is_reg()) {
+      std::memcpy(resolve(location), find(value.reg()), sizeof(T));
+    } else {
+      std::memcpy(resolve(location), std::addressof(value.value()), sizeof(T));
+    }
+  }
+
+  // Indicates that a fatal error has occurred and interpretation must stop.
+  void FatalError(std::string error_message) const {
+    fatal_error_ = std::move(error_message);
   }
 
  private:
-  // The buffer stores all stack allocations, then all registers, then all
-  // parameters, then all outputs.
-  size_t offset(ir::Reg r) const {
-    size_t offset = 0;
-    switch (r.kind()) {
-      case ir::Reg::Kind::Output:
-        offset += summary_.num_parameters;
-        [[fallthrough]];
-      case ir::Reg::Kind::Parameter:
-        offset += summary_.num_registers;
-        [[fallthrough]];
-      case ir::Reg::Kind::Value:
-        offset += summary_.num_stack_allocations;
-        [[fallthrough]];
-      case ir::Reg::Kind::StackAllocation:;
-    }
+  // Returns a pointer into `registers_` where the value for register `r` is
+  // stored.
+  std::byte const* find(Reg r) const;
+  std::byte* find(Reg r);
 
-    switch (r.kind()) {
-      case ir::Reg::Kind::Parameter:
-        offset += r.as<ir::Reg::Kind::Parameter>();
-        break;
-      case ir::Reg::Kind::Output:
-        offset += r.as<ir::Reg::Kind::Output>();
-        break;
-      case ir::Reg::Kind::StackAllocation:
-        offset += r.as<ir::Reg::Kind::StackAllocation>();
-        break;
-      case ir::Reg::Kind::Value: offset += r.as<ir::Reg::Kind::Value>(); break;
-    }
-    return offset * register_value_size;
-  }
+  base::untyped_buffer frame_;
+  base::untyped_buffer registers_;
 
-  size_t register_count() const {
-    return summary_.num_registers + summary_.num_parameters +
-           summary_.num_outputs + summary_.num_stack_allocations;
-  }
+  // Pointers into `registers_` which indicate the start of storage for those
+  // register kinds.
+  std::array<std::byte*, 4> starts_;
 
-  Stack &stack_;
-  size_t frame_size_;
-  ir::ByteCodeView byte_code_;
-  Summary summary_;
-  base::untyped_buffer data_;
+  std::string& fatal_error_;
 };
 
-template <typename T>
-concept FitsInRegister = (sizeof(T) <= StackFrame::register_value_size) and
-                         std::is_trivially_copyable_v<T>;
-template <typename T>
-concept NotFitsInRegister = not FitsInRegister<T>;
-
-struct Stack {
-  Stack();
-
-  std::byte *Allocate(size_t bytes);
-  void Deallocate(size_t bytes);
-
- private:
-  struct Segment {
-    base::untyped_buffer buffer;
-    size_t capacity;
-  };
-
-  std::vector<Segment> segments_;
-  std::byte *end_;
-};
-
-}  // namespace interpreter
+}  // namespace ir::interpreter
 
 #endif  // ICARUS_IR_INTERPRETER_STACK_FRAME_H

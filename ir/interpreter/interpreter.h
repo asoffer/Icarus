@@ -1,56 +1,27 @@
 #ifndef ICARUS_IR_INTERPRETER_INTERPRETER_H
 #define ICARUS_IR_INTERPRETER_INTERPRETER_H
 
+#include <cstddef>
+#include <string>
 #include <vector>
 
 #include "base/untyped_buffer.h"
+#include "ir/basic_block.h"
+#include "ir/interpreter/stack_frame.h"
 #include "ir/subroutine.h"
+#include "ir/value/result_buffer.h"
 
 namespace ir::interpreter {
 
-struct StackFrame {
-  explicit StackFrame(Subroutine const& subroutine, size_t register_size,
-                      std::string& fatal_error);
-
-  // Returns the value of type `T` stored in register `r`.
-  template <typename T>
-  T resolve(Reg r) const requires(std::is_trivially_copyable_v<T>) {
-    T t;
-    std::memcpy(std::addressof(t), find(r), sizeof(t));
-    return t;
-  }
-
-  // Stores `value` into register `r`.
-  template <typename T>
-  void set(Reg r, T const& value) requires(std::is_trivially_copyable_v<T>) {
-    std::memcpy(find(r), std::addressof(value), sizeof(value));
-  }
-
-  // Indicates that a fatal error has occurred and interpretation must stop.
-  void FatalError(std::string error_message) const {
-    fatal_error_ = std::move(error_message);
-  }
-
- private:
-  // Returns a pointer into `registers_` where the value for register `r` is
-  // stored.
-  std::byte const* find(Reg r) const;
-  std::byte* find(Reg r);
-
-  base::untyped_buffer frame_;
-  base::untyped_buffer registers_;
-
-  // Pointers into `registers_` which indicate the start of storage for those
-  // register kinds.
-  std::array<std::byte*, 4> starts_;
-
-  std::string& fatal_error_;
-};
-
 struct Interpreter {
-  static constexpr size_t register_size = 16;
+  static constexpr size_t register_size = StackFrame::register_size;
 
-  void operator()(Subroutine const& subroutine);
+  // Interprets the given `subroutine` writing the return values to `out` and
+  // returning `true` if it is successful. If an error occurs during execution,
+  // returns false.
+  bool operator()(Subroutine const& subroutine,
+                  CompleteResultBuffer const& arguments,
+                  CompleteResultBuffer& out);
 
  private:
   // Interprets each instruction in the basic block `current` and returns a
@@ -63,6 +34,9 @@ struct Interpreter {
   std::vector<StackFrame> frames_;
   std::string fatal_error_;
 };
+
+std::optional<CompleteResultBuffer> Interpret(
+    Subroutine const& subroutine, CompleteResultBuffer const& arguments);
 
 }  // namespace ir::interpreter
 

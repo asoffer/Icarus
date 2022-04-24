@@ -45,7 +45,7 @@ struct RegOr {
     return reg_;
   }
 
-  type value() const {
+  type const &value() const {
     ASSERT(is_reg() == false);
     return val_;
   }

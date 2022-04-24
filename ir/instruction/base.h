@@ -11,6 +11,7 @@
 #include "base/untyped_buffer.h"
 #include "ir/byte_code/writer.h"
 #include "ir/instruction/inliner.h"
+#include "ir/interpreter/stack_frame.h"
 #include "ir/value/reg.h"
 
 // TODO rename this file so that when you forget that for dependency reasons you
@@ -44,6 +45,9 @@ struct InstructionVTable {
   void (*copy_assign)(void const*, void*) = [](void const*, void*) {};
   void (*move_assign)(void*, void*)       = [](void*, void*) {};
   void (*destroy)(void*)                  = [](void*) {};
+
+  bool (*Interpret)(void const*, interpreter::StackFrame&) =
+      [](void const*, interpreter::StackFrame&) { return false; };
 
   void (*Serialize)(void*, ir::ByteCodeWriter*) = [](void*,
                                                      ir::ByteCodeWriter*) {
@@ -79,6 +83,19 @@ InstructionVTable InstructionVTableFor{
           *reinterpret_cast<T*>(to) = std::move(*reinterpret_cast<T*>(from));
         },
     .destroy = [](void* self) { delete reinterpret_cast<T*>(self); },
+
+    .Interpret =
+        [](void const* self, interpreter::StackFrame& frame) -> bool {
+          if constexpr (requires {
+                          InterpretInstruction(std::declval<T const&>(), frame);
+                        }) {
+            return InterpretInstruction(*reinterpret_cast<T const*>(self),
+                                        frame);
+          } else {
+            UNREACHABLE();
+            return false;
+          }
+        },
 
     .Serialize =
         [](void* self, ir::ByteCodeWriter* writer) {
@@ -195,9 +212,17 @@ struct Inst {
   Inst const& operator*() const { return *this; }
 
  private:
+  friend bool InterpretInstruction(std::same_as<Inst> auto const&,
+                                   interpreter::StackFrame&);
+
   void* data_;
   InstructionVTable const* vtable_;
 };
+
+inline bool InterpretInstruction(std::same_as<Inst> auto const& inst,
+                                 interpreter::StackFrame& frame) {
+  return inst.vtable_->Interpret(inst.data_, frame);
+}
 
 }  // namespace ir
 

@@ -11,8 +11,20 @@
 #include "ir/interpreter/architecture.h"
 
 namespace ir {
+namespace {
 
-bool InterpretInstruction(Inst const&, interpreter::StackFrame&);
+// Computes the amount of space needed in this stack frame for all stack
+// allocations.
+core::Bytes StackFrameSize(Subroutine const& subroutine) {
+  core::Bytes total;
+  subroutine.for_each_alloc(
+      ::interpreter::kArchitecture, [&](core::TypeContour t, Reg) {
+        total = core::FwdAlign(total, t.alignment()) + t.bytes();
+      });
+  return total;
+}
+
+}  // namespace
 
 BasicBlock const* InterpretInstruction(JumpCmd const& jump,
                                        interpreter::StackFrame& frame) {
@@ -35,54 +47,36 @@ BasicBlock const* InterpretInstruction(JumpCmd const& jump,
   });
 }
 
-}  // namespace ir
+namespace interpreter {
 
-namespace ir::interpreter {
-namespace {
-
-// Computes the amount of space needed in this stack frame for all stack
-// allocations.
-core::Bytes StackFrameSize(Subroutine const& subroutine) {
-  core::Bytes total;
-  subroutine.for_each_alloc(
-      ::interpreter::kArchitecture, [&](core::TypeContour t, Reg) {
-        total = core::FwdAlign(total, t.alignment()) + t.bytes();
-      });
-  return total;
-}
-
-std::byte* IncrementedBy(std::byte* p, size_t register_count) {
-  return p + Interpreter::register_size * register_count;
-}
-
-std::array<std::byte*, 4> MakeStarts(Subroutine const& subroutine,
-                                     std::byte* start) {
+bool Interpreter::operator()(Subroutine const& subroutine,
+                             CompleteResultBuffer const& arguments,
+                             CompleteResultBuffer& result) {
   size_t num_outputs = 1;
   if (auto const* rt = subroutine.type()->if_as<type::ReturningType>()) {
-    num_outputs = rt->return_types().size();
+    absl::Span outputs = rt->return_types();
+    num_outputs        = outputs.size();
+    for (type::Type t : outputs) {
+      result.append_slot(t.bytes(::interpreter::kArchitecture).value());
+    }
   }
 
-  std::byte* value     = start;
-  std::byte* output    = IncrementedBy(value, subroutine.num_regs());
-  std::byte* parameter = IncrementedBy(output, num_outputs);
-  std::byte* alloc     = IncrementedBy(parameter, subroutine.num_args());
-  return std::array<std::byte*, 4>{value, output, parameter, alloc};
-}
-
-}  // namespace
-
-StackFrame::StackFrame(Subroutine const& subroutine, size_t register_size,
-                       std::string& fatal_error)
-    : frame_(
-          base::untyped_buffer::MakeFull(StackFrameSize(subroutine).value())),
-      registers_(base::untyped_buffer::MakeFull(subroutine.num_regs() *
-                                                register_size)),
-      starts_(MakeStarts(subroutine, registers_.raw(0))),
-      fatal_error_(fatal_error) {}
-
-void Interpreter::operator()(Subroutine const& subroutine) {
-  frames_.emplace_back(subroutine, register_size, fatal_error_);
+  auto& frame = frames_.emplace_back(
+      StackFrame::Summary{.required_stack_space = StackFrameSize(subroutine),
+                          .num_parameters       = subroutine.num_args(),
+                          .num_registers        = subroutine.num_regs(),
+                          .num_outputs          = num_outputs},
+      fatal_error_);
   absl::Cleanup c = [&] { frames_.pop_back(); };
+
+  for (size_t i = 0; i < arguments.num_entries(); ++i) {
+    base::untyped_buffer_view argument = arguments[i].raw();
+    frame.set_raw(ir::Reg::Parameter(i), argument.data(), argument.size());
+  }
+
+  for (size_t i = 0; i < result.num_entries(); ++i) {
+    frame.set(ir::Reg::Output(i), result[i].raw().data());
+  }
 
   BasicBlock const* current  = subroutine.entry();
   BasicBlock const* previous = nullptr;
@@ -90,16 +84,8 @@ void Interpreter::operator()(Subroutine const& subroutine) {
     BasicBlock const* next = InterpretBasicBlock(*current);
     previous               = std::exchange(current, next);
   }
-}
 
-std::byte* StackFrame::find(Reg r) {
-  auto kind = static_cast<std::underlying_type_t<Reg::Kind>>(r.kind());
-  return starts_[kind] + Interpreter::register_size * r.raw_value();
-}
-
-std::byte const* StackFrame::find(Reg r) const {
-  auto kind = static_cast<std::underlying_type_t<Reg::Kind>>(r.kind());
-  return starts_[kind] + Interpreter::register_size * r.raw_value();
+  return fatal_error_.empty();
 }
 
 BasicBlock const* Interpreter::InterpretBasicBlock(BasicBlock const& current) {
@@ -112,4 +98,13 @@ BasicBlock const* Interpreter::InterpretBasicBlock(BasicBlock const& current) {
   return ir::InterpretInstruction(current.jump(), frames_.back());
 }
 
-}  // namespace ir::interpreter
+std::optional<CompleteResultBuffer> Interpret(
+    Subroutine const& subroutine, CompleteResultBuffer const& arguments) {
+  Interpreter interpreter;
+  CompleteResultBuffer output;
+  if (interpreter(subroutine, arguments, output)) { return output; }
+  return std::nullopt;
+}
+
+}  // namespace interpreter
+}  // namespace ir

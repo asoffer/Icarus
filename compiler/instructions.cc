@@ -239,7 +239,7 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
     module::SharedContext const& shared_context, ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const& arguments) {
   interpreter::ExecutionContext ctx(&shared_context);
-  interpreter::StackFrame frame(s.byte_code(), ctx.stack());
+  interpreter::LegacyStackFrame frame(s.byte_code(), ctx.stack());
   core::BindArguments(
       s.type()->parameters(), arguments,
       [&, i = 0](type::QualType param,
@@ -265,6 +265,9 @@ ir::CompleteResultBuffer EvaluateAtCompileTimeToBufferImpl(
     module::SharedContext const& shared_context,
     module::Module::FunctionInformation const& info,
     ir::CompleteResultBuffer const& arguments) {
+  // auto result = ir::interpreter::Interpret(subroutine, arguments);
+  // ASSERT(result != std::nullopt);
+  // return *std::move(result);
   return interpreter::Evaluate<instruction_set_t>(shared_context, info,
                                                   arguments);
 }

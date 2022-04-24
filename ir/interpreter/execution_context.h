@@ -11,7 +11,7 @@
 #include "ir/byte_code/reader.h"
 #include "ir/instruction/core.h"
 #include "ir/interpreter/architecture.h"
-#include "ir/interpreter/stack_frame.h"
+#include "ir/interpreter/legacy_stack_frame.h"
 #include "ir/value/addr.h"
 #include "ir/value/fn.h"
 #include "ir/value/reg.h"
@@ -31,7 +31,7 @@ concept HasResolveMemberFunction = requires(T t) {
 
 struct StackFrameIterator {
   StackFrameIterator(base::untyped_buffer::const_iterator byte_code_iter,
-                     StackFrame &frame)
+                     LegacyStackFrame &frame)
       : byte_code_iter_(byte_code_iter),
         begin_(byte_code_iter),
         prev_index_(0),
@@ -79,10 +79,10 @@ struct ExecutionContext {
   explicit ExecutionContext(module::SharedContext const *context)
       : shared_context_(*ASSERT_NOT_NULL(context)) {}
 
-  StackFrame const &current_frame() const {
+  LegacyStackFrame const &current_frame() const {
     return *ASSERT_NOT_NULL(current_frame_);
   }
-  StackFrame &current_frame() { return *ASSERT_NOT_NULL(current_frame_); }
+  LegacyStackFrame &current_frame() { return *ASSERT_NOT_NULL(current_frame_); }
 
   // Stores the given `value` into the given location expressed by `addr`. The
   // value must be register-sized.
@@ -111,14 +111,14 @@ struct ExecutionContext {
   }
 
   template <typename InstSet>
-  void Execute(ir::Scope, StackFrame &frame) {
-    StackFrame *old = std::exchange(current_frame_, &frame);
+  void Execute(ir::Scope, LegacyStackFrame &frame) {
+    LegacyStackFrame *old = std::exchange(current_frame_, &frame);
     absl::Cleanup c = [&] { current_frame_ = old; };
     ExecuteBlocks<InstSet>();
   }
 
   template <typename InstSet>
-  void Execute(ir::Fn fn, StackFrame &frame) {
+  void Execute(ir::Fn fn, LegacyStackFrame &frame) {
     switch (fn.kind()) {
       case ir::Fn::Kind::Native: CallNative<InstSet>(frame); break;
       case ir::Fn::Kind::Foreign: CallForeignFunction(fn, frame); break;
@@ -128,26 +128,26 @@ struct ExecutionContext {
   Stack const &stack() const & { return stack_; }
   Stack &stack() & { return stack_; }
 
-  StackFrame MakeStackFrame(ir::Fn f) {
+  LegacyStackFrame MakeStackFrame(ir::Fn f) {
     if (f.kind() == ir::Fn::Kind::Native) {
-      return StackFrame(shared_context_.Function(f).byte_code, stack());
+      return LegacyStackFrame(shared_context_.Function(f).byte_code, stack());
     } else {
       type::Function const *fn_type = shared_context_.ForeignFunctionType(f);
-      return StackFrame({.num_parameters = fn_type->parameters().size(),
+      return LegacyStackFrame({.num_parameters = fn_type->parameters().size(),
                          .num_outputs    = fn_type->return_types().size()},
                         stack());
     }
   }
 
   template <typename InstSet>
-  void CallNative(StackFrame &frame) {
-    StackFrame *old = std::exchange(current_frame_, &frame);
+  void CallNative(LegacyStackFrame &frame) {
+    LegacyStackFrame *old = std::exchange(current_frame_, &frame);
     absl::Cleanup c = [&] { current_frame_ = old; };
     ExecuteBlocks<InstSet>();
   }
 
  private:
-  void CallForeignFunction(ir::Fn f, StackFrame &frame);
+  void CallForeignFunction(ir::Fn f, LegacyStackFrame &frame);
 
   template <typename InstSet>
   void ExecuteBlocks() {
@@ -221,14 +221,14 @@ struct ExecutionContext {
         }
 
         LOG("CallInstruction", "%s: %s", f, fn_type->to_string());
-        StackFrame frame = ctx.MakeStackFrame(f);
+        LegacyStackFrame frame = ctx.MakeStackFrame(f);
 
         for (size_t i = 0; i < inst.arguments().num_entries(); ++i) {
           ir::PartialResultRef argument = inst.arguments()[i];
           if (argument.is_register()) {
             ir::Reg reg = argument.get<ir::Reg>();
             frame.set_raw(ir::Reg::Parameter(i), ctx.current_frame().raw(reg),
-                          StackFrame::register_value_size);
+                          LegacyStackFrame::register_value_size);
             LOG("CallInstruction", "  %s: [%s]", ir::Reg::Parameter(i), reg);
           } else {
             type::Type t = fn_type->parameters()[i].value.type();
@@ -291,7 +291,7 @@ struct ExecutionContext {
                                ctx))> == base::meta<void>) {
         ir::ByteCodeReader::DeserializeTo<Inst>(*iter).Apply(ctx);
       } else {
-        StackFrame frame =
+        LegacyStackFrame frame =
             ir::ByteCodeReader::DeserializeTo<Inst>(*iter).Apply(ctx);
         ctx.CallNative<InstSet>(frame);
       }
@@ -306,7 +306,7 @@ struct ExecutionContext {
 
   module::SharedContext const &shared_context_;
   Stack stack_;
-  StackFrame *current_frame_ = nullptr;
+  LegacyStackFrame *current_frame_ = nullptr;
 };
 
 }  // namespace interpreter
