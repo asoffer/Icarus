@@ -135,6 +135,12 @@ struct SetReturnInstruction
   static_assert(::interpreter::FitsInRegister<type>);
   static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
 
+  friend bool InterpretInstruction(SetReturnInstruction const& inst,
+                                   interpreter::StackFrame& frame) {
+    frame.set(ir::Reg::Output(inst.index), frame.resolve(inst.value));
+    return true;
+  }
+
   uint16_t index;
   RegOr<T> value;
 };

@@ -25,6 +25,16 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "stack_frame_test",
+    srcs = ["stack_frame_test.cc"],
+    deps = [
+        ":stack_frame",
+        "//core:bytes",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "interpreter",
     hdrs = ["interpreter.h"],

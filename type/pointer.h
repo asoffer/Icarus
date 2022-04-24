@@ -6,6 +6,7 @@
 #include "base/extend/traverse.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
+#include "ir/interpreter/stack_frame.h"
 #include "type/type.h"
 
 namespace type {
@@ -71,6 +72,12 @@ struct PtrInstruction
                                          ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = ptr %1$s";
 
+  friend bool InterpretInstruction(PtrInstruction const &inst,
+                                   ir::interpreter::StackFrame &frame) {
+    frame.set(inst.result, Ptr(frame.resolve(inst.operand)));
+    return true;
+  }
+
   Type Resolve() const { return Apply(operand.value()); }
   static type::Type Apply(type::Type operand) { return type::Ptr(operand); }
 
@@ -83,6 +90,12 @@ struct BufPtrInstruction
                                             base::BaseTraverseExtension,
                                             ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = buf-ptr %1$s";
+
+  friend bool InterpretInstruction(BufPtrInstruction const &inst,
+                                   ir::interpreter::StackFrame &frame) {
+    frame.set(inst.result, BufPtr(frame.resolve(inst.operand)));
+    return true;
+  }
 
   Type Resolve() const { return Apply(operand.value()); }
   static type::Type Apply(type::Type operand) { return type::BufPtr(operand); }

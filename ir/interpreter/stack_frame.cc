@@ -9,6 +9,8 @@ std::byte* IncrementedBy(std::byte* p, size_t register_count) {
 
 std::array<std::byte*, 4> MakeStarts(StackFrame::Summary const& summary,
                                      std::byte* start) {
+  // Taken from ir::Reg::Kind:
+  // Value = 0, Output = 1, Parameter = 2, StackAllocation = 3
   std::byte* value     = start;
   std::byte* output    = IncrementedBy(value, summary.num_registers);
   std::byte* parameter = IncrementedBy(output, summary.num_outputs);
@@ -21,8 +23,11 @@ std::array<std::byte*, 4> MakeStarts(StackFrame::Summary const& summary,
 StackFrame::StackFrame(Summary const& summary, std::string& fatal_error)
     : frame_(
           base::untyped_buffer::MakeFull(summary.required_stack_space.value())),
-      registers_(base::untyped_buffer::MakeFull(summary.num_registers *
-                                                register_size)),
+
+      registers_(base::untyped_buffer::MakeFull(
+          (summary.num_registers + summary.num_outputs +
+           summary.num_parameters + summary.num_stack_allocations) *
+          register_size)),
       starts_(MakeStarts(summary, registers_.raw(0))),
       fatal_error_(fatal_error) {}
 

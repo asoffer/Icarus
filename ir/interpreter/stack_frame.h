@@ -23,6 +23,7 @@ struct StackFrame {
     size_t num_parameters;
     size_t num_registers;
     size_t num_outputs;
+    size_t num_stack_allocations;
   };
 
   explicit StackFrame(Summary const& summary, std::string& fatal_error);

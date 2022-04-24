@@ -59,7 +59,7 @@ struct InstructionVTable {
   };
 
   void (*Inline)(void*, Inliner&) = [](void*, Inliner&) {
-    UNREACHABLE("Inlineis unimplemented");
+    UNREACHABLE("Inline is unimplemented");
   };
 
   base::MetaValue rtti;
@@ -92,7 +92,7 @@ InstructionVTable InstructionVTableFor{
             return InterpretInstruction(*reinterpret_cast<T const*>(self),
                                         frame);
           } else {
-            UNREACHABLE();
+            UNREACHABLE(typeid(T).name());
             return false;
           }
         },

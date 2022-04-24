@@ -62,10 +62,11 @@ bool Interpreter::operator()(Subroutine const& subroutine,
   }
 
   auto& frame = frames_.emplace_back(
-      StackFrame::Summary{.required_stack_space = StackFrameSize(subroutine),
-                          .num_parameters       = subroutine.num_args(),
-                          .num_registers        = subroutine.num_regs(),
-                          .num_outputs          = num_outputs},
+      StackFrame::Summary{.required_stack_space  = StackFrameSize(subroutine),
+                          .num_parameters        = subroutine.num_args(),
+                          .num_registers         = subroutine.num_regs(),
+                          .num_outputs           = num_outputs,
+                          .num_stack_allocations = subroutine.num_allocs()},
       fatal_error_);
   absl::Cleanup c = [&] { frames_.pop_back(); };
 
@@ -74,6 +75,7 @@ bool Interpreter::operator()(Subroutine const& subroutine,
     frame.set_raw(ir::Reg::Parameter(i), argument.data(), argument.size());
   }
 
+  LOG("", "%u %u", num_outputs, result.num_entries());
   for (size_t i = 0; i < result.num_entries(); ++i) {
     frame.set(ir::Reg::Output(i), result[i].raw().data());
   }
