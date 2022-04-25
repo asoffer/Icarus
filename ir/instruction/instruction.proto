@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package ir;
+
+message InstructionProto {
+  uint32 identifier = 1;
+  bytes content = 2;
+}

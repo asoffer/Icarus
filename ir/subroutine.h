@@ -14,6 +14,7 @@
 #include "core/type_contour.h"
 #include "ir/basic_block.h"
 #include "ir/blocks/register_allocator.h"
+#include "ir/subroutine.pb.h"
 #include "ir/value/reg.h"
 #include "type/callable.h"
 
@@ -41,6 +42,12 @@ struct Subroutine {
 
   BasicBlock const *entry() const { return blocks()[0]; }
   BasicBlock *entry() { return blocks()[0]; }
+
+  SubroutineProto ToProto() const;
+  static bool FromProto(
+      SubroutineProto const &proto,
+      absl::FunctionRef<Inst(InstructionProto const &)> deserialize_instruction,
+      Subroutine &result);
 
   template <typename... Args>
   BasicBlock *AppendBlock(Args &&... args) {

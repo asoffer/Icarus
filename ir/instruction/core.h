@@ -67,7 +67,8 @@ struct PhiInstruction
     values.push_back(value);
   }
 
-  friend void BaseSerialize(ByteCodeWriter& w, PhiInstruction const& inst) {
+  friend void BaseSerialize(base::Serializer auto& w,
+                            PhiInstruction const& inst) {
     base::Serialize(w, static_cast<uint16_t>(inst.values.size()));
     for (auto block : inst.blocks) { base::Serialize(w, block); }
     for (auto value : inst.values) { base::Serialize(w, value); }

@@ -5,13 +5,14 @@ cc_library(
     hdrs = ["basic_block.h"],
     srcs = ["basic_block.cc"],
     deps = [
+        ":subroutine_cc_proto",
+        "//base:ptr_span",
+        "//base:untyped_buffer",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//ir/instruction:base",
         "//ir/instruction:op_codes",
         "//ir/instruction:jump",
-        "//base:ptr_span",
-        "//base:untyped_buffer",
     ],
 )
 
@@ -50,6 +51,7 @@ cc_library(
     hdrs = ["subroutine.h"],
     srcs = ["subroutine.cc"],
     deps = [
+        ":subroutine_cc_proto",
         "//base:ptr_span",
         "//base:strong_types",
         "//core:alignment",
@@ -58,5 +60,17 @@ cc_library(
         "//ir:basic_block",
         "//ir/blocks:register_allocator",
         "//type:callable",
+        "//type:system",
     ],
+)
+
+proto_library(
+    name = "subroutine_proto",
+    srcs = ["subroutine.proto"],
+    deps = ["//ir/instruction:instruction_proto"],
+)
+
+cc_proto_library(
+    name = "subroutine_cc_proto",
+    deps = [":subroutine_proto"],
 )

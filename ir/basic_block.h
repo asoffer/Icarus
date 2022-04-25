@@ -5,12 +5,16 @@
 #include <memory>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "base/meta.h"
+#include "base/ptr_span.h"
 #include "base/untyped_buffer.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/jump.h"
 #include "ir/instruction/op_codes.h"
+#include "ir/instruction/serializer.h"
+#include "ir/subroutine.pb.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
 
@@ -46,6 +50,12 @@ struct BasicBlock {
   void ReplaceJumpTargets(BasicBlock *old_target, BasicBlock *new_target);
   void Append(BasicBlock &&b);
 
+  BasicBlockProto ToProto(InstructionSerializer &serializer) const;
+  static bool FromProto(
+      BasicBlockProto const &proto, base::PtrSpan<BasicBlock> blocks,
+      absl::FunctionRef<Inst(InstructionProto const &)> deserializer,
+      BasicBlock &result);
+
   constexpr DebugInfo const &debug() const { return debug_; }
 
   absl::Span<Inst> instructions() { return absl::MakeSpan(instructions_); }
@@ -72,6 +82,10 @@ struct BasicBlock {
   friend std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
 
  private:
+  void AppendInstruction(Inst inst) {
+    instructions_.push_back(std::move(inst));
+  }
+
   std::vector<Inst> instructions_;
 
   JumpCmd jump_ = JumpCmd::Unreachable();

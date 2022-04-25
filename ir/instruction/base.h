@@ -11,6 +11,7 @@
 #include "base/untyped_buffer.h"
 #include "ir/byte_code/writer.h"
 #include "ir/instruction/inliner.h"
+#include "ir/instruction/serializer.h"
 #include "ir/interpreter/stack_frame.h"
 #include "ir/value/reg.h"
 
@@ -19,23 +20,26 @@
 // anyway.
 namespace ir {
 
-// clang-format off
 template <typename T>
-concept Instruction = std::copy_constructible<T> and 
-                      std::assignable_from<T&, T const&> and
-                      std::assignable_from<T&, T&&> and 
-                      std::destructible<T> and
-                      base::TraversableBy<T, Inliner> and 
-                      base::SerializableBy<T, ir::ByteCodeWriter>;
+concept Inlinable = base::TraversableBy<T, Inliner>;
 
+template <typename T>
+concept ByteCodeWritable = base::SerializableBy<T, ir::ByteCodeWriter>;
+
+template <typename T>
+concept Instruction = (std::copyable<T> and std::destructible<T> and
+                       Inlinable<T> and ByteCodeWritable<T>);
+
+// clang-format off
 template <typename T>
 concept ReturningInstruction = Instruction<T> and requires (T t) {
   { t.result } -> std::same_as<Reg>;
 };
+// clang-format on
 
 template <typename T>
-concept VoidReturningInstruction = Instruction<T> and not ReturningInstruction<T>;
-// clang-format on
+concept VoidReturningInstruction = (Instruction<T> and
+                                    not ReturningInstruction<T>);
 
 struct InstructionVTable {
   void* (*copy_construct)(void const*) = [](void const*) -> void* {
@@ -48,6 +52,11 @@ struct InstructionVTable {
 
   bool (*Interpret)(void const*, interpreter::StackFrame&) =
       [](void const*, interpreter::StackFrame&) { return false; };
+
+  void (*ToProto)(void const*, InstructionSerializer&) =
+      [](void const*, InstructionSerializer&) {
+        UNREACHABLE("ToProto is unimplemented");
+      };
 
   void (*Serialize)(void*, ir::ByteCodeWriter*) = [](void*,
                                                      ir::ByteCodeWriter*) {
@@ -84,17 +93,21 @@ InstructionVTable InstructionVTableFor{
         },
     .destroy = [](void* self) { delete reinterpret_cast<T*>(self); },
 
-    .Interpret =
-        [](void const* self, interpreter::StackFrame& frame) -> bool {
-          if constexpr (requires {
-                          InterpretInstruction(std::declval<T const&>(), frame);
-                        }) {
-            return InterpretInstruction(*reinterpret_cast<T const*>(self),
-                                        frame);
-          } else {
-            UNREACHABLE(typeid(T).name());
-            return false;
-          }
+    .Interpret = [](void const* self, interpreter::StackFrame& frame) -> bool {
+      if constexpr (requires {
+                      InterpretInstruction(std::declval<T const&>(), frame);
+                    }) {
+        return InterpretInstruction(*reinterpret_cast<T const*>(self), frame);
+      } else {
+        UNREACHABLE(typeid(T).name());
+        return false;
+      }
+    },
+
+    .ToProto =
+        [](void const* self, InstructionSerializer& serializer) {
+          serializer.SetIdentifier<T>();
+          base::Serialize(serializer, *reinterpret_cast<T const*>(self));
         },
 
     .Serialize =
@@ -192,6 +205,10 @@ struct Inst {
   }
 
   ~Inst() { vtable_->destroy(data_); }
+
+  friend void BaseSerialize(InstructionSerializer& serializer, Inst const& i) {
+    i.vtable_->ToProto(i.data_, serializer);
+  }
 
   friend void BaseSerialize(ir::ByteCodeWriter& writer, Inst const& i) {
     i.vtable_->Serialize(i.data_, &writer);

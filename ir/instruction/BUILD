@@ -14,6 +14,7 @@ cc_library(
     name = "base",
     hdrs = ["base.h"],
     deps = [
+        ":serializer",
         "//base:cast",
         "//base:meta",
         "//base:serialize",
@@ -171,5 +172,26 @@ cc_library(
         "//ir/value:reg",
         "//ir/value:reg_or",
         "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+proto_library(
+    name = "instruction_proto",
+    srcs = ["instruction.proto"],
+)
+
+cc_proto_library(
+    name = "instruction_cc_proto",
+    deps = [":instruction_proto"],
+)
+
+cc_library(
+    name = "serializer",
+    hdrs = ["serializer.h"],
+    deps = [
+        ":instruction_cc_proto",
+        "//base:meta",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/types:span",
     ],
 )
