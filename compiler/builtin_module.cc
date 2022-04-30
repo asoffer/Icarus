@@ -109,7 +109,7 @@ void InsertSymbolFor(module::BuiltinModule& module, std::string_view name,
 }  // namespace
 
 std::unique_ptr<module::BuiltinModule> MakeBuiltinModule() {
-  auto module = std::make_unique<module::BuiltinModule>(EmitByteCode);
+  auto module = std::make_unique<module::BuiltinModule>();
 
   InsertSymbolFor<AbortFn>(*module, "abort", type::Func({}, {}));
   InsertSymbolFor<AlignmentFn>(

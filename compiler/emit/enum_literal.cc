@@ -70,15 +70,13 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
       current_block()->Append(type::EnumInstruction{
           .type              = &const_cast<type::Enum &>(t.as<type::Enum>()),
           .names_            = std::move(names),
-          .specified_values_ = std::move(specified_values),
-          .result            = current().subroutine->Reserve()});
+          .specified_values_ = std::move(specified_values)});
     } break;
     case ast::EnumLiteral::Kind::Flags: {
       current_block()->Append(type::FlagsInstruction{
           .type              = &const_cast<type::Flags &>(t.as<type::Flags>()),
           .names_            = std::move(names),
-          .specified_values_ = std::move(specified_values),
-          .result            = current().subroutine->Reserve()});
+          .specified_values_ = std::move(specified_values)});
     } break;
     default: UNREACHABLE();
   }

@@ -68,10 +68,12 @@ struct Enum : type::LegacyType {
 
 struct EnumInstruction
     : base::Extend<EnumInstruction>::With<base::BaseSerializeExtension> {
-  Type Resolve() const;
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   EnumInstruction const &inst);
 
   friend std::ostream &operator<<(std::ostream &os, EnumInstruction const &e) {
-    return os << e.result << " = enum(" << absl::StrJoin(e.names_, ", ") << ")";
+    return os << e.type->to_string() << " = enum("
+              << absl::StrJoin(e.names_, ", ") << ")";
   }
 
   std::string to_string() const {
@@ -89,7 +91,6 @@ struct EnumInstruction
   type::Enum *type;
   std::vector<std::string_view> names_;
   absl::flat_hash_map<uint64_t, ir::RegOr<uint64_t>> specified_values_;
-  ir::Reg result;
 };
 
 }  // namespace type

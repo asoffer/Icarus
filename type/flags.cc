@@ -33,21 +33,22 @@ core::Alignment Flags::alignment(core::Arch const &a) const {
   return core::Alignment::Get<underlying_type>();
 }
 
-Type FlagsInstruction::Resolve() const {
+bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                          FlagsInstruction const &inst) {
   absl::flat_hash_set<Flags::underlying_type> used_vals;
 
-  for (auto const &[index, reg_or_value] : specified_values_) {
-    used_vals.insert(reg_or_value.value());
+  for (auto const &[index, reg_or_value] : inst.specified_values_) {
+    used_vals.insert(interpreter.frame().resolve(reg_or_value));
   }
 
   absl::BitGen gen;
 
   absl::flat_hash_map<std::string, Flags::underlying_type> mapping;
 
-  for (size_t i = 0; i < names_.size(); ++i) {
-    auto iter = specified_values_.find(i);
-    if (iter != specified_values_.end()) {
-      mapping.emplace(names_[i], iter->second.value());
+  for (size_t i = 0; i < inst.names_.size(); ++i) {
+    auto iter = inst.specified_values_.find(i);
+    if (iter != inst.specified_values_.end()) {
+      mapping.emplace(inst.names_[i], iter->second.value());
       continue;
     }
 
@@ -60,12 +61,12 @@ Type FlagsInstruction::Resolve() const {
               std::numeric_limits<Flags::underlying_type>::digits);
       success = used_vals.insert(proposed_value).second;
     } while (not success);
-    mapping.try_emplace(std::string(names_[i]), proposed_value);
+    mapping.try_emplace(std::string(inst.names_[i]), proposed_value);
   }
 
-  type->SetMembers(std::move(mapping));
-  type->complete();
-  return type;
+  inst.type->SetMembers(std::move(mapping));
+  inst.type->complete();
+  return true;
 }
 
 Flags::Flags(ir::ModuleId mod)

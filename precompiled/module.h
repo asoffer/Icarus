@@ -36,7 +36,6 @@ struct PrecompiledModule final : module::Module {
     ASSERT(id.value() < proto_.function().size());
     return module::Module::FunctionInformation{
         .type      = nullptr,
-        .byte_code = ir::ByteCodeView(proto_.function(id.value()).byte_code()),
     };
   }
 

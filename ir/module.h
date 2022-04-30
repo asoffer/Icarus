@@ -22,26 +22,13 @@ namespace ir {
 
 struct NativeFunctionInformation {
   type::Function const *type() const { return type_; }
-  ByteCode byte_code;
   Subroutine subroutine;
   type::Function const *type_;
 };
 
 // Holds all information about generated IR.
 struct Module {
-  explicit Module(
-      ModuleId m,
-      base::any_invocable<ir::ByteCode(ir::Subroutine const &)> emit_byte_code)
-      : module_id_(m), emit_byte_code_(std::move(emit_byte_code)) {}
-
-  template <auto EmitByteCode>
-  void WriteByteCode(Scope s) {
-    auto iter = scope_data_.find(s);
-    ASSERT(iter != scope_data_.end());
-    auto &[byte_code, data] = iter->second;
-    byte_code               = emit_byte_code_(*s);
-    data->byte_code         = &byte_code;
-  }
+  explicit Module(ModuleId m) : module_id_(m) {}
 
   NativeFunctionInformation const &function(LocalFnId id) const {
     ASSERT(id.value() < functions_.size());
@@ -53,9 +40,8 @@ struct Module {
     functions_.push_back({.type_ = f});
     return LocalFnId(n);
   }
-  void Insert(LocalFnId fn, Subroutine const &subroutine) {
-    auto &info     = functions_[fn.value()];
-    info.byte_code = emit_byte_code_(subroutine);
+  void Insert(LocalFnId fn, Subroutine subroutine) {
+    functions_[fn.value()].subroutine = std::move(subroutine);
   }
 
   Fn InsertFunction(type::Function const *t,
@@ -106,11 +92,7 @@ struct Module {
     for (auto const &f : m.functions_) {
       token_iter->set(s.size());
       ++token_iter;
-      base::untyped_buffer_view buffer = f.byte_code.raw_buffer();
-      base::Serialize(
-          s, f.type(),
-          std::string_view(reinterpret_cast<char const *>(buffer.data()),
-                           buffer.size()));
+      NOT_YET();
     }
   }
 
@@ -127,7 +109,6 @@ struct Module {
       scope_data_;
 
   ModuleId module_id_;
-  base::any_invocable<ir::ByteCode(ir::Subroutine const &)> emit_byte_code_;
   absl::node_hash_map<type::Type, LocalFnId> init_, destroy_;
   absl::node_hash_map<std::pair<type::Type, type::Type>, LocalFnId>
       copy_assign_, move_assign_, copy_init_, move_init_;

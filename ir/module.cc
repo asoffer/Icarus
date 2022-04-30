@@ -16,10 +16,7 @@ Fn Module::InsertFunction(
   ir::Subroutine subroutine(t);
   initializer(subroutine);
 
-  ir::ByteCode byte_code = emit_byte_code_(subroutine);
-
   auto &info = functions_.emplace_back(NativeFunctionInformation{
-      .byte_code  = std::move(byte_code),
       .subroutine = std::move(subroutine),
       .type_      = t,
   });

@@ -80,7 +80,6 @@ struct Module : base::Cast<Module> {
 
   struct FunctionInformation {
     type::Function const *type;
-    ir::ByteCodeView byte_code;
     ir::Subroutine const *subroutine;
   };
   // Must return a `FunctionInformation` object capturing the type and byte code

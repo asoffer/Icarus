@@ -78,11 +78,12 @@ struct Flags : type::LegacyType {
 
 struct FlagsInstruction
     : base::Extend<FlagsInstruction>::With<base::BaseSerializeExtension> {
-  Type Resolve() const;
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   FlagsInstruction const &inst);
 
   friend std::ostream &operator<<(std::ostream &os, FlagsInstruction const &f) {
-    return os << f.result << " = flags(" << absl::StrJoin(f.names_, ", ")
-              << ")";
+    return os << f.type->to_string() << " = flags("
+              << absl::StrJoin(f.names_, ", ") << ")";
   }
 
   std::string to_string() const {
@@ -100,7 +101,6 @@ struct FlagsInstruction
   type::Flags *type;
   std::vector<std::string_view> names_;
   absl::flat_hash_map<uint64_t, ir::RegOr<uint64_t>> specified_values_;
-  ir::Reg result;
 };
 
 struct XorFlagsInstruction

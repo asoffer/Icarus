@@ -23,11 +23,9 @@ namespace module {
 struct BuiltinModule final : Module {
   static constexpr std::string_view BuiltinIdentifier = "~builtin";
 
-  BuiltinModule(base::any_invocable<ir::ByteCode(ir::Subroutine const &)>
-                    byte_code_emitter)
+  BuiltinModule()
       : Module(std::string(BuiltinIdentifier)),
-        module_content_(ir::ModuleId::Builtin(), std::move(byte_code_emitter)) {
-  }
+        module_content_(ir::ModuleId::Builtin()) {}
 
   absl::Span<SymbolInformation const> Symbols(
       std::string_view name) const override {
@@ -39,7 +37,6 @@ struct BuiltinModule final : Module {
   FunctionInformation Function(ir::LocalFnId id) const override {
     auto const &info = module_content_.function(id);
     return FunctionInformation{.type       = info.type(),
-                               .byte_code  = info.byte_code,
                                .subroutine = &info.subroutine};
   }
 

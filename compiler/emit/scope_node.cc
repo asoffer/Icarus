@@ -162,7 +162,6 @@ void Compiler::EmitToBuffer(ast::ScopeNode const *node,
   });
 
   if (node->hashtags.contains(ir::Hashtag::Const)) {
-    context.ir().WriteByteCode<EmitByteCode>(scope);
     auto blocks = InterpretScopeAtCompileTime(shared_context(), scope,
                                               constant_arguments);
 

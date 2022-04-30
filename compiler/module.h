@@ -14,7 +14,7 @@ namespace compiler {
 struct CompiledModule : module::Module {
   explicit CompiledModule(std::string identifier, ir::ModuleId id)
       : Module(std::move(identifier)),
-        ir_module_(id, EmitByteCode),
+        ir_module_(id),
         context_(&ir_module_),
         module_(this),
         id_(id) {
@@ -47,7 +47,7 @@ struct CompiledModule : module::Module {
     precompiled::ModuleProto proto;
     proto.set_identifier(std::string(identifier()));
     for (auto const &f : ir_module_.functions()) {
-      proto.add_function()->set_byte_code(std::string(f.byte_code.view()));
+      NOT_YET();
     };
     auto &symbols = *proto.mutable_symbols();
     for (auto const &[name, infos] : exported_) {
@@ -85,7 +85,6 @@ struct CompiledModule : module::Module {
   FunctionInformation Function(ir::LocalFnId id) const override {
     auto const &info = ir_module_.function(id);
     return FunctionInformation{.type       = info.type(),
-                               .byte_code  = info.byte_code,
                                .subroutine = &info.subroutine};
   }
 

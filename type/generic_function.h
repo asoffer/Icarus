@@ -14,8 +14,7 @@ namespace type {
 
 struct GenericFunction : LegacyType {
   explicit GenericFunction(ir::ByteCode byte_code)
-      : LegacyType(IndexOf<GenericFunction>(), {}),
-        info_{.byte_code = std::move(byte_code)} {}
+      : LegacyType(IndexOf<GenericFunction>(), {}) {}
 
   template <typename InstructionSet>
   Function const *Instantiate(absl::Span<Argument> arguments) {
