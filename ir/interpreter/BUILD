@@ -51,6 +51,7 @@ cc_library(
         "//ir:subroutine",
         "//ir/instruction:base",
         "//ir/value:result_buffer",
+        "//module:shared_context",
         "@com_google_absl//absl/cleanup",
     ],
 )

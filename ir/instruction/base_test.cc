@@ -17,6 +17,9 @@ struct MockInstruction {
   friend void BaseSerialize(ir::ByteCodeWriter& writer,
                             MockInstruction const&) {}
 
+  friend void BaseSerialize(ir::InstructionSerializer& serializer,
+                            MockInstruction const&) {}
+
   friend void BaseTraverse(ir::Inliner&, MockInstruction const&) {}
 
  private:

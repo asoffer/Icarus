@@ -323,6 +323,7 @@ cc_library(
         "//compiler:compiler_header",
         "//ir/value:reg_or",
         "//type",
+        "//type:function_instructions",
     ],
 )
 
@@ -649,6 +650,8 @@ cc_library(
         "//ast",
         "//frontend/lex:operators",
         "//compiler:compiler_header",
+        "//type:pointer",
+        "//type:pointer_instructions",
         "//type:struct",
     ],
 )

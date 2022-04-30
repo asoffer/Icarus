@@ -147,6 +147,7 @@ cc_library(
         "//ir/interpreter:architecture",
         "//ir/byte_code:reader",
         "//ir/byte_code:writer",
+        "//ir/interpreter",
         "//ir/interpreter:legacy_stack_frame",
         "//ir:out_params",
         "//ir/value:reg_or",

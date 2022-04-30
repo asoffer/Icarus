@@ -18,6 +18,7 @@
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
+#include "ir/interpreter/interpreter.h"
 #include "module/module.h"
 #include "type/primitive.h"
 #include "type/type.h"
@@ -108,6 +109,14 @@ struct XorFlagsInstruction
                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = xor-flags %1$s %2$s";
 
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   XorFlagsInstruction const &inst) {
+    interpreter.frame().set(inst.result,
+              static_cast<Flags::underlying_type>(interpreter.frame().resolve(inst.lhs) ^
+                                                  interpreter.frame().resolve(inst.rhs)));
+    return true;
+  }
+
   Flags::underlying_type Resolve() const {
     return Apply(lhs.value(), rhs.value());
   }
@@ -127,6 +136,14 @@ struct AndFlagsInstruction
                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = and-flags %1$s %2$s";
 
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   AndFlagsInstruction const &inst) {
+    interpreter.frame().set(inst.result,
+              static_cast<Flags::underlying_type>(interpreter.frame().resolve(inst.lhs) &
+                                                  interpreter.frame().resolve(inst.rhs)));
+    return true;
+  }
+
   Flags::underlying_type Resolve() const {
     return Apply(lhs.value(), rhs.value());
   }
@@ -145,6 +162,14 @@ struct OrFlagsInstruction
                                              base::BaseTraverseExtension,
                                              ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = or-flags %1$s %2$s";
+
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   OrFlagsInstruction const &inst) {
+    interpreter.frame().set(inst.result,
+              static_cast<Flags::underlying_type>(interpreter.frame().resolve(inst.lhs) |
+                                                  interpreter.frame().resolve(inst.rhs)));
+    return true;
+  }
 
   Flags::underlying_type Resolve() const {
     return Apply(lhs.value(), rhs.value());

@@ -83,7 +83,6 @@ TEST(Identifier, CyclicDependency) {
 
   y
   )");
-  LOG("", "%p", mod.get<ast::Identifier>());
   ASSERT_THAT(mod.context().qual_types(mod.get<ast::Identifier>()),
               UnorderedElementsAre(type::QualType::Error()));
   EXPECT_THAT(infra.diagnostics(),

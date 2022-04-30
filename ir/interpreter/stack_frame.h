@@ -26,7 +26,9 @@ struct StackFrame {
     size_t num_stack_allocations;
   };
 
-  explicit StackFrame(Summary const& summary, std::string& fatal_error);
+  explicit StackFrame(Summary const& summary);
+
+  addr_t frame() { return frame_.data(); }
 
   // Returns the value of type `T` stored in register `r`.
   template <typename T>
@@ -66,25 +68,18 @@ struct StackFrame {
     }
   }
 
-  // Indicates that a fatal error has occurred and interpretation must stop.
-  void FatalError(std::string error_message) const {
-    fatal_error_ = std::move(error_message);
-  }
-
- private:
   // Returns a pointer into `registers_` where the value for register `r` is
   // stored.
   std::byte const* find(Reg r) const;
   std::byte* find(Reg r);
 
+ private:
   base::untyped_buffer frame_;
   base::untyped_buffer registers_;
 
   // Pointers into `registers_` which indicate the start of storage for those
   // register kinds.
   std::array<std::byte*, 4> starts_;
-
-  std::string& fatal_error_;
 };
 
 }  // namespace ir::interpreter

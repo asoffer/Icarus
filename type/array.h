@@ -8,6 +8,7 @@
 #include "core/arch.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/interpreter/stack_frame.h"
 #include "ir/value/fn.h"
 #include "type/primitive.h"
@@ -103,12 +104,11 @@ struct ArrayInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = array %1$s %2$s";
   using length_t                                 = Array::length_t;
 
-  friend bool InterpretInstruction(ArrayInstruction const &inst,
-                                   ir::interpreter::StackFrame &frame) {
-    frame.set(
-        inst.result,
-        Arr(*reinterpret_cast<length_t const *>(frame.resolve(inst.length)),
-            frame.resolve(inst.data_type)));
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   ArrayInstruction const &inst) {
+    interpreter.frame().set(inst.result, Type(Arr(*reinterpret_cast<length_t const *>(
+                                        interpreter.frame().resolve(inst.length)),
+                                    interpreter.frame().resolve(inst.data_type))));
     return true;
   }
 

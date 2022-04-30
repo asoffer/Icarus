@@ -23,6 +23,7 @@ namespace ir {
 struct NativeFunctionInformation {
   type::Function const *type() const { return type_; }
   ByteCode byte_code;
+  Subroutine subroutine;
   type::Function const *type_;
 };
 

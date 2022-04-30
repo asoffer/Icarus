@@ -9,13 +9,11 @@ namespace {
 using ::testing::IsEmpty;
 
 TEST(StackFrame, SetResolve) {
-  std::string fatal_error;
   StackFrame frame({.required_stack_space  = core::Bytes(32),
                     .num_parameters        = 2,
                     .num_registers         = 5,
                     .num_outputs           = 1,
-                    .num_stack_allocations = 4},
-                   fatal_error);
+                    .num_stack_allocations = 4});
 
   frame.set(Reg(1), uint64_t{17});
   EXPECT_EQ(frame.resolve<uint64_t>(Reg(1)), uint64_t{17});
@@ -31,13 +29,11 @@ TEST(StackFrame, SetResolve) {
 }
 
 TEST(StackFrame, ResolveRegOr) {
-  std::string fatal_error;
   StackFrame frame({.required_stack_space  = core::Bytes(32),
                     .num_parameters        = 2,
                     .num_registers         = 5,
                     .num_outputs           = 1,
-                    .num_stack_allocations = 4},
-                   fatal_error);
+                    .num_stack_allocations = 4});
 
   frame.set(Reg(1), uint64_t{17});
   EXPECT_EQ(frame.resolve(RegOr<uint64_t>(Reg(1))), uint64_t{17});
@@ -45,13 +41,11 @@ TEST(StackFrame, ResolveRegOr) {
 }
 
 TEST(StackFrame, SetRaw) {
-  std::string fatal_error;
   StackFrame frame({.required_stack_space  = core::Bytes(32),
                     .num_parameters        = 2,
                     .num_registers         = 5,
                     .num_outputs           = 1,
-                    .num_stack_allocations = 4},
-                   fatal_error);
+                    .num_stack_allocations = 4});
 
   uint64_t n = 17;
   frame.set_raw(Reg(1), &n, sizeof(uint64_t));
@@ -59,13 +53,11 @@ TEST(StackFrame, SetRaw) {
 }
 
 TEST(StackFrame, Load) {
-  std::string fatal_error;
   StackFrame frame({.required_stack_space  = core::Bytes(32),
                     .num_parameters        = 2,
                     .num_registers         = 5,
                     .num_outputs           = 1,
-                    .num_stack_allocations = 4},
-                   fatal_error);
+                    .num_stack_allocations = 4});
 
   uint64_t n = 17;
   frame.Load(core::Bytes::Get<uint64_t>(),
@@ -74,33 +66,19 @@ TEST(StackFrame, Load) {
 }
 
 TEST(StackFrame, Store) {
-  std::string fatal_error;
   StackFrame frame({.required_stack_space  = core::Bytes(32),
                     .num_parameters        = 2,
                     .num_registers         = 5,
                     .num_outputs           = 1,
-                    .num_stack_allocations = 4},
-                   fatal_error);
+                    .num_stack_allocations = 4});
 
   uint64_t n = 17;
   frame.Store(RegOr<uint64_t>(4), RegOr<addr_t>(reinterpret_cast<addr_t>(&n)));
   EXPECT_EQ(n, 4);
   frame.set(Reg(1), uint64_t{0});
-  frame.Store(RegOr<uint64_t>(Reg(1)), RegOr<addr_t>(reinterpret_cast<addr_t>(&n)));
+  frame.Store(RegOr<uint64_t>(Reg(1)),
+              RegOr<addr_t>(reinterpret_cast<addr_t>(&n)));
   EXPECT_EQ(n, 0);
-}
-
-TEST(StackFrame, FatalError) {
-  std::string fatal_error;
-  StackFrame frame({.required_stack_space  = core::Bytes(32),
-                    .num_parameters        = 2,
-                    .num_registers         = 5,
-                    .num_outputs           = 1,
-                    .num_stack_allocations = 4},
-                   fatal_error);
-  EXPECT_THAT(fatal_error, IsEmpty());
-  frame.FatalError("oh no!");
-  EXPECT_EQ(fatal_error, "oh no!");
 }
 
 }  // namespace

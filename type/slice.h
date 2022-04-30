@@ -8,6 +8,7 @@
 #include "core/arch.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/value/slice.h"
 #include "type/primitive.h"
 #include "type/type.h"
@@ -78,6 +79,13 @@ struct SliceInstruction
                                            ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = slice %1$s";
 
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   SliceInstruction const &inst) {
+    interpreter.frame().set(
+        inst.result, Type(Slc(interpreter.frame().resolve(inst.data_type))));
+    return true;
+  }
+
   Type Resolve() const { return Slc(data_type.value()); }
 
   ir::RegOr<Type> data_type;
@@ -89,6 +97,14 @@ struct SliceLengthInstruction
                                                  base::BaseTraverseExtension,
                                                  ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = slice-length %1$s";
+
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   SliceLengthInstruction const &inst) {
+    interpreter.frame().set(inst.result,
+                            interpreter.frame().resolve(inst.slice) +
+                                core::Bytes::Get<ir::addr_t>().value());
+    return true;
+  }
 
   ir::addr_t Resolve() const {
     // TODO: Guarantee alignment?
@@ -104,6 +120,13 @@ struct SliceDataInstruction
                                                base::BaseTraverseExtension,
                                                ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = slice-data %1$s";
+
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   SliceDataInstruction const &inst) {
+    interpreter.frame().set(inst.result,
+                            interpreter.frame().resolve(inst.slice));
+    return true;
+  }
 
   ir::addr_t Resolve() const { return slice.value(); }
 

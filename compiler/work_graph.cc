@@ -4,51 +4,10 @@
 #include "compiler/emit/scaffolding.h"
 #include "compiler/instructions.h"
 #include "compiler/verify/verify.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/module.h"
 
 namespace compiler {
-namespace {
-
-ir::NativeFunctionInformation MakeNativeFunctionInformation(
-    Compiler &c, ast::Expression const *expr, type::Type type) {
-  LOG("MakeNativeFunctionInformation",
-      "NativeFunctionInformation for %s: %s %p", expr->DebugString(),
-      type.to_string(), &c.context());
-  ir::Subroutine fn(type::Func({}, {type}));
-  c.push_current(&fn);
-  absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
-  c.current_block()     = fn.entry();
-
-  ir::PartialResultBuffer buffer;
-  c.EmitToBuffer(expr, buffer);
-
-  if (type.is_big()) {
-    ASSERT(buffer.num_entries() != 0);
-    // TODO: guaranteed move-elision
-    MoveInitializationEmitter emitter(c);
-    emitter(type, ir::Reg::Output(0), buffer);
-  } else {
-    ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-               uint16_t, uint32_t, uint64_t, float, double, type::Type,
-               ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
-               ir::UnboundScope, ir::ScopeContext, ir::Block>(
-        type, [&]<typename T>() {
-          c.current_block()->Append(ir::SetReturnInstruction<T>{
-              .index = 0,
-              .value = buffer.get<T>(0),
-          });
-        });
-  }
-  c.current_block()->set_jump(ir::JumpCmd::Return());
-  LOG("MakeNativeFunctionInformation", "%s", fn);
-
-  auto byte_code = EmitByteCode(fn);
-
-  return ir::NativeFunctionInformation{.byte_code = std::move(byte_code),
-                                       .type_     = type::Func({}, {type})};
-}
-
-}  // namespace
 
 bool IsConstantDeclaration(ast::Node const *n) {
   auto const *decl = n->if_as<ast::Declaration>();
@@ -252,8 +211,7 @@ WorkGraph::EvaluateToBuffer(module::SharedContext const &shared_context,
   c.state().scaffolding.emplace_back();
   absl::Cleanup cleanup = [&] { c.state().scaffolding.pop_back(); };
 
-  ir::NativeFunctionInformation info =
-      MakeNativeFunctionInformation(c, *expr, expr.type());
+  auto fn = c.MakeSubroutine(expr);
 
   for (auto const &[item, deps] : w.dependencies_) {
     if (item.kind == WorkItem::Kind::EmitFunctionBody or
@@ -267,11 +225,12 @@ WorkGraph::EvaluateToBuffer(module::SharedContext const &shared_context,
   w.dependencies_.clear();
 
   if (buffering_consumer.empty()) {
-    return EvaluateAtCompileTimeToBuffer(shared_context,
-                                         module::Module::FunctionInformation{
-                                             .type      = info.type(),
-                                             .byte_code = info.byte_code,
-                                         });
+    if (auto result =
+            ir::interpreter::Interpret(shared_context, fn)) {
+      return std::move(*result);
+    } else {
+      NOT_YET("Fatal interpreter error.");
+    }
   } else {
     return std::move(buffering_consumer).extract();
   }

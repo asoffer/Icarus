@@ -17,6 +17,7 @@
 #include "ir/instruction/foreign.h"
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/execution_context.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/interpreter/legacy_stack_frame.h"
 #include "ir/out_params.h"
 #include "ir/subroutine.h"
@@ -50,6 +51,31 @@ struct CastInstruction<ToType(FromType)>
                            base::UniversalPrintToString(result),
                            base::UniversalPrintToString(value),
                            typeid(from_type).name(), typeid(to_type).name());
+  }
+
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   CastInstruction const& inst) {
+    if constexpr (::interpreter::FitsInRegister<from_type>) {
+      if constexpr (base::meta<to_type> == base::meta<Char>) {
+        static_assert(sizeof(from_type) == 1, "Invalid cast to Char");
+        interpreter.frame().set(inst.result,
+                                ir::Char(static_cast<uint8_t>(
+                                    interpreter.frame().resolve(inst.value))));
+      }
+      from_type from = interpreter.frame().resolve(inst.value);
+      if constexpr (std::is_integral_v<from_type> or
+                    std::is_floating_point_v<from_type>) {
+        interpreter.frame().set(inst.result, static_cast<to_type>(from));
+      } else {
+        interpreter.frame().set(inst.result, from.template as_type<to_type>());
+      }
+    } else {
+      interpreter.frame().set(inst.result,
+                              reinterpret_cast<from_type const*>(
+                                  interpreter.frame().resolve(inst.value))
+                                  ->template as_type<to_type>());
+    }
+    return true;
   }
 
   void Apply(::interpreter::ExecutionContext& ctx) const
@@ -353,6 +379,23 @@ struct CompileTime : base::Extend<CompileTime<A, T>>::template With<
     if constexpr (A == Action::MoveAssign) { return "move-assign %1$s %2$s"; }
   }();
 
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   CompileTime const& inst) {
+    auto* to_ptr = reinterpret_cast<T*>(interpreter.frame().resolve(inst.to));
+    auto* from_ptr =
+        reinterpret_cast<T*>(interpreter.frame().resolve(inst.from));
+    if constexpr (A == Action::CopyInit) {
+      new (to_ptr) T(*from_ptr);
+    } else if constexpr (A == Action::MoveInit) {
+      new (to_ptr) T(std::move(*from_ptr));
+    } else if constexpr (A == Action::CopyAssign) {
+      *to_ptr = *from_ptr;
+    } else if constexpr (A == Action::MoveAssign) {
+      *to_ptr = std::move(*from_ptr);
+    }
+    return true;
+  }
+
   void Apply(::interpreter::ExecutionContext& ctx) const {
     auto* to_ptr   = reinterpret_cast<T*>(ctx.resolve(to));
     auto* from_ptr = reinterpret_cast<T*>(ctx.resolve(from));
@@ -381,8 +424,14 @@ struct CompileTime<Action::Destroy, T>
           base::BaseSerializeExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "destroy %1$s";
 
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   CompileTime const& inst) {
+    reinterpret_cast<T*>(interpreter.frame().resolve(inst.addr))->~T();
+    return true;
+  }
+
   void Apply(::interpreter::ExecutionContext& ctx) const {
-    reinterpret_cast<T*>(ctx.resolve(addr)).~T();
+    reinterpret_cast<T*>(ctx.resolve(addr))->~T();
   }
 
   friend void BaseTraverse(Inliner& inl, CompileTime& inst) {
@@ -499,6 +548,17 @@ struct StructIndexInstruction
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (struct %3$s)";
 
+  friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
+                                   StructIndexInstruction const& inst) {
+    interpreter.frame().set(
+        inst.result, interpreter.frame().resolve(inst.addr) +
+                         inst.struct_type
+                             ->offset(interpreter.frame().resolve(inst.index),
+                                      ::interpreter::kArchitecture)
+                             .value());
+    return true;
+  }
+
   addr_t Resolve() const {
     return addr.value() +
            struct_type->offset(index.value(), ::interpreter::kArchitecture)
@@ -517,6 +577,19 @@ struct PtrIncrInstruction
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (pointer %3$s)";
+
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   PtrIncrInstruction const& inst) {
+    interpreter.frame().set(
+        inst.result,
+        interpreter.frame().resolve(inst.addr) +
+            core::FwdAlign(
+                inst.ptr->pointee().bytes(::interpreter::kArchitecture),
+                inst.ptr->pointee().alignment(::interpreter::kArchitecture))
+                    .value() *
+                interpreter.frame().resolve(inst.index));
+    return true;
+  }
 
   addr_t Resolve() const {
     return addr.value() +
@@ -538,6 +611,14 @@ struct AndInstruction
                                          base::BaseSerializeExtension,
                                          DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = and %1$s %2$s";
+
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   AndInstruction const& inst) {
+    interpreter.frame().set(inst.result,
+                            (interpreter.frame().resolve(inst.lhs) and
+                             interpreter.frame().resolve(inst.rhs)));
+    return true;
+  }
 
   bool Resolve() const { return Apply(lhs.value(), rhs.value()); }
   static bool Apply(bool lhs, bool rhs) { return lhs and rhs; }

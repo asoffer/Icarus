@@ -8,6 +8,7 @@
 #include "frontend/lex/operators.h"
 #include "ir/instruction/arithmetic.h"
 #include "type/pointer.h"
+#include "type/pointer_instructions.h"
 #include "type/struct.h"
 
 namespace compiler {

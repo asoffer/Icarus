@@ -3,6 +3,7 @@
 #include "absl/strings/str_format.h"
 #include "base/debug.h"
 #include "base/global.h"
+#include "ir/interpreter/interpreter.h"
 #include "type/system.h"
 
 namespace type {
@@ -46,6 +47,16 @@ Type OpaqueTypeInstruction::Resolve() const {
       std::make_pair(mod.value(), reinterpret_cast<uintptr_t>(o)), o);
   GlobalTypeSystem.insert(Type(o));
   return o;
+}
+
+bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                          OpaqueTypeInstruction const &inst) {
+  ir::ModuleId mod = interpreter.frame().resolve(inst.mod);
+  auto *o          = Allocate<Opaque>(mod);
+  used_.lock()->emplace(std::make_pair(mod, reinterpret_cast<uintptr_t>(o)), o);
+  GlobalTypeSystem.insert(Type(o));
+  interpreter.frame().set(inst.result, Type(o));
+  return true;
 }
 
 }  // namespace type

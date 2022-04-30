@@ -13,8 +13,10 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
+#include "type/function_instructions.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
+#include "type/pointer_instructions.h"
 #include "type/slice.h"
 #include "type/struct.h"
 

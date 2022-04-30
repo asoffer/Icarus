@@ -20,16 +20,14 @@ std::array<std::byte*, 4> MakeStarts(StackFrame::Summary const& summary,
 
 }  // namespace
 
-StackFrame::StackFrame(Summary const& summary, std::string& fatal_error)
+StackFrame::StackFrame(Summary const& summary)
     : frame_(
           base::untyped_buffer::MakeFull(summary.required_stack_space.value())),
-
       registers_(base::untyped_buffer::MakeFull(
           (summary.num_registers + summary.num_outputs +
            summary.num_parameters + summary.num_stack_allocations) *
           register_size)),
-      starts_(MakeStarts(summary, registers_.raw(0))),
-      fatal_error_(fatal_error) {}
+      starts_(MakeStarts(summary, registers_.raw(0))) {}
 
 std::byte* StackFrame::find(Reg r) {
   auto kind = static_cast<std::underlying_type_t<Reg::Kind>>(r.kind());

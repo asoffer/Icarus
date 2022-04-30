@@ -24,17 +24,20 @@ struct EqInstruction : base::Extend<EqInstruction<NumType>>::template With<
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = eq %1$s %2$s";
 
-  friend bool InterpretInstruction(EqInstruction<num_type> const &inst,
-                                   interpreter::StackFrame &frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
+                                   EqInstruction<num_type> const &inst) {
     bool value;
     if constexpr (::interpreter::FitsInRegister<num_type>) {
-      value = (frame.resolve(inst.lhs) == frame.resolve(inst.rhs));
+      value = (interpreter.frame().resolve(inst.lhs) ==
+               interpreter.frame().resolve(inst.rhs));
     } else {
-      value = (*reinterpret_cast<num_type const *>(frame.resolve(inst.lhs)) ==
-               *reinterpret_cast<num_type const *>(frame.resolve(inst.rhs)));
+      value = (*reinterpret_cast<num_type const *>(
+                   interpreter.frame().resolve(inst.lhs)) ==
+               *reinterpret_cast<num_type const *>(
+                   interpreter.frame().resolve(inst.rhs)));
     }
 
-    frame.set(inst.result, value);
+    interpreter.frame().set(inst.result, value);
     return true;
   }
 
@@ -66,17 +69,20 @@ struct NeInstruction : base::Extend<NeInstruction<NumType>>::template With<
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = ne %1$s %2$s";
 
-  friend bool InterpretInstruction(NeInstruction<num_type> const &inst,
-                                   interpreter::StackFrame &frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
+                                   NeInstruction<num_type> const &inst) {
     bool value;
     if constexpr (::interpreter::FitsInRegister<num_type>) {
-      value = (frame.resolve(inst.lhs) != frame.resolve(inst.rhs));
+      value = (interpreter.frame().resolve(inst.lhs) !=
+               interpreter.frame().resolve(inst.rhs));
     } else {
-      value = (*reinterpret_cast<num_type const *>(frame.resolve(inst.lhs)) !=
-               *reinterpret_cast<num_type const *>(frame.resolve(inst.rhs)));
+      value = (*reinterpret_cast<num_type const *>(
+                   interpreter.frame().resolve(inst.lhs)) !=
+               *reinterpret_cast<num_type const *>(
+                   interpreter.frame().resolve(inst.rhs)));
     }
 
-    frame.set(inst.result, value);
+    interpreter.frame().set(inst.result, value);
     return true;
   }
 
@@ -108,17 +114,20 @@ struct LtInstruction : base::Extend<LtInstruction<NumType>>::template With<
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = lt %1$s %2$s";
 
-  friend bool InterpretInstruction(LtInstruction<num_type> const &inst,
-                                   interpreter::StackFrame &frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
+                                   LtInstruction<num_type> const &inst) {
     bool value;
     if constexpr (::interpreter::FitsInRegister<num_type>) {
-      value = (frame.resolve(inst.lhs) < frame.resolve(inst.rhs));
+      value = (interpreter.frame().resolve(inst.lhs) <
+               interpreter.frame().resolve(inst.rhs));
     } else {
-      value = (*reinterpret_cast<num_type const *>(frame.resolve(inst.lhs)) <
-               *reinterpret_cast<num_type const *>(frame.resolve(inst.rhs)));
+      value = (*reinterpret_cast<num_type const *>(
+                   interpreter.frame().resolve(inst.lhs)) <
+               *reinterpret_cast<num_type const *>(
+                   interpreter.frame().resolve(inst.rhs)));
     }
 
-    frame.set(inst.result, value);
+    interpreter.frame().set(inst.result, value);
     return true;
   }
 
@@ -150,17 +159,20 @@ struct LeInstruction : base::Extend<LeInstruction<NumType>>::template With<
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = le %1$s %2$s";
 
-  friend bool InterpretInstruction(LeInstruction<num_type> const &inst,
-                                   interpreter::StackFrame &frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
+                                   LeInstruction<num_type> const &inst) {
     bool value;
     if constexpr (::interpreter::FitsInRegister<num_type>) {
-      value = (frame.resolve(inst.lhs) <= frame.resolve(inst.rhs));
+      value = (interpreter.frame().resolve(inst.lhs) <=
+               interpreter.frame().resolve(inst.rhs));
     } else {
-      value = (*reinterpret_cast<num_type const *>(frame.resolve(inst.lhs)) <=
-               *reinterpret_cast<num_type const *>(frame.resolve(inst.rhs)));
+      value = (*reinterpret_cast<num_type const *>(
+                   interpreter.frame().resolve(inst.lhs)) <=
+               *reinterpret_cast<num_type const *>(
+                   interpreter.frame().resolve(inst.rhs)));
     }
 
-    frame.set(inst.result, value);
+    interpreter.frame().set(inst.result, value);
     return true;
   }
 

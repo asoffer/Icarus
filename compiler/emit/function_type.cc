@@ -4,12 +4,13 @@
 #include "compiler/compiler.h"
 #include "ir/value/reg_or.h"
 #include "type/function.h"
+#include "type/function_instructions.h"
 #include "type/type.h"
 
 namespace compiler {
 
 void Compiler::EmitToBuffer(ast::FunctionType const *node,
-                            ir::PartialResultBuffer &out) {
+                           ir::PartialResultBuffer &out) {
   std::vector<std::pair<std::string, ir::RegOr<type::Type>>> param_vals;
   std::vector<ir::RegOr<type::Type>> out_vals;
   param_vals.reserve(node->parameters().size());

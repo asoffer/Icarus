@@ -8,6 +8,7 @@
 #include "base/extend/traverse.h"
 #include "ir/instruction/debug.h"
 #include "ir/interpreter/execution_context.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/interpreter/legacy_stack_frame.h"
 
 namespace ir {
@@ -28,14 +29,18 @@ struct AddInstruction
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = add %1$s %2$s";
 
-  friend bool InterpretInstruction(AddInstruction<num_type> const &inst,
-                                   interpreter::StackFrame &frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
+                                   AddInstruction const &inst) {
     if constexpr (::interpreter::FitsInRegister<num_type>) {
-      frame.set(inst.result, frame.resolve(inst.lhs) + frame.resolve(inst.rhs));
+      interpreter.frame().set(inst.result,
+                              interpreter.frame().resolve(inst.lhs) +
+                                  interpreter.frame().resolve(inst.rhs));
     } else {
-      new (frame.resolve<addr_t>(inst.result)) num_type(
-          *reinterpret_cast<num_type const *>(frame.resolve(inst.lhs)) +
-          *reinterpret_cast<num_type const *>(frame.resolve(inst.rhs)));
+      new (interpreter.frame().resolve<addr_t>(inst.result))
+          num_type(*reinterpret_cast<num_type const *>(
+                       interpreter.frame().resolve(inst.lhs)) +
+                   *reinterpret_cast<num_type const *>(
+                       interpreter.frame().resolve(inst.rhs)));
     }
     return true;
   }
@@ -67,14 +72,18 @@ struct SubInstruction
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = sub %1$s %2$s";
 
-  friend bool InterpretInstruction(SubInstruction<num_type> const &inst,
-                                   interpreter::StackFrame &frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
+                                   SubInstruction const &inst) {
     if constexpr (::interpreter::FitsInRegister<num_type>) {
-      frame.set(inst.result, frame.resolve(inst.lhs) - frame.resolve(inst.rhs));
+      interpreter.frame().set(inst.result,
+                              interpreter.frame().resolve(inst.lhs) -
+                                  interpreter.frame().resolve(inst.rhs));
     } else {
-      new (frame.resolve<addr_t>(inst.result)) num_type(
-          *reinterpret_cast<num_type const *>(frame.resolve(inst.lhs)) -
-          *reinterpret_cast<num_type const *>(frame.resolve(inst.rhs)));
+      new (interpreter.frame().resolve<addr_t>(inst.result))
+          num_type(*reinterpret_cast<num_type const *>(
+                       interpreter.frame().resolve(inst.lhs)) -
+                   *reinterpret_cast<num_type const *>(
+                       interpreter.frame().resolve(inst.rhs)));
     }
     return true;
   }
@@ -105,14 +114,18 @@ struct MulInstruction
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = mul %1$s %2$s";
 
-  friend bool InterpretInstruction(MulInstruction<num_type> const &inst,
-                                   interpreter::StackFrame &frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
+                                   MulInstruction const &inst) {
     if constexpr (::interpreter::FitsInRegister<num_type>) {
-      frame.set(inst.result, frame.resolve(inst.lhs) * frame.resolve(inst.rhs));
+      interpreter.frame().set(inst.result,
+                              interpreter.frame().resolve(inst.lhs) *
+                                  interpreter.frame().resolve(inst.rhs));
     } else {
-      new (frame.resolve<addr_t>(inst.result)) num_type(
-          *reinterpret_cast<num_type const *>(frame.resolve(inst.lhs)) *
-          *reinterpret_cast<num_type const *>(frame.resolve(inst.rhs)));
+      new (interpreter.frame().resolve<addr_t>(inst.result))
+          num_type(*reinterpret_cast<num_type const *>(
+                       interpreter.frame().resolve(inst.lhs)) *
+                   *reinterpret_cast<num_type const *>(
+                       interpreter.frame().resolve(inst.rhs)));
     }
     return true;
   }
@@ -144,31 +157,32 @@ struct DivInstruction
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = div %1$s %2$s";
 
-  friend bool InterpretInstruction(DivInstruction<num_type> const &inst,
-                                   interpreter::StackFrame &frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
+                                   DivInstruction const &inst) {
     if constexpr (::interpreter::FitsInRegister<num_type>) {
-      auto denominator = frame.resolve(inst.rhs);
+      auto denominator = interpreter.frame().resolve(inst.rhs);
       if (denominator == 0) {
-        frame.FatalError("Division by zero.");
+        interpreter.FatalError("Division by zero.");
         return false;
       }
-      frame.set(inst.result, frame.resolve(inst.lhs) / denominator);
+      interpreter.frame().set(
+          inst.result, interpreter.frame().resolve(inst.lhs) / denominator);
     } else {
-      auto const &denominator =
-          *reinterpret_cast<num_type const *>(frame.resolve(inst.rhs));
+      auto const &denominator = *reinterpret_cast<num_type const *>(
+          interpreter.frame().resolve(inst.rhs));
 
       if (denominator == 0) {
-        frame.FatalError("Division by zero.");
+        interpreter.FatalError("Division by zero.");
         return false;
       }
 
-      new (frame.resolve<addr_t>(inst.result)) num_type(
-          *reinterpret_cast<num_type const *>(frame.resolve(inst.lhs)) /
-          denominator);
+      new (interpreter.frame().resolve<addr_t>(inst.result))
+          num_type(*reinterpret_cast<num_type const *>(
+                       interpreter.frame().resolve(inst.lhs)) /
+                   denominator);
     }
     return true;
   }
-
 
   void Apply(::interpreter::ExecutionContext &ctx) const
       requires(not ::interpreter::FitsInRegister<num_type>) {
@@ -197,14 +211,18 @@ struct ModInstruction
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = mod %1$s %2$s";
 
-  friend bool InterpretInstruction(ModInstruction<num_type> const &inst,
-                                   interpreter::StackFrame &frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
+                                   ModInstruction const &inst) {
     if constexpr (::interpreter::FitsInRegister<num_type>) {
-      frame.set(inst.result, frame.resolve(inst.lhs) % frame.resolve(inst.rhs));
+      interpreter.frame().set(inst.result,
+                              interpreter.frame().resolve(inst.lhs) %
+                                  interpreter.frame().resolve(inst.rhs));
     } else {
-      new (frame.resolve<addr_t>(inst.result)) num_type(
-          *reinterpret_cast<num_type const *>(frame.resolve(inst.lhs)) %
-          *reinterpret_cast<num_type const *>(frame.resolve(inst.rhs)));
+      new (interpreter.frame().resolve<addr_t>(inst.result))
+          num_type(*reinterpret_cast<num_type const *>(
+                       interpreter.frame().resolve(inst.lhs)) %
+                   *reinterpret_cast<num_type const *>(
+                       interpreter.frame().resolve(inst.rhs)));
     }
     return true;
   }
@@ -236,13 +254,15 @@ struct NegInstruction
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
 
-  friend bool InterpretInstruction(NegInstruction<num_type> const &inst,
-                                   interpreter::StackFrame &frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
+                                   NegInstruction const &inst) {
     if constexpr (::interpreter::FitsInRegister<num_type>) {
-      frame.set(inst.result, -frame.resolve(inst.operand));
+      interpreter.frame().set(inst.result,
+                              -interpreter.frame().resolve(inst.operand));
     } else {
-      new (frame.resolve<addr_t>(inst.result)) num_type(
-          -*reinterpret_cast<num_type const *>(frame.resolve(inst.operand)));
+      new (interpreter.frame().resolve<addr_t>(inst.result))
+          num_type(-*reinterpret_cast<num_type const *>(
+              interpreter.frame().resolve(inst.operand)));
     }
     return true;
   }

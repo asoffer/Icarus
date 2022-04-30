@@ -329,6 +329,41 @@ struct Compiler : CompilationDataReference,
     }
     return ir::OutParams(std::move(regs));
   }
+
+  ir::Subroutine MakeSubroutine(type::Typed<ast::Expression const *> expr) {
+    LOG("MakeSubroutine", "MakeSubroutine for %s: %s %p",
+        (*expr)->DebugString(), expr.type().to_string(), &context());
+    ir::Subroutine fn(type::Func({}, {expr.type()}));
+    push_current(&fn);
+    absl::Cleanup cleanup = [&] { state().current.pop_back(); };
+    current_block()       = fn.entry();
+
+    if (expr.type().is_big()) {
+      // TODO: guaranteed move-elision
+
+      type::Typed<ir::RegOr<ir::addr_t>> r(ir::Reg::Output(0), expr.type());
+      EmitMoveInit(*expr, absl::MakeConstSpan(&r, 1));
+    } else {
+      ir::PartialResultBuffer buffer;
+      EmitToBuffer(*expr, buffer);
+      ASSERT(buffer.num_entries() != 0);
+
+      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
+                 ir::UnboundScope, ir::ScopeContext, ir::Block>(
+          expr.type(), [&]<typename T>() {
+            current_block()->Append(ir::SetReturnInstruction<T>{
+                .index = 0,
+                .value = buffer.get<T>(0),
+            });
+          });
+    }
+    current_block()->set_jump(ir::JumpCmd::Return());
+    LOG("MakeSubroutine", "%s", fn);
+
+    return fn;
+  }
 };
 
 }  // namespace compiler

@@ -18,6 +18,7 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/op_codes.h"
 #include "ir/interpreter/architecture.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/interpreter/legacy_stack_frame.h"
 #include "ir/out_params.h"
 #include "ir/value/reg_or.h"
@@ -34,10 +35,10 @@ struct LoadInstruction
   static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = load %2$s (%1$s)";
 
-  friend bool InterpretInstruction(LoadInstruction const& inst,
-                                   interpreter::StackFrame& frame) {
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   LoadInstruction const& inst) {
     core::Bytes num_bytes = inst.type.bytes(::interpreter::kArchitecture);
-    frame.Load(num_bytes, inst.addr, inst.result);
+    interpreter.frame().Load(num_bytes, inst.addr, inst.result);
     return true;
   }
 
@@ -114,9 +115,9 @@ struct RegisterInstruction
           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = %1$s";
 
-  friend bool InterpretInstruction(RegisterInstruction const& inst,
-                                   interpreter::StackFrame& frame) {
-    frame.set(inst.result, frame.resolve(inst.operand));
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   RegisterInstruction const& inst) {
+    interpreter.frame().set(inst.result, interpreter.frame().resolve(inst.operand));
     return true;
   }
 
@@ -136,9 +137,11 @@ struct SetReturnInstruction
   static_assert(::interpreter::FitsInRegister<type>);
   static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
 
-  friend bool InterpretInstruction(SetReturnInstruction const& inst,
-                                   interpreter::StackFrame& frame) {
-    frame.set(ir::Reg::Output(inst.index), frame.resolve(inst.value));
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   SetReturnInstruction const& inst) {
+    addr_t ret_slot = interpreter.frame().resolve<ir::addr_t>(ir::Reg::Output(inst.index));
+    auto value = interpreter.frame().resolve(inst.value);
+    *ASSERT_NOT_NULL(reinterpret_cast<type*>(ret_slot)) = value;
     return true;
   }
 
@@ -154,9 +157,9 @@ struct StoreInstruction
   static constexpr std::string_view kDebugFormat = "store %1$s into [%2$s]";
   using type                                     = T;
 
-  friend bool InterpretInstruction(StoreInstruction const& inst,
-                                   interpreter::StackFrame& frame) {
-    frame.Store(inst.value, inst.location);
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   StoreInstruction const& inst) {
+    interpreter.frame().Store(inst.value, inst.location);
     return true;
   }
 
@@ -180,6 +183,24 @@ struct CallInstruction
         outs_(std::move(outs)) {
     ASSERT(args_.num_entries() == fn_type_->parameters().size());
     ASSERT(this->outs_.size() == fn_type_->return_types().size());
+  }
+
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   CallInstruction const& inst) {
+    ir::CompleteResultBuffer arguments;
+    for (size_t i = 0; i < inst.arguments().num_entries(); ++i) {
+      ir::PartialResultRef argument = inst.arguments()[i];
+      if (argument.is_register()) {
+        arguments.append(argument.get<ir::Reg>());
+      } else {
+        arguments.append_raw(argument.raw());
+      }
+    }
+    std::vector<addr_t> outputs;
+    for (Reg r : inst.outs_) { outputs.push_back(interpreter.frame().find(r)); }
+    interpreter.push_frame(interpreter.frame().resolve(inst.func()), arguments,
+                           outputs);
+    return false;
   }
 
   std::string to_string() const;

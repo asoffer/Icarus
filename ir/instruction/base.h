@@ -19,6 +19,9 @@
 // should try to include this instead of instructions.h, you reach for this one
 // anyway.
 namespace ir {
+namespace interpreter {
+struct Interpreter;
+}  // namespace interpreter
 
 template <typename T>
 concept Inlinable = base::TraversableBy<T, Inliner>;
@@ -50,8 +53,8 @@ struct InstructionVTable {
   void (*move_assign)(void*, void*)       = [](void*, void*) {};
   void (*destroy)(void*)                  = [](void*) {};
 
-  bool (*Interpret)(void const*, interpreter::StackFrame&) =
-      [](void const*, interpreter::StackFrame&) { return false; };
+  bool (*Interpret)(interpreter::Interpreter&, void const*) =
+      [](interpreter::Interpreter&, void const*) { return false; };
 
   void (*ToProto)(void const*, InstructionSerializer&) =
       [](void const*, InstructionSerializer&) {
@@ -93,11 +96,14 @@ InstructionVTable InstructionVTableFor{
         },
     .destroy = [](void* self) { delete reinterpret_cast<T*>(self); },
 
-    .Interpret = [](void const* self, interpreter::StackFrame& frame) -> bool {
+    .Interpret = [](interpreter::Interpreter& interpreter,
+                    void const* self) -> bool {
       if constexpr (requires {
-                      InterpretInstruction(std::declval<T const&>(), frame);
+                      InterpretInstruction(interpreter,
+                                           std::declval<T const&>());
                     }) {
-        return InterpretInstruction(*reinterpret_cast<T const*>(self), frame);
+        return InterpretInstruction(interpreter,
+                                    *reinterpret_cast<T const*>(self));
       } else {
         UNREACHABLE(typeid(T).name());
         return false;
@@ -229,16 +235,16 @@ struct Inst {
   Inst const& operator*() const { return *this; }
 
  private:
-  friend bool InterpretInstruction(std::same_as<Inst> auto const&,
-                                   interpreter::StackFrame&);
+  friend bool InterpretInstruction(interpreter::Interpreter&,
+                                   std::same_as<Inst> auto const&);
 
   void* data_;
   InstructionVTable const* vtable_;
 };
 
-inline bool InterpretInstruction(std::same_as<Inst> auto const& inst,
-                                 interpreter::StackFrame& frame) {
-  return inst.vtable_->Interpret(inst.data_, frame);
+inline bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                 std::same_as<Inst> auto const& inst) {
+  return inst.vtable_->Interpret(interpreter, inst.data_);
 }
 
 }  // namespace ir

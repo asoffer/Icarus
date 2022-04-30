@@ -7,6 +7,7 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/set.h"
 #include "ir/interpreter/execution_context.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/scope_context.h"
@@ -82,6 +83,16 @@ struct HasBlockInstruction
                                               base::BaseSerializeExtension,
                                               ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%3$s = has_block %1$s %2$s";
+
+  friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
+                                   HasBlockInstruction const& inst) {
+    interpreter.frame().set(
+        inst.result, interpreter.frame()
+                             .resolve(inst.context)
+                             .find(interpreter.frame().resolve(inst.name)) !=
+                         ir::Block::Invalid());
+    return true;
+  }
 
   bool Resolve() const {
     return context.value().find(name.value()) != ir::Block::Invalid();
