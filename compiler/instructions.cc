@@ -219,61 +219,24 @@ ir::ByteCode EmitByteCode(ir::Subroutine const& sr) {
   return byte_code;
 }
 
-void InterpretAtCompileTime(module::SharedContext const& shared_context,
-                            ir::Subroutine const& fn,
-                            ir::CompleteResultBuffer const& arguments) {
-  auto byte_code = EmitByteCode(fn);
-  module::Module::FunctionInformation info{
-      .type      = &fn.type()->as<type::Function>(),
-      .byte_code = byte_code,
-  };
-  interpreter::Execute<instruction_set_t>(shared_context, info, arguments);
-}
-
-void InterpretAtCompileTime(module::SharedContext const& shared_context,
-                            ir::Fn f,
-                            ir::CompleteResultBuffer const& arguments) {
-  interpreter::Execute<instruction_set_t>(
-      shared_context, shared_context.Function(f), arguments);
-}
-
 std::vector<ir::Block> InterpretScopeAtCompileTime(
     module::SharedContext const& shared_context, ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const& arguments) {
-  interpreter::ExecutionContext ctx(&shared_context);
-  interpreter::LegacyStackFrame frame(s.byte_code(), ctx.stack());
-  core::BindArguments(
-      s.type()->parameters(), arguments,
-      [&, i = 0](type::QualType param,
-                 type::Typed<ir::CompleteResultRef> argument) mutable {
-        absl::Cleanup c  = [&] { ++i; };
-        core::Bytes size = param.type().is_big()
-                               ? interpreter::kArchitecture.pointer().bytes()
-                               : param.type().bytes(interpreter::kArchitecture);
-        frame.set_raw(ir::Reg::Parameter(i), argument->raw().data(),
-                      size.value());
-      });
+  ir::CompleteResultBuffer arguments_buffer;
+  core::BindArguments(s.type()->parameters(), arguments,
+                      [&](type::QualType param,
+                          type::Typed<ir::CompleteResultRef> argument) mutable {
+                        arguments_buffer.append_raw(argument->raw());
+                      });
 
   std::vector<ir::Block> result;
-  auto* result_ptr = &result;
-  frame.set(ir::Reg::Output(0), reinterpret_cast<ir::addr_t>(result_ptr));
-  ctx.Execute<instruction_set_t>(s, frame);
+  ir::interpreter::Interpreter interpreter(&shared_context);
+  interpreter.push_frame(&*s, std::move(arguments_buffer),
+                         {reinterpret_cast<ir::addr_t>(&result)});
+
+  bool ok = interpreter();
+  ASSERT(ok == true);
   return result;
 }
-
-namespace internal_instructions {
-
-ir::CompleteResultBuffer EvaluateAtCompileTimeToBufferImpl(
-    module::SharedContext const& shared_context,
-    module::Module::FunctionInformation const& info,
-    ir::CompleteResultBuffer const& arguments) {
-  // auto result = ir::interpreter::Interpret(subroutine, arguments);
-  // ASSERT(result != std::nullopt);
-  // return *std::move(result);
-  return interpreter::Evaluate<instruction_set_t>(shared_context, info,
-                                                  arguments);
-}
-
-}  // namespace internal_instructions
 
 }  // namespace compiler

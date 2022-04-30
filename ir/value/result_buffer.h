@@ -152,6 +152,13 @@ struct CompleteResultRef {
 };
 
 struct CompleteResultBuffer {
+  CompleteResultBuffer() = default;
+
+  template <typename... Args>
+  explicit CompleteResultBuffer(Args const &... args) {
+    reserve_bytes(sizeof...(Args), (sizeof(Args) + ... + 0));
+    (append(args), ...);
+  }
   void reserve_bytes(size_t num_entries, size_t num_bytes);
 
   addr_t append_slot(size_t slot_size);
@@ -227,6 +234,11 @@ struct CompleteResultBuffer {
 struct PartialResultBuffer {
   PartialResultBuffer() = default;
   PartialResultBuffer(CompleteResultBuffer buffer);
+
+  template <typename... Args>
+  PartialResultBuffer(Args const &... args) {
+    (append(args), ...);
+  }
 
   void clear() {
     buffer_.clear();

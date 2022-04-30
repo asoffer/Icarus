@@ -1,7 +1,7 @@
 #include "compiler/verify/verify.h"
 
-#include "compiler/instructions.h"
 #include "compiler/struct.h"
+#include "ir/interpreter/interpreter.h"
 
 namespace compiler {
 
@@ -70,7 +70,7 @@ bool CompleteStructData(CompilationDataReference data,
                    auto fn, StructDataCompletionFn(data, s, node->fields()));
 
   // TODO: What if execution fails.
-  InterpretAtCompileTime(data.shared_context(), fn);
+  ir::interpreter::Interpret(data.shared_context(), fn);
 
   absl::flat_hash_set<WorkItem> prerequisites;
 
@@ -115,7 +115,7 @@ bool CompleteStructData(CompilationDataReference data,
                    auto fn, StructDataCompletionFn(data, s, node->fields()));
 
   // TODO: What if execution fails.
-  InterpretAtCompileTime(data.shared_context(), fn);
+  ir::interpreter::Interpret(data.shared_context(), fn);
 
   absl::flat_hash_set<WorkItem> prerequisites;
 

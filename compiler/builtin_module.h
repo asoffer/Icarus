@@ -32,6 +32,16 @@ struct AlignmentInstruction
                                                ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = alignment %1$s";
 
+  friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
+                                   AlignmentInstruction const& inst) {
+    interpreter.frame().set(inst.result,
+                            interpreter.frame()
+                                .resolve(inst.type)
+                                .alignment(interpreter::kArchitecture)
+                                .value());
+    return true;
+  }
+
   uint64_t Resolve() const {
     return type.value().alignment(interpreter::kArchitecture).value();
   }
@@ -46,6 +56,13 @@ struct AsciiEncodeInstruction
                                                  ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = ascii-encode %1$s";
 
+  friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
+                                   AsciiEncodeInstruction const& inst) {
+    interpreter.frame().set(inst.result,
+                            ir::Char(interpreter.frame().resolve(inst.value)));
+    return true;
+  }
+
   ir::Char Resolve() const { return ir::Char(value.value()); }
 
   ir::RegOr<uint8_t> value;
@@ -58,6 +75,14 @@ struct AsciiDecodeInstruction
                                                  ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = ascii-decode %1$s";
 
+  friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
+                                   AsciiDecodeInstruction const& inst) {
+    interpreter.frame().set(
+        inst.result,
+        static_cast<uint8_t>(interpreter.frame().resolve(inst.character)));
+    return true;
+  }
+
   uint8_t Resolve() const { return static_cast<uint8_t>(character.value()); }
 
   ir::RegOr<ir::Char> character;
@@ -69,6 +94,15 @@ struct BytesInstruction
                                            base::BaseSerializeExtension,
                                            ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = bytes %1$s";
+
+  friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
+                                   BytesInstruction const& inst) {
+    interpreter.frame().set(inst.result, interpreter.frame()
+                                             .resolve(inst.type)
+                                             .bytes(interpreter::kArchitecture)
+                                             .value());
+    return true;
+  }
 
   uint64_t Resolve() const {
     return type.value().bytes(interpreter::kArchitecture).value();

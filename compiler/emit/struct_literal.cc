@@ -7,8 +7,8 @@
 #include "compiler/emit/copy_move_assignment.h"
 #include "compiler/emit/destroy.h"
 #include "compiler/emit/initialize.h"
-#include "compiler/instructions.h"
 #include "compiler/module.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
@@ -358,7 +358,7 @@ bool Compiler::CompleteStruct(ast::StructLiteral const *node) {
   ASSIGN_OR(return false,  //
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
-  InterpretAtCompileTime(shared_context(), fn);
+  ir::interpreter::Interpret(shared_context(), fn);
 
   LOG("StructLiteral", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());

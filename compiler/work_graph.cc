@@ -225,8 +225,7 @@ WorkGraph::EvaluateToBuffer(module::SharedContext const &shared_context,
   w.dependencies_.clear();
 
   if (buffering_consumer.empty()) {
-    if (auto result =
-            ir::interpreter::Interpret(shared_context, fn)) {
+    if (auto result = ir::interpreter::Interpret(shared_context, fn)) {
       return std::move(*result);
     } else {
       NOT_YET("Fatal interpreter error.");

@@ -2,6 +2,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/compiler_common.h"
 #include "compiler/module.h"
+#include "ir/interpreter/interpreter.h"
 
 namespace compiler {
 
@@ -84,7 +85,7 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
 
   current_block()->set_jump(ir::JumpCmd::Return());
 
-  InterpretAtCompileTime(shared_context(), fn);
+  ir::interpreter::Interpret(shared_context(), fn);
 
   return true;
 }

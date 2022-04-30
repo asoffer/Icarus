@@ -20,11 +20,9 @@ struct Interpreter {
   explicit Interpreter(module::SharedContext const* context)
       : context_(*ASSERT_NOT_NULL(context)) {}
 
-  // Interprets the given `subroutine` providing `arguments` and returns the
-  // results as another `CompleteResultBuffer` if execution succeeds. Returns
-  // `std::nullopt` if execution fails.
-  bool operator()(Subroutine const& subroutine,
-                  CompleteResultBuffer const& arguments);
+  // Interprets the subroutine currently on the top of the stack, returns
+  // whether interpretation was successful.
+  bool operator()();
 
   // Returns the current stack frame.
   StackFrame& frame() { return frames_.back(); }
@@ -76,6 +74,10 @@ struct Interpreter {
 
 std::optional<CompleteResultBuffer> Interpret(
     module::SharedContext const& context, Subroutine const& subroutine,
+    CompleteResultBuffer const& arguments = {});
+
+std::optional<CompleteResultBuffer> Interpret(
+    module::SharedContext const& context, Fn f,
     CompleteResultBuffer const& arguments = {});
 
 }  // namespace ir::interpreter

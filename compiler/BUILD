@@ -18,8 +18,9 @@ cc_test(
     srcs = ["builtin_module_test.cc"],
     deps = [
         ":instructions",
-        "//ir/interpreter:evaluate",
+        "//ir/interpreter",
         "//ir/value:scope_context",
+        "//ir/value:matcher",
         "@com_google_googletest//:gtest_main",
     ],
 )

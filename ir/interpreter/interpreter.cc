@@ -50,8 +50,7 @@ BasicBlock const* InterpretInstruction(interpreter::Interpreter& interpreter,
 
 namespace interpreter {
 
-bool Interpreter::operator()(Subroutine const& subroutine,
-                             CompleteResultBuffer const& arguments) {
+bool Interpreter::operator()() {
   ASSERT(instruction_pointers_.size() != 0u);
   while (not instruction_pointers_.empty()) {
     BasicBlock const* next = InterpretFromInstructionPointer();
@@ -150,8 +149,15 @@ std::optional<CompleteResultBuffer> Interpret(
   }
   interpreter.push_frame(&subroutine, arguments, addrs);
 
-  if (not interpreter(subroutine, arguments)) { return std::nullopt; }
+  if (not interpreter()) { return std::nullopt; }
   return output_buffer;
+}
+
+std::optional<CompleteResultBuffer> Interpret(
+    module::SharedContext const& context, Fn f,
+    CompleteResultBuffer const& arguments) {
+  return Interpret(context, *ASSERT_NOT_NULL(context.Function(f).subroutine),
+                   arguments);
 }
 
 }  // namespace interpreter

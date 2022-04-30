@@ -2,9 +2,9 @@
 #include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/struct_literal.h"
-#include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "compiler/struct.h"
+#include "ir/interpreter/interpreter.h"
 #include "type/struct.h"
 #include "type/type.h"
 
@@ -44,7 +44,7 @@ bool Compiler::CompleteStruct(ast::ParameterizedStructLiteral const *node) {
   ASSIGN_OR(return false,  //
                    auto fn, StructCompletionFn(*this, s, node->fields()));
   // TODO: What if execution fails.
-  InterpretAtCompileTime(shared_context(), fn);
+  ir::interpreter::Interpret(shared_context(), fn);
   s->complete();
   LOG("struct", "Completed %s which is a struct %s with %u field(s).",
       node->DebugString(), *s, s->fields().size());

@@ -20,11 +20,11 @@
 #include "base/untyped_buffer.h"
 #include "compiler/flags.h"
 #include "compiler/importer.h"
-#include "compiler/instructions.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
 #include "frontend/parse.h"
 #include "ir/interpreter/evaluate.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/subroutine.h"
 #include "module/map.h"
 #include "module/map_bazel.h"
@@ -127,7 +127,7 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
 
   importer.set_subroutine(exec_mod, std::move(main_fn));
   importer.ForEachSubroutine([&](ir::Subroutine const &subroutine) {
-    InterpretAtCompileTime(shared_context, subroutine, argument_buffer);
+    ir::interpreter::Interpret(shared_context, subroutine, argument_buffer);
   });
 
   return 0;

@@ -44,6 +44,14 @@ struct Module : base::Cast<Module> {
     // will only be populated for generics.
     ast::Declaration_Id const *id;
     Visibility visibility;
+
+    friend std::ostream &operator<<(std::ostream &os,
+                                    SymbolInformation const &symbol) {
+      std::string_view visibility =
+          symbol.visibility == Visibility::Private ? "Private" : "Exported";
+      return os << "[" << visibility << " symbol of type "
+                << symbol.qualified_type << "]";
+    }
   };
 
   // Returns an identifier for this module unique across all modules being

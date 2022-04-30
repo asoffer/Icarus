@@ -29,44 +29,11 @@
 #include "type/typed_value.h"
 
 namespace compiler {
-namespace internal_instructions {
-
-ir::CompleteResultBuffer EvaluateAtCompileTimeToBufferImpl(
-    module::SharedContext const &shared_context,
-    module::Module::FunctionInformation const &info,
-    ir::CompleteResultBuffer const &);
-
-}  // namespace internal_instructions
-
-void InterpretAtCompileTime(module::SharedContext const &shared_context,
-                            ir::Fn f,
-                            ir::CompleteResultBuffer const &arguments = {});
-void InterpretAtCompileTime(module::SharedContext const &shared_context,
-                            ir::Subroutine const &fn,
-                            ir::CompleteResultBuffer const &arguments = {});
 
 std::vector<ir::Block> InterpretScopeAtCompileTime(
     module::SharedContext const &shared_context, ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments);
 ir::ByteCode EmitByteCode(ir::Subroutine const &sr);
-
-template <typename... Args>
-ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(
-    module::SharedContext const &shared_context,
-    module::Module::FunctionInformation const &info, Args const &... args) {
-  ir::CompleteResultBuffer buffer;
-  (buffer.append(args), ...);
-  return internal_instructions::EvaluateAtCompileTimeToBufferImpl(
-      shared_context, info, buffer);
-}
-
-template <typename... Args>
-ir::CompleteResultBuffer EvaluateAtCompileTimeToBuffer(
-    module::SharedContext const &shared_context, ir::Fn f,
-    Args const &... args) {
-  return EvaluateAtCompileTimeToBuffer(shared_context,
-                                       shared_context.Function(f), args...);
-}
 
 namespace internal_type {
 template <typename T>

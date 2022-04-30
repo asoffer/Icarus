@@ -209,3 +209,13 @@ cc_library(
 )
 
 #TODO: slice_test
+
+cc_library(
+    name = "matcher",
+    hdrs = ["matcher.h"],
+    deps = [
+        ":result_buffer",
+        "@com_google_googletest//:gtest",
+    ],
+    testonly = True,
+)
