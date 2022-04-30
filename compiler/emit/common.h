@@ -7,6 +7,7 @@
 #include "compiler/compilation_data.h"
 #include "compiler/transient_state.h"
 #include "ir/instruction/compare.h"
+#include "ir/instruction/core.h"
 #include "ir/instruction/instructions.h"
 #include "ir/subroutine.h"
 #include "ir/value/result_buffer.h"
@@ -97,23 +98,22 @@ void EmitCast(CompilationDataReference ref, ir::PartialResultBuffer &buffer) {
     buffer.pop_back();
     buffer.append(result);
   } else {
-    if constexpr (interpreter::FitsInRegister<ToType>) {
-      auto result =
+    ir::Reg result;
+    if constexpr (ir::interpreter::FitsInRegister<ToType>) {
+      result =
           ref.current().block->Append(ir::CastInstruction<ToType(FromType)>{
               .value  = buffer.back().template get<FromType>(),
               .result = ref.current().subroutine->Reserve(),
           });
-      buffer.pop_back();
-      buffer.append(result);
     } else {
-      auto alloc = ref.state().TmpAlloca(type::Integer);
+      result = ref.state().TmpAlloca(type::Integer);
       ref.current().block->Append(ir::CastInstruction<ToType(FromType)>{
           .value = buffer.back().template get<FromType>(),
-          .into  = alloc,
+          .into  = result,
       });
-      buffer.pop_back();
-      buffer.append(alloc);
     }
+    buffer.pop_back();
+    buffer.append(result);
   }
 }
 

@@ -1,5 +1,6 @@
 #include "compiler/emit/common.h"
 
+#include "absl/cleanup/cleanup.h"
 #include "compiler/instructions.h"
 #include "type/cast.h"
 #include "type/enum.h"

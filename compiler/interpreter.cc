@@ -23,7 +23,6 @@
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
 #include "frontend/parse.h"
-#include "ir/interpreter/evaluate.h"
 #include "ir/interpreter/interpreter.h"
 #include "ir/subroutine.h"
 #include "module/map.h"

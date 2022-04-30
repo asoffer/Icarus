@@ -107,7 +107,7 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
         type::Type t = context().qual_types(node->operand())[0].type();
         ApplyTypes<ir::Integer, int8_t, int16_t, int32_t, int64_t, float,
                    double>(t, [&]<typename T>() {
-          if constexpr (interpreter::FitsInRegister<T>) {
+          if constexpr (ir::interpreter::FitsInRegister<T>) {
             auto value = out.back().get<T>();
             out.pop_back();
             out.append(current_block()->Append(ir::NegInstruction<T>{

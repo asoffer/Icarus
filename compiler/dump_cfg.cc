@@ -24,7 +24,7 @@
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
 #include "frontend/parse.h"
-#include "ir/interpreter/execution_context.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/subroutine.h"
 #include "module/module.h"
 #include "opt/opt.h"

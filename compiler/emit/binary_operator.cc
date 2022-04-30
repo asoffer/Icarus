@@ -34,7 +34,7 @@ void Apply(type::Typed<ast::Expression const *> lhs,
   auto lhs_result = EmitCast(c, lhs, meet);
   auto rhs_result = EmitCast(c, rhs, meet);
   ApplyTypes<Ts...>(meet, [&]<typename T>() {
-    if constexpr (interpreter::FitsInRegister<T>) {
+    if constexpr (ir::interpreter::FitsInRegister<T>) {
       out.append(c.current_block()->Append(
           Op<T>{.lhs    = lhs_result.back().get<T>(),
                 .rhs    = rhs_result.back().get<T>(),

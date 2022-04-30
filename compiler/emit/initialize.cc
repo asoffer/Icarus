@@ -1,5 +1,6 @@
 #include "compiler/emit/initialize.h"
 
+#include "absl/cleanup/cleanup.h"
 #include "compiler/emit/common.h"
 #include "compiler/instructions.h"
 

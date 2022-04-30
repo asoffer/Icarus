@@ -1,6 +1,7 @@
 #ifndef ICARUS_COMPILER_EMIT_DESTROY_H
 #define ICARUS_COMPILER_EMIT_DESTROY_H
 
+#include "absl/cleanup/cleanup.h"
 #include "compiler/compilation_data.h"
 #include "compiler/emit/common.h"
 #include "compiler/instructions.h"

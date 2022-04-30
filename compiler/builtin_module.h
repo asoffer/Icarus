@@ -6,7 +6,6 @@
 #include "base/extend/traverse.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/set.h"
-#include "ir/interpreter/execution_context.h"
 #include "ir/interpreter/interpreter.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
@@ -23,7 +22,11 @@ struct AbortInstruction
                                            ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "abort";
 
-  void Apply(interpreter::ExecutionContext&) const { std::abort(); }
+  friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
+                                   AbortInstruction const&) {
+    interpreter.FatalError("`builtin.abort` invoked.");
+    return false;
+  }
 };
 
 struct AlignmentInstruction

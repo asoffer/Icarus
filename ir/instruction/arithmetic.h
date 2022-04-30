@@ -7,9 +7,7 @@
 #include "base/extend/serialize.h"
 #include "base/extend/traverse.h"
 #include "ir/instruction/debug.h"
-#include "ir/interpreter/execution_context.h"
 #include "ir/interpreter/interpreter.h"
-#include "ir/interpreter/legacy_stack_frame.h"
 
 namespace ir {
 
@@ -25,13 +23,13 @@ struct AddInstruction
           DebugFormatExtension> {
   using num_type = NumType;
   using operand_type =
-      std::conditional_t<::interpreter::FitsInRegister<num_type>, num_type,
+      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = add %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
                                    AddInstruction const &inst) {
-    if constexpr (::interpreter::FitsInRegister<num_type>) {
+    if constexpr (interpreter::FitsInRegister<num_type>) {
       interpreter.frame().set(inst.result,
                               interpreter.frame().resolve(inst.lhs) +
                                   interpreter.frame().resolve(inst.rhs));
@@ -43,17 +41,6 @@ struct AddInstruction
                        interpreter.frame().resolve(inst.rhs)));
     }
     return true;
-  }
-
-  void Apply(::interpreter::ExecutionContext &ctx) const
-      requires(not ::interpreter::FitsInRegister<num_type>) {
-    new (ctx.resolve<addr_t>(result))
-        num_type(*reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(lhs)) +
-                 *reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(rhs)));
-  }
-
-  num_type Resolve() const requires(::interpreter::FitsInRegister<num_type>) {
-    return lhs.value() + rhs.value();
   }
 
   RegOr<operand_type> lhs;
@@ -68,13 +55,13 @@ struct SubInstruction
           DebugFormatExtension> {
   using num_type = NumType;
   using operand_type =
-      std::conditional_t<::interpreter::FitsInRegister<num_type>, num_type,
+      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = sub %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
                                    SubInstruction const &inst) {
-    if constexpr (::interpreter::FitsInRegister<num_type>) {
+    if constexpr (interpreter::FitsInRegister<num_type>) {
       interpreter.frame().set(inst.result,
                               interpreter.frame().resolve(inst.lhs) -
                                   interpreter.frame().resolve(inst.rhs));
@@ -88,16 +75,6 @@ struct SubInstruction
     return true;
   }
 
-  void Apply(::interpreter::ExecutionContext &ctx) const
-      requires(not ::interpreter::FitsInRegister<num_type>) {
-    new (ctx.resolve<addr_t>(result))
-        num_type(*reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(lhs)) -
-                 *reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(rhs)));
-  }
-
-  num_type Resolve() const requires(::interpreter::FitsInRegister<num_type>) {
-    return lhs.value() - rhs.value();
-  }
   RegOr<operand_type> lhs;
   RegOr<operand_type> rhs;
   Reg result;
@@ -110,13 +87,13 @@ struct MulInstruction
           DebugFormatExtension> {
   using num_type = NumType;
   using operand_type =
-      std::conditional_t<::interpreter::FitsInRegister<num_type>, num_type,
+      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = mul %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
                                    MulInstruction const &inst) {
-    if constexpr (::interpreter::FitsInRegister<num_type>) {
+    if constexpr (interpreter::FitsInRegister<num_type>) {
       interpreter.frame().set(inst.result,
                               interpreter.frame().resolve(inst.lhs) *
                                   interpreter.frame().resolve(inst.rhs));
@@ -128,17 +105,6 @@ struct MulInstruction
                        interpreter.frame().resolve(inst.rhs)));
     }
     return true;
-  }
-
-  void Apply(::interpreter::ExecutionContext &ctx) const
-      requires(not ::interpreter::FitsInRegister<num_type>) {
-    new (ctx.resolve<addr_t>(result))
-        num_type(*reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(lhs)) *
-                 *reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(rhs)));
-  }
-
-  num_type Resolve() const requires(::interpreter::FitsInRegister<num_type>) {
-    return lhs.value() * rhs.value();
   }
 
   RegOr<operand_type> lhs;
@@ -153,13 +119,13 @@ struct DivInstruction
           DebugFormatExtension> {
   using num_type = NumType;
   using operand_type =
-      std::conditional_t<::interpreter::FitsInRegister<num_type>, num_type,
+      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = div %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
                                    DivInstruction const &inst) {
-    if constexpr (::interpreter::FitsInRegister<num_type>) {
+    if constexpr (interpreter::FitsInRegister<num_type>) {
       auto denominator = interpreter.frame().resolve(inst.rhs);
       if (denominator == 0) {
         interpreter.FatalError("Division by zero.");
@@ -184,17 +150,6 @@ struct DivInstruction
     return true;
   }
 
-  void Apply(::interpreter::ExecutionContext &ctx) const
-      requires(not ::interpreter::FitsInRegister<num_type>) {
-    new (ctx.resolve<addr_t>(result))
-        num_type(*reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(lhs)) /
-                 *reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(rhs)));
-  }
-
-  num_type Resolve() const requires(::interpreter::FitsInRegister<num_type>) {
-    return lhs.value() / rhs.value();
-  }
-
   RegOr<operand_type> lhs;
   RegOr<operand_type> rhs;
   Reg result;
@@ -207,13 +162,13 @@ struct ModInstruction
           DebugFormatExtension> {
   using num_type = NumType;
   using operand_type =
-      std::conditional_t<::interpreter::FitsInRegister<num_type>, num_type,
+      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = mod %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
                                    ModInstruction const &inst) {
-    if constexpr (::interpreter::FitsInRegister<num_type>) {
+    if constexpr (interpreter::FitsInRegister<num_type>) {
       interpreter.frame().set(inst.result,
                               interpreter.frame().resolve(inst.lhs) %
                                   interpreter.frame().resolve(inst.rhs));
@@ -225,17 +180,6 @@ struct ModInstruction
                        interpreter.frame().resolve(inst.rhs)));
     }
     return true;
-  }
-
-  void Apply(::interpreter::ExecutionContext &ctx) const
-      requires(not ::interpreter::FitsInRegister<num_type>) {
-    new (ctx.resolve<addr_t>(result))
-        num_type(*reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(lhs)) %
-                 *reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(rhs)));
-  }
-
-  num_type Resolve() const requires(::interpreter::FitsInRegister<num_type>) {
-    return lhs.value() % rhs.value();
   }
 
   RegOr<operand_type> lhs;
@@ -250,13 +194,13 @@ struct NegInstruction
           DebugFormatExtension> {
   using num_type = NumType;
   using operand_type =
-      std::conditional_t<::interpreter::FitsInRegister<num_type>, num_type,
+      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
                          addr_t>;
   static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
                                    NegInstruction const &inst) {
-    if constexpr (::interpreter::FitsInRegister<num_type>) {
+    if constexpr (interpreter::FitsInRegister<num_type>) {
       interpreter.frame().set(inst.result,
                               -interpreter.frame().resolve(inst.operand));
     } else {
@@ -266,17 +210,6 @@ struct NegInstruction
     }
     return true;
   }
-
-  void Apply(::interpreter::ExecutionContext &ctx) const
-      requires(not ::interpreter::FitsInRegister<num_type>) {
-    new (ctx.resolve<addr_t>(result)) num_type(
-        -*reinterpret_cast<num_type const *>(ctx.resolve<addr_t>(operand)));
-  }
-
-  num_type Resolve() const requires(::interpreter::FitsInRegister<num_type>) {
-    return Apply(operand.value());
-  }
-  static num_type Apply(num_type operand) { return -operand; }
 
   RegOr<operand_type> operand;
   Reg result;

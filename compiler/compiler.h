@@ -6,6 +6,7 @@
 #include <optional>
 #include <queue>
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
 #include "ast/ast.h"
@@ -24,7 +25,6 @@
 #include "diagnostic/consumer/consumer.h"
 #include "ir/instruction/instructions.h"
 #include "ir/instruction/set.h"
-#include "ir/interpreter/evaluate.h"
 #include "ir/module.h"
 #include "ir/value/addr.h"
 #include "ir/value/module_id.h"

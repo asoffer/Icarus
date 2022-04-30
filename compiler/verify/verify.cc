@@ -1,5 +1,6 @@
 #include "compiler/verify/verify.h"
 
+#include "absl/cleanup/cleanup.h"
 #include "compiler/struct.h"
 #include "ir/interpreter/interpreter.h"
 

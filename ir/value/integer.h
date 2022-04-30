@@ -16,6 +16,11 @@ namespace ir {
 struct Integer {
   Integer(int64_t n = 0) : data_(n) {}
   ~Integer() {}
+
+  Integer(Integer const &) = default;
+  Integer(Integer &&)      = default;
+  Integer &operator=(Integer const &) = default;
+  Integer &operator=(Integer &&)          = default;
   auto operator<=>(Integer const &) const = default;
 
   template <typename H>

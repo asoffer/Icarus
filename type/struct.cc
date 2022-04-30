@@ -1,6 +1,7 @@
 #include "type/struct.h"
 
 #include "core/arch.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/value/hashtag.h"
 #include "module/module.h"
 #include "type/function.h"
@@ -166,10 +167,11 @@ core::Alignment Struct::alignment(core::Arch const &a) const {
   return align;
 }
 
-void StructDataInstruction::Apply(interpreter::ExecutionContext &ctx) const {
+bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                          StructDataInstruction const &inst) {
   std::vector<Struct::Field> struct_fields;
-  struct_fields.reserve(fields.size());
-  for (auto const &field : fields) {
+  struct_fields.reserve(inst.fields.size());
+  for (auto const &field : inst.fields) {
     absl::flat_hash_set<ir::Hashtag> tags;
     if (field.exported()) { tags.insert(ir::Hashtag::Export); }
 
@@ -177,28 +179,32 @@ void StructDataInstruction::Apply(interpreter::ExecutionContext &ctx) const {
         not value.empty()) {
       // TODO: field.type() can be null. If the field type is inferred from the
       // initial value.
-      Type t  = ctx.resolve(field.type());
+      Type t  = interpreter.frame().resolve(field.type());
       auto &f = struct_fields.emplace_back(
           Struct::Field{.name     = std::string(field.name()),
                         .type     = t,
                         .hashtags = std::move(tags)});
       f.initial_value.append(value);
     } else {
-      struct_fields.push_back(Struct::Field{.name = std::string(field.name()),
-                                            .type = ctx.resolve(field.type()),
-                                            .hashtags = std::move(tags)});
+      struct_fields.push_back(
+          Struct::Field{.name     = std::string(field.name()),
+                        .type     = interpreter.frame().resolve(field.type()),
+                        .hashtags = std::move(tags)});
     }
   }
 
-  Struct &s = const_cast<Struct &>(ctx.resolve(struct_).as<Struct>());
+  Struct &s = const_cast<Struct &>(
+      interpreter.frame().resolve(inst.struct_).as<Struct>());
   s.AppendFields(std::move(struct_fields));
   s.data_complete();
+  return true;
 }
 
-void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
+bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                          StructInstruction const &inst) {
   std::vector<Struct::Field> constant_fields;
-  constant_fields.reserve(constants.size());
-  for (auto const &constant : constants) {
+  constant_fields.reserve(inst.constants.size());
+  for (auto const &constant : inst.constants) {
     absl::flat_hash_set<ir::Hashtag> tags;
     if (constant.exported()) { tags.insert(ir::Hashtag::Export); }
 
@@ -206,7 +212,7 @@ void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
         not value.empty()) {
       // TODO: constant.type() can be null. If the type is inferred from the
       // initial value.
-      Type t  = ctx.resolve(constant.type());
+      Type t  = interpreter.frame().resolve(constant.type());
       auto &f = constant_fields.emplace_back(
           Struct::Field{.name     = std::string(constant.name()),
                         .type     = t,
@@ -214,18 +220,20 @@ void StructInstruction::Apply(interpreter::ExecutionContext &ctx) const {
       f.initial_value.append(value);
     } else {
       constant_fields.push_back(
-          Struct::Field{.name     = std::string(constant.name()),
-                        .type     = ctx.resolve(constant.type()),
+          Struct::Field{.name = std::string(constant.name()),
+                        .type = interpreter.frame().resolve(constant.type()),
                         .hashtags = std::move(tags)});
     }
   }
 
-  Struct &s = const_cast<Struct &>(ctx.resolve(struct_).as<Struct>());
+  Struct &s = const_cast<Struct &>(
+      interpreter.frame().resolve(inst.struct_).as<Struct>());
   s.AppendConstants(std::move(constant_fields));
-  s.SetInits(move_inits, copy_inits);
-  s.SetAssignments(move_assignments, copy_assignments);
-  if (dtor) { s.SetDestructor(*dtor); }
+  s.SetInits(inst.move_inits, inst.copy_inits);
+  s.SetAssignments(inst.move_assignments, inst.copy_assignments);
+  if (inst.dtor) { s.SetDestructor(*inst.dtor); }
   s.complete();
+  return true;
 }
 
 }  // namespace type

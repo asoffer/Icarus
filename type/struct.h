@@ -14,7 +14,6 @@
 #include "base/extend/serialize.h"
 #include "base/traverse.h"
 #include "ir/instruction/base.h"
-#include "ir/interpreter/execution_context.h"
 #include "ir/module.h"
 #include "ir/value/fn.h"
 #include "ir/value/hashtag.h"
@@ -78,6 +77,11 @@ struct Struct : LegacyType {
  private:
   friend struct StructDataInstruction;
   friend struct StructInstruction;
+
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   struct StructDataInstruction const &inst);
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   struct StructInstruction const &inst);
 
   void AppendConstants(std::vector<Struct::Field> constants);
   void AppendFields(std::vector<Field> fields);
@@ -145,7 +149,8 @@ struct StructDataInstruction
     base::Traverse(inliner, s.fields);
   }
 
-  void Apply(interpreter::ExecutionContext &ctx) const;
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   StructDataInstruction const &inst);
 
   std::string to_string() const {
     // TODO
@@ -168,7 +173,8 @@ struct StructInstruction
     base::Traverse(inliner, s.constants);
   }
 
-  void Apply(interpreter::ExecutionContext &ctx) const;
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   StructInstruction const &inst);
 
   std::string to_string() const {
     // TODO

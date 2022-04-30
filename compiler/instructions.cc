@@ -7,7 +7,6 @@
 #include "ir/instruction/core.h"
 #include "ir/instruction/instructions.h"
 #include "ir/instruction/set.h"
-#include "ir/interpreter/evaluate.h"
 #include "ir/value/char.h"
 #include "type/array.h"
 #include "type/enum.h"
@@ -29,11 +28,14 @@ struct InsertBlockInstruction
                                                  ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "insert block %1$s";
 
-  void Apply(interpreter::ExecutionContext& ctx) {
+  [[maybe_unused]] friend bool InterpretInstruction(
+      ir::interpreter::Interpreter& interpreter,
+      InsertBlockInstruction const& inst) {
     // TODO: Out(0) may not be sufficient.
     auto& blocks = *ASSERT_NOT_NULL(reinterpret_cast<std::vector<ir::Block>*>(
-        ctx.resolve<ir::addr_t>(ir::Reg::Output(0))));
-    blocks.push_back(block);
+        interpreter.frame().resolve<ir::addr_t>(ir::Reg::Output(0))));
+    blocks.push_back(inst.block);
+    return true;
   }
 
   ir::Block block;

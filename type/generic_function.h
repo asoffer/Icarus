@@ -2,7 +2,7 @@
 #define ICARUS_TYPE_GENERIC_FUNCTION_H
 
 #include "ir/byte_code/byte_code.h"
-#include "ir/interpreter/evaluate.h"
+#include "ir/interpreter/interpreter.h"
 #include "ir/subroutine.h"
 #include "ir/value/slice.h"
 #include "type/function.h"
@@ -25,15 +25,9 @@ struct GenericFunction : LegacyType {
     ir::CompleteResultBuffer argument_buffer;
     argument_buffer.append(ir::Slice(
         reinterpret_cast<ir::addr_t>(arguments.data()), arguments.size()));
-    ir::CompleteResultBuffer result =
-        interpreter::EvaluateToBuffer<InstructionSet>(
-            module::Module::FunctionInformation{
-                .type      = info_.type(),
-                .byte_code = info_.byte_code,
-            },
-            argument_buffer);
+    NOT_YET("Interpret");
     // TODO: Diagnostics.
-    return &result[0].get<Type>().as<Function>();
+    // return &result[0].get<Type>().as<Function>();
   }
 
  private:

@@ -241,7 +241,7 @@ cc_library(
         ":type",
         "//ir:subroutine",
         "//ir/byte_code",
-        "//ir/interpreter:evaluate",
+        "//ir/interpreter",
         "//ir/value:slice",
     ],
 )
@@ -443,7 +443,7 @@ cc_library(
         "//core:arch",
         "//ir:subroutine",
         "//ir/instruction:base",
-        "//ir/interpreter:execution_context",
+        "//ir/interpreter",
         "//ir/value:fn",
         "//ir/value:hashtag",
         "//module:module",

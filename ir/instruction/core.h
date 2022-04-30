@@ -19,7 +19,6 @@
 #include "ir/instruction/op_codes.h"
 #include "ir/interpreter/architecture.h"
 #include "ir/interpreter/interpreter.h"
-#include "ir/interpreter/legacy_stack_frame.h"
 #include "ir/out_params.h"
 #include "ir/value/reg_or.h"
 #include "type/function.h"
@@ -134,7 +133,7 @@ struct SetReturnInstruction
           base::BaseTraverseExtension, base::BaseSerializeExtension,
           DebugFormatExtension> {
   using type = T;
-  static_assert(::interpreter::FitsInRegister<type>);
+  static_assert(interpreter::FitsInRegister<type>);
   static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
