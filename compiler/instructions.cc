@@ -33,11 +33,9 @@ std::vector<ir::Block> InterpretScopeAtCompileTime(
 
   std::vector<ir::Block> result;
   ir::interpreter::Interpreter interpreter(&shared_context);
-  bool ok = interpreter.push_frame(&*s, std::move(arguments_buffer),
-                                   {reinterpret_cast<ir::addr_t>(&result)});
-  ASSERT(ok == true);
-
-  ok = interpreter();
+  interpreter.push_frame(&*s, std::move(arguments_buffer),
+                         {reinterpret_cast<ir::addr_t>(&result)});
+  bool ok = interpreter();
   ASSERT(ok == true);
   return result;
 }

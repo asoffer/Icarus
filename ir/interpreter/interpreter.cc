@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
+#include "absl/strings/str_cat.h"
 #include "base/macros.h"
 #include "core/arch.h"
 #include "core/bytes.h"
@@ -67,6 +68,7 @@ BasicBlock const* Interpreter::InterpretFromInstructionPointer() {
   for (; iter != end_iter; ++iter) {
     auto const& instruction = *iter;
     if (not instruction) { continue; }
+
     if (not ir::InterpretInstruction(*this, instruction)) {
       instruction_pointers_[ip_size].iterator = std::next(iter);
       return nullptr;
@@ -115,9 +117,15 @@ bool Interpreter::push_frame(Fn f, CompleteResultBuffer const& arguments,
                              absl::Span<addr_t const> outputs) {
   if (f.module() == ModuleId::Foreign()) {
     ASSERT(outputs.size() <= 1);
-    return InvokeForeignFunction(*context_.ForeignFunctionType(f),
-                                 context_.ForeignFunctionPointer(f), arguments,
-                                 outputs.empty() ? nullptr : outputs[0]);
+    bool result = InvokeForeignFunction(
+        *context_.ForeignFunctionType(f), context_.ForeignFunctionPointer(f),
+        arguments, outputs.empty() ? nullptr : outputs[0]);
+    if (not result) {
+      FatalError(absl::StrCat(
+          "Fatal error encountered when trying to call foreign function ",
+          f.local().value()));
+    }
+    return result;
   } else {
     auto& subroutine = *ASSERT_NOT_NULL(context_.Function(f).subroutine);
     return push_frame(&subroutine, arguments, outputs);

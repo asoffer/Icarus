@@ -66,6 +66,17 @@ struct PhiInstruction
     values.push_back(value);
   }
 
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   PhiInstruction const& inst) {
+    auto const* previous = interpreter.previous_basic_block();
+    auto iter = std::find(inst.blocks.begin(), inst.blocks.end(), previous);
+    ASSERT(iter != inst.blocks.end());
+    size_t i = std::distance(inst.blocks.begin(), iter);
+    interpreter.frame().set(inst.result,
+                            interpreter.frame().resolve(inst.values[i]));
+    return true;
+  }
+
   friend void BaseSerialize(base::Serializer auto& w,
                             PhiInstruction const& inst) {
     base::Serialize(w, static_cast<uint16_t>(inst.values.size()));
@@ -185,11 +196,12 @@ struct CallInstruction
     ir::CompleteResultBuffer arguments;
     for (size_t i = 0; i < inst.arguments().num_entries(); ++i) {
       ir::PartialResultRef argument = inst.arguments()[i];
-      if (argument.is_register()) {
-        arguments.append(argument.get<ir::Reg>());
-      } else {
-        arguments.append_raw(argument.raw());
-      }
+      base::untyped_buffer_view data =
+          argument.is_register()
+              ? interpreter.frame().raw(argument.get<ir::Reg>())
+              : argument.raw();
+
+      arguments.append_raw(data);
     }
     std::vector<addr_t> outputs;
     for (Reg r : inst.outs_) { outputs.push_back(interpreter.frame().find(r)); }

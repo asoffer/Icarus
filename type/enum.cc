@@ -39,7 +39,7 @@ bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
   absl::flat_hash_set<Enum::underlying_type> used_vals;
 
   for (auto const &[index, reg_or_value] : inst.specified_values_) {
-    used_vals.insert(reg_or_value.value());
+    used_vals.insert(interpreter.frame().resolve(reg_or_value));
   }
 
   absl::BitGen gen;
@@ -49,7 +49,8 @@ bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
   for (size_t i = 0; i < inst.names_.size(); ++i) {
     auto iter = inst.specified_values_.find(i);
     if (iter != inst.specified_values_.end()) {
-      mapping.emplace(inst.names_[i], iter->second.value());
+      mapping.emplace(inst.names_[i],
+                      interpreter.frame().resolve(iter->second));
       continue;
     }
 

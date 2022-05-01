@@ -145,6 +145,13 @@ struct NotInstruction
                                          DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = not %1$s";
 
+  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                                   NotInstruction const& inst) {
+    interpreter.frame().set(inst.result,
+                            not interpreter.frame().resolve(inst.operand));
+    return true;
+  }
+
   RegOr<bool> operand;
   Reg result;
 };

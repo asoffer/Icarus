@@ -44,4 +44,8 @@ void StackFrame::set_raw(ir::Reg r, void const* src, uint16_t num_bytes) {
   std::memcpy(find(r), src, num_bytes);
 }
 
+base::untyped_buffer_view StackFrame::raw(ir::Reg r) const {
+  return base::untyped_buffer_view(find(r), register_size);
+}
+
 }  // namespace ir::interpreter

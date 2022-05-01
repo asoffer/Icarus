@@ -44,6 +44,10 @@ struct Interpreter {
   // Removes a frame from the call stack.
   void pop_frame();
 
+  BasicBlock const* previous_basic_block() const {
+    return instruction_pointers_.back().previous_basic_block;
+  }
+
   // Indicates that a fatal error has occurred and interpretation must stop.
 
   void FatalError(std::string_view error_message) {
