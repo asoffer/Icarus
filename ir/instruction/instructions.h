@@ -178,18 +178,16 @@ struct InitInstruction
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
                                    InitInstruction const& inst) {
     if (auto* s = inst.type.if_as<type::Struct>()) {
-      interpreter.push_frame(
+      return interpreter.push_frame(
           *s->init_,
           CompleteResultBuffer(interpreter.frame().resolve<addr_t>(inst.reg)),
           {});
-      return true;
 
     } else if (auto* a = inst.type.if_as<type::Array>()) {
-      interpreter.push_frame(
+      return interpreter.push_frame(
           a->Initializer(),
           CompleteResultBuffer(interpreter.frame().resolve<addr_t>(inst.reg)),
           {});
-      return true;
 
     } else {
       NOT_YET();
@@ -211,10 +209,9 @@ struct DestroyInstruction
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
                                    DestroyInstruction const& inst) {
-    interpreter.push_frame(
+    return interpreter.push_frame(
         inst.function(),
         CompleteResultBuffer(interpreter.frame().resolve(inst.addr)), {});
-    return true;
   }
 
   friend void BaseTraverse(Inliner& inl, DestroyInstruction& inst) {
@@ -244,12 +241,11 @@ struct CopyInstruction
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
                                    CopyInstruction const& inst) {
-    interpreter.push_frame(
+    return interpreter.push_frame(
         inst.function(),
         CompleteResultBuffer(interpreter.frame().resolve(inst.to),
                              interpreter.frame().resolve(inst.from)),
         {});
-    return true;
   }
 
   friend void BaseTraverse(Inliner& inl, CopyInstruction& inst) {
@@ -280,12 +276,11 @@ struct CopyInitInstruction
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
                                    CopyInitInstruction const& inst) {
-    interpreter.push_frame(
+    return interpreter.push_frame(
         inst.function(),
         CompleteResultBuffer(interpreter.frame().resolve(inst.to),
                              interpreter.frame().resolve(inst.from)),
         {});
-    return true;
   }
 
   friend void BaseTraverse(Inliner& inl, CopyInitInstruction& inst) {
@@ -371,12 +366,11 @@ struct MoveInstruction
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
                                    MoveInstruction const& inst) {
-    interpreter.push_frame(
+    return interpreter.push_frame(
         inst.function(),
         CompleteResultBuffer(interpreter.frame().resolve(inst.to),
                              interpreter.frame().resolve(inst.from)),
         {});
-    return true;
   }
 
   friend void BaseTraverse(Inliner& inl, MoveInstruction& inst) {
@@ -407,12 +401,11 @@ struct MoveInitInstruction
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
                                    MoveInitInstruction const& inst) {
-    interpreter.push_frame(
+    return interpreter.push_frame(
         inst.function(),
         CompleteResultBuffer(interpreter.frame().resolve(inst.to),
                              interpreter.frame().resolve(inst.from)),
         {});
-    return true;
   }
 
   friend void BaseTraverse(Inliner& inl, MoveInitInstruction& inst) {

@@ -9,6 +9,7 @@
 #include "core/type_contour.h"
 #include "ir/instruction/base.h"
 #include "ir/interpreter/architecture.h"
+#include "ir/interpreter/ffi.h"
 
 namespace ir {
 namespace {
@@ -77,7 +78,7 @@ BasicBlock const* Interpreter::InterpretFromInstructionPointer() {
   return ir::InterpretInstruction(*this, basic_block->jump());
 }
 
-void Interpreter::push_frame(Subroutine const* subroutine,
+bool Interpreter::push_frame(Subroutine const* subroutine,
                              CompleteResultBuffer const& arguments,
                              absl::Span<addr_t const> outputs) {
   ASSERT(subroutine != nullptr);
@@ -109,15 +110,19 @@ void Interpreter::push_frame(Subroutine const* subroutine,
   }
 
   instruction_pointers_.emplace_back(subroutine);
+  return false;
 }
 
-void Interpreter::push_frame(Fn f, CompleteResultBuffer const& arguments,
+bool Interpreter::push_frame(Fn f, CompleteResultBuffer const& arguments,
                              absl::Span<addr_t const> outputs) {
   if (f.module() == ModuleId::Foreign()) {
-    NOT_YET("Foreign functions are not yet supported.");
+    ASSERT(outputs.size() <= 1);
+    return InvokeForeignFunction(*context_.ForeignFunctionType(f),
+                                 context_.ForeignFunctionPointer(f), arguments,
+                                 outputs.empty() ? nullptr : outputs[0]);
   } else {
     auto& subroutine = *ASSERT_NOT_NULL(context_.Function(f).subroutine);
-    push_frame(&subroutine, arguments, outputs);
+    return push_frame(&subroutine, arguments, outputs);
   }
 }
 

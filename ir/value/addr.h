@@ -5,8 +5,10 @@
 
 namespace ir {
 
-using memory_t = std::byte;
-using addr_t   = memory_t *;
+using memory_t       = std::byte;
+using addr_t         = memory_t *;
+using memory_const_t = std::byte const;
+using addr_const_t   = memory_const_t *;
 
 constexpr addr_t Null() { return nullptr; }
 

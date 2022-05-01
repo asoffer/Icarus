@@ -27,10 +27,17 @@ struct Interpreter {
   // Returns the current stack frame.
   StackFrame& frame() { return frames_.back(); }
 
-  // Pushes a new frame onto the call stack.
-  void push_frame(Fn f, CompleteResultBuffer const& arguments,
+  // Pushes a new frame onto the call stack. If the stack frame is for a foreign
+  // function, that function is immediately invoked and the returned bool
+  // indicates whether or not there was a fatal error. Otherwise, `false` is
+  // returned. In any case, this boolean value is semantically equivalent to the
+  // boolean values returned by any instruction: `true` indicates that we should
+  // proceed directly to the next instruction; `false` indicates that we should
+  // reexamine the stack infrastructure to see what to do next (possibly a fatal
+  // error, possibly a jump).
+  bool push_frame(Fn f, CompleteResultBuffer const& arguments,
                   absl::Span<addr_t const> outputs);
-  void push_frame(Subroutine const* subroutine,
+  bool push_frame(Subroutine const* subroutine,
                   CompleteResultBuffer const& arguments,
                   absl::Span<addr_t const> outputs);
 

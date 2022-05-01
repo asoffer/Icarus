@@ -197,9 +197,8 @@ struct CallInstruction
     }
     std::vector<addr_t> outputs;
     for (Reg r : inst.outs_) { outputs.push_back(interpreter.frame().find(r)); }
-    interpreter.push_frame(interpreter.frame().resolve(inst.func()), arguments,
-                           outputs);
-    return false;
+    return interpreter.push_frame(interpreter.frame().resolve(inst.func()),
+                                  arguments, outputs);
   }
 
   std::string to_string() const;

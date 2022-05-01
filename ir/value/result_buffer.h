@@ -168,7 +168,8 @@ struct CompleteResultBuffer {
     offsets_.clear();
   }
 
-  ir::addr_t data() { return buffer_.data(); }
+  addr_t data() { return buffer_.data(); }
+  addr_const_t data() const { return buffer_.data(); }
 
   void append(CompleteResultBuffer const &value);
   void append(CompleteResultRef value);
