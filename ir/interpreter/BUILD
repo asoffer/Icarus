@@ -1,17 +1,6 @@
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
-    name = "architecture",
-    hdrs = ["architecture.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//core:arch",
-        "//ir/value:addr",
-        "//ir/value:fn",
-    ],
-)
-
-cc_library(
     name = "ffi",
     hdrs = ["ffi.h"],
     srcs = ["ffi.cc"],
@@ -44,7 +33,6 @@ cc_library(
     srcs = ["interpreter.cc"],
     visibility = ["//visibility:public"],
     deps = [
-        ":architecture",
         ":ffi",
         ":stack_frame",
         "//base:macros",

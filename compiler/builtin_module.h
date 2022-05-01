@@ -37,16 +37,10 @@ struct AlignmentInstruction
 
   friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
                                    AlignmentInstruction const& inst) {
-    interpreter.frame().set(inst.result,
-                            interpreter.frame()
-                                .resolve(inst.type)
-                                .alignment(interpreter::kArchitecture)
-                                .value());
+    interpreter.frame().set(
+        inst.result,
+        interpreter.frame().resolve(inst.type).alignment(core::Host).value());
     return true;
-  }
-
-  uint64_t Resolve() const {
-    return type.value().alignment(interpreter::kArchitecture).value();
   }
 
   ir::RegOr<type::Type> type;
@@ -66,8 +60,6 @@ struct AsciiEncodeInstruction
     return true;
   }
 
-  ir::Char Resolve() const { return ir::Char(value.value()); }
-
   ir::RegOr<uint8_t> value;
   ir::Reg result;
 };
@@ -86,8 +78,6 @@ struct AsciiDecodeInstruction
     return true;
   }
 
-  uint8_t Resolve() const { return static_cast<uint8_t>(character.value()); }
-
   ir::RegOr<ir::Char> character;
   ir::Reg result;
 };
@@ -100,15 +90,10 @@ struct BytesInstruction
 
   friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
                                    BytesInstruction const& inst) {
-    interpreter.frame().set(inst.result, interpreter.frame()
-                                             .resolve(inst.type)
-                                             .bytes(interpreter::kArchitecture)
-                                             .value());
+    interpreter.frame().set(
+        inst.result,
+        interpreter.frame().resolve(inst.type).bytes(core::Host).value());
     return true;
-  }
-
-  uint64_t Resolve() const {
-    return type.value().bytes(interpreter::kArchitecture).value();
   }
 
   ir::RegOr<type::Type> type;
@@ -129,10 +114,6 @@ struct HasBlockInstruction
                              .find(interpreter.frame().resolve(inst.name)) !=
                          ir::Block::Invalid());
     return true;
-  }
-
-  bool Resolve() const {
-    return context.value().find(name.value()) != ir::Block::Invalid();
   }
 
   ir::RegOr<ir::ScopeContext> context;

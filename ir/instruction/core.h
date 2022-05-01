@@ -17,7 +17,6 @@
 #include "ir/byte_code/writer.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/op_codes.h"
-#include "ir/interpreter/architecture.h"
 #include "ir/interpreter/interpreter.h"
 #include "ir/out_params.h"
 #include "ir/value/reg_or.h"
@@ -36,7 +35,7 @@ struct LoadInstruction
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
                                    LoadInstruction const& inst) {
-    core::Bytes num_bytes = inst.type.bytes(::interpreter::kArchitecture);
+    core::Bytes num_bytes = inst.type.bytes(core::Host);
     interpreter.frame().Load(num_bytes, inst.addr, inst.result);
     return true;
   }
@@ -119,9 +118,6 @@ struct RegisterInstruction
     interpreter.frame().set(inst.result, interpreter.frame().resolve(inst.operand));
     return true;
   }
-
-  T Resolve() const { return Apply(operand.value()); }
-  static T Apply(T val) { return val; }
 
   RegOr<T> operand;
   Reg result;

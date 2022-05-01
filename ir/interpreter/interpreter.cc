@@ -8,7 +8,6 @@
 #include "core/bytes.h"
 #include "core/type_contour.h"
 #include "ir/instruction/base.h"
-#include "ir/interpreter/architecture.h"
 #include "ir/interpreter/ffi.h"
 
 namespace ir {
@@ -18,10 +17,9 @@ namespace {
 // allocations.
 core::Bytes StackFrameSize(Subroutine const& subroutine) {
   core::Bytes total;
-  subroutine.for_each_alloc(
-      ::interpreter::kArchitecture, [&](core::TypeContour t, Reg) {
-        total = core::FwdAlign(total, t.alignment()) + t.bytes();
-      });
+  subroutine.for_each_alloc(core::Host, [&](core::TypeContour t, Reg) {
+    total = core::FwdAlign(total, t.alignment()) + t.bytes();
+  });
   return total;
 }
 
@@ -92,8 +90,8 @@ bool Interpreter::push_frame(Subroutine const* subroutine,
                           .num_stack_allocations = subroutine->num_allocs()});
 
   subroutine->for_each_alloc(
-      ::interpreter::kArchitecture, [&, next_reg_loc = core::Bytes(), i = 0](
-                                        core::TypeContour tc, Reg) mutable {
+      core::Host, [&, next_reg_loc = core::Bytes(), i = 0](core::TypeContour tc,
+                                                           Reg) mutable {
         next_reg_loc = core::FwdAlign(next_reg_loc, tc.alignment());
         frame.set(Reg::StackAllocation(i++),
                   frame.frame() + next_reg_loc.value());
@@ -143,7 +141,7 @@ std::optional<CompleteResultBuffer> Interpret(
     absl::Span outputs = rt->return_types();
     num_outputs        = outputs.size();
     for (type::Type t : outputs) {
-      output_buffer.append_slot(t.bytes(::interpreter::kArchitecture).value());
+      output_buffer.append_slot(t.bytes(core::Host).value());
     }
   }
 

@@ -15,7 +15,6 @@
 #include "ir/instruction/base.h"
 #include "ir/instruction/debug.h"
 #include "ir/instruction/foreign.h"
-#include "ir/interpreter/architecture.h"
 #include "ir/interpreter/interpreter.h"
 #include "ir/out_params.h"
 #include "ir/subroutine.h"
@@ -123,11 +122,10 @@ struct PtrDiffInstruction
 
   friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
                                    PtrDiffInstruction const& inst) {
-    interpreter.frame().set(
-        inst.result,
-        (interpreter.frame().resolve(inst.lhs) -
-         interpreter.frame().resolve(inst.rhs)) /
-            inst.pointee_type.bytes(::interpreter::kArchitecture).value());
+    interpreter.frame().set(inst.result,
+                            (interpreter.frame().resolve(inst.lhs) -
+                             interpreter.frame().resolve(inst.rhs)) /
+                                inst.pointee_type.bytes(core::Host).value());
     return true;
   }
 
@@ -463,11 +461,11 @@ struct StructIndexInstruction
   friend bool InterpretInstruction(ir::interpreter::Interpreter& interpreter,
                                    StructIndexInstruction const& inst) {
     interpreter.frame().set(
-        inst.result, interpreter.frame().resolve(inst.addr) +
-                         inst.struct_type
-                             ->offset(interpreter.frame().resolve(inst.index),
-                                      ::interpreter::kArchitecture)
-                             .value());
+        inst.result,
+        interpreter.frame().resolve(inst.addr) +
+            inst.struct_type
+                ->offset(interpreter.frame().resolve(inst.index), core::Host)
+                .value());
     return true;
   }
 
@@ -489,9 +487,8 @@ struct PtrIncrInstruction
     interpreter.frame().set(
         inst.result,
         interpreter.frame().resolve(inst.addr) +
-            core::FwdAlign(
-                inst.ptr->pointee().bytes(::interpreter::kArchitecture),
-                inst.ptr->pointee().alignment(::interpreter::kArchitecture))
+            core::FwdAlign(inst.ptr->pointee().bytes(core::Host),
+                           inst.ptr->pointee().alignment(core::Host))
                     .value() *
                 interpreter.frame().resolve(inst.index));
     return true;
