@@ -27,14 +27,12 @@
 #include "module/map_bazel.h"
 #include "module/module.h"
 #include "module/shared_context.h"
-#include "opt/opt.h"
 
 ABSL_FLAG(std::vector<std::string>, log, {},
           "Comma-separated list of log keys");
 ABSL_FLAG(std::string, link, "",
           "Library to be dynamically loaded by the compiler to be used "
           "at compile-time. Libraries will not be unloaded.");
-ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
 ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Comma-separated list of paths to search when importing modules. "
           "Defaults to $ICARUS_MODULE_PATH.");

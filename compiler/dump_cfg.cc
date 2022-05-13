@@ -27,14 +27,12 @@
 #include "ir/interpreter/interpreter.h"
 #include "ir/subroutine.h"
 #include "module/module.h"
-#include "opt/opt.h"
 
 ABSL_FLAG(std::vector<std::string>, log, {},
           "Comma-separated list of log keys");
 ABSL_FLAG(std::string, link, "",
           "Library to be dynamically loaded by the compiler to be used "
           "at compile-time. Libraries will not be unloaded.");
-ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
 ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Comma-separated list of paths to search when importing modules. "
           "Defaults to $ICARUS_MODULE_PATH.");
@@ -163,7 +161,6 @@ int DumpControlFlowGraph(char const *file_name, std::ostream &output) {
   auto parsed_nodes = frontend::Parse(file_content, **diag);
   auto nodes   = exec_mod->insert(parsed_nodes.begin(), parsed_nodes.end());
   auto main_fn = compiler::CompileModule(exec_mod->context(), resources, nodes);
-  if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&*main_fn); }
 
   output << "digraph {\n";
   DumpControlFlowGraph(&*main_fn, output);

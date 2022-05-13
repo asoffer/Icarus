@@ -30,14 +30,12 @@
 #include "module/module.h"
 #include "module/shared_context.h"
 #include "nlohmann/json.hpp"
-#include "opt/opt.h"
 
 ABSL_FLAG(std::vector<std::string>, log, {},
           "Comma-separated list of log keys");
 ABSL_FLAG(std::string, link, "",
           "Library to be dynamically loaded by the compiler to be used "
           "at compile-time. Libraries will not be unloaded.");
-ABSL_FLAG(bool, opt_ir, false, "Optimize intermediate representation.");
 ABSL_FLAG(std::vector<std::string>, module_paths, {},
           "Comma-separated list of paths to search when importing modules. "
           "Defaults to $ICARUS_MODULE_PATH.");
@@ -110,9 +108,6 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
   ASSIGN_OR(return 1,  //
                    auto main_fn,
                    CompileModule(exec_mod->context(), resources, nodes));
-  // TODO All the functions? In all the modules?
-  if (absl::GetFlag(FLAGS_opt_ir)) { opt::RunAllOptimizations(&main_fn); }
-
   std::vector<ir::Slice> arguments;
   for (char *argument : program_arguments) {
     arguments.emplace_back(reinterpret_cast<ir::addr_t>(argument),

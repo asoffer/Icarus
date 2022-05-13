@@ -221,12 +221,6 @@ def _ic_interpret_impl(ctx):
         ),
         is_executable = True,
     )
-    print(cmd_template.format(
-            interpreter = interpreter,
-            src = src,
-            module_map = module_map_file.short_path,
-            module_paths = "stdlib",
-        ))
     runfile_deps = depset(
         srcs + [module_map_file] + [icm[1] for (src, icm) in module_map.items()],
         transitive = ([t[DefaultInfo].files for t in target_deps] +
