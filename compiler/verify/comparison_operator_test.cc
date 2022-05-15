@@ -86,39 +86,39 @@ TEST(ComparisonOperator, BufferPointerOrder) {
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
-using OperatorOverload = testing::TestWithParam<char const *>;
-TEST_P(OperatorOverload, Overloads) {
-  test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(absl::StrFormat(
-      R"(S ::= struct {}
-         (%s) ::= (lhs: S, rhs: S) -> bool { return true }
-         S.{} %s S.{}
-      )",
-      GetParam(), GetParam()));
-  auto const *expr = mod.get<ast::ComparisonOperator>();
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
-  EXPECT_THAT(infra.diagnostics(), IsEmpty());
-}
-
-TEST_P(OperatorOverload, MissingOverloads) {
-  test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(absl::StrFormat(
-      R"(
-      S ::= struct {}
-      S.{} %s S.{}
-      )",
-      GetParam()));
-  auto const *expr = mod.get<ast::ComparisonOperator>();
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts,
-              UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
-  EXPECT_THAT(infra.diagnostics(),
-              UnorderedElementsAre(
-                  Pair("type-error", "invalid-comparison-operator-overload")));
-}
-
+// using OperatorOverload = testing::TestWithParam<char const *>;
+// TEST_P(OperatorOverload, Overloads) {
+//   test::CompilerInfrastructure infra;
+//   auto &mod        = infra.add_module(absl::StrFormat(
+//       R"(S ::= struct {}
+//          (%s) ::= (lhs: S, rhs: S) -> bool { return true }
+//          S.{} %s S.{}
+//       )",
+//       GetParam(), GetParam()));
+//   auto const *expr = mod.get<ast::ComparisonOperator>();
+//   auto qts         = mod.context().qual_types(expr);
+//   EXPECT_THAT(qts,
+//               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
+//   EXPECT_THAT(infra.diagnostics(), IsEmpty());
+// }
+// 
+// TEST_P(OperatorOverload, MissingOverloads) {
+//   test::CompilerInfrastructure infra;
+//   auto &mod        = infra.add_module(absl::StrFormat(
+//       R"(
+//       S ::= struct {}
+//       S.{} %s S.{}
+//       )",
+//       GetParam()));
+//   auto const *expr = mod.get<ast::ComparisonOperator>();
+//   auto qts         = mod.context().qual_types(expr);
+//   EXPECT_THAT(qts,
+//               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
+//   EXPECT_THAT(infra.diagnostics(),
+//               UnorderedElementsAre(
+//                   Pair("type-error", "invalid-comparison-operator-overload")));
+// }
+// 
 // TODO: Support operator overloading for comparisons.
 // INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
 //                          testing::ValuesIn({"<", "<=", "==", "!=", ">=",

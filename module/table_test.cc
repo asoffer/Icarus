@@ -13,8 +13,7 @@ using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 
 TEST(ModuleTable, ConstructedWithBuiltin) {
-  ModuleTable table(std::make_unique<BuiltinModule>(
-      [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }));
+  ModuleTable table(std::make_unique<BuiltinModule>());
   auto *module_by_numeric_id = table.module(ir::ModuleId::Builtin());
   ASSERT_NE(module_by_numeric_id, nullptr);
   EXPECT_TRUE(module_by_numeric_id->is<BuiltinModule>());
@@ -28,8 +27,7 @@ TEST(ModuleTable, ConstructedWithBuiltin) {
 }
 
 TEST(ModuleTable, Insertion) {
-  ModuleTable table(std::make_unique<BuiltinModule>(
-      [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }));
+  ModuleTable table(std::make_unique<BuiltinModule>());
   auto [id1, m1] = table.add_module<MockModule>("mock");
   auto [id2, m2] = table.add_module<MockModule>("mock");
   auto [id3, m3] = table.add_module<MockModule>("another_mock");
@@ -40,8 +38,7 @@ TEST(ModuleTable, Insertion) {
 }
 
 TEST(ModuleTable, Access) {
-  ModuleTable table(std::make_unique<BuiltinModule>(
-      [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }));
+  ModuleTable table(std::make_unique<BuiltinModule>());
   auto [id1, m1] = table.add_module<MockModule>("mock");
 
   auto [id2, m2] = table.module("mock");
@@ -52,8 +49,7 @@ TEST(ModuleTable, Access) {
 }
 
 TEST(ModuleTable, Size) {
-  ModuleTable table(std::make_unique<BuiltinModule>(
-      [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }));
+  ModuleTable table(std::make_unique<BuiltinModule>());
   EXPECT_THAT(table, SizeIs(1));
   table.add_module<MockModule>("mock1");
   EXPECT_THAT(table, SizeIs(2));
@@ -66,8 +62,7 @@ TEST(ModuleTable, Size) {
 }
 
 TEST(ModuleTable, Modules) {
-  ModuleTable table(std::make_unique<BuiltinModule>(
-      [](ir::Subroutine const &) -> ir::ByteCode { UNREACHABLE(); }));
+  ModuleTable table(std::make_unique<BuiltinModule>());
   ir::ModuleId m1 = table.add_module<MockModule>("mock1").first;
   ir::ModuleId m2 = table.add_module<MockModule>("mock2").first;
   table.add_module<MockModule>("mock1");

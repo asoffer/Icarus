@@ -22,12 +22,12 @@ auto Vector(auto&& range) {
 }
 
 TEST(Builtin, Empty) {
-  BuiltinModule m([](ir::Subroutine const&) -> ir::ByteCode { UNREACHABLE(); });
+  BuiltinModule m;
   EXPECT_THAT(Vector(m.Exported("x")), IsEmpty());
 }
 
 TEST(Builtin, HasElements) {
-  BuiltinModule m([](ir::Subroutine const&) -> ir::ByteCode { UNREACHABLE(); });
+  BuiltinModule m;
   m.insert("x", {.qualified_type = type::QualType::Constant(type::Bool),
                  .visibility     = Module::Visibility::Exported});
   m.insert("z", {.qualified_type = type::QualType::Constant(type::I64),

@@ -7,6 +7,7 @@
 
 namespace compiler {
 namespace {
+using ::testing::Eq;
 using ::testing::Optional;
 
 struct TestCase {
@@ -40,7 +41,7 @@ TEST_P(BinaryOperatorTest, Constants) {
       kCommonDefinitions, absl::StrFormat(R"((%s) %s (%s))", test_data.lhs,
                                           test_case.op, test_data.rhs)));
   auto const *e = mod.get<ast::Expression>();
-  ASSERT_THAT(infra.Evaluate(mod, e), Optional(test_data.expected));
+  ASSERT_THAT(infra.Evaluate(mod, e), Optional(Eq(test_data.expected)));
 }
 
 TEST_P(BinaryOperatorTest, NonConstants) {
@@ -60,7 +61,7 @@ TEST_P(BinaryOperatorTest, NonConstants) {
       )",
           test_case.type, test_data.lhs, test_data.rhs, test_case.op)));
   auto const *e = mod.get<ast::Expression>();
-  ASSERT_THAT(infra.Evaluate(mod, e), Optional(test_data.expected));
+  ASSERT_THAT(infra.Evaluate(mod, e), Optional(Eq(test_data.expected)));
 }
 
 TEST_P(BinaryOperatorTest, Assignment) {
@@ -83,7 +84,7 @@ TEST_P(BinaryOperatorTest, Assignment) {
       )",
           test_case.type, test_data.lhs, test_case.op, test_data.rhs)));
   auto const *e = mod.get<ast::Expression>();
-  ASSERT_THAT(infra.Evaluate(mod, e), Optional(test_data.expected));
+  ASSERT_THAT(infra.Evaluate(mod, e), Optional(Eq(test_data.expected)));
 }
 
 // Note: We test both with literals and with a unary-operator applied directly
@@ -591,7 +592,7 @@ TEST(BinaryOperator, Overload) {
       })())");
   auto const *e = mod.get<ast::Expression>();
   ASSERT_THAT(infra.Evaluate(mod, e),
-              Optional(test::ExpectedValue(int64_t{7})));
+              Optional(Eq(test::ExpectedValue(int64_t{7}))));
 }
 
 struct BufferPointerTestData {
@@ -614,7 +615,7 @@ TEST_P(BufferPointerTest, Arithmetic) {
       expr));
   auto const *e = mod.get<ast::Expression>();
   ASSERT_THAT(infra.Evaluate(mod, e),
-              Optional(test::ExpectedValue(expected_result)));
+              Optional(Eq(test::ExpectedValue(expected_result))));
 }
 
 INSTANTIATE_TEST_SUITE_P(

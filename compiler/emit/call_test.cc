@@ -7,6 +7,7 @@
 namespace compiler {
 namespace {
 
+using ::testing::Eq;
 using ::testing::Optional;
 
 std::string Context() {
@@ -132,22 +133,23 @@ TEST(CallTest, Foreign) {
     test::CompilerInfrastructure infra;
     auto &mod     = infra.add_module(absl::StrCat(kDefinitions, "f_ptr()"));
     auto const *e = mod.get<ast::Expression>();
-    ASSERT_THAT(infra.Evaluate(mod, e),
-                Optional(test::ExpectedValue(ir::Addr(ForeignFunctionPtr()))));
+    ASSERT_THAT(
+        infra.Evaluate(mod, e),
+        Optional(Eq(test::ExpectedValue(ir::Addr(ForeignFunctionPtr())))));
   }
   {
     test::CompilerInfrastructure infra;
     auto &mod     = infra.add_module(absl::StrCat(kDefinitions, "f_i8()"));
     auto const *e = mod.get<ast::Expression>();
     ASSERT_THAT(infra.Evaluate(mod, e),
-                Optional(test::ExpectedValue(ForeignFunctionI8())));
+                Optional(Eq(test::ExpectedValue(ForeignFunctionI8()))));
   }
   {
     test::CompilerInfrastructure infra;
     auto &mod     = infra.add_module(absl::StrCat(kDefinitions, "f_i64()"));
     auto const *e = mod.get<ast::Expression>();
     ASSERT_THAT(infra.Evaluate(mod, e),
-                Optional(test::ExpectedValue(ForeignFunctionI64())));
+                Optional(Eq(test::ExpectedValue(ForeignFunctionI64()))));
   }
 }
 

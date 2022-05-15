@@ -283,9 +283,8 @@ struct CopyInitInstruction
                                    CopyInitInstruction const& inst) {
     return interpreter.push_frame(
         inst.function(),
-        CompleteResultBuffer(interpreter.frame().resolve(inst.to),
-                             interpreter.frame().resolve(inst.from)),
-        {});
+        CompleteResultBuffer(interpreter.frame().resolve(inst.from)),
+        {interpreter.frame().resolve(inst.to)});
   }
 
   friend void BaseTraverse(Inliner& inl, CopyInitInstruction& inst) {
@@ -408,9 +407,8 @@ struct MoveInitInstruction
                                    MoveInitInstruction const& inst) {
     return interpreter.push_frame(
         inst.function(),
-        CompleteResultBuffer(interpreter.frame().resolve(inst.to),
-                             interpreter.frame().resolve(inst.from)),
-        {});
+        CompleteResultBuffer(interpreter.frame().resolve(inst.from)),
+        {interpreter.frame().resolve(inst.to)});
   }
 
   friend void BaseTraverse(Inliner& inl, MoveInitInstruction& inst) {
