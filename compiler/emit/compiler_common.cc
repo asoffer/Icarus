@@ -238,7 +238,7 @@ void EmitArguments(
     std::string_view name = param_qts[i].name;
     if (param.value.constant()) {
       if (auto const *value = constants.at_or_null(name)) {
-        buffer.append(*value);
+        buffer.append(**value);
       } else {
         // TODO: It'd be better to simply extract the bound value.
         VerifyType(c, defaults[i].value);
@@ -326,6 +326,7 @@ void EmitCall(Compiler &c, CallMetadata::callee_locator_t callee,
 
   // TODO: With expansions, this might be wrong.
   auto out_params = SetReturns(c, overload_type, to);
+
   c.current_block()->Append(ir::CallInstruction(
       overload_type, callee_fn, std::move(prepared_arguments), out_params));
   int i = -1;

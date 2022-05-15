@@ -51,4 +51,28 @@ std::string CallInstruction::to_string() const {
       fn_ss.str(), arg_str);
 }
 
+bool InterpretInstruction(interpreter::Interpreter& interpreter,
+                          CallInstruction const& inst) {
+  ir::CompleteResultBuffer arguments;
+  for (size_t i = 0; i < inst.arguments().num_entries(); ++i) {
+    ir::PartialResultRef argument = inst.arguments()[i];
+    base::untyped_buffer_view data =
+        argument.is_register()
+            ? interpreter.frame().raw(argument.get<ir::Reg>())
+            : argument.raw();
+    arguments.append_raw(data);
+  }
+  std::vector<addr_t> outputs;
+  absl::Span returns = inst.fn_type_->return_types();
+  for (Reg r : inst.outs_) {
+    if (returns[outputs.size()].is_big()) {
+      outputs.push_back(interpreter.frame().resolve<addr_t>(r));
+    } else {
+      outputs.push_back(interpreter.frame().find(r));
+    }
+  }
+  return interpreter.push_frame(interpreter.frame().resolve(inst.func()),
+                                arguments, outputs);
+}
+
 }  // namespace ir

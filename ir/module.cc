@@ -13,13 +13,11 @@ LocalFnId Module::InsertFunctionIndex(type::Function const *fn_type) {
 Fn Module::InsertFunction(
     type::Function const *t,
     absl::FunctionRef<void(ir::Subroutine &)> initializer) {
-  ir::Subroutine subroutine(t);
-  initializer(subroutine);
-
-  auto &info = functions_.emplace_back(NativeFunctionInformation{
-      .subroutine = std::move(subroutine),
+  auto &[subroutine, ty] = functions_.emplace_back(NativeFunctionInformation{
+      .subroutine = Subroutine(t),
       .type_      = t,
   });
+  initializer(subroutine);
 
   return Fn(module_id_, LocalFnId(functions_.size() - 1));
 }

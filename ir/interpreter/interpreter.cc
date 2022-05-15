@@ -37,7 +37,11 @@ BasicBlock const* InterpretInstruction(interpreter::Interpreter& interpreter,
       interpreter.pop_frame();
       return nullptr;
     } else if constexpr (jump_type == base::meta<JumpCmd::BlockJump>) {
-      NOT_YET();
+      // TODO: Out(0) may not be sufficient.
+      auto& blocks = *ASSERT_NOT_NULL(reinterpret_cast<std::vector<Block>*>(
+          interpreter.frame().resolve<addr_t>(Reg::Output(0))));
+      blocks.push_back(j.block);
+      return j.after;
     } else if constexpr (jump_type == base::meta<JumpCmd::UncondJump>) {
       return j.block;
     } else if constexpr (jump_type == base::meta<JumpCmd::CondJump>) {

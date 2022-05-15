@@ -86,8 +86,6 @@ struct SliceInstruction
     return true;
   }
 
-  Type Resolve() const { return Slc(data_type.value()); }
-
   ir::RegOr<Type> data_type;
   ir::Reg result;
 };
@@ -106,11 +104,6 @@ struct SliceLengthInstruction
     return true;
   }
 
-  ir::addr_t Resolve() const {
-    // TODO: Guarantee alignment?
-    return (slice.value() + core::Bytes::Get<ir::addr_t>().value());
-  }
-
   ir::RegOr<ir::addr_t> slice;
   ir::Reg result;
 };
@@ -127,8 +120,6 @@ struct SliceDataInstruction
                             interpreter.frame().resolve(inst.slice));
     return true;
   }
-
-  ir::addr_t Resolve() const { return slice.value(); }
 
   ir::RegOr<ir::addr_t> slice;
   ir::Reg result;
