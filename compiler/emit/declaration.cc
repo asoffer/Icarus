@@ -5,6 +5,7 @@
 #include "compiler/common.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/common.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "compiler/emit/initialize.h"
 #include "compiler/module.h"
 #include "ir/value/addr.h"
@@ -125,6 +126,50 @@ void Compiler::EmitToBuffer(ast::Declaration::Id const *node,
   return (node->declaration().flags() & ast::Declaration::f_IsConst)
              ? EmitConstantDeclaration(*this, &node->declaration(), out)
              : EmitNonConstantDeclaration(*this, &node->declaration(), out);
+}
+
+void Compiler::EmitCopyAssign(
+    ast::Declaration::Id const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitMoveAssign(
+    ast::Declaration::Id const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitCopyInit(
+    ast::Declaration::Id const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitMoveInit(
+    ast::Declaration::Id const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
 }
 
 void Compiler::EmitToBuffer(ast::BindingDeclaration const *node,

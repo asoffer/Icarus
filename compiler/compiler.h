@@ -285,16 +285,24 @@ struct Compiler : CompilationDataReference,
   DEFINE_EMIT(ast::ArrayLiteral)
   DEFINE_EMIT(ast::ArrayType)
   DEFINE_EMIT(ast::BinaryOperator)
+  DEFINE_EMIT(ast::Builtin)
   DEFINE_EMIT(ast::Call)
   DEFINE_EMIT(ast::Cast)
   DEFINE_EMIT(ast::ComparisonOperator)
-  DEFINE_EMIT(ast::FunctionLiteral)
   DEFINE_EMIT(ast::DesignatedInitializer)
+  DEFINE_EMIT(ast::Declaration::Id)
+  DEFINE_EMIT(ast::EnumLiteral)
+  DEFINE_EMIT(ast::FunctionType)
+  DEFINE_EMIT(ast::FunctionLiteral)
   DEFINE_EMIT(ast::Identifier)
+  DEFINE_EMIT(ast::Import)
   DEFINE_EMIT(ast::Index)
+  DEFINE_EMIT(ast::PatternMatch)
+  DEFINE_EMIT(ast::ScopeLiteral)
   DEFINE_EMIT(ast::ScopeNode)
   DEFINE_EMIT(ast::ShortFunctionLiteral)
   DEFINE_EMIT(ast::SliceType)
+  DEFINE_EMIT(ast::StructLiteral)
   DEFINE_EMIT(ast::Terminal)
   DEFINE_EMIT(ast::UnaryOperator)
 #undef DEFINE_EMIT
@@ -340,7 +348,6 @@ struct Compiler : CompilationDataReference,
 
     if (expr.type().is_big()) {
       // TODO: guaranteed move-elision
-
       type::Typed<ir::RegOr<ir::addr_t>> r(ir::Reg::Output(0), expr.type());
       EmitMoveInit(*expr, absl::MakeConstSpan(&r, 1));
     } else {
@@ -353,12 +360,13 @@ struct Compiler : CompilationDataReference,
                  ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
                  ir::UnboundScope, ir::ScopeContext, ir::Block>(
           expr.type(), [&]<typename T>() {
-            current_block()->Append(ir::SetReturnInstruction<T>{
-                .index = 0,
-                .value = buffer.get<T>(0),
+            current_block()->Append(ir::StoreInstruction<T>{
+                .value    = buffer.get<T>(0),
+                .location = ir::Reg::Output(0),
             });
           });
     }
+
     current_block()->set_jump(ir::JumpCmd::Return());
     LOG("MakeSubroutine", "%s", fn);
 

@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/compiler_common.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "compiler/module.h"
 #include "ir/interpreter/interpreter.h"
 
@@ -86,6 +87,50 @@ bool Compiler::CompleteEnum(ast::EnumLiteral const *node) {
   ir::interpreter::Interpret(shared_context(), fn);
 
   return true;
+}
+
+void Compiler::EmitCopyAssign(
+    ast::EnumLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitMoveAssign(
+    ast::EnumLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitCopyInit(
+    ast::EnumLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitMoveInit(
+    ast::EnumLiteral const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
 }
 
 }  // namespace compiler

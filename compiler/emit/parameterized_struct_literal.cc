@@ -75,9 +75,9 @@ bool Compiler::EmitParameterizedStructFunctionBody(
     EmitStructDataCompletion(*this, r, node->fields());
     current_block()->set_jump(ir::JumpCmd::Return());
 
-    current_block()->Append(ir::SetReturnInstruction<type::Type>{
-        .index = 0,
-        .value = r,
+    current_block()->Append(ir::StoreInstruction<type::Type>{
+        .value    = r,
+        .location = ir::Reg::Output(0),
     });
     current_block()->set_jump(ir::JumpCmd::Return());
 

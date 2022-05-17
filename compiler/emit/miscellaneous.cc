@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/compiler_common.h"
+#include "compiler/emit/copy_move_assignment.h"
 
 namespace compiler {
 namespace {
@@ -57,6 +58,50 @@ void Compiler::EmitToBuffer(ast::Import const *node,
   context().LoadConstant(node, out);
 }
 
+void Compiler::EmitCopyAssign(
+    ast::Import const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitMoveAssign(
+    ast::Import const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitCopyInit(
+    ast::Import const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitMoveInit(
+    ast::Import const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
 void Compiler::EmitToBuffer(ast::Label const *node,
                             ir::PartialResultBuffer &out) {
   out.append(node->value());
@@ -103,4 +148,49 @@ void Compiler::EmitToBuffer(ast::Builtin const *node,
                             ir::PartialResultBuffer &out) {
   out.append(ir::ModuleId::Builtin());
 }
+
+void Compiler::EmitCopyAssign(
+    ast::Builtin const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitMoveAssign(
+    ast::Builtin const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitCopyInit(
+    ast::Builtin const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitMoveInit(
+    ast::Builtin const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
 }  // namespace compiler

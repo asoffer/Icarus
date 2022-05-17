@@ -1,6 +1,7 @@
 #include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/emit/copy_move_assignment.h"
 #include "diagnostic/message.h"
 
 namespace compiler {
@@ -80,5 +81,50 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
     }
   }
 }
+
+void Compiler::EmitCopyAssign(
+    ast::PatternMatch const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitMoveAssign(
+    ast::PatternMatch const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitCopyInit(
+    ast::PatternMatch const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  CopyAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
+void Compiler::EmitMoveInit(
+    ast::PatternMatch const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
+  auto t = context().qual_types(node)[0].type();
+  ASSERT(to.size() == 1u);
+  ir::PartialResultBuffer buffer;
+  EmitToBuffer(node, buffer);
+  MoveAssignmentEmitter emitter(*this);
+  emitter(to[0], type::Typed(buffer[0], t));
+}
+
 
 }  // namespace compiler

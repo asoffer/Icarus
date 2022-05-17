@@ -3,6 +3,7 @@
 #include "ast/scope.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/compiler_common.h"
+#include "compiler/emit/initialize.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
@@ -26,23 +27,10 @@ void Compiler::EmitToBuffer(ast::ReturnStmt const *node,
   for (size_t i = 0; i < node->exprs().size(); ++i) {
     auto const *expr    = node->exprs()[i];
     type::Type ret_type = fn_type.return_types()[i];
-    if (ret_type.is_big()) {
-      type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
-          ir::RegOr<ir::addr_t>(ir::Reg::Output(i)), ret_type);
-      EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
-    } else {
-      out.clear();
-      EmitCast(*this, context().typed(expr), ret_type, out);
-      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn>(
-          ret_type, [&]<typename T>() {
-            current_block()->Append(ir::SetReturnInstruction<T>{
-                .index = static_cast<uint16_t>(i),
-                .value = out.back().get<T>(),
-            });
-          });
-    }
+    ir::PartialResultBuffer return_value =
+        EmitCast(*this, context().typed(expr), ret_type);
+    MoveInitializationEmitter emitter(*this);
+    emitter(ret_type, ir::Reg::Output(i), return_value);
   }
 
   DestroyTemporaries();

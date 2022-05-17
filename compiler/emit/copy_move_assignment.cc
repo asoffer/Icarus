@@ -300,12 +300,28 @@ void MoveAssignmentEmitter::EmitAssignment(
 }
 
 void CopyAssignmentEmitter::EmitAssignment(
-    type::Struct const *t, ir::RegOr<ir::addr_t> to,
+    type::Scope const *t, ir::RegOr<ir::addr_t> to,
     type::Typed<ir::PartialResultRef> const &from) {
   // TODO: Support mixed types and user-defined assignments.
   ASSERT(type::Type(t) == from.type());
   current_block()->Append(ir::CopyInstruction{
       .type = t, .from = from->get<ir::addr_t>(), .to = to});
+}
+
+void MoveAssignmentEmitter::EmitAssignment(
+    type::Scope const *t, ir::RegOr<ir::addr_t> to,
+    type::Typed<ir::PartialResultRef> const &from) {
+  ASSERT(type::Type(t) == from.type());
+  current_block()->Append(ir::StoreInstruction<ir::UnboundScope>{
+      .value = from->get<ir::UnboundScope>(), .location = to});
+}
+
+void CopyAssignmentEmitter::EmitAssignment(
+    type::Struct const *t, ir::RegOr<ir::addr_t> to,
+    type::Typed<ir::PartialResultRef> const &from) {
+  ASSERT(type::Type(t) == from.type());
+  current_block()->Append(ir::StoreInstruction<ir::UnboundScope>{
+      .value = from->get<ir::UnboundScope>(), .location = to});
 }
 
 void MoveAssignmentEmitter::EmitAssignment(

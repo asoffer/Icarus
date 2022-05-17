@@ -107,6 +107,7 @@ struct UnboundScope
   Scope bind(
       compiler::WorkResources const &wr, ScopeContext const &ctx,
       core::Arguments<type::Typed<CompleteResultRef>> const &arguments) const {
+    ASSERT(static_cast<bool>(data_->f) == true);
     return data_->f(wr, ctx, arguments);
   }
 

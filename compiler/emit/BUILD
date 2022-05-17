@@ -262,6 +262,7 @@ cc_library(
     name = "declaration",
     srcs = ["declaration.cc"],
     deps = [
+        ":copy_move_assignment",
         ":initialize",
         "//ast",
         "//compiler:compiler_header",
@@ -307,6 +308,7 @@ cc_library(
     deps = [
         ":common",
         ":compiler_common",
+        ":copy_move_assignment",
         "//ast",
         "//compiler:compiler_header",
         "//compiler:module",
@@ -319,6 +321,7 @@ cc_library(
     name = "function_type",
     srcs = ["function_type.cc"],
     deps = [
+        ":copy_move_assignment",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:reg_or",
@@ -443,6 +446,7 @@ cc_library(
     name = "pattern_match",
     srcs = ["pattern_match.cc"],
     deps = [
+        ":copy_move_assignment",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:addr",
@@ -467,6 +471,7 @@ cc_library(
     deps = [
         ":common",
         ":compiler_common",
+        ":initialize",
         "//ast",
         "//compiler:compiler_header",
         "//ir/value:addr",

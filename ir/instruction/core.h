@@ -135,27 +135,6 @@ struct RegisterInstruction
 };
 
 template <typename T>
-struct SetReturnInstruction
-    : base::Extend<SetReturnInstruction<T>>::template With<
-          base::BaseTraverseExtension, base::BaseSerializeExtension,
-          DebugFormatExtension> {
-  using type = T;
-  static_assert(interpreter::FitsInRegister<type>);
-  static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
-
-  friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
-                                   SetReturnInstruction const& inst) {
-    addr_t ret_slot = interpreter.frame().resolve<ir::addr_t>(ir::Reg::Output(inst.index));
-    auto value = interpreter.frame().resolve(inst.value);
-    *ASSERT_NOT_NULL(reinterpret_cast<type*>(ret_slot)) = value;
-    return true;
-  }
-
-  uint16_t index;
-  RegOr<T> value;
-};
-
-template <typename T>
 struct StoreInstruction
     : base::Extend<StoreInstruction<T>>::template With<
           base::BaseTraverseExtension, base::BaseSerializeExtension,
@@ -167,11 +146,6 @@ struct StoreInstruction
                                    StoreInstruction const& inst) {
     interpreter.frame().Store(inst.value, inst.location);
     return true;
-  }
-
-  template <typename ExecContext>
-  void Apply(ExecContext& ctx) {
-    ctx.Store(ctx.resolve(location), ctx.resolve(value));
   }
 
   RegOr<T> value;

@@ -49,8 +49,8 @@ struct StackFrame {
     std::memcpy(find(r), std::addressof(value), sizeof(value));
   }
 
-  void set_raw(ir::Reg r, void const *src, uint16_t num_bytes);
-  base::untyped_buffer_view raw(ir::Reg r) const;
+  void set_raw(Reg r, void const* src, uint16_t num_bytes);
+  base::untyped_buffer_view raw(Reg r) const;
 
   // Loads `num_bytes` from the address `from` and writes them to the register `to`.
   void Load(core::Bytes num_bytes, RegOr<addr_t> from, Reg to) {

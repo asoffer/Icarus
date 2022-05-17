@@ -246,11 +246,19 @@ struct CopyInstruction
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
                                    CopyInstruction const& inst) {
+    if (inst.type.is_big()) {
     return interpreter.push_frame(
         inst.function(),
         CompleteResultBuffer(interpreter.frame().resolve(inst.to),
                              interpreter.frame().resolve(inst.from)),
         {});
+    } else {
+      ASSERT(inst.type.is_big() == false);
+      std::memcpy(interpreter.frame().resolve(inst.to),
+                  interpreter.frame().resolve(inst.from),
+                  inst.type.bytes(core::Host).value());
+      return true;
+    }
   }
 
   friend void BaseTraverse(Inliner& inl, CopyInstruction& inst) {
@@ -269,7 +277,7 @@ struct CopyInstruction
     } else if (auto* a = type.if_as<type::Array>()) {
       return a->CopyAssign();
     } else {
-      NOT_YET();
+      UNREACHABLE();
     }
   }
 };

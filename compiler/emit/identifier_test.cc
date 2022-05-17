@@ -9,7 +9,7 @@ namespace {
 INSTANTIATE_TEST_SUITE_P(
     All, EvaluationTest,
     testing::ValuesIn({test::TestCase{.expr     = R"((() -> i64 {
-                                              a ::= 1
+                                              a ::= 1 
                                               return a
                                             })()
                                             )",

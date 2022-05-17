@@ -54,48 +54,68 @@ void Compiler::EmitMoveInit(
     ast::ShortFunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) { NOT_YET(); }
-
-  current_block()->Append(ir::StoreInstruction<ir::Fn>{
-      .value    = EmitAs<ir::Fn>(node),
-      .location = *to[0],
-  });
+  if (node->is_generic()) {
+    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
+        .value    = EmitAs<ir::GenericFn>(node),
+        .location = *to[0],
+    });
+  } else {
+    current_block()->Append(ir::StoreInstruction<ir::Fn>{
+        .value    = EmitAs<ir::Fn>(node),
+        .location = *to[0],
+    });
+  }
 }
 
 void Compiler::EmitCopyInit(
     ast::ShortFunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) { NOT_YET(); }
-
-  current_block()->Append(ir::StoreInstruction<ir::Fn>{
-      .value    = EmitAs<ir::Fn>(node),
-      .location = *to[0],
-  });
+  if (node->is_generic()) {
+    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
+        .value    = EmitAs<ir::GenericFn>(node),
+        .location = *to[0],
+    });
+  } else {
+    current_block()->Append(ir::StoreInstruction<ir::Fn>{
+        .value    = EmitAs<ir::Fn>(node),
+        .location = *to[0],
+    });
+  }
 }
 
 void Compiler::EmitMoveAssign(
     ast::ShortFunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) { NOT_YET(); }
-
-  current_block()->Append(ir::StoreInstruction<ir::Fn>{
-      .value    = EmitAs<ir::Fn>(node),
-      .location = *to[0],
-  });
+  if (node->is_generic()) {
+    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
+        .value    = EmitAs<ir::GenericFn>(node),
+        .location = *to[0],
+    });
+  } else {
+    current_block()->Append(ir::StoreInstruction<ir::Fn>{
+        .value    = EmitAs<ir::Fn>(node),
+        .location = *to[0],
+    });
+  }
 }
 
 void Compiler::EmitCopyAssign(
     ast::ShortFunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) { NOT_YET(); }
-
-  current_block()->Append(ir::StoreInstruction<ir::Fn>{
-      .value    = EmitAs<ir::Fn>(node),
-      .location = *to[0],
-  });
+  if (node->is_generic()) {
+    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
+        .value    = EmitAs<ir::GenericFn>(node),
+        .location = *to[0],
+    });
+  } else {
+    current_block()->Append(ir::StoreInstruction<ir::Fn>{
+        .value    = EmitAs<ir::Fn>(node),
+        .location = *to[0],
+    });
+  }
 }
 
 bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
@@ -119,22 +139,9 @@ bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {
     }
 
     type::Type ret_type = fn_type->return_types()[0];
-    if (ret_type.is_big()) {
-      type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
-          ir::RegOr<ir::addr_t>(ir::Reg::Output(0)), ret_type);
-      EmitMoveInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
-    } else {
-      ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                 uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn>(
-          ret_type, [&]<typename T>() {
-            auto value = this->EmitAs<T>(node->body());
-            current_block()->Append(ir::SetReturnInstruction<T>{
-                .index = 0,
-                .value = value,
-            });
-          });
-    }
+    type::Typed<ir::RegOr<ir::addr_t>> typed_alloc(
+        ir::RegOr<ir::addr_t>(ir::Reg::Output(0)), ret_type);
+    EmitMoveInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
 
     DestroyTemporaries();
 

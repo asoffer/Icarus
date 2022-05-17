@@ -6,40 +6,6 @@ string ::= struct {
   _length:   u64
   _capacity: u64
 
-  (move) ::= (from: *string) -> string {
-    // TODO: use core.exchange here when the cross-module generics bug is fixed.
-    result := string.{
-      _data     = from._data
-      _length   = from._length
-      _capacity = from._capacity
-    }
-    from._data = null
-    from._length = 0
-    from._capacity = 0
-    return result
-  }
-
-  (move) ::= (to: *string, from: *string) -> () {
-    (to._data,     from._data)     = (from._data,     null)
-    (to._length,   from._length)   = (from._length,   0)
-    (to._capacity, from._capacity) = (from._capacity, 0)
-  }
-
-  (copy) ::= (from: *string) -> string {
-    return string.{
-      _data     = memory.clone(from'raw_null_terminated_view).data
-      _length   = from._length
-      _capacity = from._capacity
-    }
-  }
-
-  (copy) ::= (to: *string, from: *string) -> () {
-    memory.deallocate(to._data)
-    to._length   = from._length
-    to._capacity = from._capacity
-    to._data     = memory.clone(to'raw_null_terminated_view).data
-  }
-
   (destroy) ::= (self: *string) -> () { memory.deallocate(self._data) }
 }
 

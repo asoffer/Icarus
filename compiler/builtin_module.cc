@@ -15,59 +15,68 @@ void AbortFn(ir::Subroutine& subroutine) {
 }
 
 void AlignmentFn(ir::Subroutine& subroutine) {
-  subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
-      .index = 0,
-      .value = subroutine.entry()->Append(AlignmentInstruction{
-          .type   = ir::Reg::Parameter(0),
-          .result = subroutine.Reserve(),
-      }),
+  auto* entry = subroutine.entry();
+  auto value  = entry->Append(AlignmentInstruction{
+      .type   = ir::Reg::Parameter(0),
+      .result = subroutine.Reserve(),
   });
-  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+  entry->Append(ir::StoreInstruction<uint64_t>{
+      .value    = value,
+      .location = ir::Reg::Output(0),
+  });
+  entry->set_jump(ir::JumpCmd::Return());
 }
 
 void AsciiEncode(ir::Subroutine& subroutine) {
-  subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
-      .index = 0,
-      .value = subroutine.entry()->Append(AsciiEncodeInstruction{
-          .value  = ir::Reg::Parameter(0),
-          .result = subroutine.Reserve(),
-      }),
+  auto* entry = subroutine.entry();
+  auto value = entry->Append(AsciiEncodeInstruction{
+      .value  = ir::Reg::Parameter(0),
+      .result = subroutine.Reserve(),
   });
-  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+  entry->Append(ir::StoreInstruction<ir::Char>{
+      .value    = value,
+      .location = ir::Reg::Output(0),
+  });
+  entry->set_jump(ir::JumpCmd::Return());
 }
 
 void AsciiDecode(ir::Subroutine& subroutine) {
-  subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
-      .index = 0,
-      .value = subroutine.entry()->Append(AsciiDecodeInstruction{
-          .character = ir::Reg::Parameter(0),
-          .result    = subroutine.Reserve(),
-      }),
+  auto* entry = subroutine.entry();
+  auto value = entry->Append(AsciiDecodeInstruction{
+      .character = ir::Reg::Parameter(0),
+      .result    = subroutine.Reserve(),
   });
-  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+  entry->Append(ir::StoreInstruction<uint8_t>{
+      .value    = value,
+      .location = ir::Reg::Output(0),
+  });
+  entry->set_jump(ir::JumpCmd::Return());
 }
 
-
 void BytesFn(ir::Subroutine& subroutine) {
-  subroutine.entry()->Append(ir::SetReturnInstruction<uint64_t>{
-      .index = 0,
-      .value = subroutine.entry()->Append(BytesInstruction{
-          .type   = ir::Reg::Parameter(0),
-          .result = subroutine.Reserve(),
-      }),
+  auto* entry = subroutine.entry();
+  auto value  = entry->Append(BytesInstruction{
+      .type   = ir::Reg::Parameter(0),
+      .result = subroutine.Reserve(),
   });
-  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+  entry->Append(ir::StoreInstruction<uint64_t>{
+      .value    = value,
+      .location = ir::Reg::Output(0),
+  });
+  entry->set_jump(ir::JumpCmd::Return());
 }
 
 void OpaqueFn(ir::Subroutine& subroutine) {
-  subroutine.entry()->Append(ir::SetReturnInstruction<type::Type>{
-      .index = 0,
-      .value = subroutine.entry()->Append(type::OpaqueTypeInstruction{
-          .mod    = ir::Reg::Parameter(0),
-          .result = subroutine.Reserve(),
-      }),
+  auto* entry = subroutine.entry();
+  auto value  = entry->Append(type::OpaqueTypeInstruction{
+      .mod    = ir::Reg::Parameter(0),
+      .result = subroutine.Reserve(),
   });
-  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+  entry->Append(ir::StoreInstruction<type::Type>{
+      .value    = value,
+      .location = ir::Reg::Output(0),
+  });
+  entry->set_jump(ir::JumpCmd::Return());
 }
 
 void ReserveMemoryFn(ir::Subroutine& subroutine) {
@@ -81,15 +90,17 @@ void ReserveMemoryFn(ir::Subroutine& subroutine) {
 }
 
 void HasBlockFn(ir::Subroutine& subroutine) {
-  subroutine.entry()->Append(ir::SetReturnInstruction<bool>{
-      .index = 0,
-      .value = subroutine.entry()->Append(HasBlockInstruction{
-          .context = ir::Reg::Parameter(0),
-          .name    = ir::Reg::Parameter(1),
-          .result  = subroutine.Reserve(),
-      }),
+  auto* entry = subroutine.entry();
+  auto value  = entry->Append(HasBlockInstruction{
+      .context = ir::Reg::Parameter(0),
+      .name    = ir::Reg::Parameter(1),
+      .result  = subroutine.Reserve(),
   });
-  subroutine.entry()->set_jump(ir::JumpCmd::Return());
+  entry->Append(ir::StoreInstruction<bool>{
+      .value    = value,
+      .location = ir::Reg::Output(0),
+  });
+  entry->set_jump(ir::JumpCmd::Return());
 }
 
 template <auto F>

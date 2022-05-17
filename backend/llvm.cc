@@ -165,14 +165,6 @@ bool EmitInstruction(LlvmEmitter &emitter, LlvmEmitter::context_type &context,
       context.registers.emplace(inst.result,
                                 emitter.builder().CreateICmpULE(&lhs, &rhs));
     }
-  } else if constexpr (instruction_t
-                           .template is_a<ir::SetReturnInstruction>()) {
-    ASSIGN_OR(return false, auto &value, emitter.Resolve(inst.value, context));
-    if (inst.index == 0) {
-      emitter.builder().CreateRet(&value);
-    } else {
-      NOT_YET("Not yet supporting multiple returns: index = ", inst.index);
-    }
   } else if constexpr (instruction_t.template is_a<ir::StoreInstruction>()) {
     ASSIGN_OR(return false, auto &value, emitter.Resolve(inst.value, context));
     ASSIGN_OR(return false, auto &loc, emitter.Resolve(inst.location, context));
@@ -281,19 +273,13 @@ bool LlvmEmitter::EmitInstruction(ir::Inst const &instruction,
       ir::LeInstruction<int32_t>, ir::LeInstruction<uint32_t>,
       ir::LeInstruction<int64_t>, ir::LeInstruction<uint64_t>,
       ir::LeInstruction<float>, ir::LeInstruction<double>,
-      ir::SetReturnInstruction<bool>, ir::SetReturnInstruction<int8_t>,
-      ir::SetReturnInstruction<uint8_t>, ir::SetReturnInstruction<int16_t>,
-      ir::SetReturnInstruction<uint16_t>, ir::SetReturnInstruction<int32_t>,
-      ir::SetReturnInstruction<uint32_t>, ir::SetReturnInstruction<int64_t>,
-      ir::SetReturnInstruction<uint64_t>, ir::SetReturnInstruction<float>,
-      ir::SetReturnInstruction<double>, ir::StoreInstruction<bool>,
-      ir::StoreInstruction<ir::Char>, ir::StoreInstruction<int8_t>,
-      ir::StoreInstruction<uint8_t>, ir::StoreInstruction<int16_t>,
-      ir::StoreInstruction<uint16_t>, ir::StoreInstruction<int32_t>,
-      ir::StoreInstruction<uint32_t>, ir::StoreInstruction<int64_t>,
-      ir::StoreInstruction<uint64_t>, ir::StoreInstruction<float>,
-      ir::StoreInstruction<double>, ir::LoadInstruction, ir::CallInstruction,
-      ir::PtrIncrInstruction>();
+      ir::StoreInstruction<bool>, ir::StoreInstruction<ir::Char>,
+      ir::StoreInstruction<int8_t>, ir::StoreInstruction<uint8_t>,
+      ir::StoreInstruction<int16_t>, ir::StoreInstruction<uint16_t>,
+      ir::StoreInstruction<int32_t>, ir::StoreInstruction<uint32_t>,
+      ir::StoreInstruction<int64_t>, ir::StoreInstruction<uint64_t>,
+      ir::StoreInstruction<float>, ir::StoreInstruction<double>,
+      ir::LoadInstruction, ir::CallInstruction, ir::PtrIncrInstruction>();
   LOG("EmitInstruction", "Emitting LLVM IR for %s", instruction.to_string());
   if (auto iter = inst_map.find(instruction.rtti()); iter != inst_map.end()) {
     return iter->second(*this, context, instruction);

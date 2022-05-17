@@ -41,7 +41,6 @@ void Compiler::EmitToBuffer(ast::Terminal const *node,
   }
 }
 
-// TODO: Unit tests
 void Compiler::EmitCopyAssign(
     ast::Terminal const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
@@ -53,7 +52,6 @@ void Compiler::EmitCopyAssign(
   emitter(to[0], type::Typed(buffer[0], t));
 }
 
-// TODO: Unit tests
 void Compiler::EmitMoveAssign(
     ast::Terminal const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
@@ -65,7 +63,6 @@ void Compiler::EmitMoveAssign(
   emitter(to[0], type::Typed(buffer[0], t));
 }
 
-// TODO: Unit tests
 void Compiler::EmitCopyInit(
     ast::Terminal const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
@@ -77,7 +74,6 @@ void Compiler::EmitCopyInit(
   emitter(to[0], type::Typed(buffer[0], t));
 }
 
-// TODO: Unit tests
 void Compiler::EmitMoveInit(
     ast::Terminal const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {

@@ -55,48 +55,68 @@ void Compiler::EmitMoveInit(
     ast::FunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) { NOT_YET(); }
-
-  current_block()->Append(ir::StoreInstruction<ir::Fn>{
-      .value    = EmitAs<ir::Fn>(node),
-      .location = *to[0],
-  });
+  if (node->is_generic()) {
+    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
+        .value    = EmitAs<ir::GenericFn>(node),
+        .location = *to[0],
+    });
+  } else {
+    current_block()->Append(ir::StoreInstruction<ir::Fn>{
+        .value    = EmitAs<ir::Fn>(node),
+        .location = *to[0],
+    });
+  }
 }
 
 void Compiler::EmitCopyInit(
     ast::FunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) { NOT_YET(); }
-
-  current_block()->Append(ir::StoreInstruction<ir::Fn>{
-      .value    = EmitAs<ir::Fn>(node),
-      .location = *to[0],
-  });
+  if (node->is_generic()) {
+    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
+        .value    = EmitAs<ir::GenericFn>(node),
+        .location = *to[0],
+    });
+  } else {
+    current_block()->Append(ir::StoreInstruction<ir::Fn>{
+        .value    = EmitAs<ir::Fn>(node),
+        .location = *to[0],
+    });
+  }
 }
 
 void Compiler::EmitMoveAssign(
     ast::FunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) { NOT_YET(); }
-
-  current_block()->Append(ir::StoreInstruction<ir::Fn>{
-      .value    = EmitAs<ir::Fn>(node),
-      .location = *to[0],
-  });
+  if (node->is_generic()) {
+    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
+        .value    = EmitAs<ir::GenericFn>(node),
+        .location = *to[0],
+    });
+  } else {
+    current_block()->Append(ir::StoreInstruction<ir::Fn>{
+        .value    = EmitAs<ir::Fn>(node),
+        .location = *to[0],
+    });
+  }
 }
 
 void Compiler::EmitCopyAssign(
     ast::FunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) { NOT_YET(); }
-
-  current_block()->Append(ir::StoreInstruction<ir::Fn>{
-      .value    = EmitAs<ir::Fn>(node),
-      .location = *to[0],
-  });
+  if (node->is_generic()) {
+    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
+        .value    = EmitAs<ir::GenericFn>(node),
+        .location = *to[0],
+    });
+  } else {
+    current_block()->Append(ir::StoreInstruction<ir::Fn>{
+        .value    = EmitAs<ir::Fn>(node),
+        .location = *to[0],
+    });
+  }
 }
 
 // TODO: Parameters should be renumbered to not waste space on const values

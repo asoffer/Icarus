@@ -268,6 +268,11 @@ void Compiler::EmitMoveInit(
     } else {
       UNREACHABLE(node->member_name());
     }
+  } else if (operand_qt == type::QualType::Constant(type::ScopeContext)) {
+    ir::PartialResultBuffer buffer;
+    EmitToBuffer(node, buffer);
+    MoveInitializationEmitter emitter(*this);
+    emitter(flags_type, *to[0], buffer);
   } else if (operand_qt == type::QualType::Constant(type::Type_)) {
     if (auto t = EvaluateOrDiagnoseAs<type::Type>(node->operand())) {
       if (type::Array const *a = t->if_as<type::Array>()) {

@@ -57,6 +57,8 @@ struct MoveAssignmentEmitter : CompilationDataReference {
                       type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::Primitive const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
+  void EmitAssignment(type::Scope const *t, ir::RegOr<ir::addr_t> addr,
+                      type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::Slice const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::Struct const *t, ir::RegOr<ir::addr_t> addr,
@@ -103,6 +105,8 @@ struct CopyAssignmentEmitter : CompilationDataReference {
   void EmitAssignment(type::BufferPointer const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::Primitive const *t, ir::RegOr<ir::addr_t> addr,
+                      type::Typed<ir::PartialResultRef> const &from);
+  void EmitAssignment(type::Scope const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::Slice const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);

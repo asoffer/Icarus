@@ -88,7 +88,7 @@ template <typename... Ts>
 using CoreInstructions =
     InstructionSet<CommentInstruction, RegisterInstruction<Ts>...,
                    StoreInstruction<Ts>..., PhiInstruction<Ts>...,
-                   SetReturnInstruction<Ts>..., CallInstruction>;
+                   CallInstruction>;
 
 }  // namespace ir
 
