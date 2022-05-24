@@ -2,7 +2,6 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "ir/instruction/set.h"
 #include "ir/interpreter/interpreter.h"
 #include "ir/value/matcher.h"
 #include "type/primitive.h"

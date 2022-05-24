@@ -131,11 +131,6 @@ cc_library(
 )
 
 cc_library(
-    name = "op_codes",
-    hdrs = ["op_codes.h"],
-)
-
-cc_library(
     name = "core",
     hdrs = ["core.h"],
     srcs = ["core.cc"],
@@ -152,23 +147,6 @@ cc_library(
         "//ir/value:slice",
         "//type:function",
         "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "set",
-    hdrs = ["set.h"],
-    deps = [
-        ":core",
-        "//base:meta",
-        "//base:untyped_buffer",
-        "//ir:module",
-        "//ir/value:addr",
-        "//ir/value:char",
-        "//ir/value:fn",
-        "//ir/value:reg",
-        "//ir/value:reg_or",
-        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

@@ -16,7 +16,6 @@
 #include "ir/byte_code/reader.h"
 #include "ir/byte_code/writer.h"
 #include "ir/instruction/debug.h"
-#include "ir/instruction/op_codes.h"
 #include "ir/interpreter/interpreter.h"
 #include "ir/out_params.h"
 #include "ir/value/reg_or.h"
@@ -30,7 +29,6 @@ namespace ir {
 struct LoadInstruction
     : base::Extend<LoadInstruction>::With<base::BaseSerializeExtension,
                                           DebugFormatExtension> {
-  static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = load %2$s (%1$s)";
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,

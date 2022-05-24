@@ -12,7 +12,6 @@
 #include "ir/instruction/base.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/jump.h"
-#include "ir/instruction/op_codes.h"
 #include "ir/instruction/serializer.h"
 #include "ir/subroutine.pb.h"
 #include "ir/value/addr.h"

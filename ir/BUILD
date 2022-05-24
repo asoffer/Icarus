@@ -11,7 +11,6 @@ cc_library(
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//ir/instruction:base",
-        "//ir/instruction:op_codes",
         "//ir/instruction:jump",
     ],
 )

@@ -16,7 +16,6 @@ struct GenericFunction : LegacyType {
   explicit GenericFunction(ir::ByteCode byte_code)
       : LegacyType(IndexOf<GenericFunction>(), {}) {}
 
-  template <typename InstructionSet>
   Function const *Instantiate(absl::Span<Argument> arguments) {
     static Function const *fn_type =
         Func({core::AnonymousParameter(QualType::NonConstant(Slc(Argument_)))},

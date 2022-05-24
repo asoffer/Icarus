@@ -6,7 +6,6 @@
 #include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
 #include "ir/instruction/instructions.h"
-#include "ir/instruction/set.h"
 #include "ir/value/char.h"
 #include "type/array.h"
 #include "type/enum.h"
