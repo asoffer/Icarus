@@ -52,7 +52,6 @@ cc_library(
     deps = [
         ":subroutine_cc_proto",
         "//base:ptr_span",
-        "//base:strong_types",
         "//core:alignment",
         "//core:bytes",
         "//core:parameters",

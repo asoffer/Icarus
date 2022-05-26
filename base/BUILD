@@ -276,16 +276,6 @@ cc_test(
 )
 
 cc_library(
-    name = "strong_types",
-    hdrs = ["strong_types.h"],
-    deps = [
-        ":debug",
-        ":meta",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
     name = "traverse",
     hdrs = ["traverse.h"],
     deps = [

@@ -8,7 +8,6 @@
 
 #include "base/flyweight_set.h"
 #include "base/ptr_span.h"
-#include "base/strong_types.h"
 #include "core/alignment.h"
 #include "core/bytes.h"
 #include "core/parameters.h"
