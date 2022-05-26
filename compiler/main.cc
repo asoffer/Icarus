@@ -130,7 +130,8 @@ int Compile(char const *file_name, std::string module_identifier,
 
   if ((*diag)->num_consumed() != 0) { return 1; }
   if (not output_byte_code.empty()) {
-    auto proto = exec_mod->ToProto();
+    base::flyweight_set<base::MetaValue> type_ids;
+    auto proto = exec_mod->ToProto(type_ids);
     auto &mods = *proto.mutable_modules();
     for (auto const &[name, id] : shared_context.module_table().ids()) {
       mods[id.value()] = std::string(name);

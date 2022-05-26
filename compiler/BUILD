@@ -329,6 +329,7 @@ cc_library(
 cc_library(
     name = "module",
     hdrs = ["module.h"],
+    srcs = ["module.cc"],
     deps = [
         ":context",
         ":instructions",

@@ -33,7 +33,7 @@ struct PrecompiledModule final : module::Module {
 
   module::Module::FunctionInformation Function(
       ir::LocalFnId id) const override {
-    ASSERT(id.value() < proto_.function().size());
+    ASSERT(id.value() < proto_.subroutines().size());
     return module::Module::FunctionInformation{
         .type      = nullptr,
     };

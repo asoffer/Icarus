@@ -3,7 +3,10 @@ package(default_visibility = ["//visibility:public"])
 proto_library(
     name = "module_proto",
     srcs = ["module.proto"],
-    deps = [":value"],
+    deps = [
+        ":value",
+        "//ir:subroutine_proto",
+    ],
 )
 
 cc_proto_library(

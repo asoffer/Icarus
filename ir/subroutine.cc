@@ -38,13 +38,13 @@ std::ostream &operator<<(std::ostream &os, Subroutine const &s) {
   return os;
 }
 
-SubroutineProto Subroutine::ToProto() const {
+SubroutineProto Subroutine::ToProto(
+    base::flyweight_set<base::MetaValue> &type_ids) const {
   SubroutineProto result;
   result.set_callable_type_id(type::GlobalTypeSystem.index(type::Type(type_)));
 
   auto index_map = BasicBlockIndexMap(*this);
-  absl::flat_hash_map<base::MetaValue, size_t> type_id_map;
-  InstructionSerializer serializer(&index_map, &type_id_map);
+  InstructionSerializer serializer(&index_map, &type_ids);
 
   for (auto const *block : blocks()) {
     *result.add_basic_block() = block->ToProto(serializer);

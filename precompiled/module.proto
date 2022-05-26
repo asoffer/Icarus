@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "precompiled/value.proto";
+import "ir/subroutine.proto";
 
 package precompiled;
 
@@ -21,7 +22,7 @@ message ModuleProto {
 
   // All functions available from this module, regardless of their visibility or
   // whether they are bound to names.
-  repeated FunctionByteCode function = 2;
+  repeated ir.SubroutineProto subroutines = 2;
 
   map<string, SymbolInformationList> symbols = 3;
 

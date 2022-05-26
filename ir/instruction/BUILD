@@ -165,6 +165,7 @@ cc_library(
     hdrs = ["serializer.h"],
     deps = [
         ":instruction_cc_proto",
+        "//base:flyweight_set",
         "//base:meta",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/types:span",

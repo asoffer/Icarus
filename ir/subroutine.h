@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include "base/flyweight_set.h"
 #include "base/ptr_span.h"
 #include "base/strong_types.h"
 #include "core/alignment.h"
@@ -43,7 +44,8 @@ struct Subroutine {
   BasicBlock const *entry() const { return blocks()[0]; }
   BasicBlock *entry() { return blocks()[0]; }
 
-  SubroutineProto ToProto() const;
+  SubroutineProto ToProto(base::flyweight_set<base::MetaValue> &type_ids) const;
+
   static bool FromProto(
       SubroutineProto const &proto,
       absl::FunctionRef<Inst(InstructionProto const &)> deserialize_instruction,

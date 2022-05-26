@@ -290,15 +290,19 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
   }
   for (type::Type ret : fn_type.return_types()) {
     if (auto const *s = ret.if_as<type::Struct>()) {
-      EnsureComplete(
-          {.kind = WorkItem::Kind::CompleteStruct,
-           .node = ASSERT_NOT_NULL(
-               s->defining_module()->as<CompiledModule>().context().AstLiteral(
-                   s)),
-           .context = const_cast<Context *>(
-               &s->defining_module()->as<CompiledModule>().context())});
+      auto const &ctx = s->defining_module()->as<CompiledModule>().context();
+      EnsureComplete({.kind    = WorkItem::Kind::CompleteStruct,
+                      .node    = ASSERT_NOT_NULL(ctx.AstLiteral(s)),
+                      .context = const_cast<Context *>(&ctx)});
     } else if (auto const *e = ret.if_as<type::Enum>()) {
-      // TODO: Ensure the enum is complete.
+      auto const &ctx = resources()
+                            .shared_context->module_table()
+                            .module(e->defining_module())
+                            ->as<CompiledModule>()
+                            .context();
+      EnsureComplete({.kind    = WorkItem::Kind::CompleteEnum,
+                      .node    = ASSERT_NOT_NULL(ctx.AstLiteral(e)),
+                      .context = const_cast<Context *>(&ctx)});
     } else if (auto const *f = ret.if_as<type::Flags>()) {
       // TODO: Ensure the flags are complete.
     }
