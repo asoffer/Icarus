@@ -18,6 +18,7 @@
 #include "base/untyped_buffer.h"
 #include "compiler/flags.h"
 #include "compiler/importer.h"
+#include "compiler/instruction_set.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
 #include "frontend/parse.h"
@@ -130,8 +131,14 @@ int Compile(char const *file_name, std::string module_identifier,
 
   if ((*diag)->num_consumed() != 0) { return 1; }
   if (not output_byte_code.empty()) {
-    base::flyweight_set<base::MetaValue> type_ids;
-    auto proto = exec_mod->ToProto(type_ids);
+    LOG("", "%u", InstructionSet::index().size());
+    LOG("", "%u",
+        InstructionSet::index().index(
+            base::meta<ir::RegisterInstruction<bool>>));
+    LOG("", "%u",
+        InstructionSet::index().index(
+            base::meta<ir::RegisterInstruction<ir::Char>>));
+    auto proto = exec_mod->ToProto(InstructionSet::index());
     auto &mods = *proto.mutable_modules();
     for (auto const &[name, id] : shared_context.module_table().ids()) {
       mods[id.value()] = std::string(name);

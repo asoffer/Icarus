@@ -32,11 +32,11 @@ CompiledModule::CompiledModule(std::string identifier, ir::ModuleId id)
 }
 
 precompiled::ModuleProto CompiledModule::ToProto(
-    base::flyweight_set<base::MetaValue> &type_ids) const {
+    base::flyweight_set<base::MetaValue> const &instruction_ids) const {
   precompiled::ModuleProto proto;
   proto.set_identifier(std::string(identifier()));
   for (auto const &f : ir_module_.functions()) {
-    *proto.add_subroutines() = f.subroutine.ToProto(type_ids);
+    *proto.add_subroutines() = f.subroutine.ToProto(instruction_ids);
   }
   auto &symbols = *proto.mutable_symbols();
   for (auto const &[name, infos] : exported_) {

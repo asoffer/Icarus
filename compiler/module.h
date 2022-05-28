@@ -18,7 +18,7 @@ struct CompiledModule : module::Module {
   constexpr ir::ModuleId id() const { return id_; }
 
   precompiled::ModuleProto ToProto(
-      base::flyweight_set<base::MetaValue> &type_ids) const;
+      base::flyweight_set<base::MetaValue> const &type_ids) const;
 
   Context const &context() const { return context_; }
   Context &context() { return context_; }

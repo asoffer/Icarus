@@ -39,12 +39,12 @@ std::ostream &operator<<(std::ostream &os, Subroutine const &s) {
 }
 
 SubroutineProto Subroutine::ToProto(
-    base::flyweight_set<base::MetaValue> &type_ids) const {
+    base::flyweight_set<base::MetaValue> const &instruction_ids) const {
   SubroutineProto result;
   result.set_callable_type_id(type::GlobalTypeSystem.index(type::Type(type_)));
 
   auto index_map = BasicBlockIndexMap(*this);
-  InstructionSerializer serializer(&index_map, &type_ids);
+  InstructionSerializer serializer(&index_map, &instruction_ids);
 
   for (auto const *block : blocks()) {
     *result.add_basic_block() = block->ToProto(serializer);

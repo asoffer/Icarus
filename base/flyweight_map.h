@@ -10,6 +10,8 @@
 #include "base/debug.h"
 #include "base/meta.h"
 
+// TODO: This is relying on incorrect assumptions about iterator invalidation.
+// It should be rewritten the way we rewrote flyweight_set.
 namespace base {
 
 // `flyweight_map<K, M>` is an ordered associative container, where the keys are

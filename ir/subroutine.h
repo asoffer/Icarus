@@ -43,7 +43,8 @@ struct Subroutine {
   BasicBlock const *entry() const { return blocks()[0]; }
   BasicBlock *entry() { return blocks()[0]; }
 
-  SubroutineProto ToProto(base::flyweight_set<base::MetaValue> &type_ids) const;
+  SubroutineProto ToProto(
+      base::flyweight_set<base::MetaValue> const &type_ids) const;
 
   static bool FromProto(
       SubroutineProto const &proto,

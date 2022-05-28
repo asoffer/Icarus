@@ -7,8 +7,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
-#include "base/meta.h"
 #include "base/flyweight_set.h"
+#include "base/meta.h"
 #include "ir/instruction/instruction.pb.h"
 
 namespace ir {
@@ -17,9 +17,9 @@ struct BasicBlock;
 struct InstructionSerializer {
   explicit InstructionSerializer(
       absl::flat_hash_map<BasicBlock const *, size_t> const *index_map,
-      base::flyweight_set<base::MetaValue> *type_ids)
+      base::flyweight_set<base::MetaValue> const *instruction_ids)
       : index_map_(*ASSERT_NOT_NULL(index_map)),
-        type_ids_(*ASSERT_NOT_NULL(type_ids)) {}
+        instruction_ids_(*ASSERT_NOT_NULL(instruction_ids)) {}
 
   void write_bytes(absl::Span<std::byte const> bytes) {
     output_->mutable_content()->append(std::string_view(
@@ -37,13 +37,11 @@ struct InstructionSerializer {
 
   template <typename T>
   void SetIdentifier() {
-    // TODO: Inserting is fine, but we need to create a global list of all of
-    // these anyway for decoding, so it doesn't really save us anything.
-    auto [iter, inserted] = type_ids_.insert(base::meta<T>);
-    output_->set_identifier(type_ids_.index(iter));
+    LOG("", "%u", instruction_ids_.index(base::meta<T>));
+    output_->set_identifier(instruction_ids_.index(base::meta<T>));
   }
 
-  size_t block(BasicBlock const * block) const {
+  size_t block(BasicBlock const *block) const {
     auto iter = index_map_.find(block);
     ASSERT(iter != index_map_.end());
     return iter->second;
@@ -54,7 +52,7 @@ struct InstructionSerializer {
  private:
   InstructionProto *output_;
   absl::flat_hash_map<BasicBlock const *, size_t> const &index_map_;
-  base::flyweight_set<base::MetaValue> &type_ids_;
+  base::flyweight_set<base::MetaValue> const &instruction_ids_;
 };
 
 }  // namespace ir

@@ -11,6 +11,14 @@
 #include "base/meta.h"
 
 namespace base {
+namespace internal_flyweight_set {
+// We use a wrapper struct so that transparent hashing can distinguish the
+// difference between a `size_t` and an index which happens to be implemented as
+// such referring to a value of type `size_t`.
+struct Index {
+  size_t value;
+};
+}  // namespace internal_flyweight_set
 
 // `flyweight_set<V>` is an ordered container, where the keys are guaranteed to
 // be distinct. Pointers to elements in the container are never invalidated
@@ -35,12 +43,23 @@ struct flyweight_set {
   using pointer         = value_type const*;
   using const_pointer   = value_type const*;
 
-  flyweight_set()                = default;
-  flyweight_set(flyweight_set&&) = default;
-  flyweight_set& operator=(flyweight_set&&) = default;
+  flyweight_set() : set_(0, H(&values_), E(&values_)) {}
+  flyweight_set(flyweight_set&& s)
+      : values_(std::move(s.values_)), set_(std::move(s.set_)) {
+    set_.hash_function().set_deque_pointer(&values_);
+    set_.key_eq().set_deque_pointer(&values_);
+  }
+
+  flyweight_set& operator=(flyweight_set&& s) {
+    values_ = std::move(s.values_);
+    set_    = std::move(s.set_);
+    set_.hash_function().set_deque_pointer(&values_);
+    set_.key_eq().set_deque_pointer(&values_);
+    return *this;
+  }
 
   template <std::input_iterator Iter>
-  flyweight_set(Iter b, Iter e) {
+  flyweight_set(Iter b, Iter e) : set_(0, H(&values_), E(&values_)) {
     for (auto i = b; i < e; ++i) { insert(*i); }
   }
 
@@ -48,6 +67,8 @@ struct flyweight_set {
   flyweight_set& operator=(flyweight_set const& f) {
     values_.clear();
     set_.clear();
+    set_.hash_function().set_deque_pointer(&values_);
+    set_.key_eq().set_deque_pointer(&values_);
     for (auto i = f.begin(); i < f.end(); ++i) { insert(*i); }
     return *this;
   }
@@ -106,11 +127,11 @@ struct flyweight_set {
   // a boolean indicating whether an insertion actually took place.
   std::pair<iterator, bool> insert(value_type const& v) {
     if (auto iter = set_.find(v); iter != set_.end()) {
-      return std::pair<iterator, bool>(*iter, false);
+      return std::pair<iterator, bool>(begin() + iter->value, false);
     } else {
       values_.push_back(v);
-      iter = set_.insert(std::prev(values_.end())).first;
-      return std::pair<iterator, bool>(*iter, true);
+      iter = set_.insert({.value = values_.size() - 1}).first;
+      return std::pair<iterator, bool>(begin() + iter->value, true);
     }
   }
 
@@ -124,11 +145,11 @@ struct flyweight_set {
   // actually took place.
   std::pair<iterator, bool> insert(value_type&& v) {
     if (auto iter = set_.find(v); iter != set_.end()) {
-      return std::pair<iterator, bool>(*iter, false);
+      return std::pair<iterator, bool>(begin() + iter->value, false);
     } else {
       values_.push_back(std::move(v));
-      iter = set_.insert(std::prev(values_.end())).first;
-      return std::pair<iterator, bool>(*iter, true);
+      iter = set_.insert({.value = values_.size() - 1}).first;
+      return std::pair<iterator, bool>(begin() + iter->value, true);
     }
   }
 
@@ -137,7 +158,7 @@ struct flyweight_set {
   template <std::convertible_to<value_type> T>
   const_iterator find(T const& t) const requires(Hasher<hasher, T>) {
     auto iter = set_.find(t);
-    return iter != set_.end() ? *iter : cend();
+    return iter != set_.end() ? begin() + iter->value : cend();
   }
 
   // Returns the index of the element referenced by the iterator.
@@ -147,7 +168,7 @@ struct flyweight_set {
   // not present, returns `end_index()`
   size_t index(value_type const& v) const {
     auto iter = set_.find(v);
-    return iter == set_.end() ? end_index() : index(*iter);
+    return iter == set_.end() ? end_index() : iter->value;
   }
 
   // Returns a reference to the element indexed by `n` if one exists. Behavior
@@ -164,38 +185,72 @@ struct flyweight_set {
 
  private:
   struct H : private hasher {
+    explicit H(std::deque<value_type> const* values) : values_(values) {}
+
     using is_transparent = void;
 
     using hasher::operator();
 
-    size_t operator()(const_iterator it) const
-        requires(Hasher<hasher, std::decay_t<decltype(*it)>>) {
-      return operator()(*it);
+    size_t operator()(internal_flyweight_set::Index p) const
+        requires(Hasher<hasher, value_type const>) {
+      return operator()((*values_)[p.value]);
     }
+
+    // Though `const` is a lie here, this is not exposed outside
+    // `flyweight_set`, and the pointer itself does not affect the hash function
+    // (only the values held in the pointed-to container. Thus, it is safe to
+    // call `set_deque_pointer` if `p` points to a `std::deque` that compares
+    // equal to `values_`. This allows us to efficiently implement
+    // move construction/assignment operators without incurring a rehash.
+    void set_deque_pointer(std::deque<value_type> const* p) const {
+      values_ = p;
+    }
+
+   private:
+    mutable std::deque<value_type> const* values_;
   };
 
   struct E : private key_equal {
+    explicit E(std::deque<value_type> const* values) : values_(values) {}
+
     using is_transparent = void;
 
     bool operator()(value_type const& lhs, value_type const& rhs) const {
       return key_equal::operator()(lhs, rhs);
     }
 
-    bool operator()(const_iterator lhs, value_type const& rhs) const {
-      return key_equal::operator()(*lhs, rhs);
+    bool operator()(internal_flyweight_set::Index lhs,
+                    value_type const& rhs) const {
+      return key_equal::operator()((*values_)[lhs.value], rhs);
     }
 
-    bool operator()(value_type const& lhs, const_iterator rhs) const {
-      return key_equal::operator()(lhs, *rhs);
+    bool operator()(value_type const& lhs,
+                    internal_flyweight_set::Index rhs) const {
+      return key_equal::operator()(lhs, (*values_)[rhs.value]);
     }
 
-    bool operator()(const_iterator lhs, const_iterator rhs) const {
-      return key_equal::operator()(*lhs, *rhs);
+    bool operator()(internal_flyweight_set::Index lhs,
+                    internal_flyweight_set::Index rhs) const {
+      return key_equal::operator()((*values_)[lhs.value],
+                                   (*values_)[rhs.value]);
     }
+
+    // Though `const` is a lie here, this is not exposed outside
+    // `flyweight_set`, and the pointer itself does not affect the hash function
+    // (only the values held in the pointed-to container. Thus, it is safe to
+    // call `set_deque_pointer` if `p` points to a `std::deque` that compares
+    // equal to `values_`. This allows us to efficiently implement
+    // move construction/assignment operators without incurring a rehash.
+    void set_deque_pointer(std::deque<value_type> const* p) const {
+      values_ = p;
+    }
+
+   private:
+    mutable std::deque<value_type> const* values_;
   };
 
   std::deque<value_type> values_;
-  absl::flat_hash_set<const_iterator, H, E> set_;
+  absl::flat_hash_set<internal_flyweight_set::Index, H, E> set_;
 };
 
 }  // namespace base
