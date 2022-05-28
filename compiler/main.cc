@@ -131,13 +131,6 @@ int Compile(char const *file_name, std::string module_identifier,
 
   if ((*diag)->num_consumed() != 0) { return 1; }
   if (not output_byte_code.empty()) {
-    LOG("", "%u", InstructionSet::index().size());
-    LOG("", "%u",
-        InstructionSet::index().index(
-            base::meta<ir::RegisterInstruction<bool>>));
-    LOG("", "%u",
-        InstructionSet::index().index(
-            base::meta<ir::RegisterInstruction<ir::Char>>));
     auto proto = exec_mod->ToProto(InstructionSet::index());
     auto &mods = *proto.mutable_modules();
     for (auto const &[name, id] : shared_context.module_table().ids()) {

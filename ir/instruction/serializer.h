@@ -37,7 +37,6 @@ struct InstructionSerializer {
 
   template <typename T>
   void SetIdentifier() {
-    LOG("", "%u", instruction_ids_.index(base::meta<T>));
     output_->set_identifier(instruction_ids_.index(base::meta<T>));
   }
 

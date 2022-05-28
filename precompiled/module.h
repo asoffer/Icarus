@@ -20,7 +20,6 @@ namespace precompiled {
 // from a source file.
 struct PrecompiledModule final : module::Module {
   explicit PrecompiledModule(std::string identifier, ir::ModuleId,
-                             ModuleProto module_proto,
                              module::SharedContext& shared_context);
 
   static absl::StatusOr<
@@ -32,16 +31,11 @@ struct PrecompiledModule final : module::Module {
       std::string_view name) const override;
 
   module::Module::FunctionInformation Function(
-      ir::LocalFnId id) const override {
-    ASSERT(id.value() < proto_.subroutines().size());
-    return module::Module::FunctionInformation{
-        .type      = nullptr,
-    };
-  }
+      ir::LocalFnId id) const override;
 
  private:
-  static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule const*>> Make(
-      std::string_view label, std::string const& file_content,
+  static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule*>> Make(
+      std::string_view label, ModuleProto const& module_proto,
       module::ModuleMap const& module_map, module::SharedContext& context);
 
   ModuleProto proto_;
@@ -49,6 +43,7 @@ struct PrecompiledModule final : module::Module {
   absl::flat_hash_map<std::string,
                       std::vector<module::Module::SymbolInformation>>
       symbols_;
+  std::vector<ir::Subroutine> subroutines_;
 };
 
 }  // namespace precompiled

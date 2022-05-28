@@ -53,6 +53,9 @@ struct ModuleMap {
       auto iter = by_import_name_.find(absl::StrCat(base, "/", import_name));
       if (iter != by_import_name_.end()) { return iter->second; }
     }
+
+    auto iter = by_import_name_.find(import_name);
+    if (iter != by_import_name_.end()) { return iter->second; }
     return nullptr;
   }
 
