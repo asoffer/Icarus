@@ -215,17 +215,21 @@ struct flyweight_set {
 
     using is_transparent = void;
 
-    bool operator()(value_type const& lhs, value_type const& rhs) const {
+    bool operator()(auto const& lhs, auto const& rhs) const requires(
+        std::equivalence_relation<key_equal, std::decay_t<decltype(lhs)>,
+                                  std::decay_t<decltype(rhs)>>) {
       return key_equal::operator()(lhs, rhs);
     }
 
-    bool operator()(internal_flyweight_set::Index lhs,
-                    value_type const& rhs) const {
+    bool operator()(internal_flyweight_set::Index lhs, auto const& rhs) const
+        requires(std::equivalence_relation<key_equal, value_type const&,
+                                           std::decay_t<decltype(rhs)>>) {
       return key_equal::operator()((*values_)[lhs.value], rhs);
     }
 
-    bool operator()(value_type const& lhs,
-                    internal_flyweight_set::Index rhs) const {
+    bool operator()(auto const& lhs, internal_flyweight_set::Index rhs) const
+        requires(std::equivalence_relation<
+                 key_equal, std::decay_t<decltype(lhs)>, value_type const&>) {
       return key_equal::operator()(lhs, (*values_)[rhs.value]);
     }
 

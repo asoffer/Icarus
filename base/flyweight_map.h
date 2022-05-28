@@ -10,9 +10,15 @@
 #include "base/debug.h"
 #include "base/meta.h"
 
-// TODO: This is relying on incorrect assumptions about iterator invalidation.
-// It should be rewritten the way we rewrote flyweight_set.
 namespace base {
+namespace internal_flyweight_map {
+// We use a wrapper struct so that transparent hashing can distinguish the
+// difference between a `size_t` and an index which happens to be implemented as
+// such referring to a value of type `size_t`.
+struct Index {
+  size_t value;
+};
+}  // namespace internal_flyweight_set
 
 // `flyweight_map<K, M>` is an ordered associative container, where the keys are
 // guaranteed to be distinct. Pointers to elements in the container are never
@@ -39,12 +45,24 @@ struct flyweight_map {
   using pointer         = value_type*;
   using const_pointer   = value_type const*;
 
-  flyweight_map()                = default;
-  flyweight_map(flyweight_map&&) = default;
-  flyweight_map& operator=(flyweight_map&&) = default;
+
+  flyweight_map() : set_(0, H(&values_), E(&values_)) {}
+  flyweight_map(flyweight_map&& m)
+      : values_(std::move(m.values_)), set_(std::move(m.set_)) {
+    set_.hash_function().set_deque_pointer(&values_);
+    set_.key_eq().set_deque_pointer(&values_);
+  }
+
+  flyweight_map& operator=(flyweight_map&& m) {
+    values_ = std::move(m.values_);
+    set_    = std::move(m.set_);
+    set_.hash_function().set_deque_pointer(&values_);
+    set_.key_eq().set_deque_pointer(&values_);
+    return *this;
+  }
 
   template <std::input_iterator Iter>
-  flyweight_map(Iter b, Iter e) {
+  flyweight_map(Iter b, Iter e) : set_(0, H(&values_), E(&values_)) {
     for (auto i = b; i < e; ++i) { try_emplace(i->first, i->second); }
   }
 
@@ -52,6 +70,8 @@ struct flyweight_map {
   flyweight_map& operator=(flyweight_map const& f) {
     values_.clear();
     set_.clear();
+    set_.hash_function().set_deque_pointer(&values_);
+    set_.key_eq().set_deque_pointer(&values_);
     for (auto i = f.begin(); i < f.end(); ++i) {
       try_emplace(i->first, i->second);
     }
@@ -122,14 +142,14 @@ struct flyweight_map {
   template <std::convertible_to<key_type> T, typename... Args>
   std::pair<iterator, bool> try_emplace(T&& t, Args&&... args) requires(
       std::constructible_from<mapped_type, Args...>) {
-    if (auto set_iter = set_.find(std::addressof(t)); set_iter != set_.end()) {
-      return std::pair<iterator, bool>(*set_iter, false);
+    if (auto set_iter = set_.find(t); set_iter != set_.end()) {
+      return std::pair<iterator, bool>(begin() + set_iter->value, false);
     } else {
       reference ref = values_.emplace_back(std::piecewise_construct,
                                            std::forward_as_tuple(t),
                                            std::forward_as_tuple(args...));
       auto iter     = std::prev(values_.end());
-      set_.insert(iter);
+      set_.insert({.value = values_.size() -1});
       return std::pair<iterator, bool>(iter, true);
     }
   }
@@ -138,60 +158,104 @@ struct flyweight_map {
   // referenced by `t` if one exists, or a null pointer otherwise.
   template <std::convertible_to<K> T>
   iterator find(T const& t) requires(Hasher<hasher, T>) {
-    auto set_iter = set_.find(std::addressof(t));
-    return set_iter != set_.end() ? *set_iter : values_.end();
+    auto set_iter = set_.find(t);
+    return set_iter != set_.end() ? begin() + set_iter->value : values_.end();
   }
 
   // Returns a pointer to an element in the container equivalent to the object
   // referenced by `t` if one exists, or a null pointer otherwise.
   template <std::convertible_to<K> T>
   const_iterator find(T const& t) const requires(Hasher<hasher, T>) {
-    auto set_iter = set_.find(std::addressof(t));
-    return set_iter != set_.end() ? *set_iter : values_.end();
+    auto set_iter = set_.find(t);
+    return set_iter != set_.end() ? begin() + set_iter->value : values_.end();
   }
+
+  // Returns the index of the element referenced by the iterator.
+  size_t index(const_iterator it) const { return std::distance(begin(), it); }
+
+  // Returns the index of an element equivalent if it is in the container. If
+  // not present, returns `end_index()`
+  size_t index(key_type const& k) const {
+    auto iter = set_.find(k);
+    return iter == set_.end() ? end_index() : iter->value;
+  }
+
+  // Returns a value for which `index(v) == end_index()` is false for every `v`
+  // in the container. The value returned by `end_index()` is not dependent of
+  // the values in the container.
+  size_t end_index() const { return std::numeric_limits<size_t>::max(); }
 
  private:
   struct H : private hasher {
+    explicit H(std::deque<value_type> const* values) : values_(values) {}
+
     using is_transparent = void;
 
-    size_t operator()(auto* p) const
-        requires(Hasher<hasher, std::decay_t<decltype(*p)>>) {
-      return hasher::operator()(*p);
+    using hasher::operator();
+
+    size_t operator()(internal_flyweight_map::Index index) const {
+      return hasher::operator()((*values_)[index.value].first);
     }
 
-    size_t operator()(iterator iter) const {
-      return hasher::operator()(iter->first);
+    // Though `const` is a lie here, this is not exposed outside
+    // `flyweight_set`, and the pointer itself does not affect the hash function
+    // (only the values held in the pointed-to container. Thus, it is safe to
+    // call `set_deque_pointer` if `p` points to a `std::deque` that compares
+    // equal to `values_`. This allows us to efficiently implement
+    // move construction/assignment operators without incurring a rehash.
+    void set_deque_pointer(std::deque<value_type> const* p) const {
+      values_ = p;
     }
+
+   private:
+    mutable std::deque<value_type> const* values_;
   };
 
   struct E : private key_equal {
+    explicit E(std::deque<value_type> const* values) : values_(values) {}
+
     using is_transparent = void;
 
-    bool operator()(iterator lhs, iterator rhs) const {
-      return key_equal::operator()(lhs->first, rhs->first);
+    bool operator()(internal_flyweight_map::Index lhs,
+                    internal_flyweight_map::Index rhs) const {
+      return key_equal::operator()((*values_)[lhs.value].first,
+                                   (*values_)[rhs.value].first);
     }
 
-    bool operator()(iterator lhs, auto* rhs) const requires(
-        std::equivalence_relation<key_equal, std::decay_t<decltype(lhs->first)>,
-                                  std::decay_t<decltype(*rhs)>>) {
-      return key_equal::operator()(lhs->first, *rhs);
+    bool operator()(internal_flyweight_map::Index lhs, auto const& rhs) const
+        requires(std::equivalence_relation<key_equal, key_type const&,
+                                           std::decay_t<decltype(rhs)>>) {
+      return key_equal::operator()((*values_)[lhs.value].first, rhs);
     }
 
-    bool operator()(auto* lhs, iterator rhs) const requires(
-        std::equivalence_relation<key_equal, std::decay_t<decltype(*lhs)>,
-                                  std::decay_t<decltype(rhs->first)>>) {
-      return key_equal::operator()(*lhs, rhs->first);
+    bool operator()(auto const& lhs, internal_flyweight_map::Index rhs) const
+        requires(std::equivalence_relation<
+                 key_equal, std::decay_t<decltype(lhs)>, key_type const&>) {
+      return key_equal::operator()(lhs, (*values_)[rhs.value].first);
     }
 
-    bool operator()(auto* lhs, auto* rhs) const requires(
-        std::equivalence_relation<key_equal, std::decay_t<decltype(*lhs)>,
-                                  std::decay_t<decltype(*rhs)>>) {
-      return key_equal::operator()(*lhs, *rhs);
+    bool operator()(auto const& lhs, auto const& rhs) const requires(
+        std::equivalence_relation<key_equal, std::decay_t<decltype(lhs)>,
+                                  std::decay_t<decltype(rhs)>>) {
+      return key_equal::operator()(lhs, rhs);
     }
+
+    // Though `const` is a lie here, this is not exposed outside
+    // `flyweight_set`, and the pointer itself does not affect the hash
+    // function (only the values held in the pointed-to container. Thus, it is
+    // safe to call `set_deque_pointer` if `p` points to a `std::deque` that
+    // compares equal to `values_`. This allows us to efficiently implement
+    // move construction/assignment operators without incurring a rehash.
+    void set_deque_pointer(std::deque<value_type> const* p) const {
+      values_ = p;
+    }
+
+   private:
+    mutable std::deque<value_type> const* values_;
   };
 
   std::deque<value_type> values_;
-  absl::flat_hash_set<iterator, H, E> set_;
+  absl::flat_hash_set<internal_flyweight_map::Index, H, E> set_;
 };
 
 }  // namespace base
