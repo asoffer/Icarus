@@ -29,7 +29,7 @@ TEST(BuiltinModule, Alignment) {
       {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
       {type::U64}));
 
-  module::SharedContext ctx(MakeBuiltinModule());
+  module::SharedContext ctx(MakeBuiltinModule(), nullptr);
   auto module = ctx.module_table().module(ir::ModuleId::Builtin());
   ASSERT_THAT(
       module->Symbols("alignment"),
@@ -52,7 +52,7 @@ TEST(BuiltinModule, Bytes) {
   auto fn_qt = type::QualType::Constant(type::Func(
       {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
       {type::U64}));
-  module::SharedContext ctx(MakeBuiltinModule());
+  module::SharedContext ctx(MakeBuiltinModule(), nullptr);
   auto module = ctx.module_table().module(ir::ModuleId::Builtin());
   ASSERT_THAT(
       module->Symbols("bytes"),
@@ -75,7 +75,7 @@ TEST(BuiltinModule, AsciiEncode) {
   auto fn_qt = type::QualType::Constant(type::Func(
       {core::AnonymousParameter(type::QualType::NonConstant(type::U8))},
       {type::Char}));
-  module::SharedContext ctx(MakeBuiltinModule());
+  module::SharedContext ctx(MakeBuiltinModule(), nullptr);
   auto module = ctx.module_table().module(ir::ModuleId::Builtin());
   ASSERT_THAT(
       module->Symbols("ascii_encode"),
@@ -101,7 +101,7 @@ TEST(BuiltinModule, AsciiDecode) {
   auto fn_qt = type::QualType::Constant(type::Func(
       {core::AnonymousParameter(type::QualType::NonConstant(type::Char))},
       {type::U8}));
-  module::SharedContext ctx(MakeBuiltinModule());
+  module::SharedContext ctx(MakeBuiltinModule(), nullptr);
   auto module = ctx.module_table().module(ir::ModuleId::Builtin());
   ASSERT_THAT(
       module->Symbols("ascii_decode"),

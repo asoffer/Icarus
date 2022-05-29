@@ -88,7 +88,8 @@ int Compile(char const *file_name, std::string module_identifier,
   }
 
   compiler::WorkSet work_set;
-  module::SharedContext shared_context(MakeBuiltinModule());
+  module::SharedContext shared_context(MakeBuiltinModule(),
+                                       InstructionSet::Deserialize);
   compiler::FileImporter importer(
       &work_set, diag->get(), &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);

@@ -29,8 +29,12 @@ struct SharedContext {
   using void_fn_ptr = void (*)();
 
  public:
-  explicit SharedContext(std::unique_ptr<BuiltinModule> m)
-      : table_(std::move(m)) {}
+  explicit SharedContext(
+      std::unique_ptr<BuiltinModule> m,
+      base::any_invocable<ir::Inst(ir::InstructionProto const &)>
+          instruction_deserializer)
+      : table_(std::move(m)),
+        instruction_deserializer_(std::move(instruction_deserializer)) {}
   // Given a name and a function type, returns the associated foreign function,
   // possibly declaring a new one if none already exists.
   ir::Fn ForeignFunction(std::string &&name, type::Function const *f) {
@@ -57,11 +61,18 @@ struct SharedContext {
   ModuleTable &module_table() { return table_; }
   ModuleTable const &module_table() const { return table_; }
 
+  absl::FunctionRef<ir::Inst(ir::InstructionProto const &)>
+  instruction_deserializer() const {
+    return instruction_deserializer_;
+  }
+
  private:
   ModuleTable table_;
   base::flyweight_map<std::pair<std::string, type::Function const *>,
                       void (*)()>
       foreign_fn_map_;
+  base::any_invocable<ir::Inst(ir::InstructionProto const &)>
+      instruction_deserializer_;
 };
 
 }  // namespace module

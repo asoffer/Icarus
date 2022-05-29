@@ -5,6 +5,7 @@
 #include "ir/instruction/arithmetic.h"
 #include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
+#include "ir/instruction/deserializer.h"
 #include "ir/instruction/instructions.h"
 #include "type/array.h"
 #include "type/enum.h"
@@ -20,19 +21,49 @@
 namespace compiler {
 
 namespace internal_instruction_set {
+
+template <typename I>
+ir::Inst DeserializeInstruction(ir::InstructionProto const &proto) {
+  ir::InstructionDeserializer d(&proto.content());
+  I result;
+  if (not base::Deserialize(d, result)) { NOT_YET(); }
+  return result;
+}
+
 template <typename... Is>
 struct InstructionIndex {
   static void for_each(auto &&f) { (f(base::meta<Is>), ...); }
 
   static base::flyweight_set<base::MetaValue> const &index() { return kIndex; }
 
+  static ir::Inst Deserialize(ir::InstructionProto const &proto) {
+    auto const &[meta_value, deserializer] =
+        kDeserializer.from_index(proto.identifier());
+    return deserializer(proto);
+  }
+
  private:
+  static base::flyweight_map<
+      base::MetaValue,
+      base::any_invocable<ir::Inst(ir::InstructionProto const &)>>
+      kDeserializer;
   static base::flyweight_set<base::MetaValue> kIndex;
 };
 
 template <typename... Is>
 base::flyweight_set<base::MetaValue> InstructionIndex<Is...>::kIndex{
     base::meta<Is>...};
+
+template <typename... Is>
+base::flyweight_map<base::MetaValue,
+                    base::any_invocable<ir::Inst(ir::InstructionProto const &)>>
+    InstructionIndex<Is...>::kDeserializer = [] {
+      base::flyweight_map<base::MetaValue, base::any_invocable<ir::Inst(
+                                               ir::InstructionProto const &)>>
+          result;
+      (result.try_emplace(base::meta<Is>, DeserializeInstruction<Is>), ...);
+      return result;
+    }();
 
 }  // namespace internal_instruction_set
 

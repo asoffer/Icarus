@@ -20,6 +20,7 @@
 #include "base/untyped_buffer.h"
 #include "compiler/flags.h"
 #include "compiler/importer.h"
+#include "compiler/instruction_set.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
 #include "frontend/parse.h"
@@ -75,7 +76,8 @@ int Interpret(char const *file_name, absl::Span<char *> program_arguments,
   }
 
   compiler::WorkSet work_set;
-  module::SharedContext shared_context(MakeBuiltinModule());
+  module::SharedContext shared_context(MakeBuiltinModule(),
+                                       InstructionSet::Deserialize);
   compiler::FileImporter importer(
       &work_set, &diag, &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);

@@ -87,7 +87,8 @@ struct ScopeContext
 
 struct UnboundScope
     : base::Extend<UnboundScope, 1>::With<base::AbslFormatExtension,
-                                          base::AbslHashExtension> {
+                                          base::AbslHashExtension,
+                                          base::BaseSerializeExtension> {
   static constexpr std::string_view kAbslFormatString = "UnboundScope(%p)";
 
   struct Data {

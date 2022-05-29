@@ -21,7 +21,8 @@ struct ScopeLiteral;
 namespace ir {
 
 struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
-                                            base::AbslHashExtension> {
+                                            base::AbslHashExtension,
+                                            base::BaseSerializeExtension> {
   static constexpr std::string_view kAbslFormatString = "Scope(%p)";
 
   struct Data {

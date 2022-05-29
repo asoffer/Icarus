@@ -14,6 +14,21 @@ namespace ir {
 namespace internal_result_buffer {
 
 struct Offset {
+  template <typename S>
+  friend void BaseSerialize(S &s, Offset const &offset) {
+    base::Serialize(s, (offset.index << 1) | offset.is_register);
+  }
+
+  template <typename D>
+  friend bool BaseDeserialize(D &d, Offset &offset) {
+    uint32_t n;
+    bool ok = base::Deserialize(d, n);
+    if (not ok) { return false; }
+    offset.index       = n >> 1;
+    offset.is_register = n & 1;
+    return true;
+  }
+
   uint32_t index : 31;
   uint32_t is_register : 1;
 };

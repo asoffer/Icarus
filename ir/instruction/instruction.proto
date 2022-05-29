@@ -5,4 +5,6 @@ package ir;
 message InstructionProto {
   uint32 identifier = 1;
   bytes content = 2;
+
+  string mnemonic = 3;  // For debugging only.
 }

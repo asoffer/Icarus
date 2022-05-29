@@ -56,6 +56,15 @@ cc_library(
     ],
 )
 
+
+cc_library(
+    name = "deserializer",
+    hdrs = ["deserializer.h"],
+    deps = [
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 cc_library(
     name = "foreign",
     hdrs = ["foreign.h"],
@@ -167,6 +176,11 @@ cc_library(
         ":instruction_cc_proto",
         "//base:flyweight_set",
         "//base:meta",
+        "//ir/value:block",
+        "//ir/value:module_id",
+        "//ir/value:slice",
+        "//type:argument",
+        "//type:system",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/types:span",
     ],

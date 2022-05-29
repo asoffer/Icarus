@@ -102,8 +102,12 @@ InstructionVTable InstructionVTableFor{
                       InterpretInstruction(interpreter,
                                            std::declval<T const&>());
                     }) {
-        return InterpretInstruction(interpreter,
+        LOG("", "Start Interpreting %s",
+            reinterpret_cast<T const*>(self)->to_string());
+        auto result = InterpretInstruction(interpreter,
                                     *reinterpret_cast<T const*>(self));
+        LOG("", "Done Interpreting %s", typeid(T).name());
+        return result;
       } else {
         UNREACHABLE(typeid(T).name());
         return false;
@@ -113,6 +117,8 @@ InstructionVTable InstructionVTableFor{
     .ToProto =
         [](void const* self, InstructionSerializer& serializer) {
           serializer.SetIdentifier<T>();
+          LOG("", "Start Serializing %s",
+              reinterpret_cast<T const*>(self)->to_string());
           base::Serialize(serializer, *reinterpret_cast<T const*>(self));
         },
 

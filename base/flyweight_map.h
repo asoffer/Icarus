@@ -173,6 +173,13 @@ struct flyweight_map {
   // Returns the index of the element referenced by the iterator.
   size_t index(const_iterator it) const { return std::distance(begin(), it); }
 
+  // Returns a reference to the element indexed by `n` if one exists. Behavior
+  // is undefined if no such element exists.
+  value_type const& from_index(size_t n) const {
+    ASSERT(n < values_.size());
+    return values_[n];
+  }
+
   // Returns the index of an element equivalent if it is in the container. If
   // not present, returns `end_index()`
   size_t index(key_type const& k) const {

@@ -109,9 +109,7 @@ cc_library(
 
 cc_library(
     name = "instruction_set",
-    hdrs = [
-        "instruction_set.h",
-    ],
+    hdrs = ["instruction_set.h"],
     visibility = ["//visibility:public"],
     deps = [
         "//ir/instruction",
@@ -119,6 +117,7 @@ cc_library(
         "//ir/instruction:compare",
         "//ir/instruction:core",
         "//ir/instruction:debug",
+        "//ir/instruction:deserializer",
         "//ir/interpreter",
         "//ir/value:char",
         "//ir/value:generic_fn",
@@ -413,6 +412,7 @@ cc_test(
 #         ":flags",
 #         ":module",
 #         ":importer",
+#         ":instruction_set",
 #         ":work_graph",
 #         "//base:log",
 #         "//base:untyped_buffer",
@@ -464,6 +464,7 @@ cc_binary(
         ":module",
         ":importer",
         ":instructions",
+        ":instruction_set",
         ":work_graph",
         "//base:log",
         "//base:untyped_buffer",

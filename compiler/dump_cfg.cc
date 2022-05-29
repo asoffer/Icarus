@@ -21,6 +21,7 @@
 #include "base/untyped_buffer.h"
 #include "compiler/flags.h"
 #include "compiler/importer.h"
+#include "compiler/instruction_set.h"
 #include "compiler/module.h"
 #include "compiler/work_graph.h"
 #include "frontend/parse.h"
@@ -136,7 +137,8 @@ int DumpControlFlowGraph(char const *file_name, std::ostream &output) {
   if (not module_map) { return 1; }
 
   compiler::WorkSet work_set;
-  module::SharedContext shared_context(compiler::MakeBuiltinModule());
+  module::SharedContext shared_context(compiler::MakeBuiltinModule(),
+                                       InstructionSet::Deserialize);
   compiler::FileImporter importer(
       &work_set, diag->get(), &source_indexer, *std::move(module_map),
       absl::GetFlag(FLAGS_module_paths), shared_context);

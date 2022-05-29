@@ -18,6 +18,9 @@ cc_library(
 cc_library(
     name = "char",
     hdrs = ["char.h"],
+    deps = [
+        "//base:serialize",
+    ],
 )
 
 cc_library(
@@ -27,6 +30,7 @@ cc_library(
         ":module_id",
         "//base:extend",
         "//base/extend:absl_hash",
+        "//base/extend:serialize",
     ],
 )
 

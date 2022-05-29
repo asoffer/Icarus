@@ -103,15 +103,12 @@ PrecompiledModule::Load(std::string const& import_name,
     }
   }
 
+    LOG("", "%s", module_proto.DebugString());
   pm->subroutines_.reserve(module_proto.subroutines().size());
   for (auto const& subroutine_proto : module_proto.subroutines()) {
     auto& subroutine = pm->subroutines_.emplace_back();
     bool success     = ir::Subroutine::FromProto(
-        subroutine_proto,
-        [&](ir::InstructionProto const& i) -> ir::Inst {
-          LOG("", "%s", i.DebugString());
-          NOT_YET();
-        },
+        subroutine_proto, shared_context.instruction_deserializer(),
         subroutine);
     if (not success) {
       return absl::InvalidArgumentError("Failed to deserialized subroutine.");
@@ -126,9 +123,10 @@ PrecompiledModule::Load(std::string const& import_name,
 module::Module::FunctionInformation PrecompiledModule::Function(
     ir::LocalFnId id) const {
   ASSERT(id.value() < proto_.subroutines().size());
+  auto const & subroutine = subroutines_[id.value()];
   return module::Module::FunctionInformation{
-      .type       = nullptr,
-      .subroutine = nullptr,
+      .type       = &subroutine.type()->as<type::Function>(),
+      .subroutine = &subroutine,
   };
 }
 

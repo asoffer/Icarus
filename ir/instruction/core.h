@@ -83,6 +83,25 @@ struct PhiInstruction
     base::Serialize(w, inst.result);
   }
 
+  friend bool BaseDeserialize(base::Deserializer auto& d,
+                              PhiInstruction& inst) {
+    uint16_t count;
+    if (not base::Deserialize(d, count)) { return false; }
+    inst.blocks.reserve(count);
+    for (size_t i = 0; i < count; ++i) {
+      if (not base::Deserialize(d, inst.blocks.emplace_back())) {
+        return false;
+      }
+    }
+    inst.blocks.reserve(count);
+    for (size_t i = 0; i < count; ++i) {
+      if (not base::Deserialize(d, inst.values.emplace_back())) {
+        return false;
+      }
+    }
+    return base::Deserialize(d, inst.result);
+  }
+
   friend std::ostream& operator<<(std::ostream& os,
                                   PhiInstruction const& inst) {
     os << inst.result << " = phi ";
