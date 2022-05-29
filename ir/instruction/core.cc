@@ -29,7 +29,7 @@ std::string CallInstruction::to_string() const {
       a = ss.str();
     } else {
       a = Representation(args_[i].AsComplete(),
-                         fn_type_->parameters()[i].value.type());
+                         fn_type_.as<type::Function>().parameters()[i].value.type());
     }
     absl::StrAppend(&arg_str, std::exchange(separator, ", "), a);
   }
@@ -38,7 +38,7 @@ std::string CallInstruction::to_string() const {
   fn_ss << fn_;
   return absl::StrFormat(
       "%scall %s: %s",
-      fn_type_->return_types().empty()
+      fn_type_.as<type::Function>().return_types().empty()
           ? ""
           : absl::StrCat("(",
                          absl::StrJoin(outs_.regs(), ", ",
@@ -63,7 +63,7 @@ bool InterpretInstruction(interpreter::Interpreter& interpreter,
     arguments.append_raw(data);
   }
   std::vector<addr_t> outputs;
-  absl::Span returns = inst.fn_type_->return_types();
+  absl::Span returns = inst.fn_type_.as<type::Function>().return_types();
   for (Reg r : inst.outs_) {
     if (returns[outputs.size()].is_big()) {
       outputs.push_back(interpreter.frame().resolve<addr_t>(r));

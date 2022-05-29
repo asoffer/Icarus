@@ -176,8 +176,10 @@ struct CallInstruction
         fn_(fn),
         args_(std::move(args)),
         outs_(std::move(outs)) {
-    ASSERT(args_.num_entries() == fn_type_->parameters().size());
-    ASSERT(this->outs_.size() == fn_type_->return_types().size());
+    ASSERT(args_.num_entries() ==
+           fn_type_.as<type::Function>().parameters().size());
+    ASSERT(this->outs_.size() ==
+           fn_type_.as<type::Function>().return_types().size());
   }
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
@@ -194,7 +196,9 @@ struct CallInstruction
     for (auto& reg : inst.outs_.regs()) { base::Traverse(inliner, reg); }
   }
 
-  type::Function const* func_type() const { return fn_type_; }
+  type::Function const* func_type() const {
+    return &fn_type_.as<type::Function>();
+  }
   RegOr<Fn> func() const { return fn_; }
   PartialResultBuffer const& arguments() const { return args_; }
   OutParams const& outputs() const { return outs_; }
@@ -202,7 +206,7 @@ struct CallInstruction
  private:
   friend base::EnableExtensions;
 
-  type::Function const* fn_type_;
+  type::Type fn_type_;
   RegOr<Fn> fn_;
   PartialResultBuffer args_;
   OutParams outs_;

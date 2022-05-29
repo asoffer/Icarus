@@ -103,7 +103,6 @@ PrecompiledModule::Load(std::string const& import_name,
     }
   }
 
-    LOG("", "%s", module_proto.DebugString());
   pm->subroutines_.reserve(module_proto.subroutines().size());
   for (auto const& subroutine_proto : module_proto.subroutines()) {
     auto& subroutine = pm->subroutines_.emplace_back();

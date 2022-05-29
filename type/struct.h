@@ -198,6 +198,7 @@ struct AllocateStructInstruction
         mod, Struct::Options{.is_copyable = true, .is_movable = true});
   }
 
+  // TODO: Replace with ir::ModuleId;
   module::Module const *mod;
   ir::Reg result;
 };
