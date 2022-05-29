@@ -14,7 +14,6 @@
 #include "base/guarded.h"
 #include "compiler/bound_parameters.h"
 #include "compiler/call_metadata.h"
-#include "ir/byte_code/byte_code.h"
 #include "ir/module.h"
 #include "ir/subroutine.h"
 #include "ir/value/reg.h"

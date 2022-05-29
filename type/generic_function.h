@@ -1,7 +1,6 @@
 #ifndef ICARUS_TYPE_GENERIC_FUNCTION_H
 #define ICARUS_TYPE_GENERIC_FUNCTION_H
 
-#include "ir/byte_code/byte_code.h"
 #include "ir/interpreter/interpreter.h"
 #include "ir/subroutine.h"
 #include "ir/value/slice.h"
@@ -13,7 +12,7 @@
 namespace type {
 
 struct GenericFunction : LegacyType {
-  explicit GenericFunction(ir::ByteCode byte_code)
+  explicit GenericFunction(std::string const &byte_code)
       : LegacyType(IndexOf<GenericFunction>(), {}) {}
 
   Function const *Instantiate(absl::Span<Argument> arguments) {

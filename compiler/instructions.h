@@ -3,7 +3,6 @@
 
 #include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
-#include "ir/byte_code/byte_code.h"
 #include "ir/module.h"
 #include "ir/value/addr.h"
 #include "ir/value/char.h"
@@ -33,7 +32,6 @@ namespace compiler {
 std::vector<ir::Block> InterpretScopeAtCompileTime(
     module::SharedContext const &shared_context, ir::Scope s,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arguments);
-ir::ByteCode EmitByteCode(ir::Subroutine const &sr);
 
 namespace internal_type {
 template <typename T>

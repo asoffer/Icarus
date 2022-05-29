@@ -13,8 +13,6 @@
 #include "base/extend/traverse.h"
 #include "base/serialize.h"
 #include "ir/basic_block.h"
-#include "ir/byte_code/reader.h"
-#include "ir/byte_code/writer.h"
 #include "ir/instruction/debug.h"
 #include "ir/interpreter/interpreter.h"
 #include "ir/out_params.h"
@@ -214,11 +212,6 @@ struct CommentInstruction
     : base::Extend<CommentInstruction>::With<base::BaseTraverseExtension,
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "comment: %1$s";
-
-  friend void BaseSerialize(ByteCodeWriter& w, CommentInstruction const&) {}
-  friend bool BaseDeserialize(ByteCodeReader&, CommentInstruction const&) {
-    return true;
-  }
 
   template <typename ExecContext>
   void Apply(ExecContext&) const {}

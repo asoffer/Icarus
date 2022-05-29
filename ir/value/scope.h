@@ -30,7 +30,7 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
     Subroutine *scope;
     type::Scope const *type;
     absl::flat_hash_map<Block, std::vector<Reg>> parameters;
-    ByteCode *byte_code;
+    std::string *byte_code;
   };
 
   constexpr Scope() : data_(nullptr) {}
@@ -48,7 +48,7 @@ struct Scope : base::Extend<Scope, 1>::With<base::AbslFormatExtension,
 
   type::Scope const *type() const { return ASSERT_NOT_NULL(get().type); }
 
-  ByteCode const &byte_code() const { return *data_->byte_code; }
+  std::string const &byte_code() const { return *data_->byte_code; }
 
  private:
   friend Subroutine;

@@ -10,7 +10,6 @@
 #include "base/any_invocable.h"
 #include "base/debug.h"
 #include "base/iterator.h"
-#include "ir/byte_code/byte_code.h"
 #include "ir/subroutine.h"
 #include "ir/value/fn.h"
 #include "ir/value/module_id.h"
@@ -105,7 +104,8 @@ struct Module {
   std::deque<NativeFunctionInformation> functions_;
   std::deque<Subroutine> scopes_;
 
-  absl::node_hash_map<Scope, std::pair<ByteCode, std::unique_ptr<Scope::Data>>>
+  absl::node_hash_map<Scope,
+                      std::pair<std::string, std::unique_ptr<Scope::Data>>>
       scope_data_;
 
   ModuleId module_id_;

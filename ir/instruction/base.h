@@ -9,7 +9,6 @@
 #include "base/serialize.h"
 #include "base/traverse.h"
 #include "base/untyped_buffer.h"
-#include "ir/byte_code/writer.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/serializer.h"
 #include "ir/interpreter/stack_frame.h"
@@ -27,11 +26,8 @@ template <typename T>
 concept Inlinable = base::TraversableBy<T, Inliner>;
 
 template <typename T>
-concept ByteCodeWritable = base::SerializableBy<T, ir::ByteCodeWriter>;
-
-template <typename T>
 concept Instruction = (std::copyable<T> and std::destructible<T> and
-                       Inlinable<T> and ByteCodeWritable<T>);
+                       Inlinable<T>);
 
 // clang-format off
 template <typename T>
@@ -60,11 +56,6 @@ struct InstructionVTable {
       [](void const*, InstructionSerializer&) {
         UNREACHABLE("ToProto is unimplemented");
       };
-
-  void (*Serialize)(void*, ir::ByteCodeWriter*) = [](void*,
-                                                     ir::ByteCodeWriter*) {
-    UNREACHABLE("Serialize is unimplemented");
-  };
 
   std::string (*to_string)(void const*) = [](void const*) -> std::string {
     UNREACHABLE("to_string is unimplemented");
@@ -102,12 +93,8 @@ InstructionVTable InstructionVTableFor{
                       InterpretInstruction(interpreter,
                                            std::declval<T const&>());
                     }) {
-        LOG("", "Start Interpreting %s",
-            reinterpret_cast<T const*>(self)->to_string());
-        auto result = InterpretInstruction(interpreter,
+        return InterpretInstruction(interpreter,
                                     *reinterpret_cast<T const*>(self));
-        LOG("", "Done Interpreting %s", typeid(T).name());
-        return result;
       } else {
         UNREACHABLE(typeid(T).name());
         return false;
@@ -117,14 +104,7 @@ InstructionVTable InstructionVTableFor{
     .ToProto =
         [](void const* self, InstructionSerializer& serializer) {
           serializer.SetIdentifier<T>();
-          LOG("", "Start Serializing %s",
-              reinterpret_cast<T const*>(self)->to_string());
           base::Serialize(serializer, *reinterpret_cast<T const*>(self));
-        },
-
-    .Serialize =
-        [](void* self, ir::ByteCodeWriter* writer) {
-          base::Serialize(*writer, *reinterpret_cast<T*>(self));
         },
 
     .to_string =
@@ -220,10 +200,6 @@ struct Inst {
 
   friend void BaseSerialize(InstructionSerializer& serializer, Inst const& i) {
     i.vtable_->ToProto(i.data_, serializer);
-  }
-
-  friend void BaseSerialize(ir::ByteCodeWriter& writer, Inst const& i) {
-    i.vtable_->Serialize(i.data_, &writer);
   }
 
   friend void BaseTraverse(Inliner& inliner, Inst& inst) {

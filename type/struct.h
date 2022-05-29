@@ -99,8 +99,6 @@ struct Struct : LegacyType {
 
 struct StructField
     : base::Extend<StructField, 4>::With<base::BaseSerializeExtension> {
-  // TODO: Remove this once ByteCodeWriter supports
-  // non-default-constructible types.
   explicit StructField() : name_(""), type_(ir::RegOr<Type>(nullptr)) {}
 
   explicit StructField(std::string_view name, ir::RegOr<Type> t,

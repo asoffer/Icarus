@@ -240,7 +240,6 @@ cc_library(
         ":slice",
         ":type",
         "//ir:subroutine",
-        "//ir/byte_code",
         "//ir/interpreter",
         "//ir/value:slice",
     ],

@@ -25,13 +25,14 @@ struct TestImporter : module::Importer {
 }  // namespace
 
 CompilerInfrastructure::CompilerInfrastructure()
-    : shared_context_(compiler::MakeBuiltinModule()),
+    : shared_context_(compiler::MakeBuiltinModule(), nullptr),
       importer_(
           std::make_unique<TestImporter>(&shared_context_.module_table())) {}
 
 CompilerInfrastructure::CompilerInfrastructure(
     std::unique_ptr<module::Importer> i)
-    : shared_context_(compiler::MakeBuiltinModule()), importer_(std::move(i)) {}
+    : shared_context_(compiler::MakeBuiltinModule(), nullptr),
+      importer_(std::move(i)) {}
 
 std::optional<ir::CompleteResultBuffer> CompilerInfrastructure::Evaluate(
     compiler::CompiledModule& module, ast::Expression const* e) {

@@ -69,7 +69,7 @@ struct LlvmEmitter : Emitter<LlvmEmitter, LlvmBackendTraits> {
       } else if constexpr (base::meta<T> == base::meta<ir::Fn>) {
         switch (val.value().kind()) {
           case ir::Fn::Kind::Native: {
-            return context.functions.at(&*val.value().native());
+            return context.functions.at(val.value());
           } break;
           default: NOT_YET();
         }

@@ -35,7 +35,6 @@ cc_library(
         "//base:any_invocable",
         "//base:debug",
         "//base:iterator",
-        "//ir/byte_code",
         "//ir/value:fn",
         "//ir/value:scope",
         "//type:function",

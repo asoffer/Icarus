@@ -14,23 +14,23 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "llvm",
-    hdrs = ["llvm.h"],
-    srcs = ["llvm.cc"],
-    linkopts = LLVM_LINKOPTS,
-    deps = [
-        ":emit",
-        ":type",
-        "//base:log",
-        "//compiler:module",
-        "//ir:subroutine",
-        "//ir/instruction",
-        "//ir/instruction:arithmetic",
-        "//ir/instruction:compare",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
+# cc_library(
+#     name = "llvm",
+#     hdrs = ["llvm.h"],
+#     srcs = ["llvm.cc"],
+#     linkopts = LLVM_LINKOPTS,
+#     deps = [
+#         ":emit",
+#         ":type",
+#         "//base:log",
+#         "//compiler:module",
+#         "//ir:subroutine",
+#         "//ir/instruction",
+#         "//ir/instruction:arithmetic",
+#         "//ir/instruction:compare",
+#         "@com_google_absl//absl/container:flat_hash_map",
+#     ],
+# )
 
 cc_library(
     name = "type",
