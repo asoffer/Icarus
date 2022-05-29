@@ -82,7 +82,6 @@ struct InstructionSerializer {
   void write(Subroutine const *) { NOT_YET(); }
   void write(GenericFn const &) { NOT_YET(); }
   void write(type::Argument const &) { NOT_YET(); }
-  void write(module::Module const *) { NOT_YET(); }
 
   void write(BasicBlock *b) { write(block(b)); }
   void write(BasicBlock const *b) { write(block(b)); }
@@ -140,7 +139,6 @@ struct InstructionDeserializer {
   bool read(Subroutine const *&) { NOT_YET(); }
   bool read(GenericFn &) { NOT_YET(); }
   bool read(type::Argument &) { NOT_YET(); }
-  bool read(module::Module const *&) { NOT_YET(); }
   bool read(BasicBlock const *&) { NOT_YET(); }
   bool read(type::Enum *&) { NOT_YET(); }
   bool read(type::Flags *&) { NOT_YET(); }

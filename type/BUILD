@@ -445,7 +445,7 @@ cc_library(
         "//ir/interpreter",
         "//ir/value:fn",
         "//ir/value:hashtag",
-        "//module:module",
+        "//ir/value:module_id",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

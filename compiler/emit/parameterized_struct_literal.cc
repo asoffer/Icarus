@@ -71,7 +71,8 @@ bool Compiler::EmitParameterizedStructFunctionBody(
     // TODO: Check for copyable/movable.
     // TODO: Set the module appropriately.
     ir::Reg r = current_block()->Append(type::AllocateStructInstruction{
-        .mod = ModuleFor(node), .result = current().subroutine->Reserve()});
+        .mod = resources().shared_context->module_table().id(ModuleFor(node)),
+        .result = current().subroutine->Reserve()});
     EmitStructDataCompletion(*this, r, node->fields());
     current_block()->set_jump(ir::JumpCmd::Return());
 

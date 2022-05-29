@@ -4,6 +4,7 @@
 #include <concepts>
 
 #include "base/meta.h"
+#include "ir/value/module_id.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/result_buffer.h"
@@ -37,6 +38,7 @@ struct Inliner {
   void operator()(base::is_enum auto &) {}
   void operator()(std::integral auto &) {}
   void operator()(std::floating_point auto &) {}
+  void operator()(ModuleId &) {}
   void operator()(void const *) {}
 
   void operator()(ir::PartialResultBuffer &buffer) {

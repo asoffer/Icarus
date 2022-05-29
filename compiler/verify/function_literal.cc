@@ -274,14 +274,17 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
   auto const &fn_type =
       context().qual_types(node)[0].type().as<type::Function>();
 
+  auto &module_table = resources().shared_context->module_table();
+
   for (auto const &param : fn_type.parameters()) {
     type::Type t = param.value.type();
     if (const auto *s = t.if_as<type::Struct>()) {
       EnsureComplete(
-          {.kind = WorkItem::Kind::CompleteStruct,
-           .node = ASSERT_NOT_NULL(
-               s->defining_module()->as<CompiledModule>().context().AstLiteral(
-                   s)),
+          {.kind    = WorkItem::Kind::CompleteStruct,
+           .node    = ASSERT_NOT_NULL(module_table.module(s->defining_module())
+                                       ->as<CompiledModule>()
+                                       .context()
+                                       .AstLiteral(s)),
            .context = &context()});
     }
     if (t.get()->completeness() == type::Completeness::Incomplete) {
@@ -290,7 +293,9 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
   }
   for (type::Type ret : fn_type.return_types()) {
     if (auto const *s = ret.if_as<type::Struct>()) {
-      auto const &ctx = s->defining_module()->as<CompiledModule>().context();
+      auto const &ctx = module_table.module(s->defining_module())
+                            ->as<CompiledModule>()
+                            .context();
       EnsureComplete({.kind    = WorkItem::Kind::CompleteStruct,
                       .node    = ASSERT_NOT_NULL(ctx.AstLiteral(s)),
                       .context = const_cast<Context *>(&ctx)});

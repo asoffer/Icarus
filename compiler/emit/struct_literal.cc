@@ -325,7 +325,7 @@ void Compiler::EmitToBuffer(ast::StructLiteral const *node,
   LOG("StructLiteral", "Starting struct-literal emission: %p", node);
 
   auto [t, inserted] = context().EmplaceType<type::Struct>(
-      node, resources().module,
+      node, resources().module->id(),
       type::Struct::Options{
           .is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),

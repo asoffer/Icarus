@@ -256,8 +256,10 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
   }
 
   if (auto *s = evaled_type.if_as<type::Struct>()) {
-    auto &s_mod = const_cast<module::Module *>(s->defining_module())
-                      ->as<compiler::CompiledModule>();
+    auto &s_mod = c.resources()
+                      .shared_context->module_table()
+                      .module(s->defining_module())
+                      ->as<CompiledModule>();
     auto const *struct_lit = s_mod.context().AstLiteral(s);
     c.EnsureComplete({
         .kind    = WorkItem::Kind::CompleteStruct,
@@ -305,8 +307,10 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
 type::QualType AccessStructMember(CompilationDataReference data,
                                   ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
-  auto &s_mod = const_cast<module::Module *>(s->defining_module())
-                    ->as<compiler::CompiledModule>();
+  auto &s_mod = data.resources()
+                    .shared_context->module_table()
+                    .module(s->defining_module())
+                    ->as<CompiledModule>();
   auto const *struct_lit = ASSERT_NOT_NULL(s_mod.context().AstLiteral(s));
   data.EnsureComplete({
       .kind    = WorkItem::Kind::CompleteStructData,
@@ -329,7 +333,8 @@ type::QualType AccessStructMember(CompilationDataReference data,
   type::QualType qt(member->type, quals | type::Quals::Ref());
 
   // Struct field members need to be exported in addition to the struct itself.
-  if (data.resources().module != s->defining_module() and
+
+  if (data.resources().module != &s_mod and
       not member->hashtags.contains(ir::Hashtag::Export)) {
     data.diag().Consume(NonExportedMember{
         .member = std::string{node->member_name()},

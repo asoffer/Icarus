@@ -30,12 +30,7 @@ struct ProvenanceVisitor {
   module::Module const *operator()(auto const *t) {
     constexpr auto type = base::meta<std::decay_t<decltype(*t)>>;
     if constexpr (requires { t->defining_module(); }) {
-      if constexpr (base::meta<decltype(t->defining_module())> ==
-                    base::meta<ir::ModuleId>) {
-        return table_.module(t->defining_module());
-      } else {
-        return t->defining_module();
-      }
+      return table_.module(t->defining_module());
     } else if constexpr (type == base::meta<Array> or
                          type == base::meta<Slice>) {
       return (*this)(t->data_type());

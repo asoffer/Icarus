@@ -11,12 +11,15 @@
 #include "absl/types/span.h"
 #include "ast/scope.h"
 #include "base/extend.h"
+#include "base/extend/absl_format.h"
 #include "base/extend/serialize.h"
+#include "base/extend/traverse.h"
 #include "base/traverse.h"
 #include "ir/instruction/base.h"
-#include "ir/module.h"
+#include "ir/instruction/debug.h"
 #include "ir/value/fn.h"
 #include "ir/value/hashtag.h"
+#include "ir/value/module_id.h"
 #include "type/type.h"
 
 namespace type {
@@ -35,7 +38,7 @@ struct Struct : LegacyType {
     uint8_t is_copyable : 1;
     uint8_t is_movable : 1;
   };
-  Struct(module::Module const *mod, Options options);
+  Struct(ir::ModuleId mod, Options options);
 
   ir::Fn Destructor() const;
 
@@ -58,7 +61,7 @@ struct Struct : LegacyType {
   Field const *field(std::string_view name) const;
   Field const *constant(std::string_view name) const;
 
-  module::Module const *defining_module() const { return mod_; }
+  ir::ModuleId defining_module() const { return mod_; }
 
   core::Bytes offset(size_t n, core::Arch const &arch) const;
 
@@ -66,7 +69,7 @@ struct Struct : LegacyType {
   absl::Span<Field const> constants() const { return constants_; }
   size_t index(std::string_view name) const;
 
-  module::Module const *mod_ = nullptr;
+  ir::ModuleId mod_          = ir::ModuleId::Invalid();
   Completeness completeness_ = Completeness::Incomplete;
 
   // TODO: Make these private.
@@ -198,8 +201,7 @@ struct AllocateStructInstruction
         mod, Struct::Options{.is_copyable = true, .is_movable = true});
   }
 
-  // TODO: Replace with ir::ModuleId;
-  module::Module const *mod;
+  ir::ModuleId mod;
   ir::Reg result;
 };
 

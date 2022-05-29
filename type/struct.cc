@@ -9,7 +9,7 @@
 
 namespace type {
 
-Struct::Struct(module::Module const *mod, Struct::Options options)
+Struct::Struct(ir::ModuleId mod, Struct::Options options)
     : LegacyType(IndexOf<Struct>(),
                  LegacyType::Flags{.is_default_initializable = 1,
                                    .is_copyable    = options.is_copyable,

@@ -1,6 +1,7 @@
 #include "compiler/verify/verify.h"
 
 #include "absl/cleanup/cleanup.h"
+#include "compiler/module.h"
 #include "compiler/struct.h"
 #include "ir/interpreter/interpreter.h"
 
@@ -55,10 +56,8 @@ bool CompleteStructData(CompilationDataReference data,
 
   // TODO: One of here or above should be responsible for EmplaceType, but not
   // both. If we could enqueue code emission, that would make sense.
-  //
-  // TODO: Get rid of reinterpret cast needed because of incomplete type.
   auto [t, inserted] = data.context().EmplaceType<type::Struct>(
-      node, reinterpret_cast<module::Module const *>(data.resources().module),
+      node, data.resources().module->id(),
       type::Struct::Options{
           .is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),
@@ -100,10 +99,8 @@ bool CompleteStructData(CompilationDataReference data,
 
   // TODO: One of here or above should be responsible for EmplaceType, but not
   // both. If we could enqueue code emission, that would make sense.
-  //
-  // TODO: Get rid of reinterpret cast needed because of incomplete type.
   auto [t, inserted] = data.context().EmplaceType<type::Struct>(
-      node, reinterpret_cast<module::Module const *>(data.resources().module),
+      node, data.resources().module->id(),
       type::Struct::Options{
           .is_copyable = not node->hashtags.contains(ir::Hashtag::Uncopyable),
           .is_movable  = not node->hashtags.contains(ir::Hashtag::Immovable),
