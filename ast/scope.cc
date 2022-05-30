@@ -41,4 +41,50 @@ void Scope::set_parent(Scope *p) {
   if (s != this) { s->executable_descendants_.push_back(this); }
 }
 
+Scope::visible_declaration_ancestor_iterator::
+    visible_declaration_ancestor_iterator(Scope const *p, std::string_view name)
+    : p_(ASSERT_NOT_NULL(p)) {
+  GetDeclsAndFindNext(name);
+}
+
+void Scope::visible_declaration_ancestor_iterator::FindNext(
+    std::string_view name) {
+  if (only_constants_) {
+    auto iter = std::find_if(
+        ids_.begin(), ids_.end(), [](ast::Declaration::Id const *id) {
+          return id->declaration().flags() & ast::Declaration::f_IsConst;
+        });
+    ids_.remove_prefix(std::distance(ids_.begin(), iter));
+  }
+
+  if (ids_.empty()) { IncrementScope(name); }
+}
+
+void Scope::visible_declaration_ancestor_iterator::GetDeclsAndFindNext(
+    std::string_view name) {
+  if (auto iter = p_->decls_.find(name); iter == p_->decls_.end()) {
+    IncrementScope(name);
+  } else {
+    ids_ = iter->second;
+    ASSERT(ids_.size() != 0);
+    FindNext(name);
+  }
+}
+
+void Scope::visible_declaration_ancestor_iterator::IncrementScope(
+    std::string_view name) {
+  switch (ASSERT_NOT_NULL(p_)->kind()) {
+    case Kind::Declarative:
+    case Kind::BoundaryExecutable: only_constants_ = true; break;
+    case Kind::Executable: break;
+  }
+  p_ = p_->parent();
+
+  if (not p_) {
+    ids_ = absl::Span<Declaration::Id const *const>(nullptr, 0);
+  } else {
+    GetDeclsAndFindNext(name);
+  }
+}
+
 }  // namespace ast

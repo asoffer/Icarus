@@ -6,9 +6,11 @@
 namespace compiler {
 namespace {
 
+using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Pair;
+using ::testing::Return;
 using ::testing::UnorderedElementsAre;
 
 TEST(Declaration, DefaultInitSuccess) {
@@ -81,8 +83,26 @@ TEST(Declaration, DefaultInitNonConstantType) {
   }
 }
 
-// TODO Default initialization of non-default-initializable type (both const and
-// non-const).
+
+TEST(Declaration, DefaultInitNonDefaultInitializableType) {
+  {
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
+    s: []char
+    )");
+    EXPECT_THAT(infra.diagnostics(),
+                UnorderedElementsAre(Pair("type-error", "no-default-value")));
+  }
+
+  {
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
+    s :: []char
+    )");
+    EXPECT_THAT(infra.diagnostics(),
+                UnorderedElementsAre(Pair("type-error", "no-default-value")));
+  }
+}
 
 TEST(Declaration, InferredSuccess) {
   {
@@ -110,7 +130,7 @@ TEST(Declaration, InferredSuccess) {
   }
 }
 
-TEST(Declaration, InferredUninferralbe) {
+TEST(Declaration, InferredUninferrable) {
   {
     test::CompilerInfrastructure infra;
     auto &mod = infra.add_module(R"(
@@ -384,6 +404,55 @@ TEST(Declaration, Shadowing) {
   }
 }
 
+TEST(Declaration, ShadowingOkayIfMutuallyUnreachable) {
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(R"(
+    if (true) {
+      x := 3
+    } else {
+      x := 4
+    }
+    )");
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+}
+
+TEST(Declaration, ShadowingCaughtAcrossScopes) {
+  {
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
+    x := 3
+    if (true) {
+      x := 4
+    }
+    )");
+    EXPECT_THAT(
+        infra.diagnostics(),
+        UnorderedElementsAre(Pair("type-error", "shadowing-declaration")));
+  }
+  {
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
+    if (true) {
+      x := 3
+    }
+    x := 4
+    )");
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  }
+  {
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
+    if (true) {
+      x := 3
+    }
+    x ::= 4
+    )");
+    EXPECT_THAT(
+        infra.diagnostics(),
+        UnorderedElementsAre(Pair("type-error", "shadowing-declaration")));
+  }
+}
+
 TEST(Declaration, FunctionsCanShadow) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(
@@ -416,6 +485,133 @@ TEST(Declaration, AmbiguouslyCallableFunctionsCannotShadow) {
   }
 }
 
+
+TEST(Declaration, StructFieldsCanShadow) {
+  {
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
+    x: bool
+
+    S ::= struct {
+      x: i64
+    }
+
+    s := S.{ x = 3 }
+    )");
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  }
+  {
+    test::CompilerInfrastructure infra;
+    auto &mod = infra.add_module(R"(
+    S ::= struct {
+      x: i64
+    }
+
+    s := S.{ x = 3 }
+
+    x: bool
+    )");
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  }
+}
+
+TEST(Declaration, ShadowingAcrossEmbeddedModules) {
+{
+    test::CompilerInfrastructure infra;
+    auto &imported = infra.add_module("imported", R"(
+    #{export} x :: i64 = 1
+    )");
+
+    auto &mod = infra.add_module(R"(
+    -- ::= import "imported"
+    y :: i64 = 2
+    )");
+
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  }
+  {
+    test::CompilerInfrastructure infra;
+    auto &imported = infra.add_module("imported", R"(
+    #{export} x :: i64 = 1
+    )");
+
+    auto &mod = infra.add_module(R"(
+    -- ::= import "imported"
+    x :: i64 = 2
+    )");
+
+    EXPECT_THAT(
+        infra.diagnostics(),
+        UnorderedElementsAre(Pair("type-error", "shadowing-declaration")));
+  }
+  {
+    test::CompilerInfrastructure infra;
+    auto &imported = infra.add_module("imported", R"(
+    #{export} f ::= () => true
+    )");
+
+    auto &mod = infra.add_module(R"(
+    -- ::= import "imported"
+    f ::= (n: i64 = 0) => n
+    )");
+
+    EXPECT_THAT(
+        infra.diagnostics(),
+        UnorderedElementsAre(Pair("type-error", "shadowing-declaration")));
+  }
+  {
+    test::CompilerInfrastructure infra;
+    auto &imported = infra.add_module("imported", R"(
+    #{export} f ::= () => true
+    )");
+
+    auto &mod = infra.add_module(R"(
+    -- ::= import "imported"
+    f ::= (n: i64) => n
+    )");
+
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  }
+}
+
+TEST(Declaration, MultiEmbeddedImportShadowing) {
+  {
+    test::CompilerInfrastructure infra;
+    auto &imported1 = infra.add_module("imported1", R"(
+    #{export} x :: i64 = 1
+    )");
+    auto &imported2 = infra.add_module("imported2", R"(
+    #{export} y :: i64 = 2
+    )");
+
+    auto &mod = infra.add_module(R"(
+    -- ::= import "imported1"
+    -- ::= import "imported2"
+    )");
+
+    EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  }
+  {
+    test::CompilerInfrastructure infra;
+    auto &imported1 = infra.add_module("imported1", R"(
+    #{export} x :: i64 = 1
+    )");
+    auto &imported2 = infra.add_module("imported2", R"(
+    #{export} x :: i64 = 2
+    )");
+
+    auto &mod = infra.add_module(R"(
+    -- ::= import "imported1"
+    -- ::= import "imported2"
+    )");
+
+    EXPECT_THAT(
+        infra.diagnostics(),
+        UnorderedElementsAre(Pair("type-error", "shadowing-declaration")));
+
+  }
+}
+
 TEST(BindingDeclaration, Success) {
   test::CompilerInfrastructure infra;
   auto &mod     = infra.add_module(R"(
@@ -428,8 +624,7 @@ TEST(BindingDeclaration, Success) {
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
-// TODO check shadowing on generics once you have interfaces implemented.
-// TODO Special functions (copy, move, etc)
+// TODO: check shadowing on generics once you have interfaces implemented.
 
 }  // namespace
 }  // namespace compiler

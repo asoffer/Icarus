@@ -25,6 +25,19 @@ struct DeclaringHoleAsNonModule {
   std::string_view view;
 };
 
+struct EmbeddingNonConstantModule {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "embedding-non-constant-module";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Declaring `--` as non-constant module."),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view view;
+};
+
 struct ShadowingDeclaration {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "shadowing-declaration";
@@ -82,24 +95,16 @@ struct UninitializedConstant {
   std::string_view view;
 };
 
-// TODO: what about shadowing of symbols across module boundaries imported with
-// -- ::= ?
-// Or when you import two modules verifying that symbols don't conflict.
-//
-// TODO: check shadowing of functions where one has a signature that could be
-// created from the other by currying some of the arguments or decide we don't
-// care.
-bool Shadow(type::Typed<ast::Declaration::Id const *> id1,
-            type::Typed<ast::Declaration::Id const *> id2) {
+bool Shadows(type::Type t1, type::Type t2) {
   // TODO: Don't worry about generic shadowing? It'll be checked later?
-  if (id1.type().is<type::Generic<type::Function>>() or
-      id2.type().is<type::Generic<type::Function>>() or
-      id1.type() == type::UnboundScope or id2.type() == type::UnboundScope) {
+  if (t1.is<type::Generic<type::Function>>() or
+      t2.is<type::Generic<type::Function>>() or t1 == type::UnboundScope or
+      t2 == type::UnboundScope) {
     return false;
   }
 
-  type::Callable const *callable1 = id1.type().if_as<type::Callable>();
-  type::Callable const *callable2 = id2.type().if_as<type::Callable>();
+  type::Callable const *callable1 = t1.if_as<type::Callable>();
+  type::Callable const *callable2 = t2.if_as<type::Callable>();
   if (not callable1 or not callable2) { return true; }
 
   return core::AmbiguouslyCallable(
@@ -234,191 +239,231 @@ type::QualType VerifyUninitialized(TypeVerifier &tv,
   return VerifyDeclarationType(tv, node);
 }
 
+// Returns the qualified types corresponding to a constant declaration `node` if
+// they have been previously verified, otherwise returns a span whose data is
+// null.
+absl::Span<type::QualType const> PreviouslyVerifiedConstant(
+    TypeVerifier &tv, ast::Declaration const *node) {
+  if (not(node->flags() & ast::Declaration::f_IsConst)) { return {}; }
+  if (auto qts = tv.context().maybe_qual_type(&node->ids()[0]); qts.data()) {
+    return qts;
+  }
+  return {};
+}
+
+std::string DeclarationIdsString(absl::Span<ast::Declaration::Id const> ids) {
+  return absl::StrJoin(ids, ", ",
+                       [](std::string *out, ast::Declaration::Id const &id) {
+                         absl::StrAppend(out, id.name());
+                       });
+}
+
+// Returns a `std::vector` consisiting of the `type::QualTypes` for each
+// `ast::Declaration::Id`, possibly having some or all of the elements be
+// errors. The length of the returned `std::vector` must be
+// `node->ids().size()`.
+std::vector<type::QualType> ComputeQualTypes(TypeVerifier &tv,
+                                             ast::Declaration const *node) {
+  switch (node->kind()) {
+    case ast::Declaration::kDefaultInit: {
+      return {VerifyDefaultInitialization(tv, node)};
+    } break;
+    case ast::Declaration::kInferred: {
+      return VerifyInferred(tv, node);
+    } break;
+    case ast::Declaration::kInferredAndUninitialized: {
+      tv.diag().Consume(type::UninferrableType{
+          .kind = type::InferenceResult::Kind::Uninitialized,
+          .view = node->init_val()->range(),
+      });
+      if (node->flags() & ast::Declaration::f_IsConst) {
+        tv.diag().Consume(UninitializedConstant{.view = node->range()});
+      }
+      return {type::QualType::Error()};
+    } break;
+    case ast::Declaration::kCustomInit: {
+      return {VerifyCustom(tv, node)};
+    } break;
+    case ast::Declaration::kUninitialized: {
+      return {VerifyUninitialized(tv, node)};
+    } break;
+    case ast::Declaration::kBinding: {
+      tv.VerifyType(&node->as<ast::BindingDeclaration>().pattern());
+      absl::Span span = tv.context().qual_types(node);
+      return std::vector<type::QualType>(span.begin(), span.end());
+    } break;
+    default: UNREACHABLE(node->DebugString());
+  }
+}
+
+absl::Span<type::QualType const> StoreQualTypes(
+    Context &ctx, ast::Declaration const *node,
+    absl::Span<type::QualType const> qual_types) {
+  ASSERT(qual_types.size() == node->ids().size());
+  for (size_t i = 0; i < qual_types.size(); ++i) {
+    ctx.set_qual_type(&node->ids()[i], qual_types[i]);
+  }
+  return ctx.set_qual_types(node, qual_types);
+}
+
+bool VerifyEmbeddedIds(TypeVerifier &tv, ast::Declaration const *node,
+                       absl::Span<type::QualType> qual_types) {
+  bool found_fatal_error = false;
+  ASSERT(qual_types.size() == node->ids().size());
+  for (size_t i = 0; i < qual_types.size(); ++i) {
+    auto &qt       = qual_types[i];
+    auto const &id = node->ids()[i];
+
+    // Embedded declaration identifiers are expressed by having no name.
+    if (not id.name().empty()) { continue; }
+
+    // Only constant modules may be embedded.
+    if (qt.type() != type::Module) {
+      tv.diag().Consume(DeclaringHoleAsNonModule{
+          .type = TypeForDiagnostic(node, tv.context()),
+          .view = node->range(),
+      });
+      found_fatal_error = true;
+      qt.MarkError();
+      continue;
+    }
+
+    if (not qt.constant()) {
+      tv.diag().Consume(EmbeddingNonConstantModule{.view = node->range()});
+      found_fatal_error = true;
+      qt.MarkError();
+      continue;
+    }
+
+    // TODO: What if no init val is provded? what if not constant?
+
+    if (auto maybe_mod =
+            tv.EvaluateOrDiagnoseAs<ir::ModuleId>(node->init_val())) {
+      // TODO: In generic contexts it doesn't make sense to place this on
+      // the AST.
+      node->scope()->embed(&tv.importer().get(*maybe_mod).as<CompiledModule>());
+    } else {
+      found_fatal_error = true;
+      qt.MarkError();
+    }
+  }
+  return not found_fatal_error;
+}
+
+[[maybe_unused]] void VerifyEmbeddedModuleExportsShadowing(
+    TypeVerifier &tv, module::Module::SymbolInformation const &symbol,
+    ast::Scope const &scope) {
+  // TODO: Implement me.
+}
+
+void VerifyLocalShadowing(TypeVerifier &tv, ast::Declaration const *node,
+                          absl::Span<type::QualType> qual_types) {
+  for (size_t i = 0; i < qual_types.size(); ++i) {
+    auto &qt       = qual_types[i];
+    auto const &id = node->ids()[i];
+    if (id.name().empty()) { continue; }
+
+    ast::Scope const &s = *node->scope();
+
+    for (auto const &decl_id : s.ancestor_declaration_id_named(id.name())) {
+      if (&id == &decl_id) { continue; }
+
+      auto decl_id_qts = tv.context().maybe_qual_type(&decl_id);
+      if (not decl_id_qts.data()) { continue; }
+
+        if (Shadows(qt.type(), decl_id_qts[0].type())) {
+          qt.MarkError();
+
+          tv.diag().Consume(ShadowingDeclaration{
+              .view1 = id.range(),
+              .view2 = decl_id.range(),
+          });
+        }
+      }
+  }
+}
+
+void VerifyEmbeddedShadowing(TypeVerifier &tv, ast::Declaration::Id const *id,
+                             type::QualType &qt, ast::Scope const &s) {
+  for (auto const &decl_id : s.ancestor_declaration_id_named("")) {
+    if (id == &decl_id) { continue; }
+    LOG("", "%s", id->declaration().DebugString());
+    LOG("", "%s", decl_id.declaration().DebugString());
+
+    auto decl_id_qts = tv.context().maybe_qual_type(&decl_id);
+    if (not decl_id_qts.data()) { continue; }
+
+    auto maybe_mod =
+        tv.EvaluateOrDiagnoseAs<ir::ModuleId>(decl_id.declaration().init_val());
+    if (not maybe_mod) { continue; }
+
+    auto const *m =
+        ASSERT_NOT_NULL(tv.shared_context().module_table().module(*maybe_mod));
+    for (auto const &symbol_information : m->Exported(id->name())) {
+      if (Shadows(qt.type(), symbol_information.qualified_type.type())) {
+        qt.MarkError();
+
+        tv.diag().Consume(ShadowingDeclaration{
+            .view1 = id->range(),
+            .view2 = "",
+        });
+      }
+    }
+  }
+}
+
+void VerifyEmbeddedShadowing(TypeVerifier &tv, ast::Declaration const *node,
+                             absl::Span<type::QualType> qual_types) {
+  ast::Scope const &s = *node->scope();
+  for (size_t i = 0; i < qual_types.size(); ++i) {
+    auto &qt       = qual_types[i];
+    auto const &id = node->ids()[i];
+
+    if (id.name().empty()) {
+      // TODO: Implement.
+    } else {
+      VerifyEmbeddedShadowing(tv, &id, qt, s);
+    }
+  }
+}
+
 }  // namespace
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::Declaration const *node) {
   // Declarations can be seen out of order if they're constants and we happen to
   // verify an identifier referencing the declaration before the declaration is
-  // processed in source-order.
-  //
-  // TODO: Consider first checking if it's a constant because we only need to do
-  // this lookup in that case. Not sure how much performance that might win.
-  if (auto qts = context().maybe_qual_type(&node->ids()[0]); qts.data()) {
+  // processed in source-order. Due to the possibility of out-of-order
+  // verification, `VerifyType` may be called multiple times on an
+  // `ast::Declaration`. To avoid repeating work, we first check (for constants)
+  // if we have already verified this declaration previously.
+  if (auto qts = PreviouslyVerifiedConstant(*this, node); qts.data()) {
     return qts;
   }
-  LOG("Declaration", "Verifying '%s' on %p",
-      absl::StrJoin(node->ids(), ", ",
-                    [](std::string *out, ast::Declaration::Id const &id) {
-                      absl::StrAppend(out, id.name());
-                    }),
+
+  LOG("Declaration", "Verifying '%s' on %p", DeclarationIdsString(node->ids()),
       &context());
 
-  // TODO: If we don't already have type-checked this but it's an error, we'll
-  // type-check this node again because we don't save errors. Maybe we should
-  // revisit that idea. It's likely the cause of the problem where we generate
-  // the same error message multiple times.
-
-  std::vector<type::QualType> node_qual_types;
-  switch (node->kind()) {
-    case ast::Declaration::kDefaultInit: {
-      node_qual_types = {VerifyDefaultInitialization(*this, node)};
-    } break;
-    case ast::Declaration::kInferred: {
-      node_qual_types = VerifyInferred(*this, node);
-    } break;
-    case ast::Declaration::kInferredAndUninitialized: {
-      diag().Consume(type::UninferrableType{
-          .kind = type::InferenceResult::Kind::Uninitialized,
-          .view = node->init_val()->range(),
-      });
-      if (node->flags() & ast::Declaration::f_IsConst) {
-        diag().Consume(UninitializedConstant{.view = node->range()});
-      }
-      node_qual_types = {type::QualType::Error()};
-    } break;
-    case ast::Declaration::kCustomInit: {
-      node_qual_types = {VerifyCustom(*this, node)};
-    } break;
-    case ast::Declaration::kUninitialized: {
-      node_qual_types = {VerifyUninitialized(*this, node)};
-    } break;
-    case ast::Declaration::kBinding: {
-      VerifyType(&node->as<ast::BindingDeclaration>().pattern());
-      auto span       = context().qual_types(node);
-      node_qual_types = std::vector<type::QualType>(span.begin(), span.end());
-    } break;
-    default: UNREACHABLE(node->DebugString());
-  }
+  std::vector node_qual_types = ComputeQualTypes(*this, node);
+  ASSERT(node_qual_types.size() == node->ids().size());
 
   for (type::QualType qt : node_qual_types) {
-    if (not qt.ok()) {
-      for (auto const &id : node->ids()) {
-        context().set_qual_type(&id, type::QualType::Error());
-      }
-      return context().set_qual_type(node, type::QualType::Error());
+    if (qt == type::QualType::Error()) {
+      return StoreQualTypes(context(), node, node_qual_types);
     }
   }
 
-  if (node_qual_types.size() != node->ids().size()) {
-    return type::QualType::ErrorSpan();
+  VerifyLocalShadowing(*this, node, absl::MakeSpan(node_qual_types));
+  if (VerifyEmbeddedIds(*this, node, absl::MakeSpan(node_qual_types))) {
+    VerifyEmbeddedShadowing(*this, node, absl::MakeSpan(node_qual_types));
   }
-
-  size_t i = 0;
-  for (auto const &id : node->ids()) {
-    absl::Cleanup c = [&] { ++i; };
-    if (id.name().empty()) {
-      if (node_qual_types[i].type() == type::Module) {
-        // TODO: check if it's constant?
-        // TODO: check shadowing against other modules?
-        // TODO: what if no init val is provded? what if not constant?
-
-        if (auto maybe_mod =
-                EvaluateOrDiagnoseAs<ir::ModuleId>(node->init_val())) {
-          // TODO: In generic contexts it doesn't make sense to place this on
-          // the AST.
-
-          node->scope()->embed(
-              &importer().get(*maybe_mod).as<CompiledModule>());
-        } else {
-          node_qual_types[i].MarkError();
-        }
-      } else {
-        diag().Consume(DeclaringHoleAsNonModule{
-            .type = TypeForDiagnostic(node, context()),
-            .view = node->range(),
-        });
-        node_qual_types[i].MarkError();
-      }
-
-      return context().set_qual_types(&node->ids()[0], node_qual_types);
-    }
-  }
-
-  // Gather all declarations with the same identifer that are visible in this
-  // scope or that are in a scope which for which this declaration would be
-  // visible. In other words, look both up and down the scope tree for
-  // declarations of this identifier.
-  //
-  // It's tempting to assume we only need to look in one direction because we
-  // would catch any ambiguity at a later time. However this is not correct.
-  // For instance, consider this example:
-  //
-  // ```
-  // if (cond) then {
-  //   a := 4
-  // }
-  // a := 3  // Error: Redeclaration of `a`.
-  // ```
-  //
-  // There is a redeclaration of `a` that needs to be caught. However, If we
-  // only look towards the root of the scope tree, we will first see `a := 4`
-  // which is not ambiguous. Later we will find `a := 3` which should have
-  // been found but wasn't due to the fact that we saw the declaration that
-  // was further from the root first while processing.
-  //
-  // The problem can be described mathematically as follows:
-  //
-  // Define *scope tree order* to be the partial order defined by D1 <= D2 iff
-  // D1's path to the scope tree root is a prefix of D2's path to the scope
-  // tree root. Define *processing order* to be the order in which nodes have
-  // their types verified.
-  //
-  // The problem is that scope tree order does not have processing order as a
-  // linear extension.
-  //
-  // To fix this particular problem, we need to make sure we check all
-  // declarations that may be ambiguous regardless of whether they are above
-  // or below `node` on the scope tree. However, we only want to look at the
-  // ones which have been previously processed. This can be checked by looking
-  // to see if we have saved the result of this declaration. We can also skip
-  // out if the result was an error.
-
-  i = 0;
-  for (auto const &id : node->ids()) {
-    absl::Cleanup c = [&] { ++i; };
-
-    type::Typed<ast::Declaration::Id const *> typed_id(
-        &id, node_qual_types[i].type());
-    // TODO: struct field decls shouldn't have issues with shadowing local
-    // variables.
-    for (auto const &s : node->scope()->ancestors()) {
-      if (auto iter = s.decls_.find(id.name()); iter != s.decls_.end()) {
-        for (auto const *accessible_id : iter->second) {
-          if (&id == accessible_id) { continue; }
-          auto qts = context().maybe_qual_type(accessible_id);
-          if (not qts.data()) { continue; }
-          if (Shadow(typed_id, type::Typed<ast::Declaration::Id const *>(
-                                   &id, qts[0].type()))) {
-            // TODO: If one of these declarations shadows the other
-            node_qual_types[i].MarkError();
-
-            diag().Consume(ShadowingDeclaration{
-                .view1 = node->range(),
-                .view2 = id.range(),
-            });
-          }
-        }
-      }
-    }
-  }
-
-  auto span = context().set_qual_types(node, node_qual_types);
-  ASSERT(span.size() == node->ids().size());
-  i = 0;
-  for (auto const &id : node->ids()) {
-    absl::Cleanup c = [&] { ++i; };
-
-    context().set_qual_types(&id, absl::MakeConstSpan(&span[i], 1));
-  }
-
-  // TODO: verify special function signatures (copy, move, etc).
-  return span;
+  return StoreQualTypes(context(), node, node_qual_types);
 }
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::Declaration::Id const *node) {
-  LOG("Declaration::Id", "Verifying %s", node->name());
+  // This is never called directly, but may be called if an `Identifier` is
+  // being verified whose declaration has not yet been seen.
   return VerifyType(&node->declaration());
 }
 

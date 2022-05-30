@@ -67,6 +67,10 @@ struct StringifyExpression {
     return operator()(&node->pattern());
   }
 
+  std::string operator()(ast::SliceType const *node) {
+    return absl::StrCat("[]", (*this)(&node->data_type()));
+  }
+
   std::string operator()(ast::Terminal const *node) {
     std::stringstream ss;
     context_.qual_types(node)[0].type().ShowValue(ss, node->value());

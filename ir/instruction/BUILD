@@ -80,6 +80,7 @@ cc_library(
     hdrs = ["inliner.h"],
     deps = [
         "//base:meta",
+        "//ir/value:module_id",
         "//ir/value:reg",
         "//ir/value:reg_or",
         "//ir/value:result_buffer",

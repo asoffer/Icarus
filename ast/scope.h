@@ -60,6 +60,51 @@ struct Scope : base::Cast<Scope> {
     Scope const *p_;
   };
 
+  struct visible_declaration_ancestor_iterator {
+    friend bool operator==(visible_declaration_ancestor_iterator const &lhs,
+                           visible_declaration_ancestor_iterator const &rhs) {
+      return lhs.p_ == rhs.p_ and lhs.ids_.data() == rhs.ids_.data();
+    }
+    friend bool operator!=(visible_declaration_ancestor_iterator const &lhs,
+                           visible_declaration_ancestor_iterator const &rhs) {
+      return not(lhs == rhs);
+    }
+
+    ast::Declaration::Id const &operator*() const { return *ids_[0]; }
+
+    visible_declaration_ancestor_iterator operator++() {
+      std::string_view name = ids_[0]->name();
+      ids_.remove_prefix(1);
+      FindNext(name);
+      return *this;
+    }
+
+    visible_declaration_ancestor_iterator operator++(int) {
+      auto copy = *this;
+      ++*this;
+      return copy;
+    }
+
+   private:
+    friend struct Scope;
+
+    constexpr visible_declaration_ancestor_iterator() : p_(nullptr) {}
+
+    visible_declaration_ancestor_iterator(Scope const *p,
+                                          std::string_view name);
+
+
+    void FindNext(std::string_view name);
+    void GetDeclsAndFindNext(std::string_view name);
+    void IncrementScope(std::string_view name);
+
+    // TODO: We can improve efficiency by stashing `only_constants_` in the low
+    // bit of `p_`.
+    Scope const *p_;
+    absl::Span<Declaration::Id const *const> ids_;
+    bool only_constants_ = false;
+  };
+
   void set_parent(Scope *p);
 
   Scope *parent() {
@@ -88,6 +133,15 @@ struct Scope : base::Cast<Scope> {
   auto ancestors() const {
     return base::iterator_range(ancestor_iterator(this),
                                 ancestor_iterator(nullptr));
+  }
+
+  // Returns an iterator range which iterates through all
+  // accessible `ast::Declaration::Id`s in this or ancestor scopes which are
+  // visible and have name `name`.
+  auto ancestor_declaration_id_named(std::string_view name) const {
+    return base::iterator_range(
+        visible_declaration_ancestor_iterator(this, name),
+        visible_declaration_ancestor_iterator());
   }
 
   void InsertDeclaration(Declaration const *decl);
