@@ -30,8 +30,13 @@ struct PrecompiledModule final : module::Module {
   absl::Span<module::Module::SymbolInformation const> Symbols(
       std::string_view name) const override;
 
-  module::Module::FunctionInformation Function(
-      ir::LocalFnId id) const override;
+  void SymbolsByName(absl::FunctionRef<void(
+                         std::string_view, absl::Span<SymbolInformation const>)>
+                         f) const override {
+    for (auto const& [name, symbols] : symbols_) { f(name, symbols); }
+  }
+
+  module::Module::FunctionInformation Function(ir::LocalFnId id) const override;
 
  private:
   static absl::StatusOr<std::pair<ir::ModuleId, PrecompiledModule*>> Make(

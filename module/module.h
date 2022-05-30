@@ -52,41 +52,6 @@ struct Module : base::Cast<Module> {
     }
   };
 
-  // Returns an identifier for this module unique across all modules being
-  // linked together.
-  std::string_view identifier() const { return identifier_; }
-
-  // Given a symbol `name`, must return a range of `SymbolInformation`
-  // describing all symbols of that name in the module, regardless of
-  // visibility. The range of symbol information has no ordering guarantees.
-  virtual absl::Span<SymbolInformation const> Symbols(
-      std::string_view name) const = 0;
-
-  // Given a symbol `name`, returns a range of `SymbolInformation` describing
-  // any symbols of that name in the module which are exported.
-  auto Exported(std::string_view name) const {
-    return base::iterator_range(
-        filter_iterator<Visibility::Exported>(Symbols(name)), filter_end{});
-  }
-
-  // Given a symbol `name`, returns a range of `SymbolInformation` describing
-  // any symbols of that name in the module which are private.
-  auto Private(std::string_view name) const {
-    return base::iterator_range(
-        filter_iterator<Visibility::Private>(Symbols(name)), filter_end{});
-  }
-
-  struct FunctionInformation {
-    type::Function const *type;
-    ir::Subroutine const *subroutine;
-  };
-  // Must return a `FunctionInformation` object capturing the type and byte code
-  // for the function with the given `id` in this module.
-  virtual FunctionInformation Function(ir::LocalFnId id) const = 0;
-
- protected:
-  void set_identifier(std::string id) { identifier_ = std::move(id); }
-
  private:
   struct filter_end {};
   template <Visibility V>
@@ -129,6 +94,65 @@ struct Module : base::Cast<Module> {
     pointer ptr_;
     pointer end_;
   };
+
+ public:
+
+  // Returns an identifier for this module unique across all modules being
+  // linked together.
+  std::string_view identifier() const { return identifier_; }
+
+  // Given a symbol `name`, must return a range of `SymbolInformation`
+  // describing all symbols of that name in the module, regardless of
+  // visibility. The range of symbol information has no ordering guarantees.
+  virtual absl::Span<SymbolInformation const> Symbols(
+      std::string_view name) const = 0;
+
+  // Calls the given `f` with each symbol name and range of symbol information
+  // (as-if obtained by calling `Symbol`).
+  virtual void SymbolsByName(
+      absl::FunctionRef<void(std::string_view,
+                             absl::Span<SymbolInformation const>)>
+          f) const = 0;
+
+  using exported_range_type =
+      base::iterator_range<filter_iterator<Visibility::Exported>, filter_end>;
+  using private_range_type =
+      base::iterator_range<filter_iterator<Visibility::Private>, filter_end>;
+
+  // Given a symbol `name`, returns a range of `SymbolInformation` describing
+  // any symbols of that name in the module which are exported.
+  exported_range_type Exported(std::string_view name) const;
+
+  // Given a symbol `name`, returns a range of `SymbolInformation` describing
+  // any symbols of that name in the module which are private.
+  private_range_type Private(std::string_view name) const;
+
+  void ExportedSymbolsByName(
+      std::invocable<std::string_view, exported_range_type> auto &&f) const {
+    SymbolsByName([&](std::string_view name,
+                      absl::Span<SymbolInformation const> symbols) {
+      auto range = SymbolsWithVisibility<Visibility::Exported>(symbols);
+      if (not range.empty()) { f(name, range); }
+    });
+  }
+
+  struct FunctionInformation {
+    type::Function const *type;
+    ir::Subroutine const *subroutine;
+  };
+  // Must return a `FunctionInformation` object capturing the type and byte code
+  // for the function with the given `id` in this module.
+  virtual FunctionInformation Function(ir::LocalFnId id) const = 0;
+
+ protected:
+  void set_identifier(std::string id) { identifier_ = std::move(id); }
+
+ private:
+  template <Visibility V>
+  base::iterator_range<filter_iterator<V>, filter_end> SymbolsWithVisibility(
+      absl::Span<SymbolInformation const> symbols) const {
+    return base::iterator_range(filter_iterator<V>(symbols), filter_end{});
+  }
 
   // TODO: Move ModuleId to live here.
   std::string identifier_;

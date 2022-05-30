@@ -13,6 +13,11 @@ struct MockModule : Module {
               (std::string_view name), (const, override));
   MOCK_METHOD(FunctionInformation, Function, (ir::LocalFnId id),
               (const, override));
+
+  MOCK_METHOD(void, SymbolsByName,
+              (absl::FunctionRef<void(std::string_view,
+                                      absl::Span<SymbolInformation const>)>),
+              (const, override));
 };
 
 }  // namespace module

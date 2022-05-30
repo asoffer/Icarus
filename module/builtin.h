@@ -40,6 +40,12 @@ struct BuiltinModule final : Module {
                                .subroutine = &info.subroutine};
   }
 
+  void SymbolsByName(absl::FunctionRef<void(
+                         std::string_view, absl::Span<SymbolInformation const>)>
+                         f) const override {
+    for (auto const &[name, symbols] : symbols_) { f(name, symbols); }
+  }
+
   void insert(std::string_view symbol, SymbolInformation const &info) {
     symbols_.try_emplace(symbol).first->second.push_back(info);
   }

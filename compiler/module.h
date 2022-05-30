@@ -37,6 +37,12 @@ struct CompiledModule : module::Module {
     return iter->second;
   }
 
+  void SymbolsByName(absl::FunctionRef<void(
+                         std::string_view, absl::Span<SymbolInformation const>)>
+                         f) const override {
+    for (auto const& [name, symbols] : exported_) { f(name, symbols); }
+  }
+
   FunctionInformation Function(ir::LocalFnId id) const override {
     auto const &info = ir_module_.function(id);
     return FunctionInformation{.type       = info.type(),

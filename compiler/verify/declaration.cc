@@ -350,12 +350,6 @@ bool VerifyEmbeddedIds(TypeVerifier &tv, ast::Declaration const *node,
   return not found_fatal_error;
 }
 
-[[maybe_unused]] void VerifyEmbeddedModuleExportsShadowing(
-    TypeVerifier &tv, module::Module::SymbolInformation const &symbol,
-    ast::Scope const &scope) {
-  // TODO: Implement me.
-}
-
 void VerifyLocalShadowing(TypeVerifier &tv, ast::Declaration const *node,
                           absl::Span<type::QualType> qual_types) {
   for (size_t i = 0; i < qual_types.size(); ++i) {
@@ -371,27 +365,26 @@ void VerifyLocalShadowing(TypeVerifier &tv, ast::Declaration const *node,
       auto decl_id_qts = tv.context().maybe_qual_type(&decl_id);
       if (not decl_id_qts.data()) { continue; }
 
-        if (Shadows(qt.type(), decl_id_qts[0].type())) {
-          qt.MarkError();
+      if (Shadows(qt.type(), decl_id_qts[0].type())) {
+        qt.MarkError();
 
-          tv.diag().Consume(ShadowingDeclaration{
-              .view1 = id.range(),
-              .view2 = decl_id.range(),
-          });
-        }
+        tv.diag().Consume(ShadowingDeclaration{
+            .view1 = id.range(),
+            .view2 = decl_id.range(),
+        });
       }
+    }
   }
 }
 
-void VerifyEmbeddedShadowing(TypeVerifier &tv, ast::Declaration::Id const *id,
-                             type::QualType &qt, ast::Scope const &s) {
+void VerifyEmbeddedShadowing(TypeVerifier &tv, std::string_view name,
+                             std::string_view id_range, type::QualType &qt,
+                             ast::Scope const &s) {
   for (auto const &decl_id : s.ancestor_declaration_id_named("")) {
-    if (id == &decl_id) { continue; }
-    LOG("", "%s", id->declaration().DebugString());
-    LOG("", "%s", decl_id.declaration().DebugString());
-
     auto decl_id_qts = tv.context().maybe_qual_type(&decl_id);
     if (not decl_id_qts.data()) { continue; }
+    ASSERT(decl_id_qts.size() == 1);
+    ASSERT(decl_id_qts[0] == type::QualType::Constant(type::Module));
 
     auto maybe_mod =
         tv.EvaluateOrDiagnoseAs<ir::ModuleId>(decl_id.declaration().init_val());
@@ -399,12 +392,12 @@ void VerifyEmbeddedShadowing(TypeVerifier &tv, ast::Declaration::Id const *id,
 
     auto const *m =
         ASSERT_NOT_NULL(tv.shared_context().module_table().module(*maybe_mod));
-    for (auto const &symbol_information : m->Exported(id->name())) {
+    for (auto const &symbol_information : m->Exported(name)) {
       if (Shadows(qt.type(), symbol_information.qualified_type.type())) {
         qt.MarkError();
 
         tv.diag().Consume(ShadowingDeclaration{
-            .view1 = id->range(),
+            .view1 = id_range,
             .view2 = "",
         });
       }
@@ -420,9 +413,27 @@ void VerifyEmbeddedShadowing(TypeVerifier &tv, ast::Declaration const *node,
     auto const &id = node->ids()[i];
 
     if (id.name().empty()) {
-      // TODO: Implement.
+      auto decl_id_qts = tv.context().maybe_qual_type(&id);
+      auto maybe_mod =
+          tv.EvaluateOrDiagnoseAs<ir::ModuleId>(id.declaration().init_val());
+      ASSERT(maybe_mod != std::nullopt);
+
+      auto const *m = ASSERT_NOT_NULL(
+          tv.shared_context().module_table().module(*maybe_mod));
+      m->ExportedSymbolsByName(
+          [&](std::string_view symbol_name, auto const &exported_range) {
+            for (auto const &symbol_information : exported_range) {
+              auto qt = symbol_information.qualified_type;
+              // Note: `qt` is copied. The copy is potentially modified by
+              // `VerifyEmbeddedShadowing` (by marking an error on it), but
+              // there is no need to keep that modification around for the
+              // future as it doesn't indicate any failure that should stop
+              // further processing.
+              VerifyEmbeddedShadowing(tv, symbol_name, "", qt, s);
+            }
+          });
     } else {
-      VerifyEmbeddedShadowing(tv, &id, qt, s);
+      VerifyEmbeddedShadowing(tv, id.name(), id.range(), qt, s);
     }
   }
 }

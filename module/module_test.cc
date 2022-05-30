@@ -16,6 +16,7 @@ using ::testing::_;
 using ::testing::Eq;
 using ::testing::Field;
 using ::testing::IsEmpty;
+using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
 auto Vector(auto&& range) {
@@ -50,10 +51,20 @@ TEST(Module, ExportedAndPrivate) {
             {.qualified_type = type::QualType::Constant(type::F64),
              .visibility     = Module::Visibility::Private}}},
       };
-  ON_CALL(m, Symbols(_))
+  ON_CALL(m, Symbols)
       .WillByDefault([&](std::string_view s)
                          -> absl::Span<Module::SymbolInformation const> {
         return symbols.at(s);
+      });
+
+  ON_CALL(m, SymbolsByName)
+      .WillByDefault([&](absl::FunctionRef<void(
+                             std::string_view,
+                             absl::Span<Module::SymbolInformation const>)>
+                             f) {
+        for (auto const& [name, symbol_range] : symbols) {
+          f(name, symbol_range);
+        }
       });
 
   EXPECT_THAT(Vector(m.Exported("empty")), IsEmpty());
@@ -87,6 +98,28 @@ TEST(Module, ExportedAndPrivate) {
       Vector(m.Exported("exported_then_private")),
       UnorderedElementsAre(Field(&Module::SymbolInformation::qualified_type,
                                  Eq(type::QualType::Constant(type::I64)))));
+
+  absl::flat_hash_map<std::string_view, std::vector<Module::SymbolInformation>>
+      exported_symbols;
+  m.ExportedSymbolsByName(
+      [&](std::string_view name, auto const& exported_range) {
+        auto& v = exported_symbols.try_emplace(name).first->second;
+        for (auto const& exported : exported_range) { v.push_back(exported); }
+      });
+  EXPECT_THAT(
+      exported_symbols,
+      UnorderedElementsAre(
+          Pair("one_exported", UnorderedElementsAre(Field(
+                                   &Module::SymbolInformation::qualified_type,
+                                   Eq(type::QualType::Constant(type::I64))))),
+          Pair("private_then_exported",
+               UnorderedElementsAre(
+                   Field(&Module::SymbolInformation::qualified_type,
+                         Eq(type::QualType::Constant(type::F32))))),
+          Pair("exported_then_private",
+               UnorderedElementsAre(
+                   Field(&Module::SymbolInformation::qualified_type,
+                         Eq(type::QualType::Constant(type::I64)))))));
 }
 
 }  // namespace
