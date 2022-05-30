@@ -33,7 +33,6 @@ struct ComparingIncomparables {
   std::string_view view;
 };
 
-// TODO: Consider combining this with unary and binary overloads.
 struct InvalidComparisonOperatorOverload {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName =
@@ -106,13 +105,20 @@ type::QualType VerifyBinaryOverload(
     type::Typed<ir::CompleteResultRef> const &rhs) {
   absl::flat_hash_set<type::Function const *> member_types;
 
-  ForEachSymbolQualType(node->scope(), symbol, [&](type::QualType qt) {
-    // Must be callable because we're looking at overloads for operators
-    // which have previously been type-checked to ensure callability.
-    auto &c = qt.type().as<type::Function>();
-    member_types.insert(&c);
-    return true;
-  });
+  for (auto const &id :
+       node->scope()->visible_ancestor_declaration_id_named(symbol)) {
+    member_types.insert(
+        &context.qual_types(&id)[0].type().as<type::Function>());
+  }
+
+  for (ast::Scope const &s : node->scope()->ancestors()) {
+    for (auto *mod : s.embedded_modules()) {
+      for (auto const &symbol_info : mod->Exported(symbol)) {
+        member_types.insert(
+            &symbol_info.qualified_type.type().as<type::Function>());
+      }
+    }
+  }
 
   if (member_types.empty()) { return type::QualType::Error(); }
 

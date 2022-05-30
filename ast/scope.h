@@ -60,26 +60,26 @@ struct Scope : base::Cast<Scope> {
     Scope const *p_;
   };
 
-  struct visible_declaration_ancestor_iterator {
-    friend bool operator==(visible_declaration_ancestor_iterator const &lhs,
-                           visible_declaration_ancestor_iterator const &rhs) {
+  struct declaration_ancestor_iterator {
+    friend bool operator==(declaration_ancestor_iterator const &lhs,
+                           declaration_ancestor_iterator const &rhs) {
       return lhs.p_ == rhs.p_ and lhs.ids_.data() == rhs.ids_.data();
     }
-    friend bool operator!=(visible_declaration_ancestor_iterator const &lhs,
-                           visible_declaration_ancestor_iterator const &rhs) {
+    friend bool operator!=(declaration_ancestor_iterator const &lhs,
+                           declaration_ancestor_iterator const &rhs) {
       return not(lhs == rhs);
     }
 
     ast::Declaration::Id const &operator*() const { return *ids_[0]; }
 
-    visible_declaration_ancestor_iterator operator++() {
+    declaration_ancestor_iterator operator++() {
       std::string_view name = ids_[0]->name();
       ids_.remove_prefix(1);
       FindNext(name);
       return *this;
     }
 
-    visible_declaration_ancestor_iterator operator++(int) {
+    declaration_ancestor_iterator operator++(int) {
       auto copy = *this;
       ++*this;
       return copy;
@@ -88,11 +88,10 @@ struct Scope : base::Cast<Scope> {
    private:
     friend struct Scope;
 
-    constexpr visible_declaration_ancestor_iterator() : p_(nullptr) {}
+    constexpr declaration_ancestor_iterator() : p_(nullptr) {}
 
-    visible_declaration_ancestor_iterator(Scope const *p,
-                                          std::string_view name);
-
+    declaration_ancestor_iterator(Scope const *p, std::string_view name,
+                                  bool only_visible);
 
     void FindNext(std::string_view name);
     void GetDeclsAndFindNext(std::string_view name);
@@ -102,7 +101,8 @@ struct Scope : base::Cast<Scope> {
     // bit of `p_`.
     Scope const *p_;
     absl::Span<Declaration::Id const *const> ids_;
-    bool only_constants_ = false;
+    uint8_t only_constants_ : 1 = 0;
+    uint8_t only_visible_ : 1   = 0;
   };
 
   void set_parent(Scope *p);
@@ -137,17 +137,22 @@ struct Scope : base::Cast<Scope> {
 
   // Returns an iterator range which iterates through all
   // accessible `ast::Declaration::Id`s in this or ancestor scopes which are
-  // visible and have name `name`.
+  // visible and have name `name`
+  auto visible_ancestor_declaration_id_named(std::string_view name) const {
+    return base::iterator_range(declaration_ancestor_iterator(this, name, true),
+                                declaration_ancestor_iterator());
+  }
+
+  // Returns an iterator range which iterates through all
+  // accessible `ast::Declaration::Id`s in this or ancestor scopes which have
+  // name `name` regardless of whether they are visible.
   auto ancestor_declaration_id_named(std::string_view name) const {
     return base::iterator_range(
-        visible_declaration_ancestor_iterator(this, name),
-        visible_declaration_ancestor_iterator());
+        declaration_ancestor_iterator(this, name, false),
+        declaration_ancestor_iterator());
   }
 
   void InsertDeclaration(Declaration const *decl);
-
-  absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
-      decls_;
 
   // Invokes `f` on each declaration in this and all descendant scopes in the
   // order of occurence.
@@ -214,6 +219,10 @@ struct Scope : base::Cast<Scope> {
   absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
       child_decls_;
   absl::flat_hash_set<module::Module *> embedded_modules_;
+
+  absl::flat_hash_map<std::string_view, std::vector<Declaration::Id const *>>
+      decls_;
+
   std::vector<Scope *> executable_descendants_;
 
   // Sequence consisting of pointers to either a declaration or a child scope in

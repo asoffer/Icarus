@@ -38,23 +38,4 @@ std::variant<
     absl::flat_hash_map<type::Callable const *, core::CallabilityResult>>
 VerifyReturningCall(TypeVerifier &tv, VerifyCallParameters const &vcp);
 
-bool ForEachSymbolQualType(ast::Scope const *start, std::string_view name,
-                           std::invocable<type::QualType> auto &&fn) {
-  auto const &context = start->module().as<CompiledModule>().context();
-  for (ast::Scope const &s : start->ancestors()) {
-    if (auto iter = s.decls_.find(name); iter != s.decls_.end()) {
-      for (auto const *id : iter->second) {
-        if (not fn(context.qual_types(id)[0])) { return false; }
-      }
-    }
-
-    for (auto *mod : s.embedded_modules()) {
-      for (auto const &symbol_info : mod->Exported(name)) {
-        // TODO: what about transitivity for embedded modules?
-        if (not fn(symbol_info.qualified_type)) { return false; }
-      }
-    }
-  }
-  return true;
-}
 }  // namespace compiler

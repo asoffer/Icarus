@@ -41,14 +41,13 @@ void Scope::set_parent(Scope *p) {
   if (s != this) { s->executable_descendants_.push_back(this); }
 }
 
-Scope::visible_declaration_ancestor_iterator::
-    visible_declaration_ancestor_iterator(Scope const *p, std::string_view name)
-    : p_(ASSERT_NOT_NULL(p)) {
+Scope::declaration_ancestor_iterator::declaration_ancestor_iterator(
+    Scope const *p, std::string_view name, bool only_visible)
+    : p_(ASSERT_NOT_NULL(p)), only_visible_(only_visible) {
   GetDeclsAndFindNext(name);
 }
 
-void Scope::visible_declaration_ancestor_iterator::FindNext(
-    std::string_view name) {
+void Scope::declaration_ancestor_iterator::FindNext(std::string_view name) {
   if (only_constants_) {
     auto iter = std::find_if(
         ids_.begin(), ids_.end(), [](ast::Declaration::Id const *id) {
@@ -60,7 +59,7 @@ void Scope::visible_declaration_ancestor_iterator::FindNext(
   if (ids_.empty()) { IncrementScope(name); }
 }
 
-void Scope::visible_declaration_ancestor_iterator::GetDeclsAndFindNext(
+void Scope::declaration_ancestor_iterator::GetDeclsAndFindNext(
     std::string_view name) {
   if (auto iter = p_->decls_.find(name); iter == p_->decls_.end()) {
     IncrementScope(name);
@@ -71,11 +70,13 @@ void Scope::visible_declaration_ancestor_iterator::GetDeclsAndFindNext(
   }
 }
 
-void Scope::visible_declaration_ancestor_iterator::IncrementScope(
+void Scope::declaration_ancestor_iterator::IncrementScope(
     std::string_view name) {
   switch (ASSERT_NOT_NULL(p_)->kind()) {
     case Kind::Declarative:
-    case Kind::BoundaryExecutable: only_constants_ = true; break;
+    case Kind::BoundaryExecutable:
+      if (only_visible_) { only_constants_ = true; }
+      break;
     case Kind::Executable: break;
   }
   p_ = p_->parent();

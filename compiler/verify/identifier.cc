@@ -71,7 +71,6 @@ struct PotentialIdentifiers {
                                       module::Module::SymbolInformation const>;
   std::vector<std::pair<symbol_ref_t, type::QualType>> viable;
   std::vector<ast::Declaration::Id const *> errors;
-  std::vector<ast::Declaration::Id const *> unreachable;
 };
 
 // Returns the declaration ids along with their qualified type that may be
@@ -80,34 +79,22 @@ struct PotentialIdentifiers {
 PotentialIdentifiers PotentialIds(CompilationDataReference data,
                                   ast::Identifier const &id) {
   PotentialIdentifiers result;
-  bool only_constants = false;
-  for (ast::Scope const &s : id.scope()->ancestors()) {
-    if (auto iter = s.decls_.find(id.name()); iter != s.decls_.end()) {
-      for (auto const *id : iter->second) {
-        auto const *decl_id_qt = data.context().maybe_qual_type(id).data();
-        type::QualType qt = decl_id_qt ? *decl_id_qt : VerifyType(data, id)[0];
-
-        if (not qt.ok()) {
-          result.errors.push_back(id);
-        } else {
-          if (only_constants and
-              not(id->declaration().flags() & ast::Declaration::f_IsConst)) {
-            result.unreachable.push_back(id);
-          } else {
-            result.viable.emplace_back(id, qt);
-          }
-        }
-      }
+  for (auto const &id :
+       id.scope()->visible_ancestor_declaration_id_named(id.name())) {
+    auto const *decl_id_qt = data.context().maybe_qual_type(&id).data();
+    type::QualType qt = decl_id_qt ? *decl_id_qt : VerifyType(data, &id)[0];
+    if (qt.ok()) {
+      result.viable.emplace_back(&id, qt);
+    } else {
+      result.errors.push_back(&id);
     }
+  }
 
+  for (ast::Scope const &s : id.scope()->ancestors()) {
     for (auto *mod : s.embedded_modules()) {
       for (auto const &symbol : mod->Exported(id.name())) {
         result.viable.emplace_back(&symbol, symbol.qualified_type);
       }
-    }
-
-    if (s.kind() == ast::Scope::Kind::BoundaryExecutable) {
-      only_constants = true;
     }
   }
 
@@ -139,7 +126,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   // TODO: In what circumstances could this have been seen more than once?
   if (auto qts = context().maybe_qual_type(node); qts.data()) { return qts; }
 
-  auto [viable, errors, unreachable] = PotentialIds(*this, *node);
+  auto [viable, errors] = PotentialIds(*this, *node);
 
   if (not errors.empty()) {
     return context().set_qual_type(node, type::QualType::Error());
@@ -199,22 +186,14 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       context().set_decls(node, std::move(v));
     } break;
     case 0: {
-      // TODO: Performance. We don't need to look at these, we just need to know
-      // if any exist.
-      bool present = false;
-      for (auto *s = node->scope(); s; s = s->parent()) {
-        if (s->decls_.contains(node->name())) {
-          present = true;
-          break;
-        }
-      }
-      if (present) {
-        diag().Consume(UncapturedIdentifier{
+      if (std::empty(
+              node->scope()->ancestor_declaration_id_named(node->name()))) {
+        diag().Consume(UndeclaredIdentifier{
             .id   = node->name(),
             .view = node->range(),
         });
       } else {
-        diag().Consume(UndeclaredIdentifier{
+        diag().Consume(UncapturedIdentifier{
             .id   = node->name(),
             .view = node->range(),
         });

@@ -37,18 +37,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     }
   }
 
-  for (auto const &[name, ids] : node->scope()->decls_) {
-    for (auto const *id : ids) {
-      auto const *d = id->declaration().if_as<ast::BindingDeclaration>();
-      if (not d or &d->pattern() != node) { continue; }
-      if (context().maybe_qual_type(d).empty()) {
-        context().set_qual_type(d, type::QualType::Error());
-      }
-      if (context().maybe_qual_type(id).empty()) {
-        context().set_qual_type(id, type::QualType::Error());
-      }
-    }
-  }
   return result;
 }
 

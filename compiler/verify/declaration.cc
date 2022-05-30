@@ -359,7 +359,8 @@ void VerifyLocalShadowing(TypeVerifier &tv, ast::Declaration const *node,
 
     ast::Scope const &s = *node->scope();
 
-    for (auto const &decl_id : s.ancestor_declaration_id_named(id.name())) {
+    for (auto const &decl_id :
+         s.visible_ancestor_declaration_id_named(id.name())) {
       if (&id == &decl_id) { continue; }
 
       auto decl_id_qts = tv.context().maybe_qual_type(&decl_id);
@@ -380,7 +381,7 @@ void VerifyLocalShadowing(TypeVerifier &tv, ast::Declaration const *node,
 void VerifyEmbeddedShadowing(TypeVerifier &tv, std::string_view name,
                              std::string_view id_range, type::QualType &qt,
                              ast::Scope const &s) {
-  for (auto const &decl_id : s.ancestor_declaration_id_named("")) {
+  for (auto const &decl_id : s.visible_ancestor_declaration_id_named("")) {
     auto decl_id_qts = tv.context().maybe_qual_type(&decl_id);
     if (not decl_id_qts.data()) { continue; }
     ASSERT(decl_id_qts.size() == 1);
