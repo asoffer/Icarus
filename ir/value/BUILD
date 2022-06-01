@@ -81,6 +81,29 @@ cc_library(
 )
 
 cc_library(
+    name = "interface",
+    hdrs = ["interface.h"],
+    srcs = ["interface.cc"],
+    deps = [
+        "//base:flyweight_set",
+        "//core:arguments",
+        "//core:call",
+        "//type",
+        "//type:callable",
+    ],
+)
+
+cc_test(
+    name = "interface_test",
+    srcs = ["interface_test.cc"],
+    deps = [
+        ":interface",
+        "//type:primitive",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "label",
     hdrs = ["label.h"],
     deps = [
