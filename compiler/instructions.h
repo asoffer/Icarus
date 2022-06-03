@@ -7,6 +7,7 @@
 #include "ir/value/addr.h"
 #include "ir/value/char.h"
 #include "ir/value/generic_fn.h"
+#include "ir/value/interface.h"
 #include "ir/value/module_id.h"
 #include "ir/value/reg.h"
 #include "ir/value/result_buffer.h"
@@ -95,6 +96,8 @@ bool Compare(::type::Type t) {
     return t == type::UnboundScope or t.is<type::Scope>();
   } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
     return t.is<::type::Block>();
+  } else if constexpr (base::meta<T> == base::meta<ir::Interface>) {
+    return t == type::Interface;
   } else {
     UNREACHABLE(t.to_string(), " vs ", typeid(T).name());
   }

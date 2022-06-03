@@ -35,9 +35,11 @@ struct Arguments {
 
   absl::Span<T const> pos() const & { return pos_; }
   std::vector<T> &&pos() && { return std::move(pos_); }
+  std::vector<T> &pos() & { return pos_; }
 
   absl::flat_hash_map<StringType, T> const &named() const & { return named_; }
   absl::flat_hash_map<StringType, T> &&named() && { return std::move(named_); }
+  absl::flat_hash_map<StringType, T> &named() & { return named_; }
 
   template <typename... Args>
   void pos_emplace(Args &&... args) & {

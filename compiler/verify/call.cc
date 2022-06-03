@@ -49,6 +49,36 @@ struct UserDefinedError {
   std::string message;
 };
 
+type::QualType VerifyCallableCall(
+    CompilationDataReference data,
+    core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
+  bool error = false;
+  for (auto const &argument : arg_vals.pos()) {
+    if (not type::CanCastImplicitly(argument.type(), type::Interface)) {
+      data.diag().Consume(BuiltinError{
+          .view    = "",
+          .message = absl::StrCat("Built-in function `callable` cannot be "
+                                  "called with arguments of type ",
+                                  argument.type().to_string()),
+      });
+      error = true;
+    }
+  }
+  for (auto const &[name, argument] : arg_vals.named()) {
+    if (not type::CanCastImplicitly(argument.type(), type::Interface)) {
+      data.diag().Consume(BuiltinError{
+          .view    = "",
+          .message = absl::StrCat("Built-in function `callable` cannot be "
+                                  "called with arguments of type ",
+                                  argument.type().to_string()),
+      });
+      error = true;
+    }
+  }
+  return error ? type::QualType::Error()
+               : type::QualType::Constant(type::Interface);
+}
+
 type::QualType VerifySliceCall(
     CompilationDataReference data, std::string_view view,
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &arg_vals) {
@@ -85,7 +115,7 @@ type::QualType VerifySliceCall(
     error = true;
   }
 
-  if (!type::CanCastImplicitly(arg_vals[1].type(), type::U64)) {
+  if (not type::CanCastImplicitly(arg_vals[1].type(), type::U64)) {
     data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("Second argument to `slice` must be "
@@ -311,6 +341,11 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
           if (access->member_name() == "debug_ir") {
             return context().set_qual_type(
                 node, type::QualType::Constant(type::Void));
+          }
+
+          if (access->member_name() == "callable") {
+            return context().set_qual_type(node,
+                                           VerifyCallableCall(*this, arg_vals));
           }
         } else {
           auto callee_qt = VerifyType(node->callee())[0];

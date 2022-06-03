@@ -7,6 +7,7 @@
 #include "compiler/emit/copy_move_assignment.h"
 #include "compiler/emit/initialize.h"
 #include "compiler/instantiate.h"
+#include "compiler/interface_instructions.h"
 #include "compiler/module.h"
 #include "compiler/resources.h"
 #include "ir/instruction/instructions.h"
@@ -81,6 +82,34 @@ bool EmitBuiltinCall(Compiler &c, std::string_view f,
     } else {
       UNREACHABLE();
     }
+    return true;
+  }
+
+  if (f == "callable") {
+    core::Arguments<ir::RegOr<ir::Interface>> callable_interface_arguments;
+    ir::PartialResultBuffer buffer;
+    for (auto const &arg : args) {
+      buffer.clear();
+      type::QualType qt = c.context().qual_types(&arg.expr())[0];
+      c.EmitToBuffer(&arg.expr(), buffer);
+      ApplyImplicitCasts(c, qt.type(),
+                         type::QualType::NonConstant(type::Interface), buffer);
+      if (arg.named()) {
+        callable_interface_arguments.named_emplace(
+            arg.name(), buffer[0].get<ir::Interface>());
+      } else {
+        callable_interface_arguments.pos_emplace(
+            buffer[0].get<ir::Interface>());
+      }
+    }
+
+    out.append(c.current_block()->Append(CallableInterfaceInstruction{
+        .manager   = c.current_block()->Append(LoadInterfaceManagerInstruction{
+            .result = c.current().subroutine->Reserve(),
+        }),
+        .arguments = std::move(callable_interface_arguments),
+        .result    = c.current().subroutine->Reserve(),
+    }));
     return true;
   }
 

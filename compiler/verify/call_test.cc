@@ -188,6 +188,53 @@ TEST(BuiltinOpaque, Arguments) {
       UnorderedElementsAre(Pair("type-error", "uncallable-with-arguments")));
 }
 
+TEST(BuiltinCallable, WithNoArguments) {
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(builtin.callable())");
+  auto const *call  = mod.get<ast::Call>();
+  type::QualType qt = mod.context().qual_types(call)[0];
+  EXPECT_EQ(qt, type::QualType::Constant(type::Interface));
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+}
+
+TEST(BuiltinCallable, WithOneType) {
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(builtin.callable(i32))");
+  auto const *call  = mod.get<ast::Call>();
+  type::QualType qt = mod.context().qual_types(call)[0];
+  EXPECT_EQ(qt, type::QualType::Constant(type::Interface));
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+}
+
+TEST(BuiltinCallable, WithOneInterface) {
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(builtin.callable(builtin.callable()))");
+  auto const *call  = mod.get<ast::Call>();
+  type::QualType qt = mod.context().qual_types(call)[0];
+  EXPECT_EQ(qt, type::QualType::Constant(type::Interface));
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+}
+
+TEST(BuiltinCallable, WithMultiple) {
+  test::CompilerInfrastructure infra;
+  auto &mod = infra.add_module(
+      R"(builtin.callable(builtin.callable(), i32, builtin.callable()))");
+  auto const *call  = mod.get<ast::Call>();
+  type::QualType qt = mod.context().qual_types(call)[0];
+  EXPECT_EQ(qt, type::QualType::Constant(type::Interface));
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+}
+
+TEST(BuiltinCallable, WrongType) {
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(builtin.callable(3))");
+  auto const *call  = mod.get<ast::Call>();
+  type::QualType qt = mod.context().qual_types(call)[0];
+  EXPECT_EQ(qt, type::QualType::Error());
+  EXPECT_THAT(infra.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "builtin-error")));
+}
+
 TEST(Call, Uncallable) {
   test::CompilerInfrastructure infra;
   auto &mod         = infra.add_module("3()");

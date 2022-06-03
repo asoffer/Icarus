@@ -2,11 +2,13 @@
 
 #include "base/flyweight_set.h"
 #include "base/meta.h"
+#include "compiler/interface_instructions.h"
 #include "ir/instruction/arithmetic.h"
 #include "ir/instruction/compare.h"
 #include "ir/instruction/core.h"
 #include "ir/instruction/deserializer.h"
 #include "ir/instruction/instructions.h"
+#include "ir/value/interface.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -80,6 +82,7 @@ struct InstructionSet
           ir::RegisterInstruction<ir::addr_t>, ir::RegisterInstruction<ir::Fn>,
           ir::RegisterInstruction<ir::Scope>,
           ir::RegisterInstruction<ir::ModuleId>,
+          ir::RegisterInstruction<ir::Interface>,
           ir::RegisterInstruction<ir::UnboundScope>,
 
           ir::StoreInstruction<bool>, ir::StoreInstruction<ir::Char>,
@@ -91,6 +94,7 @@ struct InstructionSet
           ir::StoreInstruction<type::Type>, ir::StoreInstruction<ir::addr_t>,
           ir::StoreInstruction<ir::Fn>, ir::StoreInstruction<ir::Scope>,
           ir::StoreInstruction<ir::ModuleId>,
+          ir::StoreInstruction<ir::Interface>,
           ir::StoreInstruction<ir::UnboundScope>,
 
           ir::PhiInstruction<bool>, ir::PhiInstruction<ir::Char>,
@@ -101,7 +105,7 @@ struct InstructionSet
           ir::PhiInstruction<float>, ir::PhiInstruction<double>,
           ir::PhiInstruction<type::Type>, ir::PhiInstruction<ir::addr_t>,
           ir::PhiInstruction<ir::Fn>, ir::PhiInstruction<ir::Scope>,
-          ir::PhiInstruction<ir::ModuleId>,
+          ir::PhiInstruction<ir::ModuleId>, ir::PhiInstruction<ir::Interface>,
           ir::PhiInstruction<ir::UnboundScope>,
 
           ir::LoadInstruction, ir::CallInstruction,
@@ -338,6 +342,7 @@ struct InstructionSet
           ir::DestroyInstruction, ir::MoveInitInstruction,
           ir::CopyInitInstruction, ir::MoveInstruction, ir::CopyInstruction,
           ir::PtrDiffInstruction, ir::DebugIrInstruction,
-          type::IsAFunctionInstruction> {};
+          type::IsAFunctionInstruction, LoadInterfaceManagerInstruction,
+          CallableInterfaceInstruction> {};
 
 }  // namespace compiler

@@ -115,6 +115,7 @@ cc_library(
         "//ir:out_params",
         "//ir/value:fn",
         "//ir/value:generic_fn",
+        "//ir/value:interface",
         "//ir/value:reg_or",
         "//module",
         "//type:array",

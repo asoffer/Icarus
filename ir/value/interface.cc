@@ -36,11 +36,33 @@ CallableInterface InterfaceManager::Callable(
 }
 
 bool InterfaceManager::BindsTo(Interface i, type::Type t) const {
-  switch (static_cast<Interface::Kind>(i.kind_)) {
+  switch (i.kind()) {
     case Interface::Kind::Precise:
       return precisely_.from_index(i.index_).BindsTo(*this, t);
     case Interface::Kind::Callable:
       return callable_.from_index(i.index_).BindsTo(*this, t);
+  }
+}
+
+std::string InterfaceManager::DebugString(Interface i) const {
+  switch (i.kind()) {
+    case Interface::Kind::Precise:
+      return precisely_.from_index(i.index_).type_.to_string();
+    case Interface::Kind::Callable: {
+      callable_.from_index(i.index_);
+      auto const& arguments = callable_.from_index(i.index_).arguments();
+      std::string result;
+      std::string_view separator = "callable(";
+      for (auto const& p : arguments.pos()) {
+        absl::StrAppend(&result, std::exchange(separator, ", "),
+                        DebugString(p));
+      }
+      for (auto const& [name, intf] : arguments.named()) {
+        absl::StrAppend(&result, std::exchange(separator, ", "), name, " = ",
+                        DebugString(intf));
+      }
+      return result;
+    }
   }
 }
 

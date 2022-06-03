@@ -145,6 +145,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:instantiate",
+        "//compiler:interface_instructions",
         "//compiler:module",
         "//compiler:resources",
         "//ir/instruction",
@@ -221,6 +222,7 @@ cc_library(
     deps = [
         "//compiler:compilation_data",
         "//compiler:instructions",
+        "//compiler:interface_instructions",
         "//compiler:transient_state",
         "//core:arguments",
         "//core:parameters",

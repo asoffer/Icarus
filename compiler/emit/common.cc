@@ -2,6 +2,7 @@
 
 #include "absl/cleanup/cleanup.h"
 #include "compiler/instructions.h"
+#include "compiler/interface_instructions.h"
 #include "type/cast.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -131,6 +132,20 @@ void ApplyImplicitCasts(CompilationDataReference ref, type::Type from,
   ASSERT(type::CanCastImplicitly(from, to.type()) == true);
 
   if (from == to.type()) { return; }
+
+  if (from == type::Type_ and to.type() == type::Interface) {
+    auto result = ref.current_block()->Append(CastTypeToInterface{
+        .manager = ref.current_block()->Append(LoadInterfaceManagerInstruction{
+            .result = ref.current().subroutine->Reserve(),
+        }),
+        .type    = buffer[0].get<type::Type>(),
+        .result  = ref.current().subroutine->Reserve(),
+    });
+
+    buffer.clear();
+    buffer.append(result);
+  }
+
   if (to.type().is<type::Slice>()) {
     if (from.is<type::Slice>()) { return; }
     if (auto const *a = from.if_as<type::Array>()) {
@@ -186,6 +201,20 @@ void ApplyImplicitCasts(CompilationDataReference ref, type::Type from,
   ASSERT(type::CanCastImplicitly(from, to.type()) == true);
 
   if (from == to.type()) { return; }
+
+  if (from == type::Type_ and to.type() == type::Interface) {
+    auto result = ref.current_block()->Append(CastTypeToInterface{
+        .manager = ref.current_block()->Append(LoadInterfaceManagerInstruction{
+            .result = ref.current().subroutine->Reserve(),
+        }),
+        .type    = buffer[0].get<type::Type>(),
+        .result  = ref.current().subroutine->Reserve(),
+    });
+
+    buffer.clear();
+    buffer.append(result);
+  }
+
   if (to.type().is<type::Slice>()) {
     if (from.is<type::Slice>()) { return; }
     if (auto const *a = from.if_as<type::Array>()) {

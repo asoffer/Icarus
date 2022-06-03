@@ -227,6 +227,9 @@ struct Compiler : CompilationDataReference,
       if constexpr (type == base::meta<ir::ModuleId>) { return type::Module; }
       if constexpr (type == base::meta<uint64_t>) { return type::U64; }
       if constexpr (type == base::meta<ir::Integer>) { return type::Integer; }
+      if constexpr (type == base::meta<ir::Interface>) {
+        return type::Interface;
+      }
       if constexpr (type == base::meta<ir::UnboundScope>) {
         return type::UnboundScope;
       }
@@ -358,7 +361,7 @@ struct Compiler : CompilationDataReference,
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
                  ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
-                 ir::UnboundScope, ir::ScopeContext, ir::Block>(
+                 ir::UnboundScope, ir::ScopeContext, ir::Block, ir::Interface>(
           expr.type(), [&]<typename T>() {
             current_block()->Append(ir::StoreInstruction<T>{
                 .value    = buffer.get<T>(0),

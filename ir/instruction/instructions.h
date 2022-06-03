@@ -19,6 +19,7 @@
 #include "ir/out_params.h"
 #include "ir/subroutine.h"
 #include "ir/value/fn.h"
+#include "ir/value/interface.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/scope.h"
 #include "type/array.h"

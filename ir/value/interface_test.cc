@@ -18,6 +18,14 @@ TEST(Interface, Equality) {
   EXPECT_EQ(im.Precisely(type::Bool), ib);
   EXPECT_NE(im.Precisely(type::Bool), ic);
   EXPECT_EQ(im.Precisely(type::Char), ic);
+
+  Interface callable = im.Callable(core::Arguments<Interface>());
+  EXPECT_EQ(callable, im.Callable(core::Arguments<Interface>()));
+  EXPECT_EQ(im.Callable(core::Arguments<Interface>()), callable);
+
+  callable = im.Callable(core::Arguments<Interface>({ib}, {}));
+  EXPECT_EQ(callable, im.Callable(core::Arguments<Interface>({ib}, {})));
+  EXPECT_EQ(im.Callable(core::Arguments<Interface>({ib}, {})), callable);
 }
 
 TEST(PreciseInterface, BindsTo) {

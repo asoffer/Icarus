@@ -43,6 +43,10 @@ struct CompilationDataReference {
     return v.back();
   };
 
+  ir::InterfaceManager & interface_manager() const {
+    return *data_.resources.interface_manager;
+  }
+
   diagnostic::DiagnosticConsumer &diag() const {
     return *data_.resources.diagnostic_consumer;
   }

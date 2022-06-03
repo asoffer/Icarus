@@ -27,6 +27,7 @@ struct CompilerInfrastructure {
 
   auto diagnostics() const { return consumer_.diagnostics(); }
   auto& importer() { return importer_; }
+  auto& interface_manager() { return compiler::GlobalInterfaceManager; }
 
   TestModule& add_module(std::string name, std::string code);
   TestModule& add_module(std::string code);

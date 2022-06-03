@@ -20,6 +20,8 @@ struct Interface {
     Callable = 1,
   };
 
+  Interface() = default;
+
   friend bool operator==(Interface lhs, Interface rhs) {
     return lhs.index_ == rhs.index_ and lhs.kind_ == rhs.kind_;
   }
@@ -30,13 +32,29 @@ struct Interface {
 
   template <typename H>
   friend H AbslHashValue(H h, Interface i) {
-    return H::combine(std::move(h), (i.index_ << kNumKindBits) | i.kind_);
+    return H::combine(std::move(h), i.value());
+  }
+
+  friend void BaseSerialize(auto& s, Interface i) {
+    base::Serialize(s, i.value());
+  }
+  friend bool BaseDeserialize(auto& d, Interface& i) {
+    uint64_t n;
+    if (not base::Deserialize(d, n)) { return false; }
+    i = Interface(
+        n >> kNumIndexBits,
+        static_cast<Kind>(n & (uint64_t{1} << kNumIndexBits) - uint64_t{1}));
+    return true;
   }
 
  private:
   friend struct InterfaceManager;
   template <typename, Kind>
   friend struct InterfaceKind;
+
+  Kind kind() const { return static_cast<Kind>(kind_); }
+
+  uint64_t value() const { return (index_ << kNumKindBits) | kind_; }
 
   explicit Interface(uint64_t n, Kind k)
       : index_(n), kind_(static_cast<std::underlying_type_t<Kind>>(k)) {
@@ -45,8 +63,8 @@ struct Interface {
 
   static constexpr uint64_t kNumKindBits  = 4;
   static constexpr uint64_t kNumIndexBits = 64 - kNumKindBits;
-  uint64_t index_ : kNumIndexBits;
-  uint64_t kind_ : kNumKindBits;
+  uint64_t index_ : kNumIndexBits = 0;
+  uint64_t kind_ : kNumKindBits = 0;
 };
 
 template <typename T, Interface::Kind K>
@@ -92,6 +110,8 @@ struct CallableInterface
       : base::Extend<representation_type, 1>::With<base::AbslHashExtension> {
     bool BindsTo(InterfaceManager const& m, type::Type t) const;
 
+    core::Arguments<Interface> const& arguments() const { return arguments_; }
+
    private:
     friend base::EnableExtensions;
     friend struct InterfaceManager;
@@ -108,6 +128,8 @@ struct InterfaceManager {
   CallableInterface Callable(core::Arguments<Interface> const& arguments);
 
   bool BindsTo(Interface i, type::Type t) const;
+
+  std::string DebugString(Interface i) const;
 
  private:
   base::flyweight_set<typename PreciseInterface::representation_type>

@@ -58,6 +58,7 @@ bool CanCast(Type from, Type to) {
   // TODO: handle reinterpretation
   if (to == from) { return true; }
   if (to == Integer) { return false; }
+  if (to == Interface and from == Type_) { return true; }
 
   if (auto const *to_p = to.if_as<Pointer>()) {
     if (from == NullPtr or

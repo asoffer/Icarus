@@ -48,6 +48,9 @@ TEST(CanCast, Implicitly) {
 
   EXPECT_TRUE(CanCastImplicitly(Arr(3, U64), Slc(Byte)));
   EXPECT_TRUE(CanCastImplicitly(Slc(Char), Slc(Byte)));
+
+  EXPECT_TRUE(CanCastImplicitly(Type_, Interface));
+  EXPECT_FALSE(CanCastImplicitly(Interface, Type_));
 }
 
 TEST(CanCastExplicitly, Char) {

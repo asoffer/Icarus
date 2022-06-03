@@ -112,6 +112,7 @@ cc_library(
     hdrs = ["instruction_set.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":interface_instructions",
         "//ir/instruction",
         "//ir/instruction:arithmetic",
         "//ir/instruction:compare",
@@ -121,6 +122,7 @@ cc_library(
         "//ir/interpreter",
         "//ir/value:char",
         "//ir/value:generic_fn",
+        "//ir/value:interface",
         "//ir/value:module_id",
         "//ir/value:reg",
         "//ir/value:reg_or",
@@ -169,6 +171,7 @@ cc_library(
         "//ir/interpreter",
         "//ir/value:char",
         "//ir/value:generic_fn",
+        "//ir/value:interface",
         "//ir/value:module_id",
         "//ir/value:reg",
         "//ir/value:reg_or",
@@ -211,6 +214,7 @@ cc_library(
         ":work_item",
         "//ast:node",
         "//diagnostic/consumer:buffering",
+        "//ir/value:interface",
         "//ir/value:result_buffer",
         "//ir/value:scope",
         "//module:shared_context",
@@ -534,4 +538,20 @@ cc_library(
         "//type:struct",
         "@com_google_absl//absl/types:span",
     ],
+)
+
+cc_library(
+    name = "interface_instructions",
+    hdrs = ["interface_instructions.h"],
+    deps = [
+        ":resources",
+        "//base:extend",
+        "//base/extend:traverse",
+        "//base/extend:serialize",
+        "//core:arguments",
+        "//ir/instruction:debug",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//ir/value:interface",
+    ]
 )

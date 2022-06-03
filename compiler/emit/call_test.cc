@@ -133,7 +133,7 @@ TEST(CallTest, Foreign) {
     test::CompilerInfrastructure infra;
     auto &mod     = infra.add_module(absl::StrCat(kDefinitions, "f_ptr()"));
     auto const *e = mod.get<ast::Expression>();
-    ASSERT_THAT(
+    EXPECT_THAT(
         infra.Evaluate(mod, e),
         Optional(Eq(test::ExpectedValue(ir::Addr(ForeignFunctionPtr())))));
   }
@@ -141,15 +141,59 @@ TEST(CallTest, Foreign) {
     test::CompilerInfrastructure infra;
     auto &mod     = infra.add_module(absl::StrCat(kDefinitions, "f_i8()"));
     auto const *e = mod.get<ast::Expression>();
-    ASSERT_THAT(infra.Evaluate(mod, e),
+    EXPECT_THAT(infra.Evaluate(mod, e),
                 Optional(Eq(test::ExpectedValue(ForeignFunctionI8()))));
   }
   {
     test::CompilerInfrastructure infra;
     auto &mod     = infra.add_module(absl::StrCat(kDefinitions, "f_i64()"));
     auto const *e = mod.get<ast::Expression>();
-    ASSERT_THAT(infra.Evaluate(mod, e),
+    EXPECT_THAT(infra.Evaluate(mod, e),
                 Optional(Eq(test::ExpectedValue(ForeignFunctionI64()))));
+  }
+}
+
+
+TEST(CallTest, BuiltinCallable) {
+  {
+    test::CompilerInfrastructure infra;
+    auto &im      = infra.interface_manager();
+    auto &mod     = infra.add_module("builtin.callable()");
+    auto const *e = mod.get<ast::Expression>();
+    auto result   = infra.Evaluate(mod, e);
+    auto x = infra.Evaluate(mod, e);
+    EXPECT_THAT(
+        x, Optional(Eq(test::ExpectedValue(ir::Interface(im.Callable({}))))))
+        << x->num_entries()
+        << base::UniversalPrintToString((*x)[0].get<ir::Interface>());
+  }
+  {
+    test::CompilerInfrastructure infra;
+    auto &im      = infra.interface_manager();
+    auto &mod     = infra.add_module("builtin.callable(i32)");
+    auto const *e = mod.get<ast::Expression>();
+    auto result   = infra.Evaluate(mod, e);
+    auto x = infra.Evaluate(mod, e);
+    EXPECT_THAT(x, Optional(Eq(test::ExpectedValue(
+                       ir::Interface(im.Callable(core::Arguments<ir::Interface>(
+                           {ir::Interface(im.Precisely(type::I32))}, {})))))))
+        << x->num_entries()
+        << base::UniversalPrintToString((*x)[0].get<ir::Interface>());
+  }
+  {
+    test::CompilerInfrastructure infra;
+    auto &im      = infra.interface_manager();
+    auto &mod     = infra.add_module("builtin.callable(i32, builtin.callable())");
+    auto const *e = mod.get<ast::Expression>();
+    auto result   = infra.Evaluate(mod, e);
+    auto x = infra.Evaluate(mod, e);
+    EXPECT_THAT(x, Optional(Eq(test::ExpectedValue(
+                       ir::Interface(im.Callable(core::Arguments<ir::Interface>(
+                           {ir::Interface(im.Precisely(type::I32)),
+                            ir::Interface(im.Callable({}))},
+                           {})))))))
+        << x->num_entries()
+        << base::UniversalPrintToString((*x)[0].get<ir::Interface>());
   }
 }
 
