@@ -411,6 +411,19 @@ cc_test(
     ],
 )
 
+
+cc_library(
+    name = "interface",
+    srcs = ["interface_literal.cc"],
+    deps = [
+        ":common",
+        ":compiler_common",
+        ":copy_move_assignment",
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
 cc_library(
     name = "miscellaneous",
     srcs = ["miscellaneous.cc"],

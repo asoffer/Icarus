@@ -23,6 +23,7 @@ cc_library(
         "identifier.cc",
         "import.cc",
         "index.cc",
+        "interface_literal.cc",
         "module.cc",
         "miscellaneous.cc",
         "parameterized_struct_literal.cc",
@@ -239,6 +240,17 @@ cc_test(
     srcs = ["index_test.cc"],
     deps = [
         "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "interface_literal_test",
+    srcs = ["interface_literal_test.cc"],
+    deps = [
+        "//compiler",
+        "//compiler:module",
         "//test:module",
         "@com_google_googletest//:gtest_main",
     ],

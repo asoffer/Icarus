@@ -54,6 +54,7 @@ struct TestModule : compiler::CompiledModule {
 
   template <std::derived_from<ast::Node> NodeType>
   NodeType const* get() {
+    ASSERT(module().stmts().size() != 0);
     return &module().stmts().back()->as<NodeType>();
   }
 

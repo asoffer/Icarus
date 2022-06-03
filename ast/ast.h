@@ -862,6 +862,54 @@ struct Index : Expression {
   std::unique_ptr<Expression> lhs_, rhs_;
 };
 
+// InterfaceLiteral:
+// Represents indexing into an array, buffer-pointer, or a call to the ([])
+// operator if/when that may be overloaded.
+//
+// Examples:
+// ```
+// interface [T] {}
+//
+// interface [T] {
+//   run :: builtin.callable()
+// }
+// ```
+struct InterfaceLiteral : Expression, WithScope {
+  explicit InterfaceLiteral(
+      std::string_view range, Declaration::Id identifier,
+      absl::flat_hash_map<std::string_view, std::unique_ptr<Expression>>
+          members)
+      : Expression(IndexOf<InterfaceLiteral>(), range),
+        WithScope(Scope::Kind::Declarative),
+        context_decl_(ContextDeclaration(std::move(identifier))),
+        identifier_(identifier),
+        members_(std::move(members)) {}
+
+  Declaration const &context() const { return *context_decl_; }
+
+  absl::flat_hash_map<std::string_view, std::unique_ptr<Expression>> const &
+  members() const {
+    return members_;
+  }
+
+  void DebugStrAppend(std::string *out, size_t indent) const override;
+  void Initialize(Node::Initializer &initializer) override;
+
+ private:
+  static std::unique_ptr<Declaration> ContextDeclaration(
+      Declaration::Id context_identifier) {
+    auto range = context_identifier.range();
+    return std::make_unique<Declaration>(
+        range, std::vector<Declaration::Id>{std::move(context_identifier)},
+        std::make_unique<Terminal>(range, type::Interface), nullptr,
+        Declaration::f_IsConst | Declaration::f_IsFnParam);
+  }
+
+  std::unique_ptr<Declaration> context_decl_;
+  Declaration::Id identifier_;
+  absl::flat_hash_map<std::string_view, std::unique_ptr<Expression>> members_;
+};
+
 // Label:
 // Represents a label which can be the target of a yield statement in a scope.
 // Other languages used labels for "labelled-break", and this is a similar idea.

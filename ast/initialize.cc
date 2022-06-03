@@ -420,4 +420,13 @@ void WhileStmt::Initialize(Initializer& initializer) {
   InitializeAll(body_, initializer, &covers_binding_, &is_dependent_);
 }
 
+void InterfaceLiteral::Initialize(Initializer& initializer) {
+  scope_ = initializer.scope;
+  body_scope().set_parent(initializer.scope);
+  initializer.scope = &body_scope();
+  context_decl_->Initialize(initializer);
+  absl::Cleanup c   = [&] { initializer.scope = scope_; };
+  for (auto& [name, member] : members_) { member->Initialize(initializer); }
+}
+
 }  // namespace ast

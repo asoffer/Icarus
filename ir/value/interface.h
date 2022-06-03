@@ -16,8 +16,9 @@ struct InterfaceManager;
 
 struct Interface {
   enum class Kind : uint8_t {
-    Precise  = 0,
-    Callable = 1,
+    Precise     = 0,
+    Callable    = 1,
+    UserDefined = 2,
   };
 
   Interface() = default;
@@ -63,8 +64,8 @@ struct Interface {
 
   static constexpr uint64_t kNumKindBits  = 4;
   static constexpr uint64_t kNumIndexBits = 64 - kNumKindBits;
-  uint64_t index_ : kNumIndexBits = 0;
-  uint64_t kind_ : kNumKindBits = 0;
+  uint64_t index_ : kNumIndexBits         = 0;
+  uint64_t kind_ : kNumKindBits           = 0;
 };
 
 template <typename T, Interface::Kind K>
@@ -101,6 +102,25 @@ struct PreciseInterface
   };
 };
 
+struct UserDefinedInterface
+    : InterfaceKind<UserDefinedInterface, Interface::Kind::UserDefined> {
+  explicit UserDefinedInterface(uint64_t n)
+      : InterfaceKind<UserDefinedInterface, Interface::Kind::UserDefined>(n) {}
+
+  struct representation_type
+      : base::Extend<representation_type, 1>::With<base::AbslHashExtension> {
+    bool BindsTo(InterfaceManager const& m, type::Type t) const;
+
+   private:
+    friend base::EnableExtensions;
+    friend struct InterfaceManager;
+
+    explicit representation_type() : placeholder_(0) {}
+
+    int placeholder_;
+  };
+};
+
 struct CallableInterface
     : InterfaceKind<CallableInterface, Interface::Kind::Callable> {
   explicit CallableInterface(uint64_t n)
@@ -126,6 +146,7 @@ struct CallableInterface
 struct InterfaceManager {
   PreciseInterface Precisely(type::Type);
   CallableInterface Callable(core::Arguments<Interface> const& arguments);
+  UserDefinedInterface UserDefined();
 
   bool BindsTo(Interface i, type::Type t) const;
 
@@ -136,6 +157,8 @@ struct InterfaceManager {
       precisely_;
   base::flyweight_set<typename CallableInterface::representation_type>
       callable_;
+  base::flyweight_set<typename UserDefinedInterface::representation_type>
+      user_defined_;
 };
 
 }  // namespace ir

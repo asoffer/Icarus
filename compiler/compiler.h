@@ -300,6 +300,7 @@ struct Compiler : CompilationDataReference,
   DEFINE_EMIT(ast::Identifier)
   DEFINE_EMIT(ast::Import)
   DEFINE_EMIT(ast::Index)
+  DEFINE_EMIT(ast::InterfaceLiteral)
   DEFINE_EMIT(ast::PatternMatch)
   DEFINE_EMIT(ast::ScopeLiteral)
   DEFINE_EMIT(ast::ScopeNode)

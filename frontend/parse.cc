@@ -1369,6 +1369,30 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
                                             std::move(values), kind);
 }
 
+std::unique_ptr<ast::Node> BuildInterfaceLiteral(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  std::string_view range(nodes.front()->range().begin(),
+                         nodes.back()->range().end());
+  auto elements = std::move(nodes[1]->as<ast::ArrayLiteral>()).extract();
+  ASSERT(elements.size() == 1u);
+  auto &id      = elements[0]->as<ast::Identifier>();
+  auto id_range = id.range();
+
+  absl::flat_hash_map<std::string_view, std::unique_ptr<ast::Expression>> members;
+  auto statements = std::move(nodes[2]->as<Statements>()).extract();
+  for (auto &statement : statements) {
+    auto [ids, type, expr] =
+        std::move(statement->as<ast::Declaration>()).extract();
+    ASSERT(ids.size() == 1);
+    ASSERT(expr == nullptr);
+    members.emplace(ids[0].name(), std::move(type));
+  }
+
+  return std::make_unique<ast::InterfaceLiteral>(
+      range, ast::Declaration::Id(id_range), std::move(members));
+}
+
 std::unique_ptr<ast::Node> BuildScopeLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1554,7 +1578,7 @@ constexpr uint64_t NON_BRACKET_EXPR =
 constexpr uint64_t EXPR  = NON_BRACKET_EXPR | bracket_expr | if_expr;
 constexpr uint64_t STMTS = stmt | stmt_list;
 // Used in error productions only!
-constexpr uint64_t RESERVED = kw_struct | kw_block_head | op_lt;
+constexpr uint64_t RESERVED = kw_struct | kw_block_head | op_lt | kw_interface;
 constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in
@@ -1677,6 +1701,9 @@ static base::Global kRules = std::array{
                      braced_stmts},
            .output  = expr,
            .execute = BuildScopeLiteral},
+    rule_t{.match   = {kw_interface, bracket_expr, braced_stmts},
+           .output  = expr,
+           .execute = BuildInterfaceLiteral},
     rule_t{.match   = {KW_BLOCK, braced_stmts},
            .output  = expr,
            .execute = BuildKWBlock},

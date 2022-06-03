@@ -492,4 +492,14 @@ void WhileStmt::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "\n", indentation(indent), "}");
 }
 
+void InterfaceLiteral::DebugStrAppend(std::string *out, size_t indent) const {
+  absl::StrAppend(out, "interface [", context().ids()[0].name(), "] {\n");
+  for (auto const &[name, expr] : members()) {
+    absl::StrAppend(out, indentation(indent + 1), name, " :: ");
+    expr->DebugStrAppend(out, indent + 1);
+    absl::StrAppend(out, "\n");
+  }
+  absl::StrAppend(out, indentation(indent), "}");
+}
+
 }  // namespace ast

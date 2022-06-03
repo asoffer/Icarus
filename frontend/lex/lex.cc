@@ -343,6 +343,7 @@ Lexeme ConsumeWord(std::string_view &cursor) {
   // and the type of such a construct, but this is no longer relevant, so we
   // don't need to treat it specially.
   if (word == "scope") { return Lexeme(Syntax::Scope, word); }
+  if (word == "interface") { return Lexeme(Syntax::Interface, word); }
 
   return Lexeme(std::make_unique<ast::Identifier>(word));
 }

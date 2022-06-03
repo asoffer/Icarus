@@ -22,6 +22,11 @@ bool CallableInterface::representation_type::BindsTo(InterfaceManager const& m,
   return result.ok();
 }
 
+bool UserDefinedInterface::representation_type::BindsTo(
+    InterfaceManager const& m, type::Type t) const {
+  NOT_YET();
+}
+
 PreciseInterface InterfaceManager::Precisely(type::Type t) {
   auto [iter, inserted] =
       precisely_.insert(typename PreciseInterface::representation_type(t));
@@ -35,12 +40,20 @@ CallableInterface InterfaceManager::Callable(
   return CallableInterface(callable_.index(iter));
 }
 
+UserDefinedInterface InterfaceManager::UserDefined() {
+  auto [iter, inserted] = user_defined_.insert(
+      typename UserDefinedInterface::representation_type());
+  return UserDefinedInterface(user_defined_.index(iter));
+}
+
 bool InterfaceManager::BindsTo(Interface i, type::Type t) const {
   switch (i.kind()) {
     case Interface::Kind::Precise:
       return precisely_.from_index(i.index_).BindsTo(*this, t);
     case Interface::Kind::Callable:
       return callable_.from_index(i.index_).BindsTo(*this, t);
+    case Interface::Kind::UserDefined:
+      return user_defined_.from_index(i.index_).BindsTo(*this, t);
   }
 }
 
@@ -63,6 +76,7 @@ std::string InterfaceManager::DebugString(Interface i) const {
       }
       return result;
     }
+    case Interface::Kind::UserDefined: NOT_YET();
   }
 }
 
