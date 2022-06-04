@@ -164,6 +164,7 @@ void BinaryAssignmentOperator::DebugStrAppend(std::string *out,
 }
 
 void BindingDeclaration::DebugStrAppend(std::string *out, size_t indent) const {
+  if (constraint()) { constraint()->DebugStrAppend(out, indent); }
   absl::StrAppend(out, "`", ids()[0].name());
 }
 

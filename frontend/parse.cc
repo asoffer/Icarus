@@ -672,7 +672,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 
   } else if (tk == "`") {
     if (not nodes[1]->is<ast::Identifier>()) {
-      diag.Consume(NonIdentifierBinding{.range = nodes[0]->range()});
+      diag.Consume(NonIdentifierBinding{.range = nodes[1]->range()});
     }
 
     return std::make_unique<ast::BindingDeclaration>(
@@ -1287,6 +1287,18 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   if (tk == "~") {
     return std::make_unique<ast::PatternMatch>(
         move_as<ast::Expression>(nodes[0]), move_as<ast::Expression>(nodes[2]));
+  }
+
+  if (tk == "`") {
+    if (not nodes[2]->is<ast::Identifier>()) {
+      diag.Consume(NonIdentifierBinding{.range = nodes[2]->range()});
+    } else {
+      std::string_view range(nodes[0]->range().begin(),
+                             nodes[2]->range().end());
+      return std::make_unique<ast::BindingDeclaration>(
+          range, ast::Declaration::Id(nodes[2]->range()),
+          move_as<ast::Expression>(nodes[0]));
+    }
   }
 
   if (tk == "as") {

@@ -73,6 +73,11 @@ struct ParamDependencyGraphBuilder {
             &iter->second),
         core::DependencyNode<Declaration const *>::ParameterType(
             &iter->second));
+
+    if (auto const *c = node->constraint()) {
+      (*this)(c, core::DependencyNode<Declaration const *>::ParameterValue(
+                     &iter->second));
+    }
   }
 
   void operator()(Node const *node,

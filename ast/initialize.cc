@@ -142,6 +142,7 @@ void BindingDeclaration::Initialize(Initializer& initializer) {
   covers_binding_ = true;
   is_dependent_   = true;
   pattern_        = initializer.pattern;
+  if (constraint_) { constraint_->Initialize(initializer); }
 }
 
 void BlockNode::Initialize(Initializer& initializer) {

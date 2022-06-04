@@ -369,15 +369,20 @@ struct PatternMatch : Expression {
 // BindingDeclaration:
 // Represents a pattern matching binding declaration.
 //
-// For example: `N
+// Examples:
+// * `N
+// * sortable`Container
 struct BindingDeclaration : Declaration {
-  explicit BindingDeclaration(std::string_view range, Declaration::Id id)
+  explicit BindingDeclaration(std::string_view range, Declaration::Id id,
+                              std::unique_ptr<Expression> constraint = nullptr)
       : Declaration(range, ToVector(std::move(id)), nullptr, nullptr,
-                    f_IsConst) {
+                    f_IsConst),
+        constraint_(std::move(constraint)) {
     which_ = IndexOf<BindingDeclaration>();
   }
 
   PatternMatch const &pattern() const { return *ASSERT_NOT_NULL(pattern_); }
+  Expression const *constraint() const { return constraint_.get(); }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;
@@ -390,6 +395,7 @@ struct BindingDeclaration : Declaration {
   }
 
   PatternMatch const *pattern_;
+  std::unique_ptr<Expression> constraint_;
 };
 
 // DesignatedInitializer:
