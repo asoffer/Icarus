@@ -8,10 +8,37 @@
 
 namespace compiler {
 
+ir::Subroutine MakeInterfaceSubroutine(Compiler &c,
+                                       ast::Declaration::Id const *variable,
+                                       ast::Expression const *expr) {
+  auto *fn_type = type::Func(
+      {core::AnonymousParameter(type::QualType::NonConstant(type::Type_))},
+      {type::Interface});
+  ir::Subroutine fn(fn_type);
+  c.push_current(&fn);
+  absl::Cleanup cleanup = [&] { c.state().current.pop_back(); };
+  c.current_block()     = fn.entry();
+
+  c.state().set_addr(variable, ir::Reg::Parameter(0));
+  ir::PartialResultBuffer result;
+  c.EmitToBuffer(expr, result);
+
+  c.current_block()->Append(ir::StoreInstruction<ir::Interface>{
+      .value    = result[0].get<ir::Interface>(),
+      .location = ir::Reg::Output(0),
+  });
+   c.current_block()->set_jump(ir::JumpCmd::Return());
+  return fn;
+}
+
 void Compiler::EmitToBuffer(ast::InterfaceLiteral const *node,
                             ir::PartialResultBuffer &out) {
-  // TODO: Finish implementation.
-  out.append(resources().interface_manager->UserDefined());
+  absl::btree_map<std::string, ir::Subroutine> members;
+  for (auto const &[name, intf] : node->members()) {
+    members.emplace(name, MakeInterfaceSubroutine(
+                              *this, &node->context().ids()[0], intf.get()));
+  }
+  out.append(resources().interface_manager->UserDefined(std::move(members)));
 }
 
 void Compiler::EmitCopyAssign(

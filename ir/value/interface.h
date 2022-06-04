@@ -3,11 +3,13 @@
 
 #include <utility>
 
+#include "absl/container/btree_map.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "base/flyweight_set.h"
 #include "base/meta.h"
 #include "core/arguments.h"
+#include "ir/subroutine.h"
 #include "type/type.h"
 
 namespace ir {
@@ -115,9 +117,11 @@ struct UserDefinedInterface
     friend base::EnableExtensions;
     friend struct InterfaceManager;
 
-    explicit representation_type() : placeholder_(0) {}
+    explicit representation_type(
+        absl::btree_map<std::string, Subroutine> members)
+        : members_(std::move(members)) {}
 
-    int placeholder_;
+    absl::btree_map<std::string, Subroutine> members_;
   };
 };
 
@@ -146,7 +150,9 @@ struct CallableInterface
 struct InterfaceManager {
   PreciseInterface Precisely(type::Type);
   CallableInterface Callable(core::Arguments<Interface> const& arguments);
-  UserDefinedInterface UserDefined();
+
+  UserDefinedInterface UserDefined(
+      absl::btree_map<std::string, Subroutine> members);
 
   bool BindsTo(Interface i, type::Type t) const;
 
@@ -157,8 +163,7 @@ struct InterfaceManager {
       precisely_;
   base::flyweight_set<typename CallableInterface::representation_type>
       callable_;
-  base::flyweight_set<typename UserDefinedInterface::representation_type>
-      user_defined_;
+  std::vector<typename UserDefinedInterface::representation_type> user_defined_;
 };
 
 }  // namespace ir

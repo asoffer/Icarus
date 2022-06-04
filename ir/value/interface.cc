@@ -40,10 +40,11 @@ CallableInterface InterfaceManager::Callable(
   return CallableInterface(callable_.index(iter));
 }
 
-UserDefinedInterface InterfaceManager::UserDefined() {
-  auto [iter, inserted] = user_defined_.insert(
-      typename UserDefinedInterface::representation_type());
-  return UserDefinedInterface(user_defined_.index(iter));
+UserDefinedInterface InterfaceManager::UserDefined(
+    absl::btree_map<std::string, Subroutine> members) {
+  user_defined_.push_back(
+      typename UserDefinedInterface::representation_type(std::move(members)));
+  return UserDefinedInterface(user_defined_.size() - 1);
 }
 
 bool InterfaceManager::BindsTo(Interface i, type::Type t) const {
@@ -53,7 +54,7 @@ bool InterfaceManager::BindsTo(Interface i, type::Type t) const {
     case Interface::Kind::Callable:
       return callable_.from_index(i.index_).BindsTo(*this, t);
     case Interface::Kind::UserDefined:
-      return user_defined_.from_index(i.index_).BindsTo(*this, t);
+      return user_defined_[i.index_].BindsTo(*this, t);
   }
 }
 

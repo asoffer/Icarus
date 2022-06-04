@@ -88,8 +88,10 @@ cc_library(
         "//base:flyweight_set",
         "//core:arguments",
         "//core:call",
+        "//ir:subroutine",
         "//type",
         "//type:callable",
+        "@com_google_absl//absl/container:btree",
     ],
 )
 
