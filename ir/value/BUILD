@@ -91,6 +91,8 @@ cc_library(
         "//ir:subroutine",
         "//type",
         "//type:callable",
+        "//type:pointer",
+        "//type:slice",
         "@com_google_absl//absl/container:btree",
     ],
 )

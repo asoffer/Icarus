@@ -323,7 +323,6 @@ cc_library(
         "//base:global",
         "//ir/value:char",
         "//ir/value:integer",
-        "//ir/value:interface",
         "//ir/value:scope",
         "//ir/value:scope_context",
         "//ir/value:module_id",

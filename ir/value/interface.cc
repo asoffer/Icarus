@@ -2,6 +2,8 @@
 
 #include "core/call.h"
 #include "type/callable.h"
+#include "type/pointer.h"
+#include "type/slice.h"
 
 namespace ir {
 
@@ -40,6 +42,45 @@ CallableInterface InterfaceManager::Callable(
   return CallableInterface(callable_.index(iter));
 }
 
+bool PointerInterface::representation_type::BindsTo(InterfaceManager const& im,
+                                                    type::Type t) const {
+  auto const* p = t.if_as<type::Pointer>();
+  if (not p) { return false; }
+  return im.BindsTo(pointee_, p->pointee());
+}
+
+bool BufferPointerInterface::representation_type::BindsTo(InterfaceManager const& im,
+                                                    type::Type t) const {
+  auto const* p = t.if_as<type::BufferPointer>();
+  if (not p) { return false; }
+  return im.BindsTo(pointee_, p->pointee());
+}
+
+bool SliceInterface::representation_type::BindsTo(InterfaceManager const& im,
+                                                  type::Type t) const {
+  auto const* p = t.if_as<type::Slice>();
+  if (not p) { return false; }
+  return im.BindsTo(data_type_, p->data_type());
+}
+
+PointerInterface InterfaceManager::Pointer(Interface pointee) {
+  auto [iter, inserted] =
+      pointer_.insert(typename PointerInterface::representation_type(pointee));
+  return PointerInterface(pointer_.index(iter));
+}
+
+BufferPointerInterface InterfaceManager::BufferPointer(Interface pointee) {
+  auto [iter, inserted] = buffer_pointer_.insert(
+      typename BufferPointerInterface::representation_type(pointee));
+  return BufferPointerInterface(buffer_pointer_.index(iter));
+}
+
+SliceInterface InterfaceManager::Slice(Interface pointee) {
+  auto [iter, inserted] =
+      slice_.insert(typename SliceInterface::representation_type(pointee));
+  return SliceInterface(slice_.index(iter));
+}
+
 UserDefinedInterface InterfaceManager::UserDefined(
     absl::btree_map<std::string, Subroutine> members) {
   user_defined_.push_back(
@@ -53,8 +94,15 @@ bool InterfaceManager::BindsTo(Interface i, type::Type t) const {
       return precisely_.from_index(i.index_).BindsTo(*this, t);
     case Interface::Kind::Callable:
       return callable_.from_index(i.index_).BindsTo(*this, t);
+    case Interface::Kind::Pointer:
+      return pointer_.from_index(i.index_).BindsTo(*this, t);
+    case Interface::Kind::BufferPointer:
+      return buffer_pointer_.from_index(i.index_).BindsTo(*this, t);
+    case Interface::Kind::Slice:
+      return slice_.from_index(i.index_).BindsTo(*this, t);
     case Interface::Kind::UserDefined:
       return user_defined_[i.index_].BindsTo(*this, t);
+
   }
 }
 
@@ -77,6 +125,16 @@ std::string InterfaceManager::DebugString(Interface i) const {
       }
       return result;
     }
+    case Interface::Kind::Pointer:
+      return absl::StrCat(
+          "*(", DebugString(pointer_.from_index(i.index_).pointee_), ")");
+    case Interface::Kind::BufferPointer:
+      return absl::StrCat(
+          "[*](", DebugString(buffer_pointer_.from_index(i.index_).pointee_),
+          ")");
+    case Interface::Kind::Slice:
+      return absl::StrCat(
+          "[](", DebugString(slice_.from_index(i.index_).data_type_), ")");
     case Interface::Kind::UserDefined: NOT_YET();
   }
 }

@@ -18,9 +18,12 @@ struct InterfaceManager;
 
 struct Interface {
   enum class Kind : uint8_t {
-    Precise     = 0,
-    Callable    = 1,
-    UserDefined = 2,
+    Precise       = 0,
+    Callable      = 1,
+    Pointer       = 2,
+    BufferPointer = 3,
+    Slice         = 4,
+    UserDefined   = 5,
   };
 
   Interface() = default;
@@ -125,6 +128,69 @@ struct UserDefinedInterface
   };
 };
 
+struct PointerInterface
+    : InterfaceKind<PointerInterface, Interface::Kind::Pointer> {
+  explicit PointerInterface(uint64_t n)
+      : InterfaceKind<PointerInterface, Interface::Kind::Pointer>(n) {}
+
+  struct representation_type
+      : base::Extend<representation_type, 1>::With<base::AbslHashExtension> {
+    bool BindsTo(InterfaceManager const& m, type::Type t) const;
+
+    Interface pointee() const { return pointee_; }
+
+   private:
+    friend base::EnableExtensions;
+    friend struct InterfaceManager;
+
+    explicit representation_type(Interface intf) : pointee_(intf) {}
+
+    Interface pointee_;
+  };
+};
+
+struct BufferPointerInterface
+    : InterfaceKind<BufferPointerInterface, Interface::Kind::BufferPointer> {
+  explicit BufferPointerInterface(uint64_t n)
+      : InterfaceKind<BufferPointerInterface, Interface::Kind::BufferPointer>(
+            n) {}
+
+  struct representation_type
+      : base::Extend<representation_type, 1>::With<base::AbslHashExtension> {
+    bool BindsTo(InterfaceManager const& m, type::Type t) const;
+
+    Interface pointee() const { return pointee_; }
+
+   private:
+    friend base::EnableExtensions;
+    friend struct InterfaceManager;
+
+    explicit representation_type(Interface intf) : pointee_(intf) {}
+
+    Interface pointee_;
+  };
+};
+
+struct SliceInterface : InterfaceKind<SliceInterface, Interface::Kind::Slice> {
+  explicit SliceInterface(uint64_t n)
+      : InterfaceKind<SliceInterface, Interface::Kind::Slice>(n) {}
+
+  struct representation_type
+      : base::Extend<representation_type, 1>::With<base::AbslHashExtension> {
+    bool BindsTo(InterfaceManager const& m, type::Type t) const;
+
+    Interface data_type() const { return data_type_; }
+
+   private:
+    friend base::EnableExtensions;
+    friend struct InterfaceManager;
+
+    explicit representation_type(Interface intf) : data_type_(intf) {}
+
+    Interface data_type_;
+  };
+};
+
 struct CallableInterface
     : InterfaceKind<CallableInterface, Interface::Kind::Callable> {
   explicit CallableInterface(uint64_t n)
@@ -150,6 +216,9 @@ struct CallableInterface
 struct InterfaceManager {
   PreciseInterface Precisely(type::Type);
   CallableInterface Callable(core::Arguments<Interface> const& arguments);
+  PointerInterface Pointer(Interface pointee);
+  BufferPointerInterface BufferPointer(Interface pointee);
+  SliceInterface Slice(Interface pointee);
 
   UserDefinedInterface UserDefined(
       absl::btree_map<std::string, Subroutine> members);
@@ -163,6 +232,10 @@ struct InterfaceManager {
       precisely_;
   base::flyweight_set<typename CallableInterface::representation_type>
       callable_;
+  base::flyweight_set<typename PointerInterface::representation_type> pointer_;
+  base::flyweight_set<typename BufferPointerInterface::representation_type>
+      buffer_pointer_;
+  base::flyweight_set<typename SliceInterface::representation_type> slice_;
   std::vector<typename UserDefinedInterface::representation_type> user_defined_;
 };
 
