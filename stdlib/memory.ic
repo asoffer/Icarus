@@ -10,7 +10,7 @@ allocate ::= (T :: type) -> *T {
 }
 
 #{export}
-allocate ::= (T :: type, l: u64) -> []T {
+allocate ::= (T :: type, l: u64) -> [/]T {
   return builtin.slice(cstdlib.malloc(builtin.bytes(T) * l) as [*]T, l)
 }
 
@@ -30,25 +30,25 @@ reverse_destroy_buffer ::= (ptr: ~[*]`T, count: u64) -> () {
 }
 
 #{export}
-clone ::= (m: []byte) => expand(m, m.length)
+clone ::= (m: [/]byte) => expand(m, m.length)
 
 #{export}
-expand ::= (m: []byte, new_size: u64) -> []byte {
+expand ::= (m: [/]byte, new_size: u64) -> [/]byte {
   buffer := allocate(byte, new_size)
   cstr.memcpy(buffer.data, m.data, m.length)
   return buffer
 }
 
 #{export}
-fill ::= (m: []byte, value: u8) -> () {
+fill ::= (m: [/]byte, value: u8) -> () {
   cstr.memset(m.data, value as c.int, m.length)
 }
 
 #{export}
-Copy ::= (from: []byte, to: []byte) -> () {
+Copy ::= (from: [/]byte, to: [/]byte) -> () {
   cstr.memcpy(to.data, from.data, to.length)
 }
 
 // TODO: If we don't require length to be a multiple of alignment, we need to account for that here.
 #{export}
-to_raw ::= (s: ~[]`T) => builtin.slice(s.data as [*]byte, s.length * builtin.bytes(T))
+to_raw ::= (s: ~[/]`T) => builtin.slice(s.data as [*]byte, s.length * builtin.bytes(T))

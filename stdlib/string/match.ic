@@ -1,7 +1,7 @@
 -- ::= import "core.ic"
 
 #{export}
-Equals ::= (a: []char, b: []char) -> bool {
+Equals ::= (a: [/]char, b: [/]char) -> bool {
   if (a.length != b.length) { return false }
   for (0, a.length as i64) do [idx: i64] {
     if (a[idx] != b[idx]) { return false }
@@ -10,7 +10,7 @@ Equals ::= (a: []char, b: []char) -> bool {
 }
 
 #{export}
-Find ::= (s: []char, ch: char) -> [*]char {
+Find ::= (s: [/]char, ch: char) -> [*]char {
   ptr := s.data
   end := ptr + s.length
   while (ptr != end and @ptr != ch) { ptr += 1 }
@@ -19,7 +19,7 @@ Find ::= (s: []char, ch: char) -> [*]char {
 
 // TODO: Use something better than brute force here.
 #{export}
-Find ::= (s: []char, needle: []char) -> [*]char {
+Find ::= (s: [/]char, needle: [/]char) -> [*]char {
   if (needle.length == 1) { return Find(s, needle[0]) }
   ptr := s.data
   end := ptr + s.length
@@ -34,17 +34,17 @@ Find ::= (s: []char, needle: []char) -> [*]char {
 }
 
 #{export}
-IndexOf ::= (s: []char, ch: char) -> i64 {
+IndexOf ::= (s: [/]char, ch: char) -> i64 {
   return Find(s, ch) - s.data
 }
 
 #{export}
-IndexOf ::= (s: []char, needle: []char) -> i64 {
+IndexOf ::= (s: [/]char, needle: [/]char) -> i64 {
   return Find(s, needle) - s.data
 }
 
 #{export}
-StartsWith ::= (s: []char, prefix: []char) -> bool {
+StartsWith ::= (s: [/]char, prefix: [/]char) -> bool {
   s_len := s.length as i64
   p_len := prefix.length as i64
   if (p_len > s_len) { return false }
@@ -55,7 +55,7 @@ StartsWith ::= (s: []char, prefix: []char) -> bool {
 }
 
 #{export}
-EndsWith ::= (s: []char, prefix: []char) -> bool {
+EndsWith ::= (s: [/]char, prefix: [/]char) -> bool {
   s_len := s.length as i64
   p_len := prefix.length as i64
   if (p_len > s_len) { return false }

@@ -88,7 +88,7 @@ TEST(Declaration, DefaultInitNonDefaultInitializableType) {
   {
     test::CompilerInfrastructure infra;
     auto &mod = infra.add_module(R"(
-    s: []char
+    s: [/]char
     )");
     EXPECT_THAT(infra.diagnostics(),
                 UnorderedElementsAre(Pair("type-error", "no-default-value")));
@@ -97,7 +97,7 @@ TEST(Declaration, DefaultInitNonDefaultInitializableType) {
   {
     test::CompilerInfrastructure infra;
     auto &mod = infra.add_module(R"(
-    s :: []char
+    s :: [/]char
     )");
     EXPECT_THAT(infra.diagnostics(),
                 UnorderedElementsAre(Pair("type-error", "no-default-value")));

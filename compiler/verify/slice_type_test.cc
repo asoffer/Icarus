@@ -12,7 +12,7 @@ using ::testing::UnorderedElementsAre;
 
 TEST(SliceType, Correct) {
   test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"([]i64)");
+  auto &mod        = infra.add_module(R"([/]i64)");
   auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
@@ -24,7 +24,7 @@ TEST(SliceType, NonConstantType) {
   test::CompilerInfrastructure infra;
   auto &mod        = infra.add_module(R"(
   T := i64
-  []T
+  [/]T
   )");
   auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
@@ -36,7 +36,7 @@ TEST(SliceType, NonConstantType) {
 
 TEST(SliceType, NonTypeData) {
   test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"([]3)");
+  auto &mod        = infra.add_module(R"([/]3)");
   auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Constant(type::Type_)));
@@ -49,7 +49,7 @@ TEST(SliceType, NonTypeData) {
 TEST(UnaryOperator, ValidPattern) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(
-  []i64 ~ []`T
+  [/]i64 ~ [/]`T
   )");
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
@@ -57,7 +57,7 @@ TEST(UnaryOperator, ValidPattern) {
 TEST(SliceType, InvalidPattern) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(
-  true ~ []`T
+  true ~ [/]`T
   )");
   EXPECT_THAT(
       infra.diagnostics(),

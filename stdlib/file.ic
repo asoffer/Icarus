@@ -18,7 +18,7 @@ make ::= (f: *c.File) -> File {
 CFileHandle ::= (f: File) => f._handle
 
 #{export}
-With ::= scope [ctx] (name: []char) {
+With ::= scope [ctx] (name: [/]char) {
   f: File
   f._handle = c.fopen(name.data, "r".data)
   e := errno.get()
@@ -43,7 +43,7 @@ read_to ::= (f: File, T :: type) -> T {
   return result
 }
 
-next_line ::= (handle: *c.File, line: *[]char) -> bool {
+next_line ::= (handle: *c.File, line: *[/]char) -> bool {
   data: [*]char
   alloc_size: ctypes.size_t
   length := c.getline(&data, &alloc_size, handle)

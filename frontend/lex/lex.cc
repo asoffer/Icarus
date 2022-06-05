@@ -229,32 +229,33 @@ Lexeme ConsumeCharLiteral(char const *&cursor) {
 
 // Note: The order here is somewhat important. Because we choose the first
 // match, we cannot, for example, put `:` before `::=`.
-static base::Global kOps =
-    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 46>{
-        {{"@", {Operator::At}},           {",", {Operator::Comma}},
-         {"[*]", {Operator::BufPtr}},     {"$", {Operator::ArgType}},
-         {"+=", {Operator::AddEq}},       {"+", {Operator::Add}},
-         {"-=", {Operator::SubEq}},       {"..", {Operator::VariadicPack}},
-         {"->", {Operator::Arrow}},       {"-", {Operator::Sub}},
-         {"*=", {Operator::MulEq}},       {"*", {Operator::Mul}},
-         {"%=", {Operator::ModEq}},       {"%", {Operator::Mod}},
-         {"&=", {Operator::SymbolAndEq}}, {"&", {Operator::SymbolAnd}},
-         {"|=", {Operator::SymbolOrEq}},  {"|", {Operator::SymbolOr}},
-         {"^=", {Operator::SymbolXorEq}}, {"^", {Operator::SymbolXor}},
-         {">>", {Operator::BlockJump}},   {">=", {Operator::Ge}},
-         {">", {Operator::Gt}},           {"::=", {Operator::DoubleColonEq}},
-         {":?", {Operator::TypeOf}},      {"::", {Operator::DoubleColon}},
-         {":=", {Operator::ColonEq}},     {".", {Syntax::Dot}},
-         {"!=", {Operator::Ne}},          {":", {Operator::Colon}},
-         {"<<", {Operator::Yield}},       {"<=", {Operator::Le}},
-         {"<", {Operator::Lt}},           {"==", {Operator::Eq}},
-         {"=>", {Operator::Rocket}},      {"=", {Operator::Assign}},
-         {"'", {Operator::Call}},         {"(", {Syntax::LeftParen}},
-         {")", {Syntax::RightParen}},     {"[", {Syntax::LeftBracket}},
-         {"]", {Syntax::RightBracket}},   {"{", {Syntax::LeftBrace}},
-         {"}", {Syntax::RightBrace}},     {"~", {Operator::Tilde}},
-         {";", {Syntax::Semicolon}},      {"`", {Operator::Backtick}}},
-    };
+using elem = std::pair<std::string_view, std::variant<Operator, Syntax>>;
+static base::Global kOps = std::array{
+    elem{"@", {Operator::At}},           elem{"[/]", {Operator::Slice}},
+    elem{"[*]", {Operator::BufPtr}},     elem{"$", {Operator::ArgType}},
+    elem{"+=", {Operator::AddEq}},       elem{"+", {Operator::Add}},
+    elem{"-=", {Operator::SubEq}},       elem{"..", {Operator::VariadicPack}},
+    elem{"->", {Operator::Arrow}},       elem{"-", {Operator::Sub}},
+    elem{"*=", {Operator::MulEq}},       elem{"*", {Operator::Mul}},
+    elem{"%=", {Operator::ModEq}},       elem{"%", {Operator::Mod}},
+    elem{"&=", {Operator::SymbolAndEq}}, elem{"&", {Operator::SymbolAnd}},
+    elem{"|=", {Operator::SymbolOrEq}},  elem{"|", {Operator::SymbolOr}},
+    elem{"^=", {Operator::SymbolXorEq}}, elem{"^", {Operator::SymbolXor}},
+    elem{">>", {Operator::BlockJump}},   elem{">=", {Operator::Ge}},
+    elem{">", {Operator::Gt}},           elem{"::=", {Operator::DoubleColonEq}},
+    elem{":?", {Operator::TypeOf}},      elem{"::", {Operator::DoubleColon}},
+    elem{":=", {Operator::ColonEq}},     elem{".", {Syntax::Dot}},
+    elem{"!=", {Operator::Ne}},          elem{":", {Operator::Colon}},
+    elem{"<<", {Operator::Yield}},       elem{"<=", {Operator::Le}},
+    elem{"<", {Operator::Lt}},           elem{"==", {Operator::Eq}},
+    elem{"=>", {Operator::Rocket}},      elem{"=", {Operator::Assign}},
+    elem{"'", {Operator::Call}},         elem{"(", {Syntax::LeftParen}},
+    elem{")", {Syntax::RightParen}},     elem{"[", {Syntax::LeftBracket}},
+    elem{"]", {Syntax::RightBracket}},   elem{"{", {Syntax::LeftBrace}},
+    elem{"}", {Syntax::RightBrace}},     elem{"~", {Operator::Tilde}},
+    elem{";", {Syntax::Semicolon}},      elem{"`", {Operator::Backtick}},
+    elem{",", {Operator::Comma}},
+};
 
 Lexeme NextOperator(std::string_view &cursor) {
   if (cursor.starts_with("--")) {

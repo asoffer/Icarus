@@ -660,6 +660,17 @@ std::unique_ptr<ast::Node> BuildParenCall(
                                      0);
 }
 
+std::unique_ptr<ast::Node> BuildSliceType(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  auto range = std::string_view(nodes.front()->range().begin(),
+                                nodes.back()->range().end());
+  auto slice = std::make_unique<ast::SliceType>(
+      range, move_as<ast::Expression>(nodes[1]));
+
+  return slice;
+}
+
 std::unique_ptr<ast::Node> BuildLeftUnop(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -677,6 +688,10 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 
     return std::make_unique<ast::BindingDeclaration>(
         range, ast::Declaration::Id(nodes[1]->range()));
+
+  } else if (tk == "[/]") {
+    return BuildSliceType(nodes, diag);
+
   } else if (tk == "~") {
     std::string_view range(nodes.front()->range().begin(),
                            nodes.back()->range().end());
@@ -859,17 +874,6 @@ std::unique_ptr<ast::Node> BuildIndexOperator(
   // }
 
   return index;
-}
-
-std::unique_ptr<ast::Node> BuildSlice(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto range = std::string_view(nodes.front()->range().begin(),
-                                nodes.back()->range().end());
-  auto slice = std::make_unique<ast::SliceType>(
-      range, move_as<ast::Expression>(nodes[1]));
-
-  return slice;
 }
 
 std::unique_ptr<ast::Node> BuildEmptyArray(
@@ -1586,7 +1590,7 @@ std::unique_ptr<ast::Node> LabelScopeNode(
 constexpr uint64_t OP_B = op_b | tick | dot | colon | eq | colon_eq | rocket;
 constexpr uint64_t FN_CALL_EXPR = paren_call_expr | full_call_expr;
 constexpr uint64_t NON_BRACKET_EXPR =
-    expr | fn_expr | scope_expr | FN_CALL_EXPR | paren_expr | empty_brackets;
+    expr | fn_expr | scope_expr | FN_CALL_EXPR | paren_expr;
 constexpr uint64_t EXPR  = NON_BRACKET_EXPR | bracket_expr | if_expr;
 constexpr uint64_t STMTS = stmt | stmt_list;
 // Used in error productions only!
@@ -1641,16 +1645,9 @@ static base::Global kRules = std::array{
            .output  = expr,
            .execute = ReservedKeywords<0, 2>},
 
-    // Slices
-    rule_t{
-        .match = {empty_brackets, EXPR}, .output = expr, .execute = BuildSlice},
-    rule_t{.match   = {empty_brackets, RESERVED},
-           .output  = expr,
-           .execute = ReservedKeywords<0, 1>},
-
     // Array literals
     rule_t{.match   = {l_bracket, r_bracket},
-           .output  = empty_brackets,
+           .output  = bracket_expr,
            .execute = BuildEmptyArray},
     rule_t{.match   = {l_bracket, EXPR | expr_list, r_bracket},
            .output  = bracket_expr,
@@ -1920,15 +1917,6 @@ struct ParseState {
     if (node_stack_.empty()) { return ShiftState::NeedMore; }
 
     const auto &ahead = Next();
-
-    switch (get_type<1>()) {
-      case empty_brackets:
-        return ahead.tag_ == newline ? ShiftState::MustReduce
-                                     : ShiftState::NeedMore;
-      case stmt:
-      case newline: return ShiftState::MustReduce;
-      default: break;
-    }
 
     switch (ahead.tag_) {
       case colon:

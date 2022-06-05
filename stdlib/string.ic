@@ -32,7 +32,7 @@ make ::= (fill: char, len: u64) -> string {
 }
 
 #{export}
-make ::= (s: []char) -> string {
+make ::= (s: [/]char) -> string {
   raw := s'memory.to_raw
   raw = builtin.slice(raw.data, raw.length + 1)
   return string.{
@@ -72,7 +72,7 @@ append ::= (s: *string, character: char) -> () {
 }
 
 #{export}
-append ::= (s: *string, char_slice: []char) -> () {
+append ::= (s: *string, char_slice: [/]char) -> () {
   if (s._length + char_slice.length > s._capacity) {
     resize_buffer(s, s._length + char_slice.length)
   }

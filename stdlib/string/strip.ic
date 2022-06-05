@@ -1,7 +1,7 @@
 -- ::= import "string/match.ic"
 
 #{export}
-WithoutPrefix ::= (s: []char, n: u64) -> []char {
+WithoutPrefix ::= (s: [/]char, n: u64) -> [/]char {
   if (s.length < n) {
     return builtin.slice(s.data + s.length, 0)
   } else {
@@ -10,7 +10,7 @@ WithoutPrefix ::= (s: []char, n: u64) -> []char {
 }
 
 #{export}
-StripPrefix ::= (s: []char, prefix: []char) -> []char {
+StripPrefix ::= (s: [/]char, prefix: [/]char) -> [/]char {
   if (s'StartsWith(prefix)) {
     return builtin.slice(s.data + prefix.length, s.length - prefix.length)
   }
@@ -18,7 +18,7 @@ StripPrefix ::= (s: []char, prefix: []char) -> []char {
 }
 
 #{export}
-StripSuffix ::= (s: []char, suffix: []char) -> []char {
+StripSuffix ::= (s: [/]char, suffix: [/]char) -> [/]char {
   if (s'EndsWith(suffix)) {
     return builtin.slice(s.data, s.length - suffix.length)
   }
@@ -26,7 +26,7 @@ StripSuffix ::= (s: []char, suffix: []char) -> []char {
 }
 
 #{export}
-WithoutSuffix ::= (s: []char, n: u64) -> []char {
+WithoutSuffix ::= (s: [/]char, n: u64) -> [/]char {
   if (s.length < n) {
     return builtin.slice(s.data, 0)
   } else {

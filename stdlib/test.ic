@@ -20,7 +20,7 @@ assert ::= scope [ctx] (t: *TestContext, b: bool) {
 }
 
 #{export}
-test ::= scope [ctx] (name: []char) {
+test ::= scope [ctx] (name: [/]char) {
   io ::= import "io.ic"
   io.Print("[ TEST BEGIN ] == ", name, " ==\n")
   t: TestContext

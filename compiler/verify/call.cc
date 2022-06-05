@@ -180,7 +180,7 @@ type::QualType VerifyCompilationErrorCall(
     data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("Second argument to `compilation_error` must "
-                                "be a []char (You provided a(n) ",
+                                "be a [/]char (You provided a(n) ",
                                 arg_vals[0].type().to_string(), ").")});
     error = true;
   }
@@ -231,7 +231,7 @@ type::QualType VerifyForeignCall(
     data.diag().Consume(BuiltinError{
         .view    = view,
         .message = absl::StrCat("First argument to `foreign` must be a "
-                                "[]char (You provided a(n) ",
+                                "[/]char (You provided a(n) ",
                                 arg_vals[0].type().to_string(), ")."),
     });
     error = true;

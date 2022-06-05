@@ -9,20 +9,20 @@ namespace {
 INSTANTIATE_TEST_SUITE_P(
     All, EvaluationTest,
     testing::ValuesIn({
-        test::TestCase{.expr     = R"([]i32)",
+        test::TestCase{.expr     = R"([/]i32)",
                        .expected = type::Type(type::Slc(type::I32))},
         test::TestCase{
-            .expr     = R"([][]bool)",
+            .expr     = R"([/][/]bool)",
             .expected = type::Type(type::Slc(type::Slc(type::Bool)))},
         test::TestCase{.expr     = R"(
         ((t: type) -> type {
-          return []t
+          return [/]t
         })(f32)
         )",
                        .expected = type::Type(type::Slc(type::F32))},
         // TODO: Without the parentheses surrounding the `*i64`, this case hits
         // an ambiguous parse.
-        test::TestCase{.context  = R"([](*i64) ~ []`T)",
+        test::TestCase{.context  = R"([/](*i64) ~ [/]`T)",
                        .expr     = "T",
                        .expected = type::Type(type::Ptr(type::I64))},
     }));

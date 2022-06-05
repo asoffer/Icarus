@@ -2,26 +2,26 @@ match ::= import "string/match.ic"
 strip ::= import "string/strip.ic"
 
 #{export}
-SplitAt ::= (s: []char, n: u64) -> ([]char, []char) {
+SplitAt ::= (s: [/]char, n: u64) -> ([/]char, [/]char) {
   return builtin.slice(s.data, n), builtin.slice(s.data + n, s.length - n)
 }
 
 #{export}
-SplitFirst ::= (s: []char, c: char) -> ([]char, []char) {
+SplitFirst ::= (s: [/]char, c: char) -> ([/]char, [/]char) {
   n := match.Find(s, c) - s.data
   (first, rest) := SplitAt(s, n as u64)
   return first, strip.WithoutPrefix(rest, 1)
 }
 
 #{export}
-SplitFirst ::= (haystack: []char, needle: []char) -> ([]char, []char) {
+SplitFirst ::= (haystack: [/]char, needle: [/]char) -> ([/]char, [/]char) {
   n := match.Find(haystack, needle) - haystack.data
   (first, rest) := SplitAt(haystack, n as u64)
   return first, strip.WithoutPrefix(rest, needle.length)
 }
 
 #{export}
-Split ::= scope [ctx] (s: []char, c: char) {
+Split ::= scope [ctx] (s: [/]char, c: char) {
   while (s.length != 0) {
     n := match.Find(s, c) - s.data
     builtin.slice(s.data, n as u64) >> ctx.do
@@ -30,7 +30,7 @@ Split ::= scope [ctx] (s: []char, c: char) {
 }
 
 #{export}
-Split ::= scope [ctx] (haystack: []char, needle: []char) {
+Split ::= scope [ctx] (haystack: [/]char, needle: [/]char) {
   while (haystack.length != 0) {
     n := match.Find(haystack, needle) - haystack.data
     builtin.slice(haystack.data, n as u64) >> ctx.do

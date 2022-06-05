@@ -26,7 +26,7 @@ array ::= struct (T :: type) {
   }
 
   #{export}
-  make ::= (s: []T) -> array(T) {
+  make ::= (s: [/]T) -> array(T) {
     raw := s'memory.to_raw
     raw = builtin.slice(raw.data, raw.length)
     return array(T).{
@@ -92,7 +92,7 @@ array ::= struct (T :: type) {
 // }
 // 
 // #{export}
-// append ::= (s: *string, char_slice: []char) -> () {
+// append ::= (s: *string, char_slice: [/]char) -> () {
 //   core.if (s._length + char_slice.length > s._capacity) then {
 //     resize_buffer(s, s._length + char_slice.length)
 //   }

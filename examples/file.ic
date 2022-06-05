@@ -14,7 +14,7 @@ io    ::= import "io.ic"
 // file (lines are delimited by newline characters, !'\n').
 
 file.With("examples/file.ic") open [f: file.File] {
-  file.Lines(f) each [line: []char] {
+  file.Lines(f) each [line: [/]char] {
     io.Print(line)
   }
 } error [e: errno.error] {

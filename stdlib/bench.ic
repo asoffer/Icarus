@@ -7,7 +7,7 @@ Elapsed ::= (start: c.clock_t, stop: c.clock_t) -> f64 {
 }
 
 #{export}
-Timed ::= scope [ctx] (label: []char) {
+Timed ::= scope [ctx] (label: [/]char) {
   start := c.clock()
   >> ctx.do
   stop := c.clock()
