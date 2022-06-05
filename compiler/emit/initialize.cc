@@ -267,6 +267,11 @@ void DefaultInitializationEmitter::EmitInitialize(type::Struct const *t,
   current_block()->Append(ir::InitInstruction{.type = t, .reg = addr.reg()});
 }
 
+void DefaultInitializationEmitter::EmitInitialize(type::Variable const *t,
+                                                  ir::RegOr<ir::addr_t> addr) {
+  NOT_YET();
+}
+
 void MoveInitializationEmitter::EmitInitialize(
     type::Array const *t, ir::RegOr<ir::addr_t> addr,
     ir::PartialResultBuffer const &from) {
@@ -461,6 +466,18 @@ void CopyInitializationEmitter::EmitInitialize(
     ir::PartialResultBuffer const &from) {
   MoveInitializationEmitter emitter(*this);
   emitter(t, addr, from);
+}
+
+void MoveInitializationEmitter::EmitInitialize(
+    type::Variable const *t, ir::RegOr<ir::addr_t> addr,
+    ir::PartialResultBuffer const &from) {
+  NOT_YET();
+}
+
+void CopyInitializationEmitter::EmitInitialize(
+    type::Variable const *t, ir::RegOr<ir::addr_t> addr,
+    ir::PartialResultBuffer const &from) {
+  NOT_YET();
 }
 
 void WriteDefaultValueFor(type::Type t, ir::PartialResultBuffer &out) {

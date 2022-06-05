@@ -13,6 +13,7 @@
 #include "type/primitive.h"
 #include "type/slice.h"
 #include "type/typed_value.h"
+#include "type/variable.h"
 
 namespace compiler {
 
@@ -63,6 +64,8 @@ struct MoveAssignmentEmitter : CompilationDataReference {
                       type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::Struct const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
+  void EmitAssignment(type::Variable const *t, ir::RegOr<ir::addr_t> addr,
+                      type::Typed<ir::PartialResultRef> const &from);
 };
 
 struct CopyAssignmentEmitter : CompilationDataReference {
@@ -111,6 +114,8 @@ struct CopyAssignmentEmitter : CompilationDataReference {
   void EmitAssignment(type::Slice const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::Struct const *t, ir::RegOr<ir::addr_t> addr,
+                      type::Typed<ir::PartialResultRef> const &from);
+  void EmitAssignment(type::Variable const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
 };
 

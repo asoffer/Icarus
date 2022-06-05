@@ -12,6 +12,7 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/slice.h"
+#include "type/variable.h"
 
 namespace compiler {
 
@@ -46,6 +47,7 @@ struct DefaultInitializationEmitter : CompilationDataReference {
   void EmitInitialize(type::Primitive const *t, ir::RegOr<ir::addr_t> addr);
   void EmitInitialize(type::Slice const *t, ir::RegOr<ir::addr_t> addr);
   void EmitInitialize(type::Struct const *t, ir::RegOr<ir::addr_t> addr);
+  void EmitInitialize(type::Variable const *t, ir::RegOr<ir::addr_t> addr);
 };
 
 struct MoveInitializationEmitter : CompilationDataReference {
@@ -93,6 +95,8 @@ struct MoveInitializationEmitter : CompilationDataReference {
                       ir::PartialResultBuffer const &from);
   void EmitInitialize(type::Struct const *t, ir::RegOr<ir::addr_t> addr,
                       ir::PartialResultBuffer const &from);
+  void EmitInitialize(type::Variable const *t, ir::RegOr<ir::addr_t> addr,
+                      ir::PartialResultBuffer const &from);
 };
 
 struct CopyInitializationEmitter : CompilationDataReference {
@@ -139,6 +143,8 @@ struct CopyInitializationEmitter : CompilationDataReference {
   void EmitInitialize(type::Slice const *t, ir::RegOr<ir::addr_t> addr,
                       ir::PartialResultBuffer const &from);
   void EmitInitialize(type::Struct const *t, ir::RegOr<ir::addr_t> addr,
+                      ir::PartialResultBuffer const &from);
+  void EmitInitialize(type::Variable const *t, ir::RegOr<ir::addr_t> addr,
                       ir::PartialResultBuffer const &from);
 };
 

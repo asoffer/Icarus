@@ -15,6 +15,7 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/slice.h"
+#include "type/variable.h"
 
 namespace compiler {
 
@@ -71,6 +72,9 @@ struct DestructionEmitter : CompilationDataReference {
   void EmitDestroy(type::Struct const *t, ir::RegOr<ir::addr_t> addr) {
     if (not t->HasDestructor()) { return; }
     current_block()->Append(ir::DestroyInstruction{.type = t, .addr = addr});
+  }
+  void EmitDestroy(type::Variable const *t, ir::RegOr<ir::addr_t> addr) {
+    NOT_YET();
   }
 };
 

@@ -79,6 +79,7 @@ cc_library(
         "//type:slice",
         "//type:struct",
         "//type:system",
+        "//type:variable",
         "@com_google_absl//absl/types:span",
     ],
 )

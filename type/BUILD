@@ -491,3 +491,15 @@ cc_library(
         "//base:flyweight_set",
     ],
 )
+
+cc_library(
+    name = "variable",
+    hdrs = ["variable.h"],
+    srcs = ["variable.cc"],
+    deps = [
+        ":type",
+        "//base:flyweight_set",
+        "//ir/value:interface",
+    ],
+)
+

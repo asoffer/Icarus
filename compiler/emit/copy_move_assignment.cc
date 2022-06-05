@@ -399,4 +399,16 @@ void MoveAssignmentEmitter::EmitAssignment(
   });
 }
 
+void CopyAssignmentEmitter::EmitAssignment(
+    type::Variable const *t, ir::RegOr<ir::addr_t> to,
+    type::Typed<ir::PartialResultRef> const &from) {
+  NOT_YET();
+}
+
+void MoveAssignmentEmitter::EmitAssignment(
+    type::Variable const *t, ir::RegOr<ir::addr_t> to,
+    type::Typed<ir::PartialResultRef> const &from) {
+  NOT_YET();
+}
+
 }  // namespace compiler

@@ -598,6 +598,7 @@ cc_library(
         "//type:slice",
         "//type:scope",
         "//type:typed_value",
+        "//type:variable",
     ],
 )
 
@@ -727,6 +728,7 @@ cc_library(
         "//type:slice",
         "//type:scope",
         "//type:typed_value",
+        "//type:variable",
     ],
 )
 
@@ -750,6 +752,7 @@ cc_library(
         "//type:primitive",
         "//type:slice",
         "//type:scope",
+        "//type:variable",
     ],
 )
 
