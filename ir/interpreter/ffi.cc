@@ -47,7 +47,7 @@ bool InitializeCallInterface(type::ReturningType const &type,
 
   size_t i = 0;
   for (auto const &parameter : type.parameters()) {
-    if (parameter.value.quals() != type::Quals::Unqualified()) { return false; }
+    if (parameter.value.quals() != type::Qualifiers::Unqualified()) { return false; }
     argument_types[i++] = FfiType(parameter.value.type());
   }
 

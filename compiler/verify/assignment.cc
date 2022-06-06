@@ -62,10 +62,10 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     if (not qt.ok()) {
       if (first_lhs_error_index == -1) { first_lhs_error_index = i; }
     } else {
-      if (qt.quals() >= type::Quals::Const()) {
+      if (qt.quals() >= type::Qualifiers::Constant()) {
         diag().Consume(AssigningToConstant{
             .to = TypeForDiagnostic(l, context()), .view = l->range()});
-      } else if (not(qt.quals() >= type::Quals::Ref())) {
+      } else if (not(qt.quals() >= type::Qualifiers::Storage())) {
         diag().Consume(AssigningToNonReference{.lhs = l->range()});
       }
     }

@@ -25,7 +25,7 @@ TEST(Access, EnumSuccess) {
   auto qts               = mod.context().qual_types(enumerator);
   ASSERT_THAT(qts, SizeIs(1));
   EXPECT_TRUE(qts[0].type().is<type::Enum>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Const());
+  EXPECT_EQ(qts[0].quals(), type::Qualifiers::Constant());
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -39,7 +39,7 @@ TEST(Access, EnumMisnamed) {
   auto const *enumerator = mod.get<ast::Expression>();
   auto qts               = mod.context().qual_types(enumerator);
   EXPECT_TRUE(qts[0].type().is<type::Enum>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Const());
+  EXPECT_EQ(qts[0].quals(), type::Qualifiers::Constant());
   EXPECT_THAT(
       infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "missing-constant-member")));
@@ -55,7 +55,7 @@ TEST(Access, FlagsSuccess) {
   auto const *flag = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(flag);
   EXPECT_TRUE(qts[0].type().is<type::Flags>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Const());
+  EXPECT_EQ(qts[0].quals(), type::Qualifiers::Constant());
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -69,7 +69,7 @@ TEST(Access, FlagsMisnamed) {
   auto const *flag = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(flag);
   EXPECT_TRUE(qts[0].type().is<type::Flags>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Const());
+  EXPECT_EQ(qts[0].quals(), type::Qualifiers::Constant());
   EXPECT_THAT(
       infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "missing-constant-member")));
@@ -127,10 +127,10 @@ TEST(Access, AccessStructField) {
   auto constant_qts        = mod.context().qual_types(constant);
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
   EXPECT_THAT(non_constant_qts,
-              ElementsAre(type::QualType(type::I64, type::Quals::Ref())));
+              ElementsAre(type::QualType(type::I64, type::Qualifiers::Storage())));
   EXPECT_THAT(constant_qts,
               UnorderedElementsAre(type::QualType(
-                  type::I64, type::Quals::Ref() | type::Quals::Const())));
+                  type::I64, type::Qualifiers::Storage() | type::Qualifiers::Constant())));
 }
 
 TEST(Access, NoFieldInStruct) {
@@ -156,7 +156,7 @@ TEST(Access, ConstantSliceLength) {
   auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType(
-                       type::U64, type::Quals::Ref() | type::Quals::Const())));
+                       type::U64, type::Qualifiers::Storage() | type::Qualifiers::Constant())));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -169,7 +169,7 @@ TEST(Access, NonConstantSliceLength) {
 
   auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts, ElementsAre(type::QualType(type::U64, type::Quals::Ref())));
+  EXPECT_THAT(qts, ElementsAre(type::QualType(type::U64, type::Qualifiers::Storage())));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -182,7 +182,7 @@ TEST(Access, NonConstantSliceData) {
   auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType(type::BufPtr(type::Char),
-                                              type::Quals::Ref())));
+                                              type::Qualifiers::Storage())));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 

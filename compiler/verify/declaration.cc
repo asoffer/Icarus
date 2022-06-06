@@ -133,8 +133,8 @@ type::QualType VerifyDeclarationType(CompilationDataReference data,
                      data.EvaluateOrDiagnoseAs<type::Type>(node->type_expr()));
 
     return type::QualType(t, (node->flags() & ast::Declaration::f_IsConst)
-                                 ? type::Quals::Const()
-                                 : type::Quals::Unqualified());
+                                 ? type::Qualifiers::Constant()
+                                 : type::Qualifiers::Unqualified());
   } else {
     // TODO: Not a type or *INTERFACE*
     data.diag().Consume(NotAType{
@@ -182,14 +182,14 @@ std::vector<type::QualType> VerifyInferred(CompilationDataReference data,
   std::vector<type::QualType> init_val_qts(init_val_qt_span.begin(),
                                            init_val_qt_span.end());
 
-  type::Quals quals = (node->flags() & ast::Declaration::f_IsConst)
-                          ? type::Quals::Const()
-                          : type::Quals::Unqualified();
+  type::Qualifiers quals = (node->flags() & ast::Declaration::f_IsConst)
+                          ? type::Qualifiers::Constant()
+                          : type::Qualifiers::Unqualified();
 
   bool inference_failure = false;
   for (auto &qt : init_val_qts) {
     if (auto inference_result = Inference(qt.type())) {
-      if (not(quals >= type::Quals::Const())) {
+      if (not(quals >= type::Qualifiers::Constant())) {
         bool had_error_mark = qt.HasErrorMark();
         qt                  = type::QualType(*inference_result, quals);
         if (had_error_mark) { qt.MarkError(); }

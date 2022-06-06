@@ -306,7 +306,7 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
 // different module.
 type::QualType AccessStructMember(CompilationDataReference data,
                                   ast::Access const *node,
-                                  type::Struct const *s, type::Quals quals) {
+                                  type::Struct const *s, type::Qualifiers quals) {
   auto &s_mod = data.resources()
                     .shared_context->module_table()
                     .module(s->defining_module())
@@ -330,7 +330,7 @@ type::QualType AccessStructMember(CompilationDataReference data,
     return type::QualType::Error();
   }
 
-  type::QualType qt(member->type, quals | type::Quals::Ref());
+  type::QualType qt(member->type, quals | type::Qualifiers::Storage());
 
   // Struct field members need to be exported in addition to the struct itself.
 
@@ -398,7 +398,7 @@ type::QualType AccessModuleMember(CompilationDataReference ref,
       }
     } else {
       // TODO: these may also be an overload set of scopes
-      type::Quals quals = type::Quals::Const();
+      type::Qualifiers quals = type::Qualifiers::Constant();
       absl::flat_hash_set<type::Type> member_types;
 
       for (auto const &symbol_info : symbols) {
@@ -437,16 +437,16 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                                    AccessModuleMember(*this, node, operand_qt));
   } else {
     auto quals = operand_qt.quals();
-    if (num_derefs > 0) { quals |= type::Quals::Ref(); }
+    if (num_derefs > 0) { quals |= type::Qualifiers::Storage(); }
 
     if (auto const *s = base_type.if_as<type::Slice>()) {
       if (node->member_name() == "length") {
         return context().set_qual_type(
-            node, type::QualType(type::U64, quals | type::Quals::Ref()));
+            node, type::QualType(type::U64, quals | type::Qualifiers::Storage()));
       } else if (node->member_name() == "data") {
         return context().set_qual_type(
             node, type::QualType(type::BufPtr(s->data_type()),
-                                 quals | type::Quals::Ref()));
+                                 quals | type::Qualifiers::Storage()));
       } else {
         diag().Consume(MissingMember{
             .expr_view   = node->operand()->range(),

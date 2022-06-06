@@ -22,7 +22,7 @@ TEST(Declaration, DefaultInitSuccess) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType(type::I64, type::Quals::Ref())));
+                         type::QualType(type::I64, type::Qualifiers::Storage())));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 
@@ -34,7 +34,7 @@ TEST(Declaration, DefaultInitSuccess) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType(type::I64, type::Quals::Const())));
+                         type::QualType(type::I64, type::Qualifiers::Constant())));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 }
@@ -113,7 +113,7 @@ TEST(Declaration, InferredSuccess) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType(type::I64, type::Quals::Ref())));
+                         type::QualType(type::I64, type::Qualifiers::Storage())));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 
@@ -125,7 +125,7 @@ TEST(Declaration, InferredSuccess) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType(type::Integer, type::Quals::Const())));
+                         type::QualType(type::Integer, type::Qualifiers::Constant())));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 }
@@ -181,7 +181,7 @@ TEST(Declaration, CustomInitSuccess) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType(type::I64, type::Quals::Ref())));
+                         type::QualType(type::I64, type::Qualifiers::Storage())));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 
@@ -193,7 +193,7 @@ TEST(Declaration, CustomInitSuccess) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType(type::I64, type::Quals::Const())));
+                         type::QualType(type::I64, type::Qualifiers::Constant())));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 }
@@ -251,7 +251,7 @@ TEST(Declaration, CustomInitAllowsConversions) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType(
-                         type::Arr(0, type::I64), type::Quals::Buf())));
+                         type::Arr(0, type::I64), type::Qualifiers::Buffer())));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 
@@ -269,7 +269,7 @@ TEST(Declaration, CustomInitAllowsConversions) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(type::QualType(
-                         type::Arr(0, type::I32), type::Quals::Const())));
+                         type::Arr(0, type::I32), type::Qualifiers::Constant())));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 }
@@ -283,7 +283,7 @@ TEST(Declaration, UninitializedSuccess) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType(type::I64, type::Quals::Ref())));
+                         type::QualType(type::I64, type::Qualifiers::Storage())));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 
@@ -295,7 +295,7 @@ TEST(Declaration, UninitializedSuccess) {
     )");
     auto qts  = mod.context().qual_types(mod.get<ast::Identifier>());
     EXPECT_THAT(qts, UnorderedElementsAre(
-                         type::QualType(type::I64, type::Quals::Const())));
+                         type::QualType(type::I64, type::Qualifiers::Constant())));
     EXPECT_THAT(
         infra.diagnostics(),
         UnorderedElementsAre(Pair("type-error", "uninitialized-constant")));

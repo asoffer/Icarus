@@ -250,7 +250,7 @@ TEST_P(BinaryOperator, Success) {
         type, op));
     auto const *expr = mod.get<ast::BinaryOperator>();
     auto qts         = mod.context().qual_types(expr);
-    EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
+    EXPECT_EQ(qts[0].quals(), type::Qualifiers::Unqualified());
     EXPECT_EQ(qts[0].type(), mod.context().qual_types(&expr->lhs())[0].type());
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
@@ -265,7 +265,7 @@ TEST_P(BinaryOperator, Success) {
         type, op));
     auto const *expr = mod.get<ast::BinaryOperator>();
     auto qts         = mod.context().qual_types(expr);
-    EXPECT_EQ(qts[0].quals(), type::Quals::Const());
+    EXPECT_EQ(qts[0].quals(), type::Qualifiers::Constant());
     EXPECT_EQ(qts[0].type(), mod.context().qual_types(&expr->lhs())[0].type());
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }

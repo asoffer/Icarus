@@ -25,10 +25,10 @@ struct NonBooleanCondition {
   std::string type;
 };
 
-std::optional<type::Quals> VerifyAndGetQuals(
+std::optional<type::Qualifiers> VerifyAndGetQuals(
     TypeVerifier &tv, base::PtrSpan<ast::Expression const> exprs) {
   bool err          = false;
-  type::Quals quals = type::Quals::All();
+  type::Qualifiers quals = type::Qualifiers::All();
   for (auto *expr : exprs) {
     auto qt = tv.VerifyType(expr)[0];
     err |= not qt.ok();

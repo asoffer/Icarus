@@ -143,7 +143,7 @@ type::QualType VerifyOperatorOverload(
 
   ASSERT(member_types.size() == 1u);
   return type::QualType((*member_types.begin())->return_types()[0],
-                        type::Quals::Unqualified());
+                        type::Qualifiers::Unqualified());
 }
 
 template <char C>
@@ -152,7 +152,7 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
     type::QualType rhs_qt) {
   if (type::IsNumeric(lhs_qt.type()) and type::IsNumeric(rhs_qt.type())) {
     if (auto t = type::Meet(rhs_qt.type(), lhs_qt.type())) {
-      auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Quals::Ref());
+      auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Qualifiers::Storage());
       return tv.context().set_qual_type(node, type::QualType(t, quals));
     } else {
       tv.diag().Consume(BinaryOperatorTypeMismatch{
@@ -179,7 +179,7 @@ absl::Span<type::QualType const> VerifyArithmeticOperator(
       if (type::IsIntegral(rhs_qt.type())) {
         return tv.context().set_qual_type(node, lhs_qt);
       } else if (lhs_qt.type() == rhs_qt.type()) {
-        auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Quals::Ref());
+        auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Qualifiers::Storage());
         return tv.context().set_qual_type(
             node, type::QualType(
                       type::PointerDifferenceType(tv.resources().architecture),
@@ -300,7 +300,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     case ast::BinaryOperator::Kind::And:
     case ast::BinaryOperator::Kind::Or: {
       if (lhs_qt.type() == type::Bool and rhs_qt.type() == type::Bool) {
-        auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Quals::Ref());
+        auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Qualifiers::Storage());
         type::QualType qt(type::Meet(lhs_qt.type(), rhs_qt.type()), quals);
         return context().set_qual_type(node, qt);
       } else {
@@ -321,7 +321,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     case ast::BinaryOperator::Kind::SymbolOr: {
       if (lhs_qt.type().is<type::Flags>() and rhs_qt.type().is<type::Flags>()) {
         if (auto t = type::Meet(rhs_qt.type(), lhs_qt.type())) {
-          auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Quals::Ref());
+          auto quals = (lhs_qt.quals() & rhs_qt.quals() & ~type::Qualifiers::Storage());
           return context().set_qual_type(node, type::QualType(t, quals));
         } else {
           diag().Consume(BinaryOperatorTypeMismatch{
@@ -406,8 +406,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   }
   auto [lhs_qt, rhs_qt] = *result;
 
-  if (lhs_qt.quals() >= type::Quals::Const() or
-      not(lhs_qt.quals() >= type::Quals::Ref())) {
+  if (lhs_qt.quals() >= type::Qualifiers::Constant() or
+      not(lhs_qt.quals() >= type::Qualifiers::Storage())) {
     diag().Consume(InvalidAssignmentOperatorLhsValueCategory{
         .view = node->lhs().range(),
     });

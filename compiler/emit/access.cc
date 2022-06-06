@@ -136,7 +136,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
       UNREACHABLE(node->DebugString());
     }
   } else {
-    if (operand_qt.quals() >= type::Quals::Ref()) {
+    if (operand_qt.quals() >= type::Qualifiers::Storage()) {
       out.append(PtrFix(current(), EmitRef(node), node_qt.type()));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(
@@ -160,7 +160,7 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
   auto op_qt = context().qual_types(node->operand())[0];
   // TODO: This trick is good except that parameters look like references when
   // really they're by value for small types.
-  size_t deref_count = (op_qt.quals() >= type::Quals::Ref())
+  size_t deref_count = (op_qt.quals() >= type::Qualifiers::Storage())
                            ? size_t{0}
                            : static_cast<size_t>(-1);
   auto t = op_qt.type();
@@ -178,7 +178,7 @@ ir::Reg Compiler::EmitRef(ast::Access const *node) {
     ++deref_count;
   }
 
-  ir::RegOr<ir::addr_t> reg = (op_qt.quals() >= type::Quals::Ref())
+  ir::RegOr<ir::addr_t> reg = (op_qt.quals() >= type::Qualifiers::Storage())
                                   ? ref
                                   : EmitAs<ir::addr_t>(node->operand());
   {
@@ -297,7 +297,7 @@ void Compiler::EmitMoveInit(
     }
   } else {
     ir::PartialResultBuffer buffer;
-    if (operand_qt.quals() >= type::Quals::Ref()) {
+    if (operand_qt.quals() >= type::Qualifiers::Storage()) {
       buffer.append(PtrFix(current(), EmitRef(node), node_qt.type()));
       MoveInitializationEmitter emitter(*this);
       emitter(to[0], buffer);
@@ -412,7 +412,7 @@ void Compiler::EmitCopyInit(
     }
   } else {
     ir::PartialResultBuffer buffer;
-    if (operand_qt.quals() >= type::Quals::Ref()) {
+    if (operand_qt.quals() >= type::Qualifiers::Storage()) {
       buffer.append(PtrFix(current(), EmitRef(node), node_qt.type()));
       CopyAssignmentEmitter emitter(*this);
       emitter(to[0], type::Typed(buffer[0], node_qt.type()));
@@ -466,7 +466,7 @@ void Compiler::EmitMoveAssign(
   if (not EmitAssignForAlwaysCopyTypes(*this, node, operand_qt.type(),
                                        *to[0])) {
     ir::PartialResultBuffer buffer;
-    if (operand_qt.quals() >= type::Quals::Ref()) {
+    if (operand_qt.quals() >= type::Qualifiers::Storage()) {
       type::Type t = context().qual_types(node)[0].type();
       buffer.append(PtrFix(current(), EmitRef(node), t));
       MoveAssignmentEmitter emitter(*this);
@@ -521,7 +521,7 @@ void Compiler::EmitCopyAssign(
                                        *to[0])) {
     type::Type t = context().qual_types(node)[0].type();
     ir::PartialResultBuffer buffer;
-    if (operand_qt.quals() >= type::Quals::Ref()) {
+    if (operand_qt.quals() >= type::Qualifiers::Storage()) {
       buffer.append(PtrFix(current(), EmitRef(node), t));
     } else {
       type::Typed<ir::RegOr<ir::addr_t>> temp(

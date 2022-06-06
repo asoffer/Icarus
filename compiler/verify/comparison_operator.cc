@@ -125,7 +125,7 @@ type::QualType VerifyBinaryOverload(
   ASSERT(member_types.size() == 1u);
   // TODO: Check that we only have one return type on each of these overloads.
   return type::QualType((*member_types.begin())->return_types()[0],
-                        type::Quals::Unqualified());
+                        type::Qualifiers::Unqualified());
 }
 
 }  // namespace
@@ -134,7 +134,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::ComparisonOperator const *node) {
   std::vector<type::QualType> expr_qts;
   expr_qts.reserve(node->exprs().size());
-  type::Quals quals = ~type::Quals::Ref();
+  type::Qualifiers quals = ~type::Qualifiers::Storage();
   for (auto *expr : node->exprs()) {
     expr_qts.push_back(VerifyType(expr)[0]);
     quals &= expr_qts.back().quals();

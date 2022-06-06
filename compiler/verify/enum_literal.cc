@@ -39,7 +39,7 @@ bool BodyVerifier::VerifyBody(ast::EnumLiteral const *node) {
   bool success = true;
   for (auto const &[name, value] : node->specified_values()) {
     auto qts = VerifyType(*this, value.get());
-    if (not(qts[0].quals() >= type::Quals::Const())) {
+    if (not(qts[0].quals() >= type::Qualifiers::Constant())) {
       success = false;
       diag().Consume(NonConstantEnumerator{.view = value->range()});
     }

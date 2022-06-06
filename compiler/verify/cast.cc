@@ -49,7 +49,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
 
   ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),  //
                    auto t, EvaluateOrDiagnoseAs<type::Type>(node->type()));
-  type::QualType qt(t, expr_qt.quals() & ~type::Quals::Buf());
+  type::QualType qt(t, expr_qt.quals() & ~type::Qualifiers::Buffer());
   if (not type::CanCastExplicitly(expr_qt.type(), t)) {
     diag().Consume(InvalidCast{
         .from = TypeForDiagnostic(node->expr(), context()),

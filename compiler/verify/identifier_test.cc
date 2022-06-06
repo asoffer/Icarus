@@ -21,7 +21,7 @@ TEST(Identifier, Success) {
   auto const *id = mod.get<ast::Identifier>();
   auto qts       = mod.context().qual_types(id);
   ASSERT_THAT(
-      qts, UnorderedElementsAre(type::QualType(type::I64, type::Quals::Ref())));
+      qts, UnorderedElementsAre(type::QualType(type::I64, type::Qualifiers::Storage())));
   EXPECT_THAT(mod.context().decls(id), SizeIs(1));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }

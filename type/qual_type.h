@@ -14,8 +14,8 @@ namespace type {
 // As part of type verification, every expression in the syntax tree is
 // annotated with a `QualType`. `QualType` represents the type of an expression
 // (i.e., the one annotated with the `QualType`) along with extra data which is
-// typically not considered to be part of the type, but still dictates what
-// operations can be applied to the expression. This data includes:
+// not considered to be part of the type, but still dictates what operations can
+// be applied to the expression. This data includes:
 //
 // * Constness: Whether or not the value of the expression is known at
 //   compile-time
@@ -24,86 +24,110 @@ namespace type {
 //
 // `QualType` also has a builtin error value (the default constructed value).
 //
-// *** Constness ***
-// Whether or not an expression of that qualified type is constant in the given
-// context. This is slightly different than being known at compile-time, though
-// it implies being known at compile-time. Because this is statically assigned
-// to each expression during compilation, this has more to do with const-ness in
-// the current context, regardless of whether it is being executed at
-// compile-time or run-time.
+// ## Qualifiers
 //
-// For example,
+// Qualifiers indicate properties of an expression that are not included in the
+// expression's type but do affect type-verification. This may seem
+// counter-intuitive if you have never encountered it before. A common example
+// would be that, while in general, applying the `&` operator to an expression
+// produces a pointer, not every expression is allowed to have the operator
+// applied. Specifically, only expressions that represent a storage location can
+// have their address taken. Given a boolean variable, `b`, the expression `&b`
+// is valid, but `&true` would not be valid, even though `b` and `true` have the
+// same type (namely, `bool`).
 //
-// ```
-// add_two ::= (n: i64) -> i64 {
-//  TWO ::= 2
-//  return n + TWO
-// }
+// Whether an expression can have its address taken is just one example of such
+// a type qualifier.
 //
-// FOUR ::= add_two(2)
-// ```
 //
-// In the snippet above, `n` is qualified as non-const, because in the context
-// of the function literal it is declared with `:`, despite the fact that, when
-// computing `FOUR`, the constant `2` is bound to `n`.
+// ### Value category
 //
-struct Quals {
-  static constexpr Quals Unqualified() { return Quals(0); }
-  static constexpr Quals Const() { return Quals(1); }
-  static constexpr Quals Ref() { return Quals(2); }
-  static constexpr Quals Buf() { return Quals(6); }
-  static constexpr Quals All() { return Quals(7); }
+// An expression's qualifiers corresponding to value category take on one of
+// three kinds:
+// * Buffer    -- The expression represents a storage location that is part of a
+//                larger buffer. Not only can the address of the expression be
+//                computed, but arithmetic may be done on its pointer type.
+// * Storage   -- The expression represents a storage location, but the location
+//                is not to be part of a buffer.
+// * None      -- The expression does not represent a storage location.
+//
+//
+// ### Constness
+//
+// An expression's qualifiers corresponding to constness take on one of three
+// kinds:
+// * Constant           -- The value is known at compile-time and not dependent
+//                         on any constant parameters. It can be entirely
+//                         evaluated it its context.
+// * DependentConstant  -- The value is a compile-time constant, but that
+//                         constant is dependent on the value of compile-time
+//                         constant parameters of its context. It cannot be
+//                         computed without knowledge of those values.
+// * Runtime            -- The value is not a compile-time constant.
+struct Qualifiers {
+  static constexpr Qualifiers Unqualified() { return Qualifiers(0b0000); }
+  static constexpr Qualifiers DependentConstant() { return Qualifiers(0b0001); }
+  static constexpr Qualifiers Constant() { return Qualifiers(0b0011); }
+  static constexpr Qualifiers Storage() { return Qualifiers(0b0100); }
+  static constexpr Qualifiers Buffer() { return Qualifiers(0b1100); }
+  static constexpr Qualifiers All() { return Qualifiers(0b1111); }
 
-  friend constexpr Quals operator|(Quals lhs, Quals rhs) {
-    return Quals(lhs.val_ | rhs.val_);
+  friend constexpr Qualifiers operator|(Qualifiers lhs, Qualifiers rhs) {
+    return Qualifiers(lhs.val_ | rhs.val_);
   }
-  friend constexpr Quals operator&(Quals lhs, Quals rhs) {
-    return Quals(lhs.val_ & rhs.val_);
+  friend constexpr Qualifiers operator&(Qualifiers lhs, Qualifiers rhs) {
+    return Qualifiers(lhs.val_ & rhs.val_);
   }
-  constexpr Quals &operator|=(Quals rhs) {
+  constexpr Qualifiers &operator|=(Qualifiers rhs) {
     val_ |= rhs.val_;
     return *this;
   }
-  constexpr Quals &operator&=(Quals rhs) {
+  constexpr Qualifiers &operator&=(Qualifiers rhs) {
     val_ &= rhs.val_;
     return *this;
   }
 
-  friend constexpr Quals operator~(Quals q) {
-    return Quals(All().val_ - q.val_);
+  friend constexpr Qualifiers operator~(Qualifiers q) {
+    return Qualifiers(All().val_ - q.val_);
   }
 
-  friend constexpr bool operator==(Quals lhs, Quals rhs) {
+  friend constexpr bool operator==(Qualifiers lhs, Qualifiers rhs) {
     return lhs.val_ == rhs.val_;
   }
-  friend constexpr bool operator!=(Quals lhs, Quals rhs) {
+  friend constexpr bool operator!=(Qualifiers lhs, Qualifiers rhs) {
     return not(lhs == rhs);
   }
-  friend bool operator<(Quals lhs, Quals rhs) {
+  friend bool operator<(Qualifiers lhs, Qualifiers rhs) {
     return (lhs | rhs) == lhs and lhs != rhs;
   }
-  friend bool operator>(Quals lhs, Quals rhs) { return rhs < lhs; }
-  friend bool operator<=(Quals lhs, Quals rhs) { return (lhs | rhs) == rhs; }
-  friend bool operator>=(Quals lhs, Quals rhs) { return rhs <= lhs; }
+  friend bool operator>(Qualifiers lhs, Qualifiers rhs) { return rhs < lhs; }
+  friend bool operator<=(Qualifiers lhs, Qualifiers rhs) {
+    return (lhs | rhs) == rhs;
+  }
+  friend bool operator>=(Qualifiers lhs, Qualifiers rhs) { return rhs <= lhs; }
 
   template <typename H>
-  friend H AbslHashValue(H h, Quals const &q) {
+  friend H AbslHashValue(H h, Qualifiers const &q) {
     return H::combine(std::move(h), q.val_);
   }
 
-  static constexpr Quals FromValue(uint8_t value) { return Quals(value); }
+  static constexpr Qualifiers FromValue(uint8_t value) {
+    return Qualifiers(value);
+  }
   uint8_t value() const { return val_; }
 
  private:
   friend struct QualType;
-  constexpr explicit Quals(uint8_t val) : val_(val) {}
+  constexpr explicit Qualifiers(uint8_t val) : val_(val) {}
   uint8_t val_;
 };
 
-inline std::ostream &operator<<(std::ostream &os, Quals quals) {
-  static constexpr std::array kPrintData{std::pair{Quals::Const(), "const"},
-                                         std::pair{Quals::Buf(), "buf"},
-                                         std::pair{Quals::Ref(), "ref"}};
+inline std::ostream &operator<<(std::ostream &os, Qualifiers quals) {
+  static constexpr std::array kPrintData{
+      std::pair{Qualifiers::Constant(), "const"},
+      std::pair{Qualifiers::DependentConstant(), "dependent-const"},
+      std::pair{Qualifiers::Buffer(), "buffer"},
+      std::pair{Qualifiers::Storage(), "storage"}};
   char const *sep = "";
   os << "[";
   for (auto [q, s] : kPrintData) {
@@ -118,16 +142,16 @@ inline std::ostream &operator<<(std::ostream &os, Quals quals) {
 struct QualType {
   static absl::Span<type::QualType const> ErrorSpan();
 
-  explicit QualType() : QualType(Type(), Quals::Unqualified()) {}
-  explicit QualType(Type t, Quals quals)
+  explicit QualType() : QualType(Type(), Qualifiers::Unqualified()) {}
+  explicit QualType(Type t, Qualifiers quals)
       : type_(t), quals_(quals), error_(false) {}
 
   static QualType Error() { return QualType(); }
 
-  static QualType Constant(Type t) { return QualType(t, Quals::Const()); }
+  static QualType Constant(Type t) { return QualType(t, Qualifiers::Constant()); }
 
   static QualType NonConstant(Type t) {
-    return QualType(t, Quals::Unqualified());
+    return QualType(t, Qualifiers::Unqualified());
   }
 
   Type type() const { return type_; }
@@ -151,11 +175,13 @@ struct QualType {
   constexpr void MarkError() { error_ = true; }
   constexpr bool HasErrorMark() const { return error_ or not ok(); }
 
-  constexpr Quals quals() const { return quals_; }
-  constexpr void set_quals(Quals q) { quals_ = q; }
+  constexpr Qualifiers quals() const { return quals_; }
+  constexpr void set_quals(Qualifiers q) { quals_ = q; }
 
-  constexpr void remove_constant() { quals_ &= ~Quals::Const(); }
-  constexpr bool constant() const { return (quals_ & Quals::Const()).val_; }
+  constexpr void remove_constant() { quals_ &= ~Qualifiers::Constant(); }
+  constexpr bool constant() const {
+    return (quals_ & Qualifiers::Constant()).val_;
+  }
 
   bool ok() const { return type() != Type(); }
   explicit operator bool() const { return ok(); }
@@ -185,7 +211,7 @@ struct QualType {
 
  private:
   Type type_;
-  Quals quals_;
+  Qualifiers quals_;
   bool error_;
 };
 

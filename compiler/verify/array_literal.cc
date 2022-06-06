@@ -60,7 +60,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
 
   absl::flat_hash_map<type::Type, int> elem_type_count;
 
-  type::Quals quals   = type::Quals::All();
+  type::Qualifiers quals   = type::Qualifiers::All();
   size_t num_elements = elem_qts.size();
   for (type::QualType const &qt : elem_qts) {
     ++elem_type_count[qt.type()];

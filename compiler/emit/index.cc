@@ -38,7 +38,7 @@ void Compiler::EmitToBuffer(ast::Index const *node,
                             ir::PartialResultBuffer &out) {
   type::QualType qt = context().qual_types(node->lhs())[0];
   if (auto const *s = qt.type().if_as<type::Slice>()) {
-    if (qt.quals() >= type::Quals::Ref()) {
+    if (qt.quals() >= type::Qualifiers::Storage()) {
       out.append(PtrFix(current(), EmitRef(node),
                         context().qual_types(node)[0].type()));
     } else {
@@ -66,7 +66,7 @@ void Compiler::EmitToBuffer(ast::Index const *node,
       out.append(PtrFix(current(), incr, s->data_type()));
     }
   } else if (auto const *array_type = qt.type().if_as<type::Array>()) {
-    if (qt.quals() >= type::Quals::Ref()) {
+    if (qt.quals() >= type::Qualifiers::Storage()) {
       out.append(PtrFix(current(), EmitRef(node),
                         context().qual_types(node)[0].type()));
     } else {
@@ -87,7 +87,7 @@ void Compiler::EmitToBuffer(ast::Index const *node,
     }
   } else if (auto const *buf_ptr_type =
                  qt.type().if_as<type::BufferPointer>()) {
-    if (qt.quals() >= type::Quals::Ref()) {
+    if (qt.quals() >= type::Qualifiers::Storage()) {
       out.append(PtrFix(current(), EmitRef(node),
                         context().qual_types(node)[0].type()));
     } else {

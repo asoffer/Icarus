@@ -108,7 +108,7 @@ TEST(DesignatedInitializer, NonMember) {
   )");
   auto qts  = mod.context().qual_types(mod.get<ast::Expression>());
   EXPECT_TRUE(qts[0].type().is<type::Struct>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
+  EXPECT_EQ(qts[0].quals(), type::Qualifiers::Unqualified());
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-struct-field")));
 }
@@ -128,7 +128,7 @@ TEST(DesignatedInitializer, MemberInvalidConversion) {
   )");
   auto qts  = mod.context().qual_types(mod.get<ast::Expression>());
   EXPECT_TRUE(qts[0].type().is<type::Struct>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
+  EXPECT_EQ(qts[0].quals(), type::Qualifiers::Unqualified());
   EXPECT_THAT(
       infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "invalid-initializer-type")));
@@ -168,7 +168,7 @@ TEST(DesignatedInitializer, MultipleMemberAssignments) {
   )");
   auto qts  = mod.context().qual_types(mod.get<ast::Expression>());
   EXPECT_TRUE(qts[0].type().is<type::Struct>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
+  EXPECT_EQ(qts[0].quals(), type::Qualifiers::Unqualified());
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -188,7 +188,7 @@ TEST(DesignatedInitializer, MultipleMemberInvalidAssignments) {
   )");
   auto qts  = mod.context().qual_types(mod.get<ast::Expression>());
   EXPECT_TRUE(qts[0].type().is<type::Struct>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
+  EXPECT_EQ(qts[0].quals(), type::Qualifiers::Unqualified());
   EXPECT_THAT(
       infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "invalid-initializer-type")));
@@ -210,7 +210,7 @@ TEST(DesignatedInitializer, MemberValidConversion) {
   )");
   auto qts  = mod.context().qual_types(mod.get<ast::Expression>());
   EXPECT_TRUE(qts[0].type().is<type::Struct>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
+  EXPECT_EQ(qts[0].quals(), type::Qualifiers::Unqualified());
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -229,7 +229,7 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
   )");
   auto qts  = mod.context().qual_types(mod.get<ast::Expression>());
   EXPECT_TRUE(qts[0].type().is<type::Struct>());
-  EXPECT_EQ(qts[0].quals(), type::Quals::Unqualified());
+  EXPECT_EQ(qts[0].quals(), type::Qualifiers::Unqualified());
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "non-type-designated-initializer-type"),

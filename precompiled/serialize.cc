@@ -312,7 +312,7 @@ void FromProto(TypeSystem const& proto, type::TypeSystem& system) {
           parameters.append(
               p.name(),
               type::QualType(system.from_index(p.type()),
-                             type::Quals::FromValue(p.flags() & 0xff)),
+                             type::Qualifiers::FromValue(p.flags() & 0xff)),
               core::ParameterFlags::FromValue(p.flags() >> uint8_t{8}));
         }
         std::vector<type::Type> return_types;

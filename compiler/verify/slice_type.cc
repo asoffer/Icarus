@@ -44,7 +44,7 @@ struct NonTypeSliceTypeMatch {
 // Verifies that the slice data type expression is a type.
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::SliceType const *node) {
-  auto quals = type::Quals::Const();
+  auto quals = type::Qualifiers::Constant();
 
   auto data_qual_type = VerifyType(&node->data_type())[0];
   quals &= data_qual_type.quals();

@@ -157,11 +157,11 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         if (qt.HasErrorMark()) { return context().set_qual_type(node, qt); }
 
         if (qt.type().is<type::Array>()) {
-          qt = type::QualType(qt.type(), qt.quals() | type::Quals::Buf());
+          qt = type::QualType(qt.type(), qt.quals() | type::Qualifiers::Buffer());
         }
 
         // TODO: shouldn't need to reconstruct just to set the quals.
-        qt = type::QualType(qt.type(), qt.quals() | type::Quals::Ref());
+        qt = type::QualType(qt.type(), qt.quals() | type::Qualifiers::Storage());
       }
 
       if (qt.type().is<type::Callable>() or
@@ -201,7 +201,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       return context().set_qual_type(node, type::QualType::Error());
     } break;
     default: {
-      type::Quals quals = type::Quals::Const();
+      type::Qualifiers quals = type::Qualifiers::Constant();
       absl::flat_hash_set<type::Type> member_types;
       bool error = false;
 

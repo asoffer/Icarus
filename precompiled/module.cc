@@ -93,7 +93,7 @@ PrecompiledModule::Load(std::string const& import_name,
       s.push_back({
           .qualified_type = type::QualType(
               local_type_system.from_index(info.value().type_id()),
-              type::Quals::FromValue(info.qualifiers())),
+              type::Qualifiers::FromValue(info.qualifiers())),
           .value =
               DeserializeValue(shared_context.module_table(), module_proto.modules(),
                                local_type_system, info.value()),

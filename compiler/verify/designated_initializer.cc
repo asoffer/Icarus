@@ -181,7 +181,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   ASSERT(struct_type->completeness() >= type::Completeness::DataComplete);
 
   bool recovered_error  = false;
-  type::Quals quals     = type::Quals::Const();
+  type::Qualifiers quals     = type::Qualifiers::Constant();
   auto initializer_iter = initializer_qts.begin();
   for (auto const *assignment : node->assignments()) {
     auto const &initializer_qt_vec = *initializer_iter;
@@ -205,7 +205,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
               .view        = field->range(),
           });
           recovered_error = true;
-          quals           = type::Quals::Unqualified();
+          quals           = type::Qualifiers::Unqualified();
         }
       } else {
         diag().Consume(MissingStructField{
@@ -214,7 +214,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             .view        = field->range(),
         });
         recovered_error = true;
-        quals           = type::Quals::Unqualified();
+        quals           = type::Qualifiers::Unqualified();
       }
     }
 
@@ -231,7 +231,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         // and we still want to claim this expression has the same type, but
         // we'll just give up on it being a constant.
         recovered_error = true;
-        quals           = type::Quals::Unqualified();
+        quals           = type::Qualifiers::Unqualified();
         goto next_assignment;
       }
 
@@ -247,7 +247,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             .view     = field->range(),
         });
         recovered_error = true;
-        quals           = type::Quals::Unqualified();
+        quals           = type::Qualifiers::Unqualified();
       } else {
         quals &= initializer_qt.quals();
       }

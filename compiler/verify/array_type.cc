@@ -61,7 +61,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::ArrayType const *node) {
   std::vector<type::QualType> length_results;
   length_results.reserve(node->lengths().size());
-  auto quals = type::Quals::Const();
+  auto quals = type::Qualifiers::Constant();
   for (auto const &len : node->lengths()) {
     auto result = VerifyType(len)[0];
     quals &= result.quals();

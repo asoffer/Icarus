@@ -113,7 +113,7 @@ CalleeResult EmitCallee(
                   DefaultsFor(callable_expr, find_subcontext_result.context),
               .context = &find_subcontext_result.context};
     } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
-      if (type::Quals::Const() <= qt.quals()) {
+      if (type::Qualifiers::Constant() <= qt.quals()) {
         auto &context =
             ModuleFor(callable_expr)->as<CompiledModule>().context();
         return {.callee   = c.EmitAs<ir::Fn>(callable_expr),
@@ -177,7 +177,7 @@ CalleeResult EmitCallee(
                    qt.type().if_as<type::Generic<type::Struct>>()) {
       NOT_YET();
     } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
-      if (type::Quals::Const() <= qt.quals()) {
+      if (type::Qualifiers::Constant() <= qt.quals()) {
         return {
             .callee = symbol_info.value[0].get<ir::Fn>(),
             .type   = f_type,
@@ -197,7 +197,7 @@ void EmitAndCast(Compiler &c, ast::Expression const &expr, type::QualType to,
   type::QualType arg_qt = c.context().qual_types(&expr)[0];
   if (auto const *ptr_to_type = to.type().if_as<type::Pointer>()) {
     if (ptr_to_type->pointee() == arg_qt.type()) {
-      if (arg_qt.quals() >= type::Quals::Ref()) {
+      if (arg_qt.quals() >= type::Qualifiers::Storage()) {
         buffer.append(c.EmitRef(&expr));
       } else {
         auto reg = c.state().TmpAlloca(arg_qt.type());

@@ -177,7 +177,7 @@ type::QualType VerifyUnaryOverload(
 
   ASSERT(member_types.size() == 1u);
   return type::QualType((*member_types.begin())->return_types()[0],
-                        type::Quals::Unqualified());
+                        type::Qualifiers::Unqualified());
 }
 
 }  // namespace
@@ -218,12 +218,12 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         });
       }
       qt = type::QualType(operand_type,
-                          operand_qt.quals() & ~type::Quals::Buf());
+                          operand_qt.quals() & ~type::Qualifiers::Buffer());
     } break;
     case ast::UnaryOperator::Kind::Init: {
       // TODO: Under what circumstances is `init` allowed?
       qt = type::QualType(operand_type,
-                          operand_qt.quals() & ~type::Quals::Buf());
+                          operand_qt.quals() & ~type::Qualifiers::Buffer());
     } break;
     case ast::UnaryOperator::Kind::Destroy: {
       qt = type::QualType::NonConstant(type::Void);
@@ -243,12 +243,12 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         });
       }
       qt = type::QualType(operand_type,
-                          operand_qt.quals() & ~type::Quals::Buf());
+                          operand_qt.quals() & ~type::Qualifiers::Buffer());
     } break;
     case ast::UnaryOperator::Kind::BufferPointer: {
       if (operand_type == type::Type_) {
         qt = type::QualType(operand_type,
-                            operand_qt.quals() & ~type::Quals::Buf());
+                            operand_qt.quals() & ~type::Qualifiers::Buffer());
       } else {
         diag().Consume(NotAType{
             .view = node->operand()->range(),
@@ -262,9 +262,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     } break;
     case ast::UnaryOperator::Kind::At: {
       if (auto const *ptr_type = operand_type.if_as<type::BufferPointer>()) {
-        qt = type::QualType(ptr_type->pointee(), type::Quals::Buf());
+        qt = type::QualType(ptr_type->pointee(), type::Qualifiers::Buffer());
       } else if (auto const *ptr_type = operand_type.if_as<type::Pointer>()) {
-        qt = type::QualType(ptr_type->pointee(), type::Quals::Ref());
+        qt = type::QualType(ptr_type->pointee(), type::Qualifiers::Storage());
       } else {
         diag().Consume(DereferencingNonPointer{
             .type = TypeForDiagnostic(node->operand(), context()),
@@ -274,12 +274,12 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       }
     } break;
     case ast::UnaryOperator::Kind::Address: {
-      if (operand_qt.quals() >= type::Quals::Buf()) {
+      if (operand_qt.quals() >= type::Qualifiers::Buffer()) {
         qt = type::QualType(type::BufPtr(operand_type),
-                            type::Quals::Unqualified());
-      } else if (operand_qt.quals() >= type::Quals::Ref()) {
+                            type::Qualifiers::Unqualified());
+      } else if (operand_qt.quals() >= type::Qualifiers::Storage()) {
         qt =
-            type::QualType(type::Ptr(operand_type), type::Quals::Unqualified());
+            type::QualType(type::Ptr(operand_type), type::Qualifiers::Unqualified());
       } else {
         diag().Consume(NonAddressableExpression{.view = node->range()});
         qt = type::QualType::Error();
@@ -288,7 +288,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     case ast::UnaryOperator::Kind::Pointer: {
       if (operand_type == type::Type_) {
         qt = type::QualType(operand_type,
-                            operand_qt.quals() & ~type::Quals::Buf());
+                            operand_qt.quals() & ~type::Qualifiers::Buffer());
       } else {
         diag().Consume(NotAType{
             .view = node->operand()->range(),
@@ -300,7 +300,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     case ast::UnaryOperator::Kind::Negate: {
       if (type::IsSignedNumeric(operand_type)) {
         qt = type::QualType(operand_type,
-                            operand_qt.quals() & type::Quals::Const());
+                            operand_qt.quals() & type::Qualifiers::Constant());
       } else if (type::IsUnsignedNumeric(operand_type)) {
         diag().Consume(NegatingUnsignedInteger{
             .type = TypeForDiagnostic(node->operand(), context()),
@@ -331,10 +331,10 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     case ast::UnaryOperator::Kind::Not: {
       if (operand_type == type::Bool) {
         qt = type::QualType(type::Bool,
-                            operand_qt.quals() & type::Quals::Const());
+                            operand_qt.quals() & type::Qualifiers::Constant());
       } else if (operand_type.is<type::Flags>()) {
         qt = type::QualType(operand_type,
-                            operand_qt.quals() & type::Quals::Const());
+                            operand_qt.quals() & type::Qualifiers::Constant());
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
             .op   = "not",

@@ -26,10 +26,10 @@ TEST(QualType, Regularity) {
             type::QualType::NonConstant(type::I64));
 
   EXPECT_EQ(type::QualType::NonConstant(type::I32),
-            type::QualType(type::I32, type::Quals::Unqualified()));
+            type::QualType(type::I32, type::Qualifiers::Unqualified()));
 
   EXPECT_EQ(type::QualType::Constant(type::I32),
-            type::QualType(type::I32, type::Quals::Const()));
+            type::QualType(type::I32, type::Qualifiers::Constant()));
 
   auto q = type::QualType::Constant(type::I64);
 
@@ -75,30 +75,30 @@ TEST(QualType, Ok) {
 
 TEST(QualType, RemoveConstant) {
   {
-    type::QualType qt(type::I32, type::Quals::All());
+    type::QualType qt(type::I32, type::Qualifiers::All());
     qt.remove_constant();
     EXPECT_NE(qt, type::QualType::Error());
-    EXPECT_EQ(qt.quals(), type::Quals::All() & ~type::Quals::Const());
+    EXPECT_EQ(qt.quals(), type::Qualifiers::All() & ~type::Qualifiers::Constant());
 
     qt.remove_constant();
     EXPECT_NE(qt, type::QualType::Error());
-    EXPECT_EQ(qt.quals(), type::Quals::All() & ~type::Quals::Const());
+    EXPECT_EQ(qt.quals(), type::Qualifiers::All() & ~type::Qualifiers::Constant());
   }
 
   {
-    type::QualType qt(type::I32, type::Quals::Const());
+    type::QualType qt(type::I32, type::Qualifiers::Constant());
     qt.remove_constant();
     EXPECT_NE(qt, type::QualType::Error());
-    EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+    EXPECT_EQ(qt.quals(), type::Qualifiers::Unqualified());
 
     qt.remove_constant();
     EXPECT_NE(qt, type::QualType::Error());
-    EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+    EXPECT_EQ(qt.quals(), type::Qualifiers::Unqualified());
   }
 }
 
 TEST(QualType, Error) {
-  type::QualType qt(type::I32, type::Quals::All());
+  type::QualType qt(type::I32, type::Qualifiers::All());
   EXPECT_FALSE(qt.HasErrorMark());
   qt.MarkError();
   EXPECT_TRUE(qt.HasErrorMark());

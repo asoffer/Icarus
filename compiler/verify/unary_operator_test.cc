@@ -90,7 +90,7 @@ TEST(Copy, Uncopyable) {
   auto expr_qts    = mod.context().qual_types(expr);
   EXPECT_THAT(expr_qts,
               UnorderedElementsAre(type::QualType(
-                  id_qts[0].type(), id_qts[0].quals() & ~type::Quals::Ref())));
+                  id_qts[0].type(), id_qts[0].quals() & ~type::Qualifiers::Storage())));
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "uncopyable-type")));
 }
@@ -135,7 +135,7 @@ TEST(Move, Immovable) {
   auto expr_qts    = mod.context().qual_types(expr);
   EXPECT_THAT(expr_qts,
               UnorderedElementsAre(type::QualType(
-                  id_qts[0].type(), id_qts[0].quals() & ~type::Quals::Ref())));
+                  id_qts[0].type(), id_qts[0].quals() & ~type::Qualifiers::Storage())));
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "immovable-type")));
 }
@@ -193,7 +193,7 @@ TEST(At, Pointer) {
   auto const *expr = mod.get<ast::UnaryOperator>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(
-      qts, UnorderedElementsAre(type::QualType(type::I64, type::Quals::Ref())));
+      qts, UnorderedElementsAre(type::QualType(type::I64, type::Qualifiers::Storage())));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -206,7 +206,7 @@ TEST(At, BufferPointer) {
   auto const *expr = mod.get<ast::UnaryOperator>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(
-      qts, UnorderedElementsAre(type::QualType(type::I64, type::Quals::Buf())));
+      qts, UnorderedElementsAre(type::QualType(type::I64, type::Qualifiers::Buffer())));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
