@@ -15,12 +15,10 @@ jobs:
       - name: Bazel cache
         id: bazel-cache
         uses: actions/cache@v2
-        env:
-          version: 4.2.1
         with:
           path: |
             ~/.cache/bazel
-          key: ${{ runner.os }}-{{ env.version }}-bazel-cache
+          key: ${{ runner.os }}-bazel-cache
       - name: Test
         run: >-
           bazel test --
