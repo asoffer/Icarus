@@ -126,11 +126,11 @@ TEST(Access, AccessStructField) {
   auto non_constant_qts    = mod.context().qual_types(non_constant);
   auto constant_qts        = mod.context().qual_types(constant);
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
-  EXPECT_THAT(non_constant_qts,
-              ElementsAre(type::QualType(type::I64, type::Qualifiers::Storage())));
-  EXPECT_THAT(constant_qts,
-              UnorderedElementsAre(type::QualType(
-                  type::I64, type::Qualifiers::Storage() | type::Qualifiers::Constant())));
+  EXPECT_THAT(non_constant_qts, ElementsAre(type::QualType(
+                                    type::I64, type::Qualifiers::Storage())));
+  EXPECT_THAT(constant_qts, UnorderedElementsAre(type::QualType(
+                                type::I64, type::Qualifiers::Storage() |
+                                               type::Qualifiers::Constant())));
 }
 
 TEST(Access, NoFieldInStruct) {
@@ -156,7 +156,8 @@ TEST(Access, ConstantSliceLength) {
   auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
   EXPECT_THAT(qts, ElementsAre(type::QualType(
-                       type::U64, type::Qualifiers::Storage() | type::Qualifiers::Constant())));
+                       type::U64, type::Qualifiers::Storage() |
+                                      type::Qualifiers::Constant())));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -169,7 +170,8 @@ TEST(Access, NonConstantSliceLength) {
 
   auto const *expr = mod.get<ast::Expression>();
   auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts, ElementsAre(type::QualType(type::U64, type::Qualifiers::Storage())));
+  EXPECT_THAT(
+      qts, ElementsAre(type::QualType(type::U64, type::Qualifiers::Storage())));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 

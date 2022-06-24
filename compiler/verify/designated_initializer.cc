@@ -180,9 +180,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   }
   ASSERT(struct_type->completeness() >= type::Completeness::DataComplete);
 
-  bool recovered_error  = false;
-  type::Qualifiers quals     = type::Qualifiers::Constant();
-  auto initializer_iter = initializer_qts.begin();
+  bool recovered_error   = false;
+  type::Qualifiers quals = type::Qualifiers::Constant();
+  auto initializer_iter  = initializer_qts.begin();
   for (auto const *assignment : node->assignments()) {
     auto const &initializer_qt_vec = *initializer_iter;
     absl::Cleanup c                = [&] { ++initializer_iter; };

@@ -62,9 +62,7 @@ struct Reg : base::Extend<Reg, 1>::With<base::AbslHashExtension> {
   }
 
   // Returns the value ignoring the associated kind.
-  constexpr underlying_type raw_value() const {
-    return value_ & ~KindMask;
-  }
+  constexpr underlying_type raw_value() const { return value_ & ~KindMask; }
 
   friend std::ostream& operator<<(std::ostream& os, Reg r) {
     static constexpr std::array Prefixes{"r.", "out.", "param.", "alloc."};

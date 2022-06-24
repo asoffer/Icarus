@@ -17,10 +17,9 @@ template <typename NumType>
 struct EqInstruction : base::Extend<EqInstruction<NumType>>::template With<
                            base::BaseTraverseExtension,
                            base::BaseSerializeExtension, DebugFormatExtension> {
-  using num_type = NumType;
-  using operand_type =
-      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
-                         addr_t>;
+  using num_type     = NumType;
+  using operand_type = std::conditional_t<interpreter::FitsInRegister<num_type>,
+                                          num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = eq %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
@@ -49,10 +48,9 @@ template <typename NumType>
 struct NeInstruction : base::Extend<NeInstruction<NumType>>::template With<
                            base::BaseTraverseExtension,
                            base::BaseSerializeExtension, DebugFormatExtension> {
-  using num_type = NumType;
-  using operand_type =
-      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
-                         addr_t>;
+  using num_type     = NumType;
+  using operand_type = std::conditional_t<interpreter::FitsInRegister<num_type>,
+                                          num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = ne %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
@@ -81,10 +79,9 @@ template <typename NumType>
 struct LtInstruction : base::Extend<LtInstruction<NumType>>::template With<
                            base::BaseTraverseExtension,
                            base::BaseSerializeExtension, DebugFormatExtension> {
-  using num_type = NumType;
-  using operand_type =
-      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
-                         addr_t>;
+  using num_type     = NumType;
+  using operand_type = std::conditional_t<interpreter::FitsInRegister<num_type>,
+                                          num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = lt %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
@@ -113,10 +110,9 @@ template <typename NumType>
 struct LeInstruction : base::Extend<LeInstruction<NumType>>::template With<
                            base::BaseTraverseExtension,
                            base::BaseSerializeExtension, DebugFormatExtension> {
-  using num_type = NumType;
-  using operand_type =
-      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
-                         addr_t>;
+  using num_type     = NumType;
+  using operand_type = std::conditional_t<interpreter::FitsInRegister<num_type>,
+                                          num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = le %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,

@@ -183,8 +183,8 @@ std::vector<type::QualType> VerifyInferred(CompilationDataReference data,
                                            init_val_qt_span.end());
 
   type::Qualifiers quals = (node->flags() & ast::Declaration::f_IsConst)
-                          ? type::Qualifiers::Constant()
-                          : type::Qualifiers::Unqualified();
+                               ? type::Qualifiers::Constant()
+                               : type::Qualifiers::Unqualified();
 
   bool inference_failure = false;
   for (auto &qt : init_val_qts) {

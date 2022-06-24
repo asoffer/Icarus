@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "absl/functional/any_invocable.h"
+#include "absl/types/span.h"
 #include "base/extend.h"
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"

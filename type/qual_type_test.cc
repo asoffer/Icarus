@@ -78,11 +78,13 @@ TEST(QualType, RemoveConstant) {
     type::QualType qt(type::I32, type::Qualifiers::All());
     qt.remove_constant();
     EXPECT_NE(qt, type::QualType::Error());
-    EXPECT_EQ(qt.quals(), type::Qualifiers::All() & ~type::Qualifiers::Constant());
+    EXPECT_EQ(qt.quals(),
+              type::Qualifiers::All() & ~type::Qualifiers::Constant());
 
     qt.remove_constant();
     EXPECT_NE(qt, type::QualType::Error());
-    EXPECT_EQ(qt.quals(), type::Qualifiers::All() & ~type::Qualifiers::Constant());
+    EXPECT_EQ(qt.quals(),
+              type::Qualifiers::All() & ~type::Qualifiers::Constant());
   }
 
   {

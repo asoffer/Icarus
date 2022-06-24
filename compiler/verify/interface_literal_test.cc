@@ -57,7 +57,5 @@ TEST(InterfaceLiteral, SuccessWithJustType) {
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
-
 }  // namespace
 }  // namespace compiler
-

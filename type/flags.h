@@ -112,8 +112,9 @@ struct XorFlagsInstruction
   friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
                                    XorFlagsInstruction const &inst) {
     interpreter.frame().set(inst.result,
-              static_cast<Flags::underlying_type>(interpreter.frame().resolve(inst.lhs) ^
-                                                  interpreter.frame().resolve(inst.rhs)));
+                            static_cast<Flags::underlying_type>(
+                                interpreter.frame().resolve(inst.lhs) ^
+                                interpreter.frame().resolve(inst.rhs)));
     return true;
   }
 
@@ -139,8 +140,9 @@ struct AndFlagsInstruction
   friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
                                    AndFlagsInstruction const &inst) {
     interpreter.frame().set(inst.result,
-              static_cast<Flags::underlying_type>(interpreter.frame().resolve(inst.lhs) &
-                                                  interpreter.frame().resolve(inst.rhs)));
+                            static_cast<Flags::underlying_type>(
+                                interpreter.frame().resolve(inst.lhs) &
+                                interpreter.frame().resolve(inst.rhs)));
     return true;
   }
 
@@ -166,8 +168,9 @@ struct OrFlagsInstruction
   friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
                                    OrFlagsInstruction const &inst) {
     interpreter.frame().set(inst.result,
-              static_cast<Flags::underlying_type>(interpreter.frame().resolve(inst.lhs) |
-                                                  interpreter.frame().resolve(inst.rhs)));
+                            static_cast<Flags::underlying_type>(
+                                interpreter.frame().resolve(inst.lhs) |
+                                interpreter.frame().resolve(inst.rhs)));
     return true;
   }
 

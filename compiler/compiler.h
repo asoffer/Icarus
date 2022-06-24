@@ -8,10 +8,10 @@
 
 #include "absl/cleanup/cleanup.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/types/span.h"
 #include "ast/ast.h"
 #include "ast/module.h"
-#include "absl/functional/any_invocable.h"
 #include "base/debug.h"
 #include "base/log.h"
 #include "compiler/bound_parameters.h"

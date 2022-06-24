@@ -123,5 +123,4 @@ void Compiler::EmitMoveInit(
   emitter(to[0], type::Typed(buffer[0], t));
 }
 
-
 }  // namespace compiler

@@ -97,7 +97,8 @@ bool ValidIndexType(CompilationDataReference data, ast::Index const *node,
 type::QualType VerifySliceIndex(CompilationDataReference data,
                                 ast::Index const *node,
                                 type::Slice const *slice_type,
-                                type::Qualifiers quals, type::QualType index_qt) {
+                                type::Qualifiers quals,
+                                type::QualType index_qt) {
   // TODO: Emit errors when possible for out-of-bounds indices. Or probabl just
   // do this with properties/symbolic-execution.
   quals = (quals & index_qt.quals()) | type::Qualifiers::Buffer();
@@ -109,7 +110,8 @@ type::QualType VerifySliceIndex(CompilationDataReference data,
 type::QualType VerifyArrayIndex(CompilationDataReference data,
                                 ast::Index const *node,
                                 type::Array const *array_type,
-                                type::Qualifiers quals, type::QualType index_qt) {
+                                type::Qualifiers quals,
+                                type::QualType index_qt) {
   if (index_qt.quals() <= ~type::Qualifiers::Constant()) {
     quals &= ~type::Qualifiers::Constant();
   }

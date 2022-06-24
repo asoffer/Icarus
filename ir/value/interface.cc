@@ -49,8 +49,8 @@ bool PointerInterface::representation_type::BindsTo(InterfaceManager const& im,
   return im.BindsTo(pointee_, p->pointee());
 }
 
-bool BufferPointerInterface::representation_type::BindsTo(InterfaceManager const& im,
-                                                    type::Type t) const {
+bool BufferPointerInterface::representation_type::BindsTo(
+    InterfaceManager const& im, type::Type t) const {
   auto const* p = t.if_as<type::BufferPointer>();
   if (not p) { return false; }
   return im.BindsTo(pointee_, p->pointee());
@@ -102,7 +102,6 @@ bool InterfaceManager::BindsTo(Interface i, type::Type t) const {
       return slice_.from_index(i.index_).BindsTo(*this, t);
     case Interface::Kind::UserDefined:
       return user_defined_[i.index_].BindsTo(*this, t);
-
   }
 }
 

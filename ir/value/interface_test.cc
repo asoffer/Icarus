@@ -63,4 +63,3 @@ TEST(PreciseInterface, BindsTo) {
 
 }  // namespace
 }  // namespace ir
-

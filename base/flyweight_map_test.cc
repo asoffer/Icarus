@@ -200,7 +200,7 @@ TEST(FlyweightMap, StressTest) {
   flyweight_map<size_t, size_t> f;
   for (size_t i = 0; i < 1000; ++i) {
     f.try_emplace(i);
-    for (auto [j, ignored] : f) { ASSERT_EQ(f.index(j) , j) << i; }
+    for (auto [j, ignored] : f) { ASSERT_EQ(f.index(j), j) << i; }
   }
 }
 

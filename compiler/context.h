@@ -358,7 +358,7 @@ struct Context {
   }
 
   absl::AnyInvocable<void(ast::Declaration::Id const *,
-                           ir::CompleteResultBuffer) const> const &
+                          ir::CompleteResultBuffer) const> const &
   value_callback() const {
     if (value_callback_) { return value_callback_; }
     return ASSERT_NOT_NULL(parent())->value_callback();
@@ -427,7 +427,7 @@ struct Context {
   absl::AnyInvocable<void(ast::Declaration::Id const *, type::QualType) const>
       qt_callback_;
   absl::AnyInvocable<void(ast::Declaration::Id const *,
-                           ir::CompleteResultBuffer) const>
+                          ir::CompleteResultBuffer) const>
       value_callback_;
 };
 

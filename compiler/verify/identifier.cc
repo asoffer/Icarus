@@ -157,11 +157,13 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         if (qt.HasErrorMark()) { return context().set_qual_type(node, qt); }
 
         if (qt.type().is<type::Array>()) {
-          qt = type::QualType(qt.type(), qt.quals() | type::Qualifiers::Buffer());
+          qt = type::QualType(qt.type(),
+                              qt.quals() | type::Qualifiers::Buffer());
         }
 
         // TODO: shouldn't need to reconstruct just to set the quals.
-        qt = type::QualType(qt.type(), qt.quals() | type::Qualifiers::Storage());
+        qt =
+            type::QualType(qt.type(), qt.quals() | type::Qualifiers::Storage());
       }
 
       if (qt.type().is<type::Callable>() or

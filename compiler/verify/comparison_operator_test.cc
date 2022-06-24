@@ -101,7 +101,7 @@ TEST(ComparisonOperator, BufferPointerOrder) {
 //               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
 //   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 // }
-// 
+//
 // TEST_P(OperatorOverload, MissingOverloads) {
 //   test::CompilerInfrastructure infra;
 //   auto &mod        = infra.add_module(absl::StrFormat(
@@ -116,9 +116,10 @@ TEST(ComparisonOperator, BufferPointerOrder) {
 //               UnorderedElementsAre(type::QualType::NonConstant(type::Bool)));
 //   EXPECT_THAT(infra.diagnostics(),
 //               UnorderedElementsAre(
-//                   Pair("type-error", "invalid-comparison-operator-overload")));
+//                   Pair("type-error",
+//                   "invalid-comparison-operator-overload")));
 // }
-// 
+//
 // TODO: Support operator overloading for comparisons.
 // INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
 //                          testing::ValuesIn({"<", "<=", "==", "!=", ">=",

@@ -88,9 +88,9 @@ TEST(Copy, Uncopyable) {
   auto id_qts      = mod.context().qual_types(id);
   auto const *expr = &stmts[stmts.size() - 1]->as<ast::UnaryOperator>();
   auto expr_qts    = mod.context().qual_types(expr);
-  EXPECT_THAT(expr_qts,
-              UnorderedElementsAre(type::QualType(
-                  id_qts[0].type(), id_qts[0].quals() & ~type::Qualifiers::Storage())));
+  EXPECT_THAT(expr_qts, UnorderedElementsAre(type::QualType(
+                            id_qts[0].type(),
+                            id_qts[0].quals() & ~type::Qualifiers::Storage())));
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "uncopyable-type")));
 }
@@ -133,9 +133,9 @@ TEST(Move, Immovable) {
   auto id_qts      = mod.context().qual_types(id);
   auto const *expr = &stmts[stmts.size() - 1]->as<ast::UnaryOperator>();
   auto expr_qts    = mod.context().qual_types(expr);
-  EXPECT_THAT(expr_qts,
-              UnorderedElementsAre(type::QualType(
-                  id_qts[0].type(), id_qts[0].quals() & ~type::Qualifiers::Storage())));
+  EXPECT_THAT(expr_qts, UnorderedElementsAre(type::QualType(
+                            id_qts[0].type(),
+                            id_qts[0].quals() & ~type::Qualifiers::Storage())));
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "immovable-type")));
 }
@@ -192,8 +192,8 @@ TEST(At, Pointer) {
   )");
   auto const *expr = mod.get<ast::UnaryOperator>();
   auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(
-      qts, UnorderedElementsAre(type::QualType(type::I64, type::Qualifiers::Storage())));
+  EXPECT_THAT(qts, UnorderedElementsAre(
+                       type::QualType(type::I64, type::Qualifiers::Storage())));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
@@ -205,8 +205,8 @@ TEST(At, BufferPointer) {
   )");
   auto const *expr = mod.get<ast::UnaryOperator>();
   auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(
-      qts, UnorderedElementsAre(type::QualType(type::I64, type::Qualifiers::Buffer())));
+  EXPECT_THAT(qts, UnorderedElementsAre(
+                       type::QualType(type::I64, type::Qualifiers::Buffer())));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 

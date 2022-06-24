@@ -2,8 +2,8 @@
 #define ICARUS_COMPILER_COMPILATION_DATA_H
 
 #include "absl/container/flat_hash_set.h"
-#include "ast/ast.h"
 #include "absl/functional/any_invocable.h"
+#include "ast/ast.h"
 #include "compiler/context.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"
@@ -43,7 +43,7 @@ struct CompilationDataReference {
     return v.back();
   };
 
-  ir::InterfaceManager & interface_manager() const {
+  ir::InterfaceManager &interface_manager() const {
     return *data_.resources.interface_manager;
   }
 

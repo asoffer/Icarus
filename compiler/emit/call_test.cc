@@ -153,7 +153,6 @@ TEST(CallTest, Foreign) {
   }
 }
 
-
 TEST(CallTest, BuiltinCallable) {
   {
     test::CompilerInfrastructure infra;
@@ -161,7 +160,7 @@ TEST(CallTest, BuiltinCallable) {
     auto &mod     = infra.add_module("builtin.callable()");
     auto const *e = mod.get<ast::Expression>();
     auto result   = infra.Evaluate(mod, e);
-    auto x = infra.Evaluate(mod, e);
+    auto x        = infra.Evaluate(mod, e);
     EXPECT_THAT(
         x, Optional(Eq(test::ExpectedValue(ir::Interface(im.Callable({}))))))
         << x->num_entries()
@@ -173,7 +172,7 @@ TEST(CallTest, BuiltinCallable) {
     auto &mod     = infra.add_module("builtin.callable(i32)");
     auto const *e = mod.get<ast::Expression>();
     auto result   = infra.Evaluate(mod, e);
-    auto x = infra.Evaluate(mod, e);
+    auto x        = infra.Evaluate(mod, e);
     EXPECT_THAT(x, Optional(Eq(test::ExpectedValue(
                        ir::Interface(im.Callable(core::Arguments<ir::Interface>(
                            {ir::Interface(im.Precisely(type::I32))}, {})))))))
@@ -182,11 +181,11 @@ TEST(CallTest, BuiltinCallable) {
   }
   {
     test::CompilerInfrastructure infra;
-    auto &im      = infra.interface_manager();
-    auto &mod     = infra.add_module("builtin.callable(i32, builtin.callable())");
+    auto &im  = infra.interface_manager();
+    auto &mod = infra.add_module("builtin.callable(i32, builtin.callable())");
     auto const *e = mod.get<ast::Expression>();
     auto result   = infra.Evaluate(mod, e);
-    auto x = infra.Evaluate(mod, e);
+    auto x        = infra.Evaluate(mod, e);
     EXPECT_THAT(x, Optional(Eq(test::ExpectedValue(
                        ir::Interface(im.Callable(core::Arguments<ir::Interface>(
                            {ir::Interface(im.Precisely(type::I32)),

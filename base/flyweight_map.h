@@ -18,7 +18,7 @@ namespace internal_flyweight_map {
 struct Index {
   size_t value;
 };
-}  // namespace internal_flyweight_set
+}  // namespace internal_flyweight_map
 
 // `flyweight_map<K, M>` is an ordered associative container, where the keys are
 // guaranteed to be distinct. Pointers to elements in the container are never
@@ -44,7 +44,6 @@ struct flyweight_map {
   using const_reference = typename std::deque<value_type>::const_reference;
   using pointer         = value_type*;
   using const_pointer   = value_type const*;
-
 
   flyweight_map() : set_(0, H(&values_), E(&values_)) {}
   flyweight_map(flyweight_map&& m)
@@ -149,7 +148,7 @@ struct flyweight_map {
                                            std::forward_as_tuple(t),
                                            std::forward_as_tuple(args...));
       auto iter     = std::prev(values_.end());
-      set_.insert({.value = values_.size() -1});
+      set_.insert({.value = values_.size() - 1});
       return std::pair<iterator, bool>(iter, true);
     }
   }

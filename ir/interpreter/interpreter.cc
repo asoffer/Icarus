@@ -45,7 +45,8 @@ BasicBlock const* InterpretInstruction(interpreter::Interpreter& interpreter,
     } else if constexpr (jump_type == base::meta<JumpCmd::UncondJump>) {
       return j.block;
     } else if constexpr (jump_type == base::meta<JumpCmd::CondJump>) {
-      return interpreter.frame().resolve<bool>(j.reg) ? j.true_block : j.false_block;
+      return interpreter.frame().resolve<bool>(j.reg) ? j.true_block
+                                                      : j.false_block;
     } else {
       static_assert(base::always_false(jump_type));
     }
@@ -95,14 +96,13 @@ bool Interpreter::push_frame(Subroutine const* subroutine,
                           .num_outputs           = outputs.size(),
                           .num_stack_allocations = subroutine->num_allocs()});
 
-  subroutine->for_each_alloc(
-      core::Host, [&, next_reg_loc = core::Bytes(), i = 0](core::TypeContour tc,
-                                                           Reg) mutable {
-        next_reg_loc = core::FwdAlign(next_reg_loc, tc.alignment());
-        frame.set(Reg::StackAllocation(i++),
-                  frame.frame() + next_reg_loc.value());
-        next_reg_loc += tc.bytes();
-      });
+  subroutine->for_each_alloc(core::Host, [&, next_reg_loc = core::Bytes(),
+                                          i = 0](core::TypeContour tc,
+                                                 Reg) mutable {
+    next_reg_loc = core::FwdAlign(next_reg_loc, tc.alignment());
+    frame.set(Reg::StackAllocation(i++), frame.frame() + next_reg_loc.value());
+    next_reg_loc += tc.bytes();
+  });
 
   for (size_t i = 0; i < arguments.num_entries(); ++i) {
     base::untyped_buffer_view argument = arguments[i].raw();

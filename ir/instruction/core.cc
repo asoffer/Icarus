@@ -28,8 +28,9 @@ std::string CallInstruction::to_string() const {
       ss << args_[i].get<Reg>();
       a = ss.str();
     } else {
-      a = Representation(args_[i].AsComplete(),
-                         fn_type_.as<type::Function>().parameters()[i].value.type());
+      a = Representation(
+          args_[i].AsComplete(),
+          fn_type_.as<type::Function>().parameters()[i].value.type());
     }
     absl::StrAppend(&arg_str, std::exchange(separator, ", "), a);
   }

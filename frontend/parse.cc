@@ -1395,7 +1395,8 @@ std::unique_ptr<ast::Node> BuildInterfaceLiteral(
   auto &id      = elements[0]->as<ast::Identifier>();
   auto id_range = id.range();
 
-  absl::flat_hash_map<std::string_view, std::unique_ptr<ast::Expression>> members;
+  absl::flat_hash_map<std::string_view, std::unique_ptr<ast::Expression>>
+      members;
   auto statements = std::move(nodes[2]->as<Statements>()).extract();
   for (auto &statement : statements) {
     auto [ids, type, expr] =

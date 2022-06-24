@@ -34,7 +34,8 @@ struct CastTypeToInterface
     : base::Extend<CastTypeToInterface>::With<base::BaseTraverseExtension,
                                               base::BaseSerializeExtension,
                                               ir::DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "%3$s = precisely %2$s (%1$s)";
+  static constexpr std::string_view kDebugFormat =
+      "%3$s = precisely %2$s (%1$s)";
 
   friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
                                    CastTypeToInterface const &inst) {
@@ -50,7 +51,7 @@ struct CastTypeToInterface
   ir::Reg result;
 };
 
-struct CallableInterfaceInstruction{
+struct CallableInterfaceInstruction {
   std::string to_string() const {
     std::string args;
     std::string_view separator;

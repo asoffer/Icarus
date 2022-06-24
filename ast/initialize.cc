@@ -426,7 +426,7 @@ void InterfaceLiteral::Initialize(Initializer& initializer) {
   body_scope().set_parent(initializer.scope);
   initializer.scope = &body_scope();
   context_decl_->Initialize(initializer);
-  absl::Cleanup c   = [&] { initializer.scope = scope_; };
+  absl::Cleanup c = [&] { initializer.scope = scope_; };
   for (auto& [name, member] : members_) { member->Initialize(initializer); }
 }
 

@@ -306,7 +306,8 @@ absl::Span<type::QualType const> AccessTypeMember(CompilationDataReference c,
 // different module.
 type::QualType AccessStructMember(CompilationDataReference data,
                                   ast::Access const *node,
-                                  type::Struct const *s, type::Qualifiers quals) {
+                                  type::Struct const *s,
+                                  type::Qualifiers quals) {
   auto &s_mod = data.resources()
                     .shared_context->module_table()
                     .module(s->defining_module())
@@ -442,7 +443,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     if (auto const *s = base_type.if_as<type::Slice>()) {
       if (node->member_name() == "length") {
         return context().set_qual_type(
-            node, type::QualType(type::U64, quals | type::Qualifiers::Storage()));
+            node,
+            type::QualType(type::U64, quals | type::Qualifiers::Storage()));
       } else if (node->member_name() == "data") {
         return context().set_qual_type(
             node, type::QualType(type::BufPtr(s->data_type()),

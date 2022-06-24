@@ -141,7 +141,8 @@ struct RegisterInstruction
 
   friend bool InterpretInstruction(interpreter::Interpreter& interpreter,
                                    RegisterInstruction const& inst) {
-    interpreter.frame().set(inst.result, interpreter.frame().resolve(inst.operand));
+    interpreter.frame().set(inst.result,
+                            interpreter.frame().resolve(inst.operand));
     return true;
   }
 

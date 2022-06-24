@@ -40,7 +40,7 @@ struct CompiledModule : module::Module {
   void SymbolsByName(absl::FunctionRef<void(
                          std::string_view, absl::Span<SymbolInformation const>)>
                          f) const override {
-    for (auto const& [name, symbols] : exported_) { f(name, symbols); }
+    for (auto const &[name, symbols] : exported_) { f(name, symbols); }
   }
 
   FunctionInformation Function(ir::LocalFnId id) const override {

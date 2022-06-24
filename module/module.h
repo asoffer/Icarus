@@ -96,7 +96,6 @@ struct Module : base::Cast<Module> {
   };
 
  public:
-
   // Returns an identifier for this module unique across all modules being
   // linked together.
   std::string_view identifier() const { return identifier_; }

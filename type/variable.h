@@ -11,7 +11,9 @@ struct Variable : LegacyType {
 
   void WriteTo(std::string *buf) const override { buf->append("var(?)"); }
   core::Bytes bytes(core::Arch const &arch) const override { UNREACHABLE(); }
-  core::Alignment alignment(core::Arch const &arch) const override { UNREACHABLE(); }
+  core::Alignment alignment(core::Arch const &arch) const override {
+    UNREACHABLE();
+  }
 
   bool is_big() const override { return false; }
 

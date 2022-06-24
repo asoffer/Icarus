@@ -33,7 +33,6 @@ ffi_type *FfiType(type::Type t) {
 }
 }  // namespace
 
-
 // Initializes `call_interface`, returning a bool indicating whether or not
 // initialization was successful.
 bool InitializeCallInterface(type::ReturningType const &type,
@@ -47,7 +46,9 @@ bool InitializeCallInterface(type::ReturningType const &type,
 
   size_t i = 0;
   for (auto const &parameter : type.parameters()) {
-    if (parameter.value.quals() != type::Qualifiers::Unqualified()) { return false; }
+    if (parameter.value.quals() != type::Qualifiers::Unqualified()) {
+      return false;
+    }
     argument_types[i++] = FfiType(parameter.value.type());
   }
 
@@ -60,8 +61,8 @@ bool InitializeCallInterface(type::ReturningType const &type,
 namespace internal_ffi {
 
 bool InvokeForeignFunctionImpl(type::ReturningType const &type, void (*fn)(),
-                           CompleteResultBuffer const &arguments,
-                           addr_t return_slot) {
+                               CompleteResultBuffer const &arguments,
+                               addr_t return_slot) {
   ASSERT(type.return_types().size() == (return_slot ? 1 : 0));
   size_t count = type.parameters().size();
 
@@ -93,4 +94,4 @@ bool InvokeForeignFunctionImpl(type::ReturningType const &type, void (*fn)(),
 
 }  // namespace internal_ffi
 
-}  // namespace
+}  // namespace ir::interpreter

@@ -21,10 +21,9 @@ struct AddInstruction
     : base::Extend<AddInstruction<NumType>>::template With<
           base::BaseTraverseExtension, base::BaseSerializeExtension,
           DebugFormatExtension> {
-  using num_type = NumType;
-  using operand_type =
-      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
-                         addr_t>;
+  using num_type     = NumType;
+  using operand_type = std::conditional_t<interpreter::FitsInRegister<num_type>,
+                                          num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = add %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
@@ -53,10 +52,9 @@ struct SubInstruction
     : base::Extend<SubInstruction<NumType>>::template With<
           base::BaseTraverseExtension, base::BaseSerializeExtension,
           DebugFormatExtension> {
-  using num_type = NumType;
-  using operand_type =
-      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
-                         addr_t>;
+  using num_type     = NumType;
+  using operand_type = std::conditional_t<interpreter::FitsInRegister<num_type>,
+                                          num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = sub %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
@@ -85,10 +83,9 @@ struct MulInstruction
     : base::Extend<MulInstruction<NumType>>::template With<
           base::BaseTraverseExtension, base::BaseSerializeExtension,
           DebugFormatExtension> {
-  using num_type = NumType;
-  using operand_type =
-      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
-                         addr_t>;
+  using num_type     = NumType;
+  using operand_type = std::conditional_t<interpreter::FitsInRegister<num_type>,
+                                          num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = mul %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
@@ -117,10 +114,9 @@ struct DivInstruction
     : base::Extend<DivInstruction<NumType>>::template With<
           base::BaseTraverseExtension, base::BaseSerializeExtension,
           DebugFormatExtension> {
-  using num_type = NumType;
-  using operand_type =
-      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
-                         addr_t>;
+  using num_type     = NumType;
+  using operand_type = std::conditional_t<interpreter::FitsInRegister<num_type>,
+                                          num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = div %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
@@ -160,10 +156,9 @@ struct ModInstruction
     : base::Extend<ModInstruction<NumType>>::template With<
           base::BaseTraverseExtension, base::BaseSerializeExtension,
           DebugFormatExtension> {
-  using num_type = NumType;
-  using operand_type =
-      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
-                         addr_t>;
+  using num_type     = NumType;
+  using operand_type = std::conditional_t<interpreter::FitsInRegister<num_type>,
+                                          num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%3$s = mod %1$s %2$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,
@@ -192,10 +187,9 @@ struct NegInstruction
     : base::Extend<NegInstruction<NumType>>::template With<
           base::BaseTraverseExtension, base::BaseSerializeExtension,
           DebugFormatExtension> {
-  using num_type = NumType;
-  using operand_type =
-      std::conditional_t<interpreter::FitsInRegister<num_type>, num_type,
-                         addr_t>;
+  using num_type     = NumType;
+  using operand_type = std::conditional_t<interpreter::FitsInRegister<num_type>,
+                                          num_type, addr_t>;
   static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
 
   friend bool InterpretInstruction(interpreter::Interpreter &interpreter,

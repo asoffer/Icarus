@@ -278,8 +278,8 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
         qt = type::QualType(type::BufPtr(operand_type),
                             type::Qualifiers::Unqualified());
       } else if (operand_qt.quals() >= type::Qualifiers::Storage()) {
-        qt =
-            type::QualType(type::Ptr(operand_type), type::Qualifiers::Unqualified());
+        qt = type::QualType(type::Ptr(operand_type),
+                            type::Qualifiers::Unqualified());
       } else {
         diag().Consume(NonAddressableExpression{.view = node->range()});
         qt = type::QualType::Error();

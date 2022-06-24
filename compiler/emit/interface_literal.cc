@@ -27,7 +27,7 @@ ir::Subroutine MakeInterfaceSubroutine(Compiler &c,
       .value    = result[0].get<ir::Interface>(),
       .location = ir::Reg::Output(0),
   });
-   c.current_block()->set_jump(ir::JumpCmd::Return());
+  c.current_block()->set_jump(ir::JumpCmd::Return());
   return fn;
 }
 
@@ -86,4 +86,3 @@ void Compiler::EmitMoveInit(
 }
 
 }  // namespace compiler
-

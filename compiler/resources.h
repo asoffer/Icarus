@@ -24,8 +24,8 @@ struct PersistentResources {
   diagnostic::DiagnosticConsumer* diagnostic_consumer;
   module::Importer* importer;
   module::SharedContext* shared_context;
-  ir::InterfaceManager * interface_manager = &GlobalInterfaceManager;
-  core::Arch architecture = core::Host;
+  ir::InterfaceManager* interface_manager = &GlobalInterfaceManager;
+  core::Arch architecture                 = core::Host;
 };
 
 }  // namespace compiler

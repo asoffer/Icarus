@@ -94,9 +94,9 @@ PrecompiledModule::Load(std::string const& import_name,
           .qualified_type = type::QualType(
               local_type_system.from_index(info.value().type_id()),
               type::Qualifiers::FromValue(info.qualifiers())),
-          .value =
-              DeserializeValue(shared_context.module_table(), module_proto.modules(),
-                               local_type_system, info.value()),
+          .value      = DeserializeValue(shared_context.module_table(),
+                                    module_proto.modules(), local_type_system,
+                                    info.value()),
           .visibility = info.visible() ? module::Module::Visibility::Exported
                                        : module::Module::Visibility::Private,
       });
@@ -122,7 +122,7 @@ PrecompiledModule::Load(std::string const& import_name,
 module::Module::FunctionInformation PrecompiledModule::Function(
     ir::LocalFnId id) const {
   ASSERT(id.value() < proto_.subroutines().size());
-  auto const & subroutine = subroutines_[id.value()];
+  auto const& subroutine = subroutines_[id.value()];
   return module::Module::FunctionInformation{
       .type       = &subroutine.type()->as<type::Function>(),
       .subroutine = &subroutine,

@@ -106,9 +106,10 @@ struct ArrayInstruction
 
   friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
                                    ArrayInstruction const &inst) {
-    interpreter.frame().set(inst.result, Type(Arr(*reinterpret_cast<length_t const *>(
-                                        interpreter.frame().resolve(inst.length)),
-                                    interpreter.frame().resolve(inst.data_type))));
+    interpreter.frame().set(
+        inst.result, Type(Arr(*reinterpret_cast<length_t const *>(
+                                  interpreter.frame().resolve(inst.length)),
+                              interpreter.frame().resolve(inst.data_type))));
     return true;
   }
 

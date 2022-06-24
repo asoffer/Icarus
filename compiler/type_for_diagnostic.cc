@@ -111,8 +111,8 @@ struct StringifyType {
     // TODO: Look at all the elements type-spellings and choose the best one.
     // TODO: If the element-type is also an array, shorten the lengths, unless
     // the common spelling for elements of that type is a better alias.
-    return absl::StrCat("[", node->size(), "; ", (*this)(node->elements().front()),
-                        "]");
+    return absl::StrCat("[", node->size(), "; ",
+                        (*this)(node->elements().front()), "]");
   }
 
   std::string operator()(ast::ArrayType const *node) { return "type"; }

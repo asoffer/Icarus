@@ -52,7 +52,6 @@ struct InstructionSerializer {
   // null address, so we can simply skip serialization.
   void write(addr_t a) { ASSERT(a == Null()); }
 
-
   void write(std::string_view s) {
     base::Serialize(*this, s.size());
     write_bytes(absl::MakeConstSpan(

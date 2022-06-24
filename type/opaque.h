@@ -39,7 +39,6 @@ struct OpaqueTypeInstruction
                                                 ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = opaque %1$s";
 
-
   friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
                                    OpaqueTypeInstruction const &inst);
 

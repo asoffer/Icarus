@@ -6,9 +6,9 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/functional/function_ref.h"
 #include "absl/types/span.h"
-#include "absl/functional/any_invocable.h"
 #include "ir/module.h"
 #include "ir/subroutine.h"
 #include "ir/value/fn.h"

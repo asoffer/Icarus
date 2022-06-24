@@ -20,8 +20,8 @@ template <typename T>
 concept FunctionPointer = FunctionPointerImpl<T>::value;
 
 bool InvokeForeignFunctionImpl(type::ReturningType const &type, void (*fn)(),
-                           CompleteResultBuffer const &arguments,
-                           addr_t return_slot);
+                               CompleteResultBuffer const &arguments,
+                               addr_t return_slot);
 
 }  // namespace internal_ffi
 

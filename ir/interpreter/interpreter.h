@@ -57,36 +57,36 @@ struct Interpreter {
     fatal_error_ = std::forward<std::string>(error_message);
   }
 
-   private:
-    struct InstructionPointer {
-      explicit InstructionPointer(Subroutine const* s)
-          : basic_block(ASSERT_NOT_NULL(s)->entry()),
-            iterator(s->entry()->instructions().begin()),
-            previous_basic_block(nullptr) {}
+ private:
+  struct InstructionPointer {
+    explicit InstructionPointer(Subroutine const* s)
+        : basic_block(ASSERT_NOT_NULL(s)->entry()),
+          iterator(s->entry()->instructions().begin()),
+          previous_basic_block(nullptr) {}
 
-      void update(BasicBlock const* next) {
-        previous_basic_block = std::exchange(basic_block, next);
-        iterator             = basic_block->instructions().begin();
-      }
+    void update(BasicBlock const* next) {
+      previous_basic_block = std::exchange(basic_block, next);
+      iterator             = basic_block->instructions().begin();
+    }
 
-      BasicBlock const* basic_block;
-      absl::Span<Inst const>::iterator iterator;
-      BasicBlock const* previous_basic_block;
-    };
-
-    // Executes the interpreter from the current instruction pointer
-    // (`instruction_pointers_.back()`) until an instruction either returns
-    // false or the end of the basic block is reached. If an instruction
-    // returned false, a null pointer is returned. Otherwise, the jump
-    // instruction at the end of the block is executed and the to-be-jumped-to
-    // block is returned.
-    BasicBlock const* InterpretFromInstructionPointer();
-
-    std::vector<StackFrame> frames_;
-    std::vector<InstructionPointer> instruction_pointers_;
-    module::SharedContext const& context_;
-    std::string fatal_error_;
+    BasicBlock const* basic_block;
+    absl::Span<Inst const>::iterator iterator;
+    BasicBlock const* previous_basic_block;
   };
+
+  // Executes the interpreter from the current instruction pointer
+  // (`instruction_pointers_.back()`) until an instruction either returns
+  // false or the end of the basic block is reached. If an instruction
+  // returned false, a null pointer is returned. Otherwise, the jump
+  // instruction at the end of the block is executed and the to-be-jumped-to
+  // block is returned.
+  BasicBlock const* InterpretFromInstructionPointer();
+
+  std::vector<StackFrame> frames_;
+  std::vector<InstructionPointer> instruction_pointers_;
+  module::SharedContext const& context_;
+  std::string fatal_error_;
+};
 
 std::optional<CompleteResultBuffer> Interpret(
     module::SharedContext const& context, Subroutine const& subroutine,

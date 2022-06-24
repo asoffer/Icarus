@@ -208,7 +208,7 @@ TEST(BuiltinCallable, WithOneType) {
 
 TEST(BuiltinCallable, WithOneInterface) {
   test::CompilerInfrastructure infra;
-  auto &mod         = infra.add_module(R"(builtin.callable(builtin.callable()))");
+  auto &mod = infra.add_module(R"(builtin.callable(builtin.callable()))");
   auto const *call  = mod.get<ast::Call>();
   type::QualType qt = mod.context().qual_types(call)[0];
   EXPECT_EQ(qt, type::QualType::Constant(type::Interface));

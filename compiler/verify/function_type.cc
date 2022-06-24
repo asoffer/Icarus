@@ -36,7 +36,7 @@ struct NonTypeFunctionOutput {
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::FunctionType const *node) {
-  type::Type t      = type::Type_;
+  type::Type t           = type::Type_;
   type::Qualifiers quals = type::Qualifiers::Constant();
 
   for (auto const *p : node->parameters()) {

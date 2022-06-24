@@ -142,7 +142,7 @@ TEST(FlyweightSet, StressTest) {
   flyweight_set<size_t> f;
   for (size_t i = 0; i < 1000; ++i) {
     f.insert(i);
-    for (size_t j : f) { ASSERT_EQ(f.index(j) , j) << i; }
+    for (size_t j : f) { ASSERT_EQ(f.index(j), j) << i; }
   }
 }
 
