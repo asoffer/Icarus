@@ -40,7 +40,6 @@ cc_library(
     srcs = ["generic_fn.cc"],
     deps = [
         ":result_buffer",
-        "//base:any_invocable",
         "//base:extend",
         "//base/extend:absl_format",
         "//base/extend:absl_hash",
@@ -51,6 +50,7 @@ cc_library(
         "//ir:module",
         "//type",
         "//type:typed_value",
+        "@com_google_absl//absl/functional:any_invocable",
     ],
 )
 
@@ -211,7 +211,6 @@ cc_library(
         ":reg",
         ":result_buffer",
         ":scope",
-        "//base:any_invocable",
         "//base:extend",
         "//base/extend:absl_format",
         "//base/extend:absl_hash",
@@ -222,6 +221,7 @@ cc_library(
         "//type:block",
         "//type:generic",
         "//type:scope",
+        "@com_google_absl//absl/functional:any_invocable",
     ],
 )
 

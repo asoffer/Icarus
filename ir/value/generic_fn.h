@@ -4,7 +4,7 @@
 #include <functional>
 #include <iostream>
 
-#include "base/any_invocable.h"
+#include "absl/functional/any_invocable.h"
 #include "base/extend.h"
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
@@ -33,7 +33,7 @@ struct GenericFn : base::Extend<GenericFn, 1>::With<base::EqualityExtension,
   static constexpr std::string_view kAbslFormatString = "GenericFn(id = %u)";
   explicit GenericFn()                                = default;
   explicit GenericFn(
-      base::any_invocable<
+      absl::AnyInvocable<
           Fn(compiler::WorkResources const &wr,
              core::Arguments<type::Typed<CompleteResultRef>> const &)>
           gen);

@@ -223,10 +223,10 @@ cc_library(
         ":type",
         ":type_fwd",
         ":typed_value",
-        "//base:any_invocable",
         "//compiler:work_resources",
         "//core:arch",
         "//core:arguments",
+        "@com_google_absl//absl/functional:any_invocable",
     ],
 )
 

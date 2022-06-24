@@ -3,7 +3,7 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "ast/ast.h"
-#include "base/any_invocable.h"
+#include "absl/functional/any_invocable.h"
 #include "compiler/context.h"
 #include "compiler/resources.h"
 #include "compiler/transient_state.h"

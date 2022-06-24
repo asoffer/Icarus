@@ -26,7 +26,7 @@ void Compiler::EmitToBuffer(ast::ScopeLiteral const *node,
                             ir::PartialResultBuffer &out) {
   scope_data.push_front(ir::UnboundScope::Data{
       .literal = node,
-      .f       = base::any_invocable<ir::Scope(
+      .f       = absl::AnyInvocable<ir::Scope(
           WorkResources const &, ir::ScopeContext const &,
           core::Arguments<type::Typed<ir::CompleteResultRef>> const &)>(
           [node, d = this->data()](

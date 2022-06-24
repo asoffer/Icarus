@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "base/any_invocable.h"
+#include "absl/functional/any_invocable.h"
 #include "base/extend.h"
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
@@ -97,7 +97,7 @@ struct UnboundScope
     // tohave a better solution.
     ast::ScopeLiteral const *literal;
 
-    base::any_invocable<Scope(
+    absl::AnyInvocable<Scope(
         compiler::WorkResources const &, ScopeContext const &,
         core::Arguments<type::Typed<CompleteResultRef>> const &)>
         f;

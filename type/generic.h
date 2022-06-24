@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "base/any_invocable.h"
+#include "absl/functional/any_invocable.h"
 #include "compiler/work_resources.h"
 #include "core/arch.h"
 #include "core/arguments.h"
@@ -26,7 +26,7 @@ struct Generic : LegacyType {
                                      .is_movable               = 1,
                                      .has_destructor           = 0}) {}
 
-  explicit Generic(base::any_invocable<instantiation_type const *(
+  explicit Generic(absl::AnyInvocable<instantiation_type const *(
                        compiler::WorkResources const &,
                        core::Arguments<Typed<ir::CompleteResultRef>> const &)>
                        fn)
@@ -59,7 +59,7 @@ struct Generic : LegacyType {
     return core::Host.pointer().alignment();
   }
 
-  void set_invocable(base::any_invocable<instantiation_type const *(
+  void set_invocable(absl::AnyInvocable<instantiation_type const *(
                          compiler::WorkResources const &,
                          core::Arguments<Typed<ir::CompleteResultRef>> const &)>
                          gen) {
@@ -68,7 +68,7 @@ struct Generic : LegacyType {
 
  private:
   // TODO: Eventually we will want a serializable version of this.
-  base::any_invocable<instantiation_type const *(
+  mutable absl::AnyInvocable<instantiation_type const *(
       compiler::WorkResources const &,
       core::Arguments<Typed<ir::CompleteResultRef>> const &)>
       gen_;

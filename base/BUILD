@@ -1,20 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "any_invocable",
-    hdrs = ["any_invocable.h"],
-)
-
-cc_test(
-    name = "any_invocable_test",
-    srcs = ["any_invocable_test.cc"],
-    deps = [
-        ":any_invocable",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "cast",
     hdrs = ["cast.h"],
     deps = [":debug"],

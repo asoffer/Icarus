@@ -31,7 +31,7 @@ struct SharedContext {
  public:
   explicit SharedContext(
       std::unique_ptr<BuiltinModule> m,
-      base::any_invocable<ir::Inst(ir::InstructionProto const &)>
+      absl::AnyInvocable<ir::Inst(ir::InstructionProto const &) const>
           instruction_deserializer)
       : table_(std::move(m)),
         instruction_deserializer_(std::move(instruction_deserializer)) {}
@@ -71,7 +71,7 @@ struct SharedContext {
   base::flyweight_map<std::pair<std::string, type::Function const *>,
                       void (*)()>
       foreign_fn_map_;
-  base::any_invocable<ir::Inst(ir::InstructionProto const &)>
+  absl::AnyInvocable<ir::Inst(ir::InstructionProto const &) const>
       instruction_deserializer_;
 };
 

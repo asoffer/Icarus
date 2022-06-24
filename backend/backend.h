@@ -3,7 +3,7 @@
 
 #include <deque>
 
-#include "base/any_invocable.h"
+#include "absl/functional/any_invocable.h"
 #include "base/meta.h"
 #include "ir/subroutine.h"
 #include "ir/value/fn.h"
@@ -13,11 +13,11 @@ namespace internal_backend {
 
 template <typename T>
 struct CompilationPass {
-  explicit CompilationPass(base::any_invocable<T(ir::Subroutine const &)> emit)
+  explicit CompilationPass(absl::AnyInvocable<T(ir::Subroutine const &)> emit)
       : emit_(std::move(emit)) {}
 
  private:
-  base::any_invocable<T(ir::Subroutine const &)> emit_;
+  absl::AnyInvocable<T(ir::Subroutine const &)> emit_;
 };
 
 }  // namespace internal_backend
@@ -25,7 +25,7 @@ struct CompilationPass {
 template <typename... Ts>
 struct CompilationPassSet {
   explicit CompilationSet(
-      base::any_invocable<T(ir::Subroutine const &)>... emitters)
+      absl::AnyInvocable<T(ir::Subroutine const &)>... emitters)
       : internal_backend::CompilationPass<Ts>(std::move(emitters))... {}
 
   template <base::one_of<Ts...> T>

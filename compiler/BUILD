@@ -271,7 +271,6 @@ cc_library(
         ":resources",
         ":transient_state",
         "//ast",
-        "//base:any_invocable",
         "//diagnostic/consumer",
         "//ir/value:result_buffer",
         "//module:importer",
@@ -279,6 +278,7 @@ cc_library(
         "//type",
         "//type:typed_value",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:any_invocable",
     ],
 )
 

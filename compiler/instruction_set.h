@@ -47,7 +47,7 @@ struct InstructionIndex {
  private:
   static base::flyweight_map<
       base::MetaValue,
-      base::any_invocable<ir::Inst(ir::InstructionProto const &)>>
+      absl::AnyInvocable<ir::Inst(ir::InstructionProto const &) const>>
       kDeserializer;
   static base::flyweight_set<base::MetaValue> kIndex;
 };
@@ -57,11 +57,12 @@ base::flyweight_set<base::MetaValue> InstructionIndex<Is...>::kIndex{
     base::meta<Is>...};
 
 template <typename... Is>
-base::flyweight_map<base::MetaValue,
-                    base::any_invocable<ir::Inst(ir::InstructionProto const &)>>
+base::flyweight_map<base::MetaValue, absl::AnyInvocable<ir::Inst(
+                                         ir::InstructionProto const &) const>>
     InstructionIndex<Is...>::kDeserializer = [] {
-      base::flyweight_map<base::MetaValue, base::any_invocable<ir::Inst(
-                                               ir::InstructionProto const &)>>
+      base::flyweight_map<
+          base::MetaValue,
+          absl::AnyInvocable<ir::Inst(ir::InstructionProto const &) const>>
           result;
       (result.try_emplace(base::meta<Is>, DeserializeInstruction<Is>), ...);
       return result;

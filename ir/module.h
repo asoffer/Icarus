@@ -7,7 +7,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
-#include "base/any_invocable.h"
+#include "absl/functional/any_invocable.h"
 #include "base/debug.h"
 #include "base/iterator.h"
 #include "ir/subroutine.h"

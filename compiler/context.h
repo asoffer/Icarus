@@ -331,16 +331,17 @@ struct Context {
   // TODO: This is a temporary mechanism to get Id information into
   // CompiledModule as we migrate to merging these two and separating out
   // pre-compiled modules to not be AST-dependent.
-  void set_qt_callback(
-      base::any_invocable<void(ast::Declaration::Id const *, type::QualType)>
-          f) {
+  void set_qt_callback(absl::AnyInvocable<void(ast::Declaration::Id const *,
+                                               type::QualType) const>
+                           f) {
     ASSERT(qt_callback_ == nullptr);
     ASSERT(f != nullptr);
     qt_callback_ = std::move(f);
   }
-  void set_value_callback(base::any_invocable<void(ast::Declaration::Id const *,
-                                                   ir::CompleteResultBuffer)>
-                              f) {
+  void set_value_callback(
+      absl::AnyInvocable<void(ast::Declaration::Id const *,
+                              ir::CompleteResultBuffer) const>
+          f) {
     ASSERT(value_callback_ == nullptr);
     ASSERT(f != nullptr);
     value_callback_ = std::move(f);
@@ -349,15 +350,15 @@ struct Context {
  private:
   explicit Context(Context *parent);
 
-  base::any_invocable<void(ast::Declaration::Id const *, type::QualType)> const
-      &
-      qt_callback() const {
+  absl::AnyInvocable<void(ast::Declaration::Id const *, type::QualType)
+                         const> const &
+  qt_callback() const {
     if (qt_callback_) { return qt_callback_; }
     return ASSERT_NOT_NULL(parent())->qt_callback();
   }
 
-  base::any_invocable<void(ast::Declaration::Id const *,
-                           ir::CompleteResultBuffer)> const &
+  absl::AnyInvocable<void(ast::Declaration::Id const *,
+                           ir::CompleteResultBuffer) const> const &
   value_callback() const {
     if (value_callback_) { return value_callback_; }
     return ASSERT_NOT_NULL(parent())->value_callback();
@@ -423,10 +424,10 @@ struct Context {
   absl::node_hash_set<std::vector<ir::ScopeContext::block_type>>
       scope_context_data_;
 
-  base::any_invocable<void(ast::Declaration::Id const *, type::QualType)>
+  absl::AnyInvocable<void(ast::Declaration::Id const *, type::QualType) const>
       qt_callback_;
-  base::any_invocable<void(ast::Declaration::Id const *,
-                           ir::CompleteResultBuffer)>
+  absl::AnyInvocable<void(ast::Declaration::Id const *,
+                           ir::CompleteResultBuffer) const>
       value_callback_;
 };
 

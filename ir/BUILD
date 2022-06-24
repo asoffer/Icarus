@@ -32,7 +32,6 @@ cc_library(
     srcs = ["module.cc"],
     deps = [
         ":subroutine",
-        "//base:any_invocable",
         "//base:debug",
         "//base:iterator",
         "//ir/value:fn",
@@ -41,6 +40,7 @@ cc_library(
         "//type:pointer",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/functional:any_invocable",
     ],
 )
 
