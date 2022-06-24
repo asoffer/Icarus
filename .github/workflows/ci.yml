@@ -6,14 +6,19 @@ on:
     branches: [master, main]
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       ICARUS_MODULE_PATH: stdlib
     steps:
-      - name: Setup bazel
-        uses: abhinavsingh/setup-bazel@v3
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Bazel cache
+        id: bazel-cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/bazel
+          key: ${{ runner.os }}-bazel-cache
       - name: Test
         run: >-
           bazel test --
