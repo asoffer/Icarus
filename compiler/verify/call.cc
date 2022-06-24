@@ -347,15 +347,14 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             return context().set_qual_type(node,
                                            VerifyCallableCall(*this, arg_vals));
           }
-        } else {
-          auto callee_qt = VerifyType(node->callee())[0];
-
-          LOG("Call", "Callee's qual-type is %s", callee_qt);
-          if (not callee_qt.ok()) {
-            return context().set_qual_type(node, type::QualType::Error());
-          }
         }
 
+        auto callee_qt = VerifyType(node->callee())[0];
+
+        LOG("Call", "Callee's qual-type is %s", callee_qt);
+        if (not callee_qt.ok()) {
+          return context().set_qual_type(node, type::QualType::Error());
+        }
         context().SetCallMetadata(
             node, CallMetadata(access->member_name(), &importer().get(mod_id)));
       } else {

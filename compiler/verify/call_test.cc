@@ -11,6 +11,17 @@ using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
+TEST(NonExistantBuiltin, ErrorMessage) {
+  test::CompilerInfrastructure infra;
+  auto &mod         = infra.add_module(R"(builtin.not_a_real_builtin(1, 1))");
+  auto const *call  = mod.get<ast::Call>();
+  type::QualType qt = mod.context().qual_types(call)[0];
+  EXPECT_EQ(qt, type::QualType::Error());
+  EXPECT_THAT(infra.diagnostics(),
+              UnorderedElementsAre(
+                  Pair("type-error", "undeclared-identifier-in-module")));
+}
+
 TEST(BuiltinReserveMemory, FunctionSuccess) {
   test::CompilerInfrastructure infra;
   auto &mod         = infra.add_module(R"(builtin.reserve_memory(1, 1))");
