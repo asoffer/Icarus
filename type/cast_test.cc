@@ -51,6 +51,8 @@ TEST(CanCast, Implicitly) {
 
   EXPECT_TRUE(CanCastImplicitly(Type_, Interface));
   EXPECT_FALSE(CanCastImplicitly(Interface, Type_));
+
+  EXPECT_TRUE(CanCastImplicitly(Integer, F64));
 }
 
 TEST(CanCastExplicitly, Char) {
@@ -152,6 +154,8 @@ TEST(CanCastExplicitly, Integral) {
   EXPECT_TRUE(CanCastExplicitly(I64, I64));
   EXPECT_TRUE(CanCastExplicitly(I64, F32));
   EXPECT_TRUE(CanCastExplicitly(I64, F64));
+
+  EXPECT_TRUE(CanCastExplicitly(Integer, F64));
 }
 
 TEST(CanCastExplicitly, Arithmetic) {

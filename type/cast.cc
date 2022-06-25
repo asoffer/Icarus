@@ -68,7 +68,7 @@ struct CastVisitor {
             return to.is<Pointer>();
           }
         case Primitive::Kind::Integer:
-          if constexpr (Kind == CastKind::Implicit) {
+          if constexpr (Kind != CastKind::InPlace) {
             return IsNumeric(to);
           } else {
             return false;
