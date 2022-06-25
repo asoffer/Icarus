@@ -54,7 +54,7 @@ type::QualType VerifyGeneric(CompilationDataReference data,
 
   return data.context().set_qual_type(
       node, type::QualType::Constant(
-                new type::Generic<type::Function>(std::move(gen))))[0];
+                new type::LegacyGeneric<type::Function>(std::move(gen))))[0];
 }
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(

@@ -149,7 +149,7 @@ cc_library(
         "//compiler:module",
         "//compiler:resources",
         "//ir/instruction",
-        "//type:generic",
+        "//type:legacy_generic",
     ],
 )
 
@@ -467,6 +467,7 @@ cc_library(
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//type",
+        "//type:generic",
     ],
 )
 

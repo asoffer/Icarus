@@ -400,7 +400,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::Call const *node,
   // that seems like a bad idea.
   ASSIGN_OR(return false,  //
                    auto qt, VerifyType(*this, node->callee())[0]);
-  if (auto const *gs = qt.type().if_as<type::Generic<type::Struct>>()) {
+  if (auto const *gs = qt.type().if_as<type::LegacyGeneric<type::Struct>>()) {
     for (auto const &arg : node->arguments()) {
       // TODO: Having these always be types is problematic, but for now we don't
       // have a way to deduce another possibility.

@@ -18,7 +18,7 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
   } else {
     result =
         context().set_qual_type(node, type::QualType::Constant(type::Type_));
-    match_type = type::Type_;
+    match_type = type::Interface;
   }
 
   auto &q         = state().verify_pattern_type_queues.emplace_back();

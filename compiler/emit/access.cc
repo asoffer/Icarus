@@ -88,7 +88,7 @@ void Compiler::EmitToBuffer(ast::Access const *node,
 
   type::QualType node_qt = context().qual_types(node)[0];
   if (node_qt.type().is<type::Block>() or
-      node_qt.type().is<type::Generic<type::Block>>()) {
+      node_qt.type().is<type::LegacyGeneric<type::Block>>()) {
     auto scope_context =
         *EvaluateOrDiagnoseAs<ir::ScopeContext>(node->operand());
     out.append(scope_context.find(node->member_name()));

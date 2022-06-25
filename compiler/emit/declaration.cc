@@ -173,8 +173,8 @@ void Compiler::EmitMoveInit(
 }
 
 void Compiler::EmitToBuffer(ast::BindingDeclaration const *node,
-                            ir::PartialResultBuffer &) {
-  UNREACHABLE();
+                            ir::PartialResultBuffer &out) {
+  out.append(ir::Interface(resources().interface_manager->UserDefined({})));
 }
 
 bool Compiler::PatternMatch(

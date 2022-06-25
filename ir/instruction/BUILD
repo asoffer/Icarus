@@ -119,7 +119,7 @@ cc_library(
         "//ir/value:reg_or",
         "//module",
         "//type:array",
-        "//type:generic",
+        "//type:legacy_generic",
         "//type:pointer",
         "//type:struct",
         "@com_google_absl//absl/status:statusor",

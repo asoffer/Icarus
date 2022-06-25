@@ -2,7 +2,7 @@
 
 #include "type/block.h"
 #include "type/function.h"
-#include "type/generic.h"
+#include "type/legacy_generic.h"
 #include "type/struct.h"
 
 namespace compiler {

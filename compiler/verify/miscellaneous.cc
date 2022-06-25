@@ -125,9 +125,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
     type::Type t   = qt.type();
     auto *as_block = t.if_as<type::Block>();
     using ptr_union_type =
-        base::PtrUnion<type::Block const, type::Generic<type::Block> const>;
+        base::PtrUnion<type::Block const, type::LegacyGeneric<type::Block> const>;
     auto ptr = as_block ? ptr_union_type(as_block)
-                        : ptr_union_type(&t.as<type::Generic<type::Block>>());
+                        : ptr_union_type(&t.as<type::LegacyGeneric<type::Block>>());
     blocks.push_back({.name = block.name(), .type = ptr, .node = &block});
   }
   // TODO: Validation that this scope context is valid for use with the unbound

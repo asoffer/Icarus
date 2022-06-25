@@ -221,6 +221,16 @@ cc_library(
     hdrs = ["generic.h"],
     deps = [
         ":type",
+        "//core:arch",
+        "//ir/value:interface",
+    ],
+)
+
+cc_library(
+    name = "legacy_generic",
+    hdrs = ["legacy_generic.h"],
+    deps = [
+        ":type",
         ":type_fwd",
         ":typed_value",
         "//compiler:work_resources",
@@ -370,6 +380,7 @@ cc_library(
     srcs = ["provenance.cc"],
     deps = CONCRETE_TYPES + [
         ":generic",
+        ":legacy_generic",
         ":overload_set",
         "//ir/value:module_id",
         "//module",

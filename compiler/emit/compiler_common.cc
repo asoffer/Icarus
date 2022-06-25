@@ -26,7 +26,7 @@ ir::OutParams SetReturns(
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *fn_type = type.if_as<type::Function>()) {
     return c.OutParams(fn_type->return_types(), to);
-  } else if (type.is<type::Generic<type::Function>>()) {
+  } else if (type.is<type::LegacyGeneric<type::Function>>()) {
     NOT_YET(type.to_string());
   } else {
     NOT_YET(type.to_string());
@@ -71,7 +71,7 @@ CalleeResult EmitCallee(
   if (auto const *callable_expr = callable.get_if<ast::Expression>()) {
     type::QualType qt = c.context().qual_types(callable_expr)[0];
     if (auto const *gf_type =
-            qt.type().if_as<type::Generic<type::Function>>()) {
+            qt.type().if_as<type::LegacyGeneric<type::Function>>()) {
       ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(callable_expr).value();
 
       // TODO: declarations aren't callable_expr so we shouldn't have to check
@@ -92,7 +92,7 @@ CalleeResult EmitCallee(
                   DefaultsFor(callable_expr, find_subcontext_result.context),
               .context = &find_subcontext_result.context};
     } else if (auto const *gs_type =
-                   qt.type().if_as<type::Generic<type::Struct>>()) {
+                   qt.type().if_as<type::LegacyGeneric<type::Struct>>()) {
       ir::Fn fn = c.EmitAs<ir::Fn>(callable_expr).value();
 
       // TODO: declarations aren't callable_expr so we shouldn't have to check
@@ -161,7 +161,7 @@ CalleeResult EmitCallee(
         *callable.get<module::Module::SymbolInformation>();
     type::QualType qt = symbol_info.qualified_type;
     if (auto const *gf_type =
-            qt.type().if_as<type::Generic<type::Function>>()) {
+            qt.type().if_as<type::LegacyGeneric<type::Function>>()) {
       ir::GenericFn gen_fn     = symbol_info.value[0].get<ir::GenericFn>();
       auto *parameterized_expr = &symbol_info.id->declaration()
                                       .init_val()
@@ -174,7 +174,7 @@ CalleeResult EmitCallee(
                                       find_subcontext_result.context),
               .context  = &find_subcontext_result.context};
     } else if (auto const *gs_type =
-                   qt.type().if_as<type::Generic<type::Struct>>()) {
+                   qt.type().if_as<type::LegacyGeneric<type::Struct>>()) {
       NOT_YET();
     } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
       if (type::Qualifiers::Constant() <= qt.quals()) {

@@ -3,6 +3,7 @@
 #include "compiler/compiler.h"
 #include "compiler/emit/copy_move_assignment.h"
 #include "diagnostic/message.h"
+#include "type/generic.h"
 
 namespace compiler {
 namespace {
@@ -28,17 +29,18 @@ struct PatternMatchFailure {
 
 void Compiler::EmitToBuffer(ast::PatternMatch const *node,
                             ir::PartialResultBuffer &out) {
-  ir::CompleteResultBuffer buffer;
-  type::Type t;
-  if (node->is_binary()) {
-    t      = context().qual_types(node)[0].type();
-    buffer = *EvaluateToBufferOrDiagnose(
-        type::Typed<ast::Expression const *>(&node->expr(), t));
-  } else {
-    t = type::Type_;
-    buffer.append(context().arg_type(
-        node->expr().as<ast::Declaration>().ids()[0].name()));
+  if (not node->is_binary()) {
+    EmitToBuffer(&node->pattern(), out);
+    ir::RegOr<ir::Interface> intf = out.back().get<ir::Interface>();
+    out.pop_back();
+    out.append(current_block()->Append(type::GenericTypeInstruction{
+        .interface = intf, .result = current().subroutine->Reserve()}));
+    return;
   }
+
+  type::Type t                    = context().qual_types(node)[0].type();
+  ir::CompleteResultBuffer buffer = *EvaluateToBufferOrDiagnose(
+      type::Typed<ast::Expression const *>(&node->expr(), t));
   out = buffer;
 
   auto &q         = state().pattern_match_queues.emplace_back();

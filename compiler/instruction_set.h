@@ -14,6 +14,7 @@
 #include "type/flags.h"
 #include "type/function.h"
 #include "type/function_instructions.h"
+#include "type/generic.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/pointer_instructions.h"
@@ -193,6 +194,7 @@ struct InstructionSet
           type::SliceInstruction, type::StructDataInstruction,
           type::StructInstruction, type::AllocateStructInstruction,
           type::EnumInstruction, type::FlagsInstruction, type::ArrayInstruction,
+          type::GenericTypeInstruction,
 
           // Type access instructions
           type::SliceLengthInstruction, type::SliceDataInstruction,
@@ -344,6 +346,6 @@ struct InstructionSet
           ir::CopyInitInstruction, ir::MoveInstruction, ir::CopyInstruction,
           ir::PtrDiffInstruction, ir::DebugIrInstruction,
           type::IsAFunctionInstruction, LoadInterfaceManagerInstruction,
-          CallableInterfaceInstruction> {};
+          CallableInterfaceInstruction, PointerInterfaceInstruction> {};
 
 }  // namespace compiler

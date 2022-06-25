@@ -97,9 +97,9 @@ struct UninitializedConstant {
 
 bool Shadows(type::Type t1, type::Type t2) {
   // TODO: Don't worry about generic shadowing? It'll be checked later?
-  if (t1.is<type::Generic<type::Function>>() or
-      t2.is<type::Generic<type::Function>>() or t1 == type::UnboundScope or
-      t2 == type::UnboundScope) {
+  if (t1.is<type::LegacyGeneric<type::Function>>() or
+      t2.is<type::LegacyGeneric<type::Function>>() or
+      t1 == type::UnboundScope or t2 == type::UnboundScope) {
     return false;
   }
 
@@ -148,8 +148,8 @@ type::QualType VerifyDeclarationType(CompilationDataReference data,
 // Verifies the type of a declaration of the form `x: t`.
 type::QualType VerifyDefaultInitialization(CompilationDataReference data,
                                            ast::Declaration const *node) {
-  ASSIGN_OR(return type::QualType::Error(), auto qt,
-                   VerifyDeclarationType(data, node));
+  ASSIGN_OR(return type::QualType::Error(),  //
+                   auto qt, VerifyDeclarationType(data, node));
   if (not(node->flags() & ast::Declaration::f_IsFnParam) and
       not qt.type().get()->IsDefaultInitializable()) {
     data.diag().Consume(NoDefaultValue{

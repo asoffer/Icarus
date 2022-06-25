@@ -5,7 +5,7 @@
 #include "compiler/resources.h"
 #include "compiler/verify/common.h"
 #include "compiler/verify/verify.h"
-#include "type/generic.h"
+#include "type/legacy_generic.h"
 #include "type/qual_type.h"
 #include "type/struct.h"
 #include "type/typed_value.h"

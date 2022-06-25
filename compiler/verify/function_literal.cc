@@ -161,108 +161,70 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
   return JoinReturnTypes(data.diag(), InferReturnTypes(data.context(), node));
 }
 
-type::QualType VerifyConcrete(CompilationDataReference data,
-                              ast::FunctionLiteral const *node) {
-  LOG("FunctionLiteral", "VerifyConcrete %s", node->DebugString());
-  TypeVerifier tv(data);
-  ASSIGN_OR(return type::QualType::Error(),  //
-                   auto params, VerifyParameters(tv, node->parameters()));
-  if (auto outputs = node->outputs()) {
-    std::vector<type::Type> output_type_vec(outputs->size());
-    bool error = false;
+std::optional<std::vector<type::Type>> VerifyReturnTypes(
+    CompilationDataReference data,
+    base::PtrSpan<ast::Expression const> outputs) {
+  std::vector<type::Type> return_types;
+  return_types.reserve(outputs.size());
+  bool error = false;
 
-    // TODO: Output types could depend on each other.
-    for (auto *output : *outputs) {
-      auto result = VerifyType(data, output)[0];
-      if (not result) {
-        error = true;
-      } else if (result.type() != type::Type_) {
-        error = true;
-        // TODO: Declarations are given the type of the variable being declared.
-        data.diag().Consume(ReturningNonType{
-            .view = output->range(),
-            .type = TypeForDiagnostic(output, data.context()),
-        });
-      }
-    }
-
-    if (error) { return type::QualType::Error(); }
-
-    for (size_t i = 0; i < output_type_vec.size(); ++i) {
-      if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
-        output_type_vec[i] = data.context().qual_types(decl)[0].type();
-      } else if (auto maybe_type =
-                     data.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i])) {
-        output_type_vec[i] = *maybe_type;
-      }
-    }
-
-    LOG("FunctionLiteral", "Request work fn-lit: %p, %p", node,
-        &data.context());
-    data.Enqueue({.kind    = WorkItem::Kind::VerifyFunctionBody,
-                  .node    = node,
-                  .context = &data.context()});
-    return type::QualType::Constant(
-        type::Func(std::move(params), std::move(output_type_vec)));
-  } else {
-    if (auto maybe_return_types = VerifyBodyOnly(data, node)) {
-      return type::QualType::Constant(
-          type::Func(std::move(params), *std::move(maybe_return_types)));
-    } else {
-      return type::QualType::Error();
+  // TODO: Output types could depend on each other.
+  for (auto *output : outputs) {
+    auto result = VerifyType(data, output)[0];
+    if (not result) {
+      error = true;
+    } else if (result.type() != type::Type_) {
+      error = true;
+      // TODO: Declarations are given the type of the variable being declared.
+      data.diag().Consume(ReturningNonType{
+          .view = output->range(),
+          .type = TypeForDiagnostic(output, data.context()),
+      });
     }
   }
+
+  if (error) { return std::nullopt; }
+
+  for (auto const *output : outputs) {
+    if (auto *decl = output->if_as<ast::Declaration>()) {
+      return_types.push_back(data.context().qual_types(decl)[0].type());
+    } else if (auto maybe_type =
+                   data.EvaluateOrDiagnoseAs<type::Type>(output)) {
+      return_types.push_back(*maybe_type);
+    }
+  }
+  return return_types;
 }
 
 }  // namespace
 
-type::QualType VerifyGeneric(CompilationDataReference data,
-                             ast::FunctionLiteral const *node) {
-  auto gen = [node, comp_data = data.data()](
-                 WorkResources const &wr,
-                 core::Arguments<type::Typed<ir::CompleteResultRef>> const
-                     &args) mutable -> type::Function const * {
-    comp_data.work_resources = wr;
-    ASSIGN_OR(
-        return nullptr,  //
-               auto result,
-               Instantiate(CompilationDataReference(&comp_data), node, args));
-    auto const &[params, rets_ref, context, inserted] = result;
-
-    if (inserted) {
-      LOG("FunctionLiteral", "inserted! %s into %s", node->DebugString(),
-          context.DebugString());
-      CompilationData data{.context        = &context,
-                           .work_resources = wr,
-                           .resources      = comp_data.resources};
-      auto qt   = VerifyConcrete(CompilationDataReference(&data), node);
-      auto outs = qt.type().as<type::Function>().return_types();
-      rets_ref.assign(outs.begin(), outs.end());
-
-      // TODO: Provide a mechanism by which this can fail.
-      ASSERT(qt.ok() == true);
-      context.set_qual_type(node, qt);
-      // TODO: We shouldn't have a queue per compiler. We may not be able to
-      // verify these yet.
-      return &qt.type().as<type::Function>();
-    } else {
-      LOG("FunctionLiteral", "cached! %s", node->DebugString());
-      type::Function const *ft = type::Func(params, rets_ref);
-      context.set_qual_type(node, type::QualType::Constant(ft));
-      return ft;
-    }
-  };
-
-  return type::QualType::Constant(
-      type::Allocate<type::Generic<type::Function>>(std::move(gen)));
-}
-
 absl::Span<type::QualType const> TypeVerifier::VerifyType(
     ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "Verifying %p: %s", node, node->DebugString());
-  auto qt = node->is_generic() ? VerifyGeneric(*this, node)
-                               : VerifyConcrete(*this, node);
-  return context().set_qual_type(node, qt);
+
+  ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
+                   auto params, VerifyParameters(*this, node->parameters()));
+
+  if (auto outputs = node->outputs()) {
+    ASSIGN_OR(return context().set_qual_type(node, type::QualType::Error()),
+                     auto return_types, VerifyReturnTypes(*this, *outputs));
+
+    LOG("FunctionLiteral", "Request work fn-lit: %p, %p", node, &context());
+    Enqueue({.kind    = WorkItem::Kind::VerifyFunctionBody,
+             .node    = node,
+             .context = &context()});
+    return context().set_qual_type(
+        node, type::QualType::Constant(
+                  type::Func(std::move(params), std::move(return_types))));
+  } else {
+    if (auto maybe_return_types = VerifyBodyOnly(*this, node)) {
+      return context().set_qual_type(
+          node, type::QualType::Constant(type::Func(
+                    std::move(params), *std::move(maybe_return_types))));
+    } else {
+      return context().set_qual_type(node, type::QualType::Error());
+    }
+  }
 }
 
 // TODO: Nothing about this has been comprehensively tested. Especially the

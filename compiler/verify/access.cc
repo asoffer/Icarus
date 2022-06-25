@@ -489,8 +489,9 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
             node,
             type::QualType::Constant(
                 b ? type::Type(b)
-                  : type::Type(possibly_generic_block
-                                   .get_if<type::Generic<type::Block>>())));
+                  : type::Type(
+                        possibly_generic_block
+                            .get_if<type::LegacyGeneric<type::Block>>())));
       }
     } else {
       // TODO: Improve this error message. It's not just that the member is

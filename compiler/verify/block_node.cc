@@ -60,7 +60,7 @@ type::QualType VerifyGeneric(CompilationDataReference comp_data,
   };
 
   return type::QualType::Constant(
-      type::Allocate<type::Generic<type::Block>>(std::move(gen)));
+      type::Allocate<type::LegacyGeneric<type::Block>>(std::move(gen)));
 }
 
 absl::Span<type::QualType const> TypeVerifier::VerifyType(

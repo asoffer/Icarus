@@ -11,7 +11,7 @@
 #include "compiler/module.h"
 #include "compiler/resources.h"
 #include "ir/instruction/instructions.h"
-#include "type/generic.h"
+#include "type/legacy_generic.h"
 
 namespace compiler {
 namespace {
@@ -143,7 +143,7 @@ void Compiler::EmitToBuffer(ast::Call const *node,
   auto qts = context().qual_types(node);
 
   // Constant arguments need to be computed entirely before being used to
-  // instantiate a generic function.
+  // instantiate a Legacygeneric function.
   ir::CompleteResultBuffer buffer;
   auto constant_arguments =
       EmitConstantArguments(*this, node->arguments(), buffer);
@@ -152,7 +152,7 @@ void Compiler::EmitToBuffer(ast::Call const *node,
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
-                                .if_as<type::Generic<type::Struct>>()) {
+                                .if_as<type::LegacyGeneric<type::Struct>>()) {
     out.append(
         type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     return;
@@ -201,7 +201,7 @@ void Compiler::EmitMoveInit(
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
-                                .if_as<type::Generic<type::Struct>>()) {
+                                .if_as<type::LegacyGeneric<type::Struct>>()) {
     ir::RegOr<type::Type> t(
         type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
@@ -246,7 +246,7 @@ void Compiler::EmitCopyInit(
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
-                                .if_as<type::Generic<type::Struct>>()) {
+                                .if_as<type::LegacyGeneric<type::Struct>>()) {
     ir::RegOr<type::Type> t(
         type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
@@ -291,7 +291,7 @@ void Compiler::EmitMoveAssign(
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
-                                .if_as<type::Generic<type::Struct>>()) {
+                                .if_as<type::LegacyGeneric<type::Struct>>()) {
     ir::RegOr<type::Type> t(
         type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;
@@ -335,7 +335,7 @@ void Compiler::EmitCopyAssign(
   if (auto const *gs_type = context()
                                 .qual_types(node->callee())[0]
                                 .type()
-                                .if_as<type::Generic<type::Struct>>()) {
+                                .if_as<type::LegacyGeneric<type::Struct>>()) {
     ir::RegOr<type::Type> t(
         type::Type(gs_type->Instantiate(work_resources(), constant_arguments)));
     ir::PartialResultBuffer t_buf;

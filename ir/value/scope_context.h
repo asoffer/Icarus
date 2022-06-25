@@ -19,7 +19,7 @@
 #include "ir/value/result_buffer.h"
 #include "ir/value/scope.h"
 #include "type/block.h"
-#include "type/generic.h"
+#include "type/legacy_generic.h"
 #include "type/scope.h"
 
 namespace ir {
@@ -31,7 +31,8 @@ struct ScopeContext
   // instantiate a block-type.
   struct block_type : base::Extend<block_type>::With<base::AbslHashExtension> {
     std::string_view name;
-    base::PtrUnion<type::Block const, type::Generic<type::Block> const> type;
+    base::PtrUnion<type::Block const, type::LegacyGeneric<type::Block> const>
+        type;
     ast::BlockNode const *node;
   };
 

@@ -30,6 +30,27 @@ struct LoadInterfaceManagerInstruction
   ir::Reg result;
 };
 
+struct PointerInterfaceInstruction
+    : base::Extend<PointerInterfaceInstruction>::With<
+          base::BaseTraverseExtension, base::BaseSerializeExtension,
+          ir::DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat =
+      "%3$s = ptr-intf %2$s (%1$s)";
+
+  friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
+                                   PointerInterfaceInstruction const &inst) {
+    auto &im = *reinterpret_cast<ir::InterfaceManager *>(
+        interpreter.frame().resolve<ir::addr_t>(inst.manager));
+    interpreter.frame().set(
+        inst.result, im.Pointer(interpreter.frame().resolve(inst.pointee)));
+    return true;
+  }
+
+  ir::Reg manager;
+  ir::RegOr<ir::Interface> pointee;
+  ir::Reg result;
+};
+
 struct CastTypeToInterface
     : base::Extend<CastTypeToInterface>::With<base::BaseTraverseExtension,
                                               base::BaseSerializeExtension,

@@ -61,7 +61,7 @@ cc_library(
         "//type:cast",
         "//type:enum",
         "//type:flags",
-        "//type:generic",
+        "//type:legacy_generic",
         "//type:overload_set",
         "//type:pointer",
         "//type:primitive",

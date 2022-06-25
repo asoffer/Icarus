@@ -35,7 +35,7 @@ cc_library(
         "//module",
         "//type:block",
         "//type:function",
-        "//type:generic",
+        "//type:legacy_generic",
         "//type:struct",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
@@ -140,6 +140,7 @@ cc_library(
         "//type:scope",
         "//type:slice",
         "//type:struct",
+        "//type:legacy_generic",
         "//type:generic",
         "//type",
     ],
@@ -189,7 +190,7 @@ cc_library(
         "//type:scope",
         "//type:slice",
         "//type:struct",
-        "//type:generic",
+        "//type:legacy_generic",
         "//type",
     ],
 )
@@ -326,7 +327,7 @@ cc_library(
         "//compiler/verify",
         "//ir:subroutine",
         "//ir/interpreter",
-        "//type:generic",
+        "//type:legacy_generic",
     ] + IR_EMISSION,
 )
 

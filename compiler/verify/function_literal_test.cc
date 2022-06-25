@@ -246,7 +246,7 @@ TEST(FunctionLiteral, ConstantParameter) {
   auto const* e = mod.get<ast::Expression>();
   auto qts      = mod.context().qual_types(e);
   EXPECT_GE(qts[0].quals(), type::Qualifiers::Constant());
-  EXPECT_TRUE(qts[0].type().is<type::Generic<type::Function>>());
+  EXPECT_TRUE(qts[0].type().is<type::LegacyGeneric<type::Function>>());
 }
 
 // TODO: Add tests that verify multiple return values get joined correctly.

@@ -219,7 +219,7 @@ cc_library(
         "//compiler:work_resources",
         "//ir:subroutine",
         "//type:block",
-        "//type:generic",
+        "//type:legacy_generic",
         "//type:scope",
         "@com_google_absl//absl/functional:any_invocable",
     ],

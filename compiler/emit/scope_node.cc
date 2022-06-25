@@ -99,7 +99,7 @@ ir::BasicBlock *AdjustJumpsAndEmitBlocks(
           c.EmitToBuffer(block_to_emit, ignored);
           c.current_block()->set_jump(ir::JumpCmd::Uncond(exit));
         } else {
-          auto const &gb = t.as<type::Generic<type::Block>>();
+          auto const &gb = t.as<type::LegacyGeneric<type::Block>>();
           // TODO: From here we need to find the instantiation, which requires
           // knowing the bound arguments and types thereof.
 
