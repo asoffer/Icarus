@@ -268,6 +268,7 @@ cc_library(
         ":initialize",
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:interface_instructions",
         "//compiler:module",
         "//ir/value:addr",
         "//ir/value:reg_or",

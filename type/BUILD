@@ -109,6 +109,7 @@ cc_library(
         ":enum",
         ":flags",
         ":function",
+        ":generic",
         ":opaque",
         ":pointer",
         ":primitive",

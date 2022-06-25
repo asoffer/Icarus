@@ -7,6 +7,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
+#include "type/generic.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -42,6 +43,10 @@ struct CastVisitor {
 
   bool operator()(Type from, Type to) {
     if (to == from) { return true; }
+
+    if (auto const *g = to.if_as<type::Generic>()) {
+      return g->manager().BindsTo(g->interface(), from);
+    }
 
     if constexpr (Kind == CastKind::InPlace) {
       if (to == Byte) { return true; }

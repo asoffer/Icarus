@@ -2,7 +2,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/copy_move_assignment.h"
-#include "compiler/interface_instructions.h"
 #include "diagnostic/message.h"
 #include "type/generic.h"
 
@@ -29,15 +28,6 @@ struct PatternMatchFailure {
 void EmitGenericType(Compiler &c, ast::Expression const &expr,
                      ir::PartialResultBuffer &out) {
   c.EmitToBuffer(&expr, out);
-  ir::RegOr<ir::Interface> intf = out.back().get<ir::Interface>();
-  out.pop_back();
-  out.append(c.current_block()->Append(type::GenericTypeInstruction{
-      .interface = intf,
-      .manager   = c.current_block()->Append(LoadInterfaceManagerInstruction{
-          .result = c.current().subroutine->Reserve(),
-      }),
-      .result    = c.current().subroutine->Reserve(),
-  }));
 }
 
 void EmitPatternMatch(Compiler &c, ast::PatternMatch const *node,

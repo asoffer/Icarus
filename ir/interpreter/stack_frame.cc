@@ -41,7 +41,10 @@ std::byte const* StackFrame::find(Reg r) const {
 
 void StackFrame::set_raw(ir::Reg r, void const* src, uint16_t num_bytes) {
   ASSERT(num_bytes <= register_size);
-  std::memcpy(find(r), src, num_bytes);
+  std::byte* dst = find(r);
+  ASSERT(std::distance(dst, registers_.data() + registers_.size()) >=
+         num_bytes);
+  std::memcpy(dst, src, num_bytes);
 }
 
 base::untyped_buffer_view StackFrame::raw(ir::Reg r) const {

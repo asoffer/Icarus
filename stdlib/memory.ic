@@ -15,8 +15,7 @@ allocate ::= (T :: type, l: u64) -> [/]T {
 }
 
 #{export}
-// TODO: Accept either a pointer or a buffer pointer.
-deallocate ::= (ptr: ~`T) -> () {
+deallocate ::= (ptr: ~*`T) -> () {
   cstdlib.free(ptr as [*]byte)
 }
 

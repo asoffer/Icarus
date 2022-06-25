@@ -40,18 +40,10 @@ max_impl ::= (t :: type) -> integer {
   if (t == i16) { return 32767 }
   if (t == i32) { return 2147483647 }
   if (t == i64) { return 9223372036854775807 }
-  'abort // TODO: This should emit an error message. Or better yet we should
-         // constrain `t` to only accept supported types.
+  // TODO: This should emit an error message. Or better yet we should constrain 
+  // `t` to only accept supported types.
+  builtin.abort()
 }
 
 #{export}
 max ::= (t :: type) => max_impl(t) as t
-
-#{export}
-element_array_of ::= (num :: integer, value: ~`t) -> [num; t] {
-  result: [num; t]
-  for (0, num) do [i: i64] {
-    result[i] = copy value
-  }
-  return result
-}

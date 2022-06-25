@@ -26,7 +26,8 @@ bool CallableInterface::representation_type::BindsTo(InterfaceManager const& m,
 
 bool UserDefinedInterface::representation_type::BindsTo(
     InterfaceManager const& m, type::Type t) const {
-  NOT_YET();
+  for (auto const& [member, subroutine] : members_) { NOT_YET(); }
+  return true;
 }
 
 PreciseInterface InterfaceManager::Precisely(type::Type t) {
@@ -121,7 +122,7 @@ std::string InterfaceManager::DebugString(Interface i) const {
     case Interface::Kind::Slice:
       return absl::StrCat(
           "[](", DebugString(slice_.from_index(i.index_).data_type_), ")");
-    case Interface::Kind::UserDefined: NOT_YET();
+    case Interface::Kind::UserDefined: return "??";
   }
 }
 

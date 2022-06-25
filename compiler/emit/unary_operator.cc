@@ -136,21 +136,10 @@ void Compiler::EmitToBuffer(ast::UnaryOperator const *node,
       out.append(EmitRef(node->operand()));
       return;
     case ast::UnaryOperator::Kind::Pointer: {
-      auto operand_type = context().qual_types(node->operand())[0].type();
-      if (operand_type == type::Type_) {
-        out.append(current_block()->Append(type::PtrInstruction{
-            .operand = EmitAs<type::Type>(node->operand()),
-            .result  = current().subroutine->Reserve(),
-        }));
-      } else {
-        out.append(current_block()->Append(PointerInterfaceInstruction{
-            .manager = current_block()->Append(LoadInterfaceManagerInstruction{
-                .result = current().subroutine->Reserve(),
-            }),
-            .pointee = EmitAs<ir::Interface>(node->operand()),
-            .result  = current().subroutine->Reserve(),
-        }));
-      }
+      out.append(current_block()->Append(type::PtrInstruction{
+          .operand = EmitAs<type::Type>(node->operand()),
+          .result  = current().subroutine->Reserve(),
+      }));
       return;
     } break;
     case ast::UnaryOperator::Kind::At: {

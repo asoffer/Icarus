@@ -385,7 +385,7 @@ bool PatternTypeVerifier::VerifyPatternType(ast::UnaryOperator const *node,
       break;
     case ast::UnaryOperator::Kind::BufferPointer:
     case ast::UnaryOperator::Kind::Pointer:
-      if (t != type::Type_ and t != type::Interface) {
+      if (t != type::Type_) {
         diag().Consume(PatternTypeMismatch{
             .pattern_type = t.to_string(),  // TODO: Improve this.
             .matched_type = "type",

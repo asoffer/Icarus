@@ -88,6 +88,7 @@ bool Interpreter::push_frame(Subroutine const* subroutine,
                              absl::Span<addr_t const> outputs) {
   ASSERT(subroutine != nullptr);
   ASSERT(subroutine->blocks().size() != 0);
+  ASSERT(subroutine->type()->parameters().size() == arguments.num_entries());
 
   auto& frame = frames_.emplace_back(
       StackFrame::Summary{.required_stack_space  = StackFrameSize(*subroutine),

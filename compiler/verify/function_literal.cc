@@ -297,11 +297,23 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
     if (not type::CanCastImplicitly((*maybe_return_types)[i],
                                     fn_type.return_types()[i])) {
       error = true;
+
+      // TODO: Improve this.
+      std::string actual, expected;
+
+      auto outputs = node->outputs();
+      // It is impossible that there are no outputs: If that were the case
+      // either the types would match because that's what they were deduced
+      // from, or not all the returns of the function had matching types and
+      // this would have been diagnosed earlier.
+      ASSERT(outputs.has_value() == true);
+
+      // TODO: Revisit each return statement so we can find a good textual
+      // presentation for the return type.
+
       diag().Consume(ReturnTypeMismatch{
-          .actual =
-              (*maybe_return_types)[i].to_string(),  // TODO: Improve this.
-          .expected =
-              fn_type.return_types()[i].to_string(),  // TODO: Improve this.
+          .actual   = (*maybe_return_types)[i].to_string(),
+          .expected = ExpressionForDiagnostic((*node->outputs())[i], context()),
       });
     }
   }

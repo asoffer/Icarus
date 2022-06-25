@@ -245,8 +245,11 @@ TEST(FunctionLiteral, ConstantParameter) {
   auto& mod     = infra.add_module(R"((n :: i64) -> () {})");
   auto const* e = mod.get<ast::Expression>();
   auto qts      = mod.context().qual_types(e);
-  EXPECT_GE(qts[0].quals(), type::Qualifiers::Constant());
-  EXPECT_TRUE(qts[0].type().is<type::LegacyGeneric<type::Function>>());
+  EXPECT_THAT(
+      qts, UnorderedElementsAre(type::QualType::Constant(type::Func(
+               {core::Parameter<type::QualType>{
+                   .name = "n", .value = type::QualType::Constant(type::I64)}},
+               {}))));
 }
 
 // TODO: Add tests that verify multiple return values get joined correctly.

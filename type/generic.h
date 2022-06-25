@@ -15,7 +15,7 @@ namespace type {
 
 struct Generic : LegacyType {
   void WriteTo(std::string *result) const override {
-    result->append("generic");
+    result->append(manager_->DebugString(interface_));
   }
 
   bool is_big() const override { return false; }
@@ -27,6 +27,7 @@ struct Generic : LegacyType {
   }
 
   ir::Interface const &interface() const { return interface_; }
+  ir::InterfaceManager &manager() const { return *manager_; }
 
   friend bool operator==(Generic const &lhs, Generic const &rhs) {
     return lhs.interface_ == rhs.interface_ and lhs.manager_ == rhs.manager_;
@@ -54,7 +55,7 @@ struct Generic : LegacyType {
                                      .is_movable               = 0,
                                      .has_destructor           = 0}),
         interface_(intf),
-        manager_(manager) {}
+        manager_(ASSERT_NOT_NULL(manager)) {}
 
   ir::Interface interface_;
   ir::InterfaceManager *manager_;

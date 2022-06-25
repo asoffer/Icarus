@@ -7,6 +7,7 @@
 #include "compiler/emit/common.h"
 #include "compiler/emit/copy_move_assignment.h"
 #include "compiler/emit/initialize.h"
+#include "compiler/interface_instructions.h"
 #include "compiler/module.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
@@ -174,7 +175,14 @@ void Compiler::EmitMoveInit(
 
 void Compiler::EmitToBuffer(ast::BindingDeclaration const *node,
                             ir::PartialResultBuffer &out) {
-  out.append(ir::Interface(resources().interface_manager->UserDefined({})));
+  out.append(current_block()->Append(type::GenericTypeInstruction{
+      .interface =
+          ir::Interface(resources().interface_manager->UserDefined({})),
+      .manager = current_block()->Append(LoadInterfaceManagerInstruction{
+          .result = current().subroutine->Reserve(),
+      }),
+      .result  = current().subroutine->Reserve(),
+  }));
 }
 
 bool Compiler::PatternMatch(
