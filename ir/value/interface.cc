@@ -89,20 +89,7 @@ UserDefinedInterface InterfaceManager::UserDefined(
 }
 
 bool InterfaceManager::BindsTo(Interface i, type::Type t) const {
-  switch (i.kind()) {
-    case Interface::Kind::Precise:
-      return precisely_.from_index(i.index_).BindsTo(*this, t);
-    case Interface::Kind::Callable:
-      return callable_.from_index(i.index_).BindsTo(*this, t);
-    case Interface::Kind::Pointer:
-      return pointer_.from_index(i.index_).BindsTo(*this, t);
-    case Interface::Kind::BufferPointer:
-      return buffer_pointer_.from_index(i.index_).BindsTo(*this, t);
-    case Interface::Kind::Slice:
-      return slice_.from_index(i.index_).BindsTo(*this, t);
-    case Interface::Kind::UserDefined:
-      return user_defined_[i.index_].BindsTo(*this, t);
-  }
+  return visit(i, [&](auto const& intf) { return intf.BindsTo(*this, t); });
 }
 
 std::string InterfaceManager::DebugString(Interface i) const {

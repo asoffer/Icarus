@@ -97,6 +97,8 @@ struct PreciseInterface
       : base::Extend<representation_type, 1>::With<base::AbslHashExtension> {
     bool BindsTo(InterfaceManager const& m, type::Type t) const;
 
+    type::Type type() const { return type_; }
+
    private:
     friend base::EnableExtensions;
     friend struct InterfaceManager;
@@ -224,6 +226,18 @@ struct InterfaceManager {
       absl::btree_map<std::string, Subroutine> members);
 
   bool BindsTo(Interface i, type::Type t) const;
+
+  auto visit(Interface i, auto&& fn) const {
+    switch (i.kind()) {
+      case Interface::Kind::Precise: return fn(precisely_.from_index(i.index_));
+      case Interface::Kind::Callable: return fn(callable_.from_index(i.index_));
+      case Interface::Kind::Pointer: return fn(pointer_.from_index(i.index_));
+      case Interface::Kind::BufferPointer:
+        return fn(buffer_pointer_.from_index(i.index_));
+      case Interface::Kind::Slice: return fn(slice_.from_index(i.index_));
+      case Interface::Kind::UserDefined: return fn(user_defined_[i.index_]);
+    }
+  }
 
   std::string DebugString(Interface i) const;
 
