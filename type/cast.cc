@@ -15,143 +15,182 @@
 namespace type {
 namespace {
 
-bool CanCastPointer(Pointer const *from, Pointer const *to) {
-  if (from == to) { return true; }
-  if (to->is<BufferPointer>() and not from->is<BufferPointer>()) {
-    return false;
-  }
-  return CanCastInPlace(from->pointee(), to->pointee());
-}
+// Indicates which kind of casting is being referred to.
+enum class CastKind {
+  // `Explicit` casts occur when the `as` token is present. Explicit casts are
+  // more permissive than implicit casts; every allowed implicit cast is also
+  // allowed explicitly, but there are several casts which are only allowed
+  // explicitly.
+  Explicit,
 
-bool CanCastFunction(Function const *from, Function const *to) {
-  if (from->parameters().size() != to->parameters().size()) { return false; }
+  // `Implicit` casts occur when there are no visible tokens indicating that a
+  // cast occurs. Implicit casts are more restrictive than explicit casts.
+  Implicit,
 
-  if (from->return_types() != to->return_types()) { return false; }
+  // `InPlace` is the most restrictive form of cast. All InPlace casts are also
+  // allowed implicitly or explicitly. InPlace casts are casts where not-only
+  // `T` can be cast to `U`, but also pointers to `T` can be cast to pointers to
+  // `U`. One such example of this would be a cast from a buffer pointer to a
+  // pointer with the same pointed-to-type. These casts can be done in place
+  // because the bit-representation is guaranteed to be the same.
+  InPlace,
+};
 
-  size_t num_params = from->parameters().size();
-  for (size_t i = 0; i < num_params; ++i) {
-    auto const &from_param = from->parameters()[i];
-    auto const &to_param   = to->parameters()[i];
+template <CastKind Kind>
+struct CastVisitor {
+  using signature = bool(Type);
 
-    if (not CanCastImplicitly(from_param.value.type(), to_param.value.type())) {
-      return false;
+  bool operator()(Type from, Type to) {
+    if (to == from) { return true; }
+
+    if constexpr (Kind == CastKind::InPlace) {
+      if (to == Byte) { return true; }
     }
-    if (from_param.flags >= core::ParameterFlags::MustNotName()) {
-      if (not(to_param.flags >= core::ParameterFlags::MustNotName())) {
-        return false;
-      }
-    } else {
-      if (not(to_param.flags >= core::ParameterFlags::MustNotName()) and
-          from_param.name != to_param.name) {
-        return false;
-      }
-    }
-  }
 
-  return true;
-}
-
-// TODO: Much of this should be moved to virtual methods.
-// TODO: Need the full qual-type to handle buffer-reference conversions.
-template <bool IncludeExplicit>
-bool CanCast(Type from, Type to) {
-  // TODO: handle reinterpretation
-  if (to == from) { return true; }
-  if (to == Integer) { return false; }
-  if (to == Interface and from == Type_) { return true; }
-
-  if (auto const *to_p = to.if_as<Pointer>()) {
-    if (from == NullPtr or
-        (to_p->pointee() == from and not to.is<BufferPointer>())) {
+    if (auto const *to_ptr = to.if_as<Pointer>();
+        to_ptr and to_ptr->pointee() == from and not to.is<BufferPointer>()) {
       return true;
     }
 
-    if (auto const *from_p = from.if_as<Pointer>()) {
-      return CanCastPointer(from_p, to_p);
-    }
+    return from.visit<CastVisitor>(*this, to);
   }
 
-  if (from == EmptyArray) {
-    if (auto const *to_arr = to.if_as<Array>()) {
-      return to_arr->length() == 0;
-    } else {
-      return to.is<Slice>();
-    }
-  }
+  bool operator()(auto const *from, Type to) {
+    constexpr auto from_type = base::meta<std::decay_t<decltype(*from)>>;
+    if constexpr (from_type == base::meta<type::Primitive>) {
+      if (to == Integer) { return false; }
+      switch (from->kind()) {
+        case Primitive::Kind::Type_: return to == Interface;
+        case Primitive::Kind::NullPtr:
+          if constexpr (Kind == CastKind::InPlace) {
+            return false;
+          } else {
+            return to.is<Pointer>();
+          }
+        case Primitive::Kind::Integer:
+          if constexpr (Kind == CastKind::Implicit) {
+            return IsNumeric(to);
+          } else {
+            return false;
+          }
+        case Primitive::Kind::EmptyArray:
+          if (auto const *to_arr = to.if_as<Array>()) {
+            return to_arr->length() == 0;
+          } else {
+            return to.is<Slice>();
+          }
+        case Primitive::Kind::Byte:
+          if constexpr (Kind == CastKind::InPlace) {
+            return true;
+          } else {
+            return false;
+          }
+        default:
+          if constexpr (Kind == CastKind::Explicit) {
+            if (IsIntegral(from)) {
+              if (IsNumeric(to)) { return true; }
+              if (auto const *to_enum = to.if_as<Enum>()) {
+                return operator()(from, to_enum->UnderlyingType());
+              } else if (auto const *to_flags = to.if_as<Flags>()) {
+                return operator()(from, to_flags->UnderlyingType());
+              }
+            }
+            if (IsFloatingPoint(from) and IsFloatingPoint(to)) { return true; }
+          }
+          break;
+      }
 
-  if (auto const *from_array = from.if_as<Array>()) {
-    if (auto const *to_slice = to.if_as<Slice>()) {
-      return CanCastInPlace(from_array->data_type(), to_slice->data_type());
 
-    } else if (auto const *to_array = to.if_as<Array>()) {
-      if (from_array->data_type() == Integer and
-          CanCastImplicitly(from_array->data_type(), to_array->data_type())) {
+    } else if constexpr (from_type == base::meta<type::Pointer> ) {
+      if (auto const *to_ptr = to.if_as<Pointer>();
+          to_ptr and not to.is<BufferPointer>()) {
+        return CastVisitor<CastKind::InPlace>{}(from->pointee(),
+                                                to_ptr->pointee());
+      }
+
+    } else if constexpr (from_type == base::meta<type::BufferPointer>) {
+      if (auto const *to_ptr = to.if_as<Pointer>()) {
+        return CastVisitor<CastKind::InPlace>{}(from->pointee(),
+                                                to_ptr->pointee());
+      }
+
+    } else if constexpr (from_type == base::meta<type::Array>) {
+      if (auto const *to_slice = to.if_as<Slice>()) {
+        if constexpr (Kind == CastKind::InPlace) {
+          return false;
+        } else {
+          return CastVisitor<CastKind::InPlace>{}(from->data_type(),
+                                                  to_slice->data_type());
+        }
+      } else if (auto const *to_array = to.if_as<Array>()) {
+        if (from->data_type() == Integer and
+            CanCastImplicitly(Integer, to_array->data_type())) {
+          return true;
+        }
+
+        if constexpr (Kind == CastKind::Explicit) {
+          return from->length() == to_array->length() and
+                 CastVisitor<CastKind::InPlace>{}(from->data_type(),
+                                                  to_array->data_type());
+        }
+      }
+
+    } else if constexpr (from_type == base::meta<type::Slice>) {
+      if (auto const *to_slice = to.if_as<Slice>()) {
+        return CastVisitor<CastKind::InPlace>{}(from->data_type(),
+                                                to_slice->data_type());
+      }
+
+    } else if constexpr (from_type == base::meta<type::Function>) {
+      if (auto const *to_fn = to.if_as<Function>()) {
+        size_t num_params = from->parameters().size();
+        if (num_params != to_fn->parameters().size() or
+            from->return_types() != to_fn->return_types()) {
+          return false;
+        }
+
+        for (size_t i = 0; i < num_params; ++i) {
+          auto const &from_param = from->parameters()[i];
+          auto const &to_param   = to_fn->parameters()[i];
+
+          if (not CastVisitor<CastKind::InPlace>{}(from_param.value.type(),
+                                                   to_param.value.type())) {
+            return false;
+          }
+          if (from_param.flags >= core::ParameterFlags::MustNotName()) {
+            if (not(to_param.flags >= core::ParameterFlags::MustNotName())) {
+              return false;
+            }
+          } else {
+            if (not(to_param.flags >= core::ParameterFlags::MustNotName()) and
+                from_param.name != to_param.name) {
+              return false;
+            }
+          }
+        }
+
         return true;
       }
 
-      if constexpr (IncludeExplicit) {
-        return from_array->length() == to_array->length() and
-               CanCastInPlace(from_array->data_type(), to_array->data_type());
+    } else if constexpr (requires { from->UnderlyingType(); }) {
+      if constexpr (Kind == CastKind::Explicit) {
+        return to == from->UnderlyingType();
       }
     }
-  } else if (auto const *from_slice = from.if_as<Slice>()) {
-    if (auto const *to_slice = to.if_as<Slice>()) {
-      return CanCastInPlace(from_slice->data_type(), to_slice->data_type());
-    }
+    return false;
   }
-
-  if constexpr (not IncludeExplicit) {
-    if (from == Integer and IsNumeric(to)) { return true; }
-  }
-
-  if constexpr (IncludeExplicit) {
-    if (IsIntegral(from) and IsNumeric(to)) { return true; }
-    if (IsFloatingPoint(from) and IsFloatingPoint(to)) { return true; }
-
-    // TODO other integer types. This set of rules is weird and obviously wrong.
-    if ((from == I32 or from == Integer) and
-        (to.is<Enum>() or to.is<Flags>())) {
-      return true;
-    }
-    if ((from.is<Enum>() or from.is<Flags>()) and to == U64) { return true; }
-
-    if (auto const *from_fn = from.if_as<Function>()) {
-      if (auto const *to_fn = to.if_as<Function>()) {
-        return CanCastFunction(from_fn, to_fn);
-      }
-    }
-  }
-
-  return false;
-}
+};
 
 }  // namespace
 
-bool CanCastImplicitly(Type from, Type to) { return CanCast<false>(from, to); }
-bool CanCastExplicitly(Type from, Type to) { return CanCast<true>(from, to); }
-
+bool CanCastImplicitly(Type from, Type to) {
+  return CastVisitor<CastKind::Implicit>{}(from, to);
+}
+bool CanCastExplicitly(Type from, Type to) {
+  return CastVisitor<CastKind::Explicit>{}(from, to);
+}
 bool CanCastInPlace(Type from, Type to) {
-  if (from == to or from == Byte or to == Byte) { return true; }
-
-  if (auto const *from_p = from.if_as<Pointer>()) {
-    if (auto const *to_p = to.if_as<Pointer>()) {
-      return CanCastPointer(from_p, to_p);
-    }
-  }
-
-  if (auto const *from_slice = from.if_as<Slice>()) {
-    if (auto const *to_slice = to.if_as<Slice>()) {
-      return CanCastInPlace(from_slice->data_type(), to_slice->data_type());
-    }
-  }
-
-  if (auto const *from_fn = from.if_as<Function>()) {
-    if (auto const *to_fn = to.if_as<Function>()) {
-      return CanCastFunction(from_fn, to_fn);
-    }
-  }
-
-  return false;
+  return CastVisitor<CastKind::InPlace>{}(from, to);
 }
 
 // TODO optimize (early exists. don't check lhs.is<> and rhs.is<>. If they
