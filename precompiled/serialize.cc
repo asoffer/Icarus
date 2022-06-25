@@ -7,7 +7,6 @@
 #include "type/flags.h"
 #include "type/function.h"
 #include "type/generic.h"
-#include "type/generic_function.h"
 #include "type/legacy_generic.h"
 #include "type/opaque.h"
 #include "type/pointer.h"

@@ -243,21 +243,6 @@ cc_library(
 )
 
 cc_library(
-    name = "generic_function",
-    hdrs = ["generic_function.h"],
-    deps = [
-        ":argument",
-        ":function",
-        ":qual_type",
-        ":slice",
-        ":type",
-        "//ir:subroutine",
-        "//ir/interpreter",
-        "//ir/value:slice",
-    ],
-)
-
-cc_library(
     name = "opaque",
     hdrs = ["opaque.h"],
     srcs = ["opaque.cc"],
