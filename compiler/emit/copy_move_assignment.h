@@ -9,6 +9,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
+#include "type/generic.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/slice.h"
@@ -52,6 +53,10 @@ struct MoveAssignmentEmitter : CompilationDataReference {
                       type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::Function const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
+  void EmitAssignment(
+      type::Generic const *t, ir::RegOr<ir::addr_t> addr,
+      type::Typed<ir::PartialResultRef> const &from) { /* TODO */
+  }
   void EmitAssignment(type::Pointer const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::BufferPointer const *t, ir::RegOr<ir::addr_t> addr,
@@ -103,6 +108,10 @@ struct CopyAssignmentEmitter : CompilationDataReference {
                       type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::Function const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
+  void EmitAssignment(
+      type::Generic const *t, ir::RegOr<ir::addr_t> addr,
+      type::Typed<ir::PartialResultRef> const &from) { /* TODO */
+  }
   void EmitAssignment(type::Pointer const *t, ir::RegOr<ir::addr_t> addr,
                       type::Typed<ir::PartialResultRef> const &from);
   void EmitAssignment(type::BufferPointer const *t, ir::RegOr<ir::addr_t> addr,

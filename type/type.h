@@ -14,9 +14,9 @@ namespace type {
 
 using AllTypeTypes =
     base::type_list<struct Array, struct Block, struct BufferPointer,
-                    struct Enum, struct Flags, struct Function, struct Opaque,
-                    struct Pointer, struct Primitive, struct Scope,
-                    struct Slice, struct Struct, struct Variable>;
+                    struct Enum, struct Flags, struct Function, struct Generic,
+                    struct Opaque, struct Pointer, struct Primitive,
+                    struct Scope, struct Slice, struct Struct, struct Variable>;
 
 template <typename T>
 constexpr int8_t IndexOf() {

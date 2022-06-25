@@ -2,6 +2,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/emit/copy_move_assignment.h"
+#include "compiler/interface_instructions.h"
 #include "diagnostic/message.h"
 #include "type/generic.h"
 
@@ -25,26 +26,29 @@ struct PatternMatchFailure {
   std::string_view range;
 };
 
-}  // namespace
+void EmitGenericType(Compiler &c, ast::Expression const &expr,
+                     ir::PartialResultBuffer &out) {
+  c.EmitToBuffer(&expr, out);
+  ir::RegOr<ir::Interface> intf = out.back().get<ir::Interface>();
+  out.pop_back();
+  out.append(c.current_block()->Append(type::GenericTypeInstruction{
+      .interface = intf,
+      .manager   = c.current_block()->Append(LoadInterfaceManagerInstruction{
+          .result = c.current().subroutine->Reserve(),
+      }),
+      .result    = c.current().subroutine->Reserve(),
+  }));
+}
 
-void Compiler::EmitToBuffer(ast::PatternMatch const *node,
-                            ir::PartialResultBuffer &out) {
-  if (not node->is_binary()) {
-    EmitToBuffer(&node->pattern(), out);
-    ir::RegOr<ir::Interface> intf = out.back().get<ir::Interface>();
-    out.pop_back();
-    out.append(current_block()->Append(type::GenericTypeInstruction{
-        .interface = intf, .result = current().subroutine->Reserve()}));
-    return;
-  }
-
-  type::Type t                    = context().qual_types(node)[0].type();
-  ir::CompleteResultBuffer buffer = *EvaluateToBufferOrDiagnose(
+void EmitPatternMatch(Compiler &c, ast::PatternMatch const *node,
+                      ir::PartialResultBuffer &out) {
+  type::Type t                    = c.context().qual_types(node)[0].type();
+  ir::CompleteResultBuffer buffer = *c.EvaluateToBufferOrDiagnose(
       type::Typed<ast::Expression const *>(&node->expr(), t));
   out = buffer;
 
-  auto &q         = state().pattern_match_queues.emplace_back();
-  absl::Cleanup c = [&] { state().pattern_match_queues.pop_back(); };
+  auto &q               = c.state().pattern_match_queues.emplace_back();
+  absl::Cleanup cleanup = [&] { c.state().pattern_match_queues.pop_back(); };
 
   q.emplace(&node->pattern(),
             PatternMatchingContext{.type = t, .value = buffer});
@@ -55,11 +59,11 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
     auto [n, pmc] = std::move(q.front());
     q.pop();
 
-    if (not PatternMatch(n, pmc, bindings)) {
+    if (not c.PatternMatch(n, pmc, bindings)) {
       if (node->is_binary()) {
         NOT_YET(node->DebugString());
       } else {
-        diag().Consume(PatternMatchFailure{
+        c.diag().Consume(PatternMatchFailure{
             .type = buffer.get<type::Type>(0)
                         .to_string(),  // TODO: Use TypeForDiagnostic
             .range = node->pattern().range(),
@@ -73,11 +77,22 @@ void Compiler::EmitToBuffer(ast::PatternMatch const *node,
     for (auto const &id :
          node->scope()->visible_ancestor_declaration_id_named(name->name())) {
       LOG("PatternMatch", "Binding %s (%p) to %s on %s", name->name(), &id,
-          context().qual_types(&id)[0].type().Representation(value[0]),
-          context().DebugString());
-      context().SetConstant(&id, std::move(value));
+          c.context().qual_types(&id)[0].type().Representation(value[0]),
+          c.context().DebugString());
+      c.context().SetConstant(&id, std::move(value));
       return;
     }
+  }
+}
+
+}  // namespace
+
+void Compiler::EmitToBuffer(ast::PatternMatch const *node,
+                            ir::PartialResultBuffer &out) {
+  if (node->is_binary()) {
+    EmitPatternMatch(*this, node, out);
+  } else {
+    EmitGenericType(*this, node->pattern(), out);
   }
 }
 

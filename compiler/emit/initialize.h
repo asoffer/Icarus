@@ -9,6 +9,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
+#include "type/generic.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/slice.h"
@@ -42,6 +43,9 @@ struct DefaultInitializationEmitter : CompilationDataReference {
   void EmitInitialize(type::Enum const *t, ir::RegOr<ir::addr_t> addr);
   void EmitInitialize(type::Flags const *t, ir::RegOr<ir::addr_t> addr);
   void EmitInitialize(type::Function const *t, ir::RegOr<ir::addr_t> addr);
+  void EmitInitialize(type::Generic const *t,
+                      ir::RegOr<ir::addr_t> addr) { /* TODO */
+  }
   void EmitInitialize(type::Pointer const *t, ir::RegOr<ir::addr_t> addr);
   void EmitInitialize(type::BufferPointer const *t, ir::RegOr<ir::addr_t> addr);
   void EmitInitialize(type::Primitive const *t, ir::RegOr<ir::addr_t> addr);
@@ -85,6 +89,9 @@ struct MoveInitializationEmitter : CompilationDataReference {
                       ir::PartialResultBuffer const &from);
   void EmitInitialize(type::Function const *t, ir::RegOr<ir::addr_t> addr,
                       ir::PartialResultBuffer const &from);
+  void EmitInitialize(type::Generic const *t, ir::RegOr<ir::addr_t> addr,
+                      ir::PartialResultBuffer const &from) { /* TODO */
+  }
   void EmitInitialize(type::Pointer const *t, ir::RegOr<ir::addr_t> addr,
                       ir::PartialResultBuffer const &from);
   void EmitInitialize(type::BufferPointer const *t, ir::RegOr<ir::addr_t> addr,
@@ -134,6 +141,8 @@ struct CopyInitializationEmitter : CompilationDataReference {
                       ir::PartialResultBuffer const &from);
   void EmitInitialize(type::Function const *t, ir::RegOr<ir::addr_t> addr,
                       ir::PartialResultBuffer const &from);
+  void EmitInitialize(type::Generic const *t, ir::RegOr<ir::addr_t> addr,
+                      ir::PartialResultBuffer const &from) { /* TODO */ }
   void EmitInitialize(type::Pointer const *t, ir::RegOr<ir::addr_t> addr,
                       ir::PartialResultBuffer const &from);
   void EmitInitialize(type::BufferPointer const *t, ir::RegOr<ir::addr_t> addr,

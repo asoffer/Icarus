@@ -219,8 +219,10 @@ cc_library(
 cc_library(
     name = "generic",
     hdrs = ["generic.h"],
+    srcs = ["generic.cc"],
     deps = [
         ":type",
+        "//base:flyweight_set",
         "//core:arch",
         "//ir/value:interface",
     ],

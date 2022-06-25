@@ -14,14 +14,6 @@
 namespace type {
 
 struct Generic : LegacyType {
-  explicit Generic(ir::Interface intf)
-      : LegacyType(IndexOf<Generic>(),
-                   LegacyType::Flags{.is_default_initializable = 0,
-                                     .is_copyable              = 0,
-                                     .is_movable               = 0,
-                                     .has_destructor           = 0}),
-        interface_(intf) {}
-
   void WriteTo(std::string *result) const override {
     result->append("generic");
   }
@@ -36,25 +28,58 @@ struct Generic : LegacyType {
 
   ir::Interface const &interface() const { return interface_; }
 
+  friend bool operator==(Generic const &lhs, Generic const &rhs) {
+    return lhs.interface_ == rhs.interface_ and lhs.manager_ == rhs.manager_;
+  }
+
+  friend bool operator!=(Generic const &lhs, Generic const &rhs) {
+    return not (lhs == rhs);
+  }
+
+  template <typename H>
+  friend H AbslHashValue(H h, Generic const &g) {
+    return H::combine(std::move(h), g.interface_, g.manager_);
+  }
+
  private:
+  friend Generic const *Gen(ir::Interface interface,
+                            ir::InterfaceManager *manager);
+
+  friend struct GenericTypeInstruction;
+
+  explicit Generic(ir::Interface intf, ir::InterfaceManager *manager)
+      : LegacyType(IndexOf<Generic>(),
+                   LegacyType::Flags{.is_default_initializable = 0,
+                                     .is_copyable              = 0,
+                                     .is_movable               = 0,
+                                     .has_destructor           = 0}),
+        interface_(intf),
+        manager_(manager) {}
+
   ir::Interface interface_;
+  ir::InterfaceManager *manager_;
 };
 
-struct GenericTypeInstruction 
+Generic const *Gen(ir::Interface interface, ir::InterfaceManager *manager);
+
+struct GenericTypeInstruction
     : base::Extend<GenericTypeInstruction>::With<base::BaseSerializeExtension,
-                                           base::BaseTraverseExtension,
-                                           ir::DebugFormatExtension> {
+                                                 base::BaseTraverseExtension,
+                                                 ir::DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = generic-type %1$s";
 
   friend bool InterpretInstruction(ir::interpreter::Interpreter &interpreter,
                                    GenericTypeInstruction const &inst) {
+    auto &manager = *reinterpret_cast<ir::InterfaceManager *>(
+        interpreter.frame().resolve<ir::addr_t>(inst.manager));
     interpreter.frame().set(
         inst.result,
-        Type(new Generic(interpreter.frame().resolve(inst.interface))));
+        Type(Gen(interpreter.frame().resolve(inst.interface), &manager)));
     return true;
   }
 
   ir::RegOr<ir::Interface> interface;
+  ir::Reg manager;
   ir::Reg result;
 };
 

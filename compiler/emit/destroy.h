@@ -12,6 +12,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
+#include "type/generic.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/slice.h"
@@ -61,6 +62,9 @@ struct DestructionEmitter : CompilationDataReference {
   void EmitDestroy(type::Flags const *t, ir::RegOr<ir::addr_t> addr) {}
   void EmitDestroy(type::Function const *t, ir::RegOr<ir::addr_t> addr) {}
   void EmitDestroy(type::Pointer const *t, ir::RegOr<ir::addr_t> addr) {}
+  void EmitDestroy(type::Generic const *t, ir::RegOr<ir::addr_t> addr) {
+    // TODO
+  }
   void EmitDestroy(type::BufferPointer const *t, ir::RegOr<ir::addr_t> addr) {}
   void EmitDestroy(type::Primitive const *t, ir::RegOr<ir::addr_t> addr) {
     if (type::Type(t) == type::Integer) {
