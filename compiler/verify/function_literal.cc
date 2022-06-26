@@ -302,19 +302,19 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
 
   if (maybe_return_types->empty()) { return true; }
 
-  // It is impossible that there are no outputs: If that were the case either
-  // the types would match because that's what they were deduced from, or not
-  // all the returns of the function had matching types and this would have been
-  // diagnosed earlier.
-  ASSERT(node->outputs().has_value() == true);
-  auto outputs = *node->outputs();
-
   bool error = false;
   for (auto const &[return_stmt, return_types] : *maybe_return_types) {
     for (size_t i = 0; i < return_types.size(); ++i) {
       if (not type::CanCastImplicitly(return_types[i],
                                       fn_type.return_types()[i])) {
         error = true;
+
+        // It is impossible that there are no outputs: If that were the case
+        // either the types would match because that's what they were deduced
+        // from, or not all the returns of the function had matching types and
+        // this would have been diagnosed earlier.
+        ASSERT(node->outputs().has_value() == true);
+        auto outputs = *node->outputs();
 
         // TODO: Expressions can be expanded and may not match 1-1 with types.
         diag().Consume(ReturnTypeMismatch{
