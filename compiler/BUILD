@@ -211,6 +211,7 @@ cc_library(
     hdrs = ["resources.h"],
     deps = [
         ":context",
+        ":module",
         ":transient_state",
         ":work_item",
         "//ast:node",

@@ -13,33 +13,6 @@ namespace compiler {
 
 void Compiler::EmitToBuffer(ast::ShortFunctionLiteral const *node,
                             ir::PartialResultBuffer &out) {
-  if (node->is_generic()) {
-    auto gen_fn = ir::GenericFn(
-        [node, data = this->data()](
-            WorkResources const &wr,
-            core::Arguments<type::Typed<ir::CompleteResultRef>> const
-                &args) mutable -> ir::Fn {
-          Compiler c(&data);
-          c.set_work_resources(wr);
-          auto find_subcontext_result = FindInstantiation(c, node, args);
-          auto &context               = find_subcontext_result.context;
-
-          auto [placeholder, inserted] = context.MakePlaceholder(node);
-
-          PersistentResources resources = c.resources();
-          if (inserted) {
-            c.Enqueue({.kind    = WorkItem::Kind::EmitShortFunctionBody,
-                       .node    = node,
-                       .context = &context},
-                      {});
-          }
-
-          return ir::Fn(resources.module->id(), placeholder);
-        });
-    out.append(gen_fn);
-    return;
-  }
-
   auto [placeholder, inserted] = context().MakePlaceholder(node);
   if (inserted) {
     Enqueue({.kind    = WorkItem::Kind::EmitShortFunctionBody,
@@ -54,68 +27,40 @@ void Compiler::EmitMoveInit(
     ast::ShortFunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) {
-    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
-        .value    = EmitAs<ir::GenericFn>(node),
-        .location = *to[0],
-    });
-  } else {
-    current_block()->Append(ir::StoreInstruction<ir::Fn>{
-        .value    = EmitAs<ir::Fn>(node),
-        .location = *to[0],
-    });
-  }
+  current_block()->Append(ir::StoreInstruction<ir::Fn>{
+      .value    = EmitAs<ir::Fn>(node),
+      .location = *to[0],
+  });
 }
 
 void Compiler::EmitCopyInit(
     ast::ShortFunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) {
-    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
-        .value    = EmitAs<ir::GenericFn>(node),
-        .location = *to[0],
-    });
-  } else {
-    current_block()->Append(ir::StoreInstruction<ir::Fn>{
-        .value    = EmitAs<ir::Fn>(node),
-        .location = *to[0],
-    });
-  }
+  current_block()->Append(ir::StoreInstruction<ir::Fn>{
+      .value    = EmitAs<ir::Fn>(node),
+      .location = *to[0],
+  });
 }
 
 void Compiler::EmitMoveAssign(
     ast::ShortFunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) {
-    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
-        .value    = EmitAs<ir::GenericFn>(node),
-        .location = *to[0],
-    });
-  } else {
-    current_block()->Append(ir::StoreInstruction<ir::Fn>{
-        .value    = EmitAs<ir::Fn>(node),
-        .location = *to[0],
-    });
-  }
+  current_block()->Append(ir::StoreInstruction<ir::Fn>{
+      .value    = EmitAs<ir::Fn>(node),
+      .location = *to[0],
+  });
 }
 
 void Compiler::EmitCopyAssign(
     ast::ShortFunctionLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   ASSERT(to.size() == 1u);
-  if (node->is_generic()) {
-    current_block()->Append(ir::StoreInstruction<ir::GenericFn>{
-        .value    = EmitAs<ir::GenericFn>(node),
-        .location = *to[0],
-    });
-  } else {
-    current_block()->Append(ir::StoreInstruction<ir::Fn>{
-        .value    = EmitAs<ir::Fn>(node),
-        .location = *to[0],
-    });
-  }
+  current_block()->Append(ir::StoreInstruction<ir::Fn>{
+      .value    = EmitAs<ir::Fn>(node),
+      .location = *to[0],
+  });
 }
 
 bool Compiler::EmitShortFunctionBody(ast::ShortFunctionLiteral const *node) {

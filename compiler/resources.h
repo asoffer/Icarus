@@ -3,6 +3,7 @@
 
 #include "ast/expression.h"
 #include "ast/node.h"
+#include "compiler/module.h"
 #include "compiler/transient_state.h"
 #include "compiler/work_item.h"
 #include "diagnostic/consumer/buffering.h"

@@ -94,7 +94,6 @@ InferReturnTypes(Context const &c, ast::FunctionLiteral const *node) {
   absl::flat_hash_map<ast::ReturnStmt const *, std::vector<type::Type>> result;
 
   for (ast::ReturnStmt const *ret_node : node->returns()) {
-    if (not ret_node) { continue; }
     std::vector<type::Type> ret_types;
     for (auto const *expr : ret_node->exprs()) {
       ret_types.push_back(c.qual_types(expr)[0].type());
@@ -143,8 +142,10 @@ std::optional<std::vector<type::Type>> JoinReturnTypes(
 // * From VerifyBody which also checks that the return statements
 //   match the return types (if specified).
 // * From VerifyType if the return types are inferred.
-std::optional<std::vector<type::Type>> VerifyBodyOnly(
-    CompilationDataReference data, ast::FunctionLiteral const *node) {
+std::optional<
+    absl::flat_hash_map<ast::ReturnStmt const *, std::vector<type::Type>>>
+VerifyBodyOnly(CompilationDataReference data,
+               ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "VerifyBodyOnly for %s on %s", node->DebugString(),
       data.context().DebugString());
   bool found_error = false;
@@ -158,7 +159,7 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
   }
   if (found_error) { return std::nullopt; }
 
-  return JoinReturnTypes(data.diag(), InferReturnTypes(data.context(), node));
+  return InferReturnTypes(data.context(), node);
 }
 
 std::optional<std::vector<type::Type>> VerifyReturnTypes(
@@ -218,9 +219,10 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
                   type::Func(std::move(params), std::move(return_types))));
   } else {
     if (auto maybe_return_types = VerifyBodyOnly(*this, node)) {
+      auto joined_return_types = JoinReturnTypes(diag(), *maybe_return_types);
       return context().set_qual_type(
           node, type::QualType::Constant(type::Func(
-                    std::move(params), *std::move(maybe_return_types))));
+                    std::move(params), *std::move(joined_return_types))));
     } else {
       return context().set_qual_type(node, type::QualType::Error());
     }
@@ -283,38 +285,43 @@ bool BodyVerifier::VerifyBody(ast::FunctionLiteral const *node) {
     LOG("FunctionLiteral", "Body verification was a failure.");
     return false;
   }
-  if (maybe_return_types->size() != fn_type.return_types().size()) {
+  auto joined_return_types = JoinReturnTypes(diag(), *maybe_return_types);
+  if (not joined_return_types) {
+    LOG("FunctionLiteral", "Body verification was a failure.");
+    return false;
+  }
+
+  if (joined_return_types->size() != fn_type.return_types().size()) {
     diag().Consume(ReturningWrongNumber{
-        .actual   = maybe_return_types->size(),
+        .actual   = joined_return_types->size(),
         .expected = fn_type.return_types().size(),
         // TODO: The location specified here is really wide.
         .view = node->range()});
     return false;
   }
 
+  if (maybe_return_types->empty()) { return true; }
+
+  // It is impossible that there are no outputs: If that were the case either
+  // the types would match because that's what they were deduced from, or not
+  // all the returns of the function had matching types and this would have been
+  // diagnosed earlier.
+  ASSERT(node->outputs().has_value() == true);
+  auto outputs = *node->outputs();
+
   bool error = false;
-  for (size_t i = 0; i < maybe_return_types->size(); ++i) {
-    if (not type::CanCastImplicitly((*maybe_return_types)[i],
-                                    fn_type.return_types()[i])) {
-      error = true;
+  for (auto const &[return_stmt, return_types] : *maybe_return_types) {
+    for (size_t i = 0; i < return_types.size(); ++i) {
+      if (not type::CanCastImplicitly(return_types[i],
+                                      fn_type.return_types()[i])) {
+        error = true;
 
-      // TODO: Improve this.
-      std::string actual, expected;
-
-      auto outputs = node->outputs();
-      // It is impossible that there are no outputs: If that were the case
-      // either the types would match because that's what they were deduced
-      // from, or not all the returns of the function had matching types and
-      // this would have been diagnosed earlier.
-      ASSERT(outputs.has_value() == true);
-
-      // TODO: Revisit each return statement so we can find a good textual
-      // presentation for the return type.
-
-      diag().Consume(ReturnTypeMismatch{
-          .actual   = (*maybe_return_types)[i].to_string(),
-          .expected = ExpressionForDiagnostic((*node->outputs())[i], context()),
-      });
+        // TODO: Expressions can be expanded and may not match 1-1 with types.
+        diag().Consume(ReturnTypeMismatch{
+            .actual   = TypeForDiagnostic(return_stmt->exprs()[i], context()),
+            .expected = ExpressionForDiagnostic(outputs[i], context()),
+        });
+      }
     }
   }
 
