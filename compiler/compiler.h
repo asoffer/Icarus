@@ -361,8 +361,8 @@ struct Compiler : CompilationDataReference,
 
       ApplyTypes<bool, ir::Char, int8_t, int16_t, int32_t, int64_t, uint8_t,
                  uint16_t, uint32_t, uint64_t, float, double, type::Type,
-                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::GenericFn,
-                 ir::UnboundScope, ir::ScopeContext, ir::Block, ir::Interface>(
+                 ir::addr_t, ir::ModuleId, ir::Scope, ir::Fn, ir::UnboundScope,
+                 ir::ScopeContext, ir::Block, ir::Interface>(
           expr.type(), [&]<typename T>() {
             current_block()->Append(ir::StoreInstruction<T>{
                 .value    = buffer.get<T>(0),

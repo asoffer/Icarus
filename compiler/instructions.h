@@ -6,7 +6,6 @@
 #include "ir/module.h"
 #include "ir/value/addr.h"
 #include "ir/value/char.h"
-#include "ir/value/generic_fn.h"
 #include "ir/value/interface.h"
 #include "ir/value/module_id.h"
 #include "ir/value/reg.h"
@@ -17,7 +16,6 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
-#include "type/legacy_generic.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -85,9 +83,6 @@ bool Compare(::type::Type t) {
     return t.is<::type::Function>();
   } else if constexpr (base::meta<T> == base::meta<ir::Slice>) {
     return t.is<::type::Slice>();
-  } else if constexpr (base::meta<T> == base::meta<ir::GenericFn>) {
-    return t.is<::type::LegacyGeneric<type::Function>>() or
-           t.is<::type::LegacyGeneric<type::Struct>>();
   } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
     return t == ::type::Module;
   } else if constexpr (base::meta<T> == base::meta<ir::ScopeContext>) {

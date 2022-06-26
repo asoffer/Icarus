@@ -35,37 +35,6 @@ cc_library(
 )
 
 cc_library(
-    name = "generic_fn",
-    hdrs = ["generic_fn.h"],
-    srcs = ["generic_fn.cc"],
-    deps = [
-        ":result_buffer",
-        "//base:extend",
-        "//base/extend:absl_format",
-        "//base/extend:absl_hash",
-        "//base/extend:equality",
-        "//base:global",
-        "//compiler:work_resources",
-        "//core:arguments",
-        "//ir:module",
-        "//type",
-        "//type:typed_value",
-        "@com_google_absl//absl/functional:any_invocable",
-    ],
-)
-
-cc_test(
-    name = "generic_fn_test",
-    srcs = ["generic_fn_test.cc"],
-    deps = [
-        ":generic_fn",
-        ":reg_or",
-        ":result_buffer",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "hashtag",
     hdrs = ["hashtag.h"],
 )

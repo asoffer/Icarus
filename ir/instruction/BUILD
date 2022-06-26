@@ -114,7 +114,6 @@ cc_library(
         "//ir/interpreter",
         "//ir:out_params",
         "//ir/value:fn",
-        "//ir/value:generic_fn",
         "//ir/value:interface",
         "//ir/value:reg_or",
         "//module",

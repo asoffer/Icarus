@@ -21,7 +21,6 @@ struct Module;
 }  // namespace module
 namespace ir {
 struct BasicBlock;
-struct GenericFn;
 struct Scope;
 struct ScopeContext;
 struct Subroutine;
@@ -79,7 +78,6 @@ struct InstructionSerializer {
   void write(ScopeContext const &) { NOT_YET(); }
   void write(UnboundScope const &) { NOT_YET(); }
   void write(Subroutine const *) { NOT_YET(); }
-  void write(GenericFn const &) { NOT_YET(); }
   void write(type::Argument const &) { NOT_YET(); }
 
   void write(BasicBlock *b) { write(block(b)); }
@@ -136,7 +134,6 @@ struct InstructionDeserializer {
   bool read(ScopeContext &) { NOT_YET(); }
   bool read(UnboundScope &) { NOT_YET(); }
   bool read(Subroutine const *&) { NOT_YET(); }
-  bool read(GenericFn &) { NOT_YET(); }
   bool read(type::Argument &) { NOT_YET(); }
   bool read(BasicBlock const *&) { NOT_YET(); }
   bool read(type::Enum *&) { NOT_YET(); }

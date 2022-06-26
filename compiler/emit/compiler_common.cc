@@ -21,13 +21,12 @@ absl::Span<type::QualType const> VerifyType(CompilationDataReference data,
                                             ast::Node const *node);
 
 namespace {
+
 ir::OutParams SetReturns(
     Compiler &c, type::Type type,
     absl::Span<type::Typed<ir::RegOr<ir::addr_t>> const> to) {
   if (auto *fn_type = type.if_as<type::Function>()) {
     return c.OutParams(fn_type->return_types(), to);
-  } else if (type.is<type::LegacyGeneric<type::Function>>()) {
-    NOT_YET(type.to_string());
   } else {
     NOT_YET(type.to_string());
   }
@@ -70,29 +69,8 @@ CalleeResult EmitCallee(
     core::Arguments<type::Typed<ir::CompleteResultRef>> const &constants) {
   if (auto const *callable_expr = callable.get_if<ast::Expression>()) {
     type::QualType qt = c.context().qual_types(callable_expr)[0];
-    if (auto const *gf_type =
-            qt.type().if_as<type::LegacyGeneric<type::Function>>()) {
-      ir::GenericFn gen_fn = c.EmitAs<ir::GenericFn>(callable_expr).value();
-
-      // TODO: declarations aren't callable_expr so we shouldn't have to check
-      // this here.
-      if (auto const *id = callable_expr->if_as<ast::Declaration::Id>()) {
-        // TODO: make this more robust.
-        // TODO: support multiple declarations
-        callable_expr = id->declaration().init_val();
-      }
-
-      auto *parameterized_expr =
-          &callable_expr->as<ast::ParameterizedExpression>();
-      auto find_subcontext_result =
-          FindInstantiation(c, parameterized_expr, constants);
-      return {.callee = gen_fn.concrete(c.work_resources(), constants),
-              .type   = find_subcontext_result.fn_type,
-              .defaults =
-                  DefaultsFor(callable_expr, find_subcontext_result.context),
-              .context = &find_subcontext_result.context};
-    } else if (auto const *gs_type =
-                   qt.type().if_as<type::LegacyGeneric<type::Struct>>()) {
+    if (auto const *gs_type =
+            qt.type().if_as<type::LegacyGeneric<type::Struct>>()) {
       ir::Fn fn = c.EmitAs<ir::Fn>(callable_expr).value();
 
       // TODO: declarations aren't callable_expr so we shouldn't have to check
@@ -160,21 +138,8 @@ CalleeResult EmitCallee(
     auto const &symbol_info =
         *callable.get<module::Module::SymbolInformation>();
     type::QualType qt = symbol_info.qualified_type;
-    if (auto const *gf_type =
-            qt.type().if_as<type::LegacyGeneric<type::Function>>()) {
-      ir::GenericFn gen_fn     = symbol_info.value[0].get<ir::GenericFn>();
-      auto *parameterized_expr = &symbol_info.id->declaration()
-                                      .init_val()
-                                      ->as<ast::ParameterizedExpression>();
-      auto find_subcontext_result =
-          FindInstantiation(c, parameterized_expr, constants);
-      return {.callee   = gen_fn.concrete(c.work_resources(), constants),
-              .type     = find_subcontext_result.fn_type,
-              .defaults = DefaultsFor(parameterized_expr,
-                                      find_subcontext_result.context),
-              .context  = &find_subcontext_result.context};
-    } else if (auto const *gs_type =
-                   qt.type().if_as<type::LegacyGeneric<type::Struct>>()) {
+    if (auto const *gs_type =
+            qt.type().if_as<type::LegacyGeneric<type::Struct>>()) {
       NOT_YET();
     } else if (auto const *f_type = qt.type().if_as<type::Function>()) {
       if (type::Qualifiers::Constant() <= qt.quals()) {

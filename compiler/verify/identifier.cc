@@ -167,7 +167,6 @@ absl::Span<type::QualType const> TypeVerifier::VerifyType(
       }
 
       if (qt.type().is<type::Callable>() or
-          qt.type().is<type::LegacyGeneric<type::Function>>() or
           qt.type().is<type::LegacyGeneric<type::Block>>()) {
         absl::flat_hash_set<CallMetadata::callee_locator_t> set;
         if (auto const *id = symbol_ref.get_if<ast::Declaration::Id>()) {

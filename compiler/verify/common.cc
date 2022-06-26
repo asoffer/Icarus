@@ -62,12 +62,6 @@ absl::flat_hash_set<type::Typed<CallMetadata::callee_locator_t>> ResolveCall(
       if (ValidateCallable(callable, arguments, errors)) {
         valid.emplace(overload, callable);
       }
-    } else if (auto const *gf = t.if_as<type::LegacyGeneric<type::Function>>()) {
-      auto const *i = gf->Instantiate(tv.work_resources(), arguments);
-      if (not i) { continue; }  // TODO: Save an error.
-      if (ValidateCallable(i, arguments, errors)) {
-        valid.emplace(overload, i);
-      }
     } else if (auto const *gb = t.if_as<type::LegacyGeneric<type::Block>>()) {
       auto const *i = gb->Instantiate(tv.work_resources(), arguments);
       if (not i) { continue; }

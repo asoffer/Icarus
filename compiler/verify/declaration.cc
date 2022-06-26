@@ -96,12 +96,7 @@ struct UninitializedConstant {
 };
 
 bool Shadows(type::Type t1, type::Type t2) {
-  // TODO: Don't worry about generic shadowing? It'll be checked later?
-  if (t1.is<type::LegacyGeneric<type::Function>>() or
-      t2.is<type::LegacyGeneric<type::Function>>() or
-      t1 == type::UnboundScope or t2 == type::UnboundScope) {
-    return false;
-  }
+  if (t1 == type::UnboundScope or t2 == type::UnboundScope) { return false; }
 
   type::Callable const *callable1 = t1.if_as<type::Callable>();
   type::Callable const *callable2 = t2.if_as<type::Callable>();
