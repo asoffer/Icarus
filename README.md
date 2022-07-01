@@ -1,7 +1,7 @@
 # Icarus
 
 Icarus is an experimental general-purpose programming language, designed to be
-fast to compile, fast to run, and easy to migrate.
+fast to compile, fast to run, and easy to migrate. Learn more [here](https://asoffer.github.io/Icarus).
 
 ## Building Icarus from Source
 
@@ -22,5 +22,5 @@ $ bazel build -c opt ...
 
 ## Language Documentation
 
- * [Design Philosophy](docs/index.md)
- * [Tour of Icarus](docs/tour.md)
+ * [Design Philosophy](https://asoffer.github.io/Icarus)
+ * [Tour of Icarus](https://asoffer.github.io/Icarus/tour)
