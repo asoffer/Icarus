@@ -267,9 +267,16 @@ struct ExceedinglyCrappyParseError {
   static constexpr std::string_view kName = "exceedingly-crappy-parse-error";
 
   diagnostic::DiagnosticMessage ToMessage() const {
+    diagnostic::SourceQuote quote;
+    for (auto const &line : lines) {
+      quote.Highlighted(line, diagnostic::Style{});
+    }
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Parse errors found somewhere"));
+        diagnostic::Text("Unknown parse error(s) found in lines:"),
+        std::move(quote));
   }
+
+  std::vector<std::string_view> lines;
 };
 
 struct CommaSeparatedListStatement {
@@ -349,6 +356,20 @@ struct BracedShortFunctionLiteral {
             "and write `(n: i64) => n * n`."));
   }
 
+  std::string_view range;
+};
+
+struct InvalidBlockIdentifier {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "invalid-block-identifier";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Invalid block identifier: %s", debug),
+        diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
+  }
+
+  std::string debug;
   std::string_view range;
 };
 
@@ -1184,7 +1205,8 @@ std::unique_ptr<ast::Node> BuildBlockNode(
                                               std::move(stmts));
     }
   } else {
-    diag.Consume(TodoDiagnostic{.range = range});
+    diag.Consume(InvalidBlockIdentifier{.debug = nodes.front()->DebugString(),
+                                        .range = nodes.front()->range()});
     return std::make_unique<ast::BlockNode>(range, nodes.front()->range().end(),
                                             std::move(stmts));
   }
@@ -2175,7 +2197,7 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
           lines.push_back(ns->range());
         }
       }
-      diag.Consume(ExceedinglyCrappyParseError{});
+      diag.Consume(ExceedinglyCrappyParseError{.lines = std::move(lines)});
       return {};
     }
   }

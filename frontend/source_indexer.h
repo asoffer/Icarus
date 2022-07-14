@@ -32,7 +32,10 @@ struct SourceIndexer {
     Entry &operator=(Entry const &) = delete;
     Entry &operator=(Entry &&) = delete;
 
-    explicit Entry(std::string content) : content_(std::move(content)) {}
+    explicit Entry(ir::ModuleId module, std::string content)
+        : module_(module), content_(std::move(content)) {}
+
+    ir::ModuleId module_id() const { return module_; }
 
     // Returns a stable view of the file contents.
     std::string_view content() const { return content_; }
@@ -55,6 +58,7 @@ struct SourceIndexer {
     absl::Span<size_t const> line_starts();
 
     std::optional<std::vector<size_t>> line_terminators_;
+    const ir::ModuleId module_;
     const std::string content_;
   };
   // Given a `std::string_view` referring to content in one of the source texts

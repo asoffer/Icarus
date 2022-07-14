@@ -7,7 +7,9 @@ namespace frontend {
 std::string_view SourceIndexer::insert(ir::ModuleId module,
                                        std::string &&content) {
   auto [iter, inserted] = source_.try_emplace(module);
-  if (inserted) { iter->second = std::make_unique<Entry>(std::move(content)); }
+  if (inserted) {
+    iter->second = std::make_unique<Entry>(module, std::move(content));
+  }
   return iter->second->content();
 }
 
@@ -15,7 +17,7 @@ std::string_view SourceIndexer::insert(ir::ModuleId module,
                                        std::string_view content) {
   auto [iter, inserted] = source_.try_emplace(module);
   if (inserted) {
-    iter->second = std::make_unique<Entry>(std::string(content));
+    iter->second = std::make_unique<Entry>(module, std::string(content));
   }
   return iter->second->content();
 }
