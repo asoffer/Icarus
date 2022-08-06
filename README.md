@@ -9,8 +9,8 @@ fast to compile, fast to run, and easy to migrate. Learn more [here](https://aso
 
 Compiling from source requires:
 
-* clang++ version >= 12.0.0
-* [Bazel](http://bazel.build) version >= 4.2.1.
+* clang++ version >= 14.0.0
+* [Bazel](http://bazel.build) version >= 5.1.1.
 
 To compile this project from source:
 

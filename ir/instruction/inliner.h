@@ -50,7 +50,8 @@ struct Inliner {
     }
   }
 
-  void operator()(base::is_a<ir::RegOr> auto &r) {
+  template <base::is_a<ir::RegOr> R>
+  void operator()(R &r) {
     if (not r.is_reg()) { return; }
     Reg reg = r.reg();
     (*this)(reg);

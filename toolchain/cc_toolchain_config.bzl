@@ -98,6 +98,7 @@ def _impl(ctx):
             "-fbracket-depth=1024",
             "-fdiagnostics-color=always",
             "-fno-exceptions",
+            "-fPIE",
         ]),
         linking_flags([
             "-ldl",

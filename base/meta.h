@@ -214,10 +214,8 @@ template <typename T>
 concept Assignable = std::assignable_from<T&, T>;
 
 template <typename T>
-concept SatisfiesTupleProtocol = requires(T t) {
-  { std::tuple_size<T>::value }
-  ->std::integral;
-};
+concept SatisfiesTupleProtocol =
+    std::integral<std::decay_t<decltype(std::tuple_size<T>::value)>>;
 
 template <typename T>
 concept Container = requires(T t) {

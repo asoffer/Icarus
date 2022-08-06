@@ -45,11 +45,9 @@ static constexpr auto kTokens = std::array{
     std::string_view{"#.label"}};
 
 extern "C" int LLVMFuzzerTestOneInput(uint8_t const* data, size_t length) {
-  size_t size = 0;
   for (size_t i = 0; i < length; ++i) {
     uint8_t val = data[i];
     if (val >= kTokens.size()) { continue; }
-    size += kTokens[val].size() + 1;
   }
   std::string string_source;
 

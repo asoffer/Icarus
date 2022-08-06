@@ -29,12 +29,10 @@ template <typename T>
 concept Instruction = (std::copyable<T> and std::destructible<T> and
                        Inlinable<T>);
 
-// clang-format off
 template <typename T>
-concept ReturningInstruction = Instruction<T> and requires (T t) {
-  { t.result } -> std::same_as<Reg>;
-};
-// clang-format on
+concept ReturningInstruction =
+    Instruction<T> and
+    (base::meta<decltype(std::declval<T>().result)> == base::meta<Reg>);
 
 template <typename T>
 concept VoidReturningInstruction = (Instruction<T> and
