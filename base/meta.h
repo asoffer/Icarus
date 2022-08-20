@@ -279,6 +279,9 @@ template <typename H, typename T>
 concept Hasher = std::invocable<H, T>and
     std::convertible_to<std::invoke_result_t<H, T>, size_t>;
 
+template <typename T, typename U>
+concept DecaysTo = std::is_same_v<std::decay_t<T>, U>;
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H
