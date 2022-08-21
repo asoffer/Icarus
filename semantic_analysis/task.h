@@ -19,14 +19,13 @@ namespace semantic_analysis {
 template <typename KeyType, base::is_enum PhaseIdentifier>
 struct Scheduler;
 
-template <typename KeyType, base::is_enum PhaseIdentifier>
-struct TaskPhase;
+template <typename KeyType, auto PhaseIdentifier>
+struct TaskPhaseType;
 
 template <typename KeyType, base::is_enum PhaseIdentifier>
 struct Task {
   using key_type              = KeyType;
   using phase_identifier_type = PhaseIdentifier;
-  using task_phase_type       = TaskPhase<key_type, phase_identifier_type>;
   using scheduler_type        = Scheduler<key_type, phase_identifier_type>;
 
   struct promise_type {
@@ -42,8 +41,12 @@ struct Task {
     void unhandled_exception() {}
     void return_void() {}
 
-    template <base::DecaysTo<task_phase_type> Phase>
-    void resume_after(Phase&& phase);
+    template <typename Phase>
+    void resume_after(Phase&& phase) {
+      scheduler().order_after(
+          std::coroutine_handle<promise_type>::from_promise(*this),
+          std::forward<Phase>(phase));
+    }
 
     scheduler_type& scheduler() const { return scheduler_; }
 
@@ -63,16 +66,20 @@ struct Task {
   std::coroutine_handle<promise_type> handle_;
 };
 
-template <typename KeyType, base::is_enum PhaseIdentifier>
-struct TaskPhase : base::Extend<TaskPhase<KeyType, PhaseIdentifier>,
-                                2>::template With<base::AbslHashExtension> {
+template <typename KeyType, auto PhaseIdentifier>
+struct TaskPhaseType : base::Extend<TaskPhaseType<KeyType, PhaseIdentifier>,
+                                    1>::template With<base::AbslHashExtension> {
   using key_type              = KeyType;
-  using phase_identifier_type = PhaseIdentifier;
-  explicit TaskPhase(phase_identifier_type phase_id, key_type key)
-      : key_(key), phase_id_(phase_id) {}
+  using phase_identifier_type = decltype(PhaseIdentifier);
+
+  TaskPhaseType(key_type const& key) : key_(key) {}
+  TaskPhaseType(key_type&& key) : key_(std::move(key)) {}
+
+  static constexpr phase_identifier_type phase_identifier() {
+    return PhaseIdentifier;
+  }
 
   key_type const& key() { return key_; }
-  constexpr phase_identifier_type phase_identifier() const { return phase_id_; }
 
   constexpr bool await_ready() const noexcept { return false; }
 
@@ -89,14 +96,18 @@ struct TaskPhase : base::Extend<TaskPhase<KeyType, PhaseIdentifier>,
   friend base::EnableExtensions;
 
   key_type key_;
-  phase_identifier_type phase_id_;
 };
 
-template <typename KeyType, base::is_enum PhaseIdentifier>
+template <auto PhaseIdentifier, typename KeyType>
+auto TaskPhase(KeyType&& key) {
+  return TaskPhaseType<std::decay_t<KeyType>, PhaseIdentifier>(
+      std::forward<KeyType>(key));
+}
+
+template <typename KeyType, base::is_enum PhaseIdentifierType>
 struct Scheduler {
   using key_type              = KeyType;
-  using phase_identifier_type = PhaseIdentifier;
-  using task_phase_type       = TaskPhase<key_type, phase_identifier_type>;
+  using phase_identifier_type = PhaseIdentifierType;
   using task_type             = Task<key_type, phase_identifier_type>;
   using promise_type          = typename task_type::promise_type;
 
@@ -113,8 +124,9 @@ struct Scheduler {
     }
   }
 
+  template <int&..., phase_identifier_type PhaseIdentifier>
   void order_after(std::coroutine_handle<promise_type> awaiting,
-                   task_phase_type prerequisite) {
+                   TaskPhaseType<key_type, PhaseIdentifier> prerequisite) {
     schedule(prerequisite.key());
     auto phase = keys_.find(prerequisite.key())->second;
     if (phase <= prerequisite.phase_identifier()) {
@@ -125,7 +137,8 @@ struct Scheduler {
     }
   }
 
-  void set_completed(task_phase_type phase) {
+  template <int&..., phase_identifier_type PhaseIdentifier>
+  void set_completed(TaskPhaseType<key_type, PhaseIdentifier> phase) {
     using underlying_type = std::underlying_type_t<phase_identifier_type>;
     keys_.find(phase.key())->second = static_cast<phase_identifier_type>(
         static_cast<underlying_type>(phase.phase_identifier()) + 1);
@@ -161,14 +174,6 @@ struct Scheduler {
       prereqs_;
   std::queue<std::coroutine_handle<promise_type>> ready_;
 };
-
-template <typename KeyType, base::is_enum PhaseIdentifier>
-template <base::DecaysTo<struct TaskPhase<KeyType, PhaseIdentifier>> Phase>
-void Task<KeyType, PhaseIdentifier>::promise_type::resume_after(Phase&& phase) {
-  scheduler().order_after(
-      std::coroutine_handle<promise_type>::from_promise(*this),
-      std::forward<Phase>(phase));
-}
 
 }  // namespace semantic_analysis
 
