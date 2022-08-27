@@ -67,8 +67,7 @@ struct Task {
 };
 
 template <typename KeyType, auto PhaseIdentifier>
-struct TaskPhaseType : base::Extend<TaskPhaseType<KeyType, PhaseIdentifier>,
-                                    1>::template With<base::AbslHashExtension> {
+struct TaskPhaseType {
   using key_type              = KeyType;
   using phase_identifier_type = decltype(PhaseIdentifier);
 
@@ -93,8 +92,6 @@ struct TaskPhaseType : base::Extend<TaskPhaseType<KeyType, PhaseIdentifier>,
   void await_resume() const noexcept {}
 
  private:
-  friend base::EnableExtensions;
-
   key_type key_;
 };
 
@@ -140,7 +137,10 @@ struct Scheduler {
   template <int&..., phase_identifier_type PhaseIdentifier>
   void set_completed(TaskPhaseType<key_type, PhaseIdentifier> phase) {
     using underlying_type = std::underlying_type_t<phase_identifier_type>;
-    keys_.find(phase.key())->second = static_cast<phase_identifier_type>(
+
+    auto key_iter = keys_.find(phase.key());
+    ASSERT(key_iter != keys_.end());
+    key_iter->second = static_cast<phase_identifier_type>(
         static_cast<underlying_type>(phase.phase_identifier()) + 1);
 
     auto iter = prereqs_.find(phase.key());

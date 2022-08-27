@@ -80,30 +80,5 @@ TEST(Scheduler, SelfReferential) {
   EXPECT_EQ(n2_counter, 3);
 }
 
-Task<Node, Phase> ReturningSelfReferential(TestScheduler &s, Node n) {
-  ++*n.counter;
-  s.set_completed(TaskPhase<Phase::Zero>(n));
-  co_await TaskPhase<Phase::Zero>(*n.next);
-  ++*n.counter;
-  s.set_completed(TaskPhase<Phase::One>(n));
-  co_await TaskPhase<Phase::One>(*n.next);
-  ++*n.counter;
-}
-
-TEST(Scheduler, ReturningSelfReferential) {
-  TestScheduler s(ReturningSelfReferential);
-  int n1_counter = 0;
-  Node n1{.counter = &n1_counter};
-  int n2_counter = 0;
-  Node n2{.counter = &n2_counter};
-  n1.next = &n2;
-  n2.next = &n1;
-
-  s.schedule(n1);
-  s.complete();
-  EXPECT_EQ(n1_counter, 3);
-  EXPECT_EQ(n2_counter, 3);
-}
-
 }  // namespace
 }  // namespace semantic_analysis
