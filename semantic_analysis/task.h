@@ -19,14 +19,21 @@ namespace semantic_analysis {
 template <typename KeyType, base::is_enum PhaseIdentifier>
 struct Scheduler;
 
-template <typename KeyType, auto PhaseIdentifier>
+template <typename TaskType,
+          typename TaskType::phase_identifier_type PhaseIdentifier>
 struct TaskPhaseType;
 
-template <typename KeyType, base::is_enum PhaseIdentifier>
+template <auto>
+using AlwaysVoid = void;
+
+template <typename KeyType, base::is_enum PhaseIdentifier,
+          template <PhaseIdentifier> typename ReturnType = AlwaysVoid>
 struct Task {
   using key_type              = KeyType;
   using phase_identifier_type = PhaseIdentifier;
   using scheduler_type        = Scheduler<key_type, phase_identifier_type>;
+  template <phase_identifier_type p>
+  using return_type = ReturnType<p>;
 
   struct promise_type {
     promise_type(scheduler_type& s, key_type const&) : scheduler_(s) {}
@@ -66,10 +73,13 @@ struct Task {
   std::coroutine_handle<promise_type> handle_;
 };
 
-template <typename KeyType, auto PhaseIdentifier>
+template <typename TaskType,
+          typename TaskType::phase_identifier_type PhaseIdentifier>
 struct TaskPhaseType {
-  using key_type              = KeyType;
-  using phase_identifier_type = decltype(PhaseIdentifier);
+  using task_type             = TaskType;
+  using key_type              = typename task_type::key_type;
+  using phase_identifier_type = typename task_type::phase_identifier_type;
+  using return_type = typename task_type::template return_type<PhaseIdentifier>;
 
   TaskPhaseType(key_type const& key) : key_(key) {}
   TaskPhaseType(key_type&& key) : key_(std::move(key)) {}
@@ -89,7 +99,7 @@ struct TaskPhaseType {
     handle.promise().resume_after(*this);
   }
 
-  void await_resume() const noexcept {}
+  return_type await_resume() const noexcept {}
 
  private:
   key_type key_;
@@ -97,8 +107,8 @@ struct TaskPhaseType {
 
 template <auto PhaseIdentifier, typename KeyType>
 auto TaskPhase(KeyType&& key) {
-  return TaskPhaseType<std::decay_t<KeyType>, PhaseIdentifier>(
-      std::forward<KeyType>(key));
+  return TaskPhaseType<Task<std::decay_t<KeyType>, decltype(PhaseIdentifier)>,
+                       PhaseIdentifier>(std::forward<KeyType>(key));
 }
 
 template <typename KeyType, base::is_enum PhaseIdentifierType>
@@ -123,7 +133,7 @@ struct Scheduler {
 
   template <int&..., phase_identifier_type PhaseIdentifier>
   void order_after(std::coroutine_handle<promise_type> awaiting,
-                   TaskPhaseType<key_type, PhaseIdentifier> prerequisite) {
+                   TaskPhaseType<task_type, PhaseIdentifier> prerequisite) {
     schedule(prerequisite.key());
     auto phase = keys_.find(prerequisite.key())->second;
     if (phase <= prerequisite.phase_identifier()) {
@@ -135,7 +145,7 @@ struct Scheduler {
   }
 
   template <int&..., phase_identifier_type PhaseIdentifier>
-  void set_completed(TaskPhaseType<key_type, PhaseIdentifier> phase) {
+  void set_completed(TaskPhaseType<task_type, PhaseIdentifier> phase) {
     using underlying_type = std::underlying_type_t<phase_identifier_type>;
 
     auto key_iter = keys_.find(phase.key());
