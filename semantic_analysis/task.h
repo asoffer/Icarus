@@ -169,37 +169,42 @@ struct Scheduler {
 
   template <base::DecaysTo<key_type> K>
   void schedule(K&& key) {
-    auto [iter, inserted] =
-        keys_.try_emplace(std::forward<K>(key), phase_identifier_type{});
+    auto [iter, inserted] = keys_.try_emplace(std::forward<K>(key));
     if (inserted) {
       auto handle = task_creator_(*this, iter->first).handle();
       ready_.push(handle);
     }
   }
 
-  // Schedules `awaiting` after `prerequisite`. Returns whether `prerequisite`
-  // has already completed.
+  // Schedules `awaiting_handle` after `prerequisite`. Returns whether
+  // `prerequisite` has already completed.
   template <int&..., phase_identifier_type P>
-  bool order_after(std::coroutine_handle<promise_type> awaiting,
+  bool order_after(std::coroutine_handle<promise_type> awaiting_handle,
                    typename task_type::template Phase<P>& prerequisite) {
     schedule(prerequisite.key());
-    auto current_phase     = keys_.find(prerequisite.key())->second;
-    bool already_completed = current_phase > prerequisite.phase_identifier();
+
+    auto key_iter = keys_.find(prerequisite.key());
+    ASSERT(key_iter != keys_.end());
+    auto& [current_phase, phase_entries] = key_iter->second;
+
+    auto [phase_entry_iter, inserted] =
+        phase_entries.try_emplace(prerequisite.phase_identifier());
+
+    bool already_completed = (current_phase > prerequisite.phase_identifier());
     if (already_completed) {
       using return_type = typename task_type::template Phase<P>::return_type;
       if constexpr (not std::is_void_v<return_type>) {
+        std::cerr << prerequisite.phase_identifier() << "\n";
+        ASSERT(inserted == false);
         auto* return_slot_ptr = prerequisite.return_slot();
         if (return_slot_ptr) {
-          auto iter = results_map_.find(std::make_pair(
-              prerequisite.key(), prerequisite.phase_identifier()));
-          ASSERT(iter != results_map_.end());
-          new (return_slot_ptr)
-              return_type(*static_cast<return_type*>(iter->second));
+          new (return_slot_ptr) return_type(
+              *static_cast<return_type*>(phase_entry_iter->second.results));
         }
       }
     } else {
-      prereqs_[prerequisite.key()][prerequisite.phase_identifier()]
-          .emplace_back(awaiting, prerequisite.return_slot());
+      phase_entry_iter->second.awaiting.emplace_back(
+          awaiting_handle, prerequisite.return_slot());
     }
     return already_completed;
   }
@@ -208,21 +213,22 @@ struct Scheduler {
   void set_completed(key_type const& key) requires(
       std::is_void_v<typename task_type::template Phase<P>::return_type>) {
     using underlying_type = std::underlying_type_t<phase_identifier_type>;
-    auto key_iter = keys_.find(key);
+    auto key_iter         = keys_.find(key);
     ASSERT(key_iter != keys_.end());
-    key_iter->second =
+    auto& [current_phase, phase_entries] = key_iter->second;
+
+    current_phase =
         static_cast<phase_identifier_type>(static_cast<underlying_type>(P) + 1);
 
-    auto iter = prereqs_.find(key);
-    if (iter == prereqs_.end()) { return; }
-    auto prereq_iter = iter->second.find(P);
-    if (prereq_iter == iter->second.end()) { return; }
+    auto [phase_entry_iter, inserted] = phase_entries.try_emplace(P);
 
-    auto node_handle = iter->second.extract(prereq_iter);
-    for (auto [coroutine_handle, return_slot] : node_handle.mapped()) {
+    // Add all the entries awaiting the completion of this phase to the
+    // ready-queue.
+    auto awaiting_entries = phase_entry_iter->second.awaiting;
+    for (auto [coroutine_handle, return_slot] : awaiting_entries) {
       ready_.push(coroutine_handle);
     }
-    if (iter->second.empty()) { prereqs_.erase(iter); }
+    awaiting_entries.clear();
   }
 
   template <phase_identifier_type P, typename ReturnType>
@@ -238,24 +244,26 @@ struct Scheduler {
                 new return_type(std::forward<ReturnType>(phase_return_value)),
                 [](void* ptr) { delete static_cast<return_type*>(ptr); })
             .get());
-    results_map_.emplace(std::make_pair(key, P), result_ptr);
 
     auto key_iter = keys_.find(key);
     ASSERT(key_iter != keys_.end());
-    key_iter->second =
+    auto& [current_phase, phase_entries] = key_iter->second;
+
+    current_phase =
         static_cast<phase_identifier_type>(static_cast<underlying_type>(P) + 1);
 
-    auto iter = prereqs_.find(key);
-    if (iter == prereqs_.end()) { return; }
-    auto prereq_iter = iter->second.find(P);
-    if (prereq_iter == iter->second.end()) { return; }
+    auto [phase_entry_iter, inserted] = phase_entries.try_emplace(P);
 
-    auto node_handle = iter->second.extract(prereq_iter);
-    for (auto [coroutine_handle, return_slot] : node_handle.mapped()) {
+    // Add all the entries awaiting the completion of this phase to the
+    // ready-queue.
+    auto awaiting_entries = phase_entry_iter->second.awaiting;
+    for (auto [coroutine_handle, return_slot] : awaiting_entries) {
       new (return_slot) return_type(*result_ptr);
+      phase_entry_iter->second.results = result_ptr;
       ready_.push(coroutine_handle);
     }
-    if (iter->second.empty()) { prereqs_.erase(iter); }
+    awaiting_entries.clear();
+    phase_entry_iter->second.results = result_ptr;
   }
 
   void complete() {
@@ -264,7 +272,6 @@ struct Scheduler {
       ready_.pop();
       if (task and not task.done()) { task.resume(); }
     }
-    ASSERT(prereqs_.size() == 0);
   }
 
  private:
@@ -272,16 +279,26 @@ struct Scheduler {
   // scheduler corresponding to a given value of type `key_type`.
   absl::AnyInvocable<task_type(Scheduler&, key_type)> task_creator_;
 
-  absl::flat_hash_map<key_type, phase_identifier_type> keys_;
-  absl::flat_hash_map<
-      key_type,
-      absl::flat_hash_map<
-          phase_identifier_type,
-          std::vector<std::pair<std::coroutine_handle<promise_type>, void*>>>>
-      prereqs_;
+  // Represents either the address of results already completed by a given
+  // phase, or the container consisting of all tasks awaiting a task phase
+  // completion if the phase has yet to be completed.
+  struct PhaseEntry {
+    void* results;
+    std::vector<std::pair<std::coroutine_handle<promise_type>, void*>> awaiting;
+  };
 
-  absl::flat_hash_map<std::pair<key_type, phase_identifier_type>, void*>
-      results_map_;
+  // Represents the state of a given scheduled task, including which phase it is
+  // in, and which other tasks are awaiting which phases of it to complete.
+  struct TaskState {
+    phase_identifier_type current_phase = {};
+
+    // Map from a phase to the set of coroutine handles awaiting the completion
+    // of the given phase for the corresponding task.
+    absl::flat_hash_map<phase_identifier_type, PhaseEntry> phase_entries;
+  };
+
+  absl::flat_hash_map<key_type, TaskState> keys_;
+
   std::vector<std::unique_ptr<void, void (*)(void*)>> results_;
   std::queue<std::coroutine_handle<promise_type>> ready_;
   };
