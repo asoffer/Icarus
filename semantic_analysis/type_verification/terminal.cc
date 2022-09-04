@@ -1,8 +1,7 @@
 #include "ast/ast.h"
+#include "compiler/context.h"
 #include "semantic_analysis/type_verification/verify.h"
-#include "type/primitive.h"
 #include "type/qual_type.h"
-#include "type/slice.h"
 
 namespace semantic_analysis {
 

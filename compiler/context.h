@@ -347,6 +347,14 @@ struct Context {
     value_callback_ = std::move(f);
   }
 
+  auto const &set_parameter_types(ast::ParameterizedExpression const *expr,
+                                  core::Parameters<type::QualType> parameters) {
+    [[maybe_unused]] auto [iter, inserted] =
+        parameter_types_.emplace(expr, std::move(parameters));
+    ASSERT(inserted == true);
+    return iter->second;
+  }
+
  private:
   explicit Context(Context *parent);
 
@@ -399,6 +407,10 @@ struct Context {
   absl::flat_hash_map<ast::Identifier const *,
                       std::vector<ast::Declaration::Id const *>>
       decls_;
+
+  absl::node_hash_map<ast::ParameterizedExpression const *,
+                      core::Parameters<type::QualType>>
+      parameter_types_;
 
   // A map where we store all constants that are valuable to cache during
   // compilation.

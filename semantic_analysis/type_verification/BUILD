@@ -5,6 +5,7 @@ cc_library(
     hdrs = ["verify.h"],
     srcs = [
         "terminal.cc",
+        "short_function_literal.cc",
     ],
     deps = [
         "//ast",

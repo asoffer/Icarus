@@ -1,5 +1,5 @@
-#ifndef ICARUS_SEMANTIC_ANALYSIS_TYPE_VERIFICATION_H
-#define ICARUS_SEMANTIC_ANALYSIS_TYPE_VERIFICATION_H
+#ifndef ICARUS_SEMANTIC_ANALYSIS_TYPE_VERIFICATION_VERIFY_H
+#define ICARUS_SEMANTIC_ANALYSIS_TYPE_VERIFICATION_VERIFY_H
 
 #include "absl/types/span.h"
 #include "ast/ast.h"
@@ -11,14 +11,32 @@
 namespace semantic_analysis {
 
 enum class TypeVerificationPhase {
-  VerifyType,
   VerifyParameters,
+  VerifyType,
   VerifyBody,
+  Completed,
 };
 
-using VerificationTask = Task<ast::Node const *, TypeVerificationPhase>;
-using VerificationScheduler =
-    Scheduler<ast::Node const *, TypeVerificationPhase>;
+namespace internal_verify {
+
+using Types = std::tuple<core::Parameters<type::QualType> const *,
+                         absl::Span<type::QualType const>, void, void>;
+template <TypeVerificationPhase P>
+using ReturnType = std::tuple_element_t<static_cast<int>(P), Types>;
+
+}  // namespace internal_verify
+
+using VerificationTask =
+    Task<ast::Node const *, TypeVerificationPhase, internal_verify::ReturnType>;
+using VerificationScheduler = Scheduler<VerificationTask>;
+
+inline auto VerifyTypeOf(ast::Node const *node) {
+  return VerificationTask::Phase<TypeVerificationPhase::VerifyType>(node);
+}
+
+inline auto VerifyParametersOf(ast::Node const *node) {
+  return VerificationTask::Phase<TypeVerificationPhase::VerifyParameters>(node);
+}
 
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
@@ -43,6 +61,8 @@ struct TypeVerifier : VerificationScheduler {
   }
 
   static VerificationTask VerifyType(TypeVerifier &tv,
+                                     ast::ShortFunctionLiteral const *node);
+  static VerificationTask VerifyType(TypeVerifier &tv,
                                      ast::Terminal const *node);
 
  private:
@@ -51,4 +71,4 @@ struct TypeVerifier : VerificationScheduler {
 
 }  // namespace semantic_analysis
 
-#endif  // ICARUS_SEMANTIC_ANALYSIS_TYPE_VERIFICATION_H
+#endif  // ICARUS_SEMANTIC_ANALYSIS_TYPE_VERIFICATION_VERIFY_H

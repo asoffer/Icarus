@@ -197,13 +197,13 @@ struct Scheduler {
     ASSERT(key_iter != keys_.end());
     auto& [current_phase, phase_entries] = key_iter->second;
 
-    auto& phase_entry = phase_entries[prerequisite.phase_identifier()];
+    auto& phase_entry =
+        phase_entries[static_cast<size_t>(prerequisite.phase_identifier())];
 
     bool already_completed = (current_phase > prerequisite.phase_identifier());
     if (already_completed) {
       using return_type = typename task_type::template Phase<P>::return_type;
       if constexpr (not std::is_void_v<return_type>) {
-        std::cerr << prerequisite.phase_identifier() << "\n";
         if (auto* return_slot_ptr = prerequisite.return_slot()) {
           new (return_slot_ptr)
               return_type(phase_entry.template results<return_type>());
@@ -226,7 +226,7 @@ struct Scheduler {
     current_phase =
         static_cast<phase_identifier_type>(static_cast<underlying_type>(P) + 1);
 
-    auto& phase_entry = phase_entries[P];
+    auto& phase_entry = phase_entries[static_cast<underlying_type>(P)];
 
     // Add all the entries awaiting the completion of this phase to the
     // ready-queue.
@@ -257,7 +257,7 @@ struct Scheduler {
     current_phase =
         static_cast<phase_identifier_type>(static_cast<underlying_type>(P) + 1);
 
-    auto& phase_entry = phase_entries[P];
+    auto& phase_entry = phase_entries[static_cast<underlying_type>(P)];
 
     // Add all the entries awaiting the completion of this phase to the
     // ready-queue.
