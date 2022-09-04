@@ -16,7 +16,7 @@ struct Node : base::Extend<Node>::With<base::AbslHashExtension> {
   Node *next   = nullptr;
 };
 
-using TestScheduler = Scheduler<Node, Phase>;
+using TestScheduler = Scheduler<Task<Node, Phase>>;
 
 Task<Node, Phase> OneTaskWithNoAwaits(TestScheduler &, Node n) {
   ++*n.counter;
@@ -35,12 +35,12 @@ TEST(Scheduler, OneTaskWithNoAwaits) {
 
 Task<Node, Phase> OneTaskWithOneAwait(TestScheduler &s, Node n) {
   ++*n.counter;
-  s.set_completed(TaskPhase<Phase::Zero>(n));
-  if (n.next) { co_await TaskPhase<Phase::Zero>(*n.next); }
+  s.set_completed<Phase::Zero>(n);
+  if (n.next) { co_await Task<Node, Phase>::Phase<Phase::Zero>(*n.next); }
   ++*n.counter;
 }
 
-TEST(Scheduler, OneTaskWithOneAwaits) {
+TEST(Scheduler, OneTaskWithOneAwait) {
   TestScheduler s(OneTaskWithOneAwait);
   int n1_counter = 0;
   Node n1{.counter = &n1_counter};
@@ -49,7 +49,7 @@ TEST(Scheduler, OneTaskWithOneAwaits) {
 
   s.schedule(n2);
   EXPECT_EQ(n1_counter, 2);
-  EXPECT_EQ(n2_counter, 1);
+  EXPECT_EQ(n2_counter, 2);
   s.complete();
   EXPECT_EQ(n1_counter, 2);
   EXPECT_EQ(n2_counter, 2);
@@ -57,11 +57,11 @@ TEST(Scheduler, OneTaskWithOneAwaits) {
 
 Task<Node, Phase> SelfReferential(TestScheduler &s, Node n) {
   ++*n.counter;
-  s.set_completed(TaskPhase<Phase::Zero>(n));
-  co_await TaskPhase<Phase::Zero>(*n.next);
+  s.set_completed<Phase::Zero>(n);
+  co_await Task<Node, Phase>::Phase<Phase::Zero>(*n.next);
   ++*n.counter;
-  s.set_completed(TaskPhase<Phase::One>(n));
-  co_await TaskPhase<Phase::One>(*n.next);
+  s.set_completed<Phase::One>(n);
+  co_await Task<Node, Phase>::Phase<Phase::One>(*n.next);
   ++*n.counter;
 }
 
@@ -78,6 +78,36 @@ TEST(Scheduler, SelfReferential) {
   s.complete();
   EXPECT_EQ(n1_counter, 3);
   EXPECT_EQ(n2_counter, 3);
+}
+
+template <Phase P>
+using ReturnType = std::conditional_t<P == Phase::Zero, int, std::string_view>;
+using ReturningTask       = Task<Node, Phase, ReturnType>;
+using ReturnTestScheduler = Scheduler<ReturningTask>;
+
+ReturningTask ReturningSelfReferential(ReturnTestScheduler &s, Node n) {
+  ++*n.counter;
+  s.set_completed<Phase::Zero>(n, 3);
+  *n.counter += co_await ReturningTask::Phase<Phase::Zero>(*n.next);
+  ++*n.counter;
+  s.set_completed<Phase::One>(n, "hello");
+  *n.counter += (co_await ReturningTask::Phase<Phase::One>(*n.next)).size();
+  ++*n.counter;
+}
+
+TEST(Scheduler, ReturningSelfReferential) {
+  ReturnTestScheduler s(ReturningSelfReferential);
+  int n1_counter = 0;
+  Node n1{.counter = &n1_counter};
+  int n2_counter = 0;
+  Node n2{.counter = &n2_counter};
+  n1.next = &n2;
+  n2.next = &n1;
+
+  s.schedule(n1);
+  s.complete();
+  EXPECT_EQ(n1_counter, 11);
+  EXPECT_EQ(n2_counter, 11);
 }
 
 }  // namespace
