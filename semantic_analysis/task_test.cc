@@ -9,7 +9,7 @@ namespace semantic_analysis {
 namespace {
 
 using ::testing::IsEmpty;
-enum Phase { Zero, One };
+enum Phase { Zero, One, Completed };
 
 struct Node : base::Extend<Node>::With<base::AbslHashExtension> {
   int *counter = 0;

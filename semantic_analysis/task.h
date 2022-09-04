@@ -23,11 +23,21 @@ struct Scheduler;
 template <auto>
 using AlwaysVoid = void;
 
-template <typename KeyType, base::is_enum PhaseIdentifier,
-          template <PhaseIdentifier> typename ReturnType = AlwaysVoid>
+// Represents a phase of a task (tasks consist of one or more sequential
+// phases). The enumerators must be sequentially valued, where the initial task
+// has an underlying value of zero. Each enum must also have an enumerater named
+// `E::Completed` indicating the task has been completed and whose underlying
+// value is largest in the enum.
+template <typename E>
+concept PhaseIdentifier = base::is_enum<E> and requires {
+  { E::Completed } -> std::same_as<E>;
+};
+
+template <typename KeyType, PhaseIdentifier PhaseId,
+          template <PhaseId> typename ReturnType = AlwaysVoid>
 struct Task {
   using key_type              = KeyType;
-  using phase_identifier_type = PhaseIdentifier;
+  using phase_identifier_type = PhaseId;
   using scheduler_type        = Scheduler<Task>;
   template <phase_identifier_type p>
   using return_type = ReturnType<p>;
@@ -96,13 +106,13 @@ struct PhaseBase {
   key_type key_;
 };
 
-template <typename KeyType, base::is_enum PhaseIdentifier,
-          template <PhaseIdentifier> typename ReturnType>
-template <PhaseIdentifier P>
-struct Task<KeyType, PhaseIdentifier, ReturnType>::Phase<P, true>
-    : PhaseBase<Task<KeyType, PhaseIdentifier, ReturnType>, P> {
+template <typename KeyType, PhaseIdentifier PhaseId,
+          template <PhaseId> typename ReturnType>
+template <PhaseId P>
+struct Task<KeyType, PhaseId, ReturnType>::Phase<P, true>
+    : PhaseBase<Task<KeyType, PhaseId, ReturnType>, P> {
  private:
-  using Base = PhaseBase<Task<KeyType, PhaseIdentifier, ReturnType>, P>;
+  using Base = PhaseBase<Task<KeyType, PhaseId, ReturnType>, P>;
 
  public:
   using key_type              = typename Base::key_type;
@@ -124,13 +134,13 @@ struct Task<KeyType, PhaseIdentifier, ReturnType>::Phase<P, true>
   void* return_slot() { return nullptr; }
 };
 
-template <typename KeyType, base::is_enum PhaseIdentifier,
-          template <PhaseIdentifier> typename ReturnType>
-template <PhaseIdentifier P>
-struct Task<KeyType, PhaseIdentifier, ReturnType>::Phase<P, false>
-    : PhaseBase<Task<KeyType, PhaseIdentifier, ReturnType>, P> {
+template <typename KeyType, PhaseIdentifier PhaseId,
+          template <PhaseId> typename ReturnType>
+template <PhaseId P>
+struct Task<KeyType, PhaseId, ReturnType>::Phase<P, false>
+    : PhaseBase<Task<KeyType, PhaseId, ReturnType>, P> {
  private:
-  using Base = PhaseBase<Task<KeyType, PhaseIdentifier, ReturnType>, P>;
+  using Base = PhaseBase<Task<KeyType, PhaseId, ReturnType>, P>;
 
  public:
   using key_type              = typename Base::key_type;
@@ -187,24 +197,20 @@ struct Scheduler {
     ASSERT(key_iter != keys_.end());
     auto& [current_phase, phase_entries] = key_iter->second;
 
-    auto [phase_entry_iter, inserted] =
-        phase_entries.try_emplace(prerequisite.phase_identifier());
+    auto& phase_entry = phase_entries[prerequisite.phase_identifier()];
 
     bool already_completed = (current_phase > prerequisite.phase_identifier());
     if (already_completed) {
       using return_type = typename task_type::template Phase<P>::return_type;
       if constexpr (not std::is_void_v<return_type>) {
         std::cerr << prerequisite.phase_identifier() << "\n";
-        ASSERT(inserted == false);
-        auto* return_slot_ptr = prerequisite.return_slot();
-        if (return_slot_ptr) {
-          new (return_slot_ptr) return_type(
-              *static_cast<return_type*>(phase_entry_iter->second.results));
+        if (auto* return_slot_ptr = prerequisite.return_slot()) {
+          new (return_slot_ptr)
+              return_type(phase_entry.template results<return_type>());
         }
       }
     } else {
-      phase_entry_iter->second.awaiting.emplace_back(
-          awaiting_handle, prerequisite.return_slot());
+      phase_entry.await(awaiting_handle, prerequisite.return_slot());
     }
     return already_completed;
   }
@@ -220,15 +226,14 @@ struct Scheduler {
     current_phase =
         static_cast<phase_identifier_type>(static_cast<underlying_type>(P) + 1);
 
-    auto [phase_entry_iter, inserted] = phase_entries.try_emplace(P);
+    auto& phase_entry = phase_entries[P];
 
     // Add all the entries awaiting the completion of this phase to the
     // ready-queue.
-    auto awaiting_entries = phase_entry_iter->second.awaiting;
-    for (auto [coroutine_handle, return_slot] : awaiting_entries) {
+    for (auto [coroutine_handle, return_slot] : phase_entry.awaiting()) {
       ready_.push(coroutine_handle);
     }
-    awaiting_entries.clear();
+    phase_entry = PhaseEntry::ResultPointer(nullptr);
   }
 
   template <phase_identifier_type P, typename ReturnType>
@@ -252,18 +257,15 @@ struct Scheduler {
     current_phase =
         static_cast<phase_identifier_type>(static_cast<underlying_type>(P) + 1);
 
-    auto [phase_entry_iter, inserted] = phase_entries.try_emplace(P);
+    auto& phase_entry = phase_entries[P];
 
     // Add all the entries awaiting the completion of this phase to the
     // ready-queue.
-    auto awaiting_entries = phase_entry_iter->second.awaiting;
-    for (auto [coroutine_handle, return_slot] : awaiting_entries) {
+    for (auto [coroutine_handle, return_slot] : phase_entry.awaiting()) {
       new (return_slot) return_type(*result_ptr);
-      phase_entry_iter->second.results = result_ptr;
       ready_.push(coroutine_handle);
     }
-    awaiting_entries.clear();
-    phase_entry_iter->second.results = result_ptr;
+    phase_entry = PhaseEntry::ResultPointer(result_ptr);
   }
 
   void complete() {
@@ -283,8 +285,45 @@ struct Scheduler {
   // phase, or the container consisting of all tasks awaiting a task phase
   // completion if the phase has yet to be completed.
   struct PhaseEntry {
-    void* results;
-    std::vector<std::pair<std::coroutine_handle<promise_type>, void*>> awaiting;
+    PhaseEntry()
+        : PhaseEntry(std::vector<
+                     std::pair<std::coroutine_handle<promise_type>, void*>>{}) {
+    }
+
+    static PhaseEntry Awaiting(
+        std::vector<std::pair<std::coroutine_handle<promise_type>, void*>>
+            awaiting) {
+      return PhaseEntry(std::move(awaiting));
+    }
+
+    template <typename T>
+    T const& results() const {
+      return *ASSERT_NOT_NULL(static_cast<T const*>(results_));
+    }
+
+    static PhaseEntry ResultPointer(void* results) {
+      return PhaseEntry(results);
+    }
+
+    void await(std::coroutine_handle<promise_type> handle, void* result) {
+      awaiting_.emplace_back(handle, result);
+    }
+
+    absl::Span<std::pair<std::coroutine_handle<promise_type>, void*> const>
+    awaiting() const {
+      return awaiting_;
+    }
+
+   private:
+    explicit PhaseEntry(
+        std::vector<std::pair<std::coroutine_handle<promise_type>, void*>>
+            awaiting)
+        : awaiting_(std::move(awaiting)) {}
+    explicit PhaseEntry(void* results) : results_(results) {}
+
+    void* results_;
+    std::vector<std::pair<std::coroutine_handle<promise_type>, void*>>
+        awaiting_;
   };
 
   // Represents the state of a given scheduled task, including which phase it is
@@ -294,14 +333,18 @@ struct Scheduler {
 
     // Map from a phase to the set of coroutine handles awaiting the completion
     // of the given phase for the corresponding task.
-    absl::flat_hash_map<phase_identifier_type, PhaseEntry> phase_entries;
+
+    using underlying_type = std::underlying_type_t<phase_identifier_type>;
+    std::array<PhaseEntry,
+               static_cast<underlying_type>(phase_identifier_type::Completed)>
+        phase_entries;
   };
 
   absl::flat_hash_map<key_type, TaskState> keys_;
 
   std::vector<std::unique_ptr<void, void (*)(void*)>> results_;
   std::queue<std::coroutine_handle<promise_type>> ready_;
-  };
+};
 
 }  // namespace semantic_analysis
 
