@@ -42,9 +42,8 @@ VerificationTask TypeVerifier::VerifyType(
     }
   }
 
-  tv.context().set_qual_type(node, type::QualType::Constant(type::Func(
-                                       parameters_ref, std::move(body_types))));
-  co_return;
+  tv.complete_verification(node, type::QualType::Constant(type::Func(
+                                     parameters_ref, std::move(body_types))));
 }
 
 }  // namespace semantic_analysis

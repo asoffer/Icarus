@@ -17,6 +17,19 @@ cc_library(
 )
 
 cc_test(
+    name = "short_function_literal_test",
+    srcs = ["short_function_literal_test.cc"],
+    deps = [
+        ":matchers",
+        ":verify",
+        "//type:primitive",
+        "//type:function",
+        "//type:qual_type",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "terminal_test",
     srcs = ["terminal_test.cc"],
     deps = [
@@ -36,6 +49,8 @@ cc_library(
     deps = [
         ":verify",
         "//compiler:context",
+        "//diagnostic/consumer:tracking",
+        "//frontend:parse",
         "//ir:module",
         "//ir/value:module_id",
         "//type:qual_type",

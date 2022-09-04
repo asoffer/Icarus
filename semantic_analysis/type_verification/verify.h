@@ -60,6 +60,17 @@ struct TypeVerifier : VerificationScheduler {
     return node->visit(*this);
   }
 
+  void complete_verification(ast::Expression const *node,
+                             type::QualType qual_type) {
+    this->set_completed<TypeVerificationPhase::VerifyType>(
+        node, context().set_qual_type(node, qual_type));
+  }
+  void complete_verification(ast::Expression const *node,
+                             std::vector<type::QualType> qual_types) {
+    this->set_completed<TypeVerificationPhase::VerifyType>(
+        node, context().set_qual_types(node, std::move(qual_types)));
+  }
+
   static VerificationTask VerifyType(TypeVerifier &tv,
                                      ast::ShortFunctionLiteral const *node);
   static VerificationTask VerifyType(TypeVerifier &tv,

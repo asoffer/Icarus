@@ -7,7 +7,7 @@ namespace semantic_analysis {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
                                           ast::Terminal const* node) {
-  tv.context().set_qual_type(
+  tv.complete_verification(
       node, type::QualType::Constant(compiler::TerminalType(*node)));
   co_return;
 }

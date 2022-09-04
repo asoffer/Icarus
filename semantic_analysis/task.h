@@ -177,7 +177,7 @@ struct Scheduler {
   Scheduler(absl::AnyInvocable<task_type(Scheduler&, key_type)> task_creator)
       : task_creator_(std::move(task_creator)) {}
 
-  template <base::DecaysTo<key_type> K>
+  template <typename K>
   void schedule(K&& key) {
     auto [iter, inserted] = keys_.try_emplace(std::forward<K>(key));
     if (inserted) {
@@ -216,6 +216,11 @@ struct Scheduler {
   }
 
   template <phase_identifier_type P>
+  static constexpr phase_identifier_type NextAfter() {
+    return static_cast<phase_identifier_type>(static_cast<size_t>(P) + 1);
+  }
+
+  template <phase_identifier_type P>
   void set_completed(key_type const& key) requires(
       std::is_void_v<typename task_type::template Phase<P>::return_type>) {
     using underlying_type = std::underlying_type_t<phase_identifier_type>;
@@ -223,9 +228,7 @@ struct Scheduler {
     ASSERT(key_iter != keys_.end());
     auto& [current_phase, phase_entries] = key_iter->second;
 
-    current_phase =
-        static_cast<phase_identifier_type>(static_cast<underlying_type>(P) + 1);
-
+    current_phase = NextAfter<P>();
     auto& phase_entry = phase_entries[static_cast<underlying_type>(P)];
 
     // Add all the entries awaiting the completion of this phase to the
@@ -254,9 +257,7 @@ struct Scheduler {
     ASSERT(key_iter != keys_.end());
     auto& [current_phase, phase_entries] = key_iter->second;
 
-    current_phase =
-        static_cast<phase_identifier_type>(static_cast<underlying_type>(P) + 1);
-
+    current_phase     = NextAfter<P>();
     auto& phase_entry = phase_entries[static_cast<underlying_type>(P)];
 
     // Add all the entries awaiting the completion of this phase to the
@@ -269,11 +270,45 @@ struct Scheduler {
   }
 
   void complete() {
+#if 0
     while (not ready_.empty()) {
       auto task = ready_.front();
       ready_.pop();
       if (task and not task.done()) { task.resume(); }
     }
+#else
+    while (not ready_.empty()) {
+      std::cerr << "================================================ ITERATION "
+                   "================================================\n";
+      std::string_view separator = "===       Queue:         [";
+      size_t n                   = ready_.size();
+      for (size_t i = 0; i < n; ++i) {
+        auto q = ready_.front();
+        ready_.pop();
+        ready_.push(q);
+        std::cerr << std::exchange(separator, ", ") << q.address();
+      }
+      ASSERT(ready_.size() == n);
+      std::cerr << "]\n";
+
+      auto task = ready_.front();
+      ready_.pop();
+      if (task and not task.done()) { task.resume(); }
+
+      separator = "===       Queue:         [";
+      n         = ready_.size();
+      for (size_t i = 0; i < n; ++i) {
+        auto q = ready_.front();
+        ready_.pop();
+        ready_.push(q);
+        std::cerr << std::exchange(separator, ", ") << q.address();
+      }
+      ASSERT(ready_.size() == n);
+      std::cerr << "]\n";
+      std::cerr << "=========================================== DONE WITH "
+                   "ITERATION ===========================================\n";
+    }
+#endif
   }
 
  private:
