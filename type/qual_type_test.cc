@@ -109,4 +109,19 @@ TEST(QualType, Error) {
   EXPECT_TRUE(qt.HasErrorMark());
 }
 
+TEST(QualType, UpdateQualifiers) {
+  type::QualType qt(type::I32, type::Qualifiers::Constant());
+  EXPECT_EQ(qt.quals(), type::Qualifiers::Constant());
+  qt |= type::Qualifiers::Buffer();
+  EXPECT_EQ(qt.quals(),
+            type::Qualifiers::Constant() | type::Qualifiers::Buffer());
+  qt |= type::Qualifiers::Buffer();
+  EXPECT_EQ(qt.quals(),
+            type::Qualifiers::Constant() | type::Qualifiers::Buffer());
+  qt &= type::Qualifiers::Buffer();
+  EXPECT_EQ(qt.quals(), type::Qualifiers::Buffer());
+  qt &= type::Qualifiers::Buffer();
+  EXPECT_EQ(qt.quals(), type::Qualifiers::Buffer());
+}
+
 }  // namespace

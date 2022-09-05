@@ -203,6 +203,15 @@ struct QualType {
     return H::combine(std::move(h), q.type_, q.quals_, q.error_);
   }
 
+  constexpr QualType &operator|=(Qualifiers rhs) {
+    quals_ |= rhs;
+    return *this;
+  }
+  constexpr QualType &operator&=(Qualifiers rhs) {
+    quals_ &= rhs;
+    return *this;
+  }
+
   friend std::ostream &operator<<(std::ostream &os, QualType q);
 
   std::string to_string() const {
