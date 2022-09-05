@@ -270,45 +270,11 @@ struct Scheduler {
   }
 
   void complete() {
-#if 0
     while (not ready_.empty()) {
       auto task = ready_.front();
       ready_.pop();
       if (task and not task.done()) { task.resume(); }
     }
-#else
-    while (not ready_.empty()) {
-      std::cerr << "================================================ ITERATION "
-                   "================================================\n";
-      std::string_view separator = "===       Queue:         [";
-      size_t n                   = ready_.size();
-      for (size_t i = 0; i < n; ++i) {
-        auto q = ready_.front();
-        ready_.pop();
-        ready_.push(q);
-        std::cerr << std::exchange(separator, ", ") << q.address();
-      }
-      ASSERT(ready_.size() == n);
-      std::cerr << "]\n";
-
-      auto task = ready_.front();
-      ready_.pop();
-      if (task and not task.done()) { task.resume(); }
-
-      separator = "===       Queue:         [";
-      n         = ready_.size();
-      for (size_t i = 0; i < n; ++i) {
-        auto q = ready_.front();
-        ready_.pop();
-        ready_.push(q);
-        std::cerr << std::exchange(separator, ", ") << q.address();
-      }
-      ASSERT(ready_.size() == n);
-      std::cerr << "]\n";
-      std::cerr << "=========================================== DONE WITH "
-                   "ITERATION ===========================================\n";
-    }
-#endif
   }
 
  private:

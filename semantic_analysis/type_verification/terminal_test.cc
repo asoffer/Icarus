@@ -11,7 +11,7 @@ namespace {
 
 using ::testing::ElementsAre;
 
-TEST(TerminalTest, BooleanPrimitives) {
+TEST(Terminal, BooleanPrimitives) {
   EXPECT_THAT(ast::Terminal("true", true),
               HasQualTypes(ElementsAre(type::QualType::Constant(type::Bool))));
   EXPECT_THAT(ast::Terminal("false", false),
@@ -23,7 +23,7 @@ ir::Slice MakeSlice(char const *cstr) {
                    std::strlen(cstr));
 }
 
-TEST(TerminalTest, StringLiterals) {
+TEST(Terminal, StringLiterals) {
   EXPECT_THAT(ast::Terminal(R"("")", MakeSlice("")),
               HasQualTypes(ElementsAre(
                   type::QualType::Constant(type::Slc(type::Char)))));
@@ -38,7 +38,7 @@ TEST(TerminalTest, StringLiterals) {
                   type::QualType::Constant(type::Slc(type::Char)))));
 }
 
-TEST(TerminalTest, Types) {
+TEST(Terminal, Types) {
   EXPECT_THAT(ast::Terminal("byte", type::Byte),
               HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
   EXPECT_THAT(ast::Terminal("bool", type::Bool),
@@ -71,7 +71,7 @@ TEST(TerminalTest, Types) {
               HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
 }
 
-TEST(TerminalTest, Numbers) {
+TEST(Terminal, Numbers) {
   EXPECT_THAT(
       ast::Terminal("1234", ir::Integer(1234)),
       HasQualTypes(ElementsAre(type::QualType::Constant(type::Integer))));
@@ -79,12 +79,12 @@ TEST(TerminalTest, Numbers) {
               HasQualTypes(ElementsAre(type::QualType::Constant(type::F64))));
 }
 
-TEST(TerminalTest, Characters) {
+TEST(Terminal, Characters) {
   EXPECT_THAT(ast::Terminal("!'a'", ir::Char('a')),
               HasQualTypes(ElementsAre(type::QualType::Constant(type::Char))));
 }
 
-TEST(TerminalTest, Null) {
+TEST(Terminal, Null) {
   EXPECT_THAT(
       ast::Terminal("null", ir::Null()),
       HasQualTypes(ElementsAre(type::QualType::Constant(type::NullPtr))));

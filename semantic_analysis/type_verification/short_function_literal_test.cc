@@ -10,12 +10,15 @@ namespace semantic_analysis {
 namespace {
 
 using ::testing::ElementsAre;
-using ::testing::Pointee;
+using ::testing::IsEmpty;
 
-TEST(ShortFunctionLiteralTest, NoParameters) {
-  ASSERT_THAT(Parsed<ast::ShortFunctionLiteral>("() => true"),
-              Pointee(HasQualTypes(ElementsAre(
-                  type::QualType::Constant(type::Func({}, {type::Bool}))))));
+TEST(ShortFunctionLiteral, NoParameters) {
+  Infrastructure infra;
+  auto nodes = infra.ParseAndVerify(R"(() => true)");
+  EXPECT_THAT(
+      infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
+      ElementsAre(type::QualType::Constant(type::Func({}, {type::Bool}))));
+  EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 }  // namespace

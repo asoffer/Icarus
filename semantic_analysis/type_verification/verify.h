@@ -5,10 +5,14 @@
 #include "ast/ast.h"
 #include "ast/module.h"
 #include "compiler/context.h"
+#include "compiler/type_for_diagnostic.h"
+#include "diagnostic/consumer/consumer.h"
 #include "semantic_analysis/task.h"
 #include "type/qual_type.h"
 
 namespace semantic_analysis {
+// TODO: Move to this namespace
+using ::compiler::TypeForDiagnostic;
 
 enum class TypeVerificationPhase {
   VerifyParameters,
@@ -41,23 +45,23 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(compiler::Context &c)
-      : VerificationScheduler(
-            [this](VerificationScheduler &s,
-                   ast::Node const *node) -> VerificationTask {
-              return VerifyType(static_cast<TypeVerifier &>(s), node);
-            }),
-        context_(c) {}
+  explicit TypeVerifier(compiler::Context &c, diagnostic::DiagnosticConsumer &d)
+      : VerificationScheduler([](VerificationScheduler &s,
+                                 ast::Node const *node) -> VerificationTask {
+          return node->visit(static_cast<TypeVerifier &>(s));
+        }),
+        context_(c),
+        diagnostic_consumer_(d) {}
 
   compiler::Context &context() const { return context_; }
 
-  VerificationTask operator()(auto const *node) {
-    return VerifyType(*this, node);
+  template <typename D>
+  void ConsumeDiagnostic(D &&d) {
+    diagnostic_consumer_.Consume(std::forward<D>(d));
   }
 
-  VerificationTask VerifyType(VerificationScheduler &scheduler,
-                              ast::Node const *node) {
-    return node->visit(*this);
+  VerificationTask operator()(auto const *node) {
+    return VerifyType(*this, node);
   }
 
   void complete_verification(ast::Expression const *node,
@@ -71,13 +75,20 @@ struct TypeVerifier : VerificationScheduler {
         node, context().set_qual_types(node, std::move(qual_types)));
   }
 
+  template <typename NodeType>
+  static VerificationTask VerifyType(TypeVerifier &tv, NodeType const *) {
+    NOT_YET(base::meta<NodeType>);
+  }
   static VerificationTask VerifyType(TypeVerifier &tv,
                                      ast::ShortFunctionLiteral const *node);
+  static VerificationTask VerifyType(TypeVerifier &tv,
+                                     ast::UnaryOperator const *node);
   static VerificationTask VerifyType(TypeVerifier &tv,
                                      ast::Terminal const *node);
 
  private:
-  compiler::Context& context_;
+  compiler::Context &context_;
+  diagnostic::DiagnosticConsumer &diagnostic_consumer_;
 };
 
 }  // namespace semantic_analysis

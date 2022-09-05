@@ -8,36 +8,51 @@
 #include "semantic_analysis/type_verification/verify.h"
 #include "type/qual_type.h"
 
+// TODO: Enable nicer printing.
+namespace ast {
+
+std::ostream& operator<<(std::ostream& os, ast::Node const& node) {
+  return os << node.DebugString();
+}
+
+}  // namespace ast
+
 namespace semantic_analysis {
 
 MATCHER_P(HasQualTypes, matcher, "") {
   ir::Module module(ir::ModuleId(1));
   compiler::Context ctx(&module);
-  TypeVerifier tv(ctx);
+  diagnostic::TrackingConsumer consumer;
+  TypeVerifier tv(ctx, consumer);
   tv.schedule(std::addressof(arg));
   tv.complete();
-  std::cerr << "=====\n";
-  for (const auto& k : ctx.qual_types(std::addressof(arg))) {
-    std::cerr << k << "\n";
-  }
-  std::cerr << "=====\n";
+
   return testing::ExplainMatchResult(
       matcher, ctx.qual_types(std::addressof(arg)), result_listener);
 }
 
-template <typename Node>
-std::unique_ptr<Node> Parsed(std::string_view source) {
-  diagnostic::TrackingConsumer consumer;
-  auto stmts = frontend::Parse(source, consumer);
-  if (consumer.num_consumed() != 0 or stmts.size() != 1) { return nullptr; }
+struct Infrastructure {
+  std::vector<std::unique_ptr<ast::Node>> ParseAndVerify(
+      std::string_view source) {
+    auto nodes = frontend::Parse(source, consumer_);
 
-  auto* ptr = stmts[0].release();
-  if (auto* cast_ptr = ptr->if_as<Node>()) {
-    return std::unique_ptr<Node>(cast_ptr);
-  } else {
-    delete cast_ptr;
-    return nullptr;
+    TypeVerifier tv(context_, consumer_);
+    for (auto const& node : nodes) { tv.schedule(node.get()); }
+    tv.complete();
+
+    return nodes;
   }
-}
+
+  compiler::Context const& context() const { return context_; }
+
+  absl::Span<std::pair<std::string, std::string> const> diagnostics() const {
+    return consumer_.diagnostics();
+  }
+
+ private:
+  ir::Module module_         = ir::Module(ir::ModuleId(1));
+  compiler::Context context_ = compiler::Context(&module_);
+  diagnostic::TrackingConsumer consumer_;
+};
 
 }  // namespace semantic_analysis
