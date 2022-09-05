@@ -77,3 +77,10 @@ http_archive(
         "https://github.com/bazelbuild/rules_proto/archive/refs/tags/4.0.0.tar.gz",
     ],
 )
+
+http_archive(
+  name = "asoffer_jasmin",
+  urls = ["https://github.com/asoffer/jasmin/archive/f6686dbe023b16c23e981211d89ad7ea3137431d.zip"],
+  strip_prefix = "jasmin-f6686dbe023b16c23e981211d89ad7ea3137431d",
+  sha256 = "00a0da5d6a28f9ca686204f375dae0f6cb804fb942e247f557f8acf97cb2e5f5",
+)

@@ -1,0 +1,56 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "byte_code",
+    hdrs = ["byte_code.h"],
+    srcs = ["byte_code.cc"],
+    deps = [
+        ":emitter",
+        ":instruction_set",
+        "//ast:expression",
+        "//compiler:context",
+        "@asoffer_jasmin//jasmin:function",
+        "@asoffer_jasmin//jasmin/instructions:core",
+    ],
+)
+
+cc_library(
+    name = "emitter",
+    hdrs = ["emitter.h"],
+    srcs = [
+        "terminal.cc",
+    ],
+    deps = [
+        ":instruction_set",
+        "//ast",
+        "//compiler:context",
+        "@asoffer_jasmin//jasmin:function",
+        "@asoffer_jasmin//jasmin/instructions:core",
+    ],
+)
+
+cc_library(
+    name = "instruction_set",
+    hdrs = ["instruction_set.h"],
+    deps = [
+        "@asoffer_jasmin//jasmin:function",
+        "@asoffer_jasmin//jasmin/instructions:core",
+    ],
+)
+
+cc_test(
+      name = "terminal_test",
+      srcs = ["terminal_test.cc"],
+      deps = [
+          ":byte_code",
+          "//ast",
+          "//diagnostic/consumer:tracking",
+          "//frontend:parse",
+          "//ir:module",
+          "//ir/value:module_id",
+          "//semantic_analysis/type_verification:verify",
+          "//type:qual_type",
+          "@asoffer_jasmin//jasmin:execute",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
