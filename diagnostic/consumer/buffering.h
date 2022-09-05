@@ -11,7 +11,7 @@
 namespace diagnostic {
 
 struct BufferingConsumer : DiagnosticConsumer {
-  explicit BufferingConsumer(DiagnosticConsumer* c) : consumer_(*c) {}
+  explicit BufferingConsumer(DiagnosticConsumer* c = nullptr) : consumer_(c) {}
 
   void ConsumeImpl(std::string_view category, std::string_view name,
                    DiagnosticMessage&& diag) override {
@@ -26,7 +26,7 @@ struct BufferingConsumer : DiagnosticConsumer {
 
   void flush() {
     for (auto& [category, name, diag] : buffer_) {
-      consumer_.ConsumeImpl(category, name, std::move(diag));
+      ASSERT_NOT_NULL(consumer_)->ConsumeImpl(category, name, std::move(diag));
     }
     drop();
   }
@@ -40,7 +40,7 @@ struct BufferingConsumer : DiagnosticConsumer {
 
  private:
   std::vector<ConsumedMessage> buffer_;
-  DiagnosticConsumer& consumer_;
+  DiagnosticConsumer* consumer_;
 };
 
 }  // namespace diagnostic

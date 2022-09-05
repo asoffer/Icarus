@@ -4,6 +4,8 @@ cc_library(
     name = "verify",
     hdrs = ["verify.h"],
     srcs = [
+        "declaration.cc",
+        "identifier.cc",
         "short_function_literal.cc",
         "unary_operator.cc",
         "terminal.cc",
@@ -17,6 +19,10 @@ cc_library(
         "//compiler:type_for_diagnostic",
         "//diagnostic/consumer",
         "//semantic_analysis:task",
+        "//type",
+        "//type:array",
+        "//type:overload_set",
+        "//type:primitive",
         "@com_google_absl//absl/types:span",
     ],
 )

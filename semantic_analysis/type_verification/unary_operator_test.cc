@@ -3,6 +3,7 @@
 #include "ir/value/slice.h"
 #include "semantic_analysis/type_verification/matchers.h"
 #include "semantic_analysis/type_verification/verify.h"
+#include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/slice.h"
 
@@ -40,7 +41,6 @@ TEST(TypeOf, Success) {
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
-#if 0
 TEST(At, Pointer) {
   Infrastructure infra;
   auto nodes = infra.ParseAndVerify(R"(
@@ -55,51 +55,48 @@ TEST(At, Pointer) {
 }
 
 TEST(At, BufferPointer) {
-  test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"(
+  Infrastructure infra;
+  auto nodes = infra.ParseAndVerify(R"(
   p: [*]i64
   @p
   )");
-  auto const *expr = mod.get<ast::UnaryOperator>();
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts, UnorderedElementsAre(
-                       type::QualType(type::I64, type::Qualifiers::Buffer())));
+
+  EXPECT_THAT(
+      infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
+      ElementsAre(type::QualType(type::I64, type::Qualifiers::Buffer())));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
 TEST(At, NonPointer) {
-  test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"(
+  Infrastructure infra;
+  auto nodes = infra.ParseAndVerify(R"(
   p: i64
   @p
   )");
-  auto const *expr = mod.get<ast::UnaryOperator>();
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
+
+  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
+              ElementsAre(type::QualType::Error()));
   EXPECT_THAT(
       infra.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "dereferencing-non-pointer")));
 }
 
-TEST(And, Success) {
-  test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module(R"(
+TEST(Address, Success) {
+  Infrastructure infra;
+  auto nodes = infra.ParseAndVerify(R"(
   n: i64
   &n
   )");
-  auto const *expr = mod.get<ast::UnaryOperator>();
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts, UnorderedElementsAre(
-                       type::QualType::NonConstant(type::Ptr(type::I64))));
+  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
+              ElementsAre(type::QualType::NonConstant(type::Ptr(type::I64))));
   EXPECT_THAT(infra.diagnostics(), IsEmpty());
 }
 
-TEST(And, NonReference) {
-  test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module("&3");
-  auto const *expr = mod.get<ast::UnaryOperator>();
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
+TEST(Address, NonReference) {
+  Infrastructure infra;
+  auto nodes = infra.ParseAndVerify(R"(&3)");
+  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
+              ElementsAre(type::QualType::Error()));
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(
                   Pair("value-category-error", "non-addressable-expression")));
@@ -107,38 +104,39 @@ TEST(And, NonReference) {
 
 TEST(Pointer, Success) {
   {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module("*i64");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts,
-                UnorderedElementsAre(type::QualType::Constant(type::Type_)));
+    Infrastructure infra;
+    auto nodes = infra.ParseAndVerify(R"(*i64)");
+    EXPECT_THAT(
+        infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
+        ElementsAre(type::QualType::Constant(type::Type_)));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
+
+#if 0
   {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
+    Infrastructure infra;
+    auto nodes = infra.ParseAndVerify(R"(
     T := i64
     *T
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts,
-                UnorderedElementsAre(type::QualType::NonConstant(type::Type_)));
+    )");
+    EXPECT_THAT(
+        infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
+        ElementsAre(type::QualType::NonConstant(type::Type_)));
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
+#endif
 }
 
 TEST(Pointer, NotAType) {
-  test::CompilerInfrastructure infra;
-  auto &mod        = infra.add_module("*3");
-  auto const *expr = mod.get<ast::UnaryOperator>();
-  auto qts         = mod.context().qual_types(expr);
-  EXPECT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
+  Infrastructure infra;
+  auto nodes = infra.ParseAndVerify(R"(*3)");
+  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
+              ElementsAre(type::QualType::Error()));
   EXPECT_THAT(infra.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }
 
+#if 0
 TEST(Negate, SignedInteger) {
   {
     test::CompilerInfrastructure infra;

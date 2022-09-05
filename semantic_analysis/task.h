@@ -60,8 +60,8 @@ struct Task {
     void return_void() {}
 
     // Returns whether `phase` has already been completed.
-    template <typename Phase>
-    bool resume_after(Phase& phase) {
+    template <typename PhaseType>
+    bool resume_after(PhaseType& phase) {
       return scheduler().order_after(
           std::coroutine_handle<promise_type>::from_promise(*this), phase);
     }
@@ -223,13 +223,9 @@ struct Scheduler {
   template <phase_identifier_type P>
   void set_completed(key_type const& key) requires(
       std::is_void_v<typename task_type::template Phase<P>::return_type>) {
-    using underlying_type = std::underlying_type_t<phase_identifier_type>;
-    auto key_iter         = keys_.find(key);
-    ASSERT(key_iter != keys_.end());
-    auto& [current_phase, phase_entries] = key_iter->second;
-
+    auto& [current_phase, phase_entries] = keys_.try_emplace(key).first->second;
     current_phase = NextAfter<P>();
-    auto& phase_entry = phase_entries[static_cast<underlying_type>(P)];
+    auto& phase_entry = phase_entries[static_cast<size_t>(P)];
 
     // Add all the entries awaiting the completion of this phase to the
     // ready-queue.
@@ -244,7 +240,6 @@ struct Scheduler {
   set_completed(key_type const& key, ReturnType&& phase_return_value) requires(
       not std::is_void_v<typename task_type::template Phase<P>::return_type>) {
     using return_type     = typename task_type::template Phase<P>::return_type;
-    using underlying_type = std::underlying_type_t<phase_identifier_type>;
 
     auto* result_ptr = static_cast<return_type*>(
         results_
@@ -253,12 +248,10 @@ struct Scheduler {
                 [](void* ptr) { delete static_cast<return_type*>(ptr); })
             .get());
 
-    auto key_iter = keys_.find(key);
-    ASSERT(key_iter != keys_.end());
-    auto& [current_phase, phase_entries] = key_iter->second;
+    auto& [current_phase, phase_entries] = keys_.try_emplace(key).first->second;
 
     current_phase     = NextAfter<P>();
-    auto& phase_entry = phase_entries[static_cast<underlying_type>(P)];
+    auto& phase_entry = phase_entries[static_cast<size_t>(P)];
 
     // Add all the entries awaiting the completion of this phase to the
     // ready-queue.

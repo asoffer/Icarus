@@ -32,15 +32,20 @@ MATCHER_P(HasQualTypes, matcher, "") {
 }
 
 struct Infrastructure {
-  std::vector<std::unique_ptr<ast::Node>> ParseAndVerify(
-      std::string_view source) {
-    auto nodes = frontend::Parse(source, consumer_);
+  Infrastructure() {
+    context_.set_qt_callback(
+        [](ast::Declaration::Id const*, type::QualType) {});
+  }
+
+  base::PtrSpan<ast::Node const> ParseAndVerify(std::string_view source) {
+    auto nodes              = frontend::Parse(source, consumer_);
+    base::PtrSpan node_span = ast_module_.insert(nodes.begin(), nodes.end());
 
     TypeVerifier tv(context_, consumer_);
-    for (auto const& node : nodes) { tv.schedule(node.get()); }
+    for (auto const* node : node_span) { tv.schedule(node); }
     tv.complete();
 
-    return nodes;
+    return node_span;
   }
 
   compiler::Context const& context() const { return context_; }
@@ -50,6 +55,7 @@ struct Infrastructure {
   }
 
  private:
+  ast::Module ast_module_{nullptr};
   ir::Module module_         = ir::Module(ir::ModuleId(1));
   compiler::Context context_ = compiler::Context(&module_);
   diagnostic::TrackingConsumer consumer_;
