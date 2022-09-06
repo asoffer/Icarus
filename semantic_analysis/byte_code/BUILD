@@ -42,15 +42,7 @@ cc_test(
       name = "terminal_test",
       srcs = ["terminal_test.cc"],
       deps = [
-          ":byte_code",
-          "//ast",
-          "//diagnostic/consumer:tracking",
-          "//frontend:parse",
-          "//ir:module",
-          "//ir/value:module_id",
-          "//semantic_analysis/type_verification:verify",
-          "//type:qual_type",
-          "@asoffer_jasmin//jasmin:execute",
+          "//test:repl",
           "@com_google_googletest//:gtest_main",
       ],
 )

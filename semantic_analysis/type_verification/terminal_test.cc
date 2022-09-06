@@ -1,93 +1,119 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "ir/value/slice.h"
-#include "semantic_analysis/type_verification/matchers.h"
 #include "semantic_analysis/type_verification/verify.h"
+#include "test/repl.h"
 #include "type/primitive.h"
 #include "type/slice.h"
 
 namespace semantic_analysis {
 namespace {
 
-using ::testing::ElementsAre;
+using ::test::HasDiagnostics;
+using ::test::HasQualTypes;
+using ::testing::AllOf;
 
 TEST(Terminal, BooleanPrimitives) {
-  EXPECT_THAT(ast::Terminal("true", true),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Bool))));
-  EXPECT_THAT(ast::Terminal("false", false),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Bool))));
-}
-
-ir::Slice MakeSlice(char const *cstr) {
-  return ir::Slice(reinterpret_cast<std::byte *>(const_cast<char *>(cstr)),
-                   std::strlen(cstr));
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(true)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Bool)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(false)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Bool)),
+                    HasDiagnostics()));
 }
 
 TEST(Terminal, StringLiterals) {
-  EXPECT_THAT(ast::Terminal(R"("")", MakeSlice("")),
-              HasQualTypes(ElementsAre(
-                  type::QualType::Constant(type::Slc(type::Char)))));
-  EXPECT_THAT(ast::Terminal(R"("abc")", MakeSlice("abc")),
-              HasQualTypes(ElementsAre(
-                  type::QualType::Constant(type::Slc(type::Char)))));
-  EXPECT_THAT(ast::Terminal(R"("ab\"c")", MakeSlice("abc\"")),
-              HasQualTypes(ElementsAre(
-                  type::QualType::Constant(type::Slc(type::Char)))));
-  EXPECT_THAT(ast::Terminal(R"("ab\n\r\t\v\\c")", MakeSlice("ab\n\r\t\v\\c")),
-              HasQualTypes(ElementsAre(
-                  type::QualType::Constant(type::Slc(type::Char)))));
+  test::Repl repl;
+  EXPECT_THAT(
+      repl.type_check(R"("")"),
+      AllOf(HasQualTypes(type::QualType::Constant(type::Slc(type::Char))),
+            HasDiagnostics()));
+  EXPECT_THAT(
+      repl.type_check(R"("abc")"),
+      AllOf(HasQualTypes(type::QualType::Constant(type::Slc(type::Char))),
+            HasDiagnostics()));
+  EXPECT_THAT(
+      repl.type_check(R"("abc\"")"),
+      AllOf(HasQualTypes(type::QualType::Constant(type::Slc(type::Char))),
+            HasDiagnostics()));
+  EXPECT_THAT(
+      repl.type_check(R"("ab\n\r\t\v\\c")"),
+      AllOf(HasQualTypes(type::QualType::Constant(type::Slc(type::Char))),
+            HasDiagnostics()));
 }
 
 TEST(Terminal, Types) {
-  EXPECT_THAT(ast::Terminal("byte", type::Byte),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("bool", type::Bool),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("u8", type::U8),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("u16", type::U16),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("u32", type::U32),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("u64", type::U64),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("i8", type::I8),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("i16", type::I16),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("i32", type::I32),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("i64", type::I64),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("f32", type::F32),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("f64", type::F64),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("integer", type::Integer),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("type", type::Type_),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
-  EXPECT_THAT(ast::Terminal("module", type::Module),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Type_))));
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(byte)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(bool)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(u8)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(u16)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(u32)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(u64)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(i8)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(i16)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(i32)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(i64)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(f32)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(f64)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(integer)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(type)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(module)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
 }
 
 TEST(Terminal, Numbers) {
-  EXPECT_THAT(
-      ast::Terminal("1234", ir::Integer(1234)),
-      HasQualTypes(ElementsAre(type::QualType::Constant(type::Integer))));
-  EXPECT_THAT(ast::Terminal("12.34", 12.34),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::F64))));
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(1234)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Integer)),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(12.34)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::F64)),
+                    HasDiagnostics()));
 }
 
 TEST(Terminal, Characters) {
-  EXPECT_THAT(ast::Terminal("!'a'", ir::Char('a')),
-              HasQualTypes(ElementsAre(type::QualType::Constant(type::Char))));
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(!'a')"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Char)),
+                    HasDiagnostics()));
 }
 
 TEST(Terminal, Null) {
-  EXPECT_THAT(
-      ast::Terminal("null", ir::Null()),
-      HasQualTypes(ElementsAre(type::QualType::Constant(type::NullPtr))));
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(null)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::NullPtr)),
+                    HasDiagnostics()));
 }
 
 }  // namespace

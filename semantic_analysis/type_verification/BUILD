@@ -27,28 +27,12 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "matchers",
-    hdrs = ["matchers.h"],
-    testonly = True,
-    deps = [
-        ":verify",
-        "//compiler:context",
-        "//diagnostic/consumer:tracking",
-        "//frontend:parse",
-        "//ir:module",
-        "//ir/value:module_id",
-        "//type:qual_type",
-        "@com_google_googletest//:gtest",
-    ],
-)
-
 cc_test(
     name = "short_function_literal_test",
     srcs = ["short_function_literal_test.cc"],
     deps = [
-        ":matchers",
         ":verify",
+        "//test:repl",
         "//type:primitive",
         "//type:function",
         "//type:qual_type",
@@ -60,8 +44,8 @@ cc_test(
     name = "unary_operator_test",
     srcs = ["unary_operator_test.cc"],
     deps = [
-        ":matchers",
         ":verify",
+        "//test:repl",
         "//type:primitive",
         "//type:function",
         "//type:qual_type",
@@ -73,9 +57,9 @@ cc_test(
     name = "terminal_test",
     srcs = ["terminal_test.cc"],
     deps = [
-        ":matchers",
         ":verify",
         "//ir/value:slice",
+        "//test:repl",
         "//type:primitive",
         "//type:qual_type",
         "@com_google_googletest//:gtest_main",

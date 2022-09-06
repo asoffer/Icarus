@@ -1,8 +1,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "ir/value/slice.h"
-#include "semantic_analysis/type_verification/matchers.h"
 #include "semantic_analysis/type_verification/verify.h"
+#include "test/repl.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/slice.h"
@@ -10,6 +10,9 @@
 namespace semantic_analysis {
 namespace {
 
+using ::test::HasDiagnostics;
+using ::test::HasQualTypes;
+using ::testing::AllOf;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Pair;
@@ -17,123 +20,99 @@ using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 TEST(BufferPointer, Success) {
-  Infrastructure infra;
-  auto nodes = infra.ParseAndVerify(R"([*]i64)");
-  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-              ElementsAre(type::QualType::Constant(type::Type_)));
-  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"([*]i64)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
 }
 
 TEST(BufferPointer, NonType) {
-  Infrastructure infra;
-  auto nodes = infra.ParseAndVerify(R"([*]17)");
-  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-              ElementsAre(type::QualType::Error()));
-  EXPECT_THAT(infra.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "not-a-type")));
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"([*]17)"),
+              AllOf(HasQualTypes(type::QualType::Error()),
+                    HasDiagnostics(Pair("type-error", "not-a-type"))));
 }
 
 TEST(TypeOf, Success) {
-  Infrastructure infra;
-  auto nodes = infra.ParseAndVerify(R"(3:?)");
-  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-              ElementsAre(type::QualType::Constant(type::Type_)));
-  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(3:?)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
 }
 
 TEST(At, Pointer) {
-  Infrastructure infra;
-  auto nodes = infra.ParseAndVerify(R"(
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(
   p: *i64
   @p
-  )");
-
-  EXPECT_THAT(
-      infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-      ElementsAre(type::QualType(type::I64, type::Qualifiers::Storage())));
-  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  )"),
+              AllOf(HasQualTypes(
+                        type::QualType(type::I64, type::Qualifiers::Storage())),
+                    HasDiagnostics()));
 }
 
 TEST(At, BufferPointer) {
-  Infrastructure infra;
-  auto nodes = infra.ParseAndVerify(R"(
+  test::Repl repl;
+  EXPECT_THAT(
+      repl.type_check(R"(
   p: [*]i64
   @p
-  )");
-
-  EXPECT_THAT(
-      infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-      ElementsAre(type::QualType(type::I64, type::Qualifiers::Buffer())));
-  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  )"),
+      AllOf(HasQualTypes(type::QualType(type::I64, type::Qualifiers::Buffer())),
+            HasDiagnostics()));
 }
 
 TEST(At, NonPointer) {
-  Infrastructure infra;
-  auto nodes = infra.ParseAndVerify(R"(
+  test::Repl repl;
+  EXPECT_THAT(
+      repl.type_check(R"(
   p: i64
   @p
-  )");
-
-  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-              ElementsAre(type::QualType::Error()));
-  EXPECT_THAT(
-      infra.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "dereferencing-non-pointer")));
+  )"),
+      AllOf(HasQualTypes(type::QualType(type::I64, type::Qualifiers::Buffer())),
+            HasDiagnostics(Pair("type-error", "dereferencing-non-pointer"))));
 }
 
 TEST(Address, Success) {
-  Infrastructure infra;
-  auto nodes = infra.ParseAndVerify(R"(
-  n: i64
-  &n
-  )");
-  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-              ElementsAre(type::QualType::NonConstant(type::Ptr(type::I64))));
-  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  test::Repl repl;
+  EXPECT_THAT(
+      repl.type_check(R"(
+      n: i64
+      &n
+      )"),
+      AllOf(HasQualTypes(type::QualType::NonConstant(type::Ptr(type::I64))),
+            HasDiagnostics()));
 }
 
 TEST(Address, NonReference) {
-  Infrastructure infra;
-  auto nodes = infra.ParseAndVerify(R"(&3)");
-  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-              ElementsAre(type::QualType::Error()));
-  EXPECT_THAT(infra.diagnostics(),
-              UnorderedElementsAre(
-                  Pair("value-category-error", "non-addressable-expression")));
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(&3)"),
+              AllOf(HasQualTypes(type::QualType::Error()),
+                    HasDiagnostics(Pair("value-category-error",
+                                        "non-addressable-expression"))));
 }
 
 TEST(Pointer, Success) {
-  {
-    Infrastructure infra;
-    auto nodes = infra.ParseAndVerify(R"(*i64)");
-    EXPECT_THAT(
-        infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-        ElementsAre(type::QualType::Constant(type::Type_)));
-    EXPECT_THAT(infra.diagnostics(), IsEmpty());
-  }
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(*i64)"),
+              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
+                    HasDiagnostics()));
 
 #if 0
-  {
-    Infrastructure infra;
-    auto nodes = infra.ParseAndVerify(R"(
-    T := i64
-    *T
-    )");
-    EXPECT_THAT(
-        infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-        ElementsAre(type::QualType::NonConstant(type::Type_)));
-    EXPECT_THAT(infra.diagnostics(), IsEmpty());
-  }
+  EXPECT_THAT(repl.type_check(R"(
+  T := i64
+  *T
+  )"),
+              AllOf(HasQualTypes(type::QualType::NonConstant(type::Type_)),
+                    HasDiagnostics()));
 #endif
 }
 
 TEST(Pointer, NotAType) {
-  Infrastructure infra;
-  auto nodes = infra.ParseAndVerify(R"(*3)");
-  EXPECT_THAT(infra.context().qual_types(&nodes.back()->as<ast::Expression>()),
-              ElementsAre(type::QualType::Error()));
-  EXPECT_THAT(infra.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "not-a-type")));
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(*3)"),
+              AllOf(HasQualTypes(type::QualType::Error()),
+                    HasDiagnostics(Pair("type-error", "not-a-type"))));
 }
 
 #if 0

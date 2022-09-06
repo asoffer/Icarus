@@ -65,3 +65,23 @@ cc_library(
         "@com_google_googletest//:gtest",
     ],
 )
+
+cc_library(
+    name = "repl",
+    testonly = True,
+    hdrs = ["repl.h"],
+    srcs = ["repl.cc"],
+    deps = [
+        "//ast:module",
+        "//ast:expression",
+        "//semantic_analysis/byte_code",
+        "//diagnostic/consumer:tracking",
+        "//frontend:parse",
+        "//ir:module",
+        "//ir/value:module_id",
+        "//semantic_analysis/type_verification:verify",
+        "@asoffer_jasmin//jasmin:execute",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+    ],
+)
