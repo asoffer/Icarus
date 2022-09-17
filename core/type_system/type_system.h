@@ -3,6 +3,7 @@
 
 #include "base/flyweight_set.h"
 #include "base/meta.h"
+#include "jasmin/instruction.h"
 
 namespace core {
 
@@ -154,14 +155,30 @@ struct TypeCategory {
 
 template <typename... TypeCategories>
 struct TypeSystem : TypeCategories::manager_type... {
-  template <base::one_of<TypeCategories...> T>
+  // Returns the index of the type category `Cat` in this type-system.
+  template <base::one_of<TypeCategories...> Cat>
   constexpr size_t index() const {
     size_t index = 0;
     static_cast<void>(
-        ((base::meta<T> == base::meta<TypeCategories> or (++index, false)) or
+        ((base::meta<Cat> == base::meta<TypeCategories> or (++index, false)) or
          ...));
     return index;
   }
+
+  template <base::one_of<TypeCategories...> Cat,
+            typename = base::type_list<typename Cat::state_type>>
+  struct Make;
+
+  template <base::one_of<TypeCategories...> Cat, typename... States>
+  struct Make<Cat, base::type_list<States...>>
+      : jasmin::StackMachineInstruction<Make<Cat>> {
+    static constexpr Type execute(States... states, TypeSystem* system) {
+      return Cat(*system, states...);
+    }
+  };
+
+  using JasminInstructionSet =
+      jasmin::MakeInstructionSet<Make<TypeCategories>...>;
 };
 
 }  // namespace core

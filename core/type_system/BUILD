@@ -43,6 +43,7 @@ cc_library(
     deps = [
         "//base:meta",
         "//base:flyweight_set",
+        "@asoffer_jasmin//jasmin:instruction",
     ]
 )
 
@@ -53,6 +54,9 @@ cc_test(
         ":builtin",
         ":pointer",
         ":type_system",
+        "@asoffer_jasmin//jasmin:execute",
+        "@asoffer_jasmin//jasmin/instructions:core",
+        "@asoffer_jasmin//jasmin:function",
         "@com_google_googletest//:gtest_main",
     ],
 )
