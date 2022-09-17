@@ -9,7 +9,7 @@ namespace core {
 
 // Each kind of type (e.g., builtin, pointer, etc) must use the CRTP base
 // `TypeCategory` declared here and defined below.
-template <typename CrtpDerived, typename StateType>
+template <typename CrtpDerived, typename... StateTypes>
 struct TypeCategory;
 
 // A `TypeSystem` (declared here and defined below) represents a collection of
@@ -72,7 +72,7 @@ struct Type {
   }
 
  private:
-  template <typename CrtpDerived, typename StateType>
+  template <typename CrtpDerived, typename... StateTypes>
   friend struct TypeCategory;
 
   constexpr uint64_t representation() const {
@@ -83,41 +83,42 @@ struct Type {
   uint64_t category_ : 8;
 };
 
-template <typename CrtpDerived, typename StateType>
+template <typename CrtpDerived, typename... StateTypes>
 struct TypeCategory {
-  using state_type = StateType;
+  using state_types = base::type_list<StateTypes...>;
 
+ private:
+  using state_type_tuple = std::tuple<StateTypes...>;
+
+ public:
   // Data structure that can be used to hold and ensure uniqueness of types of
   // this category. Each `manager_type` effectively is a flyweight representing
-  // a relationship between the categories `state_type` and an integer value
-  // taking the place of that state.
-  struct manager_type : private base::flyweight_set<state_type> {
+  // a relationship between the categories `state_type_tuple` and an integer
+  // value taking the place of that state.
+  struct manager_type : private base::flyweight_set<state_type_tuple> {
    private:
     friend TypeCategory;
 
-    using base_type = base::flyweight_set<state_type>;
+    using base_type = base::flyweight_set<state_type_tuple>;
 
     using base_type::from_index;
     using base_type::index;
     using base_type::insert;
   };
 
+  template <typename... State>
   explicit TypeCategory(TypeSystemSupporting<CrtpDerived> auto& m,
-                        state_type const& s)
+                        State&&... state)
       : manager_(&m) {
     type_.category_ = m.template index<CrtpDerived>();
-    type_.value_    = manager_->index(manager_->insert(s).first);
-  }
-  explicit TypeCategory(TypeSystemSupporting<CrtpDerived> auto& m,
-                        state_type&& s)
-      : manager_(&m) {
-    type_.category_ = m.template index<CrtpDerived>();
-    type_.value_    = manager_->index(manager_->insert(std::move(s)).first);
+    type_.value_    = manager_->index(
+           manager_->insert(state_type_tuple(std::forward<State>(state)...))
+               .first);
   }
 
   operator Type() const { return type_; }
 
-  state_type const& decompose() const {
+  state_type_tuple const& decompose() const {
     return manager_->from_index(type_.value_);
   }
 
@@ -145,8 +146,11 @@ struct TypeCategory {
     // faster, or add a requirement to all `CrtpDerived` class implementations
     // to provide the necessary construction API that `Type` can hook into
     // without the extra lookup.
-    return CrtpDerived(sys,
-                       static_cast<manager_type&>(sys).from_index(t.value_));
+    return std::apply(
+        [&]<typename... Args>(Args&&... args) {
+          return CrtpDerived(sys, std::forward<Args>(args)...);
+        },
+        static_cast<manager_type&>(sys).from_index(t.value_));
   }
 
   Type type_;
@@ -166,7 +170,7 @@ struct TypeSystem : TypeCategories::manager_type... {
   }
 
   template <base::one_of<TypeCategories...> Cat,
-            typename = base::type_list<typename Cat::state_type>>
+            typename = typename Cat::state_types>
   struct Make;
 
   template <base::one_of<TypeCategories...> Cat, typename... States>

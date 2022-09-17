@@ -54,7 +54,8 @@ struct BuiltinType
  private:
   friend TypeCategory;
 
-  explicit BuiltinType(TypeSystemSupporting<BuiltinType> auto& s, state_type t)
+  explicit BuiltinType(TypeSystemSupporting<BuiltinType> auto& s,
+                       internal_type_system_builtin::BuiltinTypeState t)
       : TypeCategory(s, t) {}
 };
 

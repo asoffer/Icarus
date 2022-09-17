@@ -9,7 +9,7 @@ struct PointerType : TypeCategory<PointerType, Type> {
   explicit PointerType(TypeSystemSupporting<PointerType> auto& s, Type t)
       : TypeCategory(s, t) {}
 
-  Type pointee() const { return decompose(); }
+  Type pointee() const { return std::get<0>(decompose()); }
 };
 
 }  // namespace core

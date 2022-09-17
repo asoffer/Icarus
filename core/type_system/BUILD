@@ -18,6 +18,7 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
 cc_library(
     name = "pointer",
     hdrs = ["pointer.h"],
