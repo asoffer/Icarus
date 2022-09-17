@@ -1,0 +1,58 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "builtin",
+    hdrs = ["builtin.h"],
+    deps = [
+        "//base:meta",
+        "//base:flyweight_set",
+    ]
+)
+
+cc_test(
+    name = "builtin_test",
+    srcs = ["builtin_test.cc"],
+    deps = [
+        ":builtin",
+        ":type_system",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+cc_library(
+    name = "pointer",
+    hdrs = ["pointer.h"],
+    deps = [
+        "//base:meta",
+        "//base:flyweight_set",
+    ]
+)
+
+cc_test(
+    name = "pointer_test",
+    srcs = ["pointer_test.cc"],
+    deps = [
+        ":pointer",
+        ":type_system",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "type_system",
+    hdrs = ["type_system.h"],
+    deps = [
+        "//base:meta",
+        "//base:flyweight_set",
+    ]
+)
+
+cc_test(
+    name = "type_system_test",
+    srcs = ["type_system_test.cc"],
+    deps = [
+        ":builtin",
+        ":pointer",
+        ":type_system",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
