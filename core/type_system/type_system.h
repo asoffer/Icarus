@@ -157,16 +157,25 @@ struct TypeCategory {
   manager_type* manager_;
 };
 
+namespace internal_type_system {
+
+template <typename S>
+using ConvertibleToJasminValue = std::is_convertible<S, jasmin::Value>;
+
+template <typename Cat>
+struct AllStatesConvertibleToJasminValues {
+  static constexpr bool value =
+      base::all_of<typename Cat::state_types, ConvertibleToJasminValue>;
+};
+
+}  // namespace internal_type_system
+
 template <typename... TypeCategories>
 struct TypeSystem : TypeCategories::manager_type... {
   // Returns the index of the type category `Cat` in this type-system.
   template <base::one_of<TypeCategories...> Cat>
   constexpr size_t index() const {
-    size_t index = 0;
-    static_cast<void>(
-        ((base::meta<Cat> == base::meta<TypeCategories> or (++index, false)) or
-         ...));
-    return index;
+    return base::Index<Cat>(base::type_list<TypeCategories...>{});
   }
 
   template <base::one_of<TypeCategories...> Cat,
@@ -181,8 +190,20 @@ struct TypeSystem : TypeCategories::manager_type... {
     }
   };
 
-  using JasminInstructionSet =
-      jasmin::MakeInstructionSet<Make<TypeCategories>...>;
+  private:
+   using automatic_jasmin_types =
+       base::filter<base::type_list<TypeCategories...>,
+                    internal_type_system::AllStatesConvertibleToJasminValues>;
+   template <typename>
+   struct MakeInstructionSet;
+   template <typename... Cats>
+   struct MakeInstructionSet<base::type_list<Cats...>> {
+     using type = jasmin::MakeInstructionSet<Make<Cats>...>;
+   };
+
+  public:
+   using JasminInstructionSet =
+       typename MakeInstructionSet<automatic_jasmin_types>::type;
 };
 
 }  // namespace core

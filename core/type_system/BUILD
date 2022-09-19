@@ -20,6 +20,27 @@ cc_test(
 )
 
 cc_library(
+    name = "parameter",
+    hdrs = ["parameter.h"],
+    deps = [
+        "//core:parameters",
+        "//base:meta",
+        "//base:flyweight_set",
+    ]
+)
+
+cc_test(
+    name = "parameter_test",
+    srcs = ["parameter_test.cc"],
+    deps = [
+        ":builtin",
+        ":parameter",
+        ":type_system",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "pointer",
     hdrs = ["pointer.h"],
     deps = [

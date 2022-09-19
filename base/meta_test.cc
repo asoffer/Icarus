@@ -92,5 +92,46 @@ TEST(Meta, ArrayTransform) {
               ElementsAre(sizeof(int), sizeof(bool)));
 }
 
+template <typename>
+struct True {
+  static constexpr bool value = true;
+};
+template <typename>
+struct False {
+  static constexpr bool value = false;
+};
+template <typename T>
+struct OneByte {
+  static constexpr bool value = sizeof(T) == 1;
+};
+
+TEST(Meta, AllOf) {
+  EXPECT_TRUE((all_of<type_list<>, True>));
+  EXPECT_TRUE((all_of<type_list<>, False>));
+
+  EXPECT_TRUE((all_of<type_list<int>, True>));
+  EXPECT_FALSE((all_of<type_list<int>, False>));
+
+  EXPECT_TRUE((all_of<type_list<>, OneByte>));
+  EXPECT_TRUE((all_of<type_list<std::byte>, OneByte>));
+  EXPECT_TRUE((all_of<type_list<std::byte, char>, OneByte>));
+  EXPECT_FALSE((all_of<type_list<std::byte, int, char>, OneByte>));
+}
+
+TEST(Meta, Filter) {
+  EXPECT_EQ((meta<filter<type_list<>, True>>), meta<type_list<>>);
+  EXPECT_EQ((meta<filter<type_list<int>, True>>), meta<type_list<int>>);
+  EXPECT_EQ((meta<filter<type_list<int, bool>, True>>), (meta<type_list<int, bool>>));
+
+  EXPECT_EQ((meta<filter<type_list<>, False>>), meta<type_list<>>);
+  EXPECT_EQ((meta<filter<type_list<int>, False>>), meta<type_list<>>);
+  EXPECT_EQ((meta<filter<type_list<int, bool>, False>>), meta<type_list<>>);
+
+  EXPECT_EQ((meta<filter<type_list<>, OneByte>>), meta<type_list<>>);
+  EXPECT_EQ((meta<filter<type_list<int>, OneByte>>), meta<type_list<>>);
+  EXPECT_EQ((meta<filter<type_list<int, char, float, std::byte>, OneByte>>),
+            (meta<type_list<char, std::byte>>));
+}
+
 }  // namespace
 }  // namespace base

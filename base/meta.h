@@ -266,17 +266,55 @@ struct tail_impl<type_list<T, Ts...>> {
   using type = type_list<Ts...>;
 };
 
+template <typename, template <typename> typename>
+struct all_of_impl;
+
+template <typename... Ts, template <typename> typename Predicate>
+struct all_of_impl<type_list<Ts...>, Predicate> {
+  static constexpr bool value = (Predicate<Ts>::value and ...);
+};
+
+template <typename T, typename TL, template <typename> typename Predicate,
+          bool = Predicate<T>::value>
+struct PrependIf;
+template <typename T, typename... Ts, template <typename> typename Predicate>
+struct PrependIf<T, type_list<Ts...>, Predicate, true> {
+  using type = type_list<T, Ts...>;
+};
+template <typename T, typename TL, template <typename> typename Predicate>
+struct PrependIf<T, TL, Predicate, false> {
+  using type = TL;
+};
+
+template <typename, template <typename> typename>
+struct filter_impl;
+
+template <template <typename> typename Predicate>
+struct filter_impl<type_list<>, Predicate> {
+  using type = type_list<>;
+};
+
+template <typename T, typename... Ts, template <typename> typename Predicate>
+struct filter_impl<type_list<T, Ts...>, Predicate>
+    : PrependIf<T, typename filter_impl<type_list<Ts...>, Predicate>::type, Predicate> {};
+
 }  // namespace internal_meta
 
 template <template <typename> typename F, typename TL>
 inline constexpr auto array_transform =
     internal_meta::array_transform_impl<F, TL>::value;
 
+template <typename TL, template <typename> typename Predicate>
+inline constexpr bool all_of = internal_meta::all_of_impl<TL, Predicate>::value;
+
+template <typename TL, template <typename> typename Predicate>
+using filter = typename internal_meta::filter_impl<TL, Predicate>::type;
+
 template <typename TL>
 using tail = typename internal_meta::tail_impl<TL>::type;
 
 template <typename H, typename T>
-concept Hasher = std::invocable<H, T>and
+concept Hasher = std::invocable<H, T> and
     std::convertible_to<std::invoke_result_t<H, T>, size_t>;
 
 template <typename T, typename U>
