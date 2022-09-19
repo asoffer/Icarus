@@ -12,18 +12,23 @@ namespace semantic_analysis {
 struct ByteCodeEmitterBase {
   using signature = void(IrFunction &);
 
-  explicit ByteCodeEmitterBase(compiler::Context const *c)
-      : context_(ASSERT_NOT_NULL(c)) {}
+  explicit ByteCodeEmitterBase(compiler::Context const *c,
+                               TypeSystem &type_system)
+      : type_system_(type_system), context_(ASSERT_NOT_NULL(c)) {}
 
   compiler::Context const &context() const { return *context_; }
 
+  auto &type_system() const { return type_system_; }
+
  private:
+  TypeSystem &type_system_;
   compiler::Context const *context_;
 };
 
 struct ByteCodeValueEmitter : ByteCodeEmitterBase {
-  explicit ByteCodeValueEmitter(compiler::Context const *c)
-      : ByteCodeEmitterBase(c) {}
+  explicit ByteCodeValueEmitter(compiler::Context const *c,
+                                TypeSystem &type_system)
+      : ByteCodeEmitterBase(c, type_system) {}
 
   void operator()(auto const *node, IrFunction &f) { return Emit(node, f); }
 

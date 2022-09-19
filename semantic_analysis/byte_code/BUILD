@@ -33,6 +33,11 @@ cc_library(
     name = "instruction_set",
     hdrs = ["instruction_set.h"],
     deps = [
+        "//core/type_system",
+        "//core/type_system:builtin",
+        "//core/type_system:function",
+        "//core/type_system:parameter",
+        "//core/type_system:pointer",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:core",
     ],

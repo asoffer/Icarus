@@ -27,7 +27,7 @@ Repl::ExecuteResult Repl::execute(std::string content) {
 
   auto const& expr = node_span.back()->as<ast::Expression>();
   semantic_analysis::IrFunction f =
-      semantic_analysis::EmitByteCode(expr, context_);
+      semantic_analysis::EmitByteCode(expr, context_, type_system_);
   return ExecuteResult(source_content_.back(), std::move(f));
 }
 

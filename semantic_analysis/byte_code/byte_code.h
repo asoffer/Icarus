@@ -10,7 +10,8 @@ namespace semantic_analysis {
 // Returns an `IrFunction` accepting no parameters and whose execution computes
 // the value associated with `expression`.
 IrFunction EmitByteCode(ast::Expression const& expression,
-                        compiler::Context const& context);
+                        compiler::Context const& context,
+                        TypeSystem& type_system);
 
 }  // namespace semantic_analysis
 

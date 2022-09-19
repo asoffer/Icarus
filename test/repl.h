@@ -106,11 +106,14 @@ struct Repl {
   ExecuteResult execute(std::string source);
   TypeCheckResult type_check(std::string source);
 
+  auto& type_system() { return type_system_; }
+
  private:
   std::deque<std::string> source_content_;
   ast::Module ast_module_{nullptr};
   ir::Module module_         = ir::Module(ir::ModuleId(1));
   compiler::Context context_ = compiler::Context(&module_);
+  semantic_analysis::TypeSystem type_system_;
   diagnostic::TrackingConsumer consumer_;
 };
 
