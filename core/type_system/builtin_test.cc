@@ -6,7 +6,7 @@
 namespace core {
 namespace {
 
-TEST(TypeSystem, Builtin) {
+TEST(TypeSystem, BuiltinType) {
   TypeSystem<BuiltinType> type_system;
   BuiltinType i32                  = BuiltinType::I<32>(type_system);
   BuiltinType u32                  = BuiltinType::U<32>(type_system);

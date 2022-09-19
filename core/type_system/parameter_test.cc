@@ -7,7 +7,7 @@
 namespace core {
 namespace {
 
-TEST(TypeSystem, Parameter) {
+TEST(TypeSystem, ParameterType) {
   TypeSystem<BuiltinType, ParameterType> type_system;
   Type t1 = BuiltinType::I<32>(type_system);
   Type t2 = BuiltinType::U<32>(type_system);

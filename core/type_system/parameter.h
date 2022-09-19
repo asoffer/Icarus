@@ -17,6 +17,27 @@ struct ParameterType : TypeCategory<ParameterType, core::Parameters<Type>> {
   core::Parameters<Type> const& value() const {
     return std::get<0>(decompose());
   }
+
+  struct Begin : jasmin::StackMachineInstruction<Begin> {
+    static constexpr void execute(jasmin::ValueStack& value_stack) {
+      value_stack.push(new core::Parameters<Type>);
+    }
+  };
+
+  struct Append : jasmin::StackMachineInstruction<Append> {
+    static constexpr void execute(jasmin::ValueStack& value_stack, Type t) {
+      value_stack.peek<core::Parameters<Type>*>()->append("", t);
+    }
+  };
+
+  template <TypeSystemSupporting<ParameterType> TS>
+  struct End : jasmin::StackMachineInstruction<End<TS>> {
+    static constexpr Type execute(jasmin::ValueStack& value_stack, TS* system) {
+      return ParameterType(*system,
+                           std::move(*std::unique_ptr<core::Parameters<Type>>(
+                               value_stack.pop<core::Parameters<Type>*>())));
+    }
+  };
 };
 
 }  // namespace core

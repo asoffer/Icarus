@@ -6,7 +6,7 @@
 namespace core {
 namespace {
 
-TEST(TypeSystem, Pointer) {
+TEST(TypeSystem, PointerType) {
   TypeSystem<PointerType> type_system;
   Type t;
   PointerType p(type_system, t);

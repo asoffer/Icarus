@@ -20,6 +20,29 @@ cc_test(
 )
 
 cc_library(
+    name = "function",
+    hdrs = ["function.h"],
+    deps = [
+        ":parameter",
+        ":type_system",
+        "//base:meta",
+        "//base:flyweight_set",
+    ]
+)
+
+cc_test(
+    name = "function_test",
+    srcs = ["function_test.cc"],
+    deps = [
+        ":builtin",
+        ":function",
+        ":parameter",
+        ":type_system",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "parameter",
     hdrs = ["parameter.h"],
     deps = [

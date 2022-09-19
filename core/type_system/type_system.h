@@ -122,6 +122,11 @@ struct TypeCategory {
     return manager_->from_index(type_.value_);
   }
 
+  template <typename H>
+  friend H AbslHashValue(H h, TypeCategory const& t) {
+    return H::combine(std::move(h), t.type_);
+  }
+
   friend bool operator==(TypeCategory const& lhs, TypeCategory const& rhs) {
     ASSERT(lhs.manager_ == rhs.manager_);
     return lhs.type_ == rhs.type_;
