@@ -4,7 +4,7 @@
 #include "core/type_system/type_system.h"
 
 namespace core {
-namespace internal_type_system_builtin {
+namespace internal_builtin {
 
 struct BuiltinTypeState {
   uint16_t size_in_bits : 10;
@@ -27,35 +27,31 @@ struct BuiltinTypeState {
   bool operator==(BuiltinTypeState const&) const = default;
   bool operator!=(BuiltinTypeState const&) const = default;
 };
-}  // namespace internal_type_system_builtin
+}  // namespace internal_builtin
 
 struct BuiltinType
-    : TypeCategory<BuiltinType,
-                   internal_type_system_builtin::BuiltinTypeState> {
+    : TypeCategory<BuiltinType, internal_builtin::BuiltinTypeState> {
   template <uint32_t Bits, uint32_t AlignmentBytes = (Bits + 7) / 8>
   static BuiltinType I(TypeSystemSupporting<BuiltinType> auto& s) {
     return BuiltinType(
-        s,
-        {.size_in_bits       = Bits,
-         .alignment_in_bytes = AlignmentBytes,
-         .kind = internal_type_system_builtin::BuiltinTypeState::Kind::Signed});
+        s, {.size_in_bits       = Bits,
+            .alignment_in_bytes = AlignmentBytes,
+            .kind = internal_builtin::BuiltinTypeState::Kind::Signed});
   }
 
   template <uint32_t Bits, uint32_t AlignmentBytes = (Bits + 7) / 8>
   static BuiltinType U(TypeSystemSupporting<BuiltinType> auto& s) {
     return BuiltinType(
-        s,
-        {.size_in_bits       = Bits,
-         .alignment_in_bytes = AlignmentBytes,
-         .kind =
-             internal_type_system_builtin::BuiltinTypeState::Kind::Unsigned});
+        s, {.size_in_bits       = Bits,
+            .alignment_in_bytes = AlignmentBytes,
+            .kind = internal_builtin::BuiltinTypeState::Kind::Unsigned});
   }
 
  private:
   friend TypeCategory;
 
   explicit BuiltinType(TypeSystemSupporting<BuiltinType> auto& s,
-                       internal_type_system_builtin::BuiltinTypeState t)
+                       internal_builtin::BuiltinTypeState t)
       : TypeCategory(s, t) {}
 };
 

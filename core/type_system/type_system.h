@@ -3,85 +3,10 @@
 
 #include "base/flyweight_set.h"
 #include "base/meta.h"
+#include "core/type_system/type.h"
 #include "jasmin/instruction.h"
 
 namespace core {
-
-// Each kind of type (e.g., builtin, pointer, etc) must use the CRTP base
-// `TypeCategory` declared here and defined below.
-template <typename CrtpDerived, typename... StateTypes>
-struct TypeCategory;
-
-// A `TypeSystem` (declared here and defined below) represents a collection of
-// `TypeCategory`s along with storage for the types constructed from that type
-// system.
-template <typename... TypeCategories>
-struct TypeSystem;
-
-// A concept matching `TypeSystem` instantiations which support the type
-// category `T`.
-template <typename TS, typename T>
-concept TypeSystemSupporting =
-    (base::meta<TS>.template is_a<TypeSystem>() and
-     std::derived_from<TS, typename T::manager_type>);
-
-// A `Type` represents a value stored in a `TypeSystem`. Two types can be
-// compared for equality or have a specific `TypeCategory` extracted from them.
-//
-// Note that each type belongs to only a single `TypeSystem` (the type system
-// used to create it). Behavior is undefined if any other `TypeSystem` is used
-// to access this type (via any member function, including `is`, `get`, or
-// `get_if`).
-struct Type {
-  // Returns `true` if and only if `*this` type was created from the type
-  // category `Cat`.
-  template <typename Category>
-  bool is(TypeSystemSupporting<Category> auto& sys) const {
-    return category_ == sys.template index<Category>();
-  }
-
-  // Returns a value of type `Category` from which `*this` was created. Behavior
-  // is undefined if `*this` was not created from `Category`. This return value
-  // of function is guaranteed to satisfy the constraint that:
-  // `t == static_cast<Type>(t.get<Category>(sys))`
-  template <typename Category>
-  Category get(TypeSystemSupporting<Category> auto& sys) const {
-    ASSERT(this->is<Category>() == true);
-    return Category::Construct(*this, sys);
-  }
-
-  // Returns a value of type `Category` from which `*this` was created if the
-  // type was created from `Category`, and `std::nullopt` otherwise.
-  template <typename Category>
-  std::optional<Category> get_if(
-      TypeSystemSupporting<Category> auto& sys) const {
-    if (not is<Category>(sys)) { return std::nullopt; }
-    return get<Category>(sys);
-  }
-
-  template <typename H>
-  friend H AbslHashValue(H h, Type t) {
-    return H::combine(std::move(h), t.representation());
-  }
-
-  friend constexpr bool operator==(Type lhs, Type rhs) {
-    return lhs.representation() == rhs.representation();
-  }
-  friend constexpr bool operator!=(Type lhs, Type rhs) {
-    return not(lhs == rhs);
-  }
-
- private:
-  template <typename CrtpDerived, typename... StateTypes>
-  friend struct TypeCategory;
-
-  constexpr uint64_t representation() const {
-    return (value_ << uint64_t{8}) | category_;
-  }
-
-  uint64_t value_ : 64 - 8;
-  uint64_t category_ : 8;
-};
 
 template <typename CrtpDerived, typename... StateTypes>
 struct TypeCategory {

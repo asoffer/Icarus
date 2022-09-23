@@ -83,9 +83,16 @@ cc_test(
 )
 
 cc_library(
+    name = "type",
+    hdrs = ["type.h"],
+    deps = []
+)
+
+cc_library(
     name = "type_system",
     hdrs = ["type_system.h"],
     deps = [
+        ":type",
         "//base:meta",
         "//base:flyweight_set",
         "@asoffer_jasmin//jasmin:instruction",

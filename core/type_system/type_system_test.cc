@@ -77,5 +77,23 @@ TEST(TypeSystem, JasminConstruction) {
   EXPECT_EQ(result, PointerType(type_system, PointerType(type_system, i32)));
 }
 
+TEST(QualifiedType, QualifiedType) {
+  using QT = QualifiedType<uint8_t>;
+
+  TSys type_system;
+  Type i32 = BuiltinType::I<32>(type_system);
+  Type u32 = BuiltinType::U<32>(type_system);
+  QT qt(i32, 5);
+  EXPECT_TRUE(qt == QT(i32, 5));
+  EXPECT_FALSE(qt != QT(i32, 5));
+  EXPECT_EQ(qt.qualifiers(), 5);
+  EXPECT_EQ(qt.type(), i32);
+
+  EXPECT_FALSE(qt == QT(i32, 6));
+  EXPECT_TRUE(qt != QT(i32, 6));
+  EXPECT_FALSE(qt == QT(u32, 5));
+  EXPECT_TRUE(qt != QT(u32, 5));
+}
+
 }  // namespace
 }  // namespace core
