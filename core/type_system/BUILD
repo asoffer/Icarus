@@ -1,8 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "builtin",
-    hdrs = ["builtin.h"],
+    name = "sized_integer",
+    hdrs = ["sized_integer.h"],
     deps = [
         "//base:meta",
         "//base:flyweight_set",
@@ -10,10 +10,10 @@ cc_library(
 )
 
 cc_test(
-    name = "builtin_test",
-    srcs = ["builtin_test.cc"],
+    name = "sized_integer_test",
+    srcs = ["sized_integer_test.cc"],
     deps = [
-        ":builtin",
+        ":sized_integer",
         ":type_system",
         "@com_google_googletest//:gtest_main",
     ],
@@ -34,9 +34,9 @@ cc_test(
     name = "function_test",
     srcs = ["function_test.cc"],
     deps = [
-        ":builtin",
         ":function",
         ":parameter",
+        ":sized_integer",
         ":type_system",
         "@com_google_googletest//:gtest_main",
     ],
@@ -56,7 +56,7 @@ cc_test(
     name = "parameter_test",
     srcs = ["parameter_test.cc"],
     deps = [
-        ":builtin",
+        ":sized_integer",
         ":parameter",
         ":type_system",
         "@com_google_googletest//:gtest_main",
@@ -103,8 +103,8 @@ cc_test(
     name = "type_system_test",
     srcs = ["type_system_test.cc"],
     deps = [
-        ":builtin",
         ":pointer",
+        ":sized_integer",
         ":type_system",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin/instructions:core",

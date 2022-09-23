@@ -16,14 +16,14 @@ constexpr size_t QualifierBits = 8;
 
 }  // namespace internal_type
 
-// Each kind of type (e.g., builtin, pointer, etc) must use the CRTP base
-// `TypeCategory` declared here and defined below.
+// Each kind of type (e.g., sized-integer, pointer, etc) must use the CRTP base
+// `TypeCategory` declared here and defined in "core/type_system.h"
 template <typename , typename... >
 struct TypeCategory;
 
-// A `TypeSystem` (declared here and defined below) represents a collection of
-// `TypeCategory`s along with storage for the types constructed from that type
-// system.
+// A `TypeSystem` (declared here and defined in "core/type_system.h") represents
+// a collection of `TypeCategory`s along with storage for the types constructed
+// from that type system.
 template <typename...>
 struct TypeSystem;
 

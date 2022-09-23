@@ -1,6 +1,6 @@
 #include "core/type_system/parameter.h"
 
-#include "core/type_system/builtin.h"
+#include "core/type_system/sized_integer.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -8,9 +8,9 @@ namespace core {
 namespace {
 
 TEST(TypeSystem, ParameterType) {
-  TypeSystem<BuiltinType, ParameterType> type_system;
-  Type t1 = BuiltinType::I<32>(type_system);
-  Type t2 = BuiltinType::U<32>(type_system);
+  TypeSystem<SizedIntegerType, ParameterType> type_system;
+  Type t1 = SizedIntegerType::I<32>(type_system);
+  Type t2 = SizedIntegerType::U<32>(type_system);
   Parameters<Type> p1;
   Parameters<Type> p2{
       Parameter<Type>{.name = "n", .value = t1},
