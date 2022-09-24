@@ -1,6 +1,17 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "context",
+    hdrs = ["context.h"],
+    srcs = ["context.cc"],
+    deps = [
+        ":type_system",
+        "//ast",
+        "//base:debug",
+    ]
+)
+
+cc_library(
     name = "type_system",
     hdrs = ["type_system.h"],
     srcs = ["type_system.cc"],
