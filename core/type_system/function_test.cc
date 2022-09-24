@@ -9,8 +9,8 @@ namespace {
 
 TEST(TypeSystem, FunctionType) {
   TypeSystem<SizedIntegerType, ParameterType, FunctionType> type_system;
-  Type t1 = SizedIntegerType::I<32>(type_system);
-  Type t2 = SizedIntegerType::U<32>(type_system);
+  Type t1 = SizedIntegerType::I<32>();
+  Type t2 = SizedIntegerType::U<32>();
   Parameters<Type> params1;
   Parameters<Type> params2{
       Parameter<Type>{.name = "n", .value = t1},

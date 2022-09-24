@@ -8,11 +8,10 @@ namespace {
 
 TEST(TypeSystem, SizedIntegerType) {
   TypeSystem<SizedIntegerType> type_system;
-  SizedIntegerType i32              = SizedIntegerType::I<32>(type_system);
-  SizedIntegerType u32              = SizedIntegerType::U<32>(type_system);
-  SizedIntegerType over_aligned_i32 = SizedIntegerType::I<32, 8>(type_system);
-  SizedIntegerType normally_aligned_i32 =
-      SizedIntegerType::I<32, 4>(type_system);
+  SizedIntegerType i32                  = SizedIntegerType::I<32>();
+  SizedIntegerType u32                  = SizedIntegerType::U<32>();
+  SizedIntegerType over_aligned_i32     = SizedIntegerType::I<32, 8>();
+  SizedIntegerType normally_aligned_i32 = SizedIntegerType::I<32, 4>();
 
   EXPECT_EQ(i32, i32);
   EXPECT_NE(i32, u32);

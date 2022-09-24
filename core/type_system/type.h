@@ -132,15 +132,18 @@ struct QualifiedType {
   // Returns the type underlying `Type`.
   Type type() const {
     Type t;
-    uint64_t masked_type = representation_ & ~uint64_t{0xff};
+    uint64_t masked_type =
+        representation_ >> (Type::QualifierBits + Type::CategoryBits);
     std::memcpy(&t, &masked_type, sizeof(t));
     return t;
   }
 
   // Returns the type underlying type qualifiers.
   Q qualifiers() const {
+    static constexpr uint64_t kQualifierMask =
+        (uint64_t{1} << Type::QualifierBits) - 1;
     Q q;
-    uint8_t low_byte = representation_;
+    uint8_t low_byte = representation_ & kQualifierMask;
     std::memcpy(&q, &low_byte, sizeof(q));
     return q;
   }

@@ -30,7 +30,7 @@ TEST(TypeSystem, Index) {
 TEST(TypeSystem, Access) {
   TSys type_system;
 
-  SizedIntegerType i32 = SizedIntegerType::I<32>(type_system);
+  SizedIntegerType i32 = SizedIntegerType::I<32>();
   PointerType p(type_system, i32);
 
   Type t = p;
@@ -49,7 +49,7 @@ TEST(TypeSystem, JasminConstruction) {
   using IrFunction = jasmin::Function<InstructionSet>;
 
   TSys type_system;
-  Type i32 = SizedIntegerType::I<32>(type_system);
+  Type i32 = SizedIntegerType::I<32>();
 
   Type result;
   {
@@ -81,8 +81,8 @@ TEST(QualifiedType, QualifiedType) {
   using QT = QualifiedType<uint8_t>;
 
   TSys type_system;
-  Type i32 = SizedIntegerType::I<32>(type_system);
-  Type u32 = SizedIntegerType::U<32>(type_system);
+  Type i32 = SizedIntegerType::I<32>();
+  Type u32 = SizedIntegerType::U<32>();
   QT qt(i32, 5);
   EXPECT_TRUE(qt == QT(i32, 5));
   EXPECT_FALSE(qt != QT(i32, 5));

@@ -7,6 +7,8 @@ namespace core {
 namespace internal_sized_integer {
 
 struct SizedIntegerTypeState {
+  using store_inline = void;
+
   uint16_t size_in_bits : 10;
   // Alignment must always be a power of 2, so we store its base-2 logarithm.
   uint16_t log_alignment_in_bytes: 5;
@@ -43,29 +45,28 @@ struct SizedIntegerType
     : TypeCategory<SizedIntegerType,
                    internal_sized_integer::SizedIntegerTypeState> {
   template <uint32_t Bits, uint32_t AlignmentBytes = (Bits + 7) / 8>
-  static SizedIntegerType I(TypeSystemSupporting<SizedIntegerType> auto& s) {
+  static SizedIntegerType I() {
     static constexpr size_t kLogAlignment =
         internal_sized_integer::Log2(AlignmentBytes);
-    return SizedIntegerType(s, {.size_in_bits           = Bits,
-                                .log_alignment_in_bytes = kLogAlignment,
-                                .is_signed              = true});
+    return SizedIntegerType({.size_in_bits           = Bits,
+                             .log_alignment_in_bytes = kLogAlignment,
+                             .is_signed              = true});
   }
 
   template <uint32_t Bits, uint32_t AlignmentBytes = (Bits + 7) / 8>
-  static SizedIntegerType U(TypeSystemSupporting<SizedIntegerType> auto& s) {
+  static SizedIntegerType U() {
     static constexpr size_t kLogAlignment =
         internal_sized_integer::Log2(AlignmentBytes);
-    return SizedIntegerType(s, {.size_in_bits           = Bits,
-                                .log_alignment_in_bytes = kLogAlignment,
-                                .is_signed              = false});
+    return SizedIntegerType({.size_in_bits           = Bits,
+                             .log_alignment_in_bytes = kLogAlignment,
+                             .is_signed              = false});
   }
 
  private:
   friend TypeCategory;
 
-  explicit SizedIntegerType(TypeSystemSupporting<SizedIntegerType> auto& s,
-                            internal_sized_integer::SizedIntegerTypeState t)
-      : TypeCategory(s, t) {}
+  explicit SizedIntegerType(internal_sized_integer::SizedIntegerTypeState t)
+      : TypeCategory(t) {}
 };
 
 }  // namespace core

@@ -7,6 +7,12 @@
 #include "jasmin/instruction.h"
 
 namespace core {
+namespace internal_type_system {
+
+template <typename T>
+concept RequestedInlineStorage = std::is_void_v<typename T::store_inline>;
+
+}  // namespace internal_type_system
 
 template <typename CrtpDerived, typename... StateTypes>
 struct TypeCategory {
@@ -14,13 +20,17 @@ struct TypeCategory {
 
  private:
   using state_type_tuple = std::tuple<StateTypes...>;
+  static constexpr bool kStoreInline =
+      (internal_type_system::RequestedInlineStorage<StateTypes> and ...) and
+      sizeof...(StateTypes) == 1 and sizeof(state_type_tuple) <= 4 and
+      (std::is_trivially_copyable_v<StateTypes> and ...);
 
- public:
-  // Data structure that can be used to hold and ensure uniqueness of types of
-  // this category. Each `manager_type` effectively is a flyweight representing
-  // a relationship between the categories `state_type_tuple` and an integer
-  // value taking the place of that state.
-  struct manager_type : private base::flyweight_set<state_type_tuple> {
+  template <bool InlineStorage>
+  struct manager_type_impl {};
+
+  template <>
+  struct manager_type_impl<false>
+      : private base::flyweight_set<state_type_tuple> {
    private:
     friend TypeCategory;
 
@@ -31,9 +41,23 @@ struct TypeCategory {
     using base_type::insert;
   };
 
+ public:
+  // Data structure that can be used to hold and ensure uniqueness of types of
+  // this category. Each `manager_type` effectively is a flyweight representing
+  // a relationship between the categories `state_type_tuple` and an integer
+  // value taking the place of that state. However, if the `state_type_tuple` is
+  // sufficiently small and trivially copyable, the manager will be empty and
+  // the data will be stored inline in the `Type`.
+  using manager_type = manager_type_impl<kStoreInline>;
+
+  template <typename... State>
+  explicit TypeCategory(State&&... state) requires(kStoreInline) {
+    static_assert(sizeof...(State) == 1);
+    write_inline_value(state...);
+  }
   template <typename... State>
   explicit TypeCategory(TypeSystemSupporting<CrtpDerived> auto& m,
-                        State&&... state)
+                        State&&... state) requires(not kStoreInline)
       : manager_(&m) {
     type_.category_ = m.template index<CrtpDerived>();
     type_.value_    = manager_->index(
@@ -43,7 +67,10 @@ struct TypeCategory {
 
   operator Type() const { return type_; }
 
-  state_type_tuple const& decompose() const {
+  state_type_tuple decompose() const requires(kStoreInline) {
+    return state_type_tuple(get_inline_value(type_.value_));
+  }
+  state_type_tuple const& decompose() const requires(not kStoreInline) {
     return manager_->from_index(type_.value_);
   }
 
@@ -64,6 +91,7 @@ struct TypeCategory {
 
  private:
   friend Type;
+
   static CrtpDerived Construct(Type t,
                                TypeSystemSupporting<CrtpDerived> auto& sys) {
     ASSERT(t.template is<CrtpDerived>() == true);
@@ -76,11 +104,32 @@ struct TypeCategory {
     // faster, or add a requirement to all `CrtpDerived` class implementations
     // to provide the necessary construction API that `Type` can hook into
     // without the extra lookup.
-    return std::apply(
-        [&]<typename... Args>(Args&&... args) {
-          return CrtpDerived(sys, std::forward<Args>(args)...);
-        },
-        static_cast<manager_type&>(sys).from_index(t.value_));
+    if constexpr (kStoreInline) {
+      return CrtpDerived(get_inline_value(t.value_));
+    } else {
+      return std::apply(
+          [&]<typename... Args>(Args&&... args) {
+            return CrtpDerived(sys, std::forward<Args>(args)...);
+          },
+          static_cast<manager_type&>(sys).from_index(t.value_));
+    }
+  }
+
+  template <typename T = std::tuple_element_t<0, state_type_tuple>>
+  static T get_inline_value(uint32_t value) requires(kStoreInline) {
+    T result;
+    std::memcpy(
+        &result,
+        reinterpret_cast<char*>(&value) + sizeof(value) - sizeof(result),
+        sizeof(result));
+    return result;
+  }
+
+  template <typename T>
+  void write_inline_value(T t) requires(kStoreInline) {
+    uint32_t value = 0;
+    std::memcpy(&value, &t, sizeof(t));
+    type_.value_ = value;
   }
 
   Type type_;
@@ -120,20 +169,20 @@ struct TypeSystem : TypeCategories::manager_type... {
     }
   };
 
-  private:
-   using automatic_jasmin_types =
-       base::filter<base::type_list<TypeCategories...>,
-                    internal_type_system::AllStatesConvertibleToJasminValues>;
-   template <typename>
-   struct MakeInstructionSet;
-   template <typename... Cats>
-   struct MakeInstructionSet<base::type_list<Cats...>> {
-     using type = jasmin::MakeInstructionSet<Make<Cats>...>;
-   };
+ private:
+  using automatic_jasmin_types =
+      base::filter<base::type_list<TypeCategories...>,
+                   internal_type_system::AllStatesConvertibleToJasminValues>;
+  template <typename>
+  struct MakeInstructionSet;
+  template <typename... Cats>
+  struct MakeInstructionSet<base::type_list<Cats...>> {
+    using type = jasmin::MakeInstructionSet<Make<Cats>...>;
+  };
 
-  public:
-   using JasminInstructionSet =
-       typename MakeInstructionSet<automatic_jasmin_types>::type;
+ public:
+  using JasminInstructionSet =
+      typename MakeInstructionSet<automatic_jasmin_types>::type;
 };
 
 }  // namespace core
