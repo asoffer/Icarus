@@ -1,6 +1,9 @@
 #ifndef ICARUS_CORE_TYPE_SYSTEM_TYPE_SYSTEM_H
 #define ICARUS_CORE_TYPE_SYSTEM_TYPE_SYSTEM_H
 
+#include <array>
+
+#include "absl/base/casts.h"
 #include "base/flyweight_set.h"
 #include "base/meta.h"
 #include "core/type_system/type.h"
@@ -10,7 +13,20 @@ namespace core {
 namespace internal_type_system {
 
 template <typename T>
-concept RequestedInlineStorage = std::is_void_v<typename T::store_inline>;
+concept RequestedInlineStorage =
+    std::is_void_v<typename T::store_inline> or base::is_enum<T>;
+
+// A struct whose size is guaranteed to be `TotalSize`.
+template <typename T, size_t TotalSize, size_t Padding = TotalSize - sizeof(T)>
+struct Padded {
+  T value;
+  std::array<char, TotalSize - sizeof(T)> padding = {};
+};
+
+template <typename T, size_t TotalSize>
+struct Padded<T, TotalSize, 0> {
+  T value;
+};
 
 }  // namespace internal_type_system
 
@@ -51,7 +67,8 @@ struct TypeCategory {
   using manager_type = manager_type_impl<kStoreInline>;
 
   template <typename... State>
-  explicit TypeCategory(State&&... state) requires(kStoreInline) {
+  explicit constexpr TypeCategory(State&&... state) requires(kStoreInline)
+      : type_{} {
     static_assert(sizeof...(State) == 1);
     write_inline_value(state...);
   }
@@ -65,9 +82,9 @@ struct TypeCategory {
                .first);
   }
 
-  operator Type() const { return type_; }
+  constexpr operator Type() const { return type_; }
 
-  state_type_tuple decompose() const requires(kStoreInline) {
+  constexpr state_type_tuple decompose() const requires(kStoreInline) {
     return state_type_tuple(get_inline_value(type_.value_));
   }
   state_type_tuple const& decompose() const requires(not kStoreInline) {
@@ -116,20 +133,16 @@ struct TypeCategory {
   }
 
   template <typename T = std::tuple_element_t<0, state_type_tuple>>
-  static T get_inline_value(uint32_t value) requires(kStoreInline) {
-    T result;
-    std::memcpy(
-        &result,
-        reinterpret_cast<char*>(&value) + sizeof(value) - sizeof(result),
-        sizeof(result));
-    return result;
+  static constexpr T get_inline_value(uint32_t value) requires(kStoreInline) {
+    return absl::bit_cast<internal_type_system::Padded<T, sizeof(uint32_t)>>(
+               value)
+        .value;
   }
 
   template <typename T>
-  void write_inline_value(T t) requires(kStoreInline) {
-    uint32_t value = 0;
-    std::memcpy(&value, &t, sizeof(t));
-    type_.value_ = value;
+  constexpr void write_inline_value(T t) requires(kStoreInline) {
+    type_.value_ = absl::bit_cast<uint32_t>(
+        internal_type_system::Padded<T, sizeof(uint32_t)>{.value = t});
   }
 
   Type type_;

@@ -1,8 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "sized_integer",
-    hdrs = ["sized_integer.h"],
+    name = "finite_set",
+    hdrs = ["finite_set.h"],
     deps = [
         "//base:meta",
         "//base:flyweight_set",
@@ -10,14 +10,15 @@ cc_library(
 )
 
 cc_test(
-    name = "sized_integer_test",
-    srcs = ["sized_integer_test.cc"],
+    name = "finite_set_test",
+    srcs = ["finite_set_test.cc"],
     deps = [
-        ":sized_integer",
+        ":finite_set",
         ":type_system",
         "@com_google_googletest//:gtest_main",
     ],
 )
+
 
 cc_library(
     name = "function",
@@ -77,6 +78,25 @@ cc_test(
     srcs = ["pointer_test.cc"],
     deps = [
         ":pointer",
+        ":type_system",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "sized_integer",
+    hdrs = ["sized_integer.h"],
+    deps = [
+        "//base:meta",
+        "//base:flyweight_set",
+    ]
+)
+
+cc_test(
+    name = "sized_integer_test",
+    srcs = ["sized_integer_test.cc"],
+    deps = [
+        ":sized_integer",
         ":type_system",
         "@com_google_googletest//:gtest_main",
     ],
