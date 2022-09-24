@@ -16,13 +16,12 @@ using ::testing::AllOf;
 TEST(Terminal, BooleanPrimitives) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(true)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Bool)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(false)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Bool)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
 }
 
+#if 0
 TEST(Terminal, StringLiterals) {
   test::Repl repl;
   EXPECT_THAT(
@@ -42,78 +41,54 @@ TEST(Terminal, StringLiterals) {
       AllOf(HasQualTypes(type::QualType::Constant(type::Slc(type::Char))),
             HasDiagnostics()));
 }
+#endif
 
 TEST(Terminal, Types) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(byte)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(bool)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(u8)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(u16)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(u32)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(u64)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(i8)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(i16)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(i32)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(i64)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(f32)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(f64)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(integer)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(type)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(module)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Type_)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
 }
 
 TEST(Terminal, Numbers) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(1234)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Integer)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Integer)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(12.34)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::F64)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(F64)), HasDiagnostics()));
 }
 
 TEST(Terminal, Characters) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(!'a')"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::Char)),
-                    HasDiagnostics()));
-}
-
-TEST(Terminal, Null) {
-  test::Repl repl;
-  EXPECT_THAT(repl.type_check(R"(null)"),
-              AllOf(HasQualTypes(type::QualType::Constant(type::NullPtr)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Char)), HasDiagnostics()));
 }
 
 }  // namespace

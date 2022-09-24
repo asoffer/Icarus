@@ -74,11 +74,10 @@ cc_library(
     deps = [
         "//ast:module",
         "//ast:expression",
+        "//semantic_analysis:context",
         "//semantic_analysis/byte_code",
         "//diagnostic/consumer:tracking",
         "//frontend:parse",
-        "//ir:module",
-        "//ir/value:module_id",
         "//semantic_analysis/type_verification:verify",
         "@asoffer_jasmin//jasmin:execute",
         "@com_google_absl//absl/strings",

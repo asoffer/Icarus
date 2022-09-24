@@ -5,15 +5,13 @@
 
 #include "absl/strings/str_split.h"
 #include "ast/module.h"
-#include "compiler/context.h"
 #include "diagnostic/consumer/tracking.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "ir/module.h"
-#include "ir/value/module_id.h"
 #include "jasmin/execute.h"
 #include "semantic_analysis/byte_code/instruction_set.h"
-#include "type/qual_type.h"
+#include "semantic_analysis/context.h"
+#include "semantic_analysis/type_system.h"
 
 namespace test {
 
@@ -48,11 +46,6 @@ struct Repl {
   };
 
  public:
-  Repl() {
-    context_.set_qt_callback(
-        [](ast::Declaration::Id const*, type::QualType) {});
-  }
-
   struct ExecuteResult : ResultBase {
     semantic_analysis::IrFunction const* function() const {
       if (value_) { return &*value_; }
@@ -76,16 +69,18 @@ struct Repl {
       return diagnostics_;
     }
 
-    absl::Span<type::QualType const> qual_types() const { return qts_; }
+    absl::Span<semantic_analysis::QualifiedType const> qualified_types() const {
+      return qts_;
+    }
 
     friend std::ostream& operator<<(std::ostream& os,
                                     TypeCheckResult const& r) {
       os << static_cast<ResultBase const&>(r);
       std::string_view separator =
           "    where the qualified type of the last expression is ";
-      for (auto const& qt : r.qual_types()) {
-        os << std::exchange(separator, ", ") << qt;
-      }
+      // for (auto const& qt : r.qualified_types()) {
+      //   os << std::exchange(separator, ", ") << qt;
+      // }
       return os << "\n";
     }
 
@@ -93,13 +88,14 @@ struct Repl {
     friend Repl;
 
     explicit TypeCheckResult(
-        std::string_view content, absl::Span<type::QualType const> qts,
+        std::string_view content,
+        absl::Span<semantic_analysis::QualifiedType const> qts,
         absl::Span<std::pair<std::string, std::string> const> diagnostics)
         : ResultBase(content),
           qts_(qts.begin(), qts.end()),
           diagnostics_(diagnostics.begin(), diagnostics.end()) {}
 
-    std::vector<type::QualType> qts_;
+    std::vector<semantic_analysis::QualifiedType> qts_;
     std::vector<std::pair<std::string, std::string>> diagnostics_;
   };
 
@@ -111,8 +107,7 @@ struct Repl {
  private:
   std::deque<std::string> source_content_;
   ast::Module ast_module_{nullptr};
-  ir::Module module_         = ir::Module(ir::ModuleId(1));
-  compiler::Context context_ = compiler::Context(&module_);
+  semantic_analysis::Context context_;
   semantic_analysis::TypeSystem type_system_;
   diagnostic::TrackingConsumer consumer_;
 };
@@ -197,7 +192,8 @@ struct HasDiagnostics {
 
 struct HasQualTypes {
  private:
-  using inner_matcher_type = std::vector<testing::Matcher<type::QualType>>;
+  using inner_matcher_type =
+      std::vector<testing::Matcher<semantic_analysis::QualifiedType>>;
 
  public:
   using is_gtest_matcher = void;
@@ -209,19 +205,21 @@ struct HasQualTypes {
 
   bool MatchAndExplain(Repl::TypeCheckResult const& value,
                        testing::MatchResultListener* listener) const {
-    return testing::ExplainMatchResult(ms_, value.qual_types(), listener);
+    return testing::ExplainMatchResult(ms_, value.qualified_types(), listener);
   }
 
   void DescribeTo(std::ostream* os) const {
     *os << "has qualified types that ";
-    static_cast<testing::Matcher<std::vector<type::QualType>>>(ms_).DescribeTo(
-        os);
+    static_cast<
+        testing::Matcher<std::vector<semantic_analysis::QualifiedType>>>(ms_)
+        .DescribeTo(os);
   }
 
   void DescribeNegationTo(std::ostream* os) const {
     *os << "does not have qualified types that ";
-    static_cast<testing::Matcher<std::vector<type::QualType>>>(ms_).DescribeTo(
-        os);
+    static_cast<
+        testing::Matcher<std::vector<semantic_analysis::QualifiedType>>>(ms_)
+        .DescribeTo(os);
   }
 
  private:

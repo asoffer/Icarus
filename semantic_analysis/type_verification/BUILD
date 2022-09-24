@@ -4,20 +4,20 @@ cc_library(
     name = "verify",
     hdrs = ["verify.h"],
     srcs = [
-        "declaration.cc",
-        "identifier.cc",
-        "short_function_literal.cc",
-        "unary_operator.cc",
+        # "declaration.cc",
+        # "identifier.cc",
+        # "short_function_literal.cc",
+        # "unary_operator.cc",
         "terminal.cc",
     ],
     deps = [
         "//ast",
         "//base:meta",
-        "//compiler:common",
         "//compiler:common_diagnostics",
-        "//compiler:context",
         "//compiler:type_for_diagnostic",
         "//diagnostic/consumer",
+        "//semantic_analysis:context",
+        "//semantic_analysis:type_system",
         "//semantic_analysis:task",
         "//type",
         "//type:array",
@@ -27,31 +27,31 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "short_function_literal_test",
-    srcs = ["short_function_literal_test.cc"],
-    deps = [
-        ":verify",
-        "//test:repl",
-        "//type:primitive",
-        "//type:function",
-        "//type:qual_type",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "unary_operator_test",
-    srcs = ["unary_operator_test.cc"],
-    deps = [
-        ":verify",
-        "//test:repl",
-        "//type:primitive",
-        "//type:function",
-        "//type:qual_type",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
+# cc_test(
+#     name = "short_function_literal_test",
+#     srcs = ["short_function_literal_test.cc"],
+#     deps = [
+#         ":verify",
+#         "//test:repl",
+#         "//type:primitive",
+#         "//type:function",
+#         "//type:qual_type",
+#         "@com_google_googletest//:gtest_main",
+#     ],
+# )
+# 
+# cc_test(
+#     name = "unary_operator_test",
+#     srcs = ["unary_operator_test.cc"],
+#     deps = [
+#         ":verify",
+#         "//test:repl",
+#         "//type:primitive",
+#         "//type:function",
+#         "//type:qual_type",
+#         "@com_google_googletest//:gtest_main",
+#     ],
+# )
 
 cc_test(
     name = "terminal_test",

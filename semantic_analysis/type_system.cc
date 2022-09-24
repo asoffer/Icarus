@@ -10,4 +10,6 @@ QualifiedType Constant(QualifiedType t) {
   return QualifiedType(t.type(), t.qualifiers() | Qualifiers::Constant());
 }
 
+QualifiedType Error() { return QualifiedType(ErrorType, Qualifiers::Error()); }
+
 }  // namespace semantic_analysis

@@ -36,7 +36,7 @@ Repl::TypeCheckResult Repl::type_check(std::string content) {
   auto nodes              = frontend::Parse(source_content_.back(), consumer_);
   base::PtrSpan node_span = ast_module_.insert(nodes.begin(), nodes.end());
   if (consumer_.num_consumed() != 0) {
-    return TypeCheckResult(source_content_.back(), {type::QualType::Error()},
+    return TypeCheckResult(source_content_.back(), {semantic_analysis::Error()},
                            consumer_.diagnostics());
   }
 
@@ -46,7 +46,7 @@ Repl::TypeCheckResult Repl::type_check(std::string content) {
 
   return TypeCheckResult(
       source_content_.back(),
-      context_.qual_types(&node_span.back()->as<ast::Expression>()),
+      context_.qualified_types(&node_span.back()->as<ast::Expression>()),
       consumer_.diagnostics());
 }
 

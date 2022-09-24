@@ -84,15 +84,28 @@ struct Qualifiers {
 
 using QualifiedType = core::QualifiedType<Qualifiers>;
 
-enum class Primitive : uint8_t { Bool, Char, Byte, Type, Integer, Module };
+enum class Primitive : uint8_t {
+  Bool,
+  Char,
+  Byte,
+  F32,
+  F64,
+  Type,
+  Integer,
+  Module,
+  Error
+};
 using PrimitiveTypes = core::FiniteSetType<Primitive>;
 
-inline constexpr core::Type Bool    = PrimitiveTypes(Primitive::Bool);
-inline constexpr core::Type Char    = PrimitiveTypes(Primitive::Char);
-inline constexpr core::Type Byte    = PrimitiveTypes(Primitive::Byte);
-inline constexpr core::Type Type    = PrimitiveTypes(Primitive::Type);
-inline constexpr core::Type Integer = PrimitiveTypes(Primitive::Integer);
-inline constexpr core::Type Module  = PrimitiveTypes(Primitive::Module);
+inline constexpr core::Type Bool      = PrimitiveTypes(Primitive::Bool);
+inline constexpr core::Type Char      = PrimitiveTypes(Primitive::Char);
+inline constexpr core::Type Byte      = PrimitiveTypes(Primitive::Byte);
+inline constexpr core::Type F32       = PrimitiveTypes(Primitive::F32);
+inline constexpr core::Type F64       = PrimitiveTypes(Primitive::F64);
+inline constexpr core::Type Type      = PrimitiveTypes(Primitive::Type);
+inline constexpr core::Type Integer   = PrimitiveTypes(Primitive::Integer);
+inline constexpr core::Type Module    = PrimitiveTypes(Primitive::Module);
+inline constexpr core::Type ErrorType = PrimitiveTypes(Primitive::Error);
 
 using TypeSystem = core::TypeSystem<PrimitiveTypes, core::SizedIntegerType,
                                     core::ParameterType, core::PointerType,
@@ -104,6 +117,9 @@ QualifiedType Constant(core::Type t);
 // Returns a `QualifiedType` that has the same underlying type as `t` and the
 // same qualifiers as `t` with the addition of the "constant" qualifier.
 QualifiedType Constant(QualifiedType t);
+
+// Returns a `QualifiedType` that represents an error.
+QualifiedType Error();
 
 }  // namespace semantic_analysis
 

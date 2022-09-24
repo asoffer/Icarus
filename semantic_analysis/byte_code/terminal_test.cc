@@ -13,22 +13,24 @@ TEST(Terminal, Evaluation) {
 
   EXPECT_THAT(repl.execute("true"), EvaluatesTo(true));
   EXPECT_THAT(repl.execute("false"), EvaluatesTo(false));
+  EXPECT_THAT(repl.execute("bool"), EvaluatesTo(Bool));
+  EXPECT_THAT(repl.execute("char"), EvaluatesTo(Char));
   EXPECT_THAT(repl.execute("i8"),
-              EvaluatesTo(core::Type(core::BuiltinType::I<8>(type_system))));
+              EvaluatesTo(core::Type(core::SizedIntegerType::I<8>())));
   EXPECT_THAT(repl.execute("i16"),
-              EvaluatesTo(core::Type(core::BuiltinType::I<16>(type_system))));
+              EvaluatesTo(core::Type(core::SizedIntegerType::I<16>())));
   EXPECT_THAT(repl.execute("i32"),
-              EvaluatesTo(core::Type(core::BuiltinType::I<32>(type_system))));
+              EvaluatesTo(core::Type(core::SizedIntegerType::I<32>())));
   EXPECT_THAT(repl.execute("i64"),
-              EvaluatesTo(core::Type(core::BuiltinType::I<64>(type_system))));
+              EvaluatesTo(core::Type(core::SizedIntegerType::I<64>())));
   EXPECT_THAT(repl.execute("u8"),
-              EvaluatesTo(core::Type(core::BuiltinType::U<8>(type_system))));
+              EvaluatesTo(core::Type(core::SizedIntegerType::U<8>())));
   EXPECT_THAT(repl.execute("u16"),
-              EvaluatesTo(core::Type(core::BuiltinType::U<16>(type_system))));
+              EvaluatesTo(core::Type(core::SizedIntegerType::U<16>())));
   EXPECT_THAT(repl.execute("u32"),
-              EvaluatesTo(core::Type(core::BuiltinType::U<32>(type_system))));
+              EvaluatesTo(core::Type(core::SizedIntegerType::U<32>())));
   EXPECT_THAT(repl.execute("u64"),
-              EvaluatesTo(core::Type(core::BuiltinType::U<64>(type_system))));
+              EvaluatesTo(core::Type(core::SizedIntegerType::U<64>())));
 }
 
 }  // namespace

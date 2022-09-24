@@ -4,11 +4,11 @@
 #include "absl/types/span.h"
 #include "ast/ast.h"
 #include "ast/module.h"
-#include "compiler/context.h"
 #include "compiler/type_for_diagnostic.h"
 #include "diagnostic/consumer/consumer.h"
+#include "semantic_analysis/context.h"
 #include "semantic_analysis/task.h"
-#include "type/qual_type.h"
+#include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
 // TODO: Move to this namespace
@@ -23,8 +23,8 @@ enum class TypeVerificationPhase {
 
 namespace internal_verify {
 
-using Types = std::tuple<core::Parameters<type::QualType> const *,
-                         absl::Span<type::QualType const>, void, void>;
+using Types = std::tuple<core::Parameters<QualifiedType> const *,
+                         absl::Span<QualifiedType const>, void, void>;
 template <TypeVerificationPhase P>
 using ReturnType = std::tuple_element_t<static_cast<int>(P), Types>;
 
@@ -45,7 +45,7 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(compiler::Context &c, diagnostic::DiagnosticConsumer &d)
+  explicit TypeVerifier(Context &c, diagnostic::DiagnosticConsumer &d)
       : VerificationScheduler([](VerificationScheduler &s,
                                  ast::Node const *node) -> VerificationTask {
           return node->visit(static_cast<TypeVerifier &>(s));
@@ -53,7 +53,7 @@ struct TypeVerifier : VerificationScheduler {
         context_(c),
         diagnostic_consumer_(d) {}
 
-  compiler::Context &context() const { return context_; }
+  Context &context() const { return context_; }
 
   template <typename D>
   void ConsumeDiagnostic(D &&d) {
@@ -65,14 +65,14 @@ struct TypeVerifier : VerificationScheduler {
   }
 
   void complete_verification(ast::Expression const *node,
-                             type::QualType qual_type) {
+                             QualifiedType qualified_type) {
     this->set_completed<TypeVerificationPhase::VerifyType>(
-        node, context().set_qual_type(node, qual_type));
+        node, context().set_qualified_type(node, qualified_type));
   }
   void complete_verification(ast::Expression const *node,
-                             std::vector<type::QualType> qual_types) {
+                             std::vector<QualifiedType> qualified_types) {
     this->set_completed<TypeVerificationPhase::VerifyType>(
-        node, context().set_qual_types(node, std::move(qual_types)));
+        node, context().set_qualified_types(node, std::move(qualified_types)));
   }
 
   template <typename NodeType>
@@ -80,20 +80,20 @@ struct TypeVerifier : VerificationScheduler {
     NOT_YET(base::meta<NodeType>);
   }
 
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::BindingDeclaration const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::Declaration::Id const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Identifier const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::ShortFunctionLiteral const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::UnaryOperator const *);
+  // static VerificationTask VerifyType(TypeVerifier &,
+  //                                    ast::BindingDeclaration const *);
+  // static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);
+  // static VerificationTask VerifyType(TypeVerifier &,
+  //                                    ast::Declaration::Id const *);
+  // static VerificationTask VerifyType(TypeVerifier &, ast::Identifier const *);
+  // static VerificationTask VerifyType(TypeVerifier &,
+  //                                    ast::ShortFunctionLiteral const *);
+  // static VerificationTask VerifyType(TypeVerifier &,
+  //                                    ast::UnaryOperator const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);
 
  private:
-  compiler::Context &context_;
+  Context &context_;
   diagnostic::DiagnosticConsumer &diagnostic_consumer_;
 };
 

@@ -14,17 +14,22 @@ struct Context {
   absl::Span<QualifiedType const> qualified_types(
       ast::Expression const *expr) const;
 
+  // Returns the qualified type associated with `expr`. Requires that `expr`
+  // already have exactly one qualified types associated with it on this
+  // `Context`.
+  QualifiedType qualified_type(ast::Expression const *expr) const;
+
   // Sets the qualified types associated with `expr` to be `qualified_types`.
   // Requires that `expr` does not yet have any qualified types associated with
   // it on this `Context.`
-  void set_qualified_types(ast::Expression const *expr,
-                           std::vector<QualifiedType> qualified_types);
+  absl::Span<QualifiedType const> set_qualified_types(
+      ast::Expression const *expr, std::vector<QualifiedType> qualified_types);
 
   // Sets the qualified types associated with `expr` to be a sequence consisting
   // of just the one value `qualified_type`. Requires that `expr` does not yet
   // have any qualified types associated with it on this `Context.`
-  void set_qualified_type(ast::Expression const *expr,
-                          QualifiedType qualified_types);
+  absl::Span<QualifiedType const> set_qualified_type(
+      ast::Expression const *expr, QualifiedType qualified_types);
 
  private:
   absl::flat_hash_map<ast::Expression const *, std::vector<QualifiedType>>
