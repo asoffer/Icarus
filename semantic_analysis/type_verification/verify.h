@@ -83,12 +83,12 @@ struct TypeVerifier : VerificationScheduler {
     NOT_YET(base::meta<NodeType>);
   }
 
-  // static VerificationTask VerifyType(TypeVerifier &,
-  //                                    ast::BindingDeclaration const *);
-  // static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);
-  // static VerificationTask VerifyType(TypeVerifier &,
-  //                                    ast::Declaration::Id const *);
-  // static VerificationTask VerifyType(TypeVerifier &, ast::Identifier const *);
+  static VerificationTask VerifyType(TypeVerifier &,
+                                     ast::BindingDeclaration const *);
+  static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);
+  static VerificationTask VerifyType(TypeVerifier &,
+                                     ast::Declaration::Id const *);
+  static VerificationTask VerifyType(TypeVerifier &, ast::Identifier const *);
   // static VerificationTask VerifyType(TypeVerifier &,
   //                                    ast::ShortFunctionLiteral const *);
   static VerificationTask VerifyType(TypeVerifier &,

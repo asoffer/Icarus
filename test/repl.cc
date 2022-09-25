@@ -75,7 +75,10 @@ void Repl::PrintType(std::ostream& os, core::Type t) {
     static constexpr std::array kPrimitiveTypes{"bool",    "char",   "byte",
                                                 "f32",     "f64",    "type",
                                                 "integer", "module", "error"};
-    os << kPrimitiveTypes[static_cast<uint8_t>(p->value())];
+    size_t value =
+        static_cast<std::underlying_type_t<decltype(p->value())>>(p->value());
+    ASSERT(value < kPrimitiveTypes.size());
+    os << kPrimitiveTypes[value];
   } else if (auto p = t.get_if<core::PointerType>(type_system_)) {
     os << "*(";
     PrintType(os, p->pointee());
@@ -87,6 +90,9 @@ void Repl::PrintType(std::ostream& os, core::Type t) {
     os << ')';
   } else if (auto i = t.get_if<core::SizedIntegerType>(type_system_)) {
     os << (i->is_signed() ? 'i' : 'u') << i->bits();
+    if (i->alignment() != core::SizedIntegerType::DefaultAlignment(i->bits())) {
+      os << "@" << i->alignment();
+    }
     // TODO: Show alignment.
   } else {
     os << "???";

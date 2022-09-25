@@ -110,20 +110,7 @@ enum class Primitive : uint8_t {
   Module,
   Error
 };
-using PrimitiveTypes = core::FiniteSetType<Primitive>;
-
-inline constexpr core::Type Bool      = PrimitiveTypes(Primitive::Bool);
-inline constexpr core::Type Char      = PrimitiveTypes(Primitive::Char);
-inline constexpr core::Type Byte      = PrimitiveTypes(Primitive::Byte);
-inline constexpr core::Type F32       = PrimitiveTypes(Primitive::F32);
-inline constexpr core::Type F64       = PrimitiveTypes(Primitive::F64);
-inline constexpr core::Type Type      = PrimitiveTypes(Primitive::Type);
-inline constexpr core::Type Integer   = PrimitiveTypes(Primitive::Integer);
-inline constexpr core::Type Module    = PrimitiveTypes(Primitive::Module);
-inline constexpr core::Type ErrorType = PrimitiveTypes(Primitive::Error);
-
-inline core::Type I(uint32_t bits) { return core::SizedIntegerType::I(bits); }
-inline core::Type U(uint32_t bits) { return core::SizedIntegerType::U(bits); }
+using PrimitiveType = core::FiniteSetType<Primitive>;
 
 // In general, arithmetic is not allowed on pointers in Icarus. However, a more
 // specialized "buffer pointer" type does allow for arithmetic. Specifically,
@@ -151,9 +138,35 @@ struct SliceType : core::TypeCategory<SliceType, core::Type> {
 };
 
 using TypeSystem =
-    core::TypeSystem<PrimitiveTypes, core::SizedIntegerType,
-                     core::ParameterType, core::PointerType, BufferPointerType,
-                     SliceType, core::FunctionType>;
+    core::TypeSystem<PrimitiveType, core::SizedIntegerType, core::ParameterType,
+                     core::PointerType, BufferPointerType, SliceType,
+                     core::FunctionType>;
+
+inline constexpr core::Type Bool =
+    PrimitiveType(base::meta<TypeSystem>, Primitive::Bool);
+inline constexpr core::Type Char =
+    PrimitiveType(base::meta<TypeSystem>, Primitive::Char);
+inline constexpr core::Type Byte =
+    PrimitiveType(base::meta<TypeSystem>, Primitive::Byte);
+inline constexpr core::Type F32 =
+    PrimitiveType(base::meta<TypeSystem>, Primitive::F32);
+inline constexpr core::Type F64 =
+    PrimitiveType(base::meta<TypeSystem>, Primitive::F64);
+inline constexpr core::Type Type =
+    PrimitiveType(base::meta<TypeSystem>, Primitive::Type);
+inline constexpr core::Type Integer =
+    PrimitiveType(base::meta<TypeSystem>, Primitive::Integer);
+inline constexpr core::Type Module =
+    PrimitiveType(base::meta<TypeSystem>, Primitive::Module);
+inline constexpr core::Type ErrorType =
+    PrimitiveType(base::meta<TypeSystem>, Primitive::Error);
+
+inline core::Type I(uint32_t bits) {
+  return core::SizedIntegerType::I<TypeSystem>(bits);
+}
+inline core::Type U(uint32_t bits) {
+  return core::SizedIntegerType::U<TypeSystem>(bits);
+}
 
 }  // namespace semantic_analysis
 

@@ -1,8 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/common_diagnostics.h"
 #include "semantic_analysis/type_verification/verify.h"
-#include "type/pointer.h"
-#include "type/qual_type.h"
+#include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
 namespace {
@@ -22,50 +21,54 @@ struct NoDefaultValue {
 };
 
 // TODO: Make this useful.
-std::optional<type::Type> EvaluateAsType(compiler::Context &context,
-                                         ast::Expression const &expr) {
-  ASSERT(context.qual_types(&expr).size() == 1);
-  ASSERT(context.qual_types(&expr)[0] != type::QualType::Error());
-  ASSERT(context.qual_types(&expr)[0].HasErrorMark() == false);
-  return type::Ptr(type::I64);
+std::optional<core::Type> EvaluateAsType(Context &context,
+                                         TypeSystem &type_system,
+                                         ast::Expression const *expr) {
+  auto qt = context.qualified_type(expr);
+  bool has_error = (qt.qualifiers() >= Qualifiers::Error());
+  ASSERT(has_error == false);
+  return core::Type(core::PointerType(type_system, I(64)));
 }
 
 }  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Declaration const *node) {
-  absl::Span<type::QualType const> init_val_qts(nullptr, 0);
-  absl::Span<type::QualType const> type_expr_qts(nullptr, 0);
+  absl::Span<QualifiedType const> init_val_qts(nullptr, 0);
+  absl::Span<QualifiedType const> type_expr_qts(nullptr, 0);
 
   if (auto *e = node->init_val()) { init_val_qts = co_await VerifyTypeOf(e); }
   if (auto *e = node->type_expr()) { type_expr_qts = co_await VerifyTypeOf(e); }
 
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
+      // Syntactically: `var: T`
       if (type_expr_qts.size() != 1) { NOT_YET("Log an error"); }
       auto type_expr_qt = type_expr_qts[0];
-      if (type_expr_qt != type::QualType::Constant(type::Type_)) {
-        NOT_YET("Log an error");
-      }
-      std::optional t = EvaluateAsType(tv.context(), *node->type_expr());
+      if (type_expr_qt != Constant(Type)) { NOT_YET("Log an error"); }
+      std::optional t =
+          EvaluateAsType(tv.context(), tv.type_system(), node->type_expr());
       if (not t) {
-        tv.complete_verification(node, type::QualType::Error());
+        tv.complete_verification(node, Error());
         co_return;
       }
 
-      bool is_parameter = (node->flags() & ast::Declaration::f_IsFnParam);
-      bool is_default_initializable = t->get()->IsDefaultInitializable();
-      if (not is_parameter and not is_default_initializable) {
-        tv.ConsumeDiagnostic(NoDefaultValue{
-            .type = TypeForDiagnostic(node, tv.context()),
-            .view = node->range(),
-        });
-      }
+      // TODO: If it's a local variable, the type needs to be default
+      // initializable. If it's a parameter the type does not need to be default
+      // initializable.
+      // bool is_parameter = (node->flags() & ast::Declaration::f_IsFnParam);
+      // bool is_default_initializable = t->get()->IsDefaultInitializable();
+      // if (not is_parameter and not is_default_initializable) {
+      //   tv.ConsumeDiagnostic(NoDefaultValue{
+      //       .type = TypeForDiagnostic(node, tv.context()),
+      //       .view = node->range(),
+      //   });
+      // }
 
-      for (auto const &id : node->ids()) {
-        tv.complete_verification(&id, type::QualType::Constant(*t));
-      }
-      tv.complete_verification(node, type::QualType::Constant(*t));
+      QualifiedType qt(*t, Qualifiers());
+      if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
+      for (auto const &id : node->ids()) { tv.complete_verification(&id, qt); }
+      tv.complete_verification(node, qt);
     } break;
     default: NOT_YET(node->DebugString());
   }

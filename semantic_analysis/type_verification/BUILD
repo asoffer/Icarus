@@ -4,8 +4,8 @@ cc_library(
     name = "verify",
     hdrs = ["verify.h"],
     srcs = [
-        # "declaration.cc",
-        # "identifier.cc",
+        "declaration.cc",
+        "identifier.cc",
         # "short_function_literal.cc",
         "unary_operator.cc",
         "terminal.cc",
@@ -18,11 +18,17 @@ cc_library(
         "//semantic_analysis:context",
         "//semantic_analysis:type_system",
         "//semantic_analysis:task",
-        "//type",
-        "//type:array",
-        "//type:overload_set",
-        "//type:primitive",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "declaration_test",
+    srcs = ["declaration_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -32,9 +38,6 @@ cc_library(
 #     deps = [
 #         ":verify",
 #         "//test:repl",
-#         "//type:primitive",
-#         "//type:function",
-#         "//type:qual_type",
 #         "@com_google_googletest//:gtest_main",
 #     ],
 # )
@@ -54,10 +57,8 @@ cc_test(
     srcs = ["terminal_test.cc"],
     deps = [
         ":verify",
-        "//ir/value:slice",
         "//test:repl",
-        "//type:primitive",
-        "//type:qual_type",
         "@com_google_googletest//:gtest_main",
     ],
 )
+
