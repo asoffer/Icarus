@@ -58,11 +58,7 @@ struct SizedIntegerType
                    internal_sized_integer::SizedIntegerTypeState> {
   template <TypeSystemSupporting<SizedIntegerType> TS>
   static SizedIntegerType I(uint16_t bits) {
-    return I<TS>(
-        bits,
-        Alignment(
-            internal_sized_integer::SmallestPowerOfTwoGreaterThanOrEqualTo(
-                (bits + 7) / 8)));
+    return I<TS>(bits, DefaultAlignment(bits));
   }
   template <TypeSystemSupporting<SizedIntegerType> TS>
   static SizedIntegerType I(uint16_t bits, Alignment alignment) {
@@ -77,11 +73,7 @@ struct SizedIntegerType
   }
   template <TypeSystemSupporting<SizedIntegerType> TS>
   static SizedIntegerType U(uint16_t bits) {
-    return U<TS>(
-        bits,
-        Alignment(
-            internal_sized_integer::SmallestPowerOfTwoGreaterThanOrEqualTo(
-                (bits + 7) / 8)));
+    return U<TS>(bits, DefaultAlignment(bits));
   }
   template <TypeSystemSupporting<SizedIntegerType> TS>
   static SizedIntegerType U(uint16_t bits, Alignment alignment) {
@@ -102,6 +94,12 @@ struct SizedIntegerType
   }
   constexpr Alignment alignment() const {
     return Alignment(uint64_t{1} << value().log_alignment_in_bytes);
+  }
+
+  static Alignment DefaultAlignment(size_t bits) {
+    return Alignment(
+        internal_sized_integer::SmallestPowerOfTwoGreaterThanOrEqualTo(
+            (bits + 7) / 8));
   }
 
  private:

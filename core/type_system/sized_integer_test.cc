@@ -21,6 +21,25 @@ TEST(TypeSystem, SizedIntegerType) {
   EXPECT_EQ(i32, normally_aligned_i32);
 }
 
+TEST(SizedIntegerType, DefaultAlignment) {
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(1), Alignment(1));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(2), Alignment(1));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(7), Alignment(1));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(8), Alignment(1));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(9), Alignment(2));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(15), Alignment(2));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(16), Alignment(2));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(17), Alignment(4));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(24), Alignment(4));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(25), Alignment(4));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(32), Alignment(4));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(33), Alignment(8));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(48), Alignment(8));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(64), Alignment(8));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(65), Alignment(16));
+  EXPECT_EQ(SizedIntegerType::DefaultAlignment(128), Alignment(16));
+}
+
 TEST(SizedIntegerType, Properties) {
   using TS = TypeSystem<SizedIntegerType>;
 
