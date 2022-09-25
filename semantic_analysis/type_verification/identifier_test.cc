@@ -1,42 +1,34 @@
-#include "identifier_test.h"
-#include "compiler/compiler.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "test/module.h"
-#include "type/overload_set.h"
+#include "semantic_analysis/type_verification/verify.h"
+#include "test/repl.h"
 
-namespace compiler {
+namespace semantic_analysis {
 namespace {
 
-using ::testing::IsEmpty;
+using ::test::HasDiagnostics;
+using ::test::HasQualTypes;
+using ::testing::AllOf;
 using ::testing::Pair;
-using ::testing::SizeIs;
-using ::testing::UnorderedElementsAre;
 
 TEST(Identifier, Success) {
-  test::CompilerInfrastructure infra;
-  auto &mod      = infra.add_module(R"(
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(
   n: i64
   n
-  )");
-  auto const *id = mod.get<ast::Identifier>();
-  auto qts       = mod.context().qual_types(id);
-  ASSERT_THAT(qts, UnorderedElementsAre(
-                       type::QualType(type::I64, type::Qualifiers::Storage())));
-  EXPECT_THAT(mod.context().decls(id), SizeIs(1));
-  EXPECT_THAT(infra.diagnostics(), IsEmpty());
+  )"),
+              AllOf(HasQualTypes(Reference(I(64))), HasDiagnostics()));
 }
 
 TEST(Identifier, Undeclared) {
-  test::CompilerInfrastructure infra;
-  auto &mod      = infra.add_module(R"(n)");
-  auto const *id = mod.get<ast::Identifier>();
-  auto qts       = mod.context().qual_types(id);
-  ASSERT_THAT(qts, UnorderedElementsAre(type::QualType::Error()));
-  EXPECT_THAT(infra.diagnostics(), UnorderedElementsAre(Pair(
-                                       "type-error", "undeclared-identifier")));
+  test::Repl repl;
+  EXPECT_THAT(
+      repl.type_check(R"(n)"),
+      AllOf(HasQualTypes(Error()),
+            HasDiagnostics(Pair("type-error", "undeclared-identifier"))));
 }
 
+#if 0
 TEST(Identifier, UndeclaredDoesNotRepeat) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(
@@ -100,7 +92,7 @@ TEST(Identifier, InaccessibleDeclaration) {
                                        "type-error", "uncaptured-identifier")));
 }
 
+#endif
+
 }  // namespace
-}  // namespace compiler
-
-
+}  // namespace semantic_analysis

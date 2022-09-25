@@ -195,7 +195,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       case ast::UnaryOperator::Kind::At: {
         if (auto ptr_type =
                 operand_type.get_if<core::PointerType>(tv.type_system())) {
-          qt = QualifiedType(ptr_type->pointee(), Qualifiers::Reference());
+          qt = Reference(ptr_type->pointee());
         } else if (auto ptr_type = operand_type.get_if<BufferPointerType>(
                        tv.type_system())) {
           qt = QualifiedType(ptr_type->pointee(), Qualifiers::Buffer());

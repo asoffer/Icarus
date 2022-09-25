@@ -41,8 +41,7 @@ TEST(At, Pointer) {
   p: *i64
   @p
   )"),
-              AllOf(HasQualTypes(QualifiedType(I(64), Qualifiers::Reference())),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(Reference(I(64))), HasDiagnostics()));
 }
 
 TEST(At, BufferPointer) {

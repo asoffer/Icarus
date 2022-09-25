@@ -35,6 +35,16 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "identifier_test",
+    srcs = ["identifier_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 # cc_test(
 #     name = "short_function_literal_test",
 #     srcs = ["short_function_literal_test.cc"],
@@ -64,4 +74,3 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
-
