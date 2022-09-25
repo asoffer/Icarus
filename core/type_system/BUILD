@@ -72,6 +72,7 @@ cc_test(
     name = "pointer_test",
     srcs = ["pointer_test.cc"],
     deps = [
+        ":finite_set",
         ":pointer",
         ":type_system",
         "@com_google_googletest//:gtest_main",

@@ -76,19 +76,19 @@ struct TypeCategory {
   explicit TypeCategory(TypeSystemSupporting<CrtpDerived> auto& m,
                         State&&... state) requires(not kStoreInline)
       : manager_(&m) {
-    type_.category_ = m.template index<CrtpDerived>();
-    type_.value_    = manager_->index(
-           manager_->insert(state_type_tuple(std::forward<State>(state)...))
-               .first);
+    type_.set_category(m.template index<CrtpDerived>());
+    type_.set_value(manager_->index(
+        manager_->insert(state_type_tuple(std::forward<State>(state)...))
+            .first));
   }
 
   constexpr operator Type() const { return type_; }
 
   constexpr state_type_tuple decompose() const requires(kStoreInline) {
-    return state_type_tuple(get_inline_value(type_.value_));
+    return state_type_tuple(get_inline_value(type_.value()));
   }
   state_type_tuple const& decompose() const requires(not kStoreInline) {
-    return manager_->from_index(type_.value_);
+    return manager_->from_index(type_.value());
   }
 
   template <typename H>
@@ -125,13 +125,13 @@ struct TypeCategory {
     // to provide the necessary construction API that `Type` can hook into
     // without the extra lookup.
     if constexpr (kStoreInline) {
-      return CrtpDerived(get_inline_value(t.value_));
+      return CrtpDerived(get_inline_value(t.value()));
     } else {
       return std::apply(
           [&]<typename... Args>(Args&&... args) {
             return CrtpDerived(sys, std::forward<Args>(args)...);
           },
-          static_cast<manager_type&>(sys).from_index(t.value_));
+          static_cast<manager_type&>(sys).from_index(t.value()));
     }
   }
 
@@ -144,8 +144,8 @@ struct TypeCategory {
 
   template <typename T>
   constexpr void write_inline_value(T t) requires(kStoreInline) {
-    type_.value_ = absl::bit_cast<uint32_t>(
-        internal_type_system::Padded<T, sizeof(uint32_t)>{.value = t});
+    type_.set_value(absl::bit_cast<uint32_t>(
+        internal_type_system::Padded<T, sizeof(uint32_t)>{.value = t}));
   }
 
   Type type_;

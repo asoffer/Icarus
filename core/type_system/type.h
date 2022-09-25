@@ -62,7 +62,7 @@ struct Type {
   // category `Cat`.
   template <typename Category>
   bool is(TypeSystemSupporting<Category> auto& sys) const {
-    return category_ == sys.template index<Category>();
+    return category() == sys.template index<Category>();
   }
 
   // Returns a value of type `Category` from which `*this` was created. Behavior
@@ -103,17 +103,34 @@ struct Type {
   template <TypeQualifiers>
   friend struct QualifiedType;
 
-  constexpr uint64_t representation() const {
-    return (value_ << (CategoryBits + QualifierBits)) |
-           (category_ << QualifierBits);
+  constexpr uint64_t representation() const { return representation_; }
+  constexpr uint64_t category() const {
+    return (representation_ >> QualifierBits) &
+           ((uint64_t{1} << CategoryBits) - 1);
+  }
+  constexpr uint64_t value() const {
+    return representation_ >> (CategoryBits + QualifierBits);
   }
 
-  uint64_t value_ : 64 - (CategoryBits + QualifierBits);
-  uint64_t category_ : CategoryBits;
-  // `padding_` is entirely unused, but it exists to ensure that we leave
-  // enough space in the type so that `QualifiedType` can take up the same
-  // amount of space as `Type`.
-  uint64_t padding_ : QualifierBits;
+  constexpr void set_category(uint8_t v) {
+    constexpr uint64_t mask =
+        ~(((uint64_t{1} << CategoryBits) - uint64_t{1}) << QualifierBits);
+    representation_ &= mask;
+    representation_ += v << QualifierBits;
+  }
+
+  constexpr void set_value(uint64_t v) {
+    representation_ &= static_cast<uint64_t>(
+        (uint64_t{1} << (CategoryBits + QualifierBits)) - uint64_t{1});
+    representation_ += v << (CategoryBits + QualifierBits);
+  }
+
+  // The least-significant `QualifierBits` bits are always zero. This enables
+  // QualifiedType to store qualifiers in these bits without using extra space.
+  // The next-least significant `CategoryBits` represent the type category. The
+  // remaining bits represent the value of the type with respect to that
+  // category.
+  uint64_t representation_ = 0;
 };
 static_assert(sizeof(Type) == sizeof(uint64_t));
 
@@ -136,7 +153,8 @@ struct QualifiedType {
   Type type() const {
     Type t;
     uint64_t masked_type =
-        representation_ >> (Type::QualifierBits + Type::CategoryBits);
+        representation_ &
+        ~static_cast<uint64_t>((uint64_t{1} << Type::QualifierBits) - 1);
     std::memcpy(&t, &masked_type, sizeof(t));
     return t;
   }
