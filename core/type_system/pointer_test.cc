@@ -7,8 +7,7 @@
 namespace core {
 namespace {
 
-enum class T { T };
-constexpr Type TT = FiniteSetType<T>(T::T);
+enum class T {};
 
 TEST(TypeSystem, PointerType) {
   TypeSystem<FiniteSetType<T>, PointerType> type_system;

@@ -8,9 +8,10 @@ namespace core {
 namespace {
 
 TEST(TypeSystem, FunctionType) {
-  TypeSystem<SizedIntegerType, ParameterType, FunctionType> type_system;
-  Type t1 = SizedIntegerType::I(32);
-  Type t2 = SizedIntegerType::U(32);
+  using TSys = TypeSystem<SizedIntegerType, ParameterType, FunctionType>;
+  TSys type_system;
+  Type t1 = SizedIntegerType::I<TSys>(32);
+  Type t2 = SizedIntegerType::U<TSys>(32);
   Parameters<Type> params1;
   Parameters<Type> params2{
       Parameter<Type>{.name = "n", .value = t1},

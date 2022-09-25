@@ -56,32 +56,40 @@ constexpr uint8_t SmallestPowerOfTwoGreaterThanOrEqualTo(uint32_t n) {
 struct SizedIntegerType
     : TypeCategory<SizedIntegerType,
                    internal_sized_integer::SizedIntegerTypeState> {
+  template <TypeSystemSupporting<SizedIntegerType> TS>
   static SizedIntegerType I(uint16_t bits) {
-    return I(bits,
-             Alignment(
-                 internal_sized_integer::SmallestPowerOfTwoGreaterThanOrEqualTo(
-                     (bits + 7) / 8)));
+    return I<TS>(
+        bits,
+        Alignment(
+            internal_sized_integer::SmallestPowerOfTwoGreaterThanOrEqualTo(
+                (bits + 7) / 8)));
   }
+  template <TypeSystemSupporting<SizedIntegerType> TS>
   static SizedIntegerType I(uint16_t bits, Alignment alignment) {
     size_t log_alignment = internal_sized_integer::Log2(alignment.value());
     ASSERT(log_alignment <
            static_cast<size_t>(std::numeric_limits<uint16_t>::max()));
     return SizedIntegerType(
+        base::meta<TS>,
         {.size_in_bits           = bits,
          .log_alignment_in_bytes = static_cast<uint16_t>(log_alignment),
          .is_signed              = true});
   }
+  template <TypeSystemSupporting<SizedIntegerType> TS>
   static SizedIntegerType U(uint16_t bits) {
-    return U(bits,
-             Alignment(
-                 internal_sized_integer::SmallestPowerOfTwoGreaterThanOrEqualTo(
-                     (bits + 7) / 8)));
+    return U<TS>(
+        bits,
+        Alignment(
+            internal_sized_integer::SmallestPowerOfTwoGreaterThanOrEqualTo(
+                (bits + 7) / 8)));
   }
+  template <TypeSystemSupporting<SizedIntegerType> TS>
   static SizedIntegerType U(uint16_t bits, Alignment alignment) {
     size_t log_alignment = internal_sized_integer::Log2(alignment.value());
     ASSERT(log_alignment <
            static_cast<size_t>(std::numeric_limits<uint16_t>::max()));
     return SizedIntegerType(
+        base::meta<TS>,
         {.size_in_bits           = bits,
          .log_alignment_in_bytes = static_cast<uint16_t>(log_alignment),
          .is_signed              = false});
@@ -103,9 +111,10 @@ struct SizedIntegerType
     return std::get<0>(decompose());
   }
 
+  template <TypeSystemSupporting<SizedIntegerType> TS>
   explicit constexpr SizedIntegerType(
-      internal_sized_integer::SizedIntegerTypeState t)
-      : TypeCategory(t) {}
+      base::Meta<TS>, internal_sized_integer::SizedIntegerTypeState t)
+      : TypeCategory(base::meta<TS>, t) {}
 };
 
 }  // namespace core

@@ -1,6 +1,7 @@
 #ifndef ICARUS_CORE_TYPE_SYSTEM_FINITE_SET_H
 #define ICARUS_CORE_TYPE_SYSTEM_FINITE_SET_H
 
+#include "base/meta.h"
 #include "core/type_system/type_system.h"
 
 namespace core {
@@ -12,8 +13,9 @@ namespace core {
 // constructors of `FiniteSetType` instantiations.
 template <base::is_enum E>
 struct FiniteSetType : TypeCategory<FiniteSetType<E>, E> {
-  explicit constexpr FiniteSetType(E e)
-      : TypeCategory<FiniteSetType<E>, E>(e) {}
+  template <TypeSystemSupporting<FiniteSetType<E>> TS>
+  explicit constexpr FiniteSetType(base::Meta<TS>, E e)
+      : TypeCategory<FiniteSetType<E>, E>(base::meta<TS>, e) {}
 
   constexpr E value() const { return std::get<0>(this->decompose()); }
 };

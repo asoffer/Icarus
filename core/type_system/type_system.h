@@ -66,10 +66,12 @@ struct TypeCategory {
   // the data will be stored inline in the `Type`.
   using manager_type = manager_type_impl<kStoreInline>;
 
-  template <typename... State>
-  explicit constexpr TypeCategory(State&&... state) requires(kStoreInline)
+  template <TypeSystemSupporting<CrtpDerived> TS, typename... State>
+  explicit constexpr TypeCategory(base::Meta<TS>,
+                                  State&&... state) requires(kStoreInline)
       : type_{}, manager_(nullptr) {
     static_assert(sizeof...(State) == 1);
+    type_.set_category(TS::template index<CrtpDerived>());
     write_inline_value(state...);
   }
   template <typename... State>
@@ -125,7 +127,8 @@ struct TypeCategory {
     // to provide the necessary construction API that `Type` can hook into
     // without the extra lookup.
     if constexpr (kStoreInline) {
-      return CrtpDerived(get_inline_value(t.value()));
+      return CrtpDerived(base::meta<std::decay_t<decltype(sys)>>,
+                         get_inline_value(t.value()));
     } else {
       return std::apply(
           [&]<typename... Args>(Args&&... args) {
@@ -169,7 +172,7 @@ template <typename... TypeCategories>
 struct TypeSystem : TypeCategories::manager_type... {
   // Returns the index of the type category `Cat` in this type-system.
   template <base::one_of<TypeCategories...> Cat>
-  constexpr size_t index() const {
+  static constexpr size_t index() {
     return base::Index<Cat>(base::type_list<TypeCategories...>{});
   }
 
