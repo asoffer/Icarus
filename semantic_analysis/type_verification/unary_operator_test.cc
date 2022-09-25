@@ -33,6 +33,12 @@ TEST(TypeOf, Success) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(3:?)"),
               AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
+
+  EXPECT_THAT(repl.type_check(R"(
+  n: i32
+  n:?
+  )"),
+              AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
 }
 
 TEST(At, Pointer) {
@@ -89,13 +95,11 @@ TEST(Pointer, Success) {
   EXPECT_THAT(repl.type_check(R"(*i64)"),
               AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
 
-#if 0
   EXPECT_THAT(repl.type_check(R"(
   T := i64
   *T
   )"),
               AllOf(HasQualTypes(QualifiedType(Type)), HasDiagnostics()));
-#endif
 }
 
 TEST(Pointer, NotAType) {

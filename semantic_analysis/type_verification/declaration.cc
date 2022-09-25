@@ -23,6 +23,20 @@ struct NoDefaultValue {
   std::string_view view;
 };
 
+struct InitializingConstantWithNonConstant {
+  static constexpr std::string_view kCategory = "value-category-error";
+  static constexpr std::string_view kName =
+      "initializing-constant-with-nonconstant";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Cannot initialize a constant from a non-constant."),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view view;
+};
+
 // TODO: Make this useful.
 std::optional<core::Type> EvaluateAsType(Context &context,
                                          TypeSystem &type_system,
@@ -41,15 +55,17 @@ std::optional<core::Type> EvaluateAsType(Context &context,
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Declaration const *node) {
-  absl::Span<QualifiedType const> init_val_qts(nullptr, 0);
+  absl::Span<QualifiedType const> initial_value_qts(nullptr, 0);
   absl::Span<QualifiedType const> type_expr_qts(nullptr, 0);
 
-  if (auto *e = node->init_val()) { init_val_qts = co_await VerifyTypeOf(e); }
+  if (auto *e = node->init_val()) {
+    initial_value_qts = co_await VerifyTypeOf(e);
+  }
   if (auto *e = node->type_expr()) { type_expr_qts = co_await VerifyTypeOf(e); }
 
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
-      // Syntactically: `var: T`
+      // Syntactically: `var: T`, or `var :: T`
       if (type_expr_qts.size() != 1) { NOT_YET("Log an error"); }
       auto type_expr_qt = type_expr_qts[0];
       if (type_expr_qt != Constant(Type)) { NOT_YET("Log an error"); }
@@ -72,10 +88,27 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       //   });
       // }
 
-      QualifiedType qt(*t, Qualifiers());
+      QualifiedType qt(*t);
       if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
       for (auto const &id : node->ids()) { tv.complete_verification(&id, qt); }
       tv.complete_verification(node, qt);
+    } break;
+    case ast::Declaration::kInferred: {
+      // Syntactically: `var := value`, or `var ::= value`
+      if (initial_value_qts.size() != 1) { NOT_YET("Log an error"); }
+      QualifiedType qt(initial_value_qts[0].type());
+      if (node->flags() & ast::Declaration::f_IsConst) {
+        if (not(initial_value_qts[0].qualifiers() >= Qualifiers::Constant())) {
+          tv.ConsumeDiagnostic(InitializingConstantWithNonConstant{
+              .view = node->init_val()->range(),
+          });
+          qt = Error(qt);
+        }
+        qt = Constant(qt);
+      }
+      for (auto const &id : node->ids()) { tv.complete_verification(&id, qt); }
+      tv.complete_verification(node, qt);
+
     } break;
     default: NOT_YET(node->DebugString());
   }

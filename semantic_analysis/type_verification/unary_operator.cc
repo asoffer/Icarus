@@ -167,18 +167,6 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     Qualifiers operand_qualifiers = operand_qt.qualifiers();
 
     switch (node->kind()) {
-      case ast::UnaryOperator::Kind::Copy: {
-        NOT_YET();
-      } break;
-      case ast::UnaryOperator::Kind::Init: {
-        NOT_YET();
-      } break;
-      case ast::UnaryOperator::Kind::Destroy: {
-        NOT_YET();
-      } break;
-      case ast::UnaryOperator::Kind::Move: {
-        NOT_YET();
-      } break;
       case ast::UnaryOperator::Kind::BufferPointer: {
         qt = QualifiedType(Type, operand_qualifiers & ~Qualifiers::Buffer());
         if (operand_type != Type) {
@@ -190,7 +178,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         }
       } break;
       case ast::UnaryOperator::Kind::TypeOf: {
-        qt = QualifiedType(Type, operand_qualifiers);
+        qt = Constant(Type);
       } break;
       case ast::UnaryOperator::Kind::At: {
         if (auto ptr_type =
@@ -260,9 +248,6 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
           });
           qt = Error();
         }
-      } break;
-      case ast::UnaryOperator::Kind::BlockJump: {
-        NOT_YET();
       } break;
       default: UNREACHABLE(node->DebugString());
     }
