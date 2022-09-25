@@ -1,6 +1,8 @@
 #ifndef ICARUS_CORE_TYPE_SYSTEM_SIZED_INTEGER_H
 #define ICARUS_CORE_TYPE_SYSTEM_SIZED_INTEGER_H
 
+#include "core/alignment.h"
+#include "core/bytes.h"
 #include "core/type_system/type_system.h"
 
 namespace core {
@@ -11,8 +13,8 @@ struct SizedIntegerTypeState {
 
   uint16_t size_in_bits : 10;
   // Alignment must always be a power of 2, so we store its base-2 logarithm.
-  uint16_t log_alignment_in_bytes: 5;
-  uint16_t is_signed: 1;
+  uint16_t log_alignment_in_bytes : 5;
+  uint16_t is_signed : 1;
 
   template <typename H>
   friend H AbslHashValue(H h, SizedIntegerTypeState state) {
@@ -36,6 +38,16 @@ constexpr uint8_t Log2(uint32_t n) {
   return result;
 }
 
+constexpr uint8_t SmallestPowerOfTwoGreaterThanOrEqualTo(uint32_t n) {
+  --n;
+  n |= (n >> 1);
+  n |= (n >> 2);
+  n |= (n >> 4);
+  n |= (n >> 8);
+  n |= (n >> 16);
+  return n + 1;
+}
+
 }  // namespace internal_sized_integer
 
 // Represents types whose storage is sufficient to hold values in the range
@@ -44,28 +56,55 @@ constexpr uint8_t Log2(uint32_t n) {
 struct SizedIntegerType
     : TypeCategory<SizedIntegerType,
                    internal_sized_integer::SizedIntegerTypeState> {
-  template <uint32_t Bits, uint32_t AlignmentBytes = (Bits + 7) / 8>
-  static SizedIntegerType I() {
-    static constexpr size_t kLogAlignment =
-        internal_sized_integer::Log2(AlignmentBytes);
-    return SizedIntegerType({.size_in_bits           = Bits,
-                             .log_alignment_in_bytes = kLogAlignment,
-                             .is_signed              = true});
+  static SizedIntegerType I(uint16_t bits) {
+    return I(bits,
+             Alignment(
+                 internal_sized_integer::SmallestPowerOfTwoGreaterThanOrEqualTo(
+                     (bits + 7) / 8)));
+  }
+  static SizedIntegerType I(uint16_t bits, Alignment alignment) {
+    size_t log_alignment = internal_sized_integer::Log2(alignment.value());
+    ASSERT(log_alignment.value() <
+           static_cast<size_t>(std::numeric_limits<uint16_t>::max()));
+    return SizedIntegerType(
+        {.size_in_bits           = bits,
+         .log_alignment_in_bytes = static_cast<uint16_t>(log_alignment),
+         .is_signed              = true});
+  }
+  static SizedIntegerType U(uint16_t bits) {
+    return U(bits,
+             Alignment(
+                 internal_sized_integer::SmallestPowerOfTwoGreaterThanOrEqualTo(
+                     (bits + 7) / 8)));
+  }
+  static SizedIntegerType U(uint16_t bits, Alignment alignment) {
+    size_t log_alignment = internal_sized_integer::Log2(alignment.value());
+    ASSERT(log_alignment.value() <
+           static_cast<size_t>(std::numeric_limits<uint16_t>::max()));
+    return SizedIntegerType(
+        {.size_in_bits           = bits,
+         .log_alignment_in_bytes = static_cast<uint16_t>(log_alignment),
+         .is_signed              = false});
   }
 
-  template <uint32_t Bits, uint32_t AlignmentBytes = (Bits + 7) / 8>
-  static SizedIntegerType U() {
-    static constexpr size_t kLogAlignment =
-        internal_sized_integer::Log2(AlignmentBytes);
-    return SizedIntegerType({.size_in_bits           = Bits,
-                             .log_alignment_in_bytes = kLogAlignment,
-                             .is_signed              = false});
+  constexpr bool is_signed() const { return value().is_signed; }
+  constexpr size_t bits() const { return value().size_in_bits; }
+  constexpr Bytes bytes() const {
+    return Bytes((value().size_in_bits + 7) / 8);
+  }
+  constexpr Alignment alignment() const {
+    return Alignment(uint64_t{1} << value().log_alignment_in_bytes);
   }
 
  private:
   friend TypeCategory;
 
-  explicit SizedIntegerType(internal_sized_integer::SizedIntegerTypeState t)
+  constexpr internal_sized_integer::SizedIntegerTypeState const& value() const {
+    return std::get<0>(decompose());
+  }
+
+  explicit constexpr SizedIntegerType(
+      internal_sized_integer::SizedIntegerTypeState t)
       : TypeCategory(t) {}
 };
 

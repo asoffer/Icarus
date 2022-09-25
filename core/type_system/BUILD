@@ -4,8 +4,7 @@ cc_library(
     name = "finite_set",
     hdrs = ["finite_set.h"],
     deps = [
-        "//base:meta",
-        "//base:flyweight_set",
+        ":type_system",
     ]
 )
 
@@ -26,8 +25,6 @@ cc_library(
     deps = [
         ":parameter",
         ":type_system",
-        "//base:meta",
-        "//base:flyweight_set",
     ]
 )
 
@@ -47,9 +44,8 @@ cc_library(
     name = "parameter",
     hdrs = ["parameter.h"],
     deps = [
+        ":type_system",
         "//core:parameters",
-        "//base:meta",
-        "//base:flyweight_set",
     ]
 )
 
@@ -68,8 +64,7 @@ cc_library(
     name = "pointer",
     hdrs = ["pointer.h"],
     deps = [
-        "//base:meta",
-        "//base:flyweight_set",
+        ":type_system",
     ]
 )
 
@@ -87,8 +82,9 @@ cc_library(
     name = "sized_integer",
     hdrs = ["sized_integer.h"],
     deps = [
-        "//base:meta",
-        "//base:flyweight_set",
+        ":type_system",
+        "//core:alignment",
+        "//core:bytes",
     ]
 )
 

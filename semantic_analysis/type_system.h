@@ -118,9 +118,8 @@ inline constexpr core::Type Integer   = PrimitiveTypes(Primitive::Integer);
 inline constexpr core::Type Module    = PrimitiveTypes(Primitive::Module);
 inline constexpr core::Type ErrorType = PrimitiveTypes(Primitive::Error);
 
-// Represents types whose storage is sufficient to hold values in the range
-// -2^{N-1} ... 2^{N-1}-1 (inclusive) for signed types and 0 ... 2^N - 1
-// (inclusive) for unsigned types.
+inline core::Type I(uint32_t bits) { return core::SizedIntegerType::I(bits); }
+inline core::Type U(uint32_t bits) { return core::SizedIntegerType::U(bits); }
 
 struct SliceType : core::TypeCategory<SliceType, core::Type> {
   explicit SliceType(core::TypeSystemSupporting<SliceType> auto& s,

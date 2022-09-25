@@ -10,21 +10,21 @@ void ByteCodeValueEmitter::Emit(ast::Terminal const* t, IrFunction& f) {
   } else if (qt.type() == Type) {
     type::Type ty = t->value().get<type::Type>();
     if (ty == type::I8) {
-      f.append<jasmin::Push>(core::Type(core::SizedIntegerType::I<8>()));
+      f.append<jasmin::Push>(I(8));
     } else if (ty == type::I16) {
-      f.append<jasmin::Push>(core::Type(core::SizedIntegerType::I<16>()));
+      f.append<jasmin::Push>(I(16));
     } else if (ty == type::I32) {
-      f.append<jasmin::Push>(core::Type(core::SizedIntegerType::I<32>()));
+      f.append<jasmin::Push>(I(32));
     } else if (ty == type::I64) {
-      f.append<jasmin::Push>(core::Type(core::SizedIntegerType::I<64>()));
+      f.append<jasmin::Push>(I(64));
     } else if (ty == type::U8) {
-      f.append<jasmin::Push>(core::Type(core::SizedIntegerType::U<8>()));
+      f.append<jasmin::Push>(U(8));
     } else if (ty == type::U16) {
-      f.append<jasmin::Push>(core::Type(core::SizedIntegerType::U<16>()));
+      f.append<jasmin::Push>(U(16));
     } else if (ty == type::U32) {
-      f.append<jasmin::Push>(core::Type(core::SizedIntegerType::U<32>()));
+      f.append<jasmin::Push>(U(32));
     } else if (ty == type::U64) {
-      f.append<jasmin::Push>(core::Type(core::SizedIntegerType::U<64>()));
+      f.append<jasmin::Push>(U(64));
     } else if (ty == type::Bool) {
       f.append<jasmin::Push>(Bool);
     } else if (ty == type::Char) {
