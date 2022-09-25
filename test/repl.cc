@@ -17,7 +17,7 @@ Repl::ExecuteResult Repl::execute(std::string content) {
     return ExecuteResult(source_content_.back());
   }
 
-  semantic_analysis::TypeVerifier tv(context_, consumer_);
+  semantic_analysis::TypeVerifier tv(type_system_, context_, consumer_);
   for (auto const* node : node_span) { tv.schedule(node); }
   tv.complete();
 
@@ -40,7 +40,7 @@ Repl::TypeCheckResult Repl::type_check(std::string content) {
                            consumer_.diagnostics());
   }
 
-  semantic_analysis::TypeVerifier tv(context_, consumer_);
+  semantic_analysis::TypeVerifier tv(type_system_, context_, consumer_);
   for (auto const* node : node_span) { tv.schedule(node); }
   tv.complete();
 

@@ -84,6 +84,17 @@ struct Qualifiers {
 
 using QualifiedType = core::QualifiedType<Qualifiers>;
 
+// Returns a `QualifiedType` that consists of `t` along with the "constant"
+// qualifier.
+QualifiedType Constant(core::Type t);
+
+// Returns a `QualifiedType` that has the same underlying type as `t` and the
+// same qualifiers as `t` with the addition of the "constant" qualifier.
+QualifiedType Constant(QualifiedType t);
+
+// Returns a `QualifiedType` that represents an error.
+QualifiedType Error();
+
 enum class Primitive : uint8_t {
   Bool,
   Char,
@@ -107,19 +118,21 @@ inline constexpr core::Type Integer   = PrimitiveTypes(Primitive::Integer);
 inline constexpr core::Type Module    = PrimitiveTypes(Primitive::Module);
 inline constexpr core::Type ErrorType = PrimitiveTypes(Primitive::Error);
 
+// Represents types whose storage is sufficient to hold values in the range
+// -2^{N-1} ... 2^{N-1}-1 (inclusive) for signed types and 0 ... 2^N - 1
+// (inclusive) for unsigned types.
+
+struct SliceType : core::TypeCategory<SliceType, core::Type> {
+  explicit SliceType(core::TypeSystemSupporting<SliceType> auto& s,
+                     core::Type t)
+      : core::TypeCategory<SliceType, core::Type>(s, t) {}
+
+  core::Type pointee() const { return std::get<0>(decompose()); }
+};
+
 using TypeSystem = core::TypeSystem<PrimitiveTypes, core::SizedIntegerType,
                                     core::ParameterType, core::PointerType,
-                                    core::FunctionType>;
-
-// Returns a `QualifiedType` that consists of `t` along with the "constant" qualifier.
-QualifiedType Constant(core::Type t);
-
-// Returns a `QualifiedType` that has the same underlying type as `t` and the
-// same qualifiers as `t` with the addition of the "constant" qualifier.
-QualifiedType Constant(QualifiedType t);
-
-// Returns a `QualifiedType` that represents an error.
-QualifiedType Error();
+                                    SliceType, core::FunctionType>;
 
 }  // namespace semantic_analysis
 

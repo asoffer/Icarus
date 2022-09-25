@@ -21,27 +21,19 @@ TEST(Terminal, BooleanPrimitives) {
               AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
 }
 
-#if 0
 TEST(Terminal, StringLiterals) {
   test::Repl repl;
-  EXPECT_THAT(
-      repl.type_check(R"("")"),
-      AllOf(HasQualTypes(type::QualType::Constant(type::Slc(type::Char))),
-            HasDiagnostics()));
-  EXPECT_THAT(
-      repl.type_check(R"("abc")"),
-      AllOf(HasQualTypes(type::QualType::Constant(type::Slc(type::Char))),
-            HasDiagnostics()));
-  EXPECT_THAT(
-      repl.type_check(R"("abc\"")"),
-      AllOf(HasQualTypes(type::QualType::Constant(type::Slc(type::Char))),
-            HasDiagnostics()));
-  EXPECT_THAT(
-      repl.type_check(R"("ab\n\r\t\v\\c")"),
-      AllOf(HasQualTypes(type::QualType::Constant(type::Slc(type::Char))),
-            HasDiagnostics()));
+  QualifiedType const char_slice_type =
+      Constant(SliceType(repl.type_system(), Char));
+  EXPECT_THAT(repl.type_check(R"("")"),
+              AllOf(HasQualTypes(Constant(char_slice_type)), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"("abc")"),
+              AllOf(HasQualTypes(Constant(char_slice_type)), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"("abc\"")"),
+              AllOf(HasQualTypes(Constant(char_slice_type)), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"("ab\n\r\t\v\\c")"),
+              AllOf(HasQualTypes(Constant(char_slice_type)), HasDiagnostics()));
 }
-#endif
 
 TEST(Terminal, Types) {
   test::Repl repl;

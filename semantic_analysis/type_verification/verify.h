@@ -45,15 +45,18 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(Context &c, diagnostic::DiagnosticConsumer &d)
+  explicit TypeVerifier(TypeSystem &type_system, Context &c,
+                        diagnostic::DiagnosticConsumer &d)
       : VerificationScheduler([](VerificationScheduler &s,
                                  ast::Node const *node) -> VerificationTask {
           return node->visit(static_cast<TypeVerifier &>(s));
         }),
+        type_system_(type_system),
         context_(c),
         diagnostic_consumer_(d) {}
 
   Context &context() const { return context_; }
+  TypeSystem &type_system() const { return type_system_; }
 
   template <typename D>
   void ConsumeDiagnostic(D &&d) {
@@ -93,6 +96,7 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);
 
  private:
+  TypeSystem &type_system_;
   Context &context_;
   diagnostic::DiagnosticConsumer &diagnostic_consumer_;
 };
