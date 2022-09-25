@@ -19,6 +19,7 @@ cc_library(
     name = "emitter",
     hdrs = ["emitter.h"],
     srcs = [
+        "unary_operator.cc",
         "terminal.cc",
     ],
     deps = [
@@ -40,10 +41,21 @@ cc_library(
     ],
 )
 
+# cc_test(
+#       name = "unary_operator_test",
+#       srcs = ["unary_operator_test.cc"],
+#       deps = [
+#           ":byte_code",
+#           "//test:repl",
+#           "@com_google_googletest//:gtest_main",
+#       ],
+# )
+
 cc_test(
       name = "terminal_test",
       srcs = ["terminal_test.cc"],
       deps = [
+          ":byte_code",
           "//test:repl",
           "@com_google_googletest//:gtest_main",
       ],

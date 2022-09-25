@@ -41,7 +41,6 @@ struct UncapturedIdentifier {
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Identifier const *node) {
   // TODO: Track cyclic dependencies
-
   using symbol_ref_type =
       base::PtrUnion<ast::Declaration::Id const,
                      module::Module::SymbolInformation const>;
@@ -55,9 +54,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
     if (qts[0].qualifiers() >= Qualifiers::Error()) {
       tv.complete_verification(node, Error());
+      co_return;
     } else {
       viable.emplace_back(&id, qts[0]);
-      co_return;
     }
   }
 
@@ -79,6 +78,10 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       if (qt.qualifiers() >= Qualifiers::Error()) {
         tv.complete_verification(node, qt);
         co_return;
+      }
+
+      if (not(qt.qualifiers() >= Qualifiers::Constant())) {
+        qt = Reference(qt);
       }
 
       tv.complete_verification(node, qt);

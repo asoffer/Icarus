@@ -10,6 +10,14 @@ QualifiedType Constant(QualifiedType t) {
   return QualifiedType(t.type(), t.qualifiers() | Qualifiers::Constant());
 }
 
+QualifiedType Reference(core::Type t) {
+  return QualifiedType(t, Qualifiers::Reference());
+}
+
+QualifiedType Reference(QualifiedType t) {
+  return QualifiedType(t.type(), t.qualifiers() | Qualifiers::Reference());
+}
+
 QualifiedType Error() { return QualifiedType(ErrorType, Qualifiers::Error()); }
 
 QualifiedType Error(QualifiedType t) {

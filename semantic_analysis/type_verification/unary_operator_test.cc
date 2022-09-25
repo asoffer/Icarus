@@ -35,46 +35,47 @@ TEST(TypeOf, Success) {
               AllOf(HasQualTypes(Constant(Type)), HasDiagnostics()));
 }
 
-// TEST(At, Pointer) {
-//   test::Repl repl;
-//   EXPECT_THAT(repl.type_check(R"(
-//   p: *i64
-//   @p
-//   )"),
-//               AllOf(HasQualTypes(QualifiedType(I(64), Qualifiers::Reference())),
-//                     HasDiagnostics()));
-// }
-// 
-// TEST(At, BufferPointer) {
-//   test::Repl repl;
-//   EXPECT_THAT(repl.type_check(R"(
-//   p: [*]i64
-//   @p
-//   )"),
-//               AllOf(HasQualTypes(QualifiedType(I(64), Qualifiers::Buffer())),
-//                     HasDiagnostics()));
-// }
-// 
-// TEST(At, NonPointer) {
-//   test::Repl repl;
-//   EXPECT_THAT(
-//       repl.type_check(R"(
-//   p: i64
-//   @p
-//   )"),
-//       AllOf(HasQualTypes(QualifiedType(I(64), Qualifiers::Buffer())),
-//             HasDiagnostics(Pair("type-error", "dereferencing-non-pointer"))));
-// }
-// 
-// TEST(Address, Success) {
-//   test::Repl repl;
-//   EXPECT_THAT(
-//       repl.type_check(R"(
-//       n: i64
-//       &n
-//       )"),
-//       AllOf(HasQualTypes(NonConstant(type::Ptr(I(64)))), HasDiagnostics()));
-// }
+TEST(At, Pointer) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(
+  p: *i64
+  @p
+  )"),
+              AllOf(HasQualTypes(QualifiedType(I(64), Qualifiers::Reference())),
+                    HasDiagnostics()));
+}
+
+TEST(At, BufferPointer) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(
+  p: [*]i64
+  @p
+  )"),
+              AllOf(HasQualTypes(QualifiedType(I(64), Qualifiers::Buffer())),
+                    HasDiagnostics()));
+}
+
+TEST(At, NonPointer) {
+  test::Repl repl;
+  EXPECT_THAT(
+      repl.type_check(R"(
+  p: i64
+  @p
+  )"),
+      AllOf(HasQualTypes(Error()),
+            HasDiagnostics(Pair("type-error", "dereferencing-non-pointer"))));
+}
+
+TEST(Address, Success) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(
+      n: i64
+      &n
+      )"),
+              AllOf(HasQualTypes(QualifiedType(
+                        core::PointerType(repl.type_system(), I(64)))),
+                    HasDiagnostics()));
+}
 
 TEST(Address, NonReference) {
   test::Repl repl;
@@ -94,8 +95,7 @@ TEST(Pointer, Success) {
   T := i64
   *T
   )"),
-              AllOf(HasQualTypes(NonConstant(Type)),
-                    HasDiagnostics()));
+              AllOf(HasQualTypes(QualifiedType(Type)), HasDiagnostics()));
 #endif
 }
 

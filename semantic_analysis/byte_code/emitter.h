@@ -40,6 +40,7 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
     NOT_YET(base::meta<NodeType>);
   }
 
+  void Emit(ast::UnaryOperator const *node, IrFunction &f);
   void Emit(ast::Terminal const *t, IrFunction &f);
 };
 

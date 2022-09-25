@@ -92,6 +92,14 @@ QualifiedType Constant(core::Type t);
 // same qualifiers as `t` with the addition of the "constant" qualifier.
 QualifiedType Constant(QualifiedType t);
 
+// Returns a `QualifiedType` that consists of `t` along with the "reference"
+// qualifier.
+QualifiedType Reference(core::Type t);
+
+// Returns a `QualifiedType` that has the same underlying type as `t` and the
+// same qualifiers as `t` with the addition of the "reference" qualifier.
+QualifiedType Reference(QualifiedType t);
+
 // Returns a `QualifiedType` that represents an error.
 QualifiedType Error();
 
