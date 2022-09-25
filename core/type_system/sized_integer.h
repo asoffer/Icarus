@@ -64,7 +64,7 @@ struct SizedIntegerType
   }
   static SizedIntegerType I(uint16_t bits, Alignment alignment) {
     size_t log_alignment = internal_sized_integer::Log2(alignment.value());
-    ASSERT(log_alignment.value() <
+    ASSERT(log_alignment <
            static_cast<size_t>(std::numeric_limits<uint16_t>::max()));
     return SizedIntegerType(
         {.size_in_bits           = bits,
@@ -79,7 +79,7 @@ struct SizedIntegerType
   }
   static SizedIntegerType U(uint16_t bits, Alignment alignment) {
     size_t log_alignment = internal_sized_integer::Log2(alignment.value());
-    ASSERT(log_alignment.value() <
+    ASSERT(log_alignment <
            static_cast<size_t>(std::numeric_limits<uint16_t>::max()));
     return SizedIntegerType(
         {.size_in_bits           = bits,

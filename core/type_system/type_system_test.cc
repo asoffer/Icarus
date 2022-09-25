@@ -94,6 +94,12 @@ TEST(QualifiedType, QualifiedType) {
   EXPECT_TRUE(qt != QT(i32, 6));
   EXPECT_FALSE(qt == QT(u32, 5));
   EXPECT_TRUE(qt != QT(u32, 5));
+
+  QT qt2(i32);
+  EXPECT_TRUE(qt2 == QT(i32, 0));
+  EXPECT_FALSE(qt2 != QT(i32, 0));
+  EXPECT_EQ(qt2.qualifiers(), 0);
+  EXPECT_EQ(qt2.type(), i32);
 }
 
 }  // namespace

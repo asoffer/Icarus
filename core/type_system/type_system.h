@@ -68,7 +68,7 @@ struct TypeCategory {
 
   template <typename... State>
   explicit constexpr TypeCategory(State&&... state) requires(kStoreInline)
-      : type_{} {
+      : type_{}, manager_(nullptr) {
     static_assert(sizeof...(State) == 1);
     write_inline_value(state...);
   }
@@ -102,7 +102,10 @@ struct TypeCategory {
   }
 
   friend bool operator!=(TypeCategory const& lhs, TypeCategory const& rhs) {
-    ASSERT(lhs.manager_ == rhs.manager_);
+    ASSERT([&] {
+      return lhs.manager_ == rhs.manager_ or lhs.manager_ == nullptr or
+             rhs.manager_ == nullptr;
+    }() == true);
     return lhs.type_ != rhs.type_;
   }
 
@@ -111,7 +114,7 @@ struct TypeCategory {
 
   static CrtpDerived Construct(Type t,
                                TypeSystemSupporting<CrtpDerived> auto& sys) {
-    ASSERT(t.template is<CrtpDerived>() == true);
+    ASSERT(t.template is<CrtpDerived>(sys) == true);
     static_assert(std::is_standard_layout_v<CrtpDerived>);
     static_assert(sizeof(CrtpDerived) == sizeof(TypeCategory));
     // TODO: These requirements *should* make it safe to type-pun the object

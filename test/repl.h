@@ -78,10 +78,18 @@ struct Repl {
       os << static_cast<ResultBase const&>(r);
       std::string_view separator =
           "    where the qualified type of the last expression is ";
-      // for (auto const& qt : r.qualified_types()) {
-      //   os << std::exchange(separator, ", ") << qt;
-      // }
-      return os << "\n";
+      for (auto const& qt : r.qualified_types()) {
+        os << std::exchange(separator, ", ");
+        r.repl_.PrintQualifiedType(os, qt);
+      }
+      if (r.diagnostics().empty()) {
+        return os << "\n    with no diagnostics.\n";
+      }
+      os << "\n    with diagnostics:\n";
+      for (auto const& [category, name] : r.diagnostics()) {
+        os << "      * [" << category << ": " << name << "]\n";
+      }
+      return os;
     }
 
    private:
@@ -90,13 +98,16 @@ struct Repl {
     explicit TypeCheckResult(
         std::string_view content,
         absl::Span<semantic_analysis::QualifiedType const> qts,
-        absl::Span<std::pair<std::string, std::string> const> diagnostics)
+        absl::Span<std::pair<std::string, std::string> const> diagnostics,
+        Repl& repl)
         : ResultBase(content),
           qts_(qts.begin(), qts.end()),
-          diagnostics_(diagnostics.begin(), diagnostics.end()) {}
+          diagnostics_(diagnostics.begin(), diagnostics.end()),
+          repl_(repl) {}
 
     std::vector<semantic_analysis::QualifiedType> qts_;
     std::vector<std::pair<std::string, std::string>> diagnostics_;
+    Repl& repl_;
   };
 
   ExecuteResult execute(std::string source);
@@ -105,6 +116,10 @@ struct Repl {
   auto& type_system() { return type_system_; }
 
  private:
+  void PrintQualifiedType(std::ostream& os,
+                          semantic_analysis::QualifiedType qt);
+  void PrintType(std::ostream& os, core::Type t);
+
   std::deque<std::string> source_content_;
   ast::Module ast_module_{nullptr};
   semantic_analysis::Context context_;
