@@ -3,11 +3,13 @@
 
 #include "jasmin/function.h"
 #include "jasmin/instructions/core.h"
+#include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
 namespace internal_byte_code {
 
-using InstructionSet = jasmin::MakeInstructionSet<jasmin::Push>;
+using InstructionSet =
+    jasmin::MakeInstructionSet<jasmin::Push, TypeSystem::JasminInstructionSet>;
 
 }  // namespace internal_byte_code
 

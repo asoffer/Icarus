@@ -16,6 +16,10 @@ TEST(Declaration, DefaultInitialization) {
               AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(x :: bool)"),
               AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(x: i32)"),
+              AllOf(HasQualTypes(QualifiedType(I(32))), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(x :: u64)"),
+              AllOf(HasQualTypes(Constant(U(64))), HasDiagnostics()));
 }
 
 }  // namespace

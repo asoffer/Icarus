@@ -15,9 +15,12 @@ cc_library(
         "//base:meta",
         "//compiler:common_diagnostics",
         "//diagnostic/consumer",
+        "//semantic_analysis/byte_code",
+        "//semantic_analysis/byte_code:instruction_set",
         "//semantic_analysis:context",
         "//semantic_analysis:type_system",
         "//semantic_analysis:task",
+        "@asoffer_jasmin//jasmin:execute",
         "@com_google_absl//absl/types:span",
     ],
 )

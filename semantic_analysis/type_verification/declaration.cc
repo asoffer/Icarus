@@ -1,7 +1,10 @@
 #include "ast/ast.h"
 #include "compiler/common_diagnostics.h"
-#include "semantic_analysis/type_verification/verify.h"
+#include "jasmin/execute.h"
+#include "semantic_analysis/byte_code/byte_code.h"
+#include "semantic_analysis/byte_code/instruction_set.h"
 #include "semantic_analysis/type_system.h"
+#include "semantic_analysis/type_verification/verify.h"
 
 namespace semantic_analysis {
 namespace {
@@ -24,10 +27,14 @@ struct NoDefaultValue {
 std::optional<core::Type> EvaluateAsType(Context &context,
                                          TypeSystem &type_system,
                                          ast::Expression const *expr) {
-  auto qt = context.qualified_type(expr);
+  auto qt        = context.qualified_type(expr);
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
   ASSERT(has_error == false);
-  return core::Type(core::PointerType(type_system, I(64)));
+
+  IrFunction f = EmitByteCode(*expr, context, type_system);
+  core::Type result;
+  jasmin::Execute(f, {}, result);
+  return result;
 }
 
 }  // namespace
