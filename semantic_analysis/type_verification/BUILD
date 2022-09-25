@@ -7,14 +7,13 @@ cc_library(
         # "declaration.cc",
         # "identifier.cc",
         # "short_function_literal.cc",
-        # "unary_operator.cc",
+        "unary_operator.cc",
         "terminal.cc",
     ],
     deps = [
         "//ast",
         "//base:meta",
         "//compiler:common_diagnostics",
-        "//compiler:type_for_diagnostic",
         "//diagnostic/consumer",
         "//semantic_analysis:context",
         "//semantic_analysis:type_system",
@@ -39,19 +38,16 @@ cc_library(
 #         "@com_google_googletest//:gtest_main",
 #     ],
 # )
-# 
-# cc_test(
-#     name = "unary_operator_test",
-#     srcs = ["unary_operator_test.cc"],
-#     deps = [
-#         ":verify",
-#         "//test:repl",
-#         "//type:primitive",
-#         "//type:function",
-#         "//type:qual_type",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
+
+cc_test(
+    name = "unary_operator_test",
+    srcs = ["unary_operator_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_test(
     name = "terminal_test",

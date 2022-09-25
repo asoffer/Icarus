@@ -91,8 +91,8 @@ struct TypeVerifier : VerificationScheduler {
   // static VerificationTask VerifyType(TypeVerifier &, ast::Identifier const *);
   // static VerificationTask VerifyType(TypeVerifier &,
   //                                    ast::ShortFunctionLiteral const *);
-  // static VerificationTask VerifyType(TypeVerifier &,
-  //                                    ast::UnaryOperator const *);
+  static VerificationTask VerifyType(TypeVerifier &,
+                                     ast::UnaryOperator const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);
 
  private:

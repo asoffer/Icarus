@@ -95,6 +95,10 @@ QualifiedType Constant(QualifiedType t);
 // Returns a `QualifiedType` that represents an error.
 QualifiedType Error();
 
+// Returns a `QualifiedType` that has the same underlying type as `t` and the
+// same qualifiers as `t` with the addition of the "error" qualifier.
+QualifiedType Error(QualifiedType t);
+
 enum class Primitive : uint8_t {
   Bool,
   Char,
@@ -121,6 +125,23 @@ inline constexpr core::Type ErrorType = PrimitiveTypes(Primitive::Error);
 inline core::Type I(uint32_t bits) { return core::SizedIntegerType::I(bits); }
 inline core::Type U(uint32_t bits) { return core::SizedIntegerType::U(bits); }
 
+// In general, arithmetic is not allowed on pointers in Icarus. However, a more
+// specialized "buffer pointer" type does allow for arithmetic. Specifically,
+// the type category `BufferPointerType` represents the affine space of the
+// system's address space. Integers may be added or subtracted to buffer
+// pointers to produce new buffer pointers, and buffer pointers may be
+// subtracted from each other to produce signed integer values representing the
+// distance between those values.
+struct BufferPointerType : core::TypeCategory<BufferPointerType, core::Type> {
+  explicit BufferPointerType(
+      core::TypeSystemSupporting<BufferPointerType> auto& s, core::Type t)
+      : core::TypeCategory<BufferPointerType, core::Type>(s, t) {}
+
+  core::Type pointee() const { return std::get<0>(decompose()); }
+};
+
+// The `SliceType` category represents a non-owning view of a range of values of
+// a given type stored in contiguous memory (which we call a "slice").
 struct SliceType : core::TypeCategory<SliceType, core::Type> {
   explicit SliceType(core::TypeSystemSupporting<SliceType> auto& s,
                      core::Type t)
@@ -129,9 +150,10 @@ struct SliceType : core::TypeCategory<SliceType, core::Type> {
   core::Type pointee() const { return std::get<0>(decompose()); }
 };
 
-using TypeSystem = core::TypeSystem<PrimitiveTypes, core::SizedIntegerType,
-                                    core::ParameterType, core::PointerType,
-                                    SliceType, core::FunctionType>;
+using TypeSystem =
+    core::TypeSystem<PrimitiveTypes, core::SizedIntegerType,
+                     core::ParameterType, core::PointerType, BufferPointerType,
+                     SliceType, core::FunctionType>;
 
 }  // namespace semantic_analysis
 

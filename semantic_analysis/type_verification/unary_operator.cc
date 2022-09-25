@@ -1,8 +1,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
-#include "compiler/common.h"
 #include "compiler/common_diagnostics.h"
-#include "compiler/context.h"
 #include "semantic_analysis/type_verification/verify.h"
 #include "type/flags.h"
 #include "type/pointer.h"
@@ -13,6 +11,11 @@
 namespace semantic_analysis {
 namespace {
 using namespace compiler;  // TODO: Remove after migration.
+
+std::string TypeForDiagnostic(ast::Expression const &expression,
+                              Context const &context) {
+  return "TODO";
+}
 
 struct UnexpandedUnaryOperatorArgument {
   static constexpr std::string_view kCategory = "type-error";
@@ -147,7 +150,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::UnaryOperator const *node) {
   absl::Span operand_qts = co_await VerifyTypeOf(node->operand());
 
-  type::QualType qt;
+  QualifiedType qt;
 
   if (operand_qts.size() != 1) {
     tv.ConsumeDiagnostic(UnexpandedUnaryOperatorArgument{
@@ -155,12 +158,13 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         .view          = node->operand()->range(),
     });
 
-    qt = type::QualType::Error();
-  } else if (not operand_qts[0].ok()) {
-    qt = type::QualType::Error();
+    qt = Error();
+  } else if (operand_qts[0].qualifiers() >= Qualifiers::Error()) {
+    qt = Error();
   } else {
-    auto operand_qt   = operand_qts[0];
-    auto operand_type = operand_qt.type();
+    QualifiedType operand_qt      = operand_qts[0];
+    core::Type operand_type       = operand_qt.type();
+    Qualifiers operand_qualifiers = operand_qt.qualifiers();
 
     switch (node->kind()) {
       case ast::UnaryOperator::Kind::Copy: {
@@ -176,90 +180,85 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         NOT_YET();
       } break;
       case ast::UnaryOperator::Kind::BufferPointer: {
-        if (operand_type == type::Type_) {
-          qt = type::QualType(operand_type,
-                              operand_qt.quals() & ~type::Qualifiers::Buffer());
-        } else {
+        qt = QualifiedType(Type, operand_qualifiers & ~Qualifiers::Buffer());
+        if (operand_type != Type) {
           tv.ConsumeDiagnostic(NotAType{
               .view = node->operand()->range(),
-              .type = TypeForDiagnostic(node->operand(), tv.context()),
+              .type = TypeForDiagnostic(*node->operand(), tv.context()),
           });
-          qt = type::QualType::Error();
+          qt = Error(qt);
         }
       } break;
       case ast::UnaryOperator::Kind::TypeOf: {
-        qt = type::QualType::Constant(type::Type_);
+        qt = QualifiedType(Type, operand_qualifiers);
       } break;
       case ast::UnaryOperator::Kind::At: {
-        if (auto const *ptr_type = operand_type.if_as<type::BufferPointer>()) {
-          qt = type::QualType(ptr_type->pointee(), type::Qualifiers::Buffer());
-        } else if (auto const *ptr_type = operand_type.if_as<type::Pointer>()) {
-          qt = type::QualType(ptr_type->pointee(), type::Qualifiers::Storage());
+        if (auto ptr_type =
+                operand_type.get_if<core::PointerType>(tv.type_system())) {
+          qt = QualifiedType(ptr_type->pointee(), Qualifiers::Reference());
+        } else if (auto ptr_type = operand_type.get_if<BufferPointerType>(
+                       tv.type_system())) {
+          qt = QualifiedType(ptr_type->pointee(), Qualifiers::Buffer());
         } else {
           tv.ConsumeDiagnostic(DereferencingNonPointer{
-              .type = TypeForDiagnostic(node->operand(), tv.context()),
+              .type = TypeForDiagnostic(*node->operand(), tv.context()),
               .view = node->range(),
           });
-          qt = type::QualType::Error();
+          qt = Error();
         }
       } break;
       case ast::UnaryOperator::Kind::Address: {
-        if (operand_qt.quals() >= type::Qualifiers::Buffer()) {
-          qt = type::QualType(type::BufPtr(operand_type),
-                              type::Qualifiers::Unqualified());
-        } else if (operand_qt.quals() >= type::Qualifiers::Storage()) {
-          qt = type::QualType(type::Ptr(operand_type),
-                              type::Qualifiers::Unqualified());
+        if (operand_qualifiers >= Qualifiers::Buffer()) {
+          qt = QualifiedType(BufferPointerType(tv.type_system(), operand_type));
+        } else if (operand_qualifiers >= Qualifiers::Reference()) {
+          qt = QualifiedType(core::PointerType(tv.type_system(), operand_type));
         } else {
           tv.ConsumeDiagnostic(NonAddressableExpression{.view = node->range()});
-          qt = type::QualType::Error();
+          qt = Error();
         }
       } break;
       case ast::UnaryOperator::Kind::Pointer: {
-        if (operand_type == type::Type_) {
-          qt = type::QualType(operand_type,
-                              operand_qt.quals() & ~type::Qualifiers::Buffer());
-        } else {
+        qt = QualifiedType(Type, operand_qualifiers & ~Qualifiers::Buffer());
+        if (operand_type != Type) {
           tv.ConsumeDiagnostic(NotAType{
               .view = node->operand()->range(),
-              .type = TypeForDiagnostic(node->operand(), tv.context()),
+              .type = TypeForDiagnostic(*node->operand(), tv.context()),
           });
-          qt = type::QualType::Error();
+          qt = Error(qt);
         }
       } break;
       case ast::UnaryOperator::Kind::Negate: {
-        if (type::IsSignedNumeric(operand_type)) {
-          qt = type::QualType(
-              operand_type, operand_qt.quals() & type::Qualifiers::Constant());
-        } else if (type::IsUnsignedNumeric(operand_type)) {
-          tv.ConsumeDiagnostic(NegatingUnsignedInteger{
-              .type = TypeForDiagnostic(node->operand(), tv.context()),
-              .view = node->range(),
-          });
-          qt = type::QualType::Error();
-        } else {
-          tv.ConsumeDiagnostic(InvalidUnaryOperatorCall{
-              .op   = "-",
-              .type = TypeForDiagnostic(node->operand(), tv.context()),
-              .view = node->range(),
-          });
-          qt = type::QualType::Error();
-        }
+        // if (type::IsSignedNumeric(operand_type)) {
+        //   qt = type::QualType(
+        //       operand_type, operand_qt.quals() & type::Qualifiers::Constant());
+        // } else if (type::IsUnsignedNumeric(operand_type)) {
+        //   tv.ConsumeDiagnostic(NegatingUnsignedInteger{
+        //       .type = TypeForDiagnostic(*node->operand(), tv.context()),
+        //       .view = node->range(),
+        //   });
+        //   qt = type::QualType::Error();
+        // } else {
+        //   tv.ConsumeDiagnostic(InvalidUnaryOperatorCall{
+        //       .op   = "-",
+        //       .type = TypeForDiagnostic(*node->operand(), tv.context()),
+        //       .view = node->range(),
+        //   });
+        //   qt = type::QualType::Error();
+        // }
       } break;
       case ast::UnaryOperator::Kind::Not: {
-        if (operand_type == type::Bool) {
-          qt = type::QualType(
-              type::Bool, operand_qt.quals() & type::Qualifiers::Constant());
-        } else if (operand_type.is<type::Flags>()) {
-          qt = type::QualType(
-              operand_type, operand_qt.quals() & type::Qualifiers::Constant());
+        if (operand_type == Bool) {
+          qt = operand_qt;
+        // } else if (operand_type.is<type::Flags>()) {
+        //   qt = type::QualType(
+        //       operand_type, operand_qt.quals() & type::Qualifiers::Constant());
         } else {
           tv.ConsumeDiagnostic(InvalidUnaryOperatorCall{
               .op   = "not",
-              .type = TypeForDiagnostic(node->operand(), tv.context()),
+              .type = TypeForDiagnostic(*node->operand(), tv.context()),
               .view = node->range(),
           });
-          qt = type::QualType::Error();
+          qt = Error();
         }
       } break;
       case ast::UnaryOperator::Kind::BlockJump: {

@@ -122,6 +122,9 @@ static_assert(sizeof(Type) == sizeof(uint64_t));
 // are not to be considered part of the type itself.
 template <TypeQualifiers Q>
 struct QualifiedType {
+  explicit QualifiedType() = default;
+  explicit QualifiedType(Type t) : QualifiedType(t, Q()) {}
+
   // Constructs a `QualifiedType` from its constituent type and qualifiers.
   explicit QualifiedType(Type t, Q q) {
     uint8_t result;

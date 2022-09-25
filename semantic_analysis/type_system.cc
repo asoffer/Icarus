@@ -12,4 +12,8 @@ QualifiedType Constant(QualifiedType t) {
 
 QualifiedType Error() { return QualifiedType(ErrorType, Qualifiers::Error()); }
 
+QualifiedType Error(QualifiedType t) {
+  return QualifiedType(t.type(), t.qualifiers() | Qualifiers::Error());
+}
+
 }  // namespace semantic_analysis
