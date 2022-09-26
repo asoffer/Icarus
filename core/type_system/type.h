@@ -58,6 +58,13 @@ struct Type {
   // space is available as well.
   static constexpr size_t QualifierBits = internal_type::QualifierBits;
 
+  // Returns an integer representing the index of the type category within the
+  // `TypeSystem` that created this `Type`.
+  constexpr uint64_t category() const {
+    return (representation_ >> QualifierBits) &
+           ((uint64_t{1} << CategoryBits) - 1);
+  }
+
   // Returns `true` if and only if `*this` type was created from the type
   // category `Cat`.
   template <typename Category>
@@ -104,10 +111,6 @@ struct Type {
   friend struct QualifiedType;
 
   constexpr uint64_t representation() const { return representation_; }
-  constexpr uint64_t category() const {
-    return (representation_ >> QualifierBits) &
-           ((uint64_t{1} << CategoryBits) - 1);
-  }
   constexpr uint64_t value() const {
     return representation_ >> (CategoryBits + QualifierBits);
   }

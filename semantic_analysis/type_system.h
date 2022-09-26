@@ -215,6 +215,8 @@ inline core::Type U(uint32_t bits) {
   return core::SizedIntegerType::U<TypeSystem>(bits);
 }
 
+bool IsIntegral(core::Type t);
+
 }  // namespace semantic_analysis
 
 #endif  // ICARUS_SEMANTIC_ANALYSIS_TYPE_SYSTEM_H

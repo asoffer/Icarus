@@ -1,5 +1,4 @@
 #include "ast/ast.h"
-#include "compiler/common_diagnostics.h"
 #include "semantic_analysis/type_system.h"
 #include "semantic_analysis/type_verification/verify.h"
 

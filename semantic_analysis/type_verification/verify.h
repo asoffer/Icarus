@@ -84,6 +84,7 @@ struct TypeVerifier : VerificationScheduler {
   }
 
   static VerificationTask VerifyType(TypeVerifier &, ast::ArrayLiteral const *);
+  static VerificationTask VerifyType(TypeVerifier &, ast::ArrayType const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::BindingDeclaration const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);

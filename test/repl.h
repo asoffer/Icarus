@@ -30,12 +30,18 @@ struct Repl {
         indentation = std::min(indentation, line.find_first_not_of(" \t"));
       }
       size_t length =
-          std::max_element(lines.begin(), lines.end())->size() - indentation;
+          std::max_element(lines.begin(), lines.end(),
+                           [](std::string_view l, std::string_view r) {
+                             return l.size() < r.size();
+                           })
+              ->size() -
+          indentation;
 
       std::string boundary(length + 2, '-');
       os << "    +" << boundary << "+\n";
       for (std::string_view line : lines) {
         if (line.size() > indentation) { line.remove_prefix(indentation); }
+        ASSERT(length >= line.size());
         os << "    | " << line << std::string(length - line.size(), ' ')
            << " |\n";
       }

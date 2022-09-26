@@ -5,6 +5,7 @@ cc_library(
     hdrs = ["verify.h"],
     srcs = [
         "array_literal.cc",
+        "array_type.cc",
         "declaration.cc",
         "identifier.cc",
         # "short_function_literal.cc",
@@ -29,6 +30,16 @@ cc_library(
 cc_test(
     name = "array_literal_test",
     srcs = ["array_literal_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "array_type_test",
+    srcs = ["array_type_test.cc"],
     deps = [
         ":verify",
         "//test:repl",

@@ -28,4 +28,9 @@ QualifiedType Error(Qualifiers q) {
   return QualifiedType(ErrorType, q | Qualifiers::Error());
 }
 
+bool IsIntegral(core::Type t) {
+  return t == Integer or
+         t.category() == TypeSystem::index<core::SizedIntegerType>();
+}
+
 }  // namespace semantic_analysis
