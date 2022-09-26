@@ -37,7 +37,6 @@ struct InitializingConstantWithNonConstant {
   std::string_view view;
 };
 
-// TODO: Make this useful.
 std::optional<core::Type> EvaluateAsType(Context &context,
                                          TypeSystem &type_system,
                                          ast::Expression const *expr) {

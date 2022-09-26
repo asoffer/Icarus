@@ -4,6 +4,7 @@ cc_library(
     name = "verify",
     hdrs = ["verify.h"],
     srcs = [
+        "array_literal.cc",
         "declaration.cc",
         "identifier.cc",
         # "short_function_literal.cc",
@@ -22,6 +23,16 @@ cc_library(
         "//semantic_analysis:task",
         "@asoffer_jasmin//jasmin:execute",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "array_literal_test",
+    srcs = ["array_literal_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

@@ -24,4 +24,8 @@ QualifiedType Error(QualifiedType t) {
   return QualifiedType(t.type(), t.qualifiers() | Qualifiers::Error());
 }
 
+QualifiedType Error(Qualifiers q) {
+  return QualifiedType(ErrorType, q | Qualifiers::Error());
+}
+
 }  // namespace semantic_analysis

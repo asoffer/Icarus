@@ -52,7 +52,7 @@ Repl::TypeCheckResult Repl::type_check(std::string content) {
 
 void Repl::PrintQualifiedType(std::ostream& os,
                               semantic_analysis::QualifiedType qt) {
-  std::string_view separator = "";
+  std::string_view separator               = "";
   semantic_analysis::Qualifiers qualifiers = qt.qualifiers();
   if (qualifiers >= semantic_analysis::Qualifiers::Constant()) {
     os << std::exchange(separator, "-") << "constant";
@@ -72,9 +72,9 @@ void Repl::PrintQualifiedType(std::ostream& os,
 
 void Repl::PrintType(std::ostream& os, core::Type t) {
   if (auto p = t.get_if<semantic_analysis::PrimitiveType>(type_system_)) {
-    static constexpr std::array kPrimitiveTypes{"bool",    "char",   "byte",
-                                                "f32",     "f64",    "type",
-                                                "integer", "module", "error"};
+    static constexpr std::array kPrimitiveTypes{
+        "bool", "char",    "byte",   "f32",         "f64",
+        "type", "integer", "module", "empty-array", "error"};
     size_t value =
         static_cast<std::underlying_type_t<decltype(p->value())>>(p->value());
     ASSERT(value < kPrimitiveTypes.size());
@@ -93,7 +93,14 @@ void Repl::PrintType(std::ostream& os, core::Type t) {
     if (i->alignment() != core::SizedIntegerType::DefaultAlignment(i->bits())) {
       os << "@" << i->alignment();
     }
-    // TODO: Show alignment.
+  } else if (auto s = t.get_if<semantic_analysis::SliceType>(type_system_)) {
+    os << "[/](";
+    PrintType(os, s->pointee());
+    os << ')';
+  } else if (auto a = t.get_if<semantic_analysis::ArrayType>(type_system_)) {
+    os << '[' << a->length() << "; ";
+    PrintType(os, a->data_type());
+    os << ']';
   } else {
     os << "???";
   }

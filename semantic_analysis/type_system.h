@@ -1,6 +1,8 @@
 #ifndef ICARUS_SEMANTIC_ANALYSIS_TYPE_SYSTEM_H
 #define ICARUS_SEMANTIC_ANALYSIS_TYPE_SYSTEM_H
 
+#include "base/extend.h"
+#include "base/extend/absl_hash.h"
 #include "core/type_system/finite_set.h"
 #include "core/type_system/function.h"
 #include "core/type_system/parameter.h"
@@ -107,6 +109,10 @@ QualifiedType Error();
 // same qualifiers as `t` with the addition of the "error" qualifier.
 QualifiedType Error(QualifiedType t);
 
+// Returns a `QualifiedType` that has the underlying type `ErrorType` (defined
+// below) and has the qualifiers `q & Qualifiers::Error()`.
+QualifiedType Error(Qualifiers q);
+
 enum class Primitive : uint8_t {
   Bool,
   Char,
@@ -116,6 +122,7 @@ enum class Primitive : uint8_t {
   Type,
   Integer,
   Module,
+  EmptyArray,
   Error
 };
 using PrimitiveType = core::FiniteSetType<Primitive>;
@@ -135,6 +142,36 @@ struct BufferPointerType : core::TypeCategory<BufferPointerType, core::Type> {
   core::Type pointee() const { return std::get<0>(decompose()); }
 };
 
+namespace internal_type_system {
+
+struct ArrayTypeState
+    : base::Extend<ArrayTypeState>::With<base::AbslHashExtension> {
+  core::Type type;
+  size_t length;
+};
+
+}  // namespace internal_type_system
+
+// The `ArrayType` category represents a compile-time fixed-length block of
+// contiguous objects all of the same type.
+struct ArrayType
+    : core::TypeCategory<ArrayType, internal_type_system::ArrayTypeState> {
+  explicit ArrayType(core::TypeSystemSupporting<ArrayType> auto& s,
+                     size_t length, core::Type t)
+      : ArrayType(s, {.type = t, .length = length}) {}
+
+  core::Type data_type() const { return std::get<0>(decompose()).type; }
+  size_t length() const { return std::get<0>(decompose()).length; }
+
+ private:
+  friend TypeCategory;
+
+  explicit ArrayType(core::TypeSystemSupporting<ArrayType> auto& s,
+                     internal_type_system::ArrayTypeState state)
+      : core::TypeCategory<ArrayType, internal_type_system::ArrayTypeState>(
+            s, state) {}
+};
+
 // The `SliceType` category represents a non-owning view of a range of values of
 // a given type stored in contiguous memory (which we call a "slice").
 struct SliceType : core::TypeCategory<SliceType, core::Type> {
@@ -147,7 +184,7 @@ struct SliceType : core::TypeCategory<SliceType, core::Type> {
 
 using TypeSystem =
     core::TypeSystem<PrimitiveType, core::SizedIntegerType, core::ParameterType,
-                     core::PointerType, BufferPointerType, SliceType,
+                     core::PointerType, BufferPointerType, ArrayType, SliceType,
                      core::FunctionType>;
 
 inline constexpr core::Type Bool =
@@ -166,6 +203,8 @@ inline constexpr core::Type Integer =
     PrimitiveType(base::meta<TypeSystem>, Primitive::Integer);
 inline constexpr core::Type Module =
     PrimitiveType(base::meta<TypeSystem>, Primitive::Module);
+inline constexpr core::Type EmptyArray =
+    PrimitiveType(base::meta<TypeSystem>, Primitive::EmptyArray);
 inline constexpr core::Type ErrorType =
     PrimitiveType(base::meta<TypeSystem>, Primitive::Error);
 

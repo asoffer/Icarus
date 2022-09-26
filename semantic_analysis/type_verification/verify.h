@@ -83,6 +83,7 @@ struct TypeVerifier : VerificationScheduler {
     NOT_YET(base::meta<NodeType>);
   }
 
+  static VerificationTask VerifyType(TypeVerifier &, ast::ArrayLiteral const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::BindingDeclaration const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);

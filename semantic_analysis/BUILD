@@ -16,6 +16,8 @@ cc_library(
     hdrs = ["type_system.h"],
     srcs = ["type_system.cc"],
     deps = [
+        "//base:extend",
+        "//base/extend:absl_hash",
         "//core/type_system",
         "//core/type_system:finite_set",
         "//core/type_system:function",
