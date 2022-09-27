@@ -29,8 +29,14 @@ void ByteCodeValueEmitter::Emit(ast::Terminal const* t, IrFunction& f) {
       f.append<jasmin::Push>(Bool);
     } else if (ty == type::Char) {
       f.append<jasmin::Push>(Char);
+    } else if (ty == type::F32) {
+      f.append<jasmin::Push>(F32);
+    } else if (ty == type::F64) {
+      f.append<jasmin::Push>(F64);
     } else if (ty == type::Type_) {
       f.append<jasmin::Push>(Type);
+    } else {
+      NOT_YET();
     }
   } else {
     NOT_YET();

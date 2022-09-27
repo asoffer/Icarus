@@ -85,8 +85,8 @@ struct Repl {
       std::string_view separator =
           "    where the qualified type of the last expression is ";
       for (auto const& qt : r.qualified_types()) {
-        os << std::exchange(separator, ", ");
-        r.repl_.PrintQualifiedType(os, qt);
+        os << std::exchange(separator, ", ")
+           << semantic_analysis::DebugQualifiedType(qt, r.repl_.type_system());
       }
       if (r.diagnostics().empty()) {
         return os << "\n    with no diagnostics.\n";
@@ -119,7 +119,7 @@ struct Repl {
   ExecuteResult execute(std::string source);
   TypeCheckResult type_check(std::string source);
 
-  auto& type_system() { return type_system_; }
+  semantic_analysis::TypeSystem& type_system() { return type_system_; }
 
  private:
   void PrintQualifiedType(std::ostream& os,

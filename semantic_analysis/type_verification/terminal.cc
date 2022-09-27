@@ -9,6 +9,7 @@ core::Type TypeOf(ast::Terminal const& node, TypeSystem& type_system) {
   if (node.type() == base::meta<ir::Char>) { return Char; }
   if (node.type() == base::meta<type::Type>) { return Type; }
   if (node.type() == base::meta<ir::Integer>) { return Integer; }
+  if (node.type() == base::meta<float>) { return F32; }
   if (node.type() == base::meta<double>) { return F64; }
   if (node.type() == base::meta<ir::Slice>) {
     return SliceType(type_system, Char);

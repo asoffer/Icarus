@@ -216,37 +216,46 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         }
       } break;
       case ast::UnaryOperator::Kind::Negate: {
-        // if (type::IsSignedNumeric(operand_type)) {
-        //   qt = type::QualType(
-        //       operand_type, operand_qt.quals() & type::Qualifiers::Constant());
-        // } else if (type::IsUnsignedNumeric(operand_type)) {
-        //   tv.ConsumeDiagnostic(NegatingUnsignedInteger{
-        //       .type = TypeForDiagnostic(*node->operand(), tv.context()),
-        //       .view = node->range(),
-        //   });
-        //   qt = type::QualType::Error();
-        // } else {
-        //   tv.ConsumeDiagnostic(InvalidUnaryOperatorCall{
-        //       .op   = "-",
-        //       .type = TypeForDiagnostic(*node->operand(), tv.context()),
-        //       .view = node->range(),
-        //   });
-        //   qt = type::QualType::Error();
-        // }
+        if (operand_type == Integer or operand_type == F32 or
+            operand_type == F64) {
+          qt = QualifiedType(operand_type,
+                             operand_qualifiers & Qualifiers::Constant());
+        } else if (auto i = operand_type.get_if<core::SizedIntegerType>(
+                       tv.type_system())) {
+          if (i->is_signed()) {
+            qt = QualifiedType(operand_type,
+                               operand_qualifiers & Qualifiers::Constant());
+
+          } else {
+            tv.ConsumeDiagnostic(NegatingUnsignedInteger{
+                .type = TypeForDiagnostic(*node->operand(), tv.context()),
+                .view = node->range(),
+            });
+            qt = Error(operand_qualifiers & Qualifiers::Constant());
+          }
+        } else {
+          tv.ConsumeDiagnostic(InvalidUnaryOperatorCall{
+              .op   = "-",
+              .type = TypeForDiagnostic(*node->operand(), tv.context()),
+              .view = node->range(),
+          });
+          qt = Error(operand_qualifiers & Qualifiers::Constant());
+        }
       } break;
       case ast::UnaryOperator::Kind::Not: {
         if (operand_type == Bool) {
-          qt = operand_qt;
-        // } else if (operand_type.is<type::Flags>()) {
-        //   qt = type::QualType(
-        //       operand_type, operand_qt.quals() & type::Qualifiers::Constant());
+          qt = QualifiedType(Bool, operand_qualifiers & Qualifiers::Constant());
+          // } else if (operand_type.is<type::Flags>()) {
+          //   qt = type::QualType(
+          //       operand_type, operand_qt.quals() &
+          //       type::Qualifiers::Constant());
         } else {
           tv.ConsumeDiagnostic(InvalidUnaryOperatorCall{
               .op   = "not",
               .type = TypeForDiagnostic(*node->operand(), tv.context()),
               .view = node->range(),
           });
-          qt = Error();
+          qt = Error(operand_qualifiers & Qualifiers::Constant());
         }
       } break;
       default: UNREACHABLE(node->DebugString());

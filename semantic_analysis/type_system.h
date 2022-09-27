@@ -1,6 +1,8 @@
 #ifndef ICARUS_SEMANTIC_ANALYSIS_TYPE_SYSTEM_H
 #define ICARUS_SEMANTIC_ANALYSIS_TYPE_SYSTEM_H
 
+#include <ostream>
+
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "core/type_system/finite_set.h"
@@ -113,6 +115,10 @@ QualifiedType Error(QualifiedType t);
 // below) and has the qualifiers `q & Qualifiers::Error()`.
 QualifiedType Error(Qualifiers q);
 
+// Returns a `QualifiedType` whose underlying type is `t` and whose qualifiers
+// as just the "error" qualifier.
+QualifiedType Error(core::Type t);
+
 enum class Primitive : uint8_t {
   Bool,
   Char,
@@ -216,6 +222,9 @@ inline core::Type U(uint32_t bits) {
 }
 
 bool IsIntegral(core::Type t);
+
+std::string DebugQualifiedType(QualifiedType qt, TypeSystem& ts);
+std::string DebugType(core::Type t, TypeSystem& ts);
 
 }  // namespace semantic_analysis
 

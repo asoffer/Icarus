@@ -109,121 +109,81 @@ TEST(Pointer, NotAType) {
                     HasDiagnostics(Pair("type-error", "not-a-type"))));
 }
 
+TEST(Negation, SignedInteger) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(
+  n: i64
+  -n
+  )"),
+              AllOf(HasQualTypes(QualifiedType(I(64))), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(
+  m :: i64
+  -m
+  )"),
+              AllOf(HasQualTypes(Constant(I(64))), HasDiagnostics()));
+}
+
+TEST(Negation, FloatingPoint) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(
+  x: f32
+  -x
+  )"),
+              AllOf(HasQualTypes(QualifiedType(F32)), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(
+  y :: f32
+  -y
+  )"),
+              AllOf(HasQualTypes(Constant(F32)), HasDiagnostics()));
+}
+
+TEST(Negation, UnsignedInteger) {
+  {
+    test::Repl repl;
+    EXPECT_THAT(
+        repl.type_check(R"(
+    j: u64
+    -j
+    )"),
+        AllOf(HasQualTypes(Error()),
+              HasDiagnostics(Pair("type-error", "negating-unsigned-integer"))));
+  }
+  {
+    test::Repl repl;
+    EXPECT_THAT(
+        repl.type_check(R"(
+    k :: u64
+    -k
+    )"),
+        AllOf(HasQualTypes(Constant(Error())),
+              HasDiagnostics(Pair("type-error", "negating-unsigned-integer"))));
+  }
+}
+
+TEST(Negation, InvalidType) {
+  {
+    test::Repl repl;
+    EXPECT_THAT(repl.type_check(R"(
+    b := true
+    -b
+    )"),
+                AllOf(HasQualTypes(Error()),
+                      HasDiagnostics(
+                          Pair("type-error", "invalid-unary-operator-call"))));
+  }
+  {
+    test::Repl repl;
+    EXPECT_THAT(repl.type_check(R"(
+    a ::= [1, 2, 3]
+    -a
+    )"),
+                AllOf(HasQualTypes(Constant(Error())),
+                      HasDiagnostics(
+                          Pair("type-error", "invalid-unary-operator-call"))));
+  }
+}
+
 #if 0
-TEST(Negate, SignedInteger) {
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    n: i64
-    -n
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts,
-                UnorderedElementsAre(NonConstant(I(64))));
-    EXPECT_THAT(infra.diagnostics(), IsEmpty());
-  }
-
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    n :: i64
-    -n
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(Constant(I(64))));
-    EXPECT_THAT(infra.diagnostics(), IsEmpty());
-  }
-}
-
-TEST(Negate, FloatingPoint) {
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    x: f64
-    -x
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts,
-                UnorderedElementsAre(NonConstant(type::F64)));
-    EXPECT_THAT(infra.diagnostics(), IsEmpty());
-  }
-
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    x :: f64
-    -x
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(Constant(type::F64)));
-    EXPECT_THAT(infra.diagnostics(), IsEmpty());
-  }
-}
-
-TEST(Negate, UnsignedInteger) {
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    n: u64
-    -n
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(Error()));
-    EXPECT_THAT(
-        infra.diagnostics(),
-        UnorderedElementsAre(Pair("type-error", "negating-unsigned-integer")));
-  }
-
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    n :: u64
-    -n
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(Error()));
-    EXPECT_THAT(
-        infra.diagnostics(),
-        UnorderedElementsAre(Pair("type-error", "negating-unsigned-integer")));
-  }
-}
-
-TEST(Negate, InvalidType) {
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    n := [1, 2, 3]
-    -n
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(Error()));
-    EXPECT_THAT(infra.diagnostics(),
-                UnorderedElementsAre(
-                    Pair("type-error", "invalid-unary-operator-call")));
-  }
-
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    n ::= [1, 2, 3]
-    -n
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(Error()));
-    EXPECT_THAT(infra.diagnostics(),
-                UnorderedElementsAre(
-                    Pair("type-error", "invalid-unary-operator-call")));
-  }
-}
-
 TEST(Negate, Overload) {
   test::CompilerInfrastructure infra;
   auto &mod        = infra.add_module(R"(
@@ -251,35 +211,23 @@ TEST(Negate, MissingOverload) {
               UnorderedElementsAre(
                   Pair("type-error", "invalid-unary-operator-overload")));
 }
+#endif
 
 TEST(Not, Bool) {
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    b: bool
-    not b
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts,
-                UnorderedElementsAre(NonConstant(type::Bool)));
-    EXPECT_THAT(infra.diagnostics(), IsEmpty());
-  }
-
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    b :: bool
-    not b
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts,
-                UnorderedElementsAre(Constant(type::Bool)));
-    EXPECT_THAT(infra.diagnostics(), IsEmpty());
-  }
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(
+  b: bool
+  not b
+  )"),
+              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(
+  c :: bool
+  not c
+  )"),
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
 }
 
+#if 0
 TEST(Not, Flags) {
   {
     test::CompilerInfrastructure infra;
@@ -307,65 +255,32 @@ TEST(Not, Flags) {
     EXPECT_THAT(infra.diagnostics(), IsEmpty());
   }
 }
+#endif
 
 TEST(Not, InvalidType) {
   {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    n: i64
-    not n
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(Error()));
-    EXPECT_THAT(infra.diagnostics(),
-                UnorderedElementsAre(
-                    Pair("type-error", "invalid-unary-operator-call")));
+    test::Repl repl;
+    EXPECT_THAT(repl.type_check(R"(
+    m: i32
+    not m
+    )"),
+                AllOf(HasQualTypes(Error()),
+                      HasDiagnostics(
+                          Pair("type-error", "invalid-unary-operator-call"))));
   }
-
   {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    n: i64
+    test::Repl repl;
+    EXPECT_THAT(repl.type_check(R"(
+    n :: i32
     not n
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(Error()));
-    EXPECT_THAT(infra.diagnostics(),
-                UnorderedElementsAre(
-                    Pair("type-error", "invalid-unary-operator-call")));
-  }
-
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    n :: i64
-    not n
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(Error()));
-    EXPECT_THAT(infra.diagnostics(),
-                UnorderedElementsAre(
-                    Pair("type-error", "invalid-unary-operator-call")));
-  }
-
-  {
-    test::CompilerInfrastructure infra;
-    auto &mod        = infra.add_module(R"(
-    n :: i64
-    not n
-  )");
-    auto const *expr = mod.get<ast::UnaryOperator>();
-    auto qts         = mod.context().qual_types(expr);
-    EXPECT_THAT(qts, UnorderedElementsAre(Error()));
-    EXPECT_THAT(infra.diagnostics(),
-                UnorderedElementsAre(
-                    Pair("type-error", "invalid-unary-operator-call")));
+    )"),
+                AllOf(HasQualTypes(Constant(Error())),
+                      HasDiagnostics(
+                          Pair("type-error", "invalid-unary-operator-call"))));
   }
 }
 
+#if 0
 TEST(Unexpanded, Failure) {
   test::CompilerInfrastructure infra;
   auto &mod = infra.add_module(R"(
