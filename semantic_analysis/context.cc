@@ -33,4 +33,15 @@ absl::Span<QualifiedType const> Context::set_qualified_type(
   return iter->second;
 }
 
+absl::Span<std::pair<core::ParameterType, Context::CallableIdentifier> const>
+Context::set_parameters(
+    ast::Expression const *expr,
+    std::vector<std::pair<core::ParameterType, CallableIdentifier>>
+        parameters) {
+  [[maybe_unused]] auto [iter, inserted] =
+      parameters_.try_emplace(expr, std::move(parameters));
+  ASSERT(inserted == true);
+  return iter->second;
+}
+
 }  // namespace semantic_analysis

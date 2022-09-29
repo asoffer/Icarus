@@ -6,9 +6,10 @@ cc_library(
     srcs = [
         "array_literal.cc",
         "array_type.cc",
+        "call.cc",
         "declaration.cc",
         "identifier.cc",
-        # "short_function_literal.cc",
+        "short_function_literal.cc",
         "unary_operator.cc",
         "terminal.cc",
     ],
@@ -48,6 +49,16 @@ cc_test(
 )
 
 cc_test(
+    name = "call_test",
+    srcs = ["call_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "declaration_test",
     srcs = ["declaration_test.cc"],
     deps = [
@@ -67,15 +78,15 @@ cc_test(
     ],
 )
 
-# cc_test(
-#     name = "short_function_literal_test",
-#     srcs = ["short_function_literal_test.cc"],
-#     deps = [
-#         ":verify",
-#         "//test:repl",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
+cc_test(
+    name = "short_function_literal_test",
+    srcs = ["short_function_literal_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_test(
     name = "unary_operator_test",

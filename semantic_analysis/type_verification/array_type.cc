@@ -1,5 +1,4 @@
 #include "ast/ast.h"
-#include "ast/ast.h"
 #include "semantic_analysis/type_system.h"
 #include "semantic_analysis/type_verification/verify.h"
 

@@ -33,6 +33,16 @@ void DebugType(std::ostream& os, core::Type t, TypeSystem& ts) {
     os << '[' << a->length() << "; ";
     DebugType(os, a->data_type(), ts);
     os << ']';
+  } else if (auto f = t.get_if<core::FunctionType>(ts)) {
+    os << "((";
+    std::string_view separator = "";
+    for (auto const& p : f->parameters()) {
+      os << std::exchange(separator, ", ") << p.name << ": ";
+      DebugType(os, p.value, ts);
+    }
+    os << ") -> (";
+    for (core::Type t : f->returns()) { DebugType(os, t, ts); }
+    os << "))";
   } else {
     os << "???";
   }

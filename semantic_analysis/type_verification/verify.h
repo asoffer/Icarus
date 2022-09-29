@@ -23,8 +23,10 @@ enum class TypeVerificationPhase {
 
 namespace internal_verify {
 
-using Types = std::tuple<core::Parameters<QualifiedType> const *,
-                         absl::Span<QualifiedType const>, void, void>;
+using Types =
+    std::tuple<absl::Span<std::pair<core::ParameterType,
+                                    Context::CallableIdentifier> const>,
+               absl::Span<QualifiedType const>, void, void>;
 template <TypeVerificationPhase P>
 using ReturnType = std::tuple_element_t<static_cast<int>(P), Types>;
 
@@ -78,6 +80,14 @@ struct TypeVerifier : VerificationScheduler {
         node, context().set_qualified_types(node, std::move(qualified_types)));
   }
 
+  void complete_parameters(
+      ast::Expression const *node,
+      std::vector<std::pair<core::ParameterType, Context::CallableIdentifier>>
+          parameter_ids) {
+    this->set_completed<TypeVerificationPhase::VerifyParameters>(
+        node, context().set_parameters(node, std::move(parameter_ids)));
+  }
+
   template <typename NodeType>
   static VerificationTask VerifyType(TypeVerifier &tv, NodeType const *) {
     NOT_YET(base::meta<NodeType>);
@@ -87,12 +97,13 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &, ast::ArrayType const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::BindingDeclaration const *);
+  static VerificationTask VerifyType(TypeVerifier &, ast::Call const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::Declaration::Id const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Identifier const *);
-  // static VerificationTask VerifyType(TypeVerifier &,
-  //                                    ast::ShortFunctionLiteral const *);
+  static VerificationTask VerifyType(TypeVerifier &,
+                                     ast::ShortFunctionLiteral const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::UnaryOperator const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);

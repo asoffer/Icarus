@@ -8,42 +8,46 @@ namespace semantic_analysis {
 
 VerificationTask TypeVerifier::VerifyType(
     TypeVerifier& tv, ast::ShortFunctionLiteral const* node) {
-  core::Parameters<type::QualType> parameters;
+  core::Parameters<core::Type> parameters;
   bool has_error = false;
   for (auto const& parameter : node->parameters()) {
-    absl::Span<type::QualType const> parameter_qual_types =
-        co_await VerifyTypeOf(&parameter.value);
-    if (parameter_qual_types.size() == 1 and not parameter_qual_types[0].ok()) {
+    absl::Span parameter_qts = co_await VerifyTypeOf(&parameter.value);
+    if (parameter_qts.size() != 1) {
+      NOT_YET("Log an error.", parameter_qts.size());
+      has_error = true;
+    } else if (parameter_qts[0].qualifiers() >= Qualifiers::Error()) {
       has_error = true;
     }
 
-    parameters.append(parameter.name, parameter_qual_types[0], parameter.flags);
+    parameters.append(parameter.name, parameter_qts[0].type(), parameter.flags);
   }
 
-  auto const& parameters_ref =
-      tv.context().set_parameter_types(node, std::move(parameters));
-  tv.set_completed<TypeVerificationPhase::VerifyParameters>(node,
-                                                            &parameters_ref);
+  core::ParameterType parameter_type(tv.type_system(), parameters);
+  std::vector<std::pair<core::ParameterType, Context::CallableIdentifier>> parameter_types;
+  parameter_types.emplace_back(parameter_type,
+                               Context::CallableIdentifier(node));
+  tv.complete_parameters(node, std::move(parameter_types));
 
   if (has_error) {
-    tv.context().set_qual_type(node, type::QualType::Error());
+    tv.complete_verification(node, Error());
     co_return;
   }
 
-  absl::Span body_qual_types = co_await VerifyTypeOf(node->body());
+  absl::Span body_qualified_types = co_await VerifyTypeOf(node->body());
 
-  std::vector<type::Type> body_types;
-  body_types.reserve(body_qual_types.size());
-  for (auto const& qt : body_qual_types) {
-    if (not qt.ok()) {
+  std::vector<core::Type> body_types;
+  body_types.reserve(body_qualified_types.size());
+  for (auto const& qt : body_qualified_types) {
+    if (qt.qualifiers() >= Qualifiers::Error()) {
       has_error = true;
     } else {
       body_types.push_back(qt.type());
     }
   }
 
-  tv.complete_verification(node, type::QualType::Constant(type::Func(
-                                     parameters_ref, std::move(body_types))));
+  tv.complete_verification(
+      node, Constant(core::FunctionType(tv.type_system(), parameter_type,
+                                        std::move(body_types))));
 }
 
 }  // namespace semantic_analysis
