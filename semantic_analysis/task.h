@@ -205,8 +205,9 @@ struct Scheduler {
       using return_type = typename task_type::template Phase<P>::return_type;
       if constexpr (not std::is_void_v<return_type>) {
         if (auto* return_slot_ptr = prerequisite.return_slot()) {
+          auto* results_ptr = phase_entry.template results<return_type>();
           new (return_slot_ptr)
-              return_type(phase_entry.template results<return_type>());
+              return_type(results_ptr ? *results_ptr : return_type{});
         }
       }
     } else {
@@ -239,7 +240,7 @@ struct Scheduler {
   void
   set_completed(key_type const& key, ReturnType&& phase_return_value) requires(
       not std::is_void_v<typename task_type::template Phase<P>::return_type>) {
-    using return_type     = typename task_type::template Phase<P>::return_type;
+    using return_type = typename task_type::template Phase<P>::return_type;
 
     auto* result_ptr = static_cast<return_type*>(
         results_
@@ -291,8 +292,8 @@ struct Scheduler {
     }
 
     template <typename T>
-    T const& results() const {
-      return *ASSERT_NOT_NULL(static_cast<T const*>(results_));
+    T const* results() const {
+      return static_cast<T const*>(results_);
     }
 
     static PhaseEntry ResultPointer(void* results) {
@@ -312,7 +313,7 @@ struct Scheduler {
     explicit PhaseEntry(
         std::vector<std::pair<std::coroutine_handle<promise_type>, void*>>
             awaiting)
-        : awaiting_(std::move(awaiting)) {}
+        : results_(nullptr), awaiting_(std::move(awaiting)) {}
     explicit PhaseEntry(void* results) : results_(results) {}
 
     void* results_;
@@ -327,7 +328,6 @@ struct Scheduler {
 
     // Map from a phase to the set of coroutine handles awaiting the completion
     // of the given phase for the corresponding task.
-
     using underlying_type = std::underlying_type_t<phase_identifier_type>;
     std::array<PhaseEntry,
                static_cast<underlying_type>(phase_identifier_type::Completed)>

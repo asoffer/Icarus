@@ -110,5 +110,30 @@ TEST(Scheduler, ReturningSelfReferential) {
   EXPECT_EQ(n2_counter, 11);
 }
 
+
+ReturningTask SkipPhaseZero(ReturnTestScheduler &s, Node n) {
+  ++*n.counter;
+  s.set_completed<Phase::One>(n, "hello");
+  // When a phase is skipped over, the returned value should be the
+  // value-initialized value of the returned type.
+  *n.counter += co_await ReturningTask::Phase<Phase::Zero>(*n.next);
+  *n.counter += (co_await ReturningTask::Phase<Phase::One>(*n.next)).size();
+}
+
+TEST(Scheduler, SkipPhaseZero) {
+  ReturnTestScheduler s(SkipPhaseZero);
+  int n1_counter = 0;
+  Node n1{.counter = &n1_counter};
+  int n2_counter = 0;
+  Node n2{.counter = &n2_counter};
+  n1.next = &n2;
+  n2.next = &n1;
+
+  s.schedule(n1);
+  s.complete();
+  EXPECT_EQ(n1_counter, 6);
+  EXPECT_EQ(n2_counter, 6);
+}
+
 }  // namespace
 }  // namespace semantic_analysis
