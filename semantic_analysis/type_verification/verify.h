@@ -4,15 +4,12 @@
 #include "absl/types/span.h"
 #include "ast/ast.h"
 #include "ast/module.h"
-#include "compiler/type_for_diagnostic.h"
 #include "diagnostic/consumer/consumer.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/task.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
-// TODO: Move to this namespace
-using ::compiler::TypeForDiagnostic;
 
 enum class TypeVerificationPhase {
   VerifyParameters,
@@ -77,6 +74,23 @@ struct TypeVerifier : VerificationScheduler {
               std::vector<QualifiedType> qualified_types) {
     return VerificationTask::YieldResult<TypeVerificationPhase::VerifyType>(
         node, context().set_qualified_types(node, std::move(qualified_types)));
+  }
+  auto TypeOf(ast::Expression const *node,
+              absl::Span<QualifiedType const> qualified_types) {
+    return VerificationTask::YieldResult<TypeVerificationPhase::VerifyType>(
+        node,
+        context().set_qualified_types(
+            node, std::vector(qualified_types.begin(), qualified_types.end())));
+  }
+
+  auto ParametersOf(ast::Expression const *node,
+                    absl::Span<std::pair<core::ParameterType,
+                                         Context::CallableIdentifier> const>
+                        parameter_ids) {
+    return VerificationTask::YieldResult<
+        TypeVerificationPhase::VerifyParameters>(
+        node, context().set_parameters(node, std::vector(parameter_ids.begin(),
+                                                         parameter_ids.end())));
   }
 
   auto ParametersOf(

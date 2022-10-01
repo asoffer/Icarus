@@ -48,6 +48,17 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
   auto &scope           = *node->scope();
   std::string_view name = node->name();
+
+  std::vector<std::pair<core::ParameterType, Context::CallableIdentifier>>
+      parameters_options;
+  for (auto const &id : scope.visible_ancestor_declaration_id_named(name)) {
+    absl::Span parameters = co_await VerifyParametersOf(&id);
+    for (auto [p, callable_identifier] : parameters) {
+      parameters_options.emplace_back(p, &id);
+    }
+  }
+  co_yield tv.ParametersOf(node, std::move(parameters_options));
+
   for (auto const &id : scope.visible_ancestor_declaration_id_named(name)) {
     absl::Span qts = co_await VerifyTypeOf(&id);
     ASSERT(qts.size() == 1);
@@ -114,7 +125,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
       if (error) { co_return tv.TypeOf(node, qt); }
 
-      NOT_YET();
+      // TODO: Implement correctly.
       co_return tv.TypeOf(node, qt);
     }
   }

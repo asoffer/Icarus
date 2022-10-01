@@ -57,13 +57,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   absl::Span<QualifiedType const> initial_value_qts(nullptr, 0);
   absl::Span<QualifiedType const> type_expr_qts(nullptr, 0);
 
-  if (auto *e = node->init_val()) {
-    initial_value_qts = co_await VerifyTypeOf(e);
-  }
-  if (auto *e = node->type_expr()) { type_expr_qts = co_await VerifyTypeOf(e); }
-
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
+      type_expr_qts = co_await VerifyTypeOf(node->type_expr());
       // Syntactically: `var: T`, or `var :: T`
       if (type_expr_qts.size() != 1) { NOT_YET("Log an error"); }
       auto type_expr_qt = type_expr_qts[0];
@@ -90,6 +86,12 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       co_return tv.TypeOf(node, qt);
     } break;
     case ast::Declaration::kInferred: {
+      absl::Span parameters = co_await VerifyParametersOf(node->init_val());
+      for (auto const &id : node->ids()) {
+        co_yield tv.ParametersOf(&id, parameters); 
+      }
+      co_yield tv.ParametersOf(node, parameters);
+      initial_value_qts = co_await VerifyTypeOf(node->init_val());
       // Syntactically: `var := value`, or `var ::= value`
       if (initial_value_qts.size() != 1) { NOT_YET("Log an error"); }
       QualifiedType qt(initial_value_qts[0].type());
@@ -102,7 +104,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         }
         qt = Constant(qt);
       }
-      for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
+      for (auto const &id : node->ids()) {
+        co_yield tv.TypeOf(&id, qt); 
+      }
       co_return tv.TypeOf(node, qt);
 
     } break;
@@ -112,7 +116,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Declaration::Id const *node) {
-  return VerifyType(tv, &node->declaration());
+  auto &declaration = node->declaration();
+  co_yield tv.ParametersOf(node, co_await VerifyParametersOf(&declaration));
+  co_return tv.TypeOf(node, co_await VerifyTypeOf(&declaration));
 }
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,

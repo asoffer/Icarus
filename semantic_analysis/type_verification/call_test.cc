@@ -139,5 +139,33 @@ TEST(Call, MultipleParametersWithoutImplicitConversions) {
             HasDiagnostics(Pair("type-error", "uncallable-with-arguments"))));
 }
 
+TEST(Call, OverloadSets) {
+  test::Repl repl;
+
+  EXPECT_THAT(repl.type_check(R"(
+  f ::= () => true
+  f ::= (n: i32) => n
+  f()
+  )"),
+              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+
+  EXPECT_THAT(repl.type_check(R"(
+  x: i32
+  g ::= () => true
+  g ::= (n: i32) => n
+  g(x)
+  )"),
+              AllOf(HasQualTypes(QualifiedType(I(32))), HasDiagnostics()));
+
+  EXPECT_THAT(
+      repl.type_check(R"(
+  h ::= (b: bool) => b
+  h ::= (n: i32) => n
+  h()
+  )"),
+      AllOf(HasQualTypes(Error()),
+            HasDiagnostics(Pair("type-error", "uncallable-with-arguments"))));
+}
+
 }  // namespace
 }  // namespace semantic_analysis
