@@ -58,14 +58,11 @@ TEST(Scheduler, OneTaskWithOneAwait) {
 
 Task<Node, Phase> SelfReferential(TestScheduler &, Node n) {
   ++*n.counter;
-  std::cerr << "***a" << n.next << "\n";
   co_yield Task<Node, Phase>::YieldResult<Phase::Zero>(n);
   co_await Task<Node, Phase>::Phase<Phase::Zero>(*n.next);
   ++*n.counter;
-  std::cerr << "***b" << n.next << "\n";
   co_yield Task<Node, Phase>::YieldResult<Phase::One>(n);
   co_await Task<Node, Phase>::Phase<Phase::One>(*n.next);
-  std::cerr << "***c" << n.next << "\n";
   ++*n.counter;
   co_return Task<Node, Phase>::YieldResult<Phase::Completed>(n);
 }

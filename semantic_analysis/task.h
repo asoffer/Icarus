@@ -68,7 +68,6 @@ struct Task {
 
     template <phase_identifier_type P>
     auto return_value(YieldResult<P> y) {
-      std::cerr << "**?\n";
       return yield_value(y);
     }
 
