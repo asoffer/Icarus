@@ -45,6 +45,9 @@ struct Task {
   template <phase_identifier_type P,
             bool ReturnsVoid = std::is_void_v<return_type<P>>>
   struct Phase;
+  template <phase_identifier_type P,
+            bool ReturnsVoid = std::is_void_v<return_type<P>>>
+  struct YieldResult;
 
   struct promise_type {
     promise_type(scheduler_type& s, key_type const&) : scheduler_(s) {}
@@ -58,6 +61,24 @@ struct Task {
     std::suspend_always final_suspend() noexcept { return {}; }
     void unhandled_exception() {}
     void return_void() {}
+
+    template <phase_identifier_type P>
+    auto yield_value(YieldResult<P> y) {
+      if constexpr (std::is_void_v<return_type<P>>) {
+        scheduler().template set_completed<P>(y.key());
+      } else {
+        scheduler().template set_completed<P>(y.key(), y.value());
+      }
+
+      struct {
+        constexpr bool await_ready() const noexcept { return true; }
+        bool await_suspend(std::coroutine_handle<promise_type>) noexcept {
+          return false;
+        }
+        void await_resume() const noexcept {}
+      } result;
+      return result;
+    }
 
     // Returns whether `phase` has already been completed.
     template <typename PhaseType>
@@ -161,10 +182,42 @@ struct Task<KeyType, PhaseId, ReturnType>::Phase<P, false>
     return *reinterpret_cast<return_type const*>(return_slot_);
   }
 
+  void const* return_slot() const { return return_slot_; }
   void* return_slot() { return return_slot_; }
 
  private:
   alignas(return_type) char return_slot_[sizeof(return_type)];
+};
+
+template <typename KeyType, PhaseIdentifier PhaseId,
+          template <PhaseId> typename ReturnType>
+template <PhaseId P, bool ReturnsVoid>
+struct Task<KeyType, PhaseId, ReturnType>::YieldResult
+    : private Task<KeyType, PhaseId, ReturnType>::Phase<P, ReturnsVoid> {
+ private:
+  using Base = Task<KeyType, PhaseId, ReturnType>::Phase<P, ReturnsVoid>;
+
+ public:
+  using key_type              = typename Base::key_type;
+  using phase_identifier_type = typename Base::phase_identifier_type;
+  using return_type           = typename Base::return_type;
+  using task_type             = typename Base::task_type;
+  using Base::key;
+
+  template <std::convertible_to<key_type> K, typename... Arguments>
+  explicit YieldResult(K&& key, Arguments&&... arguments) requires(
+      (sizeof...(arguments) == 0 and ReturnsVoid) or
+      std::constructible_from<return_type, Arguments...>)
+      : Base(std::forward<K>(key)) {
+    if constexpr (not ReturnsVoid) {
+      new (this->return_slot())
+          return_type(std::forward<Arguments>(arguments)...);
+    }
+  }
+
+  return_type value() const requires(not ReturnsVoid) {
+    return *static_cast<return_type const*>(this->return_slot());
+  }
 };
 
 template <typename TaskType>

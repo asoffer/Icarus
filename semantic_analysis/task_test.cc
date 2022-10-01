@@ -33,9 +33,9 @@ TEST(Scheduler, OneTaskWithNoAwaits) {
   EXPECT_EQ(n_counter, 1);
 }
 
-Task<Node, Phase> OneTaskWithOneAwait(TestScheduler &s, Node n) {
+Task<Node, Phase> OneTaskWithOneAwait(TestScheduler &, Node n) {
   ++*n.counter;
-  s.set_completed<Phase::Zero>(n);
+  co_yield Task<Node, Phase>::YieldResult<Phase::Zero>(n);
   if (n.next) { co_await Task<Node, Phase>::Phase<Phase::Zero>(*n.next); }
   ++*n.counter;
 }
@@ -55,12 +55,12 @@ TEST(Scheduler, OneTaskWithOneAwait) {
   EXPECT_EQ(n2_counter, 2);
 }
 
-Task<Node, Phase> SelfReferential(TestScheduler &s, Node n) {
+Task<Node, Phase> SelfReferential(TestScheduler &, Node n) {
   ++*n.counter;
-  s.set_completed<Phase::Zero>(n);
+  co_yield Task<Node, Phase>::YieldResult<Phase::Zero>(n);
   co_await Task<Node, Phase>::Phase<Phase::Zero>(*n.next);
   ++*n.counter;
-  s.set_completed<Phase::One>(n);
+  co_yield Task<Node, Phase>::YieldResult<Phase::Zero>(n);
   co_await Task<Node, Phase>::Phase<Phase::One>(*n.next);
   ++*n.counter;
 }
@@ -85,12 +85,12 @@ using ReturnType = std::conditional_t<P == Phase::Zero, int, std::string_view>;
 using ReturningTask       = Task<Node, Phase, ReturnType>;
 using ReturnTestScheduler = Scheduler<ReturningTask>;
 
-ReturningTask ReturningSelfReferential(ReturnTestScheduler &s, Node n) {
+ReturningTask ReturningSelfReferential(ReturnTestScheduler &, Node n) {
   ++*n.counter;
-  s.set_completed<Phase::Zero>(n, 3);
+  co_yield ReturningTask::YieldResult<Phase::Zero>(n, 3);
   *n.counter += co_await ReturningTask::Phase<Phase::Zero>(*n.next);
   ++*n.counter;
-  s.set_completed<Phase::One>(n, "hello");
+  co_yield ReturningTask::YieldResult<Phase::One>(n, "hello");
   *n.counter += (co_await ReturningTask::Phase<Phase::One>(*n.next)).size();
   ++*n.counter;
 }
@@ -111,9 +111,9 @@ TEST(Scheduler, ReturningSelfReferential) {
 }
 
 
-ReturningTask SkipPhaseZero(ReturnTestScheduler &s, Node n) {
+ReturningTask SkipPhaseZero(ReturnTestScheduler &, Node n) {
   ++*n.counter;
-  s.set_completed<Phase::One>(n, "hello");
+  co_yield ReturningTask::YieldResult<Phase::One>(n, "hello");
   // When a phase is skipped over, the returned value should be the
   // value-initialized value of the returned type.
   *n.counter += co_await ReturningTask::Phase<Phase::Zero>(*n.next);
